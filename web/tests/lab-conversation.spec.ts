@@ -536,9 +536,25 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   const workspaceLink = page
     .locator("main")
     .getByTestId("conversation-workspace");
+  const menu = page.locator("main").getByTestId("conversation-menu");
+  // The header measures again as fonts and its chips arrive and can swap the
+  // menu for the link; a choice read before it settled clicked a menu that
+  // then stayed hidden. Decide once the same one has shown for two reads.
+  let shown = "";
+  await expect
+    .poll(
+      async () => {
+        const now = `${await workspaceLink.isVisible()}/${await menu.isVisible()}`;
+        const settled = now === shown && now !== "false/false";
+        shown = now;
+        return settled;
+      },
+      { intervals: [300] },
+    )
+    .toBe(true);
   if (await workspaceLink.isVisible()) await workspaceLink.click();
   else {
-    await page.locator("main").getByTestId("conversation-menu").click();
+    await menu.click();
     await page
       .getByRole("menuitem")
       .and(page.getByTestId("menu-workspace"))
