@@ -1,16 +1,15 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: improvement
 reporter: jari
 status: done
 priority: normal
 lane: settings-layout
 lane_seq: 2
-related: ['@proto-settings-breakpoints']
+closed: 2026-11-01
 blocked_by: ['@settings-selectors-menu']
 preparation: ready
-closed: 2026-11-01
 ---
 
 # Settings sidebar folds at a 1050 px window

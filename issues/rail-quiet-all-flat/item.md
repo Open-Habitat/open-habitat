@@ -1,15 +1,14 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: improvement
 reporter: jari
 status: done
 priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 6
-related: ['@proto-rail-recent-r2', '@rail-recent-five']
+related: ['@rail-recent-five']
 preparation: ready
-blocked_by: ['@proto-rail-quiet-flat', '@proto-rail-quiet-flat-r2', '@proto-rail-quiet-flat-r3', '@proto-rail-quiet-flat-r4', '@proto-rail-quiet-flat-r5']
 closed: 2026-11-01
 ---
 

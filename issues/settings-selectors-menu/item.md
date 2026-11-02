@@ -1,15 +1,14 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: improvement
 reporter: jari
 status: done
 priority: normal
 lane: settings-layout
 lane_seq: 1
-related: ['@proto-settings-selectors']
-preparation: ready
 closed: 2026-11-01
+preparation: ready
 ---
 
 # Settings selectors: menu for many choices, compact steppers

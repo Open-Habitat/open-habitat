@@ -1,16 +1,15 @@
 ---
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-02
 type: feature
 reporter: jari
 status: done
 priority: normal
 lane: rail-recent-five
 lane_seq: 1
-related: ['@proto-rail-recent']
+closed: 2026-10-31
 blocked_by: ['@single-workspace-normal-rail']
 preparation: ready
-closed: 2026-10-31
 ---
 
 # Rail: the five most recent conversations, count configurable

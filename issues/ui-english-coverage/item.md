@@ -1,13 +1,13 @@
 ---
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-02
 type: feature
 reporter: jari
 status: done
 priority: high
 lane: i18n
 lane_seq: 2
-blocked_by: [ui-language-choice, '@en-conversation', '@en-composer', '@en-workspaces', '@en-workers', '@en-shell-editor']
+blocked_by: [ui-language-choice, '@en-shell-editor']
 preparation: ready
 closed: 2026-10-31
 ---

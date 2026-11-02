@@ -7,7 +7,7 @@ status: done
 priority: high
 lane: release-straightforward
 lane_seq: 1
-related: ['@release-cut-stop-signing', '@research-release-10x-faster']
+related: ['@research-release-10x-faster']
 preparation: ready
 closed: 2026-11-02
 ---

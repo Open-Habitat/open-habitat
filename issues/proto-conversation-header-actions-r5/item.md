@@ -1,16 +1,15 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: task
 reporter: jari
 status: done
 priority: normal
 lane: proto-conversation-header-actions-r5
 lane_seq: 1
-related: ['@proto-conversation-header-actions-r4']
+closed_by: conductor
 preparation: pending
 closed: 2026-11-01
-closed_by: conductor
 ---
 
 # Prototype round 5: Selitä opens a hover-to-explain mode

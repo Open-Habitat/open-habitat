@@ -1,16 +1,15 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: task
 reporter: jari
 status: done
 priority: normal
 lane: decide-view-stable-address
 lane_seq: 1
-related: ['@research-view-stable-address', '@proto-view-offer-card-r3']
+closed_by: conductor
 preparation: pending
 closed: 2026-11-01
-closed_by: conductor
 ---
 
 # Decide: one stable address per view (option 2)
