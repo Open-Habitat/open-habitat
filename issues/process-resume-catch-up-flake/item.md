@@ -2,13 +2,15 @@
 created: 2026-11-01
 updated: 2026-11-02
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: pilot.18 clean gate
 source_ref: taskfleet:01m6c2ybczc0gvg629k2gnka93/gate:process-resume-catch-up
 originating_run: 01m6c2ybczc0gvg629k2gnka93
 originating_run_kind: spinoff
+closed: 2026-11-02
+closed_by: conductor
 ---
 
 # TestProcessResumeCatchUpAcrossDaemonRestart fails under gate load
@@ -51,3 +53,9 @@ so it depends on timing under load. The assertion at line 299 is:
 func TestProcessCatchUpLogic(t *testing.T) {
 	command := exec.Command("node", "--test", "pi-device-test/catch-up.test.mjs")
 ```
+
+## Resolution
+
+### 2026-11-02T05:44:39Z · @conductor
+
+Jari 2.11.: keep the test, drop the load-dependent reminder check from its third step (57f8c830).
