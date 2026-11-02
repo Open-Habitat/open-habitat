@@ -105,6 +105,14 @@ async function alignedWithComposer(page: Page) {
   );
   expect(warning).toEqual(field);
 }
+// The repair leaves for GitHub; the case stops it there. A 204 cancels that
+// navigation, where an aborted one commits an error page that can interrupt
+// the case's next navigation.
+async function holdGitHubStart(page: Page) {
+  await page.route("**/auth/github/start?*", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+}
 async function evidence(page: Page, name: string, selector: string) {
   for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
@@ -165,7 +173,7 @@ test("@github-connection an expired login is said above the composer and app-wid
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // The repair is the gateway's explicit reconnect, back to this page.
-  await page.route("**/auth/github/start?*", (route) => route.abort());
+  await holdGitHubStart(page);
   const started = page.waitForRequest(/\/auth\/github\/start\?/);
   await notice.getByTestId("github-connection-fix").click();
   const url = new URL((await started).url());
@@ -219,7 +227,7 @@ test("@github-connection Uusi työtila says why the list is missing, without a s
   await evidence(page, "new-workspace", "[data-testid=github-place-warning]");
 
   // The gateway returns only to known paths; the page comes back anyway.
-  await page.route("**/auth/github/start?*", (route) => route.abort());
+  await holdGitHubStart(page);
   const started = page.waitForRequest(/\/auth\/github\/start\?/);
   await place.getByTestId("github-place-fix").click();
   const returnTo = new URL((await started).url()).searchParams.get("return_to");
@@ -359,7 +367,7 @@ test("@github-connection an organisation's restriction is said in its own reposi
   await page.reload();
   await expect(warning).toHaveAttribute("data-state", "org_saml");
   const conversation = page.url();
-  await page.route("**/auth/github/start?*", (route) => route.abort());
+  await holdGitHubStart(page);
   const started = page.waitForRequest(/\/auth\/github\/start\?/);
   await warning.getByTestId("github-connection-fix").click();
   expect(new URL((await started).url()).searchParams.get("reconnect")).toBe(
