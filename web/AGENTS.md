@@ -52,6 +52,14 @@ host sends and the browser words, goes in that test's allowlist with its
 reason. Text the daemon or gateway would show is better sent as a code or an
 empty value the browser words, as the title of an unnamed conversation is.
 
+Interface copy says what the person can do and what happens for them, not
+how it is implemented. Do not explain internal files, paths, encodings, model
+IDs or mechanisms in helper text. Show a size or character limit only in the
+error when it is reached. Actual user content and controls for choosing a file
+or model keep their identifiers. Technical facts an agent needs belong in the
+agent reference (catalog source comments are included), or the operator guide,
+not in screen copy.
+
 The shipped `open-habitat-ui` agent skill derives its references from these
 catalogs, the settings index/routes and keyboard-handler sources. Release
 packaging regenerates them in private build sources so the shipped guide always

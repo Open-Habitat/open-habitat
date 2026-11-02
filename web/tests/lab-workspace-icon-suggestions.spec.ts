@@ -87,7 +87,6 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   // Only what the daemon let through: no web address, no README word, no
   // repeat, not reseptikirja's 🍳, not four letters.
   expect(await icons(page)).toEqual(["🧭", "🦉", "☀️", "🌿"]);
-  await expect(row.locator("code")).toHaveText("synthetic/icon-fixture");
   expect(
     (
       await new AxeBuilder({ page })

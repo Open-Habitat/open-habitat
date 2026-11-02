@@ -4,6 +4,10 @@ import { catalog } from "../i18n";
 // The workspace page's icon picker (components/WorkspaceIconPicker.tsx) and
 // its suggestion row (components/WorkspaceIconSuggestions.tsx). A quick
 // wish's value is sent to the model as the wish itself.
+// Agent reference: wishes allow 4096 characters; attachments are images or
+// UTF-8 text (64 KiB total text), used as references, not icon choices.
+// Suggestion input includes the workspace name, README excerpt, start page,
+// languages and logo path. The service chooses the available signed-in model.
 const fi = {
   change: "Vaihda kuvake",
   title: "Työtilan kuvake",
@@ -51,13 +55,11 @@ const fi = {
   suggestions: "Ehdotuksia:",
   notNow: "Ei nyt",
   wishLabel: "Toive mallille",
-  wishHint:
-    "Toive enintään 4096 merkkiä. Liitteeksi kuva tai UTF-8-tekstiä (yhteensä enintään 64 kt tekstiä). Liitteet ovat mallille esimerkkejä, eivät uusia kuvakevaihtoehtoja.",
+  wishHint: "Voit liittää kuvan tai tekstin esimerkiksi.",
   wishPlaceholder: "Toive, esim. kettu, sininen, kirjaimet",
   suggest: "Ehdota",
   previous: "Edelliset ehdotukset",
   next: "Seuraavat ehdotukset",
-  seen: (what: string) => `Malli näkee: ${what}.`,
 };
 
 export const workspaceIconPickerText = catalog(fi, {
@@ -106,11 +108,9 @@ export const workspaceIconPickerText = catalog(fi, {
   suggestions: "Suggestions:",
   notNow: "Not now",
   wishLabel: "Wish for the model",
-  wishHint:
-    "Wish up to 4096 characters. Attach images or UTF-8 text (up to 64 KB of text in total). Attachments are references for the model, not new icon choices.",
+  wishHint: "You can attach an image or text as a reference.",
   wishPlaceholder: "A wish, e.g. fox, blue, letters",
   suggest: "Suggest",
   previous: "Previous suggestions",
   next: "Next suggestions",
-  seen: (what) => `The model sees: ${what}.`,
 });

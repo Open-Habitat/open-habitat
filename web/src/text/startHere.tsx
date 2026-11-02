@@ -1,39 +1,25 @@
-import type { ReactNode } from "react";
 import { catalog } from "../i18n";
 
 // A repository's start page, in a new conversation
 // (components/StartHere.tsx) and on the workspace page
-// (components/WorkspaceIntro.tsx). The command and the file name come in as
-// nodes.
+// (components/WorkspaceIntro.tsx).
+// Agent reference: author the shared introduction in .agents/start-page.md;
+// it appears on the workspace page and at the start of new conversations.
+// /open-habitat-start-page invokes the authoring skill.
 const fi = {
   unreadable: "Aloitussivua ei saatu luettua.",
   retry: "Yritä uudelleen",
   needsUpdateTitle: "Aloitussivu tarvitsee päivityksen",
-  needsUpdate: (command: ReactNode): ReactNode => (
-    <>
-      Päivitä aloitussivu kirjoittamalla viestikenttään {command}. Voit myös
-      jatkaa kirjoittamalla agentille omin sanoin.
-    </>
-  ),
+  needsUpdate: "Pyydä agenttia päivittämään aloitussivu tai jatka omin sanoin.",
   whatToDo: "Mitä haluat tehdä?",
   goalHint:
     "Tavoite kirjoittaa pyynnön valmiiksi viestikenttään. Voit myös kirjoittaa suoraan agentille.",
-  create: (command: ReactNode): ReactNode => (
-    <>Luo aloitussivu kirjoittamalla viestikenttään {command}.</>
-  ),
+  create: "Pyydä agenttia luomaan työtilalle aloitussivu.",
   // The workspace page's intro.
-  introNeedsUpdate: (file: ReactNode): ReactNode => (
-    <>
-      Aloitussivu tarvitsee päivityksen. Agentti päivittää {file}:n, ja esittely
-      näkyy sitten täällä ja uuden keskustelun alussa.
-    </>
-  ),
-  introAbsent: (file: ReactNode): ReactNode => (
-    <>
-      Tällä työtilalla ei ole aloitussivua. Agentti kirjoittaa sen {file}:hen,
-      ja sama esittely näkyy sitten täällä ja uuden keskustelun alussa.
-    </>
-  ),
+  introNeedsUpdate:
+    "Päivitä työtilan esittely ja ehdotukset siitä, mitä täällä voi tehdä.",
+  introAbsent:
+    "Luo tähän aloitussivu, joka esittelee työtilan ja auttaa pääsemään alkuun.",
   updatePage: "Päivitä aloitussivu",
   createPage: "Luo aloitussivu",
   pageLabel: "Aloitussivu",
@@ -48,30 +34,16 @@ export const startHereText = catalog(fi, {
   unreadable: "The start page could not be read.",
   retry: "Try again",
   needsUpdateTitle: "The start page needs an update",
-  needsUpdate: (command) => (
-    <>
-      Update the start page by typing {command} in the message field. You can
-      also go on by writing to the agent in your own words.
-    </>
-  ),
+  needsUpdate:
+    "Ask the agent to update the start page, or continue in your own words.",
   whatToDo: "What would you like to do?",
   goalHint:
     "A goal writes the request into the message field for you. You can also write to the agent directly.",
-  create: (command) => (
-    <>Create a start page by typing {command} in the message field.</>
-  ),
-  introNeedsUpdate: (file) => (
-    <>
-      The start page needs an update. The agent updates {file}, and the
-      introduction then shows here and at the start of a new conversation.
-    </>
-  ),
-  introAbsent: (file) => (
-    <>
-      This workspace has no start page. The agent writes it to {file}, and the
-      same introduction then shows here and at the start of a new conversation.
-    </>
-  ),
+  create: "Ask the agent to create a start page for this workspace.",
+  introNeedsUpdate:
+    "Update the workspace introduction and suggestions for what to do here.",
+  introAbsent:
+    "Create a start page here to introduce the workspace and help you get started.",
   updatePage: "Update start page",
   createPage: "Create start page",
   pageLabel: "Start page",

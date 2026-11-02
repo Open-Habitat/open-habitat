@@ -68,11 +68,7 @@ export function WorkspaceIntro({
         className="ah-workspace-intro-line"
         data-testid={page ? "landing-needs-update" : "landing-absent"}
       >
-        <p>
-          {page
-            ? t.introNeedsUpdate(<code>.agents/start-page.md</code>)
-            : t.introAbsent(<code>.agents/start-page.md</code>)}
-        </p>
+        <p>{page ? t.introNeedsUpdate : t.introAbsent}</p>
         <ControlButton
           size="row"
           variant="secondary"

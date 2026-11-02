@@ -241,15 +241,6 @@ export function WorkspaceIconSuggestions({
           </div>
         </>
       )}
-      <p className="ah-wsis-foot">
-        {t.seen(model.seen)}
-        {model.model ? (
-          <>
-            {" "}
-            <code>{model.model}</code>
-          </>
-        ) : null}
-      </p>
     </section>
   );
 }

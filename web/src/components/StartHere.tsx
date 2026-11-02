@@ -121,7 +121,7 @@ export function StartHere({
       ) : page && "state" in page ? (
         <div role="status" data-testid="start-page-needs-update">
           <h2>{t.needsUpdateTitle}</h2>
-          <p>{t.needsUpdate(<code>/open-habitat-start-page</code>)}</p>
+          <p>{t.needsUpdate}</p>
         </div>
       ) : authored ? (
         <>
@@ -143,7 +143,7 @@ export function StartHere({
         </>
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">
-          {t.create(<code>/open-habitat-start-page</code>)}
+          {t.create}
         </p>
       )}
     </section>
