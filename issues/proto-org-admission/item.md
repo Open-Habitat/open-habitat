@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: org-admission-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: administration view for organisation-based admission
