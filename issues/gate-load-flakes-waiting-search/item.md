@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: gate-load-flakes
 lane_seq: 2
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Clean gate: next-waiting-row stop button and settings-search preview fail under load
