@@ -54,3 +54,9 @@ under load, and nothing may shift the layout during that recovery. Keep
 the spec's strict "no sample shows the notice" assertion; fix the product so
 it holds on a loaded host (reproduce under load, e.g. with the CPU-load
 helper under `timeout` beside the spec, before and after).
+
+Jari 2.11.: he has **not** seen any flash in real use. The only evidence is
+the gate on a heavily loaded Birch (eight browser hosts plus Go tests on
+eight cores). The fix still matters: the strict spec otherwise fails the
+gate intermittently and blocks releases, and a loaded host must not jolt the
+UI either.
