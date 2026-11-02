@@ -269,6 +269,13 @@ test("@next-waiting-row question, failed send and archive close the window", asy
   await hold(page);
   await send(page, "archive this");
   await expect(line(page)).toBeVisible();
+  // Archive is refused while Pi works, so the turn ends first; waiting out
+  // the 90 s hold instead made this the suite's slowest case. The window's
+  // own archived clause is pinned in src/app/nextWaiting.test.tsx.
+  await page.request.get("/fixture/scenario?value=ready");
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
+    timeout: 30000,
+  });
   await page
     .locator(".ah-agent-header")
     .getByTestId("archive-conversation")

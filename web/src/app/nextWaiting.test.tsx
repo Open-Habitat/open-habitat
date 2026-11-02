@@ -9,10 +9,18 @@ const settled = {
   ...idle,
   turn_settled: { state: "settled", native_key: "reply", observed_at: "now" },
 } as Status;
+type Props = {
+  id: string;
+  status: Status;
+  stale: boolean;
+  archived?: boolean;
+};
 function setup() {
+  const initialProps: Props = { id: "a", status: idle, stale: false };
   return renderHook(
-    ({ id, status, stale }) => useNextWaitingWindow(id, status, stale, false),
-    { initialProps: { id: "a", status: idle, stale: false } },
+    ({ id, status, stale, archived = false }: Props) =>
+      useNextWaitingWindow(id, status, stale, archived),
+    { initialProps },
   );
 }
 describe("accepted-send window", () => {
@@ -65,6 +73,17 @@ describe("accepted-send window", () => {
       result.current.outcome("accepted");
     });
     rerender({ id: "a", status: idle, stale: false });
+    expect(result.current.open).toBe(false);
+  });
+  it("closes when the conversation is archived, even while its turn runs", () => {
+    const { result, rerender } = setup();
+    rerender({ id: "a", status: running, stale: false, archived: false });
+    act(() => {
+      result.current.outcome("pending");
+      result.current.outcome("accepted");
+    });
+    expect(result.current.open).toBe(true);
+    rerender({ id: "a", status: running, stale: false, archived: true });
     expect(result.current.open).toBe(false);
   });
 });
