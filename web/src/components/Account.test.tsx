@@ -208,6 +208,49 @@ describe("account presentation", () => {
     }
     vi.restoreAllMocks();
   });
+  it("moves the search preview with every arrow press while the route has not drawn the last one", () => {
+    // As the router: the URL moves at once, but the section is drawn in a
+    // transition that a loaded page holds back over several presses, so the
+    // route props here never move.
+    const onNavigate = vi.fn((path: string) =>
+      window.history.replaceState(null, "", path),
+    );
+    // A desktop: results and the previewed section side by side.
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    // jsdom lays nothing out.
+    Element.prototype.scrollIntoView = () => {};
+    window.history.replaceState(null, "", "/settings/recap#recap-model");
+    try {
+      render(
+        <AccountSettings
+          routeSection="tilannekatsaus"
+          routeRow="recap-model"
+          onNavigate={onNavigate}
+          onClose={() => {}}
+        />,
+      );
+      const field = screen.getByTestId("settings-search");
+      fireEvent.change(field, { target: { value: "malli" } });
+      const ids = [...document.querySelectorAll("[role='option']")].map(
+        (o) => o.id,
+      );
+      expect(ids.slice(0, 2)).toEqual([
+        "settings-search-results-row-recap-model",
+        "settings-search-results-row-default-model",
+      ]);
+      // The first result is the place already shown: nothing to navigate.
+      expect(onNavigate).not.toHaveBeenCalled();
+      fireEvent.keyDown(field, { key: "ArrowDown" });
+      fireEvent.keyDown(field, { key: "ArrowUp" });
+      expect(field.getAttribute("aria-activedescendant")).toBe(ids[0]);
+      expect(window.location.hash).toBe("#recap-model");
+      expect(onNavigate).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+      window.history.replaceState(null, "", "/");
+    }
+  });
   it("never presents a provider subject number as a name", () => {
     expect(accountLabel("GitHub user 42")).not.toMatch(/GitHub user|42/);
     expect(accountLabel(" 123 ")).not.toContain("123");

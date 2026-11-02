@@ -120,8 +120,8 @@ test("@settings-search / finds a setting, arrows preview results beside the list
   // second result of a partial query).
   await field(page).fill("malli");
   await expect(option(page, "row-theme")).toHaveCount(0);
-  // Rows that depend on a read (recap's model) can still join the list; read
-  // its second result once the list has held for two reads.
+  // The administrator check, a read, can still add the server's rows to the
+  // list; read its second result once the list has held for two reads.
   let listed = "";
   await expect
     .poll(

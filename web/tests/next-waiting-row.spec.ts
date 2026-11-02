@@ -73,6 +73,13 @@ async function elsewhere(browser: Browser) {
   });
   return context.newPage();
 }
+// A status the spec rewrites comes with no event of its own, so nothing
+// reads it again; the person's own check (Tiedot › Tarkista) does.
+async function recheck(page: Page) {
+  await page.getByTestId("workspace-details").click();
+  await page.getByTestId("conversation-recheck").click();
+  await page.getByTestId("workspace-details").click();
+}
 async function hold(page: Page) {
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
 }
@@ -147,9 +154,7 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
     timeout: 25000,
   });
   keepWorking = false;
-  await page.getByTestId("workspace-details").click();
-  await page.getByTestId("conversation-recheck").click();
-  await page.getByTestId("workspace-details").click();
+  await recheck(page);
   await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
     timeout: 30000,
   });
@@ -248,9 +253,11 @@ test("@next-waiting-row question, failed send and archive close the window", asy
       };
     await route.fulfill({ response, json: body });
   });
+  await recheck(page);
   await expect(page.getByTestId("agent-question")).toBeVisible();
   await expect(line(page)).toHaveCount(0);
   asks = false;
+  await recheck(page);
   await expect(page.getByTestId("agent-question")).toHaveCount(0);
   await expect(line(page)).toHaveCount(0);
   // A queued message is also a person's send; a refusal closes that window.

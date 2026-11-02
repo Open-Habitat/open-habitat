@@ -373,10 +373,16 @@ export function AccountSettings({
   const preview = (hit: SettingsHit | undefined) => {
     if (!hit || narrow()) return;
     steering.current = true;
-    if (
-      place(section, detail ? row : undefined) !== place(hit.section, hit.row)
-    )
-      go(hit.section, hit.row, { replace: true });
+    // Compared with the URL, not the drawn section: the router draws a
+    // navigation in a transition, which a loaded page holds back over
+    // several arrow presses, and an arrow back to the place still drawn
+    // would leave the preview where the route had already gone.
+    const there = onNavigate
+      ? `${window.location.pathname}${window.location.hash}` ===
+        settingsHref(hit.section, hit.row)
+      : place(section, detail ? row : undefined) ===
+        place(hit.section, hit.row);
+    if (!there) go(hit.section, hit.row, { replace: true });
   };
   const changeQuery = (next: string) => {
     setQuery(next);
