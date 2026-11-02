@@ -328,23 +328,22 @@ product inventory. Leaving `site.release` on the old runtime manifest cannot
 install a new product. Publish the new manifest together with the product and
 identify unchanged archive hashes in the handoff.
 
-For a product-only cut, `scripts/successor-descriptors.py --archive-release
-vPREDECESSOR` annotates archives without a source tag and preserves an existing
-source tag, so repeated cuts point directly to the original asset. A rebuilt
-profile uses its new descriptor without `archive_release` and is uploaded with
-the new release. Keep the complete local archive closure for writing and
-verifying the manifest, even when those bytes will not be uploaded.
-
-Before upload, run `python3 scripts/release-upload-plan.py --directory ASSETS
---tag vVERSION --json`. ASSETS contains only the two architectures' prepared
-packages, manifests and gate record, plus any new archives (reused archives may be present). The planner checks the
-immutable sources with authenticated `gh`, refuses mismatched or unexpected
-files, and reports exact `upload` paths, `upload_bytes` and `reuse` entries.
-Upload only those paths, **not a directory glob**. This is a read-only upload
-plan, not release qualification: package verification, complete runtime
-verification, the release gate and draft verification still apply. In draft
-verification, fetch referenced runtime assets from their source tags too.
-Publish only after the installation downloader supports these references.
+`scripts/release-cut.py` cuts such a product-only release of this repository
+from a commit whose clean gate passed, and refuses one whose runtime inputs
+changed since the predecessor. Its parts also work alone.
+`scripts/successor-descriptors.py --archive-release vPREDECESSOR` annotates
+archives without a source tag and preserves an existing source tag, so
+repeated cuts point directly to the original asset. A rebuilt profile uses its
+new descriptor without `archive_release` and is uploaded with the new release.
+Keep the complete local archive closure for writing and verifying the
+manifest, even when those bytes will not be uploaded.
+`python3 scripts/release-upload-plan.py --directory ASSETS --tag vVERSION
+--json` then lists the exact assets to upload. A release consists of both
+architectures' packages and manifests, `release-gate.json` and any new
+archives; the planner checks each reused archive's immutable source with
+authenticated `gh` and refuses mismatched or other files. Upload only its
+`upload` paths, **not a directory glob**, and before publishing compare the
+digest GitHub states for each draft asset with the verified local bytes.
 Retain every referenced source release for as long as any supported successor
 needs it: immutability of its bytes does not replace source availability.
 

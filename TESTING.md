@@ -115,8 +115,9 @@ result when the merged tree is identical. The receipt identifies the committed
 tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
-runs both phases in full. The gated release preparer checks the receipt
-against the current clean tree rather than rerunning the gate. Go/contracts
+runs both phases in full. A release uses the receipt rather than rerunning the
+gate: `scripts/release-cut.py` refuses a receipt that does not cover exactly
+the commit's tree, and the packaging step checks it again. Go/contracts
 and Storybook overlap the web checks/build; browser runs after the fresh web
 build. The gate defaults to four workers per phase and respects
 `OH_BROWSER_WORKERS` and other caller-supplied budgets.
@@ -138,10 +139,13 @@ the default refuses a missing or different-tree gate receipt and records
 `gate: "clean-gate"` with the tree. A production release still requires the
 clean gate; a test release does not, and neither does landing on `main`.
 
-`python3 scripts/test-release-scratch.py` tests release-input cleanup on success,
-failure and cancellation, safe symlink handling, and the read-only dry run,
-without building or publishing a release. The release recipe's scratch wrapper
-and evidence-retention rule are in `AGENTS-WORKFLOW.md`.
+`python3 scripts/test-release-cut.py` tests the cut's decisions offline: which
+receipt, commit, predecessor, version and tag it accepts, the runtime-input
+paths that stop a product-only cut, and the comparison of GitHub's stated
+digests with the verified bytes. It runs no build and reaches no network.
+`python3 scripts/test-release-scratch.py` tests the cut's private-input cleanup
+on success, failure and cancellation, and `test-release-upload-plan.py` the
+upload membership. When to cut is in `AGENTS-WORKFLOW.md`.
 
 The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
 checks the receipt in gated mode, installs web dependencies from the

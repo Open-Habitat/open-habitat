@@ -38,6 +38,17 @@ repackaging deliberately unsafe archives and proving they still fail. Changing a
 broker unit, or the daemon socket's `DirectoryMode`, therefore means changing
 the verifier's expectations, and usually a negative case, in the same commit.
 
+`release-cut.py` is the one script here that publishes: it creates a GitHub
+release and starts Fleetrepo's installation on Alder, so everything that can
+refuse runs before the first write, and each later stop says what it left.
+It builds with the gated commit's own tools from a disposable worktree,
+because those are the bytes the gate covered; the caller's checkout only
+decides. It refuses a runtime change rather than rebuilding, since runtime
+archives are built natively per architecture and that is not a routine step.
+Its one verification after the upload is GitHub's stated digest of every
+asset against the bytes it verified locally. That digest is what installers
+trust, so downloading the draft again would check nothing more.
+
 A verified archive says nothing about a host. The daemon socket template's
 `DirectoryMode=0710` only removes world traversal; the real isolation is a
 root-owned directory and named ACL that Fleetrepo prepares and checks on the
