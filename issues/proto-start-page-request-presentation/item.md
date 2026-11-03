@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: start-page-button
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: how a start-page request looks before and after sending
@@ -19,3 +19,10 @@ Jari 3.11.: two questions of the start-page round were unclear in words; answer 
 ## Acceptance Criteria
 
 - [ ] A prototype round showing today and three directions for both screens, phone and desktop, with a recommendation and at most three questions.
+
+## Round 1 (3.11.)
+
+Prototype round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`,
+result and questions in [result.md](result.md). Awaiting Jari's choice.
+Today's button inserts a command Pi does not expand: filed as
+`start-page-button-bare-command`.

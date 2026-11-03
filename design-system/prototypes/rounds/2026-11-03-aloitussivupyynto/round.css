@@ -1,0 +1,61 @@
+/* Review chrome, and the flow's screens on production tokens. Each screen is a
+   framed piece of the product; the frames sit side by side on a wide page and
+   one under another on a phone. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select { font: inherit; }
+
+.rq-stage { padding: var(--ah-s4) var(--ah-s4) 96px; color: var(--ah-ink); }
+.rq-flow + .rq-flow { margin-top: var(--ah-s6); }
+.rq-flow > h2 { font-size: var(--ah-size-h3, 1.1rem); margin: 0 0 var(--ah-s3); }
+.rq-screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ah-s4); }
+.rq-screen { margin: 0; min-width: 0; }
+.rq-screen figcaption { font-size: var(--ah-size-meta); color: var(--ah-ink-2); margin-bottom: var(--ah-s2); min-height: 2.8em; }
+.rq-screen figcaption b {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: 4px;
+  border-radius: 50%; background: var(--ah-ink); color: var(--ah-bg); font-weight: 600;
+}
+.rq-frame {
+  position: relative; height: 640px; overflow: hidden; display: flex; flex-direction: column;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-bg);
+  transition: box-shadow .3s;
+}
+.rq-screen[data-flash] .rq-frame { box-shadow: 0 0 0 3px var(--ah-focus, var(--ah-accent)); }
+.rq-frame > .ah-conversation-frame, .rq-frame > * { flex: 1; min-height: 0; }
+.rq-frame .ah-composer { margin-bottom: var(--ah-s3); }
+
+@media (max-width: 899px) {
+  .rq-stage { padding-inline: var(--ah-s2); }
+  .rq-screens { grid-template-columns: 1fr; gap: var(--ah-s5); }
+  .rq-screen figcaption { min-height: 0; }
+  .rq-frame { height: 600px; }
+}
+
+/* A small copy of the workspace page around the production intro line. */
+.rq-landing { padding: var(--ah-s5) var(--ah-s4); overflow: auto; }
+.rq-landing h1 { font-family: var(--ah-mono); font-size: 1.6rem; margin: 0; }
+.rq-path, .rq-meta { color: var(--ah-muted); font-size: var(--ah-size-meta); margin: var(--ah-s1) 0 var(--ah-s4); }
+.rq-path { font-family: var(--ah-mono); }
+.rq-meta { margin-top: var(--ah-s3); }
+.rq-section { font-size: var(--ah-size-meta); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-ink-2); }
+.rq-section span { margin-left: 4px; }
+
+.rq-empty { padding-block: var(--ah-s5); }
+.rq-line { border-style: dashed; }
+
+/* Proposal: the history names the host's own skill by its title, in ordinary
+   type rather than as a native skill name. */
+.rq-stage .ah-skill-name { font-family: inherit; font-weight: 600; }
+
+/* "Pelkkä nimi": the request is a plain label with nothing to open. */
+.rq-label {
+  display: block; color: var(--ah-ink); font-weight: 600; font-size: var(--ah-size-ui);
+}
