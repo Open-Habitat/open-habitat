@@ -1,0 +1,92 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rw-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rw-bar strong { font-weight: 600; }
+.rw-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rw-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rw-bar select, .rw-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rw-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rw-lines { font-size: 11px; line-height: 1.3; padding-left: 0; }
+  .rw-lines li:not([aria-current]) { display: none; }
+}
+.rw-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rw-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* ---- Shared: a message's own actions sit at the right of its header ---- */
+.rw-msg { position: relative; }
+.rw-msg[data-left] { opacity: 0.45; }
+.rw-msg-actions {
+  position: absolute; top: var(--ah-s1); right: 0;
+  display: flex; align-items: center; gap: var(--ah-s1);
+}
+.rw-msg-more { --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); }
+.rw-msg-more .ah-menu-chevron { display: none; }
+/* On a desktop the own actions show on hover or focus, like the copy button
+   would if it were quieter; on a phone they stay visible. */
+@media (hover: hover) and (min-width: 801px) {
+  .rw-msg[data-own] .rw-msg-actions { opacity: 0; transition: opacity 120ms; }
+  .rw-msg[data-own]:is(:hover, :focus-within) .rw-msg-actions,
+  .rw-msg-actions:has([aria-expanded="true"], .rw-pager) { opacity: 1; }
+}
+.rw-tools { display: grid; gap: var(--ah-s1); }
+
+.rw-files {
+  display: flex; gap: var(--ah-s2); align-items: flex-start;
+  margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.rw-files .ah-icon { flex: none; margin-top: 2px; color: var(--ah-muted); }
+.rw-files code { font-family: var(--ah-mono); font-size: 0.95em; }
+.rw-busy { margin: 0; font-size: var(--ah-size-meta); color: var(--ah-ink); font-weight: 600; }
+.rw-quiet { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rw-actions { display: flex; gap: var(--ah-s2); justify-content: flex-end; flex-wrap: wrap; }
+
+/* ---- A: inline confirmation under the message, branch row afterwards ---- */
+.rw-confirm, .rw-edit {
+  display: grid; gap: var(--ah-s2);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md, 10px);
+  background: var(--ah-surface); box-shadow: 0 2px 10px var(--ah-scrim);
+}
+.rw-confirm h2 { margin: 0; font-size: var(--ah-size-ui); }
+.rw-confirm p, .rw-edit p { margin: 0; }
+.rw-branch {
+  border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md, 10px);
+  padding: var(--ah-s1) var(--ah-s2);
+}
+.rw-branch-row, .rw-origin {
+  display: flex; align-items: center; gap: var(--ah-s2);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.rw-branch-row > span, .rw-origin > span { flex: 1; min-width: 0; }
+.rw-branch-row strong, .rw-origin strong { color: var(--ah-ink); font-weight: 600; }
+.rw-branch-body { display: grid; gap: var(--ah-s2); padding: var(--ah-s2) 0; }
+.rw-branch-body .ah-feed { opacity: 0.6; }
+.rw-branch-body > [data-ah-primitive="button"] { justify-self: start; }
+
+/* ---- B: the conversation menu shows on a desktop too; one dialog ---- */
+.variant-1 .ah-agent-topline .ah-header-more:not(.rw-header-more) { display: none !important; }
+.variant-1 .ah-agent-topline .rw-header-more { display: inline-flex; flex: none; }
+.rw-fork-dialog { max-width: 560px; }
+.rw-fork-dialog .ah-radio-group { display: grid; gap: var(--ah-s2); }
+.rw-fork-dialog .ah-radio-group small { display: block; color: var(--ah-muted); }
+.rw-fork-preview {
+  display: grid; gap: var(--ah-s2); margin-top: var(--ah-s3);
+  padding: var(--ah-s3); border-radius: var(--ah-r-md, 10px); background: var(--ah-sunken, var(--ah-bg));
+}
+.rw-fork-preview p { margin: 0; }
+.rw-origin {
+  padding: var(--ah-s2); border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md, 10px);
+}
+
+/* ---- C: the message as a field; versions in its header ---- */
+.rw-edit textarea { font: inherit; }
+.rw-pager { display: inline-flex; align-items: center; gap: 2px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
