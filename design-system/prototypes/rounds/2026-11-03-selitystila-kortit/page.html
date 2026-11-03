@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="prototype-round" content="2026-11-03-selitystila-kortit">
+<title>Selitystila: kaikki kortit — prototyyppi</title>
+<style>
+/*TOKENS_CSS*/
+</style>
+<style>
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+.proto-picker-item { white-space: nowrap; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #0c0d0f; color: #c9cdd2; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding-bottom: 96px; }
+.pc-head { padding: 12px 14px 8px; border-bottom: 1px solid #262a2f; background: #16181b; }
+.pc-lines { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 3px; }
+.pc-lines li { color: #8a9097; }
+.pc-lines li b { color: #c9cdd2; font-weight: 600; margin-right: 6px; }
+.pc-lines li[data-current] { color: #e6e9ec; }
+.pc-lines li[data-current] b { color: #fff; }
+.pc-controls { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.pc-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button, .pc-group select { height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: #aeb4ba; font: inherit; cursor: pointer; }
+.pc-group select { background: #22262b; color: #e6e9ec; }
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-hint { color: #8a9097; }
+#stage { display: flex; justify-content: center; padding: 14px 8px; }
+.pc-sizer { position: relative; flex: none; box-shadow: 0 0 0 1px #2a2e33; overflow: hidden; border-radius: 6px; }
+.pc-scale { position: absolute; top: 0; left: 0; transform-origin: top left; display: flex; flex-direction: column; background: var(--ah-bg); }
+.pc-scale iframe { display: block; flex: none; border: 0; background: var(--ah-bg); }
+/* the explain mode's bar (riff 1): the whole top, above everything it explains */
+.xm-bar { flex: none; height: 40px; display: flex; align-items: center; gap: 14px; padding: 0 8px 0 16px; background: var(--ah-ink); color: var(--ah-bg); font: 13px/1.3 var(--ah-font, system-ui); white-space: nowrap; overflow: hidden; }
+.xm-bar[hidden] { display: none; }
+.xm-bar b { font-weight: 600; }
+.xm-bar > span { color: color-mix(in srgb, var(--ah-bg) 72%, transparent); overflow: hidden; text-overflow: ellipsis; }
+.xm-bar .xm-end { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: var(--ah-r-md, 8px); padding: 5px 10px 5px 12px; background: var(--ah-bg); color: var(--ah-ink); font: 600 13px var(--ah-font, system-ui); cursor: pointer; }
+.xm-bar kbd { font: 11px var(--ah-mono, monospace); padding: 0 5px; border: 1px solid var(--ah-line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--ah-ink-2); background: var(--ah-surface); }
+.xm-bar.phone { gap: 10px; padding: 0 6px 0 12px; font-size: 12.5px; }
+.pc-loading { padding: 40px; color: #8a9097; }
+body.bare .pc-head, body.bare .proto-picker { display: none; }
+body.bare #stage { padding: 0; }
+body.bare .pc-sizer { box-shadow: none; border-radius: 0; }
+
+/* ---- the all-cards page: production tokens, light or dark ---- */
+.lc { width: min(1180px, 100%); padding: 24px 28px 60px; border-radius: 6px; background: var(--ah-bg); color: var(--ah-ink); font: 14px/1.5 var(--ah-font, system-ui); }
+.lc h1 { margin: 0 0 4px; font-size: 22px; }
+.lc h2 { margin: 34px 0 10px; font-size: 17px; }
+.lc h3 { margin: 26px 0 8px; font-size: 14px; color: var(--ah-ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.lc > p, .lc .lc-lead { color: var(--ah-ink-2); max-width: 70ch; }
+.lc-rules { display: grid; grid-template-columns: 170px 1fr; gap: 6px 18px; margin: 10px 0 0; }
+.lc-rules dt { font-weight: 600; }
+.lc-rules dd { margin: 0; color: var(--ah-ink-2); }
+.lc-cmp { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.lc-cmp th, .lc-cmp td { vertical-align: top; text-align: left; padding: 10px 12px; border-top: 1px solid var(--ah-line); }
+.lc-cmp th { width: 18%; font-weight: 600; }
+.lc-cmp td { width: 27%; color: var(--ah-ink-2); }
+.lc-cmp td[data-current] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: inset 0 0 0 1px var(--ah-accent); }
+.lc-cmp thead th { border-top: 0; color: var(--ah-muted); font-weight: 500; font-size: 12.5px; }
+.lc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.lc-card { padding: 12px 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg, 12px); background: var(--ah-surface); font-size: 13px; }
+.lc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11.5px; color: var(--ah-muted); }
+.lc-id { font: 600 12px var(--ah-mono, monospace); color: var(--ah-ink); }
+.lc-kind { padding: 1px 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--ah-line); color: var(--ah-ink-2); }
+.lc-card kbd { font: 11px var(--ah-mono, monospace); padding: 0 5px; border: 1px solid var(--ah-line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--ah-ink-2); background: var(--ah-bg); }
+.lc-card h4 { margin: 2px 0 3px; font-size: 14px; }
+.lc-card p { margin: 0; }
+.lc-card .k { margin-top: 3px; color: var(--ah-ink-2); }
+.lc-card .g { margin-top: 5px; color: var(--ah-ink-2); font-size: 12.5px; }
+.lc-card .t { margin-top: 6px; font-size: 12.5px; color: var(--ah-accent-ink, var(--ah-accent)); font-weight: 600; }
+.lc-card .en { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--ah-line); color: var(--ah-muted); font-size: 12.5px; }
+.lc-card .en h4 { font-size: 13px; color: var(--ah-ink-2); }
+.lc-where { margin-top: 8px; font-size: 12px; color: var(--ah-muted); }
+.lc-where a { color: var(--ah-accent-ink, var(--ah-accent)); cursor: pointer; text-decoration: underline; }
+.lc-count { color: var(--ah-muted); font-weight: 400; }
+.lc.phone { padding: 16px 14px 40px; }
+.lc.phone .lc-rules { grid-template-columns: 1fr; }
+.lc.phone .lc-rules dd { margin-bottom: 6px; }
+.lc.phone .lc-cmp, .lc.phone .lc-cmp tbody, .lc.phone .lc-cmp tr, .lc.phone .lc-cmp th, .lc.phone .lc-cmp td { display: block; width: auto; }
+.lc.phone .lc-cmp thead { display: none; }
+.lc.phone .lc-grid { grid-template-columns: 1fr; }
+</style>
+</head>
+<body>
+<header class="pc-head">
+  <ul class="pc-lines"></ul>
+  <div class="pc-controls">
+    <div class="pc-group" data-ctl="page"><span>Sivu</span>
+      <button data-v="tila">Selitystila näkymissä</button><button data-v="kortit">Kaikki kortit</button></div>
+    <div class="pc-group" data-sel="view"><span>Näkymä</span><select aria-label="Näkymä"></select></div>
+    <div class="pc-group" data-ctl="w"><span>Laite</span>
+      <button data-v="1440">Työpöytä 1440</button><button data-v="390">Puhelin 390</button></div>
+    <div class="pc-group" data-ctl="theme"><span>Teema</span>
+      <button data-v="light">Vaalea</button><button data-v="dark">Tumma</button></div>
+    <div class="pc-group" data-ctl="lang"><span>Kortit</span>
+      <button data-v="fi">Suomi</button><button data-v="en">English</button></div>
+    <div class="pc-group" data-ctl="explain"><span>Selitystila</span>
+      <button data-v="on">Päällä</button><button data-v="off">Pois</button></div>
+  </div>
+  <p class="pc-hint" style="margin:8px 0 0">Näkymät ovat tuotannon näkymiä synteettisestä labrasta. Selitystilan ulkopuolella painallus avaa kaapatun tuloksen, jos sellainen on (esim. Pääte, ⋯, Tilivalikko).</p>
+</header>
+<main id="stage"><div class="pc-loading">Ladataan…</div></main>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Mitä · tiedä · kokeile</button>
+  <button class="proto-picker-item">2 Yksi lause</button>
+  <button class="proto-picker-item">3 Opastava</button>
+</nav>
+
+<script type="application/json" id="meta">/*META*/</script>
+<script type="text/plain" id="data">/*DATA*/</script>
+<script type="text/plain" id="picker-src">/*PICKER_JS*/</script>
+<script>
+const META = JSON.parse(document.getElementById('meta').textContent);
+const stage = document.getElementById('stage');
+const params = new URLSearchParams(location.search);
+if (params.get('bare')) document.body.classList.add('bare');
+const view = {
+  page: params.get('page') || 'tila',
+  view: params.get('view') || 'kaynnissa',
+  w: params.get('w') || '1440',
+  theme: params.get('theme') || 'light',
+  lang: params.get('lang') || 'fi',
+  explain: params.get('explain') || 'on',
+  hover: params.get('hover') || 'Y08',
+  pin: params.get('pin') || '',
+};
+const DIRS = META.directions.map((d) => d.id);
+let DATA = null;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+
+document.querySelector('.pc-lines').innerHTML = META.directions
+  .map((d, i) => `<li data-i="${i}"><b>${esc(d.fi.label)}</b>${esc(d.fi.line)}${i === 0 ? ' <i>Suositus; kaikki kortit on kirjoitettu tällä.</i>' : ''}</li>`).join('');
+const sel = document.querySelector('[data-sel="view"] select');
+function fillViews() {
+  sel.innerHTML = META.views.filter((v) => v.widths.includes(+view.w))
+    .map((v) => `<option value="${v.id}"${v.id === view.view ? ' selected' : ''}>${esc(v.fi)}</option>`).join('');
+}
+function fallback() {
+  const v = META.views.find((x) => x.id === view.view);
+  if (!v || !v.widths.includes(+view.w)) view.view = v?.fallback || 'kaynnissa';
+}
+function syncUrl() {
+  const url = new URL(location);
+  for (const k of ['page', 'view', 'w', 'theme', 'lang', 'explain']) url.searchParams.set(k, view[k]);
+  url.searchParams.delete('hover'); url.searchParams.delete('pin');
+  history.replaceState(null, '', url);
+}
+
+function frameDoc(dir) {
+  const phone = +view.w <= 800;
+  const snap = DATA.views[`${view.view}-${view.w}`];
+  const has = META.views.filter((v) => v.widths.includes(+view.w)).map((v) => v.id);
+  const X = { view: view.view, phone, dir, lang: view.lang, explain: view.explain === 'on', hover: view.hover, pin: view.pin,
+    cards: META.cards, kinds: META.kinds, samples: META.samples, has };
+  return `<!doctype html><html lang="fi" class="${esc(snap.cls)}" data-theme="${view.theme}" style="color-scheme:${view.theme}">`
+    + `<head><meta charset="utf-8"><style>${DATA.css}</style><style>${DATA.frameCss}</style></head>`
+    + `<body class="${esc(snap.bodyCls)}">${snap.body}<script>const X=${js(X)};${DATA.frameJs}<\/script></body></html>`;
+}
+// The mode bar is the page's, above the frame: the view shrinks under it, as
+// production's own layout would under a real bar.
+function barHTML(i) {
+  const fi = view.lang === 'fi', phone = +view.w <= 800;
+  const how = i === 0
+    ? (fi ? (phone ? 'Napauta mitä tahansa kohtaa.' : 'Vie osoitin minkä tahansa kohdan päälle; napsautus pitää kortin.')
+          : (phone ? 'Tap any part.' : 'Point at any part; a click keeps the card.'))
+    : (fi ? 'Tämä suunta on kirjoitettu neljälle kohdalle: Pääte, Konteksti, Hiljaiset ja komentorivi keskustelussa.'
+          : 'This direction is written for four parts: Terminal, Context, Quiet and the command row in the conversation.');
+  return `<b>${fi ? 'Selitystila' : 'Explain mode'}</b><span>${how}</span><button class="xm-end" data-xm-end>${fi ? 'Lopeta' : 'Stop'} <kbd>Esc</kbd></button>`;
+}
+function modeView(i) {
+  const w = +view.w;
+  const h = w <= 800 ? 844 : 900;
+  const on = view.explain === 'on';
+  const avail = Math.max(280, document.documentElement.clientWidth - (document.body.classList.contains('bare') ? 0 : 16));
+  const scale = Math.min(1, avail / w);
+  return `<div class="pc-sizer" style="width:${Math.round(w * scale)}px;height:${Math.round(h * scale)}px">`
+    + `<div class="pc-scale" data-theme="${view.theme}" style="width:${w}px;height:${h}px;transform:scale(${scale})">`
+    + `<div class="xm-bar${w <= 800 ? ' phone' : ''}" role="status"${on ? '' : ' hidden'}>${barHTML(i)}</div>`
+    + `<iframe title="Näkymä" style="width:${w}px;height:${on ? h - 40 : h}px" srcdoc="${esc(frameDoc(DIRS[i]))}"></iframe></div></div>`;
+}
+function setBar(on) {
+  const bar = stage.querySelector('.xm-bar');
+  const frame = stage.querySelector('.pc-scale iframe');
+  if (!bar || !frame) return;
+  bar.hidden = !on;
+  frame.style.height = `${(+view.w <= 800 ? 844 : 900) - (on ? 40 : 0)}px`;
+}
+
+// ---- the all-cards page
+let where = null;
+function presence() {
+  if (where) return where;
+  where = {};
+  const parser = new DOMParser();
+  for (const v of META.views) for (const w of v.widths) {
+    const doc = parser.parseFromString(`<body>${DATA.views[`${v.id}-${w}`].body}</body>`, 'text/html');
+    for (const c of META.cards) {
+      if (c.views && !c.views.includes(v.id)) continue;
+      let found = false;
+      try { found = !!doc.querySelector(c.sel); } catch { /* the page's own parts */ }
+      if (c.id === 'X01' && doc.querySelector('[data-testid="start-here"]')) found = true;
+      if (c.id === 'X03' && (doc.querySelector('[data-testid="menu-settings"]') || doc.querySelector('[data-testid="menu-details"]'))) found = true;
+      if (found) ((where[c.id] ||= {})[v.id] ||= []).push(w);
+    }
+  }
+  return where;
+}
+function cardBox(c, lang) {
+  const L = c[lang];
+  return `<h4>${esc(L.name)}</h4><p>${esc(L.lead)}</p>${L.know ? `<p class="k">${esc(L.know)}</p>` : ''}`
+    + (L.grey ? `<p class="g">${lang === 'fi' ? 'Harmaana' : 'When grey'}: ${esc(L.grey)}</p>` : '')
+    + (L.menu ? `<p class="g">${esc(L.menu)}</p>` : '')
+    + (L.try ? `<p class="t">${lang === 'fi' ? 'Kokeile' : 'Try'}: ${esc(L.try)}</p>` : '');
+}
+function listView(i) {
+  const fi = view.lang === 'fi';
+  const other = fi ? 'en' : 'fi';
+  const phone = +view.w <= 800;
+  const w = presence();
+  const name = (id) => META.views.find((v) => v.id === id)?.fi || id;
+  const style = META.style[view.lang].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+  const cmp = Object.keys(META.samples).map((id) => {
+    const c = META.cards.find((x) => x.id === id);
+    const L = c[view.lang];
+    const d1 = `${esc(L.lead)}${L.know ? ' ' + esc(L.know) : ''}${L.try ? ` <b>${fi ? 'Kokeile' : 'Try'}: ${esc(L.try)}</b>` : ''}`;
+    return `<tr><th>${id} · ${esc(L.name)}</th><td${i === 0 ? ' data-current' : ''}>${d1}</td>`
+      + `<td${i === 1 ? ' data-current' : ''}>${esc(META.samples[id].lyhyt[view.lang])}</td>`
+      + `<td${i === 2 ? ' data-current' : ''}>${esc(META.samples[id].opastava[view.lang])}</td></tr>`;
+  }).join('');
+  let n = 0;
+  const areas = META.areas.map((a) => {
+    const cards = META.cards.filter((c) => c.area === a.id);
+    n += cards.length;
+    const boxes = cards.map((c) => {
+      const seen = w[c.id] ? Object.entries(w[c.id]) : [];
+      const links = seen.map(([v, ws]) => `<a data-open="${v}" data-w="${ws.includes(+view.w) ? view.w : ws[0]}" data-card="${c.id}">${esc(name(v))}${ws.length === 1 ? ` (${ws[0]})` : ''}</a>`).join(', ');
+      return `<article class="lc-card" id="${c.id}"><div class="lc-top"><span class="lc-id">${c.id}</span><span class="lc-kind">${esc(META.kinds[c.kind][view.lang])}</span>${c.key ? `<kbd>${esc(c.key)}</kbd>` : ''}</div>`
+        + cardBox(c, view.lang) + `<div class="en">${cardBox(c, other)}</div>`
+        + `<div class="lc-where">${c.id === 'X02' ? (fi ? 'Näkyy selitystilan yläreunassa kaikissa näkymissä.' : 'Shown at the top in every view while the mode is on.') : seen.length ? `${fi ? 'Näkyy' : 'Shown in'}: ${links}` : (fi ? 'Ei kaapatuissa näkymissä.' : 'Not in the captured views.')}</div></article>`;
+    }).join('');
+    return `<h3>${a.id} · ${esc(a[view.lang])} <span class="lc-count">(${cards.length})</span></h3><div class="lc-grid">${boxes}</div>`;
+  }).join('');
+  const dirs = META.directions.map((d) => `<th>${esc(d[view.lang].label)}</th>`).join('');
+  return `<div class="lc${phone ? ' phone' : ''}" data-theme="${view.theme}" style="${phone ? 'width:390px' : ''}">`
+    + `<h1>${fi ? 'Selitystilan kortit' : 'Explain mode cards'} <span class="lc-count">(${META.cards.length})</span></h1>`
+    + `<p class="lc-lead">${fi ? 'Ensin tyyli, jolla kortti puhuu, sitten tyylit rinnakkain neljällä kohdalla ja lopuksi jokainen kortti suositellulla tyylillä. Jokaisella kortilla on tunnus (esim. Y08), johon voit viitata kommentissa; Näkyy-linkki avaa kortin oikeassa näkymässä.' : 'First the style a card speaks in, then the directions side by side on four parts, then every card in the recommended style. Each card has an id (such as Y08) to refer to; the Shown in link opens the card in its real view.'}</p>`
+    + `<h2>${fi ? 'Ohjeen tyyli' : 'The guidance style'}</h2><dl class="lc-rules">${style}</dl>`
+    + `<h2>${fi ? 'Kolme suuntaa neljällä kohdalla' : 'Three directions on four parts'}</h2><table class="lc-cmp"><thead><tr><th></th>${dirs}</tr></thead><tbody>${cmp}</tbody></table>`
+    + `<h2>${fi ? 'Kaikki kortit' : 'All cards'}</h2>${areas}</div>`;
+}
+function render(i) {
+  document.querySelectorAll('.pc-lines li').forEach((li) => li.toggleAttribute('data-current', +li.dataset.i === i));
+  return view.page === 'kortit' ? listView(i) : modeView(i);
+}
+const variants = DIRS.map((_, i) => () => render(i));
+
+function remount() { syncUrl(); fillViews(); mount(current); }
+function press(group) {
+  group.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === view[group.dataset.ctl])));
+}
+document.querySelectorAll('.pc-group[data-ctl]').forEach((group) => {
+  press(group);
+  group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    view[group.dataset.ctl] = b.dataset.v;
+    view.hover = ''; view.pin = '';
+    if (group.dataset.ctl === 'w') fallback();
+    press(group);
+    remount();
+  }));
+});
+sel.addEventListener('change', () => { view.view = sel.value; view.hover = ''; view.pin = ''; remount(); });
+stage.addEventListener('click', (e) => {
+  if (e.target.closest('[data-xm-end]')) { stage.querySelector('iframe')?.contentWindow.postMessage({ xm: true, type: 'end' }, '*'); return; }
+  const a = e.target.closest('[data-open]');
+  if (!a) return;
+  Object.assign(view, { page: 'tila', view: a.dataset.open, w: a.dataset.w, explain: 'on', pin: a.dataset.card, hover: '' });
+  document.querySelectorAll('.pc-group[data-ctl]').forEach(press);
+  remount();
+  scrollTo(0, 0);
+});
+addEventListener('message', (e) => {
+  if (!e.data?.xm) return;
+  if (e.data.type === 'go') {
+    Object.assign(view, { view: e.data.view, explain: 'off', hover: '', pin: '' });
+    document.querySelectorAll('.pc-group[data-ctl]').forEach(press);
+    remount();
+  } else if (e.data.type === 'mode') {
+    view.explain = e.data.on ? 'on' : 'off';
+    view.hover = ''; view.pin = '';
+    press(document.querySelector('[data-ctl="explain"]'));
+    setBar(e.data.on);
+    syncUrl();
+  }
+});
+let lastWidth = innerWidth;
+addEventListener('resize', () => { if (innerWidth !== lastWidth) { lastWidth = innerWidth; mount(current); } });
+
+// The captured views travel compressed; the picker starts once they are read.
+(async () => {
+  const bytes = Uint8Array.from(atob(document.getElementById('data').textContent.trim()), (c) => c.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  DATA = JSON.parse(text);
+  fallback();
+  fillViews();
+  const s = document.createElement('script');
+  s.textContent = document.getElementById('picker-src').textContent;
+  document.body.append(s);
+  window.PROTO_READY = true;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+/* The explain mode over a captured production view (riff 1 of round 5,
+   Himmennys ja kortti osoittimessa). Only tokens; no edge stripes. */
+html { --xm-dim: rgba(12, 14, 16, .42); }
+html[data-theme="dark"] { --xm-dim: rgba(0, 0, 0, .58); }
+/* Nothing in the inert twin reacts by itself; frame.js decides. */
+html { cursor: default; }
+.xm-catch { position: fixed; inset: 0; z-index: 2147483000; background: transparent; }
+html.xm-on .xm-catch { cursor: help; }
+.xm-layer { position: fixed; inset: 0; z-index: 2147483001; pointer-events: none; }
+.xm-layer > i { position: fixed; display: block; }
+.xm-dim { inset: 0; background: var(--xm-dim); }
+.xm-hole { border-radius: var(--ah-r-md, 8px); box-shadow: 0 0 0 2px var(--ah-accent), 0 0 0 9999px var(--xm-dim); }
+.xm-flash { border-radius: var(--ah-r-md, 8px); box-shadow: 0 0 0 3px var(--ah-accent); animation: xm-flash 1.2s ease-out forwards; }
+@keyframes xm-flash { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+
+/* the card */
+.xm-card { position: fixed; z-index: 2147483003; width: 320px; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 12px 14px 12px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg, 12px); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)); font: 13px/1.45 var(--ah-font, system-ui); pointer-events: none; }
+.xm-card.pinned { pointer-events: auto; border-color: var(--ah-accent); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)), 0 0 0 1px var(--ah-accent); }
+html.xm-phone .xm-card { width: calc(100vw - 16px); }
+.xm-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11.5px; color: var(--ah-muted); }
+.xm-kind { padding: 1px 7px; border-radius: 999px; background: var(--ah-sunken, var(--ah-bg)); box-shadow: inset 0 0 0 1px var(--ah-line); color: var(--ah-ink-2); font-weight: 500; }
+.xm-id { margin-left: auto; font: 11px var(--ah-mono, monospace); color: var(--ah-faint, var(--ah-muted)); }
+.xm-card h2 { margin: 0 0 3px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.xm-card p { margin: 0; }
+.xm-card .xm-know { margin-top: 4px; color: var(--ah-ink-2); }
+.xm-card .xm-note { margin-top: 6px; color: var(--ah-muted); font-size: 12px; }
+.xm-card .xm-grey { margin-top: 6px; color: var(--ah-ink-2); font-size: 12.5px; }
+.xm-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.xm-foot .xm-hint { color: var(--ah-muted); font-size: 12px; }
+.xm-foot button { border: 0; border-radius: var(--ah-r-md, 8px); padding: 6px 12px; font: 600 13px var(--ah-font, system-ui); cursor: pointer; }
+.xm-try { background: var(--ah-accent); color: var(--ah-on-accent, #fff); }
+.xm-free { margin-left: auto; background: transparent; color: var(--ah-ink-2); box-shadow: inset 0 0 0 1px var(--ah-line-strong); }
+.xm-toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2147483004; max-width: calc(100vw - 24px); padding: 8px 14px; border-radius: var(--ah-r-md, 8px); background: var(--ah-ink); color: var(--ah-bg); font: 13px/1.4 var(--ah-font, system-ui); }
+
+/* the start page's strip (round 3 riff 3), above the start page */
+.xm-strip { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--ah-accent-line, var(--ah-line-strong)); border-radius: var(--ah-r-lg, 12px); background: var(--ah-accent-soft, var(--ah-surface)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.xm-strip > div { flex: 1 1 220px; min-width: 0; }
+.xm-strip b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ah-ink); }
+.xm-strip span { display: block; color: var(--ah-ink-2); font-size: 12.5px; line-height: 1.4; margin-top: 2px; }
+.xm-strip .xm-strip-go { border: 0; border-radius: var(--ah-r-md, 8px); padding: 7px 14px; background: var(--ah-accent); color: var(--ah-on-accent, #fff); font: 600 13px var(--ah-font, system-ui); white-space: nowrap; }
+.xm-strip .xm-strip-x { border: 0; background: transparent; color: var(--ah-muted); font-size: 16px; width: 28px; height: 28px; border-radius: 6px; }
+html.xm-phone .xm-strip .xm-strip-go { width: 100%; }
+[data-xm-entry] { font-weight: 600; }

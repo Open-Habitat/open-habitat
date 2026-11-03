@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: explain-mode
 lane_seq: 0
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: explain mode in detail, on the real views (round 6)
