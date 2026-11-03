@@ -17,6 +17,40 @@ export const recapQuietMs = 60_000;
 const reportGapMs = 20_000;
 const draftReportMs = 30_000;
 
+/** A newly delivered automatic recap waits for composition to finish;
+ * one already displayed must not disappear when typing starts. */
+export function useRecapPresentationHold({
+  key,
+  fingerprint,
+  received,
+  automatic,
+  activity,
+}: {
+  key: string;
+  fingerprint: string;
+  received: boolean;
+  automatic: boolean;
+  activity: { active: boolean };
+}): { held: boolean; reveal: () => void } {
+  const [seen, setSeen] = useState<{
+    key: string;
+    fingerprint: string;
+  } | null>(null);
+  const held =
+    automatic &&
+    activity.active &&
+    (seen?.key !== key || seen.fingerprint !== fingerprint);
+  useEffect(() => {
+    if (!received || held) return;
+    setSeen((previous) =>
+      previous?.key === key && previous.fingerprint === fingerprint
+        ? previous
+        : { key, fingerprint },
+    );
+  }, [received, held, key, fingerprint]);
+  return { held, reveal: () => setSeen({ key, fingerprint }) };
+}
+
 /** Whether the person is busy in this conversation (Jari 27.10.2026: the
  * recap must not appear while a long message is being written). Composer
  * focus counts only when it happens: the field keeps focus while the person

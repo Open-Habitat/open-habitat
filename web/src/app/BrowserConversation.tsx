@@ -118,7 +118,7 @@ import {
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
-import { useRecapHold } from "./recapHold";
+import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
@@ -634,25 +634,13 @@ function BrowserConversationContent({
     feed,
     opened,
   });
-  const [recapSeen, setRecapSeen] = useState<{
-    key: string;
-    fingerprint: string;
-  } | null>(null);
-  // The first read decides what was already there when the conversation
-  // opened, unless the person was already typing or reading while it loaded.
-  const recapHeld =
-    recapCurrent?.recap?.trigger === "automatic" &&
-    (recapSeen?.key === recapKey
-      ? recapHold.active && recapSeen.fingerprint !== recapFingerprint
-      : recapHold.recent);
-  useEffect(() => {
-    if (!recapCurrent || recapHeld) return;
-    setRecapSeen((previous) =>
-      previous?.key === recapKey && previous.fingerprint === recapFingerprint
-        ? previous
-        : { key: recapKey, fingerprint: recapFingerprint },
-    );
-  }, [recapCurrent, recapHeld, recapKey, recapFingerprint]);
+  const { held: recapHeld, reveal: revealRecap } = useRecapPresentationHold({
+    key: recapKey,
+    fingerprint: recapFingerprint,
+    received: !!recapCurrent,
+    automatic: recapCurrent?.recap?.trigger === "automatic",
+    activity: recapHold,
+  });
   const dismissRecapOnSend = () => {
     if (!recapFingerprint) return;
     setDismissedRecap(`${dismissalKey}:${recapFingerprint}`);
@@ -1666,11 +1654,7 @@ function BrowserConversationContent({
                       } catch {
                         /* Browser storage can be denied. */
                       }
-                      if (recapFingerprint)
-                        setRecapSeen({
-                          key: recapKey,
-                          fingerprint: recapFingerprint,
-                        });
+                      if (recapFingerprint) revealRecap();
                       requestRecapNow?.();
                     },
                   }

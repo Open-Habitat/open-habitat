@@ -304,119 +304,130 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
 // written. The person's report postpones the daemon's own timer (Go tests);
 // here the synthetic idle interval is shorter than the report gap, so the
 // daemon does write a recap, and the browser must still hold it back.
-test("@lab recap waits while the person writes a long message", async ({
-  page,
-}) => {
-  // An already displayed recap stays displayed: deliver this one only once
-  // composition has begun, rather than racing the native recap generator.
-  let readInitial!: () => void;
-  const initialRead = new Promise<void>((resolve) => {
-    readInitial = resolve;
-  });
-  let releaseRecap!: () => void;
-  const writing = new Promise<void>((resolve) => {
-    releaseRecap = resolve;
-  });
-  await page.route("**/api/v1/agents/*/recap", async (route) => {
-    const response = await route.fetch();
-    const body = await response.json();
-    // Let the initial empty read establish what was present on opening.
-    // Only the newly generated recap belongs to the typing transition.
-    if (body.recap) await writing;
-    await route.fulfill({ response, json: body });
-    if (!body.recap) readInitial();
-  });
-  test.setTimeout(90000);
-  expect(
-    (await page.request.get("/fixture/scenario?value=ready")).status(),
-  ).toBe(204);
-  try {
-    await page.clock.install();
-    await page.goto("/workspaces");
-    await page.getByTestId("github-sign-in").click();
-    await page
-      .getByRole("link")
-      .and(page.locator('a[href*="code=42"]'))
-      .click();
-    await page
-      .getByRole("navigation")
-      .getByTestId("workspace-aurinkokello")
-      .click();
-    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-    const editor = page.getByTestId("message-input");
-    await editor.fill("Tutki synteettinen työtila");
-    await page
-      .getByTestId("send")
-      .and(page.locator('[data-mode="send"]'))
-      .click();
-    await expectNativeContent(
-      page,
-      'Selvä. Kysyit: "Tutki synteettinen työtila".',
-      { timeout: 20000 },
-    );
-    const id = new URL(page.url()).searchParams.get("conversation");
-    expect(id).toMatch(/^pi:/);
-    await initialRead;
-    await page.request.get("/fixture/scenario?value=pi-recap");
-    await editor.fill("Toinen vuoro yhteenvetoa varten");
-    await page
-      .getByTestId("send")
-      .and(page.locator('[data-mode="send"]'))
-      .click();
-    await expectNativeContent(
-      page,
-      'Selvä. Kysyit: "Toinen vuoro yhteenvetoa varten".',
-      { timeout: 20000 },
-    );
-    // Typing reports presence through the gateway to the user's daemon.
-    const presence = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/presence") &&
-        response.request().method() === "POST",
-    );
-    await editor.click();
-    await editor.pressSequentially(
-      "Tämä on pitkä viesti, jota kirjoitan rauhassa ja ajatuksella. ".repeat(
-        3,
-      ),
-      { delay: 15 },
-    );
-    expect((await presence).status()).toBe(200);
-    releaseRecap();
-    const card = page.getByTestId("recap-card");
-    await expect
-      .poll(
-        async () => {
-          const native = await (
-            await page.request.get(`/api/v1/agents/${id}/recap`)
-          ).json();
-          return native.recap?.through === native.latest_message;
-        },
-        { timeout: 20000 },
-      )
-      .toBe(true);
-    // The recap exists natively and the browser has read it after its
-    // history changed, but the person is still writing.
-    await page.clock.runFor(1500);
-    await expect(card).toHaveCount(0);
-    await expect(editor).not.toHaveValue("");
-    // An unsent draft keeps holding it however long it stays.
-    await page.clock.fastForward(5 * 60_000);
-    await expect(card).toHaveCount(0);
-    // Once the draft is gone and the person has paused, it appears.
-    await editor.fill("");
-    await expect(card).toHaveCount(0);
-    await page.clock.fastForward(61_000);
-    await expect(card).toHaveAttribute("data-trigger", "automatic", {
-      timeout: 10000,
+for (const firstRead of [false, true]) {
+  test(`@lab recap waits while the person writes a long message (${firstRead ? "first read" : "existing conversation"})`, async ({
+    page,
+  }) => {
+    // An already displayed recap stays displayed: deliver this one only once
+    // composition has begun, rather than racing the native recap generator.
+    let readInitial!: () => void;
+    const initialRead = new Promise<void>((resolve) => {
+      readInitial = resolve;
     });
-  } finally {
-    releaseRecap();
+    let releaseRecap!: () => void;
+    const writing = new Promise<void>((resolve) => {
+      releaseRecap = resolve;
+    });
+    await page.route("**/api/v1/agents/*/recap", async (route) => {
+      // In the first-read order even an empty initial reply must not establish
+      // a baseline before composition starts. Fetch only once writing begins.
+      if (firstRead) await writing;
+      const response = await route.fetch();
+      const body = await response.json();
+      // Let the initial empty read establish what was present on opening.
+      // Only the newly generated recap belongs to the typing transition.
+      if (body.recap) await writing;
+      await route.fulfill({ response, json: body });
+      if (!body.recap) readInitial();
+    });
+    test.setTimeout(90000);
     expect(
-      (await page.request.get("/fixture/scenario?value=ready")).status(),
+      (
+        await page.request.get(
+          `/fixture/scenario?value=${firstRead ? "pi-recap" : "ready"}`,
+        )
+      ).status(),
     ).toBe(204);
-  }
-});
+    try {
+      await page.clock.install();
+      await page.goto("/workspaces");
+      await page.getByTestId("github-sign-in").click();
+      await page
+        .getByRole("link")
+        .and(page.locator('a[href*="code=42"]'))
+        .click();
+      await page
+        .getByRole("navigation")
+        .getByTestId("workspace-aurinkokello")
+        .click();
+      await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+      const editor = page.getByTestId("message-input");
+      await editor.fill("Tutki synteettinen työtila");
+      await page
+        .getByTestId("send")
+        .and(page.locator('[data-mode="send"]'))
+        .click();
+      await expectNativeContent(
+        page,
+        'Selvä. Kysyit: "Tutki synteettinen työtila".',
+        { timeout: 20000 },
+      );
+      const id = new URL(page.url()).searchParams.get("conversation");
+      expect(id).toMatch(/^pi:/);
+      if (!firstRead) {
+        await initialRead;
+        await page.request.get("/fixture/scenario?value=pi-recap");
+        await editor.fill("Toinen vuoro yhteenvetoa varten");
+        await page
+          .getByTestId("send")
+          .and(page.locator('[data-mode="send"]'))
+          .click();
+        await expectNativeContent(
+          page,
+          'Selvä. Kysyit: "Toinen vuoro yhteenvetoa varten".',
+          { timeout: 20000 },
+        );
+      }
+      // Typing reports presence through the gateway to the user's daemon.
+      const presence = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/presence") &&
+          response.request().method() === "POST",
+      );
+      await editor.click();
+      await editor.pressSequentially(
+        "Tämä on pitkä viesti, jota kirjoitan rauhassa ja ajatuksella. ".repeat(
+          3,
+        ),
+        { delay: 15 },
+      );
+      expect((await presence).status()).toBe(200);
+      releaseRecap();
+      const card = page.getByTestId("recap-card");
+      await expect
+        .poll(
+          async () => {
+            const native = await (
+              await page.request.get(`/api/v1/agents/${id}/recap`)
+            ).json();
+            return native.recap?.through === native.latest_message;
+          },
+          { timeout: 20000 },
+        )
+        .toBe(true);
+      // The recap exists natively and the browser has read it after its
+      // history changed, but the person is still writing.
+      await page.clock.runFor(1500);
+      await expect(card).toHaveCount(0);
+      await expect(editor).not.toHaveValue("");
+      // An unsent draft keeps holding it however long it stays.
+      await page.clock.fastForward(5 * 60_000);
+      await expect(card).toHaveCount(0);
+      // Once the draft is gone and the person has paused, it appears.
+      await editor.fill("");
+      await expect(card).toHaveCount(0);
+      await page.clock.fastForward(61_000);
+      await expect(card).toHaveAttribute("data-trigger", "automatic", {
+        timeout: 10000,
+      });
+    } finally {
+      releaseRecap();
+      expect(
+        (await page.request.get("/fixture/scenario?value=ready")).status(),
+      ).toBe(204);
+    }
+  });
+}
 
 test("@lab a failed recap shows its reason, automatic and on request", async ({
   page,

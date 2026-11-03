@@ -2,7 +2,7 @@
 created: 2026-11-02
 updated: 2026-11-03
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed in a targeted synthetic browser stress run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: recap-draft
 lane_seq: 1
 preparation: ready
+closed: 2026-11-03
 ---
 
 # First automatic recap can interrupt an unsent draft after the quiet timer
@@ -36,4 +37,4 @@ The maintained lab-conversation long-message test now establishes a native turn 
 
 ## Acceptance Criteria
 
-- [ ] A first automatic recap arriving during composition stays hidden until the unsent draft is cleared and the person pauses; a recap already displayed before typing remains displayed.
+- [x] A first automatic recap arriving during composition stays hidden until the unsent draft is cleared and the person pauses; a recap already displayed before typing remains displayed.
