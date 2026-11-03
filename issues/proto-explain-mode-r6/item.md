@@ -32,3 +32,14 @@ each at the top, plus the recommendation; interactive.
 ## Acceptance Criteria
 
 - [ ] A prototype round on the real views with three directions, phone and desktop, a recommendation and at most three questions.
+
+## Jari 3.11.: what this round is
+
+Riff 1 (*Himmennys ja kortti osoittimessa*) is the chosen mode; this round
+does not riff alternatives to it. Its purpose is **all the texts**: the
+prototype shows the guidance style (how a card speaks to the person) and then
+every single explained element written carefully in that style, so Jari can
+go through them all; implementation proceeds from those texts. Directions,
+if any, are only about the style of the cards (tone, length, structure),
+shown on the same few elements, with the full set written in the
+recommended style.
