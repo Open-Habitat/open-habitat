@@ -116,7 +116,7 @@ for (const [width, theme] of [
     await page.getByTestId("landing-create").click();
     await expect(page).toHaveURL(/\?conversation=pi:/);
     // The executable command is the contract.
-    await expect(field).toHaveValue("/open-habitat-start-page ");
+    await expect(field).toHaveValue("/skill:open-habitat-start-page ");
     await expect(field).toBeFocused();
     expect(
       await field.evaluate(
@@ -125,5 +125,13 @@ for (const [width, theme] of [
           node.selectionEnd === node.value.length,
       ),
     ).toBe(true);
+    const outgoing = page.waitForRequest(
+      (r) =>
+        r.method() === "POST" && new URL(r.url()).pathname.endsWith("/send"),
+    );
+    await page.getByTestId("send").click();
+    expect((await outgoing).postDataJSON().message).toBe(
+      "/skill:open-habitat-start-page ",
+    );
   });
 }

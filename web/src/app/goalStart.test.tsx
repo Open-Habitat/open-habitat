@@ -198,26 +198,26 @@ describe("a goal chosen on the workspace page", () => {
     const shot =
       "![shot.png](/api/v1/attachments/11111111-1111-4111-8111-111111111111)";
     sessionStorage.setItem(draftKey, `${shot}\nKesken`);
-    prepareInvocation("person", "ws", "/open-habitat-start-page ");
+    prepareInvocation("person", "ws", "/skill:open-habitat-start-page ");
     const text = sessionStorage.getItem(draftKey) ?? "";
     const view = render(
       <Field owner={creationGuideOwner("person", "ws")} value={text} />,
     );
     const field = view.getByTestId("field") as HTMLTextAreaElement;
     expect(field.value.slice(0, field.selectionStart)).toBe(
-      "/open-habitat-start-page ",
+      "/skill:open-habitat-start-page ",
     );
   });
 
   it("does not take focus from another control", () => {
-    prepareInvocation("person", "ws", "/open-habitat-start-page ");
+    prepareInvocation("person", "ws", "/skill:open-habitat-start-page ");
     const other = document.createElement("button");
     document.body.append(other);
     other.focus();
     render(
       <Field
         owner={creationGuideOwner("person", "ws")}
-        value="/open-habitat-start-page "
+        value="/skill:open-habitat-start-page "
       />,
     );
     expect(document.activeElement).toBe(other);
@@ -226,13 +226,13 @@ describe("a goal chosen on the workspace page", () => {
 
   it("writes the start page invocation ahead of an earlier draft", () => {
     sessionStorage.setItem(draftKey, "Kesken\n");
-    prepareInvocation("person", "ws", "/open-habitat-start-page ");
+    prepareInvocation("person", "ws", "/skill:open-habitat-start-page ");
     expect(sessionStorage.getItem(draftKey)).toBe(
-      "/open-habitat-start-page \n\nKesken",
+      "/skill:open-habitat-start-page \n\nKesken",
     );
-    prepareInvocation("person", "ws", "/open-habitat-start-page ");
+    prepareInvocation("person", "ws", "/skill:open-habitat-start-page ");
     expect(sessionStorage.getItem(draftKey)).toBe(
-      "/open-habitat-start-page \n\nKesken",
+      "/skill:open-habitat-start-page \n\nKesken",
     );
   });
 });

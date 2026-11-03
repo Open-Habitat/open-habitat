@@ -2,7 +2,7 @@
 created: 2026-11-03
 updated: 2026-11-03
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: prototype round observation
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: start-page-button
 lane_seq: 0
 preparation: ready
+closed: 2026-11-03
 ---
 
 # Workspace page's Luo aloitussivu inserts a command Pi does not expand

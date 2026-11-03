@@ -59,7 +59,11 @@ export function WorkspaceLanding({
         disabled={disabled}
         onCreatePage={() => {
           if (!identity || disabled) return;
-          prepareInvocation(identity, workspaceId, "/open-habitat-start-page ");
+          prepareInvocation(
+            identity,
+            workspaceId,
+            "/skill:open-habitat-start-page ",
+          );
           start();
         }}
         onGoal={async (goal) => {

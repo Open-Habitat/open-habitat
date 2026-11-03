@@ -132,6 +132,43 @@ func TestSkillArgumentsRemainReadableBeyondPreview(t *testing.T) {
 	}
 }
 
+// The workspace button sends this argument-free command. Exercise Pi's real
+// expander against the installed skill, rather than teaching a fake the answer.
+func TestStartPageButtonNativeExpansion(t *testing.T) {
+	sdk, err := filepath.Abs("pi-device-test/node_modules/@earendil-works/pi-coding-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := installStartPageSkill(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := `
+import {pathToFileURL} from 'node:url';
+const [sdk, file] = process.argv.slice(1);
+const {AgentSession} = await import(pathToFileURL(sdk+'/dist/core/agent-session.js'));
+const name = 'open-habitat-start-page';
+const session = {resourceLoader: {getSkills: () => ({skills: [{name, filePath: file, baseDir: file.slice(0,file.lastIndexOf('/'))}]})}};
+console.log(JSON.stringify(AgentSession.prototype._expandSkillCommand.call(session, '/skill:open-habitat-start-page ')));
+`
+	b, err := exec.Command("node", "--input-type=module", "-e", script, sdk, file).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var text string
+	if err := json.Unmarshal(b, &text); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text, `<skill name="open-habitat-start-page"`) || !strings.Contains(text, "</skill>") {
+		t.Fatalf("not expanded as a skill: %q", text)
+	}
+	msg, _ := json.Marshal(map[string]any{"role": "user", "content": text})
+	out := nativeBlocks(nativeEntry{Type: "message", Message: msg})
+	if out.Skill == nil || out.Skill.Name != "open-habitat-start-page" || out.full != "" {
+		t.Fatalf("incorrect native skill: %+v", out)
+	}
+}
+
 // These are excerpts of installed worktree/issue and the shipped start-page
 // skill. Pi's actual expansion, not a guessed wrapper, supplies the regression.
 func TestSkillMetadataFromNativeExpansion(t *testing.T) {
