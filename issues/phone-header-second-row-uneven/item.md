@@ -58,3 +58,12 @@ into ⋯ and how ⋯ is grouped by role.
 `prototype-2/otsakkeen-jako.html` riffs on the split in three one-row
 directions with ⋯ grouped by role; `result.md` has the item inventory, the
 recommendation and the questions awaiting Jari's choice.
+
+## Jari 3.11. on round 2: redo
+
+Round 2 is to be redone. On the desktop the header shows the repository
+name, Git, how much context is in use, the model name and the status (working,
+waiting for you, …). All of these must remain available on a phone as well:
+the phone must give the same information as the desktop in one way or
+another (one row, but not by hiding these in ⋯). Round 3 riffs how the one
+row carries all five on a phone.

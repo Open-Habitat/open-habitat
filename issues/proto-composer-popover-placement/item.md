@@ -19,3 +19,11 @@ Jari 3.11.: the composer's buttons (*Liitä*, *Komennot* `/`, *Tiedosto* `@`) op
 ## Acceptance Criteria
 
 - [ ] A prototype round with today and three directions (short and tall draft, phone and desktop), a recommendation and at most three questions.
+
+## Jari 3.11. on round 1
+
+**Kentän sisällä** looks good. Round 2 riffs how it works in detail: the
+file list (`@`) and the commands (`/`) must keep all of today's functionality
+(search, folders, keyboard, selecting several, what is inserted), and no
+intermediate dialog with a single button anywhere (today's flows that open a
+one-button dialog before the real thing are wrong and go away).

@@ -26,3 +26,11 @@ Prototype round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`,
 result and questions in [result.md](result.md). Awaiting Jari's choice.
 Today's button inserts a command Pi does not expand: filed as
 `start-page-button-bare-command`.
+
+## Jari 3.11. on round 1
+
+The button puts a **template prompt** in the message field: a sentence for
+the agent such as "Luodaan aloitussivu käyttäen … -taitoa", a line break, and
+then a bracketed placeholder already selected, e.g. "[anna lisäohjeita]", so
+typing replaces it. Round 2 shows this for both buttons (workspace page and
+empty conversation), create and update, and how it then reads in the history.
