@@ -1,0 +1,151 @@
+/* Directions over the production stylesheet, inside the view's iframe. The
+   iframe is as wide as the device, so production's own max-width: 800px rules
+   decide phone or desktop exactly as in Habitat. <html data-dir> is 0 for
+   today and 1–3 for the directions; <html data-sit> is uusi or kaynnissa.
+   Every direction is one row (Jari 3.11.); they differ only in what stays in
+   the row and what moves into ⋯. */
+
+/* ---- Shared by every direction ---------------------------------------- */
+
+/* One row on a phone: no break after the title, the activity dot in front of
+   the title, the floating menu and home buttons keep their 100 px. */
+@media (max-width: 800px) {
+  html:not([data-dir="0"]) .ah-agent-topline {
+    flex-wrap: nowrap;
+  }
+  html:not([data-dir="0"]) .ah-agent-topline::after {
+    display: none;
+  }
+  html:not([data-dir="0"]) .ah-agent-topline > .ah-header-activity {
+    order: 0;
+    width: 20px;
+    height: 40px;
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+    margin-inline-end: calc(-1 * var(--ah-control-gap) + 4px);
+  }
+  html:not([data-dir="0"]) .ah-conversation-frame > .ah-agent-header .ah-title-row {
+    margin-inline-start: 0;
+  }
+  html:not([data-dir="0"]) .ah-agent-topline > :is(.ah-gs-chip, .ah-ctx-chip) {
+    order: 1;
+  }
+}
+@media (min-width: 801px) {
+  html:not([data-dir="0"]) .ah-agent-topline > .ah-header-activity {
+    order: -1;
+  }
+}
+/* The one-off actions (recap, new title, archive, details) live in ⋯ on
+   every device. The disabled ones are wrapped in the tooltip's
+   _disabledTrigger span, which production's direct-child rule misses
+   (round 1's grey H↻ box), so the wrapper goes too. */
+html:not([data-dir="0"])
+  .ah-agent-topline
+  > :is(.ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle, .ah-header-sep),
+html:not([data-dir="0"])
+  .ah-agent-topline
+  > :has(> :is(.ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle)) {
+  display: none;
+}
+/* The model lives in the composer's chip, also once the conversation runs. */
+html:not([data-dir="0"]) .ah-agent-topline > :is(.md-chip-picker, .ah-set-chip) {
+  display: none;
+}
+/* ⋯ is always there. */
+html:not([data-dir="0"]) .ah-agent-topline .ah-header-more {
+  display: inline-flex;
+  flex: none;
+}
+/* The row's chips keep the quiet look on both devices. */
+html:not([data-dir="0"]) .ah-agent-topline :is(.ah-gs-chip, .ah-ctx-chip) {
+  --b-h: 40px;
+  height: 40px;
+  padding-inline: 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+@media (min-width: 801px) {
+  html:not([data-dir="0"]) .ah-agent-topline :is(.ah-gs-chip, .ah-ctx-chip) {
+    --b-h: 32px;
+    height: 32px;
+  }
+}
+
+/* ---- 1 · Työkalut esillä ----------------------------------------------- */
+/* The row keeps what is pressed many times in a conversation: the panels
+   (editor, terminal; the files and the guide where they exist). What is
+   only glanced at now and then (Git, context) is in ⋯. */
+html[data-dir="1"] .ah-agent-topline > :is(.ah-gs-chip, .ah-ctx-chip) {
+  display: none;
+}
+
+/* ---- 2 · Tila esillä --------------------------------------------------- */
+/* The row shows one sign per role: the conversation's activity before the
+   title, the workspace's Git, the agent's context. The panels are actions,
+   so they are in ⋯ with the workspace. On a phone Git keeps only the
+   unpushed count and the context ring its ring; ⋯ has the full values. */
+html[data-dir="2"] .ah-agent-topline > :is(.ah-editor-controls, .ah-terminal-toggle, .ah-files-toggle, .ah-guide-toggle) {
+  display: none;
+}
+@media (max-width: 800px) {
+  html[data-dir="2"] .ah-agent-topline .ah-gs-n + .ah-gs-n,
+  html[data-dir="2"] .ah-agent-topline .ah-gs-dirty,
+  html[data-dir="2"] .ah-agent-topline .ah-ctx-value {
+    display: none;
+  }
+  html[data-dir="2"] .ah-agent-topline > :is(.ah-gs-chip, .ah-ctx-chip) {
+    padding-inline: 6px;
+  }
+}
+
+/* ---- 3 · Pelkkä otsikko ------------------------------------------------ */
+/* The row is the title and its status; everything else is in ⋯. */
+html[data-dir="3"]
+  .ah-agent-topline
+  > :is(.ah-gs-chip, .ah-ctx-chip, .ah-editor-controls, .ah-terminal-toggle, .ah-files-toggle, .ah-guide-toggle) {
+  display: none;
+}
+
+/* ---- ⋯ grouped by role ------------------------------------------------- */
+/* Production's menu items under three small headings: this conversation,
+   its workspace, the agent. A state row is an item whose value is its
+   description, as production's shortened desktop row already does for Git. */
+.p-menu [role="menu"] {
+  padding-block: 2px;
+}
+.p-menu-group + .p-menu-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ah-line);
+}
+.p-menu-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 12px 2px;
+  color: var(--ah-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.p-menu-head > span {
+  font-family: var(--ah-mono);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* ---- The prototype's own menu placement -------------------------------- */
+.p-menu {
+  position: absolute !important;
+  z-index: 100000;
+  max-height: none !important;
+}
+/* An inert snapshot: no motion, no stray focus ring from capture time. */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  transition: none !important;
+}
