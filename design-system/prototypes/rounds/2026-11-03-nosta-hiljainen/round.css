@@ -1,0 +1,118 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* Each row is the production item in its own list, so the round's controls
+   can sit beside it without entering the production markup. */
+.rq-now { display: contents; }
+.rq-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.rq-slot { position: relative; }
+.rq-yours-head { position: relative; }
+
+/* ---- A: the row's ball becomes the raise (or lower) button ---- */
+.rq-ball-slot {
+  position: absolute; inset-block: 0; inset-inline-start: 4px;
+  display: flex; align-items: center; pointer-events: none;
+}
+.rq-ball-btn {
+  pointer-events: auto; opacity: 0;
+  --i-bg: var(--ah-surface); color: var(--ah-turn);
+  min-width: 20px !important; width: 20px; height: 20px !important; padding: 0 !important;
+  border-radius: 50% !important; box-shadow: 0 0 0 1px var(--ah-line);
+}
+.rq-ball-btn .ah-icon { width: 13px; height: 13px; }
+.rq-slot[data-place="yours"] .rq-ball-btn { color: var(--ah-ink-2); }
+@media (hover: hover) {
+  .rq-slot:is(:hover, :focus-within) .rq-ball-btn,
+  .rq-ball-slot[data-demo] .rq-ball-btn { opacity: 1; }
+  .rq-slot:is(:hover, :focus-within):has(.rq-ball-slot) .ah-ball,
+  .rq-slot:has(.rq-ball-slot[data-demo]) .ah-ball { visibility: hidden; }
+  .rq-slot:has(.rq-ball-slot[data-demo]) .ah-now-row { background: var(--ah-hover); border-radius: var(--ah-r-nav); }
+}
+@media (hover: none) { .rq-ball-slot { display: none; } }
+.rq-tip {
+  position: absolute; inset-inline-start: 0; bottom: calc(100% + 2px);
+  padding: 2px 8px; border-radius: var(--ah-r-md); white-space: nowrap;
+  background: var(--ah-ink); color: var(--ah-bg); font-size: 11.5px; font-weight: 500; z-index: 3;
+}
+/* The phone's swipe: the row slides off what it will do. */
+.rq-swipe { position: relative; touch-action: pan-y; overflow: hidden; border-radius: var(--ah-r-nav); }
+.rq-swipe a { -webkit-user-drag: none; user-select: none; }
+.rq-swipe-row { position: relative; background: var(--ah-rail); transition: transform 0s; }
+.rq-swipe-under {
+  position: absolute; inset: 0; display: flex; align-items: center; gap: 6px;
+  padding-inline: 12px; background: var(--ah-hover); color: var(--ah-ink-2);
+  font-size: 13px; font-weight: 600;
+}
+.rq-swipe[data-dir="left"] .rq-swipe-under { justify-content: flex-end; }
+.rq-swipe[data-past] .rq-swipe-under { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+
+/* ---- B: ⋯ on every row; the raised row's ball is an arrow ---- */
+.rq-row-menu, .rq-row-x {
+  position: absolute; inset-block: 0; inset-inline-end: 2px;
+  display: flex; align-items: center;
+}
+.rq-more { --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); min-height: 22px !important; height: 22px; }
+.rq-more .ah-menu-chevron { display: none; }
+.rq-slot:has(.rq-row-menu [aria-expanded="true"]) .ah-nav-time { visibility: hidden; }
+@media (hover: hover) {
+  .rq-row-menu, .rq-row-x { opacity: 0; }
+  .rq-slot:is(:hover, :focus-within) :is(.rq-row-menu, .rq-row-x),
+  .rq-row-menu:has([aria-expanded="true"]) { opacity: 1; }
+  .rq-slot:is(:hover, :focus-within):has(.rq-row-menu, .rq-row-x) .ah-nav-time { visibility: hidden; }
+}
+@media (hover: none) {
+  .rq-slot:has(.rq-row-menu, .rq-row-x) .ah-nav-time { display: none; }
+  .rq-slot:has(.rq-row-menu, .rq-row-x) .ah-nav-link { padding-inline-end: 40px; }
+}
+.rq-slot[data-raised] .ah-ball {
+  width: 11px; height: 11px; border-radius: 0; background: var(--ah-turn);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.variant-2 .ah-agent-topline .ah-header-more:not(.rq-header-more) { display: none !important; }
+.variant-2 .ah-agent-topline .rq-header-more { display: inline-flex; flex: none; }
+
+/* ---- B and C: the open raised conversation says why it stays ---- */
+.rq-note-wrap { flex: none; display: grid; padding: 0 var(--ah-column-pad-inline) 6px; }
+.rq-note {
+  width: min(100%, calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)));
+  margin: 0 auto; display: flex; align-items: center; gap: 8px;
+  min-height: 34px; padding: 2px 4px 2px 12px; box-sizing: border-box;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  color: var(--ah-ink-2); font-size: 13px;
+}
+.rq-note > span { flex: 1; min-width: 0; }
+.rq-note > .ah-icon { flex: none; color: var(--ah-turn); width: 14px; height: 14px; }
+
+/* ---- C: + in the heading, Nostamasi as a group under the replies ---- */
+.rq-pick { margin-inline-start: auto; display: inline-flex; }
+.rq-pick [data-testid="raise-pick"] { min-height: 20px !important; height: 20px; padding-inline: 6px !important; }
+.rq-pick .ah-icon { width: 12px; height: 12px; }
+.rq-raised-group { margin-top: 4px; }
+.rq-raised-head { position: static; font: 600 11px var(--ah-font); color: var(--ah-ink-2); }
+.rq-pick-popover { width: 300px; }
+.rq-pick-dialog { display: grid; gap: var(--ah-s2); padding: var(--ah-s3); outline: none; }
+.rq-pick-title { margin: 0; font-weight: 600; font-size: 13px; }
+.rq-pick-list { display: grid; gap: 4px; max-height: 320px; overflow: auto; }
+.rq-pick-foot { display: flex; justify-content: flex-end; }

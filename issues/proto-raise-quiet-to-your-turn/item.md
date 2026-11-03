@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-raise-quiet
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: raise a quiet conversation back to Sinun vuorosi
