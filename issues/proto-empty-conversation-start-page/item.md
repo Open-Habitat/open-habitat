@@ -1,13 +1,14 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-03
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-start-page-button
 lane_seq: 1
 preparation: pending
+closed: 2026-11-03
 ---
 
 # Prototype: a Luo aloitussivu button in the empty new conversation
@@ -28,3 +29,12 @@ No command name or file name on screen (`ui-text-no-internals` rule).
 ## Acceptance Criteria
 
 - [ ] A prototype round with three visibly different directions and a recommendation, phone and desktop.
+
+## Decision (Jari 3.11.)
+
+Direction 1, **Rivi ja painike**. On press the agent **starts at once**: a
+template prompt is sent and the agent continues from it in the conversation
+(the person can steer from there). Questions 2 (the workspace landing's
+buttons filling a chip instead of command text) and 3 (how a sent start-page
+request reads in the history) were not clear in words: they get their own
+visual prototype round, `proto-start-page-request-presentation`.

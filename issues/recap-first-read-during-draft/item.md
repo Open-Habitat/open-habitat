@@ -1,14 +1,17 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-03
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed in a targeted synthetic browser stress run
 source_ref: taskfleet:01m6edmkt230ekrntx2d59mngd/observed:recap-first-read
 originating_run: 01m6edmkt230ekrntx2d59mngd
 originating_run_kind: spinoff
+lane: recap-draft
+lane_seq: 1
+preparation: ready
 ---
 
 # First automatic recap can interrupt an unsent draft after the quiet timer

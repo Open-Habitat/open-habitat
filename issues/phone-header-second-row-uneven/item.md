@@ -45,3 +45,10 @@ prototype round (one view: the conversation header's second row on phone
 and desktop, three directions and a recommendation); implementation waits
 for Jari's choice. The first run (`01m6eetncqnppee5prgdezk0xp`) was
 cancelled before it changed product code.
+
+## Decision (Jari 3.11.)
+
+Direction 3, **one row**. The split between what is always visible and what
+is in the ⋯ menu is not right yet (not by role); the next round prototypes
+and riffs on that split: which items are always in the header, which go
+into ⋯ and how ⋯ is grouped by role.
