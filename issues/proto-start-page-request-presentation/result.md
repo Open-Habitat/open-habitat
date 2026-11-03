@@ -1,101 +1,111 @@
 # Result: how a start-page request looks before and after sending
 
-Round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`
-(NOTES.md in Finnish). One flow shown as three screens side by side:
-**a** where the request starts, **b** what pressing does, **c** how the
-sent request reads in the history. There are two rows, one for the workspace
-page's *Luo/Päivitä aloitussivu* and one for the empty conversation's button.
-The screens sit side by side at 1440 px and stack at 390 px. *Tila* in the
-review bar switches between the create and update wording. Built from
-production components. The workspace, times and agent reply are synthetic,
-and the folded instruction is the installed skill text verbatim.
+Two rounds have been run. Round 1 (`design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`)
+compared sending at once with a chip. It also found that the button inserted
+a bare command that Pi does not expand, which `ee83ab01` fixed. Jari then
+chose a template prompt, and round 2 shows that choice.
 
-## What today really is
+## Round 2: the template prompt
 
-The lab capture (`nyt.mjs`, `evidence/nyt-{sivu,kentassa,lahetetty,tyhja}-{1440,390}.avif`)
-matches the round's *Nyt* view:
+Round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto-2/`
+(NOTES.md in Finnish). Both buttons, *Luo/Päivitä aloitussivu* on the
+workspace page and the empty conversation's row and button, put the same
+template in the message field. The template is a sentence for the agent, a
+line break, and a bracketed placeholder that is already selected, so typing
+replaces it. Nothing is sent. Each row has three screens: **a** the start,
+**b** the field, **c** the sent request in the history. On the workspace
+page's row, c shows a typed wish. On the empty conversation's row, c shows
+what happens when the person sends without touching the placeholder. The
+review bar switches Tila (create or update), Kieli (fi or en) and Teema. The
+b fields are live, so typing and sending there redraws c.
 
-- The workspace page's button opens a new conversation with
-  `/open-habitat-start-page ` as raw text in the field
-  (`WorkspaceLanding.tsx` → `prepareInvocation`).
-- **Pi expands only `/skill:<name>`** (`_expandSkillCommand` in the
-  installed pi-coding-agent), so this text is not a skill call. The model
-  receives it as an ordinary message and has to work out on its own that
-  it should read the skill. The history shows a plain bubble
-  `/open-habitat-start-page`, and the conversation is named after it
-  ("/open-habitat-sta…"). The "native skill name + template" chip only
-  appears when the skill is chosen from the command list, a path the button
-  does not use.
-- The empty conversation only says "Pyydä agenttia luomaan työtilalle
-  aloitussivu.", and the person writes the request.
+Axis: how the skill shows in the field and the history, and what an
+untouched placeholder does on send.
 
-This is a real defect in today's behaviour, whichever direction is chosen.
-The implementation should send `/skill:open-habitat-start-page`.
+1. **Nimi lauseessa**: plain text, "Luodaan aloitussivu käyttäen
+   open-habitat-start-page-taitoa." / "[anna lisäohjeita]". An untouched
+   placeholder is silently dropped. The history shows the same sentence as
+   an ordinary message.
+2. **Siru ja lause**: the existing goal chip *Luo aloitussivu* with
+   "Luodaan tälle työtilalle aloitussivu." / "[anna lisäohjeita]". A hint
+   under the field says an untouched bracketed line is left out. The history
+   shows the chip *Luo aloitussivu*, with the instruction folded behind it,
+   and then the sentence.
+3. **Komento näkyvissä**: the raw text `/skill:open-habitat-start-page Luo
+   tälle työtilalle aloitussivu.` / "[lisäohjeet, jos on]". The placeholder
+   is sent as it is. The history shows today's native skill chip (monospace
+   name, English description) and then the sentence.
 
-## Axis and directions
+Screens are in `evidence/r2-<n>-<suunta>[-paivita|-en|-ohje]-{1440,390}-{light,dark}.avif`.
 
-Axis: how much of the request is visible, and who sends it.
-
-0. **Nyt**: as above.
-1. **Siru**: the workspace page's button puts the chip *Luo aloitussivu* in
-   the field, and the person sends, optionally adding a wish. The history
-   shows the name with the instruction folded behind it.
-2. **Heti, ohje**: both buttons send at once and the agent starts. The
-   history shows the name with the instruction folded behind it.
-3. **Heti, nimi**: both buttons send at once. The history shows only the
-   name, with nothing to open.
-
-The empty conversation's button sends at once in every direction, as decided
-on 3.11., so that row differs only in screen c. Screens:
-`evidence/proto-<n>-<suunta>-{1440,390}-light.avif`, `-paivita-1440-light`,
-`proto-0-nyt-1440-dark`, `proto-2-taitettu-1440-dark`, and the opened
-instruction `proto-2-taitettu-ohje-{1440,390}-light`.
-
-**Recommendation: Heti, ohje.** On 3.11. Jari decided that the empty
-conversation's button starts at once. Under the same label, the workspace
-page's button should behave the same way: two buttons that look the same
-should not need two different mental models. The agent only proposes and
-writes nothing before approval, so starting at once costs one proposal
-turn and risks nothing. Keeping the instruction folded behind the name keeps
-the record honest: anyone can open exactly what the agent was told, just as
-with a goal's chip. *Heti, nimi* is the cleanest look, but it hides what was
-sent. It would also need a second history presentation used only for the
-host's own skill. *Siru* is the only direction that lets the person add a
-wish before the run, but the same wish fits naturally as a reply to the
-proposal.
+**Recommendation: Siru ja lause.** Directions 2 and 3 send the same bytes:
+`/skill:open-habitat-start-page <sentence>\n<wish>`. Pi expands a skill only
+at the start of a message, so this is a real skill call, recorded as one.
+Direction 1 only names the skill inside a sentence. The model then has to
+decide to load it, and the history records no skill call. I did not try
+this with a real model. Of the two reliable forms, the chip keeps
+`/skill:` and the native name off the screen (web/AGENTS.md: UI text
+without internals). It reuses the goal chip and the placeholder selection
+that goals already have, so the start-page request becomes one more
+goal-like draft instead of a new mechanism. Dropping an untouched
+placeholder keeps the history clean. The hint makes that drop visible
+rather than magic.
 
 ## Host facts the view assumes
 
-- The host recognises a call of its own skill `open-habitat-start-page` and
-  labels it *Luo aloitussivu* / *Päivitä aloitussivu* with a Finnish
-  description, in ordinary type instead of the native name and the English
-  frontmatter description. The conversation gets the same name.
-- Which label to show (create or update) is decided at send time from the
-  start page's state. After a reload the history only has the skill name,
-  so a later reader either shows one neutral label or the host records the
-  wording somewhere. This is open; the prototype assumes the label survives.
-- "Sends at once" from the workspace page means: create the conversation,
-  send `/skill:open-habitat-start-page` without arguments, and open the
-  conversation with the agent working.
-- The folded instruction is the English skill text that Pi records. The
-  reader's title stays monospace (`GuideArticle`).
+- The button's draft is `/skill:open-habitat-start-page ` + sentence + `\n`
+  + placeholder, with the placeholder selected, through the same prepared
+  field that goals use (`prepareField`/`usePreparedField`). The composer
+  needs `open-habitat-start-page` among its `goals` (title *Luo/Päivitä
+  aloitussivu*, request = skill body) to draw the chip. Today
+  `composerGoals` lists only authored goals.
+- Dropping an untouched placeholder is new. Today a goal's untouched
+  `[kysymys]` is sent as it is. The composer has to know which bracketed
+  line the host prepared, not treat every bracketed line as one, since
+  brackets the person writes are never interpreted. Whether goals get the
+  same drop is question 2.
+- The sentence is in the person's interface language, chosen when the
+  button is pressed. The history label: the sentence already says create or
+  update, so the chip in the history could be a neutral *Aloitussivu* that
+  needs no stored state. The prototype shows *Luo/Päivitä aloitussivu* as in
+  round 1. Showing the host's own title instead of the native name for this
+  one skill is a host presentation rule that does not exist yet.
+- The empty conversation's button now also only prepares the field. That
+  replaces the round 1 decision that it starts at once (Jari 3.11. on round
+  1: "both buttons").
+
+## Decisions for later review
+
+- **Placeholder wording** "[anna lisäohjeita]" (dirs 1 and 2), versus
+  "[lisäohjeet, jos on]" in dir 3, where it has to make sense to the agent
+  when sent unchanged.
+- **The sentence differs between dir 1 and dir 2.** Jari's wording "käyttäen
+  …-taitoa" is used in dir 1, where it is the only thing that names the
+  skill. With the chip, naming the skill again would be redundant, so dir 2
+  says "Luodaan tälle työtilalle aloitussivu."
+- **English** sentences are in the round's catalog. Dir 1: "Let's create the
+  start page using the open-habitat-start-page skill." Dirs 2 and 3: "Create
+  a start page for this workspace." Placeholder: "[add instructions]".
 
 ## Build and offer
 
 ```
-node design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/build.mjs
-tw browser-open design-system/prototypes/dist/aloitussivupyynto/offline.html
+node design-system/prototypes/rounds/2026-11-03-aloitussivupyynto-2/build.mjs
+tw browser-open design-system/prototypes/dist/aloitussivupyynto-2/offline.html
 ```
 
-`check.mjs` (in the round) passes 118 checkpoints with a clean console.
+`check.mjs` (in the round) passes 146 checkpoints with a clean console.
 
 ## Questions for Jari
 
-1. In `proto-1-siru-1440-light` and `proto-2-taitettu-1440-light`, screen
-   b of the top row: should the workspace page's button put the chip in the
-   field (1) or start at once like the empty conversation (2)?
-2. In `proto-2-taitettu-1440-light` and `proto-3-nimi-1440-light`, screen c:
-   should the sent request be a name you can open (2) or only a name (3)?
-3. In `proto-2-taitettu-ohje-390-light`, is it fine that the opened
-   instruction is the skill's English text, or should the host show its own
-   Finnish summary there instead?
+1. In `r2-1-nimi-1440-light`, `r2-2-siru-1440-light` and
+   `r2-3-komento-1440-light`, screen b: should the field show the skill as
+   the chip (2), as a name inside the sentence (1), or as the raw command
+   (3)?
+2. In `r2-2-siru-1440-light`, bottom row c, where the line was left out:
+   should an untouched placeholder be dropped like this, and should goals'
+   `[kysymys]` then behave the same way? Or should it be sent as it is, as
+   in `r2-3-komento-1440-light`?
+3. In `r2-2-siru-1440-light`, the hint under the field b ("Jos et kirjoita
+   mitään, hakasulkeinen rivi jää pois."): keep it, or drop the line
+   silently as in `r2-1-nimi-1440-light`?

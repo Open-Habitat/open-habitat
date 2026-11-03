@@ -34,3 +34,8 @@ the agent such as "Luodaan aloitussivu käyttäen … -taitoa", a line break, an
 then a bracketed placeholder already selected, e.g. "[anna lisäohjeita]", so
 typing replaces it. Round 2 shows this for both buttons (workspace page and
 empty conversation), create and update, and how it then reads in the history.
+
+## Round 2 (3.11.)
+
+Prototype round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto-2/`,
+result and questions in [result.md](result.md). Awaiting Jari's choice.
