@@ -1,0 +1,325 @@
+/* Directions over the production stylesheet, inside the view's iframe. The
+   iframe is as wide as the device, so production's own max-width: 800px rules
+   decide phone or desktop exactly as in Habitat. <html data-dir> is 0 for
+   today and 1–3 for the directions. Every direction is one row on a phone
+   and carries all five of the desktop's facts there: workspace, Git,
+   context, model and activity (Jari 3.11.). frame.js adds .p-five to the
+   row and builds each direction's marks. */
+
+.p-wide,
+.p-narrow {
+  display: contents;
+}
+@media (max-width: 800px) {
+  .p-wide {
+    display: none;
+  }
+}
+@media (min-width: 801px) {
+  .p-narrow {
+    display: none;
+  }
+}
+
+/* ---- Shared on a phone: one row; panels and one-offs are in ⋯ ----------- */
+@media (max-width: 800px) {
+  .p-five.ah-agent-topline {
+    flex-wrap: nowrap;
+    gap: var(--ah-s1);
+  }
+  .p-five.ah-agent-topline::after {
+    display: none;
+  }
+  .p-five.ah-agent-topline > * {
+    order: 1;
+  }
+  .ah-conversation-frame > .ah-agent-header .p-five .ah-title-row {
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+  }
+  .p-five.ah-agent-topline
+    > :is(.ah-editor-controls, .ah-terminal-toggle, .ah-files-toggle, .ah-guide-toggle, .ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle, .ah-header-sep),
+  .p-five.ah-agent-topline
+    > :has(> :is(.ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle)) {
+    display: none;
+  }
+}
+
+/* ---- 1 · Alarivi -------------------------------------------------------- */
+/* The title on top, the five as one quiet line below it, on both devices.
+   The activity dot stays before the title; the line is one button that
+   opens the full values. */
+html[data-dir="1"] .p-five > :is(.ah-header-workspace, .ah-gs-chip, .ah-ctx-chip, .md-chip-picker, .ah-set-chip) {
+  display: none;
+}
+html[data-dir="1"] .p-five > .ah-header-activity {
+  order: -1;
+  align-self: flex-start;
+  height: 26px;
+}
+@media (max-width: 800px) {
+  html[data-dir="1"] .p-five > .ah-header-activity {
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+  }
+  html[data-dir="1"] .ah-conversation-frame > .ah-agent-header .p-five .ah-title-row {
+    margin-inline-start: 0;
+  }
+}
+html[data-dir="1"] .p-five .ah-title-row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+}
+html[data-dir="1"] .p-five .ah-title-row h1 {
+  line-height: 1.25;
+}
+html[data-dir="1"] .ah-conversation-frame > .ah-agent-header {
+  padding-block: 6px;
+}
+.p-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 0 -4px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ah-muted);
+  font: 500 12.5px / 18px var(--ah-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.p-sub:hover,
+.p-sub[aria-expanded="true"] {
+  background: var(--ah-hover);
+}
+.p-sub > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.p-sub .p-sub-ws {
+  flex: 0 1 auto;
+  min-width: 2.5em;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--ah-mono);
+  font-size: 12px;
+}
+.p-sub svg,
+.p-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.p-sub .ah-gs-counts,
+.p-sub .ah-gs-ab,
+.p-sub .ah-gs-n,
+.p-sub .ah-gs-dirty,
+.p-chip .ah-gs-counts,
+.p-chip .ah-gs-ab,
+.p-chip .ah-gs-n,
+.p-chip .ah-gs-dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.p-sub .ah-gs-counts,
+.p-chip .ah-gs-counts,
+.p-sub .ah-gs-ab,
+.p-chip .ah-gs-ab {
+  gap: 5px;
+}
+.p-sub .ah-gs-n svg,
+.p-chip .ah-gs-n svg {
+  width: 12px;
+  height: 12px;
+}
+@media (max-width: 800px) {
+  .p-sub {
+    gap: 8px;
+  }
+  /* The phone's line keeps the unpushed count and the changed files, and
+     the context its ring, as production's phone row does below 70 %. */
+  .p-sub .ah-gs-n + .ah-gs-n,
+  .p-sub .p-sub-git > svg,
+  .p-sub .p-pct {
+    display: none;
+  }
+}
+@media (min-width: 801px) {
+  html[data-dir="1"] .p-five .ah-title-row h1 {
+    font-size: 17px;
+  }
+  .p-sub {
+    font-size: 13px;
+  }
+}
+
+/* ---- 2 · Yksi siru ------------------------------------------------------ */
+/* One outlined chip after the title carries all five; a tap opens the full
+   values. On a desktop the same chip spells everything out. */
+html[data-dir="2"] .p-five > :is(.ah-header-workspace, .ah-header-activity, .ah-gs-chip, .ah-ctx-chip, .md-chip-picker, .ah-set-chip) {
+  display: none;
+}
+.p-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 9px;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font: 600 13px / 1 var(--ah-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.p-chip:hover,
+.p-chip[aria-expanded="true"] {
+  background: var(--ah-hover);
+}
+.p-chip > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.p-chip > .ah-status {
+  font-size: 0;
+}
+.p-chip-ws .p-wide {
+  font-family: var(--ah-mono);
+  font-weight: 500;
+}
+.p-letters {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  border-radius: 5px;
+  background: var(--ah-control);
+  color: var(--ah-ink-2);
+  font: 700 10px / 1 var(--ah-font);
+  letter-spacing: 0.02em;
+}
+@media (max-width: 800px) {
+  .p-chip {
+    gap: 5px;
+    height: 32px;
+    padding-inline: 6px 8px;
+  }
+  .p-chip .ah-gs-n + .ah-gs-n {
+    display: none;
+  }
+}
+@media (min-width: 801px) {
+  .p-chip {
+    gap: 12px;
+    height: 32px;
+    padding-inline: 12px;
+    font-weight: 500;
+  }
+}
+
+/* ---- 3 · Omat merkit ---------------------------------------------------- */
+/* Each fact keeps its own mark and its own tap. The workspace's initials
+   carry the activity ball before the title; Git, the context ring and the
+   model's family name follow it. A desktop keeps today's row: it already
+   gives each fact its own mark in full. */
+@media (max-width: 800px) {
+  html[data-dir="3"] .p-five > .ah-header-activity {
+    display: none;
+  }
+}
+.p-badge {
+  flex: none;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.p-badge:hover,
+.p-badge[aria-expanded="true"] {
+  background: var(--ah-hover);
+}
+.p-badge .ah-status-dot {
+  width: 8px;
+  height: 8px;
+}
+.p-badge .p-letters {
+  min-width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+.p-badge > .ah-status {
+  position: absolute;
+  right: 0;
+  bottom: 3px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--ah-surface);
+  font-size: 0;
+}
+@media (max-width: 800px) {
+  html[data-dir="3"] .p-five > .p-badge {
+    order: 0;
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+    margin-inline-end: -2px;
+  }
+  html[data-dir="3"] .ah-conversation-frame > .ah-agent-header .p-five .ah-title-row {
+    margin-inline-start: 0;
+  }
+  html[data-dir="3"] .p-five > .ah-header-workspace {
+    display: none;
+  }
+  html[data-dir="3"] .p-five :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
+    --b-h: 40px;
+    height: 40px;
+    padding-inline: 5px;
+  }
+  html[data-dir="3"] .p-five .ah-gs-chip > svg,
+  html[data-dir="3"] .p-five .ah-gs-n + .ah-gs-n,
+  html[data-dir="3"] .p-five .ah-ctx-value,
+  html[data-dir="3"] .p-five .ah-set-model {
+    display: none;
+  }
+  html[data-dir="3"] .p-five > :is(.md-chip-picker, .ah-set-chip) {
+    flex: none;
+    max-width: none;
+  }
+}
+@media (min-width: 801px) {
+  html[data-dir="3"] .p-five > .p-badge {
+    display: none;
+  }
+}
+
+/* ---- The prototype's own popover placement ----------------------------- */
+.p-menu {
+  position: absolute !important;
+  z-index: 100000;
+  max-height: none !important;
+}
+/* An inert snapshot: no motion, no stray focus ring from capture time. */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  transition: none !important;
+}

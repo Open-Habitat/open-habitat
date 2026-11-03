@@ -1,6 +1,6 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-03
 type: bug
 reporter: jari
 status: open
@@ -67,3 +67,10 @@ waiting for you, …). All of these must remain available on a phone as well:
 the phone must give the same information as the desktop in one way or
 another (one row, but not by hiding these in ⋯). Round 3 riffs how the one
 row carries all five on a phone.
+
+## Round 3 (3.11.)
+
+`prototype-3/otsakkeen-viisi.html` shows three ways the phone's one row
+carries all five of the desktop's facts (workspace, Git, context, model,
+status). `result.md` has the recommendation and the questions awaiting
+Jari's choice.
