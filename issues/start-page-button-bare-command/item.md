@@ -2,13 +2,16 @@
 created: 2026-11-03
 updated: 2026-11-03
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: prototype round observation
 source_ref: taskfleet:01m6fxf7v7923z7pmg1q2v8bmy/observation:start-page-bare-command
 originating_run: 01m6fxf7v7923z7pmg1q2v8bmy
 originating_run_kind: spinoff
+lane: start-page-button
+lane_seq: 0
+preparation: ready
 ---
 
 # Workspace page's Luo aloitussivu inserts a command Pi does not expand
