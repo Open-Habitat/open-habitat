@@ -1,0 +1,68 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.cl-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.cl-bar strong { font-weight: 600; }
+.cl-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.cl-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.cl-bar select, .cl-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .cl-bar { padding: 6px 10px; gap: 2px 10px; }
+  .cl-lines { font-size: 11px; line-height: 1.3; padding-left: 1.2em; }
+}
+.cl-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.cl-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* ---- 1 Napin luona ----
+   The list's bottom edge sits just above the button row (a button's list) or
+   just above the caret's line (a typed / or @); the placement effect writes
+   --pop-bottom. It covers the text above, which pauses while it is open. */
+.variant-1 .ah-cbox .ah-choice-pop {
+  bottom: var(--pop-bottom, calc(100% + 6px));
+  max-height: min(320px, 44vh);
+}
+.variant-1 .ah-cbox[data-list="button"] .ah-cbox-field { opacity: 0.45; }
+
+/* ---- 2 Kentän sisällä ----
+   The list is part of the field box, between the text and the button row.
+   The text keeps two lines around the caret; nothing floats or covers. */
+.variant-2 .ah-cbox .ah-cbox-field { order: 0; }
+.variant-2 .ah-cbox .ah-choice-pop {
+  position: static; order: 1;
+  width: auto !important; left: auto !important;
+  max-height: min(280px, 40vh);
+  margin: 2px 6px 6px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  box-shadow: none;
+  animation: cl-inside-in 140ms ease-out;
+}
+.variant-2 .ah-cbox .ah-crow { order: 2; }
+.variant-2 .ah-cbox[data-list] .ah-cbox-field { transition: max-height 140ms ease-out; }
+.variant-2 .ah-cbox:is([data-list="button"], [data-list="caret"]) .ah-cbox-field {
+  max-height: calc(2 * 1.45em + 17px);
+  /* The text above the caret's lines continues upward, faded. */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+}
+@keyframes cl-inside-in { from { opacity: 0; max-height: 0; } }
+
+/* ---- 3 Napit ylhäällä ----
+   The row of what the message takes moves to the top edge, so production's
+   list above the box opens beside its button. Send stays bottom right. */
+.variant-3 .ah-cbox .ah-crow { order: -1; padding: 6px 6px 0; }
+.variant-3 .ah-cbox .ah-cbox-field { padding: 4px 52px 11px 14px; }
+.variant-3 .ah-cbox .ah-crow-send { position: absolute; right: 6px; bottom: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .variant-2 .ah-cbox .ah-choice-pop { animation: none; }
+  .variant-2 .ah-cbox[data-list] .ah-cbox-field { transition: none; }
+}
