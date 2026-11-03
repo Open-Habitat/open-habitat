@@ -2,7 +2,7 @@
 created: 2026-11-03
 updated: 2026-11-03
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6fx4hmwph2jfsxa47yttekp/observed:lab-attach-filechooser-hang
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: attach-focus
 lane_seq: 3
 preparation: ready
+closed: 2026-11-03
 ---
 
 # lab-composer-area attachment picker spec sometimes gets no filechooser event

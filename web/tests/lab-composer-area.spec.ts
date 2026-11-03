@@ -349,6 +349,11 @@ for (const width of [1440, 390]) {
     test(`@lab attachment picker ${width} ${theme}: direct selection and draft retention @a11y`, async ({
       page,
     }, testInfo) => {
+      // Keep interception enabled across both dialogs. waitForEvent alone
+      // toggles Playwright's browser subscription asynchronously, racing the
+      // immediate keyboard gesture (and toggling it off again after cancel).
+      // Install before navigation, not on the same turn as the gesture.
+      page.on("filechooser", () => {});
       const draft = await newConversation(page, { width, height: 900 });
       await page.evaluate(
         (value) => (document.documentElement.dataset.theme = value),
