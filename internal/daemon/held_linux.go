@@ -398,7 +398,9 @@ func (c *ConversationController) cancelHeld(w http.ResponseWriter, r *http.Reque
 	s.held, s.heldChoice = nil, nil
 	stopChild := false
 	switch {
-	case s.state == "start_failed" || s.state == "starting" && s.dead:
+	// A start the person woke (lazy cleared) is theirs and goes on without
+	// the messages, also before its child exists.
+	case s.state == "start_failed" || s.state == "starting" && s.dead && s.lazy:
 		s.startupCancelled = true
 		s.state = "stopped"
 		s.startProblem = ""

@@ -399,6 +399,71 @@ func TestHeldMessagesAcrossDaemonRestart(t *testing.T) {
 	}
 }
 
+// The person types (a wake) and sends into a stopped conversation; the two
+// requests reach the daemon in either order. When the send has already
+// started Pi for its held message, the wake still keeps Pi up: taking the
+// message back before Pi runs leaves the woken Pi running.
+func TestAWakeDuringAHeldStartKeepsPiUp(t *testing.T) {
+	h := newHeldHarness(t)
+	first, stopFirst := h.daemon()
+	id := h.create(first)
+	if w := h.send(first, id, "Alku", heldA); w.Code != 200 {
+		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("first turn settled", func() bool {
+		_, v := h.status(first, id)
+		return v.State == "idle" && h.receipt(first, id, heldA) == "accepted"
+	})
+	stopFirst()
+	second, stopSecond := h.daemon()
+	defer stopSecond()
+	h.setFile("start-delay", "1")
+	if w := h.send(second, id, "Peruttava", heldB); w.Code != 200 || !strings.Contains(w.Body.String(), `"held"`) {
+		t.Fatalf("held send: %d %s", w.Code, w.Body.String())
+	}
+	if code, state := h.wake(second, id); code != 200 || state != "starting" {
+		t.Fatalf("wake during the held start: %d %s", code, state)
+	}
+	w := h.post(func(w http.ResponseWriter, r *http.Request) { second.cancelHeld(w, r, id) }, fmt.Sprintf(`{"command_id":%q}`, heldC))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"returned":[{"command_id":"`+heldB+`","text":"Peruttava"}]`) {
+		t.Fatalf("cancel held: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("woken Pi up and idle", func() bool { _, v := h.status(second, id); return v.State == "idle" })
+	time.Sleep(200 * time.Millisecond)
+	if _, v := h.status(second, id); v.State != "idle" || !h.live(second, id) {
+		t.Fatalf("the woken Pi stopped with the taken-back message: %+v", v)
+	}
+	if prompts := h.prompts(); len(prompts) != 1 {
+		t.Fatalf("a taken-back message reached Pi: %q", prompts)
+	}
+}
+
+// The same race before the held start has replaced the dead handle with a
+// child: taking the message back after the wake leaves the start running.
+func TestAWakeBeforeTheHeldChildExistsKeepsTheStart(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	c.mu.Lock()
+	s := c.sessions[id]
+	// What a held send to a stopped conversation leaves while it still proves
+	// ownership, after awake made the start the person's.
+	s.state, s.dead, s.lazy = "starting", true, false
+	s.held = []heldMessage{{id: heldB, text: "Peruttava"}}
+	c.mu.Unlock()
+	w := h.post(func(w http.ResponseWriter, r *http.Request) { c.cancelHeld(w, r, id) }, fmt.Sprintf(`{"command_id":%q}`, heldC))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"returned":[{"command_id":"`+heldB+`","text":"Peruttava"}]`) {
+		t.Fatalf("cancel held: %d %s", w.Code, w.Body.String())
+	}
+	c.mu.Lock()
+	state, cancelled, held := s.state, s.startupCancelled, len(s.held)
+	c.mu.Unlock()
+	if state != "starting" || cancelled || held != 0 {
+		t.Fatalf("the woken start was cancelled with its messages: state=%s cancelled=%v held=%d", state, cancelled, held)
+	}
+}
+
 // A failed start keeps every held message; a retry joins them with the next.
 func TestHeldMessagesSurviveFailedStart(t *testing.T) {
 	h := newHeldHarness(t)
@@ -519,7 +584,7 @@ func TestFailedStartWaitsForChildReapBeforeRetry(t *testing.T) {
 			p := &piRPC{in: inW, out: outR, done: make(chan struct{}), exited: make(chan struct{}), events: make(chan json.RawMessage)}
 			close(p.done)
 			close(p.events)
-			s := &conversation{id: "startup", rpc: p, state: "starting", held: []heldMessage{{id: heldE, text: "keep"}}, commands: make(map[string]bool)}
+			s := &conversation{id: "startup", rpc: p, state: "starting", lazy: true, held: []heldMessage{{id: heldE, text: "keep"}}, commands: make(map[string]bool)}
 			c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
 			c.drain(s)
 			c.mu.Lock()

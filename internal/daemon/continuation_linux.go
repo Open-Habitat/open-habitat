@@ -198,9 +198,11 @@ func (c *ConversationController) awake(w http.ResponseWriter, id string) bool {
 		c.mu.Unlock()
 		return false
 	}
-	// The person is typing into it: a Pi started for a recap or by Habitat's
-	// own wake is theirs now.
-	old.recapOnly, old.autoWake = false, false
+	// The person is typing into it: a Pi started for a recap, by Habitat's
+	// own wake or only to deliver held messages is theirs now, and stays up
+	// when those messages are taken back. The wake and the send that started
+	// Pi race in either order from the browser; both orders keep it up.
+	old.recapOnly, old.autoWake, old.lazy = false, false, false
 	old.presentAt = time.Now()
 	state := "idle"
 	switch {
