@@ -1,6 +1,6 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-03
 type: feature
 reporter: jari
 status: open
@@ -8,7 +8,7 @@ priority: normal
 lane: explain-mode
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r5']
-preparation: ready
+preparation: pending
 ---
 
 # Explain mode: dim the screen and explain whatever the pointer is on
@@ -31,3 +31,7 @@ go when narrow or on a phone).
   (`open-habitat-ui`) or the catalogs, both languages, so they cannot drift.
 
 Ships as an experimental feature (Kokeelliset ominaisuudet), off by default.
+
+## Jari 3.11.
+
+Before building, a more precise prototype round on the real views: `proto-explain-mode-r6`. Round 5's page is built from `issues/proto-conversation-header-actions-r5/prototypes/build.py` (`selitystila.html`).
