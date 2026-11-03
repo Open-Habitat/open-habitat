@@ -133,7 +133,11 @@ export function useHeldMessages({
   onLogin: () => void;
   onSendOutcome?: (event: import("./nextWaiting").SendWindowEvent) => void;
 }) {
-  const key = `nah:${identity}:held:${id ?? ""}`;
+  // Before the conversation has an ID, its messages wait under the
+  // workspace's creation key; the created conversation adopts them.
+  const key = id
+    ? `nah:${identity}:held:${id}`
+    : creationKeys(identity, workspaceId).held;
   const [local, setLocalState] = useState<LocalHeld[]>(() => readHeld(key));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -219,7 +223,7 @@ export function useHeldMessages({
   const submit = useCallback(
     // A message not typed in the field (the editor's note) keeps the draft.
     (text: string, choice?: LocalHeld["choice"], keepDraft = false) => {
-      if (!text.trim() || !id) return;
+      if (!text.trim()) return;
       const entry: LocalHeld = {
         command_id: crypto.randomUUID(),
         text,
@@ -238,8 +242,19 @@ export function useHeldMessages({
       setNotice("");
       void flush();
     },
-    [id, key, update, changeDraft, flush, onSendOutcome],
+    [key, update, changeDraft, flush, onSendOutcome],
   );
+  /** Before anything was posted, taking the messages back is local and
+   * exact: they go back into the field. Returns how many went back. */
+  const takeBack = useCallback(() => {
+    const texts = readHeld(key)
+      .filter((l) => !l.posted)
+      .map((l) => l.text);
+    if (!texts.length) return 0;
+    update(key, (old) => old.filter((l) => l.posted));
+    giveBack(texts);
+    return texts.length;
+  }, [key, update, giveBack]);
   // Adopt messages written before this conversation existed (or before a
   // reload) that were never posted.
   // biome-ignore lint/correctness/useExhaustiveDependencies: post once per conversation key and session token.
@@ -398,6 +413,7 @@ export function useHeldMessages({
     setNotice,
     busy,
     submit,
+    takeBack,
     cancel,
     retry,
   };

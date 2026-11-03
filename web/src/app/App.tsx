@@ -109,7 +109,7 @@ import {
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspacePage } from "./NewWorkspacePage";
-import { CreatingConversation } from "./PendingConversation";
+import type { Creation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
 import {
@@ -344,6 +344,10 @@ export function App() {
   // conversation waits until the dictation ends, as a swap would end it
   // and lose what was being said.
   const [creationDictating, setCreationDictating] = useState<string>();
+  // The view each workspace's new conversation is shown in, and the view a
+  // conversation created there keeps (BrowserConversation's viewKey).
+  const creationViewKeys = useRef<Record<string, string>>({});
+  const createdViews = useRef(new Map<string, string>());
   // Where the person actually is: work that finishes later must not pull
   // them out of Settings.
   const currentRoute = useRef(route);
@@ -1113,9 +1117,18 @@ export function App() {
   );
   // A conversation in a worktree runs in its place, not in the workspace's
   // main checkout (ADR 0025): its top bar reads the worktree's Git status.
-  const openConversation = new URLSearchParams(location.search).get(
+  const conversationRoute = new URLSearchParams(location.search).get(
     "conversation",
   );
+  // A conversation this tab created is shown at once, in the view it was
+  // created in, while the address moves to it.
+  const createdConversation =
+    selected &&
+    ["new", "new-worktree"].includes(conversationRoute ?? "") &&
+    creationDictating !== selected.workspace_id
+      ? creationViews[selected.workspace_id]?.session?.agent_id
+      : undefined;
+  const openConversation = createdConversation ?? conversationRoute;
   const conversationWorkspace = useMemo(() => {
     if (!selected || !openConversation) return selected;
     const placeId =
@@ -2357,226 +2370,213 @@ export function App() {
         conversationStore &&
         selected.facts.some(
           (f) => f.source === "filesystem" && f.state === "confirmed",
-        ) ? (
-          ["new", "new-worktree"].includes(
-            new URLSearchParams(location.search).get("conversation") ?? "",
-          ) ? (
-            creationViews[selected.workspace_id]?.rechecked ? (
-              <Redirect
-                held={!!settingsOver}
-                replace
-                to={`/workspaces/${selected.workspace_id}`}
-              />
-            ) : creationViews[selected.workspace_id]?.session &&
-              creationDictating !== selected.workspace_id ? (
-              <Redirect
-                held={!!settingsOver}
-                replace
-                to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
-              />
-            ) : new URLSearchParams(location.search).get("conversation") ===
-                "new" &&
-              !creationViews[selected.workspace_id] &&
-              !createPending.has(selected.workspace_id) &&
-              !sessionStorage.getItem(
-                `nah:${identity}:uncertain:${selected.workspace_id}`,
-              ) ? (
+        )
+          ? (() => {
+              const route =
+                new URLSearchParams(location.search).get("conversation") ?? "";
+              const ws = selected.workspace_id;
+              const creationRoute = ["new", "new-worktree"].includes(route);
+              const uncertainCreation = sessionStorage.getItem(
+                `nah:${identity}:uncertain:${ws}`,
+              );
+              if (creationRoute && creationViews[ws]?.rechecked)
+                return (
+                  <Redirect
+                    held={!!settingsOver}
+                    replace
+                    to={`/workspaces/${ws}`}
+                  />
+                );
               // Nothing is being created and no earlier creation is uncertain
               // (for example, it was reconciled just before a reload): there
               // is no conversation to wait for here.
-              <Redirect
-                held={!!settingsOver}
-                replace
-                to={`/workspaces/${selected.workspace_id}`}
-              />
-            ) : (
-              (() => {
-                const worktree =
-                  new URLSearchParams(location.search).get("conversation") ===
-                  "new-worktree";
+              if (
+                route === "new" &&
+                !creationViews[ws] &&
+                !createPending.has(ws) &&
+                !uncertainCreation
+              )
+                return (
+                  <Redirect
+                    held={!!settingsOver}
+                    replace
+                    to={`/workspaces/${ws}`}
+                  />
+                );
+              const id = creationRoute
+                ? createdConversation
+                : /^pi:[0-9a-fA-F-]{36}$/.test(route)
+                  ? route
+                  : undefined;
+              // The view a conversation is created in stays its view once it
+              // has an ID, so the field the person types in is not replaced.
+              let viewKey: string | undefined;
+              let creation: Creation | undefined;
+              if (creationRoute) {
+                viewKey = creationViewKeys.current[ws] ??=
+                  `${identity}:new:${ws}:${crypto.randomUUID()}`;
+                if (id) createdViews.current.set(id, viewKey);
+              } else if (id) {
+                viewKey = createdViews.current.get(id);
+                // A later + in this workspace is a new view.
+                if (viewKey && creationViewKeys.current[ws] === viewKey)
+                  delete creationViewKeys.current[ws];
+              }
+              if (creationRoute && !id) {
+                const worktree = route === "new-worktree";
                 // A worktree agent waits for its first message before
                 // anything is created (ADR 0025).
                 const firstMessage =
                   worktree &&
-                  !creationViews[selected.workspace_id] &&
-                  !createPending.has(selected.workspace_id) &&
-                  !sessionStorage.getItem(
-                    `nah:${identity}:uncertain:${selected.workspace_id}`,
-                  );
-                return (
-                  <CreatingConversation
-                    key={`${identity}:${selected.workspace_id}`}
-                    workspace={selected}
-                    identity={identity}
+                  !creationViews[ws] &&
+                  !createPending.has(ws) &&
+                  !uncertainCreation;
+                creation = {
+                  onDictating: (active) => {
+                    if (active) return setCreationDictating(ws);
+                    // What was said or typed while the created
+                    // conversation waited joins its draft too.
+                    const session = creationViews[ws]?.session;
+                    if (session && identity) {
+                      adoptCreation(identity, ws, session.agent_id);
+                      adoptGuide(identity, ws, session.agent_id);
+                    }
+                    setCreationDictating((old) =>
+                      old === ws ? undefined : old,
+                    );
+                  },
+                  worktree: worktree
+                    ? {
+                        base: selected.git_summary?.branch,
+                        dirty: selected.git_summary?.dirty_count,
+                        blocked: firstMessage
+                          ? createReason(ws) || undefined
+                          : undefined,
+                        onFirstMessage: firstMessage
+                          ? (text) =>
+                              startFromHome(
+                                ws,
+                                undefined,
+                                worktreeNameFrom(text),
+                              )
+                          : undefined,
+                      }
+                    : undefined,
+                  onRetry: canRecheckCreation(`nah:${identity}:uncertain:${ws}`)
+                    ? manualRefresh
+                    : undefined,
+                  retryLabel: t.app.checkCreation,
+                  refused: creationViews[ws]?.refused,
+                  onCreateAgain:
+                    creationViews[ws]?.refused && !createReason(ws)
+                      ? worktree
+                        ? // The text is back in the field; sending it
+                          // again is the new attempt.
+                          () =>
+                            setCreationViews((old) => {
+                              const next = { ...old };
+                              delete next[ws];
+                              return next;
+                            })
+                        : () => startFromHome(ws)
+                      : undefined,
+                  problem:
+                    creationViews[ws]?.problem ??
+                    (creationViews[ws] || firstMessage
+                      ? undefined
+                      : t.app.creationUnconfirmed),
+                };
+              }
+              return (
+                <>
+                  {creationRoute ? (
+                    id ? (
+                      <Redirect
+                        held={!!settingsOver}
+                        replace
+                        to={`/workspaces/${ws}?conversation=${id}`}
+                      />
+                    ) : null
+                  ) : closeProblem && closeProblem[0] === closeKey(route) ? (
+                    <InlineNotice
+                      title={t.app.closeFailed}
+                      description={closeProblem[1]}
+                      tone="warning"
+                      actions={[
+                        {
+                          label: t.app.dismissNotice,
+                          onPress: () => mutations?.dismiss(closeProblem[0]),
+                        },
+                      ]}
+                    />
+                  ) : null}
+                  <BrowserConversation
+                    viewKey={viewKey}
+                    creation={creation}
+                    github={
+                      <GitHubConnectionNotice
+                        warning={
+                          concerns(githubWarning, {
+                            provider: snapshot?.auth?.provider,
+                            // A worktree's place has the workspace's origin.
+                            githubWorkspace:
+                              !!selected.git_summary?.github_repo,
+                          })
+                            ? githubWarning
+                            : // An organisation's restriction only where its
+                              // repository is worked on: others still work.
+                              githubOrgFault(
+                                nativeGitHub?.restricted_orgs,
+                                selected.git_summary?.github_repo,
+                              )
+                        }
+                        progress={githubAttempt}
+                        recovery={githubRecovery}
+                        onReconnect={
+                          syntheticDemo ? undefined : reconnectGitHub
+                        }
+                      />
+                    }
                     csrf={
                       priorIdentity.current &&
                       priorIdentity.current !== identity
                         ? undefined
                         : csrf
                     }
-                    onDictating={(active) => {
-                      const id = selected.workspace_id;
-                      if (active) return setCreationDictating(id);
-                      // What was said or typed while the created
-                      // conversation waited joins its draft too.
-                      const session = creationViews[id]?.session;
-                      if (session && identity) {
-                        adoptCreation(identity, id, session.agent_id);
-                        adoptGuide(identity, id, session.agent_id);
-                      }
-                      setCreationDictating((old) =>
-                        old === id ? undefined : old,
+                    onLogin={onCurrentLogin}
+                    store={conversationStore}
+                    archive={
+                      id
+                        ? snapshot?.agents.find((a) => a.agent_id === id)
+                        : undefined
+                    }
+                    onArchive={changeArchive}
+                    onClose={closeConversation}
+                    onRename={railRename.save}
+                    closeBusy={closing.has(id ?? "")}
+                    workspace={conversationWorkspace ?? selected}
+                    id={id}
+                    identity={identity}
+                    journalOffline={journalOffline}
+                    serverUnavailable={phase === "stale"}
+                    recoverySnapshot={snapshot}
+                    onStatusEvent={onStatusEvent}
+                    title={(() => {
+                      const open = snapshot?.agents.find(
+                        (a) => a.agent_id === id && a.workspace_id === ws,
                       );
+                      return open && agentTitle(open.title);
+                    })()}
+                    nextWaiting={{ yours: now.yours }}
+                    onSessionCreated={(session) => {
+                      setDaemonSessions((old) => [...old, session]);
+                      refresh(); // The new agent must be in the snapshot before its live turn is seeded.
                     }}
-                    worktree={
-                      worktree
-                        ? {
-                            base: selected.git_summary?.branch,
-                            dirty: selected.git_summary?.dirty_count,
-                            blocked: firstMessage
-                              ? createReason(selected.workspace_id) || undefined
-                              : undefined,
-                            onFirstMessage: firstMessage
-                              ? (text) =>
-                                  startFromHome(
-                                    selected.workspace_id,
-                                    undefined,
-                                    worktreeNameFrom(text),
-                                  )
-                              : undefined,
-                          }
-                        : undefined
-                    }
-                    onRetry={
-                      canRecheckCreation(
-                        `nah:${identity}:uncertain:${selected.workspace_id}`,
-                      )
-                        ? manualRefresh
-                        : undefined
-                    }
-                    retryLabel={t.app.checkCreation}
-                    refused={creationViews[selected.workspace_id]?.refused}
-                    onCreateAgain={
-                      creationViews[selected.workspace_id]?.refused &&
-                      !createReason(selected.workspace_id)
-                        ? worktree
-                          ? // The text is back in the field; sending it
-                            // again is the new attempt.
-                            () =>
-                              setCreationViews((old) => {
-                                const next = { ...old };
-                                delete next[selected.workspace_id];
-                                return next;
-                              })
-                          : () => startFromHome(selected.workspace_id)
-                        : undefined
-                    }
-                    problem={
-                      creationViews[selected.workspace_id]?.problem ??
-                      (creationViews[selected.workspace_id] || firstMessage
-                        ? undefined
-                        : t.app.creationUnconfirmed)
-                    }
                   />
-                );
-              })()
-            )
-          ) : (
-            <>
-              {closeProblem &&
-              closeProblem[0] ===
-                closeKey(
-                  new URLSearchParams(location.search).get("conversation") ??
-                    "",
-                ) ? (
-                <InlineNotice
-                  title={t.app.closeFailed}
-                  description={closeProblem[1]}
-                  tone="warning"
-                  actions={[
-                    {
-                      label: t.app.dismissNotice,
-                      onPress: () => mutations?.dismiss(closeProblem[0]),
-                    },
-                  ]}
-                />
-              ) : null}
-              <BrowserConversation
-                github={
-                  <GitHubConnectionNotice
-                    warning={
-                      concerns(githubWarning, {
-                        provider: snapshot?.auth?.provider,
-                        // A worktree's place has the workspace's origin.
-                        githubWorkspace: !!selected.git_summary?.github_repo,
-                      })
-                        ? githubWarning
-                        : // An organisation's restriction only where its
-                          // repository is worked on: others still work.
-                          githubOrgFault(
-                            nativeGitHub?.restricted_orgs,
-                            selected.git_summary?.github_repo,
-                          )
-                    }
-                    progress={githubAttempt}
-                    recovery={githubRecovery}
-                    onReconnect={syntheticDemo ? undefined : reconnectGitHub}
-                  />
-                }
-                csrf={
-                  priorIdentity.current && priorIdentity.current !== identity
-                    ? undefined
-                    : csrf
-                }
-                onLogin={onCurrentLogin}
-                store={conversationStore}
-                archive={snapshot?.agents.find(
-                  (a) =>
-                    a.agent_id ===
-                    new URLSearchParams(location.search).get("conversation"),
-                )}
-                onArchive={changeArchive}
-                onClose={closeConversation}
-                onRename={railRename.save}
-                closeBusy={closing.has(
-                  new URLSearchParams(location.search).get("conversation") ??
-                    "",
-                )}
-                workspace={conversationWorkspace ?? selected}
-                id={
-                  /^pi:[0-9a-fA-F-]{36}$/.test(
-                    new URLSearchParams(location.search).get("conversation") ??
-                      "",
-                  )
-                    ? (new URLSearchParams(location.search).get(
-                        "conversation",
-                      ) ?? undefined)
-                    : undefined
-                }
-                identity={identity}
-                journalOffline={journalOffline}
-                serverUnavailable={phase === "stale"}
-                recoverySnapshot={snapshot}
-                onStatusEvent={onStatusEvent}
-                title={(() => {
-                  const open = snapshot?.agents.find(
-                    (a) =>
-                      a.agent_id ===
-                        new URLSearchParams(location.search).get(
-                          "conversation",
-                        ) && a.workspace_id === selected.workspace_id,
-                  );
-                  return open && agentTitle(open.title);
-                })()}
-                nextWaiting={{ yours: now.yours }}
-                onSessionCreated={(session) => {
-                  setDaemonSessions((old) => [...old, session]);
-                  refresh(); // The new agent must be in the snapshot before its live turn is seeded.
-                }}
-              />
-            </>
-          )
-        ) : null}
+                </>
+              );
+            })()
+          : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
             {/* An open archive notice carries the problem itself. */}

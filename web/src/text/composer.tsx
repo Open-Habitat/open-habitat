@@ -55,6 +55,7 @@ const fi = {
   stopUnsent: "Pysäytä: viesti ei lähde",
   skillsUnchecked:
     "Taitoja ei saatu tarkistettua. Viestiä ei lähetetty; yritä uudelleen.",
+  notSent: (reason: string) => `Viestiä ei lähetetty: ${reason}`,
   run: "Aja",
   send: "Lähetä",
   stillRunning: "Edellinen komento on vielä käynnissä",
@@ -166,6 +167,7 @@ export const composerText = catalog(fi, {
   stopUnsent: "Stop: the message is not sent",
   skillsUnchecked:
     "The skills could not be checked. The message was not sent; try again.",
+  notSent: (reason) => `The message was not sent: ${reason}`,
   run: "Run",
   send: "Send",
   stillRunning: "The previous command is still running",

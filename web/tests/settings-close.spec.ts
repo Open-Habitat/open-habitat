@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { openedConversation } from "./conversation-view";
 import { expect, type Page, test } from "./worker-host";
 
 // Settings closes from its corner X, and with Esc outside a field, back to
@@ -28,7 +29,7 @@ async function signIn(page: Page) {
 }
 
 /** A new conversation with an unsent draft; its frame carries a mark that
- * a remount would lose. */
+ * a remount would lose, from before the conversation was created. */
 async function conversation(page: Page) {
   await page
     .getByRole("navigation")
@@ -40,6 +41,7 @@ async function conversation(page: Page) {
   await page
     .locator(".ah-conversation-frame")
     .evaluate((frame) => frame.setAttribute("data-before-settings", ""));
+  await openedConversation(page);
   return page.url();
 }
 

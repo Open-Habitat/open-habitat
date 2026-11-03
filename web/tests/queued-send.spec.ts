@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
+import { openedConversation } from "./conversation-view";
 import { expect, test } from "./worker-host";
 
 // Sending before Pi runs (Jari 16.10.2026, proto-queued-send): the field is
@@ -311,6 +312,9 @@ test("@queued-send a reload while a message waits draws it once and never posts 
     204,
   );
   await page.reload();
+  // A message sent while the view still opens is kept by this tab, and a
+  // reload gives it back to the field; this case is the daemon's held one.
+  await openedConversation(page);
   await expect(editor(page)).toBeEnabled({ timeout: 20000 });
   await scenario(page, "pi-slow-start");
   const posts = countSends(page);

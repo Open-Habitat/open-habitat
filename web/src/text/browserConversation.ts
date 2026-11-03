@@ -108,6 +108,8 @@ const fi = {
   recheck: "Tarkista keskustelun tila",
   titleFailed: "Otsikkoa ei voitu luoda",
   wakePlaceholder: "Kirjoita, niin agentti herää…",
+  keptNotSent: (reason: string) =>
+    `Viestiä ei lähetetty: ${reason} Teksti on taas kentässä.`,
 };
 
 export const browserConversationText = catalog(fi, {
@@ -214,4 +216,6 @@ export const browserConversationText = catalog(fi, {
   recheck: "Check the conversation's status",
   titleFailed: "The title could not be made",
   wakePlaceholder: "Type to wake the agent…",
+  keptNotSent: (reason) =>
+    `The message was not sent: ${reason} The text is back in the field.`,
 });

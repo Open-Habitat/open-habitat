@@ -372,6 +372,7 @@ export function Composer({
   activity,
   selectedWorkingMode,
   sendState,
+  sendWhenReady = false,
   suppressAvailabilityReason = false,
   queue,
   queueKnown = true,
@@ -402,6 +403,11 @@ export function Composer({
   activity: "idle" | "working" | "settling";
   selectedWorkingMode: Mode;
   sendState?: "idle" | "pending" | "rejected" | "uncertain";
+  /** The view cannot tell yet whether a message can go (it is still opening,
+   * or an earlier send is on its way) and keeps a message sent meanwhile
+   * until it can. The send goes to it although `availability` is not
+   * enabled; without this, a blocked send is refused with its reason. */
+  sendWhenReady?: boolean;
   suppressAvailabilityReason?: boolean;
   /** Pi's queue while it works: shown as a card above the field. */
   queue?: { steering: string[]; followUp: string[] };
@@ -492,10 +498,13 @@ export function Composer({
   // opened from the paperclip.
   const attachFocus = useRef<string | null>(null);
   const pickedFromField = useRef(false);
+  // An attachment goes into the draft, so it can be added whenever a message
+  // could be kept; a paperclip disabled while the view opens would also drop
+  // the focus of a person using it.
+  const attachable = availability.state === "enabled" || sendWhenReady;
   const addFiles = useCallback(
     async (files: File[], focus: boolean) => {
-      if (!csrf || uploadController.current || availability.state !== "enabled")
-        return;
+      if (!csrf || uploadController.current || !attachable) return;
       if (
         files.length > 8 ||
         new Set(
@@ -538,7 +547,7 @@ export function Composer({
         }
       }
     },
-    [csrf, availability.state, t],
+    [csrf, attachable, t],
   );
   useEffect(() => {
     if (csrf) setUploading(false);
@@ -621,8 +630,8 @@ export function Composer({
   const sendBlocked =
     resolving ||
     uploading ||
-    sendState === "pending" ||
-    availability.state !== "enabled";
+    (!sendWhenReady &&
+      (sendState === "pending" || availability.state !== "enabled"));
   const shellText = shellOn ? shellCommand(value) : "";
   const runBlocked =
     !shell ||
@@ -877,7 +886,13 @@ export function Composer({
       if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
       return;
     }
-    if (!content.trim() || sendBlocked || resolution.current) return;
+    if (!content.trim() || resolution.current) return;
+    if (sendBlocked) {
+      // A send the view cannot take says why rather than doing nothing.
+      if (!resolving && !uploading && availability.state !== "enabled")
+        setNotice(t.notSent(unavailableReason(availability) ?? ""));
+      return;
+    }
     let text = content;
     if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(content)) {
       const controller = new AbortController();
@@ -1325,9 +1340,7 @@ export function Composer({
           }}
         >
           <AttachmentMenu
-            disabled={
-              uploading || availability.state !== "enabled" || dictating
-            }
+            disabled={uploading || !attachable || dictating}
             onAttach={() => picker.current?.click()}
           />
         </span>
@@ -1425,8 +1438,9 @@ export function Composer({
       aria-disabled={!sendReady || undefined}
       aria-busy={resolving || sendState === "pending" || undefined}
       onClick={() => {
-        if (sendReady) send();
-        else if (shellOn && running) send();
+        // A press on a blocked send hears why (sendDraft).
+        if (sendReady || (shellOn && running) || (!shellOn && value.trim()))
+          send();
       }}
     >
       <Icon name={shellOn ? "run" : "up"} />

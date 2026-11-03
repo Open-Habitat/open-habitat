@@ -140,7 +140,9 @@ export function useConversation({
   // so its outcome is pending until a receipt or status says otherwise.
   const answeredKey = storage("answered");
   const continuationKey = storage("continue");
-  const draftKey = storage("draft");
+  // Before the conversation has an ID its draft is the workspace's creation
+  // draft, which the created conversation adopts (heldMessages.ts).
+  const draftKey = storage("draft", id ?? `new:${workspace.workspace_id}`);
   const draft =
     draftState.key === draftKey
       ? draftState.value

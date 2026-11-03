@@ -282,11 +282,12 @@ describe("composer keys and controls", () => {
     ).toBeNull();
     expect(view.queryByTestId("composer-restore-queue")).toBeNull();
   });
-  it("keeps an empty or unavailable send from sending and a rejected draft visible", () => {
+  it("keeps an empty or unavailable send from sending, says why, and keeps a rejected draft visible", () => {
     const send = vi.fn();
     const view = render(<Composer {...base} value="" onSendNow={send} />);
     view.getByTestId("send").click();
     fireEvent.keyDown(field(view), { key: "Enter" });
+    expect(view.queryByTestId("composer-notice")).toBeNull();
     view.rerender(
       <Composer
         {...base}
@@ -296,9 +297,24 @@ describe("composer keys and controls", () => {
         onSendNow={send}
       />,
     );
-    view.getByTestId("send").click();
+    fireEvent.click(view.getByTestId("send"));
     expect(send).not.toHaveBeenCalled();
     expect(field(view).value).toBe("Säilyy");
+    // A refused send is not silent.
+    view.getByTestId("composer-notice");
+    // A view that keeps what it cannot send yet takes the send itself.
+    view.rerender(
+      <Composer
+        {...base}
+        value="Säilyy"
+        sendState="pending"
+        sendWhenReady
+        availability={{ state: "unknown", reason: "Ladataan." }}
+        onSendNow={send}
+      />,
+    );
+    fireEvent.keyDown(field(view), { key: "Enter" });
+    expect(send).toHaveBeenCalledWith("Säilyy");
   });
 });
 

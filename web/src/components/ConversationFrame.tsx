@@ -16,9 +16,13 @@ const FloatingControls = createContext<HTMLElement | null>(null);
 export function ConversationFrame({
   children,
   className,
+  view,
 }: {
   children: ReactNode;
   className?: string;
+  /** Which state of the conversation the frame shows (creation, loading,
+   * opened); the frame itself stays through them. */
+  view?: string;
 }) {
   const frame = useRef<HTMLElement>(null);
   const [floating, setFloating] = useState<HTMLElement | null>(null);
@@ -73,6 +77,7 @@ export function ConversationFrame({
   return (
     <section
       className={`ah-conversation-frame ah-reading-view${className ? ` ${className}` : ""}`}
+      data-view={view}
       ref={frame}
     >
       <FloatingControls.Provider value={floating}>
