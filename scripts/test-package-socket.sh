@@ -45,7 +45,7 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
+for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered tmp-shared tmp-public tmp-unaged; do
   mkdir -p "$tmp/$mode/stage"
   tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
@@ -63,6 +63,9 @@ for mode in storage-rate-limited binding-rate-limited binding-default-deps bindi
     agent-mode) sed -i 's/SocketMode=0600/SocketMode=0666/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-route) sed -i 's/Service=open-habitat-daemon@%i.service/Service=other@%i.service/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-unordered) sed -i 's/ open-habitat-agent@%i.socket//' "$root/systemd/open-habitat-daemon@.service" ;;
+    tmp-shared) sed -i '/^BindPaths=/d' "$root/systemd/open-habitat-daemon@.service" ;;
+    tmp-public) sed -i 's/^StateDirectoryMode=0700$/StateDirectoryMode=0755/' "$root/systemd/open-habitat-daemon@.service" ;;
+    tmp-unaged) sed -i '/open-habitat-tmp/d' "$root/tmpfiles.d/open-habitat.conf" ;;
     proc-visible) sed -i 's/hidepid=invisible/hidepid=0/' "$root/systemd/open-habitat-proc.service" ;;
     proc-private) printf 'PrivateMounts=yes\n' >> "$root/systemd/open-habitat-proc.service" ;;
     proc-exempt) sed -i 's/SupplementaryGroups=open-habitat-proc/SupplementaryGroups=open-habitat-gateway/' "$root/systemd/polkit.service.d/open-habitat-proc.conf" ;;

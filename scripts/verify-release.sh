@@ -188,6 +188,15 @@ for socket in ('open-habitat-daemon@%i.socket', 'open-habitat-agent@%i.socket'):
 # One OOM-killed agent build must not stop every conversation of the person.
 if unit('open-habitat-daemon@.service')['[Service]'].get('OOMPolicy') != 'continue':
     sys.exit('error: daemon unit must keep running when one of its processes is OOM-killed')
+# Agents' /var/tmp outlives a daemon restart but stays the person's own, and
+# /tmp stays private; the tmpfiles policy ages the persistent directory.
+daemon = unit('open-habitat-daemon@.service')['[Service]']
+if {k: daemon.get(k) for k in ('PrivateTmp', 'StateDirectory', 'StateDirectoryMode', 'BindPaths')} != {
+        'PrivateTmp': 'yes', 'StateDirectory': 'open-habitat-tmp/%i', 'StateDirectoryMode': '0700',
+        'BindPaths': '/var/lib/open-habitat-tmp/%i:/var/tmp'}:
+    sys.exit('error: daemon unit must keep /tmp private and bind its own persistent /var/tmp')
+if 'e /var/lib/open-habitat-tmp/* - - - 30d' not in (root / 'tmpfiles.d/open-habitat.conf').read_text().splitlines():
+    sys.exit('error: tmpfiles policy must age the daemon units\' persistent /var/tmp')
 for name in ('gateway', 'daemon@'):
     deps = unit('open-habitat-' + name + '.service')['[Unit]']
     if 'open-habitat-proc.service' not in deps.get('Requires', '').split() or 'open-habitat-proc.service' not in deps.get('After', '').split():

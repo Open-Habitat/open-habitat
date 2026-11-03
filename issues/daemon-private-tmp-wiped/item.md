@@ -3,12 +3,13 @@ created: 2026-11-03
 updated: 2026-11-03
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: daemon-tmp
 lane_seq: 1
 collision: [systemd/]
 preparation: ready
+closed: 2026-11-03
 ---
 
 # Agents lose /var/tmp whenever the daemon restarts (PrivateTmp)
@@ -45,6 +46,6 @@ A unit change needs its Fleetrepo installation change in the same round
 
 ## Acceptance Criteria
 
-- [ ] A file an agent writes under `/var/tmp` survives a daemon restart; another user cannot see it; `/tmp` stays private.
-- [ ] Unit test / host check covers it; `docs/operations.md` says where agents' `/var/tmp` lives; Fleetrepo change named or made.
-- [ ] Independent review (sandbox and per-user separation).
+- [x] A file an agent writes under `/var/tmp` survives a daemon restart; another user cannot see it; `/tmp` stays private.
+- [x] Unit test / host check covers it; `docs/operations.md` says where agents' `/var/tmp` lives; Fleetrepo change named or made.
+- [x] Independent review (sandbox and per-user separation).

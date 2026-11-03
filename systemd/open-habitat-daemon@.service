@@ -11,7 +11,16 @@ ExecStart=/opt/open-habitat/current/open-habitat daemon exec --config /etc/open-
 NoNewPrivileges=yes
 ProtectSystem=full
 ProtectHome=no
+# /tmp is private and goes with the daemon. /var/tmp outlives restarts and
+# upgrades, as it does over SSH, but is the person's own: systemd creates
+# /var/lib/open-habitat-tmp/%i as %i, 0700, before the mounts, so no other
+# account can claim it first. This bind wins over PrivateTmp's own /var/tmp
+# (systemd orders a bind before a private tmp on the same path). tmpfiles
+# ages it like the host's /var/tmp.
 PrivateTmp=yes
+StateDirectory=open-habitat-tmp/%i
+StateDirectoryMode=0700
+BindPaths=/var/lib/open-habitat-tmp/%i:/var/tmp
 UMask=0077
 KillMode=mixed
 # Pi conversations and what they start are the daemon's children. The

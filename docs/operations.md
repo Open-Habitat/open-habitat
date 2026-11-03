@@ -634,6 +634,19 @@ users or a shared administrative group. Check the effective `/proc` mount and
 running service groups after installation/reboot. User resource budgets such
 as `MemoryMax=`, `TasksMax=` and `CPUWeight=` remain customer policy.
 
+A person's daemon, and the Pi conversations and tools it starts, have a
+private `/tmp` that disappears whenever the daemon stops, as on every upgrade.
+Their `/var/tmp` is `/var/lib/open-habitat-tmp/<user>/` on the host, which
+systemd creates for the daemon unit as that user, mode `0700`. It survives
+restarts, upgrades and reboots as `/var/tmp` does over SSH, but no other
+account can see it. The person's browser shell and SSH sessions see the
+host's own `/var/tmp`, so to them an agent's files are under that path.
+Like the host's `/var/tmp`, it lives on `/var`, not in the home, so it does
+not count against per-user limits. The tmpfiles policy removes anything in
+it that has not been used for 30 days. If you remove an account by hand,
+remove its directory there too: a later account with the same name would
+inherit it.
+
 The workspace editor is optional and needs three things. First, a same-site per-person hostname namespace: for `app.example.org`, set `oauth.editor_origin` to `https://oh-code-*.example.org`. The single `*` is substituted with a deterministic 52-character lowercase identity hash. It must occur inside the leftmost DNS label; that expanded label must fit 63 characters. HTTPS DNS names only, without ports, paths, credentials, queries or fragments. The browser frames the editor beside the conversation, and its session cookie reaches the frame only when app and editor share the registrable domain.
 
 Reserve this namespace for the gateway. Supply wildcard DNS and tunnel/ingress routing to the same gateway listener, preserving the browser's Host header, and a public-edge certificate covering the resulting hosts. This single-label form works with Cloudflare Universal SSL's `*.example.org` coverage. A zone-wide wildcard route also sends unrelated names to the gateway: only the exact configured app host serves the app, only identity-bound child hosts accept editor sessions, and other hosts are rejected (health/readiness probes remain available). Do not delegate editor child names or serve unrelated content on them. Apply the same access policy and trusted ingress-header handling to every child host. For a TLS origin hop, retain certificate verification with an explicit verified origin TLS server name and CA, or provide a certificate covering the child hosts.
