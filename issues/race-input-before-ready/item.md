@@ -1,13 +1,14 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-03
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: races-conversation
 lane_seq: 2
 preparation: ready
+closed: 2026-11-03
 ---
 
 # Input before the conversation view is ready is lost (race group 2)
