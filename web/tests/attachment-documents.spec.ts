@@ -7,6 +7,7 @@ import {
   xlsxFixture,
 } from "../src/app/documentFixtures";
 import { hostOrigin } from "../test-ports.mjs";
+import { dropFiles } from "./conversation-view";
 import { expect, type Page, test } from "./worker-host";
 
 test.use({
@@ -190,21 +191,7 @@ async function dropInNewConversation(
   // A drop is taken only once the composer accepts attachments, the same
   // state that enables its attach button; earlier the files are ignored.
   await expect(page.getByTestId("attach-file")).toBeEnabled();
-  await page.locator(".ah-conversation-stream").evaluate(
-    (element, items) => {
-      const data = new DataTransfer();
-      for (const file of items)
-        data.items.add(new File([new Uint8Array(file.bytes)], file.name));
-      element.dispatchEvent(
-        new DragEvent("drop", {
-          dataTransfer: data,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    },
-    list.map((f) => ({ name: f.name, bytes: Array.from(f.bytes) })),
-  );
+  await dropFiles(page, list);
 }
 
 // Built-ins newer than many browsers people use: pdf.js's modern build calls

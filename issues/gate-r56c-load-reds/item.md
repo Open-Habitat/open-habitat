@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-03
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: gate-reds
 lane_seq: 2
 preparation: ready
+closed: 2026-11-03
 ---
 
 # Gate under load: a daemon wake test and the PDF attachment spec fail intermittently
@@ -28,5 +29,5 @@ fail only under the gate's load. Log: Birch `~/.local/state/oh-conductor/gate-r5
 
 ## Acceptance Criteria
 
-- [ ] Each mechanism named with evidence (Go: `-count` under CPU load and `-race`; spec: seeded reply delay `--repeat-each`), product defects fixed in the product, tests kept strict.
-- [ ] Counts before/after in result.md.
+- [x] Each mechanism named with evidence (Go: `-count` under CPU load and `-race`; spec: seeded reply delay `--repeat-each`), product defects fixed in the product, tests kept strict.
+- [x] Counts before/after in result.md.

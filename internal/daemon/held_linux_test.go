@@ -68,8 +68,10 @@ def out(v):
     with LOCK: print(json.dumps(v),flush=True)
 if os.path.exists(os.path.join(home,"background")):
     import socket,threading
+    # Pi awaits the companion's session_start, which listens before it
+    # returns, so the socket accepts before Pi reads its first command.
+    srv=socket.socket(socket.AF_UNIX); srv.bind(os.environ["OH_PROCESS_SOCKET"]); srv.listen(4)
     def bridge():
-        srv=socket.socket(socket.AF_UNIX); srv.bind(os.environ["OH_PROCESS_SOCKET"]); srv.listen(4)
         while True:
             conn,_=srv.accept(); q=json.loads(conn.makefile().readline() or "{}")
             if q.get("op")=="wake":

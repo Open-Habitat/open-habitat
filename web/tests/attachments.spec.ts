@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { dropFiles } from "./conversation-view";
 import { expect, test } from "./worker-host";
 
 test.use({
@@ -57,19 +58,13 @@ test("picker, image paste and conversation drop persist authenticated attachment
     );
   }, png.toString("base64"));
   await expect(chips).toHaveCount(2);
-  await page.locator(".ah-conversation-stream").evaluate((element) => {
-    const data = new DataTransfer();
-    data.items.add(
-      new File(["synthetic file"], "notes.txt", { type: "text/plain" }),
-    );
-    element.dispatchEvent(
-      new DragEvent("drop", {
-        dataTransfer: data,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-  });
+  await dropFiles(page, [
+    {
+      name: "notes.txt",
+      bytes: new TextEncoder().encode("synthetic file"),
+      type: "text/plain",
+    },
+  ]);
   await expect(chips).toHaveCount(3);
   await expect(field).toHaveValue("");
   const url = await chips.first().getAttribute("data-attachment-url");
@@ -248,19 +243,13 @@ test("a dropped or picked attachment leaves the person writing on from the end o
     element.setSelectionRange(0, 0);
     element.blur();
   });
-  await page.locator(".ah-conversation-stream").evaluate((element) => {
-    const data = new DataTransfer();
-    data.items.add(
-      new File(["synthetic file"], "notes.txt", { type: "text/plain" }),
-    );
-    element.dispatchEvent(
-      new DragEvent("drop", {
-        dataTransfer: data,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-  });
+  await dropFiles(page, [
+    {
+      name: "notes.txt",
+      bytes: new TextEncoder().encode("synthetic file"),
+      type: "text/plain",
+    },
+  ]);
   await expect(chips).toHaveCount(1);
   await expect(field).toBeFocused();
   await page.keyboard.type(" tätä");
