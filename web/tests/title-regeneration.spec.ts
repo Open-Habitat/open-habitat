@@ -74,6 +74,7 @@ test("title regeneration after daemon restart uses native history without contin
 test("pending live title animates arrow and dots; failures use the conversation notice area @a11y", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await openConversation(page);
   const retitle = page.getByTestId("conversation-retitle");
   let release!: () => void;

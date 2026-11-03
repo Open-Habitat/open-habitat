@@ -68,7 +68,13 @@ test("@rail-running-after-done a finished conversation leaves Käynnissä and re
   // Written to again, it works and is back until that turn ends.
   // Return through the app, rather than cancelling its outstanding reads
   // with a second document navigation (Chromium can exhaust net retries).
+  // The field of the conversation being left stays enabled until the
+  // returned one replaces it; text typed into it would go with it.
+  await page
+    .getByTestId("message-input")
+    .evaluate((field) => field.setAttribute("data-left", ""));
   await nav.getByTestId(`agent-item-${id}`).getByTestId("agent-link").click();
+  await expect(page.locator("[data-left]")).toHaveCount(0);
   await expect(page.getByTestId("message-input")).toBeEnabled();
   await send("hidas jatko");
   await expect(row).toHaveAttribute("data-ball", "work", { timeout: 25000 });

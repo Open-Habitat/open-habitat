@@ -234,6 +234,9 @@ test("@lab a followed conversation does not bounce while turns run", async ({
   page,
 }) => {
   test.setTimeout(120000);
+  // A hold that expires glides away; reduced motion drops it in one frame by
+  // design, and that step is not the bounce measured here.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await openConversation(page);
   await slowHistory(page);
   for (const text of ["ensimmäinen viesti", "toinen viesti"]) {

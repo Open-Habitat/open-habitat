@@ -3,6 +3,10 @@ import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { expect, test } from "./lab-host";
 
+// The pending title's arrow and dots are motion; each case turns it off once
+// to see them stop.
+test.use({ reducedMotion: "no-preference" });
+
 for (const width of [1440, 390]) {
   for (const colorScheme of ["light", "dark"] as const) {
     test(`title generation preserves the header at ${width}px ${colorScheme}`, async ({

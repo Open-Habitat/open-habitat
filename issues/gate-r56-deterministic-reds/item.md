@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-03
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: gate-reds
 lane_seq: 1
 preparation: ready
+closed: 2026-11-03
 ---
 
 # Integrated main: title animation and scroll specs fail every run
@@ -32,5 +33,5 @@ Load-only in the gate, pass alone: `rail-running-after-done.spec.ts:17`
 
 ## Acceptance Criteria
 
-- [ ] The deterministic three pass; the cause of each named; a real product regression is fixed in the product, a spec gap in the spec.
-- [ ] The two load-only cases checked with the seeded reply delay (`OH_REPLY_DELAY_MS=250`, `--repeat-each 2`); fixed or filed with their mechanism.
+- [x] The deterministic three pass; the cause of each named; a real product regression is fixed in the product, a spec gap in the spec.
+- [x] The two load-only cases checked with the seeded reply delay (`OH_REPLY_DELAY_MS=250`, `--repeat-each 2`); fixed or filed with their mechanism.
