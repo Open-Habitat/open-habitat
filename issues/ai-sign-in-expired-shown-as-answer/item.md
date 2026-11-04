@@ -40,3 +40,12 @@ Two parts:
 ## Acceptance Criteria
 
 - [ ] An authentication failure is never shown as *Vastaus valmis*; live and after reload it shows as a failed turn; a test with the exact provider error reproduces the old wrong state and passes after.
+
+## Also (Jari 4.11.)
+
+The same conversation stayed in **Käynnissä** in the rail afterwards,
+although nothing was running (a small marker on its row). Likely the same
+root: the failed turn was not recognised as ended-in-error, so the rail's
+state for it is wrong too. Verify and fix it in the same unit: after an
+authentication failure the conversation leaves Käynnissä (it is a failed
+turn, shown as the rail shows other failures).
