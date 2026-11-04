@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: ai-sign-in-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: telling the person their AI sign-in has expired
