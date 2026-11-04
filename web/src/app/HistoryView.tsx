@@ -1238,7 +1238,11 @@ export function timelineItems(
     const startedAt = turnStart;
     turnId = turnStart = undefined;
     // The saved part of the running turn and its live tail are one turn.
-    const merged = last && !!live && !endsTurn(group.at(-1));
+    const merged =
+      last &&
+      !!live &&
+      group.at(-1)?.stop_reason !== "error" &&
+      !endsTurn(group.at(-1));
     items.push({
       id,
       kind: "assistant",
@@ -1246,6 +1250,7 @@ export function timelineItems(
       content: (
         <AgentTurn
           startedAt={startedAt}
+          failed={group.at(-1)?.stop_reason === "error"}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
               ? { at: savedAt(group[group.length - 1]) }

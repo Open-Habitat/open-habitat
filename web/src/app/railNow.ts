@@ -157,14 +157,17 @@ export function railNow({
       !a.rest.awake &&
       a.rest.cause !== "person" &&
       !!a.interrupted_turn;
-    // The host's other failures: a turn that ended in an error, and a worker
-    // run that failed after the conversation last changed. Both stay in
-    // sight like a crash, and work that runs again is not failed any more.
+    // A settled failed turn is not running work. Keep its failure marker
+    // in the quiet list; a failed worker or interrupted process still needs
+    // attention in the running list. A new turn supersedes the old failure.
     const failure = observed.activity === "working" ? undefined : a.failure;
     const failed = crashed || cut || failure !== undefined;
     // Hiljaiset lists every other conversation, finished worktree
     // conversations included (Jari 1.11.2026).
-    const isQuiet = !turn && !live && !failed;
+    const isQuiet =
+      !turn &&
+      !live &&
+      (!failed || (!crashed && !cut && failure === "turn_error"));
     const name = w.display_name ?? w.name;
     const state =
       failure === "turn_error"

@@ -1042,6 +1042,30 @@ it("marks only the turn Pi saved as aborted, and its interrupted tool as stopped
   ).toBe("cancelled");
 });
 
+it.each([
+  "Failed to authenticate: OAuth session expired and could not be refreshed",
+  "Invalid API key · Fix external API key",
+])("preserves the native failed stop for %s", (text) => {
+  const items = timelineItems([
+    {
+      ...entry,
+      kind: "assistant",
+      stop_reason: "error",
+      content: { media_type: "text/plain", text, complete: true },
+      blocks: [{ type: "text", text }],
+    },
+  ]);
+  const view = render(
+    items.map((item) => <div key={item.id}>{item.content}</div>),
+  );
+  expect(view.getByTestId("stage-reply").getAttribute("data-reply-role")).toBe(
+    "failed",
+  );
+  expect(
+    view.container.querySelector('[data-reply-complete="true"]'),
+  ).toBeNull();
+});
+
 it("keeps a reply's elements when its streamed text becomes a saved preview", () => {
   const text = `Ensimmäinen kappale.\n\n${"Pitkä jatko. ".repeat(40)}`;
   const { container, rerender } = render(

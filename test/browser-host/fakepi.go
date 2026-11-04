@@ -529,6 +529,22 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		s.longRun(run, emit)
 		return
 	}
+	// Recorded with Pi 1.3.0 / bridge 0.9.3 and disposable invalid credentials:
+	// the bridge keeps the provider text, but marks the message as an error.
+	if strings.Contains(prompt, "auth-failure-oauth") || strings.Contains(prompt, "auth-failure-key") {
+		text := "Failed to authenticate: OAuth session expired and could not be refreshed"
+		if strings.Contains(prompt, "auth-failure-key") {
+			text = "Invalid API key · Fix external API key"
+		}
+		entry := message("assistant", []map[string]any{{"type": "text", "text": text}}, map[string]any{"provider": "claude-bridge", "api": "claude-bridge", "model": "claude-sonnet-4-6", "stopReason": "error", "errorMessage": text})
+		s.append(entry)
+		emit(map[string]any{"type": "message_start", "message": entry["message"]})
+		emit(map[string]any{"type": "message_end", "message": entry["message"]})
+		emit(map[string]any{"type": "turn_end", "message": entry["message"], "toolResults": []any{}})
+		emit(map[string]any{"type": "agent_end", "willRetry": false})
+		emit(map[string]any{"type": "agent_settled", "aborted": false})
+		return
+	}
 	// A provider that fails the turn: Pi saves the empty reply with
 	// stopReason "error" and the provider's message.
 	if strings.Contains(prompt, "virhevuoro") {

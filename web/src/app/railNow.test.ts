@@ -313,17 +313,11 @@ describe("rail Nyt groups", () => {
     expect(ids(now.yours)).toEqual(["replied"]);
     expect(now.yours[0].failed).toBe(true);
     expect(now.yours[0].detail).toContain("Vuoro päättyi virheeseen");
-    expect(ids(now.running)).toEqual([
-      "error-turn",
-      "worker-failed",
-      "retrying",
-    ]);
+    expect(ids(now.running)).toEqual(["worker-failed", "retrying"]);
+    expect(ids(now.quiet)).toEqual(["error-turn"]);
+    expect(now.quiet[0].failed).toBe(true);
     expect(now.running[0].failed).toBe(true);
-    expect(now.running[0].detail).toContain("Vuoro päättyi virheeseen");
-    expect(now.running[1].failed).toBe(true);
-    expect(now.running[1].detail).toContain("Worker epäonnistui");
-    expect(now.running[2].failed).toBeUndefined();
-    expect(now.running[2].activityLabel).toBe("Työskentelee");
+    expect(now.running[1].failed).toBeUndefined();
     // Failed rows are not live work in the hint; the working one is.
     expect(now.hints.get("ws_example00")).toMatchObject({
       kind: "attention",

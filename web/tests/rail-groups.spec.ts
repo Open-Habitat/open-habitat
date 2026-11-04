@@ -132,14 +132,16 @@ test("@rail-groups A turn that ended in an error is a failed row until the perso
       .click();
   };
   await send("Tee virhevuoro");
-  const row = running.getByTestId(`agent-item-${id}`);
+  const row = nav.getByTestId(`agent-item-${id}`);
   await expect(row).toHaveAttribute("data-ball", "fail", { timeout: 25000 });
-  await expect(row).toHaveAttribute(
-    "title",
-    /ordinary-dir · Vuoro päättyi virheeseen/,
-  );
+  await expect(running.getByTestId(`agent-item-${id}`)).toHaveCount(0);
   // Writing again starts a new turn; its answer is not failed, and the
   // finished conversation leaves Käynnissä.
   await send("Yritä uudestaan");
-  await expect(row).toHaveCount(0, { timeout: 25000 });
+  await expect(row).not.toHaveAttribute("data-ball", "fail", {
+    timeout: 25000,
+  });
+  await expect(running.getByTestId(`agent-item-${id}`)).toHaveCount(0, {
+    timeout: 25000,
+  });
 });

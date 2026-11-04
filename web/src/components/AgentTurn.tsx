@@ -260,7 +260,7 @@ function StageReply({
   role,
 }: {
   step: Extract<TurnStep, { kind: "text" }>;
-  role: "interim" | "final" | "streaming";
+  role: "interim" | "final" | "streaming" | "failed";
 }) {
   const copy = () => void navigator.clipboard?.writeText(step.text);
   return (
@@ -274,7 +274,13 @@ function StageReply({
         <InterimMessage onCopy={copy}>{step.node}</InterimMessage>
       ) : (
         <AssistantMessage
-          streamState={role === "final" ? "complete" : "streaming"}
+          streamState={
+            role === "failed"
+              ? "failed"
+              : role === "final"
+                ? "complete"
+                : "streaming"
+          }
           onCopy={copy}
         >
           {step.node}
@@ -323,6 +329,7 @@ export function AgentTurn({
   steps,
   startedAt,
   stopped,
+  failed = false,
   working = false,
   activity,
   duration,
@@ -332,6 +339,7 @@ export function AgentTurn({
   startedAt?: number;
   /** Pi recorded the turn's end as an abort, saved at `at` when known. */
   stopped?: { at?: number };
+  failed?: boolean;
   working?: boolean;
   activity?: string;
   duration?: string;
@@ -388,7 +396,9 @@ export function AgentTurn({
           : running
             ? "streaming"
             : stage.end === finalStep
-              ? "final"
+              ? failed
+                ? "failed"
+                : "final"
               : "interim";
         return (
           // Stages only grow at the end, so the index is a stable identity:
@@ -458,6 +468,11 @@ export function AgentTurn({
           </Fragment>
         );
       })}
+      {failed && !working && !finalStep ? (
+        <AssistantMessage streamState="failed" onCopy={() => {}}>
+          {null}
+        </AssistantMessage>
+      ) : null}
       {stopped && !working ? <StoppedRow at={stopped.at} /> : null}
     </section>
   );

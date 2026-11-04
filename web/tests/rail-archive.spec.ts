@@ -97,8 +97,7 @@ test.describe("on a touch screen", () => {
     await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
     await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
     const id = new URL(page.url()).searchParams.get("conversation") ?? "";
-    // A turn that ended in an error stays in Käynnissä; a finished one
-    // would leave it (rail-running-after-done).
+    // A settled failed turn is still listed and can be archived.
     await page.getByTestId("message-input").fill("Tee virhevuoro");
     await page
       .getByTestId("send")

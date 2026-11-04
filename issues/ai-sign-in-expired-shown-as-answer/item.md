@@ -3,11 +3,12 @@ created: 2026-11-04
 updated: 2026-11-04
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: ai-sign-in
 lane_seq: 1
 preparation: ready
+closed: 2026-11-04
 ---
 
 # An expired AI provider sign-in shows as a finished answer
@@ -39,7 +40,7 @@ Two parts:
 
 ## Acceptance Criteria
 
-- [ ] An authentication failure is never shown as *Vastaus valmis*; live and after reload it shows as a failed turn; a test with the exact provider error reproduces the old wrong state and passes after.
+- [x] An authentication failure is never shown as *Vastaus valmis*; live and after reload it shows as a failed turn; a test with the exact provider error reproduces the old wrong state and passes after.
 
 ## Also (Jari 4.11.)
 
