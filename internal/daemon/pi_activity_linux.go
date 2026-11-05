@@ -18,7 +18,28 @@ import (
 // child holds its place: an idle one is stopped when the place is needed, and
 // its conversation resumes from native history on the next send, as after a
 // daemon restart.
-const maxLiveConversations = 4
+//
+// The limit protects the host, not the person's way of working: people run
+// eight to ten agents side by side, and a conversation whose background
+// process still runs keeps its place for as long as it runs (Jari,
+// 2026-11-05). What runs out is memory, about 210 MiB per Pi child, so one
+// person's 32 children take some 7 GiB. The limit bounds one person's daemon;
+// people on the same host share its memory, so a host for several people who
+// all run that many agents at once needs that much each. A fixed
+// number is used rather than a reading of available memory because it can be
+// checked and tested exactly; a memory reading moves with every other process
+// on the host and would refuse at random. The 128-session bound of create is
+// separate: it bounds the controller's in-memory records, live or not.
+const defaultLiveConversations = 32
+
+// liveLimit is the one place the limit is read, so a later per-person or
+// per-host setting can feed it. Caller holds c.mu.
+func (c *ConversationController) liveLimit() int {
+	if c.maxLive > 0 {
+		return c.maxLive
+	}
+	return defaultLiveConversations
+}
 
 // The one definition of a conversation that is doing something. The per-person
 // limit, workspace and worktree deletion, and archive all use it, and the
@@ -213,7 +234,7 @@ func (c *ConversationController) liveCount() int {
 // the caller's own check refuses at capacity.
 func (c *ConversationController) makeRoom(ctx context.Context) {
 	c.mu.Lock()
-	need := c.liveCount() - maxLiveConversations + 1
+	need := c.liveCount() - c.liveLimit() + 1
 	c.mu.Unlock()
 	if need <= 0 {
 		return
@@ -269,7 +290,7 @@ func (c *ConversationController) stopIfIdle(ctx context.Context, id string) {
 // Taskfleet run this conversation created that still works on its own, read
 // from Taskfleet's creator-session attribution at each expiry. No time bounds
 // either wait: Taskfleet's own stall verdict ends a run's, and memory is bounded
-// by maxLiveConversations, because a Pi held only by a run still yields its
+// by the live limit, because a Pi held only by a run still yields its
 // place to another start (makeRoom), after every truly idle one.
 const piIdlePeriod = 10 * time.Minute
 const piIdleCheckInterval = time.Minute

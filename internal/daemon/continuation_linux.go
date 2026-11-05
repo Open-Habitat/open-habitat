@@ -263,13 +263,14 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	}
 	// A recap the person did not ask for never stops another Pi for room,
 	// and leaves one place free for the person's next start.
-	room := maxLiveConversations
-	if kind == startRecap {
-		room--
-	} else {
+	if kind != startRecap {
 		c.makeRoom(context.Background())
 	}
 	c.mu.Lock()
+	room := c.liveLimit()
+	if kind == startRecap {
+		room--
+	}
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
 	if c.closed || c.sessions[id] != old {

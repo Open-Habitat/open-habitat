@@ -3,13 +3,14 @@ created: 2026-11-05
 updated: 2026-11-05
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit
 lane: live-limit
 lane_seq: 1
+closed: 2026-11-05
 ---
 
 # Lift the four-working-conversations limit to one that only protects the host

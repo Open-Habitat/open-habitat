@@ -201,7 +201,7 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if c.closed || c.sessions[old.id] != old || old.state != "starting" {
 		return "unproven"
 	}
-	if c.liveCount() >= maxLiveConversations {
+	if c.liveCount() >= c.liveLimit() {
 		return "capacity_exceeded"
 	}
 	if !c.admits(ws, cwd) {

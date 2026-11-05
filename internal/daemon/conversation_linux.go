@@ -74,6 +74,9 @@ type ConversationController struct {
 	autoWoke       map[string]time.Time
 	restartWaits   map[string]bool
 	restartScanned bool
+	// maxLive overrides the live-child limit; zero uses the default
+	// (liveLimit). Protected by mu.
+	maxLive int
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -586,7 +589,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	c.makeRoom(r.Context())
 	c.mu.Lock()
-	if c.closed || c.liveCount() >= maxLiveConversations || len(c.sessions) >= 128 {
+	if c.closed || c.liveCount() >= c.liveLimit() || len(c.sessions) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 429, "capacity_exceeded")
 		return
@@ -664,7 +667,7 @@ func (c *ConversationController) createWorktree(ctx context.Context, w http.Resp
 	parent.Close()
 	c.makeRoom(ctx)
 	c.mu.Lock()
-	full := c.closed || c.liveCount() >= maxLiveConversations || len(c.sessions) >= 128
+	full := c.closed || c.liveCount() >= c.liveLimit() || len(c.sessions) >= 128
 	c.mu.Unlock()
 	if full {
 		return "", 429, "capacity_exceeded"

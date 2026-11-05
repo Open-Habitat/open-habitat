@@ -169,12 +169,19 @@ func newHeldHarness(t *testing.T) *heldHarness {
 	return &heldHarness{t: t, root: root, cfg: cfg, workspace: opaque("ws_", cfg.Provider+":"+cfg.Subject+":project"), runtime: &core.PiRuntimeConfig{Node: script, Entry: filepath.Join(root, "pi", "entry"), Manifest: filepath.Join(root, "pi", "manifest")}}
 }
 
+const heldLiveLimit = 4
+
 // daemon starts one controller incarnation; cancelling it is a daemon stop.
 func (h *heldHarness) daemon() (*ConversationController, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := ConversationHandlerWithFixtureRuntime(ctx, h.cfg, func(*http.Request) bool { return true }, func(context.Context) string { return "connected" }, h.root, h.runtime)
 	c.writerProc = h.t.TempDir() // No writers outside this synthetic account.
 	c.titleGenerator = func(string) (string, error) { return "", errors.New("no titles in this test") }
+	// A small limit keeps the boundary tests to a few synthetic Pi children;
+	// TestMoreThanTenConversationsWorkAtOnce runs the production default.
+	c.mu.Lock()
+	c.maxLive = heldLiveLimit
+	c.mu.Unlock()
 	// Cancelling alone shuts down in the background; close Pi before the
 	// stop returns, so nothing still writes when the temporary home goes.
 	return c, func() { c.shutdown(); cancel() }

@@ -150,7 +150,7 @@ func TestRoomTakesTrulyIdlePiBeforeOneWaitingOnARun(t *testing.T) {
 	c, stop := h.daemon()
 	defer stop()
 	var ids []string
-	for i := 0; i < maxLiveConversations; i++ {
+	for i := 0; i < heldLiveLimit; i++ {
 		id := h.create(c)
 		h.converse(c, id, "Viesti", activityCommand(i))
 		ids = append(ids, id)

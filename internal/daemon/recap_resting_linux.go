@@ -162,7 +162,7 @@ func (c *ConversationController) recapResting(ctx context.Context, id string, ol
 		skip = "closed"
 	case c.sessions[id] != old, old != nil && (liveChild(old) || old.state != "stopped" || len(old.held) > 0 || old.bash.active()):
 		skip = "controlled"
-	case c.liveCount() >= maxLiveConversations-1:
+	case c.liveCount() >= c.liveLimit()-1:
 		skip = "capacity"
 	}
 	c.mu.Unlock()

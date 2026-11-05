@@ -73,7 +73,7 @@ func (h *heldHarness) deletable() {
 	h.t.Cleanup(func() { deletionProcRoot = old })
 }
 
-// Four idle conversations do not fill the limit: a fifth start stops the
+// Idle conversations do not fill the limit: one start more stops the
 // longest unused idle Pi. Its history stays, and its next message resumes it,
 // which in turn stops the then longest unused one.
 func TestIdleConversationsYieldTheirPlace(t *testing.T) {
@@ -81,7 +81,7 @@ func TestIdleConversationsYieldTheirPlace(t *testing.T) {
 	c, stop := h.daemon()
 	defer stop()
 	var ids []string
-	for i := 0; i < maxLiveConversations; i++ {
+	for i := 0; i < heldLiveLimit; i++ {
 		id := h.create(c)
 		h.converse(c, id, fmt.Sprintf("Viesti %d", i), activityCommand(i))
 		ids = append(ids, id)
@@ -136,7 +136,7 @@ func TestBusyConversationsHoldPlacesAndBlockDeletion(t *testing.T) {
 	defer stop()
 	h.setFile("prompt-hold", "1")
 	var ids []string
-	for i := 0; i < maxLiveConversations; i++ {
+	for i := 0; i < heldLiveLimit; i++ {
 		id := h.create(c)
 		h.eventually("ready", func() bool { _, v := h.status(c, id); return v.State == "idle" })
 		if w := h.send(c, id, fmt.Sprintf("Pitkä työ %d", i), activityCommand(i)); w.Code != 200 {
@@ -244,11 +244,42 @@ func TestArchiveStopsIdlePiButNotBackgroundWork(t *testing.T) {
 	if !h.live(c, working) || len(busy) != 1 || busy[0] != (busyConversation{"pi:" + working, "processes"}) {
 		t.Fatalf("background work: live %v, busy %v", h.live(c, working), busy)
 	}
-	for i := 0; i < maxLiveConversations-1; i++ {
+	for i := 0; i < heldLiveLimit-1; i++ {
 		h.create(c)
 	}
 	if w := h.post(c.create, fmt.Sprintf(`{"workspace_id":%q}`, h.workspace)); !h.live(c, working) {
 		t.Fatalf("a start stopped a Pi with background work: %d", w.Code)
+	}
+}
+
+// The production limit protects only the host: a person runs clearly more
+// than ten turns at once, none stopped to make room for another.
+func TestMoreThanTenConversationsWorkAtOnce(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	c.mu.Lock()
+	c.maxLive = 0
+	c.mu.Unlock()
+	h.setFile("prompt-hold", "1")
+	var ids []string
+	for i := 0; i < 12; i++ {
+		id := h.create(c)
+		h.eventually("ready", func() bool { _, v := h.status(c, id); return v.State == "idle" })
+		if w := h.send(c, id, fmt.Sprintf("Pitkä työ %d", i), activityCommand(i)); w.Code != 200 {
+			t.Fatalf("send %d: %d %s", i, w.Code, w.Body.String())
+		}
+		h.eventually("turn running", func() bool {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			return c.sessions[id].runActive
+		})
+		ids = append(ids, id)
+	}
+	for _, id := range ids {
+		if !h.live(c, id) {
+			t.Fatalf("a running turn was stopped below the host limit: %s", id)
+		}
 	}
 }
 

@@ -9,7 +9,7 @@ import { catalog } from "../i18n";
 // code (app/mutations.ts). The host sends codes; the words are the browser's.
 const fi = {
   capacity:
-    "Neljä keskustelua työskentelee jo — odota, että jokin vuoro päättyy, tai pysäytä se.",
+    "Liian monta keskustelua työskentelee jo yhtä aikaa — odota, että jokin vuoro päättyy, tai pysäytä jokin.",
   historyDamaged:
     "Keskustelun historiatiedostossa on vioittunut rivi, joten Habitat ei näytä historiaa eikä käynnistä agenttia sen päälle. Tiedosto on tallella muuttamattomana kotihakemistosi .pi/agent/sessions-kansiossa; jatka uudessa keskustelussa tai pyydä agenttia tarkistamaan tiedosto toisessa keskustelussa.",
   quotaFull:
@@ -65,7 +65,7 @@ const fi = {
 
 export const refusalsText = catalog(fi, {
   capacity:
-    "Four conversations are already working — wait until a turn ends, or stop one.",
+    "Too many conversations are already working at once — wait until a turn ends, or stop one.",
   historyDamaged:
     "The conversation's history file has a damaged line, so Habitat does not show the history or start an agent on top of it. The file is kept unchanged in the .pi/agent/sessions folder of your home directory; continue in a new conversation or ask an agent to check the file in another conversation.",
   quotaFull:
