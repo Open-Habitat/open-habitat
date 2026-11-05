@@ -1,0 +1,81 @@
+/* Review chrome above the production shell, and the round's own pieces on
+   production tokens. The shell is anchored below the review bar. */
+html, body { margin: 0; background: var(--ah-bg); }
+.cs-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.cs-bar strong { font-weight: 600; }
+.cs-bar select, .cs-bar button { font: inherit; }
+.cs-net-state { color: var(--ah-muted); }
+.cs-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.cs-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 640px) {
+  .cs-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .cs-bar > strong { flex-basis: 100%; }
+  .cs-lines { padding-left: 0; list-style: none; }
+  .cs-lines li:not([aria-current]) { display: none; }
+}
+.cs-stage .ah-app-shell {
+  position: fixed; left: 0; right: 0; top: var(--review-h, 0px);
+  /* The picker floats at the bottom; keep the page clear of it. */
+  height: calc(100dvh - var(--review-h, 0px) - 56px);
+  overflow: auto;
+}
+.cs-stage .ah-rail { top: var(--review-h, 0px); }
+/* The phone's fallback account floats at the top right; keep it below the bar. */
+@media (max-width: 800px) { .cs-stage .ah-fallback-account { top: 8px; } }
+.cs-stage .ah-landing { min-height: calc(100dvh - var(--review-h, 0px) - 56px); }
+
+/* The proposed failure keeps the landing's place and type. Its bar is a
+   neutral line rather than the error tint: no claim that something broke on
+   the server. While a try runs, data-failed is off and the production
+   sliding bar and pulsing dot come back. */
+.cs-landing .ah-landing-in { width: min(100%, 380px); }
+.cs-landing .cs-title { color: var(--ah-ink); font-weight: 600; }
+.cs-landing[data-failed] .ah-landing-bar { background: var(--ah-line); }
+.cs-landing .ah-landing-more { gap: 12px; }
+.cs-landing .ah-landing-more .cs-quiet { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.cs-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.cs-hint svg { flex: none; color: var(--ah-muted); }
+.cs-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* B: the bar fills toward the next try. */
+.cs-countdown { background: var(--ah-line); }
+.cs-landing[data-failed] .cs-countdown { background: var(--ah-line); }
+.cs-countdown i {
+  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+  background: var(--ah-accent); transition: width 100ms linear;
+}
+.cs-count { font-variant-numeric: tabular-nums; }
+.cs-num { font-weight: 600; color: var(--ah-ink); }
+
+/* C: what the person can look at, as a plain list on the page. */
+.cs-check {
+  width: 100%; box-sizing: border-box; text-align: start;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg, 10px);
+  padding: var(--ah-s3, 12px) var(--ah-s4, 16px);
+  background: var(--ah-surface);
+}
+.cs-check h3 { margin: 0 0 6px; font-size: var(--ah-size-ui); font-weight: 600; color: var(--ah-ink); }
+.cs-check ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.cs-check li {
+  display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start;
+  color: var(--ah-ink-2); font-size: var(--ah-size-ui); line-height: 1.45;
+}
+.cs-check li svg { margin-top: 2px; color: var(--ah-muted); }
+.cs-check li strong { color: var(--ah-ink); font-weight: 600; }
+.cs-auto-line { display: inline-flex; align-items: center; gap: 8px; }
+.cs-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-muted); flex: none; }
+.cs-dot[data-active] { background: var(--ah-accent); animation: ah-pulse var(--ah-pulse); }
+
+/* The recovered home, only enough to show the app took over. */
+.cs-home { padding: var(--ah-s6, 24px); color: var(--ah-ink); }
+.cs-home h1 { margin: 0 0 6px; font-size: 22px; }
+.cs-home p { margin: 0 0 14px; color: var(--ah-ink-2); }
+.cs-home ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cs-home li { display: flex; align-items: center; gap: 8px; font-family: var(--ah-mono); font-size: 13px; }

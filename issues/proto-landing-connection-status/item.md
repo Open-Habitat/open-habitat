@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: high
 related: ['@landing-server-did-not-answer']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-05/proto-landing-connection-status
 lane: landing-proto
