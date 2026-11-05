@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -70,7 +72,7 @@ func (g *syntheticGitHub) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nil, errors.New("unexpected GitHub request " + r.Method + " " + r.URL.String())
 }
 
-func revokeFixture(t *testing.T) (http.Handler, *syntheticGitHub, *fakeSink, *fakeBroker, *bytes.Buffer) {
+func revokeFixture(t *testing.T, expiryFile ...string) (http.Handler, *syntheticGitHub, *fakeSink, *fakeBroker, *bytes.Buffer) {
 	t.Helper()
 	gh := &syntheticGitHub{}
 	p := GitHubProvider{ClientID: "client", ClientSecret: "secret", CallbackURL: "https://host.test/auth/github/callback", Client: &http.Client{Transport: gh}}
@@ -78,7 +80,11 @@ func revokeFixture(t *testing.T) (http.Handler, *syntheticGitHub, *fakeSink, *fa
 	broker := newFakeBroker()
 	var logs bytes.Buffer
 	now := time.Date(2026, 10, 26, 9, 0, 0, 0, time.UTC)
-	a, e := NewAuth(OAuthConfig{ClientID: "client", ClientSecret: "secret", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: p, Sink: s, Broker: broker, Now: func() time.Time { return now }, Log: CallbackLogger(&logs)})
+	var stateFile string
+	if len(expiryFile) != 0 {
+		stateFile = expiryFile[0]
+	}
+	a, e := NewAuth(OAuthConfig{ClientID: "client", ClientSecret: "secret", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{GitHubExpiryFile: stateFile, Provider: p, Sink: s, Broker: broker, Now: func() time.Time { return now }, Log: CallbackLogger(&logs)})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -169,14 +175,28 @@ func TestGitHubRevokeTokenNeedsAppCredentials(t *testing.T) {
 // says why the connection will not last, naming neither token.
 func TestExpiringTokenSignInWarns(t *testing.T) {
 	const warning = `"event":"github_token_expiring","schema_version":1,"component":"gateway","outcome":"degraded","reason":"oauth_app_expiring_tokens","expires_in_s":28800`
-	h, gh, s, _, logs := revokeFixture(t)
+	path := filepath.Join(t.TempDir(), "github-token-expiry")
+	checkState := func(want string) {
+		t.Helper()
+		b, err := os.ReadFile(path)
+		if err != nil || string(b) != want {
+			t.Fatalf("expiry observation: %q, %v", b, err)
+		}
+		st, err := os.Stat(path)
+		if err != nil || st.Mode().Perm() != 0600 {
+			t.Fatalf("state permissions: %v, %v", st, err)
+		}
+	}
+	h, gh, s, _, logs := revokeFixture(t, path)
 	if code := signIn(t, h); code != 303 || strings.Contains(logs.String(), "github_token_expiring") {
 		t.Fatal(code, logs.String())
 	}
+	checkState("non-expiring\n")
 	gh.expiry = "28800"
 	if code := signIn(t, h); code != 303 || s.token != "gho_synthetic_minted_2" || !strings.Contains(logs.String(), warning) {
 		t.Fatal(code, logs.String())
 	}
+	checkState("expiring\n")
 	if strings.Contains(logs.String(), s.token) || strings.Contains(logs.String(), "ghr_") {
 		t.Fatal("token logged")
 	}
@@ -185,6 +205,27 @@ func TestExpiringTokenSignInWarns(t *testing.T) {
 	gh.expiry = `"eight hours"`
 	if code := signIn(t, h); code != 303 || s.token != "gho_synthetic_minted_3" || strings.Contains(logs.String(), "github_token_expiring") {
 		t.Fatal(code, logs.String())
+	}
+	checkState("expiring\n") // malformed metadata is not proof of recovery
+	gh.expiry = ""
+	if code := signIn(t, h); code != 303 {
+		t.Fatal(code)
+	}
+	checkState("non-expiring\n")
+	// Restarting a gateway must not erase the last observation.
+	_, _, _, _, _ = revokeFixture(t, path)
+	checkState("non-expiring\n")
+}
+
+func TestExpiryStateWriteFailureDoesNotRejectSignIn(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "github-token-expiry")
+	h, gh, s, _, logs := revokeFixture(t, path)
+	gh.expiry = "28800"
+	if code := signIn(t, h); code != 303 {
+		t.Fatal(code)
+	}
+	if !strings.Contains(logs.String(), `"reason":"state_write_failed"`) || strings.Contains(logs.String(), s.token) || strings.Contains(logs.String(), "ghr_") || strings.Contains(logs.String(), path) {
+		t.Fatal(logs.String())
 	}
 }
 

@@ -42,11 +42,12 @@ func (g GitHubProvider) ExchangeProfile(ctx context.Context, code, verifier stri
 	return grant.Token, grant.ID, grant.Login, grant.Profile, err
 }
 
-// GitHubGrant is one code exchange. ExpiresIn is nonzero when GitHub issued
+// GitHubGrant is one code exchange. ExpiresIn is positive when GitHub issued
 // an expiring token: an OAuth app registered since August 2026 does so by
 // default, for eight hours, with a refresh token. gh cannot refresh another
 // app's token and Habitat keeps none, so such a login stops working in gh
-// after ExpiresIn; the refresh token is never read.
+// after ExpiresIn; the refresh token is never read. Zero means no expiry
+// metadata; negative means malformed metadata (not evidence of a durable token).
 type GitHubGrant struct {
 	Token, ID, Login string
 	Profile          AccountProfile
@@ -109,8 +110,11 @@ func (g GitHubProvider) exchange(ctx context.Context, code, verifier string) (st
 		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	var expires time.Duration
-	if n, e := strconv.ParseInt(strings.Trim(string(result.ExpiresIn), `"`), 10, 32); e == nil && n > 0 {
-		expires = time.Duration(n) * time.Second
+	if len(result.ExpiresIn) != 0 {
+		expires = -1
+		if n, e := strconv.ParseInt(strings.Trim(string(result.ExpiresIn), `"`), 10, 32); e == nil && n > 0 {
+			expires = time.Duration(n) * time.Second
+		}
 	}
 	return result.Token, id, user.Login, normalizeProfile(AccountProfile{Name: user.Name, Email: user.Email, AvatarURL: user.AvatarURL}), expires, nil
 }

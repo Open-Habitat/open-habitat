@@ -32,6 +32,8 @@ type Action struct {
 	Reason string `json:"reason"`
 }
 type Inspection struct {
+	Warnings        []Warning `json:"-"`
+	gatewayUID      uint32
 	SiteID          string            `json:"site_id"`
 	Target          Release           `json:"target"`
 	Inputs          map[string]string `json:"inputs"`
@@ -106,14 +108,18 @@ func Inspect(ctx context.Context, sitePath string) (Inspection, error) {
 	if os.Geteuid() != 0 {
 		return Inspection{}, ErrTrust
 	}
-	return inspect(ctx, sitePath, productionSources())
+	r, err := inspect(ctx, sitePath, productionSources())
+	if err == nil {
+		inspectGitHubExpiry(&r)
+	}
+	return r, err
 }
 func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspection, error) {
 	s, e := loadSite(sitePath, src.owner)
 	if e != nil {
 		return Inspection{}, e
 	}
-	r := Inspection{SiteID: s.SiteID, Target: s.Release, Inputs: map[string]string{"site": "flag", "environment": "ignored", "policy": "release"}, Checks: []Check{}, Ready: true, userQuota: s.Storage.EnforceUserQuota}
+	r := Inspection{gatewayUID: s.Gateway.UID, SiteID: s.SiteID, Target: s.Release, Inputs: map[string]string{"site": "flag", "environment": "ignored", "policy": "release"}, Checks: []Check{}, Ready: true, userQuota: s.Storage.EnforceUserQuota}
 	add := func(code, status, reason string) {
 		r.Checks = append(r.Checks, Check{code, status, reason})
 		if status != "pass" {

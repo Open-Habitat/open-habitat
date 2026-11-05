@@ -3,13 +3,14 @@ created: 2026-11-05
 updated: 2026-11-05
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/github-expiring-host-check
 lane: github-expiring-check
 lane_seq: 1
+closed: 2026-11-05
 ---
 
 # host check warns when the GitHub OAuth app issues expiring tokens
@@ -39,6 +40,12 @@ erikseen, jos Jari sitä haluaa.
 
 ## Acceptance Criteria
 
-- [ ] host check varoittaa vanhenevia tunnuksia antavasta OAuth-sovelluksesta ja kertoo korjauksen; varoitus poistuu, kun seuraava kirjautuminen saa vanhenemattoman tunnuksen
-- [ ] testi rajapinnassa (synteettinen GitHub, kuten `TestExpiringTokenSignInWarns`); tunnukset eivät päädy lokiin, tilaan eikä tulosteeseen
-- [ ] docs/operations.md mainitsee tarkistuksen
+- [x] host check varoittaa vanhenevia tunnuksia antavasta OAuth-sovelluksesta ja kertoo korjauksen; varoitus poistuu, kun seuraava kirjautuminen saa vanhenemattoman tunnuksen
+- [x] testi rajapinnassa (synteettinen GitHub, kuten `TestExpiringTokenSignInWarns`); tunnukset eivät päädy lokiin, tilaan eikä tulosteeseen
+- [x] docs/operations.md mainitsee tarkistuksen
+
+## Decisions
+
+### 2026-11-05T03:35:35Z · @agent
+
+Expiry is a non-blocking host-check warning, not a failing qualification: existing tokens keep working until expiry and maintenance must remain available to repair the OAuth app. Gateway persists only the observed expiry enum in its existing private state directory; a later confirmed non-expiring grant clears it.

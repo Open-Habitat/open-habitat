@@ -72,7 +72,7 @@ func hostCommand(args []string) (any, error) {
 		if !r.Ready {
 			return nil, hostBlocked("host_check_blocked", "host checks failed or are unavailable; inspect error.result.data.checks", r)
 		}
-		return envelope(r), nil
+		return hostCheckEnvelope(r), nil
 	}
 	p, e := host.BuildPlan(ctx, args[2])
 	if e != nil {
@@ -83,8 +83,20 @@ func hostCommand(args []string) (any, error) {
 	}
 	return envelope(p), nil
 }
+func hostCheckEnvelope(r host.Inspection) map[string]any {
+	out := envelope(r)
+	if len(r.Warnings) > 0 {
+		out["warnings"] = r.Warnings
+	}
+	return out
+}
+
 func hostBlocked(code, message string, result any) *cliError {
-	b, _ := json.Marshal(envelope(result))
+	out := envelope(result)
+	if r, ok := result.(host.Inspection); ok {
+		out = hostCheckEnvelope(r)
+	}
+	b, _ := json.Marshal(out)
 	return &cliError{code: code, message: message, exit: 1, result: b}
 }
 func hostError(e error) *cliError {

@@ -83,8 +83,20 @@ for OAuth apps registered since August 2026. Such a token works for eight
 hours. The person's `gh` cannot refresh it, and Habitat keeps no refresh
 token, so after eight hours `git push` and `gh` stop working until the person
 signs in again. A sign-in that receives an expiring token logs
-`github_token_expiring` in the gateway journal. Tokens issued before the
-opt-out still expire. An ordinary sign-in keeps gh's login while it works, so
+`github_token_expiring` in the gateway journal. Run
+`open-habitat host check --site /etc/open-habitat/site.json` (or add `--json`)
+to see the same condition as a non-blocking warning with the fix. The warning
+reflects the gateway's latest successful GitHub exchange, survives restarts,
+and clears after a later sign-in receives a non-expiring token. It does not
+assert that every person's existing gh token has been replaced. No observation
+yet means no expiry warning; unreadable or invalid observation state produces
+a separate warning. The gateway records only `expiring` or `non-expiring` in
+its private `/var/lib/open-habitat-gateway/github-token-expiry` file, never a
+token or account name. JSON carries warnings in the result's `warnings` array
+(inside `error.result` if other host checks block); text prints `warning:` lines.
+
+Tokens issued before the opt-out still expire. Waiting until the old token
+expires and then signing in again installs a lasting one. An ordinary sign-in keeps gh's login while it works, so
 after the opt-out each person reconnects once from Settings › Koodipalvelut
 (GitHub › Yhdistä GitHub uudelleen), which replaces gh's token with a lasting
 one at once.

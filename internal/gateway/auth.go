@@ -187,16 +187,17 @@ type Broker interface {
 	Exchange(context.Context, BrokerRequest) (BrokerReply, error)
 }
 type AuthOptions struct {
-	Version     string // running gateway binary version, supplied by the composition root
-	Commit      string // 40-hex source commit of the running binary; empty when unknown
-	Broker      Broker
-	AdminFile   string // gateway-private name and browser roles; empty only in synthetic tests
-	SiteKeyFile string // gateway-private site AI key (site_key.go); empty: the site holds none
-	SessionFile string // gateway-private persistent state; empty only in synthetic tests
-	Provider    Provider
-	Sink        TokenSink
-	Now         func() time.Time
-	Random      io.Reader
+	GitHubExpiryFile string // gateway-private observation; empty only in synthetic tests
+	Version          string // running gateway binary version, supplied by the composition root
+	Commit           string // 40-hex source commit of the running binary; empty when unknown
+	Broker           Broker
+	AdminFile        string // gateway-private name and browser roles; empty only in synthetic tests
+	SiteKeyFile      string // gateway-private site AI key (site_key.go); empty: the site holds none
+	SessionFile      string // gateway-private persistent state; empty only in synthetic tests
+	Provider         Provider
+	Sink             TokenSink
+	Now              func() time.Time
+	Random           io.Reader
 	// Log receives only fixed event fields and server-generated attempt IDs.
 	// Production defaults to JSONL on stderr.
 	Log             *slog.Logger
@@ -229,16 +230,18 @@ type session struct {
 	githubAt time.Time
 }
 type Auth struct {
-	version  string
-	commit   string
-	cfg      OAuthConfig
-	provider Provider
-	sink     TokenSink
-	broker   Broker
-	now      func() time.Time
-	random   io.Reader
-	log      *slog.Logger
-	mu       sync.Mutex
+	githubExpiryFile string
+	githubExpiryMu   sync.Mutex
+	version          string
+	commit           string
+	cfg              OAuthConfig
+	provider         Provider
+	sink             TokenSink
+	broker           Broker
+	now              func() time.Time
+	random           io.Reader
+	log              *slog.Logger
+	mu               sync.Mutex
 	// accessMu serializes admission changes, which span broker exchanges
 	// and so cannot hold mu throughout.
 	accessMu sync.Mutex
@@ -330,7 +333,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{version: opts.Version, commit: opts.Commit, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, links: map[string]*linkGrant{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
+	a := &Auth{githubExpiryFile: opts.GitHubExpiryFile, version: opts.Version, commit: opts.Commit, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, links: map[string]*linkGrant{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
 	if err := a.loadAdministration(opts.AdminFile); err != nil {
 		return nil, err
 	}
@@ -702,7 +705,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	var token, id, login string
 	var profile AccountProfile
-	var expires time.Duration
+	expires := time.Duration(-1)
 	// Preserve the lightweight Provider seam for synthetic login tests.
 	if provider, ok := a.provider.(interface {
 		ExchangeGrant(context.Context, string, string) (GitHubGrant, error)
@@ -722,6 +725,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
+	a.recordGitHubExpiry(expires)
 	if expires > 0 {
 		// The OAuth app hands out expiring tokens. The sign-in goes on, but
 		// the token gh receives stops working when it expires; only the app

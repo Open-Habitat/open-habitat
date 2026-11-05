@@ -135,6 +135,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if opts.json {
 			_ = json.NewEncoder(stdout).Encode(out)
 		} else {
+			printWarnings(out, stderr)
 			if helpRequested(rest) {
 				fmt.Fprintln(stdout, helpText(out))
 			} else {
@@ -173,9 +174,31 @@ func emitError(err error, o options, w io.Writer) int {
 		_ = json.NewEncoder(w).Encode(payload)
 	} else {
 		fmt.Fprintf(w, "error: %s\n", ce.message)
+		if ce.result != nil {
+			printWarnings(ce.result, w)
+		}
 	}
 	return ce.exit
 }
+func printWarnings(v any, w io.Writer) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return
+	}
+	var result struct {
+		Warnings []struct {
+			Message string `json:"message"`
+			Fix     string `json:"fix_suggestion"`
+		} `json:"warnings"`
+	}
+	if json.Unmarshal(b, &result) != nil {
+		return
+	}
+	for _, warning := range result.Warnings {
+		fmt.Fprintf(w, "warning: %s %s\n", warning.Message, warning.Fix)
+	}
+}
+
 func text(v any) string { b, _ := json.MarshalIndent(v, "", "  "); return string(b) }
 func envelope(data any) map[string]any {
 	return map[string]any{"schema_version": schemaVersion, "data": data, "warnings": []any{}}
@@ -302,7 +325,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	var h http.Handler
 	if c == core.Gateway {
 		if cfg.OAuth != nil {
-			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Version: version, Commit: runningCommit(), Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/open-habitat-gateway/sessions.json", AdminFile: "/var/lib/open-habitat-gateway/administration.json", SiteKeyFile: "/var/lib/open-habitat-gateway/site-ai-key.json", Log: gateway.CallbackLogger(stderr)})
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{GitHubExpiryFile: gateway.GitHubExpiryFile, Version: version, Commit: runningCommit(), Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/open-habitat-gateway/sessions.json", AdminFile: "/var/lib/open-habitat-gateway/administration.json", SiteKeyFile: "/var/lib/open-habitat-gateway/site-ai-key.json", Log: gateway.CallbackLogger(stderr)})
 			if e != nil {
 				if errors.Is(e, gateway.ErrAdministrationState) {
 					return nil, system("invalid_administration_state", "private gateway administration state requires operator repair")
