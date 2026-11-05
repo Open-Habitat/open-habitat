@@ -9,8 +9,8 @@ related: ['@landing-server-did-not-answer']
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/proto-landing-connection-status
-lane: landing-unavailable
-lane_seq: 2
+lane: landing-proto
+lane_seq: 1
 ---
 
 # Prototype: honest connection status and automatic read recovery on the loading landing
