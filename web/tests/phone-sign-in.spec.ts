@@ -85,6 +85,11 @@ test("a second browser signs in through /link, once, and the desktop can sign it
     phonePage.getByRole("button").and(phonePage.getByTestId("github-sign-in")),
   ).toHaveCount(0);
   expect((await phone.request.get("/auth/session")).status()).toBe(200);
+  // The narrow layout mounts the authenticated rail inside a closed drawer.
+  await expect(phonePage.getByTestId("workspace-navigation")).toBeAttached();
+  await expect(
+    phonePage.getByTestId("workspaces-unavailable-title"),
+  ).toHaveCount(0);
 
   // The desktop hides the code and names the device that used it.
   await expect(

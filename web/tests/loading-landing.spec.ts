@@ -121,3 +121,95 @@ test("@landing failure keeps the landing's place and Yritä uudelleen reaches th
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect(failure).toHaveCount(0);
 });
+
+for (const failure of ["network", "status", "invalid"] as const) {
+  test(`@landing a ${failure} session read fails even while the host answers`, async ({
+    page,
+  }) => {
+    await login(page);
+    await page.route("**/auth/session", (route) =>
+      failure === "network"
+        ? route.abort("failed")
+        : route.fulfill({
+            status: failure === "status" ? 503 : 200,
+            contentType: "application/json",
+            body: "{}",
+          }),
+    );
+    await page.reload();
+    await expect(
+      page.getByTestId("workspaces-unavailable-title"),
+    ).toBeVisible();
+    // This request bypasses the page interception: the host itself is healthy.
+    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await page.unroute("**/auth/session");
+    await page.getByTestId("retry").click();
+    await expect(page.getByRole("navigation")).toBeVisible();
+  });
+}
+
+test("@landing a stalled session read reaches the client deadline despite a healthy host", async ({
+  page,
+}) => {
+  await login(page);
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const seen = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/auth/session", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  try {
+    await page.reload();
+    await seen;
+    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
+    await page.clock.runFor(61000);
+    await expect(
+      page.getByTestId("workspaces-unavailable-title"),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+});
+
+test("@landing first snapshot lost offline recovers on online without a click", async ({
+  page,
+  context,
+}) => {
+  await login(page);
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  let reads = 0;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    reads++;
+    if (reads === 1) {
+      await context.setOffline(true);
+      await route.abort("internetdisconnected");
+    } else await route.continue();
+  });
+  try {
+    // Load the document first; cut connectivity only for its first snapshot.
+    await page.reload();
+    await expect(
+      page.getByTestId("workspaces-unavailable-title"),
+    ).toBeVisible();
+    expect(await page.evaluate(() => navigator.onLine)).toBe(false);
+    await page.clock.runFor(120000);
+    expect(reads).toBe(1); // no periodic retry before a snapshot exists
+    await context.setOffline(false);
+    await page.clock.runFor(1000);
+    await expect(page.getByRole("navigation")).toBeVisible();
+    expect(reads).toBeGreaterThanOrEqual(2);
+  } finally {
+    await context.setOffline(false);
+  }
+});
