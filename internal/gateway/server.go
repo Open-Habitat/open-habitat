@@ -39,6 +39,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/auth/", func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) })
 	if s.auth != nil {
 		s.auth.routes(mux)
+		mux.HandleFunc(clientLoadFailurePath, s.auth.clientLoadFailureHTTP)
 		mux.HandleFunc("/api/v1/server", s.auth.adminHTTP)
 		mux.HandleFunc("/api/v1/server/administration", s.auth.adminHTTP)
 		mux.HandleFunc("/api/v1/site/language", s.auth.siteLanguageHTTP)

@@ -100,6 +100,12 @@ import {
 } from "./hostOverlay";
 import { useLanding } from "./landing";
 import {
+  LoadDiagnostic,
+  type LoadRead,
+  LoadReadError,
+  observeLoadRead,
+} from "./loadDiagnostic";
+import {
   jsonWrite,
   MutationLayer,
   mutationFetch,
@@ -202,6 +208,8 @@ const snapshotReadTimeout = 20000;
 const firstLoadTimeout = 60000;
 /** A closed class for the diagnostic; the error text itself is never logged. */
 function snapshotFailure(error: unknown): SnapshotFailure {
+  if (error instanceof LoadReadError && error.cause !== undefined)
+    return snapshotFailure(error.cause);
   if (!(error instanceof Error)) return "other";
   if (error.message === "invalid session") return "session";
   if (
@@ -294,6 +302,7 @@ export function App() {
   // fence across a logout/login in another tab, including while Pi is missing.
   const sessionBinding = useRef<string | undefined>(undefined);
   const identityMismatches = useRef(0);
+  const loadDiagnostic = useRef(new LoadDiagnostic());
   // Consecutive snapshot refreshes that failed while the event stream stayed
   // open, and the timer of the next quiet retry.
   const quietRetry = useRef<{ timer?: number; failures: number }>({
@@ -721,6 +730,19 @@ export function App() {
     let active = true;
     snapshotRead.current = { busy: true, again: false };
     let timedOut = false;
+    const readStarted = performance.now();
+    let diagnosticRead: LoadRead = piChecked.current
+      ? "snapshot"
+      : "onboarding";
+    loadDiagnostic.current.attempt();
+    const recordFailure = (phase: "landing" | "stale", error?: LoadReadError) =>
+      loadDiagnostic.current.failed(
+        error?.read ?? diagnosticRead,
+        timedOut ? "timeout" : (error?.reason ?? "other"),
+        error?.status ?? 0,
+        phase,
+        performance.now() - readStarted,
+      );
     const deadline = window.setTimeout(
       () => {
         timedOut = true;
@@ -746,10 +768,15 @@ export function App() {
     if (!snapshot && ready()) dispatch(loading());
     const fail = (
       gate: "login" | "pi" | "unavailable",
-      failure?: { outcome: SnapshotFailure; status?: number },
+      failure?: {
+        outcome: SnapshotFailure;
+        status?: number;
+        diagnostic?: LoadReadError;
+      },
     ) => {
       if (!ready()) return;
       if (gate === "login") {
+        loadDiagnostic.current.clear();
         setCSRF(undefined);
         requireLogin();
       } else if (ready() && gate === "pi") dispatch(piRequired());
@@ -783,8 +810,12 @@ export function App() {
           return;
         }
         journal?.snapshotFailed();
+        recordFailure("stale", failure?.diagnostic);
         dispatch(stale());
-      } else if (ready()) dispatch(unavailable());
+      } else if (ready()) {
+        recordFailure("landing", failure?.diagnostic);
+        dispatch(unavailable());
+      }
     };
     const load = async () => {
       if (!ready()) return;
@@ -796,7 +827,7 @@ export function App() {
         // never renders even if the cookie changed while both were in flight.
         const sessionRead = syntheticDemo
           ? Promise.resolve(undefined)
-          : accountSession(controller.signal);
+          : observeLoadRead("session", () => accountSession(controller.signal));
         sessionRead.catch(() => {});
         // A changed CSRF means another login replaced this tab's cookie.
         const bind = (
@@ -873,18 +904,21 @@ export function App() {
           if (!ready()) return;
           piChecked.current = true;
         }
+        diagnosticRead = "snapshot";
         const reads = await bothReads(
           sessionRead,
-          reconnectFetch(
-            "/api/v1/snapshot",
-            syntheticDemo
-              ? `/api/v1/snapshot?scenario=${new URLSearchParams(route.search).get("scenario") ?? "ready"}`
-              : "/api/v1/snapshot",
-            {
-              credentials: "same-origin",
-              cache: "no-store",
-              signal: controller.signal,
-            },
+          observeLoadRead("snapshot", () =>
+            reconnectFetch(
+              "/api/v1/snapshot",
+              syntheticDemo
+                ? `/api/v1/snapshot?scenario=${new URLSearchParams(route.search).get("scenario") ?? "ready"}`
+                : "/api/v1/snapshot",
+              {
+                credentials: "same-origin",
+                cache: "no-store",
+                signal: controller.signal,
+              },
+            ),
           ),
           (value) => value === "login",
           (value) => value.status === 401,
@@ -904,8 +938,15 @@ export function App() {
           return fail("unavailable", {
             outcome: "status",
             status: response.status,
+            diagnostic: new LoadReadError(
+              "snapshot",
+              response.ok ? "invalid" : "http",
+              response.status,
+            ),
           });
-        const next = await readSnapshot(response);
+        const next = await observeLoadRead("snapshot", () =>
+          readSnapshot(response),
+        );
         if (!ready()) return;
         if (
           session &&
@@ -914,6 +955,10 @@ export function App() {
           // The cookie changed between the two reads. Start over as whoever
           // the cookie now names; a repeat means the two sides disagree.
           if (++identityMismatches.current > 2) {
+            recordFailure(
+              "landing",
+              new LoadReadError("identity_pair", "identity_mismatch"),
+            );
             // fail() would be fenced by the generation clearPerson advances.
             clearPerson(priorIdentity.current);
             sessionBinding.current = undefined;
@@ -926,6 +971,7 @@ export function App() {
           setRefreshKey((n) => n + 1);
           return;
         }
+        if (session) loadDiagnostic.current.recovered(session.csrf);
         identityMismatches.current = 0;
         quietRetry.current.failures = 0;
         setVersionChanged(false);
@@ -1007,6 +1053,7 @@ export function App() {
         if (ready() && (timedOut || !controller.signal.aborted))
           fail("unavailable", {
             outcome: timedOut ? "timeout" : snapshotFailure(error),
+            diagnostic: error instanceof LoadReadError ? error : undefined,
           });
       }
     };

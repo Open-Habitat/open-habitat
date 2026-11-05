@@ -14,6 +14,7 @@ const txt = liveText(refusalsText);
 export type MutationClass = "optimistic" | "pending" | "confirmed";
 
 export const mutationClasses = {
+  "client.load_failure": "confirmed",
   "attachment.upload": "confirmed",
   // Optimistic: the result shows at once; the host confirms in the background.
   "workspace.visibility": "optimistic",

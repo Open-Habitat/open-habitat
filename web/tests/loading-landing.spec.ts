@@ -144,8 +144,19 @@ for (const failure of ["network", "status", "invalid"] as const) {
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
     await expect(page.getByRole("navigation")).toHaveCount(0);
     await page.unroute("**/auth/session");
+    const report = page.waitForResponse("**/api/v1/client/load-failure");
     await page.getByTestId("retry").click();
     await expect(page.getByRole("navigation")).toBeVisible();
+    const response = await report;
+    expect(response.status()).toBe(204);
+    expect(response.request().postDataJSON()).toMatchObject({
+      read: "session",
+      reason: failure === "status" ? "http" : failure,
+      status: failure === "status" ? 503 : 0,
+      phase: "landing",
+      online: true,
+      attempts: 2,
+    });
   });
 }
 
@@ -179,6 +190,17 @@ test("@landing a stalled session read reaches the client deadline despite a heal
   } finally {
     release();
   }
+  await page.unroute("**/auth/session");
+  const report = page.waitForResponse("**/api/v1/client/load-failure");
+  await page.getByTestId("retry").click();
+  await page.clock.runFor(1000);
+  const response = await report;
+  expect(response.status()).toBe(204);
+  expect(response.request().postDataJSON()).toMatchObject({
+    read: "session",
+    reason: "timeout",
+    phase: "landing",
+  });
 });
 
 test("@landing first snapshot lost offline recovers on online without a click", async ({
@@ -205,10 +227,19 @@ test("@landing first snapshot lost offline recovers on online without a click", 
     expect(await page.evaluate(() => navigator.onLine)).toBe(false);
     await page.clock.runFor(120000);
     expect(reads).toBe(1); // no periodic retry before a snapshot exists
+    const report = page.waitForResponse("**/api/v1/client/load-failure");
     await context.setOffline(false);
     await page.clock.runFor(1000);
     await expect(page.getByRole("navigation")).toBeVisible();
     expect(reads).toBeGreaterThanOrEqual(2);
+    const response = await report;
+    expect(response.status()).toBe(204);
+    expect(response.request().postDataJSON()).toMatchObject({
+      read: "snapshot",
+      reason: "network",
+      online: false,
+      phase: "landing",
+    });
   } finally {
     await context.setOffline(false);
   }

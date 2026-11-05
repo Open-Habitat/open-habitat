@@ -82,9 +82,18 @@ for (const restart of [false, true]) {
         new URL(response.url()).pathname === "/api/v1/snapshot" &&
         response.ok(),
     );
+    const report = page.waitForResponse("**/api/v1/client/load-failure");
     await retry.click();
     await snapshot;
     await stream;
+    const response = await report;
+    expect(response.status()).toBe(204);
+    expect(response.request().postDataJSON()).toMatchObject({
+      read: "snapshot",
+      reason: "http",
+      status: 503,
+      phase: "stale",
+    });
     // A later read may still be inside a handler awaiting the page. Plain
     // unroute hands that route on beneath it, and its own continue then
     // throws; wait for it instead. These two are this page's only routes.

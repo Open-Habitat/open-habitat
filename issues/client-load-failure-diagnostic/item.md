@@ -3,7 +3,7 @@ created: 2026-11-05
 updated: 2026-11-05
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@landing-server-did-not-answer']
 preparation: ready
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-05/client-load-failure-diagnostic
 lane: client-diagnostic
 lane_seq: 1
+closed: 2026-11-05
 ---
 
 # Browser reports a recovered load failure to the gateway journal
@@ -41,5 +42,5 @@ näkyvä syy/tunniste kuuluu prototyyppiin `proto-landing-connection-status`.
 
 ## Acceptance Criteria
 
-- [ ] toipunut aloitussivun tai stale-tilan epäonnistuminen näkyy gatewayn journalissa polun, keston ja online-tilan kanssa; testit synteettisellä hostilla (offline, sessioluvun virhe, aikaraja, identiteettiristiriita)
-- [ ] gateway hylkää tuntemattomat arvot ja rajoittaa määrän; ei henkilötietoa tai sisältöä journaliin; docs/operations.md kertoo, miten tapahtumaa luetaan
+- [x] toipunut aloitussivun tai stale-tilan epäonnistuminen näkyy gatewayn journalissa polun, keston ja online-tilan kanssa; testit synteettisellä hostilla (offline, sessioluvun virhe, aikaraja, identiteettiristiriita)
+- [x] gateway hylkää tuntemattomat arvot ja rajoittaa määrän; ei henkilötietoa tai sisältöä journaliin; docs/operations.md kertoo, miten tapahtumaa luetaan

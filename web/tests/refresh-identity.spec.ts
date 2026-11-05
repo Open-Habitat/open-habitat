@@ -240,4 +240,15 @@ test("@refresh-identity reads that keep disagreeing on identity end unavailable"
   ).toHaveCount(0);
   await page.waitForTimeout(500);
   expect(sessionReads).toBe(3);
+  await page.unroute("**/auth/session");
+  const report = page.waitForResponse("**/api/v1/client/load-failure");
+  await page.getByTestId("retry").click();
+  await expect(rail(page)).toBeVisible();
+  const response = await report;
+  expect(response.status()).toBe(204);
+  expect(response.request().postDataJSON()).toMatchObject({
+    read: "identity_pair",
+    reason: "identity_mismatch",
+    phase: "landing",
+  });
 });

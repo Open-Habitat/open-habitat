@@ -1,6 +1,7 @@
 import attemptSchema from "../../../contracts/v1/pi-attempt.schema.json";
 import statusSchema from "../../../contracts/v1/pi-status.schema.json";
 import { LazyAjv } from "./lazyAjv";
+import { LoadReadError } from "./loadDiagnostic";
 import { hostRequest } from "./mutations";
 
 const ajv = new LazyAjv({ strict: false });
@@ -78,6 +79,7 @@ export async function accountSession(
     signal,
   });
   if (session.status === 401) return "login";
+  if (!session.ok) throw new LoadReadError("session", "http", session.status);
   const value = await boundedJSON(session);
   if (
     typeof value !== "object" ||
