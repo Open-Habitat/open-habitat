@@ -21,6 +21,9 @@ spec.loader.exec_module(go_notices)
 spec = importlib.util.spec_from_file_location('integrations_build', Path(__file__).with_name('integrations-runtime-build.py'))
 integrations_build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(integrations_build)
+spec = importlib.util.spec_from_file_location('rust_tools', Path(__file__).with_name('rust-tools-runtime.py'))
+rust_tools = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(rust_tools)
 
 
 def elf(sections):
@@ -303,6 +306,65 @@ class BuilderTests(unittest.TestCase):
             lock = json.loads((runtime / 'profiles' / profile / 'artifact-lock.json').read_text())
             for target in profiles.TARGETS:
                 self.assertIn(lock['version'], profiles.target_pin(lock, target)['url'])
+
+    def test_rust_tool_licences_are_allowlisted(self):
+        for expression in ('MIT', 'MIT/Apache-2.0', 'Apache-2.0 / MIT', '(MIT OR Apache-2.0) AND Unicode-3.0',
+                           'MIT OR Apache-2.0 OR LGPL-2.1-or-later', 'Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT'):
+            self.assertTrue(rust_tools.licence_allowed(expression), expression)
+        for expression in ('', 'GPL-3.0-only', 'MIT AND GPL-2.0-only', 'LGPL-2.1-or-later', 'UNLICENSED', 'MIT OR', '(MIT', 'MIT WITH'):
+            self.assertFalse(rust_tools.licence_allowed(expression), expression)
+
+    def test_rust_tool_is_bound_to_its_cargo_lock_and_crate_licences(self):
+        def tar_bytes(files, compression='gz'):
+            raw = io.BytesIO()
+            with tarfile.open(fileobj=raw, mode='w:' + compression) as tar:
+                for name, data in files.items():
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    tar.addfile(info, io.BytesIO(data))
+            return raw.getvalue()
+        crate = tar_bytes({'demo-1.0.0/Cargo.toml': b'[package]\nname = "demo"\nlicense = "MIT"\n', 'demo-1.0.0/LICENSE-MIT': b'mit text', 'demo-1.0.0/src/lib.rs': b''})
+        cargo_lock = ('[[package]]\nname = "tool"\nversion = "1.0.0"\n\n[[package]]\nname = "demo"\nversion = "1.0.0"\n'
+                      'source = "registry+https://github.com/rust-lang/crates.io-index"\nchecksum = "%s"\n' % rust_tools.digest(crate)).encode()
+        blobs = {'bin': tar_bytes({'tool-dir/tool': b'\x7fELF'}, 'xz'), 'LICENSE': b'MIT License', 'Cargo.lock': cargo_lock, 'crate': crate}
+
+        def fetcher(url, sha256):
+            if rust_tools.digest(blobs[url]) != sha256:
+                raise ValueError('locked digest mismatch: ' + url)
+            return blobs[url]
+        pin = dict(url='bin', sha256=rust_tools.digest(blobs['bin']), member='tool-dir/tool')
+
+        def lock():
+            return dict(name='tool', version='1.0.0', targets={'linux-amd64': pin, 'linux-arm64': pin},
+                        files=[dict(filename=n, url=n, sha256=rust_tools.digest(blobs[n])) for n in ('LICENSE', 'Cargo.lock')],
+                        crates=[dict(name='demo', version='1.0.0', license='MIT', sha256=rust_tools.digest(crate), url='crate')], git_crates=[])
+        placed = {}
+        licences = rust_tools.add_tool(lock(), 'linux-arm64', lambda data, path, owner, executable=False: placed.__setitem__(path, (owner, executable)), fetcher)
+        self.assertEqual(placed['runtime/agent-bin/tool'], ('tool', True))
+        self.assertIn('licenses/tool/crates/demo-1.0.0/LICENSE-MIT', licences)
+        self.assertIn('licenses/tool/crates/demo-1.0.0/Cargo.toml', licences)
+        self.assertNotIn('licenses/tool/crates/demo-1.0.0/src/lib.rs', placed)
+        for change in ('dropped crate', 'copyleft', 'declared licence differs', 'changed binary'):
+            bad = lock()
+            if change == 'dropped crate':
+                bad['crates'] = []
+            elif change == 'copyleft':
+                bad['crates'][0]['license'] = 'GPL-3.0-only'
+            elif change == 'declared licence differs':
+                bad['crates'][0]['license'] = 'Apache-2.0'
+            else:
+                bad['targets'] = {'linux-amd64': dict(pin, sha256='0' * 64), 'linux-arm64': dict(pin, sha256='0' * 64)}
+            with self.subTest(change), self.assertRaises(ValueError):
+                rust_tools.add_tool(bad, 'linux-arm64', lambda *a, **k: None, fetcher)
+
+    def test_core_tools_pin_both_targets_at_one_release(self):
+        core = json.loads((Path(__file__).resolve().parent.parent / 'runtime/core/artifact-lock.json').read_text())
+        self.assertEqual(sorted(t['name'] for t in core['tools']), ['taskfleet', 'workmux'])
+        for tool in core['tools']:
+            for target in profiles.TARGETS:
+                self.assertIn('/v' + tool['version'] + '/', profiles.target_pin(tool, target)['url'])
+            for crate in tool['crates'] + tool['git_crates']:
+                self.assertTrue(rust_tools.licence_allowed(crate['license']), crate['name'])
 
 
 if __name__ == '__main__':

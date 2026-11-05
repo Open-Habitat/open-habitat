@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -151,9 +152,57 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 				return false
 			}
 		}
-
+		if !validCoreAgentTools(files, components) {
+			return false
+		}
 	}
 	return true
+}
+
+// CoreAgentTools are the commands every installation's core runtime puts on
+// its agents' PATH, at the versions this release pins: Taskfleet, the workmux
+// it creates worktrees with, and the launcher that runs the release's Pi for
+// Taskfleet's Pi workers. The daemon appends runtime/agent-bin to agents'
+// PATH, so that directory holds exactly these and nothing else.
+var CoreAgentTools = map[string]string{"taskfleet": "0.18.0", "workmux": "0.1.278", "pi": ""}
+
+// coreAgentToolOwner is the closure component that owns each command.
+func coreAgentToolOwner(name string) string {
+	if name == "pi" {
+		return "agent-launcher"
+	}
+	return name
+}
+
+func validCoreAgentTools(files map[string]RuntimeFile, components map[string]RuntimeComponent) bool {
+	for path, f := range files {
+		if name, ok := strings.CutPrefix(path, "runtime/agent-bin/"); ok {
+			if _, known := CoreAgentTools[name]; !known || f.Mode != 0755 || f.Component != coreAgentToolOwner(name) {
+				return false
+			}
+		}
+	}
+	skills := false
+	for path, f := range files {
+		if strings.HasPrefix(path, "runtime/taskfleet/skills/") && strings.HasSuffix(path, "/SKILL.md") {
+			if f.Component != "taskfleet" {
+				return false
+			}
+			skills = true
+		}
+	}
+	// The Pi extension that offers the skills, to the launcher and the daemon.
+	if files["runtime/taskfleet/extension.mjs"].Component != "agent-launcher" {
+		return false
+	}
+	for name, version := range CoreAgentTools {
+		owner := coreAgentToolOwner(name)
+		f, ok := files["runtime/agent-bin/"+name]
+		if !ok || f.Component != owner || components[owner].Kind != "native" || version != "" && components[owner].Version != version {
+			return false
+		}
+	}
+	return skills
 }
 
 // VerifyArchives is the unprivileged independent verification path. It uses the
@@ -262,4 +311,49 @@ func closureFileMap(c *RuntimeClosure) map[string]RuntimeFile {
 // Component records have no semantic ordering; builders sort to stabilize output.
 func SortRuntimeComponents(c *RuntimeClosure) {
 	sort.Slice(c.Components, func(i, j int) bool { return c.Components[i].Name < c.Components[j].Name })
+}
+
+// coreAgentToolsObserved is the host check's own row for Taskfleet, so an
+// operator sees it by name: the target release carries the pinned agent
+// tools (closure validation already refuses one that does not), and once
+// the site's generation is installed, its bytes are exactly those. gen is
+// that generation's core payload directory, with a trailing slash.
+func coreAgentToolsObserved(ctx context.Context, r AuthenticatedRelease, gen string) (string, string) {
+	artifacts, e := r.Select(nil)
+	if e != nil {
+		return "unavailable", "runtime_verification_required"
+	}
+	var core *RuntimeClosure
+	for _, a := range artifacts {
+		if a.Profile == "core" {
+			core = a.Closure
+		}
+	}
+	if core == nil {
+		return "fail", "taskfleet_runtime_missing"
+	}
+	files := map[string]RuntimeFile{}
+	for _, f := range core.Files {
+		files[f.Path] = f
+	}
+	if _, e := os.Lstat(gen); errors.Is(e, os.ErrNotExist) {
+		return "pass", "taskfleet_runtime_planned"
+	}
+	for name := range CoreAgentTools {
+		if ctx.Err() != nil {
+			return "unavailable", "runtime_verification_required"
+		}
+		f, ok := files["runtime/agent-bin/"+name]
+		if !ok {
+			return "fail", "taskfleet_runtime_missing"
+		}
+		st, e := os.Lstat(gen + f.Path)
+		if e != nil || !st.Mode().IsRegular() || int64(st.Mode().Perm()) != f.Mode {
+			return "fail", "taskfleet_runtime_drift"
+		}
+		if sum, e := fileDigest(gen + f.Path); e != nil || sum != f.SHA256 {
+			return "fail", "taskfleet_runtime_drift"
+		}
+	}
+	return "pass", "taskfleet_runtime_installed"
 }

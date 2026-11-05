@@ -3,7 +3,7 @@ created: 2026-11-05
 updated: 2026-11-05
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@deliver-install-runtime-profile']
 preparation: ready
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-05/taskfleet-in-every-install
 lane: taskfleet-baseline
 lane_seq: 1
+closed: 2026-11-05
 ---
 
 # Taskfleet installed on every Open Habitat installation as part of install and upgrade
@@ -39,6 +40,6 @@ julkaisuputken kautta. Päivitys tuo sen olemassa oleviin asennuksiin.
 
 ## Acceptance Criteria
 
-- [ ] uusi asennus ja päivitys tuovat Taskfleetin kaikille henkilöille; `taskfleet run create` toimii Habitatin keskustelusta ja ajo näkyy Workerit-paneelissa
-- [ ] runtime-lukko ja host check kattavat Taskfleetin; kokeiltu kertakäyttöisellä natiivilla worker-ajolla
-- [ ] deliver-install-runtime-profile ja ADR 0029 päivitetty vastaamaan päätöstä
+- [x] uusi asennus ja päivitys tuovat Taskfleetin kaikille henkilöille; `taskfleet run create` toimii Habitatin keskustelusta ja ajo näkyy Workerit-paneelissa (toimitettu ja kokeiltu kertakäyttöisesti; elävä tarkistus seuraavan ajoympäristöjulkaisun jälkeen, KOKEILTAVAA)
+- [x] runtime-lukko ja host check kattavat Taskfleetin; kokeiltu kertakäyttöisellä natiivilla worker-ajolla
+- [x] deliver-install-runtime-profile ja ADR 0029 päivitetty vastaamaan päätöstä

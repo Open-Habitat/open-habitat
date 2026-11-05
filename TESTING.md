@@ -468,6 +468,23 @@ and that both targets of every lock pin the same upstream versions. `go build ./
 builds the separate release manifest writer and verifier; `docs/operations.md` describes
 the digest pin it verifies against.
 
+The core runtime's Taskfleet and workmux are locked in `tools` of
+`runtime/core/artifact-lock.json`, which `scripts/rust-tool-lock.py` writes
+from the upstream release when a pin moves. The core build checks every pinned
+byte, that the crate list is exactly the released Cargo.lock, each crate's own
+SPDX declaration and the licence allowlist in `scripts/rust-tools-runtime.py`,
+runs both binaries to compare their versions with the lock, and writes the Pi
+skills from the pinned Taskfleet itself. `TestReleaseClosureCoreAgentTools`
+covers the closure rule for `runtime/agent-bin`, `TestReleaseCoreAgentToolsObserved`
+the host check row, and `OH_CORE_ARTIFACT_DIR=<build output> go test ./internal/host
+-run TestReleaseClosureBuiltCore` verifies a real build's archive as the release
+verifier does. A disposable native run is `taskfleet run create --kind spinoff
+--headless` from a throwaway HOME and repository with the build's
+`payload/runtime/agent-bin` last on `PATH`, then `run cancel`: it proves the
+binaries, the launcher's Pi and its skills (Pi's RPC `get_commands`, where a
+personal or project skill of the same name must win) under one
+UID, not a mapped account, a model turn or the Workers panel.
+
 `go test ./internal/host -run 'TestReleaseClosure'` covers file/component/licence
 membership, digests/modes and npm/deb lock disagreement. Existing Release tests
 cover the digest pin, target approval, hostile archives and private staging cleanup;

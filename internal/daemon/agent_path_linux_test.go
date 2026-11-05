@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,11 +36,13 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 	// explicit child environment must override it for every Pi launch.
 	t.Setenv("PATH", filepath.Join(homes[1], ".local", "bin")+":"+os.Getenv("PATH"))
 	t.Setenv("HOME", homes[1])
+	// Broker accounts' passwd shell is nologin; tmux under Taskfleet takes SHELL.
+	t.Setenv("SHELL", "/usr/sbin/nologin")
 	for _, home := range homes {
 		script := filepath.Join(home, "fake-pi")
 		// Fake Pi invokes a child through PATH. The process must find only
 		// this fixture home's executable, regardless of the daemon's own PATH.
-		body := "#!/bin/sh\nagent-probe > \"$HOME/probe-result\"\nprintf '%s\\n' \"$PATH\" > \"$HOME/observed-path\"\ncommand -v node > \"$HOME/shared-result\"\n"
+		body := "#!/bin/sh\nagent-probe > \"$HOME/probe-result\"\nprintf '%s\\n' \"$PATH\" > \"$HOME/observed-path\"\ncommand -v node > \"$HOME/shared-result\"\nprintf '%s\\n' \"$SHELL\" > \"$HOME/observed-shell\"\n"
 		if err := os.WriteFile(script, []byte(body), 0700); err != nil {
 			t.Fatal(err)
 		}
@@ -60,6 +63,9 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 		}
 		if strings.TrimSpace(string(got)) != filepath.Base(home) {
 			t.Fatalf("wrong executable: %s", got)
+		}
+		if shell, err := os.ReadFile(filepath.Join(home, "observed-shell")); err != nil || string(shell) != "/bin/bash\n" {
+			t.Fatalf("Pi children's SHELL = %q, %v", shell, err)
 		}
 		path, err := os.ReadFile(filepath.Join(home, "observed-path"))
 		if err != nil {
@@ -277,5 +283,77 @@ func TestAgentPathNamesOnlyExistingClaudeCode(t *testing.T) {
 		if dir == beside {
 			t.Fatal("two Claude Code directories on PATH")
 		}
+	}
+}
+
+// Taskfleet, workmux and the release's Pi launcher reach every agent from the
+// core runtime, after everything a person installed: their own Taskfleet keeps
+// precedence, and a release without the tools adds no directory.
+func TestAgentPathFindsCoreTaskfleet(t *testing.T) {
+	home := t.TempDir()
+	release := t.TempDir()
+	tools := coreToolsDir(filepath.Join(release, "payloads", "core", "runtime"))
+	run := func() string {
+		cmd := exec.Command("/bin/sh", "-c", "command -v taskfleet")
+		cmd.Env = []string{"HOME=" + home, agentPathWith(home, release, "")}
+		out, _ := cmd.CombinedOutput()
+		return strings.TrimSpace(string(out))
+	}
+	if got := agentPathWith(home, release, ""); strings.Contains(got, tools) {
+		t.Fatalf("absent tools on PATH: %s", got)
+	}
+	if err := os.MkdirAll(tools, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"taskfleet", "workmux", "pi"} {
+		if err := os.WriteFile(filepath.Join(tools, name), []byte("#!/bin/sh\n"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := run(); got != filepath.Join(tools, "taskfleet") {
+		t.Fatalf("taskfleet = %q, want the core runtime's", got)
+	}
+	parts := filepath.SplitList(strings.TrimPrefix(agentPathWith(home, release, ""), "PATH="))
+	if parts[len(parts)-1] != tools {
+		t.Fatalf("core tools must come last: %v", parts)
+	}
+	own := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(own, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(own, "taskfleet"), []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if got := run(); got != filepath.Join(own, "taskfleet") {
+		t.Fatalf("person's own Taskfleet lost precedence: %q", got)
+	}
+}
+
+// A browser conversation loads the Taskfleet skills extension of the same
+// core runtime tree whose taskfleet is on the agent PATH, and none without it.
+func TestTaskfleetSkillsExtensionFollowsAgentTools(t *testing.T) {
+	release := t.TempDir()
+	selected := t.TempDir()
+	if got := taskfleetSkillsExtension(release, selected); got != nil {
+		t.Fatalf("runtime without tools: %v", got)
+	}
+	install := func(runtime string) string {
+		for _, f := range []string{"agent-bin/taskfleet", "taskfleet/extension.mjs"} {
+			if err := os.MkdirAll(filepath.Join(runtime, filepath.Dir(f)), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(runtime, f), nil, 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return filepath.Join(runtime, "taskfleet", "extension.mjs")
+	}
+	beside := install(selected)
+	if got := taskfleetSkillsExtension(release, selected); !slices.Equal(got, []string{"--extension", beside}) {
+		t.Fatalf("selected runtime: %v", got)
+	}
+	shipped := install(filepath.Join(release, "payloads", "core", "runtime"))
+	if got := taskfleetSkillsExtension(release, selected); !slices.Equal(got, []string{"--extension", shipped}) {
+		t.Fatalf("release payload must win, as for the agent PATH: %v", got)
 	}
 }

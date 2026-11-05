@@ -16,10 +16,7 @@ import (
 func agentPath(home string) string {
 	// The CLI is not necessarily installed in a system PATH directory. No
 	// per-user wrapper or profile edit is needed to reach the shipped binary.
-	release := ""
-	if executable, err := os.Executable(); err == nil {
-		release = agentReleaseBin(executable, os.Args[0])
-	}
+	release := agentRelease()
 	// The selector is read per environment, not cached, so an operator's
 	// runtime switch reaches the next shell without a daemon restart.
 	selected := ""
@@ -27,6 +24,15 @@ func agentPath(home string) string {
 		selected = filepath.Dir(filepath.Dir(runtime.Node))
 	}
 	return agentPathWith(home, release, selected)
+}
+
+// agentRelease is the directory of the release this daemon was launched from,
+// through its launch selector when that reaches the same bytes.
+func agentRelease() string {
+	if executable, err := os.Executable(); err == nil {
+		return agentReleaseBin(executable, os.Args[0])
+	}
+	return ""
 }
 
 func agentPathWith(home, release, selectedRuntime string) string {
@@ -43,7 +49,25 @@ func agentPathWith(home, release, selectedRuntime string) string {
 	if dir := agentClaudeCodeDir(release, selectedRuntime); dir != "" {
 		path += ":" + dir
 	}
+	// Taskfleet, its workmux and the release's Pi launcher are part of every
+	// installation's core runtime, so `taskfleet run create` works from any
+	// conversation and Taskfleet's Pi workers find `pi`. Last, for the same
+	// reason as Claude Code: a person's own installation keeps precedence.
+	if dir := agentCoreToolsDir(release, selectedRuntime); dir != "" {
+		path += ":" + dir
+	}
 	return path
+}
+
+// coreToolsDir is the core runtime's directory of agent commands. It holds
+// only the commands the release closure allows there.
+func coreToolsDir(runtimeRoot string) string { return filepath.Join(runtimeRoot, "agent-bin") }
+
+// agentCoreToolsDir resolves the core runtime's agent commands as
+// agentClaudeCodeDir resolves Claude Code: the release's own payload, which
+// follows upgrades, else the selected runtime, and never an absent directory.
+func agentCoreToolsDir(release, selectedRuntime string) string {
+	return agentRuntimeDir(release, selectedRuntime, coreToolsDir, "taskfleet")
 }
 
 // agentClaudeCodeDir is the sign-in's Claude Code directory as reached from
@@ -54,6 +78,12 @@ func agentPathWith(home, release, selectedRuntime string) string {
 // there, so the selected runtime itself is named. A missing directory is
 // left out rather than promised.
 func agentClaudeCodeDir(release, selectedRuntime string) string {
+	return agentRuntimeDir(release, selectedRuntime, claudeCodeDir, "claude")
+}
+
+// agentRuntimeDir is dir(root) for the first core runtime root, the
+// release's payload then the selected runtime, where it holds executable.
+func agentRuntimeDir(release, selectedRuntime string, dir func(string) string, executable string) string {
 	var roots []string
 	if release != "" {
 		roots = append(roots, filepath.Join(release, "payloads", "core", "runtime"))
@@ -62,9 +92,9 @@ func agentClaudeCodeDir(release, selectedRuntime string) string {
 		roots = append(roots, selectedRuntime)
 	}
 	for _, root := range roots {
-		dir := claudeCodeDir(root)
-		if st, err := os.Stat(filepath.Join(dir, "claude")); err == nil && st.Mode().IsRegular() {
-			return dir
+		candidate := dir(root)
+		if st, err := os.Stat(filepath.Join(candidate, executable)); err == nil && st.Mode().IsRegular() {
+			return candidate
 		}
 	}
 	return ""

@@ -178,6 +178,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	add("identity.pool", "unavailable", "pool_verification_required")
 	add("release.manifest", "unavailable", "release_verification_required")
 	add("release.runtime", "unavailable", "runtime_verification_required")
+	add("runtime.taskfleet", "unavailable", "runtime_verification_required")
 	add("installation.generation", "unavailable", "generation_verification_required")
 	status, reason := observeJournal(src.journal, src.owner)
 	add("operation.fence", status, reason)

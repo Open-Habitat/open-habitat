@@ -366,6 +366,10 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 			}
 		}
 	}
+	if e == nil {
+		status, reason := coreAgentToolsObserved(ctx, rel, generationPath(s)+"/payloads/core/")
+		set("runtime.taskfleet", status, reason)
+	}
 	if exists {
 		if generationMatches(ctx, s, rel) == nil {
 			set("installation.generation", "pass", "installed_generation_observed")

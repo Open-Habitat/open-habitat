@@ -36,6 +36,7 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if info, err := os.Stat(processes); err == nil && info.Mode().IsRegular() && !nativeSettingsProvideProcesses(c.home) {
 		args = append(args, "--extension", processes)
 	}
+	args = append(args, taskfleetSkillsExtension(agentRelease(), filepath.Dir(filepath.Dir(c.runtime.Node)))...)
 	// The tmpfiles service can remove a stale /var/tmp directory during a
 	// long-lived daemon. Recreate the bridge before launching the next child.
 	if c.recapPath != "" {
@@ -85,6 +86,23 @@ func (c *ConversationController) piArgs() ([]string, error) {
 		return nil, err
 	}
 	return append(args, "--extension", path, "--extension", companion, "--skill", skill, "--skill", ui), nil
+}
+
+// taskfleetSkillsExtension loads the core runtime's Taskfleet skills into a
+// browser conversation, as the runtime's `pi` launcher does for Taskfleet's
+// workers. The extension offers them behind the person's and the project's own
+// skills, so a skill of the same name there wins. They come from the same tree
+// as the `taskfleet` on the agent PATH, so their text matches the binary.
+func taskfleetSkillsExtension(release, selectedRuntime string) []string {
+	dir := agentCoreToolsDir(release, selectedRuntime)
+	if dir == "" {
+		return nil
+	}
+	extension := filepath.Join(filepath.Dir(dir), "taskfleet", "extension.mjs")
+	if info, err := os.Stat(extension); err != nil || !info.Mode().IsRegular() {
+		return nil
+	}
+	return []string{"--extension", extension}
 }
 
 // nativeRecap reads the current branch of the user's own native history.

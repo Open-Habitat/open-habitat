@@ -154,6 +154,11 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		cmd.Env = append(cmd.Env, entry)
 	}
 	cmd.Env = append(cmd.Env, "HOME="+home)
+	// Broker-created accounts have no login shell, and Pi's children inherit
+	// this environment: tmux, as Taskfleet starts it for its workers, takes
+	// its pane shell from SHELL before the account's nologin. The browser
+	// terminal and editor set the same shell.
+	cmd.Env = append(cmd.Env, "SHELL="+terminalShell)
 	if owner != nil && taskfleetCreatorSessionIDPattern.MatchString(owner.id) {
 		cmd.Env = append(cmd.Env, "TASKFLEET_CREATOR_SESSION=pi:"+owner.id)
 	}

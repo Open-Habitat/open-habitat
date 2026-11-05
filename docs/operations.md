@@ -640,6 +640,28 @@ each person's native stores. No install or login step downloads Pi or shares a
 provider key. An unmet Ubuntu minimum or non-Ubuntu archive mismatch is a typed qualification failure, not
 permission to downgrade a customer security update or install apt holds.
 
+Every installation's core runtime also carries **Taskfleet 0.18.0**, the
+**workmux 0.1.278** it creates worktrees with, Taskfleet's bundled Pi skills
+and a `pi` launcher, in `/opt/open-habitat/core/agent-bin` and
+`/opt/open-habitat/core/taskfleet/skills`. Install and upgrade bring them like
+the rest of the core runtime; there is nothing to set up per person. Each
+binary is the upstream release archive pinned by SHA-256, with its licence, the
+Cargo.lock it was released from and every locked crate's licence record in the
+closure. A person's agents and terminal find these commands last on their
+`PATH`, so `taskfleet run create` works from any conversation and its Pi
+workers run the release's own Node and Pi through the launcher; a Taskfleet or
+Pi the person installed in `~/.local/bin` takes precedence. The skills reach
+Pi through a shipped extension (`/opt/open-habitat/core/taskfleet/extension.mjs`)
+that offers them after Pi's own discovery, so a skill of the same name the
+person or the repository has wins. Nothing is written into a person's Pi
+settings. Taskfleet runs its supervisors and tmux
+server as transient units in the person's own user manager, which the broker's
+lingering keeps available. `host check` names it as `runtime.taskfleet`:
+`taskfleet_runtime_planned` before the release's generation is installed,
+`taskfleet_runtime_installed` when the installed bytes are the pinned ones, and
+`taskfleet_runtime_drift` when they are not. Git and tmux are Ubuntu
+requirements of the core runtime.
+
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,
 users or a shared administrative group. Check the effective `/proc` mount and
@@ -1092,7 +1114,7 @@ is not offered.
 
 ## Agent command search path
 
-Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, with the account's own directory taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.
+Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin`, then the release's own directories (Claude Code and the core runtime's Taskfleet, workmux and `pi`), with the account's own directories taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.
 
 Before starting the broker, install the tmpfiles policy and establish the base
 `/run/open-habitat` (`root:gateway 0750`) and `/run/open-habitat/users`

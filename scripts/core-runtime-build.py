@@ -15,14 +15,18 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
+spec = importlib.util.spec_from_file_location('rust_tools', Path(__file__).with_name('rust-tools-runtime.py'))
+rust_tools = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(rust_tools)
 
 
 def digest(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def build(work, out, release_target):
-    node_pin = profiles.target_pin(json.loads(Path('/inputs/artifact-lock.json').read_text())['node'], release_target)
+def build(work, out, release_target, inputs=Path('/inputs')):
+    artifact_lock = json.loads((inputs / 'artifact-lock.json').read_text())
+    node_pin = profiles.target_pin(artifact_lock['node'], release_target)
     root = out / 'payload'
     root.mkdir()
     components = []
@@ -33,6 +37,13 @@ def build(work, out, release_target):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dest)
         dest.chmod(0o755 if src.stat().st_mode & 0o111 else 0o644)
+        owners[dest.relative_to(root).as_posix()] = owner
+
+    def put_bytes(data, dest, owner, executable=False):
+        dest = root / dest
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        dest.chmod(0o755 if executable else 0o644)
         owners[dest.relative_to(root).as_posix()] = owner
 
     node = work / node_pin['prefix']
@@ -71,7 +82,17 @@ def build(work, out, release_target):
     put(work / 'npm/package-lock.json', 'runtime/package-lock.json', 'npm-lock')
     put(work / 'npm/package.json', 'runtime/package.json', 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
-    deb_lock_path = Path('/inputs/ubuntu-packages.json')
+    # Taskfleet, its workmux and its bundled skills are part of every
+    # installation's base runtime; `runtime/agent-bin` is the directory the
+    # daemon appends to agents' PATH, so it holds only commands for them.
+    scratch = work / 'tools'
+    scratch.mkdir()
+    rust_tools.add_tools(artifact_lock, release_target, root, scratch, put_bytes, components)
+    put(inputs / 'agent-bin/pi', 'runtime/agent-bin/pi', 'agent-launcher')
+    put(inputs / 'taskfleet-skills.mjs', 'runtime/taskfleet/extension.mjs', 'agent-launcher')
+    put(inputs / 'agent-bin/NOTICE', 'licenses/agent-launcher/NOTICE', 'agent-launcher')
+    components.append(dict(name='agent-launcher', version='1', kind='native', license_files=['licenses/agent-launcher/NOTICE']))
+    deb_lock_path = inputs / 'ubuntu-packages.json'
     packages = profiles.ubuntu_requirements(deb_lock_path, release_target)
     put(deb_lock_path, 'ubuntu-packages.json', 'ubuntu-requirements')
     components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))

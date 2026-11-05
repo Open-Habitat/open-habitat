@@ -7,7 +7,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io"
 	"os"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -129,5 +133,153 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 				t.Fatal("optional package closure accepted without native lock")
 			}
 		})
+	}
+}
+
+// coreClosure is a minimal core inventory: the pinned Node, Pi packages and
+// agent tools, each file its own licence record. Component digests are
+// recomputed from the files, so a mutation is judged on its meaning alone.
+func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]string)) ReleaseArtifact {
+	files := map[string]RuntimeFile{"runtime/bin/node": {Component: "node", Mode: 0755}}
+	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.18.0", "workmux": "0.1.278", "agent-launcher": "1"}
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
+		files["runtime/node_modules/"+name+"/package.json"] = RuntimeFile{Component: "npm:node_modules/" + name, Mode: 0644}
+		versions["npm:node_modules/"+name] = version
+	}
+	files["runtime/agent-bin/taskfleet"] = RuntimeFile{Component: "taskfleet", Mode: 0755}
+	files["runtime/agent-bin/workmux"] = RuntimeFile{Component: "workmux", Mode: 0755}
+	files["runtime/agent-bin/pi"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
+	files["runtime/taskfleet/skills/worktree-merge/SKILL.md"] = RuntimeFile{Component: "taskfleet", Mode: 0644}
+	files["runtime/taskfleet/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+	if mutate != nil {
+		mutate(files, versions)
+	}
+	c := &RuntimeClosure{}
+	records := map[string]string{}
+	licences := map[string][]string{}
+	paths := []string{}
+	for path := range files {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		f := files[path]
+		f.Path, f.SHA256 = path, closureSum(path)
+		c.Files = append(c.Files, f)
+		records[f.Component] += f.SHA256 + " " + path + "\n"
+		licences[f.Component] = append(licences[f.Component], path)
+	}
+	for name, version := range versions {
+		if records[name] == "" {
+			continue
+		}
+		kind := "native"
+		if name == "node" {
+			kind = "node"
+		} else if strings.HasPrefix(name, "npm:") {
+			kind = "npm"
+		}
+		c.Components = append(c.Components, RuntimeComponent{Name: name, Version: version, Kind: kind, SHA256: closureSum(records[name]), LicenseFiles: licences[name]})
+	}
+	return ReleaseArtifact{Profile: "core", Entries: len(c.Files), Closure: c}
+}
+
+func TestReleaseClosureCoreAgentTools(t *testing.T) {
+	if !validRuntimeClosure(coreClosure(nil)) {
+		t.Fatal("valid core refused")
+	}
+	for name, mutate := range map[string]func(map[string]RuntimeFile, map[string]string){
+		"taskfleet missing":        func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/taskfleet") },
+		"workmux missing":          func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/workmux") },
+		"launcher missing":         func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/pi") },
+		"taskfleet unpinned":       func(_ map[string]RuntimeFile, v map[string]string) { v["taskfleet"] = "0.17.3" },
+		"workmux unpinned":         func(_ map[string]RuntimeFile, v map[string]string) { v["workmux"] = "0.1.276" },
+		"skills extension missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/taskfleet/extension.mjs") },
+		"skills missing": func(f map[string]RuntimeFile, _ map[string]string) {
+			delete(f, "runtime/taskfleet/skills/worktree-merge/SKILL.md")
+		},
+		"skill of another part": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/taskfleet/skills/x/SKILL.md"] = RuntimeFile{Component: "workmux", Mode: 0644}
+		},
+		"foreign PATH command": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/agent-bin/git"] = RuntimeFile{Component: "taskfleet", Mode: 0755}
+		},
+		"command not executable": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/agent-bin/workmux"] = RuntimeFile{Component: "workmux", Mode: 0644}
+		},
+		"command of another part": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/agent-bin/pi"] = RuntimeFile{Component: "taskfleet", Mode: 0755}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if validRuntimeClosure(coreClosure(mutate)) {
+				t.Fatal("accepted core without its pinned agent tools")
+			}
+		})
+	}
+}
+
+// TestReleaseClosureBuiltCore verifies a real core build's archive and
+// inventory, as runtime-release does for a whole release, when
+// OH_CORE_ARTIFACT_DIR names the output directory of build-core-runtime.sh.
+func TestReleaseClosureBuiltCore(t *testing.T) {
+	dir := os.Getenv("OH_CORE_ARTIFACT_DIR")
+	if dir == "" {
+		t.Skip("OH_CORE_ARTIFACT_DIR names a build-core-runtime.sh output")
+	}
+	b, e := os.ReadFile(dir + "/artifact.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var a ReleaseArtifact
+	if e = json.Unmarshal(b, &a); e != nil {
+		t.Fatal(e)
+	}
+	platform := "ubuntu-24.04-amd64"
+	if runtime.GOARCH == "arm64" {
+		platform = "ubuntu-24.04-arm64"
+	}
+	m, e := EncodeRelease(ReleaseManifest{SchemaVersion: 2, Version: "0.0.0-built-core", Commit: strings.Repeat("a", 40), Platform: platform, Artifacts: []ReleaseArtifact{a}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	r, e := AuthenticateRelease(m, Release{Version: "0.0.0-built-core", ManifestSHA256: closureSum(string(m))})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = r.VerifyArchives(context.Background(), nil, func(name string) (io.ReadCloser, error) { return os.Open(dir + "/" + name) }); e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestReleaseCoreAgentToolsObserved(t *testing.T) {
+	a := coreClosure(nil)
+	a.Archive, a.SHA256, a.Size, a.ExpandedSize, a.Requires, a.Packages = "core.tar.gz", strings.Repeat("a", 64), 1, 1024, []string{}, []RuntimePackage{}
+	r := authenticatedFixture(t, releaseManifest(a))
+	gen := t.TempDir() + "/core/"
+	if status, reason := coreAgentToolsObserved(context.Background(), r, gen); status != "pass" || reason != "taskfleet_runtime_planned" {
+		t.Fatal(status, reason)
+	}
+	for name := range CoreAgentTools {
+		path := "runtime/agent-bin/" + name
+		if e := os.MkdirAll(gen+"runtime/agent-bin", 0755); e != nil {
+			t.Fatal(e)
+		}
+		// coreClosure's file digest is the digest of its own path.
+		if e := os.WriteFile(gen+path, []byte(path), 0755); e != nil {
+			t.Fatal(e)
+		}
+		if e := os.Chmod(gen+path, 0755); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if status, reason := coreAgentToolsObserved(context.Background(), r, gen); status != "pass" || reason != "taskfleet_runtime_installed" {
+		t.Fatal(status, reason)
+	}
+	if e := os.WriteFile(gen+"runtime/agent-bin/taskfleet", []byte("a person's own build"), 0755); e != nil {
+		t.Fatal(e)
+	}
+	if status, reason := coreAgentToolsObserved(context.Background(), r, gen); status != "fail" || reason != "taskfleet_runtime_drift" {
+		t.Fatal(status, reason)
 	}
 }
