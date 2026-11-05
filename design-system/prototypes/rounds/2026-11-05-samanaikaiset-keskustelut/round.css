@@ -1,0 +1,87 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* The conversation column with C's strip on top. */
+.rq-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
+.rq-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.rq-main > .ah-conversation-frame { flex: 1 1 auto; min-height: 0; }
+
+/* What holds a place: one row per busy conversation (A's settings, B's
+   window, C's refusal). */
+.rq-busy { list-style: none; margin: 0; padding: 0; display: grid; }
+.rq-busy > li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: var(--ah-s2) var(--ah-s3); padding: var(--ah-s2) 0; border-top: 1px solid var(--ah-line);
+}
+.rq-busy > li:first-child { border-top: 0; }
+.rq-busy-text { display: grid; min-width: 0; }
+.rq-busy-title {
+  all: unset; cursor: pointer; color: var(--ah-ink); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rq-busy-title:hover { text-decoration: underline; }
+.rq-busy-title:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.rq-busy-meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rq-busy-meta code { font-family: var(--ah-mono); }
+.rq-busy li[data-state="stopped"] .rq-busy-title { color: var(--ah-muted); font-weight: 400; }
+.rq-busy-ok { color: var(--ah-ok); width: 16px; height: 16px; }
+.rq-busy.compact { margin: var(--ah-s2) 0; padding: 0 var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-surface); border: 1px solid var(--ah-line); }
+
+/* C's card carries the list, so it is as wide as the column allows. */
+.rq-c-card { max-width: none; }
+.rq-room .ah-actions, .ah-notice .ah-actions { flex-wrap: wrap; }
+
+/* A: the rail's gauge beside Käynnissä. */
+.rq-gauge {
+  margin-left: auto; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--ah-line);
+  background: transparent; color: var(--ah-ink-2); font: 500 11px/1.5 var(--ah-font, system-ui); cursor: pointer;
+  text-transform: none; letter-spacing: 0;
+}
+.rq-gauge.full { color: var(--ah-err); border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+#ra-running { display: flex; align-items: center; gap: var(--ah-s2); }
+
+/* A: the own limit's card in Settings › Tekoäly. */
+.rq-into { display: contents; }
+.rq-limit-card { margin-top: var(--ah-s3); }
+.rq-now-row { border-bottom: 0; }
+.rq-now-list { padding: 0 var(--ah-s4, 16px) var(--ah-s3); }
+
+/* B: the administrator's section and the window. */
+.rq-admin { display: grid; gap: var(--ah-s2); margin-top: var(--ah-s4, 16px); }
+.rq-admin-edit { display: flex; flex-wrap: wrap; align-items: end; gap: var(--ah-s2); margin-top: var(--ah-s2); }
+.rq-who-modal { max-width: min(600px, calc(100vw - 24px)); }
+.rq-who-modal .ah-dialog > .s-desc { margin: 0 0 var(--ah-s3); }
+
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+  .rq-busy > li { grid-template-columns: auto minmax(0, 1fr); }
+  .rq-busy > li > :last-child { grid-column: 2; justify-self: start; }
+}
+.rq-kinds { display: flex; flex-wrap: wrap; gap: var(--ah-s2) var(--ah-s4); margin: var(--ah-s1) 0 var(--ah-s2); }

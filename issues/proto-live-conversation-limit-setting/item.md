@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit-setting
 lane: live-limit-proto
