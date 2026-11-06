@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: explain-mode
 lane_seq: 0
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: explain mode in detail, on the real views (round 6)
@@ -47,6 +47,18 @@ kun hiiri on alueella, johon ei liity tietoa (nyt kirjoituskentän palkin
 selitys näkyy koko ajan liikaa), ja kulmatapaukset, kuten vasemmalla
 piilossa olevat painikkeet, jotka tulevat näkyviin hiiren ollessa päällä
 (esim. ensimmäisessä rivissä).
+
+## Decision (Jari 2026-11-06, kierros 8)
+
+- Riffi **1 Kuten aina**: osoitin toimii kuten ilman tilaa (piilopainikkeet
+  tulevat näkyviin ja selittyvät), tyhjän kohdan päällä viimeisin kortti jää.
+- Kohta selittyy **vain näkyvän sisältönsä päällä**: kyllä.
+- Kysymys 3 (avautuuko tilakortti napsauttamalla keskustelun tyhjää kohtaa)
+  jäi epäselväksi: Jari ei hahmottanut, mikä kortti avautuisi. Kierros 9
+  näyttää sen kuvina: tilakortti on kierroksen 7 kortti, joka kertoo
+  keskustelun tilan (esim. *Odottaa sinua*) ja *Voit nyt* -rivit; näytä,
+  miten siihen pääsee Selitä-painikkeella ja vaihtoehtoisesti tyhjän kohdan
+  napsautuksella, rinnakkain.
 
 ## Acceptance Criteria
 
