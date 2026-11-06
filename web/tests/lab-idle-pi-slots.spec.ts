@@ -48,6 +48,21 @@ async function startConversation(page: Page, id: string, text: string) {
 
 const dialog = (page: Page) => page.getByRole("dialog");
 
+// The installation's limit, as the administrator sets it in the server area;
+// null gives the daemon its own default again. The lab's person is its
+// administrator.
+async function setLiveLimit(page: Page, limit: number | null) {
+  const session = await (await page.request.get("/auth/session")).json();
+  const written = await page.request.put("/api/v1/server/conversations", {
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-Agent-Host-CSRF": session.csrf,
+    },
+    data: { limit },
+  });
+  expect(written.status()).toBe(200);
+}
+
 test("@idle-pi-slots idle conversations neither fill the limit nor block deletion", async ({
   page,
 }) => {
@@ -88,6 +103,7 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
   ).toBe(204);
   try {
     await signIn(page);
+    await setLiveLimit(page, 4);
     const id = await workspaceId(page, "muistiinpanot");
     for (let i = 1; i <= 4; i++) {
       await startConversation(page, id, `Pitkä työ ${i}`);
@@ -95,17 +111,14 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
         page.locator(".ah-turn-reply > .ah-message").last(),
       ).toContainText("Katson ensin, mitä työtilassa on.", { timeout: 20000 });
     }
-    // A fifth conversation is refused with words the person can act on.
+    // A fifth conversation is refused with the limit's card.
     await page.goto(`/workspaces/${id}`);
     await page
       .getByRole("button")
       .and(page.getByTestId("conversation-start"))
       .click();
-    const conversation = page
-      .getByRole("region")
-      .and(page.getByTestId("conversation-stream"));
     await expect(
-      conversation.locator(".ah-notice, [role=alert]").first(),
+      page.locator('[data-testid="creation-problem"][data-reason="capacity"]'),
     ).toBeVisible({ timeout: 20000 });
 
     // Deletion names each working conversation and links to it.
@@ -156,5 +169,6 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
     await expect(page.locator(".ah-archive-notice")).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
+    await setLiveLimit(page, null);
   }
 });
