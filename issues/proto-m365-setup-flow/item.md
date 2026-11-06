@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -38,6 +38,26 @@ ja suora linkki näkyvät, miten arvot ja oikeudet kopioidaan niin että ne
 toimivat Entran kentissä, ja miten ylläpitäjä tietää olevansa valmis.
 Tarkista Entran nykyinen käyttöliittymä Microsoftin dokumentaatiosta.
 Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
+
+## Decision (Jari 2026-11-06)
+
+Kierros 1: suunta **A Lista**. Tällä mennään. Havainnot oikeasta
+käyttöönotosta (Jari ja Aino):
+
+- Suora linkki ei avannut oikeaa sivua: se avasi *App registrations* ›
+  *All applications* -listan, ei omaa sovellusta, joten käyttäjä joutui
+  joka tapauksessa navigoimaan itse. Ohjeen pitää olettaa se.
+- Kaikki vaiheet rekisteröinnin jälkeen tapahtuvat saman sovelluksen
+  näkymässä (vasen valikko: Overview, Authentication (Preview) ja sen
+  välilehdet Redirect URI configuration / Supported accounts / Settings,
+  API permissions). Myöhemmissä vaiheissa ei siis mielellään linkkejä,
+  vaan sovelluksen vasemman valikon kohta.
+- Jari antoi Entran kuvakaappaukset (Register an application, App
+  registrations, sovelluksen Overview, Authentication (Preview), API
+  permissions); niistä saa oikeita paloja ohjeeseen. Niissä on tenant-
+  ja client-tunnuksia: ei committoida sellaisenaan, tunnukset peitetään.
+
+Kierros 2: riffataan A:ta näiden pohjalta.
 
 ## Acceptance Criteria
 
