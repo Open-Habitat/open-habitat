@@ -59,6 +59,25 @@ func recoveryAccount(t *testing.T, narrow bool) (Env, *microsoft) {
 	return env, m
 }
 
+func recoveryAttempt(c *Catalog) bool {
+	c.relay.mu.Lock()
+	defer c.relay.mu.Unlock()
+	return c.relay.a != nil
+}
+
+// stopRecovery stops the started catalog the way its own shutdown does, but
+// before the test returns: once stopping is set no later reconcile starts a
+// sync client, and stopAll waits for those already running, so nothing writes
+// into the temporary home while it is removed.
+func stopRecovery(c *Catalog, cancel context.CancelFunc) {
+	cancel()
+	c.relay.cancelAll()
+	c.write.Lock()
+	c.stopping = true
+	c.write.Unlock()
+	c.sync.stopAll()
+}
+
 func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *testing.T) {
 	for _, narrow := range []bool{false, true} {
 		t.Run(fmt.Sprint(narrow), func(t *testing.T) {
@@ -66,9 +85,11 @@ func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *
 			c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{OK: true, Free: 1 << 30} }), WithResumeTiming(time.Millisecond, time.Millisecond, 10*time.Millisecond))
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Start(ctx)
-			defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+			defer stopRecovery(c, cancel)
 			deadline := time.Now().Add(5 * time.Second)
-			for microsoftRecoveryNeeded(env, "person@example.test") {
+			// The rewritten inventory clears the need before the first passes
+			// end; the attempt itself is over once the relay is free again.
+			for microsoftRecoveryNeeded(env, "person@example.test") || recoveryAttempt(c) {
 				if time.Now().After(deadline) {
 					t.Fatal("startup did not recover")
 				}
