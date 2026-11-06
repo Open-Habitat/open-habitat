@@ -1,0 +1,214 @@
+/* Review chrome above the settings page and the dialog; the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px;
+  padding: 6px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+/* Only the current riff's line: the step has to fit under the bar at 900 px. */
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink); font-size: 12px; }
+.m-lines li:not([aria-current]) { display: none; }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { display: none; }
+  .m-lines { font-size: 11.5px; line-height: 1.35; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s4)); }
+.ah-overlay { padding: var(--ah-s4); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s4); }
+}
+
+/* The settings page behind, only enough to see where the guide returns. */
+.m-page { padding: calc(var(--review-h, 0px) + var(--ah-s6)) var(--ah-s6) 80px; max-width: 760px; }
+.m-page h1 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.m-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.m-row-name { display: inline-flex; align-items: center; gap: var(--ah-s2); font-weight: 600; }
+.m-row-state { display: inline-flex; align-items: center; gap: var(--ah-s1); flex: 1; font-size: var(--ah-size-meta); }
+.m-row-state svg { color: var(--ah-ok); width: 14px; height: 14px; }
+
+/* The dialog: heading, progress and step name close together, so the band and
+   the sub-item get the height. */
+.m-dialog { gap: var(--ah-s3); }
+.m-stephead { display: grid; gap: var(--ah-s2); }
+.m-stepbody { gap: var(--ah-s3); justify-items: stretch; min-height: 0; }
+.m-stepbody > * { max-width: 100%; min-width: 0; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-note { display: flex; gap: var(--ah-s1); align-items: flex-start; }
+.m-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* Where: the console path is the main instruction, so it reads at body size
+   in full ink; the separators are quiet and nothing looks like a disclosure. */
+.m-where { display: grid; gap: 2px; min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+
+/* One sub-item: its instruction at reading size, a value with its copy. */
+.m-panel { display: grid; gap: var(--ah-s2); align-content: start; min-height: 150px; min-width: 0; }
+.m-act { font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.m-value { display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+.m-done {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-ui); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 3px; }
+.m-idfield { max-width: 460px; }
+.m-handoff { font-size: var(--ah-size-meta); }
+
+/* Permissions: one name per chip with its own copy; no ticks (Jari, round 2).
+   Chips rather than rows, so nine of them fit beside each other. */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 4px; }
+.m-perm { display: flex; min-width: 0; }
+.m-perm-btn {
+  flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--ah-s2); min-width: 0; min-height: 34px;
+  padding: 0 var(--ah-s2) 0 var(--ah-s3); border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-soft);
+  background: transparent; color: var(--ah-ink); cursor: pointer; text-align: left;
+}
+.m-perm-btn:hover { background: var(--ah-hover, var(--ah-sunken)); border-color: var(--ah-line); }
+.m-perm-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-perm-btn svg { width: 14px; height: 14px; flex: none; color: var(--ah-ink-2); }
+.m-perm-btn[data-done] svg { color: var(--ah-ok); }
+.m-perm-name { font-family: var(--ah-mono); font-size: 13px; color: var(--ah-ink); overflow-wrap: anywhere; min-width: 0; }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .m-perms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .m-perm-btn { min-height: 32px; padding: 0 6px 0 8px; gap: 4px; }
+  .m-perm-name { font-size: 11.5px; }
+}
+
+/* The band: real pieces of Jari's Entra screenshots, ids and domain masked by
+   round 3's crops.py. One height inside a step; the lit target is a hole in a
+   scrim with a full 2 px line, never an edge stripe. Dark theme: dimmed, so
+   the white page does not outshine the dialog (round 3's choice for A1b). */
+.m-shot { margin: 0; width: 100%; min-width: 0; }
+.m-shot-frame { position: relative; overflow: hidden; width: 100%; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line); }
+.m-shot-frame img { position: absolute; display: block; max-width: none; user-select: none; }
+.m-mark {
+  position: absolute; box-sizing: border-box; border-radius: 6px; border: 2px solid var(--ah-accent);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32);
+  transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .m-mark { transition: none; } }
+[data-theme="dark"] .m-shot-frame img { filter: brightness(0.82) contrast(1.05); }
+[data-theme="dark"] .m-mark { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45); }
+
+/* Shared by the three: a numbered dot; passed ones carry a tick in the soft
+   accent, the current one is the accent. */
+.m-dot {
+  display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 11px; box-sizing: border-box;
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ah-ink-2);
+}
+.m-dot svg, .m-rtab-n svg, .m-tab-n svg { width: 12px; height: 12px; }
+.m-progress-fill { display: block; height: 100%; border-radius: 2px; background: var(--ah-accent); }
+.m-dialog .si-progress span { overflow: hidden; }
+.m-dialog .si-progress span[data-done] { background: var(--ah-accent); }
+
+/* A1b4 Polku: the line is the control. Passed: a tick, a button back (the
+   name is its label and tooltip, so the line never cuts names short).
+   Current: accent dot and name. Next: the one primary pill. Later: plain. */
+.m-prow { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.m-prow li { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
+.m-pr-item {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 32px; padding: 0 6px; border: 0; border-radius: var(--ah-r-md);
+  background: transparent; color: var(--ah-ink-2); font: 500 var(--ah-size-meta) / 1.2 var(--ah-font);
+}
+button.m-pr-item { cursor: pointer; }
+button.m-pr-item:hover { background: var(--ah-hover, var(--ah-sunken)); color: var(--ah-ink); }
+.m-pr-name, .m-pr-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-prow li[data-passed] .m-pr-name { display: none; }
+.m-prow li[data-passed] .m-dot { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-accent); }
+.m-prow li[aria-current] .m-dot { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.m-prow li[aria-current] .m-pr-item { color: var(--ah-ink); font-weight: 600; }
+.m-prow li[data-later] .m-pr-item { color: var(--ah-muted); }
+.m-pr-nextli { flex: 0 1 auto; }
+.m-pr-next {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 34px; padding: 0 10px 0 14px;
+  border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent);
+  font: 600 var(--ah-size-ui) / 1.2 var(--ah-font); cursor: pointer;
+}
+.m-pr-next:hover { filter: brightness(1.06); }
+.m-pr-next svg, .m-pr-back svg { width: 14px; height: 14px; flex: none; }
+.m-pr-back {
+  display: inline-flex; align-items: center; gap: 4px; min-width: 0; min-height: 32px; padding: 0 8px 0 4px; border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); font: 500 var(--ah-size-meta) / 1.2 var(--ah-font); cursor: pointer;
+}
+.m-pr-back:hover { background: var(--ah-hover, var(--ah-sunken)); color: var(--ah-ink); }
+.m-pr-next:focus-visible, .m-pr-back:focus-visible, button.m-pr-item:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+/* Narrow: the dots keep their numbers, only the next pill keeps its words. */
+@container si-step (max-width: 760px) {
+  .m-prow li:not(.m-pr-nextli) .m-pr-name, .m-pr-back .m-pr-label { display: none; }
+  .m-pr-item { padding: 0 2px; }
+  .m-pr-back { padding: 0 6px; }
+  .m-pr-nextli { flex: 1 1 auto; justify-content: flex-end; }
+  .m-pr-next { flex: 0 1 auto; padding: 0 8px 0 10px; }
+}
+
+/* A1b5 Yksi nappi: tabs that only report. No border, no hover, no pointer:
+   a line of words with the current one underlaid, nothing to press. */
+.m-rtabs { display: flex; flex-wrap: nowrap; gap: 2px 14px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.m-rtab { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 26px; padding: 0 8px; border-radius: var(--ah-r-md);
+  color: var(--ah-muted); font: 500 var(--ah-size-meta) / 1.2 var(--ah-font); cursor: default; user-select: none; }
+.m-rtab-n { display: inline-grid; place-items: center; flex: none; min-width: 12px; font-variant-numeric: tabular-nums; }
+.m-rtab-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-rtab[data-passed] { color: var(--ah-ink-2); }
+.m-rtab[data-passed] .m-rtab-n { color: var(--ah-ok); }
+.m-rtab[aria-current] { color: var(--ah-ink); font-weight: 600; background: var(--ah-sunken); flex: 0 1 auto; }
+@container si-step (max-width: 760px) {
+  .m-rtabs { gap: 2px; }
+  .m-rtab:not([aria-current]) .m-rtab-name { display: none; }
+  .m-rtab[aria-current] { flex: 1 1 auto; }
+}
+
+/* A1b6 Nuoli rivissä: round 4's tabs with ‹ before and the primary arrow at
+   the end of the same row. */
+.m-arow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-arow .m-tabs { flex: 1 1 auto; min-width: 0; }
+.m-arow-next { flex: none; }
+.m-arow-next svg, .m-arow-back svg { width: 14px; height: 14px; }
+.m-arow-next { gap: 4px; }
+.m-tabs { display: flex; flex-wrap: nowrap; gap: 4px; overflow: hidden; }
+.m-tab {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; flex: 0 1 auto; min-width: 0;
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: transparent;
+  font: 500 var(--ah-size-ui) / 1.2 var(--ah-font); color: var(--ah-ink-2); cursor: pointer;
+}
+.m-tab:hover { background: var(--ah-hover, var(--ah-sunken)); color: var(--ah-ink); }
+.m-tab[aria-selected="true"] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; flex: 0 0 auto; }
+.m-tab:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-tab-n { display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; color: var(--ah-muted); font-weight: 500; }
+.m-tab[data-passed] .m-tab-n { color: var(--ah-ok); }
+.m-tab-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@container si-step (max-width: 760px) {
+  .m-tab { flex: 0 0 auto; justify-content: center; min-width: 32px; padding: 0 6px; }
+  .m-tab:not([aria-selected="true"]) .m-tab-name { display: none; }
+  .m-tab[aria-selected="true"] { flex: 1 1 auto; min-width: 0; }
+}
+@container si-step (max-width: 420px) { .m-arow-label { display: none; } }
+
+/* A phone: the step still fits 390×844 under the review bar, so the
+   dialog's gaps tighten one notch. */
+@media (max-width: 640px) {
+  .m-dialog, .m-stepbody { gap: var(--ah-s2); }
+}

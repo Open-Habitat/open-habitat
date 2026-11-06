@@ -441,3 +441,101 @@ tw browser-open design-system/prototypes/dist/m365-alakohdat/m365.html
 ```
 
 `check.mjs` (in the round) passes 2076 checkpoints with a clean console.
+
+# Round 5: one place to click "next"
+
+Round `design-system/prototypes/rounds/2026-11-06-m365-seuraava/` (its
+`NOTES.md` is the Finnish walk-through). Screenshots at device scale factor 2
+are in `evidence/` with the prefix `r5-`. They are viewport captures. In
+light, every riff has the first two sub-items of every step, Register's
+*Valmis*, the first sub-item after the step boundary (`-2-public-0-raja`),
+the permission list, the tenant id, the filled consent link, the saved row and
+*Minulla on jo sovellus*, at 1440×900 and 390×844. Dark captures cover step
+1's first two sub-items and the permission list at both sizes.
+
+## What is the same in all three
+
+- **One forward control on screen at any time**: the next, or *Tallenna* on
+  the very last sub-item. No other control says *Seuraava*. `check.mjs`
+  asserts this at every sub-item of every riff, size and theme.
+- **Every riff walks sub-items and steps the same way.** Next moves to the
+  following sub-item and, after a step's last one, to the next step, which it
+  names (*Seuraava vaihe: Julkinen asiakas*). Back reverses, and across a step
+  boundary it lands on the previous step's last sub-item.
+- The step progress bar fills per sub-item in all three. *Tallenna* appears
+  only on the tenant id, and a missing id still opens its field's sub-item.
+  Sub-items, text, band, permission chips and round 3's crops are round 4's
+  unchanged. No image lives in the round, and `check.mjs` re-verifies the
+  crops.
+
+## Riffs
+
+The axis is where the one place to click "next" is:
+
+- **A1b4 Polku**: the stepper is the only control. The next sub-item is drawn
+  in the line itself as the primary pill *Seuraava: Name ›*. Passed sub-items
+  are ticks you can press to go back, and later ones cannot be pressed. A step's
+  last sub-item gets *Seuraava vaihe: …* at the end of the line, and the next
+  step's first one gets ‹ at the start. The footer has only *Peruuta* (and
+  *Tallenna* at the end).
+- **A1b5 Yksi nappi**: round 4's A1b2 with the stepper made read-only. The tab
+  row has no border, hover or pointer, and nothing in it can be pressed. The
+  footer keeps *Takaisin* and *Seuraava: Name*.
+- **A1b6 Nuoli rivissä**: round 4's A1b1 tabs, freely selectable by click or
+  arrow key, with ‹ at the start of the same row and the primary
+  *Seuraava ›* at its end. The footer has only *Peruuta* (and *Tallenna*).
+  On a phone the arrow is icon-only.
+
+## Host facts the view assumes
+
+The same as rounds 1–4. Nothing new is read from the host. Ticks only record
+what was walked on this page. Nothing is stored, and nothing is claimed about
+the tenant.
+
+## Recommendation
+
+**A1b4 Polku.** It is the most literal answer to "one place": the stepper
+you read is also the button you press. The pill sits in the line exactly where
+the next item is, so the admin coming back from Entra sees where they are and
+what comes next in one glance. The footer is left for leaving and saving.
+Going back is a press on a tick, as in round 4's A1b2. A1b5 is the safe
+alternative: the button stays where dialogs usually have it, but the eye has
+to travel from the row to the footer. A1b6 keeps free tab picking, which also
+means there are two ways forward, the arrow and the next tab, even though
+only the arrow is styled as one.
+
+## Decisions for later review
+
+- **A1b4's passed sub-items are ticks without names** (the name is the label
+  and the tooltip). On a desktop, five names plus the pill did not fit
+  without being cut short at the last sub-item.
+- **A1b6's arrow is icon-only on a phone**, since six tabs and the word do
+  not fit at 390 px. Its accessible name says what comes next.
+- **Tallenna stays in the footer** in all three rather than taking the place
+  of the next control, so saving looks the same everywhere.
+
+## Not verified
+
+- The same as rounds 3–4: no screenshot of the *Mobile and desktop
+  applications* panel or of the Delegated permissions picker, and wide
+  targets are small on a phone.
+
+## Questions for Jari
+
+1. Which riff: `r5-a1b4-polku-1-register-2`, `r5-a1b5-yksi-nappi-1-register-2`
+   or `r5-a1b6-nuoli-rivissa-1-register-2` (all `-1440-light`)?
+2. In A1b4, is the step boundary clear enough as a pill at the end of the line
+   (`r5-a1b4-polku-1-register-6-1440-light`) and ‹ at the start of the next
+   step (`r5-a1b4-polku-2-public-0-raja-1440-light`)?
+3. On a phone, is the pill with the next item's name right
+   (`r5-a1b4-polku-1-register-2-390-light`), or should the next control be
+   icon-only as in `r5-a1b6-nuoli-rivissa-1-register-2-390-light`?
+
+## View (round 5)
+
+```
+node design-system/prototypes/rounds/2026-11-06-m365-seuraava/build.mjs
+tw browser-open design-system/prototypes/dist/m365-seuraava/m365.html
+```
+
+`check.mjs` (in the round) passes 2760 checkpoints with a clean console.
