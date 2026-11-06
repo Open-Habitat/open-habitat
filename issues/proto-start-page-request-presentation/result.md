@@ -1,6 +1,6 @@
 # Result: how a start-page request looks before and after sending
 
-Two rounds have been run. Round 1 (`design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`)
+Three rounds have been run. Round 1 (`design-system/prototypes/rounds/2026-11-03-aloitussivupyynto/`)
 compared sending at once with a chip. It also found that the button inserted
 a bare command that Pi does not expand, which `ee83ab01` fixed. Jari then
 chose a template prompt, and round 2 shows that choice.
@@ -87,25 +87,79 @@ rather than magic.
   start page using the open-habitat-start-page skill." Dirs 2 and 3: "Create
   a start page for this workspace." Placeholder: "[add instructions]".
 
+Jari chose **Siru ja lause** on 6.11. without the hint (item.md); round 3
+answers question 2.
+
+## Round 3: the untouched placeholder on Send
+
+Round `design-system/prototypes/rounds/2026-11-06-aloitussivupyynto-3/`
+(NOTES.md in Finnish). Each riff shows two rows with the same steps: the
+start page from the workspace page, and the goal *Kysy muistiinpanoista*,
+whose prompt ends in `[kysymys]`. **a** is where the request starts, **b**
+is the field with the chip and the placeholder selected, and **c** is the
+history after sending untouched. Under c, a dashed review aid, *Agentille
+lähti*, shows the exact text Pi received, with a dropped line struck
+through. The aid is not a product proposal. The b fields are live, so typing
+and sending redraws c. The bar switches Kieli and Teema, and has a reset.
+
+Axis: whether an untouched placeholder is cut on Send, and whether the start
+page and goals share the rule.
+
+1. **Aina pois**: both are cut. Pi gets
+   `/skill:open-habitat-start-page Luodaan tälle työtilalle aloitussivu.` and
+   `/skill:kysy-muistiinpanoista`. The goal's history entry is the chip alone.
+2. **Aina mukaan**: both go as they are, the goal rule today. The history
+   shows `[anna lisäohjeita]` and `[kysymys]` as the person's text.
+3. **Eri sääntö**: the start page's optional line is cut, and the goal's
+   `[kysymys]` goes as it is, so the agent sees what was left unsaid.
+
+Screens are in `evidence/r3-<n>-<riffi>[-en]-{1440,390}-{light,dark}.avif`.
+
+**Recommendation: Aina pois.** One rule for every prepared placeholder,
+so a person who learns it once can rely on it. The goal's own skill already carries the whole
+request, so the agent gets a complete instruction either way and asks for
+the missing question itself. A literal `[kysymys]` adds no information. It
+only leaves a template marker in the history as if the person had written
+it. Eri sääntö gives two rules that the field itself does not tell apart,
+because both placeholders look the same when selected. Aina mukaan costs
+nothing to build, but it keeps the bracket in the history, which is the
+thing round 2 set out to remove.
+
+### Host facts round 3 assumes
+
+- Pi expands `/skill:<name>` with nothing after it into the skill block alone
+  (`AgentSession._expandSkillCommand` in the installed pi-coding-agent), so a
+  goal sent with its placeholder cut is still the goal's skill call.
+  Production `HistoryView` then draws the chip with empty text, as the
+  prototype does.
+- The cut rule is: the draft still ends with the exact placeholder the host
+  prepared, and nothing has been typed after it. It is derived from the draft
+  and the start page, so it needs no stored state and survives a reload:
+  `ComposerGoal` would carry the goal's placeholder (from `goalRequest`), and
+  the start-page draft's placeholder is the host's own catalog text. A goal
+  without its own skill has no chip to identify it after a reload; until
+  then, the tab's prepared field knows its placeholder. A person who types
+  exactly the placeholder text is indistinguishable from untouched. That is
+  accepted.
+- The start-page skill's authoring rules (`internal/daemon/start-page-skill/SKILL.md`,
+  the placeholder paragraph) would say that an untouched placeholder is left
+  out on Send, so that authors write the instruction text to stand on its
+  own. It already asks for that.
+- The agent replies are synthetic. Not tried with a real model.
+
 ## Build and offer
 
 ```
-node design-system/prototypes/rounds/2026-11-03-aloitussivupyynto-2/build.mjs
-tw browser-open design-system/prototypes/dist/aloitussivupyynto-2/offline.html
+node design-system/prototypes/rounds/2026-11-06-aloitussivupyynto-3/build.mjs
+tw browser-open design-system/prototypes/dist/aloitussivupyynto-3/offline.html
 ```
 
-`check.mjs` (in the round) passes 146 checkpoints with a clean console.
+`check.mjs` (in the round) passes 114 checkpoints with a clean console.
 
 ## Questions for Jari
 
-1. In `r2-1-nimi-1440-light`, `r2-2-siru-1440-light` and
-   `r2-3-komento-1440-light`, screen b: should the field show the skill as
-   the chip (2), as a name inside the sentence (1), or as the raw command
-   (3)?
-2. In `r2-2-siru-1440-light`, bottom row c, where the line was left out:
-   should an untouched placeholder be dropped like this, and should goals'
-   `[kysymys]` then behave the same way? Or should it be sent as it is, as
-   in `r2-3-komento-1440-light`?
-3. In `r2-2-siru-1440-light`, the hint under the field b ("Jos et kirjoita
-   mitään, hakasulkeinen rivi jää pois."): keep it, or drop the line
-   silently as in `r2-1-nimi-1440-light`?
+1. In `r3-1-aina-pois-1440-light`, `r3-2-aina-mukaan-1440-light` and
+   `r3-3-eri-saanto-1440-light`, the c screens of both rows: which rule should
+   apply when the request is sent with the placeholder untouched?
+2. In `r3-1-aina-pois-1440-light`, bottom row c: is the chip with no text
+   under it enough as the history entry of a goal sent without a question?

@@ -1,13 +1,13 @@
 ---
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-06
 type: task
 reporter: jari
 status: open
 priority: normal
 lane: start-page-button
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: how a start-page request looks before and after sending
@@ -46,3 +46,10 @@ empty conversation), create and update, and how it then reads in the history.
 
 Prototype round `design-system/prototypes/rounds/2026-11-03-aloitussivupyynto-2/`,
 result and questions in [result.md](result.md). Awaiting Jari's choice.
+
+## Round 3 (6.11.)
+
+Prototype round `design-system/prototypes/rounds/2026-11-06-aloitussivupyynto-3/`
+shows question (b) step by step: an untouched placeholder cut or sent, for
+the start page and for a goal's `[kysymys]`. Result and questions in
+[result.md](result.md). Awaiting Jari's choice.
