@@ -195,3 +195,105 @@ cd ~/src/open-habitat
 node design-system/prototypes/rounds/2026-11-06-samanaikaiset-keskustelut-2/build.mjs
 tw browser-open design-system/prototypes/dist/samanaikaiset-keskustelut-2/offline.html
 ```
+
+# Kierros 3: ylläpitäjän näkymä palvelimen alueella
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-samanaikaiset-keskustelut-3/`
+(NOTES.md kertoo riffit ja vuorovaikutukset). Jarin päätöksen mukaan kortti
+on kierroksen 2 Työtiloittain. Ylläpitäjä näkee *Muuta rajaa (ylläpitäjä)*,
+tavalliselle käyttäjälle *Muuta rajaa* näkyy harmaana ilman merkintää, ja
+syy on kortin lauseessa *Ylläpitäjän asettama raja on 12 …*. Akseli on
+ylläpitäjän osio **Keskustelut** palvelimen omalla alueella
+(`server-settings-own-area`, tuotanto kokeellisen ominaisuuden takana).
+Raja saa olla yli 32, enintään 128, ja henkilöillä voi olla poikkeuksia.
+Synteettisellä palvelimella on 16 Gt muistia ja kuusi henkilöä. Raja on 12,
+villella on oma raja 40 ja ainolla 4.
+
+- **1 Kaikki henkilöt**: raja kentässä ja taulukko kaikista henkilöistä kuten Levytila: työssä nyt, raja (oletus tai oma) ja Muuta riviltä.
+- **2 Vain poikkeukset**: raja kentässä ja lista vain niistä, joilla on oma raja; Lisää poikkeus valitsee henkilön. Henkilökohtaista käyttöä ei näytetä.
+- **3 Muisti edellä**: ylhäällä palvelimen muisti nyt ja jos jokainen käyttää koko rajansa; raja ja jokaisen henkilön raja säätimillä, jotka päivittävät arvion heti.
+
+## Suositus
+
+**2 Vain poikkeukset, ja kentän alle 3:n varoituslause, kun rajat
+yhteensä ylittävät muistin.** Ylläpitäjä tekee tässä kaksi päätöstä: mikä
+on tavallinen raja ja kuka tarvitsee toisenlaisen. Poikkeuslista näyttää
+jälkimmäisen suoraan ja pysyy lyhyenä, olipa henkilöitä kuusi tai
+kuusikymmentä. Taulukko (1) kasvaa jokaisen henkilön myötä, ja
+palvelimen kapeassa sarakkeessa se pinoutuu jo kuudella henkilöllä
+pitkäksi korttipinoksi (kuva `r3-1-kaikki-1-muutettu`). Säätimet (3)
+houkuttelevat tekemään poikkeuksen vahingossa yhdellä painalluksella.
+
+Painavin syy on host. Riffit 1 ja 3 näyttävät jokaisen henkilön tämänhetkisen
+käytön. Sen tietää vain kunkin henkilön oma daemon, ja ylläpitäjän näkymän
+pitäisi kysyä sitä kaikilta toisten käyttäjien daemoneilta. Se on uusi
+käyttäjärajan ylittävä lukureitti (ks. alla). Riffi 2 ei tarvitse sitä.
+Sen ainoa koko palvelimen luku (*Työssä nyt koko palvelimella 45*) voidaan
+jättää pois tai laskea prosesseista ilman daemoneja. 3:n muistiarvio
+"jos jokainen käyttää koko rajansa" lasketaan pelkistä rajoista. Se
+kannattaa pitää lauseena, koska juuri se kertoo, milloin yli 32:n raja on
+riski.
+
+## Mitä host-tietoja näkymä olettaa
+
+- **Raja daemonille.** `liveLimit()` (`internal/daemon/pi_activity_linux.go`)
+  on jo se yksi kohta, josta raja luetaan, ja oletus on 32. Ylläpitäjän luku
+  ja poikkeukset pitää viedä daemonille rootin kirjoittamana tietona, kuten
+  `site_origin_file`, eikä selaimen tai gatewayn väitteenä, koska daemon ei
+  luota kumpaankaan. Kirjoittaja on joko `internal/provision`-broker tai
+  gatewayn rootin puoli. Kumpi niistä, on valtuuden sijoitus, joka
+  päätetään Jarin kanssa ennen toteutusta. Kierros ei ota siihen kantaa.
+- **Yläraja 128** on kierroksen oletus. Luonnin oma rajoitus on 128
+  sessiota (`create`), ja se rajaa kontrollerin muistissa olevia
+  tietueita, joten suurempi elävien raja ei toteutuisi. Daemonin kommentti
+  sanoo, että 32 lasta vie noin 7 GiB. 128 lasta veisi noin 26 GiB.
+- **Henkilökohtainen käyttö (riffit 1 ja 3)** vaatisi, että ylläpitäjän
+  näkymä lukee jokaisen henkilön daemonin kiireiset keskustelut. Nykyään
+  gateway palvelee `/api/v1/server/storage`-tiedon kiintiöistä
+  (`quotaHTTP`), mutta keskustelujen määrää sillä ei ole, eikä ylläpitäjän
+  oma daemon näe toisten daemoneja. Tämä on uusi käyttäjärajan ylittävä
+  reitti, ja se on syy suositella riffiä 2.
+- **Muisti.** 16 Gt on synteettinen luku. Oikea luku tulisi
+  `/proc/meminfo`sta, ja noin 210 Mt keskustelua kohden on daemonin
+  kommentin mitattu luku. Arvio "jos jokainen käyttää koko rajansa" on
+  pelkkää laskentaa rajoista, eikä se tarvitse uutta lukureittiä.
+- **Kortti** tarvitsee kieltäytymisen mukana voimassa olevan rajan ja
+  tiedon siitä, onko se asennuksen raja vai henkilön oma (*Ylläpitäjä on
+  antanut sinulle rajan …*). Tieto siitä, onko katsoja ylläpitäjä, tulee
+  jo `/api/v1/server`-vastauksen `administrator`-kentästä.
+
+## Kysymykset Jarille
+
+1. Mikä ylläpitäjän näkymä: kaikki henkilöt
+   (`evidence/r3-1-kaikki-0-yllapito-1440-light.avif`), vain poikkeukset
+   (`evidence/r3-2-poikkeukset-0-yllapito-1440-light.avif`) vai muisti
+   edellä (`evidence/r3-3-muisti-0-yllapito-1440-light.avif`)?
+2. Riittääkö tavalliselle käyttäjälle harmaa *Muuta rajaa* ilman merkintää
+   ja omaa syyriviä, kun kortin lause kertoo rajan asettajan
+   (`evidence/r3-kortti-1-muu-1440-light.avif`; ylläpitäjälle
+   `evidence/r3-kortti-0-yllapitaja-1440-light.avif`)?
+3. Onko 128 sopiva katto, ja riittääkö yli 32:n rajalle lause *varmista,
+   että muisti riittää*
+   (`evidence/r3-1-kaikki-1-muutettu-1440-light.avif`), vai pitääkö
+   näyttää muistivaroitus kuten riffissä 3
+   (`evidence/r3-3-muisti-1-saadetty-1440-light.avif`)?
+
+## Tarkistus
+
+`check.mjs`: 440 tarkistuspistettä, konsoli puhdas. Kolme riffiä 1440 px:n ja
+390 px:n (kosketus) leveydellä, vaaleana ja tummana. Ensin osio palvelimen
+alueella: oma linkki on nykyinen, ja riffin muutos tehdään (1: henkilön
+raja, 200 hylätään ja 40 hyväksytään; 2: poikkeus lisätään ja toinen
+poistetaan; 3: säätimet ja muistivaroitus). Sitten kortti ylläpitäjänä
+(osioon, raja nostetaan, *Tilaa on nyt*, uusi keskustelu) ja tavallisena
+käyttäjänä (harmaa painike, Työtiloittain-ikkuna, pysäytys). Kuvat
+kertoimella 2 hakemistossa `evidence/` etuliitteellä `r3-` (AVIF). Kaikki
+on synteettistä.
+
+Näkymä:
+
+```
+cd ~/src/open-habitat
+node design-system/prototypes/rounds/2026-11-06-samanaikaiset-keskustelut-3/build.mjs
+tw browser-open design-system/prototypes/dist/samanaikaiset-keskustelut-3/offline.html
+```
