@@ -5,12 +5,13 @@ type: feature
 reporter: jari
 status: done
 priority: normal
-closed: 2026-11-06
+related: ['@proto-server-settings-overview']
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/server-settings-own-area
 lane: server-settings
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Server settings as their own area in Settings (experimental)
