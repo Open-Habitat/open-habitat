@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-markdown-block-preview
 lane: markdown-preview-proto
@@ -28,6 +28,11 @@ keskustelun viereinen paneeli, näkymäkortti), ja miten puhelimessa, jossa
 editoria ei ehkä ole. Tarkista, mitä editori (code-server) ja nykyinen
 koodilohko (`web/src/components/`, kielimerkintä, kopiointi) jo tukevat.
 Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
+
+## Decision (Jari 2026-11-06, kierros 1)
+
+Toiminto on **paikallaan**: lohkon oikeassa reunassa olevien painikkeiden
+joukossa (kopioinnin ja kielimerkinnän rinnalla). Kierros 2 riffaa sitä.
 
 ## Acceptance Criteria
 

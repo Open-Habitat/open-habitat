@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@design-named-workers']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-named-workers
 lane: named-workers-proto
@@ -45,6 +45,10 @@ palloksi, siruksi, sen viereen; ei paneelia kentän yllä, ei omia
 keskusteluja sivupalkissa, ei vastauksia pääkeskustelussa. Henkilö ei
 kirjoita workerille itse (viestit pääagentin kautta). Kierros 2 riffaa
 pallon/sirun ratkaisuja.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+**3 Avustajat** -siru. Sille prototypoidaan oma ikoni (kierros 3).
 
 ## Acceptance Criteria
 

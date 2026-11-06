@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-rewind
 lane_seq: 1
 preparation: pending
+closed: 2026-11-06
 ---
 
 # Prototype: return a conversation to an earlier message
@@ -53,6 +54,11 @@ Kierros 2 riffaa tätä vielä kertaalleen.
 sille, millaisen tästä haluamme. Kierros 3 riffaa vahvistusdialogia: nykyinen
 oli ison näköinen; näytä myös, onko tiedostojen palautus oletuksena päällä
 vai pois.
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+Vahvistus **C Pieni arkki**. Toteutus kokeellisena ominaisuutena:
+`rewind-conversation` (seuraava sessio handoffin jälkeen).
 
 ## Acceptance Criteria
 

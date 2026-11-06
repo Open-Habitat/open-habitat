@@ -3,13 +3,14 @@ created: 2026-11-05
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit-setting
 lane: live-limit-proto
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Prototype: where the concurrent-conversations limit is set and how it looks
@@ -50,6 +51,11 @@ Suunta **B Ylläpitäjä** on hyvä. Kierros 2 riffaa sitä:
 - Ylläpitäjä saa nostaa katon yli 32:n, ja rajoille voi olla
   käyttäjäkohtaisia poikkeuksia. Prototypoi palvelun ylläpitäjän näkymä
   (kierros 3).
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+Ylläpitäjän näkymä **3 Muisti edellä**. Toteutus:
+`live-conversation-limit-admin` (seuraava sessio handoffin jälkeen).
 
 ## Acceptance Criteria
 

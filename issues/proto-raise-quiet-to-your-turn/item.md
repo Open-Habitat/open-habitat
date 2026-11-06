@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-raise-quiet
 lane_seq: 1
 preparation: pending
+closed: 2026-11-06
 ---
 
 # Prototype: raise a quiet conversation back to Sinun vuorosi
@@ -45,6 +46,12 @@ Nosto sekä **sivupalkin rivillä** että **kentän luona**. Kierros 3 riffaa
 kentän luona olevaa tarkemmin niin, että nykyinen kentän oikea palkki
 (malli, sanelu, lähetys ym.) on huomioitu: miltä se kokonaisuutena
 näyttää.
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+Nosto **keskelle** (C) kirjoituskentän rivillä, sekä sivupalkin rivillä.
+Painike on **kokeellinen ominaisuus**. Toteutus: `raise-to-your-turn-button`
+(seuraava sessio handoffin jälkeen).
 
 ## Acceptance Criteria
 

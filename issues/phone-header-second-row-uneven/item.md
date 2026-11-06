@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: phone-layout-2
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: phone header second row as one consistent set
@@ -38,6 +38,15 @@ leave that text to that issue's worker if it has already changed it.
 Suunta **Alarivi** (`02`). Työpöytäratkaisuun ei kosketa. Tila näkyy
 pelkkänä pisteenä. Seuraavaksi riffataan alarivin painikkeesta aukeavaa
 valikkoa (kierros 4).
+
+## Decision (Jari 2026-11-06, kierros 4)
+
+**A Valikko**, mutta ilman tarpeettomia tekstejä siitä, mitä klikkaus tekee
+(esim. "Näytä tiedot"): rivejä voi klikata. Malli jätetään rivistä pois
+ennen ensimmäistä viestiä (kyllä). Seuraavaksi toteutus: puhelimen
+yläpalkki yhdeksi riviksi Alarivi-suunnan (kierros 3, `02`) mukaan, tila
+pelkkänä pisteenä, alarivin napautus avaa A-valikon; työpöytä ennallaan.
+Toteuttaa seuraava sessio handoffin jälkeen.
 
 ## Acceptance Criteria
 

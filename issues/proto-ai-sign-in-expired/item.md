@@ -3,11 +3,12 @@ created: 2026-11-04
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: ai-sign-in-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-06
 ---
 
 # Prototype: telling the person their AI sign-in has expired
@@ -44,6 +45,11 @@ vastannut; näytä se riffissä visuaalisesti.
 - Kysymys 3 (lähteekö viesti itsestään, jos sitä on muokattu odottaessa
   tai se odottaa toisessa saman palvelun keskustelussa) oli epäselvä:
   riffataan se visuaalisesti (kierros 3).
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+**R1 Lähtee itse**: kirjautumisen jälkeen kaikki odottavat viestit lähtevät.
+Toteutus: `ai-sign-in-expired-window` (seuraava sessio handoffin jälkeen).
 
 ## Acceptance Criteria
 

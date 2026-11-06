@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: explain-mode
 lane_seq: 0
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: explain mode in detail, on the real views (round 6)
@@ -39,6 +39,14 @@ each at the top, plus the recommendation; interactive.
 - Selitystilassa on nyt kivasti opastusta myös keskustelun tilaan. Miten
   siihen pääsee muissa tilanteissa kuin keskustelun alussa, ja miten
   henkilö pääsee näkemään sen?
+
+## Decision (Jari 2026-11-06, kierros 7)
+
+**Selitä-painike** (riffi 2). Riffataan vielä (kierros 8): mitä tapahtuu,
+kun hiiri on alueella, johon ei liity tietoa (nyt kirjoituskentän palkin
+selitys näkyy koko ajan liikaa), ja kulmatapaukset, kuten vasemmalla
+piilossa olevat painikkeet, jotka tulevat näkyviin hiiren ollessa päällä
+(esim. ensimmäisessä rivissä).
 
 ## Acceptance Criteria
 

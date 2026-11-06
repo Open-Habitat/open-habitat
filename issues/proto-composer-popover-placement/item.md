@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: composer-popover-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: where the composer's attach, command and file pickers open
@@ -24,6 +24,11 @@ Kierros 3 riffaa näillä:
 - *Muutetut* on kiva, mutta sen ei tarvitse olla oma välilehti, koska se
   on tiedoston tila. Näytetään se suoraan listassa jotenkin muuten.
 - Kansiopuu on hyvä tiedostojen selaamiseen.
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+Suunta **Puu**. Riffataan haku: miten käsitellään esimerkiksi `AGENTS.md`,
+joka on monessa kansiossa (kierros 4).
 
 ## Acceptance Criteria
 

@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-raise-quiet-to-your-turn']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-quiet-transition-triggers
 lane: quiet-triggers-proto
@@ -31,6 +31,12 @@ vaihtoehdot visuaalisiksi prototyypiksi, jos mahdollista (esim. aikaraja,
 vastaamisen tai lukemisen määritelmä, avaamisen kesto, eksplisiittinen
 *Ei nyt*, paluu agentin uudesta viestistä tai ajasta). Prototyyppikierros
 AGENTS-WORKFLOW.md:n mukaan.
+
+## Decision (Jari 2026-11-06, kierros 1)
+
+Lähtökohta **A Vastaus**: pysyy Sinun vuorosi -ryhmässä, kunnes vastaat.
+Mietitään, mihin painike sijoitetaan, joka pudottaa keskustelun Hiljaisiin
+(Ei nyt). Kierros 2 riffaa painikkeen paikkaa.
 
 ## Acceptance Criteria
 

@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -71,6 +71,11 @@ pois; niitä ei tarvita.
 **A1b Kaistale** sopii tilaan parhaiten. Kierros 4 riffaa sitä: vaiheen
 alakohdat (rivit, joita nyt joutuu vierittämään ylös ja alas) välilehtinä
 tai vastaavana, ettei sivua tarvitse kelata.
+
+## Decision (Jari 2026-11-06, kierros 4)
+
+Välilehdet ja *Seuraava*-painike pitää yhdistää: vain yksi paikka, jossa
+klikataan "seuraava". Kierros 5 riffaa tätä.
 
 ## Acceptance Criteria
 
