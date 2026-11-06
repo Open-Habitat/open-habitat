@@ -101,3 +101,88 @@ neljä tilannetta 1440 px vaaleana läpi vastaukseen asti, Claude-kulku myös
 tummana ja 390 px kosketuksella, avain puhelimessa, oletusnäkymät 390 px
 tummana. Kuvat kertoimella 2 hakemistossa `evidence/` (AVIF). Kaikki on
 synteettistä; host on `fetch`-sijainen, eikä palveluntarjoajien sivuja avata.
+
+# Kierros 2: riffi B Kentästä
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-tekoaly-kirjautuminen-riff/`
+(NOTES.md kertoo riffit ja vuorovaikutukset). Pohjana on Jarin 6.11.
+valitsema B Kenttä. **Uutta kaikissa ja oletusnäkymässä:** epäonnistunut
+viesti odottaa kentässä rivin *Odottaa kentässä · lähtee itse heti, kun olet
+kirjautunut* kanssa ja lähtee painamatta, kun agentti on taas linjoilla.
+Lähtevä teksti on se, mitä kentässä silloin on. Riffit vaihtelevat kahta
+avointa kysymystä: B1–B2 kysymystä (a) ja B2–B3 kysymystä (c).
+
+- **B1 Asetukset**: Kirjaudu uudelleen vie Asetukset › Tekoäly -sivulle, josta palataan itse keskusteluun. Epäonnistunut vuoro on lyhyt rivi.
+- **B2 Ikkuna**: kirjautuminen aukeaa ikkunaan keskustelun päälle, eikä keskustelusta poistuta. Epäonnistunut vuoro on lyhyt rivi.
+- **B3 Selitys**: ikkuna kuten B2, mutta epäonnistunut vuoro kertoo koko syyn, ja palvelun oman viestin saa auki.
+
+## Suositus
+
+**B2.** Ikkuna aloittaa saman kirjautumisen heti, ja keskustelu, varoitus ja
+odottava viesti näkyvät koko ajan sen takana. Kun ikkuna sulkeutuu, ihminen
+näkee viestinsä lähtevän (`evidence/r2-b2-ikkuna-claude-3-lahti-1440-light.avif`).
+B1:ssä ollaan hetki toisella sivulla, siellä pitää painaa *Kirjaudu
+uudelleen* vielä kerran, ja paluu tapahtuu itsestään, jolloin ihminen ei
+välttämättä huomaa, mistä palasi. Asetusrivi on silti oikea paikka
+ihmiselle, joka menee sinne itse, ja se toimii jo nyt. Lyhyt rivi riittää
+vuorokortissa, koska varoitus kentän yllä kertoo saman syyn ja
+korjauksen. B3:ssa syy sanotaan kahteen kertaan peräkkäin
+(`evidence/r2-b3-selitys-claude-0-oletus-1440-light.avif`). Palvelun oma
+viesti on kehittäjälle hyödyllinen, mutta tavalliselle käyttäjälle se on
+kohinaa, ja se löytyy edelleen Pi:n istunnosta.
+
+## Mitä host-tietoja näkymä olettaa
+
+Kierroksen 1 tiedot pätevät edelleen: luokittelu kertoo palvelun ja erottaa
+katkon kirjautumisviasta, palvelukohtainen hylkäystieto saadaan Pi:n omista
+istuntotiedostoista, ja kirjautuminen käyttää samoja reittejä. Uutta tällä
+kierroksella:
+
+- **"Taas linjoilla" on selaimen tiedossa vain kirjautumisessa.**
+  Clauden `claude-login` päättyy tilaan `completed`, laitekoodi tilaan
+  `connected`, ja avain tallentuu `pi/credentials`-kutsulla. Näistä selain
+  tietää, milloin lähettää. Ylikuormituksessa ja katkossa toipumisen
+  kertoo vain uusi yritys. Joko selain lähettää uudelleen
+  väliajoin, tai daemon kertoo palvelukohtaisesta tilasta, kun Pi:n oma
+  `auto_retry` tai seuraava vastaus onnistuu. Kierroksen *Simuloi: Claude
+  vastaa taas* -painike seisoo tämän paikalla.
+- **Odottava viesti on selaimen luonnos.** Kentän teksti on jo nyt
+  `sessionStorage`ssa (`nah:<identity>:draft:<id>`). Odotusmerkki tarvitsee
+  saman paikan. Tuotannon nykyinen sääntö on, että suljetun näkymän
+  pitämä viesti palaa kenttään eikä lähde myöhemmin kysymättä. Tämä on
+  sopusoinnussa, kun viesti lähtee vain auki olevasta näkymästä. Jos
+  kirjautuu toisella laitteella eikä keskustelu ole auki missään, viesti
+  odottaa kentässä seuraavaan avaamiseen asti. Silloin se lähtee heti, jos
+  kirjautuminen on jo kunnossa. Kahdessa välilehdessä sama luonnos voisi
+  lähteä kahdesti, joten toteutus tarvitsee yhden lähettäjän (esimerkiksi
+  `BroadcastChannel`-lukko tai luonnoksen tunniste daemonilla).
+- **Tuotannon `Composer` ei näytä syyriviä muokattavan kentän alla.**
+  `editorAvailability` piilottaa `availability`n syyn, joten
+  odotusriville tarvitaan oma kohta komponentissa.
+- **Uutta valtuutta ei tarvita.** Automaattinen lähetys on sama prompt kuin
+  Lähetä-painike. Kierroksen 1 huomio pätee: Pi:n kontekstiin tulee sama
+  viesti toisen kerran.
+
+## Kysymykset Jarille
+
+1. Mistä kirjautuminen korjataan: Asetukset › Tekoäly ja paluu
+   (`evidence/r2-b1-asetukset-claude-2-asetukset-1440-light.avif`) vai
+   ikkuna keskustelun päällä
+   (`evidence/r2-b2-ikkuna-claude-2-ikkuna-1440-light.avif`)?
+2. Mitä epäonnistunut vuoro sanoo: lyhyt rivi
+   (`evidence/r2-b2-ikkuna-claude-0-oletus-1440-light.avif`) vai koko syy ja
+   palvelun oma viesti avattavissa
+   (`evidence/r2-b3-selitys-claude-1-raaka-1440-light.avif`)?
+3. Saako viesti lähteä itse myös silloin, kun olet muokannut sitä
+   odottaessa (`evidence/r2-b2-ikkuna-claude-2-ikkuna-1440-light.avif`,
+   kentässä *… Kiitos!*), tai kun se odottaa toisessa saman palvelun
+   keskustelussa (`evidence/r2-b1-asetukset-claude-1-toinen-keskustelu-1440-light.avif`)?
+
+## Tarkistus
+
+`check.mjs`: 424 tarkistuspistettä, konsoli puhdas. Kaikki riffit ja neljä
+tilannetta käytiin läpi 1440 px:n vaaleana vastaukseen asti, Claude-kulku
+myös tummana ja 390 px:n kosketuksella, avain puhelimessa ja oletusnäkymät
+390 px:n tummana. 91 kuvaa on otettu kertoimella 2 hakemistoon `evidence/`
+(AVIF, etuliite `r2-`). Kaikki on synteettistä: host on `fetch`-sijainen,
+eikä palveluntarjoajien sivuja avata.
