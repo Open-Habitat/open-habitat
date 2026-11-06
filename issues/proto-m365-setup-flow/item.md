@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -65,6 +65,12 @@ Kierros 2: riffataan A:ta näiden pohjalta.
 piirrosten sijaan oikeina leikkeinä Jarin kuvakaappauksista (tunnukset ja
 organisaation nimi peitettyinä). Oikeuksien edessä olevat valintaruudut
 pois; niitä ei tarvita.
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+**A1b Kaistale** sopii tilaan parhaiten. Kierros 4 riffaa sitä: vaiheen
+alakohdat (rivit, joita nyt joutuu vierittämään ylös ja alas) välilehtinä
+tai vastaavana, ettei sivua tarvitse kelata.
 
 ## Acceptance Criteria
 
