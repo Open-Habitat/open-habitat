@@ -23,6 +23,7 @@ const features = [
   "empty-conversation-start-page",
   "raise-to-your-turn",
   "composer-lists-in-field",
+  "rewind-conversation",
 ];
 
 async function signIn(page: Page) {
