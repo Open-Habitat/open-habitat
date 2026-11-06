@@ -57,6 +57,12 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 			out.Recap = &recapData{Recap: custom.Data.Recap, Next: custom.Data.Next, Through: custom.Data.Through, GeneratedAt: custom.Data.GeneratedAt, Trigger: trigger}
 			return
 		}
+		// Palaa tähän's own record: the row at the branch point.
+		if marker, ok := nativeRewindMarker(e.Raw); ok {
+			out.Kind = "rewind"
+			out.Content = historyContent{MediaType: "text/plain", Text: "", Complete: true}
+			out.Rewind = marker
+		}
 		return
 	}
 	switch e.Type {

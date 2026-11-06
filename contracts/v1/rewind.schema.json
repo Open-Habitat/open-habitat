@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/rewind.schema.json",
+  "title": "Palaa tähän: return a conversation or its files to an earlier message (experimental)",
+  "description": "The daemon's own Pi extension does the work in the person's Pi and records it in the same native session; the daemon only reads that record and asks the extension to act.",
+  "oneOf": [
+    { "$ref": "#/$defs/preview" },
+    { "$ref": "#/$defs/branch" },
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/result" }
+  ],
+  "$defs": {
+    "entryKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "preview": {
+      "description": "GET /api/v1/conversations/{id}/rewind?entry={entry_key}: what going back before one of the person's messages leaves behind, and what a file restore would change compared with the files as they are now. checkpoint is false when no copies were made for that message (the feature was off); the conversation can still go back.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "entry_key", "own", "replies", "checkpoint", "files", "files_more", "file_errors", "commands", "commands_more"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "entry_key": { "$ref": "#/$defs/entryKey" },
+        "own": { "$ref": "#/$defs/count" },
+        "replies": { "$ref": "#/$defs/count" },
+        "checkpoint": { "type": "boolean" },
+        "files": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "change"],
+            "properties": {
+              "path": { "description": "Relative to the workspace, ~/ for the rest of the home, absolute elsewhere.", "type": "string", "minLength": 1, "maxLength": 4096 },
+              "change": { "enum": ["modified", "created", "deleted"] },
+              "additions": { "$ref": "#/$defs/count" },
+              "deletions": { "$ref": "#/$defs/count" }
+            }
+          }
+        },
+        "files_more": { "$ref": "#/$defs/count" },
+        "file_errors": { "$ref": "#/$defs/count" },
+        "commands": {
+          "description": "Commands the agent ran after the message; a restore does not undo their effects.",
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "commands_more": { "$ref": "#/$defs/count" }
+      }
+    },
+    "branch": {
+      "description": "GET /api/v1/conversations/{id}/rewind?branch={marker_key}: the continuation a rewind marker on the active branch replaced, oldest first, newest 200 entries.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "marker_key", "entries", "complete"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "marker_key": { "$ref": "#/$defs/entryKey" },
+        "entries": { "type": "array", "maxItems": 200, "items": { "$ref": "history.schema.json#/$defs/entry" } },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "request": {
+      "description": "POST /api/v1/conversations/{id}/rewind. rewind: the conversation, the files or both back to before entry_key. switch: continue the continuation marker_key replaced, files with it when chosen. undo: undo the files-only restore marker_key. stop: a running turn is stopped first.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "entry_key", "conversation", "files"],
+          "properties": {
+            "action": { "const": "rewind" },
+            "entry_key": { "$ref": "#/$defs/entryKey" },
+            "conversation": { "type": "boolean" },
+            "files": { "type": "boolean" },
+            "stop": { "type": "boolean" }
+          },
+          "not": { "properties": { "conversation": { "const": false }, "files": { "const": false } } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "marker_key", "files"],
+          "properties": {
+            "action": { "const": "switch" },
+            "marker_key": { "$ref": "#/$defs/entryKey" },
+            "files": { "type": "boolean" },
+            "stop": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "marker_key"],
+          "properties": {
+            "action": { "const": "undo" },
+            "marker_key": { "$ref": "#/$defs/entryKey" },
+            "stop": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "result": {
+      "description": "What the extension did. A refusal is an error: 409 turn_running, queued, busy, no_checkpoint, not_switchable, already_undone, cancelled; 404 when the message or marker is not on the active branch; 503 command_unavailable or control_uncertain (an uncertain outcome, never repeated).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "action", "state", "restored", "file_errors"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "action": { "enum": ["rewind", "switch", "undo"] },
+        "state": { "const": "done" },
+        "restored": { "$ref": "#/$defs/count" },
+        "file_errors": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

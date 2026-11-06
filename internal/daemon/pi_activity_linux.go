@@ -113,7 +113,7 @@ func heldActivity(s *conversation) string {
 	switch {
 	case s.questionID != "":
 		return "question"
-	case s.runActive, s.aborting, s.naming, s.recapping, s.waking, len(s.held) > 0, len(s.queueSteering)+len(s.queueFollowUp) > 0, s.bash.active():
+	case s.runActive, s.aborting, s.naming, s.recapping, s.rewinding, s.waking, len(s.held) > 0, len(s.queueSteering)+len(s.queueFollowUp) > 0, s.bash.active():
 		return "turn"
 	case s.settled && s.settlement == nil:
 		return "turn" // the finished turn's native history is still being published

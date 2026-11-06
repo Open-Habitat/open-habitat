@@ -28,6 +28,7 @@ export const experimentalFeatureIds = [
   "empty-conversation-start-page",
   "raise-to-your-turn",
   "composer-lists-in-field",
+  "rewind-conversation",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

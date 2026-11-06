@@ -183,6 +183,9 @@ func runFakePi(args []string) {
 			if m := strings.TrimSpace(string(mode)); m == "pi-recap" || m == "pi-recap-unsupported" || m == "pi-recap-failing" {
 				commands = append(commands, map[string]any{"name": "oh-conversation-recap", "source": "extension"})
 			}
+			if rewindScenario(home) {
+				commands = append(commands, map[string]any{"name": "oh-rewind", "source": "extension"})
+			}
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
 		case "bash":
 			// As Pi's RPC: output streams as bash_execution_update, the reply
@@ -231,6 +234,18 @@ func runFakePi(args []string) {
 			mu.Unlock()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "clear_queue", "success": true, "data": map[string]any{"steering": removedSteering, "followUp": removedFollowUp}})
 		case "prompt":
+			if strings.HasPrefix(req.Message, "/oh-rewind ") && rewindScenario(home) {
+				mu.Lock()
+				running := busy
+				mu.Unlock()
+				outcome := `{"outcome":"turn_running"}`
+				if !running {
+					outcome = s.rewind(strings.TrimPrefix(req.Message, "/oh-rewind "))
+				}
+				emit(map[string]any{"type": "extension_ui_request", "id": "rewind-outcome", "method": "notify", "notifyType": "info", "message": "oh-rewind:" + outcome})
+				emit(map[string]any{"type": "response", "id": req.ID, "command": "prompt", "success": true})
+				continue
+			}
 			if req.Message == "/oh-conversation-recap" || req.Message == "/oh-conversation-recap automatic" {
 				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 				if strings.TrimSpace(string(mode)) == "pi-recap-failing" {
@@ -525,6 +540,9 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	emit(map[string]any{"type": "message_start", "message": map[string]any{"role": "user", "content": []map[string]any{{"type": "text", "text": prompt}}}})
 	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
+	if rewindScenario(os.Getenv("HOME")) {
+		s.rewindCheckpoint(prompt)
+	}
 	if strings.Contains(prompt, "pitkä ajo") {
 		s.longRun(run, emit)
 		return

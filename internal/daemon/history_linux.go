@@ -72,6 +72,7 @@ type historyEntry struct {
 	Notice             *agentNotice   `json:"notice,omitempty"`
 	FailureCause       *bashFailure   `json:"failure_cause,omitempty"`
 	Recap              *recapData     `json:"recap,omitempty"`
+	Rewind             *rewindMarker  `json:"rewind,omitempty"`
 	Restart            *restartNotice `json:"restart,omitempty"`
 	WaitReminder       *waitReminder  `json:"wait_reminder,omitempty"`
 	Key                string         `json:"entry_key"`

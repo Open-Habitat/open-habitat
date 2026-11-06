@@ -1,0 +1,200 @@
+/* Palaa tähän (prototype round 2026-11-06-palaa-tahan-vahvistus, C Pieni arkki). */
+
+/* The own message's ⋯ sits beside its copy action. On a desktop it shows on
+   hover or focus like copy; on a phone it stays visible. */
+.ah-rewind-more {
+  --i-bg: transparent;
+  --i-border: transparent;
+  --i-fg: var(--ah-muted);
+}
+.ah-rewind-more .ah-menu-chevron {
+  display: none;
+}
+@media (hover: hover) and (min-width: 801px) {
+  .ah-message .ah-rewind-more {
+    opacity: 0;
+    transition: opacity 120ms;
+  }
+  .ah-message:is(:hover, :focus-within) .ah-rewind-more,
+  .ah-message .ah-rewind-more[aria-expanded="true"] {
+    opacity: 1;
+  }
+}
+
+.ah-rewind-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--ah-s2);
+  margin: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-rewind-busy {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ah-rewind-error {
+  margin: 0;
+  color: var(--ah-err);
+  font-size: var(--ah-size-meta);
+}
+.ah-rewind-quiet {
+  color: var(--ah-muted);
+}
+.ah-rewind-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ah-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ah-rewind-actions {
+  display: flex;
+  gap: var(--ah-s2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.ah-rewind-files {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: var(--ah-s1) var(--ah-s2);
+  list-style: none;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  font-size: var(--ah-size-meta);
+  max-height: 12rem;
+  overflow: auto;
+}
+.ah-rewind-files li {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-rewind-files code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ah-mono);
+}
+.ah-rewind-stat {
+  flex: none;
+  font-family: var(--ah-mono);
+  color: var(--ah-ink-2);
+}
+
+/* The sheet: as wide as the composer's field box below it, in the frame's
+   floating slot. */
+.ah-rewind-sheet {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: min(
+    calc(100% - 2 * var(--ah-column-pad-inline)),
+    var(--ah-conversation-width)
+  );
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-float);
+}
+.ah-rewind-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+}
+.ah-rewind-head h2 {
+  margin: 0;
+  font-size: var(--ah-size-ui);
+  font-weight: 600;
+}
+.ah-rewind-toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--ah-s2) var(--ah-s4);
+}
+.ah-rewind-toggles .ah-checkbox small {
+  display: block;
+  color: var(--ah-muted);
+}
+.ah-rewind-foot,
+.ah-rewind-notes {
+  display: grid;
+  gap: var(--ah-s2);
+}
+@media (min-width: 601px) {
+  .ah-rewind-foot {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+}
+
+/* History rows. */
+.ah-rewind-branch {
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-md);
+  padding: var(--ah-s1) var(--ah-s2);
+}
+.ah-rewind-branch-row,
+.ah-rewind-origin {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-rewind-branch-row > span,
+.ah-rewind-origin > span {
+  flex: 1;
+  min-width: 0;
+}
+.ah-rewind-branch-row strong,
+.ah-rewind-origin strong {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ah-rewind-branch-body {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) 0;
+}
+.ah-rewind-continuation {
+  opacity: 0.6;
+}
+.ah-rewind-branch-body > [data-ah-primitive="button"] {
+  justify-self: start;
+}
+.ah-rewind-swap {
+  display: grid;
+  gap: var(--ah-s2);
+  padding-top: var(--ah-s1);
+}
+.ah-rewind-swap .ah-checkbox small {
+  display: block;
+  color: var(--ah-muted);
+}
+.ah-rewind-origin {
+  padding: var(--ah-s2);
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+
+/* The frame's floating slot makes its own buttons pills; the sheet's are
+   ordinary row buttons. */
+.ah-floating-controls .ah-rewind-sheet [data-ah-primitive="button"] {
+  border-radius: var(--ah-r-md);
+}
+/* Going back dims the chosen message and what follows while the sheet is open. */
+.ah-rewind-left {
+  opacity: 0.45;
+}

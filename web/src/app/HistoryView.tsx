@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -61,6 +62,7 @@ import { startProblemReason } from "./mutations";
 import { useNewConversationAsk } from "./newConversationAsk";
 import { sshTarget } from "./ownMachines";
 import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
+import { RewindContext, RewindEntryRow } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { useStoragePressure } from "./StoragePressure";
 import {
@@ -802,6 +804,7 @@ export function Entry({
   agentId?: string;
   revision?: string;
 }) {
+  const rewind = useContext(RewindContext);
   if (entry.notice) return <NoticeEntry notice={entry.notice} />;
   if (entry.restart)
     return (
@@ -840,6 +843,7 @@ export function Entry({
         <UserMessage
           sourceText={content.text}
           onCopy={copy}
+          actions={rewind?.menu(entry)}
           skill={
             entry.skill && entry.blocks?.[0]?.type === "text" ? (
               <SkillInvocation
@@ -1141,6 +1145,9 @@ export function timelineItems(
     set: (value: boolean) => void;
   },
   live?: LiveTurnInput,
+  /** Palaa tähän's chosen message: it and what follows dim while the
+   * sheet is open. */
+  dimFrom?: string,
 ) {
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
@@ -1280,6 +1287,15 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    if (entry.kind === "rewind") {
+      flush();
+      items.push({
+        id: entry.entry_key,
+        kind: "rewind",
+        content: <RewindEntryRow entry={entry} entries={entries} />,
+      });
+      continue;
+    }
     const marker = markers.get(entry.entry_key);
     if (marker) {
       flush();
@@ -1344,6 +1360,20 @@ export function timelineItems(
         />
       ),
     });
+  const from = dimFrom ? items.findIndex((i) => i.id === dimFrom) : -1;
+  if (from >= 0)
+    for (let i = from; i < items.length; i++)
+      items[i] = {
+        ...items[i],
+        content: (
+          <div
+            className="ah-rewind-left"
+            data-rewind-target={i === from || undefined}
+          >
+            {items[i].content}
+          </div>
+        ),
+      };
   return items;
 }
 

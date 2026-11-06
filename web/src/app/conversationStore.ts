@@ -749,7 +749,7 @@ export class ConversationStore {
       if (!met) this.applyPage(id, pages[0], "tail", false);
       else
         for (const page of [...pages].reverse()) {
-          this.applyPage(id, page, "reconnect", false);
+          this.applyPage(id, page, "reconnect", false, page === pages[0]);
           if (record.value.state === "stale" || record.value.state === "error")
             break;
         }
@@ -775,6 +775,9 @@ export class ConversationStore {
     page: HistoryPage,
     mode: "tail" | "older" | "reconnect" = "tail",
     flush = true,
+    /** The page ends at the native leaf (a tail read, or a reconnect's
+     * newest page). */
+    newest = mode === "tail",
   ) {
     const record = this.windows.get(id);
     if (!record || this.disposed || page.agent_id !== id) return;
@@ -820,10 +823,21 @@ export class ConversationStore {
     let entries: HistoryEntry[];
     if (contiguous && validOlder) {
       const first = shared[0];
+      const last = shared[shared.length - 1];
+      // A newest page that goes on past its last shared entry, where the
+      // held range also goes on, shows Pi on another branch of its tree
+      // (Palaa tähän): what the held range had after it is no longer the
+      // conversation. The stream's own deliveries are added back below.
+      const lastIncoming = incoming.at(-1)?.entry_key;
+      const diverged =
+        newest &&
+        last < base.length - 1 &&
+        lastIncoming !== undefined &&
+        !known.has(lastIncoming);
       entries = [
         ...base.slice(0, first),
         ...incoming,
-        ...base.slice(shared[shared.length - 1] + 1),
+        ...(diverged ? [] : base.slice(last + 1)),
       ];
     } else if (
       mode === "older" ||

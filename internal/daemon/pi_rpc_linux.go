@@ -59,6 +59,8 @@ type piRPC struct {
 	// requester sees it once that response arrives.
 	recapMu   sync.Mutex
 	recapNote *recapExtensionOutcome
+	// The rewind extension's answer (rewind-extension.mjs), the same way.
+	rewindNote *rewindOutcome
 	// Why this daemon itself ended Pi's input, if it did: closing stdin
 	// makes Pi shut down, which the exit watcher otherwise only sees as an
 	// unasked end. The first cause wins (endInput).
@@ -318,7 +320,7 @@ func (p *piRPC) read() {
 				_, _ = (&storageDiagnostics{operation: "pi_message_persistence"}).Write([]byte(failure.Message.ErrorMessage))
 			}
 		}
-		if envelope.Type == "extension_ui_request" && p.noteRecapOutcome(frame) {
+		if envelope.Type == "extension_ui_request" && (p.noteRecapOutcome(frame) || p.noteRewindOutcome(frame)) {
 			continue
 		}
 		queue := p.events

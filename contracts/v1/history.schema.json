@@ -96,7 +96,8 @@
             "model_change",
             "unknown",
             "bash",
-            "recap"
+            "recap",
+            "rewind"
           ]
         },
         "content": {
@@ -214,7 +215,27 @@
         },
         "wait_reminder": {
           "$ref": "#/$defs/waitReminder"
+        },
+        "rewind": {
+          "$ref": "#/$defs/rewind"
         }
+      }
+    },
+    "rewind": {
+      "description": "Palaa tähän's record in the native session (experimental). rewind and switch: the conversation went back, and the continuation it replaced (own and replies counted) can be shown and continued again; files_return says its files come back with it. files: files alone were restored to before the message at; files_return says the restore can be undone. undo: the files-only restore of marker of was undone. files_restored is absent when no files were restored.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "own", "replies", "switchable", "files_return"],
+      "properties": {
+        "action": { "enum": ["rewind", "switch", "files", "undo"] },
+        "at": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
+        "of": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
+        "own": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "replies": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "files_restored": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "file_errors": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "switchable": { "type": "boolean" },
+        "files_return": { "type": "boolean" }
       }
     },
     "block": {

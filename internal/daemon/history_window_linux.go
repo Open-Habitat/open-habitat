@@ -115,9 +115,11 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 	}
 	err = reverseLines(f, size, func(line []byte) bool {
 		var e struct {
-			ID       string  `json:"id"`
-			Type     string  `json:"type"`
-			ParentID *string `json:"parentId"`
+			ID   string `json:"id"`
+			Type string `json:"type"`
+			// Present, even as null, it makes a tree entry: a leaf at the
+			// root (Palaa tähän before the first message) is a chain of one.
+			ParentID json.RawMessage `json:"parentId"`
 		}
 		if json.Unmarshal(line, &e) != nil || !entryIDPattern.MatchString(e.ID) {
 			broken = true
@@ -133,17 +135,22 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 		}
 		if !leaf {
 			leaf = true
-			chain = e.ParentID != nil
+			chain = len(e.ParentID) > 0
 			target = e.ID
 		}
 		if chain && e.ID != target {
 			return true
 		}
 		if chain {
-			if e.ParentID == nil {
+			var parent *string
+			if json.Unmarshal(e.ParentID, &parent) != nil {
+				broken = true
+				return false
+			}
+			if parent == nil {
 				target = ""
 			} else {
-				target = *e.ParentID
+				target = *parent
 			}
 		}
 		if !result.boundaryFound {

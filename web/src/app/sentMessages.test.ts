@@ -1,3 +1,4 @@
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./history";
 import {
@@ -7,6 +8,7 @@ import {
   sendArrived,
   shownQueue,
   userKeys,
+  useSentMessages,
 } from "./sentMessages";
 
 const entry = (
@@ -99,5 +101,38 @@ describe("queued messages", () => {
     expect(reconcileQueued(local, empty, [], 10 * DELIVERY_GRACE_MS)).toEqual(
       local,
     );
+  });
+});
+
+describe("this tab's sent message", () => {
+  it("is not drawn again once Pi's message replaced it, even when history goes back before it", () => {
+    const before = [
+      entry("u1", "user", "hei"),
+      entry("a1", "assistant", "moi"),
+    ];
+    const props = {
+      scope: "person:pi:1",
+      queue: undefined,
+      sendObservation: undefined,
+      draft: "",
+      changeDraft: () => {},
+    };
+    const { result, rerender } = renderHook(
+      (entries: HistoryEntry[]) => useSentMessages({ ...props, entries }),
+      { initialProps: before },
+    );
+    act(() =>
+      result.current.onSent({
+        command: "c1",
+        text: "toinen",
+        before: userKeys(before),
+      }),
+    );
+    expect(result.current.own?.text).toBe("toinen");
+    rerender([...before, entry("u2", "user", "toinen")]);
+    expect(result.current.own).toBeUndefined();
+    // Palaa tähän: the active branch no longer has the message.
+    rerender([...before, entry("m1", "rewind", "")]);
+    expect(result.current.own).toBeUndefined();
   });
 });

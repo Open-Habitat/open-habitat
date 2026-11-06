@@ -162,6 +162,7 @@ import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
+import { useRewind, withRewind } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -1827,6 +1828,35 @@ function BrowserConversationContent({
           ),
         }
       : undefined;
+  // Palaa tähän (experimental): the own messages' menu, the sheet above the
+  // composer and the rows a return leaves.
+  const rewindOn = useExperimentalFeature("rewind-conversation");
+  const rewind = useRewind({
+    id,
+    csrf,
+    enabled: rewindOn && opened && controlled && !!csrf,
+    busy: controlled && turnUnderway(current?.state, current?.run_active),
+    stopped: notStarted,
+    workspaceId: runWorkspace,
+    onLogin,
+    onDraft: (text) =>
+      changeDraft(
+        restoreToDraft(
+          [text],
+          (draftStorage && sessionStorage.getItem(draftStorage)) ?? draft,
+        ),
+      ),
+    onChanged: () => {
+      if (id) void store.reconnect(id);
+    },
+    renderEntries: (list) => (
+      <ol className="ah-feed">
+        {timelineItems(list).map((item) => (
+          <li key={item.id}>{item.content}</li>
+        ))}
+      </ol>
+    ),
+  });
   const savedTimeline = timelineItems(
     entries,
     onLogin,
@@ -1849,6 +1879,7 @@ function BrowserConversationContent({
     ),
     id ? (callId) => store.toolExpansion(id, callId) : undefined,
     liveTurn,
+    rewind.target,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
@@ -1861,7 +1892,7 @@ function BrowserConversationContent({
       ? `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`
       : undefined,
   );
-  const timeline = settled.timeline;
+  const timeline = withRewind(settled.timeline, rewind.controls);
   const composer: ComponentProps<typeof Composer> =
     creating && creation
       ? {
@@ -3073,6 +3104,7 @@ function BrowserConversationContent({
               ) : null}
             </>
           ) : null}
+          {view === "opened" ? rewind.sheet : null}
           {view !== "opened" || controlled ? <Composer {...composer} /> : null}
           {view === "opened" ? shell.panel : null}
         </ConversationFrame>

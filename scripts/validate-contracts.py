@@ -123,6 +123,9 @@ checks = {
     "annotations.json": "annotations.schema.json",
     "history-page.json": "history.schema.json",
     "recap.json": "recap.schema.json",
+    "rewind-preview.json": "rewind.schema.json",
+    "rewind-request.json": "rewind.schema.json",
+    "rewind-result.json": "rewind.schema.json",
     "context-detail.json": "context-detail.schema.json",
     "title-failure.json": "command.schema.json",
     "claude-login.json": "claude-login.schema.json",
@@ -534,6 +537,9 @@ else:
     raise AssertionError("content schema accepted an incomplete, non-truncated value without continuation")
 
 
+rewind_request = json.loads((BASE / "examples" / "rewind-request.json").read_text())
+must_reject("rewind.schema.json", {**rewind_request, "conversation": False, "files": False})
+must_reject("rewind.schema.json", {**rewind_request, "entry_key": "../x"})
 recap_settings = json.loads((BASE / "examples" / "recap-settings.json").read_text())
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "delay_seconds": 30}})
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "mode": "manual"}})

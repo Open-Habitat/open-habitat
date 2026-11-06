@@ -326,6 +326,30 @@ describe("recent conversation windows", () => {
       expect(store.read(id(1))?.next).toBeUndefined();
     },
   );
+  it("replaces what the held range had after the branch point when Pi moved to another branch", async () => {
+    const { store, finish } = setup();
+    store.view(id(1));
+    finish(page(id(1), ["a", "b", "c", "d"]));
+    await flush();
+    // Palaa tähän before c: the leaf is now a marker after b.
+    store.applyPage(id(1), page(id(1), ["a", "b", "m"]));
+    expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
+      "a",
+      "b",
+      "m",
+    ]);
+    // An ordinary append still keeps the held range.
+    store.applyPage(id(1), page(id(1), ["m", "n"]));
+    expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
+      "a",
+      "b",
+      "m",
+      "n",
+    ]);
+    // A reconnect's older page is not the leaf and drops nothing.
+    store.applyPage(id(1), page(id(1), ["b", "x"]), "reconnect");
+    expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toContain("n");
+  });
   it("updates the cursor when a refresh proves the same or an earlier left boundary complete", async () => {
     const { store, finish } = setup();
     store.view(id(1));

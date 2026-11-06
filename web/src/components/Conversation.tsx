@@ -152,8 +152,11 @@ function Message({
   interim = false,
   delivery,
   onCopy,
+  actions,
 }: {
   speaker: string;
+  /** A message's own actions beside copy, such as Palaa tähän's menu. */
+  actions?: ReactNode;
   /** A message this page sent that Pi's history does not show yet. */
   delivery?: "pending" | "accepted";
   /** The person's own message, which a worker's view gives to the main agent. */
@@ -204,6 +207,7 @@ function Message({
           size="row"
           onPress={onCopy}
         />
+        {actions}
         {time ? <time>{time}</time> : null}
         {state ? (
           <StatusMark
@@ -227,8 +231,10 @@ export function UserMessage({
   deliveryTone = "neutral",
   delivery,
   onCopy,
+  actions,
 }: {
   sourceText: string;
+  actions?: ReactNode;
   delivery?: "pending" | "accepted";
   skill?: ReactNode;
   children?: ReactNode;
@@ -259,6 +265,7 @@ export function UserMessage({
       stateTone={deliveryTone}
       delivery={delivery}
       onCopy={onCopy}
+      actions={actions}
     >
       {skill}
       <div

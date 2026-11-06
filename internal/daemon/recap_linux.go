@@ -56,7 +56,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			return append(args, "--extension", c.recapPath, "--extension", companion, "--skill", skill, "--skill", ui), nil
+			rewind, err := installRewindExtension(filepath.Dir(c.recapPath))
+			if err != nil {
+				return nil, err
+			}
+			return append(args, "--extension", c.recapPath, "--extension", companion, "--extension", rewind, "--skill", skill, "--skill", ui), nil
 		}
 	}
 	dir, err := os.MkdirTemp("/var/tmp", "oh-recap-")
@@ -85,7 +89,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(args, "--extension", path, "--extension", companion, "--skill", skill, "--skill", ui), nil
+	rewind, err := installRewindExtension(dir)
+	if err != nil {
+		return nil, err
+	}
+	return append(args, "--extension", path, "--extension", companion, "--extension", rewind, "--skill", skill, "--skill", ui), nil
 }
 
 // taskfleetSkillsExtension loads the core runtime's Taskfleet skills into a

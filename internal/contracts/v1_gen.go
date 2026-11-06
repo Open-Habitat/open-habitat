@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "9994f4fdf5ca13b17d79d601b71d63bc843465986c53ac21a9fc0f142ed3e113"
+const V1SchemaFingerprint = "95031f5a2a2bc63806d621e3c291a08c6b088aabf08d0fafda83e0f047afccc5"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -71,6 +71,7 @@ var V1SchemaFiles = []string{
 	"recap-settings.schema.json",
 	"recap.schema.json",
 	"rest.schema.json",
+	"rewind.schema.json",
 	"scenario.schema.json",
 	"server-access.schema.json",
 	"server-administration-change.schema.json",
@@ -167,6 +168,7 @@ type Process = json.RawMessage
 type RecapSettings = json.RawMessage
 type Recap = json.RawMessage
 type Rest = json.RawMessage
+type Rewind = json.RawMessage
 type Scenario = json.RawMessage
 type ServerAccess = json.RawMessage
 type ServerAdministrationChange = json.RawMessage

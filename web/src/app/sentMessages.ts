@@ -255,6 +255,18 @@ export function useSentMessages({
     restored.current.add(command);
     if (!draft.includes(text)) changeDraft(restoreToDraft([text], draft));
   }, [sendObservation, update]);
+  // Once Pi's message has replaced the bubble, the send is done: a later
+  // history without it (Palaa tähän went back before it) must not draw it
+  // again.
+  const arrived = !!current.own && sendArrived(entries, current.own.before);
+  useEffect(() => {
+    if (!arrived) return;
+    setState((old) =>
+      old.scope === scope && old.own && sendArrived(entries, old.own.before)
+        ? { ...old, own: undefined }
+        : old,
+    );
+  }, [arrived, entries, scope]);
   // The bubble belongs to its own send, not to whichever send is latest.
   const own =
     current.own && !sendArrived(entries, current.own.before)

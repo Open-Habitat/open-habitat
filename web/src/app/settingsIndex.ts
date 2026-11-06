@@ -587,6 +587,20 @@ export const settingsSections = [
         desc: "Selaa tiedostoja ja komentoja kirjoituskentän sisällä ja merkitse useampi tiedosto kerralla.",
       },
       {
+        id: "rewind-conversation",
+        label: "Palaa tähän",
+        kw: [
+          "palaa",
+          "rewind",
+          "go back",
+          "peru",
+          "undo",
+          "palauta tiedostot",
+          "restore files",
+        ],
+        desc: "Palaa aiempaan viestiisi samassa keskustelussa ja palauta halutessasi agentin muuttamat tiedostot.",
+      },
+      {
         id: "next-waiting-row",
         label: "Seuraava odottava keskustelu",
         kw: [

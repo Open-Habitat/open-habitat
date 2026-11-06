@@ -85,3 +85,59 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }
+
+// Palaa tähän's reads take exactly one entry or branch key; its write needs
+// the CSRF proof like a send.
+func TestRewindRouteRelaysExactShapes(t *testing.T) {
+	forwarded := 0
+	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	call := func(method, target string, csrf bool) int {
+		body := ""
+		if method == "POST" {
+			body = `{"action":"undo","marker_key":"a1b2c3d4"}`
+		}
+		r := httptest.NewRequest(method, "https://host.test"+target, strings.NewReader(body))
+		r.RequestURI = target
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+		r.Header.Set("Origin", "https://host.test")
+		if method == "POST" {
+			r.Header.Set("Content-Type", "application/json")
+		}
+		if csrf {
+			r.Header.Set("X-Agent-Host-CSRF", "token")
+		}
+		w := httptest.NewRecorder()
+		host.ServeHTTP(w, r)
+		return w.Code
+	}
+	const rewind = "/api/v1/conversations/4f6c2a9e-1d3b-4c8a-9e7f-0a1b2c3d4e5f/rewind"
+	for _, ok := range []struct{ method, target string }{
+		{"GET", rewind + "?entry=a1b2c3d4"},
+		{"GET", rewind + "?branch=a1b2c3d4"},
+		{"POST", rewind},
+	} {
+		if code := call(ok.method, ok.target, true); code != 200 {
+			t.Fatalf("%s %s: %d", ok.method, ok.target, code)
+		}
+	}
+	for _, bad := range []struct{ method, target string }{
+		{"GET", rewind},
+		{"GET", rewind + "?entry=a&branch=b"},
+		{"GET", rewind + "?path=x"},
+		{"POST", rewind + "?entry=a1b2c3d4"},
+	} {
+		if code := call(bad.method, bad.target, true); code != 400 {
+			t.Fatalf("%s %s: %d, want 400", bad.method, bad.target, code)
+		}
+	}
+	if code := call("POST", rewind, false); code != 403 {
+		t.Fatalf("rewind without CSRF: %d", code)
+	}
+	if forwarded != 3 {
+		t.Fatalf("forwarded %d", forwarded)
+	}
+}

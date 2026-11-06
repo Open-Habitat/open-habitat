@@ -36,6 +36,8 @@ export const mutationClasses = {
   "conversation.abort": "pending",
   "conversation.bash": "pending",
   "conversation.abort_bash": "pending",
+  // Palaa tähän: the sheet stays until the host says what it did.
+  "conversation.rewind": "pending",
   "workspace.create": "pending",
   "workspace.git_init": "pending",
   // The page shows the chosen icon at once, until the snapshot carries it.

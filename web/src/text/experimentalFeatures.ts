@@ -15,6 +15,17 @@ const fi = {
       needs: "Ei muuta.",
       caption: "Kirjoituskenttä",
     },
+    "rewind-conversation": {
+      name: "Palaa tähän",
+      desc: "Palaa aiempaan viestiisi samassa keskustelussa. Voit palauttaa myös tiedostot, joita agentti muutti sen jälkeen, tai pelkät tiedostot.",
+      where:
+        "Oman viestisi ⋯-valikossa. Vahvistus avautuu kirjoituskentän yläpuolelle, ja viestisi palaa kenttään muutettavaksi.",
+      shows:
+        "Mitä jää sivuun ja mitkä tiedostot palautuvat. Korvattu jatko jää keskusteluun riviksi, josta voit avata sen tai jatkaa siitä tiedostoineen.",
+      needs:
+        "Tiedostot palautuvat viesteistä, jotka lähetit ominaisuuden ollessa päällä. Palautuvat agentin muokkaamat tiedostot; komentojen tekemät muutokset jäävät. Kopiot tiedostoista jäävät omalle tilillesi.",
+      caption: "Oman viestin valikko",
+    },
     "empty-conversation-start-page": {
       name: "Aloitussivupainike keskustelussa",
       desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
@@ -119,6 +130,17 @@ export const experimentalFeaturesText = catalog(fi, {
         "A folder tree with the folders that hold changes open, a search with the name first and its folder after, and on a computer the selected row's preview beside the list.",
       needs: "Nothing else.",
       caption: "Message field",
+    },
+    "rewind-conversation": {
+      name: "Go back here",
+      desc: "Go back to an earlier message of yours in the same conversation. You can also restore the files the agent changed after it, or the files alone.",
+      where:
+        "In your own message's ⋯ menu. The confirmation opens above the message field, and your message goes back into the field to edit.",
+      shows:
+        "What is set aside and which files are restored. The replaced continuation stays in the conversation as a row you can open or continue from, with its files.",
+      needs:
+        "Files are restored for messages you sent while the feature was on. Files the agent edited are restored; changes made by commands stay. Copies of the files stay in your own account.",
+      caption: "Your message's menu",
     },
     "empty-conversation-start-page": {
       name: "Start-page button in conversations",

@@ -57,12 +57,18 @@ export interface HistoryEntry {
     | "model_change"
     | "unknown"
     | "bash"
-    | "recap";
+    | "recap"
+    | "rewind";
   recap?: {
     recap: string;
     next: string;
     through: string;
     generated_at: number;
+  };
+  /** Palaa tähän's record (contracts/v1/history.schema.json#/$defs/rewind). */
+  rewind?: import("../components/Rewind").RewindRowMarker & {
+    at?: string;
+    of?: string;
   };
   content: HistoryContent;
   blocks?: HistoryBlock[];

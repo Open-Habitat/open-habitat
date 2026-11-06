@@ -124,6 +124,7 @@ type conversation struct {
 	acceptedMessages                                        uint64
 	naming, automaticFirst, automaticRefined, refinementDue bool
 	recapping                                               bool
+	rewinding                                               bool // a Palaa tähän is in flight (rewind_linux.go)
 	recapTimer                                              *time.Timer
 	recapDue                                                time.Time // when recapTimer fires; kept by the idle stop only for a timer it cancelled
 	recapActivity                                           uint64    // activity fence, protected by c.mu
@@ -410,7 +411,7 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.processRoutes(w, r, processParts)
 		return
 	}
-	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && ((strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id"))) || (strings.HasSuffix(r.URL.Path, "/status") && len(r.URL.Query()) == 1 && r.URL.Query().Get("continuation") == "true" && len(r.URL.Query()["continuation"]) == 1)))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
+	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && ((strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id"))) || (strings.HasSuffix(r.URL.Path, "/status") && len(r.URL.Query()) == 1 && r.URL.Query().Get("continuation") == "true" && len(r.URL.Query()["continuation"]) == 1) || (strings.HasSuffix(r.URL.Path, "/rewind") && rewindQuery(r.URL.Query()))))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -461,6 +462,10 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.historyTitle(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "name":
 		c.nameByHand(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "rewind":
+		c.rewindRead(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "rewind":
+		c.rewind(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "recap":
 		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "presence":

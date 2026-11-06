@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/rewind-conversation
 lane: rewind
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Return to an earlier message with file restore (experimental)
@@ -30,4 +31,4 @@ kodissa.
 
 ## Acceptance Criteria
 
-- [ ] palaaminen ja tiedostojen palautus toimivat kokeellisena ominaisuutena; testit synteettisellä Pi-istunnolla
+- [x] palaaminen ja tiedostojen palautus toimivat kokeellisena ominaisuutena; testit synteettisellä Pi-istunnolla

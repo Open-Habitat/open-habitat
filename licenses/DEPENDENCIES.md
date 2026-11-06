@@ -17,6 +17,12 @@ BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
 not shipped. The synthetic Pi integration-test lockfile mirrors that override.
 The product companion itself is original code embedded in the Go binary.
 
+The daemon's Palaa tähän extension (`internal/daemon/rewind-extension.mjs`,
+embedded in the Go binary) adapts the checkpoint capture, tracked-path rules
+and restore of better-pi-rewind (raine, MIT, commit e42fa9c). Nothing is
+installed from npm; the extension carries the upstream copyright and
+permission notice in its header, and the Go preview's line count names it.
+
 CodeMirror 6 and its Lezer parser/highlighter packages are MIT-licensed upstream
 modules from the maintained CodeMirror project. They run as bundled browser
 text-editing libraries only, with no repository plugins, preview execution,
