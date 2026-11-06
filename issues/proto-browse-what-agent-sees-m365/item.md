@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-browse-m365
 lane: m365-browse-proto
