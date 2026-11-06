@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-rewind
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: return a conversation to an earlier message

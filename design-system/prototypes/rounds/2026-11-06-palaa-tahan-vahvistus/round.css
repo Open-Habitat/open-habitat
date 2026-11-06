@@ -1,0 +1,124 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rw-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rw-bar strong { font-weight: 600; }
+.rw-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rw-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rw-bar select, .rw-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rw-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rw-lines { font-size: 11px; line-height: 1.3; padding-left: 0; }
+  .rw-lines li:not([aria-current]) { display: none; }
+}
+.rw-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rw-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* ---- Shared: a message's own actions sit at the right of its header ---- */
+.rw-msg { position: relative; }
+.rw-msg[data-left] > :not(.rw-pop):not(.rw-msg-actions) { opacity: 0.45; }
+.rw-msg-actions {
+  position: absolute; top: var(--ah-s1); right: 0;
+  display: flex; align-items: center; gap: var(--ah-s1);
+}
+.rw-msg-more { --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); }
+.rw-msg-more .ah-menu-chevron { display: none; }
+/* On a desktop the own actions show on hover or focus; on a phone they stay
+   visible. The chosen message keeps its ⋯ so the confirmation has an anchor. */
+@media (hover: hover) and (min-width: 801px) {
+  .rw-msg[data-own] .rw-msg-actions { opacity: 0; transition: opacity 120ms; }
+  .rw-msg[data-own]:is(:hover, :focus-within, [data-open]) .rw-msg-actions,
+  .rw-msg-actions:has([aria-expanded="true"]) { opacity: 1; }
+}
+.rw-tools { display: grid; gap: var(--ah-s1); }
+
+.rw-meta {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--ah-s2);
+  margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.rw-meta .ah-icon { flex: none; align-self: center; color: var(--ah-muted); }
+.rw-busy { color: var(--ah-ink); font-weight: 600; }
+.rw-link {
+  padding: 0; border: 0; background: none; font: inherit; cursor: pointer;
+  color: var(--ah-accent-ink); text-decoration: underline; text-underline-offset: 2px;
+}
+.rw-actions { display: flex; gap: var(--ah-s2); justify-content: flex-end; flex-wrap: wrap; }
+.rw-fileline { display: grid; gap: var(--ah-s1); }
+.rw-filelist {
+  display: grid; gap: 2px; margin: 0; padding: var(--ah-s1) var(--ah-s2);
+  list-style: none; border-radius: var(--ah-r-md, 10px); background: var(--ah-sunken, var(--ah-bg));
+  font-size: var(--ah-size-meta);
+}
+.rw-filelist li { display: flex; align-items: center; gap: var(--ah-s2); min-width: 0; }
+.rw-filelist code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ah-mono); }
+.rw-filelist .rw-cmd { color: var(--ah-muted); }
+.rw-stat { flex: none; font-family: var(--ah-mono); color: var(--ah-ink-2); }
+
+/* ---- A: popover under the message's ⋯, floating over the later part ---- */
+.rw-pop {
+  position: absolute; z-index: 6; top: calc(var(--ah-s1) + 36px); right: 0; scroll-margin-block: var(--ah-s3);
+  width: min(340px, calc(100vw - 24px)); box-sizing: border-box;
+  display: grid; gap: var(--ah-s2);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md, 10px);
+  background: var(--ah-surface); box-shadow: 0 8px 28px var(--ah-scrim);
+  text-align: left;
+}
+.rw-pop h2, .rw-sheet h2 { margin: 0; font-size: var(--ah-size-ui); font-weight: 600; }
+.rw-pop .ah-radio-group { display: grid; gap: 0; margin-block: 0; }
+.rw-pop .ah-radio-group label { padding: var(--ah-s1) var(--ah-s2); }
+.rw-pop .ah-radio-group > .ah-field-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+}
+
+/* ---- B: a slim bar in the timeline under the message ---- */
+.rw-slim {
+  display: grid; gap: 2px;
+  padding: var(--ah-s1) var(--ah-s2) var(--ah-s2);
+  border-block: 1px solid var(--ah-line);
+  scroll-margin-block: var(--ah-s3);
+}
+.rw-slim-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); }
+.rw-slim-title { display: inline-flex; align-items: center; gap: var(--ah-s1); font-weight: 600; font-size: var(--ah-size-ui); }
+.rw-slim-title .ah-icon { color: var(--ah-muted); }
+.rw-slim-row .rw-actions { margin-left: auto; }
+.rw-slim-sub { display: grid; gap: 2px; }
+
+/* ---- C: a low sheet above the composer ---- */
+.rw-sheet {
+  pointer-events: auto; box-sizing: border-box;
+  /* As wide as the composer's field box below it. */
+  width: var(--rw-field-w, min(calc(100% - 2 * var(--ah-s3)), var(--ah-conversation-width, 760px)));
+  display: grid; gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md, 10px);
+  background: var(--ah-surface); box-shadow: 0 -4px 24px var(--ah-scrim);
+}
+.rw-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ah-s2); }
+.rw-sheet-toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ah-s2) var(--ah-s4, 24px); }
+.rw-sheet-toggles .ah-checkbox small { display: block; color: var(--ah-muted); }
+.rw-sheet-foot { display: grid; gap: var(--ah-s2); }
+@media (min-width: 601px) {
+  .rw-sheet-foot { grid-template-columns: 1fr auto; align-items: center; }
+  .rw-sheet-foot > .rw-busy { grid-column: 1; }
+  .rw-sheet-foot > .rw-actions { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
+}
+
+/* ---- Result: branch row and files-only row (round 2) ---- */
+.rw-branch { border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md, 10px); padding: var(--ah-s1) var(--ah-s2); }
+.rw-branch-row, .rw-origin { display: flex; align-items: center; gap: var(--ah-s2); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rw-branch-row > span, .rw-origin > span { flex: 1; min-width: 0; }
+.rw-branch-row strong, .rw-origin strong { color: var(--ah-ink); font-weight: 600; }
+.rw-branch-body { display: grid; gap: var(--ah-s2); padding: var(--ah-s2) 0; }
+.rw-branch-body .ah-feed { opacity: 0.6; }
+.rw-branch-body > [data-ah-primitive="button"] { justify-self: start; }
+.rw-swap { display: grid; gap: var(--ah-s2); padding-top: var(--ah-s1); }
+.rw-swap .ah-checkbox small { display: block; color: var(--ah-muted); }
+.rw-origin { padding: var(--ah-s2); border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md, 10px); }

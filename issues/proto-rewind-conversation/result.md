@@ -288,3 +288,88 @@ open-habitat agent view offer --current \
   --title "Palaa tähän – kierros 2: tiedostot" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 3: tiivis vahvistus
+
+Jari 6.11.: kierroksen 2 **C Valitse mitä** on suunta; better-pi-rewind
+(raine, MIT) on malli. Vahvistus oli ison näköinen, ja riffataan myös,
+onko tiedostojen palautus oletuksena päällä vai pois.
+
+## Prototyyppi
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-palaa-tahan-vahvistus/`
+(`NOTES.md`). Sama keskustelu, samat kolme valintaa ja sama tulos kuin
+kierroksen 2 C:ssä; vain vahvistuksen muoto vaihtuu. Kaikista on poistettu
+valintojen selitteet, tiedostot ovat yhdellä rivillä (*3 tiedostoa palautuu,
+komennon muutokset jäävät · Näytä*), ja lista on Näytä-painikkeen takana.
+Yläpalkin *Tiedostot* vaihtaa oletuksen: mukana = Keskustelu ja tiedostot,
+pois = Vain keskustelu.
+
+Akseli: missä ja minkä kokoisena vahvistus näkyy.
+
+- **A Ponnahdus**: pieni ikkuna viestin ⋯-painikkeen alla, kolme valintaa allekkain ilman selitteitä; tiedostot yhdellä rivillä, lista Näytä-painikkeen takana.
+- **B Ohut palkki**: yksi rivi viestin alla: Palaa tähän, valikko mitä palautetaan ja painikkeet; määrät ja tiedostot pienellä toisella rivillä.
+- **C Pieni arkki**: matala paneeli kentän yllä, kaksi valintaa Keskustelu ja Tiedostot rinnakkain; viesti ja sen jälkeinen osa himmenevät keskustelussa.
+
+Korkeus oletusnäkymässä: A 255 px, B 88 px, C 148 px (puhelimessa 263,
+140, 209); kierroksen 2 kortti oli 499 px (puhelimessa 593).
+
+Mitä kukin päättää:
+
+- *A* pitää kolme valintaa näkyvissä kuten better-pi-rewindin valikko ja
+  on lähellä viestiä, mutta peittää myöhemmän osan, jonka se juuri jättää
+  sivuun.
+- *B* on pienin ja pysyy keskustelun virrassa viestin alla; valinta on
+  valikon takana, joten muut kaksi vaihtoehtoa näkyvät vasta avattuna.
+- *C* jättää koko keskustelun näkyviin ja on aina samassa paikassa kentän
+  yllä; kaksi valintaa ilmaisee kolme vaihtoehtoa ilman sanaa *vain*, mutta
+  vahvistus on kauempana viestistä, josta se avattiin.
+
+## Mitä host tarvitsee
+
+Sama kuin kierroksella 2; muoto ei lisää mitään. Vahvistus on selaimen
+oma näkymä. Daemonilta se tarvitsee kirjoituskomennon *palaa tähän
+{viesti, mitä: molemmat | keskustelu | tiedostot}* ja luvun, joka antaa
+ennen vahvistusta jätettävien viestien määrän, checkpointin tiedostot
++/−-määrineen ja komennot, joiden muutoksia ei palauteta. Oletus (mukana tai
+pois) on selaimen vakio; henkilökohtaista asetusta ei tarvita, ellei Jari
+halua sellaista.
+
+## Suositus
+
+**B Ohut palkki, tiedostot oletuksena mukana.** Se on puolet C:stä ja
+kolmasosa A:sta, ei peitä mitään ja on juuri siinä kohdassa, johon
+keskustelu palaa, joten näkee samalla, mikä jää sivuun (himmennetty osa
+alla). Tavallisin valinta on valmiina, ja harvinaisemmat ovat yhden
+painalluksen päässä valikossa selitteineen. Oletus mukana, koska ennen
+väärää pyyntöä palaaminen tarkoittaa melkein aina myös agentin sen jälkeen
+tekemiä muutoksia; rivi sanoo silti suoraan, että 3 tiedostoa palautuu.
+
+## Kysymykset Jarille
+
+1. Mikä muoto: A (`r3-a-ponnahdus-1-oletus-mukana-1440-light`), B
+   (`r3-b-ohut-palkki-1-oletus-mukana-1440-light`) vai C
+   (`r3-c-pieni-arkki-1-oletus-mukana-1440-light`)?
+2. Tiedostot oletuksena mukana (`r3-b-ohut-palkki-1-oletus-mukana-1440-light`)
+   vai pois (`r3-b-ohut-palkki-1b-oletus-pois-1440-light`)?
+3. Riittääkö tiedostoista rivi ja Näytä, vai pitääkö lista olla heti auki
+   (`r3-b-ohut-palkki-1c-tiedostot-auki-1440-light`)?
+
+## Todisteet
+
+`evidence/r3-*`: jokaisesta riffistä oletusnäkymä tiedostot mukana (1),
+oletus pois (1b), tiedostolista auki (1c), B:n valikko auki (1d), vain
+tiedostot (1e), tulos (2), sisäänkäynti viestin ⋯-valikosta (0) ja agentti
+työssä (6); 1440 ja 390, vaalea ja tumma, kertoimella 2. `check.mjs`: 344
+tarkistuspistettä, konsoli puhdas, vahvistus kokonaan kentän yläpuolella.
+Synteettinen komponenttilabra, ei hostia vasten ajettu.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-palaa-tahan-vahvistus/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/palaa-tahan-vahvistus/offline.html \
+  --title "Palaa tähän – kierros 3: vahvistus" \
+  --idempotency-key "$(uuidgen)" --json
+```
