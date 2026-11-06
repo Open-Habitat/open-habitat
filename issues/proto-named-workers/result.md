@@ -1,5 +1,86 @@
 # Result: named support workers
 
+## Round 3: the Avustajat chip's own icon
+
+Round `design-system/prototypes/rounds/2026-11-06-nimetyt-workerit-3/`
+(its `NOTES.md` is the Finnish walk-through). Screenshots at device scale
+factor 2 are in `evidence/`, named `r3-<riff>-<step>-<width>-<theme>`, for
+every step at 1440 and 390, light and dark. Steps with the chip closed
+(`0-oletus`, `2a-valittaa-kiinni`, `3b-tyoskentelee-kiinni`, `4-raportti`)
+also have a close-up of the strip row, `-lahi-`.
+
+- **1 Botit**: kaksi agentin päätä limittäin, kuten tuotannon Käyttäjät-ikoni on kaksi henkilöä; avustajia on joukko.
+- **2 Silmukka**: Workerit-pallon haaraikoni, jonka haara palaa päälinjaan ja jonka silmukalla on worker; kierros palaa mainiin.
+- **3 Nimilappu**: agentin pää ja nimilappu; nimetty agentti erottuu nimettömästä kertaworkerista.
+
+Axis: the shape of the icon in round 2's chosen riff 3, the one Avustajat
+chip beside the Workers pill. Everything else is that riff unchanged: the
+story, the state marks, the list and production's `WorkerView`. Each icon
+follows production `Icon` rules (24 grid, 1.8 stroke, round caps and joins,
+no fill), so the chosen one moves into `Icon.tsx` as one more name. It sits
+in the chip at the pill icon's 14 px (`ah-bg-kind-ic`) and is muted when
+every named worker is quiet, as the production pill's icon is. It also
+heads the opened list, as production panel tabs carry their kind icon. The
+review bar has an icon sheet with the riff's icon at 14, 16, 18 and 24 px
+beside the production icons it lives with (Workers, Processes, Agent, Users).
+
+The icon does not change with state. State stays in the marks after it:
+a still ring waits, a turning ring is with the main agent (relaying), a
+breathing dot works, and a ring with a filled centre is a round report not
+yet seen. The check verifies each of these in the closed chip.
+
+### Host facts the view assumes
+
+None beyond round 2: the icon is static UI. The chip still needs round 2's
+named-worker facts (parent conversation, state, rounds, relayed message,
+stop) from `design-named-workers`.
+
+### Recommendation
+
+**1 Botit.** It is the one that reads at 14 px without explanation: an agent
+icon, more than one. It also follows a pattern production already has
+(`user` → `users`), so it reads as one family with the Agent icon. 2 Silmukka
+says the most about how a named worker works, but at chip size it is a small
+knot beside the Workers pill's own branch icon, and the two are easy to mix
+up. Its first draft looked like a flag and was redrawn. 3 Nimilappu is precise
+but its tag shrinks to a smudge at 14 px. The chip already says *Avustajat*
+in words, so the icon only has to say "agents", and Botit does that best.
+
+### Decisions for later review
+
+- **The chip keeps its *Avustajat* label on the phone too**, as chosen in
+  round 2. Production's Workers pill is icon and marks only. With an icon of
+  its own, the chip could drop the word on the phone to match. That is not
+  drawn.
+- **Silmukka's first draft was redrawn.** A main line with a D-shaped arc
+  read as a flag at 14 px. The drawn version keeps the `branch` icon's top
+  node and loops the branch back into the main line.
+
+### Not verified
+
+- The icon sheet is a review aid only; no production surface other than the
+  chip and the list title uses the icon here.
+- Forced-colours and high-contrast modes were not checked.
+
+### Questions for Jari
+
+1. Which icon: `r3-1-botit-0-oletus-lahi`, `r3-2-silmukka-0-oletus-lahi` or
+   `r3-3-nimilappu-0-oletus-lahi` (`-1440-light`)?
+2. Is the icon too close to the Workers pill's branch icon in Silmukka
+   (`r3-2-silmukka-3b-tyoskentelee-kiinni-lahi-1440-light`)?
+3. Does the phone chip need the word *Avustajat*, or is icon and marks
+   enough, as on the Workers pill (`r3-1-botit-0-oletus-390-light`)?
+
+### View
+
+```
+cd ~/src/open-habitat
+node design-system/prototypes/rounds/2026-11-06-nimetyt-workerit-3/build.mjs
+tw browser-open design-system/prototypes/dist/nimetyt-workerit-3/offline.html
+```
+
+`check.mjs` (in the round) passes 672 checkpoints with a clean console.
+
 ## Round 2: named workers by the Workers pill
 
 Round `design-system/prototypes/rounds/2026-11-06-nimetyt-workerit-2/`

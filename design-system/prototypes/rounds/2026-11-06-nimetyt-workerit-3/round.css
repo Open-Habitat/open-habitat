@@ -1,0 +1,127 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* The conversation column. */
+.ww-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ww-main > .ah-conversation-frame { flex: 1 1 auto; min-height: 0; }
+
+/* The conversation column. */
+.nw-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.nw-main > .ah-conversation-frame { flex: 1 1 auto; min-height: 0; }
+
+/* Named workers' marks, from production's strip vocabulary: a breathing dot
+   works, a turning ring is with the main agent (relaying, stopping), a still
+   ring waits; a fresh report fills the still ring's centre until it is seen. */
+.ah-bg-ring.still.nw-fresh { background: radial-gradient(circle, var(--ah-accent) 0 2.5px, transparent 3px); }
+.ah-bg-dot.run.nw-small { width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--ah-accent-soft); }
+.ah-bg-ring.nw-small { width: 8px; height: 8px; }
+.nw-check { width: 12px; height: 12px; }
+.nw-check.nw-small { width: 11px; height: 11px; }
+
+/* 1: inside the production pill, after its own marks. */
+.nw-pill-marks { display: inline-flex; align-items: center; }
+.nw-marks { gap: 5px; }
+.nw-divider { width: 1px; height: 12px; background: var(--ah-line-strong); margin: 0 2px 0 1px; }
+.nw-group { margin-bottom: 2px; }
+.nw-group-head {
+  display: flex; align-items: center; gap: 6px; margin: 4px 8px 2px; min-width: 0;
+  font: 600 12px var(--ah-font); color: var(--ah-ink-2);
+}
+.nw-group-head svg { width: 13px; height: 13px; flex: none; color: var(--ah-ink-2); }
+.nw-group-note { margin-left: auto; font-weight: 400; color: var(--ah-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nw-group-head2 { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ah-line-soft); }
+
+/* Named rows: production's worker row with the task after the name. */
+.nw-task { font-weight: 400; color: var(--ah-ink-2); }
+.nw-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 12em; }
+.nw-row[data-fresh] .ah-bg-name { font-weight: 600; }
+.nw-row[data-fresh] .nw-detail { color: var(--ah-ink); }
+.nw-row .ah-bg-sub { flex-wrap: nowrap; }
+.nw-stop:hover { --i-fg: var(--ah-err); --i-hover: var(--ah-err-soft); }
+
+/* 2 and 3: chips beside the pill, in the same row and shape. */
+.nw-chips { display: contents; }
+.nw-chip { gap: 6px; max-width: 20em; }
+.nw-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nw-chip-news {
+  flex: none; padding: 0 6px; height: 18px; display: inline-flex; align-items: center; border-radius: var(--ah-r-pill);
+  background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 11px var(--ah-font);
+}
+.nw-chip[data-fresh] .nw-chip-name { font-weight: 600; }
+.nw-pop-slot { display: contents; }
+.nw-pop-head { padding-bottom: 0; }
+.nw-pop-title { cursor: default; color: var(--ah-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* 2: the card a chip opens. */
+.nw-card { display: grid; gap: 8px; padding: 4px 6px 6px; font-size: 13px; }
+.nw-card-state { display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap; }
+.nw-card-agent { margin-left: auto; font-size: 12px; color: var(--ah-muted); }
+.nw-rounds { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.nw-rounds li {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
+  padding: 4px 6px; border-radius: var(--ah-r-md); font-size: 12.5px;
+}
+.nw-rounds li:nth-child(odd) { background: var(--ah-sunken); }
+.nw-round-n { font: 600 12px var(--ah-font); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+.nw-round-line { color: var(--ah-ink); min-width: 0; }
+.nw-round-land { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-ok); font-size: 12px; white-space: nowrap; }
+.nw-round-land svg { width: 12px; height: 12px; }
+.nw-round-land code { font: 500 11.5px var(--ah-mono); color: var(--ah-ink-2); }
+.nw-round-live .nw-round-line { color: var(--ah-accent-ink); font-weight: 500; }
+.nw-round-live .nw-round-land { color: var(--ah-muted); }
+.nw-asked { margin: 0; display: grid; gap: 2px; font-size: 12.5px; color: var(--ah-ink-2); }
+.nw-asked-who { font-size: 12px; color: var(--ah-muted); }
+.nw-asked q { quotes: '”' '”'; color: var(--ah-ink); }
+.nw-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nw-card-actions .nw-stop { margin: 0; }
+.nw-card-note { margin: 0; font-size: 12px; color: var(--ah-muted); }
+
+/* 3: the list's closing note. */
+.nw-list-note { margin: 8px 8px 4px; }
+
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+  .nw-group-note { display: none; }
+  .nw-task { display: none; }
+  .nw-chip { max-width: 12em; }
+  .nw-chip-news { display: none; }
+  .nw-row .ah-bg-sub { flex-wrap: wrap; }
+  .nw-row .ah-bg-sub .ah-bg-sep { display: none; }
+  .nw-detail { flex-basis: 100%; }
+  .nw-rounds li { grid-template-columns: 18px minmax(0, 1fr); }
+  .nw-round-land { grid-column: 2; }
+}
+
+/* Round 3: the chip's own icon. The list title carries it as production's
+   panel tabs carry their kind icon. */
+.nw-pop-title { display: inline-flex; align-items: center; gap: 6px; }
+.nw-pop-title .ah-bg-kind-ic { color: var(--ah-ink); }
+.rq-sheet { display: inline-flex; align-items: center; gap: 12px; color: var(--ah-ink); }
+.rq-sheet-sizes, .rq-sheet-peers { display: inline-flex; align-items: center; gap: 8px; }
+.rq-sheet-peers { color: var(--ah-ink-2); padding-left: 12px; border-left: 1px solid var(--ah-line); }
+@media (max-width: 600px) {
+  .rq-sheet { gap: 8px; }
+  .rq-sheet-sizes svg:nth-child(2), .rq-sheet-sizes svg:nth-child(3) { display: none; }
+  .rq-sheet-peers { padding-left: 8px; gap: 6px; }
+}
