@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -68,3 +68,5 @@ ymmärtämään tasot.
 
 - [x] kierros 1: tämänhetkiset tasot ja kolme suuntaa, näkymätarjous ja kysymykset Jarille; Graphin tekniset rajat result.md:ssä
 - [x] kierros 2: kolme riffiä Ruudukosta (vertailutaulukko, avautuva ruudukko, erillinen ikkuna), solut ilman oikeutta kieltomuodossa; näkymätarjous ja kysymykset Jarille
+- [x] kierros 3: yksi työnkulku neljälle Entra-sovellukselle kolmena riffinä (sovellus kerrallaan, vaihe kerrallaan, yksi komento) ja taulukko auki ennen asetusta, avattavissa sen jälkeen; näkymätarjous ja kysymykset Jarille
+- [ ] Jari valitsee kierroksen 3 riffin
