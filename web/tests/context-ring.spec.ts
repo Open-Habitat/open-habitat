@@ -112,14 +112,17 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   await expect(ring).toHaveAttribute("data-tokens", "31600");
   await expect(ring).toHaveAttribute("data-level", "ok");
 
-  // A phone shows the ring alone below the attention level, within the bar.
+  // A phone carries the ring in the facts line, not a second row of chips.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(ring).toBeVisible();
-  await expect(ring.locator(".ah-ctx-value")).toBeHidden();
+  const phoneRing = page
+    .getByTestId("phone-header-facts")
+    .locator(".ah-ctx-ring");
+  await expect(phoneRing).toBeVisible();
+  await expect(ring).toBeHidden();
   const header = page.locator(".ah-agent-header");
   expect(
     await header.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
   ).toBe(true);
-  const box = await ring.boundingBox();
+  const box = await phoneRing.boundingBox();
   expect(box && box.x + box.width).toBeLessThanOrEqual(390);
 });

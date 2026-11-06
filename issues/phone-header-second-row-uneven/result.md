@@ -1,5 +1,78 @@
 # Result: the conversation header on a phone, its bottom row and what it opens
 
+## Implementation (2026-11-06)
+
+Implemented round 3 picture 02 (Alarivi) and round 4 A Valikko as an ordinary
+fix, not an experiment. The phone header is a compact title/facts block with
+the activity dot before the title. The line opens a status-headed menu;
+workspace, Git, context and model rows open their existing destinations.
+Panel controls and one-off actions live in ⋯. The model is absent from the
+line before the first message. Desktop composition and shortening stay intact.
+
+The disabled tooltip wrapper no longer leaks the retitle control onto phones.
+Git/model/context destinations return focus to the facts line. Its menu closes
+on a second tap, Escape or an outside tap, including nonfocusable conversation
+content. The compact line remains available with the software keyboard open.
+
+### Evidence and checks
+
+`evidence/implemented/` contains paired PNG and offline HTML snapshots at DSF 2:
+new/running/menu at 390 and 360, and desktop 1440 with sidebar, activity tooltip
+and editor, all light/dark. Synthetic same-UID browser-host evidence only, not
+real iPhone/Safari, native Pi/provider or Unix-user isolation evidence. The
+synthetic model has a catalogue display name supplied by the test.
+
+Final focused checks (working tree carried by this issue's fixing commit):
+
+- `./scripts/test-focused.sh --area web`: 175 files, 1320 tests passed after
+  rebasing onto round 63 main (`fb0c118b4`); static/type/catalog checks passed.
+  Before integration: 171 files, 1281 tests.
+- `./scripts/test-focused.sh --area browser --spec <spec>` separately for
+  `lab-phone-header.spec.ts` (2), `lab-desktop-header.spec.ts` (5),
+  `context-ring.spec.ts` (1), `phone-composer-keyboard.spec.ts` (2),
+  `lab-worktree-agent.spec.ts` (1), `browser-shell.spec.ts` (12): all passed.
+  `OH_PORT_BASE=13500`, `OH_BROWSER_WORKERS=2`, private disk-backed TMPDIR,
+  umask 077. Phone/desktop header cases include axe in both themes.
+- Capture runs additionally set `OH_HEADER_CAPTURE` to the evidence directory.
+- Focused self-review: checked the accepted layout, hidden disabled wrappers,
+  no duplicated pre-message model, dynamic Git/context readouts, destination
+  focus, menu dismissal, keyboard layout, long names and desktop shortening.
+  Corrected the inherited keyboard rule that would have moved the dot back
+  after the title. No host, contract, session-state or authority changes.
+- The title unit assertion now checks absence of a title disclosure rather
+  than an exact inventory of unrelated header buttons. Existing phone shell,
+  worktree and keyboard journeys follow the new menu/line entry points.
+- A pre-existing Biome failure in `web/lab/landing-server-did-not-answer.mjs`
+  was corrected by formatting its one-line conditional, without behavior change.
+
+Early checks found formatting, an old exact-button-count assertion, React Aria's
+modal trigger inertness/nonmodal outside-dismiss behavior, and a context readout
+incorrectly using a tooltip-managed `title`. All were corrected and rerun.
+Repeated `--spec` flags select only the last spec, so final runs used one spec
+per command. Generated snapshot trailing whitespace was normalized before
+landing. Rebase preserved the other workers' header/composer changes; its only
+conflict was the additive KOKEILTAVAA list, resolved by retaining all entries.
+The already-landed identical formatter commit was dropped. All six browser
+specs and web checks passed again on integrated main. Screenshots capture the
+pre-rebase implementation; they are not claimed as a live-host verdict.
+No full suite or clean gate was run; those remain the conductor's.
+
+### Decisions for later review
+
+- The compact model retains its short name before the workspace uses the
+  remaining width; exceptionally long model names cap at 40% of the line.
+  Alternative: shrink both equally (which clipped even Opus 5.5). This follows
+  the prototype's nonshrinking facts and shrinking workspace at phone widths.
+- Use the mounted controls' presentation readouts, as desktop shortening does,
+  rather than create another Git/context state owner. Alternative: lift all
+  control data and handlers into AgentHeader's caller. The existing controls
+  keep their latest on-demand values and their existing detail-view handlers.
+- Retain the existing context sentence in the menu, including unknown usage
+  and compaction information, rather than invent a shorter incomplete value.
+  There are no extra descriptions of what clicking a row does.
+- The facts popover alone is nonmodal so a second tap on its line can close it;
+  other menus retain their existing modal behavior. Outside taps still dismiss.
+
 ## Round 1 (2.11.), decided
 
 Prototype: `prototype/otsakkeen-toinen-rivi.html`, guide `prototype/NOTES.md`,
@@ -184,4 +257,4 @@ Opus 5.5 · Medium and the context page's "could not read" text.
    message? I recommend leaving it out. The composer's picker is where the
    model is chosen then, and round 1's issue was this duplicate.
 
-No production code was changed.
+No production code was changed during the prototype rounds above.

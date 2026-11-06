@@ -129,11 +129,8 @@ describe("conversation title", () => {
     const view = render(header(longTitle));
     const heading = view.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(longTitle);
-    // The activity dot (its tooltip's trigger), Tiedot, and the menu that
-    // CSS shows in its place on a phone or a short row.
-    expect(
-      view.getAllByRole("button").map((b) => b.getAttribute("data-testid")),
-    ).toEqual(["header-activity", "workspace-details", "conversation-menu"]);
+    // The title itself must not become a second disclosure trigger.
+    expect(heading.querySelector("button")).toBeNull();
   });
 });
 

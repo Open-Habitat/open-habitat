@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
+import { snapshot } from "../lab/session.mjs";
 import { expect, test } from "./lab-host";
 
 test.use({ reducedMotion: "reduce", deviceScaleFactor: 2 });
@@ -14,7 +15,7 @@ test.use({ reducedMotion: "reduce", deviceScaleFactor: 2 });
 const branch =
   "wt/korjaa-otsikkorivin-tilanjako-kapeassa-keskustelusarakkeessa";
 const capture = process.env.OH_HEADER_CAPTURE;
-for (const width of [1024, 1280, 1600, 1920]) {
+for (const width of [1024, 1280, 1440, 1600, 1920]) {
   test(`@a11y desktop conversation header stays one row with a readable title at ${width}px`, async ({
     page,
   }) => {
@@ -138,8 +139,8 @@ for (const width of [1024, 1280, 1600, 1920]) {
   });
 }
 
-async function shoot(page: Page, header: Locator, name: string, extra = 0) {
-  if (!capture) return;
+async function shoot(page: Page, header: Locator, name: string, _extra = 0) {
+  if (!capture || page.viewportSize()?.width !== 1440) return;
   const box = await header.boundingBox();
   if (!box) return;
   // A menu just closed returns focus to its trigger; the picture is of rest.
@@ -147,14 +148,8 @@ async function shoot(page: Page, header: Locator, name: string, extra = 0) {
     await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
-    await page.screenshot({
-      path: resolve(capture, `${name}-${colorScheme}.png`),
-      clip: {
-        x: 0,
-        y: 0,
-        width: page.viewportSize()?.width ?? 0,
-        height: box.y + box.height + extra,
-      },
+    await snapshot(page, resolve(capture, `${name}-${colorScheme}`), {
+      labOrigin: new URL(page.url()).origin,
     });
   }
   await page.emulateMedia({ colorScheme: "light" });

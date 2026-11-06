@@ -16,6 +16,11 @@ import { Icon } from "./Icon";
 import { NameEditor } from "./NameEditor";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
+import {
+  activateHeaderControl,
+  PhoneHeaderFacts,
+  usePhoneHeaderReadout,
+} from "./PhoneHeaderFacts";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
@@ -1529,6 +1534,7 @@ export function AgentHeader({
   settings,
   contextIndicator,
   modelPicker,
+  emptyConversation = false,
   gitStatus,
   openMachines,
   terminal,
@@ -1563,6 +1569,7 @@ export function AgentHeader({
   /** How full the model's context is (Rengas), just before the model. */
   contextIndicator?: ReactNode;
   modelPicker?: ReactNode;
+  emptyConversation?: boolean;
   /** The workspace's Git status chip, beside the model (Yläpalkissa). */
   gitStatus?: ReactNode;
   /** The person's own computers this conversation used that have an SSH
@@ -1610,6 +1617,18 @@ export function AgentHeader({
   const archiving = archive ? archiveAction(archive) : undefined;
   const topline = useRef<HTMLDivElement>(null);
   const hidden = useHeaderShortening(topline);
+  const phoneReadout = usePhoneHeaderReadout(topline);
+  const phone = hidden.workspace === undefined;
+  const phoneActions = phone
+    ? phoneReadout.actions.map((action) => ({
+        id: action.id,
+        label: action.label,
+        availability: action.disabled
+          ? { state: "disabled" as const, reason: action.label }
+          : undefined,
+        run: () => activateHeaderControl(topline, action.selector),
+      }))
+    : [];
   const fallbackModel =
     settings?.model || settings?.thinking
       ? t.modelSummary(
@@ -1617,18 +1636,19 @@ export function AgentHeader({
           settings.thinking ?? t.thinkingFallback,
         )
       : undefined;
-  // On a phone the secondary actions leave the top bar for this menu, so the
-  // header stays two rows; on a desktop it appears once the row has had to
+  // On a phone panels and secondary actions leave room for the title/facts
+  // block; on a desktop this menu appears once the row has had to
   // move the workspace there to keep the title readable, and lists only what
   // the row no longer shows (CSS shows the trigger, this decides the rows).
   const menuActions = hidden.actions !== false;
   const headerMenu = [
+    ...phoneActions,
     ...(hidden.workspace !== false
       ? [
           {
             id: "workspace",
-            label: workspaceLabel,
-            description: t.openWorkspace,
+            label: phone ? t.openWorkspace : workspaceLabel,
+            description: phone ? undefined : t.openWorkspace,
             run: () => navigate(workspaceHref),
           },
         ]
@@ -1760,6 +1780,23 @@ export function AgentHeader({
               )}
             </h1>
           )}
+          <PhoneHeaderFacts
+            row={topline}
+            readout={phoneReadout}
+            workspace={workspaceLabel}
+            onWorkspace={() => navigate(workspaceHref)}
+            showModel={!emptyConversation}
+            onDetails={onToggleDetails}
+            activity={
+              visibleActivity ? (
+                <StatusMark
+                  label={activityLabel}
+                  kind={activityKind}
+                  tone="info"
+                />
+              ) : undefined
+            }
+          />
           <span
             className="ah-title-dots"
             data-testid="title-dots"

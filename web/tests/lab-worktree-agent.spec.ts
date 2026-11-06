@@ -208,7 +208,10 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goBack();
-  await expect(chip).toBeVisible();
+  await page.getByTestId("phone-header-facts").click();
+  await expect(page.getByTestId("menu-fact-git")).toBeVisible();
+  await page.getByTestId("menu-fact-git").click();
+  await expect(page.getByTestId("git-dialog")).toBeVisible();
   await page.screenshot({
     path: "test-results-lab/evidence/worktree-agent-phone-merged.png",
   });

@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-06
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: phone-layout-2
 lane_seq: 1
 preparation: ready
+closed: 2026-11-06
 ---
 
 # Prototype: phone header second row as one consistent set
@@ -50,8 +51,8 @@ Toteuttaa seuraava sessio handoffin jälkeen.
 
 ## Acceptance Criteria
 
-- [ ] The second header row is visually consistent (screenshots at DSF 2, phone 390/360 and desktop, light and dark) and carries no duplicate of the composer's model chip.
-- [ ] Layout specs updated.
+- [x] The second header row is visually consistent (screenshots at DSF 2, phone 390/360 and desktop, light and dark) and carries no duplicate of the composer's model chip.
+- [x] Layout specs updated.
 
 ## Jari 2.11.: prototype first
 

@@ -199,7 +199,14 @@ export function GitStatusChip({
       isOpen={open}
       onOpenChange={(value) => {
         onOpenChange(value);
-        if (!value) queueMicrotask(() => trigger.current?.focus());
+        if (!value)
+          queueMicrotask(() => {
+            const phoneTrigger = trigger.current
+              ?.closest("header")
+              ?.querySelector<HTMLElement>(".ah-phone-facts");
+            if (phoneTrigger?.getClientRects().length) phoneTrigger.focus();
+            else trigger.current?.focus();
+          });
       }}
     >
       <ControlButton
@@ -217,6 +224,13 @@ export function GitStatusChip({
         className={`ah-gs-chip${worktree ? " ah-gs-worktree" : ""}${merged ? " merged" : ""}`}
         aria-label={txt.chipLabel(sentence)}
         data-menu-summary={summary}
+        data-phone-summary={[
+          merged ? txt.merged : "",
+          !merged && arrows?.up ? `↑${arrows.up}` : "",
+          !merged && facts.dirty_count ? `●${facts.dirty_count}` : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         title={worktree ? txt.chipTitleWorktree : txt.chipTitle}
       >
         <Icon name={merged ? "merge" : worktree ? "worktree" : "branch"} />

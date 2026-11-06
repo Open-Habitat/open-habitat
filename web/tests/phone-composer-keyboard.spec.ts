@@ -152,11 +152,12 @@ for (const phone of [
       };
       await resize(440, phone.pan);
       await editorVisible(440 + phone.pan);
-      // Typing with the keyboard open, the header gives up its second row and
-      // the overview steps aside, so the conversation keeps at least two
-      // fifths of the room above the keyboard. Both return when it closes.
-      const context = page.getByTestId("context-ring");
-      await expect(context).toBeHidden();
+      // The compact facts line stays available while the overview steps
+      // aside, leaving at least two fifths of the room for the conversation.
+      const context = page
+        .getByTestId("phone-header-facts")
+        .locator(".ah-ctx-ring");
+      await expect(context).toBeInViewport({ ratio: 1 });
       await expect(page.locator(".ah-recap")).toBeHidden();
       expect(
         await stream.evaluate((el) => el.getBoundingClientRect().height),

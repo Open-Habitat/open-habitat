@@ -31,10 +31,12 @@ async function conversation(page: Page) {
 const screen = (page: Page) => page.locator(".ah-terminal-surface .xterm-rows");
 
 async function openFirstShell(page: Page) {
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("toggle-terminal"))
-    .click();
+  if ((page.viewportSize()?.width ?? 1280) <= 800) {
+    await page.getByTestId("conversation-menu").click();
+    await page.getByTestId("menu-toggle-terminal").click();
+  } else {
+    await page.getByTestId("toggle-terminal").click();
+  }
   const panel = page
     .getByRole("region")
     .and(page.getByTestId("terminal-panel"));

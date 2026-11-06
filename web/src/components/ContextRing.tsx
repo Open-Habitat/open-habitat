@@ -89,7 +89,7 @@ export function contextSentence(usage: ContextUsage) {
   return `${txt.usage(pct(percent), full(tokens), full(window))}${compaction ? ` ${compaction}` : ""}`;
 }
 
-function Ring({
+export function Ring({
   percent,
   level,
   tick,
@@ -180,9 +180,12 @@ export function ContextRing({
     <>
       <ControlButton
         data-testid="context-ring"
+        data-menu-summary={sentence}
         data-level={level}
         data-tokens={usage.tokens}
         data-window={window}
+        data-percent={percent}
+        data-tick={tick}
         size="inline"
         presentation="pill"
         variant="quiet"

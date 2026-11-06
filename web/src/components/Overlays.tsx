@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
   Menu as AriaMenu,
@@ -192,6 +192,7 @@ export function Menu({
   triggerTestId,
   buttonRef,
   placement,
+  isNonModal,
 }: {
   label: string;
   triggerLabel?: string;
@@ -202,6 +203,7 @@ export function Menu({
   triggerClassName?: string;
   triggerTestId?: string;
   buttonRef?: RefObject<HTMLButtonElement | null>;
+  isNonModal?: boolean;
   placement?: "top start" | "end top" | "bottom start" | "bottom end";
   betweenItems?: ReactNode;
   items: {
@@ -218,9 +220,28 @@ export function Menu({
 }) {
   const ownTriggerRef = useRef<HTMLButtonElement>(null);
   const triggerRef = buttonRef ?? ownTriggerRef;
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!isNonModal || !open) return;
+    // Nonmodal React Aria popovers close on blur, but a tap on plain text
+    // need not move focus. Keep that outside-tap dismissal as well.
+    const dismiss = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !triggerRef.current?.contains(event.target) &&
+        !popoverRef.current?.contains(event.target)
+      )
+        setOpen(false);
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    return () => document.removeEventListener("pointerdown", dismiss, true);
+  }, [isNonModal, open, triggerRef]);
   return (
     <MenuTrigger
+      isOpen={isNonModal ? open : undefined}
       onOpenChange={(open) => {
+        setOpen(open);
         if (!open) queueMicrotask(() => triggerRef.current?.focus());
       }}
     >
@@ -242,6 +263,13 @@ export function Menu({
         <span aria-hidden="true" className="ah-menu-chevron" />
       </ControlButton>
       <Popover
+        ref={popoverRef}
+        isNonModal={isNonModal}
+        shouldCloseOnInteractOutside={
+          isNonModal
+            ? (target) => !triggerRef.current?.contains(target)
+            : undefined
+        }
         placement={placement}
         className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
       >

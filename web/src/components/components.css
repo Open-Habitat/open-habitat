@@ -3674,78 +3674,7 @@ details[open] > summary:not([class])::before {
 .ah-agent-topline .ah-header-more .ah-menu-chevron {
   display: none;
 }
-/* Phone: two rows. The title, the panels and the menu share the first, beside
-   the floating menu and home buttons; the conversation's state (activity, Git,
-   context, model) fills the second. The workspace, new title, archive and
-   details move into the menu, which also shows why an action is blocked. */
-@media (max-width: 800px) {
-  .ah-agent-topline {
-    flex-wrap: wrap;
-    /* Packed icon actions keep their focus rings apart (focus rule). */
-    gap: var(--ah-s2) var(--ah-control-gap);
-  }
-  .ah-agent-topline::after {
-    content: "";
-    order: 2;
-    flex-basis: 100%;
-  }
-  .ah-agent-topline .ah-title-row {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: var(--ah-control-row);
-  }
-  .ah-agent-topline > * {
-    order: 3;
-  }
-  .ah-agent-topline
-    > :is(
-      .ah-title-row,
-      .ah-editor-controls,
-      .ah-terminal-toggle,
-      .ah-guide-toggle,
-      .ah-header-more
-    ) {
-    order: 1;
-  }
-  .ah-agent-topline
-    > :is(
-      .ah-header-workspace,
-      .ah-header-recap,
-      .ah-retitle,
-      .ah-archive-control,
-      .ah-details-toggle
-    ) {
-    display: none;
-  }
-  .ah-agent-topline .ah-header-more {
-    display: inline-flex;
-    flex: none;
-  }
-  .ah-agent-topline > .ah-status {
-    padding: var(--ah-s1);
-    font-size: 0;
-  }
-  /* A finger's hit area for the activity dot's tooltip, which opens from
-     the dot's start: the dot begins the second row, at the screen's edge. */
-  .ah-agent-topline > .ah-header-activity {
-    width: 32px;
-    height: 32px;
-  }
-  .ah-agent-topline .ah-header-tip {
-    left: 0;
-    transform: none;
-  }
-  .ah-agent-topline > .ah-header-sep {
-    display: none;
-  }
-  /* The model chip takes what the row leaves and shortens the model's name;
-     it never pushes the row onto a third line. */
-  .ah-agent-topline > :is(.md-chip-picker, .ah-set-chip) {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: max-content;
-  }
-}
+/* The phone's compact title/facts block lives in PhoneHeaderFacts.css. */
 /* Desktop: one row (proto-conversation-header, round 2). The title keeps
    40 % of the row or its whole text; when the row is short of room the
    chips shorten in place, in a fixed order, and the rarely used actions
@@ -4537,36 +4466,12 @@ details[open] > summary:not([class])::before {
   .ah-conversation-frame > .ah-recap {
     max-height: min(20vh, calc(var(--ah-visible-height, 100dvh) * 0.2));
   }
-  /* Typing with the keyboard open, the header keeps only its first row (the
-     activity mark joins it) and the overview card steps aside until the
-     keyboard closes, so the conversation keeps a share of the little room
-     above the keyboard. Only while the composer has focus: a picker's own
-     search field must not hide the chip it opened from. */
+  /* While typing, the overview steps aside to leave room above the keyboard.
+     The phone header is already compact, so its facts remain available. */
   .ah-app-shell[data-keyboard]
     .ah-conversation-frame:has(.ah-composer :focus)
-    > .ah-recap,
-  .ah-app-shell[data-keyboard]
-    .ah-conversation-frame:has(.ah-composer :focus)
-    .ah-agent-topline::after,
-  .ah-app-shell[data-keyboard]
-    .ah-conversation-frame:has(.ah-composer :focus)
-    .ah-agent-topline
-    > :not(
-      .ah-title-row,
-      .ah-editor-controls,
-      .ah-terminal-toggle,
-      .ah-header-more,
-      .ah-status,
-      .ah-header-activity,
-      .ah-visually-hidden
-    ) {
+    > .ah-recap {
     display: none;
-  }
-  .ah-app-shell[data-keyboard]
-    .ah-conversation-frame:has(.ah-composer :focus)
-    .ah-agent-topline
-    > :is(.ah-status, .ah-header-activity) {
-    order: 1;
   }
 }
 

@@ -488,12 +488,18 @@ function BrowserConversationContent({
   };
   const contextWasOpen = useRef(contextOpen);
   useEffect(() => {
-    if (contextWasOpen.current && !contextOpen)
-      document
-        .querySelector<HTMLElement>(
-          ".ah-agent-header [data-testid='context-ring']",
-        )
-        ?.focus();
+    if (contextWasOpen.current && !contextOpen) {
+      const phoneTrigger = document.querySelector<HTMLElement>(
+        ".ah-agent-header .ah-phone-facts",
+      );
+      if (phoneTrigger?.getClientRects().length) phoneTrigger.focus();
+      else
+        document
+          .querySelector<HTMLElement>(
+            ".ah-agent-header [data-testid='context-ring']",
+          )
+          ?.focus();
+    }
     contextWasOpen.current = contextOpen;
   }, [contextOpen]);
   const selectedThinking =
@@ -2350,6 +2356,7 @@ function BrowserConversationContent({
                     : "neutral"
               }
               settings={nativeSettings}
+              emptyConversation={emptyConversation}
               contextIndicator={
                 contextState ? (
                   <ContextRing
@@ -2384,10 +2391,25 @@ function BrowserConversationContent({
                       if (event.key === "Escape") {
                         event.currentTarget.open = false;
                         setChipOpen(false);
-                        event.currentTarget.querySelector("summary")?.focus();
+                        const phoneTrigger = event.currentTarget
+                          .closest("header")
+                          ?.querySelector<HTMLElement>(".ah-phone-facts");
+                        if (phoneTrigger?.getClientRects().length)
+                          phoneTrigger.focus();
+                        else
+                          event.currentTarget.querySelector("summary")?.focus();
                       }
                     }}
-                    onToggle={(event) => setChipOpen(event.currentTarget.open)}
+                    onToggle={(event) => {
+                      setChipOpen(event.currentTarget.open);
+                      if (
+                        event.currentTarget.open &&
+                        window.matchMedia("(max-width: 800px)").matches
+                      )
+                        event.currentTarget
+                          .querySelector<HTMLElement>(".md-pop")
+                          ?.focus();
+                    }}
                   >
                     <ModelChip
                       as="summary"
@@ -2402,7 +2424,7 @@ function BrowserConversationContent({
                         models?.models,
                       )}
                     />
-                    <div className="md-pop">
+                    <div className="md-pop" tabIndex={-1}>
                       {chipOpen ? (
                         <ConversationModelInfo
                           model={selectedModel}

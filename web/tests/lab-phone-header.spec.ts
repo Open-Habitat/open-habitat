@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { expect, test } from "./lab-host";
 
 test.use({
@@ -9,14 +10,27 @@ test.use({
   deviceScaleFactor: 2,
 });
 
-// A phone header that wraps every control onto its own line left the
-// conversation a strip of the screen (five rows on an iPhone). It stays two
-// rows: title with the panels and the menu, then the conversation's state.
 for (const width of [390, 360]) {
-  test(`@a11y phone conversation header keeps two rows and its actions at ${width}px`, async ({
+  test(`@a11y phone header keeps one compact block and opens its facts at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
+    // Give the lab's synthetic model a catalogue name, as on desktop.
+    await page.route("**/api/v1/pi/models", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const body = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...body,
+          models: [
+            ...body.models,
+            { ...body.models[0], id: "fake-pi", name: "Claude Opus 5.5" },
+          ],
+        },
+      });
+    });
     await page.goto("/workspaces");
     await page.getByTestId("github-sign-in").click();
     await page
@@ -32,69 +46,61 @@ for (const width of [390, 360]) {
       .getByTestId(/^(new-conversation|conversation-start)$/)
       .first()
       .click();
+    const header = page.locator(".ah-conversation-frame > .ah-agent-header");
+    const facts = header.getByTestId("phone-header-facts");
+    await expect(facts).toBeInViewport({ ratio: 1 });
+    await expect(facts.locator(".ah-phone-model")).toHaveCount(0);
+    await expect(page.locator(".md-empty-picker")).toBeVisible();
+    const capture = async (name: string) => {
+      if (!process.env.OH_HEADER_CAPTURE) return;
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme });
+        await snapshot(
+          page,
+          resolve(
+            process.env.OH_HEADER_CAPTURE,
+            `${name}-${width}-${colorScheme}`,
+          ),
+          { labOrigin: new URL(page.url()).origin },
+        );
+      }
+    };
+    await capture("new");
+    // Disabled tooltip wrappers must not leak the old H/update button.
+    await expect(header.getByTestId("conversation-retitle")).toBeHidden();
     await page.getByTestId("message-input").fill("puhelimen yläpalkki");
     await page
       .getByTestId("send")
       .and(page.locator('[data-mode="send"]'))
       .click();
-    const header = page.locator(".ah-conversation-frame > .ah-agent-header");
-    const visible = [
+    await expect(facts.locator(".ah-ctx-ring")).toBeVisible();
+    await expect(facts.locator(".ah-phone-model")).toBeVisible();
+    for (const id of [
       "workspace-title",
-      "context-ring",
+      "phone-header-facts",
+      "conversation-menu",
+    ])
+      await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
+    for (const id of [
       "git-chip",
+      "context-ring",
       "conversation-model",
       "toggle-editor",
       "toggle-terminal",
-      "conversation-menu",
-    ];
-    for (const id of visible)
-      await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
-    const rows = await header.evaluate((element) => {
-      const tops = [...element.querySelectorAll(".ah-agent-topline > *")]
-        .map((child) => child.getBoundingClientRect())
-        .filter((box) => box.width > 1 && box.height > 1)
-        .map((box) => box.top + box.height / 2);
-      return tops.filter(
-        (centre, i) => tops.findIndex((c) => Math.abs(c - centre) < 12) === i,
-      ).length;
-    });
-    expect(rows).toBeLessThanOrEqual(2);
+      "conversation-retitle",
+      "conversation-recap",
+    ])
+      await expect(header.getByTestId(id)).toBeHidden();
+    expect((await header.boundingBox())?.height).toBeLessThanOrEqual(64);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);
-    // The same quiet chips as on a desktop: Git without the branch name,
-    // the model without its level. A tap on the activity dot says its state.
-    await expect(header.getByTestId("git-chip")).not.toContainText(/\p{L}/u);
-    await expect(
-      header.getByTestId("conversation-model").locator(".ah-set-thinking"),
-    ).toHaveCount(0);
-    const activity = header.getByTestId("header-activity");
-    await activity.tap();
-    await expect(activity.locator(".ah-header-tip")).toBeVisible();
-    await expect(activity.locator(".ah-header-tip")).toHaveText(
-      (await activity.getAttribute("aria-label")) ?? "",
-    );
-    if (process.env.OH_HEADER_CAPTURE)
-      for (const colorScheme of ["light", "dark"] as const) {
-        await page.emulateMedia({ colorScheme });
-        await page.screenshot({
-          path: resolve(
-            process.env.OH_HEADER_CAPTURE,
-            `phone-${width}-${colorScheme}.png`,
-          ),
-          clip: { x: 0, y: 0, width, height: 180 },
-        });
-      }
-    await header.getByTestId("workspace-title").tap();
-    await expect(activity.locator(".ah-header-tip")).toBeHidden();
+    await capture("running");
 
-    // The secondary actions are in the menu, with the whole title.
-    await header.getByTestId("conversation-menu").click();
-    const menu = page.getByRole("menu");
-    for (const id of ["workspace", "recap", "retitle", "archive", "details"])
-      await expect(
-        menu.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)),
-      ).toBeVisible();
+    await facts.click();
+    for (const id of ["workspace", "git", "context", "model"])
+      await expect(page.getByTestId(`menu-fact-${id}`)).toBeVisible();
+    await capture("facts");
     for (const colorScheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme });
       expect(
@@ -106,18 +112,55 @@ for (const width of [390, 360]) {
         ).violations,
       ).toEqual([]);
     }
-    await menu
-      .getByRole("menuitem")
-      .and(page.getByTestId("menu-details"))
-      .click();
-    await expect(page.locator(".ah-details-popover")).toBeInViewport();
-    await expect(header.getByTestId("conversation-menu")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(facts).toBeFocused();
+    await facts.tap();
+    await facts.tap();
+    await expect(page.getByTestId("menu-fact-git")).toBeHidden();
+    await facts.click();
+    await page
+      .getByTestId("conversation-stream")
+      .click({ position: { x: 10, y: 400 } });
+    await expect(page.getByTestId("menu-fact-git")).toBeHidden();
+
+    await facts.click();
+    await page.getByTestId("menu-fact-git").click();
+    await expect(page.getByTestId("git-dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(facts).toBeFocused();
+    await facts.click();
+    await page.getByTestId("menu-fact-context").click();
+    await expect(page.getByTestId("context-page")).toBeVisible();
+    await page.getByTestId("context-back").click();
+    await expect(facts).toBeFocused();
+    await facts.click();
+    await page.getByTestId("menu-fact-model").click();
+    await expect(header.locator(".md-chip-picker")).toHaveAttribute("open", "");
+    await expect(header.locator(".md-pop")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(header.locator(".md-pop")).toBeHidden();
+    await expect(facts).toBeFocused();
 
     await header.getByTestId("conversation-menu").click();
-    await menu
-      .getByRole("menuitem")
-      .and(page.getByTestId("menu-workspace"))
-      .click();
+    for (const id of [
+      "workspace",
+      "toggle-editor",
+      "toggle-terminal",
+      "recap",
+      "retitle",
+      "archive",
+      "details",
+    ])
+      await expect(page.getByTestId(`menu-${id}`)).toBeVisible();
+    await page.getByTestId("menu-toggle-terminal").click();
+    await expect(page.getByTestId("terminal-panel")).toBeVisible();
+    await page.getByTestId("terminal-back").click();
+    await header.getByTestId("conversation-menu").click();
+    await page.getByTestId("menu-details").click();
+    await expect(page.locator(".ah-details-popover")).toBeInViewport();
+    await expect(header.getByTestId("conversation-menu")).toBeFocused();
+    await facts.click();
+    await page.getByTestId("menu-fact-workspace").click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspace.workspace_id}$`),
     );

@@ -190,6 +190,16 @@ noudattavat yhteistä palstaa. Viimeisimpään-painike pysyy näkyvänä myös
 kirjoituskentän kasvaessa. Taustapäivitys säilyttää lukukohdan ja fokuksen
 sekä jättää luettavan sisällön näkyviin.
 
+Puhelimen yläpalkki on yksi noin 56 px korkea kokonaisuus (Jari 6.11.2026,
+Alarivi ja A Valikko). Tilapiste on otsikon edessä. Otsikon alla on yksi
+hiljainen painike: työtila · Gitin lähtevät ja muuttuneet · kontekstirengas ·
+malli. Ennen ensimmäistä viestiä malli on vain kirjoituskentässä. Alarivin
+napautus avaa sen alle valikon, jonka otsakkeena on tila ja jonka riveillä
+ovat työtilan, Gitin, kontekstin ja mallin täydet arvot. Rivi avaa kyseisen
+tiedon nykyisen näkymän; erillisiä ”Näytä tiedot” -ohjeita ei ole. Napautus
+alariviin uudestaan, valikon ulkopuolelle tai Esc sulkee valikon. Paneelit ja
+kertatoiminnot ovat ⋯-valikossa. Työpöydän sommittelu ei muutu.
+
 Agentin työ on oletuksena piilossa (Jari 15.10.2026, kierros
 `prototypes/rounds/2026-10-15-hiljainen`). Pi:n vuoron säie pysyy kiinni:
 työn ajan näkyy yksi inforivi "Agentti työskentelee", nykyinen vaihe ja
