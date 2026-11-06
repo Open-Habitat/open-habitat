@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
+import { openHeaderPanel } from "./conversation-view";
 import { expect, test } from "./lab-host";
 
 // Choosing a goal puts the goal's own skill call in the draft as a chip, the guide
@@ -50,9 +51,10 @@ for (const [width, theme] of [
       ),
     ).toBe("[kuvaile havainto]");
     if (phone) {
-      // A phone opens nothing by itself; the top bar reaches the guide.
+      // A phone opens nothing by itself; the top bar's ⋯ menu reaches the
+      // guide, and closing it returns focus to that menu.
       await expect(panel).toHaveCount(0);
-      await toggle.click();
+      await openHeaderPanel(page, "guide-toggle");
       await expect(panel).toBeVisible();
       await expect(panel.getByRole("heading", { level: 2 })).toBeFocused();
       await snapshot(page, testInfo.outputPath(`guide-${width}-${theme}`), {
@@ -60,7 +62,9 @@ for (const [width, theme] of [
       });
       await page.getByTestId("guide-panel-close").click();
       await expect(panel).toHaveCount(0);
-      await expect(toggle).toBeFocused();
+      await expect(
+        page.locator(".ah-agent-header").getByTestId("conversation-menu"),
+      ).toBeFocused();
       await field.click();
       await field.press("ControlOrMeta+a");
     } else {
@@ -111,9 +115,9 @@ for (const [width, theme] of [
     await page.reload();
     await setTheme();
     await expect(recorded).toBeVisible({ timeout: 20000 });
-    await expect(toggle).toBeVisible();
+    if (!phone) await expect(toggle).toBeVisible();
     await expect(panel).toHaveCount(0);
-    await toggle.click();
+    await openHeaderPanel(page, "guide-toggle");
     await expect(panel).toBeVisible();
     await expect(
       panel.getByTestId("guide-panel-steps").locator("li"),

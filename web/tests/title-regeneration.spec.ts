@@ -195,10 +195,14 @@ test("@a11y compact header keeps the title on its phone row and model facts read
       const long = await measure();
       expect(long.unshortened && long.oneLine).toBe(false);
       if (width === 390) {
-        // On a phone the title shares its row with the panel buttons and the
-        // menu, beside the floating navigation; the model chip sits on the
-        // row below. The title takes all the room that row leaves it.
-        const model = await header.locator(".ah-set-chip").boundingBox();
+        // On a phone the title shares its row with the menu, beside the
+        // floating navigation; the facts line under it carries the model
+        // (Alarivi, Jari 6.11.2026). The title takes all the room that row
+        // leaves it.
+        const model = await header
+          .getByTestId("phone-header-facts")
+          .locator(".ah-phone-model")
+          .boundingBox();
         const titleGroup = await page
           .getByTestId("conversation-title")
           .boundingBox();
@@ -238,17 +242,23 @@ test("@a11y compact header keeps the title on its phone row and model facts read
       ).toBe(true);
       // A bounded generated title must fit without expanding the title control.
       // Retain the preceding long native-name case: user names are not shortened.
-      // The phone's title row is narrower than the bound: there the title
-      // stays on one line and shortens, and the menu carries it in full.
+      // The phone's title row no longer shares its room with the panel
+      // buttons, so it holds the bounded title whole as well.
       await header.locator("h1").evaluate((el) => {
         el.textContent = "Muistutuksen testaus";
       });
-      expect(await measure()).toEqual({
-        unshortened: width !== 390,
-        oneLine: true,
-      });
-      const pill = header.locator(".md-chip-picker > summary");
+      expect(await measure()).toEqual({ unshortened: true, oneLine: true });
+      // A phone reaches the model card from the facts line's model row.
+      const pill =
+        width === 390
+          ? header.getByTestId("phone-header-facts")
+          : header.locator(".md-chip-picker > summary");
       await pill.click();
+      if (width === 390)
+        await page
+          .getByRole("menuitem")
+          .and(page.getByTestId("menu-fact-model"))
+          .click();
       const info = header.getByTestId("conversation-model-info");
       await expect(info).toBeVisible();
       await expect(info.locator("button, input, select")).toHaveCount(0);

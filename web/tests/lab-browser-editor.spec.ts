@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
+import { openHeaderPanel } from "./conversation-view";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -14,7 +15,7 @@ for (const width of [1440, 390])
       await page.getByTestId("github-sign-in").click();
       await page.locator('a[href*="code=42"]').click();
       await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
-      await page.getByTestId("toggle-editor").click();
+      await openHeaderPanel(page, "toggle-editor");
       await page
         .getByTestId("editor-file-entry")
         .and(page.locator('[data-path="cmd"]'))

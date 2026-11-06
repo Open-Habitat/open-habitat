@@ -94,7 +94,7 @@ test("@a11y model metadata names and capability order agree with the header at d
         nodes.map((n) => n.getAttribute("data-thinking")),
       ),
   ).toEqual(["off", "low", "medium", "high"]);
-  for (const width of [1440, 390]) {
+  const check = async (width: number) => {
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ["light", "dark"]) {
       await page.evaluate(
@@ -121,8 +121,24 @@ test("@a11y model metadata names and capability order agree with the header at d
         labOrigin: new URL(page.url()).origin,
       });
     }
-  }
+  };
+  await check(1440);
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await expect(chip).toBeFocused();
+  // On a phone the model is on the facts line (Alarivi, Jari 6.11.2026); its
+  // row in the facts menu opens the same card, and Esc returns to the line.
+  await page.setViewportSize({ width: 390, height: 900 });
+  const facts = page.getByTestId("phone-header-facts");
+  await expect(facts.locator(".ah-phone-model")).toContainText("Opus 5.5");
+  await facts.click();
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-fact-model"))
+    .click();
+  await expect(menu).toBeVisible();
+  await check(390);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(facts).toBeFocused();
 });

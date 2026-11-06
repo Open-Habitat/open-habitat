@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
+import { expectPhoneMenuPanel } from "./conversation-view";
 import { expect, test } from "./lab-host";
 
 // The workspace page shows the repository's start page (Esittely), and a
@@ -88,9 +89,10 @@ for (const [width, theme] of [
     ).toBe("[kuvaile havainto]");
     const panel = page.getByTestId("guide-panel");
     if (phone) {
-      // A phone opens nothing over the field; the top bar reaches the guide.
+      // A phone opens nothing over the field; the top bar's ⋯ menu reaches
+      // the guide.
       await expect(panel).toHaveCount(0);
-      await expect(page.getByTestId("guide-toggle")).toBeVisible();
+      await expectPhoneMenuPanel(page, "guide-toggle");
     } else await expect(panel).toBeVisible();
     await snapshot(page, testInfo.outputPath(`started-${width}-${theme}`), {
       labOrigin,

@@ -42,3 +42,54 @@ export async function dropFiles(
     files.map((f) => ({ ...f, bytes: Array.from(f.bytes) })),
   );
 }
+
+type HeaderPanel =
+  | "toggle-editor"
+  | "toggle-terminal"
+  | "toggle-file-shelf"
+  | "guide-toggle";
+
+/** Opens a conversation header panel. On a phone the panels leave the top bar
+ * for its ⋯ menu (Alarivi, Jari 6.11.2026), so there the menu's row opens it;
+ * on a desktop the header's own button does. `keyboard` reaches the control
+ * with focus and Enter instead of a pointer. */
+export async function openHeaderPanel(
+  page: Page,
+  id: HeaderPanel,
+  how: "pointer" | "keyboard" = "pointer",
+) {
+  const phone = (page.viewportSize()?.width ?? 1280) <= 800;
+  const press = async (target: ReturnType<Page["getByTestId"]>) => {
+    if (how === "pointer") await target.click();
+    else {
+      await target.focus();
+      await page.keyboard.press("Enter");
+    }
+  };
+  if (!phone) {
+    await press(page.getByRole("button").and(page.getByTestId(id)));
+    return;
+  }
+  await press(
+    page
+      .locator(".ah-agent-header")
+      .getByRole("button")
+      .and(page.getByTestId("conversation-menu")),
+  );
+  await press(page.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)));
+}
+
+/** The phone's ⋯ menu offers the header panel; the menu is closed again. */
+export async function expectPhoneMenuPanel(page: Page, id: HeaderPanel) {
+  const trigger = page
+    .locator(".ah-agent-header")
+    .getByRole("button")
+    .and(page.getByTestId("conversation-menu"));
+  await trigger.click();
+  await expect(
+    page.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+}

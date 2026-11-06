@@ -51,7 +51,12 @@ test("@lab conversation remains usable at desktop and phone widths", async ({
     expect(layout.composerFits).toBe(true);
   }
   await page.setViewportSize({ width: 1440, height: 900 });
-  const focusTarget = page.locator(inventory.foundation_metrics.button).first();
+  // The first rendered button: the phone's facts line is mounted but hidden
+  // on a desktop.
+  const focusTarget = page
+    .locator(inventory.foundation_metrics.button)
+    .filter({ visible: true })
+    .first();
   await focusTarget.focus();
   await expect
     .poll(() =>

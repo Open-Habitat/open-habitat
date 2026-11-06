@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
+import { expectPhoneMenuPanel } from "./conversation-view";
 import { expect, test } from "./lab-host";
 
 // axe reads colours as painted, so text under a fade still running (a
@@ -123,9 +124,10 @@ for (const width of [1440, 390]) {
       if (width === 1440)
         await expect(page.getByTestId("guide-panel")).toBeVisible();
       else {
-        // A phone opens nothing by itself over the field just filled.
+        // A phone opens nothing by itself over the field just filled; the
+        // top bar's ⋯ menu reaches the guide.
         await expect(page.getByTestId("guide-panel")).toHaveCount(0);
-        await expect(page.getByTestId("guide-toggle")).toBeVisible();
+        await expectPhoneMenuPanel(page, "guide-toggle");
       }
       await snapshot(
         page,

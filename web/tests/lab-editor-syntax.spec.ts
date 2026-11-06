@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
+import { openHeaderPanel } from "./conversation-view";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -151,7 +152,7 @@ for (const width of [1440, 390])
       await page.locator("html").evaluate((el, value) => {
         el.dataset.theme = value;
       }, theme);
-      await page.getByTestId("toggle-editor").click();
+      await openHeaderPanel(page, "toggle-editor");
       const entry = (path: string) =>
         page
           .getByTestId("editor-file-entry")

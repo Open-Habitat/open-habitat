@@ -28,22 +28,43 @@ for (const width of [1440, 390]) {
       .and(page.getByTestId("conversation-start"))
       .click();
     await page.setViewportSize({ width, height: 900 });
-    const chip = page
-      .locator("main")
-      .getByRole("button")
-      .and(page.getByTestId("git-chip"));
+    const phone = width === 390;
+    // On a phone the chip leaves the bar for the facts line (Alarivi, Jari
+    // 6.11.2026); it stays mounted and still owns the Git layer.
+    const chip = phone
+      ? page.locator("main").getByTestId("git-chip")
+      : page
+          .locator("main")
+          .getByRole("button")
+          .and(page.getByTestId("git-chip"));
     await expect(chip).toHaveAttribute("data-branch", "status-rivit");
     await expect(chip).toHaveAttribute("data-base-behind", "3");
     await expect(chip).toHaveAttribute("data-changes", "4");
-    await expect(chip).toBeVisible();
-    // The chip carries the marks, not the branch (proto-conversation-header
-    // round 2): the name is in its accessible name and the layer's heading.
-    // Zero counts are left out.
-    await expect(chip).not.toContainText("status-rivit");
-    await expect(chip).toHaveAttribute("aria-label", /status-rivit/);
-    await expect(chip).toContainText("4");
-    await expect(chip.locator(".zero")).toHaveCount(0);
-    await chip.click();
+    const facts = page.getByTestId("phone-header-facts");
+    if (phone) {
+      // The line carries the same marks, not the branch; the facts menu's
+      // Git row names the branch and opens the layer.
+      const marks = facts.locator(".ah-phone-git");
+      await expect(marks).toBeVisible();
+      await expect(marks).toContainText("4");
+      await expect(marks).not.toContainText("status-rivit");
+      await facts.click();
+      const row = page
+        .getByRole("menuitem")
+        .and(page.getByTestId("menu-fact-git"));
+      await expect(row).toContainText("status-rivit");
+      await row.click();
+    } else {
+      await expect(chip).toBeVisible();
+      // The chip carries the marks, not the branch (proto-conversation-header
+      // round 2): the name is in its accessible name and the layer's heading.
+      // Zero counts are left out.
+      await expect(chip).not.toContainText("status-rivit");
+      await expect(chip).toHaveAttribute("aria-label", /status-rivit/);
+      await expect(chip).toContainText("4");
+      await expect(chip.locator(".zero")).toHaveCount(0);
+      await chip.click();
+    }
     const details = page
       .getByRole("dialog")
       .and(page.getByTestId("git-dialog"));
@@ -79,6 +100,6 @@ for (const width of [1440, 390]) {
     await expect(chip).toHaveAttribute("data-base-behind", "4");
     await page.keyboard.press("Escape");
     await expect(details).toHaveCount(0);
-    await expect(chip).toBeFocused();
+    await expect(phone ? facts : chip).toBeFocused();
   });
 }

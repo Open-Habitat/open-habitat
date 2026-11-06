@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { openHeaderPanel } from "./conversation-view";
 import { expect, type Page, test } from "./worker-host";
 
 // Agent file offers against the real gateway and daemon handlers: the
@@ -333,7 +334,7 @@ test.describe("phone", () => {
     expect(overflow).toBeLessThanOrEqual(0);
     if (capture)
       await page.screenshot({ path: `${evidence}/kortti-phone-light.png` });
-    await page.getByTestId("toggle-file-shelf").click();
+    await openHeaderPanel(page, "toggle-file-shelf");
     const shelf = page.getByTestId("file-shelf");
     await expect(shelf).toBeVisible();
     const box = await shelf.boundingBox();

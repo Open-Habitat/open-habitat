@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { workerHostPort } from "../test-ports.mjs";
+import { openHeaderPanel } from "./conversation-view";
 import { createHostTest, expect, type Page } from "./worker-host";
 
 // The workspace editor (Rinnakkain) against the real gateway and daemon
@@ -286,11 +287,7 @@ for (const width of [1366, 390]) {
         .and(page.getByTestId("message-input"));
       const draft = "Säilytä tämä luonnos.";
       await composer.fill(draft);
-      const toggle = page
-        .getByRole("button")
-        .and(page.getByTestId("toggle-editor"));
-      await toggle.focus();
-      await page.keyboard.press("Enter");
+      await openHeaderPanel(page, "toggle-editor", "keyboard");
       if (width === 390)
         await expect(page.getByTestId("browser-editor")).toBeVisible();
       else
@@ -344,7 +341,7 @@ for (const width of [1366, 390]) {
       await local.getByTestId("close-editor").click();
       await expect(composer).toBeFocused();
       await expect(composer).toHaveValue(draft);
-      await toggle.click();
+      await openHeaderPanel(page, "toggle-editor");
       await expect(page.locator("#ah-editor-conversation")).toBeVisible();
       if (width !== 390)
         expect(
@@ -359,6 +356,9 @@ for (const width of [1366, 390]) {
       if (width === 390) {
         const save = page.getByTestId("editor-save");
         await expect(save).toBeDisabled();
+        // The pointer may still rest where the ⋯ menu's editor row was; enter
+        // the button afresh, as a person moving to it would.
+        await page.mouse.move(0, 0);
         await save.hover();
         const tip = page.getByRole("tooltip");
         await expect(tip).toBeVisible();
