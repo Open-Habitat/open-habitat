@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -78,4 +78,6 @@ tai vastaavana, ettei sivua tarvitse kelata.
 - [x] kierros 2: kolme riffiä A:sta Jarin havainnoilla ja Entran kuvilla, suositus ja kysymykset Jarille
 - [x] Jari valitsee kierroksen 2 riffin (A1 Valikkopala)
 - [x] kierros 3: kolme riffiä A1:stä oikeilla, peitetyillä Entra-leikkeillä ja ilman oikeuksien valintaruutuja, suositus ja kysymykset Jarille
-- [ ] Jari valitsee kierroksen 3 riffin
+- [x] Jari valitsee kierroksen 3 riffin (A1b Kaistale)
+- [x] kierros 4: kolme riffiä A1b:stä, joissa vaiheen alakohdat ovat välilehtinä, askelina tai nuolin ja vaihe mahtuu 1440×900:aan ja 390-puhelimeen ilman vieritystä; suositus ja kysymykset Jarille
+- [ ] Jari valitsee kierroksen 4 riffin

@@ -1,0 +1,190 @@
+/* Review chrome above the settings page and the dialog; the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px;
+  padding: 6px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+/* Only the current riff's line: the step has to fit under the bar at 900 px. */
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink); font-size: 12px; }
+.m-lines li:not([aria-current]) { display: none; }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { display: none; }
+  .m-lines { font-size: 11.5px; line-height: 1.35; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s4)); }
+.ah-overlay { padding: var(--ah-s4); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s4); }
+}
+
+/* The settings page behind, only enough to see where the guide returns. */
+.m-page { padding: calc(var(--review-h, 0px) + var(--ah-s6)) var(--ah-s6) 80px; max-width: 760px; }
+.m-page h1 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.m-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.m-row-name { display: inline-flex; align-items: center; gap: var(--ah-s2); font-weight: 600; }
+.m-row-state { display: inline-flex; align-items: center; gap: var(--ah-s1); flex: 1; font-size: var(--ah-size-meta); }
+.m-row-state svg { color: var(--ah-ok); width: 14px; height: 14px; }
+
+/* The dialog: heading, progress and step name close together, so the band and
+   the sub-item get the height. */
+.m-dialog { gap: var(--ah-s3); }
+.m-stephead { display: grid; gap: var(--ah-s2); }
+.m-stepbody { gap: var(--ah-s3); justify-items: stretch; min-height: 0; }
+.m-stepbody > * { max-width: 100%; min-width: 0; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-note { display: flex; gap: var(--ah-s1); align-items: flex-start; }
+.m-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* Where: the console path is the main instruction, so it reads at body size
+   in full ink; the separators are quiet and nothing looks like a disclosure. */
+.m-where { display: grid; gap: 2px; min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+
+/* One sub-item: its instruction at reading size, a value with its copy. */
+.m-panel { display: grid; gap: var(--ah-s2); align-content: start; min-height: 150px; min-width: 0; }
+.m-act { font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.m-value { display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+.m-done {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-ui); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 3px; }
+.m-idfield { max-width: 460px; }
+.m-handoff { font-size: var(--ah-size-meta); }
+
+/* Permissions: one name per chip with its own copy; no ticks (Jari, round 2).
+   Chips rather than rows, so nine of them fit beside each other. */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 4px; }
+.m-perm { display: flex; min-width: 0; }
+.m-perm-btn {
+  flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--ah-s2); min-width: 0; min-height: 34px;
+  padding: 0 var(--ah-s2) 0 var(--ah-s3); border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-soft);
+  background: transparent; color: var(--ah-ink); cursor: pointer; text-align: left;
+}
+.m-perm-btn:hover { background: var(--ah-hover, var(--ah-sunken)); border-color: var(--ah-line); }
+.m-perm-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-perm-btn svg { width: 14px; height: 14px; flex: none; color: var(--ah-ink-2); }
+.m-perm-btn[data-done] svg { color: var(--ah-ok); }
+.m-perm-name { font-family: var(--ah-mono); font-size: 13px; color: var(--ah-ink); overflow-wrap: anywhere; min-width: 0; }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .m-perms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .m-perm-btn { min-height: 32px; padding: 0 6px 0 8px; gap: 4px; }
+  .m-perm-name { font-size: 11.5px; }
+}
+
+/* The band: real pieces of Jari's Entra screenshots, ids and domain masked by
+   round 3's crops.py. One height inside a step; the lit target is a hole in a
+   scrim with a full 2 px line, never an edge stripe. Dark theme: dimmed, so
+   the white page does not outshine the dialog (round 3's choice for A1b). */
+.m-shot { margin: 0; width: 100%; min-width: 0; }
+.m-shot-frame { position: relative; overflow: hidden; width: 100%; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line); }
+.m-shot-frame img { position: absolute; display: block; max-width: none; user-select: none; }
+.m-mark {
+  position: absolute; box-sizing: border-box; border-radius: 6px; border: 2px solid var(--ah-accent);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32);
+  transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .m-mark { transition: none; } }
+[data-theme="dark"] .m-shot-frame img { filter: brightness(0.82) contrast(1.05); }
+[data-theme="dark"] .m-mark { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45); }
+
+/* A1b1: tabs in Entra's words under the band. The selected tab is a soft
+   surface with a full line around it, like a segment, not an underline. */
+.m-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.m-tab {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px;
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: transparent;
+  font: 500 var(--ah-size-ui) / 1.2 var(--ah-font); color: var(--ah-ink-2); cursor: pointer;
+}
+.m-tab:hover { background: var(--ah-hover, var(--ah-sunken)); color: var(--ah-ink); }
+.m-tab[aria-selected="true"] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; }
+.m-tab:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-tab-n { font-variant-numeric: tabular-nums; color: var(--ah-muted); font-weight: 500; }
+.m-tab[data-done-tab] .m-tab-n { display: none; }
+.m-tab svg { width: 14px; height: 14px; color: var(--ah-ok); }
+/* A phone: every tab still visible, the selected one with its name. */
+@media (max-width: 640px) {
+  .m-tabs { flex-wrap: nowrap; }
+  .m-tab { flex: 0 0 auto; justify-content: center; min-width: 36px; padding: 0 8px; }
+  .m-tab:not([aria-selected="true"]) .m-tab-name { display: none; }
+  .m-tab[aria-selected="true"] { flex: 1 1 auto; min-width: 0; }
+  .m-tab[aria-selected="true"] .m-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* A1b2: a numbered line; passed sub-items carry a tick, the current one the
+   accent. The line between dots is a plain rule. */
+.m-stepper { display: flex; margin: 0; padding: 0; list-style: none; gap: 0; }
+.m-stepper li { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; }
+.m-stepper li + li::before { content: ""; flex: 1 1 8px; min-width: 6px; height: 1px; margin: 0 6px; background: var(--ah-line); }
+.m-stepper li[data-passed] + li::before, .m-stepper li[aria-current] + li::before { background: var(--ah-line); }
+.m-dot-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border: 0; border-radius: var(--ah-r-md);
+  background: transparent; color: var(--ah-ink-2); font: 500 var(--ah-size-meta) / 1.2 var(--ah-font); cursor: pointer;
+}
+.m-dot-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-dot {
+  display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 11px;
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ah-ink-2);
+}
+.m-dot svg { width: 12px; height: 12px; }
+.m-stepper li[data-passed] .m-dot { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-accent); }
+.m-stepper li[aria-current] .m-dot { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.m-stepper li[aria-current] .m-dot-btn { color: var(--ah-ink); font-weight: 600; }
+.m-dot-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Narrow: only the current sub-item keeps its name, like A1b1's tabs. */
+@container si-step (max-width: 760px) {
+  .m-stepper li:not([aria-current]) .m-dot-name { display: none; }
+  .m-stepper li[aria-current] { flex: 1 1 auto; }
+  .m-stepper li:not([aria-current]) { flex: 0 1 auto; }
+}
+.m-progress-fill { display: block; height: 100%; border-radius: 2px; background: var(--ah-accent); }
+.m-d1 .si-progress span { overflow: hidden; }
+
+/* A1b3: numbered segments above the band, arrows on the band's edges. */
+.m-seg-row { display: flex; align-items: center; gap: var(--ah-s3); min-width: 0; }
+.m-seg-name { font-weight: 600; font-size: var(--ah-size-body); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-seg { display: inline-flex; flex: none; padding: 2px; gap: 2px; border-radius: var(--ah-r-md); background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); }
+.m-seg-item {
+  display: inline-grid; place-items: center; min-width: 36px; height: 28px; padding: 0 8px; border: 0; border-radius: calc(var(--ah-r-md) - 2px);
+  background: transparent; color: var(--ah-ink-2); font: 600 var(--ah-size-ui) / 1 var(--ah-font); font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.m-seg-item svg { width: 14px; height: 14px; }
+.m-seg-item[aria-checked="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); }
+.m-seg-item:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+/* Both arrows in the band's lower right corner, where they cover the least of
+   a target that the band centres vertically. */
+.m-band-arrows { position: absolute; right: 8px; bottom: 8px; z-index: 1; display: flex; gap: 4px; }
+.m-band-arrow { box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+.m-band-arrow[data-disabled] { opacity: 0.45; box-shadow: none; }
+
+/* A phone: the step still fits 390×844 under the review bar, so the
+   dialog's gaps tighten one notch. */
+@media (max-width: 640px) {
+  .m-dialog, .m-stepbody { gap: var(--ah-s2); }
+}

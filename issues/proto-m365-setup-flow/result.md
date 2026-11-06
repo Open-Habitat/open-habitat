@@ -326,3 +326,118 @@ tw browser-open design-system/prototypes/dist/m365-leikkeet/m365.html
 ```
 
 `check.mjs` (in the round) passes 991 checkpoints with a clean console.
+
+# Round 4: riffs on A1b Kaistale
+
+Round `design-system/prototypes/rounds/2026-11-06-m365-alakohdat/` (its
+`NOTES.md` is the Finnish walk-through). Screenshots at device scale factor 2
+are in `evidence/` with the prefix `r4-`. They are viewport captures, not
+whole pages, so each one shows what fits without scrolling. In light, every
+riff has the first sub-item of every step, Register's *Valmis*, *Add Redirect
+URI*, the permission list, the tenant id, the filled consent link, the saved
+row and *Minulla on jo sovellus*, at 1440×900 and 390×844. Dark captures cover
+step 1 (first and last sub-item) and the permission list at both sizes.
+
+## What changed in all three
+
+- **A step shows one sub-item at a time, and the band lights its place.**
+  Round 3's rows are grouped into sub-items, each with its own target on a
+  crop. A row with no place of its own joins the sub-item whose page it is on:
+  the redirect value goes under *Add Redirect URI*, *Allow public client
+  flows* under *Settings*, and the permission list gets its own sub-item,
+  lighting *Configured permissions*, where the permissions will appear.
+  The steps have 6, 4, 4 and 4 sub-items.
+- **"Valmis, kun" is the last sub-item**, and the band shows what done looks
+  like: after Register, the app's menu with Overview selected; after the
+  public client, the two tabs; after permissions, the *Microsoft Graph (1)*
+  row that should read (10). In the consent step the line stays on *Grant
+  admin consent*, because the next sub-items move to Overview.
+- **The band keeps one height within a step** (3.7:1 on a desktop, 2.3:1 on
+  a phone). The view is cut around the target to that shape, so the
+  instruction below does not jump when the sub-item changes.
+- **A permission is a chip that is one copy button**, with the whole name and
+  a copy icon. Nine fit in three rows on a desktop and in five rows of two on
+  a phone. There are still no checkboxes, and each copy is one name.
+- **The two id fields are their own sub-items**, under Overview's matching
+  rows. A save with a missing or bad id opens that field's sub-item. The
+  consent hand-off sits with the admin role on *Grant admin consent* and fills
+  once the ids are in.
+- The crops are round 3's, imported from its directory unchanged. This round
+  holds no image. Its `check.mjs` re-runs round 3's crop verification (sha256,
+  no original size, no PNG, every mask decodes flat) and fails if an image
+  file appears here.
+
+## Riffs
+
+The axis is how a sub-item is reached and who moves the walk forward:
+
+- **A1b1 Välilehdet**: tabs under the band, in Entra's words and numbered.
+  The reader picks any of them, and arrow keys, Home and End move along the
+  list. *Seuraava* moves to the next step. On a phone only the selected tab
+  keeps its name, and the others are numbers on the same line.
+- **A1b2 Askeleet**: a numbered stepper under the band, with a tick on the
+  sub-items passed. One primary button walks every sub-item of every step
+  (*Seuraava: Name* … *Seuraava vaihe*), and *Takaisin* walks back one,
+  across a step boundary too. The progress bar fills per sub-item, and
+  *Tallenna* appears on the last one.
+- **A1b3 Nuolet**: numbered segments above the band, with the selected
+  sub-item's name beside them, and ‹ › in the band's lower right corner.
+  Below the band there is only the sub-item's text, so this is the most
+  compact of the three. *Seuraava* moves to the next step.
+
+## Host facts the view assumes
+
+The same as rounds 1–3. Nothing new is read from the host. The stepper ticks
+in A1b2 only record what was pressed on this page; nothing is stored and
+nothing is claimed about the tenant.
+
+## Recommendation
+
+**A1b2 Askeleet.** The admin works in two windows, and each time they come
+back from Entra they need to know where they were and what comes next. A1b2
+answers both: ticks on what is behind, and the one button names the next
+thing (*Seuraava: Settings*). A sub-item cannot be skipped by accident, which
+in A1b1 and A1b3 *Seuraava* allows, since it moves whole steps. On a desktop
+the stepper still shows every sub-item's name, so the overview that round
+3's list gave is kept. The cost is presses: 16 instead of 4 to reach the
+ids, though each press replaces a scroll. If Jari prefers to read in his own
+order, A1b1 is the alternative, with the same names as tabs. A1b3 is the
+tightest, but it hides the names behind numbers.
+
+## Decisions for later review
+
+- **A permission chip copies on a press anywhere on it**, instead of a
+  separate copy button. Two chips fit side by side on a phone only this way.
+- **The permission sub-item lights *Configured permissions***, the table
+  the permissions will appear in. The *Delegated permissions* picker itself
+  has no screenshot.
+- **Only the current riff's line is in the review bar**, to leave the 900 px
+  height to the dialog.
+
+## Not verified
+
+- The same as round 3: no screenshot of the *Mobile and desktop
+  applications* panel or of the Delegated permissions picker.
+- On a phone the band shows wide targets (*Name*, *Configured permissions*)
+  at small text sizes. It still marks the place, but the text in it cannot
+  be read at 390 px.
+
+## Questions for Jari
+
+1. Which riff: `r4-a1b1-valilehdet-2-public-2`, `r4-a1b2-askeleet-2-public-2`
+   or `r4-a1b3-nuolet-2-public-2` (all `-1440-light`)?
+2. Should *Valmis, kun* be its own sub-item with the band showing the
+   finished state (`r4-a1b2-askeleet-1-register-6-1440-light`), or a line
+   under every sub-item as in round 3?
+3. Are the permission chips right, with the whole chip copying
+   (`r4-a1b1-valilehdet-3-permissions-3-1440-light`,
+   `…-390-light`)?
+
+## View (round 4)
+
+```
+node design-system/prototypes/rounds/2026-11-06-m365-alakohdat/build.mjs
+tw browser-open design-system/prototypes/dist/m365-alakohdat/m365.html
+```
+
+`check.mjs` (in the round) passes 2076 checkpoints with a clean console.
