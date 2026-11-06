@@ -62,13 +62,13 @@ trap cleanup EXIT
 # Never install into a persistent machine path.
 # The gate runs on either supported architecture.
 case $(uname -m) in
-x86_64)issue_triple=x86_64-unknown-linux-musl issue_sha=75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef;;
-aarch64)issue_triple=aarch64-unknown-linux-musl issue_sha=b1679f610cde8b6d889bff820627222b0675e0ac57b16566b72aac49695564c1;;
+x86_64)issue_triple=x86_64-unknown-linux-musl issue_sha=8c4f24749ff6a688193fc92a329df12e8f4ba2d48290b8d15d06a9509b551828;;
+aarch64)issue_triple=aarch64-unknown-linux-musl issue_sha=a66b2c4f2707f30fe35f1c19de3e570eef34d7013715ec0892933c70ee0c21ac;;
 *)echo "error: unsupported gate host architecture $(uname -m)" >&2;exit 1;;esac
 # The archive is kept by its checksum and verified on every use.
 issue_archive="$repo/.cache/ci-local/issuectl-$issue_sha.tar.xz"
 if ! echo "$issue_sha  $issue_archive" | sha256sum -c - >/dev/null 2>&1;then
-  curl -fsSL --retry 3 --retry-all-errors "https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-$issue_triple.tar.xz" -o "$tmp/issuectl.tar.xz"
+  curl -fsSL --retry 3 --retry-all-errors "https://github.com/jarimustonen/issuectl/releases/download/v0.21.0/issuectl-$issue_triple.tar.xz" -o "$tmp/issuectl.tar.xz"
   mv "$tmp/issuectl.tar.xz" "$issue_archive"
 fi
 echo "$issue_sha  $issue_archive" | sha256sum -c -
@@ -83,7 +83,7 @@ export PATH="$tmp/venv/bin:$PATH"
 go version
 node --version
 npm --version
-issuectl --version | grep -Fx 'issuectl 0.19.0'
+issuectl --version | grep -Fx 'issuectl 0.21.0'
 phase dependencies
 go mod download
 export GOPROXY=off
