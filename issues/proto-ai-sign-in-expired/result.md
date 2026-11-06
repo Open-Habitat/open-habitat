@@ -186,3 +186,96 @@ myös tummana ja 390 px:n kosketuksella, avain puhelimessa ja oletusnäkymät
 390 px:n tummana. 91 kuvaa on otettu kertoimella 2 hakemistoon `evidence/`
 (AVIF, etuliite `r2-`). Kaikki on synteettistä: host on `fetch`-sijainen,
 eikä palveluntarjoajien sivuja avata.
+
+# Kierros 3: kaksi odottavaa viestiä vaihe vaiheelta
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-tekoaly-kirjautuminen-3/`
+(NOTES.md kertoo tarinan ja vuorovaikutukset). Pohjana on Jarin 6.11.
+valinta: ikkuna keskustelun päällä ja lyhyt rivi. Kierroksen 2 kysymys 3
+kerrotaan tarinana. Yläpalkin vaiheet 1–7 ovat samat kaikissa riffeissä:
+viesti odottaa kentässä, (a) muokkaat sitä (”Kiitos!”), (b) Kesäajan
+virheessä odottaa myös viesti, painat *Kirjaudu uudelleen*, kirjautuminen
+valmis, hetken päästä, ja lopuksi mitä Kesäajan virheessä tapahtui.
+Akseli on se, mitä kirjautuminen tekee kahdelle odottavalle viestille.
+
+- **R1 Lähtee itse**: kirjautumisen jälkeen kaikki odottavat viestit lähtevät heti sellaisinaan, myös muokattu ja toisen keskustelun viesti.
+- **R2 Kysyy ensin**: kirjautumisen jälkeen ikkuna näyttää odottavat viestit, ja sinä valitset, mitkä lähtevät.
+- **R3 Vain koskematon**: viesti, jota et ole muokannut odottaessa, lähtee itse; muokattu jää kenttään odottamaan Lähetä-painallusta.
+
+## Mitä kukin päättää
+
+| | Kentän alla ennen kirjautumista | Ikkuna ennen kirjautumista | Vaihe 5: Viikon tunnit (muokattu) | Vaihe 5: Kesäajan virhe (koskematon) |
+|---|---|---|---|---|
+| R1 | *lähtee itse heti* (muokattuna: *tällaisenaan*) | molemmat *lähtee* | lähtee | lähtee |
+| R2 | *kysytään, lähetetäänkö se* | molemmat *kysytään* | ikkuna kysyy (valintaruudut) | ikkuna kysyy |
+| R3 | *lähtee, jos et muokkaa sitä*; muokattuna *ei lähde itse, paina Lähetä* | *jää kenttään* / *lähtee* | jää kenttään, rivi Sinun vuorosissa | lähtee |
+
+Kaikissa riffeissä kentän tyhjentäminen lopettaa odotuksen. Lähetä-painallus
+odotuksen aikana panee viestin odottamaan koskemattomana.
+
+## Suositus
+
+**R3 Vain koskematon.** Se pitää Jarin päätöksen, että viesti lähtee heti,
+kun agentti on taas linjoilla. Koskematon viesti lähtee, myös toisessa
+keskustelussa (`evidence/r3-r3-vain-koskematon-7-toinen-jalkeen-1440-light.avif`).
+Muokkaus taas kertoo, että ihminen on vielä kesken. R1 voi lähettää puoliksi
+kirjoitetun lauseen, jos kirjautuminen valmistuu kesken muokkauksen tai
+jos kirjautumaan lähdettiin muokkauksen keskeltä. Sellaista viestiä ei saa
+takaisin. R2 tekee saman turvallisesti, mutta kysyy joka kerta, myös
+silloin, kun mitään ei ole muokattu
+(`evidence/r3-r2-kysyy-ensin-5-kirjautunut-1440-light.avif`). Se on
+ristiriidassa sen kanssa, että viesti lähtee heti. R3:n sääntö näkyy
+etukäteen kentän alla
+(`evidence/r3-r3-vain-koskematon-2-muokattu-1440-light.avif`) ja ikkunan
+listassa (`evidence/r3-r3-vain-koskematon-4-ikkuna-1440-light.avif`).
+Kirjautumisen jälkeen ei siis tule yllätyksiä. Muokattu viesti on yhden
+painalluksen päässä (`evidence/r3-r3-vain-koskematon-5-kirjautunut-1440-light.avif`).
+
+## Mitä host-tietoja näkymä olettaa
+
+Kierrosten 1 ja 2 tiedot pätevät edelleen: luokittelu kertoo palvelun,
+hylkäystieto saadaan Pi:n omista istuntotiedostoista, ja kirjautuminen
+käyttää `claude-login`-, laitekoodi- ja `pi/credentials`-reittejä. Uutta
+tällä kierroksella:
+
+- **”Muokattu” on selaimen luonnostieto.** Luonnos on jo `sessionStorage`ssa
+  (`nah:<identity>:draft:<id>`). Odotusmerkin viereen tarvitaan teksti,
+  joka oli kentässä odotuksen alkaessa. Muokattu tarkoittaa, että kentän
+  teksti eroaa siitä. Daemon ei tarvitse tätä tietoa.
+- **Toisen keskustelun viesti lähtee, vaikka keskustelu ei ole auki.**
+  Kierroksella 2 viesti lähti vain auki olevasta näkymästä. R1 ja R3
+  tarvitsevat sovellustason lähettäjän, joka käy läpi tämän välilehden
+  odottavat luonnokset ja lähettää kunkin oman keskustelunsa
+  prompt-komentona. Komento on sama kuin Lähetä-painikkeessa, eikä uutta
+  valtuutta tarvita. Toisessa välilehdessä tai suljetussa välilehdessä
+  odottava luonnos odottaa, kunnes keskustelu avataan. Kahden välilehden
+  lukko (yksi lähettäjä) tarvitaan kuten kierroksella 2. R2:n kysymys
+  listaa vain tämän välilehden viestit.
+- **Ylikuormituksessa ei ole ikkunaa.** Jos R2 valitaan, kysymys tarvitsee
+  toisen paikan, kun Claude vastaa taas ilman kirjautumista, esimerkiksi
+  rivin kentän yllä. R1 ja R3 eivät tarvitse sitä.
+
+## Kysymykset Jarille
+
+1. Mitä kirjautumisen jälkeen tapahtuu: kaikki lähtevät
+   (`evidence/r3-r1-lahtee-itse-5-kirjautunut-1440-light.avif`), ikkuna kysyy
+   (`evidence/r3-r2-kysyy-ensin-5-kirjautunut-1440-light.avif`) vai vain
+   koskematon lähtee ja muokattu jää kenttään
+   (`evidence/r3-r3-vain-koskematon-5-kirjautunut-1440-light.avif`)?
+2. Kertooko ikkuna ennen kirjautumista, mitä viesteille tapahtuu
+   (`evidence/r3-r3-vain-koskematon-4-ikkuna-1440-light.avif`), vai riittääkö
+   kentän alla oleva rivi?
+3. Jos R3: ymmärtääkö muokatun viestin rivin
+   (`evidence/r3-r3-vain-koskematon-2-muokattu-1440-light.avif`, *Muokattu ·
+   ei lähde itse. Paina Lähetä, niin se lähtee kirjautumisen jälkeen.*)?
+
+## Tarkistus
+
+`check.mjs`: 452 tarkistuspistettä, konsoli puhdas. Jokaisen riffin seitsemän
+vaihetta käytiin läpi 1440 px:n vaaleana ja tummana sekä 390 px:n vaaleana
+kosketuksella. Sama tarina kuljettiin käsin oikean ikkunan ja Clauden
+koodivaiheiden läpi 1440 px:n ja 390 px:n vaaleana. R2:ssa toinen viesti
+jätettiin valitsematta, ja R3:ssa muokattu viesti lähetettiin painamalla.
+Oletusnäkymät kuvattiin myös 390 px:n tummana. 66 kuvaa on otettu
+kertoimella 2 hakemistoon `evidence/` (AVIF, etuliite `r3-`). Kaikki on
+synteettistä: Clauden sivua ei avata.
