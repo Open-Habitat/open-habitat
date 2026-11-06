@@ -152,3 +152,139 @@ open-habitat agent view offer --current \
   --title "Palaa aiempaan – kierros 1" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 2: Palaa tähän ja tiedostojen palautus
+
+Jari 6.11.: suunta Palaa tähän; korvattu jatko jää saman keskustelun sisään
+kuten Pi:n omassa historiassa. Tiedostojen palautus selvitetään ja riffataan.
+
+## Pi:n historia, jota peilataan
+
+Lähde: Pi 1.3.0 (`docs/sessions.md`, `docs/session-format.md`,
+`dist/modes/interactive/components/tree-selector.js`,
+`dist/modes/interactive/interactive-mode.js`). `/tree` liikkuu samassa
+istuntotiedostossa: käyttäjän viestiin palatessa viestin teksti palaa
+kenttään, ja muutettu lähetys tekee uuden haaran samaan puuhun. Puunäkymä
+näyttää aktiivisen haaran ensin ja muut sisarhaaroina (`├─`, `└─`), aktiivinen
+polku merkitään `•`:llä, ja merkintöihin voi antaa nimilapun. Haarasta
+poistuttaessa Pi kysyy *Summarize branch?* (*No summary* / *Summarize* /
+*Summarize with custom prompt*); yhteenveto liitetään uuteen haaraan
+`branch_summary`-merkintänä. Pi ei koske tiedostoihin missään näistä.
+
+Prototyyppi peilaa tätä: sama keskustelu, korvattu jatko yhtenä rivinä
+haarautumiskohdassa, viesti kenttään, jatkojen vaihto. Yhteenvetoa ei
+tarjota (se maksaa mallikutsun; Pi:ssäkin oletus voi olla *No summary*).
+
+## Tiedostojen palautus: mitä on olemassa
+
+| Työkalu | Mitä talteen ja milloin | Mitä palauttaa | Kattavuus ja rajat | Lisenssi |
+|---|---|---|---|---|
+| **better-pi-rewind** (GitHub `raine`, workmuxin tekijä; npm 0.4.0, 12.9.2026) | Kun vastaus alkaa käyttäjän viestiin, kopio jo seuratuista tiedostoista; ennen kuin `edit`/`write` koskee uuteen tiedostoon ensi kertaa, sen sisältö kopioidaan saman viestin checkpointiin. Puuttuva tiedosto kirjataan, jotta luodun voi poistaa. Lisäksi Git-juuri, haara ja `HEAD`. Metatieto Pi:n istunnon JSONL:ään omina `custom`-merkintöinä (kulkee puun mukana), kopiot `~/.pi/agent/file-history/<session-id>/`. | `/rewind` (tai Esc Esc): *Restore code and conversation*, *conversation only*, *code only*, sekä Git-vaihtoehdot `git reset --hard` checkpointin `HEAD`iin, kun haara ja repo täsmäävät. Keskustelu palautetaan samassa istunnossa `ctx.navigateTree`llä (0.1.1: "instead of creating a new branch"). Koukuttaa myös Pi:n omat `/tree` ja `/fork`: *Restore code with conversation?* | Vain `edit`/`write`-työkalujen muuttamat tiedostot; komennot, muut työkalut ja ulkoiset muokkaukset eivät tuo uusia tiedostoja seurantaan (jo seuratun tiedoston tila otetaan joka viestissä). Palautus tiedosto kerrallaan, paras yritys, ei transaktio. Ei tilannekuvaa nykytilasta palautushetkellä, joten palautusta ei voi perua eikä korvattuun jatkoon palata tiedostoineen. `/rewind` vaatii TUI:n (`ctx.mode !== "tui"` → ilmoitus); talteenoton koukut (`message_start`, `tool_call`) toimivat myös RPC:ssä. | MIT |
+| **pi-rewind** (`arpagon`, npm 0.5.0) | Git-pohjainen tilannekuva koko työpuusta vuoron jälkeen (`write-tree` väliaikaisella `GIT_INDEX_FILE`:llä, `commit-tree`), refit `refs/pi-checkpoints/…` repoon. | Tiedostot ja keskustelu, vain tiedostot tai vain keskustelu; diff-esikatselu; *Undo last rewind* -pino; koukut `/fork`iin ja `/tree`hen. | Kattaa myös komentojen muutokset, mutta vain Git-repossa; kirjoittaa refit käyttäjän repoon; suodattaa isot hakemistot (`node_modules`, yli 10 MiB). | MIT |
+| **Pi:n esimerkki `git-checkpoint.ts`** (`examples/extensions/`) | `git stash create` jokaisen vuoron alussa, muistissa. | `/fork`issa kysyy *Restore code state?* ja ajaa `git stash apply`. | Häviää uudelleenkäynnistyksessä ja nollautuu jokaisen ajon jälkeen; vain Git. | MIT (Pi) |
+| Muut Pi-laajennukset: `prateekmedia/pi-hooks` (checkpoint), `nicobailon/pi-rewind-hook` | Edeltäjiä, joihin pi-rewind viittaa. | | pi-rewind-hookilla ei ole lisenssiä. | MIT / ei lisenssiä |
+| **Claude Code checkpointit** (vertailu; `code.claude.com/docs/en/checkpointing`) | Tila ennen jokaista vuoron aloittavaa viestiä; 100 viimeisintä; tallessa keskustelun mukana; poistuu n. 30 päivän siivouksessa. | `/rewind` tai Esc Esc: *Restore code and conversation*, *Restore conversation*, *Restore code*, *Summarize from here/up to here*. Viestin teksti palaa kenttään. | Vain omien muokkaustyökalujen muutokset; komennon muuttama tiedosto, jota ei ole muokattu työkalulla, jää. Ei korvaa versionhallintaa. | Suljettu (Anthropicin ehdot) |
+
+Lähteet: `gh api repos/raine/better-pi-rewind` (README, CHANGELOG,
+`extensions/rewind.ts`, `src/restore-actions.ts`, `src/host-adapter.ts`),
+`npm view better-pi-rewind`, `gh api repos/arpagon/pi-rewind` (README,
+`src/core.ts`), Pi 1.3.0:n `examples/extensions/git-checkpoint.ts`,
+Claude Coden dokumentaatio 6.11.2026.
+
+## Mitä host tarvitsisi tiedostojen palautukseen
+
+- **Paras pohja on better-pi-rewindin malli**: tiedostokohtaiset kopiot
+  käyttäjän omassa kotihakemistossa hänen omana käyttäjänään (Unix-raja
+  pysyy), metatieto natiivissa istunnossa puun mukana (ei rinnakkaista
+  varastoa), toimii ilman Gitiä eikä kirjoita käyttäjän repoon. Sitä ei voi
+  käyttää sellaisenaan: `/rewind` vaatii TUI:n, ja `/tree`-koukku kysyy
+  `ctx.ui.select`illä, joka RPC:ssä olisi selaimen vastattava
+  laajennuskysely. Daemonin oma laajennus (kuten `recap-extension.mjs`)
+  ottaisi talteenoton ja palautuksen MIT-koodista lisenssimerkintöineen ja
+  tarjoaisi kirjoituskomennon *palaa tähän {tiedostot: kyllä/ei}*.
+- **Peruttava palautus ja jatkon vaihto tiedostoineen** (B:n vaihto, C:n
+  *Peru palautus*) vaativat tilannekuvan seuratuista tiedostoista juuri ennen
+  palautusta. better-pi-rewind ei ota sitä; pi-rewindin redo-pino ottaa.
+  Sama talteenotto kuin viestin alussa, kirjattuna korvatun jatkon lehteen.
+- **Kattavuus kerrotaan**: palautettavat ovat agentin `edit`/`write`-tiedostot;
+  komentojen (`bash`) muutokset jäävät. Selain saa listan ja +/−-määrät
+  checkpointin ja nykytilan vertailusta.
+- **Vain tiedostot** (C) jättää keskustelun ennalleen, joten agentti luulee
+  muutosten olevan yhä paikallaan. Host kirjoittaa siitä mallille näkyvän
+  viestin (laajennuksen `custom_message`).
+- **Jarin omat muutokset** samoihin tiedostoihin agentin jälkeen
+  ylikirjoittuvat palautuksessa (better-pi-rewind vertaa vain checkpointiin).
+  Prototyyppi ei näytä tätä tapausta; toteutus voisi varoittaa, kun tiedosto
+  on muuttunut agentin viimeisen muokkauksen jälkeen.
+- Keskustelun puolelle sama kuin kierroksella 1: `ctx.navigateTree`,
+  pysyvä kohta (nimilappu), haarautumiskohdan merkki ja toisen haaran luku
+  historiaan, käynnissä olevan vuoron pysäytys ensin. Git-commitien
+  peruminen (`git reset --hard`) jätettiin pois: se on eri vaaraluokka kuin
+  tiedostojen palautus.
+
+## Prototyyppi
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-palaa-tahan/`
+(`NOTES.md`). Sama keskustelu kuin kierroksella 1; kolmannessa vuorossa
+myös komento `python scripts/taulukko.py`. Ero kierrokseen 1 näkyy
+oletusnäkymässä: vahvistuksen tiedosto-osa.
+
+Akseli: kuinka paljon tiedostojen palautusta Palaa tähän tarjoaa.
+
+- **A Vain keskustelu**: Palaa tähän siirtää vain keskustelun; vahvistus nimeää tiedostot, jotka jäävät agentin muuttamiksi (Pi:n /tree sellaisenaan).
+- **B Tiedostot mukana**: vahvistuksessa Palauta myös tiedostot, oletuksena päällä; aiemman jatkon rivi kertoo palautuksen, ja jatkon vaihto palauttaa sen tiedostot.
+- **C Valitse mitä**: vahvistuksessa keskustelu ja tiedostot, vain keskustelu tai vain tiedostot; tiedostojen palautuksen voi perua.
+
+Mitä kukin päättää:
+
+- *A* ei tarvitse hostilta mitään tiedostoille, mutta väärän suunnan koodi jää,
+  ja agentti jatkaa sen päältä, vaikka ei näe keskustelua, joka sen teki.
+- *B* tekee yhden päätöksen: tavallinen tarkoitus (peru väärä käänne
+  kokonaan) on oletus, ja valinnan pois ottaminen antaa A:n. Tarvitsee
+  talteenoton, palautuksen ja vaihtoa varten tilannekuvan palautushetkellä.
+- *C* on Claude Coden ja better-pi-rewindin valikko. *Vain tiedostot*
+  lisää tilan, jossa keskustelu ja tiedostot ovat eri kohdassa ja agentille
+  on kerrottava erikseen.
+
+## Suositus
+
+**B Tiedostot mukana.** Kun palaa ennen väärää pyyntöä, tarkoittaa
+melkein aina myös sitä, mitä agentti sen jälkeen teki; yksi valinta pitää
+vahvistuksen lyhyenä ja näyttää täsmälleen, mitkä tiedostot palaavat ja mikä
+jää (komennot). C:n *Vain tiedostot* on harvinainen ja saa keskustelun ja
+koodin eri kohtiin; sen voi lisätä myöhemmin. Toteutus: daemonin oma
+laajennus better-pi-rewindin talteenotosta (MIT) sekä tilannekuva ennen
+palautusta, jotta korvattuun jatkoon voi palata tiedostoineen.
+
+## Kysymykset Jarille
+
+1. B vai C: riittääkö *Palauta myös tiedostot*
+   (`r2-b-tiedostot-mukana-1-vahvistus-1440-light`), vai haluatko myös
+   *Vain tiedostot* (`r2-c-valitse-mita-1b-vain-tiedostot-1440-light`,
+   `r2-c-valitse-mita-2-tulos-vain-tiedostot-1440-light`)?
+2. Onko tiedostojen palautus oletuksena päällä (`r2-b-…-1-vahvistus`) vai
+   pois (`r2-b-tiedostot-mukana-1b-ilman-tiedostoja-1440-light`)?
+3. Kun vaihdat takaisin aiempaan jatkoon, palautuvatko sen tiedostot
+   (`r2-b-tiedostot-mukana-5-jatkon-vaihto-1440-light`), vai vaihtuuko vain
+   keskustelu?
+
+## Todisteet
+
+`evidence/r2-*`: jokaisesta suunnasta sisäänkäynti viestin valikosta (0),
+vahvistus (1, B:ssä myös ilman tiedostoja ja C:ssä vain tiedostot 1b),
+tulos (2), aiempi jatko tai C:n peruttu palautus (3), muutettu viesti
+lähetetty (4), jatkon vaihto tiedostoineen (5, B ja C) ja agentti työssä (6);
+1440 ja 390, vaalea ja tumma, kertoimella 2. `check.mjs`: 248
+tarkistuspistettä, konsoli puhdas. Synteettinen komponenttilabra, ei
+hostia vasten ajettu; better-pi-rewindiä ei ajettu, vaan se luettiin
+lähdekoodista.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-palaa-tahan/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/palaa-tahan/offline.html \
+  --title "Palaa tähän – kierros 2: tiedostot" \
+  --idempotency-key "$(uuidgen)" --json
+```
