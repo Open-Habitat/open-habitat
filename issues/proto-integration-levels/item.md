@@ -40,6 +40,12 @@ result.md:ssä. Liittyy `proto-m365-setup-flow`-prototyyppiin (sen
 oikeusvaihe riippuu tasoista). Prototyyppikierros AGENTS-WORKFLOW.md:n
 mukaan.
 
+Jari 6.11. (kuvakaappaus ylläpitäjän palvelinasetuksista, Microsoft 365
+*Ei tarjolla*, rivit *Taso: Luonnokset, ei lähetystä* ja *Taso: Vain luku*,
+kullakin *Aseta tunnukset…*): tähän tarvitaan tasojen kuvaukset kunnolla.
+Ylläpitäjän listassa jokaisen tason kohdalla pitää näkyä, mitä taso
+sallii ja mitä ei, ennen kuin hän asettaa sille tunnukset.
+
 ## Acceptance Criteria
 
 - [ ] kierros 1: tämänhetkiset tasot ja kolme suuntaa, näkymätarjous ja kysymykset Jarille; Graphin tekniset rajat result.md:ssä
