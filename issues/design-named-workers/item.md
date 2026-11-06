@@ -47,6 +47,20 @@ Tulos on suositus Jarille (arkkitehtuuripäätös tehdään hänen kanssaan),
 ei toteutus. Käyttöliittymä prototypoidaan rinnalla
 (`proto-named-workers`).
 
+## Decision (Jari 2026-11-06)
+
+- **Suunta A hyväksytty:** Taskfleet hoitaa nimetyt workerit, Habitat vain
+  näyttää ne ja välittää viestit. Järkevä ja yksinkertainen työnjako.
+- **Henkilö ei kirjoita workerille suoraan.** Jos workerille halutaan
+  sanoa jotain, henkilö puhuu pääagentille, joka välittää viestin.
+- **Odotusaika:** 24 h käy, voi olla lyhyempikin, kunhan "nukkuvan"
+  workerin saa aina takaisin käyttöön. Worktreen siivous pitää miettiä
+  samalla.
+- **Avoinna:** laskeutuuko kierroksen työ mainiin joka kierroksella (Jari
+  pyysi selitystä ja haluaa oikean tavan käsitellä worktree eri
+  tilanteissa), ja otetaanko vaihe 1 käyttöön (Jari ei ole varma, mitä se
+  käytännössä tarkoittaa).
+
 ## Acceptance Criteria
 
 - [ ] result.md: käyttötapaukset, toteutusvaihtoehdot ja suositus perusteluineen, promptiluonnokset, avoimet kysymykset Jarille

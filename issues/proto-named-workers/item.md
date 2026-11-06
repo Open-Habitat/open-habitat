@@ -30,6 +30,13 @@ lähetti, voiko henkilö kirjoittaa workerille itse, ja miten worker
 lopetetaan ja sen työ yhdistetään. Prototyyppikierros AGENTS-WORKFLOW.md:n
 mukaan.
 
+## Decision (Jari 2026-11-06, mekanismista)
+
+Henkilö ei kirjoita nimetylle workerille suoraan; viestit kulkevat aina
+pääagentin kautta (`design-named-workers`). Kysymys 3 on siis ratkaistu:
+*Kirjoita*-toimintoa ei tarvita. Suunnasta (A/B/C) ja raportin
+esitystavasta Jari ei ole vielä päättänyt.
+
 ## Acceptance Criteria
 
 - [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
