@@ -1,15 +1,14 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-06
 type: improvement
 reporter: jari
 status: done
 priority: high
 lane: release-straightforward
 lane_seq: 1
-related: ['@research-release-10x-faster']
-preparation: ready
 closed: 2026-11-02
+preparation: ready
 ---
 
 # Make the release straightforward: unsigned, gate before, one script
