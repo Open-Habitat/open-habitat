@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-agent-resources-view
 lane: resources-view-proto
@@ -38,4 +38,5 @@ tarvitsevat.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [ ] kierros 2: kaikkien lajien osiot yhdessä, kolme riffiä, mitkä lajit tarvitsevat oman kierroksen
