@@ -20,6 +20,8 @@ const features = [
   "worker-row-sentence",
   "workspace-icons",
   "server-settings-own-area",
+  "empty-conversation-start-page",
+  "raise-to-your-turn",
 ];
 
 async function signIn(page: Page) {

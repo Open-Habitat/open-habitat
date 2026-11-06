@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:2f1a7c3e-0d4b-4e5f-9a6b-7c8d9e0f1a2b",
+  "turn_mark": { "state": "raised", "at": "2026-11-06T09:20:00Z" },
+  "event_cursor": "ev1:6d1f8a2e-3c4b-4a5d-8e9f-0a1b2c3d4e5f:42"
+}

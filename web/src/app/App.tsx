@@ -29,6 +29,7 @@ import {
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
+import { TurnControl } from "../components/composer/TurnControl";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
@@ -61,10 +62,12 @@ import {
   nameReply,
   readArchiveResult,
   readCloseResult,
+  readTurnMarkResult,
   renameConversation,
   type Session,
   sendArchive,
   sendCloseEmpty,
+  sendTurnMark,
   worktreeNameFrom,
 } from "./conversations";
 import { FallbackAccount } from "./FallbackAccount";
@@ -96,6 +99,7 @@ import {
   overlaid,
   parseKey,
   renameKey,
+  turnMarkKey,
   visibilityKey,
 } from "./hostOverlay";
 import { useLanding } from "./landing";
@@ -1346,6 +1350,10 @@ export function App() {
     identity,
     csrf,
   });
+  const turnMarksOn = useExperimentalFeature("raise-to-your-turn", {
+    identity,
+    csrf,
+  });
   const workspaceIconsOn = useExperimentalFeature("workspace-icons", {
     identity,
     csrf,
@@ -1376,6 +1384,7 @@ export function App() {
     // App is above AccountPreferencesProvider: it names the session.
     workFacts: workerRowSentence,
     icons,
+    turnMarks: turnMarksOn,
   });
   const quietChoice = {
     sort: confirmedPreferences.quiet_sort,
@@ -1960,6 +1969,46 @@ export function App() {
       void putAway(id, open ? "conversation" : "rail");
     },
   };
+  // Nosta and Ei nyt (raise-to-your-turn, experimental): the person's daemon
+  // keeps the mark, so it shows at once here and on their other devices.
+  const changeTurn = (id: string, action: "raise" | "lower" | "not_now") => {
+    const agent = snapshot?.agents.find((a) => a.agent_id === id);
+    if (!agent || !csrf || !mutations || phase !== "authenticated") return;
+    const token = csrf;
+    const mark = action === "raise" ? "raised" : "not_now";
+    // Ei nyt holds until a reply other than the one there now.
+    const reply = mark === "not_now" ? agent.last_reply?.id : undefined;
+    const at = new Date().toISOString();
+    void mutations
+      .run({
+        command: "conversation.turn",
+        key: turnMarkKey(id),
+        value:
+          mark === "raised"
+            ? { state: "raised", at }
+            : { state: "not_now", at, ...(reply ? { reply_id: reply } : {}) },
+        send: (_commandId, signal) =>
+          sendTurnMark(id, mark, reply, token, signal),
+        read: (response) => readTurnMarkResult(response, id, mark),
+        confirmed: (result) =>
+          dispatch(
+            hostChanged({
+              kind: "turn",
+              agent_id: id,
+              turn_mark: result.turn_mark,
+              cursor: result.event_cursor,
+            }),
+          ),
+        refused: t.app.turnRefused,
+      })
+      .then((result) => {
+        if (result.outcome === "login") requireLogin();
+        if (result.outcome === "uncertain") refresh();
+      });
+  };
+  const railTurn = turnMarksOn
+    ? { run: (id: string, action: "raise" | "lower") => changeTurn(id, action) }
+    : undefined;
   // Naming a conversation from the rail. Pi writes the name; a running Pi
   // directly, a resting one through its settled history.
   const railRename = {
@@ -2643,6 +2692,20 @@ export function App() {
                       return open && agentTitle(open.title);
                     })()}
                     nextWaiting={{ yours: now.yours }}
+                    turnControl={(() => {
+                      if (!id || !turnMarksOn) return undefined;
+                      const row = [...now.yours, ...now.quiet].find(
+                        (r) => r.agentId === id,
+                      );
+                      return row?.turnAction ? (
+                        <TurnControl
+                          action={row.turnAction}
+                          onPress={() =>
+                            row.turnAction && changeTurn(id, row.turnAction)
+                          }
+                        />
+                      ) : undefined;
+                    })()}
                     onSessionCreated={(session) => {
                       setDaemonSessions((old) => [...old, session]);
                       refresh(); // The new agent must be in the snapshot before its live turn is seeded.
@@ -3038,6 +3101,7 @@ export function App() {
                   clones={cloneJobs}
                   archiveConversation={railArchive}
                   renameConversation={railRename}
+                  turnConversation={railTurn}
                   icons={icons}
                 />
               ) : undefined

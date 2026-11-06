@@ -118,6 +118,31 @@
   color: var(--ah-muted);
   font-size: 11.5px;
 }
+/* Nosta in the composer row's middle slot, beside Send. */
+.ex-crow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ex-crow > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.ex-turn {
+  padding: 2px 8px;
+  border-radius: var(--ah-r-pill);
+  box-shadow: inset 0 0 0 1px var(--ah-line-strong);
+  color: var(--ah-ink);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ex-send {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+}
 .ex-wrow {
   display: flex;
   align-items: flex-start;

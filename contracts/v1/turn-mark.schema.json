@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/turn-mark.schema.json",
+  "title": "The person's own mark on a conversation's place in Sinun vuorosi",
+  "description": "Root: the reply of POST /api/v1/conversations/<id>/turn. The person's daemon keeps one mark per conversation so that every device shows the same: raised (Nosta) brings a quiet conversation to Sinun vuorosi, not_now (Ei nyt) sends it to Hiljaiset until the agent replies again. The daemon removes the mark when Pi accepts the person's next message and when the conversation is archived.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "agent_id", "turn_mark"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+    "turn_mark": { "$ref": "#/$defs/mark" },
+    "event_cursor": { "$ref": "common.schema.json#/$defs/cursor" }
+  },
+  "$defs": {
+    "mark": {
+      "description": "raised: the person raised the conversation at `at`; it waits in Sinun vuorosi until they reply, choose Ei nyt, or the agent replies after `at`. not_now: the person chose Ei nyt at `at` for the reply `reply_id` (absent when the conversation had none); a later reply with another ID brings the conversation back.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "at"],
+      "properties": {
+        "state": { "enum": ["raised", "not_now"] },
+        "at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "reply_id": { "type": "string", "minLength": 1, "maxLength": 200 }
+      },
+      "if": { "properties": { "state": { "const": "raised" } } },
+      "then": { "not": { "required": ["reply_id"] } }
+    },
+    "request": {
+      "description": "The body of POST /api/v1/conversations/<id>/turn. reply_id names the conversation's last reply the person said Ei nyt to; only with not_now.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mark"],
+      "properties": {
+        "mark": { "enum": ["raised", "not_now"] },
+        "reply_id": { "type": "string", "minLength": 1, "maxLength": 200 }
+      },
+      "if": { "properties": { "mark": { "const": "raised" } } },
+      "then": { "not": { "required": ["reply_id"] } }
+    }
+  }
+}

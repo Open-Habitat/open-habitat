@@ -448,6 +448,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "presence":
 		c.notePresence(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "turn":
+		c.markTurn(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
@@ -989,6 +991,14 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	// from; the card has said its piece.
 	if err != nil || accepted {
 		s.told = true
+	}
+	if err == nil && accepted {
+		// The person replied: a raise or Ei nyt has served its purpose.
+		go func() {
+			if c.clearTurnMark(s.id) && c.journal != nil {
+				c.journal.appendInvalidation("pi:" + s.id)
+			}
+		}()
 	}
 	if s.state != "pending" {
 		return

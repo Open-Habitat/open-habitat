@@ -4958,6 +4958,26 @@ h2.ah-rail-section-head {
   border: 1.5px solid var(--ah-faint);
   background: transparent;
 }
+/* Raise and Ei nyt (raise-to-your-turn, experimental): a reply read but not
+   answered keeps its turn as a ring; a raised row has an arrow for a ball,
+   so it is not taken for a new reply. */
+.ah-rail .ah-ball-you[data-turn="read"] {
+  box-sizing: border-box;
+  border: 1.5px solid var(--ah-turn);
+  background: transparent;
+}
+.ah-rail .ah-ball-you[data-turn="raised"] {
+  width: 11px;
+  height: 11px;
+  border-radius: 0;
+  background: var(--ah-turn);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
 .ah-now-group {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

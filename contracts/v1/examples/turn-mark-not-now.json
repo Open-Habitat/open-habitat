@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:2f1a7c3e-0d4b-4e5f-9a6b-7c8d9e0f1a2b",
+  "turn_mark": {
+    "state": "not_now",
+    "at": "2026-11-06T12:40:00Z",
+    "reply_id": "a1b2c3d4"
+  }
+}

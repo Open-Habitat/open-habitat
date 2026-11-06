@@ -7,6 +7,7 @@ import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+import turnMarkSchema from "../../../contracts/v1/turn-mark.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { PiProvider } from "../components/ModelPicker";
 import { validBashReply, validBashStatus } from "./composerContract";
@@ -19,6 +20,7 @@ import {
   WriteRefused,
   writeOutcome,
 } from "./mutations";
+import type { TurnMark } from "./snapshot";
 
 const validStartupChoice = new LazyAjv({
   strict: false,
@@ -31,6 +33,10 @@ heldValidator.addSchema(heldSchema);
 const validHeldList = heldValidator.compile({
   $ref: `${heldSchema.$id}#/$defs/heldList`,
 });
+
+const validTurnMark = new LazyAjv({ strict: false, addFormats: true });
+validTurnMark.addSchema(common);
+validTurnMark.addSchema(turnMarkSchema);
 
 const recapValidator = new LazyAjv({ strict: false, addFormats: true });
 recapValidator.addSchema(processEventSchema);
@@ -1119,6 +1125,37 @@ export function sendArchive(
   );
 }
 const cursor = /^ev1:[0-9a-fA-F-]{36}:[0-9]+$/;
+/** Nosta or Ei nyt (raise-to-your-turn): the person's daemon keeps the mark.
+ * `reply` names the last reply Ei nyt is said to. */
+export function sendTurnMark(
+  id: string,
+  mark: "raised" | "not_now",
+  reply: string | undefined,
+  csrf: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return jsonWrite(
+    "conversation.turn",
+    `${path(id)}/turn`,
+    mark === "not_now" && reply ? { mark, reply_id: reply } : { mark },
+    csrf,
+    { signal },
+  );
+}
+export async function readTurnMarkResult(
+  response: Response,
+  id: string,
+  mark: "raised" | "not_now",
+): Promise<{ turn_mark: TurnMark; event_cursor?: string }> {
+  const value = await json(response);
+  if (
+    !validTurnMark.getSchema(turnMarkSchema.$id)(value) ||
+    (value as { agent_id: string }).agent_id !== id ||
+    (value as { turn_mark: TurnMark }).turn_mark.state !== mark
+  )
+    throw new Error("invalid turn mark result");
+  return value as { turn_mark: TurnMark; event_cursor?: string };
+}
 export async function readArchiveResult(
   response: Response,
   id: string,

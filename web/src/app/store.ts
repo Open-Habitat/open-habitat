@@ -3,7 +3,7 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import type { Snapshot } from "./snapshot";
+import type { Snapshot, TurnMark } from "./snapshot";
 
 /** A fact a mutation reply or a journal event carried. `cursor` is its
  * journal position: a snapshot whose own cursor has passed it already
@@ -23,6 +23,7 @@ export type HostChange = { cursor?: string } & (
   | { kind: "archive"; agent_id: string; archive: "active" | "archived" }
   | { kind: "closed"; agent_id: string }
   | { kind: "name"; agent_id: string; name: string }
+  | { kind: "turn"; agent_id: string; turn_mark: TurnMark }
 );
 const cursorParts = (cursor?: string) => {
   const m = cursor ? /^ev1:([0-9a-fA-F-]{36}):(\d+)$/.exec(cursor) : null;
@@ -46,6 +47,11 @@ function apply(snapshot: Snapshot, c: HostChange) {
   if (c.kind === "name") {
     const agent = snapshot.agents.find((a) => a.agent_id === c.agent_id);
     if (agent) agent.title = { display: c.name, source: "native_session" };
+    return;
+  }
+  if (c.kind === "turn") {
+    const agent = snapshot.agents.find((a) => a.agent_id === c.agent_id);
+    if (agent) agent.turn_mark = c.turn_mark;
     return;
   }
   if (c.kind === "archive") {

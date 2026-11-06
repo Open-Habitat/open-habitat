@@ -6,6 +6,7 @@ import {
   NowSections,
   type RailArchive,
   type RailRename,
+  type RailTurn,
   WorkspaceNavRow,
   WorkspaceRail,
 } from "../components";
@@ -141,9 +142,12 @@ export function WorkspaceRailView({
   bell,
   archiveConversation,
   renameConversation,
+  turnConversation,
   icons,
   quietChoice,
 }: {
+  /** The rows' raise and lower (raise-to-your-turn, experimental). */
+  turnConversation?: RailTurn;
   /** Hiljaiset's order and workspace from the account preferences. */
   quietChoice: QuietChoice;
   /** The conversation rows' rename; absent where none is offered. */
@@ -249,12 +253,14 @@ export function WorkspaceRailView({
               onFold={setQuietFolded}
               archive={archiveConversation}
               rename={renameConversation}
+              turn={turnConversation}
               card={card}
             />
           }
           collapsed={collapsed}
           archive={archiveConversation}
           rename={renameConversation}
+          turn={turnConversation}
           card={card}
         />
       }

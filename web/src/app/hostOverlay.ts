@@ -1,5 +1,5 @@
 import type { MutationLayer } from "./mutations";
-import type { Snapshot } from "./snapshot";
+import type { Snapshot, TurnMark } from "./snapshot";
 
 // Keys of the optimistic commands whose values are presented over host state.
 export const visibilityKey = (workspaceId: string) =>
@@ -10,6 +10,7 @@ export const archiveKey = (agentId: string) =>
   `conversation:${agentId}:archive`;
 export const conversationNameKey = (agentId: string) =>
   `conversation:${agentId}:name`;
+export const turnMarkKey = (agentId: string) => `conversation:${agentId}:turn`;
 export const closeKey = (agentId: string) => `conversation:${agentId}:close`;
 
 /** The host snapshot as the person should see it now: unconfirmed optimistic
@@ -42,10 +43,12 @@ export function overlaid(
         archiveKey(a.agent_id),
       )?.value;
       const name = layer.get<string>(conversationNameKey(a.agent_id))?.value;
-      return archive || name !== undefined
+      const turn = layer.get<TurnMark>(turnMarkKey(a.agent_id))?.value;
+      return archive || name !== undefined || turn
         ? {
             ...a,
             ...(archive ? { archive } : {}),
+            ...(turn ? { turn_mark: turn } : {}),
             ...(name !== undefined
               ? { title: { display: name, source: "native_session" as const } }
               : {}),

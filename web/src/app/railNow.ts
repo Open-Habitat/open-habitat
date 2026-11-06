@@ -55,6 +55,7 @@ export function railNow({
   search = "",
   workFacts = false,
   icons,
+  turnMarks = false,
 }: {
   agents: Agent[];
   snapshot: Snapshot;
@@ -70,6 +71,8 @@ export function railNow({
   workFacts?: boolean;
   /** Workspace icons by workspace_id (workspace-icons, experimental). */
   icons?: ReadonlyMap<string, WorkspaceIconModel>;
+  /** Raise and Ei nyt are on (raise-to-your-turn, experimental). */
+  turnMarks?: boolean;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -79,14 +82,12 @@ export function railNow({
     { yours: number; working: number; background: number; waiting: number }
   >();
   const openConversation = new URLSearchParams(search).get("conversation");
+  const raisedTimes = new Map<string, number>();
   for (const a of agents) {
     const w = workspaces.find((w) => w.workspace_id === a.workspace_id);
-    if (
-      !w ||
-      a.archive === "archived" ||
-      snapshot.agents.find((current) => current.agent_id === a.agent_id)
-        ?.archive === "archived"
-    )
+    // The snapshot carries the person's unconfirmed archive and mark.
+    const current = snapshot.agents.find((c) => c.agent_id === a.agent_id);
+    if (!w || a.archive === "archived" || current?.archive === "archived")
       continue;
     const status = metadata.statuses.get(a.agent_id);
     const fresh = !metadata.staleStatuses.has(a.agent_id);
@@ -124,7 +125,6 @@ export function railNow({
       connectionLost: phase === "stale",
     });
     const attention = facts.attention === "new";
-    const turn = attention || (facts.pendingQuestion && observed.running);
     // A live process whose turn state is not known still runs, and so does
     // an agent whose worker works on after the agent's own turn ended.
     const workerBusy = (a.spinoffs_working ?? 0) > 0;
@@ -140,6 +140,28 @@ export function railNow({
         observed.activity !== "waiting") ||
       workerBusy ||
       workerIdle;
+    // Raise and Ei nyt (experimental): the person's own mark, kept by their
+    // daemon, decides with the replies. Opening a reply no longer answers
+    // it; it waits, read, until the person replies or says Ei nyt, which
+    // holds until a reply with another ID. A raise waits until the person
+    // replies or lowers it; a reply after it takes its place, and work on
+    // the conversation shows it in Käynnissä meanwhile.
+    const mark = turnMarks ? (current ?? a).turn_mark : undefined;
+    const reply = (current ?? a).last_reply;
+    const dismissed = mark?.state === "not_now" && mark.reply_id === reply?.id;
+    const raised =
+      mark?.state === "raised" &&
+      !live &&
+      !(reply && Date.parse(reply.at) > Date.parse(mark.at));
+    // Read means a reply the snapshot still names: a stale entry of a reply
+    // that is gone (its turn was cut, say) does not wait.
+    const read =
+      turnMarks && !live && !!reply && facts.attention === "seen" && !dismissed;
+    const turn =
+      (attention && !dismissed) ||
+      read ||
+      raised ||
+      (facts.pendingQuestion && observed.running);
     // Pi ended unasked: the conversation rests until the person writes, and
     // stays in Käynnissä as failed so it is not silently gone. The snapshot's
     // rest says so; liveness cannot, because a browser conversation's
@@ -174,23 +196,27 @@ export function railNow({
         ? txt.rail.turnError
         : failure === "worker_failed"
           ? txt.rail.workerFailed
-          : attention
+          : attention && turn
             ? txt.rail.newReply
-            : facts.pendingQuestion
-              ? txt.rail.asks
-              : crashed
-                ? txt.rail.crashed
-                : cut
-                  ? txt.rail.turnCut
-                  : observed.activity === "working"
-                    ? txt.rail.working
-                    : observed.activity === "waiting_background"
-                      ? txt.rail.background
-                      : workerBusy
-                        ? txt.rail.workerWorking
-                        : workerIdle
-                          ? txt.rail.workerWaiting
-                          : observed.activityLabel;
+            : raised
+              ? txt.rail.raised
+              : read
+                ? txt.rail.readReply
+                : facts.pendingQuestion
+                  ? txt.rail.asks
+                  : crashed
+                    ? txt.rail.crashed
+                    : cut
+                      ? txt.rail.turnCut
+                      : observed.activity === "working"
+                        ? txt.rail.working
+                        : observed.activity === "waiting_background"
+                          ? txt.rail.background
+                          : workerBusy
+                            ? txt.rail.workerWorking
+                            : workerIdle
+                              ? txt.rail.workerWaiting
+                              : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
@@ -240,7 +266,18 @@ export function railNow({
             status?.native_history === "unavailable"
           ? txt.rail.historyUnknown
           : undefined,
-      attentionLabel: presentation.attentionLabel,
+      // Ei nyt said on another device answers a reply this one has not shown.
+      attentionLabel: dismissed ? undefined : presentation.attentionLabel,
+      turnMark: raised ? "raised" : read ? "read" : undefined,
+      turnAction: !turnMarks
+        ? undefined
+        : isQuiet
+          ? "raise"
+          : raised
+            ? "lower"
+            : turn && !facts.pendingQuestion && !live
+              ? "not_now"
+              : undefined,
       // A sub-agent at work, whether or not the parent still waits for it:
       // a daemon restart ends the wait, not the run.
       spinoffWorking:
@@ -252,6 +289,7 @@ export function railNow({
         a.agent_id === selectedAgentId ||
         (selectedId === w.workspace_id && openConversation === a.agent_id),
     };
+    if (raised && mark) raisedTimes.set(a.agent_id, Date.parse(mark.at));
     if (isQuiet) {
       quiet.push(model);
       continue;
@@ -302,6 +340,10 @@ export function railNow({
               },
     );
   }
+  // The newest raise leads Sinun vuorosi, and so the next-waiting round.
+  const raisedAt = (row: AgentNavModel) =>
+    row.turnMark === "raised" ? (raisedTimes.get(row.agentId) ?? 0) : -1;
+  yours.sort((a, b) => raisedAt(b) - raisedAt(a));
   quiet.sort(
     (a, b) =>
       (b.changedAt ?? 0) - (a.changedAt ?? 0) ||

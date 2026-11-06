@@ -9,6 +9,7 @@ import {
   type AgentNavModel,
   type RailArchive,
   type RailRename,
+  type RailTurn,
 } from "./Navigation";
 import { useMinuteNow } from "./RecapCard";
 import {
@@ -141,6 +142,7 @@ export function QuietSection({
   onFold,
   archive,
   rename,
+  turn,
   card,
 }: {
   /** Every quiet conversation, newest first. */
@@ -153,6 +155,8 @@ export function QuietSection({
   onFold?: (folded: boolean) => void;
   archive?: RailArchive;
   rename?: RailRename;
+  /** Raising a row to Sinun vuorosi; absent while the feature is off. */
+  turn?: RailTurn;
   card?: WorkspaceCardActions;
 }) {
   const t = useText(quietRailText);
@@ -175,6 +179,7 @@ export function QuietSection({
       now={now}
       archive={archive}
       rename={rename}
+      turn={turn}
       card={card}
     />
   );

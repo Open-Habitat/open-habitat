@@ -268,7 +268,10 @@ function BrowserConversationContent({
   github,
   nextWaiting,
   creation,
+  turnControl,
 }: {
+  /** Nosta or Ei nyt for the composer's middle slot (experimental). */
+  turnControl?: ReactNode;
   /** A conversation this tab is creating, shown until it has an ID. */
   creation?: Creation;
   /** Names the view instead of the conversation ID; see BrowserConversation. */
@@ -1714,6 +1717,7 @@ function BrowserConversationContent({
       : {
           csrf,
           speech,
+          turnControl,
           modelPicker:
             canChooseFirstModel && controlled ? (
               <ComposerModelPicker

@@ -26,6 +26,7 @@ export const experimentalFeatureIds = [
   "workspace-icons",
   "server-settings-own-area",
   "empty-conversation-start-page",
+  "raise-to-your-turn",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

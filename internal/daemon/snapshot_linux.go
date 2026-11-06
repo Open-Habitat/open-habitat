@@ -449,9 +449,15 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				}
 			}
 		}
+		// Unreadable marks are left out: the rows then stand as their
+		// replies place them, and the person can mark again.
+		marks, _ := readTurnMarks(nativeHome)
 		for _, raw := range agents {
 			agent := raw.(map[string]any)
 			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
+			if mark, ok := marks.Marks[agent["agent_id"].(string)]; ok {
+				agent["turn_mark"] = mark
+			}
 		}
 		<-waitingDone
 		if controller != nil {
@@ -489,6 +495,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					}
 					agent["history"] = "missing"
 					agent["archive"] = archiveFact(visibility, visibilityErr, id)
+					if mark, ok := marks.Marks[id]; ok {
+						agent["turn_mark"] = mark
+					}
 					agents = append(agents, agent)
 				}
 			}

@@ -39,7 +39,9 @@ function run(
     phase = "authenticated",
     catalog = agents,
     selectedAgentId,
+    turnMarks = false,
   }: {
+    turnMarks?: boolean;
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
@@ -62,6 +64,7 @@ function run(
     daemonSessions: sessions,
     selectedAgentId,
     phase,
+    turnMarks,
   });
 }
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
@@ -403,5 +406,96 @@ describe("rail Nyt groups", () => {
       kind: "background",
       count: 1,
     });
+  });
+});
+
+describe("raise and Ei nyt (experimental)", () => {
+  const at = (minute: number) =>
+    new Date(Date.UTC(2026, 10, 6, 9, minute)).toISOString();
+  const idle = (id: string, extra: Partial<Agent> = {}) =>
+    agent(id, { process: "confirmed_exited", run_active: false, ...extra });
+
+  it("leaves the rail as it is while the feature is off", () => {
+    const read = idle("read", { last_reply: { id: "r1", at: at(1) } });
+    const raised = idle("raised", {
+      turn_mark: { state: "raised", at: at(2) },
+    });
+    const now = run([read, raised], { attention: [["read", "seen"]] });
+    expect(ids(now.yours)).toEqual([]);
+    expect(ids(now.quiet).sort()).toEqual(["raised", "read"]);
+    expect(now.quiet.every((r) => !r.turnAction && !r.turnMark)).toBe(true);
+  });
+
+  it("keeps a read reply in Sinun vuorosi until Ei nyt, and back with the next reply", () => {
+    const read = idle("read", { last_reply: { id: "r1", at: at(1) } });
+    let now = run([read], { attention: [["read", "seen"]], turnMarks: true });
+    expect(ids(now.yours)).toEqual(["read"]);
+    expect(now.yours[0]).toMatchObject({
+      turnMark: "read",
+      turnAction: "not_now",
+    });
+    const dismissed = {
+      ...read,
+      turn_mark: { state: "not_now" as const, at: at(2), reply_id: "r1" },
+    };
+    now = run([dismissed], { attention: [["read", "seen"]], turnMarks: true });
+    expect(ids(now.yours)).toEqual([]);
+    expect(now.quiet[0]).toMatchObject({
+      agentId: "read",
+      turnAction: "raise",
+    });
+    // Ei nyt said on another device answers a reply never shown here.
+    now = run([dismissed], { attention: [["read", "new"]], turnMarks: true });
+    expect(ids(now.yours)).toEqual([]);
+    expect(now.quiet[0].attentionLabel).toBeUndefined();
+    // A seen entry whose reply the snapshot no longer names does not wait.
+    now = run([idle("read")], {
+      attention: [["read", "seen"]],
+      turnMarks: true,
+    });
+    expect(ids(now.yours)).toEqual([]);
+    const replied = { ...dismissed, last_reply: { id: "r2", at: at(5) } };
+    now = run([replied], { attention: [["read", "new"]], turnMarks: true });
+    expect(ids(now.yours)).toEqual(["read"]);
+  });
+
+  it("leads Sinun vuorosi with the newest raise until a reply takes its place", () => {
+    const reply = idle("reply", { last_reply: { id: "r1", at: at(1) } });
+    const older = idle("older", { turn_mark: { state: "raised", at: at(2) } });
+    const newer = idle("newer", { turn_mark: { state: "raised", at: at(3) } });
+    let now = run([reply, older, newer], {
+      attention: [["reply", "new"]],
+      turnMarks: true,
+    });
+    expect(ids(now.yours)).toEqual(["newer", "older", "reply"]);
+    expect(now.yours[0]).toMatchObject({
+      turnMark: "raised",
+      turnAction: "lower",
+      activityLabel: "Nostit Sinun vuoroosi",
+    });
+    expect(now.yours[2]).toMatchObject({ turnAction: "not_now" });
+    // The agent answered after the raise: the reply stands in its place.
+    const answered = { ...older, last_reply: { id: "r9", at: at(4) } };
+    now = run([answered], { attention: [["older", "seen"]], turnMarks: true });
+    expect(now.yours[0]).toMatchObject({
+      agentId: "older",
+      turnMark: "read",
+      turnAction: "not_now",
+    });
+  });
+
+  it("shows a raised conversation at work in Käynnissä and offers nothing there", () => {
+    const working = agent("working", {
+      run_active: true,
+      turn_mark: { state: "raised", at: at(2) },
+    });
+    const asks = agent("asks", { pending_question: { id: "q1" } as never });
+    const now = run([working, asks], { turnMarks: true });
+    expect(ids(now.running)).toEqual(["working"]);
+    expect(now.running[0].turnAction).toBeUndefined();
+    expect(now.running[0].turnMark).toBeUndefined();
+    expect(
+      now.yours.find((r) => r.agentId === "asks")?.turnAction,
+    ).toBeUndefined();
   });
 });

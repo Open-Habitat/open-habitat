@@ -699,6 +699,10 @@
             }
           }
         },
+        "turn_mark": {
+          "description": "The person's own mark on the conversation's place in Sinun vuorosi (Nosta or Ei nyt), kept by their daemon so that every device shows the same. Absent when there is none or the daemon cannot read its marks.",
+          "$ref": "turn-mark.schema.json#/$defs/mark"
+        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [

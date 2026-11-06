@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/raise-to-your-turn-button
 lane: raise-button
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Raise a conversation to Your turn: composer-row middle slot and rail row (experimental)
@@ -36,4 +37,4 @@ mekanismina daemonin merkkinä (näkyy kaikilla laitteilla).
 
 ## Acceptance Criteria
 
-- [ ] nosto ja sen poisto toimivat kentän riviltä ja sivupalkin riviltä kokeellisen ominaisuuden takana; tila säilyy laitteiden välillä; testit
+- [x] nosto ja sen poisto toimivat kentän riviltä ja sivupalkin riviltä kokeellisen ominaisuuden takana; tila säilyy laitteiden välillä; testit

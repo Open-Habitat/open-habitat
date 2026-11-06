@@ -396,6 +396,7 @@ export function Composer({
   preparedPlaceholder,
   speech,
   onDictating,
+  turnControl,
 }: {
   value: string;
   csrf?: string;
@@ -444,6 +445,8 @@ export function Composer({
   /** A dictation is under way, or ending into a send: its text is not yet
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
+  /** Nosta or Ei nyt (TurnControl): the middle slot while it is free. */
+  turnControl?: ReactNode;
 }) {
   const t = useText(composerText);
   const MODE = t.modes;
@@ -1593,7 +1596,8 @@ export function Composer({
           {rowChip}
           {rowRun}
           {rowStop}
-          {rowChip || rowRun || rowStop ? (
+          {rowChip || rowRun || rowStop ? null : turnControl}
+          {rowChip || rowRun || rowStop || turnControl ? (
             <span className="ah-crow-sep" aria-hidden="true" />
           ) : null}
           {mic ? (

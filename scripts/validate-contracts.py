@@ -77,6 +77,8 @@ checks = {
     "attachments.json": "attachments.schema.json",
     "pi-message.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
+    "turn-mark.json": "turn-mark.schema.json",
+    "turn-mark-not-now.json": "turn-mark.schema.json",
     "process-inventory.json": "process.schema.json",
     "process-output.json": "process.schema.json",
     "process-stop.json": "process-control.schema.json",
@@ -285,6 +287,17 @@ for good in ({"action": "connect"}, {"action": "grant", "peer": "alice-macbook",
     machines_request.validate(good)
 for bad in ({"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 365}, {"action": "check", "peer": "alice-macbook", "user": "alice", "address": "100.88.14.53"}, {"action": "check", "peer": "100.88.14.53", "user": "alice"}, {"action": "remove", "machine": "../x"}, {"action": "connect", "peer": "x"}):
     assert not machines_request.is_valid(bad), f"own-machines request accepted {bad!r}"
+
+# A turn mark is raised or Ei nyt; only Ei nyt names the reply it was said to.
+turn = json.loads((BASE / "examples" / "turn-mark.json").read_text())
+for mark in ({"state": "raised", "at": "2026-11-06T09:20:00Z", "reply_id": "a1"}, {"state": "seen", "at": "2026-11-06T09:20:00Z"}, {"state": "raised"}, {"state": "not_now", "at": "2026-11-06T09:20:00Z", "reply_id": ""}):
+    must_reject("turn-mark.schema.json", {**turn, "turn_mark": mark})
+must_reject("turn-mark.schema.json", {**turn, "agent_id": "ws_example123"})
+turn_request = Draft202012Validator({"$ref": schemas["turn-mark.schema.json"]["$id"] + "#/$defs/request"}, registry=registry)
+for good in ({"mark": "raised"}, {"mark": "not_now"}, {"mark": "not_now", "reply_id": "a1b2c3d4"}):
+    turn_request.validate(good)
+for bad in ({"mark": "raised", "reply_id": "a1"}, {"mark": "none"}, {}, {"mark": "not_now", "at": "2026-11-06T09:20:00Z"}):
+    assert not turn_request.is_valid(bad), f"turn-mark request accepted {bad!r}"
 
 # A view names its entry inside the export, never a path outside it or a
 # hidden file, and its open URL is the fixed handoff on an HTTPS view host.

@@ -81,3 +81,13 @@
     padding-inline-end: 58px;
   }
 }
+/* With the raise or lower beside them, three buttons. */
+@media (hover: hover) {
+  .ah-now
+    .ah-agent-item:is(:hover, :focus-within):has(
+      .ah-nav-archive[data-actions="3"]
+    )
+    .ah-nav-link {
+    padding-inline-end: 86px;
+  }
+}

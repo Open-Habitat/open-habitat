@@ -12,6 +12,7 @@ import {
   shellExcluded,
   withLeadingCommand,
 } from "./completion";
+import { TurnControl } from "./TurnControl";
 
 vi.mock("../../app/attachments", async (actual) => ({
   ...(await actual<typeof import("../../app/attachments")>()),
@@ -1071,5 +1072,40 @@ describe("focus after an attachment", () => {
     await answer();
     expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
     expect(document.activeElement).toBe(other);
+  });
+});
+
+describe("the middle slot's Nosta and Ei nyt", () => {
+  it("holds the turn control at rest and gives the slot to Ohjaa and Stop at work", () => {
+    const press = vi.fn();
+    const control = <TurnControl action="raise" onPress={press} />;
+    const view = render(<Composer {...base} value="" turnControl={control} />);
+    const button = view.getByTestId("composer-turn");
+    expect(button.textContent).toBe("Nosta");
+    expect(view.container.querySelector(".ah-crow-sep")).not.toBeNull();
+    button.click();
+    expect(press).toHaveBeenCalledOnce();
+    view.rerender(
+      <Composer
+        {...base}
+        activity="working"
+        onInterrupt={noop}
+        value=""
+        turnControl={control}
+      />,
+    );
+    expect(view.queryByTestId("composer-turn")).toBeNull();
+    expect(view.getByTestId("composer-mode")).toBeTruthy();
+  });
+  it("names each state: Ei nyt, and raised Sinun vuorossasi with a cross", () => {
+    const view = render(<TurnControl action="not_now" onPress={noop} />);
+    expect(view.getByTestId("composer-turn").textContent).toBe("Ei nyt");
+    view.rerender(<TurnControl action="lower" onPress={noop} />);
+    const raised = view.getByTestId("composer-turn");
+    expect(raised.textContent).toBe("Sinun vuorossasi");
+    expect(raised.getAttribute("aria-pressed")).toBe("true");
+    expect(raised.getAttribute("aria-label")).toBe(
+      "Sinun vuorossasi. Laske Hiljaisiin",
+    );
   });
 });

@@ -52,6 +52,17 @@ const fi = {
         "Valinta kirjoitetaan repon juuren .open-habitat.yaml-tiedostoon ja commitoidaan saman tien, vain se tiedosto eikä pushia. Commit tarvitsee Git-identiteetin. Ehdotukset tekee oma mallisi (API-avain tai tilaus, myös pelkkä Claude-tilaus), ja se näkee vain nimen, README:n alun, aloitussivun, kielet ja logon polun; icon: auto lopettaa ehdotukset.",
       caption: "Sivupalkki",
     },
+    "raise-to-your-turn": {
+      name: "Nosta ja Ei nyt",
+      desc: "Keskustelu pysyy Sinun vuorosissa, kunnes vastaat tai painat Ei nyt; pelkkä avaaminen ei enää siirrä sitä Hiljaisiin. Hiljaisen keskustelun voit nostaa takaisin Sinun vuoroosi.",
+      where:
+        "Kirjoituskentän rivillä Sanele-painikkeen vasemmalla puolella, kun agentti ei työskentele, sekä sivupalkin Hiljaiset-rivillä.",
+      shows:
+        "Nosta, Ei nyt tai nostetussa oranssi Sinun vuorossasi ✕. Luettu vastaus näkyy renkaana ja nostettu nuolena.",
+      needs:
+        "Ei muuta. Nosto ja Ei nyt tallentuvat tilillesi ja näkyvät kaikilla laitteillasi.",
+      caption: "Kirjoituskentän rivi",
+    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -69,6 +80,8 @@ const fi = {
     oldApi: "Vanhan rajapinnan poisto",
     agentNotWaiting: "agentti ei odota",
     noChanges: "ei vielä muutoksia",
+    raise: "Nosta",
+    notNow: "Ei nyt",
   },
   reload: "Lue tallennettu valinta",
   intro:
@@ -134,6 +147,17 @@ export const experimentalFeaturesText = catalog(fi, {
         "The choice is written to .open-habitat.yaml at the repository's root and committed at once, only that file and no push. The commit needs a Git identity. Suggestions come from your own model (an API key or a subscription, a Claude subscription alone too), and it sees only the name, the beginning of the README, the start page, the languages and the logo's path; icon: auto stops the suggestions.",
       caption: "Sidebar",
     },
+    "raise-to-your-turn": {
+      name: "Raise and Not now",
+      desc: "A conversation stays in Your turn until you reply or press Not now; opening it no longer moves it to Quiet. You can raise a quiet conversation back to Your turn.",
+      where:
+        "On the message field's row, left of Dictate, while the agent is not working, and on the rail's Quiet rows.",
+      shows:
+        "Raise, Not now or, once raised, an orange Your turn ✕. A read reply shows as a ring and a raised conversation as an arrow.",
+      needs:
+        "Nothing else. Raise and Not now are saved to your account and show on all your devices.",
+      caption: "Message field row",
+    },
   },
   picture: {
     waiting: "3 waiting for you",
@@ -151,6 +175,8 @@ export const experimentalFeaturesText = catalog(fi, {
     oldApi: "Removing the old interface",
     agentNotWaiting: "agent not waiting",
     noChanges: "no changes yet",
+    raise: "Raise",
+    notNow: "Not now",
   },
   reload: "Read the saved choice",
   intro:

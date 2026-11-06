@@ -504,6 +504,14 @@ export interface AgentNavModel {
   };
   /** The agent has asked the person something and waits for the answer. */
   question?: boolean;
+  /** In Sinun vuorosi by the person's own hand (raise-to-your-turn,
+   * experimental): raised by them, or a reply they have read and not yet
+   * answered. */
+  turnMark?: "raised" | "read";
+  /** What the person can do with the conversation's place in Sinun vuorosi
+   * now: raise it, lower a raise, or say Ei nyt to a reply. Absent while
+   * the feature is off or the agent works. */
+  turnAction?: "raise" | "lower" | "not_now";
   /** What the row says about itself beyond its title: workspace, state and
    * what it waits for. The one-line row says it but does not show it. */
   detail?: string;
@@ -527,6 +535,10 @@ export interface RailRename {
   reason: (agentId: string) => string;
   save: (agentId: string, name: string) => Promise<void>;
 }
+/** The rail rows' raise and lower (raise-to-your-turn, experimental). */
+export interface RailTurn {
+  run: (agentId: string, action: "raise" | "lower") => void;
+}
 /** The rail rows' archive button: why a row cannot be archived now ("" when
  * it can) and the archive itself. */
 export interface RailArchive {
@@ -544,13 +556,14 @@ export function ballOf(
     | "failed"
     | "attentionLabel"
     | "question"
+    | "turnMark"
     | "activity"
     | "activityLabel"
     | "spinoffWorking"
   >,
 ): BallKind {
   if (agent.failed) return "fail";
-  if (agent.attentionLabel || agent.question) return "you";
+  if (agent.attentionLabel || agent.question || agent.turnMark) return "you";
   const activity =
     agent.activity ??
     (/työ|käynnissä|working/i.test(agent.activityLabel)
@@ -567,10 +580,19 @@ export function ballOf(
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
-function Ball({ kind }: { kind: BallKind }) {
+/** A raised row's ball is an arrow and a read reply's a ring
+ * (raise-to-your-turn, experimental). */
+function Ball({
+  kind,
+  turn,
+}: {
+  kind: BallKind;
+  turn?: AgentNavModel["turnMark"];
+}) {
   return (
     <span
       className={`ah-nav-mark ah-ball ah-ball-${kind}`}
+      data-turn={turn}
       aria-hidden="true"
       title={ballLabel(kind)}
     />
@@ -609,6 +631,8 @@ export function AgentNavItem({
   pendingLabel,
   worktree,
   question = false,
+  turnMark,
+  turnAction,
   detail,
   workspaceId,
   workspaceName,
@@ -617,6 +641,7 @@ export function AgentNavItem({
   now = Date.now(),
   archive,
   rename,
+  turn,
   card,
 }: AgentNavModel & {
   /** Say the workspace's name quietly in the row (Hiljaiset without
@@ -625,10 +650,17 @@ export function AgentNavItem({
   now?: number;
   archive?: RailArchive;
   rename?: RailRename;
+  turn?: RailTurn;
   card?: WorkspaceCardActions;
 }) {
   const t = useText(navigationText);
   const archiveReasonId = useId();
+  // The rail raises a quiet row and lowers a raised one; Ei nyt to a reply
+  // is the composer's.
+  const turnRow =
+    turn && (turnAction === "raise" || turnAction === "lower")
+      ? turnAction
+      : undefined;
   const archiveReason = archive?.reason(agentId);
   const renameReason = rename?.reason(agentId);
   const [editing, setEditing] = useState(false);
@@ -640,6 +672,7 @@ export function AgentNavItem({
     failed,
     attentionLabel,
     question,
+    turnMark,
     activity,
     activityLabel,
     spinoffWorking,
@@ -683,14 +716,34 @@ export function AgentNavItem({
           ) : undefined
         }
         trailing={
-          !editing && (spinoffWorking || archive || rename) ? (
+          !editing && (spinoffWorking || archive || rename || turnRow) ? (
             <>
               {spinoffWorking ? <SpinoffWorkingMark /> : null}
-              {archive || rename ? (
+              {archive || rename || turnRow ? (
                 <span
                   className="ah-nav-archive"
-                  data-actions={archive && rename ? 2 : 1}
+                  data-actions={
+                    [archive, rename, turnRow].filter(Boolean).length
+                  }
                 >
+                  {turn && turnRow ? (
+                    <span>
+                      <ControlButton
+                        title={turnRow === "raise" ? t.raise : t.lower}
+                        data-testid={`rail-${turnRow}-conversation`}
+                        variant="quiet"
+                        size="inline"
+                        aria-label={
+                          turnRow === "raise"
+                            ? t.raiseNamed(shownTitle)
+                            : t.lowerNamed(shownTitle)
+                        }
+                        onPress={() => turn.run(agentId, turnRow)}
+                      >
+                        <Icon name={turnRow === "raise" ? "top" : "bottom"} />
+                      </ControlButton>
+                    </span>
+                  ) : null}
                   {rename ? (
                     <span>
                       <ControlButton
@@ -782,7 +835,7 @@ export function AgentNavItem({
             }
             leading={
               <>
-                <Ball kind={ball} />
+                <Ball kind={ball} turn={turnMark} />
                 {worktree ? (
                   <Icon
                     name={worktree.merged ? "merge" : "worktree"}
@@ -958,7 +1011,7 @@ function NowDot(agent: AgentNavModel) {
             {initials(agent.workspaceName ?? agent.title)}
           </span>
         )}
-        <Ball kind={ball} />
+        <Ball kind={ball} turn={agent.turnMark} />
         <span className="ah-visually-hidden">
           {agent.title}: {status}
         </span>
@@ -1038,6 +1091,7 @@ export function NowSections({
   collapsed = false,
   archive,
   rename,
+  turn,
   card,
 }: {
   yours: AgentNavModel[];
@@ -1050,6 +1104,8 @@ export function NowSections({
   archive?: RailArchive;
   /** Absent where the rail offers no renaming (a story). */
   rename?: RailRename;
+  /** Lowering a raise from Sinun vuorosi; absent while the feature is off. */
+  turn?: RailTurn;
   /** The workspace icon card's actions, where rows carry icons. */
   card?: WorkspaceCardActions;
 }) {
@@ -1099,6 +1155,7 @@ export function NowSections({
                 now={now}
                 archive={archive}
                 rename={rename}
+                turn={turn}
                 card={card}
               />
             ))}

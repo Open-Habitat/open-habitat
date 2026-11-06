@@ -1385,7 +1385,7 @@ describe("finished turns the person has not seen", () => {
       store.dispose();
       store = tab();
       store.applySnapshot(observation({ id: reply, minute: 11 + n }));
-      expect(attention(store)).toBeUndefined();
+      expect(attention(store)).toBe("seen");
     }
     store.dispose();
   });
@@ -1428,7 +1428,7 @@ describe("finished turns the person has not seen", () => {
     store.dispose();
     store = tab();
     store.applySnapshot(observation({ id: "r1", minute: 11 }, 102));
-    expect(attention(store)).toBeUndefined();
+    expect(attention(store)).toBe("seen");
     store.dispose();
   });
 
@@ -1455,7 +1455,7 @@ describe("finished turns the person has not seen", () => {
     store.dispose();
     store = tab();
     store.applySnapshot(observation({ id: "r2", minute: 12 }, 121));
-    expect(attention(store)).toBeUndefined();
+    expect(attention(store)).toBe("seen");
     store.dispose();
   });
 
@@ -1495,7 +1495,7 @@ describe("finished turns the person has not seen", () => {
     other.dispose();
     const reloaded = tab();
     reloaded.applySnapshot(observation({ id: "r2", minute: 12 }));
-    expect(attention(reloaded)).toBeUndefined();
+    expect(attention(reloaded)).toBe("seen");
     shown.dispose();
     reloaded.dispose();
   });

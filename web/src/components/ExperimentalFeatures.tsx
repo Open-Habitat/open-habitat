@@ -26,6 +26,7 @@ const featureIds = [
   { id: "workspace-icons", landed: true },
   { id: "server-settings-own-area", landed: true },
   { id: "empty-conversation-start-page", landed: true },
+  { id: "raise-to-your-turn", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -69,6 +70,19 @@ function Picture({ id, on }: { id: string; on: boolean }) {
           <span className="ex-open">{txt.picture.goThrough}</span>
         </span>
         <span className="ex-composer">{txt.picture.composer}</span>
+      </>
+    );
+  else if (id === "raise-to-your-turn")
+    body = (
+      <>
+        <span className="ex-ghost ex-ghost-own" />
+        <span className="ex-ghost" style={{ width: "80%" }} />
+        <span className="ex-ghost" style={{ width: "55%" }} />
+        <span className="ex-composer ex-crow">
+          <span>{txt.picture.composer}</span>
+          <span className="ex-turn">⤒ {txt.picture.raise}</span>
+          <span className="ex-send" />
+        </span>
       </>
     );
   else if (id === "workspace-icons")

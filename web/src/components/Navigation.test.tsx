@@ -304,6 +304,52 @@ describe("Ryhmät rows", () => {
     expect(ballOf(agent("a", { failed: true }))).toBe("fail");
     expect(ballOf(agent("a", { activity: "unknown" }))).toBe("unknown");
   });
+  it("raises a quiet row and lowers a raised one from the rail, not Ei nyt", () => {
+    const pressed: [string, string][] = [];
+    const turn = {
+      run: (id: string, action: "raise" | "lower") =>
+        pressed.push([id, action]),
+    };
+    const view = render(
+      <MemoryRouter>
+        <ul>
+          <AgentNavItem {...agent("q", { turnAction: "raise" })} turn={turn} />
+          <AgentNavItem
+            {...agent("r", { turnMark: "raised", turnAction: "lower" })}
+            turn={turn}
+          />
+          <AgentNavItem
+            {...agent("n", { turnMark: "read", turnAction: "not_now" })}
+            turn={turn}
+          />
+        </ul>
+      </MemoryRouter>,
+    );
+    const row = (id: string) => view.getByTestId(`agent-item-${id}`);
+    row("q")
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="rail-raise-conversation"]',
+      )
+      ?.click();
+    row("r")
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="rail-lower-conversation"]',
+      )
+      ?.click();
+    expect(pressed).toEqual([
+      ["q", "raise"],
+      ["r", "lower"],
+    ]);
+    // Ei nyt to a reply is the composer's; the row only shows the ring.
+    expect(row("n").querySelector("button")).toBeNull();
+    expect(row("n").getAttribute("data-ball")).toBe("you");
+    expect(row("n").querySelector(".ah-ball")?.getAttribute("data-turn")).toBe(
+      "read",
+    );
+    expect(row("r").querySelector(".ah-ball")?.getAttribute("data-turn")).toBe(
+      "raised",
+    );
+  });
   it("keeps the row to one line and says the rest", () => {
     const view = render(
       <MemoryRouter>

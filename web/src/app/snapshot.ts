@@ -9,6 +9,7 @@ import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
+import turnMark from "../../../contracts/v1/turn-mark.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import workspaceIconSuggestions from "../../../contracts/v1/workspace-icon-suggestions.schema.json";
@@ -29,6 +30,7 @@ for (const definition of [
   history,
   operation,
   schema,
+  turnMark,
   workspaceChange,
   workspaceIconSuggestions,
 ])
@@ -120,6 +122,11 @@ export function placeWorkspace(
     place: { parent: workspace, worktree },
   };
 }
+/** raised: Nosta at `at`. not_now: Ei nyt at `at` to the reply `reply_id`
+ * (none when the conversation had no reply). */
+export type TurnMark =
+  | { state: "raised"; at: string }
+  | { state: "not_now"; at: string; reply_id?: string };
 export interface Agent {
   agent_id: string;
   workspace_id: string;
@@ -164,6 +171,8 @@ export interface Agent {
   /** The model's finished answer that ends the last turn, by native entry
    * ID; read while Pi runs or rests unarchived. */
   last_reply?: { id: string; at: string };
+  /** The person's own Nosta or Ei nyt, kept by their daemon. */
+  turn_mark?: TurnMark;
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */

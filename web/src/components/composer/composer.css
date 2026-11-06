@@ -225,6 +225,26 @@
 .ah-crow .ah-crow-chip:hover {
   background: var(--ah-hover);
 }
+/* Nosta / Ei nyt in the middle slot (raise-to-your-turn, experimental). Ei
+   nyt and the raised state take the turn's colour: they belong to Sinun
+   vuorosi. */
+.ah-crow .ah-crow-turn[data-turn="not_now"],
+.ah-crow .ah-crow-turn[data-turn="lower"] {
+  color: var(--ah-turn);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--ah-turn) 45%, transparent);
+}
+.ah-crow .ah-crow-turn[data-turn="lower"] {
+  background: color-mix(in srgb, var(--ah-turn) 13%, transparent);
+}
+.ah-crow .ah-crow-turn[data-turn="not_now"]:hover,
+.ah-crow .ah-crow-turn[data-turn="lower"]:hover {
+  background: color-mix(in srgb, var(--ah-turn) 22%, transparent);
+}
+.ah-crow .ah-crow-chip .ah-crow-turn-x {
+  width: 11px;
+  height: 11px;
+}
 .ah-crow-run {
   display: inline-flex;
   align-items: center;

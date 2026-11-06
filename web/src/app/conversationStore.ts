@@ -211,11 +211,9 @@ export class ConversationStore {
       )
         continue;
       this.latestReplies.set(agent.agent_id, { id: reply.id });
-      if (
-        replies.seen.get(agent.agent_id) === reply.id ||
-        !(Date.parse(reply.at) > replies.horizon)
-      )
-        continue;
+      if (!(Date.parse(reply.at) > replies.horizon)) continue;
+      // A reply already seen here is entered as seen: it no longer asks,
+      // but with Ei nyt on (experimental) it waits, read, for the answer.
       this.markAttention(agent.agent_id, `reply:${reply.id}`);
     }
   }

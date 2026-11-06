@@ -196,6 +196,11 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	if in.Archived {
+		// An archived conversation is put away: it neither waits raised nor
+		// comes back raised when restored.
+		c.clearTurnMark(id)
+	}
 	cursor := ""
 	if c.journal != nil {
 		cursor = c.journal.appendInvalidation(key)
