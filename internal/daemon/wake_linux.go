@@ -330,10 +330,10 @@ func (c *ConversationController) wakeRest(ctx context.Context, w waitingRest, re
 		return
 	}
 	if old == nil {
-		if len(c.sessions) >= 128 {
+		if !c.makeRecordRoom() {
 			c.mu.Unlock()
 			release()
-			skip("capacity_exceeded")
+			skip("session_records_exhausted")
 			return
 		}
 		old = &conversation{id: w.id, workspace: origin.Workspace, cwd: origin.Cwd, rpc: stoppedRPC(), state: "stopped", dead: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
@@ -345,7 +345,7 @@ func (c *ConversationController) wakeRest(ctx context.Context, w waitingRest, re
 	release()
 	if problem != "" {
 		switch problem {
-		case "capacity_exceeded", "source_unavailable":
+		case "capacity_exceeded", "session_records_exhausted", "source_unavailable":
 			// Busy places or a passing failure: the next check tries again.
 		default:
 			c.waitSettledFor(waitingRest{id: w.id, handle: old})

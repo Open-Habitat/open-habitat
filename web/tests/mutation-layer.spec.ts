@@ -209,7 +209,7 @@ test("@mutation-layer a lost reply stays pending until the next read decides", a
   await expect(listed(page)).toHaveCount(0);
 });
 
-test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain creation", async ({
+test("@mutation-layer record exhaustion is a refusal, not the live-limit card", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -221,7 +221,7 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
           body: JSON.stringify({
             schema_version: 1,
             error: {
-              code: "capacity_exceeded",
+              code: "session_records_exhausted",
               message: "Request could not be completed",
               retryable: false,
               correlation_id: "req_00000000",
@@ -247,6 +247,11 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
     ),
   ).toHaveCount(0);
   await expect(page.getByTestId("creation-recheck")).toHaveCount(0);
+  await expect(
+    conversation.locator(
+      '[data-testid="creation-problem"][data-reason="capacity"]',
+    ),
+  ).toHaveCount(0);
   // + stays usable: nothing marks the creation uncertain.
   await expect(
     page

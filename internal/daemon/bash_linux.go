@@ -82,7 +82,12 @@ func (c *ConversationController) startCommand(w http.ResponseWriter, r *http.Req
 	}
 	c.mu.Lock()
 	s := c.sessions[id]
-	if s == nil && origin != nil && !c.closed && len(c.sessions) < 128 {
+	if s == nil && origin != nil && !c.closed {
+		if !c.makeRecordRoom() {
+			c.mu.Unlock()
+			snapshotError(w, 429, "session_records_exhausted")
+			return
+		}
 		s = &conversation{id: id, workspace: origin.Workspace, cwd: origin.Cwd, rpc: stoppedRPC(), state: "stopped", dead: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 		c.sessions[id] = s
 	}

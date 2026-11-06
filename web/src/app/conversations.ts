@@ -194,7 +194,8 @@ export type ContinueRefusal =
   | "history_damaged"
   | "quota_full"
   | "storage_full"
-  | "capacity_exceeded";
+  | "capacity_exceeded"
+  | "session_records_exhausted";
 export class ContinuationRefused extends Error {
   constructor(readonly code: ContinueRefusal) {
     super(code);
@@ -884,7 +885,10 @@ export async function continueConversation(
           "control_uncertain",
           "history_damaged",
         ].includes(String(error.error.code))) ||
-        (response.status === 429 && error.error.code === "capacity_exceeded") ||
+        (response.status === 429 &&
+          ["capacity_exceeded", "session_records_exhausted"].includes(
+            String(error.error.code),
+          )) ||
         (response.status === 507 &&
           ["quota_full", "storage_full"].includes(String(error.error.code))))
     )

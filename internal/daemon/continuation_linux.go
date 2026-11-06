@@ -176,8 +176,8 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 			snapshotError(w, 409, "read_only_history")
 		case "source_unavailable":
 			snapshotError(w, 503, "native_source_unavailable")
-		case "capacity_exceeded":
-			snapshotError(w, 429, "capacity_exceeded")
+		case "capacity_exceeded", "session_records_exhausted":
+			snapshotError(w, 429, problem)
 		case "history_damaged":
 			snapshotError(w, 409, "history_damaged")
 		case "quota_full", "storage_full":
@@ -238,7 +238,12 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	if eligibility != "eligible" {
 		return nil, eligibility
 	}
-	if proved != old {
+	c.mu.Lock()
+	// A record-pressure eviction is not a competing writer. The native proof
+	// still owns the lock; only inherit the old facts for that same origin.
+	evicted := old != nil && old.recordEvicted && proved == nil && old.workspace == origin.Workspace && old.cwd == origin.Cwd
+	c.mu.Unlock()
+	if proved != old && !evicted {
 		_ = ws.Close()
 		_ = owner.release()
 		return nil, "unproven"
@@ -273,7 +278,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	}
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
-	if c.closed || c.sessions[id] != old {
+	if c.closed || (c.sessions[id] != old && !(c.sessions[id] == nil && old != nil && old.recordEvicted)) {
 		c.mu.Unlock()
 		return nil, "unproven"
 	}
@@ -283,9 +288,13 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		c.mu.Unlock()
 		return nil, "controlled"
 	}
-	if c.liveCount() >= room || (old == nil && len(c.sessions) >= 128) {
+	if c.liveCount() >= room {
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"
+	}
+	if c.sessions[id] == nil && !c.makeRecordRoom() {
+		c.mu.Unlock()
+		return nil, "session_records_exhausted"
 	}
 	if !c.admits(ws, cwd) {
 		c.mu.Unlock()

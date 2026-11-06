@@ -106,6 +106,7 @@ type conversation struct {
 	runActive                                               bool
 	settled                                                 bool
 	dead                                                    bool
+	recordEvicted                                           bool // under c.mu; a proved continuation may restore this handle's facts
 	startupCancelled                                        bool // per-child fence: stop/cancel wins over late readiness publication
 	queueSteering, queueFollowUp                            []string
 	queueRevision                                           uint64
@@ -613,9 +614,9 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	c.makeRoom(r.Context())
 	c.mu.Lock()
-	if c.closed || c.liveCount() >= c.liveLimit() || len(c.sessions) >= 128 {
+	if problem := c.admissionProblem(); problem != "" {
 		c.mu.Unlock()
-		snapshotError(w, 429, "capacity_exceeded")
+		snapshotError(w, 429, problem)
 		return
 	}
 	if !c.admits(ws, cwd) {
@@ -691,10 +692,10 @@ func (c *ConversationController) createWorktree(ctx context.Context, w http.Resp
 	parent.Close()
 	c.makeRoom(ctx)
 	c.mu.Lock()
-	full := c.closed || c.liveCount() >= c.liveLimit() || len(c.sessions) >= 128
+	problem := c.admissionProblem()
 	c.mu.Unlock()
-	if full {
-		return "", 429, "capacity_exceeded"
+	if problem != "" {
+		return "", 429, problem
 	}
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(55 * time.Second))
 	ctx, cancel := context.WithTimeout(ctx, worktreeAddLimit+5*time.Second)
@@ -842,7 +843,12 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	}
 	c.mu.Lock()
 	s := c.sessions[id]
-	if s == nil && origin != nil && !c.closed && len(c.sessions) < 128 {
+	if s == nil && origin != nil && !c.closed {
+		if !c.makeRecordRoom() {
+			c.mu.Unlock()
+			snapshotError(w, 429, "session_records_exhausted")
+			return
+		}
 		s = &conversation{id: id, workspace: origin.Workspace, cwd: origin.Cwd, rpc: stoppedRPC(), state: "stopped", dead: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 		c.sessions[id] = s
 	}
