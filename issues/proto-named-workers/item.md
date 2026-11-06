@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@design-named-workers']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-named-workers
 lane: named-workers-proto
@@ -32,4 +32,4 @@ mukaan.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
