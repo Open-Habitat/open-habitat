@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-markdown-block-preview
 lane: markdown-preview-proto
@@ -36,4 +36,5 @@ joukossa (kopioinnin ja kielimerkinnän rinnalla). Kierros 2 riffaa sitä.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [ ] kierros 2: lohkon oman painikkeen kolme riffiä (paikallaan, editoriin, valikko), näkymätarjous ja kysymykset Jarille

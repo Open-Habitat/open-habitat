@@ -1,0 +1,78 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.mdp-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.mdp-bar strong { font-weight: 600; }
+.mdp-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.mdp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.mdp-bar select, .mdp-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .mdp-bar { padding: 6px 10px; gap: 2px 10px; }
+  .mdp-lines { font-size: 11px; line-height: 1.3; padding-left: 0; }
+  .mdp-lines li:not([aria-current]) { display: none; }
+}
+.mdp-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.mdp-stage .ah-rail { top: var(--review-h, 0px); }
+
+.mdp-tools { display: grid; gap: var(--ah-s1); }
+.mdp-reply { display: grid; }
+.mdp-actions { display: flex; gap: var(--ah-s2); justify-content: flex-end; flex-wrap: wrap; }
+
+/* ---- The block's own control: one more rail group under copy ---- */
+.mdp-rail-group { display: flex; flex-direction: column; }
+
+/* ---- 1 and 3: the block rendered in place, inside the same box ----
+   The rail stays where it was so the control does not move under the
+   pointer; source-only controls (view, wrap, own window) leave while the
+   document is shown, because they act on lines of code. */
+.ah-markdown-code[data-rendered] :is(.ah-output-edges, .ah-output-viewport) { display: none; }
+.ah-markdown-code[data-rendered] .ah-bash-rail > .ah-output-group:not(:first-child):not(.mdp-rail-group) { display: none; }
+.mdp-rendered-slot { min-width: 0; }
+/* The hidden view selector is wider than a button; keep its width so the
+   toggle stays exactly where it was pressed. */
+.ah-markdown-code[data-rendered] .ah-bash-rail:has(.ah-output-selector) { width: 34px; }
+.mdp-rendered {
+  position: relative;
+  padding: calc(2 * var(--ah-s4)) var(--ah-s4) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: 8px;
+  background: var(--ah-surface);
+}
+.mdp-rendered > .ah-markdown > :first-child { margin-top: 0; }
+.mdp-rendered-clipped { max-height: 22rem; overflow: hidden; }
+.mdp-rendered-more { display: flex; justify-content: center; padding-top: var(--ah-s2); }
+.mdp-rendered-clipped .mdp-rendered-more {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: var(--ah-s6, 32px) 0 var(--ah-s2);
+  background: linear-gradient(to bottom, transparent, var(--ah-surface) 60%);
+}
+
+/* ---- 3: the small menu beside the rail ---- */
+.ah-popover.mdp-menu { min-width: 15rem; max-width: min(20rem, calc(100vw - 24px)); }
+
+/* ---- 2 and 3: the draft in the production browser editor ---- */
+.mdp-editor { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; }
+.mdp-editor > .ah-browser-editor { flex: 1; min-height: 0; }
+/* A draft is not a modified file; its state is the notice line. The
+   implementation needs its own "Luonnos" state instead of hiding this. */
+.mdp-editor[data-draft="draft"] [data-testid="editor-dirty"] { display: none; }
+.mdp-save {
+  position: absolute; top: 52px; right: var(--ah-s3); z-index: 5;
+  width: min(360px, calc(100% - 2 * var(--ah-s3)));
+  display: grid; gap: var(--ah-s2);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md, 10px);
+  background: var(--ah-surface); box-shadow: 0 6px 24px var(--ah-scrim);
+}
+.mdp-save h2 { margin: 0; font-size: var(--ah-size-ui); }
+.mdp-save p { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+
+/* The production route hands EditorSplit the reading view itself; this
+   round's wrapper passes the flex height on so the conversation scrolls. */
+.ah-editor-conversation > .ah-state { display: flex; flex-direction: column; flex: 1; min-height: 0; }

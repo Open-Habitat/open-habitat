@@ -129,3 +129,88 @@ open-habitat agent view offer --current \
   --title "Markdown-lohkon esikatselu – kierros 1" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 2: lohkon oma esikatselupainike
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-md-lohkon-esikatselu-2/`
+(`NOTES.md` kuvaa riffit ja tarkistuksen). Kierros 1 ratkaisi paikan:
+toiminto on lohkossa, oikean reunan painikkeiden joukossa. Akseli: mitä se
+yksi painike tekee. Painike on kaikissa omassa ryhmässään heti kopioinnin
+alla, ja kielimerkintä pysyy yläkulmassa.
+
+- **1 Paikallaan**: silmä vaihtaa lohkon renderöidyksi samaan kohtaan ja
+  painettuna takaisin lähteeksi.
+- **2 Editoriin**: editoripainike avaa lohkon editorin
+  Markdown-esikatseluun tallentamattomana luonnoksena (kierroksen 1 A).
+- **3 Valikko**: silmä avaa pienen valikon, jossa ovat *Esikatsele tässä*
+  (tai *Näytä lähde*) ja *Avaa editorin esikatselussa*.
+
+## Host-faktat
+
+Luettu koodista 6.11.2026. Kierroksen 1 faktat pätevät edelleen
+(selaineditorin esikatselu, VS Coden avausreitti ja sen 8192 tavun raja).
+Tämän kierroksen lisäykset:
+
+- **Paikallaan renderöinti ei tarvitse hostia.** Selaimella on lohkon
+  teksti jo, ja sama `Markdown`-renderöijä piirtää keskustelun, mermaidin
+  ja editorin esikatselun. Riffi 1 on pelkkä selainmuutos: ei daemonia, ei
+  sopimusta, ei tiedostoa. Se toimii samoin puhelimessa ja kummallakin
+  editorimoottorilla.
+- **`OutputBox`in oikea reuna.** Ryhmät ovat nyt kopiointi; näkymän
+  valinta (alku ja loppu / vieritettävä / kaikki) yli 10 rivin lohkossa;
+  vierityksessä ylös/alas; rivitys (vain jos rivit ylittävät leveyden) ja
+  oma ikkuna. Lisäpaikkaa (`actions`) ei ole; toteutus tarvitsee sen.
+  Renderöitynä näkymän valinta, rivitys ja oma ikkuna koskevat koodirivejä,
+  joten kierros piilottaa ne ja pitää reunan saman levyisenä, jotta silmä ei
+  liiku painalluksen alla.
+- **Editoriin (riffit 2 ja 3).** Riippuu samoista puuttuvista paloista kuin
+  kierroksen 1 A: `BrowserEditor`ilta puuttuu luonnostila ilman polkua, ja
+  VS Code -moottori tarvitsisi sisältöä kantavan avauspyynnön.
+- **Lab-huomio.** Kierroksen 1 kehys esti keskustelun vierityksen
+  `EditorSplit`in vieressä (kääre katkaisi flex-korkeuden). Kierros 2
+  korjaa tämän omassa CSS:ssään. Tuotannossa vikaa ei ole.
+
+## Suositus
+
+**1 Paikallaan.** Kierroksen 1 suositus oli editori, mutta Jari valitsi
+toiminnon paikallaan, ja yksi painallus, joka näyttää luonnoksen
+renderöitynä siinä missä sitä luetaan, vastaa siihen suoraan. Se ei
+tarvitse hostin muutoksia, toimii puhelimessa samoin ja palaa lähteeseen
+samasta kohdasta. Luonnoksen vieminen tiedostoksi jää agentille, joka
+luonnoksen kirjoittikin.
+
+3 Valikko kantaa molemmat, mutta se tekee jokaisesta katsomisesta kaksi
+painallusta, ja sen toinen puoli odottaa editorin luonnostilaa. Jos
+editoriin vienti tarvitaan myöhemmin, 1:n silmän viereen voi lisätä
+editoripainikkeen tai vaihtaa silmän 3:n valikoksi. Pelkkä 2 Editoriin
+avaa raskaan näkymän kevyeen katsomiseen.
+
+## Kysymykset Jarille
+
+1. Mikä riffi: 1, 2 vai 3? Katso `r2-1-paikallaan-1-oletus-1440-light`,
+   `r2-2-editoriin-1-oletus-1440-light` ja `r2-3-valikko-1-oletus-1440-light`.
+2. Riffissä 1 renderöity luonnos rajataan noin 22 riviin, ja *Näytä
+   kaikki* avaa sen (`r2-1-paikallaan-1-oletus-1440-light` ja
+   `r2-1-paikallaan-2-kaikki-1440-light`). Kelpaako tämä, vai pitäisikö
+   renderöidyn lohkon näkyä aina kokonaan?
+3. Pitäisikö Markdown-lohkon näkyä valmiiksi renderöitynä niin, että silmä
+   vaihtaa lähteeseen (`r2-1-paikallaan-4-lyhyt-1440-light`: README
+   renderöitynä), vai alkaa lähteenä kuten nyt
+   (`r2-1-paikallaan-3-lahde-1440-light`)?
+
+## Todisteet
+
+`evidence/r2-*`: jokainen riffi vaaleana ja tummana leveyksillä 1440 ja
+390 px, kertoimella 2. Nimissä riffi, vaihe ja tila: `nyt-1-oletus`; 1:ssä
+`1-oletus`, `2-kaikki`, `3-lahde` ja `4-lyhyt`; 2:ssa `1-oletus`,
+`2-teksti`, `3-tallenna`, `4-suljettu` ja `5-lyhyt`; 3:ssa `1-oletus`
+(valikko auki), `2-tassa`, `3-valikko-renderoity` ja `4-editorissa`.
+`check.mjs`: 128 tarkistuspistettä, konsoli puhdas.
+
+```
+node design-system/prototypes/rounds/2026-11-06-md-lohkon-esikatselu-2/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/md-lohkon-esikatselu-2/offline.html \
+  --title "Markdown-lohkon esikatselu – kierros 2" \
+  --idempotency-key "$(uuidgen)" --json
+```
