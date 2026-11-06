@@ -77,6 +77,12 @@ tai vastaavana, ettei sivua tarvitse kelata.
 Välilehdet ja *Seuraava*-painike pitää yhdistää: vain yksi paikka, jossa
 klikataan "seuraava". Kierros 5 riffaa tätä.
 
+## Decision (Jari 2026-11-06, kierros 5)
+
+**A1b5 Yksi nappi**: alareunan nappi vie alakohdat ja vaiheet läpi,
+välilehdet vain näyttävät sijainnin. Integraatioiden tasojen yhteinen
+työnkulku (`proto-integration-levels`) seuraa samaa mallia.
+
 ## Acceptance Criteria
 
 - [x] kierros 1: tämänhetkinen kulku ja kolme suuntaa, näkymätarjous ja kysymykset Jarille

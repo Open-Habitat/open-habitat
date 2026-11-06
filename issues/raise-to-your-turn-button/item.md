@@ -26,6 +26,14 @@ laitteilla (kierroksen 1 host-tiedot). Kokeellinen ominaisuus (Jari).
 Liittyy `proto-quiet-transition-triggers`-linjaan (Ei nyt); pidä
 mekanismi yhteisenä, jos se valmistuu ensin.
 
+## Decision (Jari 2026-11-06): Ei nyt samaan painikkeeseen
+
+`proto-quiet-transition-triggers` kierros 2, suunta A: kentän keskipaikalla
+sama painike on *Nosta* tai *Ei nyt*. Sinun vuorosi -ryhmästä keskustelu
+poistuu vasta vastaamalla tai *Ei nyt* -painalluksella (kierros 1, A
+Vastaus), ei pelkällä avaamisella. Toteuta nosto ja Ei nyt yhtenä
+mekanismina daemonin merkkinä (näkyy kaikilla laitteilla).
+
 ## Acceptance Criteria
 
 - [ ] nosto ja sen poisto toimivat kentän riviltä ja sivupalkin riviltä kokeellisen ominaisuuden takana; tila säilyy laitteiden välillä; testit

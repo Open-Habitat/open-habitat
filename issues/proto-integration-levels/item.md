@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -63,6 +63,16 @@ ymmärtämään tasot.
   olla **yksi yhteinen työnkulku**, jossa ne kaikki tehdään. Prototypoidaan
   (kierros 3), yhteensopivasti `proto-m365-setup-flow`-kierroksen 4 (A1b,
   alakohdat) kanssa.
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+**1 Sovellus kerrallaan**, ja **3 Yksi komento** sen rinnalle. Mukaan oikeat
+kuvakaappaukset. Cloud Shellin avaamisesta pitää tehdä kuvakaappaukset:
+prototyypin polut ovat nyt väärin, eikä Jari löytänyt Cloud Shelliä. Ohjeen
+pitää auttaa siinä (Entra admin centerin yläpalkin Cloud Shell -kuvake,
+tai portal.azure.com / shell.azure.com; tarkista Microsoftin
+dokumentaatiosta ja tilausvaatimus). Kuvakaappaukset Jarin tenantista
+tarvitaan häneltä; peitä tunnukset kuten kierroksella 3.
 
 ## Acceptance Criteria
 

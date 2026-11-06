@@ -35,6 +35,18 @@ valtuuksia: yhdistäminen ja purku pysyvät Taskfleetillä. Lisäksi
 AGENTS-WORKFLOW.md:hen ja worktree-skilleihin ohje siitä, milloin
 nimettyä workeria käytetään (luonnos `design-named-workers` result.md).
 
+## Decision (Jari 2026-11-06): esitys ja avoin kysymys
+
+Esitys `proto-named-workers` kierroksista 2–3: yksi *Avustajat*-siru
+Workerit-pallon vieressä, ikoni *Botit*, siru avaa listan nimetyistä
+workereista tiloineen. Henkilö ei kirjoita workerille itse.
+
+Avoin, mietittävä ennen toteutusta (Jari 6.11.): miten avustajat toimivat
+ja käyttäytyvät, kun pääagentti (pääkeskustelu) lopetetaan, arkistoidaan
+tai sen Pi päättyy: jäävätkö ne nukkumaan, siirtyvätkö toiselle
+keskustelulle, lopetetaanko ne ja yhdistetäänkö niiden työ, ja kuka niistä
+kertoo henkilölle.
+
 ## Acceptance Criteria
 
 - [ ] nimetty worker näkyy ja herättää pääkeskustelun kokeellisena ominaisuutena; testit daemonin luennasta ja herätyksestä synteettisellä Taskfleet-tilalla

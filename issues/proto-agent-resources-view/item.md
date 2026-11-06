@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-agent-resources-view
 lane: resources-view-proto
@@ -35,6 +35,14 @@ Suunta **B Lajeittain**. Jari kysyi, prototypoidaanko jokainen laji
 kierroksellaan. Kierros 2 suunnittelee kaikkien lajien osiot yhdessä
 (yhtenäisyys), ja syvemmät kierrokset tehdään vain lajeille, jotka niitä
 tarvitsevat.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+Kierros 2 lähti väärään suuntaan. Kierroksen 1 B Lajeittain -vasen palkki oli
+jo ok; Jari halusi miettiä tarkemmin oikeaa sisältöä, eli miltä kunkin lajin
+sisältö näyttää. Kierros 3 tehdään uudestaan: B:n vasen palkki ennallaan,
+ja suunnat koskevat lajin sisältöä (mitä listassa on, miltä kohde näyttää,
+mitä agentti näkee ja mitä ei).
 
 ## Acceptance Criteria
 

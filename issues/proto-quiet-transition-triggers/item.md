@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-raise-quiet-to-your-turn']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-quiet-transition-triggers
 lane: quiet-triggers-proto
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Prototype: triggers between Your turn and Quiet
@@ -37,6 +38,12 @@ AGENTS-WORKFLOW.md:n mukaan.
 Lähtökohta **A Vastaus**: pysyy Sinun vuorosi -ryhmässä, kunnes vastaat.
 Mietitään, mihin painike sijoitetaan, joka pudottaa keskustelun Hiljaisiin
 (Ei nyt). Kierros 2 riffaa painikkeen paikkaa.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+*Ei nyt* **kentän rivin keskipaikalla** (A), noston toisena tilana.
+Seuraavaksi toteutus yhdessä noston kanssa (`raise-to-your-turn-button`):
+Sinun vuorosi pysyy, kunnes vastaat tai painat *Ei nyt*.
 
 ## Acceptance Criteria
 

@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@design-named-workers']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-named-workers
 lane: named-workers-proto
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Prototype: named support workers in Habitat
@@ -49,6 +50,11 @@ pallon/sirun ratkaisuja.
 ## Decision (Jari 2026-11-06, kierros 2)
 
 **3 Avustajat** -siru. Sille prototypoidaan oma ikoni (kierros 3).
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+Ikoni **1 Botit**. Esitys on nyt päätetty: yksi Avustajat-siru
+Workerit-pallon vieressä Botit-ikonilla. Toteutus `named-workers-in-habitat`.
 
 ## Acceptance Criteria
 
