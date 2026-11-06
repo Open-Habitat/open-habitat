@@ -5,11 +5,12 @@ type: bug
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/setup-console-path-too-small
 lane: setup-wizard-fixes
 lane_seq: 1
+blocked_by: ['@proto-m365-setup-flow']
 ---
 
 # Integration setup: console path lines are too small to read

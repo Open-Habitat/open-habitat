@@ -1,0 +1,44 @@
+---
+created: 2026-11-06
+updated: 2026-11-06
+type: task
+reporter: jari
+status: open
+priority: normal
+related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
+preparation: ready
+provenance: chat
+source_ref: chat:2026-11-06/proto-m365-setup-flow
+lane: m365-setup-proto
+lane_seq: 1
+---
+
+# Prototype: the Microsoft 365 integration setup flow
+
+## Description
+
+Jari 6.11.2026: Microsoft 365 -integraation ohjattu asetus (Asetukset ›
+Integraatiot, ylläpitäjän *Microsoft 365: aseta tunnukset*, neljä vaihetta,
+`microsoftSteps` in `web/src/components/ServerIntegrations.tsx`) on oma
+kokonaisuutensa, joka prototypoidaan.
+
+Jarin havainnot 6.11. (kuvakaappaus vaiheesta 2/4 *Julkinen asiakas*):
+
+- Konsolipolut (*Authentication › Settings* jne.) ovat tosi pienellä ja
+  himmeinä, vaikka ne ovat vaiheen tärkein ohje; nuoli näyttää
+  avattavalta (`setup-console-path-too-small`).
+- *Oikeudet*-vaiheen koko oikeuslistan voi kopioida yhdellä napilla, mutta
+  Entran *Delegated permissions* -hakukenttä hakee yhden oikeuden
+  kerrallaan, joten lista syötteenä ei toimi
+  (`ms-permissions-copy-one-by-one`).
+
+Prototypoi koko kulku rekisteröinnistä tunnusten syöttöön ja
+hyväksyntään: mitä Entrassa tehdään missäkin järjestyksessä, miten polku
+ja suora linkki näkyvät, miten arvot ja oikeudet kopioidaan niin että ne
+toimivat Entran kentissä, ja miten ylläpitäjä tietää olevansa valmis.
+Tarkista Entran nykyinen käyttöliittymä Microsoftin dokumentaatiosta.
+Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
+
+## Acceptance Criteria
+
+- [ ] kierros 1: tämänhetkinen kulku ja kolme suuntaa, näkymätarjous ja kysymykset Jarille

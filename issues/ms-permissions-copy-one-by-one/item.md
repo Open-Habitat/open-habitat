@@ -5,11 +5,12 @@ type: bug
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/ms-permissions-copy
 lane: setup-wizard-fixes
 lane_seq: 2
+blocked_by: ['@proto-m365-setup-flow']
 ---
 
 # Microsoft setup: permissions copy as one list, but Entra's search takes one at a time
