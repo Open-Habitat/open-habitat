@@ -130,6 +130,17 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
         .analyze()
     ).violations,
   ).toEqual([]);
+  const currentURL = page.url();
+  const input = page.getByTestId("message-input");
+  for (const draft of ["next thought", " "]) {
+    await input.fill(draft);
+    await expect(line(page)).toHaveCount(0);
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(page).toHaveURL(currentURL);
+    await expect(input).toHaveValue(draft);
+    await input.fill("");
+    await expect(line(page)).toHaveAttribute("data-waiting", "2");
+  }
   await archiveOther(page, hrefs[0]);
   await expect(line(page)).toHaveAttribute("data-waiting", "1");
   await archiveOther(page, hrefs[1]);

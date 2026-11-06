@@ -2859,7 +2859,7 @@ function BrowserConversationContent({
                 <NextWaitingDock
                   next={nextWaiting}
                   agentId={id}
-                  open={waitingWindow.open}
+                  open={waitingWindow.open && draft.length === 0}
                 />
               ) : null}
             </>

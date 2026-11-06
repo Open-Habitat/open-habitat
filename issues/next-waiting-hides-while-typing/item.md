@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/next-waiting-hides-while-typing
 lane: next-waiting
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Next waiting conversation row hides while the person is typing
