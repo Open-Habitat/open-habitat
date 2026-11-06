@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-rewind
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: return a conversation to an earlier message
@@ -46,6 +46,13 @@ Tiedostojen palautus: tutki, miten se tehdään. GitHub-käyttäjällä *raine*
 (workmuxin tekijä) saattaa olla tähän Pi-laajennus; jos ei, jokin muu
 (Pi:n laajennukset, checkpoint-työkalut, git-pohjaiset ratkaisut).
 Kierros 2 riffaa tätä vielä kertaalleen.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+**C Valitse mitä** näyttää hyvältä. better-pi-rewind (raine, MIT) on pohja
+sille, millaisen tästä haluamme. Kierros 3 riffaa vahvistusdialogia: nykyinen
+oli ison näköinen; näytä myös, onko tiedostojen palautus oletuksena päällä
+vai pois.
 
 ## Acceptance Criteria
 

@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: start-page-button
 lane_seq: 1
 preparation: pending
+closed: 2026-11-06
 ---
 
 # Prototype: how a start-page request looks before and after sending
@@ -22,6 +23,12 @@ Suunta **Siru ja lause**. Vihjeitä (esim. "hakasulkeinen rivi jää pois")
 ei tarvita. Kysymys (b), jätetäänkö koskematon paikkamerkki pois ja
 toimiiko tavoitteiden `[kysymys]` samoin, riffataan: Jari haluaa ymmärtää
 sen visuaalisesti (kierros 3).
+
+## Decision (Jari 2026-11-06, kierros 3)
+
+**Aina pois**: koskematon paikkamerkki jätetään pois lähetettäessä, sekä
+aloitussivupyynnössä että tavoitteiden `[kysymys]`-kohdassa. Pelkkä siru
+ilman tekstiä riittää historiassa. Toteutus: `empty-conversation-start-page-button`.
 
 ## Acceptance Criteria
 

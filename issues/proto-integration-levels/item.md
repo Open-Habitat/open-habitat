@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -53,6 +53,16 @@ epäselviä, ja ruudukko tekee käyttöliittymästä tukkoisen. Riffataan
 vertailutaulukolla, tai niin että taulukot avautuvat erikseen. Jari palaa
 itse tasoihin seuraavan kierroksen jälkeen; tämä kierros auttaa häntä
 ymmärtämään tasot.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+- **Vertailutaulukko** on paras, mutta sen jatkuva näkyvyys on ongelma: kun
+  asetus on hoidettu, tiedon pitää olla avattavissa, ei koko ajan esillä.
+- Solu ilman oikeutta: lyhyt ja yksinkertainen, **✕ Ei**.
+- Neljän eri Entra-sovelluksen rakentaminen (yksi tasoa kohden) pitäisi
+  olla **yksi yhteinen työnkulku**, jossa ne kaikki tehdään. Prototypoidaan
+  (kierros 3), yhteensopivasti `proto-m365-setup-flow`-kierroksen 4 (A1b,
+  alakohdat) kanssa.
 
 ## Acceptance Criteria
 

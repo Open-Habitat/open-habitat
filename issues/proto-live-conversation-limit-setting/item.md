@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit-setting
 lane: live-limit-proto
@@ -41,6 +41,15 @@ Suunta **B Ylläpitäjä** on hyvä. Kierros 2 riffaa sitä:
 - *Yritä uudelleen* on hyvä.
 - *Mitkä pitävät paikkaa* on hyvä, mutta riffataan sitä.
 - Kysymykset mielellään visuaalisesti.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+- Lista: **Työtiloittain**.
+- *Muuta rajaa*: harmaana (pois käytöstä) tavallisille käyttäjille, ja
+  ylläpitäjälle merkintä "(ylläpitäjä)" suluissa. Prototypoidaan vielä.
+- Ylläpitäjä saa nostaa katon yli 32:n, ja rajoille voi olla
+  käyttäjäkohtaisia poikkeuksia. Prototypoi palvelun ylläpitäjän näkymä
+  (kierros 3).
 
 ## Acceptance Criteria
 

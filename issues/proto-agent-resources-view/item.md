@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-agent-resources-view
 lane: resources-view-proto
@@ -27,6 +27,14 @@ integraatioiden asetuksiin ja yhdistämiseen. Lähtökohta: kierroksen 1 B
 (`design-system/prototypes/rounds/2026-11-06-m365-selaus/`). Valtuus pysyy
 daemonilla henkilön omana käyttäjänä; ei uutta tietovarastoa.
 Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
+
+## Decision (Jari 2026-11-06, kierros 1)
+
+Suunta **B Lajeittain**. Jari kysyi, prototypoidaanko jokainen laji
+(tiedostot, posti, kalenteri, yhteystiedot, koodi, koneet) omalla
+kierroksellaan. Kierros 2 suunnittelee kaikkien lajien osiot yhdessä
+(yhtenäisyys), ja syvemmät kierrokset tehdään vain lajeille, jotka niitä
+tarvitsevat.
 
 ## Acceptance Criteria
 

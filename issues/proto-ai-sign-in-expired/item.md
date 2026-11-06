@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: ai-sign-in-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: telling the person their AI sign-in has expired
@@ -36,6 +36,14 @@ korjattu). Kysymys (c), näkyykö epäonnistunut vuoro lyhyenä rivinä vai koko
 selityksenä raaka virhe avattavissa, riffataan, jos se on yhä relevantti.
 Kysymykseen (a), asetussivu vai ikkuna keskustelun päällä, Jari ei
 vastannut; näytä se riffissä visuaalisesti.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+- **Ikkuna**, ehdottomasti.
+- Epäonnistunut vuoro **lyhyenä rivinä**.
+- Kysymys 3 (lähteekö viesti itsestään, jos sitä on muokattu odottaessa
+  tai se odottaa toisessa saman palvelun keskustelussa) oli epäselvä:
+  riffataan se visuaalisesti (kierros 3).
 
 ## Acceptance Criteria
 
