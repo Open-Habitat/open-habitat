@@ -189,3 +189,96 @@ open-habitat agent view offer --current \
   --title "Nosta Hiljaisista – kierros 2: painike" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 3: nosto kentän luona
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-nosta-kentan-luona/`
+(NOTES.md kertoo suunnat ja vuorovaikutukset). Jarin päätös 6.11.: nosto
+sekä sivupalkin rivillä että kentän luona; kentän luona olevaa riffataan
+nykyistä kentän riviä vasten. Akseli: missä kohdassa kentän riviä nosto on.
+Sivupalkin rivin ⤒ on kaikissa suunnissa sama.
+
+Lähtötieto, joka muutti kierroksen 2 kuvaa: olemassa olevan keskustelun
+kentässä **ei ole mallisirua** (se on vain tyhjässä keskustelussa; muuten
+malli on yläpalkissa). Tuotannon rivi on Liitä, Komennot, Tiedosto |
+(työssä Ohjaa, Stop, erotin) | Sanele, Lähetä ↑. Koska Lähetä on jo ↑,
+nosto piirtää ⤒:n. Nimi *Palaan tähän* jäi pois, koska kelaus käyttää
+nimeä *Palaa tähän*; painikkeessa lukee **Nosta**, nostettuna **Sinun
+vuorossasi ✕**.
+
+- **Nyt**: Hiljaisista ei voi nostaa. Kentän rivillä ovat Liitä, Komennot ja Tiedosto, oikealla Sanele ja Lähetä.
+- **A Apuihin**: Nosta on vasemmalla Tiedoston jälkeen, samannäköisenä kuin muut apupainikkeet; agentin työskennellessä se jää paikalleen himmeänä.
+- **B Lähetykseen**: kun kenttä on tyhjä, Lähetä-pallon paikalla on nosto ⤒; kun kirjoitat, se on taas Lähetä. Rivi ei kasva yhtään.
+- **C Keskelle**: Nosta on oikealla ennen Sanele-painiketta, siinä missä työn aikana ovat Ohjaa ja Stop; työn alkaessa ne tulevat sen tilalle.
+
+## Mitä kukin päättää
+
+| | Paikka levossa | Agentin työskennellessä | Kun kentässä on tekstiä | Puhelin |
+|---|---|---|---|---|
+| A | Neljäs apupainike vasemmalla | Jää himmeänä, syy vihjeessä | Näkyy | Pelkkä ⤒ muiden kuvakkeiden rivissä |
+| B | Lähetä-pallon paikalla | Ei näy; pallo on Lähetä/Ohjaa | Ei näy; pallo on Lähetä | Ei vie tilaa |
+| C | Keskipaikka ennen erotinta | Ohjaa ja Stop tulevat tilalle | Näkyy | Pilleri nimen kanssa kuten Ohjaa |
+
+## Suositus
+
+**C.** Nykyisen rivin periaate on, että Sanele ja Lähetä eivät liiku ja
+keskipaikka on keskustelun tilan painikkeille, jotka syntyvät työn alkaessa.
+Nosto on juuri sellainen tilan painike, ja se on käytettävissä vain silloin,
+kun agentti ei työskentele, eli täsmälleen silloin, kun keskipaikka on
+tyhjä. Rivi ei siksi koskaan kasva eikä mikään käytettävä painike katoa.
+Nostettuna oranssi *Sinun vuorossasi ✕* on Lähetä-painikkeen vieressä, siis
+siinä, mihin katse menee päättäessä vastaako nyt. Puhelimessa pilleri saa
+nimensä samoin kuin Ohjaa. A on selvä mutta vie vasemmalta paikan, joka
+työn aikana on himmeä ja turha, ja puhelimessa pelkkä ⤒ on lähellä Lähetä
+↑:ta. B on tilaa säästävin, mutta se muuttaa tutun Lähetä-pallon
+merkityksen, ja nosto katoaa näkyvistä heti, kun kenttään kirjoittaa.
+
+## Mitä toteutus tarvitsee hostilta
+
+Kierrosten 1 ja 2 hostiosuus pätee sellaisenaan: nosto on henkilön oman
+daemonin pitämä merkki (keskustelun `agent_id` → noston aika), snapshotin
+agentti saa kentän ja muutos lähtee tapahtumana; daemon poistaa merkin
+hyväksyessään henkilön viestin ja arkistoitaessa, ja laskeminen on oma
+poistokutsu. Kentän painike tarvitsee vain tiedot, jotka näkymällä jo on:
+työskenteleekö agentti (`run_active`/aktiviteetti) ja odottaako keskustelu
+jo vastauksena. Uutta host-kenttää ei tarvita.
+
+Komponenttipaikat: `Composer` tarvitsee paikan rivillään (C:ssä
+keskipaikka, jonka `rowChip`/`rowStop` jo käyttävät, ja erotin sen perään;
+A:ssa apupainikkeiden perään; B:ssä Lähetä-painikkeen vaihtoehto tyhjälle
+kentälle). `AgentNavItem` tarvitsee kolmannen painikkeen kynän ja arkiston
+rinnalle (kierros vie sen portaalilla `.ah-nav-archive`-ryhmään).
+
+## Kysymykset Jarille
+
+1. **Missä kohdassa riviä**: apupainikkeiden perässä
+   (`r3-a-apuihin-0-oletus-1440-light`), Lähetä-pallon paikalla
+   (`r3-b-lahetykseen-0-oletus-1440-light`) vai keskellä ennen Saneletta
+   (`r3-c-keskelle-0-oletus-1440-light`)?
+2. **Puhelimessa nimi vai kuvake**: pilleri *Nosta*
+   (`r3-c-keskelle-0-oletus-390-light`) vai pelkkä ⤒ muiden kuvakkeiden
+   joukossa (`r3-a-apuihin-0-oletus-390-light`)?
+3. **Saako Lähetä-pallo muuttua**: onko tyhjän kentän pallo nostona
+   hyvä (`r3-b-lahetykseen-1-nostettu-390-light`), vai pitääkö Lähetän
+   aina näyttää Lähetältä?
+
+## Todisteet
+
+`evidence/r3-*`: jokaisesta suunnasta oletusnäkymä (0, puhelimessa myös
+`0-sivupalkki`), nostettu (1, puhelimessa myös `1-sivupalkki`), luonnos
+kentässä (2), rivi agentin työskennellessä (3, myös Nyt), *Sillä aikaa*
+-rivi nostettu kärjessä (4), avattu sieltä, nosto pysyy (5), laskettu
+kentän painikkeella (6), toinen nostettu sivupalkista avaamatta (7) ja
+vastattu nostettuun (8). Kuvat ovat 1440 ja 390, vaalea ja tumma,
+kertoimella 2. `check.mjs`: 424 tarkistuspistettä, konsoli puhdas. Kyse
+on synteettisestä komponenttilabrasta; sitä ei ole ajettu hostia vasten.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-nosta-kentan-luona/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/nosta-kentan-luona/offline.html \
+  --title "Nosta Hiljaisista – kierros 3: kentän luona" \
+  --idempotency-key "$(uuidgen)" --json
+```
