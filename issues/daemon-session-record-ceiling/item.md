@@ -2,7 +2,7 @@
 created: 2026-11-06
 updated: 2026-11-06
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m6s1qfqt2wykr2fb6gc29bj7/review-finding:record-ceiling-tombstones
@@ -17,6 +17,9 @@ review_confidence: high
 labels:
 - ai-review-model:gpt-6-astra
 - ai-review-model:claude-fable-5-1
+lane: session-records
+lane_seq: 1
+preparation: ready
 ---
 
 # Daemon refuses all new conversations after 128 per lifetime: stopped sessions are never evicted
