@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@design-named-workers']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-named-workers
 lane: named-workers-proto
@@ -49,3 +49,4 @@ pallon/sirun ratkaisuja.
 ## Acceptance Criteria
 
 - [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 2: kolme riffiä Workerit-pallon yhteydessä (pallossa, siru per avustaja, Avustajat-siru), näkymätarjous ja kysymykset Jarille
