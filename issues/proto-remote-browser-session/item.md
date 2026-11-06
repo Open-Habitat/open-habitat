@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@research-remote-browser-session']
-preparation: ready
+preparation: pending
 lane: remote-browser-proto
 lane_seq: 1
 ---
@@ -31,4 +31,4 @@ enintään kolme kysymystä.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
