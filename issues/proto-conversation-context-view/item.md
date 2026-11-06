@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-conversation-context-view
 lane: context-view-proto
@@ -32,4 +32,4 @@ AGENTS-WORKFLOW.md:n mukaan.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
