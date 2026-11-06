@@ -40,6 +40,7 @@ import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { agentTitle } from "./agentTitle";
+import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -905,7 +906,11 @@ export function Entry({
           onCopy={copy}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.blocks ? (
+          {entry.stop_reason === "error" && entry.refused_by ? (
+            <p className="ah-turn-short" data-testid="turn-short">
+              {refusedTurnLine(entry.refused_by)}
+            </p>
+          ) : entry.blocks ? (
             <OrderedBlocks
               blocks={entry.blocks}
               results={results}
@@ -1243,6 +1248,12 @@ export function timelineItems(
       !!live &&
       group.at(-1)?.stop_reason !== "error" &&
       !endsTurn(group.at(-1));
+    // A refused sign-in is one short row: the warning above the field says
+    // the rest, and the provider's own words stay in native history.
+    const refusedBy =
+      group.at(-1)?.stop_reason === "error"
+        ? group.at(-1)?.refused_by
+        : undefined;
     items.push({
       id,
       kind: "assistant",
@@ -1251,13 +1262,14 @@ export function timelineItems(
         <AgentTurn
           startedAt={startedAt}
           failed={group.at(-1)?.stop_reason === "error"}
+          failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
               ? { at: savedAt(group[group.length - 1]) }
               : undefined
           }
           steps={[
-            ...group.flatMap(steps),
+            ...(refusedBy ? group.slice(0, -1) : group).flatMap(steps),
             ...(merged && live ? live.steps : []),
           ]}
           working={merged && live?.working}

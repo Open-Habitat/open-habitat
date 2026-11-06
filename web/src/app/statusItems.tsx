@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { StatusBellProvider, type StatusItem } from "../components/StatusBell";
 import { liveText } from "../i18n";
 import { statusText } from "../text/status";
+import { aiBellItem, useAISignIn } from "./AISignIn";
 import {
   dismissBundlePrompt,
   reloadForNewBundle,
@@ -177,6 +178,7 @@ export function useStatusItems({
   const storage = useStorageStatus();
   const bundle = useBundleState();
   const serverStorage = useServerStorage(useAdministrator(enabled, pathname));
+  const aiSignIn = useAISignIn();
   const version: StatusItem | undefined =
     bundle.status === "newer" && !bundle.dismissed
       ? {
@@ -206,6 +208,7 @@ export function useStatusItems({
       : undefined;
   return [
     storage,
+    ...aiSignIn.refused.map((p) => aiBellItem(p, () => aiSignIn.open(p))),
     githubItem(github, onReconnect),
     version,
     overcommitItem(serverStorage, () => navigate(settingsHref("levy"))),

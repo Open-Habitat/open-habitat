@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/ai-sign-in-expired-window
 lane: ai-sign-in
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Expired AI sign-in: warning by the composer, sign-in window, waiting messages send themselves

@@ -142,6 +142,34 @@
           "minLength": 1,
           "maxLength": 100
         },
+        "ai_refused": {
+          "description": "AI providers that refuse the person's sign-in or API key now: a reply on a branch of a running or resting conversation ended in the provider's authentication failure, and since then no reply came from that provider and its native credential store (Claude Code's own, or Pi's auth.json) did not change. since is the time of the latest refusal. Read from native histories on each snapshot; nothing is stored.",
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "since"
+            ],
+            "properties": {
+              "provider": {
+                "enum": [
+                  "claude-bridge",
+                  "openai-codex",
+                  "openai",
+                  "anthropic",
+                  "deepseek"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
         "native_github": {
           "type": "object",
           "additionalProperties": false,

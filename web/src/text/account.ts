@@ -27,6 +27,9 @@ const fi = {
   subscriptions: "Tilaukset",
   chatgpt: "ChatGPT-tilaus",
   chatgptSignedIn: (models: string) => `Kirjautunut. ${models}`,
+  chatgptRefused:
+    "OpenAI hylkäsi tallennetun kirjautumisen, eikä palvelin voi uusia sitä itse. Kirjaudu uudelleen.",
+  refused: "Hylätty",
   chatgptChecking: "Tarkistetaan ChatGPT-kirjautumista…",
   chatgptUnknown: "ChatGPT-kirjautumista ei voitu vahvistaa.",
   chatgptSignedOut:
@@ -75,6 +78,9 @@ export const accountText = catalog(fi, {
   subscriptions: "Subscriptions",
   chatgpt: "ChatGPT subscription",
   chatgptSignedIn: (models) => `Signed in. ${models}`,
+  chatgptRefused:
+    "OpenAI refused the stored sign-in, and the server cannot renew it by itself. Sign in again.",
+  refused: "Refused",
   chatgptChecking: "Checking the ChatGPT sign-in…",
   chatgptUnknown: "The ChatGPT sign-in could not be confirmed.",
   chatgptSignedOut:

@@ -27,9 +27,9 @@ for (const credential of ["oauth", "key"]) {
       .click();
     const verify = async () => {
       const turn = page.getByTestId("agent-turn").last();
-      await expect(turn.getByTestId("stage-reply")).toHaveAttribute(
-        "data-reply-role",
-        "failed",
+      // A refused sign-in is one short row (ai-sign-in-window.spec.ts).
+      await expect(turn.getByTestId("turn-short")).toHaveText(
+        /^Claude-kirjautuminen on vanhentunut\./,
       );
       await expect(turn.locator('[data-reply-complete="true"]')).toHaveCount(0);
       await expect(nav.getByTestId(`agent-item-${id}`)).toHaveAttribute(

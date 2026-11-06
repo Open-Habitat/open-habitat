@@ -54,7 +54,29 @@ import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { formatDate, liveText } from "../i18n";
 import { browserConversationText } from "../text/browserConversation";
+import {
+  AISignedInNotice,
+  AISignInWarning,
+  useAISignIn,
+  useOpenConversation,
+  wentAfterSignIn,
+} from "./AISignIn";
 import { useExperimentalFeature } from "./accountPreferences";
+import {
+  type AIProvider,
+  clearWaiting,
+  conversationProvider,
+  failuresSeen,
+  markRestored,
+  refusedTurn,
+  restoredFrom,
+  sendCommand,
+  signedInFor,
+  signIns,
+  useWaiting,
+  waitingLine,
+  writeWaiting,
+} from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
@@ -1017,6 +1039,161 @@ function BrowserConversationContent({
     else if (tellWorking) void submitQueue(workingMode, text, true);
     else void submit(text, true);
   };
+  // An AI provider refusing the person's sign-in (aiSignIn.ts). This
+  // conversation is refused when its own newest reply was refused and the
+  // host has not since reported the refusal over, or when its provider is
+  // refused anywhere. Its failed message waits in the field and goes by
+  // itself once the provider takes the person back; so does one sent while
+  // refused.
+  const aiSignIn = useAISignIn();
+  useOpenConversation(id);
+  const [, signedInTick] = useState(0);
+  const chatProvider = conversationProvider(entries, current?.startup_choice);
+  const ownFailure = useMemo(() => {
+    const turn = refusedTurn(entries);
+    if (turn)
+      return {
+        ...turn,
+        at: entries.find((e) => e.entry_key === turn.key)?.timestamp,
+      };
+    // The daemon's own classification, before or without a saved reply.
+    if (current?.auth_error !== "pi_auth_failed") return undefined;
+    const asked =
+      sendObservation && sendObservation.command === current.command_id
+        ? sendObservation.text
+        : (entries.findLast((e) => e.kind === "user")?.content.text ?? "");
+    return {
+      provider: chatProvider ?? ("openai-codex" as const),
+      key: `cmd:${current.command_id ?? ""}`,
+      text: asked.trim(),
+      at: undefined,
+    };
+  }, [entries, current, sendObservation, chatProvider]);
+  useEffect(() => {
+    if (id && ownFailure)
+      failuresSeen.set(id, {
+        provider: ownFailure.provider,
+        key: ownFailure.key,
+      });
+  }, [id, ownFailure]);
+  useEffect(() => {
+    const heard = () => signedInTick((n) => n + 1);
+    signIns.addEventListener("signed-in", heard);
+    return () => signIns.removeEventListener("signed-in", heard);
+  }, []);
+  const capturedAt = recoverySnapshot?.captured_at;
+  const ownRefused =
+    ownFailure &&
+    !signedInFor.has(`${id}:${ownFailure.key}`) &&
+    // A snapshot taken after the refusal that no longer names the provider:
+    // signed in elsewhere, or answered since.
+    !(
+      ownFailure.at &&
+      capturedAt &&
+      Date.parse(capturedAt) > Date.parse(ownFailure.at) &&
+      !aiSignIn.refused.includes(ownFailure.provider)
+    )
+      ? ownFailure.provider
+      : undefined;
+  const refusedHere =
+    ownRefused ??
+    (chatProvider && aiSignIn.refused.includes(chatProvider)
+      ? chatProvider
+      : undefined);
+  const waiting = useWaiting(identity, id);
+  const draftNow = () =>
+    (id && sessionStorage.getItem(`nah:${identity}:draft:${id}`)) ?? draft;
+  // The refused message comes back into the field once per failed reply.
+  const viewId = useRef(id);
+  viewId.current = id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per failed reply.
+  useEffect(() => {
+    if (!id || !ownRefused || !ownFailure?.text) return;
+    if (restoredFrom(identity, id) === ownFailure.key) return;
+    markRestored(identity, id, ownFailure.key);
+    const { key, text, provider } = ownFailure;
+    const field = draftNow();
+    const next = field.includes(text) ? field : restoreToDraft([text], field);
+    if (next !== field) changeDraft(next);
+    // The marker keeps the refused message alone: anything else the field
+    // held makes it an edited message, and the line under the field says
+    // that all of it goes.
+    writeWaiting(identity, id, {
+      command: crypto.randomUUID(),
+      provider,
+      text,
+      ...(key.startsWith("cmd:") ? {} : { from: key }),
+    });
+  }, [id, identity, ownRefused, ownFailure?.key]);
+  // A send while refused waits in the field, as it is.
+  const holdForSignIn = (text: string) => {
+    if (!id || !refusedHere || !text.trim()) return false;
+    if (text !== draftNow()) changeDraft(text);
+    writeWaiting(identity, id, {
+      command: waiting?.command ?? crypto.randomUUID(),
+      provider: refusedHere,
+      text,
+      ...(waiting?.from ? { from: waiting.from } : {}),
+    });
+    return true;
+  };
+  // An emptied field stops the wait.
+  useEffect(() => {
+    if (id && waiting && !draft.trim()) clearWaiting(identity, id);
+  }, [id, identity, waiting, draft]);
+  // Once the provider takes the person back the waiting message goes, as
+  // the field holds it then. The host must have been heard from: a view
+  // still opening does not know yet whether the refusal is over.
+  const [signedInNotice, setSignedInNotice] = useState<{
+    id: string;
+    provider: AIProvider;
+    went: boolean;
+  }>();
+  useEffect(() => {
+    if (!id) return;
+    const went = wentAfterSignIn.get(id);
+    if (!went) return;
+    wentAfterSignIn.delete(id);
+    setSignedInNotice({ id, provider: went, went: true });
+  }, [id]);
+  const resendNow =
+    !!id &&
+    !!waiting &&
+    !!draft.trim() &&
+    !refusedHere &&
+    !!recoverySnapshot &&
+    !statusStale &&
+    canSend &&
+    current?.run_active !== true &&
+    (notStarted || current?.state === "idle" || current?.state === "rejected");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when it becomes possible, as the field holds it then.
+  useEffect(() => {
+    if (!resendNow || !id || !waiting) return;
+    const text = draft;
+    const done = () => {
+      clearWaiting(identity, id);
+      setSignedInNotice({ id, provider: waiting.provider, went: true });
+    };
+    void sendCommand(id, waiting, text).then(async (command) => {
+      if (viewId.current !== id || draftNow() !== text) return;
+      if (notStarted) {
+        held.submit(text, undefined, false, command);
+        done();
+      } else if (await submit(text, false, command)) done();
+    });
+  }, [resendNow, draft]);
+  const aiNotice =
+    !statusStale && refusedHere ? (
+      <AISignInWarning
+        provider={refusedHere}
+        onFix={() => aiSignIn.open(refusedHere)}
+      />
+    ) : signedInNotice?.id === id && signedInNotice ? (
+      <AISignedInNotice
+        provider={signedInNotice.provider}
+        went={signedInNotice.went}
+      />
+    ) : null;
   // Messages sent before the view could act on them, in order. The text
   // leaves the field as a sent one does and waits as a bubble; each goes
   // the way the send button would send it then, once it can. A view that
@@ -1817,7 +1994,13 @@ function BrowserConversationContent({
                     : problem || txt.loading,
               },
           sendWhenReady,
+          waiting:
+            waiting && refusedHere
+              ? waitingLine(waiting.provider, draft !== waiting.text)
+              : undefined,
           onSendNow: (text = draft) => {
+            if (holdForSignIn(text)) return;
+            setSignedInNotice(undefined);
             if (keeps) return keep(text);
             if (text !== draft) changeDraft(text);
             if (draft.trim() && canSend) {
@@ -2713,29 +2896,7 @@ function BrowserConversationContent({
             <>
               <div className="ah-actionable-notices">
                 {github}
-                {!statusStale && current?.auth_error === "pi_auth_failed" ? (
-                  <WarningBanner
-                    data-testid="provider-auth-error"
-                    tone="danger"
-                    title={txt.authFailed}
-                    actions={
-                      <ControlButton
-                        data-testid="notice-action"
-                        size="row"
-                        variant="primary"
-                        onPress={() =>
-                          navigate(
-                            `/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
-                          )
-                        }
-                      >
-                        {txt.signInAgain}
-                      </ControlButton>
-                    }
-                  >
-                    {txt.authFailedDetail}
-                  </WarningBanner>
-                ) : null}
+                {aiNotice}
                 {!statusStale &&
                 current?.auth_error === "pi_model_unsupported" ? (
                   <WarningBanner

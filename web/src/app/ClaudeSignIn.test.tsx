@@ -52,3 +52,38 @@ it("does not escape forced onboarding because an existing native login is presen
   );
   expect(onSignedIn).not.toHaveBeenCalled();
 });
+it("starts at once in the sign-in window and reports its own completion", async () => {
+  let state = "completed";
+  const methods: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    methods.push(init?.method ?? "GET");
+    if (init?.method === "POST") state = "code";
+    if (init?.method === "PUT") state = "completed";
+    if (init?.method === "DELETE") state = "completed";
+    return reply(state);
+  });
+  const onSignedIn = vi.fn();
+  const onCancel = vi.fn();
+  render(
+    <ClaudeSignIn csrf="csrf" window={{ onCancel }} onSignedIn={onSignedIn} />,
+  );
+  // A stored login that Claude refused is no reason to skip the sign-in.
+  fireEvent.change(await screen.findByTestId("claude-code-input"), {
+    target: { value: "synthetic-code#state" },
+  });
+  expect(methods.filter((m) => m === "POST")).toHaveLength(1);
+  fireEvent.click(screen.getByTestId("claude-code-confirm"));
+  await waitFor(() => expect(onSignedIn).toHaveBeenCalledTimes(1));
+  expect(onCancel).not.toHaveBeenCalled();
+});
+it("does not call a refused stored sign-in signed in", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+    reply("completed"),
+  );
+  render(<ClaudeSignIn csrf="csrf" refused />);
+  expect(await screen.findByTestId("claude-refused")).toBeTruthy();
+  expect(screen.getByTestId("claude-login-state").textContent).toContain(
+    "hylkäsi",
+  );
+  expect(screen.queryByText("Kirjautunut")).toBeNull();
+});

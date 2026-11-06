@@ -23,6 +23,8 @@ func TestModelAuthFailureIsFixedAndNativeReadsDoNotProbeStatus(t *testing.T) {
 	}{
 		{"401 Unauthorized token=private", true}, {"403 Forbidden", true},
 		{"invalid_api_key credential private", true}, {"rate limit 429", false}, {"network timeout", false},
+		{"Failed to authenticate: OAuth session expired and could not be refreshed", true}, {"Invalid API key · Fix external API key", true},
+		{`529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}`, false},
 	} {
 		if got := modelAuthFailure(tc.text); got != tc.auth {
 			t.Fatalf("classification %q: %v", tc.text, got)

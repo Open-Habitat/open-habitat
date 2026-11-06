@@ -46,6 +46,10 @@ const fi = {
   settingsStep2: "2. Clauden palauttama koodi",
   confirmClaudeCode: "Vahvista Claude-koodi",
   waitingLong: "Odotetaan Clauden vahvistusta. Koodia ei lähetetä uudelleen.",
+  cancel: "Peruuta",
+  refusedRow:
+    "Claude hylkäsi tallennetun kirjautumisen, eikä palvelin voi uusia sitä itse. Kirjaudu uudelleen.",
+  refused: "Hylätty",
 };
 
 export const claudeSignInText = catalog(fi, {
@@ -92,4 +96,8 @@ export const claudeSignInText = catalog(fi, {
   settingsStep2: "2. The code Claude returns",
   confirmClaudeCode: "Confirm the Claude code",
   waitingLong: "Waiting for Claude's confirmation. The code is not sent again.",
+  cancel: "Cancel",
+  refusedRow:
+    "Claude refused the stored sign-in, and the server cannot renew it by itself. Sign in again.",
+  refused: "Refused",
 });

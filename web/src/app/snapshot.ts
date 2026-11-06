@@ -14,6 +14,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import workspaceIconSuggestions from "../../../contracts/v1/workspace-icon-suggestions.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
+import type { AIProvider } from "./aiSignIn";
 import { LazyAjv } from "./lazyAjv";
 
 const ajv = new LazyAjv({ strict: false, allErrors: false, addFormats: true });
@@ -213,6 +214,8 @@ export interface Snapshot {
   write_state: string;
   auth?: {
     provider: "github" | "google";
+    /** AI providers refusing the person's sign-in now (aiSignIn.ts). */
+    ai_refused?: { provider: AIProvider; since: string }[];
     native_github: {
       state:
         | "connected"

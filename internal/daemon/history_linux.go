@@ -81,6 +81,7 @@ type historyEntry struct {
 	ToolCallID         string         `json:"tool_call_id,omitempty"`
 	IsError            *bool          `json:"is_error,omitempty"`
 	StopReason         string         `json:"stop_reason,omitempty"`
+	RefusedBy          string         `json:"refused_by,omitempty"`
 	Model              string         `json:"model,omitempty"`
 	ContextTokens      int64          `json:"context_tokens,omitempty"`
 	EntryType          string         `json:"entry_type,omitempty"`

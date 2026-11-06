@@ -6,7 +6,9 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { AccountKeys } from "../app/AccountKeys";
+import { useAISignIn } from "../app/AISignIn";
 import { useExperimentalFeature } from "../app/accountPreferences";
+import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
@@ -352,6 +354,10 @@ export function AccountSettings({
   const [admin, setAdmin] = useState<boolean | null>();
   const [work, setWork] = useState(getWorkPreference);
   const [openAI, setOpenAI] = useState<OpenAIState>("checking");
+  // A stored sign-in the provider refused is not "Kirjautunut".
+  const aiRefused = useAISignIn().refused;
+  const chatgptRefused =
+    openAI === "signed_in" && aiRefused.includes("openai-codex");
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
   // Search (proto-settings-search, Sivupalkissa): while the field holds
@@ -831,19 +837,28 @@ export function AccountSettings({
                     data-testid="openai-credential-state"
                     data-state={openAI}
                   >
-                    {openAI === "signed_in"
-                      ? t.chatgptSignedIn(
-                          modelsLine(piModels?.models, "openai-codex"),
-                        )
-                      : openAI === "checking"
-                        ? t.chatgptChecking
-                        : openAI === "unknown"
-                          ? t.chatgptUnknown
-                          : t.chatgptSignedOut}
+                    {chatgptRefused
+                      ? t.chatgptRefused
+                      : openAI === "signed_in"
+                        ? t.chatgptSignedIn(
+                            modelsLine(piModels?.models, "openai-codex"),
+                          )
+                        : openAI === "checking"
+                          ? t.chatgptChecking
+                          : openAI === "unknown"
+                            ? t.chatgptUnknown
+                            : t.chatgptSignedOut}
                   </span>
                 </div>
                 <div className="s-val">
-                  {openAI === "signed_in" ? (
+                  {chatgptRefused ? (
+                    <StatusMark
+                      data-testid="chatgpt-refused"
+                      kind="error"
+                      tone="danger"
+                      label={t.refused}
+                    />
+                  ) : openAI === "signed_in" ? (
                     <StatusMark
                       kind="success"
                       tone="success"
@@ -863,7 +878,14 @@ export function AccountSettings({
                   )}
                 </div>
               </div>
-              <ClaudeSignIn csrf={csrf} onSignedIn={refreshModels} />
+              <ClaudeSignIn
+                csrf={csrf}
+                onSignedIn={() => {
+                  refreshModels();
+                  announceSignedIn("claude-bridge");
+                }}
+                refused={aiRefused.includes("claude-bridge")}
+              />
             </div>
             {/* A provider's first key makes its model Pi's default: the
                 selector above reads Pi again after every key change. */}

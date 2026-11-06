@@ -838,6 +838,10 @@ esac
 				return
 			case "/fixture/conversations-reset":
 				// Each browser case starts from Pi's native unset default.
+				if err := os.Remove(filepath.Join(tmp, "fakepi-ai-refused")); err != nil && !os.IsNotExist(err) {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
 				for _, user := range []string{"alice", "bob"} {
 					if err := os.Remove(filepath.Join(tmp, user, ".pi", "agent", "settings.json")); err != nil && !os.IsNotExist(err) {
 						http.Error(w, "fixture failed", 500)
@@ -1209,6 +1213,29 @@ esac
 				default:
 					http.Error(w, "unknown scenario", 400)
 					return
+				}
+				w.WriteHeader(204)
+			case "/fixture/ai-refused":
+				// claude: the fake Pi's Claude refuses every prompt, as an
+				// expired subscription does. off: a sign-in, which rewrites
+				// Claude Code's own credential store.
+				value := r.URL.Query().Get("value")
+				if value != "claude" && value != "off" {
+					http.Error(w, "unknown value", 400)
+					return
+				}
+				if e := os.WriteFile(filepath.Join(tmp, "fakepi-ai-refused"), []byte(value), 0600); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				if value == "off" {
+					for _, user := range []string{"alice", "bob"} {
+						store := filepath.Join(tmp, user, ".claude", ".credentials.json")
+						if os.MkdirAll(filepath.Dir(store), 0700) != nil || os.WriteFile(store, []byte("{}"), 0600) != nil {
+							http.Error(w, "fixture failed", 500)
+							return
+						}
+					}
 				}
 				w.WriteHeader(204)
 			case "/fixture/idle-stop":

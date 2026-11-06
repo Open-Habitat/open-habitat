@@ -97,10 +97,6 @@ const fi = {
   missedDetail:
     "Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia.",
   eventsBeforeHistory: "Agentin tapahtumia vastaanotettu; historiaa odotetaan.",
-  authFailed: "Kielimallikirjautuminen ei ole kunnossa",
-  signInAgain: "Kirjaudu uudelleen",
-  authFailedDetail:
-    "Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy.",
   modelUnsupported: "Valittu kielimalli ei ole käytettävissä",
   chooseModel: "Valitse toinen malli",
   modelUnsupportedDetail:
@@ -205,10 +201,6 @@ export const browserConversationText = catalog(fi, {
   missedDetail:
     "The tail of the live events is incomplete. Check the native history.",
   eventsBeforeHistory: "Agent events received; waiting for the history.",
-  authFailed: "The language model sign-in is not working",
-  signInAgain: "Sign in again",
-  authFailedDetail:
-    "Sign in to your OpenAI account again, then continue the conversation. The message is not resent automatically; your draft is kept.",
   modelUnsupported: "The chosen language model is not available",
   chooseModel: "Choose another model",
   modelUnsupportedDetail:

@@ -330,6 +330,7 @@ export function AgentTurn({
   startedAt,
   stopped,
   failed = false,
+  failure,
   working = false,
   activity,
   duration,
@@ -340,6 +341,9 @@ export function AgentTurn({
   /** Pi recorded the turn's end as an abort, saved at `at` when known. */
   stopped?: { at?: number };
   failed?: boolean;
+  /** What the failed reply says instead of the provider's own words, in one
+   * short row (an AI sign-in the provider refused). */
+  failure?: ReactNode;
   working?: boolean;
   activity?: string;
   duration?: string;
@@ -468,10 +472,21 @@ export function AgentTurn({
           </Fragment>
         );
       })}
-      {failed && !working && !finalStep ? (
-        <AssistantMessage streamState="failed" onCopy={() => {}}>
-          {null}
-        </AssistantMessage>
+      {failed && !working && (!finalStep || failure) ? (
+        <div
+          data-reply-kind="failed"
+          data-testid="stage-reply"
+          data-reply-role="failed"
+          className="ah-turn-reply"
+        >
+          <AssistantMessage streamState="failed" onCopy={() => {}}>
+            {failure ? (
+              <p className="ah-turn-short" data-testid="turn-short">
+                {failure}
+              </p>
+            ) : null}
+          </AssistantMessage>
+        </div>
       ) : null}
       {stopped && !working ? <StoppedRow at={stopped.at} /> : null}
     </section>

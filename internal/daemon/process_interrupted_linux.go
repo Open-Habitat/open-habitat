@@ -65,6 +65,12 @@ type branchScan struct {
 	// or unfinished work.
 	reply   string
 	replyAt int64
+	// refused and works say, per AI provider, when the branch last met a
+	// provider refusing the sign-in and when a reply last came from it,
+	// Unix ms. The snapshot weighs them against each other and against the
+	// provider's credential store to tell whether a sign-in is refused now.
+	refused map[string]int64
+	works   map[string]int64
 }
 
 func scanBranchProcesses(b []byte) []branchProcess {
@@ -87,6 +93,9 @@ func scanBranch(b []byte) branchScan {
 		open         bool // that message leaves its turn unfinished
 		failed       bool // that message is a reply the provider failed
 		answer       bool // that message is the model's finished answer
+		provider     string
+		refused      bool // the provider refused the sign-in
+		works        bool // the provider answered (an answer or a tool call)
 	}
 	facts := []fact{}
 	parents := map[string]string{}
@@ -104,6 +113,7 @@ func scanBranch(b []byte) branchScan {
 			Message    *struct {
 				Role         string          `json:"role"`
 				ToolName     string          `json:"toolName"`
+				Provider     string          `json:"provider"`
 				StopReason   string          `json:"stopReason"`
 				ErrorMessage string          `json:"errorMessage"`
 				CustomType   string          `json:"customType"`
@@ -137,6 +147,11 @@ func scanBranch(b []byte) branchScan {
 				stop := piStopReason(e.Message.StopReason, e.Message.ErrorMessage)
 				f.failed = stop == "error"
 				f.answer = !f.open && stop != "error" && stop != "aborted"
+				if aiProviders[e.Message.Provider] {
+					f.provider = e.Message.Provider
+					f.refused = f.failed && modelAuthFailure(e.Message.ErrorMessage)
+					f.works = stop != "error" && stop != "aborted"
+				}
 			}
 		}
 		switch {
@@ -210,12 +225,18 @@ func scanBranch(b []byte) branchScan {
 	open := map[string]*branchProcess{}
 	order := []*branchProcess{}
 	reported := map[string]bool{}
-	scan := branchScan{runs: map[string]bool{}}
+	scan := branchScan{runs: map[string]bool{}, refused: map[string]int64{}, works: map[string]int64{}}
 	for _, f := range facts {
 		if !active[f.id] {
 			continue
 		}
 		scan.last = max(scan.last, f.at)
+		if f.refused {
+			scan.refused[f.provider] = max(scan.refused[f.provider], f.at)
+		}
+		if f.works {
+			scan.works[f.provider] = max(scan.works[f.provider], f.at)
+		}
 		if f.message {
 			scan.turnCut, scan.turnError = f.open, f.failed
 			scan.reply, scan.replyAt = "", 0

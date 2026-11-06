@@ -216,7 +216,13 @@ export function useConversationActions({
   // The text leaves the field at once and is drawn where it is going; a
   // refused or unknown outcome gives it back (see sentMessages.ts). A message
   // not typed in the field (the editor's note) keeps the draft.
-  const submit = async (text = draft, keepDraft = false) => {
+  // A message that waited for an AI sign-in brings its own command ID
+  // (aiSignIn.ts). Resolves false when the view could not send it now.
+  const submit = async (
+    text = draft,
+    keepDraft = false,
+    commandId?: string,
+  ): Promise<boolean> => {
     if (
       busy ||
       !current ||
@@ -229,13 +235,13 @@ export function useConversationActions({
       sessionStorage.getItem(sendKey) ||
       !csrf
     )
-      return;
-    const command = crypto.randomUUID();
+      return false;
+    const command = commandId ?? crypto.randomUUID();
     setBusy(true);
 
     try {
       const token = csrf;
-      if (!alive.current) return;
+      if (!alive.current) return true;
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
@@ -248,7 +254,7 @@ export function useConversationActions({
       await send(current.agent_id, text, command, token, firstChoice);
       answered(command);
       onSendOutcome?.("accepted");
-      if (!alive.current) return;
+      if (!alive.current) return true;
       setReceipt(txt.awaitingNative);
       await refresh();
     } catch (error) {
@@ -270,6 +276,7 @@ export function useConversationActions({
     } finally {
       if (alive.current) setBusy(false);
     }
+    return true;
   };
   const submitQueue = async (
     kind: "steer" | "follow_up",

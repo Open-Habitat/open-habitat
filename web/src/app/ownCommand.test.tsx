@@ -178,7 +178,7 @@ describe("the person's own command over a slow link", () => {
     expect(result.current.view.current?.state).toBe("accepted");
 
     act(() => result.current.view.changeDraft("ohjaus"));
-    let sending!: Promise<void>;
+    let sending!: Promise<unknown>;
     act(() => {
       sending = result.current.actions.submitQueue("steer");
     });
@@ -214,7 +214,7 @@ describe("the person's own command over a slow link", () => {
     const first = renderHook(() => useView(agent), { wrapper });
     await answer(status(5, { state: "idle", run_active: false }));
     act(() => first.result.current.view.changeDraft("hidas ensimmäinen vuoro"));
-    let sending!: Promise<void>;
+    let sending!: Promise<unknown>;
     act(() => {
       sending = first.result.current.actions.submit();
     });

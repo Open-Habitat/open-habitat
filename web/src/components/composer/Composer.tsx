@@ -642,6 +642,7 @@ export function Composer({
   onDictating,
   turnControl,
   inFieldLists = false,
+  waiting,
 }: {
   value: string;
   csrf?: string;
@@ -696,6 +697,9 @@ export function Composer({
    * preview beside them and marking several (experimental
    * composer-lists-in-field). Needs `sources.tree`. */
   inFieldLists?: boolean;
+  /** The field's message waits to go by itself, and what the person reads
+   * about it under the field (an AI sign-in to renew). */
+  waiting?: string;
 }) {
   const t = useText(composerText);
   const ft = useText(fieldListText);
@@ -2102,6 +2106,22 @@ export function Composer({
       </div>
       {fieldReason && !suppressAvailabilityReason ? (
         <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
+      ) : null}
+      {waiting && draftValue.trim() ? (
+        <p
+          className="ah-composer-waiting"
+          data-testid="composer-waiting"
+          role="status"
+        >
+          <Icon
+            name="clock"
+            width={13}
+            height={13}
+            className="ah-composer-waiting-mark"
+            aria-hidden="true"
+          />
+          {waiting}
+        </p>
       ) : null}
       {agentStopping ? (
         <p

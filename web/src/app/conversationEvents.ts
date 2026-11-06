@@ -160,6 +160,7 @@ export function applyTurnEvent(
       is_error: payload.is_error as boolean | undefined,
       failure_cause: payload.failure_cause as BashFailure | undefined,
       stop_reason: payload.stop_reason as string | undefined,
+      refused_by: payload.refused_by as HistoryEntry["refused_by"],
       model: payload.model as string | undefined,
       context_tokens: payload.context_tokens as number | undefined,
       entry_type: payload.entry_type as HistoryEntry["entry_type"],

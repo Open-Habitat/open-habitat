@@ -1084,3 +1084,25 @@ it("keeps a reply's elements when its streamed text becomes a saved preview", ()
   expect(container.querySelector("p")).toBe(first);
   expect(screen.getByTestId("history-block-load")).toBeTruthy();
 });
+
+it("says a refused sign-in in one short row, without the provider's words", () => {
+  const text =
+    "Failed to authenticate: OAuth session expired and could not be refreshed";
+  const failed: HistoryEntry = {
+    ...entry,
+    kind: "assistant",
+    stop_reason: "error",
+    refused_by: "claude-bridge",
+    content: { media_type: "text/plain", text, complete: true },
+    blocks: [{ type: "text", text }],
+  };
+  const view = render(
+    timelineItems([failed]).map((item) => (
+      <div key={item.id}>{item.content}</div>
+    )),
+  );
+  expect(view.getByTestId("turn-short").textContent).toBe(
+    "Claude-kirjautuminen on vanhentunut. Viestiäsi ei käsitelty.",
+  );
+  expect(view.container.textContent).not.toContain("OAuth session");
+});

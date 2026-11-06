@@ -64,15 +64,19 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		return pi.StatusContext(ctx)
 	}
 	mux.Handle("GET /api/v1/onboarding/pi/status", PiStatusHandler(cfg, server.TrustedPeer, piStatus))
+	// A completed sign-in or a saved key ends a provider's refusal: the
+	// conversations forget it and every open page reads the snapshot again.
+	var signedIn func()
+	credentials := afterKeySaved(PiCredentialsHandler(cfg, server.TrustedPeer, pi), func() { signedIn() })
 	for _, path := range PiCredentialPaths(PiCredentialsPath) {
-		mux.Handle(path, PiCredentialsHandler(cfg, server.TrustedPeer, pi))
+		mux.Handle(path, credentials)
 	}
 	mux.Handle(SiteKeyPath, SiteKeyHandler(cfg, server.TrustedPeer, pi))
 	speech := NewSpeech(cfg, server.TrustedPeer)
 	speech.Mount(mux)
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle(RecapSettingsPath, RecapSettingsHandler(cfg, server.TrustedPeer, pi))
-	claude := &claudeLogin{device: pi}
+	claude := &claudeLogin{device: pi, onSignedIn: func() { signedIn() }}
 	mux.Handle("/api/v1/pi/claude-login", claude.handler(cfg, server.TrustedPeer))
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))
 	githubOrgs := newGitHubOrgs(func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
@@ -101,7 +105,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
 	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
 	go controller.recapRestingConversations(ctx)
-	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
+	signedIn = func() {
+		controller.ClearPiAuthFailures()
+		journal.appendInvalidation("")
+	}
+	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, signedIn))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, forges))
 	mux.Handle(EditorFilesPrefix, controller.EditorFiles())

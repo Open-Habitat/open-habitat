@@ -151,6 +151,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		StopReason   string          `json:"stopReason"`
 		ErrorMessage string          `json:"errorMessage"`
 		Model        string          `json:"model"`
+		Provider     string          `json:"provider"`
 		Usage        json.RawMessage `json:"usage"`
 	}
 	if json.Unmarshal(e.Message, &m) != nil {
@@ -215,6 +216,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if m.Role == "assistant" {
 		if len(m.StopReason) <= 40 {
 			out.StopReason = piStopReason(m.StopReason, m.ErrorMessage)
+		}
+		if out.StopReason == "error" && aiProviders[m.Provider] && modelAuthFailure(m.ErrorMessage) {
+			out.RefusedBy = m.Provider
 		}
 		if len(m.Model) <= 200 {
 			out.Model = m.Model

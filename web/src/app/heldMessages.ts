@@ -222,10 +222,15 @@ export function useHeldMessages({
   }, [update, giveBack, onLogin]);
   const submit = useCallback(
     // A message not typed in the field (the editor's note) keeps the draft.
-    (text: string, choice?: LocalHeld["choice"], keepDraft = false) => {
+    (
+      text: string,
+      choice?: LocalHeld["choice"],
+      keepDraft = false,
+      commandId?: string,
+    ) => {
       if (!text.trim()) return;
       const entry: LocalHeld = {
-        command_id: crypto.randomUUID(),
+        command_id: commandId ?? crypto.randomUUID(),
         text,
         posted: false,
         preexisting: latest.current.entries

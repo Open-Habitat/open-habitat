@@ -42,6 +42,9 @@ type claudeLogin struct {
 	done chan struct{}
 	// Same-UID synthetic tests only; production derives the executable from the trusted runtime.
 	executable string
+	// onSignedIn hears of a completed sign-in, which ends the conversations'
+	// record of Claude refusing them.
+	onSignedIn func()
 }
 type claudeLoginResponse struct {
 	SchemaVersion   int    `json:"schema_version"`
@@ -241,12 +244,16 @@ func (a *claudeLogin) start(owner string) error {
 			}
 		}
 		a.mu.Lock()
+		signedIn := a.onSignedIn
 		if a.id == id && a.state != "unknown" {
 			a.state = state
 			a.uri = ""
 			a.input = nil
 		}
 		a.mu.Unlock()
+		if state == "completed" && signedIn != nil {
+			signedIn()
+		}
 		cancel()
 	}()
 	return nil

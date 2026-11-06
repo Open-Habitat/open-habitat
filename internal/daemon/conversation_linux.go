@@ -1519,8 +1519,10 @@ func modelUnsupported(text string) bool {
 	return strings.Contains(lower, "model") && strings.Contains(lower, "not supported") && strings.Contains(lower, "account")
 }
 
-// Match authentication failures, not arbitrary provider errors.
+// Match authentication failures, not arbitrary provider errors. Claude's
+// bridge words an expired subscription "Failed to authenticate: OAuth session
+// expired and could not be refreshed" (recorded with Pi 1.3.0, bridge 0.9.3).
 func modelAuthFailure(text string) bool {
 	lower := strings.ToLower(text)
-	return strings.Contains(lower, "401") || strings.Contains(lower, "403") || strings.Contains(lower, "unauthorized") || strings.Contains(lower, "authentication failed") || strings.Contains(lower, "invalid api key") || strings.Contains(lower, "invalid_api_key")
+	return strings.Contains(lower, "401") || strings.Contains(lower, "403") || strings.Contains(lower, "unauthorized") || strings.Contains(lower, "authentication failed") || strings.Contains(lower, "failed to authenticate") || strings.Contains(lower, "invalid api key") || strings.Contains(lower, "invalid_api_key")
 }

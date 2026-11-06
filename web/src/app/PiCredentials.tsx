@@ -9,6 +9,7 @@ import { modelDisplayName } from "../components/modelPresentation";
 import { Badge, StatusMark } from "../components/Status";
 import { formatDate, liveText } from "../i18n";
 import { piCredentialsText } from "../text/piCredentials";
+import { announceSignedIn } from "./aiSignIn";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
@@ -184,6 +185,9 @@ export function PiCredentials({
         },
       );
       setData(await read(response));
+      // A new key may end the provider refusing the old one: what waited
+      // for it goes (aiSignIn.ts).
+      if (!remove) announceSignedIn(provider);
       onSaved?.();
     } catch {
       setData(undefined);

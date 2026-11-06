@@ -1,0 +1,70 @@
+/* The sign-in window over a conversation (proto-ai-sign-in-expired, round 2
+   B2 and round 3 R1). */
+.ah-sign-in-modal {
+  max-width: min(560px, calc(100vw - 24px));
+}
+.ah-sign-in-window-steps,
+.ah-sign-in-window-key,
+.ah-sign-in-window-device {
+  display: grid;
+  gap: var(--ah-s3);
+}
+.ah-sign-in-window-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+}
+.ah-sign-in-window-foot .ah-sign-in-hint {
+  margin: 0;
+}
+/* The messages that go once the sign-in is done. */
+.ah-sign-in-queue {
+  display: grid;
+  gap: var(--ah-s2);
+  margin-bottom: var(--ah-s3);
+}
+.ah-sign-in-queue .s-desc {
+  margin: 0;
+}
+.ah-sign-in-queue ul {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-sign-in-queue li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-bg);
+}
+.ah-sign-in-queue-title {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-sign-in-queue-edited {
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-sign-in-queue-text {
+  grid-column: 1;
+  overflow: hidden;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-sign-in-queue-fate {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--ah-ink);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+}

@@ -531,7 +531,9 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	}
 	// Recorded with Pi 1.3.0 / bridge 0.9.3 and disposable invalid credentials:
 	// the bridge keeps the provider text, but marks the message as an error.
-	if strings.Contains(prompt, "auth-failure-oauth") || strings.Contains(prompt, "auth-failure-key") {
+	// /fixture/ai-refused: Claude refuses every prompt until a sign-in.
+	refused, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-ai-refused"))
+	if strings.Contains(prompt, "auth-failure-oauth") || strings.Contains(prompt, "auth-failure-key") || strings.TrimSpace(string(refused)) == "claude" {
 		text := "Failed to authenticate: OAuth session expired and could not be refreshed"
 		if strings.Contains(prompt, "auth-failure-key") {
 			text = "Invalid API key · Fix external API key"

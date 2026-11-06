@@ -230,6 +230,10 @@
                 "type": "string",
                 "maxLength": 40
               },
+              "refused_by": {
+                "description": "On a failed assistant reply: the AI provider that refused the person's sign-in or API key, classified by the daemon from Pi's error. The provider's own text stays in native history.",
+                "enum": ["claude-bridge", "openai-codex", "openai", "anthropic", "deepseek"]
+              },
               "model": {
                 "type": "string",
                 "maxLength": 200

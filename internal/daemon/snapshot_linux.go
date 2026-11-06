@@ -559,6 +559,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				readable["pi:"+session.id] = session
 			}
 		}
+		// The branches read here also tell whether an AI provider refuses the
+		// person's sign-in now.
+		scans := []branchScan{}
 		for _, raw := range agents {
 			agent := raw.(map[string]any)
 			session, ok := readable[agent["agent_id"].(string)]
@@ -575,6 +578,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				scan = scanBranch(b)
 			} else {
 				ok = false
+			}
+			if ok {
+				scans = append(scans, scan)
 			}
 			if ok && live && scan.turnError {
 				agent["failure"] = "turn_error"
@@ -703,7 +709,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				return "unknown"
 			}
 			return "confirmed"
-		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": nativeGitHub}}
+		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": nativeGitHub, "ai_refused": aiRefusals(nativeHome, scans)}}
 		b, err := json.Marshal(body)
 		if err != nil || len(b) > MaxSnapshotBytes {
 			snapshotError(w, 503, "native_source_unavailable")

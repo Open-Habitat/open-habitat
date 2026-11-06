@@ -8,6 +8,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
 import type { RestartNotice } from "../components/RestartNotice";
 import type { WaitReminder } from "../components/WaitReminder";
+import type { AIProvider } from "./aiSignIn";
 import type { BashFailure } from "./bashFailure";
 import { LazyAjv } from "./lazyAjv";
 
@@ -69,6 +70,8 @@ export interface HistoryEntry {
   is_error?: boolean;
   failure_cause?: BashFailure;
   stop_reason?: string;
+  /** On a failed reply: the AI provider that refused the sign-in. */
+  refused_by?: AIProvider;
   model?: string;
   /** Context size Pi recorded with this assistant reply. */
   context_tokens?: number;

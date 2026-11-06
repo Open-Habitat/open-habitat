@@ -3024,6 +3024,12 @@ details[open] > summary:not([class])::before {
   color: var(--ah-accent-ink);
   font-size: var(--ah-size-meta);
 }
+/* A reply the provider refused for an expired sign-in: one short row, the
+   warning above the field says the rest (proto-ai-sign-in-expired). */
+.ah-turn-short {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
 .ah-turn-status-name {
   white-space: nowrap;
   font-weight: 600;

@@ -61,14 +61,24 @@ export function ClaudeSignIn({
   csrf,
   onSignedIn,
   onboarding = false,
+  window: inWindow,
+  refused = false,
 }: {
   csrf?: string;
   /** Stacked inside the onboarding AI step's Claude row, which owns the
    * heading: numbered steps like the ChatGPT sign-in. Settings keeps its row. */
   onboarding?: boolean;
   onSignedIn?: () => void;
+  /** In the sign-in window over a conversation (AISignIn.tsx): the person
+   * asked to sign in again by opening it, so the attempt starts at once,
+   * and Peruuta ends it and closes the window. */
+  window?: { onCancel: () => void };
+  /** Claude refused the stored sign-in (the snapshot's ai_refused), which
+   * `claude auth status` cannot tell: it reads the store, it does not try it. */
+  refused?: boolean;
 }) {
   const [login, setLogin] = useState<Login>();
+  const windowed = !!inWindow;
   const models = modelsLine(usePiModels().data?.models, "claude-bridge");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -80,6 +90,7 @@ export function ClaudeSignIn({
   const signedIn = useRef(onSignedIn);
   signedIn.current = onSignedIn;
   const ownAttempt = useRef<string | undefined>(undefined);
+  const cancelled = useRef(false);
   useEffect(() => {
     alive.current = true;
     const controller = new AbortController();
@@ -103,6 +114,14 @@ export function ClaudeSignIn({
           alive.current &&
           g === generation.current
         ) {
+          // Only the attempt's own browser session is told its ID: a
+          // window opened again carries on with the attempt it started.
+          if (
+            windowed &&
+            result.attempt_id &&
+            (result.state === "pending" || result.state === "code")
+          )
+            ownAttempt.current = result.attempt_id;
           setLogin(result);
           setFailed(false);
         }
@@ -126,7 +145,7 @@ export function ClaudeSignIn({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [login?.state]);
+  }, [login?.state, windowed]);
   const action = async (method: "GET" | "POST" | "PUT" | "DELETE") => {
     if ((method !== "GET" && !csrf) || writing.current) return;
     writing.current = true;
@@ -156,6 +175,23 @@ export function ClaudeSignIn({
           body,
         }),
       );
+      // Peruuta pressed while this write was on its way: end the attempt
+      // it answers with, even though the window has closed.
+      if (
+        cancelled.current &&
+        method !== "DELETE" &&
+        next.attempt_id &&
+        (next.state === "pending" || next.state === "code")
+      )
+        void hostRequest("pi.claude_login", "/api/v1/pi/claude-login", {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: {
+            "X-Agent-Host-CSRF": csrf ?? "",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ attempt_id: next.attempt_id }),
+        }).catch(() => {});
       if (alive.current) {
         if (method === "POST" || method === "PUT")
           ownAttempt.current = next.attempt_id;
@@ -180,6 +216,121 @@ export function ClaudeSignIn({
   }, [login?.state, login?.attempt_id]);
   const active = login?.state === "pending" || login?.state === "code";
   const codeValid = /^[A-Za-z0-9_~.\-#]{8,2048}$/.test(code.trim());
+  // The window starts the attempt once its first read is in, unless this
+  // session's attempt is already under way.
+  const started = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, after the first read.
+  useEffect(() => {
+    if (!inWindow || started.current || !login || !csrf) return;
+    started.current = true;
+    if (!active && login.state !== "unavailable") void action("POST");
+  }, [inWindow, login, csrf]);
+  if (inWindow)
+    return (
+      <section
+        data-testid="claude-sign-in"
+        aria-label={txt.label}
+        className="ah-sign-in-window-steps"
+      >
+        {login?.state === "unavailable" ? (
+          <p role="alert">{txt.cannot}</p>
+        ) : login?.state === "code" && login.verification_uri ? (
+          <SignInSteps>
+            <SignInStep number={1} title={txt.step1}>
+              <ExternalLink
+                data-testid="claude-sign-in-link"
+                href={login.verification_uri}
+                target="_blank"
+                rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+              >
+                {txt.openNewTab}
+              </ExternalLink>
+            </SignInStep>
+            {!submitted ? (
+              <SignInStep number={2} title={txt.step2}>
+                <form
+                  className="ah-inline-field"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void action("PUT");
+                  }}
+                >
+                  <input
+                    type="password"
+                    data-testid="claude-code-input"
+                    aria-label={txt.codeLabel}
+                    autoComplete="off"
+                    value={code}
+                    maxLength={2048}
+                    onChange={(event) => setCode(event.target.value)}
+                  />
+                  <ControlButton
+                    data-testid="claude-code-confirm"
+                    size="row"
+                    variant="primary"
+                    type="submit"
+                    isDisabled={busy || !csrf || !codeValid}
+                  >
+                    {txt.confirmCode}
+                  </ControlButton>
+                </form>
+              </SignInStep>
+            ) : (
+              <SignInStep number={2} title={txt.waitStep} status>
+                <StatusMark
+                  label={txt.waiting}
+                  tone="info"
+                  animated="running"
+                />
+              </SignInStep>
+            )}
+          </SignInSteps>
+        ) : active || !login || busy ? (
+          <StatusMark label={txt.preparing} tone="info" animated="running" />
+        ) : (
+          <ControlButton
+            size="row"
+            variant="primary"
+            type="button"
+            isDisabled={busy || !csrf}
+            data-testid="claude-sign-in-start"
+            onPress={() => void action("POST")}
+          >
+            {txt.signInAgainClaude}
+          </ControlButton>
+        )}
+        {failed ? (
+          <p role="alert">
+            {txt.checkFailed}{" "}
+            <ControlButton
+              size="row"
+              type="button"
+              isDisabled={busy}
+              onPress={() => void action("GET")}
+            >
+              {txt.checkState}
+            </ControlButton>
+          </p>
+        ) : null}
+        <div className="ah-sign-in-window-foot">
+          <p className="ah-sign-in-hint">{txt.ownPage}</p>
+          <ControlButton
+            data-testid="sign-in-cancel"
+            size="row"
+            variant="quiet"
+            type="button"
+            onPress={() => {
+              cancelled.current = true;
+              if (active && csrf && !writing.current) void action("DELETE");
+              inWindow.onCancel();
+            }}
+          >
+            {txt.cancel}
+          </ControlButton>
+        </div>
+      </section>
+    );
   if (onboarding)
     return (
       <section
@@ -315,17 +466,26 @@ export function ClaudeSignIn({
           data-testid="claude-login-state"
           data-state={login?.state}
         >
-          {login?.state === "completed"
-            ? txt.signedInModels(models)
-            : login?.state === "unavailable"
-              ? txt.unavailableLong
-              : active
-                ? txt.pending
-                : txt.signedOut}
+          {login?.state === "completed" && refused
+            ? txt.refusedRow
+            : login?.state === "completed"
+              ? txt.signedInModels(models)
+              : login?.state === "unavailable"
+                ? txt.unavailableLong
+                : active
+                  ? txt.pending
+                  : txt.signedOut}
         </span>
       </div>
       <div className="s-val">
-        {login?.state === "completed" ? (
+        {login?.state === "completed" && refused ? (
+          <StatusMark
+            data-testid="claude-refused"
+            kind="error"
+            tone="danger"
+            label={txt.refused}
+          />
+        ) : login?.state === "completed" ? (
           <StatusMark kind="success" tone="success" label={txt.signedIn} />
         ) : login?.state === "unavailable" ? (
           <StatusMark kind="error" tone="danger" label={txt.notAvailable} />

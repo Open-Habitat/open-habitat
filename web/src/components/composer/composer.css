@@ -1007,6 +1007,21 @@
   white-space: nowrap;
 }
 
+/* A message waiting in the field for the person to sign in again says so
+   right under it (proto-ai-sign-in-expired), whatever explains a block. */
+.ah-composer-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  margin: 0;
+  padding: 0 6px;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-composer-waiting-mark {
+  flex: none;
+}
+
 /* ---- the `!` command in the conversation ---- */
 .ah-cmd-run {
   width: 100%;

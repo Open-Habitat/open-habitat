@@ -2246,27 +2246,25 @@ test("@browser-conversation model authentication error offers sign-in without le
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.getByTestId("provider-auth-error")).toBeVisible();
+  const warning = page.getByTestId("ai-sign-in-warning");
+  await expect(warning).toHaveAttribute("data-state", "openai-codex");
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
   );
+  // The refused message waits in the field; an edit goes as edited.
+  await expect(page.getByTestId("message-input")).toHaveValue("kokeilu");
   await page.getByTestId("message-input").fill("säilyvä luonnos");
-  const conversationURL = new URL(page.url());
-  await page.getByTestId("provider-auth-error").getByRole("button").click();
-  await expect(page.getByTestId("pi-sign-in-title")).toBeVisible();
+  const conversationURL = page.url();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
-  await page.getByTestId("pi-attempt-start").click();
-  await expect(page.getByTestId("pi-sign-in-title")).toHaveCount(0, {
-    timeout: 12000,
-  });
-  await expect
-    .poll(() => new URL(page.url()).searchParams.get("conversation"))
-    .toBe(conversationURL.searchParams.get("conversation"));
-  await expect(page.getByTestId("message-input")).toHaveValue(
-    "säilyvä luonnos",
-  );
-  await expect(page.getByTestId("provider-auth-error")).toHaveCount(0);
+  await warning.getByRole("button").click();
+  const window = page.getByTestId("sign-in-window");
+  await expect(window).toHaveAttribute("data-state", "openai-codex");
+  await expect(window).toHaveCount(0, { timeout: 12000 });
+  expect(page.url()).toBe(conversationURL);
+  await expectNativeContent(page, 'Kysyit: "säilyvä luonnos"');
+  await expect(page.getByTestId("message-input")).toHaveValue("");
+  await expect(warning).toHaveCount(0);
 });
 
 test("@browser-conversation unsupported account model is not mistaken for expired login", async ({

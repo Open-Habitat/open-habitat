@@ -41,6 +41,7 @@ import { appText } from "../text/app";
 import { navigationText } from "../text/navigation";
 import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
+import { AISignInProvider } from "./AISignIn";
 import {
   AccountPreferencesProvider,
   chooseQuietSort,
@@ -2952,281 +2953,299 @@ export function App() {
     ? agentWorkspace &&
       (selectedAgent?.worktree_id ?? agentWorkspace.workspace_id)
     : (conversationWorkspace ?? selected)?.workspace_id;
+  // The sign-in window names the conversations whose messages wait.
+  const aiSignInTitle = (id: string) => {
+    const agent = snapshot?.agents.find((a) => a.agent_id === id);
+    return agent ? agentTitle(agent.title) : undefined;
+  };
   return (
     <AccountPreferencesProvider identity={identity} csrf={csrf}>
       <PiModelsProvider key={identity} enabled={!!identity}>
-        <StatusSource
-          enabled={!!identity}
-          pathname={location.pathname}
-          github={
-            (phase === "authenticated" || phase === "stale") &&
-            concerns(githubWarning, { provider: snapshot?.auth?.provider })
-              ? githubWarning
+        <AISignInProvider
+          key={identity}
+          identity={identity ?? ""}
+          csrf={csrf}
+          reported={
+            phase === "authenticated" || phase === "stale"
+              ? snapshot?.auth?.ai_refused
               : undefined
           }
-          onReconnect={syntheticDemo ? undefined : reconnectGitHub}
+          titles={aiSignInTitle}
+          onRefresh={refresh}
         >
-          <AppShell
-            bell={conversationBell ? undefined : <StatusBell />}
-            navigationBadge={now.yours.length}
-            className={landing.entering ? "ah-landing-enter" : undefined}
-            mobileTitle={
-              (selectedAgent && agentTitle(selectedAgent.title)) ??
-              (selected
-                ? (selected.display_name ?? selected.name)
-                : undefined) ??
-              (isSettingsRoute(location.pathname)
-                ? t.app.settings
-                : location.pathname === "/workspaces/new"
-                  ? t.app.newWorkspace
-                  : t.app.home)
+          <StatusSource
+            enabled={!!identity}
+            pathname={location.pathname}
+            github={
+              (phase === "authenticated" || phase === "stale") &&
+              concerns(githubWarning, { provider: snapshot?.auth?.provider })
+                ? githubWarning
+                : undefined
             }
-            fallbackAccount={
-              profile &&
-              (phase === "pi_required" || phase === "daemon_unavailable") ? (
-                <FallbackAccount
-                  profile={profile}
-                  onSettings={openSettings}
-                  onAdministration={() => navigate(settingsHref("palvelin"))}
-                  onLogout={() => setLogoutPrompt(true)}
-                />
-              ) : undefined
-            }
-            connection={
-              <>
-                {syntheticDemo ? (
-                  <div className="ah-demo-banner" role="status">
-                    {language !== "fi"
-                      ? "SYNTHETIC DEMO · Simulated identity and workspace data · No real sign-in, agents or host connection"
-                      : "SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä"}
-                  </div>
-                ) : null}
-                {phase === "authentication_required" ||
-                phase === "pi_required" ||
-                phase === "daemon_unavailable" ||
-                landing.show ? null : (
-                  <ConnectionBanner
-                    onRetry={
-                      phase === "stale" || journalOffline
-                        ? manualRefresh
+            onReconnect={syntheticDemo ? undefined : reconnectGitHub}
+          >
+            <AppShell
+              bell={conversationBell ? undefined : <StatusBell />}
+              navigationBadge={now.yours.length}
+              className={landing.entering ? "ah-landing-enter" : undefined}
+              mobileTitle={
+                (selectedAgent && agentTitle(selectedAgent.title)) ??
+                (selected
+                  ? (selected.display_name ?? selected.name)
+                  : undefined) ??
+                (isSettingsRoute(location.pathname)
+                  ? t.app.settings
+                  : location.pathname === "/workspaces/new"
+                    ? t.app.newWorkspace
+                    : t.app.home)
+              }
+              fallbackAccount={
+                profile &&
+                (phase === "pi_required" || phase === "daemon_unavailable") ? (
+                  <FallbackAccount
+                    profile={profile}
+                    onSettings={openSettings}
+                    onAdministration={() => navigate(settingsHref("palvelin"))}
+                    onLogout={() => setLogoutPrompt(true)}
+                  />
+                ) : undefined
+              }
+              connection={
+                <>
+                  {syntheticDemo ? (
+                    <div className="ah-demo-banner" role="status">
+                      {language !== "fi"
+                        ? "SYNTHETIC DEMO · Simulated identity and workspace data · No real sign-in, agents or host connection"
+                        : "SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä"}
+                    </div>
+                  ) : null}
+                  {phase === "authentication_required" ||
+                  phase === "pi_required" ||
+                  phase === "daemon_unavailable" ||
+                  landing.show ? null : (
+                    <ConnectionBanner
+                      onRetry={
+                        phase === "stale" || journalOffline
+                          ? manualRefresh
+                          : undefined
+                      }
+                      onReload={reloadForNewBundle}
+                      connectionDetail={
+                        versionChanged ? undefined : journalConnection.reason
+                      }
+                      state={
+                        (phase === "stale" || journalOffline) && versionChanged
+                          ? "version-changed"
+                          : (phase === "stale" || journalOffline) &&
+                              journalConnection.state === "connecting"
+                            ? "connecting"
+                            : phase === "stale"
+                              ? "stale"
+                              : phase === "authenticated"
+                                ? journalOffline
+                                  ? "reconnecting"
+                                  : "online"
+                                : "loading"
+                      }
+                      hostWriteState={
+                        snapshot?.write_state === "read_only"
+                          ? "read_only"
+                          : "writable"
+                      }
+                    />
+                  )}
+                </>
+              }
+              rail={
+                (phase === "authenticated" || phase === "stale") &&
+                snapshot &&
+                conversationStore &&
+                !landing.show ? (
+                  <WorkspaceRailView
+                    only={onlyWorkspace}
+                    bell={conversationBell ? undefined : <StatusBell />}
+                    phase={phase}
+                    snapshot={snapshot}
+                    profile={profile}
+                    source={source}
+                    collapsed={railCompact && !mobileLayout}
+                    now={now}
+                    quietChoice={quietChoice}
+                    matches={matches}
+                    archived={archivedWorkspaces}
+                    onRestoreWorkspace={
+                      csrf &&
+                      phase === "authenticated" &&
+                      snapshot.write_state !== "read_only"
+                        ? (w) => void changeVisibility(w, false)
                         : undefined
                     }
-                    onReload={reloadForNewBundle}
-                    connectionDetail={
-                      versionChanged ? undefined : journalConnection.reason
+                    visibilityProblem={
+                      visibilityProblem && visibilityProblem.id !== selectedId
+                        ? visibilityProblem.text
+                        : undefined
                     }
-                    state={
-                      (phase === "stale" || journalOffline) && versionChanged
-                        ? "version-changed"
-                        : (phase === "stale" || journalOffline) &&
-                            journalConnection.state === "connecting"
-                          ? "connecting"
-                          : phase === "stale"
-                            ? "stale"
-                            : phase === "authenticated"
-                              ? journalOffline
-                                ? "reconnecting"
-                                : "online"
-                              : "loading"
+                    filter={filter}
+                    railState={railState}
+                    selectedId={selectedId}
+                    newReason={createReason}
+                    onNewConversation={
+                      csrf &&
+                      phase === "authenticated" &&
+                      snapshot.write_state !== "read_only"
+                        ? startFromHome
+                        : undefined
                     }
-                    hostWriteState={
-                      snapshot?.write_state === "read_only"
-                        ? "read_only"
-                        : "writable"
+                    onCreateWorkspace={
+                      !syntheticDemo &&
+                      phase === "authenticated" &&
+                      csrf &&
+                      source === "confirmed" &&
+                      snapshot.write_state !== "read_only"
+                        ? () => navigate("/workspaces/new")
+                        : undefined
                     }
+                    onFilter={(v) => dispatch(filterChanged(v))}
+                    onToggle={() =>
+                      editorShown
+                        ? setRailBesideEditor(!railBesideEditor)
+                        : setCollapsed(!collapsed)
+                    }
+                    onRefresh={manualRefresh}
+                    onSettings={openSettings}
+                    onLogout={() => setLogoutPrompt(true)}
+                    onAdministration={() => navigate(settingsHref("palvelin"))}
+                    pathname={location.pathname}
+                    clones={cloneJobs}
+                    archiveConversation={railArchive}
+                    renameConversation={railRename}
+                    turnConversation={railTurn}
+                    icons={icons}
                   />
-                )}
-              </>
-            }
-            rail={
-              (phase === "authenticated" || phase === "stale") &&
-              snapshot &&
-              conversationStore &&
-              !landing.show ? (
-                <WorkspaceRailView
-                  only={onlyWorkspace}
-                  bell={conversationBell ? undefined : <StatusBell />}
-                  phase={phase}
-                  snapshot={snapshot}
-                  profile={profile}
-                  source={source}
-                  collapsed={railCompact && !mobileLayout}
-                  now={now}
-                  quietChoice={quietChoice}
-                  matches={matches}
-                  archived={archivedWorkspaces}
-                  onRestoreWorkspace={
-                    csrf &&
-                    phase === "authenticated" &&
-                    snapshot.write_state !== "read_only"
-                      ? (w) => void changeVisibility(w, false)
-                      : undefined
-                  }
-                  visibilityProblem={
-                    visibilityProblem && visibilityProblem.id !== selectedId
-                      ? visibilityProblem.text
-                      : undefined
-                  }
-                  filter={filter}
-                  railState={railState}
-                  selectedId={selectedId}
-                  newReason={createReason}
-                  onNewConversation={
-                    csrf &&
-                    phase === "authenticated" &&
-                    snapshot.write_state !== "read_only"
-                      ? startFromHome
-                      : undefined
-                  }
-                  onCreateWorkspace={
-                    !syntheticDemo &&
-                    phase === "authenticated" &&
-                    csrf &&
-                    source === "confirmed" &&
-                    snapshot.write_state !== "read_only"
-                      ? () => navigate("/workspaces/new")
-                      : undefined
-                  }
-                  onFilter={(v) => dispatch(filterChanged(v))}
-                  onToggle={() =>
-                    editorShown
-                      ? setRailBesideEditor(!railBesideEditor)
-                      : setCollapsed(!collapsed)
-                  }
-                  onRefresh={manualRefresh}
-                  onSettings={openSettings}
-                  onLogout={() => setLogoutPrompt(true)}
-                  onAdministration={() => navigate(settingsHref("palvelin"))}
-                  pathname={location.pathname}
-                  clones={cloneJobs}
-                  archiveConversation={railArchive}
-                  renameConversation={railRename}
-                  turnConversation={railTurn}
-                  icons={icons}
-                />
-              ) : undefined
-            }
-            overlays={
-              <>
-                {trashOutcome ? (
-                  <TrashNotice
-                    key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
-                    outcome={trashOutcome}
-                    csrf={csrf}
-                    refresh={refresh}
-                    onClose={() => setTrashOutcome(undefined)}
-                  />
-                ) : null}
-                {archiveNotice ? (
-                  <ArchiveNotice
-                    kind="archive"
-                    key={archiveNotice.id}
-                    title={archiveNotice.title}
-                    busy={
-                      snapshot?.agents.find(
-                        (a) => a.agent_id === archiveNotice.id,
-                      )?.archive !== "archived"
+                ) : undefined
+              }
+              overlays={
+                <>
+                  {trashOutcome ? (
+                    <TrashNotice
+                      key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
+                      outcome={trashOutcome}
+                      csrf={csrf}
+                      refresh={refresh}
+                      onClose={() => setTrashOutcome(undefined)}
+                    />
+                  ) : null}
+                  {archiveNotice ? (
+                    <ArchiveNotice
+                      kind="archive"
+                      key={archiveNotice.id}
+                      title={archiveNotice.title}
+                      busy={
+                        snapshot?.agents.find(
+                          (a) => a.agent_id === archiveNotice.id,
+                        )?.archive !== "archived"
+                      }
+                      problem={archiveProblem}
+                      onClose={() => setArchiveNotice(undefined)}
+                      onRestore={() => {
+                        const agent = snapshot?.agents.find(
+                          (a) => a.agent_id === archiveNotice.id,
+                        );
+                        if (!agent) return;
+                        void changeArchive(agent, false).then((restored) => {
+                          if (!restored) return;
+                          navigate(archiveNotice.route);
+                          setArchiveNotice(undefined);
+                        });
+                      }}
+                    />
+                  ) : null}
+                  <AccountLogoutDialog
+                    open={
+                      logoutPrompt &&
+                      (phase === "authenticated" ||
+                        phase === "pi_required" ||
+                        phase === "daemon_unavailable")
                     }
-                    problem={archiveProblem}
-                    onClose={() => setArchiveNotice(undefined)}
-                    onRestore={() => {
-                      const agent = snapshot?.agents.find(
-                        (a) => a.agent_id === archiveNotice.id,
-                      );
-                      if (!agent) return;
-                      void changeArchive(agent, false).then((restored) => {
-                        if (!restored) return;
-                        navigate(archiveNotice.route);
-                        setArchiveNotice(undefined);
-                      });
-                    }}
+                    onClose={() => setLogoutPrompt(false)}
+                    onConfirm={logout}
                   />
-                ) : null}
-                <AccountLogoutDialog
-                  open={
-                    logoutPrompt &&
-                    (phase === "authenticated" ||
-                      phase === "pi_required" ||
-                      phase === "daemon_unavailable")
-                  }
-                  onClose={() => setLogoutPrompt(false)}
-                  onConfirm={logout}
-                />
-                {newChoiceWorkspace && phase === "authenticated" && csrf && (
-                  <NewConversationModelDialog
-                    key={`${identity}:${newChoiceWorkspace}`}
-                    csrf={csrf}
-                    onClose={() => setNewChoiceWorkspace(undefined)}
-                    onCreate={(choice) =>
-                      startFromHome(newChoiceWorkspace, choice)
-                    }
-                  />
-                )}
-              </>
-            }
-            main={
-              <>
-                {settingsLayer ? (
-                  <div className="ah-settings-layer">
-                    <div className="ah-state">{settingsView}</div>
-                  </div>
-                ) : null}
-                {/* The view keeps its own location under Settings, also for the
+                  {newChoiceWorkspace && phase === "authenticated" && csrf && (
+                    <NewConversationModelDialog
+                      key={`${identity}:${newChoiceWorkspace}`}
+                      csrf={csrf}
+                      onClose={() => setNewChoiceWorkspace(undefined)}
+                      onCreate={(choice) =>
+                        startFromHome(newChoiceWorkspace, choice)
+                      }
+                    />
+                  )}
+                </>
+              }
+              main={
+                <>
+                  {settingsLayer ? (
+                    <div className="ah-settings-layer">
+                      <div className="ah-state">{settingsView}</div>
+                    </div>
+                  ) : null}
+                  {/* The view keeps its own location under Settings, also for the
                   components that read it themselves. */}
-                <Routes location={location}>
-                  <Route
-                    path="*"
-                    element={
-                      <div
-                        className={
-                          phase === "authentication_required"
-                            ? "ah-login-view"
-                            : "ah-state"
-                        }
-                        inert={settingsLayer}
-                        data-under-settings={settingsLayer || undefined}
-                      >
-                        {railStartError ? (
-                          <InlineNotice
-                            title={t.app.railCreateUncertain}
-                            description={railStartError}
-                            tone="warning"
-                          />
-                        ) : null}
-                        <ViewHost
-                          identity={identity}
-                          csrf={
-                            phase === "authenticated" || phase === "stale"
-                              ? csrf
-                              : undefined
+                  <Routes location={location}>
+                    <Route
+                      path="*"
+                      element={
+                        <div
+                          className={
+                            phase === "authentication_required"
+                              ? "ah-login-view"
+                              : "ah-state"
                           }
+                          inert={settingsLayer}
+                          data-under-settings={settingsLayer || undefined}
                         >
-                          {editorRoute ? (
-                            <WorkspaceEditor
-                              journal={journal}
-                              workspaceId={editorWorkspaceId}
-                              identity={identity}
-                              onShownChange={showEditor}
-                              csrf={
-                                phase === "authenticated" || phase === "stale"
-                                  ? csrf
-                                  : undefined
-                              }
-                            >
-                              {main}
-                            </WorkspaceEditor>
-                          ) : (
-                            main
-                          )}
-                        </ViewHost>
-                      </div>
-                    }
-                  />
-                </Routes>
-              </>
-            }
-          />
-        </StatusSource>
+                          {railStartError ? (
+                            <InlineNotice
+                              title={t.app.railCreateUncertain}
+                              description={railStartError}
+                              tone="warning"
+                            />
+                          ) : null}
+                          <ViewHost
+                            identity={identity}
+                            csrf={
+                              phase === "authenticated" || phase === "stale"
+                                ? csrf
+                                : undefined
+                            }
+                          >
+                            {editorRoute ? (
+                              <WorkspaceEditor
+                                journal={journal}
+                                workspaceId={editorWorkspaceId}
+                                identity={identity}
+                                onShownChange={showEditor}
+                                csrf={
+                                  phase === "authenticated" || phase === "stale"
+                                    ? csrf
+                                    : undefined
+                                }
+                              >
+                                {main}
+                              </WorkspaceEditor>
+                            ) : (
+                              main
+                            )}
+                          </ViewHost>
+                        </div>
+                      }
+                    />
+                  </Routes>
+                </>
+              }
+            />
+          </StatusSource>
+        </AISignInProvider>
       </PiModelsProvider>
     </AccountPreferencesProvider>
   );
