@@ -299,3 +299,87 @@ open-habitat agent view offer --current \
   --title "Selitystila: tyhjät kohdat ja piilopainikkeet – kierros 8" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 9: miten tilakorttiin pääsee, kuvina
+
+Jarin päätös 6.11. (kierros 8): riffi 1 *Kuten aina*, ja kohta selittyy vain
+näkyvän sisältönsä päällä. Kysymys 3 jäi epäselväksi, joten tämä kierros
+näyttää sen kuvasarjoina. Prototyyppi on
+`prototype/kierros-9/selitystila-tilakortti.html` ja opas
+`prototype/kierros-9/NOTES.md`. Kuvat ovat `evidence/r9-*.avif` (kerroin 2).
+Lähde on `design-system/prototypes/rounds/2026-11-06-tilakortin-tie/`.
+
+## Mikä tilakortti on
+
+Tilakortti on kierroksen 7 kortti, joka kertoo keskustelun tilanteen
+(esim. *Odottaa sinua*) ja *Voit nyt* -rivit (`r9-04`). Kaikissa suunnissa
+Selitä (?) avaa tilan tilakortista (`r9-03` → `r9-04`), ja kortti pysyy,
+kunnes osoitat jotain kohtaa. Suunnat eroavat siinä, miten tilakortin saa
+takaisin kesken tilan. Jokainen kuvasarja alkaa samasta hetkestä: olet
+osoittanut viestiäsi, ja sen kortti näkyy (`r9-05`).
+
+## Suunnat
+
+- **A Selitä-painike**: Selitä (?) yläpalkissa tuo tilakortin takaisin myös
+  kesken tilan; tila päättyy Esc:llä tai Lopeta-painikkeella (`r9-06` →
+  `r9-07`, tumma `r9-12`, puhelin `r9-17`).
+- **B Tyhjä kohta**: napsautus keskustelun tyhjään kohtaan tuo tilakortin;
+  Selitä lopettaa tilan (`r9-08` → `r9-09`, tumma `r9-13`, puhelin `r9-18`
+  → `r9-21`).
+- **C Palkin tilanne**: selitystilan palkki kertoo tilanteen sanoin, ja sen
+  painallus tuo tilakortin; Selitä lopettaa tilan (`r9-10` → `r9-11`, tumma
+  `r9-14`, puhelin `r9-19` → `r9-20`, muut tilat `r9-15` ja `r9-16`).
+
+Kaikki kuvasarjat rinnakkain: `r9-01` (työpöytä) ja `r9-02` (puhelin).
+
+## Suositus
+
+**C, Palkin tilanne.**
+
+- Se näkyy koko tilan ajan ja on sama työpöydällä ja puhelimella. Sen sana
+  on tila itse, joten painamalla saa tilanteen selitettynä. Palkki kertoi
+  tilanteen jo kierroksella 8; nyt siitä pääsee eteenpäin.
+- A on lähes yhtä hyvä, mutta se muuttaa Selitä-painikkeen merkitystä kesken
+  tilan: sama painike avaa tilan mutta ei lopeta sitä. Painikkeen oma kortti
+  joutuu kertomaan sen (`r9-06`).
+- B:tä ei näe mistään. Puhelimella keskustelu on lähes kokonaan sisältöä:
+  tyhjää on vain kapea reunus viestien vieressä (`r9-18`), ja napautus
+  tekstiin selittää viestin. Lisäksi B ristiriitaa kierroksen 8 valinnan
+  kanssa: kierroksella 8 tyhjä kohta jätti viimeisimmän kortin paikalleen,
+  ja B tekisi tyhjästä napsautuksesta teon.
+
+## Host-tiedot
+
+- Uutta host-tietoa ei tarvita. Palkin tilanne on sama tila, jonka
+  yläpalkin tilapiste jo näyttää ja jonka mukaan tilakortti valitaan
+  (kierros 7).
+- C vaatii toteutuksessa, että selitystilan palkki tuntee keskustelun tilan
+  ja päivittyy sen muuttuessa. Se on selaimen tilaa, ja tieto on jo
+  snapshotissa.
+- Kierros ei muuttanut tuotantokoodia. Ajettu Birchlla commitin `6b406fb14`
+  päällä (Node 22.23.2), synteettinen labra `OH_PORT_BASE=6574`.
+  Tarkistus: 154 kuvaa (kuusi tilaa, kaksi leveyttä, *Odottaa sinua* myös
+  tummana), ja jokaisessa näkyy kuvatekstin kertoma asia. Elävässä
+  näkymässä kokeiltiin 18 yhdistelmää (suunta × teko × leveys): oma teko
+  toi tilakortin, eikä muiden suuntien teko tuonut. Virheitä 0, konsoli
+  puhdas.
+
+## Kysymykset Jarille
+
+1. **A, B vai C?** Vertaa kuvia `r9-06` (A2), `r9-08` (B2) ja `r9-10` (C2).
+   Lopputulos on kaikissa sama tilakortti (`r9-07`, `r9-09`, `r9-11`).
+   Suosittelen C:tä.
+2. **Avaako Selitä tilan aina tilakortista** (rivi K: `r9-03` → `r9-04`), vai
+   pitäisikö tilan alkaa ilman korttia, kun tilakorttiin pääsee palkista?
+   Suosittelen, että tila alkaa tilakortista.
+3. **Puhelimella palkissa pelkkä tila** (`r9-19`: *Odottaa sinua ›* ilman
+   ohjetekstiä)? Suosittelen.
+
+## Näyttäminen (kierros 9)
+
+```
+open-habitat agent view offer --current \
+  --source issues/proto-explain-mode-r6/prototype/kierros-9/selitystila-tilakortti.html \
+  --title "Selitystila: miten tilakorttiin pääsee – kierros 9" \
+  --idempotency-key "$(uuidgen)" --json
+```

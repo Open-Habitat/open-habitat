@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="prototype-round" content="2026-11-06-tilakortin-tie">
+<title>Selitystila: miten tilakorttiin pääsee — prototyyppi</title>
+<style>
+/*TOKENS_CSS*/
+</style>
+<style>
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+.proto-picker-item { white-space: nowrap; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #0c0d0f; color: #c9cdd2; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding-bottom: 96px; }
+.pc-head { padding: 12px 14px 8px; border-bottom: 1px solid #262a2f; background: #16181b; }
+.pc-lines { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 3px; }
+.pc-lines li { color: #8a9097; }
+.pc-lines li b { color: #c9cdd2; font-weight: 600; margin-right: 6px; }
+.pc-lines li[data-current] { color: #e6e9ec; }
+.pc-lines li[data-current] b { color: #fff; }
+.pc-lines li.pc-common { color: #c9cdd2; }
+.pc-controls { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.pc-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button, .pc-group select { height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: #aeb4ba; font: inherit; cursor: pointer; }
+.pc-group select { background: #22262b; color: #e6e9ec; }
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-group[hidden] { display: none; }
+.pc-hint { color: #8a9097; margin: 8px 0 0; }
+#stage { display: flex; justify-content: center; padding: 14px 8px; }
+.pc-sizer { position: relative; flex: none; box-shadow: 0 0 0 1px #2a2e33; overflow: hidden; border-radius: 6px; }
+.pc-scale { position: absolute; top: 0; left: 0; transform-origin: top left; display: flex; flex-direction: column; background: var(--ah-bg); }
+.pc-scale iframe { display: block; flex: none; border: 0; background: var(--ah-bg); }
+.pc-loading { padding: 40px; color: #8a9097; }
+body.bare .pc-head, body.bare .proto-picker { display: none; }
+body.bare #stage { padding: 0; }
+body.bare .pc-sizer { box-shadow: none; border-radius: 0; }
+
+/* the explain mode's bar: the whole top, above everything it explains */
+.xm-bar { position: relative; flex: none; height: 40px; display: flex; align-items: center; gap: 14px; padding: 0 8px 0 16px; background: var(--ah-ink); color: var(--ah-bg); font: 13px/1.3 var(--ah-font, system-ui); white-space: nowrap; overflow: hidden; }
+.xm-bar[hidden] { display: none; }
+.xm-bar b { font-weight: 600; flex: none; }
+.xm-bar > span { color: color-mix(in srgb, var(--ah-bg) 72%, transparent); overflow: hidden; text-overflow: ellipsis; }
+.xm-bar .xm-end { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: var(--ah-r-md, 8px); padding: 5px 10px 5px 12px; background: var(--ah-bg); color: var(--ah-ink); font: 600 13px var(--ah-font, system-ui); cursor: pointer; }
+.xm-bar kbd { font: 11px var(--ah-mono, monospace); padding: 0 5px; border: 1px solid var(--ah-line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--ah-ink-2); background: var(--ah-surface); }
+.xm-bar.phone { gap: 10px; padding: 0 6px 0 12px; font-size: 12.5px; }
+.xm-bar.phone kbd { display: none; }
+/* C: the bar's state is a button that names the state */
+.xm-now { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px; border: 0; border-radius: var(--ah-r-md, 8px); background: color-mix(in srgb, var(--ah-bg) 14%, transparent); color: var(--ah-bg); font: 600 13px var(--ah-font, system-ui); cursor: pointer; }
+.xm-now > span { overflow: hidden; text-overflow: ellipsis; }
+.xm-now:hover, .xm-now[aria-pressed="true"] { background: color-mix(in srgb, var(--ah-bg) 26%, transparent); }
+.xm-now i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-bg); }
+.xm-now i[data-dot="running"] { background: var(--ah-accent); }
+.xm-now i[data-dot="waiting"] { background: var(--ah-ok); }
+.xm-now i[data-dot="failed"] { background: var(--ah-err); }
+.xm-now em { font-style: normal; opacity: .7; }
+/* a picture's pointer or tap over the bar (C), the same marks frame.css draws inside */
+.pc-mark { position: absolute; z-index: 5; pointer-events: none; }
+.pc-tap { position: absolute; z-index: 4; pointer-events: none; border: 2.5px solid var(--ah-accent); border-radius: 50%; background: color-mix(in srgb, var(--ah-accent) 22%, transparent); }
+
+/* ---- the picture sequences */
+.sq { width: 100%; max-width: 1640px; }
+.sq-row { margin: 0 0 18px; padding: 12px 14px 14px; border-radius: 10px; background: #15171a; box-shadow: inset 0 0 0 1px #24282d; }
+.sq-row[data-current] { box-shadow: inset 0 0 0 2px #e6e9ec; background: #1a1d21; }
+.sq-row h2 { margin: 0 0 2px; color: #fff; font-size: 15px; font-weight: 600; }
+.sq-row h2 small { color: #8a9097; font-size: 12.5px; font-weight: 400; margin-left: 8px; }
+.sq-row > p { margin: 0 0 10px; color: #aeb4ba; max-width: 110ch; }
+.sq-frames { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.sq-step { flex: none; display: flex; align-items: flex-start; gap: 10px; }
+.sq-arrow { align-self: center; color: #6c737a; font-size: 18px; }
+.sq-fig { margin: 0; }
+.sq-fig figcaption { margin-top: 6px; color: #c9cdd2; max-width: var(--w); }
+.sq-fig figcaption b { display: inline-block; min-width: 26px; color: #fff; font: 600 12px ui-monospace, monospace; padding: 1px 6px; margin-right: 6px; border-radius: 5px; background: #2a2e33; }
+.sq-fig .pc-sizer { cursor: zoom-in; }
+.sq-fig .pc-sizer::after { content: ""; position: absolute; inset: 0; z-index: 10; }
+.sq-fig .pc-sizer:hover { box-shadow: 0 0 0 2px #8a9097; }
+/* a picture, larger */
+.lb { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(6,7,8,.86); cursor: zoom-out; }
+.lb p { margin: 0; color: #e6e9ec; font-size: 14px; }
+.lb p b { font: 600 13px ui-monospace, monospace; padding: 1px 7px; margin-right: 8px; border-radius: 5px; background: #2a2e33; }
+</style>
+</head>
+<body>
+<header class="pc-head">
+  <ul class="pc-lines"></ul>
+  <div class="pc-controls">
+    <div class="pc-group" data-ctl="page"><span>Sivu</span>
+      <button data-v="kuvat">Kuvasarjat</button><button data-v="kokeile">Kokeile itse</button></div>
+    <div class="pc-group" data-sel="view"><span>Tilanne</span><select aria-label="Tilanne"></select></div>
+    <div class="pc-group" data-ctl="w"><span>Laite</span>
+      <button data-v="1440">Työpöytä 1440</button><button data-v="390">Puhelin 390</button></div>
+    <div class="pc-group" data-ctl="theme"><span>Teema</span>
+      <button data-v="light">Vaalea</button><button data-v="dark">Tumma</button></div>
+    <div class="pc-group" data-ctl="lang"><span>Kortit</span>
+      <button data-v="fi">Suomi</button><button data-v="en">English</button></div>
+    <div class="pc-group" data-ctl="explain"><span>Selitystila</span>
+      <button data-v="on">Päällä</button><button data-v="off">Pois</button></div>
+  </div>
+  <p class="pc-hint"></p>
+</header>
+<main id="stage"><div class="pc-loading">Ladataan…</div></main>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">A Selitä-painike</button>
+  <button class="proto-picker-item">B Tyhjä kohta</button>
+  <button class="proto-picker-item">C Palkin tilanne</button>
+</nav>
+
+<script type="application/json" id="meta">/*META*/</script>
+<script type="text/plain" id="data">/*DATA*/</script>
+<script type="text/plain" id="picker-src">/*PICKER_JS*/</script>
+<script>
+const META = JSON.parse(document.getElementById('meta').textContent);
+const stage = document.getElementById('stage');
+const params = new URLSearchParams(location.search);
+if (params.get('bare')) document.body.classList.add('bare');
+const view = {
+  page: params.get('page') || 'kuvat',
+  view: params.get('view') || 'kaynnissa',
+  w: params.get('w') || '1440',
+  theme: params.get('theme') || 'light',
+  lang: params.get('lang') || 'fi',
+  explain: params.get('explain') || 'on',
+};
+// A single picture by itself (screenshots): ?shot=<row>-<step>, e.g. a3 or k1.
+const SHOT = params.get('shot');
+let DATA = null;
+let way = 0;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+const fiUI = () => view.lang === 'fi';
+
+document.querySelector('.pc-lines').innerHTML = `<li class="pc-common"><b>Kaikissa:</b>Selitä (?) avaa tilan tilakortista: kortti kertoo keskustelun tilanteen (esim. <i>Odottaa sinua</i>) ja <i>Voit nyt</i> -rivit. Tilakortti pysyy, kunnes osoitat jotain kohtaa. Suunnat eroavat siinä, miten tilakortin saa takaisin kesken tilan.</li>`
+  + META.ways.map((r, i) => `<li data-i="${i}"><b>${esc(r.fi.label)}</b>${esc(r.fi.line)}${i === 2 ? ' <i>Suositus.</i>' : ''}</li>`).join('');
+const sel = document.querySelector('[data-sel="view"] select');
+function fillViews() {
+  sel.innerHTML = META.views.filter((v) => v.widths.includes(+view.w) && (view.page === 'kokeile' || v.story))
+    .map((v) => `<option value="${v.id}"${v.id === view.view ? ' selected' : ''}>${esc(v.fi)}</option>`).join('');
+  if (!META.views.find((v) => v.id === view.view)?.story && view.page !== 'kokeile') view.view = 'kaynnissa';
+  document.querySelector('[data-ctl="explain"]').hidden = view.page !== 'kokeile';
+  document.querySelector('.pc-hint').textContent = view.page === 'kokeile'
+    ? 'Tuotannon näkymät synteettisestä labrasta, selitystila niiden päällä. Osoita kohtia, ja hae tilakortti takaisin valitun suunnan tavalla. Puhelimella napauta.'
+    : 'Jokainen kuva on tuotannon näkymä synteettisestä labrasta, selitystila päällä. Napsauta kuvaa, niin se suurenee. Valitsimesta (1–3) korostat suunnan; Tilanne vaihtaa keskustelun tilan kaikkiin kuviin.';
+}
+function syncUrl() {
+  const url = new URL(location);
+  for (const k of ['page', 'view', 'w', 'theme', 'lang', 'explain']) url.searchParams.set(k, view[k]);
+  history.replaceState(null, '', url);
+}
+
+const stateOf = (id) => Object.values(META.states).find((s) => s.views.includes(id)) || null;
+function frameDoc(w, scene, explain) {
+  const phone = w <= 800;
+  const snap = DATA.views[`${view.view}-${w}`];
+  const has = META.views.filter((v) => v.widths.includes(w)).map((v) => v.id);
+  const toggles = Object.fromEntries(META.toggle.filter(([, from, to]) => from === view.view && has.includes(to)).map(([id, , to]) => [id, to]));
+  // A picture's frame starts as its scene says and does the action itself.
+  const X = { view: view.view, phone, way: scene ? scene.way : way, lang: view.lang, explain: scene ? !!scene.on : explain, hover: '',
+    cards: META.cards, kinds: META.kinds, state: stateOf(view.view), blocked: META.blocked, toggles, has, scene };
+  return `<!doctype html><html lang="fi" class="${esc(snap.cls)}" data-theme="${view.theme}" style="color-scheme:${view.theme}">`
+    + `<head><meta charset="utf-8"><style>${DATA.css}</style><style>${DATA.frameCss}</style></head>`
+    + `<body class="${esc(snap.bodyCls)}">${snap.body}<script>const X=${js(X)};${DATA.frameJs}<\/script></body></html>`;
+}
+// The mode bar is the page's, above the frame: the view shrinks under it, as
+// production's own layout would under a real bar. Each way's bar says how to
+// get the state card back; C's bar names the state and is the way.
+function barHTML(w, wayI, pressed) {
+  const fi = fiUI(), phone = w <= 800;
+  const st = stateOf(view.view);
+  const W = META.ways[wayI][view.lang];
+  const end = `<button class="xm-end" data-xm-end>${fi ? 'Lopeta' : 'Stop'} <kbd>Esc</kbd></button>`;
+  if (wayI === 2 && st) {
+    const how = phone ? '' : `<span>${fi ? 'Osoita mitä tahansa kohtaa; napsautus toimii kuten aina.' : 'Point at any part; a click works as always.'}</span>`;
+    return `<b>${fi ? 'Selitystila' : 'Explain mode'}</b><button class="xm-now" data-xm-now aria-pressed="${!!pressed}" title="${fi ? 'Näytä tilanne' : 'Show the state'}"><i data-dot="${st.dot}"></i><span>${phone ? '' : `<em>${fi ? 'Tilanne' : 'Now'}:</em> `}${esc(st[view.lang].name)}</span><em aria-hidden="true">›</em></button>${how}${end}`;
+  }
+  const now = st ? `${fi ? 'Tilanne' : 'Now'}: ${st[view.lang].name}. ` : '';
+  return `<b>${fi ? 'Selitystila' : 'Explain mode'}</b><span>${esc(now)}${esc(W.bar)}</span>${end}`;
+}
+// One composite: the bar (when the mode is on) above the view's frame, scaled.
+function composite(w, scale, { scene = null, explain, wayI, mark = null, pressed = false } = {}) {
+  const h = w <= 800 ? 844 : 900;
+  const bar = `<div class="xm-bar${w <= 800 ? ' phone' : ''}" role="status"${explain ? '' : ' hidden'}>${barHTML(w, wayI, pressed)}</div>`;
+  return `<div class="pc-sizer" style="width:${Math.round(w * scale)}px;height:${Math.round(h * scale)}px">`
+    + `<div class="pc-scale" data-theme="${view.theme}" style="width:${w}px;height:${h}px;transform:scale(${scale})"${mark ? ` data-mark="${mark}" data-k="${scene?.k ?? 1}"` : ''}>`
+    + bar + `<iframe title="${fiUI() ? 'Näkymä' : 'View'}" style="width:${w}px;height:${explain ? h - 40 : h}px" srcdoc="${esc(frameDoc(w, scene, explain))}"></iframe></div></div>`;
+}
+
+// ---- the picture sequences
+// Every row starts from the same moment: the mode is on, and you have pointed
+// at your latest message, so its card shows. Then each way's action, then the
+// state card. Row K is common to all: how the mode opens.
+function rows() {
+  const fi = fiUI();
+  const st = stateOf(view.view);
+  const name = st ? st[view.lang].name : '';
+  const phone = +view.w <= 800;
+  const pointed = phone ? 'Napautit viestiäsi: sen kortti' : 'Osoitit viestiäsi: sen kortti';
+  const card = `Tilakortti: <i>${esc(name)}</i>`;
+  return [
+    { id: 'k', title: 'Kaikissa: tila alkaa', line: 'Selitä (?) avaa selitystilan, ja ensimmäisenä tulee tilakortti. Tämä on sama kaikissa suunnissa.',
+      steps: [
+        { cap: phone ? 'Tila pois. Napautat Selitä (?)' : 'Tila pois. Osoitin Selitä-painikkeella (?)', scene: { on: false, at: 'help' } },
+        { cap: card, scene: { on: false, at: 'help', done: true } },
+      ] },
+    { id: 'a', way: 0, steps: [
+      { cap: pointed, scene: { on: true, point: 'osoitus', cursorAt: 'osoitus' } },
+      { cap: phone ? 'Napautat Selitä (?) yläpalkissa' : 'Painat Selitä (?) yläpalkissa: sen kortti kertoo, mitä se tekee', scene: { on: true, point: 'osoitus', at: 'help' } },
+      { cap: `${card} tulee takaisin`, scene: { on: true, point: 'osoitus', at: 'help', done: true } },
+    ] },
+    { id: 'b', way: 1, steps: [
+      { cap: pointed, scene: { on: true, point: 'osoitus', cursorAt: 'osoitus' } },
+      { cap: phone ? 'Napautat keskustelun tyhjää kohtaa' : 'Napsautat keskustelun tyhjää kohtaa (viestin kortti jää himmeänä)', scene: { on: true, point: 'osoitus', at: 'tyhja' } },
+      { cap: `${card} tulee takaisin`, scene: { on: true, point: 'osoitus', at: 'tyhja', done: true } },
+    ] },
+    { id: 'c', way: 2, steps: [
+      { cap: pointed, scene: { on: true, point: 'osoitus', cursorAt: 'osoitus' } },
+      { cap: `${phone ? 'Napautat' : 'Painat'} palkin tilannetta <i>${esc(name)}</i>`, scene: { on: true, point: 'osoitus', at: 'bar' } },
+      { cap: `${card} tulee takaisin`, scene: { on: true, point: 'osoitus', at: 'bar', done: true } },
+    ] },
+  ].map((r) => ({ ...r, title: r.title || META.ways[r.way].fi.label, line: r.line || META.ways[r.way].fi.line }));
+}
+function figure(r, j, scale) {
+  const s = r.steps[j];
+  const w = +view.w;
+  const wayI = r.way ?? 0;
+  const explain = !!(s.scene.on || s.scene.done);
+  const mark = s.scene.at === 'bar' ? (s.scene.done ? 'bar' : 'bar-ring') : null;
+  return `<figure class="sq-fig" data-shot="${r.id}${j + 1}" style="--w:${Math.round(w * scale)}px">`
+    + composite(w, scale, { scene: { ...s.scene, way: wayI, k: Math.min(3, 0.5 / scale) }, explain, wayI, mark, pressed: s.scene.at === 'bar' && s.scene.done })
+    + `<figcaption><b>${r.id.toUpperCase()}${j + 1}</b>${s.cap}</figcaption></figure>`;
+}
+function storyView(i) {
+  const w = +view.w;
+  // The row's padding and the two arrows with their gaps.
+  const avail = Math.min(1640, document.documentElement.clientWidth - 16) - 30 - 2 * 46;
+  const scale = Math.min(w <= 800 ? 0.62 : 0.4, Math.max(0.18, avail / 3 / w));
+  return `<div class="sq">` + rows().map((r) => `<section class="sq-row" data-row="${r.id}"${r.way === i ? ' data-current' : ''}>`
+    + `<h2>${esc(r.title)}${r.way === 2 ? ' <small>suositus</small>' : ''}</h2><p>${esc(r.line)}</p>`
+    + `<div class="sq-frames">${r.steps.map((_, j) => `<div class="sq-step">${j ? '<span class="sq-arrow" aria-hidden="true">→</span>' : ''}${figure(r, j, scale)}</div>`).join('')}</div></section>`).join('') + `</div>`;
+}
+// One picture by itself, at full size (the screenshots).
+function shotView() {
+  const r = rows().find((x) => x.id === SHOT[0]);
+  const j = +SHOT.slice(1) - 1;
+  const s = r.steps[j];
+  const wayI = r.way ?? 0;
+  return composite(+view.w, 1, { scene: { ...s.scene, way: wayI, k: 1 }, explain: !!(s.scene.on || s.scene.done), wayI,
+    mark: s.scene.at === 'bar' ? (s.scene.done ? 'bar' : 'bar-ring') : null, pressed: s.scene.at === 'bar' && s.scene.done });
+}
+function lightbox(id) {
+  const r = rows().find((x) => x.id === id[0]);
+  const j = +id.slice(1) - 1;
+  const s = r.steps[j];
+  const w = +view.w, h = w <= 800 ? 844 : 900;
+  const scale = Math.min(1, (innerWidth - 40) / w, (innerHeight - 70) / h);
+  const wayI = r.way ?? 0;
+  const lb = document.createElement('div');
+  lb.className = 'lb';
+  lb.innerHTML = composite(w, scale, { scene: { ...s.scene, way: wayI, k: Math.min(2, 0.6 / scale) }, explain: !!(s.scene.on || s.scene.done), wayI,
+    mark: s.scene.at === 'bar' ? (s.scene.done ? 'bar' : 'bar-ring') : null, pressed: s.scene.at === 'bar' && s.scene.done })
+    + `<p><b>${id.toUpperCase()}</b>${s.cap}</p>`;
+  document.body.append(lb);
+  placeMarks(lb);
+  lb.addEventListener('click', () => lb.remove());
+}
+// C's mark sits over the page's bar, outside the frame.
+function placeMarks(root) {
+  for (const sc of root.querySelectorAll('.pc-scale[data-mark]')) {
+    const b = sc.querySelector('[data-xm-now]');
+    if (!b) continue;
+    if (sc.querySelector('.pc-mark, .pc-tap')) continue;
+    const kk = +sc.dataset.k || 1;
+    const x = b.offsetLeft + b.offsetWidth * 0.55, y = b.offsetTop + b.offsetHeight * 0.55;
+    const phone = sc.offsetWidth <= 800;
+    let html = '';
+    if (sc.dataset.mark === 'bar-ring' || phone) {
+      const d = Math.round((phone ? 34 : 30) * kk);
+      html += `<i class="pc-tap" style="left:${Math.round(x - d / 2)}px;top:${Math.round(y - d / 2)}px;width:${d}px;height:${d}px;border-width:${Math.max(2, Math.round(2.5 * kk))}px"></i>`;
+    }
+    if (!phone) html += `<div class="pc-mark" style="left:${Math.round(x)}px;top:${Math.round(y)}px;transform:scale(${kk});transform-origin:0 0"><svg viewBox="0 0 16 22" width="16" height="22"><path d="M1 1v17l4.5-4.2 3 6.7 2.6-1.2-3-6.6H14z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg></div>`;
+    sc.insertAdjacentHTML('beforeend', html);
+  }
+}
+
+// ---- try it: one live view of the chosen way
+function liveView(i) {
+  const w = +view.w;
+  const avail = Math.max(280, document.documentElement.clientWidth - (document.body.classList.contains('bare') ? 0 : 16));
+  return composite(w, Math.min(1, avail / w), { explain: view.explain === 'on', wayI: i });
+}
+function setBar(on) {
+  const bar = stage.querySelector('.xm-bar');
+  const frame = stage.querySelector('.pc-scale iframe');
+  if (!bar || !frame) return;
+  bar.innerHTML = barHTML(+view.w, way, false);
+  bar.hidden = !on;
+  frame.style.height = `${(+view.w <= 800 ? 844 : 900) - (on ? 40 : 0)}px`;
+}
+
+function render(i) {
+  way = i;
+  document.querySelectorAll('.pc-lines li').forEach((li) => li.toggleAttribute('data-current', +li.dataset.i === i));
+  if (SHOT) return shotView();
+  return view.page === 'kokeile' ? liveView(i) : storyView(i);
+}
+const variants = META.ways.map((_, i) => () => render(i));
+// C's marks need the bar laid out; they follow each mount.
+new MutationObserver(() => placeMarks(stage)).observe(stage, { childList: true });
+
+function remount() { syncUrl(); fillViews(); mount(current); }
+function press(group) {
+  group.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === view[group.dataset.ctl])));
+}
+document.querySelectorAll('.pc-group[data-ctl]').forEach((group) => {
+  press(group);
+  group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    view[group.dataset.ctl] = b.dataset.v;
+    press(group);
+    remount();
+  }));
+});
+sel.addEventListener('change', () => { view.view = sel.value; remount(); });
+stage.addEventListener('click', (e) => {
+  const fig = e.target.closest('.sq-fig');
+  if (fig) return lightbox(fig.dataset.shot);
+  const frame = stage.querySelector('iframe')?.contentWindow;
+  if (e.target.closest('[data-xm-end]')) return frame?.postMessage({ xm: true, type: 'end' }, '*');
+  if (e.target.closest('[data-xm-now]')) return frame?.postMessage({ xm: true, type: 'state' }, '*');
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.lb')?.remove(); });
+addEventListener('message', (e) => {
+  if (!e.data?.xm || view.page !== 'kokeile' || SHOT) return;
+  if (e.data.type === 'go') {
+    Object.assign(view, { view: e.data.view, explain: e.data.keep ? 'on' : 'off' });
+    document.querySelectorAll('.pc-group[data-ctl]').forEach(press);
+    remount();
+  } else if (e.data.type === 'mode') {
+    view.explain = e.data.on ? 'on' : 'off';
+    press(document.querySelector('[data-ctl="explain"]'));
+    setBar(e.data.on);
+    syncUrl();
+  } else if (e.data.type === 'statecard') {
+    stage.querySelector('[data-xm-now]')?.setAttribute('aria-pressed', String(e.data.open));
+  }
+});
+let lastWidth = innerWidth;
+addEventListener('resize', () => { if (innerWidth !== lastWidth) { lastWidth = innerWidth; mount(current); } });
+
+// The captured views travel compressed; the picker starts once they are read.
+(async () => {
+  const bytes = Uint8Array.from(atob(document.getElementById('data').textContent.trim()), (c) => c.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  DATA = JSON.parse(text);
+  fillViews();
+  const s = document.createElement('script');
+  s.textContent = document.getElementById('picker-src').textContent;
+  document.body.append(s);
+  window.PROTO_READY = true;
+})();
+</script>
+</body>
+</html>
