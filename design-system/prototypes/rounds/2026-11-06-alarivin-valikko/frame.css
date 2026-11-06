@@ -1,0 +1,297 @@
+/* Round 4 over the production stylesheet, inside the view's iframe. The
+   iframe is as wide as the device, so production's own max-width rules decide
+   phone or desktop exactly as in Habitat. Jari chose round 3's bottom row
+   (Alarivi, 6.11.): on a phone the title sits on top, the activity dot before
+   it, and workspace · Git · context · model below it as one quiet line. The
+   desktop is untouched. frame.js adds .p-five to the phone's row only, so
+   every rule here is phone-only. <html data-dir> is A, B or C for the riffs of
+   what the line opens, and 0 for today. */
+
+/* ---- The chosen row (round 3, direction 1) ------------------------------ */
+.p-five.ah-agent-topline {
+  flex-wrap: nowrap;
+  gap: var(--ah-s1);
+}
+.p-five.ah-agent-topline::after {
+  display: none;
+}
+.p-five.ah-agent-topline > * {
+  order: 1;
+}
+.p-five.ah-agent-topline
+  > :is(.ah-editor-controls, .ah-terminal-toggle, .ah-files-toggle, .ah-guide-toggle, .ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle, .ah-header-sep),
+.p-five.ah-agent-topline
+  > :has(> :is(.ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle)),
+.p-five > :is(.ah-header-workspace, .ah-gs-chip, .ah-ctx-chip, .md-chip-picker, .ah-set-chip) {
+  display: none;
+}
+.p-five > .ah-header-activity {
+  order: -1;
+  align-self: flex-start;
+  height: 26px;
+  margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+}
+.ah-conversation-frame > .ah-agent-header .p-five .ah-title-row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  margin-inline-start: 0;
+}
+.p-five .ah-title-row h1 {
+  line-height: 1.25;
+}
+.ah-conversation-frame > .ah-agent-header:has(.p-five) {
+  padding-block: 6px;
+}
+.p-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 0 -4px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ah-muted);
+  font: 500 12.5px / 18px var(--ah-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.p-sub > span,
+.p-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.p-sub .p-sub-ws {
+  flex: 0 1 auto;
+  min-width: 2.5em;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--ah-mono);
+  font-size: 12px;
+}
+.p-sub svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.p-sub .ah-gs-counts,
+.p-sub .ah-gs-ab,
+.p-sub .ah-gs-n,
+.p-sub .ah-gs-dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.p-sub .ah-gs-counts,
+.p-sub .ah-gs-ab {
+  gap: 5px;
+}
+.p-sub .ah-gs-n svg {
+  width: 12px;
+  height: 12px;
+}
+/* The phone's line keeps the unpushed count and the changed files, and the
+   context its ring, as production's phone row does below 70 %. */
+.p-sub .ah-gs-n + .ah-gs-n,
+.p-sub .p-sub-git > svg {
+  display: none;
+}
+
+/* A and B: the line is one button. */
+button.p-sub:hover,
+button.p-sub[aria-expanded="true"] {
+  background: var(--ah-hover);
+}
+
+/* ---- C · Omat napit: each part of the line is its own button ------------ */
+html[data-dir="C"] .p-sub {
+  gap: 2px;
+  cursor: default;
+}
+html[data-dir="C"] .p-seg {
+  height: 26px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+html[data-dir="C"] .p-seg.p-sub-ws {
+  display: block;
+  line-height: 26px;
+  font-family: var(--ah-mono);
+  font-size: 12px;
+}
+/* The buttons' own height reaches past the quiet line without growing the
+   header. */
+html[data-dir="C"] .p-sub {
+  margin-block: -4px;
+}
+html[data-dir="C"] .p-seg:hover,
+html[data-dir="C"] .p-seg[aria-expanded="true"] {
+  background: var(--ah-hover);
+  color: var(--ah-ink-2);
+}
+html[data-dir="C"] .p-five > .ah-header-activity {
+  cursor: pointer;
+}
+
+/* ---- A · Valikko: production's menu popover, under the line ------------- */
+.p-menu {
+  position: absolute !important;
+  z-index: 100000;
+  max-height: none !important;
+}
+.p-menu .ah-menu-heading.p-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-ink-2);
+  font-weight: 600;
+}
+.p-menu [data-menu-item] small {
+  display: block;
+}
+.p-menu [data-menu-item][data-static] {
+  cursor: default;
+}
+
+/* ---- B · Alalaatikko: production's Git sheet carrying all five ---------- */
+.p-sheet .p-sheet-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.p-sheet .p-sheet-state {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.p-sheet .p-sheet-state h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--ah-size-h2);
+}
+.p-sheet-row .p-mono {
+  font-family: var(--ah-mono);
+  font-size: 13px;
+}
+.p-sheet-row .p-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-muted);
+  font-family: var(--ah-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+.p-sheet .p-sheet-rows {
+  display: flex;
+  flex-direction: column;
+  margin-inline: -8px;
+}
+.p-sheet-row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ah-touch);
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-ink);
+  font: 500 var(--ah-size-ui) / 1.3 var(--ah-font);
+  text-align: start;
+  cursor: pointer;
+}
+.p-sheet-row:hover {
+  background: var(--ah-hover);
+}
+.p-sheet-row > .p-role {
+  color: var(--ah-muted);
+  font-weight: 400;
+}
+.p-sheet-row > .p-val {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-sheet-row > svg,
+.p-sheet-row .p-val svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--ah-faint);
+}
+.p-sheet .p-git-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-label);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.p-sheet .p-git-h .ah-gs-branch {
+  color: var(--ah-ink);
+  font-family: var(--ah-mono);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Dragging the sheet down by its handle closes it. */
+.p-sheet .ah-modal {
+  touch-action: none;
+}
+
+/* ---- Production's model card, opened from the line ---------------------- */
+.p-modelcard > summary {
+  display: none;
+}
+.p-modelcard .md-info-ribbon li[aria-current="true"] {
+  font-weight: 600;
+}
+
+/* ---- What the prototype cannot open ------------------------------------- */
+.p-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  z-index: 100001;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-ink);
+  color: var(--ah-surface);
+  font: 500 13px / 1.4 var(--ah-font);
+  white-space: nowrap;
+}
+
+/* An inert snapshot: no motion, no stray focus ring from capture time. */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  transition: none !important;
+}

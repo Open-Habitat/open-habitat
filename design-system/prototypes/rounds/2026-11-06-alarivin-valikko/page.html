@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alarivin valikko puhelimessa — prototyyppi, kierros 4</title>
+<style>
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+/* A fixed picker at left: 50% gets half a phone's width and would wrap its labels. */
+.proto-picker-item { white-space: nowrap; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #0c0d0f; color: #c9cdd2; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding-bottom: 96px; }
+.pc-head { padding: 12px 14px 8px; border-bottom: 1px solid #262a2f; background: #16181b; }
+.pc-round { margin: 0 0 8px; color: #e6e9ec; }
+.pc-round b { color: #fff; }
+.pc-lines { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 3px; }
+.pc-lines li { color: #8a9097; }
+.pc-lines li b { color: #c9cdd2; font-weight: 600; margin-right: 6px; }
+.pc-lines li[data-current] { color: #e6e9ec; }
+.pc-lines li[data-current] b { color: #fff; }
+.pc-controls { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-hint { color: #8a9097; }
+#stage { display: flex; justify-content: center; padding: 14px 8px; }
+.pc-sizer { position: relative; flex: none; box-shadow: 0 0 0 1px #2a2e33; overflow: hidden; border-radius: 6px; }
+.pc-sizer iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: top left; background: #fff; }
+body.bare .pc-head, body.bare .proto-picker { display: none; }
+body.bare #stage { padding: 0; }
+body.bare .pc-sizer { box-shadow: none; border-radius: 0; }
+</style>
+</head>
+<body>
+<header class="pc-head">
+  <p class="pc-round">Kierros 4: otsake on valittu <b>Alarivi</b> (tila pisteenä, työpöytä ennallaan). Nyt riffataan, mitä alarivin napautus avaa, missä ja miten se sulkeutuu. Jokainen riffi alkaa auki.</p>
+  <ul class="pc-lines">
+    <li data-i="0"><b>A Valikko</b>Rivi on yksi painike. Rivin alle aukeaa ⋯:n kaltainen valikko: tila otsikkona, sen alla työtila, Git, konteksti ja malli täysinä. Rivi vie tiedon omaan paikkaan. Sulkeutuu napautuksella ohi, rivistä uudelleen tai Esc.</li>
+    <li data-i="1"><b>B Alalaatikko</b>Rivi on yksi painike. Alhaalta nousee Git-tietojen laatikko, jossa on kaikki viisi: tila ja työtila ylhäällä, konteksti ja malli riveinä, Git kokonaan. Sulkeutuu ✕:stä, taustasta, kahvasta alas vetämällä tai Esc.</li>
+    <li data-i="2"><b>C Omat napit</b>Rivin jokainen osa on oma painikkeensa ja avaa saman kuin työpöydän siru: Git-laatikon, kontekstisivun, mallikortin tai työtilan. Jokainen sulkeutuu omalla tavallaan.</li>
+    <li data-i="3"><b>Nyt</b>Tuotanto tänään (synteettinen labra): puhelimessa kaksi riviä, jokainen siru erikseen.</li>
+  </ul>
+  <div class="pc-controls">
+    <div class="pc-group" data-ctl="width"><span>Laite</span>
+      <button data-v="390" aria-pressed="true">Puhelin 390</button><button data-v="1440">Työpöytä 1440</button></div>
+    <div class="pc-group" data-ctl="theme"><span>Teema</span>
+      <button data-v="light" aria-pressed="true">Vaalea</button><button data-v="dark">Tumma</button></div>
+    <div class="pc-group" data-ctl="sit"><span>Tilanne</span>
+      <button data-v="kaynnissa" aria-pressed="true">Käynnissä</button><button data-v="uusi">Uusi keskustelu</button></div>
+    <div class="pc-group" data-ctl="start"><span>Alussa</span>
+      <button data-v="open" aria-pressed="true">Auki</button><button data-v="closed">Kiinni</button></div>
+    <span class="pc-hint">Napauta alariviä. Työpöytä on kaikissa riffeissä tämän päivän rivi.</span>
+  </div>
+</header>
+<main id="stage"></main>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">A Valikko</button>
+  <button class="proto-picker-item">B Alalaatikko</button>
+  <button class="proto-picker-item">C Omat napit</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nyt</button>
+</nav>
+
+<script type="application/json" id="data">/*DATA*/</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const stage = document.getElementById('stage');
+const params = new URLSearchParams(location.search);
+if (params.get('bare')) document.body.classList.add('bare');
+const view = {
+  width: params.get('w') || '390',
+  theme: params.get('theme') || 'light',
+  sit: params.get('sit') || 'kaynnissa',
+  start: params.get('start') || 'open',
+};
+const DIRS = ['A', 'B', 'C', '0'];
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+
+function frameDoc(dir) {
+  const phone = +view.width <= 800;
+  const snap = DATA.snaps[`${view.sit}-${phone ? 390 : 1440}`];
+  return `<!doctype html><html lang="fi" data-theme="${view.theme}" data-dir="${dir}" data-sit="${view.sit}" data-start="${view.start}" style="color-scheme:${view.theme}">`
+    + `<head><meta charset="utf-8"><style>${DATA.css}</style><style>${DATA.frameCss}</style></head>`
+    + `<body>${snap}<script>const PLACES=${js(DATA.places[view.sit])};${DATA.frameJs}<\/script></body></html>`;
+}
+
+function render(i) {
+  document.querySelectorAll('.pc-lines li').forEach((li) => li.toggleAttribute('data-current', +li.dataset.i === i));
+  const w = +view.width;
+  const h = w <= 800 ? 844 : 900;
+  const avail = Math.max(280, document.documentElement.clientWidth - (document.body.classList.contains('bare') ? 0 : 16));
+  const scale = Math.min(1, avail / w);
+  return `<div class="pc-sizer" style="width:${Math.round(w * scale)}px;height:${Math.round(h * scale)}px">`
+    + `<iframe title="Näkymä" style="width:${w}px;height:${h}px;transform:scale(${scale})" srcdoc="${esc(frameDoc(DIRS[i]))}"></iframe></div>`;
+}
+const variants = DIRS.map((_, i) => () => render(i));
+
+document.querySelectorAll('.pc-group').forEach((group) => {
+  const key = group.dataset.ctl;
+  group.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.v === view[key]));
+    b.addEventListener('click', () => {
+      view[key] = b.dataset.v;
+      group.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      mount(current);
+    });
+  });
+});
+// A riff starts open before the view has focus; Esc on the page still reaches it.
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') stage.querySelector('iframe')?.contentDocument?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+});
+let lastWidth = innerWidth;
+addEventListener('resize', () => { if (innerWidth !== lastWidth) { lastWidth = innerWidth; mount(current); } });
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+</body>
+</html>

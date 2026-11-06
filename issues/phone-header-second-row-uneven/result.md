@@ -1,4 +1,4 @@
-# Result: the conversation header in one row on a phone, with all five facts
+# Result: the conversation header on a phone, its bottom row and what it opens
 
 ## Round 1 (2.11.), decided
 
@@ -25,7 +25,7 @@ context, the workspace or the model in ⋯ on the phone, but the phone must
 give the same information as the desktop. Two choices carry over into
 round 3: the one-off actions go into ⋯, and ⋯ holds actions only.
 
-## Round 3 (3.11.): how one phone row carries all five
+## Round 3 (3.11.): how one phone row carries all five, decided
 
 Prototype: `prototype-3/otsakkeen-viisi.html` (Jari's guide in Finnish:
 `prototype-3/NOTES.md`). Source:
@@ -93,30 +93,95 @@ entries in both languages: the role words in the value layer (*Tila*,
 *Työtila*, *Git*, *Konteksti*, *Malli*) and the context value text
 (`12k / 200k tokenia`).
 
+**Decided (Jari 6.11.):** direction 1, **Alarivi** (picture 02). The status
+shows as a dot only, and the desktop stays today's row (picture 18).
+
+## Round 4 (6.11.): what the bottom row opens
+
+Prototype: `prototype-4/alarivin-valikko.html` (Jari's guide in Finnish:
+`prototype-4/NOTES.md`). Source:
+`design-system/prototypes/rounds/2026-11-06-alarivin-valikko/`. It uses
+round 3's machinery: the lab's production page and stylesheet, with round 3's
+chosen row laid over the phone's header. This time the capture also keeps
+production's own phone places: the ⋯ menu popover, the Git sheet, the model
+card and the context page. The riffs open those places and build nothing of
+their own.
+
+```
+OH_PORT_BASE=6260 scripts/lab.sh start && OH_PORT_BASE=6260 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright \
+  node design-system/prototypes/rounds/2026-11-06-alarivin-valikko/capture.mjs
+PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright \
+  node design-system/prototypes/rounds/2026-11-06-alarivin-valikko/shoot.mjs
+```
+
+**Axis: what a tap on the bottom row opens, where it opens and how it closes.**
+The row is the same in every riff (round 3's picture 02), and every riff
+starts open on the default view.
+
+| | Riff | Tap target | What opens, where | Closes | Detail of a fact |
+|---|---|---|---|---|---|
+| A | **Valikko** | the whole line | production's menu popover under the line: the status (dot and word) as its heading, then workspace, Git, context and model, each with its full value | a tap outside it, the line again, Esc | the row leads to that fact's place (2nd tap) |
+| B | **Alalaatikko** | the whole line | production's phone Git sheet from the bottom, carrying all five: the status on top, then workspace, context and model as rows, then the Git details in full | ✕, the scrim, dragging the handle down, Esc | Git is already in the sheet; context and model go one tap further |
+| C | **Omat napit** | each part of the line | the part's own place, as its desktop chip opens it: the Git sheet, the context page, the model card, the workspace | each the way production closes it (✕/scrim/Esc, back button, a tap outside) | one tap |
+
+Today's places on a phone: the Git chip opens a bottom sheet with a handle
+and ✕, the context ring replaces the conversation with the context page and
+its back button, and the model chip opens a card at the bottom. The status
+dot shows its word on a tap.
+
+`shoot.mjs` checked 32 views (four views × 390/1440 × light/dark ×
+running/new). In every riff on a phone:
+
+- the header has the bottom row under the title, the status only as a dot,
+  and is 56 px high, against 97–105 px today;
+- the riff starts with its place open, A's menu lists workspace, Git, context
+  (once used) and model under the status heading, B's sheet carries the rows
+  and the Git details, and C's line has the four buttons;
+- each closing route the table names works, and each row or button reaches
+  its fact's production place;
+- ⋯ lists no fact;
+- on the desktop, every riff is today's production row with nothing open.
+
+The console is clean, there are no network requests, and `picker-check`
+passes.
+
+### Host facts the view assumes
+
+None new. All five facts and all four places already exist in production.
+B's sheet is a new composition of the Git sheet: it needs the status, the
+workspace path, the context tokens and window, and the model in the Git
+layer's component, all of which the header already has. A's and B's role
+words (*Työtila*, *Git*, *Konteksti*, *Malli*), A's details (*Näytä tiedot*,
+*Avaa erittely*, *Mallin tiedot*) and the context value text
+(`12k / 200k tokenia`) are new catalog entries in both languages. The lab
+knows no model and cannot read the context breakdown, so the pictures show
+Opus 5.5 · Medium and the context page's "could not read" text.
+
 ## Recommendation
 
-**Direction 1, Alarivi.**
+**Riff A, Valikko.**
 
-- It is the only direction that keeps a readable title on a phone: about
-  205 px at 390, against 70–80 px in the others. At 360, directions 2 and 3
-  leave three or four letters of the title. The title is what tells you which
-  conversation you are in.
-- The five show as words, not codes: the repository's real name and
-  `Opus 5.5`. In 2 and 3 you have to learn `AU` and `Opus`. At 360 the
-  name shortens to `auri…`, but its start is still the name.
-- The quiet line reads as one set. Round 1's problem was uneven controls
-  on the second row, and this line has no boxes at all. It costs 3 px of
-  height over one row.
-- On a desktop I would keep today's row (picture 18), not direction 1's
-  two-line block (14). The desktop already shows all five in full, and the
-  one-row decision was about the phone.
+- The line is one large tap target. In C each part is a 26 px high button,
+  and the workspace name shortens to `aurin…` to make room for the buttons'
+  padding. That is below the 44 px touch size, on a line Jari reads mainly
+  on a phone.
+- One tap shows every value in full without leaving the conversation (the
+  conversation stays visible under the menu), and each row leads where the
+  desktop chip leads. B shows the most, but the sheet covers most of the
+  conversation, and Git's details fill most of it whether or not Git was
+  what you wanted.
+- It keeps round 2's division: ⋯ is a menu of actions and the bottom row is a
+  menu of facts, in the same production menu form.
+- The cost is a second tap for details (Git's commits, the context
+  breakdown). C saves that tap, which matters if Jari opens Git more often
+  than he reads the values.
 
 ## Questions for Jari
 
-1. **Which form: picture 02 (Alarivi), 05 (Yksi siru) or 09 (Omat merkit)?** I recommend 02.
-2. **Desktop: picture 14 (the same line under the title) or 18 (today's row)?** I recommend 18.
-3. **Status: is the dot enough (02, the same as the desktop), or should the
-   word (*Työskentelee*, *Odottaa sinua*) show in the row?** I recommend the
-   dot. Its word is one tap away, and the conversation list shows the same state.
+1. **Which: picture r4-01 (A Valikko), r4-05 (B Alalaatikko) or r4-09 (C Omat napit)?** I recommend r4-01.
+2. **New conversation (r4-03): the model shows in the row and in the
+   composer's picker.** Should the row leave the model out until the first
+   message? I recommend leaving it out. The composer's picker is where the
+   model is chosen then, and round 1's issue was this duplicate.
 
 No production code was changed.

@@ -1,13 +1,13 @@
 ---
 created: 2026-11-02
-updated: 2026-11-03
+updated: 2026-11-06
 type: bug
 reporter: jari
 status: open
 priority: high
 lane: phone-layout-2
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: phone header second row as one consistent set
@@ -80,3 +80,11 @@ row carries all five on a phone.
 carries all five of the desktop's facts (workspace, Git, context, model,
 status). `result.md` has the recommendation and the questions awaiting
 Jari's choice.
+
+## Round 4 (6.11.)
+
+`prototype-4/alarivin-valikko.html` riffs what the chosen bottom row opens on
+a phone, where it opens and how it closes: **A Valikko** (a menu under the
+line), **B Alalaatikko** (the Git sheet carrying all five) and **C Omat
+napit** (each part opens its own production place). `result.md` has the
+recommendation and the questions awaiting Jari's choice.
