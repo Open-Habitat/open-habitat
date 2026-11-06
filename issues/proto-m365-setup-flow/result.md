@@ -230,3 +230,99 @@ tw browser-open design-system/prototypes/dist/m365-riffi/m365.html
 ```
 
 `check.mjs` (in the round) passes 732 checkpoints with a clean console.
+
+# Round 3: riffs on A1 Valikkopala
+
+Round `design-system/prototypes/rounds/2026-11-06-m365-leikkeet/` (its
+`NOTES.md` is the Finnish walk-through). Screenshots at device scale factor 2
+are in `evidence/` with the prefix `r3-`: every step of every riff at 1440 and
+390 in light, plus dark captures of step 1 and step 4 of every riff (and A1a's
+step 2) at both widths.
+
+## What changed in all three
+
+- **The Entra pieces are real crops of Jari's five screenshots**, not
+  redrawings. `crops.py` paints an opaque box over every tenant, client and
+  object id, over the domain (*Single tenant only - …*, *Grant admin consent
+  for …*) and over the other applications' names in the App registrations
+  list. It paints them on the original before scaling, and writes only
+  60 %-scale AVIF crops (28–55 kB each) and their record (`crops.json`: box,
+  masks, targets, sha256). The originals stay in
+  `~/.local/state/oh-conductor/m365-shots/`. `check.mjs` fails if a crop file
+  is unrecorded or changed, has an original's size, is a PNG, or decodes to
+  anything but the flat mask colour inside a mask.
+- **No checkboxes on the permissions.** Each permission is its own row with
+  its own copy button. The line below says "9 oikeutta · User.Read on siellä
+  valmiina".
+- The guide writes `<domain>` where Entra shows the tenant's domain, because
+  the host does not know it.
+
+## Riffs
+
+The axis is crop size and placement, together with how the target is marked
+and how the dark theme frames a light screenshot:
+
+- **A1a Vieressä**: a whole-page crop beside the steps in a wider dialog
+  (1160 px, crop column 470 px). Each target row and its place on the crop
+  carry the same number inside an accent frame. Dark: the screenshot sits on
+  a white 6 px mat, like a print.
+- **A1b Kaistale**: a dialog-wide band of the page above the rows, near
+  Entra's own text size, with one target lit through a scrim. Each target
+  row has an eye button, and the band has arrows. Dark: the band is dimmed.
+  On a phone the band narrows to the target's neighbourhood.
+- **A1c Rivissä**: no page by default. Each target row carries the one
+  button, field or menu row it names, cut tight at Entra's own size. "Näytä
+  koko sivu" opens the step's page crops with the targets framed. Dark: a
+  stronger line is frame enough for small cuts.
+
+## Host facts the view assumes
+
+The same as rounds 1 and 2, with nothing new read from the host. The crops
+are static assets of the guide; nothing about the tenant is shown or claimed.
+
+## Recommendation
+
+**A1a Vieressä.** It keeps what Jari chose in round 2: the place on the real
+page, visible without a click, and the numbers tie each instruction row to
+its spot. A1b shows the text larger, but only one place at a time and only
+after a click, and its scrim greys out the very page the admin is trying to
+recognise. A1c is the best at "what does the button look like" and the best
+on a phone, but it drops the "where on the page" that the round-2 choice was
+about; its whole-page toggle brings that back only on request. A1a's cost is
+the wider dialog and small text in the crop. The frame and number carry the
+target, so the admin matches shapes rather than reads the crop.
+
+## Decisions for later review
+
+- **The domain is a grey box and the guide says `<domain>`**, rather than a
+  painted placeholder name. A box cannot be mistaken for a real value.
+- **Other applications' names are masked** in the App registrations crop;
+  *Open Habitat* and *Open Habitat (testi)* stay, because the "Jos sivu ehti
+  sulkeutua" line is about telling them apart.
+- **Crops are 60 % of the 2x screenshots**: sharp in A1a and A1c, slightly
+  soft in A1b's band on desktop.
+
+## Not verified
+
+- The *Mobile and desktop applications* panel and the Delegated permissions
+  picker have no screenshot, so those rows have no crop.
+- How long the crops stay true: Microsoft redesigned Authentication in
+  2025–26 and labels it Preview.
+
+## Questions for Jari
+
+1. Which riff: `r3-a1a-vieressa-1-register`, `r3-a1b-kaistale-1-register` or
+   `r3-a1c-rivissa-1-register` (all `-1440-light`)?
+2. Dark theme: A1a's white mat (`r3-a1a-vieressa-2-public-1440-dark`) or
+   A1b's dimmed screenshot (`r3-a1b-kaistale-1-register-1440-dark`)?
+3. For production, are crops of your own tenant (masked as here) fine, or
+   should the shipped images come from a clean test tenant with no boxes?
+
+## View (round 3)
+
+```
+node design-system/prototypes/rounds/2026-11-06-m365-leikkeet/build.mjs
+tw browser-open design-system/prototypes/dist/m365-leikkeet/m365.html
+```
+
+`check.mjs` (in the round) passes 991 checkpoints with a clean console.

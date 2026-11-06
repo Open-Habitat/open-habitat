@@ -1,0 +1,168 @@
+/* Review chrome above the settings page and the dialog; the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full 1 px line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.m-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { flex-basis: 100%; }
+  .m-lines { padding-left: 0; list-style: none; }
+  .m-lines li:not([aria-current]) { display: none; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s5)); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s5); }
+}
+
+/* The settings page behind, only enough to see where the guide returns. */
+.m-page { padding: calc(var(--review-h, 0px) + var(--ah-s6)) var(--ah-s6) 80px; max-width: 760px; }
+.m-page h1 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.m-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.m-row-name { display: inline-flex; align-items: center; gap: var(--ah-s2); font-weight: 600; }
+.m-row-state { display: inline-flex; align-items: center; gap: var(--ah-s1); flex: 1; font-size: var(--ah-size-meta); }
+.m-row-state svg { color: var(--ah-ok); width: 14px; height: 14px; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-lead { color: var(--ah-ink); font-size: var(--ah-size-ui); line-height: var(--ah-lh-body); }
+.m-stepbody { gap: var(--ah-s3); }
+.m-stepbody > * { max-width: 100%; }
+
+/* Where: the console path is the step's main instruction, so it reads at
+   body size in full ink; the separators are quiet and nothing looks like a
+   disclosure arrow. */
+.m-where { display: grid; gap: var(--ah-s1); min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+.m-open .m-quiet { font-weight: 400; }
+
+/* A: each Entra field as its own row. */
+.m-fields { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); width: 100%; }
+.m-field {
+  display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 2px var(--ah-s3);
+  align-items: baseline; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+}
+.m-fname { font-weight: 600; font-size: var(--ah-size-ui); }
+.m-act { font-size: var(--ah-size-ui); color: var(--ah-ink-2); }
+.m-value { grid-column: 2; display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code, .m-ev code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+.m-done {
+  display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: flex-start; width: 100%; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-meta); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.m-role { display: flex; gap: var(--ah-s1); align-items: center; }
+.m-role svg { width: 14px; height: 14px; flex: none; }
+
+/* Permissions: one name per row with its own copy; no ticks (Jari, round 2). */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; width: 100%; }
+.m-perm {
+  display: grid; grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto; gap: var(--ah-s3); align-items: center;
+  padding: 2px var(--ah-s1) 2px var(--ah-s3); border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-soft);
+}
+.m-perm-name { font-family: var(--ah-mono); font-size: 13px; color: var(--ah-ink); }
+.m-says { font-size: var(--ah-size-meta); color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .m-says { display: none; } .m-perm { grid-template-columns: minmax(0, 1fr) auto; } }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); }
+
+.m-done-in { display: flex; gap: var(--ah-s2); align-items: flex-start; flex: 1 1 240px; }
+.m-rows { display: grid; gap: var(--ah-s2); width: 100%; justify-items: stretch; }
+.m-rows > .m-where, .m-rows > p { justify-self: start; }
+
+/* Crops: real pieces of Jari's Entra screenshots, ids and domain masked by
+   crops.py. A Shot shows a view of one crop scaled to its frame; marks sit in
+   the same original-pixel coordinates. The highlight is a soft accent fill
+   with a full 2 px line, never an edge stripe. */
+.m-shot { margin: 0; width: 100%; min-width: 0; }
+.m-shot-frame { position: relative; overflow: hidden; width: 100%; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line); }
+.m-shot-frame img { position: absolute; display: block; max-width: none; user-select: none; }
+.m-mark { position: absolute; box-sizing: border-box; border-radius: 6px; border: 2px solid var(--ah-accent); background: color-mix(in srgb, var(--ah-accent) 10%, transparent); }
+.m-mark b {
+  position: absolute; top: -2px; right: -2px; display: inline-grid; place-items: center;
+  min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 0 5px 0 6px;
+  background: var(--ah-accent); color: var(--ah-on-accent); font: 600 11px/1 var(--ah-font);
+}
+.m-shot-note { font-size: var(--ah-size-meta); color: var(--ah-muted); margin: 0; }
+
+/* A1a: the crops beside the rows, in a wider dialog so the column reads.
+   The number on the crop is the number in the row. Dark theme: the light
+   screenshot sits on its own white mat, like a print, so its edge never meets
+   the dark surface directly. (White is the screenshot's paper, not a theme
+   colour.) */
+.m-d0.si-modal.si-split { width: min(1160px, 100%); }
+.m-beside { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 470px); gap: var(--ah-s5); width: 100%; align-items: start; }
+.m-beside-l { min-width: 0; }
+.m-beside-r { position: sticky; top: 0; min-width: 0; display: grid; gap: var(--ah-s3); }
+.m-num {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-right: 6px; padding: 0 4px;
+  box-sizing: border-box; border-radius: 9px; background: var(--ah-accent); color: var(--ah-on-accent);
+  font: 600 11px/1 var(--ah-font); vertical-align: 1px;
+}
+.m-done .m-num { margin-top: 1px; }
+[data-theme="dark"] .m-d0 .m-shot-frame { border: 6px solid #fff; border-radius: var(--ah-r-md); box-shadow: 0 0 0 1px var(--ah-line); }
+@container si-step (max-width: 760px) {
+  .m-beside { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s3); }
+  .m-beside-r { order: -1; position: static; }
+}
+
+/* A1b: one wide band above the rows; the lit target is a hole in a scrim.
+   Rows with a target carry an eye button that moves the light. Dark theme:
+   the band is dimmed so the white page does not outshine the dialog. */
+.m-strip { width: 100%; display: grid; gap: var(--ah-s1); }
+.m-shot-spot .m-mark { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32); transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease; }
+@media (prefers-reduced-motion: reduce) { .m-shot-spot .m-mark { transition: none; } }
+.m-strip-foot { display: flex; align-items: center; gap: var(--ah-s1); }
+[data-theme="dark"] .m-d1 .m-shot-frame img { filter: brightness(0.82) contrast(1.05); }
+[data-theme="dark"] .m-d1 .m-shot-spot .m-mark { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45); }
+.m-d1 .m-field[data-has-spot] { grid-template-columns: minmax(150px, 190px) minmax(0, 1fr) auto; }
+.m-d1 .m-field .m-value { grid-column: 2 / 4; }
+.m-show { grid-row: 1; grid-column: 3; align-self: center; }
+.m-field[data-lit], .m-done[data-lit] { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); }
+.m-show [aria-pressed="true"] { color: var(--ah-accent); }
+
+/* A1c: in each row, the one control cut tight at Entra's own size (the
+   screenshots are 2x, so half their pixels). Dark theme: the cut is small,
+   so a plain line is frame enough. The whole page opens on request. */
+.m-cutrow, .m-done-cut { grid-column: 1 / -1; display: block; min-width: 0; }
+.m-done-cut { flex-basis: 100%; padding-left: 22px; }
+.m-cut { display: block; max-width: 100%; }
+.m-cut .m-shot-frame { border-radius: var(--ah-r-sm); }
+[data-theme="dark"] .m-d2 .m-cut .m-shot-frame { border-color: var(--ah-line-strong); }
+.m-whole { display: grid; gap: var(--ah-s3); justify-items: start; width: 100%; }
+.m-whole .m-shot { max-width: 640px; }
+[data-theme="dark"] .m-d2 .m-whole .m-shot-frame { border: 6px solid #fff; box-shadow: 0 0 0 1px var(--ah-line); }
+
+/* A's field rows stack name over action wherever their column is narrow. */
+.m-beside-l, .m-rows { container-type: inline-size; }
+@container (max-width: 560px) {
+  .m-field, .m-d1 .m-field[data-has-spot] { grid-template-columns: minmax(0, 1fr) auto; }
+  .m-fname { grid-column: 1; }
+  .m-act, .m-value, .m-d1 .m-field .m-value { grid-column: 1 / -1; }
+  .m-show { grid-row: 1; grid-column: 2; }
+  .m-perm { grid-template-columns: minmax(0, 1fr) auto; }
+  .m-says { display: none; }
+}
