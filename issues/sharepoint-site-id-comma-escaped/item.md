@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/sharepoint-site-id-comma
 lane: sharepoint-fix
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # SharePoint libraries 404: site id commas escaped in the Graph URL (Contoso)

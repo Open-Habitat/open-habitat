@@ -72,6 +72,8 @@ esac
 
 // testTenant is the organisation's Directory (tenant) ID, the only audience.
 const testTenant = "00000000-0000-4000-8000-0000000000aa"
+const testMicrosoftSite = "contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE"
+const testMicrosoftMissingSite = "contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,00000000-0000-4000-8000-000000000001"
 
 func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 	t.Helper()
@@ -112,9 +114,14 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 			case "/v1.0/me/drive":
 				body = `{"id":"primary-drive","name":"OneDrive","driveType":"business"}`
 			case "/v1.0/me/followedSites":
-				body = `{"value":[{"id":"tenant,site,web","displayName":"Team","webUrl":"https://tenant.sharepoint.com/sites/team"}]}`
-			case "/v1.0/sites/tenant,site,web/drives":
+				body = fmt.Sprintf(`{"value":[{"id":%q,"displayName":"Team","webUrl":"https://contoso.sharepoint.com/sites/team"}]}`, testMicrosoftSite)
+			case "/v1.0/sites/" + testMicrosoftSite + "/drives":
 				body = `{"value":[{"id":"library-drive","name":"Documents","driveType":"documentLibrary"}]}`
+				// Match the wire path, not just URL.Path (which decodes %2C).
+				if r.URL.EscapedPath() != "/v1.0/sites/"+testMicrosoftSite+"/drives" {
+					status = 404
+					body = `{"error":{"code":"itemNotFound"}}`
+				}
 			default:
 				t.Errorf("unexpected Graph %s", r.URL)
 			}
@@ -1031,7 +1038,7 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 	}{
 		{"onedrive-http", "/v1.0/me/drive", `{"error":{"code":"BadRequest","message":"Tenant does not have a SPO license.","innerError":{"request-id":"private-id"}}}`, "onedrive", "unknown", "BadRequest", "Tenant does not have a SPO license.", 400},
 		{"followed-sites-permission", "/v1.0/me/followedSites", `{"error":{"code":"accessDenied","message":"Insufficient privileges to complete the operation."}}`, "followed_sites", "business", "accessDenied", "Insufficient privileges to complete the operation.", 403},
-		{"site-libraries-throttled", "/v1.0/sites/tenant,site,web/drives", `{"error":{"code":"TooManyRequests","message":"private@example.test access-secret private-id"}}`, "site_drives", "business", "TooManyRequests", "redacted", 429},
+		{"site-libraries-throttled", "/v1.0/sites/" + testMicrosoftSite + "/drives", `{"error":{"code":"TooManyRequests","message":"private@example.test access-secret private-id"}}`, "site_drives", "business", "TooManyRequests", "redacted", 429},
 		{"unknown-code", "/v1.0/me/drive", `{"error":{"code":"access-secret","message":"private@example.test"}}`, "onedrive", "unknown", "redacted", "redacted", 500},
 		{"html", "/v1.0/me/drive", `<html>access-secret private@example.test</html>`, "onedrive", "unknown", "redacted", "redacted", 502},
 		{"oversize", "/v1.0/me/drive", strings.Repeat("access-secret", 256<<10), "onedrive", "unknown", "redacted", "redacted", 503},
@@ -1074,7 +1081,7 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 					t.Errorf("%s = %v, want %v", key, event[key], want)
 				}
 			}
-			for _, secret := range []string{"access-secret", "refresh-secret", "private@example.test", "private-id", "tenant,site,web", "Authorization", "Bearer"} {
+			for _, secret := range []string{"access-secret", "refresh-secret", "private@example.test", "private-id", testMicrosoftSite, "Authorization", "Bearer"} {
 				if strings.Contains(logs.String(), secret) {
 					t.Errorf("diagnostic leaked %s", secret)
 				}
@@ -1153,8 +1160,8 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 				code := 200
 				switch r.URL.Path {
 				case "/v1.0/me/followedSites":
-					body = `{"value":[{"id":"missing-private-id","displayName":"Unavailable team","webUrl":"https://example.test/site"},{"id":"tenant,site,web","displayName":"Team","webUrl":"https://tenant.sharepoint.com/sites/team"}]}`
-				case "/v1.0/sites/missing-private-id/drives":
+					body = fmt.Sprintf(`{"value":[{"id":%q,"displayName":"Unavailable team","webUrl":"https://example.test/site"},{"id":%q,"displayName":"Team","webUrl":"https://contoso.sharepoint.com/sites/team"}]}`, testMicrosoftMissingSite, testMicrosoftSite)
+				case "/v1.0/sites/" + testMicrosoftMissingSite + "/drives":
 					code = status
 					body = `{"error":{"code":"itemNotFound","message":"private@example.test access-secret"}}`
 				default:
@@ -1180,10 +1187,10 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 				t.Fatal("reachable roots lost")
 			}
 			log, _ := json.Marshal(l.skippedSites[0].diagnostic())
-			if !strings.Contains(string(log), fmt.Sprint(status)) {
+			if !strings.Contains(string(log), fmt.Sprint(status)) || !strings.Contains(string(log), `"site_drives"`) {
 				t.Fatal("missing status", string(log))
 			}
-			for _, secret := range []string{"private@example.test", "access-secret", "missing-private-id"} {
+			for _, secret := range []string{"private@example.test", "access-secret", testMicrosoftMissingSite, "Unavailable team"} {
 				if strings.Contains(string(log), secret) {
 					t.Fatal("unsafe skip diagnostic")
 				}

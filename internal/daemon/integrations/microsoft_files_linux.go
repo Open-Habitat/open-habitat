@@ -41,7 +41,18 @@ func microsoftWritable(service string, granted map[string]bool) bool {
 	return microsoftRules.access(service, granted) == AccessFull
 }
 
+const microsoftSiteGUID = `[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}`
+
+var microsoftSiteID = regexp.MustCompile(`^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?,` + microsoftSiteGUID + `,` + microsoftSiteGUID + `$`)
 var microsoftDriveID = regexp.MustCompile(`^[A-Za-z0-9!_-]{1,256}$`)
+
+func validMicrosoftSiteID(id string) bool {
+	// Graph's site ID is hostname,siteCollectionId,webId, not a URL or
+	// server-relative site path. Bound the DNS name as well as its labels.
+	host, _, _ := strings.Cut(id, ",")
+	return len(host) <= 253 && microsoftSiteID.MatchString(id)
+}
+
 var microsoftRemoteName = regexp.MustCompile(`^(onedrive|sp-[a-f0-9]{24})$`)
 
 func microsoftWork(address, remote string) string {
@@ -119,8 +130,14 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			Value []drive `json:"value"`
 			Next  string  `json:"@odata.nextLink"`
 		}
+		step = "site_id"
+		if !validMicrosoftSiteID(s.ID) {
+			return ToolFailed
+		}
 		step = "site_drives"
-		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/sites/"+url.PathEscape(s.ID)+"/drives?$select=id,name,driveType&$top=100", nil, bearer, &libraries); err != nil {
+		// Preserve Graph's composite-ID delimiters, as in its site-get
+		// request examples. Validation above makes this a single safe segment.
+		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/sites/"+s.ID+"/drives?$select=id,name,driveType&$top=100", nil, bearer, &libraries); err != nil {
 			var status microsoftHTTPStatus
 			if ctx.Err() == nil && errors.As(err, &status) && (status == 403 || status == 404) {
 				l.skippedSites = append(l.skippedSites, microsoftDiscoveryError{step: step, tenantKind: tenantKind, err: err})
