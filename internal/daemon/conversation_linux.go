@@ -77,6 +77,9 @@ type ConversationController struct {
 	// maxLive overrides the live-child limit; zero uses the default
 	// (liveLimit). Protected by mu.
 	maxLive int
+	// fixtureLimits stands in for root's live-limits file in the synthetic
+	// browser host only. Protected by mu.
+	fixtureLimits func() ([]byte, error)
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -239,6 +242,16 @@ func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
 	defer c.mu.Unlock()
 	if c.fixture {
 		c.recapIdleDelay = delay
+	}
+}
+
+// FixtureSetLiveLimits stands in for root's live-limits file in the
+// synthetic host only, where every identity shares one UID.
+func (c *ConversationController) FixtureSetLiveLimits(read func() ([]byte, error)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fixture {
+		c.fixtureLimits = read
 	}
 }
 
@@ -411,6 +424,10 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			c.list(w)
 			return
 		}
+	}
+	if path == "/capacity" && r.Method == http.MethodGet && r.ContentLength <= 0 && len(r.TransferEncoding) == 0 {
+		c.capacity(w, r)
+		return
 	}
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	if len(parts) != 2 || !sessionIDPattern.MatchString(parts[0]) {

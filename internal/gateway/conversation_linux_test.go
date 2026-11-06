@@ -30,6 +30,15 @@ func TestConversationRecapGatewayAllowlist(t *testing.T) {
 			t.Fatalf("%s must be a canonical control path", action)
 		}
 	}
+	// The person's own capacity read is one exact path, read only.
+	if !conversationPath.MatchString("/api/v1/conversations/capacity") || conversationPath.MatchString("/api/v1/conversations/capacity/x") {
+		t.Fatal("capacity must be one exact path")
+	}
+	w := httptest.NewRecorder()
+	(&Auth{}).conversation(w, httptest.NewRequest("POST", "https://host.test/api/v1/conversations/capacity", nil))
+	if w.Code != 400 {
+		t.Fatal("a write to the capacity read must be refused", w.Code)
+	}
 }
 
 func TestConversationGatewaySessionBoundary(t *testing.T) {

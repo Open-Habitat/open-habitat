@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/conversation-capacity.schema.json",
+  "title": "The person's limit on conversations working at once and what holds a place now",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "limit", "source", "holding"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 128},
+    "source": {"enum": ["default", "installation", "own"], "description": "default: the daemon's own limit; installation: the administrator's for everyone; own: the administrator's exception for this person."},
+    "holding": {"type": "array", "maxItems": 128, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["agent_id", "workspace_id", "activity"],
+      "properties": {
+        "agent_id": {"$ref": "common.schema.json#/$defs/agentId"},
+        "workspace_id": {"anyOf": [{"$ref": "common.schema.json#/$defs/workspaceId"}, {"const": ""}]},
+        "activity": {"enum": ["turn", "question", "processes", "unknown"]}
+      }
+    }}
+  }
+}

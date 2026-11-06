@@ -1,0 +1,129 @@
+/* The new conversation refused at the limit, and its window of what holds a
+   place (proto-live-conversation-limit-setting, round 3). */
+.ah-capacity .ah-actions {
+  flex-wrap: wrap;
+}
+.ah-capacity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2) var(--ah-s3);
+  margin: var(--ah-s1) 0 var(--ah-s2);
+}
+.ah-capacity-chip {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  padding: 2px 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-meta);
+}
+.ah-capacity-chip:hover {
+  background: var(--ah-bg);
+}
+.ah-capacity-chip:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-capacity-chip-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+.ah-capacity-chip-name {
+  font-family: var(--ah-mono);
+}
+.ah-capacity-modal {
+  max-width: min(600px, calc(100vw - 24px));
+}
+.ah-capacity-modal .ah-dialog > .s-desc {
+  margin: 0 0 var(--ah-s3);
+}
+.ah-capacity-scroll {
+  display: grid;
+  gap: var(--ah-s3);
+  max-height: min(60dvh, 560px);
+  overflow: auto;
+  margin: 0 calc(-1 * var(--ah-s2));
+  padding: 0 var(--ah-s2);
+}
+.ah-capacity-group-head {
+  margin: 0;
+  padding: var(--ah-s1) 0;
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  color: var(--ah-ink-2);
+}
+.ah-capacity-group[data-target] .ah-capacity-group-head {
+  color: var(--ah-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ah-capacity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.ah-capacity-list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s3);
+  padding: var(--ah-s2) 0;
+  border-top: 1px solid var(--ah-line);
+}
+.ah-capacity-list > li:first-child {
+  border-top: 0;
+}
+.ah-capacity-text {
+  display: grid;
+  min-width: 0;
+}
+.ah-capacity-title {
+  all: unset;
+  cursor: pointer;
+  color: var(--ah-ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-capacity-title:hover {
+  text-decoration: underline;
+}
+.ah-capacity-title:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-capacity-meta {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-capacity-list li[data-state="stopped"] .ah-capacity-title {
+  color: var(--ah-muted);
+  font-weight: 400;
+}
+.ah-capacity-ok {
+  color: var(--ah-ok);
+  width: 16px;
+  height: 16px;
+}
+.ah-capacity-problem {
+  margin: var(--ah-s2) 0 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-err);
+}
+@media (max-width: 800px) {
+  .ah-capacity-list > li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .ah-capacity-list > li > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

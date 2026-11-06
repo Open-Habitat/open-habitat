@@ -5,13 +5,17 @@ package daemon
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/livelimits"
 )
 
 // A person may have this many daemon-owned Pi children at once. Only a busy
@@ -23,22 +27,53 @@ import (
 // eight to ten agents side by side, and a conversation whose background
 // process still runs keeps its place for as long as it runs (Jari,
 // 2026-11-05). What runs out is memory, about 210 MiB per Pi child, so one
-// person's 32 children take some 7 GiB. The limit bounds one person's daemon;
-// people on the same host share its memory, so a host for several people who
-// all run that many agents at once needs that much each. A fixed
-// number is used rather than a reading of available memory because it can be
-// checked and tested exactly; a memory reading moves with every other process
-// on the host and would refuse at random. The 128-session bound of create is
-// separate: it bounds the controller's in-memory records, live or not.
-const defaultLiveConversations = 32
+// person's livelimits.HostDefault (32) children take some 7 GiB. The limit
+// bounds one person's daemon; people on the same host share its memory, so a
+// host for several people who all run that many agents at once needs that
+// much each. A fixed number is used rather than a reading of available
+// memory because it can be checked and tested exactly; a memory reading
+// moves with every other process on the host and would refuse at random.
+// The 128-session bound of create is separate: it bounds the controller's
+// in-memory records, live or not, and is also the highest limit.
+//
+// The administrator may set another number for the installation and for a
+// person (live-conversation-limit-admin). It reaches the daemon only as
+// root's live-limits file, which the broker writes after the gateway's
+// administrator check; no request to this daemon can change it. A missing
+// or untrusted file is the daemon's own default: the limit shares the host
+// politely and is not a boundary worth refusing every start over.
 
-// liveLimit is the one place the limit is read, so a later per-person or
-// per-host setting can feed it. Caller holds c.mu.
-func (c *ConversationController) liveLimit() int {
+// readLiveLimits reads root's live-limits file (a test seam).
+var readLiveLimits = func() ([]byte, error) {
+	return core.ReadOperatorFile(livelimits.Path, livelimits.MaxFile)
+}
+
+// effectiveLimit is this person's limit and where it comes from, read from
+// root's file each time so that an administrator's change applies to the
+// next start. Caller holds c.mu.
+func (c *ConversationController) effectiveLimit() (int, string) {
 	if c.maxLive > 0 {
-		return c.maxLive
+		return c.maxLive, livelimits.SourceDefault
 	}
-	return defaultLiveConversations
+	read := readLiveLimits
+	if c.fixtureLimits != nil {
+		read = c.fixtureLimits
+	}
+	b, err := read()
+	if err != nil {
+		return livelimits.HostDefault, livelimits.SourceDefault
+	}
+	f, err := livelimits.Parse(b)
+	if err != nil {
+		return livelimits.HostDefault, livelimits.SourceDefault
+	}
+	return f.For(uint32(os.Getuid()))
+}
+
+// liveLimit is the one place the limit is enforced from. Caller holds c.mu.
+func (c *ConversationController) liveLimit() int {
+	n, _ := c.effectiveLimit()
+	return n
 }
 
 // The one definition of a conversation that is doing something. The per-person
@@ -216,6 +251,26 @@ func (c *ConversationController) closeStopping(marked []*conversation) {
 		}(s)
 	}
 	wg.Wait()
+}
+
+// capacity answers what a person refused at the limit needs: their limit,
+// where it comes from, and which of their conversations hold a place now
+// and why. It reads only this daemon's own children; nobody else's use is
+// known here.
+func (c *ConversationController) capacity(w http.ResponseWriter, r *http.Request) {
+	busy, _ := c.classify(r.Context(), func(*conversation) bool { return true })
+	c.mu.Lock()
+	limit, source := c.effectiveLimit()
+	holding := make([]map[string]any, 0, len(busy))
+	for _, b := range busy {
+		s := c.sessions[strings.TrimPrefix(b.agentID, "pi:")]
+		if s == nil || !liveChild(s) {
+			continue
+		}
+		holding = append(holding, map[string]any{"agent_id": b.agentID, "workspace_id": s.workspace, "activity": b.activity})
+	}
+	c.mu.Unlock()
+	historyJSON(w, map[string]any{"schema_version": 1, "limit": limit, "source": source, "holding": holding})
 }
 
 // liveCount is the number of children holding a place. Caller holds c.mu.

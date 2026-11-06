@@ -2887,6 +2887,8 @@ function BrowserConversationContent({
               waiting={held.waiting}
               draft={draft}
               guide={guide ?? ""}
+              snapshot={recoverySnapshot}
+              csrf={csrf}
               onChange={changeDraft}
               onPage={(read) => setStartPage({ key: pageKey, page: read })}
               onGiveBack={creationView.giveBack}

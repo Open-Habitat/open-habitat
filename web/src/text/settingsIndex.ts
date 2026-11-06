@@ -379,6 +379,23 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       },
     },
   },
+  keskustelut: {
+    label: "Conversations",
+    rows: {
+      "live-limit-memory": {
+        label: "Memory",
+        desc: "The server's memory and how much the limits could use.",
+      },
+      "live-limit-default": {
+        label: "Limit per person",
+        desc: "How many conversations one person can have working at once.",
+      },
+      "live-limit-people": {
+        label: "People",
+        desc: "A limit of their own for a person.",
+      },
+    },
+  },
   levy: {
     label: "Disk space",
     rows: {

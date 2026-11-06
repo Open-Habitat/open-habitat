@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "bbccd97935d3ce5517c27806c9816670cbe4d000fa306b2e59ae41aaf4c33495"
+const V1SchemaFingerprint = "9994f4fdf5ca13b17d79d601b71d63bc843465986c53ac21a9fc0f142ed3e113"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -24,6 +24,7 @@ var V1SchemaFiles = []string{
 	"common.schema.json",
 	"composer.schema.json",
 	"context-detail.schema.json",
+	"conversation-capacity.schema.json",
 	"device-link.schema.json",
 	"editor.schema.json",
 	"error.schema.json",
@@ -74,6 +75,8 @@ var V1SchemaFiles = []string{
 	"server-access.schema.json",
 	"server-administration-change.schema.json",
 	"server-administration.schema.json",
+	"server-conversations-change.schema.json",
+	"server-conversations.schema.json",
 	"server-integrations.schema.json",
 	"server-onboarding.schema.json",
 	"server-speech-key.schema.json",
@@ -117,6 +120,7 @@ type Command = json.RawMessage
 type Common = json.RawMessage
 type Composer = json.RawMessage
 type ContextDetail = json.RawMessage
+type ConversationCapacity = json.RawMessage
 type DeviceLink = json.RawMessage
 type Editor = json.RawMessage
 type Error = json.RawMessage
@@ -167,6 +171,8 @@ type Scenario = json.RawMessage
 type ServerAccess = json.RawMessage
 type ServerAdministrationChange = json.RawMessage
 type ServerAdministration = json.RawMessage
+type ServerConversationsChange = json.RawMessage
+type ServerConversations = json.RawMessage
 type ServerIntegrations = json.RawMessage
 type ServerOnboarding = json.RawMessage
 type ServerSpeechKey = json.RawMessage

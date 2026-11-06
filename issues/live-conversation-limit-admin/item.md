@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/live-conversation-limit-admin
 lane: live-limit-admin
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Administrator sets the concurrent-conversations limit and per-person exceptions (Muisti edellä)

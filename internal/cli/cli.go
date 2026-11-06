@@ -823,6 +823,44 @@ func accessWrite(r provision.Reply, err error) (gateway.AccessRow, error) {
 	return accessPage(*r.Access).Rows[0], nil
 }
 
+// Live-limit operations. Only the broker's fixed refusals are definite; a
+// missing reply or state_unavailable after a write is uncertain.
+func (b gatewayBroker) LiveLimits(ctx context.Context) (gateway.LiveLimits, error) {
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpLiveLimitList, Provider: "github", ID: "0"})
+	if err != nil || r.Failure != "" || r.LiveLimits == nil {
+		return gateway.LiveLimits{}, gateway.ErrBrokerUnavailable
+	}
+	return liveLimits(*r.LiveLimits), nil
+}
+func (b gatewayBroker) SetLiveLimit(ctx context.Context, subject string, limit int) (gateway.LiveLimits, error) {
+	request := provision.Request{Version: 1, Operation: provision.OpLiveLimitClear, Provider: "github", ID: subject}
+	if subject == "" {
+		request.ID = "0"
+	}
+	if limit != 0 {
+		request.Operation, request.LiveLimit = provision.OpLiveLimitSet, &limit
+	}
+	r, err := b.brokerAccess(ctx, request)
+	switch {
+	case err != nil || r.Failure == provision.StateUnavailable:
+		return gateway.LiveLimits{}, gateway.ErrLiveLimitUncertain
+	case r.Failure == provision.Denied:
+		return gateway.LiveLimits{}, gateway.ErrBoundUserNotFound
+	case r.Failure != "":
+		return gateway.LiveLimits{}, gateway.ErrBrokerUnavailable
+	case r.LiveLimits == nil:
+		return gateway.LiveLimits{}, gateway.ErrLiveLimitUncertain
+	}
+	return liveLimits(*r.LiveLimits), nil
+}
+func liveLimits(p provision.LiveLimitPage) gateway.LiveLimits {
+	out := gateway.LiveLimits{Default: p.Default, People: make([]gateway.LiveLimitPerson, 0, len(p.People))}
+	for _, x := range p.People {
+		out.People = append(out.People, gateway.LiveLimitPerson{ID: x.ID, Limit: x.Limit})
+	}
+	return out
+}
+
 // Integration app operations. As with admission, only the broker's fixed
 // refusals are definite; a missing reply or state_unavailable is uncertain.
 func (b gatewayBroker) IntegrationList(ctx context.Context) (gateway.IntegrationApps, error) {

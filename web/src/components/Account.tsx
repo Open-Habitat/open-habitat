@@ -37,6 +37,7 @@ import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
 import { RecapSettingsSection } from "../app/RecapSettings";
 import { ServerAdministration } from "../app/ServerAdministration";
+import { ServerConversations } from "../app/ServerConversations";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
@@ -367,8 +368,13 @@ export function AccountSettings({
   const [chosen, setSelected] = useState(0);
   const field = useRef<HTMLInputElement>(null);
   const searching = query.trim() !== "";
+  // Keskustelut lives only in the server area, which is still experimental;
+  // its route opens anyway, as the limit card's administrator link does.
+  const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
   const hits = searching
-    ? searchSettings(query, { admin: admin === true && !ownServerArea })
+    ? searchSettings(query, { admin: admin === true && !ownServerArea }).filter(
+        listed,
+      )
     : [];
   // The list can shrink under the selection (the administrator check).
   const selected = Math.max(0, Math.min(chosen, hits.length - 1));
@@ -400,7 +406,9 @@ export function AccountSettings({
     if (!next.trim()) steering.current = false;
     else
       preview(
-        searchSettings(next, { admin: admin === true && !ownServerArea })[0],
+        searchSettings(next, {
+          admin: admin === true && !ownServerArea,
+        }).filter(listed)[0],
       );
   };
   const choose = (index: number) => {
@@ -578,6 +586,9 @@ export function AccountSettings({
   }, [hitRows]);
   const sections = settingsSections.filter((entry) => !("admin" in entry));
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
+  const adminLinks = adminSections.filter(
+    ({ id }) => ownServerArea || id !== "keskustelut",
+  );
   const inServerArea =
     detail &&
     ownServerArea &&
@@ -697,7 +708,7 @@ export function AccountSettings({
               className="s-server-links"
               data-testid="server-section-links"
             >
-              {nav(adminSections)}
+              {nav(adminLinks)}
             </div>
           </>
         ) : (
@@ -732,7 +743,7 @@ export function AccountSettings({
                               label: t.administration,
                             })),
                         )
-                      : nav(adminSections)}
+                      : nav(adminLinks)}
                   </>
                 )}
               </>
@@ -965,6 +976,8 @@ export function AccountSettings({
             <div className="s-card ah-administration">
               <ServerIntegrationsSettings csrf={csrf} />
             </div>
+          ) : admin && section === "keskustelut" ? (
+            <ServerConversations csrf={csrf} />
           ) : admin && section === "aiavain" ? (
             <SiteKeyAdministration csrf={csrf} />
           ) : admin && section === "saneluavain" ? (

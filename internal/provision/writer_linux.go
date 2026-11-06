@@ -124,6 +124,9 @@ type Writer struct {
 	// IntegrationsFile and HostLock override the production integrations
 	// file and host operation lock directory in hermetic tests only.
 	IntegrationsFile, HostLock string
+	// LiveLimitsFile overrides the production live-limits file in hermetic
+	// tests only.
+	LiveLimitsFile string
 	// IntegrationEvent reports a committed integration write: the operation,
 	// provider and actor, never a field value.
 	IntegrationEvent func(operation, provider, actor string)
@@ -357,6 +360,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	}
 	if integrationOperation(r.Operation) {
 		return w.handleIntegrations(ctx, r)
+	}
+	if liveOperation(r.Operation) {
+		return w.handleLiveLimits(ctx, r)
 	}
 	if r.Operation != "ensure" {
 		return w.handleLocked(ctx, r)

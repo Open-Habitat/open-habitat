@@ -65,6 +65,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationAppsPath+"/clear", s.auth.integrationAppsHTTP)
 		mux.HandleFunc("/api/v1/onboarding/site", s.auth.siteOnboardingHTTP)
 		mux.HandleFunc("/api/v1/server/storage", s.auth.quotaHTTP)
+		mux.HandleFunc(liveLimitsPath, s.auth.liveLimitsHTTP)
 		mux.HandleFunc("/api/v1/account/storage", s.auth.quotaHTTP)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
 		mux.HandleFunc("/api/v1/workspaces/git", s.auth.workspaceGit)

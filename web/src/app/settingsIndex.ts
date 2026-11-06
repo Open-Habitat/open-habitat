@@ -762,6 +762,33 @@ export const settingsSections = [
     ],
   },
   {
+    id: "keskustelut",
+    label: "Keskustelut",
+    icon: "agent",
+    admin: true,
+    kw: ["conversations", "samanaikaiset", "raja", "limit", "muisti", "memory"],
+    rows: [
+      {
+        id: "live-limit-memory",
+        label: "Muisti",
+        kw: ["memory", "ram", "arvio"],
+        desc: "Palvelimen muisti ja paljonko rajat voisivat viedä.",
+      },
+      {
+        id: "live-limit-default",
+        label: "Raja henkilöä kohden",
+        kw: ["samanaikaiset keskustelut", "työskentelee", "limit"],
+        desc: "Montako keskustelua yksi henkilö voi pitää työssä yhtä aikaa.",
+      },
+      {
+        id: "live-limit-people",
+        label: "Henkilöt",
+        kw: ["poikkeus", "oma raja", "exception"],
+        desc: "Henkilön oma raja.",
+      },
+    ],
+  },
+  {
     id: "levy",
     label: "Levytila",
     icon: "disk",

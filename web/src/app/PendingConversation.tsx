@@ -14,11 +14,12 @@ import {
 import { Icon } from "../components/Icon";
 import { liveText } from "../i18n";
 import { pendingConversationText } from "../text/pendingConversation";
+import { CapacityCard } from "./CapacityCard";
 import type { StartPage } from "./composerReads";
 import { guideOpensItself, prepareField, setGuide } from "./goalGuide";
 import type { WaitingView } from "./heldMessages";
 import { StartPageRead } from "./StartPageRead";
-import type { Workspace } from "./snapshot";
+import type { Snapshot, Workspace } from "./snapshot";
 
 const txt = liveText(pendingConversationText);
 
@@ -39,6 +40,9 @@ export type Creation = {
   retryLabel?: string;
   /** The host refused the creation: nothing was created, the text stays. */
   refused?: boolean;
+  /** The refusal was the limit on conversations working at once; `tries`
+   * counts the attempts since the first refusal. */
+  capacity?: { tries: number };
   onCreateAgain?: () => void;
   /** A new worktree agent (ADR 0025): nothing exists until the first
    * message, which creates the branch and worktree from `base`. */
@@ -160,12 +164,17 @@ export function CreationStream({
   waiting,
   draft,
   guide,
+  snapshot,
+  csrf,
   onChange,
   onPage,
   onGiveBack,
 }: {
   workspace: Workspace;
   creation: Creation;
+  /** Names the conversations a refusal at the limit lists. */
+  snapshot?: Snapshot;
+  csrf?: string;
   /** This tab's messages for the conversation, in order. */
   waiting: WaitingView[];
   draft: string;
@@ -216,7 +225,37 @@ export function CreationStream({
           ),
         }))}
       />
-      {problem ? (
+      {problem && refused && creation.capacity ? (
+        // At the limit there is nothing to edit: the text is already back
+        // in the field (Jari 6.11.2026, Muokkaa pois).
+        <CapacityCard
+          workspace={workspace}
+          snapshot={snapshot}
+          csrf={csrf}
+          tries={creation.capacity.tries}
+          onRetry={onCreateAgain}
+          fallback={
+            <InlineNotice
+              data-testid="creation-problem"
+              data-state="refused"
+              title={txt.conversationNotCreated}
+              description={problem}
+              tone="warning"
+              actions={
+                onCreateAgain
+                  ? [
+                      {
+                        testId: "retry",
+                        label: txt.retry,
+                        onPress: onCreateAgain,
+                      },
+                    ]
+                  : []
+              }
+            />
+          }
+        />
+      ) : problem ? (
         <InlineNotice
           data-testid="creation-problem"
           data-state={refused ? "refused" : "uncertain"}

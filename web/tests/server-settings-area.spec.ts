@@ -18,6 +18,7 @@ const ids = [
   "saneluavain",
   "kayttoonotto",
   "kayttajat",
+  "keskustelut",
   "levy",
 ];
 const link = (page: Page, id: string) =>

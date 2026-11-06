@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|name|recap|presence|turn|question|abort|status|eligibility|rest|receipt|stop|continue|cancel_held|close|commands|bash|abort_bash))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/capacity|/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|name|recap|presence|turn|question|abort|status|eligibility|rest|receipt|stop|continue|cancel_held|close|commands|bash|abort_bash))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
@@ -24,6 +24,9 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	match := conversationPath.FindStringSubmatch(path)
 	if events {
 		match = []string{path, "", "events"}
+	}
+	if path == conversationBase+"/capacity" && r.Method != http.MethodGet {
+		match = nil
 	}
 	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && !(a.exact(r, path) || (a.exact(r, path, "continuation") && r.URL.Query().Get("continuation") == "true"))) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "eligibility" || match[2] == "rest" || match[2] == "receipt" || match[2] == "commands") != (r.Method == http.MethodGet)) {
 		safe(w, 400, "invalid_request")

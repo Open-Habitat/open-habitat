@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "default_limit": 12,
+  "host_default": 32,
+  "max_limit": 128,
+  "child_bytes": 220200960,
+  "memory": {"total_bytes": 17179869184, "available_bytes": 9663676416},
+  "people": [{"id": "43", "limit": 40}]
+}

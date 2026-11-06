@@ -11,6 +11,7 @@ describe("settings URL contract", () => {
       "ai-key",
       "appearance",
       "code-hosts",
+      "conversations",
       "devices",
       "disk",
       "editor",

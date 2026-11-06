@@ -355,6 +355,10 @@ export function App() {
         refused?: boolean;
         session?: Session;
         rechecked?: boolean;
+        /** Refused at the limit on conversations working at once, and how
+         * many times the person has tried again since. */
+        capacity?: boolean;
+        tries?: number;
       }
     >
   >({});
@@ -1751,7 +1755,13 @@ export function App() {
       identityGeneration.current === version;
     const uncertainKey = `nah:${person}:uncertain:${workspaceId}`;
     setRailStartError("");
-    setCreationViews((old) => ({ ...old, [workspaceId]: {} }));
+    // Trying again after a refusal at the limit is counted for its card.
+    setCreationViews((old) => ({
+      ...old,
+      [workspaceId]: old[workspaceId]?.capacity
+        ? { tries: (old[workspaceId]?.tries ?? 0) + 1 }
+        : {},
+    }));
     const pendingRoute = `/workspaces/${workspaceId}?conversation=${newWorktree === undefined ? "new" : "new-worktree"}`;
     navigate(pendingRoute);
     // A conversation started from a start-page goal is named after it.
@@ -1803,9 +1813,16 @@ export function App() {
             : sessionStorage.getItem(uncertainKey)
               ? t.app.createUncertainNoResend
               : t.app.createSessionUnconfirmed;
+          const capacity =
+            refusal && (error as WriteRefused).code === "capacity_exceeded";
           setCreationViews((old) => ({
             ...old,
-            [workspaceId]: { problem: message, refused: refusal },
+            [workspaceId]: {
+              problem: message,
+              refused: refusal,
+              capacity,
+              tries: capacity ? (old[workspaceId]?.tries ?? 0) : undefined,
+            },
           }));
           if (
             `${currentRoute.current.pathname}${currentRoute.current.search}` !==
@@ -2592,6 +2609,9 @@ export function App() {
                     : undefined,
                   retryLabel: t.app.checkCreation,
                   refused: creationViews[ws]?.refused,
+                  capacity: creationViews[ws]?.capacity
+                    ? { tries: creationViews[ws]?.tries ?? 0 }
+                    : undefined,
                   onCreateAgain:
                     creationViews[ws]?.refused && !createReason(ws)
                       ? worktree

@@ -147,6 +147,12 @@ func trustedParent(path string, owner uint32) (int, error) {
 
 // readIntegrations returns the file's bytes, nil when it does not exist.
 func readIntegrations(dir int, name string, owner uint32) ([]byte, error) {
+	return readRootFile(dir, name, owner, integrationapps.MaxFile)
+}
+
+// readRootFile returns a root-published file's bytes, nil when it does not
+// exist. It must be owner's single regular file, writable by nobody else.
+func readRootFile(dir int, name string, owner uint32, max int64) ([]byte, error) {
 	f, e := unix.Openat(dir, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if e == unix.ENOENT {
 		return nil, nil
@@ -157,11 +163,11 @@ func readIntegrations(dir int, name string, owner uint32) ([]byte, error) {
 	file := os.NewFile(uintptr(f), name)
 	defer file.Close()
 	var st unix.Stat_t
-	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0022 != 0 || st.Nlink != 1 || st.Size > integrationapps.MaxFile {
+	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0022 != 0 || st.Nlink != 1 || st.Size > max {
 		return nil, errIntegrationFile
 	}
-	b, e := io.ReadAll(io.LimitReader(file, integrationapps.MaxFile+1))
-	if e != nil || len(b) > integrationapps.MaxFile {
+	b, e := io.ReadAll(io.LimitReader(file, max+1))
+	if e != nil || int64(len(b)) > max {
 		return nil, errIntegrationFile
 	}
 	return b, nil
@@ -170,14 +176,20 @@ func readIntegrations(dir int, name string, owner uint32) ([]byte, error) {
 // publishIntegrations atomically replaces the file with b, root's and
 // readable by every mapped user's daemon, as host apply leaves it.
 func publishIntegrations(dir int, name string, b []byte) error {
-	if e := unix.Unlinkat(dir, integrationStage, 0); e != nil && e != unix.ENOENT {
+	return publishRootFile(dir, integrationStage, name, b)
+}
+
+// publishRootFile atomically replaces name with b through the writer's own
+// staging name, root's and readable by every mapped user's daemon.
+func publishRootFile(dir int, stage, name string, b []byte) error {
+	if e := unix.Unlinkat(dir, stage, 0); e != nil && e != unix.ENOENT {
 		return e
 	}
-	f, e := unix.Openat(dir, integrationStage, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
+	f, e := unix.Openat(dir, stage, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if e != nil {
 		return e
 	}
-	file := os.NewFile(uintptr(f), integrationStage)
+	file := os.NewFile(uintptr(f), stage)
 	n, e := file.Write(b)
 	if e == nil && n != len(b) {
 		e = io.ErrShortWrite
@@ -192,10 +204,10 @@ func publishIntegrations(dir int, name string, b []byte) error {
 		e = c
 	}
 	if e == nil {
-		e = unix.Renameat(dir, integrationStage, dir, name)
+		e = unix.Renameat(dir, stage, dir, name)
 	}
 	if e != nil {
-		unix.Unlinkat(dir, integrationStage, 0)
+		unix.Unlinkat(dir, stage, 0)
 		return e
 	}
 	return unix.Fsync(dir)

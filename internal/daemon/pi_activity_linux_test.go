@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -261,6 +263,7 @@ func TestMoreThanTenConversationsWorkAtOnce(t *testing.T) {
 	c.mu.Lock()
 	c.maxLive = 0
 	c.mu.Unlock()
+	noLiveLimits(t)
 	h.setFile("prompt-hold", "1")
 	var ids []string
 	for i := 0; i < 12; i++ {
@@ -280,6 +283,97 @@ func TestMoreThanTenConversationsWorkAtOnce(t *testing.T) {
 		if !h.live(c, id) {
 			t.Fatalf("a running turn was stopped below the host limit: %s", id)
 		}
+	}
+}
+
+// noLiveLimits makes root's live-limits file absent for one test.
+func noLiveLimits(t *testing.T) {
+	setLiveLimits(t, "")
+}
+
+// setLiveLimits stands in for root's live-limits file; "" is absent.
+func setLiveLimits(t *testing.T, file string) {
+	original := readLiveLimits
+	readLiveLimits = func() ([]byte, error) {
+		if file == "" {
+			return nil, os.ErrNotExist
+		}
+		return []byte(file), nil
+	}
+	t.Cleanup(func() { readLiveLimits = original })
+}
+
+type capacityView struct {
+	Limit   int    `json:"limit"`
+	Source  string `json:"source"`
+	Holding []struct {
+		AgentID     string `json:"agent_id"`
+		WorkspaceID string `json:"workspace_id"`
+		Activity    string `json:"activity"`
+	} `json:"holding"`
+}
+
+func (h *heldHarness) capacity(c *ConversationController) capacityView {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/api/v1/conversations/capacity", nil)
+	r.Host = "unix"
+	c.ServeHTTP(w, r)
+	var v capacityView
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &v) != nil {
+		h.t.Fatalf("capacity: %d %s", w.Code, w.Body.String())
+	}
+	return v
+}
+
+// The administrator's limit reaches the daemon only as root's file: this
+// person's exception wins over the installation's limit, a change applies to
+// the next start, and the refused person can read what holds the places.
+func TestAdministratorLimitFromRootFile(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	c.mu.Lock()
+	c.maxLive = 0
+	c.mu.Unlock()
+	uid := strconv.Itoa(os.Getuid())
+	setLiveLimits(t, `{"version":1,"default":5,"people":{"`+uid+`":2}}`)
+	h.setFile("prompt-hold", "1")
+	var ids []string
+	for i := 0; i < 2; i++ {
+		id := h.create(c)
+		h.eventually("ready", func() bool { _, v := h.status(c, id); return v.State == "idle" })
+		if w := h.send(c, id, fmt.Sprintf("Työ %d", i), activityCommand(i)); w.Code != 200 {
+			t.Fatalf("send %d: %d", i, w.Code)
+		}
+		h.eventually("turn running", func() bool {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			return c.sessions[id].runActive
+		})
+		ids = append(ids, id)
+	}
+	if w := h.post(c.create, fmt.Sprintf(`{"workspace_id":%q}`, h.workspace)); w.Code != 429 || !strings.Contains(w.Body.String(), "capacity_exceeded") {
+		t.Fatalf("own limit 2 not enforced: %d %s", w.Code, w.Body.String())
+	}
+	v := h.capacity(c)
+	if v.Limit != 2 || v.Source != "own" || len(v.Holding) != 2 {
+		t.Fatalf("capacity: %+v", v)
+	}
+	for _, x := range v.Holding {
+		if x.Activity != "turn" || x.WorkspaceID != h.workspace || !slices.Contains(ids, strings.TrimPrefix(x.AgentID, "pi:")) {
+			t.Fatalf("holder: %+v", x)
+		}
+	}
+	// Without the exception the installation's limit applies to the next start.
+	setLiveLimits(t, `{"version":1,"default":3}`)
+	if v = h.capacity(c); v.Limit != 3 || v.Source != "installation" {
+		t.Fatalf("installation: %+v", v)
+	}
+	h.create(c)
+	// A file root did not write cleanly is the daemon's own default.
+	setLiveLimits(t, `{"version":1,"default":999}`)
+	if v = h.capacity(c); v.Limit != 32 || v.Source != "default" {
+		t.Fatalf("broken file: %+v", v)
 	}
 }
 

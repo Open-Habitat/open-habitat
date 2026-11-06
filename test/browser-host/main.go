@@ -565,6 +565,8 @@ esac
 		newConversations := func() (http.Handler, context.CancelFunc) {
 			ctx, cancel := context.WithCancel(context.Background())
 			c := daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
+			subject := cfg.Subject
+			c.FixtureSetLiveLimits(func() ([]byte, error) { return liveFixture.file(subject) })
 			// Only the recap scenarios' fake Pi can make a recap; elsewhere a
 			// restarted daemon would only start Pis the cases do not expect.
 			if name, _ := scenario.Load().(string); name == "pi-recap" || name == "pi-recap-unsupported" || name == "pi-recap-failing" {

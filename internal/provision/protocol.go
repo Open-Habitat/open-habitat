@@ -50,6 +50,8 @@ type Request struct {
 	// team_remove); Teams is one sign-in's observations (team_sign_in).
 	Slug  string            `json:"slug,omitempty"`
 	Teams []TeamObservation `json:"teams,omitempty"`
+	// LiveLimit is the number live_limit_set writes.
+	LiveLimit *int `json:"live_limit,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -92,6 +94,7 @@ const QuotaPageSize = 15
 type Reply struct {
 	Access       *AccessPage      `json:"access,omitempty"`
 	Integrations *IntegrationPage `json:"integrations,omitempty"`
+	LiveLimits   *LiveLimitPage   `json:"live_limits,omitempty"`
 	Quotas       *QuotaPage       `json:"quotas,omitempty"`
 	Quota        *QuotaReply      `json:"quota,omitempty"`
 	Users        *[]BoundUser     `json:"users,omitempty"`
@@ -204,7 +207,7 @@ func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 
 
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields", "slug", "teams")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields", "slug", "teams", "live_limit")
 	if err != nil {
 		return Request{}, err
 	}
@@ -214,6 +217,12 @@ func ParseRequest(b []byte) (Request, error) {
 		}
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
+		return Request{}, ErrInvalid
+	}
+	if liveOperation(r.Operation) {
+		return parseLiveRequest(raw, r)
+	}
+	if _, ok := raw["live_limit"]; ok {
 		return Request{}, ErrInvalid
 	}
 	if integrationOperation(r.Operation) {
@@ -257,13 +266,13 @@ func ParseRequest(b []byte) (Request, error) {
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations", "live_limits"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations", "live_limits")
 	// created exists only as true on a route reply; false is never written.
 	if _, present := raw["created"]; present && (!r.Created || len(raw["route"]) == 0 || string(raw["route"]) == "null") {
 		return Reply{}, ErrInvalid
@@ -280,10 +289,16 @@ func ParseReply(b []byte) (Reply, error) {
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0 || len(raw["access"]) != 0 || len(raw["integrations"]) != 0) {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0 || len(raw["access"]) != 0 || len(raw["integrations"]) != 0 || len(raw["live_limits"]) != 0) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
+	}
+	if len(raw["live_limits"]) != 0 {
+		return parseLiveReply(raw, r)
+	}
+	if r.LiveLimits != nil {
+		return Reply{}, ErrInvalid
 	}
 	if len(raw["integrations"]) != 0 {
 		return parseIntegrationReply(raw, r)

@@ -42,6 +42,12 @@ test("@settings-search every index row is on its section's page and every page r
   await signIn(page);
   await page.goto("/settings");
   for (const section of settingsSections) {
+    if (section.id === "keskustelut") {
+      // Listed only in the experimental server area; its route still opens.
+      await page.goto("/settings/conversations");
+      await expect(row(page, "live-limit-people")).toBeAttached();
+      continue;
+    }
     const link = page
       .getByRole("navigation")
       .and(page.getByTestId("settings-navigation"))
