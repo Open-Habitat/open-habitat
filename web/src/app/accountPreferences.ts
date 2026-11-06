@@ -24,6 +24,7 @@ export const experimentalFeatureIds = [
   "next-waiting-row",
   "worker-row-sentence",
   "workspace-icons",
+  "server-settings-own-area",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

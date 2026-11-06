@@ -333,6 +333,54 @@
     position: static;
   }
 }
+.s-own-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--ah-s2);
+  width: fit-content;
+}
+.s-own-back svg {
+  width: var(--b-icon);
+  height: var(--b-icon);
+  flex: none;
+}
+/* Route links form a tab-shaped row on phones, not an ARIA tab widget. */
+.s-server-links {
+  display: flex;
+  flex-direction: column;
+}
+.s-server-area .s-nav h1 {
+  margin-top: var(--ah-s4);
+}
+:where(.s-server-area .s-nav) > .s-desc {
+  margin-bottom: var(--ah-s4);
+}
+@media (max-width: 1050px) {
+  .s-page.s-server-area.detail .s-nav > :not(h1) {
+    display: flex;
+  }
+  .s-page.s-server-area.detail .s-nav > h1 {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+  .s-server-area .s-server-links {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-block: var(--ah-s2);
+  }
+  .s-server-links .s-nav-i {
+    flex: none;
+    white-space: nowrap;
+  }
+  .s-server-links .s-nav-i svg {
+    display: none;
+  }
+}
 /* Version facts: which release the server runs and whether this tab runs it. */
 .s-version code,
 .s-version-line code {

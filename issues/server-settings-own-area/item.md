@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-server-settings-overview']
 preparation: ready
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/server-settings-own-area
 lane: server-settings
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Server settings as their own area in Settings (experimental)
@@ -29,4 +30,4 @@ toteutuksessa tulee kysyttävää, se riffataan prototyyppinä.
 
 ## Acceptance Criteria
 
-- [ ] B toteutettu kokeellisena ominaisuutena; ylläpitäjä näkee kaikki palvelinosiot ilman vierittämistä 1440×900:ssa ja puhelimessa välilehtinä; testit reitityksestä ja paluusta
+- [x] B toteutettu kokeellisena ominaisuutena; ylläpitäjä näkee kaikki palvelinosiot ilman vierittämistä 1440×900:ssa ja puhelimessa välilehtinä; testit reitityksestä ja paluusta

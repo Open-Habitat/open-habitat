@@ -6,9 +6,11 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { AccountKeys } from "../app/AccountKeys";
+import { useExperimentalFeature } from "../app/accountPreferences";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
+import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
@@ -301,6 +303,8 @@ export function AccountSettings({
   const theme = useThemeChoice();
   const language = useLanguage();
   const t = accountText[language];
+  const ownServerArea = useExperimentalFeature("server-settings-own-area");
+  const serverText = useText(serverSettingsText);
   const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const { data: piModels, refresh: refreshModels } = usePiModels();
@@ -335,7 +339,7 @@ export function AccountSettings({
   const toList = () =>
     onNavigate ? onNavigate("/settings") : setLocalDetail(false);
   const [release, setRelease] = useState<
-    Pick<ServerInfo, "version" | "commit">
+    Partial<Pick<ServerInfo, "version" | "commit" | "name">>
   >({});
   // Each bundle check is also when the server may have been upgraded, with or
   // without a new bundle: read its version again.
@@ -358,7 +362,7 @@ export function AccountSettings({
   const field = useRef<HTMLInputElement>(null);
   const searching = query.trim() !== "";
   const hits = searching
-    ? searchSettings(query, { admin: admin === true })
+    ? searchSettings(query, { admin: admin === true && !ownServerArea })
     : [];
   // The list can shrink under the selection (the administrator check).
   const selected = Math.max(0, Math.min(chosen, hits.length - 1));
@@ -388,7 +392,10 @@ export function AccountSettings({
     setQuery(next);
     setSelected(0);
     if (!next.trim()) steering.current = false;
-    else preview(searchSettings(next, { admin: admin === true })[0]);
+    else
+      preview(
+        searchSettings(next, { admin: admin === true && !ownServerArea })[0],
+      );
   };
   const choose = (index: number) => {
     const hit = hits[index];
@@ -434,7 +441,11 @@ export function AccountSettings({
       .then((info) => {
         if (!controller.signal.aborted) {
           setAdmin(info.administrator);
-          setRelease({ version: info.version, commit: info.commit });
+          setRelease({
+            version: info.version,
+            commit: info.commit,
+            name: info.name,
+          });
         }
       })
       .catch(() => {
@@ -482,7 +493,8 @@ export function AccountSettings({
       if (slash) {
         // "/" finds a setting from anywhere in Settings; on the phone the
         // field is on the section list.
-        if (field.current?.checkVisibility?.() ?? true) field.current?.focus();
+        if (field.current && (field.current.checkVisibility?.() ?? true))
+          field.current.focus();
         else if (keysRef.current.detail) {
           fieldNext.current = true;
           keysRef.current.toList();
@@ -560,13 +572,34 @@ export function AccountSettings({
   }, [hitRows]);
   const sections = settingsSections.filter((entry) => !("admin" in entry));
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
-  const title = settingsSections.find(({ id }) => id === section)?.label;
+  const inServerArea =
+    detail &&
+    ownServerArea &&
+    admin === true &&
+    adminSections.some(({ id }) => id === section);
+  const sectionLabel = (id: string, label: string) =>
+    inServerArea
+      ? id === "palvelin"
+        ? serverText.general
+        : id === "palvelinintegraatiot"
+          ? serverText.integrations
+          : label
+      : label;
+  const serverLinks = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (inServerArea)
+      serverLinks.current
+        ?.querySelector<HTMLElement>(`[data-testid="settings-${section}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [inServerArea, section]);
+  const selectedSection = settingsSections.find(({ id }) => id === section);
+  const title = selectedSection && sectionLabel(section, selectedSection.label);
   const nav = (items: typeof settingsSections) =>
     items.map(({ id, label, icon }) => {
       const content = (
         <>
           <Icon name={icon} />
-          {label}
+          {sectionLabel(id, label)}
         </>
       );
       return onNavigate ? (
@@ -606,7 +639,7 @@ export function AccountSettings({
     });
   return (
     <section
-      className={`ah-account-settings s-page${detail ? " detail" : ""}${
+      className={`ah-account-settings s-page${inServerArea ? " s-server-area" : ""}${detail ? " detail" : ""}${
         // Käyttöönotto puts the route beside the step's settings.
         section === "kayttoonotto" && admin ? " wide" : ""
       }`}
@@ -625,49 +658,95 @@ export function AccountSettings({
       <nav
         data-testid="settings-navigation"
         className="s-nav"
-        aria-label={t.sections}
+        aria-label={inServerArea ? t.administration : t.sections}
       >
+        {inServerArea && (
+          <ControlButton
+            data-testid="settings-own-back"
+            className="s-own-back"
+            variant="quiet"
+            size="row"
+            presentation="back"
+            onPress={() => {
+              setQuery("");
+              if (narrow()) toList();
+              else openSection("tili");
+            }}
+          >
+            <Icon name="back" />
+            {serverText.ownSettings}
+          </ControlButton>
+        )}
         <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
-          {t.settings}
+          {inServerArea ? t.administration : t.settings}
         </h1>
-        <SettingsSearchField
-          inputRef={field}
-          query={query}
-          hits={hits}
-          selected={selected}
-          onQuery={changeQuery}
-          onKeyDown={searchKeys}
-        />
-        {searching ? (
-          <SettingsSearchResults
-            query={query}
-            hits={hits}
-            selected={selected}
-            onPick={choose}
-          />
+        {inServerArea ? (
+          <>
+            <p className="s-desc">
+              {release.name ? `${release.name} · ` : ""}
+              {serverText.affectsEveryone}
+            </p>
+            <div
+              ref={serverLinks}
+              className="s-server-links"
+              data-testid="server-section-links"
+            >
+              {nav(adminSections)}
+            </div>
+          </>
         ) : (
           <>
-            {nav(sections)}
-            {admin && (
+            <SettingsSearchField
+              inputRef={field}
+              query={query}
+              hits={hits}
+              selected={selected}
+              onQuery={changeQuery}
+              onKeyDown={searchKeys}
+            />
+            {searching ? (
+              <SettingsSearchResults
+                query={query}
+                hits={hits}
+                selected={selected}
+                onPick={choose}
+              />
+            ) : (
               <>
-                <span className="s-nav-h">{t.administration}</span>
-                {nav(adminSections)}
+                {nav(sections)}
+                {admin && (
+                  <>
+                    <span className="s-nav-h">{t.administration}</span>
+                    {ownServerArea
+                      ? nav(
+                          settingsSections
+                            .filter(({ id }) => id === "palvelin")
+                            .map((entry) => ({
+                              ...entry,
+                              label: t.administration,
+                            })),
+                        )
+                      : nav(adminSections)}
+                  </>
+                )}
               </>
             )}
           </>
         )}
       </nav>
       <div className="s-main" ref={main}>
-        <ControlButton
-          data-testid="settings-list-back"
-          className="s-back"
-          variant="quiet"
-          size="row"
-          presentation="back"
-          onPress={toList}
-        >
-          {searching ? t.backToResults : t.backToSettings}
-        </ControlButton>
+        {!inServerArea && (
+          <ControlButton
+            data-testid="settings-list-back"
+            className="s-back"
+            variant="quiet"
+            size="row"
+            presentation="back"
+            onPress={toList}
+          >
+            {searching ? t.backToResults : t.backToSettings}
+          </ControlButton>
+        )}
         <h2
           ref={heading}
           data-testid={`settings-section-${section}`}

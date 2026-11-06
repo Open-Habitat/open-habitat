@@ -5,6 +5,15 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "server-settings-own-area": {
+      name: "Palvelimen asetukset omana alueena",
+      desc: "Palvelimen ylläpidossa näkyvät vain palvelimen osiot. Omiin asetuksiin pääsee paluulinkistä.",
+      where: "Asetuksissa ja tilivalikon Palvelimen ylläpito -kohdassa.",
+      shows:
+        "Lyhyt osiolista tietokoneella, vieritettävä välilehtirivi puhelimessa.",
+      needs: "Ylläpito-oikeus. Omat asetukset eivät muutu.",
+      caption: "Palvelimen ylläpito",
+    },
     "next-waiting-row": {
       name: "Seuraava odottava keskustelu",
       desc: "Kun viestisi on otettu vastaan, voit avata seuraavan sinua odottavan keskustelun agentin vuoron ajaksi.",
@@ -70,6 +79,15 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "server-settings-own-area": {
+      name: "Server settings in their own area",
+      desc: "Server administration shows only server sections. A back link takes you to your own settings.",
+      where: "In Settings and the account menu's Server administration entry.",
+      shows:
+        "A short section list on desktop and a scrollable tab row on phones.",
+      needs: "Administrator access. Personal settings stay unchanged.",
+      caption: "Server administration",
+    },
     "next-waiting-row": {
       name: "Next waiting conversation",
       desc: "Once your message is accepted, you can open the next conversation waiting for you during the agent's turn.",

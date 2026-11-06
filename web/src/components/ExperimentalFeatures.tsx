@@ -24,6 +24,7 @@ const featureIds = [
   { id: "next-waiting-row", landed: true },
   { id: "worker-row-sentence", landed: true },
   { id: "workspace-icons", landed: true },
+  { id: "server-settings-own-area", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -42,7 +43,16 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
  * decoration: the facts beside it say the same in words. */
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
-  if (id === "next-waiting-row")
+  if (id === "server-settings-own-area")
+    body = (
+      <>
+        <span className="ex-ghost" />
+        <b>{txt.features[id].caption}</b>
+        <span className="ex-ghost" />
+        <span className="ex-ghost" style={{ width: "70%" }} />
+      </>
+    );
+  else if (id === "next-waiting-row")
     body = (
       <>
         <span className="ex-ghost ex-ghost-own" />
