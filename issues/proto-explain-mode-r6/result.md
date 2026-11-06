@@ -113,3 +113,93 @@ open-habitat agent view offer --current \
   --title "Selitystila: kaikki kortit – kierros 6" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 7: painallus toimii ja keskustelun tila
+
+Jarin päätös 6.11.: tyyli 1. Prototyyppi on
+`prototype/kierros-7/selitystila-tila.html` ja opas
+`prototype/kierros-7/NOTES.md`. Kuvat ovat `evidence/r7-*.avif`
+(kerroin 2). Lähde on `design-system/prototypes/rounds/2026-11-06-selitystila-tila/`.
+Kortit ovat yhä kierroksen 6 `cards.mjs`, ja kierroksen omat tekstit ovat
+`state.mjs`:ssä.
+
+## Mikä muuttui kaikissa riffeissä
+
+- **Ei kiinnitystä.** Osoitus näyttää kortin, ja napsautus tekee sen, mitä
+  se tekee aina. Selitystila pysyy päällä, joten avautuneen työn, tulosteen,
+  päätteen tai Git-paneelin kohdat selittyvät heti (kuvat `r7-11`–`r7-13`).
+  Kortin alarivi kertoo, mitä napsautus tekee. *Kokeile*-painike on
+  tarpeeton, koska kohta itse on kokeilu.
+- **Pysyvät teot odottavat** (`r7-14`): arkistointi, poisto,
+  uloskirjautuminen, tyhjän keskustelun sulkeminen, lähettäminen,
+  pysäyttäminen, päätteen sulkeminen ja tallennus. Tämä on se pieni
+  käyttöliittymän muutos, jonka päätös salli.
+- **Puhelin:** ensimmäinen napautus selittää ja kortissa on teko painikkeena,
+  toinen napautus samaan kohtaan tekee sen (`r7-19`).
+- **Tilakortti.** Kun keskustelussa ei osoita mitään, kortti kertoo tilan:
+  mitä tapahtuu, mitä kannattaa tietää ja *Voit nyt* -rivit, jotka
+  sytyttävät kohtansa ja tekevät sen napsautuksella (`r7-02`, `r7-10`).
+  Tiloja on kuusi: ei vielä alkanut, työskentelee, odottaa sinua, pysäytit
+  vuoron, vuoro epäonnistui ja työ jatkuu taustalla (`r7-04`, `r7-07`–`r7-09`).
+
+## Riffit: miten tilan selitykseen pääsee keskustelun alun jälkeen
+
+1. **Tilapisteestä**: yläpalkin tilapisteen omaan vihjeeseen tulee rivi
+   *Mitä nyt? Selitä tilanne* (`r7-01`, puhelin `r7-15`).
+2. **Selitä-painike**: pysyvä ?-painike yläpalkissa ja ?-näppäin (`r7-03`,
+   puhelin `r7-17`).
+3. **Tilanne tarjoaa**: kun tila on uusi, vuoron alle tulee hiljainen rivi,
+   kolme kertaa per tila (`r7-05`, `r7-06`, puhelin `r7-18`).
+
+## Suositus
+
+**Riffi 1, Tilapisteestä.**
+
+- Tilapiste on jo se paikka, josta tilaa kysytään: sen napautus kertoo tilan
+  sanoin. Selitys jatkaa samasta kysymyksestä, eikä uutta painiketta
+  tarvita.
+- Riffi 2 on löydettävin, mutta se vie pysyvän paikan rivillä, jolta
+  kierroksilla on juuri karsittu painikkeita. Puhelimella otsikko lyheni
+  (`r7-17`).
+- Riffi 3 auttaa juuri silloin, kun tila on uusi, mutta se tuo
+  keskusteluun rivin, joka ei ole keskustelua. Lisäksi se vaatisi
+  laskurin siitä, mitkä tilat henkilö on nähnyt: uuden tallennettavan asian
+  ilman muuta tarvetta. Jos riffi 1 tuntuu liian piilossa, riffin 3 vihjeen
+  voi näyttää vain *Vuoro epäonnistui* -tilassa, koska siinä tilanne on
+  oikeasti epäselvä.
+
+## Host-tiedot
+
+- Tilakortti tarvitsee vain tilan, jonka yläpalkin tilapiste jo näyttää
+  (työskentelee, odottaa sinua, epäonnistui), sekä tiedon pysäytetystä
+  vuorosta ja käynnissä olevasta taustatyöstä. Ne ovat jo snapshotissa ja
+  vuoron tiedoissa. Uutta host-tietoa ei tarvita.
+- *Voit nyt* -rivit osoittavat olemassa oleviin kohtiin kortin tunnuksella
+  (V01, K04, K18, V07, V11, Y04, Y06, A02, A05).
+- Riffi 3 tarvitsisi selaimeen laitekohtaisen laskurin. Riffit 1 ja 2 eivät
+  tallenna mitään.
+- Kortin S02 (Yhteys) valitsin osui kierroksella 6 jokaiseen tilamerkkiin.
+  Toteutuksessa se rajataan sivupalkin yhteysmerkkiin, kuten tässä.
+- Kierros ei muuttanut tuotantokoodia. Ajettu Birchlla commitin `51087b9f`
+  päällä (Node 22.23.2), synteettinen labra `OH_PORT_BASE=6374`. Tarkistus:
+  6137 selitystä 212 näkymäyhdistelmässä ja 88 tilakorttia;
+  tavoittamattomia 0, näkymän ulkopuolelle meneviä kortteja 0, konsoli
+  puhdas.
+
+## Kysymykset Jarille
+
+1. **Riffi 1, 2 vai 3?** Kuvat `r7-01` (tilapiste), `r7-03` (?-painike) ja
+   `r7-06` (vihjerivi). Suosittelen riffiä 1.
+2. **Odottavatko pysyvät teot selitystilassa** (`r7-14`, Arkistoi), vai
+   pitäisikö niidenkin toimia? Suosittelen odottamista.
+3. **Puhelimessa kaksi napautusta** (`r7-19`: ensimmäinen selittää, toinen
+   tekee)? Suosittelen.
+
+## Näyttäminen (kierros 7)
+
+```
+open-habitat agent view offer --current \
+  --source issues/proto-explain-mode-r6/prototype/kierros-7/selitystila-tila.html \
+  --title "Selitystila: painallus toimii ja keskustelun tila – kierros 7" \
+  --idempotency-key "$(uuidgen)" --json
+```
