@@ -130,3 +130,92 @@ kutsuja.
 3. Tarjotaanko Googlelle välitaso ”Kaikki paitsi Gmailin muutokset” ja
    Dropboxille ”Kaikki paitsi jakaminen” (`d1-valinta-google-…`,
    `d1-valinta-dropbox-…`), vai pidetäänkö niissä nykyiset tasot?
+
+# Kierros 2: riffit Ruudukosta
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-integraatiotasot-2/`
+(NOTES.md kertoo riffit ja vuorovaikutukset). Jarin 6.11. päätöksen mukaan
+riffataan Ruudukkoa: kohdat ilman oikeutta selviksi ja käyttöliittymä
+väljemmäksi vertailutaulukolla tai erikseen avautuvilla taulukoilla. Akseli:
+missä ja missä muodossa tason oikeudet näytetään.
+
+- **Vertailutaulukko**: tasot rinnakkain sarakkeina ja oikeudet riveinä, jokaisessa solussa ✓ Kyllä tai ✕ Ei; ylläpitäjän tasorivit ovat yhden rivin mittaisia.
+- **Avautuva ruudukko**: tasot ovat yhden rivin mittaisia, ja tason ruudukko avautuu rivin alle yksi kerrallaan.
+- **Erillinen ikkuna**: listat pysyvät tiiviinä, ja ruudukko avautuu omaan ikkunaansa, jossa tasoa vaihtamalla näkee, mitkä solut muuttuvat.
+
+Kaikissa kolmessa solu ilman oikeutta on ✕ ja kieltomuoto (”Ei lähetä”,
+”Ei muokkaa eikä lähetä kutsuja”), kun kierroksella 1 siinä luki sama teksti
+kuin sallitussa solussa harmaana. Yhdistettyjen solujen vinoviivoitus on
+poistettu; kahden sarakkeen solun varoitusrivi kertoo, mitä palvelu ei anna
+estää. Tasot ovat kierroksen 1 Neljä tasoa -joukko, ja henkilö valitsee
+tason, ei yksittäisiä soluja.
+
+Kuvat: `evidence/r2-d<riffi>-<näkymä>-<leveys>-<teema>.avif`, riffi 1 =
+Vertailutaulukko, 2 = Avautuva ruudukko, 3 = Erillinen ikkuna. Ylläpitäjän
+lista ja Microsoftin valinta kaikissa neljässä leveys- ja teemayhdistelmässä,
+muut vaaleana molemmilla leveyksillä ja tummana 1440:llä.
+
+## Mitä kukin päättää
+
+| | Ylläpitäjän lista | Henkilön valinta | Tilikortti |
+|---|---|---|---|
+| Vertailutaulukko | Tasorivit nimi + tila + toiminto; palvelun alla yksi taulukko kaikista tasoista | Taso valitaan sarakkeen otsikosta, valittu sarake rajattu | Oman tason sarake |
+| Avautuva ruudukko | Tasorivi + yhden lauseen kuvaus + Näytä oikeudet; yksi ruudukko auki | Valitun kortin ruudukko avautuu korttiin | Kuvaus + Näytä oikeudet |
+| Erillinen ikkuna | Tasorivi + kuvaus + Mitä taso sallii; ei ruudukkoa sivulla | Kortit + Vertaa tasoja ruudukkona -ikkuna, josta voi valita | Kuvaus + ikkuna |
+
+## Palveluiden tekniset rajat
+
+Ennallaan, kierroksen 1 tarkistuksen mukaiset; kaikki riffit näyttävät ne
+samoin: Microsoftin kalenterin muokkaus lähettää aina kutsut ja tiedostojen
+muokkaus sisältää jakolinkit (kahden sarakkeen solu + varoitus), Gmailissa
+muutos sisältää lähetyksen eikä Googlella ole luonnostasoa, Dropbox erottaa
+muokkauksen jakamisesta, ja Microsoftin jokainen taso on oma sovelluksensa
+(tunnuksettoman tason saa valita vasta, kun ylläpitäjä on asettanut sen).
+
+## Mitä näkymä olettaa hostilta
+
+Ei mitään uutta kierrokseen 1 nähden: host kertoo vain tasot ja onko niille
+tunnukset. Taulukon rivit, Kyllä/Ei-arvot, kieltomuodot ja varoitukset ovat
+selaimen katalogitekstiä tason tunnisteen perusteella.
+
+## Suositus
+
+**Vertailutaulukko.** Se vastaa suoraan siihen, mikä Ainolle ja Jarille oli
+epäselvää: Luonnokset-sarakkeesta näkee yhdellä silmäyksellä, että sen
+kalenteri-, yhteystieto- ja tiedostorivit ovat Ei, kun viereisessä Kaikki
+paitsi postin lähetys -sarakkeessa ne ovat Kyllä. Avautuva ruudukko ja
+Erillinen ikkuna näyttävät yhden tason kerrallaan, joten ero pitää muistaa
+tasolta toiselle. Taulukko on myös lyhyempi kuin kierroksen 1 neljä ruudukkoa:
+yksi taulukko palvelua kohden. Puhelimessa neljä saraketta mahtuvat 390
+px:iin, mutta otsikot tavuttuvat useammalle riville
+(`r2-d1-yllapitaja-390-light`). Erillisen ikkunan tasovalitsin kannattaa
+pitää mielessä, jos taulukko kasvaa (esim. lisää palveluita).
+
+## Päätöksiä myöhempään tarkasteluun
+
+- **Henkilö valitsee tason, ei soluja**, kuten Neljä tasoa -suunnassa;
+  kierroksen 1 Ruudukossa solut olivat klikattavia. Microsoftilla vapaa
+  yhdistelmä johti silti ”ei tällä palvelimella” -ilmoitukseen.
+- **Sallittu solu on vihertävä (`--ah-ok-soft`), kielletty valkoinen ja ✕
+  punainen merkki.** Merkki ja sana kantavat tiedon, väri tukee.
+
+## Kysymykset Jarille
+
+1. Mikä riffi: `r2-d1-yllapitaja-1440-light`, `r2-d2-yllapitaja-1440-light`
+   vai `r2-d3-ikkuna-1440-light`?
+2. Onko solu ilman oikeutta nyt selvä: kieltomuoto ja ✕
+   (`r2-d2-yllapitaja-1440-light`, ”Ei lähetä”), vai riittäisikö pelkkä
+   ✕ Ei kuten taulukossa (`r2-d1-yllapitaja-1440-light`)?
+3. Valitaanko taso henkilön näkymässä taulukon sarakkeesta
+   (`r2-d1-valinta-microsoft-1440-light`) vai korteista
+   (`r2-d2-valinta-microsoft-1440-light`)?
+
+## Näkymä (kierros 2)
+
+```
+node design-system/prototypes/rounds/2026-11-06-integraatiotasot-2/build.mjs
+tw browser-open design-system/prototypes/dist/integraatiotasot-2/offline.html
+```
+
+`check.mjs` (kierroksessa) läpäisee 552 tarkistuspistettä puhtaalla
+konsolilla.
