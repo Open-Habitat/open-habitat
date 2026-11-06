@@ -6,7 +6,7 @@ True record exhaustion returns `429 session_records_exhausted`, distinct from `c
 
 ## Evidence
 
-Tested working tree based on fb0c118b4; exact source is in this issue's fixing commit.
+Initial tests used the working tree based on fb0c118b4. Rebased onto 5647ee6fc (rewind, phone header and settings-index landings); the only conflict was two added KOKEILTAVAA lines, both retained. Repeated daemon package, web checks (176 files / 1331 tests) and the five mutation browser tests successfully on a291272a8. Exact source is in this issue's fixing commit.
 
 - `go test -race ./internal/daemon -run TestConversationRecords -count=1`: passed. Includes 130 synthetic Pi create/stop cycles followed by a successful create, oldest-eligible selection, recent receipt retention, held/live/start/wake protection, distinct exhaustion, and continuation of an evicted captured handle with native history.
 - `./scripts/test-focused.sh --area go --go-package ./internal/daemon`: passed after installing the documented Python requirements in a disposable uv venv. Initial run failed because `referencing` was absent, not because of a source defect.
