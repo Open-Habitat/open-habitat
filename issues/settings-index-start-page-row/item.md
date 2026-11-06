@@ -2,7 +2,7 @@
 created: 2026-11-06
 updated: 2026-11-06
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker browser check
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: settings-index
 lane_seq: 1
 preparation: ready
+closed: 2026-11-06
 ---
 
 # Settings index lacks the empty-conversation-start-page experiment row; settings-search parity spec fails

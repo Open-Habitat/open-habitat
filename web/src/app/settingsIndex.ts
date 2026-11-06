@@ -554,6 +554,39 @@ export const settingsSections = [
       "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
     rows: [
       {
+        id: "empty-conversation-start-page",
+        label: "Aloitussivupainike keskustelussa",
+        kw: ["aloitussivu", "start page", "tyhjä", "empty", "keskustelu"],
+        desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
+      },
+      {
+        id: "raise-to-your-turn",
+        label: "Nosta ja Ei nyt",
+        kw: [
+          "nosta",
+          "raise",
+          "ei nyt",
+          "not now",
+          "sinun vuorosi",
+          "your turn",
+        ],
+        desc: "Pidä keskustelu Sinun vuorossasi, siirrä se Hiljaisiin tai nosta takaisin.",
+      },
+      {
+        id: "composer-lists-in-field",
+        label: "Listat kirjoituskentän sisällä",
+        kw: [
+          "tiedosto",
+          "file",
+          "komennot",
+          "commands",
+          "kansiopuu",
+          "composer",
+          "@",
+        ],
+        desc: "Selaa tiedostoja ja komentoja kirjoituskentän sisällä ja merkitse useampi tiedosto kerralla.",
+      },
+      {
         id: "next-waiting-row",
         label: "Seuraava odottava keskustelu",
         kw: [
