@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@design-named-workers']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-named-workers
 lane: named-workers-proto
@@ -36,6 +36,15 @@ Henkilö ei kirjoita nimetylle workerille suoraan; viestit kulkevat aina
 pääagentin kautta (`design-named-workers`). Kysymys 3 on siis ratkaistu:
 *Kirjoita*-toimintoa ei tarvita. Suunnasta (A/B/C) ja raportin
 esitystavasta Jari ei ole vielä päättänyt.
+
+## Decision (Jari 2026-11-06, kierros 1)
+
+Kierros 1 lähti väärään suuntaan. Nimetyt workerit kuuluvat nykyiseen
+workerien palloon (Workerit-merkki kirjoituskentän luona) tai toiseksi
+palloksi, siruksi, sen viereen; ei paneelia kentän yllä, ei omia
+keskusteluja sivupalkissa, ei vastauksia pääkeskustelussa. Henkilö ei
+kirjoita workerille itse (viestit pääagentin kautta). Kierros 2 riffaa
+pallon/sirun ratkaisuja.
 
 ## Acceptance Criteria
 
