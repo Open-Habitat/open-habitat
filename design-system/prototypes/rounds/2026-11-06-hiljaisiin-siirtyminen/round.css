@@ -1,0 +1,94 @@
+/* Review chrome above the production shell: the direction lines and the
+   scripted day. The shell is anchored below it and clear of the picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.tq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 6px; padding: 8px 16px;
+  background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.tq-bar-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.tq-bar strong { font-weight: 600; }
+.tq-lines { margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.tq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.tq-bar select, .tq-bar button { font: inherit; }
+.tq-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.tq-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* ---- The day: the moment's sentence and where three conversations were ---- */
+.tq-day { display: grid; gap: 4px; }
+.tq-day-nav { display: flex; align-items: flex-start; gap: 8px; }
+.tq-scene { flex: 1; margin: 0; min-height: 2.8em; color: var(--ah-ink); }
+.tq-scene strong { font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
+.tq-step-move {
+  flex: none; width: 28px; height: 28px; border-radius: var(--ah-r-md);
+  border: 1px solid var(--ah-line); background: var(--ah-surface); color: var(--ah-ink);
+  font-size: 16px !important; line-height: 1; cursor: pointer;
+}
+.tq-step-move:disabled { color: var(--ah-faint); cursor: default; }
+.tq-strip { overflow-x: auto; scrollbar-width: thin; }
+.tq-band { border-collapse: separate; border-spacing: 2px 1px; width: 100%; table-layout: fixed; font-size: 11.5px; }
+.tq-band th, .tq-band td { padding: 0; text-align: left; font-weight: 400; }
+.tq-band-corner, .tq-band tbody th { width: 150px; color: var(--ah-ink-2); }
+.tq-band tbody th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline-end: 6px; }
+.tq-band thead button {
+  display: grid; width: 100%; padding: 3px 6px; text-align: left; cursor: pointer;
+  border: 1px solid transparent; border-radius: var(--ah-r-md); background: none; color: var(--ah-ink-2);
+}
+.tq-band thead button time { font-weight: 600; color: var(--ah-ink); font-variant-numeric: tabular-nums; }
+.tq-band thead button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tq-band thead button:hover { background: var(--ah-hover); }
+.tq-band thead th[aria-current] button { border-color: var(--ah-line-strong); background: var(--ah-bg); color: var(--ah-ink); }
+.tq-cell {
+  display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px;
+  border-radius: var(--ah-r-md); white-space: nowrap; overflow: hidden; color: var(--ah-ink-2);
+}
+.tq-word { overflow: hidden; text-overflow: ellipsis; }
+.tq-ball { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-faint); box-sizing: border-box; }
+/* Sinun vuorosi is tinted, so membership reads before the word. */
+.tq-band td[data-place="yours"] .tq-cell { background: color-mix(in srgb, var(--ah-turn) 14%, transparent); color: var(--ah-ink); }
+.tq-band td[data-place="yours"] .tq-ball { background: var(--ah-turn); }
+.tq-band td[data-ring] .tq-ball { background: transparent; border: 1.5px solid var(--ah-turn); }
+.tq-band td[data-place="running"] .tq-ball { background: var(--ah-accent); }
+.tq-band td[aria-current] .tq-cell { box-shadow: inset 0 0 0 1px var(--ah-line-strong); }
+
+@media (max-width: 800px) {
+  .tq-bar { padding: 6px 10px; gap: 4px; }
+  .tq-lines { font-size: 11px; line-height: 1.3; }
+  .tq-lines li:not([aria-current]) { display: none; }
+  .tq-scene { font-size: 12px; min-height: 0; }
+  .tq-band { width: auto; table-layout: auto; }
+  .tq-band-corner, .tq-band tbody th { width: 92px; max-width: 92px; position: sticky; left: 0; background: var(--ah-surface); z-index: 1; }
+  .tq-band thead th:not(.tq-band-corner), .tq-band td { min-width: 86px; }
+  /* The phone's drawer opens below the review chrome, not under it. */
+  .tq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); }
+}
+
+/* ---- The rail: each row is the production item in its own list, with
+   the round's reason line under it ---- */
+.tq-now { display: contents; }
+.tq-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.tq-slot { position: relative; }
+.tq-why {
+  margin: 1px 0 4px; padding-inline: 28px 8px; color: var(--ah-ink-2);
+  font-size: 11.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tq-slot[data-place="quiet"] .tq-why { color: var(--ah-muted); }
+/* Opened but not handled: the turn's ball as a ring. */
+.tq-slot[data-ring] .ah-ball { box-sizing: border-box; background: transparent; border: 1.5px solid var(--ah-turn); }
+
+/* ---- The open conversation's note above the composer ---- */
+.tq-note-wrap { flex: none; display: grid; padding: 0 var(--ah-column-pad-inline) 6px; }
+.tq-note {
+  width: min(100%, calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)));
+  margin: 0 auto; display: flex; align-items: center; gap: 8px;
+  min-height: 34px; padding: 2px 4px 2px 12px; box-sizing: border-box;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  color: var(--ah-ink-2); font-size: 13px;
+}
+.tq-note > span { flex: 1; min-width: 0; }
+.tq-note > .ah-icon { flex: none; color: var(--ah-turn); width: 14px; height: 14px; }
+.variant-2 .tq-note > .ah-icon { color: var(--ah-ink-2); }

@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-raise-quiet-to-your-turn']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-quiet-transition-triggers
 lane: quiet-triggers-proto
