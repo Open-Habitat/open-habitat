@@ -203,3 +203,99 @@ open-habitat agent view offer --current \
   --title "Selitystila: painallus toimii ja keskustelun tila – kierros 7" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 8: tyhjät kohdat ja piilopainikkeet
+
+Jarin päätös 6.11. (kierros 7): Selitä-painike. Prototyyppi on
+`prototype/kierros-8/selitystila-kulmat.html` ja opas
+`prototype/kierros-8/NOTES.md`. Kuvat ovat `evidence/r8-*.avif` (kerroin
+2). Lähde on `design-system/prototypes/rounds/2026-11-06-selitystila-kulmat/`.
+?-painike on kaikissa riffeissä.
+
+## Mitä kierroksella 7 tapahtui
+
+- Viestikentän yllä oleva Taustatyö-nauha (kortti V09) on 780 px leveä,
+  mutta siinä on vain yksi merkki. Nauha selittyi koko leveydeltään, joten
+  sen kortti tuli esiin aina, kun osoitin kulki keskustelusta kenttään
+  (`r8-11`). Siitä Jari puhui sanoessaan, että kirjoituskentän palkin
+  selitys näkyy liikaa.
+- Selitystilan kerros nielee osoittimen, joten rivin piilopainikkeet (Nimeä,
+  Arkistoi, työtilan +) eivät koskaan tulleet näkyviin. Silti ne vastasivat
+  osoittimeen: rengas kiersi rivin iän, ja kortti puhui Arkistoinnista.
+
+## Kaikissa riffeissä
+
+- Kohta selittyy vain siltä alueelta, jolla siinä on jotain näkyvää (sen
+  tekstin, kuvien ja painikkeiden rajaus). Painikkeet, linkit ja kentät
+  selittyvät koko alaltaan, koska niissä painallus toimii koko alalla.
+- Näkymätön kohta ei selity.
+
+## Riffit: tyhjä kohta ja piilopainikkeet
+
+1. **Kuten aina**: osoitin toimii kuten ilman tilaa. Rivi tuo
+   piilopainikkeensa esiin, ja ne selittyvät (`r8-01`, tumma `r8-08`).
+   Tyhjän kohdan yllä edellinen kortti jää hiljaisena paikalleen (`r8-04`).
+2. **Kaikki esillä**: tila tuo kaikki piilopainikkeet näkyviin kuten
+   kosketusnäytöllä (`r8-02`, `r8-09`). Tyhjä kohta on tyhjä (`r8-05`,
+   puhelin `r8-14`).
+3. **Kokonaisuus kertoo**: rivin kortti luettelee piilopainikkeet (`r8-03`,
+   `r8-10`). Tyhjä kohta näyttää alueen nimen (`r8-06`, puhelin `r8-13`), ja
+   keskustelussa se kertoo tilanteen; napsautus avaa tilakortin (`r8-07`).
+
+Puhelimella piilopainikkeet näkyvät aina, kuten tuotannossa nytkin
+(`r8-12`, `r8-15`).
+
+## Suositus
+
+**Riffi 1, Kuten aina.**
+
+- Se jatkaa kierroksen 7 periaatetta *painallus toimii kuten aina*
+  osoittamiseen: henkilö näkee tilassa saman käyttöliittymän, jota hän
+  käyttää, ja oppii samalla, että rivillä on piilopainikkeita.
+- Jäävä kortti poistaa välkkeen. Kun tyhjä nauha ei enää selity, väliin jää
+  enemmän tyhjää, ja riffeissä 2 ja 3 kortti vaihtuisi tyhjäksi tai alueen
+  nimeksi joka kerta, kun osoitin ylittää välin.
+- Riffi 2 muuttaa sivupalkin asettelua (rivien nimet lyhenevät) ja tuo
+  kymmeniä painikkeita esiin kerralla. Riffissä 3 kortit pitenevät, eikä
+  piilopainikkeisiin pääse tilassa osoittamalla.
+
+## Host-tiedot
+
+- Uutta host-tietoa ei tarvita. Kaikki kolme riffiä ovat pelkkää selaimen
+  logiikkaa tuotannon omien elementtien päällä.
+- Toteutusta varten (riffi 1): selitystilan kerros on
+  `pointer-events: none`, jolloin tuotannon omat `:hover`-säännöt toimivat
+  sellaisinaan. Kohta luetaan `elementsFromPoint`illa, ja painallus
+  siepataan capture-vaiheessa. Prototyyppi jäljittelee tätä kopioimalla
+  `:hover`-säännöt.
+- Näkyvän alueen sääntö: kohteen tekstisolmujen, kuvien ja painikkeiden
+  rajaus + 4 px. Painikkeet, linkit, kentät ja alle 6000 px²:n kohdat
+  käyttävät koko laatikkoaan. Läpinäkyvä kohta (yhteenlaskettu opacity alle
+  0,15 tai `visibility: hidden`) ei selity.
+- Piilopainikkeet ovat kaapatuissa näkymissä `.ah-nav-archive` (S12, S13) ja
+  `.ah-workspace-more` (S19).
+- Kierros ei muuttanut tuotantokoodia. Ajettu Birchlla commitin
+  `3ad0e1438` päällä (Node 22.23.2), synteettinen labra
+  `OH_PORT_BASE=6474`. Tarkistus: 5942 selitystä 212 näkymäyhdistelmässä ja
+  88 tilakorttia. Tavoittamattomia kohtia 0, näkymän ulkopuolelle meneviä
+  kortteja 0, virheitä 0, konsoli puhdas.
+
+## Kysymykset Jarille
+
+1. **Riffi 1, 2 vai 3?** Piilopainikkeet: `r8-01`, `r8-02` ja `r8-03`.
+   Tyhjä kohta: `r8-04`, `r8-05` ja `r8-06`. Suosittelen riffiä 1.
+2. **Selittyykö kohta vain näkyvän sisältönsä alueelta** (`r8-11` oli
+   kierroksen 7 tilanne, `r8-05` uusi)? Suosittelen.
+3. **Riffissä 3 keskustelun tyhjä kohta kertoo tilanteen** (`r8-07`). Pitäisikö
+   se tuoda riffiin 1, niin että tilakortti tulee esiin, kun napsautat
+   keskustelun tyhjää kohtaa? Suosittelen: napsautus tyhjään ei tee
+   tuotannossa mitään, joten se on vapaa.
+
+## Näyttäminen (kierros 8)
+
+```
+open-habitat agent view offer --current \
+  --source issues/proto-explain-mode-r6/prototype/kierros-8/selitystila-kulmat.html \
+  --title "Selitystila: tyhjät kohdat ja piilopainikkeet – kierros 8" \
+  --idempotency-key "$(uuidgen)" --json
+```

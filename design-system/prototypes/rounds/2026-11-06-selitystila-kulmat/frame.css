@@ -1,0 +1,112 @@
+/* The explain mode over a captured production view (riff 1 of round 5,
+   Himmennys ja kortti osoittimessa). Only tokens; no edge stripes. */
+html { --xm-dim: rgba(12, 14, 16, .42); }
+html[data-theme="dark"] { --xm-dim: rgba(0, 0, 0, .58); }
+/* Nothing in the inert twin reacts by itself; frame.js decides. */
+html { cursor: default; }
+.xm-catch { position: fixed; inset: 0; z-index: 2147483000; background: transparent; }
+html.xm-on .xm-catch { cursor: help; }
+.xm-layer { position: fixed; inset: 0; z-index: 2147483001; pointer-events: none; }
+.xm-layer > i { position: fixed; display: block; }
+.xm-dim { inset: 0; background: var(--xm-dim); }
+.xm-hole { border-radius: var(--ah-r-md, 8px); box-shadow: 0 0 0 2px var(--ah-accent), 0 0 0 9999px var(--xm-dim); }
+.xm-flash { border-radius: var(--ah-r-md, 8px); box-shadow: 0 0 0 3px var(--ah-accent); animation: xm-flash 1.2s ease-out forwards; }
+@keyframes xm-flash { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+
+/* the card */
+.xm-card { position: fixed; z-index: 2147483003; width: 320px; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 12px 14px 12px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg, 12px); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)); font: 13px/1.45 var(--ah-font, system-ui); pointer-events: none; }
+.xm-card.pinned { pointer-events: auto; border-color: var(--ah-accent); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)), 0 0 0 1px var(--ah-accent); }
+html.xm-phone .xm-card { width: calc(100vw - 16px); }
+.xm-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11.5px; color: var(--ah-muted); }
+.xm-kind { padding: 1px 7px; border-radius: 999px; background: var(--ah-sunken, var(--ah-bg)); box-shadow: inset 0 0 0 1px var(--ah-line); color: var(--ah-ink-2); font-weight: 500; }
+.xm-id { margin-left: auto; font: 11px var(--ah-mono, monospace); color: var(--ah-faint, var(--ah-muted)); }
+.xm-card h2 { margin: 0 0 3px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.xm-card p { margin: 0; }
+.xm-card .xm-know { margin-top: 4px; color: var(--ah-ink-2); }
+.xm-card .xm-note { margin-top: 6px; color: var(--ah-muted); font-size: 12px; }
+.xm-card .xm-grey { margin-top: 6px; color: var(--ah-ink-2); font-size: 12.5px; }
+.xm-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.xm-foot .xm-hint { color: var(--ah-muted); font-size: 12px; }
+.xm-foot button { border: 0; border-radius: var(--ah-r-md, 8px); padding: 6px 12px; font: 600 13px var(--ah-font, system-ui); cursor: pointer; }
+.xm-try { background: var(--ah-accent); color: var(--ah-on-accent, #fff); }
+.xm-free { margin-left: auto; background: transparent; color: var(--ah-ink-2); box-shadow: inset 0 0 0 1px var(--ah-line-strong); }
+.xm-toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2147483004; max-width: calc(100vw - 24px); padding: 8px 14px; border-radius: var(--ah-r-md, 8px); background: var(--ah-ink); color: var(--ah-bg); font: 13px/1.4 var(--ah-font, system-ui); }
+
+/* the start page's strip (round 3 riff 3), above the start page */
+.xm-strip { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--ah-accent-line, var(--ah-line-strong)); border-radius: var(--ah-r-lg, 12px); background: var(--ah-accent-soft, var(--ah-surface)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.xm-strip > div { flex: 1 1 220px; min-width: 0; }
+.xm-strip b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ah-ink); }
+.xm-strip span { display: block; color: var(--ah-ink-2); font-size: 12.5px; line-height: 1.4; margin-top: 2px; }
+.xm-strip .xm-strip-go { border: 0; border-radius: var(--ah-r-md, 8px); padding: 7px 14px; background: var(--ah-accent); color: var(--ah-on-accent, #fff); font: 600 13px var(--ah-font, system-ui); white-space: nowrap; }
+.xm-strip .xm-strip-x { border: 0; background: transparent; color: var(--ah-muted); font-size: 16px; width: 28px; height: 28px; border-radius: 6px; }
+html.xm-phone .xm-strip .xm-strip-go { width: 100%; }
+[data-xm-entry] { font-weight: 600; }
+
+/* ---- round 7: no pinning; the state card, the riffs' entries */
+.xm-card { pointer-events: none; }
+.xm-card.xm-state, html.xm-phone .xm-card { pointer-events: auto; }
+.xm-card .xm-x { margin-left: 2px; border: 0; background: transparent; color: var(--ah-muted); width: 26px; height: 22px; border-radius: 6px; font-size: 16px; line-height: 1; }
+.xm-card .xm-wait { margin-top: 8px; color: var(--ah-ink-2); font-size: 12.5px; }
+.xm-do { background: var(--ah-accent); color: var(--ah-on-accent, #fff); }
+.xm-foot .xm-do + .xm-hint { margin-left: auto; }
+.xm-ring { border-radius: var(--ah-r-md, 8px); box-shadow: 0 0 0 2px var(--ah-accent), 0 0 0 6px color-mix(in srgb, var(--ah-accent) 28%, transparent); }
+.xm-state { width: 340px; }
+.xm-kind-now { background: var(--ah-accent-soft, var(--ah-surface)); color: var(--ah-ink); box-shadow: inset 0 0 0 1px var(--ah-accent-line, var(--ah-line-strong)); }
+.xm-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-muted); }
+.xm-dot[data-dot="running"] { background: var(--ah-accent); }
+.xm-dot[data-dot="waiting"] { background: var(--ah-ok); }
+.xm-dot[data-dot="failed"] { background: var(--ah-err); }
+.xm-can { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--ah-line); }
+.xm-can > span { display: block; font-size: 11.5px; color: var(--ah-muted); margin-bottom: 2px; }
+.xm-can ul { margin: 0; padding: 0; list-style: none; }
+.xm-can button { display: flex; width: 100%; align-items: center; gap: 8px; margin: 0 -6px; padding: 5px 6px; width: calc(100% + 12px); border: 0; border-radius: 6px; background: transparent; color: var(--ah-ink); font: 13px/1.35 var(--ah-font, system-ui); text-align: left; cursor: pointer; }
+.xm-can button:hover { background: var(--ah-sunken, var(--ah-bg)); }
+.xm-can button span { margin-left: auto; color: var(--ah-muted); }
+/* 1 Tilapisteestä: the dot's tip with one row more */
+.xm-pop { position: fixed; z-index: 2147482000; padding: 8px 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md, 8px); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)); font: 13px/1.4 var(--ah-font, system-ui); white-space: nowrap; }
+.xm-pop[hidden] { display: none; }
+.xm-pop p { margin: 0 0 6px; color: var(--ah-ink-2); }
+.xm-pop button { display: block; width: 100%; border: 0; border-radius: 6px; padding: 6px 8px; background: var(--ah-sunken, var(--ah-bg)); color: var(--ah-ink); font: 13px var(--ah-font, system-ui); text-align: left; cursor: pointer; }
+.xm-pop button span { font-weight: 600; }
+/* 2 Selitä-painike: the ? in the top bar */
+.xm-q { font: 600 14px/1 var(--ah-font, system-ui); }
+[data-xm-help] .xm-q { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; font-size: 12px; }
+html.xm-on [data-xm-help] { background: var(--ah-ink); color: var(--ah-bg); }
+/* 3 Tilanne tarjoaa: a quiet row beside the state */
+.xm-hint-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 6px 6px 6px 10px; border-radius: var(--ah-r-md, 8px); background: var(--ah-sunken, var(--ah-surface)); color: var(--ah-ink-2); font: 13px/1.35 var(--ah-font, system-ui); }
+.xm-hint-row .xm-q { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ah-muted); color: var(--ah-muted); font-size: 11.5px; }
+.xm-hint-row > span:nth-child(2) { flex: 1; min-width: 0; }
+.xm-hint-row button { flex: none; border: 0; border-radius: 6px; padding: 4px 10px; background: transparent; color: var(--ah-accent-ink, var(--ah-accent)); font: 600 13px var(--ah-font, system-ui); }
+.xm-hint-row .xm-hint-x { padding: 0; width: 24px; height: 24px; color: var(--ah-muted); font-weight: 400; font-size: 15px; }
+
+/* ---- round 8: the corner cases */
+/* A phone is a touch screen: production's (hover: none) layout, which a
+   desktop browser showing the 390 frame would not pick by itself. */
+html.xm-phone .ah-nav-archive { position: static; opacity: 1; }
+html.xm-phone .ah-workspace-more { opacity: 1; }
+/* Riff 2, Kaikki esillä: in the mode every hover-only control shows, as on touch. */
+html.xm-r1.xm-on .ah-nav-archive { position: static; opacity: 1; }
+html.xm-r1.xm-on .ah-workspace-more { opacity: 1; }
+html.xm-r1.xm-on .ah-nav-archive, html.xm-r1.xm-on .ah-workspace-more { outline: 1px dashed var(--ah-line-strong); outline-offset: 1px; border-radius: 6px; }
+/* Empty space: a light veil only says the mode is on (riff 2, and after a part). */
+.xm-veil { inset: 0; background: color-mix(in srgb, var(--xm-dim) 35%, transparent); }
+/* Riff 1, Kuten aina: the card that stays while the pointer crosses empty space. */
+.xm-hole.xm-linger { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ah-accent) 55%, transparent), 0 0 0 9999px color-mix(in srgb, var(--xm-dim) 70%, transparent); }
+.xm-card.xm-linger { box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)); }
+/* Riff 3, Kokonaisuus kertoo: the area's name, and the row's hidden controls. */
+.xm-area { border-radius: var(--ah-r-lg, 12px); box-shadow: inset 0 0 0 1.5px var(--ah-line-strong), 0 0 0 9999px color-mix(in srgb, var(--xm-dim) 45%, transparent); }
+.xm-chip { position: fixed; z-index: 2147483003; display: flex; align-items: center; gap: 8px; max-width: min(520px, calc(100vw - 16px)); padding: 6px 11px; border: 1px solid var(--ah-line-strong); border-radius: 999px; background: var(--ah-surface); color: var(--ah-ink-2); box-shadow: var(--ah-shadow-float, 0 8px 28px rgba(0,0,0,.18)); font: 12.5px/1.35 var(--ah-font, system-ui); pointer-events: none; }
+.xm-chip b { color: var(--ah-ink); font-weight: 600; white-space: nowrap; }
+.xm-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.xm-phone .xm-chip { border-radius: var(--ah-r-lg, 12px); max-width: calc(100vw - 16px); }
+html.xm-phone .xm-chip span { white-space: normal; }
+.xm-also { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--ah-line); }
+.xm-also > span { display: block; font-size: 11.5px; color: var(--ah-muted); margin-bottom: 3px; }
+.xm-also ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.xm-also li { color: var(--ah-ink-2); font-size: 12.5px; }
+.xm-also li b { color: var(--ah-ink); font-weight: 600; }
+.xm-also li i { color: var(--ah-muted); font-style: normal; }
+/* The page's preset pointer, until the real one moves. */
+.xm-cursor { position: fixed; z-index: 2147483005; pointer-events: none; width: 16px; height: 22px; }
+.xm-cursor svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
