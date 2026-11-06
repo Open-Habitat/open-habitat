@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-agent-resources-view
 lane: resources-view-proto
@@ -47,4 +47,6 @@ mitä agentti näkee ja mitä ei).
 ## Acceptance Criteria
 
 - [x] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
-- [ ] kierros 2: kaikkien lajien osiot yhdessä, kolme riffiä, mitkä lajit tarvitsevat oman kierroksen
+- [x] kierros 2: kaikkien lajien osiot yhdessä, kolme riffiä, mitkä lajit tarvitsevat oman kierroksen (hylätty suunta)
+- [x] kierros 3 (uusittu): B:n lista ennallaan, kolme suuntaa lajin sisällöstä tiedostoissa, postissa ja koodissa
+- [ ] Jarin valinta kierroksesta 3

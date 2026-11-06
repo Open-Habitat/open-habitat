@@ -264,3 +264,106 @@ vasten. Tuotantokoodiin ei koskettu.
 - **B:n yhdistetyt tiedostot** näyttävät lähteiden juuret rinnakkain
   yhtenä kansiona *Kaikki tiedostot*. Tiedostoja ei yhdistetä yhdeksi
   puuksi, koska samannimiset kansiot eri tileillä sekoittuisivat.
+
+# Kierros 3 (uusittu): lajin sisältö
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-resurssien-sisalto/`
+(NOTES.md kertoo taulukon ja tiedon lähteet). Vasen lista on kierroksen 1 B
+Lajeittain muuttamattomana kaikissa suunnissa. Suunnat koskevat vain valitun
+lähteen sisältöä, ja ne on piirretty tiedostoihin, postiin ja koodiin.
+
+- **A Kuten palvelussa**: kansiot, viestit ja repot näkyvät kuten palvelussa; taso ja rajat kerran yläosassa, Ei näe alimpana.
+- **B Kohde kohteelta**: samat kohteet, mutta jokaisella rivillä on, mitä agentti voi juuri sille, ja mitä agentti ei näe, on harmaana omalla paikallaan.
+- **C Vain rajat**: ei viestejä eikä tiedostoja; lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.
+
+Kuvat: `evidence/r3-<suunta>-<vaihe>-<leveys>-<teema>.avif`. Vaiheet ovat
+`0-oletus` (SharePoint-kirjasto), `1-kansio` (A ja B kansion sisällä, C
+OneDriven rajaus), `2-posti`, `3-luonnos` (Luonnokset-taso: agentin
+lähettämätön luonnos), `4-koodi`, `5-vain-luku`, `6-lahteet-tiedostot` ja
+`7-lahteet-posti` (Mistä tieto tulee) sekä `8-asetukset` (valitsemattoman
+kirjaston *Valitse kirjastot*). Oletukset on kuvattu myös tummassa teemassa.
+
+## Host-tiedot
+
+Valtuus pysyy daemonilla henkilön omana käyttäjänä, eikä uutta tietovarastoa
+tarvita. Suunnat eroavat siinä, mitä hostin pitää lukea:
+
+- **C ei tarvitse uutta lukureittiä.** Mukana-rivit ja määrät tulevat
+  peilikansiosta ja yhdistämisen valinnoista, postilaatikko ja taso
+  integraatiolistasta, ja tilit, organisaatiot ja repomäärät gh:n ja tea:n
+  kirjautumisilla. Teot ovat katalogin lauseita tasosta.
+- **A ja B tarvitsevat postille uuden lukureitin.** Daemon kysyy viestit
+  Microsoftilta henkilön tunnuksin silloin, kun sivu avataan, ilman
+  välimuistia. Tiedostoissa A:n *muokkaaja* tulee samaa reittiä, koska
+  peilikansiossa ei ole muokkaajaa. Ilman reittiä rivillä on vain aika ja koko.
+- **B:n rivikohtainen teko** on enimmäkseen lähteen taso toistettuna.
+  Todellinen ero kohteiden välillä on vain siellä, missä palvelu sen kertoo:
+  GitHubin `permissions.push` repoittain, Graphin tieto kollegan varaamasta
+  tiedostosta (uusi lukureitti) ja agentin luonnos Pi-historiasta.
+- **Harmaat rivit** (B) ja *Ei mukana* (C) ovat samat tiedot kuin A:n Ei näe:
+  valitsemattomat kirjastot ja Driven kansio yhdistämisen valinnoista sekä
+  organisaatio, joka ei salli Habitatia, gh:n vastauksesta. Jaettu
+  postilaatikko on oletus, joka pitää tarkistaa Microsoft-yhteyden
+  laajuudesta ennen toteutusta.
+
+## Suositus
+
+**C Vain rajat**, ja sen lisäksi linkki palveluun sisällön katsomista varten.
+C vastaa suoraan näkymän kysymykseen siitä, mitä agentti saa tehdä ja mihin se
+ei pääse. Kaikki C:n tiedot ovat jo daemonin tiedossa, joten sivu ei tarvitse
+uutta lukureittiä postiin, kalenteriin tai yhteystietoihin. Se ei myöskään tee
+Habitatista Outlookin tai SharePointin rinnakkaista selainta, jonka sisältö
+voisi poiketa palvelun omasta näkymästä. Tämä ratkaisee kierroksen 1 avoimen
+kysymyksen 2 otsakkeen hyväksi.
+
+B:n harmaa rivi omalla paikallaan on kierroksen paras yksittäinen ajatus.
+Sen voi ottaa C:hen, koska C:n *Ei mukana* näyttää samat rivit samalla
+tavalla. B:n rivikohtaiset teot toistavat tiedostoissa ja postissa lähteen
+tasoa joka rivillä. Repoissa ne ovat oikeasti erilaisia, ja C näyttää ne
+määrinä (*pushaa 2, lukee 1*). A on tuttu kierroksesta 1, mutta se tarvitsee
+uuden lukureitin, ja taso jää sisällön yläpuolelle irralleen kohteista.
+
+## Kysymykset Jarille
+
+1. **A, B vai C?** Vertaa kuvia `r3-a-kuten-palvelussa-0-oletus-1440-light`,
+   `r3-b-kohde-kohteelta-0-oletus-1440-light` ja
+   `r3-c-vain-rajat-0-oletus-1440-light`. Suositus on C.
+2. **Riittääkö postille C:n otsake ilman viestejä?** Vertaa kuvia
+   `r3-c-vain-rajat-7-lahteet-posti-1440-light` (ei uutta lukureittiä) ja
+   `r3-b-kohde-kohteelta-2-posti-1440-light` (viestit rivikohtaisine tekoineen,
+   uusi lukureitti).
+3. **Näytetäänkö agentin luoma tiedosto tai luonnos lähteessä vai vain
+   keskustelussa?** Kuvassa `r3-b-kohde-kohteelta-3-luonnos-1440-light` luonnos
+   on postin rivinä. C:ssä sitä ei ole, joten agentin jälki näkyisi vain
+   keskustelussa (`proto-conversation-context-view`).
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-resurssien-sisalto/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/resurssien-sisalto/offline.html \
+  --title "Agentin käytössä – kierros 3: lajin sisältö" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
+## Tarkistus
+
+`check.mjs` ajaa 234 tarkistuspistettä, ja konsoli pysyy puhtaana. Jokainen
+suunta on käyty läpi 1440 ja 390 px leveänä vaaleassa teemassa yhdeksässä
+vaiheessa, ja oletukset myös tummassa teemassa. Kuvat on otettu kertoimella 2
+ja tallennettu AVIF-muodossa. Prototyyppi on synteettinen komponenttilabra,
+jota ei ole ajettu hostia vasten. Tuotantokoodiin ei koskettu.
+
+## Päätökset myöhempää katselmointia varten
+
+- **Pohjana kierroksen 1 B (`2026-11-06-agentin-resurssit`).** Brief nimesi
+  kierrokseksi 1 `2026-11-06-m365-selaus`, mutta B Lajeittain on tämän issuen
+  kierroksella 1. m365-selaus on edeltäjäissuen kierros.
+- **Puhelin avaa oletuksena lähteen**, jotta suuntien ero näkyy ensimmäisessä
+  ruudussa. Lista on yhden napautuksen päässä (*‹ Agentin käytössä*). Muuten
+  lista toimii kuten kierroksella 1.
+- **Oletuskansio on kirjaston juuri** eikä Keskon kansio, jotta B:n harmaat
+  kirjastot näkyvät oletuksessa.
+- **Kalenteri, yhteystiedot ja koneet** pysyivät kaikissa suunnissa kierroksen
+  1 näkyminä. Valittu suunta laajennetaan niihin sellaisenaan.
