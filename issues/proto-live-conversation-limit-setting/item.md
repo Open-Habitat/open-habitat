@@ -1,11 +1,11 @@
 ---
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit-setting
 lane: live-limit-proto
@@ -44,4 +44,5 @@ Suunta **B Ylläpitäjä** on hyvä. Kierros 2 riffaa sitä:
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: vähintään kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: vähintään kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 2: B:n riffit (Muuta rajaa ylläpitäjälle ja muille, Muokkaa pois, kolme listaa), näkymätarjous ja kysymykset Jarille

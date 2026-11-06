@@ -102,3 +102,96 @@ suuntaa läpi 1440 px ja 390 px (kosketus), vaaleana ja tummana,
 kieltäytymisestä uuteen käynnissä olevaan keskusteluun; B:ssä lisäksi
 ylläpitäjän henkilökohtainen raja. Kuvat kertoimella 2 hakemistossa
 `evidence/` (AVIF). Kaikki on synteettistä; host on `fetch`-sijainen.
+
+# Kierros 2: B:n riffit – Muuta rajaa ja Mitkä pitävät paikkaa
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-samanaikaiset-keskustelut-2/`
+(NOTES.md kertoo riffit ja vuorovaikutukset). Jarin 6.11. päätöksen mukaan
+B Ylläpitäjä jatkaa: *Muokkaa* on poistettu, *Yritä uudelleen* jää, *Muuta
+rajaa (ylläpitäjä)* toimii vain ylläpitäjälle, ja akselina on *Mitkä
+pitävät paikkaa* -lista. Yläpalkin **Katsoja** näyttää kortin ylläpitäjälle
+sekä muulle kahdella tavalla (nappi piilossa / näkyy pois käytöstä syineen).
+Daemonin raja on nyt 32; kierroksessa ylläpitäjä on asettanut asennukselle
+12, ja kaikki 12 työskentelevät (6 vuoroa, 2 kysymystä, 4 taustaprosessia),
+jotta listan pituus näkyy.
+
+- **1 Lajeittain**: kortissa lajit painikkeina (taustaprosessit, odottaa vastaustasi, vuoro käynnissä); painike avaa ikkunan sen lajin kohdalta, taustaprosessit ensin.
+- **2 Kortissa**: lista on kortissa itsessään, unohdetuin ensin (milloin kirjoitit viimeksi); kolme näkyy, loput Näytä kaikki -painikkeen takana. Ei ikkunaa.
+- **3 Työtiloittain**: kortissa työtilat painikkeina, tämä työtila ensin; ikkunan lista ryhmittyy työtiloittain kuten sivupalkin Käynnissä.
+
+## Suositus
+
+**2 Kortissa, ja muille nappi piiloon.** Rajaan törmätessä ihminen
+päättää yhden asian: mikä saa väistyä. Paras ehdokas on se, johon hän ei
+ole koskenut pitkään aikaan, ja järjestys "milloin kirjoitit viimeksi"
+nostaa sen kärkeen ilman ikkunaa tai ryhmittelyä; kuvassa unohtuneet
+taustaprosessit (`python fetch_stars.py`, `npm run dev`) tulevat ensin
+ilman, että lajia tarvitsee erikseen valita. Kolme riviä ja *Näytä kaikki
+12* pitävät kortin lyhyenä myös rajalla 32. Lajit (1) ja työtilat (3)
+kertovat jakauman, mutta vievät ikkunaan, jossa sama päätös on vasta
+edessä; työtila on hyödyllinen ryhmä, kun haluaa lopettaa yhden projektin
+kokonaan, mikä on harvinaisempaa kuin yhden vapauttaminen.
+
+*Muuta rajaa* muulle kuin ylläpitäjälle: suosittelen piilottamista, vaikka
+Jari kallistui pois käytöstä olevaan. Kortin lause sanoo jo *Ylläpitäjän
+asettama raja*, joten tieto siitä, kuka rajan päättää, ei katoa. Pois
+käytöstä oleva painike kertoo yleensä tilapäisestä esteestä, jonka voi
+poistaa; tämä ei poistu koskaan, ja se vie rivin jokaisesta
+kieltäytymisestä (puhelimessa kaksi riviä, kuva
+`evidence/r2-3-tyotiloittain-0-muu-pois-kaytosta-390-dark.avif`).
+
+## Mitä host-tietoja näkymä olettaa
+
+- **Lista ja pysäytys** kuten kierroksessa 1: `classify`
+  (`internal/daemon/pi_activity_linux.go`) antaa kiireiset lajeineen, ja
+  prosessin komento ja kesto tulevat Pi:n prosessisillasta.
+  Kieltäytyminen `capacity_exceeded` tarvitsee listan mukaansa tai
+  lukureitin.
+- **"Kirjoitit viimeksi"** (riffi 2 ja 3) on henkilön viimeisimmän viestin
+  aika natiivissa sessiohistoriassa; uutta tilaa ei tarvita, mutta daemonin
+  pitää lukea se kiireisille keskusteluille. Riffi 1 tarvitsee vain lajin
+  ja keston.
+- **Raja kortissa.** Kortti sanoo luvun (12) ja että sen asetti
+  ylläpitäjä, joten kieltäytymisen pitää kertoa voimassa oleva raja ja
+  onko se ylläpitäjän vai daemonin oletus (32). Ylläpitäjän luku viedään
+  daemonille rootin kirjoittamana tietona, ei selaimen pyynnössä (valtuus,
+  päätetään ennen toteutusta, kuten kierros 1 totesi).
+- **Kuka on ylläpitäjä** tulee jo `/api/v1/server`-vastauksen
+  `administrator`-kentästä; nappi ei tarvitse uutta tietoa. Kierros ei nimeä
+  ylläpitäjää muille, koska selain ei saa ylläpitäjien nimiä muille kuin
+  ylläpitäjälle.
+- **Ylläpidon yläraja 32** on daemonin muistisuoja (noin 210 MiB lasta
+  kohden, 32 ≈ 7 GiB); osio näyttää valitun luvun muistiarvion.
+
+## Kysymykset Jarille
+
+1. *Muuta rajaa* muulle kuin ylläpitäjälle: piilossa
+   (`evidence/r2-1-lajeittain-0-muu-piilossa-1440-light.avif`) vai pois
+   käytöstä syineen
+   (`evidence/r2-1-lajeittain-0-muu-pois-kaytosta-1440-light.avif`)?
+   Ylläpitäjän näkymä: `evidence/r2-1-lajeittain-0-oletus-1440-light.avif`.
+2. Mikä lista: lajeittain ikkunassa
+   (`evidence/r2-1-lajeittain-1-ikkuna-1440-light.avif`), kortissa
+   unohdetuin ensin (`evidence/r2-2-kortissa-0-oletus-1440-light.avif`) vai
+   työtiloittain ikkunassa
+   (`evidence/r2-3-tyotiloittain-1-ikkuna-1440-light.avif`)?
+3. Saako ylläpitäjä nostaa rajan yli daemonin oman 32:n, vai onko 32
+   katto (`evidence/r2-1-lajeittain-4-yllapito-1440-light.avif`, *Palvelimen
+   oma oletus ja yläraja on 32*)?
+
+## Tarkistus
+
+`check.mjs`: 280 tarkistuspistettä, konsoli puhdas. Kolme riffiä 1440 px ja
+390 px (kosketus), vaaleana ja tummana: kortti ylläpitäjälle ja kahdella
+tavalla muulle, uudelleenyritys täynnä, lista riffin tavalla, pysäytys,
+*Tilaa on nyt* ja uusi keskustelu käynnissä; riffissä 1 lisäksi
+ylläpitäjän henkilökohtainen raja. Kuvat kertoimella 2 hakemistossa
+`evidence/` etuliitteellä `r2-` (AVIF). Kaikki on synteettistä.
+
+Näkymä:
+
+```
+cd ~/src/open-habitat
+node design-system/prototypes/rounds/2026-11-06-samanaikaiset-keskustelut-2/build.mjs
+tw browser-open design-system/prototypes/dist/samanaikaiset-keskustelut-2/offline.html
+```
