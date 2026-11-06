@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: ai-sign-in-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: telling the person their AI sign-in has expired
@@ -27,6 +27,15 @@ problem: say so differently), and the phone. The GitHub expired-login
 warning (`github-connection-warning`) is today's analogue to stay
 consistent with. Today first (the screenshot's state), then three
 directions on the default view, one line each at the top.
+
+## Decision (Jari 2026-11-06)
+
+Suunta **B Kenttä** on oikea. Viesti odottaa kentässä ja lähtee
+käytännössä heti, kun agentti on taas linjoilla (kirjautuminen
+korjattu). Kysymys (c), näkyykö epäonnistunut vuoro lyhyenä rivinä vai koko
+selityksenä raaka virhe avattavissa, riffataan, jos se on yhä relevantti.
+Kysymykseen (a), asetussivu vai ikkuna keskustelun päällä, Jari ei
+vastannut; näytä se riffissä visuaalisesti.
 
 ## Acceptance Criteria
 

@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-raise-quiet
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: raise a quiet conversation back to Sinun vuorosi
@@ -30,6 +30,14 @@ Hiljaiset from Sinun vuorosi, and on which devices the raised state shows
 (the seen state is per browser today; raising probably needs the host).
 Today first, then three directions visibly different on the default view,
 one line each at the top; phone and desktop; interactive.
+
+## Decision (Jari 2026-11-06)
+
+Kierros 2: nostolle painike muiden painikkeiden joukkoon; riffataan sillä.
+
+Erillinen ongelma omana issuenaan (`proto-quiet-transition-triggers`):
+keskustelut putoavat liian helposti Hiljaisiin, kun Jari käy
+keskustelussa eikä vastaa heti vaan siirtyy kiireesti pois.
 
 ## Acceptance Criteria
 

@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/live-conversation-limit-setting
 lane: live-limit-proto
@@ -29,6 +29,18 @@ törmääminen näyttää uutta keskustelua luotaessa (nykyinen kortti *The
 conversation was not created* ja *Try again*) ja voiko sieltä suoraan
 pysäyttää jonkin. Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan
 (`prototype-opus`, linkki, suunnat yhdellä rivillä, suositus, kysymykset).
+
+## Decision (Jari 2026-11-06)
+
+Suunta **B Ylläpitäjä** on hyvä. Kierros 2 riffaa sitä:
+
+- *Muuta rajaa* toimii vain ylläpitäjälle. Merkintä "(ylläpitäjä)"
+  suluissa on hyvä. Näkyykö nappi kaikille? Todennäköisesti kyllä, mutta
+  muille pois käytöstä. Näytä vaihtoehdot.
+- *Muokkaa*-painike on tarpeeton: pois.
+- *Yritä uudelleen* on hyvä.
+- *Mitkä pitävät paikkaa* on hyvä, mutta riffataan sitä.
+- Kysymykset mielellään visuaalisesti.
 
 ## Acceptance Criteria
 

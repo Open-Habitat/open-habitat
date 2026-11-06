@@ -1,0 +1,37 @@
+---
+created: 2026-11-06
+updated: 2026-11-06
+type: task
+reporter: jari
+status: open
+priority: normal
+related: ['@proto-raise-quiet-to-your-turn']
+preparation: ready
+provenance: chat
+source_ref: chat:2026-11-06/proto-quiet-transition-triggers
+lane: quiet-triggers-proto
+lane_seq: 1
+---
+
+# Prototype: triggers between Your turn and Quiet
+
+## Description
+
+Jari 6.11.2026: keskustelut menevät liian helposti *Hiljaiset*-osioon.
+Kun hän käy keskustelussa eikä vastaa siihen heti vaan siirtyy
+kiireesti pois, keskustelu tippuu Hiljaisiin. Hän haluaa ideoita:
+
+a) millaisia laukaisijoita voisi olla siirtymälle *Sinun vuorosi* →
+   *Hiljaiset*, ja
+b) siirtymälle *Hiljaiset* → *Sinun vuorosi*.
+
+Selvitä ensin, miten siirtymä nyt päätetään (daemon ja selain; lähellä
+`proto-raise-quiet-to-your-turn` ja Sinun vuorosi -logiikka), ja tee
+vaihtoehdot visuaalisiksi prototyypiksi, jos mahdollista (esim. aikaraja,
+vastaamisen tai lukemisen määritelmä, avaamisen kesto, eksplisiittinen
+*Ei nyt*, paluu agentin uudesta viestistä tai ajasta). Prototyyppikierros
+AGENTS-WORKFLOW.md:n mukaan.
+
+## Acceptance Criteria
+
+- [ ] nykyinen sääntö kuvattu; kierros 1: vähintään kolme suuntaa laukaisijoista molempiin suuntiin, näkymätarjous ja kysymykset Jarille

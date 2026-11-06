@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: explain-mode
 lane_seq: 0
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: explain mode in detail, on the real views (round 6)
@@ -28,6 +28,17 @@ editor, settings), what each card says (texts from the same source as the
 agent's UI reference, both languages), pinning and *Kokeile*, phone (tap),
 and how it ends. Three directions on the details that remain open, one line
 each at the top, plus the recommendation; interactive.
+
+## Decision (Jari 2026-11-06)
+
+**Tyyli 1** (Mitä · tiedä · kokeile). Kierros 7 riffaa:
+
+- Kiinnitys napsauttamalla poistetaan. Sen sijaan napsautettavat
+  käyttöliittymäkomponentit toimivat selitystilassakin (esim. "1 ajatus ja
+  3 työkalua" avautuu). Käyttöliittymää saa tarvittaessa vähän muokata.
+- Selitystilassa on nyt kivasti opastusta myös keskustelun tilaan. Miten
+  siihen pääsee muissa tilanteissa kuin keskustelun alussa, ja miten
+  henkilö pääsee näkemään sen?
 
 ## Acceptance Criteria
 

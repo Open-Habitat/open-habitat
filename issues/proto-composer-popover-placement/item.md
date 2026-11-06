@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: composer-popover-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: where the composer's attach, command and file pickers open
@@ -15,6 +15,15 @@ preparation: pending
 ## Description
 
 Jari 3.11.: the composer's buttons (*Liitä*, *Komennot* `/`, *Tiedosto* `@`) open their list above the whole text field. When the field already holds more text and has grown tall, the button (at the bottom of the field) and the list that opens (above the top of the field) are far apart, which is disturbing. Riff how the list opens: anchored to its button (and then over the field, so writing pauses while it is open?), anchored above the field as today but nearer, inline inside the field, or another way; what happens to typing, focus, the caret and Esc in each; how it looks with a short and with a tall draft, on phone and desktop. Today first, then three directions visibly different on the default view, one line each at the top.
+
+## Decision (Jari 2026-11-06)
+
+Kierros 3 riffaa näillä:
+
+- *Välilehdet*-suunnan esikatselu on tosi kiva: mukaan.
+- *Muutetut* on kiva, mutta sen ei tarvitse olla oma välilehti, koska se
+  on tiedoston tila. Näytetään se suoraan listassa jotenkin muuten.
+- Kansiopuu on hyvä tiedostojen selaamiseen.
 
 ## Acceptance Criteria
 

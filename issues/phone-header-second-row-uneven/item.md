@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: phone-layout-2
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: phone header second row as one consistent set
@@ -32,6 +32,12 @@ Also in the same screenshot: the empty new conversation says "Luo
 aloitussivu kirjoittamalla viestikenttään /open-habitat-start-page." —
 the `ui-text-no-internals` rule applies (plain invitation, no command name);
 leave that text to that issue's worker if it has already changed it.
+
+## Decision (Jari 2026-11-06)
+
+Suunta **Alarivi** (`02`). Työpöytäratkaisuun ei kosketa. Tila näkyy
+pelkkänä pisteenä. Seuraavaksi riffataan alarivin painikkeesta aukeavaa
+valikkoa (kierros 4).
 
 ## Acceptance Criteria
 

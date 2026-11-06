@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-m365-setup-flow']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-browse-m365
 lane: m365-browse-proto
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Prototype: browse what the agent sees in SharePoint and OneDrive, and what it changed
@@ -39,6 +40,21 @@ tilisivu, oma näkymä työtilojen rinnalla, keskustelun sivupaneeli),
 miten taso ja "tätä agentti ei näe" näkyvät, miten agentin muutokset
 näkyvät (tiedoston kohdalla, keskustelun vuorossa linkkinä, muutoslista),
 ja voiko kohteen antaa agentille keskustelussa.
+
+## Decision (Jari 2026-11-06)
+
+Jarin palaute kierroksesta 1: kaksi erillistä linjaa, jotka prototypoidaan
+erikseen omina issueinaan.
+
+- **C:n linja** (`proto-conversation-context-view`): keskustelun tilaloki
+  ("mitä agentti luki ja muutti tässä keskustelussa") laajennetaan
+  nykyisen kontekstin analyysinäkymäksi.
+- **B:n linja** (`proto-agent-resources-view`): erillinen, selattava
+  näkymä agentin käytössä olevista resursseista. Laajennetaan niin, että
+  kaikki integraatiot näkyvät ja ovat selattavissa, ja niihin pääsee myös
+  tätä kautta.
+
+Tämä issue suljetaan; kierroksen 1 tulos on molempien lähtökohta.
 
 ## Acceptance Criteria
 

@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-rewind
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: return a conversation to an earlier message
@@ -35,6 +35,17 @@ continued from that point or a new conversation in the rail, how the
 abandoned part can be seen again, and the edited-message case (go back and
 send a changed message). Three directions on the default view, one line
 each at the top; phone and desktop; recommendation.
+
+## Decision (Jari 2026-11-06)
+
+Suunta **Palaa tähän**. Uutta keskustelua ei synny: korvattu jatko
+korvaa aiemman saman keskustelun sisällä. Katso, miten tämä menee Pi:n
+omassa historiassa (`/tree`, istuntotiedoston haarat), ja peilaa sitä.
+
+Tiedostojen palautus: tutki, miten se tehdään. GitHub-käyttäjällä *raine*
+(workmuxin tekijä) saattaa olla tähän Pi-laajennus; jos ei, jokin muu
+(Pi:n laajennukset, checkpoint-työkalut, git-pohjaiset ratkaisut).
+Kierros 2 riffaa tätä vielä kertaalleen.
 
 ## Acceptance Criteria
 

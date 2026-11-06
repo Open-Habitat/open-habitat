@@ -3,13 +3,14 @@ created: 2026-11-06
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-server-settings-overview
 lane: server-settings-proto
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Prototype: server settings with every section visible at once
@@ -30,6 +31,12 @@ kerralla oikealla (yleiskuva tai osioiden lista); henkilön ja palvelimen
 asetusten erottaminen; mitä vasen palkki näyttää palvelimen puolella;
 miten ylläpitäjä löytää esim. integraatiot yhdellä silmäyksellä myös
 puhelimessa. Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
+
+## Decision (Jari 2026-11-06)
+
+Suunta **B Oma alue**: mennään sillä. Toteutus omana issuenaan
+(`server-settings-own-area`). Jos toteutuksessa tulee kysyttävää, se
+riffataan prototyyppinä.
 
 ## Acceptance Criteria
 
