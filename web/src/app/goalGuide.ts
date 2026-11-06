@@ -6,6 +6,7 @@ import { readCommands, type StartGoal, type StartPage } from "./composerReads";
 import { conversationName } from "./conversationName";
 import { creationKeys } from "./heldMessages";
 import { type HistoryEntry, readHistory } from "./history";
+import { startPageGoal } from "./startPageRequest";
 
 /**
  * The guide a conversation shows beside it after Aloita. It lives in this
@@ -257,17 +258,20 @@ export function authoredGoals(page: StartPage | null | undefined) {
 
 /** The goals whose skill invocation the composer shows as a chip. */
 export function composerGoals(page: StartPage | null | undefined) {
-  return authoredGoals(page).flatMap<ComposerGoal>((goal) =>
-    goal.skill
-      ? [
-          {
-            skill: goal.skill,
-            title: goal.title,
-            request: goalRequest(goal).request,
-          },
-        ]
-      : [],
-  );
+  return [
+    startPageGoal(!!page),
+    ...authoredGoals(page).flatMap<ComposerGoal>((goal) =>
+      goal.skill
+        ? [
+            {
+              skill: goal.skill,
+              title: goal.title,
+              ...goalRequest(goal),
+            },
+          ]
+        : [],
+    ),
+  ];
 }
 
 /**

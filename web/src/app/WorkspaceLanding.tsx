@@ -3,7 +3,13 @@ import { WorkspaceIntro } from "../components/WorkspaceIntro";
 import { useText } from "../i18n";
 import { workspaceLandingText } from "../text/workspaceLanding";
 import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
-import { prepareGoalConversation, prepareInvocation } from "./goalGuide";
+import {
+  creationGuideOwner,
+  prepareField,
+  prepareGoalConversation,
+} from "./goalGuide";
+import { creationKeys } from "./heldMessages";
+import { startPageDraft } from "./startPageRequest";
 
 /**
  * Reads the workspace's start page with the same file-only read a new
@@ -59,11 +65,17 @@ export function WorkspaceLanding({
         disabled={disabled}
         onCreatePage={() => {
           if (!identity || disabled) return;
-          prepareInvocation(
-            identity,
-            workspaceId,
-            "/skill:open-habitat-start-page ",
+          const key = creationKeys(identity, workspaceId).draft;
+          const prepared = startPageDraft(
+            sessionStorage.getItem(key) ?? "",
+            !!page,
           );
+          sessionStorage.setItem(key, prepared.text);
+          prepareField(creationGuideOwner(identity, workspaceId), {
+            text: prepared.text,
+            start: prepared.selectionStart,
+            end: prepared.selectionEnd,
+          });
           start();
         }}
         onGoal={async (goal) => {

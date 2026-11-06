@@ -11,10 +11,13 @@ export default defineConfig(({ command }) => {
     server: {
       host: "127.0.0.1",
       fs: {
-        // Only the shared design tokens and bundled fonts live outside web/.
+        // Shared design assets and the shipped start-page instruction are public build inputs.
         allow: [
           fileURLToPath(new URL(".", import.meta.url)),
           fileURLToPath(new URL("../design-system", import.meta.url)),
+          fileURLToPath(
+            new URL("../internal/daemon/start-page-skill", import.meta.url),
+          ),
         ],
       },
     },

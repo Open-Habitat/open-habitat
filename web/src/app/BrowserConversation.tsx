@@ -49,6 +49,7 @@ import {
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
+import { goalRequest } from "../components/StartHere";
 import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { formatDate, liveText } from "../i18n";
@@ -88,6 +89,7 @@ import {
 } from "./conversations";
 import { messageFor } from "./editorChanges";
 import {
+  authoredGoals,
   composerGoals,
   conversationGoal,
   creationGuideOwner,
@@ -1256,19 +1258,28 @@ function BrowserConversationContent({
     store,
     runWorkspace,
   ]);
-  const goals = useMemo(() => composerGoals(page), [page]);
+  const goals = composerGoals(page);
   const guide = id
     ? guideOwner(identity, id)
     : creating
       ? creationGuideOwner(identity, workspace.workspace_id)
       : undefined;
   const startedGoal = useGuide(guide)?.goal;
+  const preparedPlaceholder =
+    startedGoal &&
+    !startedGoal.skill &&
+    !entries.length &&
+    !next &&
+    !held.waiting.length
+      ? goalRequest(startedGoal).placeholder
+      : undefined;
   // A goal chosen before this conversation existed keeps its selection.
   usePreparedField(guide, section);
   const loadedGoal = conversationGoal(page, startedGoal, entries, draft);
   // Older history holds the first message: read just its start, once.
   const [first, setFirst] = useState<{ key: string; skill?: string }>();
-  const firstWanted = !!next && !loadedGoal && goals.length > 0;
+  const firstWanted =
+    !!next && !loadedGoal && authoredGoals(page).some((g) => g.skill);
   useEffect(() => {
     const agentId = current?.agent_id;
     if (!agentId || !firstWanted || first?.key === pageKey) return;
@@ -1676,6 +1687,7 @@ function BrowserConversationContent({
           ),
           value: draft,
           goals,
+          preparedPlaceholder,
           sources: composerSources,
           onChange: changeDraft,
           activity: "idle",
@@ -1734,6 +1746,7 @@ function BrowserConversationContent({
             ) : undefined,
           value: draft,
           goals,
+          preparedPlaceholder,
           onChange: (value) => {
             changeDraft(value);
             typed(value);

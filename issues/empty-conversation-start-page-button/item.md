@@ -1,13 +1,14 @@
 ---
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: start-page-button
 lane_seq: 2
 preparation: ready
+closed: 2026-11-06
 ---
 
 # Luo aloitussivu button in the empty new conversation
@@ -31,4 +32,6 @@ Rakenna nyt.
 
 ## Acceptance Criteria
 
-- [ ] An empty new conversation in a workspace without a start page shows the row and button as in direction 1; pressing it starts the agent at once; no command or file name on screen.
+- [x] With the experiment enabled, an empty new conversation in a workspace without a start page shows the row and button as in direction 1; pressing it prepares the request without sending (the later Decision supersedes immediate start); no command or file name on screen.
+- [x] Both start-page entry points prepare a chip and sentence with the placeholder selected, with no hint line.
+- [x] Send cuts only the exact prepared trailing placeholder, for start pages and goals; a goal with no arguments has a chip-only history entry.

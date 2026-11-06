@@ -57,6 +57,7 @@ import {
 } from "./Dictation";
 import {
   type ComposerGoal,
+  cutPreparedPlaceholder,
   GoalChip,
   joinGoal,
   splitGoal,
@@ -392,6 +393,7 @@ export function Composer({
   onActivity,
   idlePlaceholder,
   goals,
+  preparedPlaceholder,
   speech,
   onDictating,
 }: {
@@ -436,6 +438,7 @@ export function Composer({
   idlePlaceholder?: string;
   /** Start-page goals: a draft beginning with one's skill shows its chip. */
   goals?: ComposerGoal[];
+  preparedPlaceholder?: string;
   /** Speech input: the mic beside Send. Needs csrf. */
   speech?: ComposerSpeech;
   /** A dictation is under way, or ending into a send: its text is not yet
@@ -893,7 +896,14 @@ export function Composer({
         setNotice(t.notSent(unavailableReason(availability) ?? ""));
       return;
     }
-    let text = content;
+    const parts = splitAttachments(content);
+    const selected = splitGoal(parts.text, goals).goal;
+    const cut = cutPreparedPlaceholder(
+      parts.text,
+      selected?.placeholder ?? preparedPlaceholder,
+    );
+    let text =
+      cut === parts.text ? content : joinAttachments(cut, parts.attachments);
     if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(content)) {
       const controller = new AbortController();
       resolution.current = controller;
@@ -902,7 +912,7 @@ export function Composer({
       try {
         const list = await sources.commands(controller.signal);
         if (controller.signal.aborted) return;
-        text = resolveSkillAlias(content, list.commands);
+        text = resolveSkillAlias(text, list.commands);
       } catch {
         if (!controller.signal.aborted) setNotice(t.skillsUnchecked);
         return;

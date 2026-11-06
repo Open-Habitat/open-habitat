@@ -526,6 +526,53 @@ it("keeps attachments out of the field and sends their references unchanged", ()
   expect(send).toHaveBeenCalledWith(`Katso tätä!\n\n${notes}`);
 });
 
+it.each([
+  ["/skill:test [input]", "/skill:test"],
+  ["/skill:test Instruction.\n\n[input]", "/skill:test Instruction."],
+  ["/skill:test My question", "/skill:test My question"],
+  ["/skill:test [input] afterwards", "/skill:test [input] afterwards"],
+  ["/skill:test [input] ", "/skill:test [input] "],
+  ["/skill:test [input]\n", "/skill:test [input]\n"],
+  ["/skill:test [other]", "/skill:test [other]"],
+  ["Unrelated [input]", "Unrelated [input]"],
+])("cuts only the known untouched suffix at Send: %s", (draft, expected) => {
+  const send = vi.fn();
+  const view = render(
+    <Composer
+      {...base}
+      value={draft}
+      goals={[
+        {
+          skill: "test",
+          title: "Test",
+          request: "Instruction.",
+          placeholder: "[input]",
+        },
+      ]}
+      onSendNow={send}
+    />,
+  );
+  fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+  expect(send).toHaveBeenCalledWith(expected);
+  view.unmount();
+});
+
+it("cuts a plain prepared goal while keeping attachments and typed brackets", () => {
+  const attachment =
+    "![shot.png](/api/v1/attachments/11111111-1111-4111-8111-111111111111)";
+  const send = vi.fn();
+  const view = render(
+    <Composer
+      {...base}
+      value={`Instruction. [literal]\n\n[input]\n${attachment}`}
+      preparedPlaceholder="[input]"
+      onSendNow={send}
+    />,
+  );
+  fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+  expect(send).toHaveBeenCalledWith(`Instruction. [literal]\n${attachment}`);
+});
+
 it("shows a start-page goal's skill call as a chip and sends Pi's invocation unchanged", async () => {
   const shot =
     "![shot.png](/api/v1/attachments/11111111-1111-4111-8111-111111111111)";

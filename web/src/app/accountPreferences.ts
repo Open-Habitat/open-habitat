@@ -25,6 +25,7 @@ export const experimentalFeatureIds = [
   "worker-row-sentence",
   "workspace-icons",
   "server-settings-own-area",
+  "empty-conversation-start-page",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

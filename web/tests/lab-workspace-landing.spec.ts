@@ -115,23 +115,22 @@ for (const [width, theme] of [
     });
     await page.getByTestId("landing-create").click();
     await expect(page).toHaveURL(/\?conversation=pi:/);
-    // The executable command is the contract.
-    await expect(field).toHaveValue("/skill:open-habitat-start-page ");
+    await expect(page.getByTestId("goal-chip")).toBeVisible();
     await expect(field).toBeFocused();
-    expect(
-      await field.evaluate(
-        (node: HTMLTextAreaElement) =>
-          node.selectionStart === node.value.length &&
-          node.selectionEnd === node.value.length,
-      ),
-    ).toBe(true);
+    const prepared = await field.evaluate((node: HTMLTextAreaElement) => ({
+      before: node.value.slice(0, node.selectionStart),
+      selected: node.value.slice(node.selectionStart, node.selectionEnd),
+      atEnd: node.selectionEnd === node.value.length,
+    }));
+    expect(prepared.selected).toMatch(/^\[[^\]\n]+\]$/);
+    expect(prepared.atEnd).toBe(true);
     const outgoing = page.waitForRequest(
       (r) =>
         r.method() === "POST" && new URL(r.url()).pathname.endsWith("/send"),
     );
     await page.getByTestId("send").click();
     expect((await outgoing).postDataJSON().message).toBe(
-      "/skill:open-habitat-start-page ",
+      `/skill:open-habitat-start-page ${prepared.before.trimEnd()}`,
     );
   });
 }

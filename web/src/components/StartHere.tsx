@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef } from "react";
 import type { StartGoal, StartPage } from "../app/composerReads";
 import { useText } from "../i18n";
+import { startPageRequestText } from "../text/startPageRequest";
+import "./WorkspaceIntro.css";
 import { startHereText } from "../text/startHere";
 import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
@@ -93,7 +95,9 @@ export function StartHere({
   onRetry,
   onGoal,
   preparing,
+  onCreatePage,
 }: {
+  onCreatePage?: () => void;
   preparing?: StartGoal;
   page?: StartPage | null;
   state: "loading" | "ready" | "error";
@@ -101,6 +105,7 @@ export function StartHere({
   onGoal: (goal: StartGoal) => void;
 }) {
   const t = useText(startHereText);
+  const request = useText(startPageRequestText);
   const authored = page && !("state" in page) ? page : null;
   const root = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -141,6 +146,21 @@ export function StartHere({
             </>
           )}
         </>
+      ) : onCreatePage ? (
+        <div
+          className="ah-workspace-intro-line"
+          data-testid="start-page-invitation"
+        >
+          <p>{request.invitation}</p>
+          <ControlButton
+            size="row"
+            variant="secondary"
+            data-testid="start-page-create"
+            onPress={onCreatePage}
+          >
+            {request.create}
+          </ControlButton>
+        </div>
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">
           {t.create}

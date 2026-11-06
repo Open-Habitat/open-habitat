@@ -75,11 +75,23 @@ describe("the goal a conversation is about", () => {
     ).toBe(undefined);
   });
   it("offers chips only for goals with a skill, with the request's placeholder removed", () => {
-    expect(composerGoals(page)).toEqual([
-      { skill: "korjaa", title: "Korjaa", request: "Pyyntö." },
-      { skill: "julkaise", title: "Julkaise", request: "Pyyntö." },
+    expect(composerGoals(page).slice(1)).toEqual([
+      {
+        skill: "korjaa",
+        title: "Korjaa",
+        request: "Pyyntö.",
+        placeholder: "[paikka]",
+      },
+      {
+        skill: "julkaise",
+        title: "Julkaise",
+        request: "Pyyntö.",
+        placeholder: "[paikka]",
+      },
     ]);
-    expect(composerGoals(null)).toEqual([]);
+    expect(composerGoals(null).map((g) => g.skill)).toEqual([
+      "open-habitat-start-page",
+    ]);
   });
   it("hands the guide started during creation to the created conversation", () => {
     const from = creationGuideOwner("person", "ws");

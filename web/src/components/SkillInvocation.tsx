@@ -10,6 +10,7 @@ import { GuideArticle } from "./GoalGuide";
 import "./SkillInvocation.css";
 import { useText } from "../i18n";
 import { skillInvocationText } from "../text/skillInvocation";
+import { startPageRequestText } from "../text/startPageRequest";
 
 export function SkillInvocation({
   name,
@@ -21,6 +22,10 @@ export function SkillInvocation({
   children: ReactNode;
 }) {
   const t = useText(skillInvocationText);
+  const startPage = useText(startPageRequestText);
+  const builtin = name === "open-habitat-start-page";
+  const title = builtin ? startPage.title : name;
+  const detail = builtin ? startPage.description : description;
   return (
     <DialogTrigger>
       <ControlButton
@@ -31,12 +36,10 @@ export function SkillInvocation({
         title={t.show}
       >
         <span className="ah-skill-chip-label">
-          <span className="ah-skill-name">{name}</span>
-          {description && (
+          <span className={builtin ? undefined : "ah-skill-name"}>{title}</span>
+          {detail && (
             <span>
-              {description.length > 240
-                ? `${description.slice(0, 240)}…`
-                : description}
+              {detail.length > 240 ? `${detail.slice(0, 240)}…` : detail}
             </span>
           )}
         </span>
@@ -56,12 +59,12 @@ export function SkillInvocation({
         <Modal className="ah-skill-sheet">
           <Dialog
             className="ah-skill-reader"
-            aria-label={t.instructionsOf(name)}
+            aria-label={t.instructionsOf(title)}
             data-testid="skill-panel"
           >
             {({ close }) => (
               <GuideArticle
-                title={name}
+                title={title}
                 eyebrow={t.eyebrow}
                 onBack={close}
                 backLabel={t.back}

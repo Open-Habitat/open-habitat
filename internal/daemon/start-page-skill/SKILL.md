@@ -155,7 +155,10 @@ prompt: |-
 Choosing the goal moves a single placeholder from anywhere in the authored request to the
 end of the draft, after the instructions and any existing draft, separated by
 one blank line. The entire marker including brackets is selected, so typing
-replaces it; nothing is sent. Surrounding instruction punctuation is retained,
+replaces it; nothing is sent. On Send the host leaves out the exact prepared
+placeholder if it is still at the end with nothing typed after it. This applies
+to both goals and start-page requests. Write instructions that stand alone
+without the marker; ask for missing information when needed. Surrounding instruction punctuation is retained,
 so refresh older inline-placeholder requests into the form above. Multiple,
 nested, empty, whitespace-only, unclosed or multiline brackets are literal text,
 not placeholders; those requests use the normal end caret and two newlines.

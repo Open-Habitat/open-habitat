@@ -5,6 +5,14 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "empty-conversation-start-page": {
+      name: "Aloitussivupainike keskustelussa",
+      desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
+      where: "Uudessa keskustelussa, kun työtilalla ei ole aloitussivua.",
+      shows: "Lyhyt esittely ja Luo aloitussivu -painike.",
+      needs: "Ei muuta. Voit lisätä omat ohjeesi ennen lähettämistä.",
+      caption: "Luo aloitussivu",
+    },
     "server-settings-own-area": {
       name: "Palvelimen asetukset omana alueena",
       desc: "Palvelimen ylläpidossa näkyvät vain palvelimen osiot. Omiin asetuksiin pääsee paluulinkistä.",
@@ -79,6 +87,14 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "empty-conversation-start-page": {
+      name: "Start-page button in conversations",
+      desc: "A button in an empty conversation prepares a start-page request in the message field. You send it yourself.",
+      where: "In a new conversation when the workspace has no start page.",
+      shows: "A short introduction and a Create start page button.",
+      needs: "Nothing else. You can add instructions before sending.",
+      caption: "Create start page",
+    },
     "server-settings-own-area": {
       name: "Server settings in their own area",
       desc: "Server administration shows only server sections. A back link takes you to your own settings.",

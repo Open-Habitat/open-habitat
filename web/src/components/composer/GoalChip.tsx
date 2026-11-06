@@ -14,7 +14,21 @@ import "./GoalChip.css";
 
 /** A start-page goal whose skill the composer shows as a chip: its native
  * skill name, the goal's title and the authored request for reading. */
-export type ComposerGoal = { skill: string; title: string; request: string };
+export type ComposerGoal = {
+  skill: string;
+  title: string;
+  request: string;
+  placeholder?: string;
+};
+
+/** Only the known prepared suffix is special, never arbitrary brackets.
+ * Text after it (including whitespace) makes it the person's literal text. */
+export function cutPreparedPlaceholder(text: string, placeholder?: string) {
+  if (!placeholder || !text.endsWith(placeholder)) return text;
+  const before = text.slice(0, -placeholder.length);
+  if (before && !/\s$/.test(before)) return text;
+  return before.trimEnd();
+}
 
 /**
  * The chip is how the field shows a draft that begins with a goal's
