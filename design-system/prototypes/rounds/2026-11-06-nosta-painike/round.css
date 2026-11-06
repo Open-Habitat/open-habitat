@@ -1,0 +1,90 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* Each row is the production item in its own list, so the round's controls
+   can sit beside it without entering the production markup. */
+.rq-now { display: contents; }
+.rq-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.rq-slot { position: relative; }
+.rq-yours-head { position: relative; }
+.rq-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.rq-slot { position: relative; }
+
+/* The raised row in every direction: an arrow in the ball (round 1, B). */
+.rq-slot[data-raised] .ah-ball {
+  width: 11px; height: 11px; border-radius: 0; background: var(--ah-turn);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 1.5 6.2h3V11h3V6.2h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* The default view's shown tooltip, in the production tooltip's colours. */
+.rq-tip {
+  position: absolute; z-index: 30; pointer-events: none;
+  padding: 3px 8px; border-radius: var(--ah-r-md); white-space: nowrap;
+  background: var(--ah-ink); color: var(--ah-bg); font: 500 11.5px/1.3 var(--ah-font);
+}
+
+/* ---- A: one more header icon; raised, it is the turn's colour ---- */
+.rq-head-raise { position: relative; display: inline-flex; flex: none; }
+.rq-head-raise[data-on] .ah-topbar-icon.ah-topbar-icon {
+  --i-fg: var(--ah-turn);
+  --i-bg: color-mix(in srgb, var(--ah-turn) 14%, transparent);
+  --i-hover: color-mix(in srgb, var(--ah-turn) 22%, transparent);
+  --i-pressed: color-mix(in srgb, var(--ah-turn) 28%, transparent);
+  color: var(--ah-turn);
+}
+.rq-tip-head { top: calc(100% + 4px); left: 50%; transform: translateX(-50%); }
+@media (max-width: 800px) {
+  /* On a phone the header keeps its first row's tools; the raise is one. */
+  .ah-agent-topline > .rq-head-raise { order: 1; }
+  .rq-tip-head { left: auto; right: 0; transform: none; }
+}
+
+/* ---- B: a labelled button beside the model ---- */
+.rq-model-row { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.rq-pill { gap: 5px; white-space: nowrap; color: var(--ah-ink-2); }
+.rq-pill .ah-icon { width: 13px; height: 13px; }
+.rq-pill[data-on].rq-pill {
+  --i-fg: var(--ah-turn);
+  --i-bg: color-mix(in srgb, var(--ah-turn) 12%, transparent);
+  --i-hover: color-mix(in srgb, var(--ah-turn) 20%, transparent);
+  color: var(--ah-turn);
+  background: color-mix(in srgb, var(--ah-turn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ah-turn) 40%, transparent);
+}
+.rq-pill .rq-pill-x { width: 11px; height: 11px; margin-inline-start: 2px; }
+
+/* ---- C: the raise joins the row's pencil and archive ---- */
+.rq-row-raise { display: inline-flex; order: -1; }
+@media (hover: hover) {
+  .rq-slot .ah-agent-item:is(:hover, :focus-within):has(.rq-row-raise) .ah-nav-link { padding-inline-end: 86px; }
+  /* The default view shows the hovered row. */
+  .rq-slot[data-demo] .ah-nav-archive { opacity: 1; }
+  .rq-slot[data-demo] .ah-nav-time, .rq-slot[data-demo] .ah-nav-workspace { display: none; }
+  .rq-slot[data-demo] .ah-nav-link { padding-inline-end: 86px; }
+}
+.rq-tip-row { right: 14px; bottom: calc(100% - 2px); }
+@media (hover: none) { .rq-tip-row { display: none; } }
+/* B on a phone: the model's name shortens before the raise does. */
+.rq-model-row .md-pill { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

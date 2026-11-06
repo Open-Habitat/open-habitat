@@ -1,13 +1,13 @@
 ---
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-06
 type: task
 reporter: jari
 status: open
 priority: normal
 lane: proto-raise-quiet
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: raise a quiet conversation back to Sinun vuorosi

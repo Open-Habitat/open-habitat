@@ -103,3 +103,89 @@ open-habitat agent view offer --current \
   --title "Nosta Hiljaisista – kierros 1" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 2: nostopainike muiden painikkeiden joukossa
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-nosta-painike/`
+(NOTES.md kertoo suunnat ja vuorovaikutukset). Jarin päätös 6.11.: nosto
+painikkeena muiden joukossa. Akseli: minkä painikkeiden joukossa nosto on ja
+miltä se näyttää. Oletusnäkymä on nyt auki oleva Hiljaisten keskustelu
+*Contosoin tapaaminen*, joten painike näkyy heti.
+
+- **Nyt**: Hiljaisista ei voi nostaa. Sinun vuoroosi tulee vain agentin valmis vuoro, ja avaaminen kuittaa sen.
+- **A Yläpalkissa**: ↑-kuvake yläpalkin painikkeiden joukossa Koosteen ja Arkistoi-painikkeen vieressä. Nostettuna se on oranssi ja laskee painettaessa.
+- **B Kentän luona**: tekstipainike *Palaan tähän* kentän alarivillä mallin vieressä. Nostettuna siinä lukee *Sinun vuorossasi* ja ✕ laskee.
+- **C Rivillä**: ↑ sivupalkin rivillä kynän ja arkiston rinnalla, joten nostaa voi avaamatta. Nostetulla rivillä samassa kohdassa on ↓.
+
+Nosto itse on kaikissa sama, kierroksen 1 suosituksen mukainen: nuoli
+pallon paikalla, viimeksi nostettu kärjessä (myös *Sillä aikaa*), avaaminen
+ei kuittaa, ja nosto päättyy vastaamalla tai samalla painikkeella. Työssä
+olevaa tai jo vastauksena odottavaa ei voi nostaa.
+
+## Mitä kukin päättää
+
+| | Missä | Nostaa avaamatta | Näkyykö nosto avoimessa keskustelussa | Puhelin |
+|---|---|---|---|---|
+| A | Yläpalkin kuvakkeet | Ei | Oranssi painettu kuvake | Jää ensimmäiselle riville ⋯:n viereen |
+| B | Kentän alarivi, tekstinä | Ei | Sanoin: *Sinun vuorossasi ✕* | Mallin nimi lyhenee; ei näy agentin työskennellessä |
+| C | Sivupalkin rivin painikkeet | Kyllä | Ei, vain sivupalkissa | Aina näkyvissä laatikossa kynän ja arkiston kanssa |
+
+## Suositus
+
+**A.** Ongelma syntyy, kun Jari käy keskustelussa ja lähtee kiireellä
+vastaamatta. Silloin keskustelu on auki, ja nosto on yhden painalluksen
+päässä samassa paikassa kuin keskustelun muut toiminnot. Painettu oranssi
+kuvake kertoo avoimessa keskustelussa, että nosto on voimassa, ja samasta
+kohdasta sen saa pois. B on lähimpänä vastaamisen hetkeä ja sanoo noston
+selvimmin, mutta se kilpailee kentän alarivin tilasta puhelimessa ja katoaa,
+kun agentti työskentelee. C:n vahvuus on nostaminen avaamatta vanhan
+keskustelun kohdalla; se sopii A:n lisäksi toiseksi reitiksi (kysymys 2),
+mutta yksin se jättää avoimen keskustelun ilman merkkiä nostosta.
+
+## Mitä toteutus tarvitsee hostilta
+
+Kierroksen 1 hostiosuus pätee sellaisenaan: nosto on henkilön oman daemonin
+pitämä merkki (keskustelun `agent_id` → noston aika), snapshotin agentti
+saa kentän ja muutos lähtee tapahtumana, jotta kaikki laitteet päivittyvät;
+daemon poistaa merkin hyväksyessään henkilön viestin ja arkistoitaessa, ja
+laskeminen on oma poistokutsu. Painikkeen paikka ei muuta tätä. Lisäksi:
+
+- **Estetty nosto.** A:n painike tarvitsee syyn, kun nosto ei käy:
+  `railNow`in tiedossa jo olevat *työssä* (`metadata.attention`/aktiviteetti)
+  ja *odottaa jo vastauksena* riittävät; uutta host-kenttää ei tarvita.
+- **Komponenttipaikat.** A: `AgentHeader`iin oma paikka, joka jää
+  puhelimessa ensimmäiselle riville (kierros käyttää `terminal`-paikkaa).
+  B: `Composer`in alariville paikka mallin viereen. C: `AgentNavItem`in
+  painikeryhmään kolmas painike (kierros vie sen portaalilla tuotannon
+  `.ah-nav-archive`-ryhmään).
+
+## Kysymykset Jarille
+
+1. **Missä nosto on**: yläpalkissa (`r2-a-ylapalkissa-0-oletus`), kentän
+   luona (`r2-b-kentan-luona-0-oletus`) vai sivupalkin rivillä
+   (`r2-c-rivilla-0-oletus`)?
+2. **Rivin ↑ lisäksi** (`r2-c-rivilla-5-avaamatta`), jotta vanhan
+   keskustelun voi nostaa avaamatta, vai riittääkö yksi paikka?
+3. **Kuvake vai sana**: riittääkö nostetusta oranssi kuvake
+   (`r2-a-ylapalkissa-3-avattu-pysyy`), vai pitääkö sen sanoa *Sinun
+   vuorossasi* (`r2-b-kentan-luona-3-avattu-pysyy`)?
+
+## Todisteet
+
+`evidence/r2-*`: jokaisesta suunnasta oletusnäkymä (0, puhelimessa myös
+`0-sivupalkki`), nostettu (1, puhelimessa myös `1-sivupalkki`), *Sillä
+aikaa* -rivi nostettu kärjessä (2), *Avaa seuraava* -jälkeen nosto pysyy
+(3), laskettu samalla painikkeella (4) sekä C:ssä nosto avaamatta ja A:ssa
+ja B:ssä vastattu (5). Kuvat ovat 1440 ja 390, vaalea ja tumma,
+kertoimella 2. `check.mjs`: 268 tarkistuspistettä, konsoli puhdas. Kyse on
+synteettisestä komponenttilabrasta; sitä ei ole ajettu hostia vasten.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-nosta-painike/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/nosta-painike/offline.html \
+  --title "Nosta Hiljaisista – kierros 2: painike" \
+  --idempotency-key "$(uuidgen)" --json
+```
