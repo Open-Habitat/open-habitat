@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: remote-browser-research
 lane_seq: 1
 ---
@@ -65,3 +65,14 @@ riskit ja enintään viisi kysymystä Jarille.
 ## Acceptance Criteria
 
 - [ ] report.md (suomeksi): vaihtoehdot, suositeltu arkkitehtuuri valtuuksineen, turvamalli, resurssit, kysymykset Jarille; lähteet.
+
+## Result
+
+[report.md](report.md): suositus on henkilön oma `systemd --user` -selainyksikkö
+(TigerVNC Xvnc + Chrome `--remote-debugging-pipe` + selainisäntä, joka tarjoaa
+CDP:n `0600`-Unix-socketissa). Etänäkymänä toimii mukaan paketoitu noVNC
+appin originissa, gatewayn ja daemonin WebSocket-välityksellä kuten shell.
+Kokeilu Birchlla (arm64) vahvisti putki- ja Unix-socket-välityksen
+Playwrightille ja Puppeteerille sekä AppArmorin userns-vaatimuksen
+sandboxille. Viisi kysymystä Jarille, joista tärkein on, mistä Chrome
+tulee. Kokeen skriptit ovat hakemistossa [experiment/](experiment/).
