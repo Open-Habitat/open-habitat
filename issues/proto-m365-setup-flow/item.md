@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -58,6 +58,13 @@ käyttöönotosta (Jari ja Aino):
   ja client-tunnuksia: ei committoida sellaisenaan, tunnukset peitetään.
 
 Kierros 2: riffataan A:ta näiden pohjalta.
+
+## Decision (Jari 2026-11-06, kierros 2)
+
+**A1 Valikkopala** on selkein. Kierros 3 riffaa A1:tä: Entra-palat
+piirrosten sijaan oikeina leikkeinä Jarin kuvakaappauksista (tunnukset ja
+organisaation nimi peitettyinä). Oikeuksien edessä olevat valintaruudut
+pois; niitä ei tarvita.
 
 ## Acceptance Criteria
 
