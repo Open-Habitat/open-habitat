@@ -1,0 +1,141 @@
+/* Round 3. Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.cx-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.cx-bar strong { font-weight: 600; }
+.cx-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.cx-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.cx-bar select, .cx-bar button { font: inherit; }
+@media (max-width: 600px) {
+  .cx-bar { padding: 6px 10px; gap: 2px 10px; }
+  .cx-bar > strong { display: none; }
+  .cx-lines { font-size: 11px; line-height: 1.3; }
+  .cx-lines li:not([aria-current]) { display: none; }
+}
+.cx-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.cx-stage .ah-rail { top: var(--review-h, 0px); }
+.cx-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+.cx-main { display: flex; flex-direction: column; min-height: 0; height: 100%; position: relative; }
+.cx-main > .ah-conversation-frame { flex: 1 1 auto; min-height: 0; }
+
+/* ---- Shared pieces ---- */
+.cx-meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.cx-fine { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; }
+.cx-num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+
+/* The item's source: a small round mark, never a coloured edge. */
+.cx-src {
+  display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ah-surface-2); border: 1px solid var(--ah-line); color: var(--ah-ink-2);
+}
+.cx-src svg { width: 13px; height: 13px; }
+
+.cx-marksbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s2) var(--ah-s3);
+  margin: var(--ah-s3) 0 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.cx-marksbar.done { justify-content: flex-start; }
+.cx-marksbar svg { width: 14px; height: 14px; }
+p.cx-marksbar { justify-content: flex-start; }
+.cx-spin {
+  width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ah-line-strong); border-top-color: var(--ah-accent);
+  animation: cx-spin 0.9s linear infinite;
+}
+@keyframes cx-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cx-spin { animation: none; } }
+
+
+/* ---- Round 3: the section replaces the production top; Pi's own numbers
+   (the production sections) are hidden, and direction 1 folds them open. ---- */
+.cx-review .ah-cd-inner > .ah-cd-top,
+.cx-review .ah-cd-inner > .ah-cd-grid,
+.cx-review .ah-cd-inner > section[aria-labelledby="ah-cd-turns"] { display: none; }
+.cx-review .cx-main[data-details="open"] .ah-cd-inner > .ah-cd-grid,
+.cx-review .cx-main[data-details="open"] .ah-cd-inner > section[aria-labelledby="ah-cd-turns"] { display: block; }
+.cx-review .cx-main[data-details="open"] .ah-cd-inner > .ah-cd-grid { display: grid; }
+
+.cx3 { max-width: 880px; display: grid; gap: var(--ah-s2); min-width: 0; }
+.cx3 > * { min-width: 0; }
+.cx3-lead { margin: 0; color: var(--ah-ink-2); line-height: 1.5; }
+.cx3-big { margin: var(--ah-s1) 0 0; font-size: var(--ah-size-h1); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ah-ink); }
+.cx3-big span { margin-inline-start: 6px; font-size: var(--ah-size-ui); font-weight: 400; color: var(--ah-muted); }
+.cx3-bar {
+  position: relative; max-width: 640px; height: 12px; border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken, var(--ah-surface-2)); box-shadow: inset 0 0 0 1px var(--ah-line-soft, var(--ah-line));
+}
+.cx3-bar i { display: block; height: 100%; border-radius: var(--ah-r-pill); background: var(--ah-accent); }
+.cx3-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ah-ink-2); }
+.cx3 .cx-fine { max-width: 640px; }
+.cx3-compact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3); margin-top: var(--ah-s2); }
+.cx3-compact .cx-fine { flex: 1 1 22em; margin: 0; }
+.cx3 .cx-marksbar { margin-top: var(--ah-s2); }
+
+.cx3-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s2) var(--ah-s3); margin-top: var(--ah-s4); }
+.cx3-head h3 { margin: 0; color: var(--ah-ink); font-size: var(--ah-size-body, 15px); }
+
+/* Direction 1 and 2: what each row button does, in a sentence. */
+.cx3-legend {
+  display: grid; gap: var(--ah-s1); margin: 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+  font-size: var(--ah-size-meta); line-height: 1.45;
+}
+.cx3-legend > div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: var(--ah-s2); }
+.cx3-legend dt { font-weight: 600; color: var(--ah-ink); }
+.cx3-legend dd { margin: 0; color: var(--ah-ink-2); }
+
+.cx3-group { display: grid; gap: var(--ah-s1); margin-top: var(--ah-s3); }
+.cx3-group h4 {
+  display: grid; grid-template-columns: minmax(0, 1fr) 6em 15em; gap: var(--ah-s3); align-items: baseline;
+  margin: 0; padding: 0 var(--ah-s1); font-size: var(--ah-size-ui); font-weight: 600; color: var(--ah-ink);
+}
+.cx3-tok { text-align: right; color: var(--ah-muted); font-weight: 400; font-size: var(--ah-size-meta); }
+.cx3-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.cx3-row {
+  display: grid; align-items: center; gap: 2px var(--ah-s3); grid-template-columns: minmax(0, 1fr) 6em 15em;
+  padding: var(--ah-s2) var(--ah-s1); border-top: 1px solid var(--ah-line-soft, var(--ah-line));
+}
+.cx3-row:hover { background: var(--ah-surface-hover); }
+.cx3-row[data-in="false"] .cx-bname { color: var(--ah-ink-2); }
+.cx3-name { display: grid; gap: 1px; min-width: 0; }
+.cx3-name .cx-bname > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx3-name > .cx-meta { padding-left: calc(20px + var(--ah-s2)); }
+.cx3-size { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.cx3-act { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ah-s1); }
+.cx3-empty { grid-template-columns: 1fr; }
+.variant-2 .cx3-row, .variant-2 .cx3-group h4 { grid-template-columns: minmax(0, 1fr) 6em; }
+.variant-2 .cx3-act { display: none; }
+.cx-src-part { background: transparent; }
+.cx3-details { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s3); margin-top: var(--ah-s3); }
+.cx3-details .cx-fine { margin: 0; }
+.cx3-details button svg { width: 14px; height: 14px; }
+
+@media (max-width: 760px) {
+  .cx3-row, .variant-2 .cx3-row, .cx3-group h4, .variant-2 .cx3-group h4 { grid-template-columns: minmax(0, 1fr) auto; }
+  .cx3-act { grid-column: 1 / -1; justify-content: flex-start; padding-left: calc(20px + var(--ah-s2)); }
+  .cx3-act:empty { display: none; }
+  .cx3-name .cx-bname > span:last-child { white-space: normal; overflow-wrap: anywhere; }
+  .cx3-legend > div { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* Shared with round 2: the dialogs' item list and the row name. */
+.cx-modal { max-width: 560px; }
+.cx-stay { list-style: none; margin: var(--ah-s2) 0; padding: 0; display: grid; gap: var(--ah-s1); }
+.cx-stay li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--ah-s2); font-size: var(--ah-size-meta); }
+.cx-bname { display: inline-flex; align-items: center; gap: var(--ah-s2); min-width: 0; color: var(--ah-ink); }
+.cx-bname .cx-src { width: 20px; height: 20px; }
+.cx-bname .cx-src svg { width: 11px; height: 11px; }
+.cx-marksbar > span { flex: 1 1 16em; }

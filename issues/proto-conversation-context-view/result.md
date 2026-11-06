@@ -324,3 +324,126 @@ hostia vasten ajettu. Kierros ei muuttanut tuotantokoodia.
   keskeyttäisi vuoron, kuten Pi:n `compact()` tekisi.
 - **Ennuste poistuu heti tiivistyksen jälkeen**, koska Pi ei silloin
   tiivistä; sivu ei näytä rajaa, jota ei voi käyttää.
+
+# Kierros 3: B Koko yksinkertaistettuna
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-kontekstinakyma-3/`
+(NOTES.md kertoo ohjaimet ja mikä on yhteistä). Jari piti kierroksen 2
+riffejä sekavina. Nyt jokainen näkyvä tieto ja painike sanoo tavallisin
+sanoin, mitä se on ja mitä painallus tekee. Kaikki, mitä ei voi selittää
+yhdellä lauseella, on pois: ennustesarake, Mainitse/Ohita, toinen
+kokopalkki, "Erittelemätön", vara- ja säilytysluvut, vuoronumerot
+(tilalla kellonajat) ja "komennolla"-merkintä. Suodatin **Vain tiedostot**
+on kaikissa. Akseli: kuinka paljon sivulla on.
+
+- **1 Selitetty**: neljä toimintoa (Tiivistä nyt ohjeella, Palaa ennen tätä, Lue uudelleen, Avaa), jokaisen vieressä lause siitä, mitä se tekee; Pi:n omat luvut avattavina lopussa.
+- **2 Lista ja tiivistys**: sama lista, mutta toimintoina vain Tiivistä nyt ohjeella ja tekstitiedoston Avaa; ei Pi:n omia lukuja.
+- **3 Pelkkä lista**: luku ja lista; ainoa nappi on Tiivistä nyt ilman ohjetta, eikä riveillä ole nappeja.
+
+Kuvat: `evidence/r3-<suunta>-<vaihe>-<leveys>-<teema>.avif`. Suunnat
+`1-selitetty`, `2-lista`, `3-pelkka`. Vaiheet: `0-oletus` (myös tummana),
+kaikissa `1-tiedostot`; 1: `2-lue-uudelleen`, `3-palaa`, `4-palattu`,
+`5-luvut`, `6-tiivista`, `7-tiivistetty`; 2 ja 3: `2-tiivista`,
+`3-tiivistetty`.
+
+## Mitä sivulla lukee ja mistä se tulee
+
+Kaikki luetaan avoimen keskustelun Pi-sessiotiedostosta Pi:n omilla
+funktioilla, kuten nykyinen sivu (`internal/daemon/context_detail_helper.mjs`).
+Pi-lähteet: Pi 1.3.0 `@earendil-works/pi-coding-agent` (kierroksen 2 tutkimus).
+
+| Näkyvä tieto tai painike | Lause sivulla | Lähde |
+|---|---|---|
+| Luku 62 %, 124 900 / 200 000 tokenia | "Konteksti on kaikki, mitä agentti näkee joka kerta, kun se vastaa viestiisi." | Pi:n viimeisin kelvollinen usage (`measured_tokens`) ja mallin ikkuna, kuten nyt |
+| Palkki ja viiva | "Token on noin neljä merkkiä tekstiä. Kun käyttö ylittää viivan (183 616 tokenia), agentti tiivistää keskustelun itse." | ikkuna miinus henkilön asetus `reserveTokens` (Pi:n automaattisen tiivistyksen ehto) |
+| "noin 58 300" tiivistyksen jälkeen | "Luku on arvio, kunnes agentti vastaa seuraavan kerran." | Pi:n `estimateTokens` (merkit / 4); usage puuttuu, kunnes tulee uusi vastaus |
+| **Tiivistä nyt…** | "Agentti kirjoittaa vanhimmista viesteistä yhteenvedon ja vapauttaa niiden tilan. Uusimmat viestit jäävät ennalleen." | Pi:n RPC `{"type":"compact","customInstructions":…}`; daemoniin uusi komento |
+| Vahvistus: "viestit klo 10.20–10.47" tiivistyvät, "klo 10.50 alkaen" jäävät | "…koska agentti jättää aina uusimmat noin 20 000 tokenia." | Pi:n `prepareCompaction` henkilön asetuksilla (`keepRecentTokens`); sama raja, jota Pi käyttää painettaessa |
+| Vahvistus: koko jälkeen | "Tiivistyksen jälkeen konteksti on noin … tokenia." | arvio: ohjeet + työkalut + säilyvät vuorot + edellisen yhteenvedon koko (Pi:n vastaus antaa sen jälkeen `estimatedTokensAfter`) |
+| Ohjekenttä (1, 2) | "Mitä yhteenvedossa pitää säilyttää? (valinnainen)" | `customInstructions` samassa RPC:ssä |
+| Tilarivi "Tiivistetty klo 10.58" | "Uuden tiivistyksen voi pyytää, kun keskustelu on jatkunut." | Pi kieltäytyy heti tiivistyksen jälkeen ("Already compacted") |
+| Ryhmä *Agentti näkee kokonaan* ja rivien koot | "Nämä agentti näkee sanasta sanaan joka kerta, kun se vastaa." / "Rivien koot ovat arvioita…" | projektio tiivistyksen `firstKeptEntryId`stä; koko Pi:n `estimateTokens` työkalutuloksesta |
+| Ryhmä *Vain yhteenvedossa* | "Agentti luki nämä ennen klo 10.21 tehtyä tiivistystä. Ne eivät enää vie tilaa…" | samat työkalukutsut ennen `firstKeptEntryId`tä |
+| Rivit *Agentin ohjeet ja työkalut*, *Viestit ja agentin ajattelu*, *Yhteenveto aiemmista viesteistä* | rivin selite ("AGENTS.md, skillit ja työkalujen kuvaukset; mukana aina" jne.) | nykyisen sivun `parts` (instructions + tools, conversation, summary) yhdistettyinä |
+| Rivin "luki klo 10.31", "muutti klo 10.43 (+4 riviä)" | rivin alla | työkalukutsun aikaleima; `read`/`write`/`edit` Pi:n `extractFileOpsFromMessage`, rivimäärä `edit`-tuloksen `details.patch`ista; Office-tiedostot tunnetusta lukukomennosta (`docx2txt`, `pdftotext`, `xlsx2csv`) |
+| **Vain tiedostot** | "Tiedostot, jotka agentti luki tai muutti tässä keskustelussa. Agentin skriptillä kirjoittama tiedosto ei näy muutettuna." | sama tiedostotunnistus; skriptin kirjoituksia ei näe |
+| **Avaa** (1, 2) | "Avaa tiedoston työtilan editoriin." | tuotannon työtilan editori (tekstitiedostot) |
+| **Lue uudelleen** (1) | "Kirjoittaa viestikenttään pyynnön lukea tämä uudelleen; mitään ei lähetetä ennen kuin painat Lähetä." | pelkkä luonnos viestikenttään, ei hostin osuutta |
+| **Palaa ennen tätä…** (1) | "Keskustelu palaa kohtaan ennen tätä viestiä, jolloin sen tuloste lähtee agentin näkyvistä." | `rewind-conversation` (Pi:n `navigateTree`), toteutus kesken; näkymä vain avaa sen |
+| **Näytä Pi:n omat luvut** (1) | "Pi:n tekninen erittely samasta kontekstista: osat, tiivistykset ja vuorot." | nykyinen `ContextPage` sellaisenaan |
+
+## Suositus
+
+**2 Lista ja tiivistys.** Siinä on vain se, minkä henkilö oikeasti voi
+tehdä tänään ja minkä voi sanoa yhdellä lauseella: katsoa, mihin tila
+kuluu, tiivistää halutessaan omalla ohjeella ja avata tiedoston.
+Vahvistus kertoo kellonajoin, mitä lähtee ja mitä jää, joten erillistä
+ennustetta ei tarvita. 1:n *Palaa ennen tätä* nojaa toimintoon, jota ei ole
+vielä toteutettu, ja *Lue uudelleen* vain kirjoittaa lauseen, jonka voi
+kirjoittaa itsekin. Lisäksi 1:n selitelaatikko ja Pi:n omat luvut tuovat
+takaisin juuri sitä tekniikkaa, josta kierros 2 sai moitteita. 3 on
+selkein, mutta yhteenvedon ohje on halpa ja todellinen tapa vaikuttaa
+siihen, mitä tiivistyksessä säilyy, eikä sen poistaminen selkeytä sivua
+juuri lainkaan.
+
+## Host-tiedot
+
+Valtuus pysyy daemonilla henkilön omana Unix-käyttäjänä. Uutta
+tietovarastoa ei tarvita.
+
+- Apuri palauttaa kaikki projektion työkalutulokset rajattuna listana:
+  nimi tai polku, lähde, toimet aikaleimoineen, arvioitu koko ja tieto
+  siitä, onko tulos ennen vai jälkeen viimeisimmän `firstKeptEntryId`n.
+  Sopimukseen (`contracts/v1/context-detail.schema.json`) tulee uusi
+  rajattu lista. Vuoronumerot jäävät pois näkymästä, mutta aikaleimat
+  ovat jo sessiotiedostossa.
+- Vahvistusikkunan rajat ja koko jälkeen tulevat `prepareCompaction`ista,
+  jota sivu jo käyttää (`next_compaction`), muunnettuina kellonajoiksi.
+- Uusi daemon-komento `compact` (valinnainen ohje, pituusraja) henkilön
+  omalle Pi-prosessille. Selain tarjoaa sitä vain agentin odottaessa ja
+  näyttää Pi:n kieltäytymisen sellaisenaan.
+- Suunta 1 tarvitsee lisäksi `rewind-conversation`-toteutuksen.
+
+## Kysymykset Jarille
+
+1. **1, 2 vai 3?** `r3-1-selitetty-0-oletus-1440-light`,
+   `r3-2-lista-0-oletus-1440-light`, `r3-3-pelkka-0-oletus-1440-light`.
+   Suositus 2.
+2. **Riittääkö vahvistusikkunan selitys siitä, mitä tiivistys tekee?**
+   `r3-2-lista-2-tiivista-1440-light`: viestit klo 10.20–10.47
+   tiivistyvät, klo 10.50 alkaen jäävät (myös 60 kassan testi, 24 800).
+   Tämä korvaa kierroksen 2 ennusteen.
+3. **Tuleeko *Palaa ennen tätä* tälle sivulle, kun paluu on toteutettu?**
+   `r3-1-selitetty-3-palaa-1440-light`. Se on ainoa tapa saada uusin iso
+   tuloste pois. Suosittelen lisäämään sen vasta, kun paluu on
+   käytössä keskustelussa.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-kontekstinakyma-3/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/kontekstinakyma-3/offline.html \
+  --title "Keskustelun konteksti – kierros 3" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
+## Tarkistus
+
+`check.mjs`: 148 tarkistuspistettä, konsoli puhdas. Kaikki suunnat 1440 ja
+390 px vaaleana, suodatin, tiivistys ja suunnan 1 toiminnot klikattuina,
+oletukset myös tummana. Kuvat kertoimella 2 (AVIF). Kyse on synteettisestä
+komponenttilabrasta, jota ei ole ajettu hostia vasten. Kierros ei muuttanut
+tuotantokoodia.
+
+## Päätökset myöhempää katselmointia varten
+
+- **Kierroksen osio korvaa tuotannon sivun yläosan.** Tuotannon osat,
+  tiivistykset ja vuorot on piilotettu, koska niissä on lukuja (vara,
+  säilytettävä, erittelemätön), joita ei voi selittää yhdellä lauseella.
+  Suunnassa 1 ne ovat avattavissa sellaisinaan.
+- **Vuoronumerot korvattiin kellonajoilla.** Henkilö muistaa, milloin hän
+  pyysi jotain, ei monennessako vuorossa.
+- **"Tiivistyy seuraavaksi" -ryhmä poistettiin listasta.** Raja näkyy vain
+  vahvistuksessa, siis siinä kohdassa, jossa se kertoo painalluksen
+  vaikutuksen.
