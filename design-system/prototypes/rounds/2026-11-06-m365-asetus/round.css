@@ -1,0 +1,196 @@
+/* Review chrome above the settings page and the dialog; the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full 1 px line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.m-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { flex-basis: 100%; }
+  .m-lines { padding-left: 0; list-style: none; }
+  .m-lines li:not([aria-current]) { display: none; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s5)); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s5); }
+}
+
+/* The settings page behind, only enough to see where the guide returns. */
+.m-page { padding: calc(var(--review-h, 0px) + var(--ah-s6)) var(--ah-s6) 80px; max-width: 760px; }
+.m-page h1 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.m-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.m-row-name { display: inline-flex; align-items: center; gap: var(--ah-s2); font-weight: 600; }
+.m-row-state { display: inline-flex; align-items: center; gap: var(--ah-s1); flex: 1; font-size: var(--ah-size-meta); }
+.m-row-state svg { color: var(--ah-ok); width: 14px; height: 14px; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-lead { color: var(--ah-ink); font-size: var(--ah-size-ui); line-height: var(--ah-lh-body); }
+.m-stepbody { gap: var(--ah-s3); }
+.m-stepbody > * { max-width: 100%; }
+
+/* Where: the console path is the step's main instruction, so it reads at
+   body size in full ink; the separators are quiet and nothing looks like a
+   disclosure arrow. */
+.m-where { display: grid; gap: var(--ah-s1); min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+.m-open .m-quiet { font-weight: 400; }
+
+/* A: each Entra field as its own row. */
+.m-fields { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); width: 100%; }
+.m-field {
+  display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 2px var(--ah-s3);
+  align-items: baseline; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+}
+.m-fname { font-weight: 600; font-size: var(--ah-size-ui); }
+.m-act { font-size: var(--ah-size-ui); color: var(--ah-ink-2); }
+.m-value { grid-column: 2; display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code, .m-ev code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+@media (max-width: 640px) {
+  .m-field { grid-template-columns: minmax(0, 1fr); }
+  .m-value { grid-column: 1; }
+}
+.m-done {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; width: 100%; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-meta); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.m-role { display: flex; gap: var(--ah-s1); align-items: center; }
+.m-role svg { width: 14px; height: 14px; flex: none; }
+
+/* Permissions: one name per row with its own copy and a tick that only
+   tracks the administrator's progress here. */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; width: 100%; }
+.m-perm {
+  display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; gap: var(--ah-s3); align-items: center;
+  padding: 2px var(--ah-s1) 2px var(--ah-s2); border-radius: var(--ah-r-md); border: 1px solid transparent;
+}
+.m-perm .ah-checkbox span:last-child { font-family: var(--ah-mono); font-size: 13px; }
+.m-perm[data-ticked] .ah-checkbox span:last-child { color: var(--ah-ink-2); }
+.m-perm[data-current] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); }
+.m-says { font-size: var(--ah-size-meta); color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .m-says { display: none; } .m-perm { grid-template-columns: minmax(0, 1fr) auto; } }
+.m-d2 .m-says { display: none; }
+.m-d2 .m-perm { grid-template-columns: minmax(0, 1fr) auto; cursor: pointer; }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+
+/* B: instructions beside a sketch of the Entra page. */
+.m-beside { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--ah-s5); width: 100%; align-items: start; }
+.m-beside-l { display: grid; gap: var(--ah-s3); min-width: 0; }
+@container si-step (max-width: 640px) { .m-beside { grid-template-columns: minmax(0, 1fr); } }
+.m-subs { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.m-subs button {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer;
+  display: grid; grid-template-columns: 22px 1fr; gap: var(--ah-s2); align-items: baseline;
+  padding: var(--ah-s2); border-radius: var(--ah-r-md); border: 1px solid transparent; font-size: var(--ah-size-ui);
+}
+.m-subs button:hover { background: var(--ah-hover); }
+.m-subs button:focus-visible { outline: var(--ah-focus-width, 2px) solid var(--ah-focus); }
+.m-subs button[aria-current] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); }
+.m-subn {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  font-size: 11px; font-weight: 600; background: var(--ah-sunken); color: var(--ah-ink-2);
+}
+.m-subs button[aria-current] .m-subn { background: var(--ah-accent); color: var(--ah-on-accent); }
+.m-get { display: grid; gap: var(--ah-s3); padding: var(--ah-s4); border-radius: var(--ah-r-lg); background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); }
+
+/* The Entra sketch: neutral and greyed, so it reads as a picture of the
+   other site; the place to act is a soft accent surface with a full line. */
+.m-entra {
+  margin: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden;
+  background: var(--ah-surface); font-size: 12px; color: var(--ah-ink-2);
+}
+.m-entra-top { padding: 6px 10px; background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line-soft); font-weight: 600; color: var(--ah-ink); }
+.m-entra-crumbs { padding: 6px 10px; color: var(--ah-muted); font-size: 11px; border-bottom: 1px solid var(--ah-line-soft); }
+.m-entra-body { display: grid; grid-template-columns: 140px minmax(0, 1fr); min-height: 220px; }
+.m-entra-body:not(:has(.m-entra-nav)) { grid-template-columns: minmax(0, 1fr); }
+.m-entra-nav { margin: 0; padding: 6px; list-style: none; border-right: 1px solid var(--ah-line-soft); display: grid; align-content: start; gap: 1px; }
+.m-entra-nav li { padding: 3px 6px; border-radius: var(--ah-r-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-entra-nav li[data-on] { background: var(--ah-accent-soft); color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 640px) { .m-entra-nav { display: none; } .m-entra-body { grid-template-columns: minmax(0, 1fr); } }
+.m-entra-main { padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.m-ef { display: grid; gap: 3px; padding: 6px; border-radius: var(--ah-r-md); border: 1px solid transparent; min-width: 0; }
+.m-ef[data-on] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); }
+.m-ef-label { font-weight: 600; font-size: 11px; }
+.m-ef-input { display: grid; gap: 4px; min-width: 0; }
+.m-ef-input > span:not(.m-ev):not(.m-toggle), .m-select, .m-empty, .m-eid {
+  display: block; padding: 4px 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); background: var(--ah-surface);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.m-ef:has(.m-ecopy) .m-ef-input { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.m-ecopy { display: inline-grid; place-items: center; color: var(--ah-ink); }
+.m-ecopy svg { width: 14px; height: 14px; }
+.m-select::after { content: '  ▾'; color: var(--ah-muted); }
+.m-empty, .m-dim { color: var(--ah-muted); font-style: italic; }
+.m-ev { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.m-ev code { font-size: 12px; background: var(--ah-surface); border: 1px solid var(--ah-line); }
+.m-ebar { display: flex; gap: 6px; flex-wrap: wrap; }
+.m-eb { padding: 4px 10px; border-radius: var(--ah-r-sm); border: 1px solid var(--ah-line); background: var(--ah-surface); color: var(--ah-ink-2); }
+.m-eb[data-on] { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; }
+.m-tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--ah-line-soft); flex-wrap: wrap; }
+.m-tabs span { padding: 4px 0; }
+.m-tabs span[data-on] { color: var(--ah-ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--ah-accent); }
+.m-toggle { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
+.m-toggle i, .m-ecb i {
+  width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--ah-line-strong); background: var(--ah-surface); flex: none;
+}
+.m-ecb i { border-radius: 3px; }
+.m-toggle i[data-on], .m-ecb i[data-on] { background: var(--ah-accent); border-color: var(--ah-accent); }
+.m-ecb { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-ecb code { font-size: 11px; overflow-wrap: anywhere; }
+.m-result { padding: 6px; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-sm); }
+.m-result span { display: grid; }
+.m-result small { color: var(--ah-muted); }
+.m-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+.m-tile { padding: 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); }
+.m-tile[data-on] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; }
+.m-epane { font-weight: 600; color: var(--ah-ink); }
+.m-esel { font-size: 11px; }
+.m-etable { width: 100%; border-collapse: collapse; }
+.m-etable th { text-align: start; font-size: 11px; color: var(--ah-muted); border-bottom: 1px solid var(--ah-line-soft); padding: 3px 4px; }
+.m-etable td { padding: 3px 4px; border-bottom: 1px solid var(--ah-line-soft); }
+.m-etable code { font-size: 11px; }
+.m-granted { color: var(--ah-ok); white-space: nowrap; }
+.m-granted svg { width: 12px; height: 12px; vertical-align: -2px; margin-right: 3px; }
+
+/* C: the consent button and a simulated Microsoft page. */
+.m-consent { display: grid; gap: var(--ah-s2); justify-items: start; padding-top: var(--ah-s2); }
+.m-ok { display: inline-flex; align-items: center; gap: var(--ah-s1); color: var(--ah-ink); font-size: var(--ah-size-ui); }
+.m-ok svg { color: var(--ah-ok); width: 16px; height: 16px; }
+.m-ms {
+  width: 100%; box-sizing: border-box; display: grid; gap: 6px; padding: var(--ah-s4);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); font-size: 13px;
+}
+.m-ms h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.m-ms p, .m-ms ul { margin: 0; }
+.m-ms ul { padding-left: 1.2em; display: grid; gap: 2px; }
+.m-ms-brand { font-weight: 700; }
+.m-ms-who, .m-ms-note { color: var(--ah-muted); font-size: 12px; }
+.m-ms-btns { display: flex; justify-content: flex-end; gap: var(--ah-s2); }
+.m-ms-blank { justify-items: start; }
+.m-ms-url code { font-size: 12px; overflow-wrap: anywhere; }
+.m-ms-empty { color: var(--ah-muted); font-style: italic; min-height: 60px; }
+.m-linkcopy { display: inline-flex; align-items: center; gap: var(--ah-s1); font-size: var(--ah-size-meta); font-weight: 600; }

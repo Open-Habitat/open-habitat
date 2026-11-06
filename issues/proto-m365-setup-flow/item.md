@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
@@ -41,4 +41,4 @@ Prototyyppikierros AGENTS-WORKFLOW.md:n mukaan.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: tämänhetkinen kulku ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: tämänhetkinen kulku ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
