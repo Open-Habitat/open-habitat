@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useState } from "react";
-import type { FilePreview } from "../../app/composerReads";
+import type { FilePreview, TreeFolder } from "../../app/composerReads";
 import { textNow } from "../../i18n";
 import { composerText } from "../../text/composer";
+import { fieldListText } from "../../text/fieldList";
 import { type ChoiceGroup, ChoiceList } from "./ChoiceList";
 import { CommandRun } from "./CommandRun";
 import { Composer, type ComposerSources } from "./Composer";
+import { FieldList } from "./FieldList";
+import { searchChoices, treeChoices, unfolded } from "./fieldTree";
 import { Palette } from "./Palette";
 
 // Production components only, with synthetic data. The lists open from typing
@@ -60,6 +63,7 @@ const sources: ComposerSources = {
       { path: "README.md" },
       { path: "Makefile" },
     ],
+    matched: 4,
     truncated: false,
   }),
   workspaceName: "aurinkokello",
@@ -476,6 +480,134 @@ export const PalettePickingTwoFiles: Story = {
       onHover={noop}
       onKeyDown={noop}
       onClose={noop}
+    />
+  ),
+};
+
+// The lists inside the field (experimental composer-lists-in-field): the
+// folder tree with the changed folder open, the search by name, and two
+// marked paths, each in the field box between the text and the row.
+const ft = () => textNow(fieldListText);
+const listings = new Map<string, TreeFolder>([
+  [
+    "",
+    {
+      path: "",
+      entries: [
+        { kind: "folder", path: "docs/" },
+        { kind: "folder", path: "scripts/", changed: 1 },
+        { kind: "folder", path: "tests/", changed: 1 },
+        { kind: "file", path: "AGENTS.md" },
+        { kind: "file", path: "README.md", git: "added" },
+      ],
+      truncated: false,
+    },
+  ],
+  [
+    "scripts/",
+    {
+      path: "scripts/",
+      entries: [
+        { kind: "file", path: "scripts/status_rows.py", git: "modified" },
+      ],
+      truncated: false,
+    },
+  ],
+  [
+    "tests/",
+    {
+      path: "tests/",
+      entries: [
+        { kind: "file", path: "tests/AGENTS.md" },
+        { kind: "file", path: "tests/test_status_rows.py", git: "untracked" },
+      ],
+      truncated: false,
+    },
+  ],
+]);
+const treeGroups = (): ChoiceGroup[] => [
+  {
+    label: "",
+    choices:
+      treeChoices(listings, unfolded, {
+        loading: ft().folderLoading,
+        more: ft().folderMore,
+        failed: t().filesFailed,
+        failedFolders: new Set(),
+      }) ?? [],
+  },
+];
+function InField({
+  query = "",
+  groups,
+  selected,
+  marks = [],
+}: {
+  query?: string;
+  groups: ChoiceGroup[];
+  selected: number;
+  marks?: string[];
+}) {
+  return (
+    <Frame>
+      <div className="ah-cbox ah-cbox-listing">
+        <textarea
+          className="ah-cbox-field"
+          aria-label={t().messageToAgent}
+          defaultValue="Katso "
+          rows={1}
+        />
+        <FieldList
+          listId="story-in-field"
+          kind="file"
+          from="button"
+          head={t().filesIn("aurinkokello")}
+          note={query ? ft().matchCount(3) : ft().changedCount(3)}
+          query={query}
+          groups={groups}
+          selected={selected}
+          marks={marks}
+          searchInput
+          emptyText={t().noMatches(query)}
+          preview={preview}
+          onQuery={noop}
+          onKeyDown={noop}
+          onPick={noop}
+          onHover={noop}
+          onMark={noop}
+          onClearMarks={noop}
+          onAdd={noop}
+        />
+      </div>
+    </Frame>
+  );
+}
+export const FieldListTree: Story = {
+  render: () => <InField groups={treeGroups()} selected={2} />,
+};
+export const FieldListSearch: Story = {
+  render: () => (
+    <InField
+      query="AGENTS"
+      groups={[
+        {
+          label: "",
+          choices: searchChoices(
+            [{ path: "AGENTS.md" }, { path: "tests/AGENTS.md" }],
+            "aurinkokello",
+          ),
+        },
+      ]}
+      selected={0}
+    />
+  ),
+};
+export const FieldListTwoMarked: Story = {
+  render: () => (
+    <InField
+      groups={treeGroups()}
+      selected={2}
+      marks={["scripts/status_rows.py", "tests/"]}
     />
   ),
 };

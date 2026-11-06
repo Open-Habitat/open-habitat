@@ -28,6 +28,7 @@ import (
 const (
 	WorkspaceFilesPath       = "/api/v1/workspaces/files"
 	WorkspaceFilePreviewPath = "/api/v1/workspaces/file_preview"
+	WorkspaceFileTreePath    = "/api/v1/workspaces/file_tree"
 
 	maxComposerPathsRead = 20000
 	maxComposerPaths     = 200
@@ -66,8 +67,10 @@ func composerTarget(cfg transport.Config, id string) (*gitTarget, bool, int, str
 	return &t, false, 0, ""
 }
 
-// WorkspaceFilesHandler answers `?workspace_id=…&query=…` (query optional)
-// with at most maxComposerPaths matches, changed files first without a query.
+// WorkspaceFilesHandler answers `?workspace_id=…&query=…&rank=name` (query
+// and rank optional) with at most maxComposerPaths matches. rank=name orders
+// the matches by how well the file's own name answers the query, so the
+// bound never cuts the best names off in a large workspace.
 func WorkspaceFilesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -76,7 +79,14 @@ func WorkspaceFilesHandler(cfg transport.Config, trusted func(*http.Request) boo
 		}
 		q, err := url.ParseQuery(r.URL.RawQuery)
 		id, query := q.Get("workspace_id"), q.Get("query")
-		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceFilesPath || r.URL.EscapedPath() != WorkspaceFilesPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || len(q) > 2 || (len(q) == 2 && len(q["query"]) != 1) || len(query) > maxComposerQuery || !utf8.ValidString(query) {
+		known := 1
+		for _, key := range []string{"query", "rank"} {
+			if _, ok := q[key]; ok {
+				known++
+			}
+		}
+		_, ranked := q["rank"]
+		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceFilesPath || r.URL.EscapedPath() != WorkspaceFilesPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || len(q) != known || len(q["query"]) > 1 || (ranked && (len(q["rank"]) != 1 || q.Get("rank") != "name")) || len(query) > maxComposerQuery || !utf8.ValidString(query) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -94,10 +104,14 @@ func WorkspaceFilesHandler(cfg transport.Config, trusted func(*http.Request) boo
 			return
 		}
 		matches := matchComposerFiles(files, query)
+		if ranked {
+			matches = rankComposerNames(matches, query)
+		}
+		matched := len(matches)
 		if len(matches) > maxComposerPaths {
 			matches, truncated = matches[:maxComposerPaths], true
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": id, "files": matches, "truncated": truncated})
+		historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": id, "files": matches, "matched": matched, "truncated": truncated})
 	})
 }
 
@@ -124,7 +138,7 @@ func readComposerFiles(ctx context.Context, cfg transport.Config, target gitTarg
 			}
 		}
 		for _, path := range strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00") {
-			if path == "" || len(path) > maxComposerPath || !utf8.ValidString(path) {
+			if path == "" || !composerName(path) {
 				continue
 			}
 			if len(files) >= maxComposerPathsRead {
@@ -146,6 +160,21 @@ func readComposerFiles(ctx context.Context, cfg transport.Config, target gitTarg
 		return nil, false, errors.New("workspace changed")
 	}
 	return files, truncated, nil
+}
+
+// composerName is a path the browser contract can carry: bounded UTF-8
+// without line breaks or other control characters, which a JSON Schema
+// pattern's "." does not match.
+func composerName(path string) bool {
+	if len(path) > maxComposerPath || !utf8.ValidString(path) {
+		return false
+	}
+	for _, r := range path {
+		if r < 0x20 || r == 0x7f || r == '\u2028' || r == '\u2029' {
+			return false
+		}
+	}
+	return true
 }
 
 func gitMark(status string) string {
@@ -210,7 +239,7 @@ func walkComposerFiles(ctx context.Context, root int) ([]composerFile, bool, err
 				continue
 			}
 			path := cur.prefix + name
-			if len(path) > maxComposerPath || !utf8.ValidString(path) {
+			if !composerName(path) {
 				continue
 			}
 			var st unix.Stat_t
@@ -271,6 +300,74 @@ func matchComposerFiles(files []composerFile, query string) []composerFile {
 	sort.SliceStable(hits, func(i, j int) bool { return hits[i].score > hits[j].score })
 	for _, h := range hits {
 		out = append(out, h.file)
+	}
+	return out
+}
+
+// rankComposerNames orders matches as the composer's in-field search lists
+// them, name first and folder after: the whole name (with or without its
+// extension) before a part of it, a part before its letters in order, and
+// those before a match only in the folders. A query with a slash is a typed
+// folder and is read against the whole path. Within a tier changed files
+// come first, then the shallowest, then the path.
+func rankComposerNames(files []composerFile, query string) []composerFile {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return files
+	}
+	terms := strings.Fields(q)
+	tier := func(path string) int {
+		lower := strings.ToLower(path)
+		if strings.Contains(q, "/") {
+			if strings.Contains(lower, q) {
+				return 1
+			}
+			return 3
+		}
+		name := lower[strings.LastIndexByte(lower, '/')+1:]
+		stem := name
+		if dot := strings.LastIndexByte(name, '.'); dot > 0 {
+			stem = name[:dot]
+		}
+		switch {
+		case name == q || stem == q:
+			return 0
+		case strings.Contains(name, q):
+			return 1
+		}
+		for _, term := range terms {
+			if fuzzyScore(name, term) <= 0 {
+				return 3
+			}
+		}
+		return 2
+	}
+	type ranked struct {
+		file    composerFile
+		tier    int
+		changed bool
+		depth   int
+	}
+	rows := make([]ranked, len(files))
+	for i, f := range files {
+		rows[i] = ranked{f, tier(f.Path), f.Git != "", strings.Count(f.Path, "/")}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if a.tier != b.tier {
+			return a.tier < b.tier
+		}
+		if a.changed != b.changed {
+			return a.changed
+		}
+		if a.depth != b.depth {
+			return a.depth < b.depth
+		}
+		return a.file.Path < b.file.Path
+	})
+	out := make([]composerFile, len(rows))
+	for i, r := range rows {
+		out[i] = r.file
 	}
 	return out
 }

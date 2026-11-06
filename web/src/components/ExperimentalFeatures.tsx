@@ -27,6 +27,7 @@ const featureIds = [
   { id: "server-settings-own-area", landed: true },
   { id: "empty-conversation-start-page", landed: true },
   { id: "raise-to-your-turn", landed: true },
+  { id: "composer-lists-in-field", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -84,6 +85,31 @@ function Picture({ id, on }: { id: string; on: boolean }) {
           <span className="ex-send" />
         </span>
       </>
+    );
+  else if (id === "composer-lists-in-field")
+    body = (
+      <span className="ex-composer ex-field">
+        <span className="ex-ghost" style={{ width: "75%" }} />
+        <span className="ex-field-list">
+          {[
+            ["›", "src/", "2"],
+            ["", "shadow.py", "M"],
+            ["", "README.md", ""],
+          ].map(([twist, name, mark]) => (
+            <span
+              key={name}
+              className="ex-irow"
+              data-open={!!twist || undefined}
+            >
+              <span className="ex-check" />
+              <span>{twist}</span>
+              <b>{name}</b>
+              <span>{mark}</span>
+            </span>
+          ))}
+        </span>
+        <span>{txt.picture.composer}</span>
+      </span>
     );
   else if (id === "workspace-icons")
     body = [

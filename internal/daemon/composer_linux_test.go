@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -346,6 +347,45 @@ func TestComposerFilesStayInsideTheWorkspace(t *testing.T) {
 		t.Fatalf("query: %s", w.Body.String())
 	}
 
+	w = composerGet(files, WorkspaceFilesPath, url.Values{"workspace_id": {id}, "query": {"guide"}, "rank": {"name"}})
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"matched":1`) {
+		t.Fatalf("ranked query: %d %s", w.Code, w.Body.String())
+	}
+	for _, bad := range []url.Values{{"workspace_id": {id}, "rank": {"score"}}, {"workspace_id": {id}, "query": {"a"}, "rank": {"name", "name"}}, {"workspace_id": {id}, "query": {"a"}, "path": {"x"}}} {
+		if w = composerGet(files, WorkspaceFilesPath, bad); w.Code != 400 {
+			t.Fatalf("files %v: %d", bad, w.Code)
+		}
+	}
+
+	// The tree comes from the same names: the ignored file and the secret
+	// behind the symlink stay out, and docs/ holds no change.
+	tree := WorkspaceFileTreeHandler(h.cfg, trusted)
+	var listing struct {
+		Folders []treeFolder `json:"folders"`
+		Changed int          `json:"changed"`
+	}
+	w = composerGet(tree, WorkspaceFileTreePath, url.Values{"workspace_id": {id}})
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &listing) != nil || listing.Changed != 3 || len(listing.Folders) != 1 || strings.Contains(w.Body.String(), "build.log") || strings.Contains(w.Body.String(), "token.txt") {
+		t.Fatalf("tree: %d %s", w.Code, w.Body.String())
+	}
+	if top := listing.Folders[0]; top.Path != "" || len(top.Entries) != 5 || top.Entries[0] != (treeEntry{Kind: "folder", Path: "docs/"}) {
+		t.Fatalf("top folder: %+v", top)
+	}
+	w = composerGet(tree, WorkspaceFileTreePath, url.Values{"workspace_id": {id}, "folder": {"docs/"}})
+	if json.Unmarshal(w.Body.Bytes(), &listing) != nil || len(listing.Folders) != 2 || listing.Folders[0].Path != "docs/" || len(listing.Folders[0].Entries) != 1 || listing.Folders[0].Entries[0].Path != "docs/guide.md" {
+		t.Fatalf("folder: %s", w.Body.String())
+	}
+	for _, folder := range []string{"docs", "../", "/etc/", "docs//", "linked/../../"} {
+		if w = composerGet(tree, WorkspaceFileTreePath, url.Values{"workspace_id": {id}, "folder": {folder}}); w.Code != 400 {
+			t.Fatalf("folder %q: %d %s", folder, w.Code, w.Body.String())
+		}
+	}
+	// A symlinked folder is one untracked entry, never listed through.
+	w = composerGet(tree, WorkspaceFileTreePath, url.Values{"workspace_id": {id}, "folder": {"linked/"}})
+	if w.Code != 200 || strings.Contains(w.Body.String(), "token.txt") {
+		t.Fatalf("folder through a symlink: %d %s", w.Code, w.Body.String())
+	}
+
 	plainID := composerWorkspaceID(t, h, "notes")
 	w = composerGet(files, WorkspaceFilesPath, url.Values{"workspace_id": {plainID}})
 	if json.Unmarshal(w.Body.Bytes(), &list) != nil || len(list.Files) != 2 || list.Files[0].Path != "a.txt" || list.Files[1].Path != "sub/b.txt" {
@@ -472,5 +512,86 @@ func TestCommandListMarksOnlyUnsupportedExtensionCommands(t *testing.T) {
 	commands := view["commands"].([]map[string]any)
 	if len(commands) != 3 || commands[0]["terminal_only"] != true || commands[1]["terminal_only"] != false || commands[2]["terminal_only"] != false {
 		t.Fatalf("commands: %+v", commands)
+	}
+}
+
+// The in-field search lists a name in many folders by the name's match,
+// then the changed one, then the shallowest; a path-only match comes last
+// however shallow, and a typed folder is read against the whole path.
+func TestComposerNameRankPutsNameMatchesFirst(t *testing.T) {
+	files := []composerFile{
+		{Path: "docs/AGENTS.md"},
+		{Path: "agents/runner.go"},
+		{Path: "src/astro/AGENTS.md"},
+		{Path: "AGENTS.md"},
+		{Path: "src/AGENTS.md", Git: "modified"},
+		{Path: "tests/agents_test.go"},
+		{Path: "docs/AGENTS-old.md"},
+	}
+	got := rankComposerNames(matchComposerFiles(files, "AGENTS"), "AGENTS")
+	var paths []string
+	for _, f := range got {
+		paths = append(paths, f.Path)
+	}
+	want := "src/AGENTS.md AGENTS.md docs/AGENTS.md src/astro/AGENTS.md docs/AGENTS-old.md tests/agents_test.go agents/runner.go"
+	if strings.Join(paths, " ") != want {
+		t.Fatalf("order:\n got %s\nwant %s", strings.Join(paths, " "), want)
+	}
+	got = rankComposerNames(matchComposerFiles(files, "src/ag"), "src/ag")
+	if len(got) == 0 || got[0].Path != "src/AGENTS.md" {
+		t.Fatalf("typed folder: %+v", got)
+	}
+}
+
+// A folder's listing names subfolders before files with their change counts;
+// a folder past its bound keeps its changed files.
+func TestComposerTreeCountsChangesAndKeepsThemAtTheBound(t *testing.T) {
+	files := []composerFile{{Path: "README.md"}, {Path: "src/a/x.go", Git: "modified"}, {Path: "src/a/b/y.go", Git: "untracked"}, {Path: "src/z.go"}}
+	for i := 0; i < maxTreeFolderEntries+10; i++ {
+		files = append(files, composerFile{Path: fmt.Sprintf("big/f%04d.txt", i)})
+	}
+	files = append(files, composerFile{Path: "big/zz-changed.txt", Git: "modified"})
+	folders, changed, more := composerTree(files, "")
+	if changed != 3 || more {
+		t.Fatalf("changed %d more %v", changed, more)
+	}
+	var order []string
+	for _, f := range folders {
+		order = append(order, f.Path)
+	}
+	if strings.Join(order, ",") != ",big/,src/,src/a/,src/a/b/" {
+		t.Fatalf("the open folders, shallowest first: %q", order)
+	}
+	top := folders[0].Entries
+	if len(top) != 3 || top[0] != (treeEntry{Kind: "folder", Path: "big/", Changed: 1}) || top[1] != (treeEntry{Kind: "folder", Path: "src/", Changed: 2}) || top[2].Path != "README.md" {
+		t.Fatalf("top: %+v", top)
+	}
+	big := folders[1]
+	if !big.Truncated || len(big.Entries) != maxTreeFolderEntries || big.Entries[len(big.Entries)-1].Path != "big/zz-changed.txt" {
+		t.Fatalf("a cut folder keeps its changed file: truncated=%v n=%d last=%+v", big.Truncated, len(big.Entries), big.Entries[len(big.Entries)-1])
+	}
+	folders, _, _ = composerTree(files, "src/a/b/")
+	order = order[:0]
+	for _, f := range folders {
+		order = append(order, f.Path)
+	}
+	if strings.Join(order, ",") != "src/a/b/,,src/,src/a/" {
+		t.Fatalf("a folder first, then the folders above it: %q", order)
+	}
+	// However deep, the requested folder is in the reply.
+	deep := strings.Repeat("d/", 40)
+	folders, _, more = composerTree([]composerFile{{Path: deep + "x.txt"}}, deep)
+	if len(folders) == 0 || folders[0].Path != deep || len(folders[0].Entries) != 1 || !more {
+		t.Fatalf("deep folder: first=%q more=%v", folders[0].Path, more)
+	}
+}
+
+// A name with a line break cannot cross the contract, so it is left out
+// rather than spoiling the whole reply.
+func TestComposerNamesWithoutControlCharacters(t *testing.T) {
+	for path, ok := range map[string]bool{"notes/a.md": true, "notes\narchive/a.md": false, "tab\tname": false, "line\u2028sep": false, "ääkköset.md": true} {
+		if composerName(path) != ok {
+			t.Fatalf("%q: want %v", path, ok)
+		}
 	}
 }

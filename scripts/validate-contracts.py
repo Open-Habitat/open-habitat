@@ -174,6 +174,7 @@ checks = {
     "composer-start-page-unavailable.json": "composer.schema.json",
     "composer-files.json": "composer.schema.json",
     "composer-file-preview.json": "composer.schema.json",
+    "composer-file-tree.json": "composer.schema.json",
     "composer-bash.json": "composer.schema.json",
     "speech-key.json": "speech.schema.json",
     "speech-key-update.json": "speech.schema.json",

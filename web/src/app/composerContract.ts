@@ -13,6 +13,7 @@ const def = (name: string) =>
 export const validStartPageReply = def("startPageReply");
 export const validCommandList = def("commandList");
 export const validFileList = def("fileList");
+export const validFileTree = def("fileTree");
 export const validFilePreview = def("filePreview");
 export const validBashReply = def("bashReply");
 export const validBashStatus = def("bashStatus");

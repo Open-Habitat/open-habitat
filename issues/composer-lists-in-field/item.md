@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-composer-popover-placement']
 preparation: ready
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/composer-lists-in-field
 lane: composer-lists
 lane_seq: 1
+closed: 2026-11-06
 ---
 
 # Composer lists inside the field: folder tree, changed as state, preview, list search (experimental)
@@ -32,4 +33,4 @@ lapset ja muutosmäärät myös isossa työtilassa, esikatseluluku).
 
 ## Acceptance Criteria
 
-- [ ] listat kentän sisällä prototyypin mukaan kokeellisena ominaisuutena; testit selaukselle, haulle ja usean valinnalle; puhelin
+- [x] listat kentän sisällä prototyypin mukaan kokeellisena ominaisuutena; testit selaukselle, haulle ja usean valinnalle; puhelin

@@ -22,6 +22,7 @@ const features = [
   "server-settings-own-area",
   "empty-conversation-start-page",
   "raise-to-your-turn",
+  "composer-lists-in-field",
 ];
 
 async function signIn(page: Page) {

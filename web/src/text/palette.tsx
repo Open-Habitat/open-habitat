@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { catalog } from "../i18n";
+import { catalog, plural } from "../i18n";
 
 // The composer's Ctrl/⌘+P picker (components/composer/Palette.tsx): its
 // tabs, search, preview pane and key hints.
@@ -23,6 +23,14 @@ const fi = {
   previewFailed: "Esikatselua ei saatu.",
   reading: "Luetaan…",
   binary: "Binääritiedosto: ei esikatselua.",
+  changedState: "Muutettu: muutokset viimeisimpään committiin.",
+  untrackedState: "Uusi tiedosto, ei vielä Gitissä.",
+  changedBeneath: (n: number) =>
+    plural("fi", n, {
+      one: `${n} muutettu tiedosto`,
+      other: `${n} muutettua tiedostoa`,
+    }),
+  emptyFolder: "Kansio on tyhjä.",
   close: "Sulje valitsin",
   dialog: "Valitse tiedostot tai komento",
   search: "Hae",
@@ -66,6 +74,11 @@ export const paletteText = catalog(fi, {
   previewFailed: "The preview could not be loaded.",
   reading: "Reading…",
   binary: "Binary file: no preview.",
+  changedState: "Changed: changes since the last commit.",
+  untrackedState: "New file, not yet in Git.",
+  changedBeneath: (n) =>
+    `${n} changed ${plural("en", n, { one: "file", other: "files" })}`,
+  emptyFolder: "The folder is empty.",
   close: "Close the picker",
   dialog: "Choose files or a command",
   search: "Search",

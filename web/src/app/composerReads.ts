@@ -2,6 +2,7 @@ import {
   validCommandList,
   validFileList,
   validFilePreview,
+  validFileTree,
   validStartPageReply,
 } from "./composerContract";
 
@@ -42,7 +43,28 @@ export type GitMark =
   | "untracked"
   | "conflict";
 export type WorkspaceFile = { path: string; git?: GitMark };
-export type FileList = { files: WorkspaceFile[]; truncated: boolean };
+export type FileList = {
+  files: WorkspaceFile[];
+  /** The matches before the daemon's bound of 200. */
+  matched: number;
+  truncated: boolean;
+};
+/** One direct child of a folder; a folder's path ends with a slash. */
+export type TreeEntry =
+  | { kind: "file"; path: string; git?: GitMark }
+  | { kind: "folder"; path: string; changed?: number };
+export type TreeFolder = {
+  /** "" is the workspace itself. */
+  path: string;
+  entries: TreeEntry[];
+  truncated: boolean;
+};
+export type FileTree = {
+  folders: TreeFolder[];
+  /** The workspace's changed files. */
+  changed: number;
+  truncated: boolean;
+};
 export type FilePreview = {
   path: string;
   kind: "diff" | "text" | "binary";
@@ -84,16 +106,33 @@ export async function readCommands(
   return v as unknown as CommandList;
 }
 
+/** rank "name": the in-field list's order, the file's own name first. */
 export async function readFiles(
   workspaceId: string,
   query: string,
   signal?: AbortSignal,
+  rank?: "name",
 ): Promise<FileList> {
   const params = new URLSearchParams({ workspace_id: workspaceId });
   if (query) params.set("query", query.slice(0, 200));
+  if (query && rank) params.set("rank", rank);
   const v = await read(`/api/v1/workspaces/files?${params}`, signal);
   if (!validFileList(v)) throw new ComposerReadFailed("invalid");
   return v as unknown as FileList;
+}
+
+/** Without a folder: the top folder and every folder holding a change, the
+ * tree as it opens. With one: that folder and the folders above it. */
+export async function readFileTree(
+  workspaceId: string,
+  folder: string | null,
+  signal?: AbortSignal,
+): Promise<FileTree> {
+  const params = new URLSearchParams({ workspace_id: workspaceId });
+  if (folder) params.set("folder", folder);
+  const v = await read(`/api/v1/workspaces/file_tree?${params}`, signal);
+  if (!validFileTree(v)) throw new ComposerReadFailed("invalid");
+  return v as unknown as FileTree;
 }
 
 export async function readPreview(

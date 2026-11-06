@@ -13,10 +13,13 @@ import type {
   CommandList,
   FileList,
   FilePreview,
+  FileTree,
+  TreeFolder,
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
 import { useText } from "../../i18n";
 import { composerText } from "../../text/composer";
+import { fieldListText } from "../../text/fieldList";
 import {
   AttachmentChips,
   joinAttachments,
@@ -55,6 +58,18 @@ import {
   useDictation,
   useDictationShortcut,
 } from "./Dictation";
+import { FieldList } from "./FieldList";
+import {
+  autoSelect,
+  type Folding,
+  foldersToRead,
+  revealFolding,
+  searchChoices,
+  sideways,
+  toggleFolder,
+  treeChoices,
+  unfolded,
+} from "./fieldTree";
 import {
   type ComposerGoal,
   cutPreparedPlaceholder,
@@ -99,8 +114,16 @@ export type BrowserAction = {
 /** What the field's lists read. The composer asks when a list opens. */
 export type ComposerSources = {
   commands: (signal: AbortSignal) => Promise<CommandList>;
-  files: (query: string, signal: AbortSignal) => Promise<FileList>;
+  /** rank "name": the in-field search's order, the file's own name first. */
+  files: (
+    query: string,
+    signal: AbortSignal,
+    rank?: "name",
+  ) => Promise<FileList>;
   preview?: (path: string, signal: AbortSignal) => Promise<FilePreview>;
+  /** The in-field list's folders: the tree as it opens (null) or one folder
+   * with the folders above it. */
+  tree?: (folder: string | null, signal: AbortSignal) => Promise<FileTree>;
   browserActions?: BrowserAction[];
   /** For the list titles, e.g. the workspace's name. */
   workspaceName: string;
@@ -125,16 +148,41 @@ export type ComposerShell = {
   stopState?: "pending" | "uncertain";
 };
 
+/** The in-field list's own state (composer-lists-in-field); the other
+ * lists carry it unused. */
+type InField = {
+  /** Marked paths in marking order; a folder's ends with a slash. */
+  marks: string[];
+  folding: Folding;
+  /** Lista's → : the file the tree shows once the search is cleared. */
+  reveal?: string;
+  /** The row in hand by what it is, so a folder read that adds rows above
+   * it does not move the selection to another row. */
+  selKey?: string;
+};
+const fresh: InField = { marks: [], folding: unfolded, selKey: undefined };
+/** A row's identity in the in-field list. */
+const rowKey = (c: Choice | undefined) =>
+  !c || c.type === "status"
+    ? undefined
+    : c.type === "command"
+      ? `command:${c.tone}:${c.name}`
+      : `${c.type}:${c.path}`;
+/** The in-field list lets the rows pick where the selection rests. */
+const AUTO = -2;
+
 type Open =
-  | ({ place: "caret"; sel: number } & CaretToken)
-  | {
+  | ({ place: "caret"; sel: number } & CaretToken & InField)
+  | ({
       place: "button";
       kind: "cmd" | "file";
       start: number;
       end: number;
       query: string;
       sel: number;
-    }
+      /** Accepting replaces start..end (an `@token` carried into it). */
+      replace?: boolean;
+    } & InField)
   | {
       place: "palette";
       tab: PaletteTab;
@@ -201,9 +249,51 @@ function caretX(field: HTMLTextAreaElement, pos: number) {
   return x;
 }
 
+/** The caret's line top within the field as the field shows it now. */
+function caretTop(field: HTMLTextAreaElement, pos: number) {
+  const style = getComputedStyle(field);
+  const mirror = document.createElement("div");
+  for (const k of [
+    "font",
+    "letterSpacing",
+    "padding",
+    "border",
+    "boxSizing",
+    "lineHeight",
+  ] as const)
+    mirror.style[k] = style[k];
+  Object.assign(mirror.style, {
+    position: "absolute",
+    visibility: "hidden",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
+    width: `${field.clientWidth}px`,
+    top: "0",
+    left: "0",
+  });
+  mirror.textContent = field.value.slice(0, pos);
+  const mark = document.createElement("span");
+  mark.textContent = "\u200b";
+  mirror.appendChild(mark);
+  field.parentElement?.appendChild(mirror);
+  const y = mark.offsetTop;
+  mirror.remove();
+  return {
+    y,
+    line: Number.parseFloat(style.lineHeight) || 22,
+    pad: Number.parseFloat(style.paddingTop) || 0,
+  };
+}
+
 /** Commands and files, read when a list opens. A command list is reused for
- * half a minute, then read again in the background while the old one shows. */
-function useSources(sources: ComposerSources | undefined, open: Open | null) {
+ * half a minute, then read again in the background while the old one shows.
+ * The in-field list (`inField`) reads its search ranked by name and browses
+ * the folder tree, read when it opens and a folder at a time after that. */
+function useSources(
+  sources: ComposerSources | undefined,
+  open: Open | null,
+  inField: boolean,
+) {
   const [commands, setCommands] = useState<{
     state: "idle" | "loading" | "ready" | "failed";
     list?: CommandList;
@@ -215,7 +305,9 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
     list?: FileList;
   }>({ state: "idle", query: "" });
   const kind = open ? kindOf(open) : null;
-  const fileQuery = open && kind === "file" ? open.query : null;
+  // The in-field list browses the tree without a search.
+  const fileQuery =
+    open && kind === "file" && !(inField && !open.query) ? open.query : null;
   const wantCommands = kind === "cmd";
   // biome-ignore lint/correctness/useExhaustiveDependencies: reread only when a command list opens.
   useEffect(() => {
@@ -237,7 +329,10 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
     const abort = new AbortController();
     setFiles((f) => ({ ...f, state: "loading" }));
     const timer = window.setTimeout(() => {
-      sources.files(fileQuery, abort.signal).then(
+      (inField
+        ? sources.files(fileQuery, abort.signal, "name")
+        : sources.files(fileQuery, abort.signal)
+      ).then(
         (list) => setFiles({ state: "ready", query: fileQuery, list }),
         () => {
           if (!abort.signal.aborted)
@@ -249,9 +344,98 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
       window.clearTimeout(timer);
       abort.abort();
     };
-  }, [sources, fileQuery]);
-  return { commands, files };
+  }, [sources, fileQuery, inField]);
+
+  // The tree lives while the in-field file list is open; it is read the
+  // first time the list browses, and forgotten when the list closes.
+  const treeSource = inField ? sources?.tree : undefined;
+  const treeOpen = !!treeSource && kind === "file";
+  const browsing = treeOpen && !open?.query;
+  const [tree, setTree] = useState<TreeState>(idleTree);
+  const session = useRef<AbortController | null>(null);
+  const inFlight = useRef(new Set<string>());
+  const known = useRef(tree);
+  known.current = tree;
+  useEffect(() => {
+    if (treeOpen) return;
+    session.current?.abort();
+    session.current = null;
+    inFlight.current.clear();
+    setTree(idleTree);
+  }, [treeOpen]);
+  useEffect(() => () => session.current?.abort(), []);
+  const merge = useCallback((reply: FileTree) => {
+    setTree((t) => {
+      const listings = new Map(t.listings);
+      for (const f of reply.folders) listings.set(f.path, f);
+      return { ...t, state: "ready", listings, changed: reply.changed };
+    });
+  }, []);
+  useEffect(() => {
+    if (!browsing || !treeSource || session.current) return;
+    const abort = new AbortController();
+    session.current = abort;
+    setTree({ ...idleTree, state: "loading" });
+    treeSource(null, abort.signal).then(
+      (reply) => {
+        if (!abort.signal.aborted) merge(reply);
+      },
+      () => {
+        if (!abort.signal.aborted) setTree((t) => ({ ...t, state: "failed" }));
+      },
+    );
+  }, [browsing, treeSource, merge]);
+  /** Reads folders the tree shows open, or the preview shows, unread. */
+  const readFolders = useCallback(
+    (folders: string[]) => {
+      const abort = session.current;
+      if (!abort || !treeSource) return;
+      const t = known.current;
+      for (const folder of folders) {
+        if (
+          inFlight.current.has(folder) ||
+          t.failed.has(folder) ||
+          t.listings.has(folder)
+        )
+          continue;
+        inFlight.current.add(folder);
+        treeSource(folder, abort.signal).then(
+          (reply) => {
+            inFlight.current.delete(folder);
+            if (abort.signal.aborted) return;
+            merge(reply);
+            // A reply without the folder asked for will not bring it later.
+            if (!reply.folders.some((f) => f.path === folder))
+              setTree((u) => ({ ...u, failed: new Set(u.failed).add(folder) }));
+          },
+          () => {
+            inFlight.current.delete(folder);
+            if (!abort.signal.aborted)
+              setTree((u) => ({
+                ...u,
+                failed: new Set(u.failed).add(folder),
+              }));
+          },
+        );
+      }
+    },
+    [treeSource, merge],
+  );
+  return { commands, files, tree, readFolders };
 }
+
+type TreeState = {
+  state: "idle" | "loading" | "ready" | "failed";
+  listings: Map<string, TreeFolder>;
+  /** The workspace's changed files, as the last read said. */
+  changed?: number;
+  failed: Set<string>;
+};
+const idleTree: TreeState = {
+  state: "idle",
+  listings: new Map(),
+  failed: new Set(),
+};
 
 function commandGroups(
   t: Text,
@@ -259,6 +443,9 @@ function commandGroups(
   state: ReturnType<typeof useSources>["commands"],
   query: string,
   runsAtStart: boolean,
+  /** The in-field list browses commands by source: skills, templates,
+   * extensions. */
+  bySource?: Record<"skill" | "prompt" | "extension", string>,
 ): ChoiceGroup[] {
   const groups: ChoiceGroup[] = [];
   const by = <T extends { s: number }>(a: T, b: T) => b.s - a.s;
@@ -299,33 +486,39 @@ function commandGroups(
     });
     return groups;
   }
-  groups.push({
-    label,
-    // A native command inventory is not a browser capability list. Keep
-    // known terminal dialogs out of every composer entry point (including
-    // search), rather than offering disabled commands among runnable ones.
-    choices: state.list.commands
-      .filter((c) => !c.terminal_only)
-      .map((c) => ({
-        c,
-        s: Math.max(
-          fuzzyScore(c.name, query),
-          fuzzyScore(c.description, query) * 0.4,
-        ),
-      }))
-      .filter((x) => x.s > 0)
-      .sort(by)
-      .map(
-        ({ c }): Choice => ({
-          type: "command",
-          name: c.name,
-          description: c.description,
-          tag: `${t.sources[c.source]} · ${t.scopes[c.scope]}`,
-          tone: c.source,
-          terminalOnly: c.terminal_only,
-        }),
+  // A native command inventory is not a browser capability list. Keep
+  // known terminal dialogs out of every composer entry point (including
+  // search), rather than offering disabled commands among runnable ones.
+  const choices = state.list.commands
+    .filter((c) => !c.terminal_only)
+    .map((c) => ({
+      c,
+      s: Math.max(
+        fuzzyScore(c.name, query),
+        fuzzyScore(c.description, query) * 0.4,
       ),
-  });
+    }))
+    .filter((x) => x.s > 0)
+    .sort(by)
+    .map(
+      ({ c }): Choice => ({
+        type: "command",
+        name: c.name,
+        description: c.description,
+        tag: `${t.sources[c.source]} · ${t.scopes[c.scope]}`,
+        tone: c.source,
+        terminalOnly: c.terminal_only,
+      }),
+    );
+  if (bySource && !query)
+    for (const source of ["skill", "prompt", "extension"] as const)
+      groups.push({
+        label: bySource[source],
+        choices: choices.filter(
+          (c) => c.type === "command" && c.tone === source,
+        ),
+      });
+  else groups.push({ label, choices });
   return groups;
 }
 
@@ -365,6 +558,57 @@ function fileGroups(
   ];
 }
 
+/** The in-field file list: the folder tree while browsing, Lista while
+ * searching (the daemon's name order, the folder after the name). */
+function fieldFileGroups(
+  t: Text,
+  ft: typeof fieldListText.fi,
+  files: ReturnType<typeof useSources>["files"],
+  tree: TreeState,
+  open: Open,
+  workspaceName: string,
+): ChoiceGroup[] {
+  if (open.query) {
+    const loaded = files.list && files.query === open.query;
+    if (!loaded && files.state === "failed")
+      return [
+        { label: "", choices: [{ type: "status", text: t.filesFailed }] },
+      ];
+    if (!files.list)
+      return [
+        {
+          label: "",
+          choices: [{ type: "status", text: t.filesLoading, loading: true }],
+        },
+      ];
+    return [
+      { label: "", choices: searchChoices(files.list.files, workspaceName) },
+    ];
+  }
+  const folding = open.place === "palette" ? unfolded : open.folding;
+  const rows =
+    tree.state === "failed"
+      ? null
+      : treeChoices(tree.listings, folding, {
+          loading: ft.folderLoading,
+          more: ft.folderMore,
+          failed: t.filesFailed,
+          failedFolders: tree.failed,
+        });
+  if (!rows)
+    return [
+      {
+        label: "",
+        choices: [
+          tree.state === "failed"
+            ? { type: "status", text: t.filesFailed }
+            : { type: "status", text: t.filesLoading, loading: true },
+        ],
+      },
+    ];
+  return [{ label: "", choices: rows }];
+}
+
 export function Composer({
   value: draftValue,
   csrf,
@@ -397,6 +641,7 @@ export function Composer({
   speech,
   onDictating,
   turnControl,
+  inFieldLists = false,
 }: {
   value: string;
   csrf?: string;
@@ -447,8 +692,14 @@ export function Composer({
   onDictating?: (active: boolean) => void;
   /** Nosta or Ei nyt (TurnControl): the middle slot while it is free. */
   turnControl?: ReactNode;
+  /** The lists open inside the field: a folder tree, a search by name, a
+   * preview beside them and marking several (experimental
+   * composer-lists-in-field). Needs `sources.tree`. */
+  inFieldLists?: boolean;
 }) {
   const t = useText(composerText);
+  const ft = useText(fieldListText);
+  const inField = inFieldLists && !!sources?.tree;
   const MODE = t.modes;
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -588,7 +839,11 @@ export function Composer({
   const [open, setOpen] = useState<Open | null>(null);
   const [notice, setNotice] = useState("");
   const lastCaret = useRef<[number, number] | null>(null);
-  const { commands, files } = useSources(sources, open);
+  const { commands, files, tree, readFolders } = useSources(
+    sources,
+    open,
+    inField,
+  );
   const working = activity === "working";
   // A goal chip makes the draft a skill call; its text is never a command.
   const shellOn = !!shell && !goal && isShell(value);
@@ -607,13 +862,24 @@ export function Composer({
 
   const groups = useMemo<ChoiceGroup[]>(() => {
     if (!open) return [];
+    const runsAtStart = open.place !== "caret" || open.atStart;
     if (kindOf(open) === "cmd")
       return commandGroups(
         t,
         sources,
         commands,
         open.query,
-        open.place !== "caret" || open.atStart,
+        runsAtStart,
+        inField && runsAtStart ? ft.groups : undefined,
+      );
+    if (inField)
+      return fieldFileGroups(
+        t,
+        ft,
+        files,
+        tree,
+        open,
+        sources?.workspaceName ?? "",
       );
     return fileGroups(
       t,
@@ -621,13 +887,38 @@ export function Composer({
       open.query,
       open.place === "palette" && open.tab === "changed",
     );
-  }, [t, open, sources, commands, files]);
+  }, [t, ft, open, sources, commands, files, tree, inField]);
   const flat = useMemo(() => flatChoices(groups), [groups]);
-  // A selection past the end, or on a status row, moves to the first pickable.
-  const sel =
-    open && open.sel >= 0 && !pickable(flat[open.sel])
-      ? flat.findIndex(pickable)
-      : (open?.sel ?? -1);
+  // A selection past the end, or on a status row, moves to the first
+  // pickable; the in-field list lets its rows choose (autoSelect).
+  const sel = !open
+    ? -1
+    : inField && open.place !== "palette"
+      ? open.selKey && flat.some((c) => rowKey(c) === open.selKey)
+        ? flat.findIndex((c) => rowKey(c) === open.selKey)
+        : open.sel === AUTO || (open.sel >= 0 && !pickable(flat[open.sel]))
+          ? autoSelect(flat, {
+              reveal: open.reveal,
+              searching: kindOf(open) === "file" && !!open.query,
+            })
+          : open.sel
+      : open.sel >= 0 && !pickable(flat[open.sel])
+        ? flat.findIndex(pickable)
+        : open.sel;
+  // The tree reads a folder it shows open but has not read, and the folder
+  // whose contents the preview shows once the selection rests on it.
+  const toRead = inField ? foldersToRead(flat).join("\n") : "";
+  useEffect(() => {
+    if (toRead) readFolders(toRead.split("\n"));
+  }, [toRead, readFolders]);
+  const selected = flat[sel];
+  const previewFolder =
+    inField && selected?.type === "folder" ? selected.path : "";
+  useEffect(() => {
+    if (!previewFolder) return;
+    const timer = window.setTimeout(() => readFolders([previewFolder]), 150);
+    return () => window.clearTimeout(timer);
+  }, [previewFolder, readFolders]);
 
   const fieldAvailability = editorAvailability ?? availability;
   const fieldReason = unavailableReason(fieldAvailability);
@@ -739,23 +1030,52 @@ export function Composer({
       if (refocus && had && field.current) {
         const el = field.current;
         el.focus();
-        const at =
-          had.place === "caret" || (had.place === "palette" && had.replace)
-            ? had.end
-            : had.start;
+        const at = had.place === "caret" || had.replace ? had.end : had.start;
         el.setSelectionRange(at, had.place === "caret" ? at : had.end);
       }
     },
     [open],
   );
+  /** The in-field list: a folder opens or closes in place. */
+  const toggleRow = (index: number) => {
+    const row = flat[index];
+    if (!open || open.place === "palette" || row?.type !== "folder") return;
+    setOpen({
+      ...open,
+      folding: toggleFolder(open.folding, row.path, row.changed),
+      reveal: undefined,
+      sel: index,
+      selKey: rowKey(row),
+    });
+  };
+  /** The in-field list: a file or folder is marked or unmarked; with Tab
+   * the selection moves on to the next row. */
+  const toggleMark = (index: number, advance: boolean) => {
+    const row = flat[index];
+    if (!open || open.place === "palette") return;
+    if (row?.type !== "file" && row?.type !== "folder") return;
+    const marks = open.marks.includes(row.path)
+      ? open.marks.filter((p) => p !== row.path)
+      : [...open.marks, row.path];
+    let i = index;
+    if (advance)
+      do i = (i + 1) % flat.length;
+      while (!pickable(flat[i]) && i !== index);
+    setOpen({ ...open, marks, sel: i, selKey: rowKey(flat[i]) });
+  };
   const accept = (index: number) => {
     if (!open) return;
-    const marked =
-      open.place === "palette" && open.marks.size
+    const inFieldMarks =
+      inField && open.place !== "palette" ? open.marks : undefined;
+    if (inFieldMarks && !inFieldMarks.length && flat[index]?.type === "folder")
+      return toggleRow(index);
+    const marked = inFieldMarks?.length
+      ? inFieldMarks.map((path): Choice => ({ type: "file", path }))
+      : open.place === "palette" && open.marks.size
         ? flat.filter((c) => c.type === "file" && open.marks.has(c.path))
         : [flat[index]].filter(Boolean);
     const first = marked[0];
-    if (!first || first.type === "status") return;
+    if (!first || first.type === "status" || first.type === "folder") return;
     if (first.type === "command" && first.terminalOnly) {
       setNotice(t.terminalOnly(first.name));
       return;
@@ -777,7 +1097,7 @@ export function Composer({
     }
     const paths = marked.flatMap((c) => (c.type === "file" ? [c.path] : []));
     const text = fileInsertion(paths, shellOn);
-    if (o.place === "caret" || (o.place === "palette" && o.replace))
+    if (o.place === "caret" || o.replace)
       return replaceRange(o.start, o.end, text);
     const pad = o.start > 0 && !/\s/.test(value[o.start - 1]) ? " " : "";
     replaceRange(o.start, o.end, pad + text);
@@ -788,7 +1108,30 @@ export function Composer({
     let i = sel < 0 ? (d > 0 ? -1 : n) : sel;
     do i = (i + d + n) % n;
     while (flat[i]?.type === "status");
-    setOpen({ ...open, sel: i });
+    setOpen({
+      ...open,
+      sel: i,
+      ...(open.place !== "palette" ? { selKey: rowKey(flat[i]) } : {}),
+    });
+  };
+  /** → and ← in the in-field file list's search line. */
+  const sidewaysKey = (right: boolean) => {
+    if (open?.place !== "button") return false;
+    const step = sideways(flat, sel, right);
+    if (!step) return false;
+    if (step.do === "select")
+      setOpen({ ...open, sel: step.index, selKey: rowKey(flat[step.index]) });
+    else if (step.do === "toggle") toggleRow(sel);
+    else
+      setOpen({
+        ...open,
+        query: "",
+        folding: revealFolding(step.path),
+        reveal: step.path,
+        sel: AUTO,
+        selKey: undefined,
+      });
+    return true;
   };
 
   // ---- opening ----
@@ -806,7 +1149,20 @@ export function Composer({
     setOpen({
       place: "caret",
       ...t,
-      sel: same ? open.sel : t.kind === "cmd" && !t.atStart ? -1 : 0,
+      ...fresh,
+      // Typing on in the same token keeps what was opened and marked.
+      folding: same ? open.folding : unfolded,
+      marks: same ? open.marks : [],
+      sel:
+        t.kind === "cmd" && !t.atStart
+          ? same
+            ? open.sel
+            : -1
+          : inField
+            ? AUTO
+            : same
+              ? open.sel
+              : 0,
     });
   };
   const fieldCaret = (): [number, number] => {
@@ -826,13 +1182,41 @@ export function Composer({
   };
   const fromButton = (kind: "cmd" | "file") => {
     if (open?.place === "button" && open.kind === kind) return close(true);
-    const [start, end] = fieldCaret();
-    setOpen({ place: "button", kind, start, end, query: "", sel: 0 });
+    // From one in-field list to the other keeps the place in the text.
+    const [start, end] =
+      inField && open && open.place !== "palette"
+        ? [open.start, open.end]
+        : fieldCaret();
+    setOpen({
+      place: "button",
+      kind,
+      start,
+      end,
+      query: "",
+      sel: inField ? AUTO : 0,
+      replace: inField && open?.place === "button" ? open.replace : false,
+      ...fresh,
+    });
   };
   const toPalette = () => {
     if (!sources) return;
     const fromCaret = open?.place === "caret" && open.kind === "file";
     const [cs, ce] = fieldCaret();
+    // The in-field list has no palette: Ctrl/⌘+P opens its file search
+    // here, a typed @token going with it.
+    if (inField) {
+      setOpen({
+        place: "button",
+        kind: "file",
+        start: fromCaret ? open.start : cs,
+        end: fromCaret ? open.end : ce,
+        replace: fromCaret,
+        query: fromCaret ? open.query : "",
+        sel: AUTO,
+        ...fresh,
+      });
+      return;
+    }
     setOpen({
       place: "palette",
       tab: "all",
@@ -998,6 +1382,15 @@ export function Composer({
     if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
       e.stopPropagation();
+      // The in-field list moves between the files and the commands.
+      if (inField && open.place === "button")
+        return setOpen({
+          ...open,
+          kind: open.kind === "cmd" ? "file" : "cmd",
+          query: "",
+          sel: AUTO,
+          ...fresh,
+        });
       if (open.place === "palette") {
         const tabs: PaletteTab[] = ["all", "changed", "cmd"];
         const tab = tabs[(tabs.indexOf(open.tab) + 1) % tabs.length];
@@ -1016,6 +1409,8 @@ export function Composer({
     }
     if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
+      if (inField && open.place === "button" && open.kind === "file")
+        return toggleMark(sel, true);
       if (open.place === "palette" && open.tab !== "cmd") {
         const c = flat[sel];
         if (c?.type !== "file") return;
@@ -1034,6 +1429,19 @@ export function Composer({
       e.preventDefault();
       return accept(sel);
     }
+    // → at the end of the search and ← at its start move in the tree.
+    const input = e.currentTarget;
+    if (
+      inField &&
+      ((e.key === "ArrowRight" &&
+        input.selectionStart === input.value.length) ||
+        (e.key === "ArrowLeft" &&
+          input.selectionStart === 0 &&
+          input.selectionEnd === 0)) &&
+      kindOf(open) === "file" &&
+      sidewaysKey(e.key === "ArrowRight")
+    )
+      e.preventDefault();
   };
   // Ctrl/⌘+P from anywhere in the page that is not another text input.
   const palette = useRef(toPalette);
@@ -1145,8 +1553,80 @@ export function Composer({
     open && kindOf(open),
     open?.place === "palette" ? 0 : open?.start,
   ]);
+  const fieldList =
+    inField && open && open.place !== "palette" ? (
+      <FieldList
+        listId={listId}
+        kind={open.kind}
+        from={open.place}
+        head={headText}
+        note={
+          open.kind !== "file" || shellOn
+            ? undefined
+            : open.query
+              ? files.list && files.query === open.query
+                ? ft.matchCount(files.list.matched)
+                : undefined
+              : tree.changed !== undefined
+                ? ft.changedCount(tree.changed)
+                : undefined
+        }
+        query={open.query}
+        groups={groups}
+        selected={sel}
+        marks={open.marks}
+        searchInput={open.place === "button"}
+        emptyText={open.query ? t.noMatches(open.query) : ft.noFiles}
+        preview={sources?.preview}
+        folder={
+          selected?.type === "folder"
+            ? tree.listings.get(selected.path)
+            : undefined
+        }
+        onQuery={(query) =>
+          setOpen({
+            ...open,
+            query,
+            reveal: undefined,
+            sel: AUTO,
+            selKey: undefined,
+            // Into or out of a search, the folders start again as they open.
+            folding: !query !== !open.query ? unfolded : open.folding,
+          })
+        }
+        onKeyDown={listKeys}
+        onPick={(i) =>
+          open.marks.length && open.kind === "file"
+            ? toggleMark(i, false)
+            : accept(i)
+        }
+        onHover={(i) => {
+          if (open.sel !== i)
+            setOpen({ ...open, sel: i, selKey: rowKey(flat[i]) });
+        }}
+        onMark={(i) => toggleMark(i, false)}
+        onClearMarks={() => setOpen({ ...open, marks: [] })}
+        onAdd={() => accept(sel)}
+      />
+    ) : null;
+  // While the in-field list is open the text keeps the caret's two lines,
+  // scrolled so the line where the choice goes shows; closed, it scrolls
+  // back to the caret.
+  const listAt =
+    fieldList && open && open.place !== "palette" ? open.start : -1;
+  useLayoutEffect(() => {
+    const el = field.current;
+    const b = box.current;
+    if (!inField || !el || !b) return;
+    const c = caretTop(el, listAt >= 0 ? listAt : el.selectionStart);
+    el.scrollTop =
+      listAt >= 0
+        ? Math.max(0, c.y - c.line - c.pad)
+        : Math.max(0, c.y - el.clientHeight + 2 * c.line);
+    b.dataset.clipped = String(listAt >= 0 && el.scrollTop > 0);
+  }, [inField, listAt]);
   const pop =
-    open && open.place !== "palette" ? (
+    !inField && open && open.place !== "palette" ? (
       // biome-ignore lint/a11y: a press inside the list keeps focus in the field; the list's keys stay with the field.
       <div
         className="ah-choice-pop"
@@ -1518,7 +1998,7 @@ export function Composer({
       ) : null}
       <div
         ref={box}
-        className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}`}
+        className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}${fieldList ? " ah-cbox-listing" : ""}`}
       >
         {dictating ? <DictationLive dictation={dictation} /> : null}
         <textarea
@@ -1544,6 +2024,11 @@ export function Composer({
           disabled={fieldDisabled}
           readOnly={fieldAvailability.state === "read_only"}
           onPointerDown={onActivity}
+          // A press in the text closes an in-field button list, and writing
+          // goes on where the press put the caret.
+          onMouseDown={() => {
+            if (inField && open?.place === "button") setOpen(null);
+          }}
           onChange={(e) => {
             onActivity?.();
             onChange(e.target.value);
@@ -1582,6 +2067,7 @@ export function Composer({
             }, 120);
           }}
         />
+        {fieldList}
         <div
           className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
         >

@@ -782,6 +782,214 @@
   margin-left: auto;
 }
 
+/* ---- the lists inside the field (composer-lists-in-field) ----
+   Part of the box between the text and the button row, no shadow, no
+   floating (Kentän sisällä, Jari 3.11.2026). The text above keeps the
+   caret's two lines. */
+.ah-cbox .ah-choice-pop.ah-choice-in {
+  position: static;
+  width: auto;
+  max-height: min(320px, 44vh);
+  margin: 2px 6px 6px;
+  overflow: hidden;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  box-shadow: none;
+  animation: ah-choice-grow 140ms ease-out;
+}
+@keyframes ah-choice-grow {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+.ah-cbox-listing .ah-cbox-field {
+  max-height: calc(2 * 1.45em + 17px);
+  transition: max-height 140ms ease-out;
+}
+.ah-cbox-listing[data-clipped="true"] .ah-cbox-field {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+}
+.ah-choice-in .ah-choice-search:focus-within {
+  background: var(--ah-surface);
+}
+.ah-choice-in .ah-choice-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+}
+.ah-choice-in .ah-choice-head > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.ah-choice-note {
+  margin-left: auto;
+  font: 500 11.5px var(--ah-font);
+  color: var(--ah-source-2);
+}
+/* The list and the preview side by side. */
+.ah-choice-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ah-choice-in .ah-choice-list [role="option"] {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.ah-choice-in .ah-pal-prev {
+  padding: 10px 14px;
+  border-left: 1px solid var(--ah-line-soft);
+}
+.ah-choice-in .ah-pal-prev pre {
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.ah-pal-state {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ah-muted);
+}
+/* A file or folder row: mark, chevron, icon, name, Git mark, count. */
+.ah-choice-check {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ah-line-strong);
+  border-radius: 4px;
+  color: transparent;
+  cursor: pointer;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
+.ah-choice-check svg {
+  width: 11px;
+  height: 11px;
+}
+[data-marked] > .ah-choice-check {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+}
+.ah-choice-twist {
+  flex: none;
+  width: 10px;
+  margin-left: -2px;
+  color: var(--ah-muted);
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+  transition: transform 120ms ease-out;
+}
+[data-open="true"] > .ah-choice-twist {
+  transform: rotate(90deg);
+}
+/* A changed file is a state of the row: the Git mark, and the name in full
+   weight so the eye finds it among the others. */
+.ah-choice-folder .ah-choice-path,
+.ah-choice-changed .ah-choice-path {
+  font-weight: 500;
+}
+.ah-choice-count {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  font: 600 11px var(--ah-mono);
+  color: var(--ah-source-2);
+  background: color-mix(in srgb, var(--ah-source-2) 14%, transparent);
+}
+/* Lista: the name first in full ink, its folder after it, muted. */
+.ah-choice-named {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.ah-choice-name-first {
+  flex: none;
+  color: var(--ah-ink);
+}
+.ah-choice-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+/* Several marked: what Enter adds, as a row a thumb also reaches. */
+.ah-choice-marked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-top: 1px solid var(--ah-line-soft);
+  font: 500 12.5px var(--ah-font);
+  color: var(--ah-ink);
+}
+.ah-choice-clear,
+.ah-choice-add {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ah-r-pill);
+  font: 500 12.5px var(--ah-font);
+  cursor: pointer;
+}
+.ah-choice-clear {
+  background: none;
+  color: var(--ah-ink-2);
+}
+.ah-choice-add {
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+}
+@media (max-width: 760px) {
+  .ah-cbox .ah-choice-pop.ah-choice-in {
+    max-height: min(320px, 46vh);
+    margin: 2px 4px 4px;
+  }
+  /* No preview on a phone, as in the palette. */
+  .ah-choice-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .ah-choice-in .ah-pal-prev {
+    display: none;
+  }
+  .ah-choice-named {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .ah-choice-where {
+    max-width: 100%;
+    font-size: 11.5px;
+  }
+  .ah-choice-check {
+    width: 20px;
+    height: 20px;
+  }
+  .ah-choice-marked {
+    min-height: var(--ah-touch);
+    box-sizing: border-box;
+  }
+  .ah-choice-clear,
+  .ah-choice-add {
+    min-height: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-cbox .ah-choice-in,
+  .ah-choice-twist,
+  .ah-cbox-listing .ah-cbox-field {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* ---- below the field ---- */
 .ah-composer-reason,
 .ah-composer-notice {

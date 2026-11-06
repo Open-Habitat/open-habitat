@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "workspace_id": "ws_example123",
+  "folders": [
+    {
+      "path": "",
+      "entries": [
+        {"kind": "folder", "path": "docs/"},
+        {"kind": "folder", "path": "scripts/", "changed": 1},
+        {"kind": "file", "path": "README.md", "git": "added"},
+        {"kind": "file", "path": "pyproject.toml"}
+      ],
+      "truncated": false
+    },
+    {
+      "path": "scripts/",
+      "entries": [
+        {"kind": "file", "path": "scripts/status_rows.py", "git": "modified"}
+      ],
+      "truncated": false
+    }
+  ],
+  "changed": 2,
+  "truncated": false
+}

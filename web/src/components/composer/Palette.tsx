@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { FilePreview } from "../../app/composerReads";
+import type { FilePreview, TreeFolder } from "../../app/composerReads";
 import { useText } from "../../i18n";
 import { paletteText } from "../../text/palette";
 import { Icon } from "../Icon";
@@ -53,16 +53,44 @@ function usePreview(
   return state.path === path ? state : { path };
 }
 
-function PreviewPane({
+/** The selected row's preview, in the palette and beside the in-field
+ * list. There a folder shows its contents as read (`folder`), and a changed
+ * file says its state in words (`describe`). */
+export function PreviewPane({
   choice,
   read,
+  folder,
+  describe = false,
 }: {
   choice: Choice | undefined;
   read?: (path: string, signal: AbortSignal) => Promise<FilePreview>;
+  folder?: TreeFolder;
+  describe?: boolean;
 }) {
   const t = useText(paletteText);
   const state = usePreview(choice, read);
   if (!choice) return <p className="ah-pal-none">{t.nothingSelected}</p>;
+  if (choice.type === "folder")
+    return (
+      <>
+        <h2 className="ah-pal-mono">{choice.path}</h2>
+        {choice.changed ? (
+          <p className="ah-pal-state">{t.changedBeneath(choice.changed)}</p>
+        ) : null}
+        {!folder ? (
+          <p className="ah-pal-none">{t.reading}</p>
+        ) : folder.entries.length ? (
+          <pre>
+            {folder.entries
+              .map((e) => e.path.slice(choice.path.length))
+              .join("\n")}
+            {folder.truncated ? "\n…" : ""}
+          </pre>
+        ) : (
+          <p className="ah-pal-none">{t.emptyFolder}</p>
+        )}
+      </>
+    );
   if (choice.type === "status")
     return <p className="ah-pal-none">{choice.text}</p>;
   if (choice.type === "command")
@@ -93,6 +121,11 @@ function PreviewPane({
       <h2 className="ah-pal-mono">
         {choice.path} {choice.git ? <GitBadge mark={choice.git} /> : null}
       </h2>
+      {describe && choice.git ? (
+        <p className="ah-pal-state">
+          {choice.git === "untracked" ? t.untrackedState : t.changedState}
+        </p>
+      ) : null}
       {state.failed ? (
         <p className="ah-pal-none">{t.previewFailed}</p>
       ) : !p ? (

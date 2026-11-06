@@ -2,7 +2,7 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { uploadAttachment } from "../../app/attachments";
-import type { CommandList, FileList } from "../../app/composerReads";
+import type { CommandList, FileList, FileTree } from "../../app/composerReads";
 import { Composer, type ComposerSources } from "./Composer";
 import {
   caretToken,
@@ -350,6 +350,7 @@ const files: FileList = {
     { path: "scripts/status_rows.py", git: "modified" },
     { path: "README.md" },
   ],
+  matched: 2,
   truncated: false,
 };
 function sources(): ComposerSources {
@@ -382,6 +383,7 @@ describe("composer lists", () => {
         { path: "README.md" },
         { path: "src/main.go", git: "modified" as const },
       ],
+      matched: 2,
       truncated: false,
     }));
     const view = render(<Controlled initial="" src={src} />);
@@ -661,7 +663,7 @@ describe("installed skill aliases at send", () => {
   };
   const sources = (commands: ComposerSources["commands"]): ComposerSources => ({
     commands,
-    files: async () => ({ files: [], truncated: false }),
+    files: async () => ({ files: [], matched: 0, truncated: false }),
     preview: vi.fn(),
     workspaceName: "Synthetic",
   });
@@ -1107,5 +1109,291 @@ describe("the middle slot's Nosta and Ei nyt", () => {
     expect(raised.getAttribute("aria-label")).toBe(
       "Sinun vuorossasi. Laske Hiljaisiin",
     );
+  });
+});
+
+describe("composer lists inside the field (experimental)", () => {
+  const tree: Record<string, FileTree> = {
+    "": {
+      folders: [
+        {
+          path: "",
+          entries: [
+            { kind: "folder", path: "docs/" },
+            { kind: "folder", path: "src/", changed: 1 },
+            { kind: "file", path: "AGENTS.md" },
+          ],
+          truncated: false,
+        },
+        {
+          path: "src/",
+          entries: [{ kind: "file", path: "src/shadow.py", git: "modified" }],
+          truncated: false,
+        },
+      ],
+      changed: 1,
+      truncated: false,
+    },
+    "docs/": {
+      folders: [
+        {
+          path: "docs/",
+          entries: [{ kind: "file", path: "docs/AGENTS.md" }],
+          truncated: false,
+        },
+      ],
+      changed: 1,
+      truncated: false,
+    },
+  };
+  function inField(): ComposerSources {
+    return {
+      commands: vi.fn(async () => commands),
+      files: vi.fn(async (q: string) => ({
+        files: [
+          { path: "src/AGENTS.md", git: "modified" as const },
+          { path: "AGENTS.md" },
+          { path: "docs/AGENTS.md" },
+        ].filter((f) => fuzzyScore(f.path, q) > 0),
+        matched: 3,
+        truncated: false,
+      })),
+      tree: vi.fn(async (folder: string | null) => tree[folder ?? ""]),
+      preview: vi.fn(async (path: string) => ({
+        path,
+        kind: "text" as const,
+        text: "alku\n",
+        truncated: false,
+      })),
+      workspaceName: "aurinkokello",
+    };
+  }
+  function Field({ initial, src }: { initial: string; src: ComposerSources }) {
+    const [value, setValue] = useState(initial);
+    return (
+      <Composer
+        {...base}
+        value={value}
+        onChange={setValue}
+        sources={src}
+        inFieldLists
+      />
+    );
+  }
+  const options = (view: ReturnType<typeof render>) =>
+    view.getAllByRole("option").map((o) => o.getAttribute("data-path"));
+  const search = (view: ReturnType<typeof render>) =>
+    view.getByTestId("command-search") as HTMLInputElement;
+
+  it("browses a tree with the changed folder open, opens a folder in place and adds two marked paths", async () => {
+    const src = inField();
+    const view = render(<Field initial="Katso " src={src} />);
+    field(view).setSelectionRange(6, 6);
+    fireEvent.click(view.getByTestId("file-picker"));
+    // Inside the field, not a dialog over the conversation.
+    expect(view.queryByTestId("composer-palette")).toBeNull();
+    await waitFor(() =>
+      expect(options(view)).toEqual([
+        "docs/",
+        "src/",
+        "src/shadow.py",
+        "AGENTS.md",
+      ]),
+    );
+    expect(src.tree).toHaveBeenCalledWith(null, expect.anything());
+    // The selection starts on the changed file and its preview reads it.
+    expect(
+      view.getByRole("option", { selected: true }).getAttribute("data-path"),
+    ).toBe("src/shadow.py");
+    await waitFor(() =>
+      expect(src.preview).toHaveBeenCalledWith(
+        "src/shadow.py",
+        expect.anything(),
+      ),
+    );
+    expect(view.getByTestId("composer-list-note").textContent).toBeTruthy();
+    // A closed folder opens where it is and is read then.
+    fireEvent.click(view.getAllByRole("option")[0]);
+    await waitFor(() => expect(options(view)).toContain("docs/AGENTS.md"));
+    expect(src.tree).toHaveBeenCalledWith("docs/", expect.anything());
+    // Tab marks the selected row (the folder just opened) and moves on; a
+    // box marks with a press.
+    const input = search(view);
+    fireEvent.keyDown(input, { key: "Tab" });
+    const agents = view
+      .getAllByRole("option")
+      .find((o) => o.getAttribute("data-path") === "AGENTS.md");
+    if (!agents) throw new Error("AGENTS.md row");
+    fireEvent.click(
+      agents.querySelector('[data-testid="composer-mark"]') as Element,
+    );
+    expect(view.getByTestId("composer-marked")).toBeTruthy();
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(field(view).value).toBe("Katso @docs/ @AGENTS.md "),
+    );
+    expect(view.queryByRole("listbox")).toBeNull();
+  });
+
+  it("searches by name, shows the folder after it and → opens the tree at the file", async () => {
+    const src = inField();
+    const view = render(<Field initial="" src={src} />);
+    fireEvent.click(view.getByTestId("file-picker"));
+    await waitFor(() => expect(options(view)).toContain("src/shadow.py"));
+    fireEvent.change(search(view), { target: { value: "AGENTS" } });
+    await waitFor(() =>
+      expect(options(view)).toEqual([
+        "src/AGENTS.md",
+        "AGENTS.md",
+        "docs/AGENTS.md",
+      ]),
+    );
+    expect(src.files).toHaveBeenLastCalledWith(
+      "AGENTS",
+      expect.anything(),
+      "name",
+    );
+    // The name first and its folder after it; the top folder is named
+    // after the workspace.
+    const named = view
+      .getAllByRole("option")
+      .map((o) => [
+        o.querySelector(".ah-choice-name-first")?.textContent,
+        o.querySelector(".ah-choice-where")?.textContent,
+      ]);
+    expect(named).toEqual([
+      ["AGENTS.md", "src/"],
+      ["AGENTS.md", "aurinkokello/"],
+      ["AGENTS.md", "docs/"],
+    ]);
+    fireEvent.keyDown(search(view), { key: "ArrowDown" });
+    fireEvent.keyDown(search(view), { key: "ArrowDown" });
+    const input = search(view);
+    input.setSelectionRange(6, 6);
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    await waitFor(() =>
+      expect(
+        view.getByRole("option", { selected: true }).getAttribute("data-path"),
+      ).toBe("docs/AGENTS.md"),
+    );
+    expect(search(view).value).toBe("");
+    expect(options(view)).toContain("docs/");
+  });
+
+  it("opens Ctrl/⌘+P inside the field with a typed @token and moves to the commands", async () => {
+    const src = inField();
+    const view = render(<Field initial="" src={src} />);
+    const el = field(view);
+    el.focus();
+    fireEvent.change(el, {
+      target: { value: "lue @AGE", selectionStart: 8, selectionEnd: 8 },
+    });
+    await waitFor(() => expect(options(view)[0]).toBe("src/AGENTS.md"));
+    fireEvent.keyDown(el, { key: "p", code: "KeyP", ctrlKey: true });
+    expect(view.queryByTestId("composer-palette")).toBeNull();
+    await waitFor(() => expect(search(view).value).toBe("AGE"));
+    fireEvent.keyDown(search(view), { key: "p", code: "KeyP", ctrlKey: true });
+    await waitFor(() =>
+      expect(view.getByTestId("composer-command-review")).toBeTruthy(),
+    );
+    fireEvent.keyDown(search(view), { key: "p", code: "KeyP", ctrlKey: true });
+    await waitFor(() => expect(options(view)).toContain("src/shadow.py"));
+    fireEvent.keyDown(search(view), { key: "Enter" });
+    // The typed token is replaced by the chosen path.
+    await waitFor(() => expect(field(view).value).toBe("lue @src/shadow.py "));
+  });
+
+  it("keeps the selected row when a folder read adds rows above it, and ends a read that lacks its folder", async () => {
+    const src = inField();
+    let release: (t: FileTree) => void = () => {};
+    src.tree = vi.fn((folder: string | null) =>
+      folder === "docs/"
+        ? new Promise<FileTree>((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve(tree[""]),
+    );
+    const view = render(<Field initial="" src={src} />);
+    fireEvent.click(view.getByTestId("file-picker"));
+    await waitFor(() => expect(options(view)).toContain("src/shadow.py"));
+    fireEvent.click(view.getAllByRole("option")[0]);
+    // docs/ is loading; the person moves on to src/.
+    fireEvent.keyDown(search(view), { key: "ArrowDown" });
+    expect(
+      view.getByRole("option", { selected: true }).getAttribute("data-path"),
+    ).toBe("src/");
+    await act(async () =>
+      release({
+        ...tree["docs/"],
+        folders: [
+          {
+            path: "docs/",
+            entries: [
+              { kind: "file", path: "docs/a.md" },
+              { kind: "file", path: "docs/b.md" },
+            ],
+            truncated: false,
+          },
+        ],
+      }),
+    );
+    await waitFor(() => expect(options(view)).toContain("docs/b.md"));
+    expect(
+      view.getByRole("option", { selected: true }).getAttribute("data-path"),
+    ).toBe("src/");
+
+    // A reply that leaves the folder out says so instead of loading on.
+    src.tree = vi.fn(async () => tree[""]);
+    fireEvent.keyDown(search(view), { key: "Escape" });
+    fireEvent.click(view.getByTestId("file-picker"));
+    await waitFor(() => expect(options(view)).toContain("docs/"));
+    fireEvent.click(view.getAllByRole("option")[0]);
+    await waitFor(() =>
+      expect(
+        view.container.ownerDocument.querySelector(".ah-choice-loading"),
+      ).toBeNull(),
+    );
+  });
+
+  it("keeps marks made in a typed @ list while the token is typed on", async () => {
+    const src = inField();
+    const view = render(<Field initial="" src={src} />);
+    const el = field(view);
+    el.focus();
+    fireEvent.change(el, {
+      target: { value: "@AG", selectionStart: 3, selectionEnd: 3 },
+    });
+    await waitFor(() => expect(options(view)[0]).toBe("src/AGENTS.md"));
+    fireEvent.click(
+      view
+        .getAllByRole("option")[0]
+        .querySelector('[data-testid="composer-mark"]') as Element,
+    );
+    expect(view.getByTestId("composer-marked")).toBeTruthy();
+    fireEvent.change(el, {
+      target: { value: "@AGE", selectionStart: 4, selectionEnd: 4 },
+    });
+    expect(view.getByTestId("composer-marked")).toBeTruthy();
+    fireEvent.keyDown(el, { key: "Enter" });
+    await waitFor(() => expect(field(view).value).toBe("@src/AGENTS.md "));
+  });
+
+  it("completes the top match with Tab at the caret and keeps a closed list's text with Esc", async () => {
+    const src = inField();
+    const view = render(<Field initial="" src={src} />);
+    const el = field(view);
+    el.focus();
+    fireEvent.change(el, {
+      target: { value: "@AGENTS", selectionStart: 7, selectionEnd: 7 },
+    });
+    await waitFor(() => expect(options(view)[0]).toBe("src/AGENTS.md"));
+    fireEvent.keyDown(el, { key: "Tab" });
+    await waitFor(() => expect(field(view).value).toBe("@src/AGENTS.md "));
+    fireEvent.click(view.getByTestId("file-picker"));
+    await waitFor(() => expect(search(view)).toBeTruthy());
+    fireEvent.keyDown(search(view), { key: "Escape" });
+    expect(view.queryByRole("listbox")).toBeNull();
+    expect(field(view).value).toBe("@src/AGENTS.md ");
+    expect(document.activeElement).toBe(field(view));
   });
 });

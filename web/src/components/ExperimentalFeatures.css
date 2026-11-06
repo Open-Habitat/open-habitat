@@ -256,3 +256,29 @@
   color: var(--ah-glyph-0);
   font: 600 8px / 1 var(--ah-font);
 }
+
+/* composer-lists-in-field: the field box with its file tree inside. */
+.ex-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ex-field-list {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+}
+.ex-field-list b {
+  font: 400 11.5px var(--ah-mono);
+}
+.ex-check {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--ah-line-strong);
+  border-radius: 3px;
+}

@@ -43,6 +43,9 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		{"GET", "/api/v1/workspaces/start_page?workspace_id=ws_example123"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&query=status"},
+		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&query=status&rank=name"},
+		{"GET", "/api/v1/workspaces/file_tree?workspace_id=ws_example123"},
+		{"GET", "/api/v1/workspaces/file_tree?workspace_id=ws_example123&folder=docs%2F"},
 		{"GET", "/api/v1/workspaces/file_preview?workspace_id=ws_example123&path=docs%2Fa.md"},
 		{"GET", conversation + "/commands"},
 		{"POST", conversation + "/bash"},
@@ -61,6 +64,11 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		{"GET", "/api/v1/workspaces/files?workspace_id=..%2Fx"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&path=x"},
 		{"GET", "/api/v1/workspaces/file_preview?workspace_id=ws_example123"},
+		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&rank=name"},
+		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&query=status&rank=score"},
+		{"GET", "/api/v1/workspaces/file_tree?workspace_id=ws_example123&folder="},
+		{"GET", "/api/v1/workspaces/file_tree?workspace_id=ws_example123&path=docs"},
+		{"POST", "/api/v1/workspaces/file_tree?workspace_id=ws_example123"},
 		{"POST", "/api/v1/workspaces/files?workspace_id=ws_example123"},
 		{"POST", conversation + "/commands"},
 		{"GET", conversation + "/bash"},
@@ -73,7 +81,7 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 	if code := call("POST", conversation+"/bash", false); code != 403 {
 		t.Fatalf("bash without CSRF: %d", code)
 	}
-	if len(forwarded) != 8 {
+	if len(forwarded) != 11 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }

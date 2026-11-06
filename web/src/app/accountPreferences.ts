@@ -27,6 +27,7 @@ export const experimentalFeatureIds = [
   "server-settings-own-area",
   "empty-conversation-start-page",
   "raise-to-your-turn",
+  "composer-lists-in-field",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

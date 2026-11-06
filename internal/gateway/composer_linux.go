@@ -8,7 +8,7 @@ import (
 )
 
 // The composer's reads of one workspace: Pi's command list before the
-// conversation has a Pi, and its file names and one file's preview. The
+// conversation has a Pi, and its file names, folders and one file's preview. The
 // gateway checks the session and the exact query shape and relays; the
 // daemon, running as the person, validates the values and reads.
 const (
@@ -16,6 +16,7 @@ const (
 	workspaceCommandsPath    = "/api/v1/workspaces/commands"
 	workspaceFilesPath       = "/api/v1/workspaces/files"
 	workspaceFilePreviewPath = "/api/v1/workspaces/file_preview"
+	workspaceFileTreePath    = "/api/v1/workspaces/file_tree"
 )
 
 func (a *Auth) workspaceComposerRead(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +27,10 @@ func (a *Auth) workspaceComposerRead(w http.ResponseWriter, r *http.Request) {
 	case workspaceCommandsPath, workspaceStartPagePath:
 		shape = a.exact(r, path, "workspace_id")
 	case workspaceFilesPath:
-		shape = a.exact(r, path, "workspace_id") || (len(q["query"]) == 1 && a.exact(r, path, "workspace_id", "query"))
+		// rank=name: the in-field list's order, name first.
+		shape = a.exact(r, path, "workspace_id") || (len(q["query"]) == 1 && a.exact(r, path, "workspace_id", "query")) || (q.Get("rank") == "name" && a.exact(r, path, "workspace_id", "query", "rank"))
+	case workspaceFileTreePath:
+		shape = a.exact(r, path, "workspace_id") || a.exact(r, path, "workspace_id", "folder")
 	case workspaceFilePreviewPath:
 		shape = a.exact(r, path, "workspace_id", "path")
 	}

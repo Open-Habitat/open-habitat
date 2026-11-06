@@ -54,6 +54,7 @@ import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { formatDate, liveText } from "../i18n";
 import { browserConversationText } from "../text/browserConversation";
+import { useExperimentalFeature } from "./accountPreferences";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
@@ -61,6 +62,7 @@ import { ConversationGitStatus } from "./ConversationGitStatus";
 import {
   readCommands,
   readFiles,
+  readFileTree,
   readPreview,
   type StartPage,
 } from "./composerReads";
@@ -1337,6 +1339,7 @@ function BrowserConversationContent({
                 } as const),
         }
       : undefined;
+  const listsInField = useExperimentalFeature("composer-lists-in-field");
   const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
   const composerSources = useMemo(
@@ -1348,10 +1351,12 @@ function BrowserConversationContent({
             : { workspaceId: runWorkspace },
           signal,
         ),
-      files: (query: string, signal: AbortSignal) =>
-        readFiles(runWorkspace, query, signal),
+      files: (query: string, signal: AbortSignal, rank?: "name") =>
+        readFiles(runWorkspace, query, signal, rank),
       preview: (path: string, signal: AbortSignal) =>
         readPreview(runWorkspace, path, signal),
+      tree: (folder: string | null, signal: AbortSignal) =>
+        readFileTree(runWorkspace, folder, signal),
       workspaceName: workspace.display_name ?? workspace.name,
     }),
     [sourcesKey],
@@ -1692,6 +1697,7 @@ function BrowserConversationContent({
           goals,
           preparedPlaceholder,
           sources: composerSources,
+          inFieldLists: listsInField,
           onChange: changeDraft,
           activity: "idle",
           selectedWorkingMode: "follow_up",
@@ -1781,6 +1787,7 @@ function BrowserConversationContent({
                 ? "uncertain"
                 : stopPhase,
           sources: composerSources,
+          inFieldLists: listsInField,
           sendState: busy
             ? "pending"
             : ambiguous && !notStarted

@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/composer.schema.json",
   "title": "The composer's commands, files and `!` commands",
-  "description": "GET /api/v1/conversations/<id>/commands and GET /api/v1/workspaces/commands?workspace_id= (Pi's own command list, from the running Pi or a short-lived list-only Pi), GET /api/v1/workspaces/files?workspace_id=[&query=] and GET /api/v1/workspaces/file_preview?workspace_id=&path= (the workspace's file names and one bounded preview, read as the person), and POST /api/v1/conversations/<id>/bash and /abort_bash (a typed `!` or `!!` command relayed to Pi as RPC bash). The conversation status carries the command's state as `bash`.",
+  "description": "GET /api/v1/conversations/<id>/commands and GET /api/v1/workspaces/commands?workspace_id= (Pi's own command list, from the running Pi or a short-lived list-only Pi), GET /api/v1/workspaces/files?workspace_id=[&query=[&rank=name]], GET /api/v1/workspaces/file_tree?workspace_id=[&folder=] and GET /api/v1/workspaces/file_preview?workspace_id=&path= (the workspace's file names, its folders and one bounded preview, read as the person), and POST /api/v1/conversations/<id>/bash and /abort_bash (a typed `!` or `!!` command relayed to Pi as RPC bash). The conversation status carries the command's state as `bash`.",
   "oneOf": [
     {"$ref": "#/$defs/commandList"},
     {"$ref": "#/$defs/startPageReply"},
     {"$ref": "#/$defs/fileList"},
+    {"$ref": "#/$defs/fileTree"},
     {"$ref": "#/$defs/filePreview"},
     {"$ref": "#/$defs/bashRequest"},
     {"$ref": "#/$defs/bashReply"}
@@ -141,14 +142,72 @@
       }
     },
     "fileList": {
-      "description": "At most 200 matches; without a query changed files first. truncated: the workspace or the matches had more. An unavailable list is an error, never an empty list.",
+      "description": "At most 200 matches, by fuzzy score of the whole path; Git's path order without a query. rank=name orders a query's matches by the file's own name instead: the whole name (with or without its extension), a part of it, its letters in order, then a match only in the folders (a query with a slash is read against the whole path); within each, changed files first, then the shallowest, then the path. matched: the matches before the bound. truncated: the workspace or the matches had more. An unavailable list is an error, never an empty list.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "workspace_id", "files", "truncated"],
+      "required": ["schema_version", "workspace_id", "files", "matched", "truncated"],
       "properties": {
         "schema_version": {"const": 1},
         "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
         "files": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/file"}},
+        "matched": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"}
+      }
+    },
+    "folderPath": {
+      "description": "A folder relative to the workspace root ending with a slash; the empty string is the workspace itself.",
+      "type": "string",
+      "maxLength": 1025,
+      "pattern": "^$|^(?!/)(?!.*(^|/)\\.\\.?(/|$))(?!.*//).+/$"
+    },
+    "treeEntry": {
+      "description": "One direct child of a folder: a file with its Git mark, or a subfolder (its path ends with a slash) with the number of changed files beneath it.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path"],
+          "properties": {
+            "kind": {"const": "file"},
+            "path": {"$ref": "#/$defs/relativePath"},
+            "git": {"enum": ["modified", "added", "deleted", "renamed", "untracked", "conflict"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path"],
+          "properties": {
+            "kind": {"const": "folder"},
+            "path": {"$ref": "#/$defs/folderPath"},
+            "changed": {"type": "integer", "minimum": 1}
+          }
+        }
+      ]
+    },
+    "fileTree": {
+      "description": "The workspace's folders from the same file names the file list reads. Without folder: the top folder and every folder that holds a change, shallowest first; with folder: that folder first, then the folders above it. Paths with line breaks or other control characters are left out. At most 32 folders, 500 entries a folder and 4000 in all; a cut folder keeps its subfolders and changed files first. changed: the workspace's changed files. truncated: the workspace had more files than were read or a requested folder was left out.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "folders", "changed", "truncated"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+        "folders": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "entries", "truncated"],
+            "properties": {
+              "path": {"$ref": "#/$defs/folderPath"},
+              "entries": {"type": "array", "maxItems": 500, "items": {"$ref": "#/$defs/treeEntry"}},
+              "truncated": {"type": "boolean"}
+            }
+          }
+        },
+        "changed": {"type": "integer", "minimum": 0},
         "truncated": {"type": "boolean"}
       }
     },

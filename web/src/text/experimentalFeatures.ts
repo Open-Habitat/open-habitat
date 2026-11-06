@@ -5,6 +5,16 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "composer-lists-in-field": {
+      name: "Listat kirjoituskentän sisällä",
+      desc: "Tiedosto, Komennot ja kirjoitettu @ avautuvat kentän sisään. Tiedostoja selataan kansiopuuna, muutetut näkyvät paikallaan, ja useamman voi merkitä kerralla.",
+      where:
+        "Keskustelun kirjoituskentässä Tiedosto- ja Komennot-napeista, kirjoitetusta @- ja /-merkistä sekä Ctrl/⌘+P:llä.",
+      shows:
+        "Kansiopuun, jossa muutoksia sisältävät kansiot ovat auki, haun nimi ensin ja kansio perässä sekä tietokoneella valitun rivin esikatselun listan vieressä.",
+      needs: "Ei muuta.",
+      caption: "Kirjoituskenttä",
+    },
     "empty-conversation-start-page": {
       name: "Aloitussivupainike keskustelussa",
       desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
@@ -100,6 +110,16 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "composer-lists-in-field": {
+      name: "Lists inside the message field",
+      desc: "File, Commands and a typed @ open inside the field. Files are browsed as a folder tree, changed files show in place, and several can be marked at once.",
+      where:
+        "In a conversation's message field, from the File and Commands buttons, a typed @ or / and Ctrl/⌘+P.",
+      shows:
+        "A folder tree with the folders that hold changes open, a search with the name first and its folder after, and on a computer the selected row's preview beside the list.",
+      needs: "Nothing else.",
+      caption: "Message field",
+    },
     "empty-conversation-start-page": {
       name: "Start-page button in conversations",
       desc: "A button in an empty conversation prepares a start-page request in the message field. You send it yourself.",
