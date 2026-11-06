@@ -67,7 +67,6 @@ func (b *fixtureBroker) SetLiveLimit(_ context.Context, subject string, limit in
 	return copyLive(*l), nil
 }
 
-
 func copyLive(l gateway.LiveLimits) gateway.LiveLimits {
 	return gateway.LiveLimits{Default: l.Default, People: append([]gateway.LiveLimitPerson{}, l.People...)}
 }
