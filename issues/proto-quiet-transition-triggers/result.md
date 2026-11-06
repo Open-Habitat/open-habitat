@@ -130,3 +130,102 @@ open-habitat agent view offer --current \
   --title "Sinun vuorosi ↔ Hiljaiset – kierros 1" \
   --idempotency-key "$(uuidgen)" --json
 ```
+
+# Kierros 2: Ei nyt -painikkeen paikka
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-ei-nyt-paikka/`
+(NOTES.md kertoo suunnat ja vuorovaikutukset). Jarin päätös 6.11.:
+lähtökohta A Vastaus, ja riffataan, missä on painike, joka pudottaa
+keskustelun Hiljaisiin. Akseli: Ei nyt -painikkeen paikka. Nosto on
+kaikissa suunnissa päätetyn mukainen (kentän rivin keskipaikalla *Nosta* ja
+sivupalkin rivillä ⤒). Ei nyt on yksi toiminto sekä luetulle vastaukselle
+(rengas) että nostetulle (nuoli). Oletusnäkymä on juuri avattu
+*NDA-viestin tarkistus*, joka on Sinun vuorosissa renkaana.
+
+- **Nyt**: avaaminen siirtää keskustelun heti Hiljaisiin. Ei nyt -painiketta ei tarvita, eikä Hiljaisista voi nostaa.
+- **A Kenttä**: Ei nyt on kentän rivin keskipaikalla, samassa kohdassa kuin Hiljaisten keskustelun Nosta: yksi painike, kaksi tilaa.
+- **B Sivupalkki**: Ei nyt on Sinun vuorosi -rivillä ⤓-painikkeena kynän ja arkiston vieressä, kuten ⤒ Hiljaisten rivillä; avaamatta.
+- **C Vastaus**: Ei nyt on agentin viimeisen vastauksen alla rivillä Odottaa vastaustasi; se katoaa, kun vastaat.
+
+## Mitä kukin päättää
+
+| | Paikka | Pudottaa avaamatta | Noston jälkeen | Puhelin |
+|---|---|---|---|---|
+| A | Kentän keskipaikka, Noston toinen tila | Ei | Sama pilleri vaihtuu *Nosta* → *Ei nyt* | Pilleri nimen kanssa kentän rivillä |
+| B | Sivupalkin rivin ⤓ kynän vieressä | Kyllä, useita peräkkäin | Nosta katoaa kentästä, ⤓ ilmestyy riville | Vaatii sivupalkin avaamisen |
+| C | Viimeisen vastauksen alla, sanoin | Ei | Nosta katoaa kentästä, rivi ilmestyy vastauksen alle | Rivi luettavan alla |
+
+## Suositus
+
+**A.** Nosto ja Ei nyt ovat saman asian kaksi suuntaa, ja A antaa niille
+yhden painikkeen yhdessä paikassa: kentän keskipaikalla lukee aina, mitä
+keskustelulle voi tehdä (*Nosta* tai *Ei nyt*), ja painallus vaihtaa sen.
+Paikka on vapaa juuri silloin, kun painike on käytettävissä (agentti ei
+työskentele), ja se on siinä, missä päätät, vastaatko nyt. Kiireessä
+lähtevälle tämä on luonteva hetki sanoa Ei nyt. Puhelimessa se toimii
+avaamatta sivupalkkia. B:n vahvuus on pudottaminen avaamatta ja useiden
+siivoaminen kerralla. Koska nostossakin on sivupalkin ⤒, ⤓ samalla
+rivillä olisi A:n luonteva pari (kysymys 2). Yksinään B jättää avoimen
+keskustelun ilman painiketta, ja puhelimessa pudottaminen vaatii laatikon.
+C sanoo tilan selvimmin siinä, mitä luet, mutta painike vaihtaa paikkaa
+noston jälkeen (kentästä vastauksen alle), ja pitkässä vastauksessa rivi
+vierii näkyviin vasta lopussa.
+
+A:ssa nostetun keskustelun pilleri on *Ei nyt*, ei kierroksen 3 *Sinun
+vuorossasi ✕*. Silloin nimi ei riipu siitä, miksi keskustelu on Sinun
+vuorosissa. Tämä muuttaa `raise-to-your-turn-button`-toteutuksen
+nostettua tilaa (kysymys 3).
+
+## Mitä toteutus tarvitsee hostilta
+
+Kierroksen 1 hostiosuus pätee sellaisenaan, eikä painikkeen paikka muuta sitä:
+
+- Sinun vuorosi lasketaan: viimeinen sana on agentin (`last_reply`), eikä
+  sen kohdalla ole Ei nyt -merkkiä. Lisäksi tarvitaan raja vanhoihin
+  keskusteluihin (käyttöönoton aika tai nykyinen `horizon`).
+- **Ei nyt ja nosto ovat yksi daemonin merkki** henkilön kotihakemistossa:
+  `agent_id` → joko *nostettu (aika)* tai *ei nyt (kuitatun vastauksen
+  `last_reply.id`)*. Ei nyt raukeaa itsestään, kun agentti vastaa uudelleen
+  (id vaihtuu); nosto raukeaa, kun daemon hyväksyy henkilön viestin.
+  Snapshotin agentti saa kentän, ja muutos lähtee tapahtumana, joten
+  kaikki laitteet näkevät saman. Gateway ei saa uutta auktoriteettia, eikä
+  Pi:n istuntotiedostoon kirjoiteta mitään.
+- Rengas (luettu) voi jäädä selaimen tilaksi (`oh.replies.seen`); se muuttaa
+  vain pallon, ei osiota.
+- Komponenttipaikat: A `Composer`in keskipaikka (sama kuin noston),
+  B `AgentNavItem`in painikeryhmä (sama kuin noston ⤒), C
+  `ConversationTimeline`in viimeisen vastauksen alle paikka.
+
+## Kysymykset Jarille
+
+1. **Missä Ei nyt on**: kentän rivin keskipaikalla
+   (`k2-a-kentta-0-oletus-1440-light`), sivupalkin rivillä
+   (`k2-b-sivupalkki-0-oletus-1440-light`) vai vastauksen alla
+   (`k2-c-vastaus-0-oletus-1440-light`)?
+2. **Lisäksi sivupalkin rivillä ⤓**, kuten nostossa ⤒
+   (`k2-b-sivupalkki-0-sivupalkki-390-light`), jotta useita voi pudottaa
+   avaamatta, vai riittääkö yksi paikka?
+3. **Nostetun nimi**: kelpaako *Ei nyt* myös nostetulle keskustelulle
+   (`k2-a-kentta-2-nostettu-1440-light`) kierroksen 3 *Sinun vuorossasi ✕*
+   -nimen sijaan?
+
+## Todisteet
+
+`evidence/k2-*`: jokaisesta suunnasta oletusnäkymä (0, puhelimessa myös
+`0-sivupalkki`), Ei nyt painettu (1), uudelleen nostettu (2, puhelimessa
+myös `2-sivupalkki`), toinen uusi vastaus avattu ja pysyy (3), vastattu ja
+agentin vastaus tuonut takaisin (4) sekä sivupalkin ⤒ avaamatta (5, B:ssä
+myös ⤓ avaamatta). Nyt-tilasta oletusnäkymä. Kuvat ovat 1440 ja 390,
+vaalea ja tumma, kertoimella 2. `check.mjs`: 382 tarkistuspistettä,
+konsoli puhdas. Kyse on synteettisestä komponenttilabrasta; sitä ei ole
+ajettu hostia vasten.
+
+## Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-ei-nyt-paikka/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/ei-nyt-paikka/offline.html \
+  --title "Sinun vuorosi ↔ Hiljaiset – kierros 2: Ei nyt -painikkeen paikka" \
+  --idempotency-key "$(uuidgen)" --json
+```
