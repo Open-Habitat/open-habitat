@@ -1,5 +1,81 @@
 # Kentän listat
 
+## Kierros 4: haku puussa, kun sama nimi on monessa kansiossa
+
+Kierros: `design-system/prototypes/rounds/2026-11-06-kentan-listat-4/`.
+Jari valitsi 6.11. *Puun* ja pyysi riffaamaan haun. Synteettisessä
+työtilassa `AGENTS.md` on juuressa sekä kansioissa `docs/`, `src/`
+(muutettu), `src/astro/` ja `tests/`. Oletusnäkymä on pitkä luonnos, jossa
+*Tiedosto* on auki ja hakuun on kirjoitettu `AGENTS`. Ilman hakua kaikki
+kolme ovat kierroksen 3 Puu. Yläreunasta voi vaihtaa haun ja järjestyksen
+(*Muutetut ensin* tai *Matalimmat ensin*).
+
+Akseli: mitä puusta tulee haun ajaksi.
+
+0. **Nyt**: haku on tasainen lista koko polkuineen sumean osuman mukaan, lyhyin polku ensin; muutos ei vaikuta järjestykseen, ja AGENTS.md-tiedostot erottaa polun alusta.
+1. **Puussa**: haku karsii puun osumien kansioihin, kansiot auki; kansion oma osuma ennen alikansioita, joten juuren AGENTS.md on ylimpänä.
+2. **Lista**: haku litistää puun yhdeksi listaksi, nimi ensin ja kansio sen perässä; paras nimiosuma ylimpänä, sitten muutetut ja matalimmat; → näyttää kansiossa.
+3. **Nimi**: saman nimen tiedostot yhden nimirivin alla, kansiot sen alla; nimen voi merkitä, jolloin kaikki lisätään.
+
+Mitä kukin päättää:
+
+- *Puussa* pitää rakenteen näkyvissä, mutta viisi osumaa vie yhdeksän
+  riviä, ja järjestys on rakenteen, joten muutettu ei nouse. Kirjoitetun
+  `@AGENTS`-merkinnän Tab täydentää juuren tiedoston.
+- *Lista* näyttää osuman yhdellä rivillä ja kansion nimen perässä
+  (puhelimessa alla). Järjestys on koko nimi, nimen osa, pelkkä polku ja
+  saman tason sisällä muutetut ja matalimmat. → vie osuman puuhun.
+- *Nimi* kokoaa samannimiset yhden rivin alle ja antaa lisätä kaikki
+  kerralla. Ilman samannimisiä se näyttää samalta kuin Lista.
+
+### Suositus
+
+**Lista**, ja järjestys *Muutetut ensin*, sitten matalimmat. Haussa
+etsitään nimeä, ja Listassa nimi on ensin ja kansio erottaa samannimiset.
+Puu jää selaamiseen, ja → vie sinne, kun naapurit kiinnostavat. Puussa on
+lähes kaksi kertaa pidempi eikä nosta muutettua. Nimen *lisää kaikki* on
+harvoin tarvittu, ja nimirivi on ylimääräinen askel.
+
+### Host-tiedot
+
+Daemon palauttaa haulla enintään 200 osumaa sumean pisteytyksen mukaan koko
+polusta (lyhyempi polku voittaa hieman, muutos ei vaikuta). Puussa käyttää
+nykyistä vastausta sellaisenaan. Lista ja Nimi tarvitsevat daemonilta uuden
+järjestyksen, jotta 200:n raja ei leikkaa parhaita nimiosumia pois:
+nimiosuman taso ensin, muutettu ja syvyys tasapelin ratkaisijoina. Se on
+`matchComposerFiles`-järjestyksen muutos, ei uusi tallennus.
+
+### Kysymykset Jarille
+
+1. Mikä muoto haulle: Puussa (`d1-puussa-pitka-agents`), Lista
+   (`d2-lista-pitka-agents`) vai Nimi (`d3-nimi-pitka-agents`)?
+2. Kumpi ylimpänä samannimisistä: muutettu `src/AGENTS.md`
+   (`d2-lista-pitka-agents`) vai juuren `AGENTS.md`
+   (`d2-lista-matalimmat`)?
+3. Tarvitaanko *lisää kaikki samannimiset* (`d3-nimi-kaikki`), vai
+   riittääkö merkitseminen yksitellen (`d2-lista-useampi`)?
+
+### Todisteet
+
+`evidence/kierros-4/`: jokaisesta suunnasta oletushaku `AGENTS`, kirjoitettu
+`@AGENTS`, Komennot, kahden tiedoston merkintä ja lyhyt luonnos 1440
+vaaleana ja tummana sekä 390 vaaleana. Lisäksi Listan `kansiossa` (→ puuhun)
+ja Nimen `nimirivi` ja `kaikki`. 1440 vaaleana on lisäksi selaus ilman
+hakua, `!`-komento, haetaan, ei saatu, ei osumia ja Listan `matalimmat`.
+Kuvat on otettu kertoimella 2. `check.mjs` ajoi 598 tarkistuspistettä,
+ja konsoli oli puhdas. Kyseessä on synteettinen komponenttilabra, jota ei
+ole ajettu hostia vasten.
+
+### Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-06-kentan-listat-4/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/kentan-listat-4/offline.html \
+  --title "Kentän listat – kierros 4" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
 ## Kierros 3: kansiopuu, esikatselu ja muutetut tiedoston tilana
 
 Kierros: `design-system/prototypes/rounds/2026-11-06-kentan-listat-3/`.
