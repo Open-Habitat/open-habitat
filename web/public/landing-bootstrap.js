@@ -25,11 +25,11 @@
   const text = {
     fi: {
       connecting: "Yhdistetään palvelimeen…",
-      slow: "Palvelin vastaa tavallista hitaammin. Odotetaan yhä; voit jättää sivun auki.",
+      slow: "Yhdistäminen kestää tavallista pidempään. Odotetaan yhä; voit jättää sivun auki.",
     },
     en: {
       connecting: "Connecting to the server…",
-      slow: "The server is answering more slowly than usual. Still waiting; you can leave the page open.",
+      slow: "Connecting is taking longer than usual. Still waiting; you can leave the page open.",
     },
   }[language === "fi" ? "fi" : "en"];
   document.documentElement.lang = language;

@@ -39,6 +39,9 @@ export function Landing({
   revealed,
   slow,
   onRetry,
+  failure = "network",
+  retry,
+  onSignIn,
 }: {
   state: "connecting" | "failed";
   name?: string;
@@ -46,6 +49,15 @@ export function Landing({
   revealed: boolean;
   slow: boolean;
   onRetry?: () => void;
+  failure?: "network" | "answer" | "identity";
+  retry?: {
+    offline: boolean;
+    seconds?: number;
+    progress: number;
+    exhausted: boolean;
+    attempting?: boolean;
+  };
+  onSignIn?: () => void;
 }) {
   const failed = state === "failed";
   const t = useText(landingText);
@@ -62,7 +74,17 @@ export function Landing({
         </h1>
         <p className="ah-landing-server">{server}</p>
         <div className="ah-landing-bar" aria-hidden="true">
-          <span />
+          <span
+            style={
+              failed && retry?.seconds !== undefined
+                ? {
+                    width: `${retry.progress * 100}%`,
+                    transform: "none",
+                    opacity: 1,
+                  }
+                : undefined
+            }
+          />
         </div>
         {failed ? (
           <>
@@ -70,16 +92,59 @@ export function Landing({
               data-testid="workspaces-unavailable-title"
               className="ah-landing-say"
             >
-              {t.failedTitle}
+              {failure === "identity"
+                ? t.identityTitle
+                : failure === "answer"
+                  ? t.answerTitle
+                  : t.failedTitle}
             </h2>
             <div className="ah-landing-more">
-              <p data-testid="landing-failure-detail">{t.failedDetail}</p>
+              <p data-testid="landing-failure-detail">
+                {failure === "identity"
+                  ? t.identityDetail
+                  : failure === "answer"
+                    ? t.answerDetail
+                    : t.failedDetail}
+              </p>
+              {failure !== "identity" && retry ? (
+                <>
+                  {retry.offline ? (
+                    <p data-testid="landing-offline">{t.offline}</p>
+                  ) : null}
+                  <p
+                    data-testid="landing-retry-status"
+                    data-seconds={retry.seconds}
+                    data-exhausted={retry.exhausted || undefined}
+                  >
+                    {retry.attempting
+                      ? t.trying
+                      : retry.exhausted
+                        ? t.stopped
+                        : retry.offline
+                          ? t.waiting
+                          : retry.seconds !== undefined
+                            ? t.countdown(retry.seconds)
+                            : null}
+                  </p>
+                </>
+              ) : null}
+              {failure === "identity" && onSignIn ? (
+                <ControlButton
+                  data-testid="landing-sign-in"
+                  size="page"
+                  variant="primary"
+                  onPress={onSignIn}
+                >
+                  {t.signIn}
+                </ControlButton>
+              ) : null}
               {onRetry ? (
                 <ControlButton
                   data-testid="retry"
                   size="page"
-                  variant="primary"
+                  variant={failure === "identity" ? "secondary" : "primary"}
                   onPress={onRetry}
+                  isDisabled={retry?.attempting}
                 >
                   <Icon name="refresh" />
                   {t.retry}

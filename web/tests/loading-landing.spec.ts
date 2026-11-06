@@ -244,3 +244,46 @@ test("@landing first snapshot lost offline recovers on online without a click", 
     await context.setOffline(false);
   }
 });
+
+for (const mode of ["network", "answer"] as const) {
+  test(`@landing ${mode} failure retries without an online event`, async ({
+    page,
+  }) => {
+    await login(page);
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    let reads = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/v1/snapshot", async (route) => {
+      reads++;
+      if (reads > 1) {
+        await held;
+        return route.continue();
+      }
+      if (mode === "network") return route.abort("failed");
+      return route.fulfill({ status: 503, body: "unavailable" });
+    });
+    await page.reload();
+    const status = page.getByTestId("landing-retry-status");
+    await expect(status).toHaveAttribute("data-seconds", "5");
+    await page.clock.runFor(4000);
+    expect(reads).toBe(1);
+    await expect(status).toHaveAttribute("data-seconds", "1");
+    const report = page.waitForResponse("**/api/v1/client/load-failure");
+    await page.clock.runFor(1000);
+    await expect.poll(() => reads).toBe(2);
+    await expect(
+      page.getByTestId("workspaces-unavailable-title"),
+    ).toBeVisible();
+    await expect(page.getByTestId("landing-failure-detail")).toBeVisible();
+    await expect(page.getByTestId("retry")).toBeDisabled();
+    release();
+    await report;
+    await page.clock.runFor(1000);
+    await expect(page.getByRole("navigation")).toBeVisible();
+    expect(await page.evaluate(() => navigator.onLine)).toBe(true);
+  });
+}

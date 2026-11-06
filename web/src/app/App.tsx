@@ -99,6 +99,7 @@ import {
   visibilityKey,
 } from "./hostOverlay";
 import { useLanding } from "./landing";
+import { type LandingFailure, useLandingRetry } from "./landingRetry";
 import {
   LoadDiagnostic,
   type LoadRead,
@@ -290,6 +291,9 @@ export function App() {
   const location = settingsOver ?? route;
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
+  const [landingFailure, setLandingFailure] =
+    useState<LandingFailure>("network");
+  const [landingAttempting, setLandingAttempting] = useState(false);
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
@@ -519,6 +523,11 @@ export function App() {
       setRefreshKey((n) => n + 1);
     }
   }, []);
+  const landingRetry = useLandingRetry(
+    landingAttempting && phase === "daemon_unavailable" ? "loading" : phase,
+    landingFailure,
+    refresh,
+  );
   // A clone that finishes during onboarding must not reload the app: with
   // no snapshot yet, a reload would unmount the AI sign-in.
   refreshRef.current = phase === "pi_required" ? () => {} : refresh;
@@ -717,9 +726,9 @@ export function App() {
     };
   }, [journal]);
   // A disconnected tab can recover without a page reload when the browser
-  // announces a restored network. Do not retry writes or repeat on a timer.
+  // announces a restored network. First-load recovery has its own bounded timer.
   useEffect(() => {
-    if (phase !== "daemon_unavailable" && phase !== "stale") return;
+    if (phase !== "stale") return;
     window.addEventListener("online", refresh);
     return () => window.removeEventListener("online", refresh);
   }, [phase, refresh]);
@@ -765,7 +774,10 @@ export function App() {
       active &&
       generation === identityGeneration.current &&
       !loginFenced.current;
-    if (!snapshot && ready()) dispatch(loading());
+    if (!snapshot && ready()) {
+      if (phase === "daemon_unavailable") setLandingAttempting(true);
+      else dispatch(loading());
+    }
     const fail = (
       gate: "login" | "pi" | "unavailable",
       failure?: {
@@ -814,6 +826,13 @@ export function App() {
         dispatch(stale());
       } else if (ready()) {
         recordFailure("landing", failure?.diagnostic);
+        setLandingFailure(
+          !timedOut &&
+            (failure?.diagnostic?.reason === "http" ||
+              failure?.diagnostic?.reason === "invalid")
+            ? "answer"
+            : "network",
+        );
         dispatch(unavailable());
       }
     };
@@ -962,6 +981,7 @@ export function App() {
             // fail() would be fenced by the generation clearPerson advances.
             clearPerson(priorIdentity.current);
             sessionBinding.current = undefined;
+            setLandingFailure("identity");
             dispatch(unavailable());
             return;
           }
@@ -1060,6 +1080,7 @@ export function App() {
     void load().finally(() => {
       window.clearTimeout(deadline);
       if (!active) return;
+      setLandingAttempting(false);
       const read = snapshotRead.current;
       // A request made during this read gets one more, still busy until then.
       read.busy = read.again;
@@ -2281,6 +2302,13 @@ export function App() {
         revealed
         slow={false}
         onRetry={refresh}
+        failure={landingFailure}
+        retry={{ ...landingRetry, attempting: landingAttempting }}
+        onSignIn={() =>
+          window.location.assign(
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
+          )
+        }
       />
     ) : selectedAgent &&
       agentWorkspace &&

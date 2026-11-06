@@ -113,10 +113,12 @@ main:has(.ah-landing) > .ah-mobile-toolbar {
   }
 }
 .ah-landing[data-failed] .ah-landing-bar {
-  background: var(--ah-err-line);
+  background: color-mix(in srgb, var(--ah-ink-2) 20%, transparent);
 }
 .ah-landing[data-failed] .ah-landing-bar span {
-  display: none;
+  width: 0;
+  animation: none;
+  background: var(--ah-ink-2);
 }
 .ah-landing-say {
   min-height: 1.5em;

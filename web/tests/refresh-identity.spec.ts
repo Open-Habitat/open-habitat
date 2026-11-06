@@ -218,6 +218,8 @@ test("@refresh-identity reads that keep disagreeing on identity end unavailable"
   page,
 }) => {
   await openWorkspace(page);
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
   let sessionReads = 0;
   await page.route("**/auth/session", async (route) => {
     sessionReads++;
@@ -238,11 +240,14 @@ test("@refresh-identity reads that keep disagreeing on identity end unavailable"
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toHaveCount(0);
-  await page.waitForTimeout(500);
+  await expect(page.getByTestId("landing-sign-in")).toBeVisible();
+  await page.clock.runFor(16 * 60 * 1000);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
   expect(sessionReads).toBe(3);
   await page.unroute("**/auth/session");
   const report = page.waitForResponse("**/api/v1/client/load-failure");
   await page.getByTestId("retry").click();
+  await page.clock.runFor(1000);
   await expect(rail(page)).toBeVisible();
   const response = await report;
   expect(response.status()).toBe(204);
