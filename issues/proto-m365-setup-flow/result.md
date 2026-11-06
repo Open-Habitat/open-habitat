@@ -121,3 +121,112 @@ tw browser-open design-system/prototypes/dist/m365-asetus/m365.html
 ```
 
 `check.mjs` (in the round) passes 368 checkpoints with a clean console.
+
+# Round 2: riffs on A Lista
+
+Round `design-system/prototypes/rounds/2026-11-06-m365-riffi/` (its
+`NOTES.md` is the Finnish walk-through). Screenshots at device scale factor 2
+are in `evidence/` with the prefix `r2-`. They cover every step of every riff
+at 1440 and 390 in light, plus one dark capture per riff and width.
+
+## What changed in all three
+
+Jari and Aino's findings, and his five Entra screenshots, changed the
+instructions themselves:
+
+- One link only, in step 1, labelled *Avaa App registrations*: it lands on
+  *All applications*, so the step continues from there (*New registration*
+  above the list). After *Register*, Entra opens the app itself. Every later
+  step names the app's left-menu item and the *Authentication (Preview)* tab
+  instead of linking.
+- A "Jos sivu ehti sulkeutua" line tells how to get back in: *All
+  applications*, then the name in the filter, then exactly that name. Jari's
+  list has both *Open Habitat* and *Open Habitat (testi)*.
+- Entra's real order: *Authentication (Preview)* opens on *Redirect URI
+  configuration*, so the redirect comes before *Settings* (round 1 had them
+  the other way round).
+- Entra's real words: *Redirect URI (optional)*; *Single tenant only -
+  <domain>* and *Grant admin consent for <domain>* (Entra names the tenant by
+  its domain); the permissions step is done when *Configured permissions*
+  reads *Microsoft Graph (10)*. On Overview, Entra's copy button only shows on
+  hover, and *Object ID* is named as the one not to take.
+
+## Riffs
+
+- **A1 Valikkopala**: A's four steps, with a redrawn crop of the real Entra
+  page beside each one. It shows the left-menu row, the tab or the toolbar
+  button highlighted, and on the last step Overview's Essentials with the two
+  needed rows.
+- **A2 Valikon järjestyksessä**: no steps. One checklist down the app's left
+  menu, one item open at a time, each headed by its menu path. Tallenna
+  works at any time; with ids missing it opens the Overview item.
+- **A3 Olet nyt**: every step opens with Entra's own page heading ("Olet nyt
+  Entrassa: Open Habitat | Authentication (Preview)") and the one move to
+  make next. The ids are step 2, taken from Overview where Entra has just
+  landed, each field beside its Essentials row with an immediate format check.
+  The consent hand-off link is then already filled in step 5.
+
+The Entra crops are redrawn, not cut from the screenshots, so no tenant,
+client or object id and no organisation name reaches the tree;
+`check.mjs` fails if any crop shows a GUID. The originals stay in
+`~/.local/state/oh-conductor/m365-shots/`.
+
+## Host facts the view assumes
+
+The same as round 1, with nothing new read from the host: production's
+permission lists and redirect, the v1 consent link built from the two typed
+ids, and ticks that only record what the administrator did on this page.
+
+## Recommendation
+
+**A3 Olet nyt.** What tripped Jari and Aino was losing their place in Entra,
+not the wording of a field. A3 answers that on every step with the heading
+Entra itself shows, which is the one thing on that page they can always find.
+That heading stays true as long as Microsoft keeps the menu names, whereas
+A1's crops are a second picture of Entra that goes stale with every redesign,
+the same cost that ruled out round 1's B. Taking the ids at the moment Entra
+is already on Overview removes one round trip back to Overview. It also lets
+the last step offer a filled consent link to an administrator who lacks the
+role. A2 reads well as a single list, but on a phone its open item and the
+list around it make a long page. It also gives up the step count, which the
+production dialog's progress bar relies on.
+
+One idea from A1 is worth keeping in A3: the crop of the *App registrations*
+page in step 1, where the administrator is not yet inside the app and the
+heading alone does not show where *New registration* is.
+
+## Decisions for later review
+
+- **Crops are redrawn, not cropped images.** They follow the theme and cannot
+  leak an id; the cost is that they are our drawing of Entra.
+- **Supported account types says "Valitse, jos ei ole jo valittuna".** Jari's
+  screenshot shows Single tenant already selected; the docs do not say
+  whether that is the default for every tenant.
+- **A2's ticks are not kept,** like round 1's.
+
+## Not verified
+
+- That the *Mobile and desktop applications* panel in the new *Authentication
+  (Preview)* experience still offers the nativeclient address as a
+  suggestion. Jari's screenshot shows the empty tab, not the panel.
+- That the Overview copy button appears on hover in every browser. In
+  Jari's screenshot no copy button is visible.
+
+## Questions for Jari
+
+1. Which riff: `r2-a1-valikkopala-2-public`, `r2-a2-valikon-jarjestys-0-lista`
+   or `r2-a3-olet-nyt-3-public` (all `-1440-light`)?
+2. Should the ids come right after registration
+   (`r2-a3-olet-nyt-2-ids-1-liitetty-1440-light`) or last, as in A
+   (`r2-a1-valikkopala-4-consent-1-tunnukset-1440-light`)?
+3. Should step 1 keep the App registrations crop
+   (`r2-a1-valikkopala-1-register-1440-light`) in whichever riff is chosen?
+
+## View (round 2)
+
+```
+node design-system/prototypes/rounds/2026-11-06-m365-riffi/build.mjs
+tw browser-open design-system/prototypes/dist/m365-riffi/m365.html
+```
+
+`check.mjs` (in the round) passes 732 checkpoints with a clean console.

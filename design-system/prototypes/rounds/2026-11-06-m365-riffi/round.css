@@ -1,0 +1,236 @@
+/* Review chrome above the settings page and the dialog; the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full 1 px line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.m-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { flex-basis: 100%; }
+  .m-lines { padding-left: 0; list-style: none; }
+  .m-lines li:not([aria-current]) { display: none; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s5)); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s5); }
+}
+
+/* The settings page behind, only enough to see where the guide returns. */
+.m-page { padding: calc(var(--review-h, 0px) + var(--ah-s6)) var(--ah-s6) 80px; max-width: 760px; }
+.m-page h1 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.m-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.m-row-name { display: inline-flex; align-items: center; gap: var(--ah-s2); font-weight: 600; }
+.m-row-state { display: inline-flex; align-items: center; gap: var(--ah-s1); flex: 1; font-size: var(--ah-size-meta); }
+.m-row-state svg { color: var(--ah-ok); width: 14px; height: 14px; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-lead { color: var(--ah-ink); font-size: var(--ah-size-ui); line-height: var(--ah-lh-body); }
+.m-stepbody { gap: var(--ah-s3); }
+.m-stepbody > * { max-width: 100%; }
+
+/* Where: the console path is the step's main instruction, so it reads at
+   body size in full ink; the separators are quiet and nothing looks like a
+   disclosure arrow. */
+.m-where { display: grid; gap: var(--ah-s1); min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+.m-open .m-quiet { font-weight: 400; }
+
+/* A: each Entra field as its own row. */
+.m-fields { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); width: 100%; }
+.m-field {
+  display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 2px var(--ah-s3);
+  align-items: baseline; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+}
+.m-fname { font-weight: 600; font-size: var(--ah-size-ui); }
+.m-act { font-size: var(--ah-size-ui); color: var(--ah-ink-2); }
+.m-value { grid-column: 2; display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code, .m-ev code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+@media (max-width: 640px) {
+  .m-field { grid-template-columns: minmax(0, 1fr); }
+  .m-value { grid-column: 1; }
+}
+.m-done {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; width: 100%; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-meta); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.m-role { display: flex; gap: var(--ah-s1); align-items: center; }
+.m-role svg { width: 14px; height: 14px; flex: none; }
+
+/* Permissions: one name per row with its own copy and a tick that only
+   tracks the administrator's progress here. */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; width: 100%; }
+.m-perm {
+  display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; gap: var(--ah-s3); align-items: center;
+  padding: 2px var(--ah-s1) 2px var(--ah-s2); border-radius: var(--ah-r-md); border: 1px solid transparent;
+}
+.m-perm .ah-checkbox span:last-child { font-family: var(--ah-mono); font-size: 13px; }
+.m-perm[data-ticked] .ah-checkbox span:last-child { color: var(--ah-ink-2); }
+.m-perm[data-current] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); }
+.m-says { font-size: var(--ah-size-meta); color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .m-says { display: none; } .m-perm { grid-template-columns: minmax(0, 1fr) auto; } }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); }
+
+/* Entra fragments (A1, A3): redrawn from Jari's screenshots, neutral and
+   small so they read as a picture of the other site. The item to choose is
+   a soft accent surface with a full line, as in Entra's own selection. */
+.m-frag {
+  margin: 0; width: 100%; box-sizing: border-box; display: grid; gap: 6px;
+  padding: 10px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2); font-size: 12px; color: var(--ah-ink-2);
+}
+.m-frag p { margin: 0; }
+.m-frag figcaption { font-size: 11px; color: var(--ah-muted); }
+.m-frag-crumbs { font-size: 11px; color: var(--ah-muted); }
+.m-frag-title { font-size: 15px; font-weight: 700; color: var(--ah-ink); }
+.m-frag-title span { font-weight: 400; }
+.m-frag-body { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 1fr); gap: 10px; align-items: start; }
+.m-frag-body:not(:has(.m-frag-main)) { grid-template-columns: minmax(0, 1fr); }
+.m-frag-menu { margin: 0; padding: 0; list-style: none; display: grid; gap: 1px; }
+.m-frag-menu li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: var(--ah-r-sm); border: 1px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-frag-menu li i { width: 9px; height: 9px; border-radius: 2px; background: var(--ah-line-strong); flex: none; }
+.m-frag-menu li[data-on] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; }
+.m-frag-menu li[data-on] i { background: var(--ah-accent); }
+.m-frag-menu .m-frag-group { font-weight: 600; color: var(--ah-ink); padding-top: 5px; }
+/* A crop, not the whole menu: the cut edges fade out. */
+.m-frag-menu[data-cut-top] { mask-image: linear-gradient(to bottom, transparent 0, #000 14px); }
+.m-frag-menu[data-cut-bottom] { mask-image: linear-gradient(to top, transparent 0, #000 14px); }
+.m-frag-menu[data-cut-top][data-cut-bottom] { mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+.m-frag-main { display: grid; gap: 8px; min-width: 0; }
+.m-frag-tool, .m-frag-tabs { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.m-frag-tool span { padding: 2px 6px; border-radius: var(--ah-r-sm); border: 1px solid transparent; }
+.m-frag-tool span[data-on] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; }
+.m-frag-tabs { border-bottom: 1px solid var(--ah-line-soft); }
+.m-frag-tabs span { padding: 3px 0; }
+.m-frag-tabs span[data-on] { color: var(--ah-ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--ah-accent); }
+.m-frag-search { padding: 4px 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); background: var(--ah-surface); color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-frag-apps { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.m-frag-apps li { display: flex; align-items: center; gap: 6px; color: var(--ah-accent); }
+.m-frag-apps li + li { color: var(--ah-muted); }
+.m-frag-apps b { display: inline-grid; place-items: center; width: 20px; height: 20px; font-size: 9px; border-radius: 2px; background: var(--ah-line-strong); color: var(--ah-surface); }
+.m-frag-ess { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.m-frag-ess dt { font-size: 11px; color: var(--ah-muted); padding: 3px 6px 0; border-radius: var(--ah-r-sm) var(--ah-r-sm) 0 0; }
+.m-frag-ess dd { margin: 0 0 4px; padding: 0 6px 3px; border-radius: 0 0 var(--ah-r-sm) var(--ah-r-sm); color: var(--ah-ink); }
+.m-frag-ess [data-on] { background: var(--ah-accent-soft); font-weight: 600; color: var(--ah-ink); }
+.m-frag-ess code { font-family: var(--ah-mono); font-size: 11px; letter-spacing: -0.02em; }
+.m-frag-link { color: var(--ah-accent) !important; text-decoration: underline; }
+.m-frag-dim { color: var(--ah-muted) !important; }
+@media (max-width: 640px) { .m-frag-body { grid-template-columns: minmax(0, 1fr); } }
+
+/* A1: instructions with the fragment beside them; on a narrow dialog the
+   fragment comes first, where the step starts. */
+.m-beside { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 270px); gap: var(--ah-s5); width: 100%; align-items: start; }
+.m-beside-l { display: grid; gap: var(--ah-s3); min-width: 0; justify-items: start; }
+.m-beside-r { position: sticky; top: 0; min-width: 0; }
+@container si-step (max-width: 640px) {
+  .m-beside { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s3); }
+  .m-beside-r { order: -1; position: static; }
+}
+@media (max-width: 640px) {
+  .m-beside { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s3); }
+  .m-beside-r { order: -1; position: static; }
+}
+
+/* A2: one list down the app's menu. A row's head carries the menu path at
+   reading size; the open row shows A's field rows. */
+.m-items { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); width: 100%; }
+.m-items-group { padding: var(--ah-s2) 0 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-weight: 600; }
+.m-item { border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.m-item[data-open] { border-color: var(--ah-line); }
+.m-item-head {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer;
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: var(--ah-s3); align-items: center;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-lg);
+}
+.m-item-head:hover { background: var(--ah-hover); }
+.m-item-head:focus-visible { outline: var(--ah-focus-width, 2px) solid var(--ah-focus); }
+.m-item-mark {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; font-weight: 600; background: var(--ah-sunken); color: var(--ah-ink-2);
+}
+.m-item-mark svg { width: 13px; height: 13px; }
+.m-item[data-open] .m-item-mark { background: var(--ah-accent); color: var(--ah-on-accent); }
+.m-item[data-done] .m-item-mark { background: var(--ah-ok-soft); color: var(--ah-ok); }
+.m-item-path { margin: 0; }
+.m-item[data-done]:not([data-open]) .m-item-path { color: var(--ah-ink-2); font-weight: 400; }
+.m-item-sum { font-size: var(--ah-size-meta); color: var(--ah-ink-2); text-align: end; }
+.m-item-body { display: grid; gap: var(--ah-s3); justify-items: start; padding: 0 var(--ah-s3) var(--ah-s3) calc(24px + 2 * var(--ah-s3)); }
+@media (max-width: 640px) {
+  .m-item-head { grid-template-columns: 24px minmax(0, 1fr); }
+  .m-item-sum { grid-column: 2; text-align: start; }
+  .m-item-body { padding: 0 var(--ah-s3) var(--ah-s3); }
+}
+
+/* A3: "Olet nyt" is Entra's own page heading, so the administrator can
+   match it on screen, then the one move to make. */
+.m-here {
+  width: 100%; box-sizing: border-box; display: grid; gap: 2px;
+  padding: var(--ah-s3) var(--ah-s4); border-radius: var(--ah-r-lg);
+  background: var(--ah-sunken); border: 1px solid var(--ah-line-soft);
+}
+.m-here p { margin: 0; }
+.m-here-label { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-here-crumbs { font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.m-here-title { font-size: var(--ah-size-h2, 20px); font-weight: 700; color: var(--ah-ink); line-height: 1.25; overflow-wrap: anywhere; }
+.m-here-menu { font-size: var(--ah-size-ui); color: var(--ah-ink-2); }
+.m-here .m-open { margin-top: var(--ah-s1); }
+.m-here-go {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; margin-top: var(--ah-s2) !important;
+  padding-top: var(--ah-s2); border-top: 1px solid var(--ah-line-soft);
+  font-size: var(--ah-size-body); color: var(--ah-ink); line-height: 1.45;
+}
+.m-here-go svg { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--ah-accent); }
+.m-pairs { width: 100%; display: grid; gap: var(--ah-s2); }
+.m-pairs-head { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1.2fr); gap: var(--ah-s3); margin: 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-pairs-head span:last-child { grid-column: 3; }
+.m-pair { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1.2fr); gap: var(--ah-s3); align-items: center; }
+.m-pair > svg { width: 16px; height: 16px; color: var(--ah-muted); }
+.m-pair-entra { display: grid; gap: 2px; padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); border: 1px solid var(--ah-accent-line); min-width: 0; }
+.m-pair-label { font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink); }
+.m-pair-entra code { font-family: var(--ah-mono); font-size: 12px; color: var(--ah-ink-2); overflow-wrap: anywhere; }
+.m-pair-skip .m-pair-entra { background: none; border-color: var(--ah-line-soft); }
+.m-pair-skip .m-pair-label, .m-pair-skip code { color: var(--ah-muted); font-weight: 400; }
+.m-pair-field { display: grid; gap: 2px; min-width: 0; }
+.m-pair-state { display: flex; align-items: center; gap: 4px; margin: 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-pair-state svg { width: 13px; height: 13px; color: var(--ah-ok); }
+@media (max-width: 640px) {
+  .m-pairs-head { display: none; }
+  .m-pair { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s1); }
+  .m-pair > svg { transform: rotate(90deg); justify-self: start; margin-left: var(--ah-s3); }
+  .m-pair-skip > span { display: none; }
+}
+
+/* A's field rows stack name over action wherever their column is narrow
+   (beside a fragment, in a split column, inside a list item). */
+.m-beside-l, .si-col, .m-item-body { container-type: inline-size; }
+@container (max-width: 560px) {
+  .m-field { grid-template-columns: minmax(0, 1fr); }
+  .m-value { grid-column: 1; }
+}
+.m-beside .m-frag-body { grid-template-columns: minmax(0, 1fr); }
+.m-beside .m-frag-main { order: -1; }
