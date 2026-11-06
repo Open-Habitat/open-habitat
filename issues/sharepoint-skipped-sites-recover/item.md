@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-06
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 related: ['@sharepoint-site-id-comma-escaped']
 preparation: ready
@@ -12,6 +12,7 @@ source_ref: chat:2026-11-06/sharepoint-recover
 lane: sharepoint-fix
 lane_seq: 2
 blocked_by: ['@sharepoint-site-id-comma-escaped']
+closed: 2026-11-06
 ---
 
 # Recover SharePoint sites skipped by the escaping bug without asking the person
@@ -38,5 +39,5 @@ Selvitä ensin, miten valinta tallennetaan, ja kirjaa ratkaisu
 
 ## Acceptance Criteria
 
-- [ ] päivityksen jälkeen aiemmin 404:llä ohitettu sivusto löytyy ilman henkilön toimia; testi synteettistä Graphia vasten
-- [ ] henkilön rajattua valintaa ei laajenneta hänen tietämättään
+- [x] päivityksen jälkeen aiemmin 404:llä ohitettu sivusto löytyy ilman henkilön toimia; testi synteettistä Graphia vasten
+- [x] henkilön rajattua valintaa ei laajenneta hänen tietämättään

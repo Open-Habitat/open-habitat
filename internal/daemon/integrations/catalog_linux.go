@@ -653,8 +653,11 @@ func (c *Catalog) Start(ctx context.Context) {
 	c.reconcile()
 	queue := c.interruptedQueue()
 	c.write.Unlock()
-	go c.resumeInterrupted(ctx, queue)
-	go c.alignAll(ctx)
+	go func() {
+		c.alignAll(ctx)
+		c.resumeInterrupted(ctx, queue)
+		c.recoverMicrosoft(ctx)
+	}()
 	go func() {
 		<-ctx.Done()
 		c.relay.cancelAll()

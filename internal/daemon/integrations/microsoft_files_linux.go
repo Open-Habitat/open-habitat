@@ -26,6 +26,7 @@ import (
 type microsoftRemote struct {
 	Name, Directory, DriveID, DriveType string
 	Writable                            bool
+	RecoverySelected                    bool
 }
 
 // service is the account's service the root belongs to.
@@ -174,6 +175,7 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 	}
 	var config strings.Builder
 	config.WriteString(microsoftConfigHeader)
+	config.WriteString(microsoftDiscoveryFixed)
 	for _, r := range remotes {
 		step = "onedrive_metadata"
 		if r.Name != "onedrive" {
@@ -233,6 +235,8 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 				out[len(out)-1].Directory = strings.TrimSpace(value)
 			case "drive_type":
 				out[len(out)-1].DriveType = strings.TrimSpace(value)
+			case microsoftRecoverySelected:
+				out[len(out)-1].RecoverySelected = strings.TrimSpace(value) == "true"
 			case grantKey:
 				r := &out[len(out)-1]
 				r.Writable = microsoftWritable(r.service(), microsoftGranted(strings.Fields(value)))
@@ -413,6 +417,27 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 			return ToolFailed
 		}
 		selected[id] = true
+	}
+	// An explicit choice supersedes every automatic recovery selection, even
+	// if a later first pass fails. Never re-add a library the person removed.
+	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	data, err := readFileAt(fd, address+".conf", 64<<10)
+	if err != nil {
+		return err
+	}
+	var lines []string
+	for _, line := range strings.Split(string(data), "\n") {
+		key, _, _ := strings.Cut(line, "=")
+		if strings.TrimSpace(key) != microsoftRecoverySelected {
+			lines = append(lines, line)
+		}
+	}
+	if err := writeFileAt(fd, address+".conf", []byte(strings.Join(lines, "\n")), 0600); err != nil {
+		return err
 	}
 	for _, r := range remotes {
 		if !selected[r.Name] || microsoftReady(env, address, r) {
