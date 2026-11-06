@@ -3,11 +3,12 @@ created: 2026-11-03
 updated: 2026-11-06
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: composer-popover-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-06
 ---
 
 # Prototype: where the composer's attach, command and file pickers open
@@ -29,6 +30,12 @@ Kierros 3 riffaa näillä:
 
 Suunta **Puu**. Riffataan haku: miten käsitellään esimerkiksi `AGENTS.md`,
 joka on monessa kansiossa (kierros 4).
+
+## Decision (Jari 2026-11-06, kierros 4)
+
+Haku **Lista** (nimi ensin, kansio perässä; muutetut ensin, sitten
+matalimmat; → näyttää kansiossa). Jarin mukaan prototyyppi alkaa olla
+valmis: seuraavaksi toteutus `composer-lists-in-field`.
 
 ## Acceptance Criteria
 
