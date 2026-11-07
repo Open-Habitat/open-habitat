@@ -150,7 +150,9 @@ test("@lab the person can leave during a clone and come back through the rail", 
     page.getByRole("button").and(page.getByTestId("repository-clone")),
   ).toBeDisabled();
   const elsewhere = page.locator(".ah-rail-content .ah-workspace-link").first();
-  const name = (await elsewhere.innerText()).trim();
+  // The link's text includes its workspace icon's glyph.
+  const name = await elsewhere.getAttribute("data-workspace-name");
+  if (!name) throw new Error("Missing workspace name");
   await elsewhere.click();
   await expect(page.locator("main h1")).toHaveText(name);
   await expect(railBlock(page)).toBeVisible();

@@ -28,7 +28,10 @@ test("@a11y keyboard navigation places focus on destination and restores account
     .getByRole("navigation")
     .locator(".ah-workspace-link")
     .first();
-  const name = await workspace.innerText();
+  // The visible text includes the workspace icon's glyph; the name is the
+  // workspace the link opens.
+  const name = await workspace.getAttribute("data-workspace-name");
+  if (!name) throw new Error("Missing workspace name");
   await workspace.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();

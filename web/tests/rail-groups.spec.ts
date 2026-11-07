@@ -59,8 +59,12 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   // written, so the time is now.
   await expect(row).toHaveAttribute("data-ball", "done", { timeout: 25000 });
   await expect(row.locator("time")).toHaveText("nyt");
-  const group = running.getByTestId("rail-group-ordinary-dir");
-  await expect(group.getByRole("heading")).toContainText("ordinary-dir");
+  // With workspace icons standard, the row's own icon names its workspace
+  // instead of a group heading.
+  await expect(row.getByTestId("workspace-icon-button")).toHaveAccessibleName(
+    /ordinary-dir/,
+  );
+  await expect(running.getByTestId(/^rail-group-/)).toHaveCount(0);
   const box = await row.getByRole("link").boundingBox();
   expect(box?.height).toBeLessThanOrEqual(26);
   // The line keeps only the title and the time; the rest is said.
