@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@research-remote-browser-session']
-preparation: pending
+preparation: ready
 lane: remote-browser-proto
 lane_seq: 1
 ---
@@ -54,3 +54,12 @@ tehdäkseen jotain usealla yhtä aikaa), joten siru ja palkki kantavat useita.
 Lisäksi (Jari kysyi, näkyvätkö selaimet esim. vasemmassa palkissa;
 kapellimestarin suositus kyllä): henkilön oma selain yhtenä rivinä
 vasemmassa palkissa (tila, mikä keskustelu ohjaa, avaa arkin).
+
+## Decision (Jari 2026-11-07, kierros 3)
+
+Sirun paikka **2 Siru kentän yllä**. Riffataan sirusta avautuvaa ikkunaa
+(palkki ja arkki): kun selainikkunoita on monta ja yksi niistä tarvitsee
+henkilöä (esim. palaute tai MFA), pyyntö luki kaikkien ikkunoiden alla
+hassusti; sen pitää kuulua sille ikkunalle. Tarkempi katselu (esikatselun
+avaaminen) ei saa ottaa ohjausta agentilta: katselu ja ohjauksen ottaminen
+ovat eri tekoja.
