@@ -29,6 +29,7 @@ const featureIds = [
   { id: "raise-to-your-turn", landed: true },
   { id: "composer-lists-in-field", landed: true },
   { id: "rewind-conversation", landed: true },
+  { id: "explain-mode", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -50,7 +51,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   if (
     id === "server-settings-own-area" ||
     id === "empty-conversation-start-page" ||
-    id === "rewind-conversation"
+    id === "rewind-conversation" ||
+    id === "explain-mode"
   )
     body = (
       <>

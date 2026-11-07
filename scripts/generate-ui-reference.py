@@ -17,6 +17,10 @@ def render(root):
     src = root / "web/src"
     paths = set((src / "text").glob("*.ts*"))
     paths.update(src / p for p in ("app/settingsIndex.ts", "app/settingsRoute.ts"))
+    # The explain mode's parts name the element each of its cards explains.
+    parts = src / "components/explainParts.ts"
+    if parts.exists():
+        paths.add(parts)
     # Include the actual handlers, not just their displayed hints. Discover new
     # handlers too, so adding a shortcut cannot silently escape the drift check.
     for folder in ("app", "components"):
@@ -31,7 +35,9 @@ def render(root):
              "Catalogs contain Finnish, US English and optional UK overrides. Functions",
              "retain placeholders and conditions rather than invented runtime values.",
              "Settings IDs, row descriptions, visibility conditions and aliases are in",
-             "app/settingsIndex.ts and app/settingsRoute.ts. Keyboard handling is included",
+             "app/settingsIndex.ts and app/settingsRoute.ts. The explain mode's cards",
+             "(text/explainMode.ts) say what each part of the screen does; the element each",
+             "card explains is in components/explainParts.ts. Keyboard handling is included",
              "with its surrounding component so focus, platform and state restrictions remain visible.",
              "A label alone does not establish that a control is available to this person.", ""]
     for path in sorted(paths):

@@ -587,6 +587,12 @@ export const settingsSections = [
         desc: "Selaa tiedostoja ja komentoja kirjoituskentän sisällä ja merkitse useampi tiedosto kerralla.",
       },
       {
+        id: "explain-mode",
+        label: "Selitystila",
+        kw: ["selitä", "explain", "opastus", "ohje", "help", "guide", "?"],
+        desc: "Himmennä näyttö ja katso, mitä mikä tahansa sen kohta tekee.",
+      },
+      {
         id: "rewind-conversation",
         label: "Palaa tähän",
         kw: [

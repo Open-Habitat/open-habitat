@@ -5,6 +5,7 @@ import { startPageRequestText } from "../text/startPageRequest";
 import "./WorkspaceIntro.css";
 import { startHereText } from "../text/startHere";
 import { ControlButton } from "./ControlElements";
+import { ExplainStrip } from "./ExplainMode";
 import { Markdown } from "./Markdown";
 import "./StartHere.css";
 
@@ -114,6 +115,7 @@ export function StartHere({
   }, [state, page]);
   return (
     <section ref={root} className="ah-start" data-testid="start-here">
+      <ExplainStrip />
       {state === "loading" ? (
         <div className="ah-start-placeholder" aria-busy="true" />
       ) : state === "error" ? (

@@ -271,6 +271,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Lists inside the message field",
         desc: "Browse files and commands inside the message field and mark several files at once.",
       },
+      "explain-mode": {
+        label: "Explain mode",
+        desc: "Dim the screen and see what any part of it does.",
+      },
       "rewind-conversation": {
         label: "Go back here",
         desc: "Go back to an earlier message of yours in the same conversation and, if you want, restore the files the agent changed.",

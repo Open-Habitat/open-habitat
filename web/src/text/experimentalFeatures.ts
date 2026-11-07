@@ -15,6 +15,16 @@ const fi = {
       needs: "Ei muuta.",
       caption: "Kirjoituskenttä",
     },
+    "explain-mode": {
+      name: "Selitystila",
+      desc: "Himmentää näytön ja selittää kohdan, jonka päällä osoitin on: mitä se tekee ja mitä siitä kannattaa tietää. Keskustelussa tila kertoo ensin keskustelun tilanteen ja sen, mitä voit nyt tehdä.",
+      where:
+        "Keskustelun yläpalkin ?-painikkeesta, Tilivalikon Selitä tämä näkymä -riviltä ja uuden keskustelun aloitussivun nauhasta. Puhelimella myös ⋯-valikosta.",
+      shows:
+        "Kortin osoittimen vieressä; puhelimella ensimmäinen napautus selittää ja toinen tekee. Painallukset toimivat kuten aina, mutta arkistointi, poisto, lähettäminen ja pysäyttäminen odottavat, kunnes lopetat tilan Esc:llä tai Lopeta-painikkeella.",
+      needs: "Ei muuta.",
+      caption: "Selitystila",
+    },
     "rewind-conversation": {
       name: "Palaa tähän",
       desc: "Palaa aiempaan viestiisi samassa keskustelussa. Voit palauttaa myös tiedostot, joita agentti muutti sen jälkeen, tai pelkät tiedostot.",
@@ -130,6 +140,16 @@ export const experimentalFeaturesText = catalog(fi, {
         "A folder tree with the folders that hold changes open, a search with the name first and its folder after, and on a computer the selected row's preview beside the list.",
       needs: "Nothing else.",
       caption: "Message field",
+    },
+    "explain-mode": {
+      name: "Explain mode",
+      desc: "Dims the screen and explains the part under the pointer: what it does and what is worth knowing about it. In a conversation the mode first tells where the conversation stands and what you can do now.",
+      where:
+        "From the ? in the conversation's top bar, the account menu's Explain this view and the strip on a new conversation's start page. On a phone also from ⋯.",
+      shows:
+        "A card beside the pointer; on a phone the first tap explains and a second one does it. Presses work as always, but archiving, deleting, sending and stopping wait until you end the mode with Esc or Stop.",
+      needs: "Nothing else.",
+      caption: "Explain mode",
     },
     "rewind-conversation": {
       name: "Go back here",

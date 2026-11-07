@@ -11,6 +11,7 @@ import {
 } from "./ArchiveControls";
 import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
+import { ExplainToggle, useExplainEntry } from "./ExplainMode";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
 import { NameEditor } from "./NameEditor";
@@ -48,6 +49,7 @@ export function AppShell(props: AppShellProps) {
 
 function Shell({
   className,
+  modeBar,
   connection,
   rail,
   main,
@@ -59,6 +61,8 @@ function Shell({
   navigationBadge = 0,
 }: {
   className?: string;
+  /** A mode's bar above everything else (the explain mode). */
+  modeBar?: ReactNode;
   /** The status bell on a page without a top bar: the phone's toolbar, and
    * beside the fallback account. */
   bell?: ReactNode;
@@ -181,6 +185,7 @@ function Shell({
       >
         {t.skip}
       </ExternalLink>
+      {modeBar}
       {connection}
       <div
         className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
@@ -1619,6 +1624,7 @@ export function AgentHeader({
   const hidden = useHeaderShortening(topline);
   const phoneReadout = usePhoneHeaderReadout(topline);
   const phone = hidden.workspace === undefined;
+  const explain = useExplainEntry();
   const phoneActions = phone
     ? phoneReadout.actions.map((action) => ({
         id: action.id,
@@ -1643,6 +1649,8 @@ export function AgentHeader({
   const menuActions = hidden.actions !== false;
   const headerMenu = [
     ...phoneActions,
+    // On a phone the menu also opens the explain mode (Selitä tämä näkymä).
+    ...(phone && explain ? [explain] : []),
     ...(hidden.workspace !== false
       ? [
           {
@@ -1881,6 +1889,7 @@ export function AgentHeader({
         {filesControl}
         {editorControl}
         {terminal}
+        <ExplainToggle />
         {recapAction ? (
           <ControlButton
             data-testid="conversation-recap"

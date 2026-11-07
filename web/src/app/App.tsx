@@ -30,6 +30,7 @@ import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
 import { TurnControl } from "../components/composer/TurnControl";
+import { ExplainMode } from "../components/ExplainMode";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
@@ -3005,6 +3006,7 @@ export function App() {
             onReconnect={syntheticDemo ? undefined : reconnectGitHub}
           >
             <AppShell
+              modeBar={<ExplainMode />}
               bell={conversationBell ? undefined : <StatusBell />}
               navigationBadge={now.yours.length}
               className={landing.entering ? "ah-landing-enter" : undefined}

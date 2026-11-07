@@ -1,0 +1,376 @@
+/* The explain mode (ExplainMode.tsx). Tokens only; no edge stripes. The
+   layer never takes the pointer, so production's own hover and presses act
+   through it. */
+.ah-explain-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  flex: none;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s4);
+  padding: 0 var(--ah-s2) 0 var(--ah-s4);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+  font: var(--ah-size-ui) / 1.3 var(--ah-font);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ah-explain-bar > b {
+  flex: none;
+  font-weight: 600;
+}
+.ah-explain-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--ah-bg) 72%, transparent);
+}
+.ah-explain-now,
+.ah-explain-stop {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  height: 28px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  font: 600 var(--ah-size-ui) var(--ah-font);
+  cursor: pointer;
+}
+.ah-explain-now {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--ah-bg) 14%, transparent);
+  color: var(--ah-bg);
+}
+.ah-explain-now > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-explain-now:hover,
+.ah-explain-now[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ah-bg) 26%, transparent);
+}
+.ah-explain-now em {
+  font-style: normal;
+  opacity: 0.7;
+}
+.ah-explain-now i,
+.ah-explain-dot {
+  flex: none;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-muted);
+}
+.ah-explain-now i[data-dot="waiting"],
+.ah-explain-dot[data-dot="waiting"] {
+  background: var(--ah-ok);
+}
+.ah-explain-now i[data-dot="failed"],
+.ah-explain-dot[data-dot="failed"] {
+  background: var(--ah-err);
+}
+.ah-explain-now i[data-dot="running"],
+.ah-explain-dot[data-dot="running"] {
+  background: var(--ah-accent);
+}
+.ah-explain-stop {
+  margin-left: auto;
+  padding: 0 10px 0 12px;
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+}
+.ah-explain-bar kbd {
+  font: 11px var(--ah-mono);
+  padding: 0 5px;
+  border: 1px solid var(--ah-line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--ah-r-sm);
+  color: var(--ah-ink-2);
+  background: var(--ah-surface);
+}
+.ah-explain-bar :focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-bg);
+  outline-offset: 2px;
+}
+/* A phone's bar names only the state (round 9). */
+@media (max-width: 800px) {
+  .ah-explain-bar {
+    gap: var(--ah-s3);
+    padding: 0 6px 0 var(--ah-s3);
+  }
+  .ah-explain-hint,
+  .ah-explain-prefix,
+  .ah-explain-bar kbd {
+    display: none;
+  }
+}
+
+/* The ? in the conversation's top bar. */
+.ah-explain-q {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  font: 600 12px / 1 var(--ah-font);
+}
+.ah-explain-toggle[aria-pressed="true"] {
+  --i-bg: var(--ah-ink);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+}
+
+/* The layer: the dim, the hole around the part, the flash of a press that
+   waits. Its top is the bar's bottom, so the bar stays undimmed. */
+.ah-explain-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ah-explain-layer > i {
+  position: absolute;
+  display: block;
+}
+.ah-explain-dim {
+  inset: 0;
+  background: var(--ah-scrim);
+}
+.ah-explain-veil {
+  inset: 0;
+  background: color-mix(in srgb, var(--ah-scrim) 35%, transparent);
+}
+.ah-explain-hole {
+  border-radius: var(--ah-r-md);
+  box-shadow:
+    0 0 0 2px var(--ah-accent),
+    0 0 0 9999px var(--ah-scrim);
+}
+.ah-explain-hole.ah-explain-linger {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ah-accent) 55%, transparent),
+    0 0 0 9999px color-mix(in srgb, var(--ah-scrim) 70%, transparent);
+}
+.ah-explain-ring {
+  border-radius: var(--ah-r-md);
+  box-shadow:
+    0 0 0 2px var(--ah-accent),
+    0 0 0 6px color-mix(in srgb, var(--ah-accent) 28%, transparent);
+}
+.ah-explain-flash {
+  border-radius: var(--ah-r-md);
+  box-shadow: 0 0 0 3px var(--ah-accent);
+  animation: ah-explain-flash 1.2s ease-out forwards;
+}
+@keyframes ah-explain-flash {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-explain-flash {
+    animation: none;
+  }
+}
+
+/* The card: a part's beside the pointer, the state card where it covers
+   neither its anchor nor what its rows point at. */
+.ah-explain-card {
+  position: fixed;
+  z-index: 2147483002;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  box-shadow: var(--ah-shadow-float);
+  font: var(--ah-size-ui) / 1.45 var(--ah-font);
+  pointer-events: none;
+}
+.ah-explain-card.ah-explain-state,
+.ah-explain-card[data-touch] {
+  pointer-events: auto;
+}
+.ah-explain-state {
+  width: 340px;
+}
+@media (max-width: 800px) {
+  .ah-explain-card {
+    width: calc(100vw - 16px);
+  }
+}
+.ah-explain-card.ah-explain-linger {
+  box-shadow: var(--ah-shadow-menu);
+}
+.ah-explain-top {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-height: 22px;
+  margin-bottom: 4px;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-explain-kind {
+  padding: 1px 7px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  box-shadow: inset 0 0 0 1px var(--ah-line);
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ah-explain-kind-now {
+  background: var(--ah-accent-soft);
+  color: var(--ah-ink);
+  box-shadow: inset 0 0 0 1px var(--ah-accent-line);
+}
+.ah-explain-top kbd {
+  font: 11px var(--ah-mono);
+  padding: 0 5px;
+  border: 1px solid var(--ah-line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--ah-r-sm);
+  color: var(--ah-ink-2);
+}
+.ah-explain-x {
+  margin-left: auto;
+}
+.ah-explain-card h2 {
+  margin: 0 0 3px;
+  font-size: var(--ah-size-body);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.ah-explain-card p {
+  margin: 0;
+}
+.ah-explain-card .ah-explain-know {
+  margin-top: 4px;
+  color: var(--ah-ink-2);
+}
+.ah-explain-card .ah-explain-note {
+  margin-top: 6px;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-explain-card .ah-explain-wait {
+  margin-top: 8px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-explain-card .ah-explain-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin-top: 10px;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-explain-can {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ah-line);
+}
+.ah-explain-can > span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-explain-can ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-explain-can button {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--ah-r-sm);
+  background: transparent;
+  color: var(--ah-ink);
+  font: var(--ah-size-ui) / 1.35 var(--ah-font);
+  text-align: left;
+  cursor: pointer;
+}
+.ah-explain-can button:hover,
+.ah-explain-can button:focus-visible {
+  background: var(--ah-sunken);
+}
+.ah-explain-can button span {
+  margin-left: auto;
+  color: var(--ah-muted);
+}
+.ah-explain-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2147483004;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 8px 14px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+  font: var(--ah-size-ui) / 1.4 var(--ah-font);
+}
+
+/* The start page's strip (round 3, riff 3). */
+.ah-explain-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s3);
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-accent-soft);
+}
+.ah-explain-strip > div {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.ah-explain-strip b {
+  display: block;
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-explain-strip > div > span {
+  display: block;
+  margin-top: 2px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-explain-strip > div > .ah-explain-touch {
+  display: none;
+}
+@media (hover: none) {
+  .ah-explain-strip > div > .ah-explain-touch {
+    display: block;
+  }
+  .ah-explain-strip > div > .ah-explain-pointer {
+    display: none;
+  }
+}

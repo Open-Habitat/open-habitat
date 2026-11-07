@@ -59,6 +59,7 @@ import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
+import { useExplainEntry } from "./ExplainMode";
 import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
@@ -154,6 +155,7 @@ export function AccountShelf({
     return () => window.removeEventListener("nah:work-change", sync);
   }, []);
   const t = useText(accountText);
+  const explain = useExplainEntry();
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
     accountLabel(person.name) === t.ownAccount
@@ -217,6 +219,8 @@ export function AccountShelf({
         placement="top start"
         items={[
           { id: "settings", label: t.settings },
+          // Selitä tämä näkymä: in every view, wherever the person is.
+          ...(explain ? [{ id: explain.id, label: explain.label }] : []),
           ...(onAdministration
             ? [{ id: "administration", label: t.administration }]
             : []),
@@ -224,6 +228,7 @@ export function AccountShelf({
         ]}
         onAction={(id) => {
           if (id === "settings") onSettings();
+          if (id === "explain") explain?.run();
           if (id === "administration") onAdministration?.();
           if (id === "logout") onLogout();
         }}

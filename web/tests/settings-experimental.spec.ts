@@ -24,6 +24,7 @@ const features = [
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",
+  "explain-mode",
 ];
 
 async function signIn(page: Page) {

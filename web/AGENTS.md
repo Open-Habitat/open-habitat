@@ -68,6 +68,15 @@ support direct Go development builds; refresh them with
 `python3 scripts/generate-ui-reference.py` when testing that guide locally.
 Edit the browser sources, not the generated copies.
 
+The explain mode finds each part of the screen by the element's own test id
+or class, never by position: `src/components/explainParts.ts` names the
+element and `src/text/explainMode.ts` holds its card, which the agent
+reference reads too. Renaming such a test id or class means updating its
+part, and a new control a person would wonder about gets a card in the same
+style. Presses keep working in the mode; only lasting effects (archive,
+delete, sign out, send, stop, close, save) wait, so exploring never changes
+anything by accident.
+
 The language resolves as the person's choice (System, Suomi, English (US),
 English (UK), kept in
 their daemon's account preferences so it follows them), then the server's
