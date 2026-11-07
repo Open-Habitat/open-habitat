@@ -30,6 +30,7 @@ const featureIds = [
   { id: "composer-lists-in-field", landed: true },
   { id: "rewind-conversation", landed: true },
   { id: "explain-mode", landed: true },
+  { id: "agent-resources-view", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -52,7 +53,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "server-settings-own-area" ||
     id === "empty-conversation-start-page" ||
     id === "rewind-conversation" ||
-    id === "explain-mode"
+    id === "explain-mode" ||
+    id === "agent-resources-view"
   )
     body = (
       <>

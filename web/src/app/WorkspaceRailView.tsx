@@ -11,11 +11,14 @@ import {
   WorkspaceRail,
 } from "../components";
 import { RailClones } from "../components/ClonePage";
+import { LinkRow } from "../components/ControlElements";
+import { Icon } from "../components/Icon";
 import { type QuietChoice, QuietSection } from "../components/QuietSection";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
-import { liveText } from "../i18n";
+import { liveText, useText } from "../i18n";
+import { agentResourcesText } from "../text/agentResources";
 import { statusText } from "../text/status";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
@@ -145,7 +148,11 @@ export function WorkspaceRailView({
   turnConversation,
   icons,
   quietChoice,
+  resources,
 }: {
+  /** Agentin käytössä's row under Etusivu (agent-resources-view,
+   * experimental). */
+  resources?: boolean;
   /** The rows' raise and lower (raise-to-your-turn, experimental). */
   turnConversation?: RailTurn;
   /** Hiljaiset's order and workspace from the account preferences. */
@@ -193,6 +200,7 @@ export function WorkspaceRailView({
   pathname: string;
   clones?: CloneJobs;
 }) {
+  const resourcesText = useText(agentResourcesText);
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
@@ -232,6 +240,25 @@ export function WorkspaceRailView({
         />
       }
       homeCurrent={pathname === "/workspaces"}
+      pages={
+        resources ? (
+          <div className="ah-rail-home-row">
+            <LinkRow
+              href="/resources"
+              data-testid="rail-resources"
+              kind="home"
+              current={pathname === "/resources"}
+              className="ah-rail-home ar-rail-link"
+              aria-label={collapsed ? resourcesText.railLabel : undefined}
+            >
+              <Icon name="shield" />
+              <span className="ah-rail-home-label">
+                {resourcesText.railLabel}
+              </span>
+            </LinkRow>
+          </div>
+        ) : undefined
+      }
       now={
         <NowSections
           yours={now.yours}

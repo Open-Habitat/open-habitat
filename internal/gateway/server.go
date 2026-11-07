@@ -119,6 +119,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationGitLabPath, s.auth.integrations)
 		mux.HandleFunc(integrationGitLabRepos, s.auth.integrations)
 		mux.HandleFunc(integrationGitLabTokens, s.auth.integrations)
+		mux.HandleFunc(integrationFiles, s.auth.integrations)
 		mux.HandleFunc(editorPath, s.auth.editorStatus)
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
@@ -243,5 +244,5 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
 func knownUIRoute(path string) bool {
-	return path == "/" || path == "/link" || path == "/view" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
+	return path == "/" || path == "/link" || path == "/view" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/resources" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
 }

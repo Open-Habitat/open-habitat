@@ -30,6 +30,7 @@ export const experimentalFeatureIds = [
   "composer-lists-in-field",
   "rewind-conversation",
   "explain-mode",
+  "agent-resources-view",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

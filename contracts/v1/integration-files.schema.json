@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/integration-files.schema.json",
+  "title": "The synced folders the person's agents reach, and one folder's entries",
+  "description": "GET /api/v1/integrations/files with no query lists the browsable roots: each connected account's sync directory under ~/cloud that exists now as the person's own directory. With ?directory=<a root's directory> (and &folder=<a relative folder in it>) the mapped daemon reads that one folder as the person: names, kinds, sizes and modification times, never content. Every level is opened beneath the one above without following a symlink or crossing a mount; a directory that is not one of the roots is directory_unavailable (404) and a folder that does not exist folder_missing (404). Nothing is kept between reads.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "roots": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/root"}},
+    "directory": {"$ref": "integrations.schema.json#/$defs/home_directory"},
+    "folder": {"$ref": "#/$defs/folder"},
+    "entries": {"description": "Subfolders first, then regular files, each by name; at most 500.", "type": "array", "maxItems": 500, "items": {"$ref": "#/$defs/entry"}},
+    "truncated": {"description": "The folder holds more than the reply carries.", "type": "boolean"},
+    "unlisted": {"description": "Entries left out because they are links, special files or names the reply cannot carry.", "type": "integer", "minimum": 1, "maximum": 5000}
+  },
+  "oneOf": [
+    {"required": ["roots"], "not": {"anyOf": [{"required": ["directory"]}, {"required": ["folder"]}, {"required": ["entries"]}, {"required": ["truncated"]}, {"required": ["unlisted"]}]}},
+    {"required": ["directory", "entries", "truncated"], "not": {"required": ["roots"]}}
+  ],
+  "$defs": {
+    "root": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "address", "service", "directory"],
+      "properties": {
+        "provider": {"enum": ["google", "microsoft", "dropbox"]},
+        "address": {"$ref": "integrations.schema.json#/$defs/address"},
+        "service": {"enum": ["drive", "onedrive", "sharepoint", "dropbox"]},
+        "directory": {"$ref": "integrations.schema.json#/$defs/home_directory"}
+      }
+    },
+    "name": {"type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[^/\\u0000-\\u001f\\u007f\\u2028\\u2029]+$", "not": {"enum": [".", ".."]}},
+    "folder": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!\\.\\.?(/|$))[^/\\u0000-\\u001f\\u007f\\u2028\\u2029]+(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f\\u007f\\u2028\\u2029]+)*$"},
+    "entry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "kind", "modified_at"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "kind": {"enum": ["file", "folder"]},
+        "bytes": {"description": "A file's size; absent for a folder and an empty file.", "type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "modified_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

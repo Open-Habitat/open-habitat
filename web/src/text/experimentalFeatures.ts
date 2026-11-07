@@ -5,6 +5,16 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "agent-resources-view": {
+      name: "Agentin käytössä",
+      desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
+      where:
+        "Sivupalkissa Etusivun alla. Lähteestä pääset sen asetuksiin, ja yhdistämättömät palvelut voi yhdistää listasta.",
+      shows:
+        "Lajeittain kaikkien tiliesi lähteet tasoineen. Synkronoituja kansioita voit selata, joten myös agentin luomat tiedostot näkyvät. Postia, kalenteria ja yhteystietoja ei avata täällä.",
+      needs: "Ei muuta. Näkymä lukee vain sen, mikä on jo yhdistetty.",
+      caption: "Agentin käytössä",
+    },
     "composer-lists-in-field": {
       name: "Listat kirjoituskentän sisällä",
       desc: "Tiedosto, Komennot ja kirjoitettu @ avautuvat kentän sisään. Tiedostoja selataan kansiopuuna, muutetut näkyvät paikallaan, ja useamman voi merkitä kerralla.",
@@ -131,6 +141,16 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "agent-resources-view": {
+      name: "Agent resources",
+      desc: "One view of everything your agents use: files, mail, calendar, contacts, code and machines. Each source tells what is included, what is not and what the agent may do.",
+      where:
+        "In the sidebar under Home. A source leads to its settings, and services not yet connected can be connected from the list.",
+      shows:
+        "Every account's sources by kind, with their levels. You can browse the synced folders, so files the agent creates show too. Mail, calendars and contacts are not opened here.",
+      needs: "Nothing else. The view reads only what is already connected.",
+      caption: "Agent resources",
+    },
     "composer-lists-in-field": {
       name: "Lists inside the message field",
       desc: "File, Commands and a typed @ open inside the field. Files are browsed as a folder tree, changed files show in place, and several can be marked at once.",

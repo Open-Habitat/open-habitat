@@ -607,6 +607,22 @@ export const settingsSections = [
         desc: "Palaa aiempaan viestiisi samassa keskustelussa ja palauta halutessasi agentin muuttamat tiedostot.",
       },
       {
+        id: "agent-resources-view",
+        label: "Agentin käytössä",
+        kw: [
+          "agentin käytössä",
+          "agent resources",
+          "resurssit",
+          "tiedostot",
+          "files",
+          "integraatiot",
+          "integrations",
+          "pääsy",
+          "access",
+        ],
+        desc: "Selaa kaikkea, mitä agenttisi käyttävät, lajeittain: mikä on mukana, mikä ei ja mitä agentti saa tehdä.",
+      },
+      {
         id: "next-waiting-row",
         label: "Seuraava odottava keskustelu",
         kw: [

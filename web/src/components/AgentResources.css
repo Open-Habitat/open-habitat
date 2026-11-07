@@ -1,0 +1,461 @@
+/* Agentin käytössä (proto-agent-resources-view, rounds 1 B and 3 C). No
+   coloured edge stripes: levels are pills, limits are words with icons. */
+
+.ar-meta {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ar-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.ar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-ink);
+}
+.ar-mono {
+  font-family: var(--ah-font-mono);
+  font-size: 12.5px;
+}
+.ar-pad {
+  margin: 0;
+  padding: 0 var(--ah-s2);
+}
+.ar-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ar-h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: var(--ah-s3) 0 var(--ah-s1);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+}
+.ar-h3 svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ar-row-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ah-ink-2);
+}
+.ar-link {
+  all: unset;
+  cursor: pointer;
+  color: var(--ah-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: var(--ah-size-meta);
+}
+.ar-link:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+
+/* The rail entry under Etusivu. */
+.ar-rail-link {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+}
+.ar-rail-link svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ---- The page: the list beside one source ---- */
+.ah-app-shell .ah-state:has(.ar-page) {
+  max-width: none;
+  width: 100%;
+}
+.ar-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+  min-height: 0;
+  padding: var(--ah-s4) var(--ah-s5);
+  box-sizing: border-box;
+}
+.ar-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+}
+.ar-page-head h1 {
+  margin: 0;
+  font-size: var(--ah-size-h1);
+}
+.ar-cols {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: var(--ah-s5);
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .ar-page {
+    padding: var(--ah-s3);
+  }
+  .ar-page-head h1 {
+    font-size: var(--ah-size-h2);
+  }
+}
+
+.ar-list {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s2);
+}
+.ar-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+.ar-list > :first-child > .ar-h3:first-child {
+  margin-top: 0;
+}
+.ar-kind-head {
+  padding: 0 var(--ah-s2);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-body, 14px);
+}
+.ar-src {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ah-s1) var(--ah-s2);
+  border-radius: var(--ah-r-nav, var(--ah-r-md));
+  cursor: pointer;
+  color: var(--ah-ink-2);
+}
+.ar-src:hover {
+  background: var(--ah-surface-hover);
+}
+.ar-src[aria-current] {
+  background: var(--ah-current);
+}
+.ar-src[aria-current] :where(.ar-name) {
+  font-weight: 600;
+}
+.ar-src:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ar-src .ig-lv,
+.ar-head-title > .ig-lv {
+  justify-self: end;
+  white-space: nowrap;
+}
+.ar-offer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s3);
+  min-height: 44px;
+  padding: var(--ah-s1) var(--ah-s2);
+}
+.ar-offer .ar-name {
+  color: var(--ah-ink-2);
+}
+.ar-connect {
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- One source ---- */
+.ar-detail {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.ar-cols > .ar-detail {
+  padding-left: var(--ah-s5);
+  border-left: 1px solid var(--ah-line);
+}
+.ar-detail > button {
+  justify-self: start;
+}
+.ar-head {
+  display: grid;
+  gap: var(--ah-s3);
+}
+.ar-head-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+}
+.ar-head-title > .ig-lv {
+  margin-left: auto;
+}
+.ar-head-title h2 {
+  margin: 0;
+  font-size: var(--ah-size-title);
+  font-weight: 600;
+}
+.ar-head-title .ar-meta {
+  overflow-wrap: anywhere;
+}
+.ar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s4);
+}
+.ar-ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ah-size-meta);
+}
+.ar-ext svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ar-content {
+  display: grid;
+  gap: var(--ah-s1);
+  align-content: start;
+  min-width: 0;
+  padding-top: var(--ah-s2);
+  border-top: 1px solid var(--ah-line);
+}
+.ar-content > section {
+  display: grid;
+  gap: var(--ah-s1);
+}
+.ar-content > p {
+  margin: var(--ah-s2) 0 0;
+}
+.ar-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--ah-s1);
+}
+.ar-row {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--ah-s3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ah-s1) var(--ah-s2);
+  border-radius: var(--ah-r-md);
+}
+.ar-row-open {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--ah-s3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ah-s1) var(--ah-s2);
+  border-radius: var(--ah-r-md);
+  cursor: pointer;
+}
+.ar-row-open:hover {
+  background: var(--ah-surface-hover);
+}
+.ar-row-open:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ar-grey {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--ah-s3);
+  min-height: 44px;
+  padding: var(--ah-s1) var(--ah-s2);
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-md);
+  color: var(--ah-muted);
+}
+.ar-grey .ar-name {
+  color: var(--ah-ink-2);
+  white-space: normal;
+}
+.ar-grey .ar-row-icon {
+  color: var(--ah-muted);
+}
+.ar-chip-none {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-muted);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.ar-chip-none svg {
+  width: 12px;
+  height: 12px;
+}
+.ar-verbs {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--ah-s2);
+  display: grid;
+  gap: var(--ah-s1);
+  font-size: var(--ah-size-meta);
+}
+.ar-verbs li {
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content) auto;
+  justify-content: start;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s2);
+  min-height: 26px;
+  color: var(--ah-ink);
+}
+@media (max-width: 800px) {
+  .ar-verbs li > .ar-warn {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+.ar-verbs :where(li) > svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.ar-verbs li[data-yes="false"] {
+  color: var(--ah-muted);
+}
+.ar-verbs li[data-yes="false"] strong {
+  font-weight: 500;
+  text-decoration: line-through;
+  text-decoration-color: var(--ah-line-strong);
+}
+.ar-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-size: 11.5px;
+}
+.ar-warn svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ah-warning, var(--ah-ink-2));
+}
+.ar-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--ah-s2) var(--ah-s4);
+  margin: var(--ah-s2) 0;
+  padding: 0 var(--ah-s2);
+  font-size: var(--ah-size-meta);
+}
+.ar-facts dt {
+  color: var(--ah-muted);
+}
+.ar-facts dd {
+  margin: 0;
+  color: var(--ah-ink);
+}
+
+/* ---- The synced folder ---- */
+.ar-files-failed {
+  display: grid;
+  justify-items: start;
+  gap: var(--ah-s1);
+  margin-bottom: var(--ah-s1);
+}
+.ar-files {
+  display: grid;
+  gap: var(--ah-s1);
+}
+.ar-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 0 var(--ah-s2);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ar-crumbs [aria-current] {
+  color: var(--ah-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ar-files .ar-rows {
+  gap: 1px;
+}
+
+@media (max-width: 800px) {
+  .ar-grey {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .ar-grey > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .ar-head-title {
+    flex-wrap: wrap;
+  }
+}
+
+/* Links that look like the page's buttons; last, as they outrank the
+   link primitive's own rules. */
+a.ar-connect-more,
+a.ar-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-height: 36px;
+  padding: 0 var(--ah-s3);
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  text-decoration: none;
+}
+a.ar-connect-more:hover,
+a.ar-settings:hover {
+  background: var(--ah-surface-hover);
+}
+a.ar-connect-more svg,
+a.ar-settings svg {
+  width: 15px;
+  height: 15px;
+}

@@ -25,6 +25,7 @@ const features = [
   "composer-lists-in-field",
   "rewind-conversation",
   "explain-mode",
+  "agent-resources-view",
 ];
 
 async function signIn(page: Page) {

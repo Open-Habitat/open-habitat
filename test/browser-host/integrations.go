@@ -520,3 +520,46 @@ func (f *levelFixture) Level(env integrations.Env, address string, services []in
 }
 
 func (l *fixtureLogin) Cancel() {}
+
+// seedAgentFiles connects the stand-in Microsoft account at the Täysi level
+// with its OneDrive chosen, and puts a few files, one of them an agent's, in
+// its synced folder, for Agentin käytössä (agent-resources-view). A link out
+// of the folder and a pipe show that the folder read lists neither.
+func seedAgentFiles(home string) error {
+	const address = "person@work.example.test"
+	store := filepath.Join(home, ".config/fixture-integrations/microsoft")
+	for _, dir := range []string{store, store + "-level"} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(store, address), []byte("me"), 0o600); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(store+"-level", address), []byte(integrations.LevelFull), 0o600); err != nil {
+		return err
+	}
+	root := filepath.Join(home, "cloud/onedrive", address)
+	if err := os.MkdirAll(filepath.Join(root, "Raportit"), 0o700); err != nil {
+		return err
+	}
+	stamp := time.Date(2026, 11, 5, 9, 30, 0, 0, time.UTC)
+	for name, body := range map[string]string{
+		"Projektisuunnitelma.docx": strings.Repeat("x", 86016),
+		"Raportit/viikko-45.md":    "# Viikko 45\n",
+		"Raportit/viikko-46.md":    "# Viikko 46 (agentin luonnos)\n",
+	} {
+		path := filepath.Join(root, name)
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			return err
+		}
+		if err := os.Chtimes(path, stamp, stamp); err != nil {
+			return err
+		}
+	}
+	_ = os.Remove(filepath.Join(root, "avaimet"))
+	if err := os.Symlink(filepath.Join(home, ".ssh"), filepath.Join(root, "avaimet")); err != nil {
+		return err
+	}
+	return nil
+}

@@ -646,7 +646,7 @@ esac
 		integrationRoutes := catalog.Handler(func(r *http.Request) bool {
 			return trusted(r) && r.Host == "unix" && r.ProtoMajor == 1 && r.ProtoMinor == 1
 		})
-		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath, integrations.GitLabPath, integrations.GitLabReposPath, integrations.GitLabTokensPath} {
+		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath, integrations.GitLabPath, integrations.GitLabReposPath, integrations.GitLabTokensPath, integrations.FilesPath} {
 			mux.Handle(path, integrationRoutes)
 		}
 		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1008,6 +1008,13 @@ esac
 				return
 			case "/fixture/own-machines":
 				ownMachinesFixture(w, r)
+				return
+			case "/fixture/agent-files":
+				if e := seedAgentFiles(filepath.Join(tmp, "alice")); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(204)
 				return
 			case "/fixture/agent-key":
 				// The agent, as the same Unix user, makes a key beside the

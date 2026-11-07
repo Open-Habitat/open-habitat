@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: agent-resources
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Agent resources view: browse what the agent can use, by kind (experimental)
@@ -29,4 +30,4 @@ Kokeellinen ominaisuus.
 
 ## Acceptance Criteria
 
-- [ ] näkymä kokeellisena ominaisuutena: lajit ja lähteet B:n mukaan, sisältö C:n mukaan, tiedostojen selaus peilikansiosta; työpöytä ja puhelin; testit
+- [x] näkymä kokeellisena ominaisuutena: lajit ja lähteet B:n mukaan, sisältö C:n mukaan, tiedostojen selaus peilikansiosta; työpöytä ja puhelin; testit

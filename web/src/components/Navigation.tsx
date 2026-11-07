@@ -1210,6 +1210,7 @@ export function WorkspaceRail({
   connectionTone,
   homeCurrent = false,
   now,
+  pages,
   filterValue,
   resultSummary,
   onCreateWorkspace,
@@ -1230,6 +1231,8 @@ export function WorkspaceRail({
   homeCurrent?: boolean;
   /** Sinun vuorosi and Käynnissä, above the workspaces (NowSections). */
   now?: ReactNode;
+  /** Rows under Etusivu that lead to pages of their own (Agentin käytössä). */
+  pages?: ReactNode;
   filterValue: string;
   /** The number of listed workspaces, said beside the heading. */
   resultSummary: string;
@@ -1311,6 +1314,7 @@ export function WorkspaceRail({
           </LinkRow>
           {bell}
         </div>
+        {pages}
       </header>
       <div className="ah-rail-content">
         {now}

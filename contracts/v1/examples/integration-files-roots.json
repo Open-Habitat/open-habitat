@@ -1,0 +1,4 @@
+{"schema_version": 1, "roots": [
+  {"provider": "microsoft", "address": "person@work.example.test", "service": "onedrive", "directory": "~/cloud/onedrive/person@work.example.test"},
+  {"provider": "google", "address": "person.home@example.test", "service": "drive", "directory": "~/cloud/google-drive/person.home@example.test"}
+]}

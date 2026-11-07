@@ -150,6 +150,8 @@ checks = {
     "gitlab-checked-expired.json": "gitlab-connection-change.schema.json",
     "gitlab-disconnected.json": "gitlab-connection-change.schema.json",
     "gitlab-tokens.json": "gitlab-tokens.schema.json",
+    "integration-files-roots.json": "integration-files.schema.json",
+    "integration-files-folder.json": "integration-files.schema.json",
     "gitlab-repos.json": "gitlab-repos.schema.json",
     "integration-connect.json": "integration-account.schema.json",
     "integration-connected.json": "integration-change.schema.json",
@@ -413,6 +415,12 @@ must_reject("server-access.schema.json", {"id": "43", "login": "example-person"}
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})
 must_reject("server-access.schema.json", {"id": "43", "administrator": "yes"})
+# A folder read stays inside a synced folder under ~/cloud and names plain entries.
+must_reject("integration-files.schema.json", {"schema_version": 1, "roots": [{"provider": "microsoft", "address": "person@work.example.test", "service": "onedrive", "directory": "~/.ssh"}]})
+must_reject("integration-files.schema.json", {"schema_version": 1, "directory": "~/cloud/onedrive/person@work.example.test", "folder": "a/../../.ssh", "entries": [], "truncated": False})
+must_reject("integration-files.schema.json", {"schema_version": 1, "directory": "~/cloud/onedrive/person@work.example.test", "entries": [{"name": "a/b", "kind": "file", "modified_at": "2026-11-06T08:42:00Z"}], "truncated": False})
+must_reject("integration-files.schema.json", {"schema_version": 1, "directory": "~/cloud/onedrive/person@work.example.test", "entries": [{"name": "..", "kind": "folder", "modified_at": "2026-11-06T08:42:00Z"}], "truncated": False})
+must_reject("integration-files.schema.json", {"schema_version": 1, "roots": [], "entries": [], "truncated": False})
 # A secret never comes back in a list, and a set names only its provider's fields.
 must_reject("server-integrations.schema.json", {"schema_version": 1, "browser_setup": True, "apps": [{"provider": "google", "client_id": "1-a.apps.googleusercontent.com", "client_secret": "x", "usable": True, "source": "operator"}]})
 must_reject("server-integrations.schema.json", {"provider": "google", "fields": {"client_id": "a", "client_secret": "b", "tenant_id": "c"}})

@@ -170,3 +170,77 @@ func forgeRoutes(t *testing.T, integrationGiteaPath, integrationGiteaRepos, logN
 		t.Fatalf("gateway log: %s", logs.String())
 	}
 }
+
+// The folder read is a GET with exactly no parameters, a directory, or a
+// directory and a folder; the gateway forwards those unread to the session's
+// own daemon, which alone decides whether they name the person's folder.
+func TestGatewayIntegrationFilesQueryShapes(t *testing.T) {
+	uid := os.Getuid()
+	now := time.Now()
+	alice := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
+	var mu sync.Mutex
+	var seen []string
+	socket := filepath.Join(t.TempDir(), "daemon.sock")
+	ln, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.Method+" "+r.RequestURI)
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"schema_version":1,"roots":[]}`)
+	})}
+	go srv.Serve(ln)
+	t.Cleanup(func() { srv.Close() })
+	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, log: slog.New(slog.NewJSONHandler(io.Discard, nil)), sessions: map[string]session{
+		"one": {identity: alice, csrf: "secret-one", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)},
+	}}
+	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: alice.Socket}
+	a.snapshotDial = func(ctx context.Context, path string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+	}
+	h := NewWithAuth("", a)
+	send := func(method, target, cookie string) int {
+		r := httptest.NewRequest(method, "https://host.test"+target, nil)
+		r.RequestURI = r.URL.RequestURI()
+		r.Header.Set("Origin", "https://host.test")
+		if cookie != "" {
+			r.AddCookie(&http.Cookie{Name: cookieName, Value: cookie})
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+	dir := "directory=%7E%2Fcloud%2Fonedrive%2Fperson%40work.example.test"
+	for _, c := range []struct {
+		method, target, cookie string
+		code                   int
+	}{
+		{"GET", integrationFiles, "", 401},
+		{"GET", integrationFiles + "?" + dir, "", 401},
+		{"POST", integrationFiles, "one", 400},
+		{"GET", integrationFiles + "?folder=a", "one", 400},
+		{"GET", integrationFiles + "?" + dir + "&path=a", "one", 400},
+		{"GET", integrationFiles + "?" + dir + "&" + dir, "one", 400},
+		{"GET", integrationFiles + "?directory=", "one", 400},
+		{"GET", integrationFiles + "?" + dir + "&folder=", "one", 400},
+	} {
+		if code := send(c.method, c.target, c.cookie); code != c.code {
+			t.Fatalf("%s %s: %d want %d", c.method, c.target, code, c.code)
+		}
+	}
+	if len(seen) != 0 {
+		t.Fatalf("refused requests reached the daemon: %q", seen)
+	}
+	for _, target := range []string{integrationFiles, integrationFiles + "?" + dir, integrationFiles + "?" + dir + "&folder=Raportit%2Fvko"} {
+		if code := send("GET", target, "one"); code != 200 {
+			t.Fatalf("GET %s: %d", target, code)
+		}
+	}
+	want := []string{"GET " + integrationFiles, "GET " + integrationFiles + "?" + dir, "GET " + integrationFiles + "?" + dir + "&folder=Raportit%2Fvko"}
+	if strings.Join(seen, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("forwarded:\n%s", strings.Join(seen, "\n"))
+	}
+}

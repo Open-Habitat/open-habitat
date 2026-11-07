@@ -13,6 +13,7 @@ const (
 	integrationGitLabPath   = "/api/v1/integrations/gitlab"
 	integrationGitLabRepos  = "/api/v1/integrations/gitlab/repos"
 	integrationGitLabTokens = "/api/v1/integrations/gitlab/tokens"
+	integrationFiles        = "/api/v1/integrations/files"
 	// A Gitea or GitLab write carries at most an address and a token; its
 	// reply and the repository list are bounded far below the general proxy
 	// cap. GitLab's bounds are Gitea's.
@@ -36,8 +37,16 @@ func (a *Auth) integrations(w http.ResponseWriter, r *http.Request) {
 		integrationGitLabPath:   {http.MethodPost: true, http.MethodDelete: true},
 		integrationGitLabRepos:  {http.MethodGet: true},
 		integrationGitLabTokens: {http.MethodGet: true},
+		integrationFiles:        {http.MethodGet: true},
 	}
-	if !allowed[r.URL.Path][r.Method] || !a.exact(r, r.URL.Path) {
+	// The folder read alone takes a query: no parameters for the roots, a
+	// directory, or a directory and a folder in it. The daemon decides
+	// whether they name one of the person's own synced folders.
+	query := a.exact(r, r.URL.Path)
+	if r.URL.Path == integrationFiles {
+		query = query || a.exact(r, r.URL.Path, "directory") || a.exact(r, r.URL.Path, "directory", "folder")
+	}
+	if !allowed[r.URL.Path][r.Method] || !query {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -50,7 +59,7 @@ func (a *Auth) integrations(w http.ResponseWriter, r *http.Request) {
 			safe(w, 400, "invalid_request")
 			return
 		}
-	case integrationGiteaRepos, integrationGitLabRepos, integrationGitLabTokens:
+	case integrationGiteaRepos, integrationGitLabRepos, integrationGitLabTokens, integrationFiles:
 		if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 			safe(w, 400, "invalid_request")
 			return

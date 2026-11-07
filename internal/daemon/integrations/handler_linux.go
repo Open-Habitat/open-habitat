@@ -30,11 +30,18 @@ var sessionOwner = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 // the verified gateway peer on the daemon's own socket.
 func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The folder read is the one route that takes a query.
+		if r.URL.Path == FilesPath && r.URL.RawQuery != "" && r.RequestURI == r.URL.Path+"?"+r.URL.RawQuery && authorized(r) {
+			c.files(w, r)
+			return
+		}
 		if r.URL.RawQuery != "" || r.RequestURI != r.URL.Path || !authorized(r) {
 			fail(w, 403, "cross_user_denied")
 			return
 		}
 		switch r.URL.Path {
+		case FilesPath:
+			c.files(w, r)
 		case ListPath:
 			if r.Method != http.MethodGet || r.ContentLength > 0 || len(r.TransferEncoding) > 0 {
 				fail(w, 405, "method_not_allowed")

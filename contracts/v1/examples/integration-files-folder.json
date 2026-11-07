@@ -1,0 +1,5 @@
+{"schema_version": 1, "directory": "~/cloud/onedrive/person@work.example.test", "folder": "Projektit/Kesko", "entries": [
+  {"name": "Viikkoraportit", "kind": "folder", "modified_at": "2026-11-06T08:42:00Z"},
+  {"name": "Projektisuunnitelma.docx", "kind": "file", "bytes": 86016, "modified_at": "2026-10-28T12:10:00Z"},
+  {"name": "Avoimet kysymykset.md", "kind": "file", "bytes": 1024, "modified_at": "2026-11-05T09:30:00Z"}
+], "truncated": false, "unlisted": 1}

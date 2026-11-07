@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "95031f5a2a2bc63806d621e3c291a08c6b088aabf08d0fafda83e0f047afccc5"
+const V1SchemaFingerprint = "8d4900e2438568efd00525625bbbcefb4d45332e13206e26912bc31900f1869f"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -49,6 +49,7 @@ var V1SchemaFiles = []string{
 	"history.schema.json",
 	"integration-account.schema.json",
 	"integration-change.schema.json",
+	"integration-files.schema.json",
 	"integration-login-control.schema.json",
 	"integration-login.schema.json",
 	"integrations.schema.json",
@@ -146,6 +147,7 @@ type GitlabTokens = json.RawMessage
 type History = json.RawMessage
 type IntegrationAccount = json.RawMessage
 type IntegrationChange = json.RawMessage
+type IntegrationFiles = json.RawMessage
 type IntegrationLoginControl = json.RawMessage
 type IntegrationLogin = json.RawMessage
 type Integrations = json.RawMessage

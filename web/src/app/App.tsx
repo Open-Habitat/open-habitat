@@ -38,10 +38,12 @@ import { refused } from "../components/ModelPicker";
 import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
+import { agentResourcesText } from "../text/agentResources";
 import { appText } from "../text/app";
 import { navigationText } from "../text/navigation";
 import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
+import { AgentResourcesPage } from "./AgentResourcesPage";
 import { AISignInProvider } from "./AISignIn";
 import {
   AccountPreferencesProvider,
@@ -194,6 +196,7 @@ function safeRoute(path: string) {
     path === "/workspaces" ||
     settingsSection(path) !== undefined ||
     path === "/administration" ||
+    path === "/resources" ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
@@ -272,6 +275,7 @@ export function App() {
   // frame when it changes.
   const language = useLanguage();
   const t = { app: appText[language], signIn: signInText[language] };
+  const resourcesTitle = agentResourcesText[language];
   // Signed out, the language is the server default's and the browser's;
   // signed in, AccountPreferencesProvider names the person's.
   useEffect(() => {
@@ -1364,6 +1368,10 @@ export function App() {
     identity,
     csrf,
   });
+  const resourcesOn = useExperimentalFeature("agent-resources-view", {
+    identity,
+    csrf,
+  });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   const icons = useMemo(
     () =>
@@ -2447,6 +2455,13 @@ export function App() {
           {t.app.allWorkspaces}
         </LinkRow>
       </>
+    ) : location.pathname === "/resources" &&
+      resourcesOn &&
+      (phase === "authenticated" || phase === "stale") ? (
+      <AgentResourcesPage
+        key={identity}
+        github={snapshot?.auth?.native_github}
+      />
     ) : location.pathname === "/workspaces/new" ? (
       <NewWorkspacePage
         github={githubWarning}
@@ -3017,9 +3032,11 @@ export function App() {
                   : undefined) ??
                 (isSettingsRoute(location.pathname)
                   ? t.app.settings
-                  : location.pathname === "/workspaces/new"
-                    ? t.app.newWorkspace
-                    : t.app.home)
+                  : location.pathname === "/resources" && resourcesOn
+                    ? resourcesTitle.title
+                    : location.pathname === "/workspaces/new"
+                      ? t.app.newWorkspace
+                      : t.app.home)
               }
               fallbackAccount={
                 profile &&
@@ -3084,6 +3101,7 @@ export function App() {
                 conversationStore &&
                 !landing.show ? (
                   <WorkspaceRailView
+                    resources={resourcesOn}
                     only={onlyWorkspace}
                     bell={conversationBell ? undefined : <StatusBell />}
                     phase={phase}

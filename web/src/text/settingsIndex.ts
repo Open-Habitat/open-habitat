@@ -279,6 +279,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Go back here",
         desc: "Go back to an earlier message of yours in the same conversation and, if you want, restore the files the agent changed.",
       },
+      "agent-resources-view": {
+        label: "Agent resources",
+        desc: "Browse everything your agents use, by kind: what is included, what is not and what the agent may do.",
+      },
       "next-waiting-row": {
         label: "Next waiting conversation",
         desc: "Go through the conversations waiting for you in one round while the agent works.",
