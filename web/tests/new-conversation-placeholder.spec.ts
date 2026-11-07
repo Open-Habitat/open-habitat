@@ -15,6 +15,10 @@ async function open(page: Page) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  // The click returns while the signed-in document is still loading. A route
+  // or listener added then can miss every request of that document (seen
+  // under gate load: creation's POST went out unheld), so wait for the app.
+  await newButton(page).waitFor();
 }
 
 async function holdCreation(page: Page) {
