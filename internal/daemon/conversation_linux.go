@@ -1087,6 +1087,25 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	// A Pi that has ended since the browser last looked leaves a settled
+	// history: name it there, with every proof that operation makes.
+	c.mu.Lock()
+	s := c.sessions[id]
+	settled := s != nil && !liveChild(s) && (s.state == "stopped" || s.state == "start_failed")
+	var workspace string
+	if settled {
+		workspace = s.workspace
+	}
+	c.mu.Unlock()
+	if settled {
+		c.nameHistory(w, r, id, workspace, "")
+		return
+	}
+	c.titleLive(w, id)
+}
+
+// titleLive generates a title through the conversation's running Pi.
+func (c *ConversationController) titleLive(w http.ResponseWriter, id string) {
 	c.mu.Lock()
 	s := c.sessions[id]
 	if s == nil {
@@ -1094,7 +1113,13 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.state == "stopping" || s.naming || s.firstText == "" || s.rpc.overflow.Load() {
+	if s.naming && !c.closed && !s.dead {
+		// An automatic title is being made; the browser says to wait for it.
+		c.mu.Unlock()
+		snapshotError(w, 409, "title_pending")
+		return
+	}
+	if c.closed || s.dead || s.state == "stopping" || s.firstText == "" || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

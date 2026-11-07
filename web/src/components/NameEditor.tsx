@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { conversationName } from "../app/conversationName";
+import { NameNotSaved } from "../app/namingRefusal";
 import "./NameEditor.css";
 import { liveText } from "../i18n";
 import { overlaysText } from "../text/overlays";
@@ -31,6 +32,8 @@ export function NameEditor({
   const [state, setState] = useState<"editing" | "saving" | "failed">(
     "editing",
   );
+  // The host's reason for a refusal, when it gave one.
+  const [reason, setReason] = useState("");
   const field = useRef<HTMLInputElement>(null);
   const done = useRef(false);
   useEffect(() => {
@@ -53,7 +56,8 @@ export function NameEditor({
     try {
       await onSave(name);
       close(name);
-    } catch {
+    } catch (error) {
+      setReason(error instanceof NameNotSaved ? error.reason : "");
       setState("failed");
     }
   };
@@ -97,7 +101,7 @@ export function NameEditor({
           role="status"
           data-testid="conversation-name-problem"
         >
-          {txt.nameNotSaved}
+          {reason ? `${reason} ${txt.nameEscape}` : txt.nameNotSaved}
         </span>
       ) : null}
     </span>

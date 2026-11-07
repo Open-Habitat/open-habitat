@@ -51,6 +51,7 @@ import {
   readRecap,
   renameConversation,
   retitleHistory,
+  TitleGenerationFailed,
 } from "./conversations";
 import {
   type BlockChunk,
@@ -59,6 +60,11 @@ import {
   readHistory,
 } from "./history";
 import { startProblemReason } from "./mutations";
+import {
+  nameRefused,
+  namingRefusal,
+  titleModelUnavailable,
+} from "./namingRefusal";
 import { useNewConversationAsk } from "./newConversationAsk";
 import { sshTarget } from "./ownMachines";
 import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
@@ -1729,7 +1735,7 @@ function HistoryViewContent({
                       );
                   } catch (error) {
                     if ((error as Error).message === "identity_lost") onLogin();
-                    throw error;
+                    throw nameRefused(error);
                   }
                   if (!onRename) onTitleComplete?.();
                 },
@@ -1760,7 +1766,14 @@ function HistoryViewContent({
               .then(() => onTitleComplete?.())
               .catch((error) => {
                 if ((error as Error).message === "identity_lost") onLogin();
-                else setActionError(txt.retitleFailed);
+                else
+                  setActionError(
+                    namingRefusal(error) ??
+                      (error instanceof TitleGenerationFailed &&
+                      error.reason === "model_unavailable"
+                        ? titleModelUnavailable()
+                        : txt.retitleFailed),
+                  );
               })
               .finally(() => {
                 setBusy(false);

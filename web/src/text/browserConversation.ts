@@ -55,8 +55,6 @@ const fi = {
   noControl: "Ohjaus ei ole käytettävissä.",
   retitle: "Luo uusi otsikko",
   nothingToName: "Keskustelussa ei ole vielä nimettävää sisältöä.",
-  titleModelUnavailable:
-    "Otsikointimalli ei vastannut. Tarkista mallipalvelun kirjautuminen asetuksista ja yritä uudelleen.",
   titleInvalid:
     "Mallilta ei saatu kelvollista otsikkoa. Voit yrittää uudelleen.",
   titleUncertain:
@@ -160,8 +158,6 @@ export const browserConversationText = catalog(fi, {
   noControl: "Control is not available.",
   retitle: "Make a new title",
   nothingToName: "The conversation has nothing to name yet.",
-  titleModelUnavailable:
-    "The titling model did not answer. Check your model provider sign-in in Settings and try again.",
   titleInvalid: "The model did not return a usable title. You can try again.",
   titleUncertain:
     "It is unclear whether the title changed. Check the current title and the conversation's status before trying again.",

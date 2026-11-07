@@ -2,6 +2,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { conversationName } from "../app/conversationName";
+import { NameNotSaved } from "../app/namingRefusal";
 import { AgentHeader, AgentNavItem } from "./Navigation";
 
 function header(onSave: (name: string) => Promise<void>, title = "Vanha") {
@@ -98,6 +99,30 @@ describe("naming a conversation by hand", () => {
       fireEvent.blur(field(view.container) as HTMLInputElement);
     });
     expect(attempts).toBe(1);
+  });
+
+  it("says the host's reason when it refused the name", async () => {
+    const problem = async (error: Error) => {
+      const view = render(
+        header(async () => {
+          throw error;
+        }),
+      );
+      fireEvent.click(view.getByTestId("conversation-rename"));
+      const input = field(view.container) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "Uusi" } });
+      await act(async () => {
+        fireEvent.keyDown(input, { key: "Enter" });
+      });
+      const text = view.getByTestId("conversation-name-problem").textContent;
+      view.unmount();
+      return text;
+    };
+    const uncertain = await problem(new Error("uncertain"));
+    const refused = await problem(new NameNotSaved("Syy A."));
+    const other = await problem(new NameNotSaved("Syy B."));
+    expect(refused).not.toBe(uncertain);
+    expect(refused).not.toBe(other);
   });
 
   it("renames a rail row in place without following its link", async () => {

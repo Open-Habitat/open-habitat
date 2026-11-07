@@ -5,6 +5,7 @@ Generated from web/src/app/HistoryView.tsx; do not edit.
 ```tsx
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -45,6 +46,7 @@ import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { agentTitle } from "./agentTitle";
+import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -54,18 +56,24 @@ import {
   readRecap,
   renameConversation,
   retitleHistory,
+  TitleGenerationFailed,
 } from "./conversations";
 import {
   type BlockChunk,
   type HistoryBlock,
   type HistoryEntry,
-  type HistoryPage,
   readHistory,
 } from "./history";
 import { startProblemReason } from "./mutations";
+import {
+  nameRefused,
+  namingRefusal,
+  titleModelUnavailable,
+} from "./namingRefusal";
 import { useNewConversationAsk } from "./newConversationAsk";
 import { sshTarget } from "./ownMachines";
 import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
+import { RewindContext, RewindEntryRow } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { useStoragePressure } from "./StoragePressure";
 import {
@@ -95,8 +103,10 @@ function ReadableBlock({
   onLogin,
   toolName,
   plainText = false,
+  hasImage = false,
   part,
 }: {
+  hasImage?: boolean;
   part?: "skill_arguments";
   plainText?: boolean | "user" | "command";
   block: HistoryBlock;
@@ -253,7 +263,7 @@ function ReadableBlock({
           ) : null}
           {plainText === "user" && !toolName ? (
             // The message's attachments show as chips below it.
-            <Markdown text={messageText(text)} breaks />
+            <Markdown text={messageText(text, hasImage && whole)} breaks />
           ) : plainText === "command" ? (
             <OutputBox text={text} complete={whole} />
           ) : toolName || plainText ? (
@@ -573,7 +583,7 @@ function FileUse({
  */
 export function TurnText(props: Parameters<typeof ReadableBlock>[0]) {
   return (
-    <div className="ah-ordered-blocks">
+    <div className="ah-ordered-blocks" data-reply-entry={props.entryKey}>
       <ReadableBlock {...props} />
     </div>
   );
@@ -751,6 +761,7 @@ function OrderedBlocks({
         ) : (
           <ReadableBlock
             plainText={plainText}
+            hasImage={attachedImages || blocks.some((b) => b.type === "image")}
             key={`${entryKey}:${revision}:${index}`}
             block={block}
             toolName={toolName}
@@ -804,6 +815,7 @@ export function Entry({
   agentId?: string;
   revision?: string;
 }) {
+  const rewind = useContext(RewindContext);
   if (entry.notice) return <NoticeEntry notice={entry.notice} />;
   if (entry.restart)
     return (
@@ -842,6 +854,7 @@ export function Entry({
         <UserMessage
           sourceText={content.text}
           onCopy={copy}
+          actions={rewind?.menu(entry)}
           skill={
             entry.skill && entry.blocks?.[0]?.type === "text" ? (
               <SkillInvocation
@@ -908,7 +921,11 @@ export function Entry({
           onCopy={copy}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.blocks ? (
+          {entry.stop_reason === "error" && entry.refused_by ? (
+            <p className="ah-turn-short" data-testid="turn-short">
+              {refusedTurnLine(entry.refused_by)}
+            </p>
+          ) : entry.blocks ? (
             <OrderedBlocks
               blocks={entry.blocks}
               results={results}
@@ -1139,6 +1156,9 @@ export function timelineItems(
     set: (value: boolean) => void;
   },
   live?: LiveTurnInput,
+  /** Palaa tähän's chosen message: it and what follows dim while the
+   * sheet is open. */
+  dimFrom?: string,
 ) {
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
@@ -1241,7 +1261,17 @@ export function timelineItems(
     const startedAt = turnStart;
     turnId = turnStart = undefined;
     // The saved part of the running turn and its live tail are one turn.
-    const merged = last && !!live && !endsTurn(group.at(-1));
+    const merged =
+      last &&
+      !!live &&
+      group.at(-1)?.stop_reason !== "error" &&
+      !endsTurn(group.at(-1));
+    // A refused sign-in is one short row: the warning above the field says
+    // the rest, and the provider's own words stay in native history.
+    const refusedBy =
+      group.at(-1)?.stop_reason === "error"
+        ? group.at(-1)?.refused_by
+        : undefined;
     items.push({
       id,
       kind: "assistant",
@@ -1249,13 +1279,15 @@ export function timelineItems(
       content: (
         <AgentTurn
           startedAt={startedAt}
+          failed={group.at(-1)?.stop_reason === "error"}
+          failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
               ? { at: savedAt(group[group.length - 1]) }
               : undefined
           }
           steps={[
-            ...group.flatMap(steps),
+            ...(refusedBy ? group.slice(0, -1) : group).flatMap(steps),
             ...(merged && live ? live.steps : []),
           ]}
           working={merged && live?.working}
@@ -1266,6 +1298,15 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    if (entry.kind === "rewind") {
+      flush();
+      items.push({
+        id: entry.entry_key,
+        kind: "rewind",
+        content: <RewindEntryRow entry={entry} entries={entries} />,
+      });
+      continue;
+    }
     const marker = markers.get(entry.entry_key);
     if (marker) {
       flush();
@@ -1330,6 +1371,20 @@ export function timelineItems(
         />
       ),
     });
+  const from = dimFrom ? items.findIndex((i) => i.id === dimFrom) : -1;
+  if (from >= 0)
+    for (let i = from; i < items.length; i++)
+      items[i] = {
+        ...items[i],
+        content: (
+          <div
+            className="ah-rewind-left"
+            data-rewind-target={i === from || undefined}
+          >
+            {items[i].content}
+          </div>
+        ),
+      };
   return items;
 }
 
@@ -1685,7 +1740,7 @@ function HistoryViewContent({
                       );
                   } catch (error) {
                     if ((error as Error).message === "identity_lost") onLogin();
-                    throw error;
+                    throw nameRefused(error);
                   }
                   if (!onRename) onTitleComplete?.();
                 },
@@ -1716,7 +1771,14 @@ function HistoryViewContent({
               .then(() => onTitleComplete?.())
               .catch((error) => {
                 if ((error as Error).message === "identity_lost") onLogin();
-                else setActionError(txt.retitleFailed);
+                else
+                  setActionError(
+                    namingRefusal(error) ??
+                      (error instanceof TitleGenerationFailed &&
+                      error.reason === "model_unavailable"
+                        ? titleModelUnavailable()
+                        : txt.retitleFailed),
+                  );
               })
               .finally(() => {
                 setBusy(false);
@@ -1845,24 +1907,6 @@ function HistoryViewContent({
       {shell.panel}
     </ConversationFrame>
   );
-}
-export async function readHistoryFetch(
-  agentId: string,
-  after?: string,
-  signal?: AbortSignal,
-): Promise<HistoryPage> {
-  const query = new URLSearchParams({ limit: "25" });
-  query.set("after", after ?? "");
-  const response = await fetch(`/api/v1/agents/${agentId}/history?${query}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
-  if (response.status === 404) throw new Error("history_missing");
-  const result = await readHistory(response);
-  if (!("entries" in result) || result.agent_id !== agentId)
-    throw new Error("invalid page");
-  return result;
 }
 
 ```

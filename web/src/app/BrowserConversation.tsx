@@ -132,6 +132,11 @@ import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
+import {
+  nameRefused,
+  namingRefusal,
+  titleModelUnavailable,
+} from "./namingRefusal";
 import { useNextWaitingWindow } from "./nextWaiting";
 import { sshTarget } from "./ownMachines";
 import {
@@ -2271,7 +2276,9 @@ function BrowserConversationContent({
                             workspace.workspace_id,
                             name,
                             csrf,
-                          );
+                          ).catch((error: unknown) => {
+                            throw nameRefused(error);
+                          });
                       },
                     }
                   : undefined
@@ -2337,13 +2344,16 @@ function BrowserConversationContent({
                         error instanceof TitleGenerationFailed
                           ? error.reason
                           : "uncertain";
+                      // A refusal wrote nothing: say why, not that the
+                      // outcome is unknown.
                       const description =
-                        reason === "model_unavailable"
-                          ? txt.titleModelUnavailable
+                        namingRefusal(error) ??
+                        (reason === "model_unavailable"
+                          ? titleModelUnavailable()
                           : reason === "model_timeout" ||
                               reason === "model_invalid_response"
                             ? txt.titleInvalid
-                            : txt.titleUncertain;
+                            : txt.titleUncertain);
                       setTitleActionState((previous) =>
                         previous?.key === key
                           ? { key, version, pending: false, error: description }

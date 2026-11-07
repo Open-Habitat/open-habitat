@@ -11,6 +11,7 @@ const fi = {
   slow: "Vahvistus palvelimelta viipyy…",
   uncertain: "Vastaus katosi matkalla. Tarkistetaan, tallentuiko muutos.",
   nameNotSaved: "Nimeä ei voitu tallentaa. Yritä uudelleen tai paina Esc.",
+  nameEscape: "Esc palauttaa aiemman nimen.",
 };
 
 export const overlaysText = catalog(fi, {
@@ -21,4 +22,5 @@ export const overlaysText = catalog(fi, {
   uncertain:
     "The reply was lost on the way. Checking whether the change was saved.",
   nameNotSaved: "The name could not be saved. Try again or press Esc.",
+  nameEscape: "Esc keeps the previous name.",
 });

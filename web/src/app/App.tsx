@@ -123,6 +123,7 @@ import {
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspacePage } from "./NewWorkspacePage";
+import { NameNotSaved, nameRefusal } from "./namingRefusal";
 import type { Creation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -2106,11 +2107,13 @@ export function App() {
               cursor: reply.event_cursor,
             }),
           ),
-        refused: t.app.renameRefused,
+        // The field says why, in naming's own words.
+        refused: (_reason, code) => nameRefusal(code),
         reverted: t.app.renameReverted,
       });
       if (result.outcome === "login") requireLogin();
       if (result.outcome === "uncertain") refresh();
+      if (result.outcome === "refused") throw new NameNotSaved(result.text);
       if (result.outcome !== "confirmed") throw new Error("rename_unconfirmed");
     },
   };

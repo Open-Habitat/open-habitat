@@ -24,6 +24,17 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	// The browser picks this operation from the state it last saw, which can
+	// lag the daemon's own: a Pi this daemon runs or is starting for the
+	// conversation is the writer, so it is asked directly, as nameByHand does.
+	c.mu.Lock()
+	s := c.sessions[id]
+	own := s != nil && (liveChild(s) || s.state == "starting" || s.state == "stopping")
+	c.mu.Unlock()
+	if own {
+		c.titleLive(w, id)
+		return
+	}
 	c.nameHistory(w, r, id, in.WorkspaceID, "")
 }
 

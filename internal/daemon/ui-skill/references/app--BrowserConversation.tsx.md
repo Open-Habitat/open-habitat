@@ -4,6 +4,7 @@ Generated from web/src/app/BrowserConversation.tsx; do not edit.
 
 `````tsx
 import {
+  type ComponentProps,
   type ReactNode,
   useContext,
   useEffect,
@@ -38,6 +39,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
+import { ContextView } from "../components/ContextView";
 import { ControlButton, controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
@@ -53,17 +55,43 @@ import {
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
+import { goalRequest } from "../components/StartHere";
 import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { formatDate, liveText } from "../i18n";
 import { browserConversationText } from "../text/browserConversation";
+import {
+  AISignedInNotice,
+  AISignInWarning,
+  useAISignIn,
+  useOpenConversation,
+  wentAfterSignIn,
+} from "./AISignIn";
+import { useExperimentalFeature } from "./accountPreferences";
+import {
+  type AIProvider,
+  clearWaiting,
+  conversationProvider,
+  failuresSeen,
+  markRestored,
+  refusedTurn,
+  restoredFrom,
+  sendCommand,
+  signedInFor,
+  signIns,
+  useWaiting,
+  waitingLine,
+  writeWaiting,
+} from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
+import { useCompaction } from "./compactionView";
 import {
   readCommands,
   readFiles,
+  readFileTree,
   readPreview,
   type StartPage,
 } from "./composerReads";
@@ -90,10 +118,12 @@ import {
   TitleGenerationFailed,
   turnUnderway,
 } from "./conversations";
-import { messageFor, toolPath } from "./editorChanges";
+import { messageFor } from "./editorChanges";
 import {
+  authoredGoals,
   composerGoals,
   conversationGoal,
+  creationGuideOwner,
   goalConversationName,
   guideOpensItself,
   guideOwner,
@@ -104,9 +134,14 @@ import {
   usePreparedField,
 } from "./goalGuide";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
-import { piNotRunning, useHeldMessages } from "./heldMessages";
+import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
+import {
+  nameRefused,
+  namingRefusal,
+  titleModelUnavailable,
+} from "./namingRefusal";
 import { useNextWaitingWindow } from "./nextWaiting";
 import { sshTarget } from "./ownMachines";
 import {
@@ -114,7 +149,16 @@ import {
   useOpenMachines,
   useOwnMachineHosts,
 } from "./ownMachineUse";
-import { PendingConversation } from "./PendingConversation";
+import {
+  type Creation,
+  CreationNotice,
+  CreationStream,
+  creationBlock,
+  creationHeader,
+  LoadingStream,
+  loadingHeader,
+  useCreation,
+} from "./PendingConversation";
 import {
   type Choice,
   ConversationModelInfo,
@@ -123,8 +167,9 @@ import {
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
-import { useRecapHold } from "./recapHold";
+import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
+import { useRewind, withRewind } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -148,7 +193,6 @@ import {
 import {
   EditorHeaderControls,
   useEditorActivity,
-  useEditorToolReport,
   useReplaceNotes,
 } from "./WorkspaceEditor";
 import { requestPhases, requestText } from "./workerRequests";
@@ -197,9 +241,12 @@ export function BrowserConversation(
   const snapshotHistory = props.recoverySnapshot?.agents.find(
     (agent) => agent.agent_id === props.id,
   )?.history;
+  // One view per conversation. A conversation created here keeps the view
+  // (and the field the person is typing in) that it was created in.
+  const view = props.viewKey ?? `${props.identity}:${props.id}`;
   return (
     <SpinoffProvider
-      key={`${props.identity}:${props.id}`}
+      key={view}
       parent={props.id}
       recheck={`${snapshotHistory}:${nativeHistory}`}
       onLogin={props.onLogin}
@@ -213,13 +260,13 @@ export function BrowserConversation(
       }}
     >
       <ProcessProvider
-        key={`${props.identity}:${props.id}`}
+        key={view}
         id={props.id}
         csrf={props.csrf}
         onLogin={props.onLogin}
         onStatusEvent={props.onStatusEvent}
       >
-        <OwnMachineUseProvider key={`${props.identity}:${props.id}`}>
+        <OwnMachineUseProvider key={view}>
           <BrowserConversationContent
             {...props}
             onNativeHistory={setNativeHistory}
@@ -252,7 +299,12 @@ function BrowserConversationContent({
   onNativeHistory,
   github,
   nextWaiting,
+  creation,
 }: {
+  /** A conversation this tab is creating, shown until it has an ID. */
+  creation?: Creation;
+  /** Names the view instead of the conversation ID; see BrowserConversation. */
+  viewKey?: string;
   /** The walk to the next conversation waiting for the person (experimental). */
   nextWaiting?: NextWaiting;
   /** The person's GitHub connection, when it needs saying here: the app
@@ -286,6 +338,7 @@ function BrowserConversationContent({
   onNativeHistory?: (history?: string) => void;
 }) {
   const transientNotices = useAgentNotices(store, id ?? "");
+  const creating = !id && !!creation;
   const {
     current,
     statusStale,
@@ -326,7 +379,7 @@ function BrowserConversationContent({
     submittedKey,
     sendKey,
     uncertainKey,
-    inFlightSend,
+    answeredKey,
     changeDraft,
     refresh,
     setBusy,
@@ -405,10 +458,12 @@ function BrowserConversationContent({
   const location = useLocation();
   const contextOpen =
     !!id && new URLSearchParams(location.search).get("context") === "1";
+  // A compaction from the page reads it again when Pi has answered.
+  const [contextRead, setContextRead] = useState(0);
   const contextDetail = useContextDetail(
     id,
     contextOpen,
-    `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}`,
+    `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}:${contextRead}`,
     contextState?.phase === "known" ? contextState.tokens : undefined,
     onLogin,
   );
@@ -431,12 +486,18 @@ function BrowserConversationContent({
   };
   const contextWasOpen = useRef(contextOpen);
   useEffect(() => {
-    if (contextWasOpen.current && !contextOpen)
-      document
-        .querySelector<HTMLElement>(
-          ".ah-agent-header [data-testid='context-ring']",
-        )
-        ?.focus();
+    if (contextWasOpen.current && !contextOpen) {
+      const phoneTrigger = document.querySelector<HTMLElement>(
+        ".ah-agent-header .ah-phone-facts",
+      );
+      if (phoneTrigger?.getClientRects().length) phoneTrigger.focus();
+      else
+        document
+          .querySelector<HTMLElement>(
+            ".ah-agent-header [data-testid='context-ring']",
+          )
+          ?.focus();
+    }
     contextWasOpen.current = contextOpen;
   }, [contextOpen]);
   const selectedThinking =
@@ -640,25 +701,13 @@ function BrowserConversationContent({
     feed,
     opened,
   });
-  const [recapSeen, setRecapSeen] = useState<{
-    key: string;
-    fingerprint: string;
-  } | null>(null);
-  // The first read decides what was already there when the conversation
-  // opened, unless the person was already typing or reading while it loaded.
-  const recapHeld =
-    recapCurrent?.recap?.trigger === "automatic" &&
-    (recapSeen?.key === recapKey
-      ? recapHold.active && recapSeen.fingerprint !== recapFingerprint
-      : recapHold.recent);
-  useEffect(() => {
-    if (!recapCurrent || recapHeld) return;
-    setRecapSeen((previous) =>
-      previous?.key === recapKey && previous.fingerprint === recapFingerprint
-        ? previous
-        : { key: recapKey, fingerprint: recapFingerprint },
-    );
-  }, [recapCurrent, recapHeld, recapKey, recapFingerprint]);
+  const { held: recapHeld, reveal: revealRecap } = useRecapPresentationHold({
+    key: recapKey,
+    fingerprint: recapFingerprint,
+    received: !!recapCurrent,
+    automatic: recapCurrent?.recap?.trigger === "automatic",
+    activity: recapHold,
+  });
   const dismissRecapOnSend = () => {
     if (!recapFingerprint) return;
     setDismissedRecap(`${dismissalKey}:${recapFingerprint}`);
@@ -833,7 +882,7 @@ function BrowserConversationContent({
     submittedKey,
     sendKey,
     uncertainKey,
-    inFlightSend,
+    answeredKey,
     setBusy,
     setReceipt,
     setSendObservation,
@@ -860,6 +909,11 @@ function BrowserConversationContent({
     onLogin,
     onSendOutcome: waitingWindow.outcome,
   });
+  const creationView = useCreation(
+    creating ? creation : undefined,
+    held.takeBack,
+    section,
+  );
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
   const notStarted = piNotRunning(current?.state);
@@ -932,6 +986,45 @@ function BrowserConversationContent({
             : statusStale
               ? txt.statusStale
               : txt.waitIdleUncertain;
+  // While the conversation opens, or an earlier send or Stop is on its way,
+  // the view cannot act on a message yet; one sent meanwhile is kept (below)
+  // and goes when it can. Any other block, a lost status read included, is
+  // a refusal the composer words: nothing refused is sent later.
+  // The person's last command was answered and its outcome is on its way.
+  const awaitingOutcome = sendObservation?.state === "pending";
+  const sendRefused =
+    archive?.archive === "archived" ||
+    archive?.archive === "unknown" ||
+    (!!ambiguous && !notStarted && !busy && !awaitingOutcome) ||
+    statusStale ||
+    serverUnavailable ||
+    modelBlocked ||
+    current?.auth_error === "pi_model_unsupported" ||
+    !!problem;
+  const sendWhenReady =
+    !sendRefused &&
+    (!controlled ||
+      busy ||
+      (!!ambiguous && awaitingOutcome) ||
+      held.busy ||
+      current.state === "pending" ||
+      current.state === "accepted" ||
+      current.state === "stopping");
+  // The first character wakes a resting agent; nothing else does. A
+  // character typed before the view knows of a rest (while it opens) wakes
+  // the agent once it does.
+  const restKnown = controlled && !!archive && !statusStale;
+  const typedUnknown = useRef<string | undefined>(undefined);
+  const typed = (value: string) => {
+    if (!value.trim()) return;
+    if (resting) rest.onTyping();
+    else if (!restKnown) typedUnknown.current = id;
+  };
+  useEffect(() => {
+    if (!restKnown || !typedUnknown.current) return;
+    if (typedUnknown.current === id && resting) rest.onTyping();
+    typedUnknown.current = undefined;
+  }, [restKnown, resting, id, rest.onTyping]);
   // *Kerro agentille* sends at once, the way the composer's send button would
   // now: during a turn in the selected working mode, otherwise directly or
   // held until Pi starts. The person's draft stays as it is.
@@ -950,6 +1043,228 @@ function BrowserConversationContent({
     else if (tellWorking) void submitQueue(workingMode, text, true);
     else void submit(text, true);
   };
+  // An AI provider refusing the person's sign-in (aiSignIn.ts). This
+  // conversation is refused when its own newest reply was refused and the
+  // host has not since reported the refusal over, or when its provider is
+  // refused anywhere. Its failed message waits in the field and goes by
+  // itself once the provider takes the person back; so does one sent while
+  // refused.
+  const aiSignIn = useAISignIn();
+  useOpenConversation(id);
+  const [, signedInTick] = useState(0);
+  const chatProvider = conversationProvider(entries, current?.startup_choice);
+  const ownFailure = useMemo(() => {
+    const turn = refusedTurn(entries);
+    if (turn)
+      return {
+        ...turn,
+        at: entries.find((e) => e.entry_key === turn.key)?.timestamp,
+      };
+    // The daemon's own classification, before or without a saved reply.
+    if (current?.auth_error !== "pi_auth_failed") return undefined;
+    const asked =
+      sendObservation && sendObservation.command === current.command_id
+        ? sendObservation.text
+        : (entries.findLast((e) => e.kind === "user")?.content.text ?? "");
+    return {
+      provider: chatProvider ?? ("openai-codex" as const),
+      key: `cmd:${current.command_id ?? ""}`,
+      text: asked.trim(),
+      at: undefined,
+    };
+  }, [entries, current, sendObservation, chatProvider]);
+  useEffect(() => {
+    if (id && ownFailure)
+      failuresSeen.set(id, {
+        provider: ownFailure.provider,
+        key: ownFailure.key,
+      });
+  }, [id, ownFailure]);
+  useEffect(() => {
+    const heard = () => signedInTick((n) => n + 1);
+    signIns.addEventListener("signed-in", heard);
+    return () => signIns.removeEventListener("signed-in", heard);
+  }, []);
+  const capturedAt = recoverySnapshot?.captured_at;
+  const ownRefused =
+    ownFailure &&
+    !signedInFor.has(`${id}:${ownFailure.key}`) &&
+    // A snapshot taken after the refusal that no longer names the provider:
+    // signed in elsewhere, or answered since.
+    !(
+      ownFailure.at &&
+      capturedAt &&
+      Date.parse(capturedAt) > Date.parse(ownFailure.at) &&
+      !aiSignIn.refused.includes(ownFailure.provider)
+    )
+      ? ownFailure.provider
+      : undefined;
+  const refusedHere =
+    ownRefused ??
+    (chatProvider && aiSignIn.refused.includes(chatProvider)
+      ? chatProvider
+      : undefined);
+  const waiting = useWaiting(identity, id);
+  const draftNow = () =>
+    (id && sessionStorage.getItem(`nah:${identity}:draft:${id}`)) ?? draft;
+  // The refused message comes back into the field once per failed reply.
+  const viewId = useRef(id);
+  viewId.current = id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per failed reply.
+  useEffect(() => {
+    if (!id || !ownRefused || !ownFailure?.text) return;
+    if (restoredFrom(identity, id) === ownFailure.key) return;
+    markRestored(identity, id, ownFailure.key);
+    const { key, text, provider } = ownFailure;
+    const field = draftNow();
+    const next = field.includes(text) ? field : restoreToDraft([text], field);
+    if (next !== field) changeDraft(next);
+    // The marker keeps the refused message alone: anything else the field
+    // held makes it an edited message, and the line under the field says
+    // that all of it goes.
+    writeWaiting(identity, id, {
+      command: crypto.randomUUID(),
+      provider,
+      text,
+      ...(key.startsWith("cmd:") ? {} : { from: key }),
+    });
+  }, [id, identity, ownRefused, ownFailure?.key]);
+  // A send while refused waits in the field, as it is.
+  const holdForSignIn = (text: string) => {
+    if (!id || !refusedHere || !text.trim()) return false;
+    if (text !== draftNow()) changeDraft(text);
+    writeWaiting(identity, id, {
+      command: waiting?.command ?? crypto.randomUUID(),
+      provider: refusedHere,
+      text,
+      ...(waiting?.from ? { from: waiting.from } : {}),
+    });
+    return true;
+  };
+  // An emptied field stops the wait.
+  useEffect(() => {
+    if (id && waiting && !draft.trim()) clearWaiting(identity, id);
+  }, [id, identity, waiting, draft]);
+  // Once the provider takes the person back the waiting message goes, as
+  // the field holds it then. The host must have been heard from: a view
+  // still opening does not know yet whether the refusal is over.
+  const [signedInNotice, setSignedInNotice] = useState<{
+    id: string;
+    provider: AIProvider;
+    went: boolean;
+  }>();
+  useEffect(() => {
+    if (!id) return;
+    const went = wentAfterSignIn.get(id);
+    if (!went) return;
+    wentAfterSignIn.delete(id);
+    setSignedInNotice({ id, provider: went, went: true });
+  }, [id]);
+  const resendNow =
+    !!id &&
+    !!waiting &&
+    !!draft.trim() &&
+    !refusedHere &&
+    !!recoverySnapshot &&
+    !statusStale &&
+    canSend &&
+    current?.run_active !== true &&
+    (notStarted || current?.state === "idle" || current?.state === "rejected");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when it becomes possible, as the field holds it then.
+  useEffect(() => {
+    if (!resendNow || !id || !waiting) return;
+    const text = draft;
+    const done = () => {
+      clearWaiting(identity, id);
+      setSignedInNotice({ id, provider: waiting.provider, went: true });
+    };
+    void sendCommand(id, waiting, text).then(async (command) => {
+      if (viewId.current !== id || draftNow() !== text) return;
+      if (notStarted) {
+        held.submit(text, undefined, false, command);
+        done();
+      } else if (await submit(text, false, command)) done();
+    });
+  }, [resendNow, draft]);
+  const aiNotice =
+    !statusStale && refusedHere ? (
+      <AISignInWarning
+        provider={refusedHere}
+        onFix={() => aiSignIn.open(refusedHere)}
+      />
+    ) : signedInNotice?.id === id && signedInNotice ? (
+      <AISignedInNotice
+        provider={signedInNotice.provider}
+        went={signedInNotice.went}
+      />
+    ) : null;
+  // Messages sent before the view could act on them, in order. The text
+  // leaves the field as a sent one does and waits as a bubble; each goes
+  // the way the send button would send it then, once it can. A view that
+  // turns out unable to send gives them back into the field and says why,
+  // and so does leaving the conversation before they went.
+  const keptKey = `${identity}:${id ?? ""}`;
+  // Stored as they are kept, so a reload or a closed tab loses none of them.
+  const keptStorage = id ? `nah:${identity}:kept:${id}` : "";
+  const draftStorage = id ? `nah:${identity}:draft:${id}` : "";
+  type Kept = { id: string; text: string; mode?: "steer" | "follow_up" };
+  const [kept, setKeptState] = useState<{ key: string; items: Kept[] }>();
+  const keptItems = kept?.key === keptKey ? kept.items : [];
+  const setKept = (change: (items: Kept[]) => Kept[]) =>
+    setKeptState((old) => {
+      const items = change(old?.key === keptKey ? old.items : []);
+      if (keptStorage)
+        if (items.length)
+          sessionStorage.setItem(keptStorage, JSON.stringify(items));
+        else sessionStorage.removeItem(keptStorage);
+      return { key: keptKey, items };
+    });
+  const keep = (text: string, mode?: "steer" | "follow_up") => {
+    if (!text.trim()) return;
+    setKept((items) => [...items, { id: crypto.randomUUID(), text, mode }]);
+    changeDraft("");
+  };
+  const keeps = keptItems.length > 0 || (!canSend && sendWhenReady);
+  // Into the field as it is now: another restore may have just changed it.
+  const restoreKept = (texts: string[]) =>
+    changeDraft(
+      restoreToDraft(
+        texts,
+        (draftStorage && sessionStorage.getItem(draftStorage)) ?? draft,
+      ),
+    );
+  const giveBackKept = (reason?: string) => {
+    setKept(() => []);
+    restoreKept(keptItems.map((k) => k.text));
+    if (reason) held.setNotice(txt.keptNotSent(reason));
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the first kept message goes when the view's state allows it.
+  useEffect(() => {
+    const next = keptItems[0];
+    if (!next || (tellBlocked && sendWhenReady)) return;
+    if (tellBlocked)
+      return giveBackKept(
+        controlled || sendRefused ? tellBlocked : problem || txt.loading,
+      );
+    setKept((items) => items.slice(1));
+    if (next.mode && tellWorking) void submitQueue(next.mode, next.text, true);
+    else tell(next.text);
+  }, [keptItems, tellBlocked, sendWhenReady]);
+  // Messages kept by a view that is gone (left, reloaded) were never sent:
+  // they come back into the field rather than go later unasked.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per conversation shown.
+  useEffect(() => {
+    if (!keptStorage) return;
+    let left: Kept[] = [];
+    try {
+      left = JSON.parse(sessionStorage.getItem(keptStorage) ?? "[]");
+    } catch {
+      /* Unreadable: nothing to give back. */
+    }
+    sessionStorage.removeItem(keptStorage);
+    if (Array.isArray(left) && left.length)
+      restoreKept(left.map((k) => String(k.text)));
+  }, [keptStorage]);
   // Kerro agentille on an ended worker's row: this conversation started it.
   // A request during a turn waits as a follow-up; a steer would redirect
   // the turn the person started.
@@ -1129,15 +1444,28 @@ function BrowserConversationContent({
     store,
     runWorkspace,
   ]);
-  const goals = useMemo(() => composerGoals(page), [page]);
-  const guide = id ? guideOwner(identity, id) : undefined;
+  const goals = composerGoals(page);
+  const guide = id
+    ? guideOwner(identity, id)
+    : creating
+      ? creationGuideOwner(identity, workspace.workspace_id)
+      : undefined;
   const startedGoal = useGuide(guide)?.goal;
+  const preparedPlaceholder =
+    startedGoal &&
+    !startedGoal.skill &&
+    !entries.length &&
+    !next &&
+    !held.waiting.length
+      ? goalRequest(startedGoal).placeholder
+      : undefined;
   // A goal chosen before this conversation existed keeps its selection.
   usePreparedField(guide, section);
   const loadedGoal = conversationGoal(page, startedGoal, entries, draft);
   // Older history holds the first message: read just its start, once.
   const [first, setFirst] = useState<{ key: string; skill?: string }>();
-  const firstWanted = !!next && !loadedGoal && goals.length > 0;
+  const firstWanted =
+    !!next && !loadedGoal && authoredGoals(page).some((g) => g.skill);
   useEffect(() => {
     const agentId = current?.agent_id;
     if (!agentId || !firstWanted || first?.key === pageKey) return;
@@ -1192,6 +1520,7 @@ function BrowserConversationContent({
                 } as const),
         }
       : undefined;
+  const listsInField = useExperimentalFeature("composer-lists-in-field");
   const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
   const composerSources = useMemo(
@@ -1203,23 +1532,41 @@ function BrowserConversationContent({
             : { workspaceId: runWorkspace },
           signal,
         ),
-      files: (query: string, signal: AbortSignal) =>
-        readFiles(runWorkspace, query, signal),
+      files: (query: string, signal: AbortSignal, rank?: "name") =>
+        readFiles(runWorkspace, query, signal, rank),
       preview: (path: string, signal: AbortSignal) =>
         readPreview(runWorkspace, path, signal),
+      tree: (folder: string | null, signal: AbortSignal) =>
+        readFileTree(runWorkspace, folder, signal),
       workspaceName: workspace.display_name ?? workspace.name,
     }),
     [sourcesKey],
   );
+  // A conversation that opens without another focus target gives the field
+  // the focus, so the person can type at once: as it starts loading, or, if
+  // something else still had the focus then (the link that opened it), once
+  // it has opened. The same field stays through the loading.
   // biome-ignore lint/correctness/useExhaustiveDependencies: refs are only used for the first opening focus.
   useEffect(() => {
-    if (!id || !controlled || focusedOnOpen.current) return;
-    focusedOnOpen.current = true;
-    if (document.activeElement === document.body)
-      section.current
-        ?.querySelector("textarea")
-        ?.focus({ preventScroll: true });
-  }, [id, controlled]);
+    if (!id || (opened && !controlled) || focusedOnOpen.current) return;
+    // The heading the app focuses on navigation is where the route lands,
+    // not a target the person chose.
+    const active = document.activeElement;
+    const free =
+      !active ||
+      active === document.body ||
+      (active.tagName === "H1" && !!section.current?.contains(active));
+    if (controlled || free) focusedOnOpen.current = true;
+    if (!free) return;
+    const field = section.current?.querySelector<HTMLTextAreaElement>(
+      ".ah-composer textarea",
+    );
+    if (!field) return;
+    // A draft kept from an earlier visit goes on from its end instead of
+    // having the next words land in front of it.
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, [id, opened && !controlled, controlled]);
   const presentation = agentPresentation({
     process: statusStale ? "stale" : "daemon_managed_live",
     command: current && !statusStale ? current.state : undefined,
@@ -1240,26 +1587,6 @@ function BrowserConversationContent({
       truncated: true,
     },
   );
-  // A finished agent tool call may have changed the file open in the browser
-  // editor beside this conversation; the editor reads it again.
-  const reportTool = useEditorToolReport();
-  const reportedTools = useRef(new Set<string>());
-  useEffect(() => {
-    if (!reportTool || !id || !live) return;
-    for (const item of provisionalItems(live)) {
-      if (item.kind !== "tool" || !item.callId || !item.name) continue;
-      if (item.state !== "succeeded" && item.state !== "failed") continue;
-      const key = `${id}:${item.callId}`;
-      if (reportedTools.current.has(key)) continue;
-      reportedTools.current.add(key);
-      reportTool({
-        workspace: workspace.workspace_id,
-        conversation: id,
-        tool: item.name,
-        path: toolPath(item.arguments),
-      });
-    }
-  }, [live, reportTool, id, workspace.workspace_id]);
   const replaceNotes = useReplaceNotes(workspace.workspace_id, id);
   // The note's buttons go with it; focus moves on to the field, not the page.
   const closeReplaceNote = (noteId: number) => {
@@ -1498,6 +1825,47 @@ function BrowserConversationContent({
           ),
         }
       : undefined;
+  // Palaa tähän (experimental): the own messages' menu, the sheet above the
+  // composer and the rows a return leaves.
+  // The context view (experimental): the page's list and Tiivistä nyt.
+  const contextViewOn = useExperimentalFeature("conversation-context-view");
+  const compaction = useCompaction({
+    id,
+    csrf,
+    enabled: contextViewOn && controlled,
+    busy: controlled && turnUnderway(current?.state, current?.run_active),
+    stopped: notStarted,
+    workspaceId: runWorkspace,
+    onLogin,
+    onSettled: () => setContextRead((n) => n + 1),
+  });
+  const rewindOn = useExperimentalFeature("rewind-conversation");
+  const rewind = useRewind({
+    id,
+    csrf,
+    enabled: rewindOn && opened && controlled && !!csrf,
+    busy: controlled && turnUnderway(current?.state, current?.run_active),
+    stopped: notStarted,
+    workspaceId: runWorkspace,
+    onLogin,
+    onDraft: (text) =>
+      changeDraft(
+        restoreToDraft(
+          [text],
+          (draftStorage && sessionStorage.getItem(draftStorage)) ?? draft,
+        ),
+      ),
+    onChanged: () => {
+      if (id) void store.reconnect(id);
+    },
+    renderEntries: (list) => (
+      <ol className="ah-feed">
+        {timelineItems(list).map((item) => (
+          <li key={item.id}>{item.content}</li>
+        ))}
+      </ol>
+    ),
+  });
   const savedTimeline = timelineItems(
     entries,
     onLogin,
@@ -1520,6 +1888,7 @@ function BrowserConversationContent({
     ),
     id ? (callId) => store.toolExpansion(id, callId) : undefined,
     liveTurn,
+    rewind.target,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
@@ -1532,10 +1901,199 @@ function BrowserConversationContent({
       ? `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`
       : undefined,
   );
-  const timeline = settled.timeline;
+  const timeline = withRewind(settled.timeline, rewind.controls);
+  const composer: ComponentProps<typeof Composer> =
+    creating && creation
+      ? {
+          csrf,
+          speech,
+          onDictating: creation.onDictating,
+          modelPicker: (
+            <span
+              className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
+              aria-disabled="true"
+            >
+              {displayModel} · {selectedThinking ?? txt.agent}
+            </span>
+          ),
+          value: draft,
+          goals,
+          preparedPlaceholder,
+          sources: composerSources,
+          inFieldLists: listsInField,
+          onChange: changeDraft,
+          activity: "idle",
+          selectedWorkingMode: "follow_up",
+          editorAvailability: { state: "enabled" },
+          availability: creationBlock(creation)
+            ? { state: "disabled", reason: creationBlock(creation) ?? "" }
+            : { state: "enabled" },
+          onSendNow: (text = draft) => {
+            if (!text.trim() || creationBlock(creation)) return;
+            const first = !held.waiting.length;
+            held.submit(text);
+            creationView.setNotice("");
+            if (first) creation.worktree?.onFirstMessage?.(text);
+          },
+          onSteer: () => {},
+          onFollowUp: () => {},
+          onModeChange: () => {},
+          onStopWaiting:
+            held.waiting.length && !creation.problem
+              ? creationView.giveBack
+              : undefined,
+        }
+      : {
+          csrf,
+          speech,
+          modelPicker:
+            canChooseFirstModel && controlled ? (
+              <ComposerModelPicker
+                key={id}
+                model={selectedModel}
+                thinking={selectedThinking}
+                models={models?.models}
+              >
+                {(close) => (
+                  <PiModelSelector
+                    csrf={csrf}
+                    scope="empty"
+                    onBlocked={setModelBlocked}
+                    current={selectedModel}
+                    currentThinking={selectedThinking}
+                    onChoice={(choice) => {
+                      setModelChoice(choice);
+                      close();
+                    }}
+                  />
+                )}
+              </ComposerModelPicker>
+            ) : !controlled ? (
+              <span
+                className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
+                aria-disabled="true"
+              >
+                {txt.agent}
+              </span>
+            ) : undefined,
+          value: draft,
+          goals,
+          preparedPlaceholder,
+          onChange: (value) => {
+            changeDraft(value);
+            typed(value);
+          },
+          idlePlaceholder:
+            restCard && rest.wake !== "awake" ? txt.wakePlaceholder : undefined,
+          onActivity: recapHold.note,
+          activity:
+            !notStarted &&
+            (current?.run_active ?? current?.state === "accepted")
+              ? "working"
+              : "idle",
+          selectedWorkingMode: workingMode,
+          queue: shownQueue
+            ? {
+                steering: shownQueue.steering,
+                followUp: shownQueue.follow_up,
+              }
+            : undefined,
+          queueKnown: !!current?.queue,
+          onRestoreQueue: () => void clearNativeQueue(),
+          restoreAvailability: queueRestoreAvailability,
+          shell: composerShell,
+          stopState:
+            current?.state === "stopping"
+              ? "pending"
+              : current?.state === "uncertain"
+                ? "uncertain"
+                : stopPhase,
+          sources: composerSources,
+          inFieldLists: listsInField,
+          sendState: busy
+            ? "pending"
+            : ambiguous && !notStarted
+              ? "uncertain"
+              : "idle",
+          // The outage/status notice already explains the block and its remedy.
+          // Keep the control's reason accessible, but do not show a second warning.
+          suppressAvailabilityReason:
+            archive?.archive !== "archived" &&
+            archive?.archive !== "unknown" &&
+            (serverUnavailable ||
+              statusStale ||
+              journalOffline ||
+              showMissedEvents(!!live?.missed, current) ||
+              Boolean(ambiguous && sendObservation?.state === "uncertain")),
+          // Status refreshes (including turn completion) guard host writes,
+          // not the local draft. Disabling the textarea here drops focus
+          // and the caret even if the next status read succeeds.
+          editorAvailability: { state: "enabled" },
+          availability: canSend
+            ? { state: "enabled" }
+            : {
+                state: "unknown",
+                reason:
+                  controlled || sendRefused
+                    ? sendBlocked
+                    : problem || txt.loading,
+              },
+          sendWhenReady,
+          waiting:
+            waiting && refusedHere
+              ? waitingLine(waiting.provider, draft !== waiting.text)
+              : undefined,
+          onSendNow: (text = draft) => {
+            if (holdForSignIn(text)) return;
+            setSignedInNotice(undefined);
+            if (keeps) return keep(text);
+            if (text !== draft) changeDraft(text);
+            if (draft.trim() && canSend) {
+              dismissRecapOnSend();
+              rest.onSend();
+            }
+            if (notStarted) {
+              // A new conversation's first message carries the model
+              // chosen in its field, as a direct first send does.
+              if (canSend)
+                held.submit(
+                  text,
+                  canChooseFirstModel ? modelChoice : undefined,
+                );
+            } else void submit(text);
+          },
+          onSteer: (text = draft) => {
+            if (keeps) return keep(text, "steer");
+            if (text !== draft) changeDraft(text);
+            if (draft.trim()) dismissRecapOnSend();
+            void submitQueue("steer", text);
+          },
+          onFollowUp: (text = draft) => {
+            if (keeps) return keep(text, "follow_up");
+            if (text !== draft) changeDraft(text);
+            if (draft.trim()) dismissRecapOnSend();
+            void submitQueue("follow_up", text);
+          },
+          onModeChange: setWorkingMode,
+          onInterrupt:
+            (current?.run_active ?? current?.state === "accepted") &&
+            !statusStale
+              ? () => void stopNow()
+              : undefined,
+          onStopWaiting: keptItems.length
+            ? () => giveBackKept()
+            : waitingForPi && current?.state === "starting" && !statusStale
+              ? () => void held.cancel()
+              : undefined,
+        };
+  // Creation, loading and the opened conversation are one view: the frame,
+  // the top bar and the composer stay the same elements through them, so
+  // what the person is typing, its focus and caret, an open list or a
+  // dictation carry on while the conversation becomes ready.
+  const view = id ? (opened ? "opened" : "loading") : creating && "creation";
   return (
     <section ref={section} className="ah-reading-view">
-      {!id ? (
+      {!view ? (
         <>
           <h2>{txt.conversations}</h2>
           <details className="md-new">
@@ -1590,887 +2148,966 @@ function BrowserConversationContent({
             />
           </fieldset>
         </>
-      ) : !opened ? (
-        <PendingConversation
-          workspace={workspace}
-          message={txt.loading}
-          problem={problem}
-          onRetry={() => setOpenAttempt((n) => n + 1)}
-          value={draft}
-          onChange={(value) => {
-            recapHold.note();
-            changeDraft(value);
-          }}
-        />
       ) : (
         <ConversationFrame
-          className={contextOpen ? "ah-frame-context" : undefined}
+          view={view}
+          className={
+            view === "opened" && contextOpen ? "ah-frame-context" : undefined
+          }
         >
-          <AgentHeader
-            openMachines={openMachines}
-            data-model={selectedModel}
-            data-thinking={selectedThinking}
-            editorControl={<EditorHeaderControls />}
-            filesControl={<FilesHeaderControl conversationId={id} />}
-            guideControl={
-              <GuideHeaderControl
-                owner={guide}
-                goal={goal}
-                page={page && !("state" in page) ? page.title : undefined}
-              />
-            }
-            archive={{
-              state: archive?.archive ?? "unknown",
-              empty:
-                entries.length === 0 &&
-                !historyError &&
-                !next &&
-                !!current &&
-                current.native_history !== "unavailable",
-              blockedReason: archiveAwaitingSnapshot
-                ? txt.awaitingArchive
-                : archive
-                  ? undefined
-                  : txt.loadingArchive,
-              eligible:
-                !busy &&
-                !statusStale &&
-                !serverUnavailable &&
-                (current?.state === "idle" ||
-                  (current?.state === "stopped" && !held.waiting.length) ||
-                  current?.continuation === "eligible"),
-              busy: !!archiveBusy || !!closeBusy,
-              onArchive: () => {
-                if (archive) void onArchive?.(archive, true);
-              },
-              onClose:
-                archive &&
-                controlled &&
-                csrf &&
-                !serverUnavailable &&
-                !statusStale &&
-                // A Pi stopped for idleness before the first message leaves
-                // nothing to archive; the daemon closes that one too.
-                (current?.state === "idle" ||
-                  (current?.state === "stopped" && !held.waiting.length)) &&
-                !busy
-                  ? () => {
-                      // Close removes this view immediately. Fence in-flight
-                      // status reads before they can turn its expected 404
-                      // into a late navigation back to deleted history.
-                      alive.current = false;
-                      ++generation.current;
-                      void onClose?.(archive);
-                    }
-                  : undefined,
-              onRestore: () => {
-                if (archive) void onArchive?.(archive, false);
-              },
-            }}
-            title={title ?? txt.newConversation}
-            titlePending={archive?.title.generation_state === "pending"}
-            recapAction={
-              id
-                ? {
-                    availability: recapUnavailable
-                      ? {
-                          state: "disabled",
-                          reason: recapUnavailableReason ?? txt.noControl,
-                        }
-                      : { state: "enabled" },
-                    pending: !!recapBusy,
-                    onPress: () => {
-                      // The person asked to see one: a dismissed or held
-                      // current recap shows again.
-                      setDismissedRecap("");
-                      try {
-                        localStorage.removeItem(dismissalKey);
-                      } catch {
-                        /* Browser storage can be denied. */
+          {view !== "opened" ? (
+            <AgentHeader
+              {...(view === "loading" || !creation
+                ? loadingHeader(workspace, problem, details, () =>
+                    setDetails(!details),
+                  )
+                : creationHeader(
+                    workspace,
+                    creation,
+                    held.waiting.length,
+                    details,
+                    () => setDetails(!details),
+                    <GuideHeaderControl
+                      owner={guide}
+                      goal={goal}
+                      page={page && !("state" in page) ? page.title : undefined}
+                    />,
+                  ))}
+            />
+          ) : (
+            <AgentHeader
+              openMachines={openMachines}
+              data-model={selectedModel}
+              data-thinking={selectedThinking}
+              editorControl={<EditorHeaderControls />}
+              filesControl={<FilesHeaderControl conversationId={id} />}
+              guideControl={
+                <GuideHeaderControl
+                  owner={guide}
+                  goal={goal}
+                  page={page && !("state" in page) ? page.title : undefined}
+                />
+              }
+              archive={{
+                state: archive?.archive ?? "unknown",
+                empty:
+                  entries.length === 0 &&
+                  !historyError &&
+                  !next &&
+                  !!current &&
+                  current.native_history !== "unavailable",
+                blockedReason: archiveAwaitingSnapshot
+                  ? txt.awaitingArchive
+                  : archive
+                    ? undefined
+                    : txt.loadingArchive,
+                eligible:
+                  !busy &&
+                  !statusStale &&
+                  !serverUnavailable &&
+                  (current?.state === "idle" ||
+                    (current?.state === "stopped" && !held.waiting.length) ||
+                    current?.continuation === "eligible"),
+                busy: !!archiveBusy || !!closeBusy,
+                onArchive: () => {
+                  if (archive) void onArchive?.(archive, true);
+                },
+                onClose:
+                  archive &&
+                  controlled &&
+                  csrf &&
+                  !serverUnavailable &&
+                  !statusStale &&
+                  // A Pi stopped for idleness before the first message leaves
+                  // nothing to archive; the daemon closes that one too.
+                  (current?.state === "idle" ||
+                    (current?.state === "stopped" && !held.waiting.length)) &&
+                  !busy
+                    ? () => {
+                        // Close removes this view immediately. Fence in-flight
+                        // status reads before they can turn its expected 404
+                        // into a late navigation back to deleted history.
+                        alive.current = false;
+                        ++generation.current;
+                        void onClose?.(archive);
                       }
-                      if (recapFingerprint)
-                        setRecapSeen({
-                          key: recapKey,
-                          fingerprint: recapFingerprint,
-                        });
-                      requestRecapNow?.();
-                    },
-                  }
-                : undefined
-            }
-            rename={
-              id && csrf
-                ? {
-                    availability:
-                      !controlled || statusStale || serverUnavailable
+                    : undefined,
+                onRestore: () => {
+                  if (archive) void onArchive?.(archive, false);
+                },
+              }}
+              title={title ?? txt.newConversation}
+              titlePending={archive?.title.generation_state === "pending"}
+              recapAction={
+                id
+                  ? {
+                      availability: recapUnavailable
                         ? {
                             state: "disabled",
-                            reason: txt.noControl,
+                            reason: recapUnavailableReason ?? txt.noControl,
                           }
                         : { state: "enabled" },
-                    onSave: async (name) => {
-                      if (onRename) await onRename(id, name);
-                      else
-                        await renameConversation(
-                          id,
-                          workspace.workspace_id,
-                          name,
-                          csrf,
-                        );
-                    },
-                  }
-                : undefined
-            }
-            titleAction={{
-              label: txt.retitle,
-              availability:
-                entries.length === 0
-                  ? {
-                      state: "disabled",
-                      reason: txt.nothingToName,
+                      pending: !!recapBusy,
+                      onPress: () => {
+                        // The person asked to see one: a dismissed or held
+                        // current recap shows again.
+                        setDismissedRecap("");
+                        try {
+                          localStorage.removeItem(dismissalKey);
+                        } catch {
+                          /* Browser storage can be denied. */
+                        }
+                        if (recapFingerprint) revealRecap();
+                        requestRecapNow?.();
+                      },
                     }
-                  : !controlled ||
-                      !csrf ||
-                      statusStale ||
-                      serverUnavailable ||
-                      problem
+                  : undefined
+              }
+              rename={
+                id && csrf
+                  ? {
+                      availability:
+                        !controlled || statusStale || serverUnavailable
+                          ? {
+                              state: "disabled",
+                              reason: txt.noControl,
+                            }
+                          : { state: "enabled" },
+                      onSave: async (name) => {
+                        if (onRename) await onRename(id, name);
+                        else
+                          await renameConversation(
+                            id,
+                            workspace.workspace_id,
+                            name,
+                            csrf,
+                          ).catch((error: unknown) => {
+                            throw nameRefused(error);
+                          });
+                      },
+                    }
+                  : undefined
+              }
+              titleAction={{
+                label: txt.retitle,
+                availability:
+                  entries.length === 0
                     ? {
                         state: "disabled",
-                        reason: txt.noControl,
+                        reason: txt.nothingToName,
                       }
-                    : { state: "enabled" },
-              pending: titlePending,
-              onPress: () => {
-                if (
-                  !id ||
-                  !csrf ||
-                  !controlled ||
-                  entries.length === 0 ||
-                  titlePending
-                )
-                  return;
-                const key = titleActionKey;
-                const version = generation.current;
-                setTitleActionState({
-                  key,
-                  version,
-                  pending: true,
-                  error: null,
-                });
-                // A restored conversation has no live RPC handle. Use the
-                // native-history operation, which proves there is no writer;
-                // never retry a failed live write through the other operation.
-                const operation =
-                  current?.state === "stopped" ||
-                  current?.state === "start_failed"
-                    ? retitleHistory(id, workspace.workspace_id, csrf)
-                    : regenerateTitle(id, csrf);
-                void operation
-                  .then(() => {
-                    if (generation.current !== version || !alive.current)
-                      return;
-                    setTitleActionState((previous) =>
-                      previous?.key === key
-                        ? { key, version, pending: false, error: null }
-                        : previous,
-                    );
-                  })
-                  .catch((error: unknown) => {
-                    if (generation.current !== version || !alive.current)
-                      return;
-                    const reason =
-                      error instanceof TitleGenerationFailed
-                        ? error.reason
-                        : "uncertain";
-                    const description =
-                      reason === "model_unavailable"
-                        ? txt.titleModelUnavailable
-                        : reason === "model_timeout" ||
-                            reason === "model_invalid_response"
-                          ? txt.titleInvalid
-                          : txt.titleUncertain;
-                    setTitleActionState((previous) =>
-                      previous?.key === key
-                        ? { key, version, pending: false, error: description }
-                        : previous,
-                    );
+                    : !controlled ||
+                        !csrf ||
+                        statusStale ||
+                        serverUnavailable ||
+                        problem
+                      ? {
+                          state: "disabled",
+                          reason: txt.noControl,
+                        }
+                      : { state: "enabled" },
+                pending: titlePending,
+                onPress: () => {
+                  if (
+                    !id ||
+                    !csrf ||
+                    !controlled ||
+                    entries.length === 0 ||
+                    titlePending
+                  )
+                    return;
+                  const key = titleActionKey;
+                  const version = generation.current;
+                  setTitleActionState({
+                    key,
+                    version,
+                    pending: true,
+                    error: null,
                   });
-              },
-            }}
-            activityLabel={
-              // No top-bar state while messages wait for Pi: the dashed
-              // bubble says it (Jari 16.10.2026).
-              notStarted && held.waiting.length
-                ? ""
-                : restCard && rest.wake !== "awake"
-                  ? txt.rests
-                  : (presentation.operationLabel ?? presentation.activityLabel)
-            }
-            activityControl={
-              presentation.activity === "waiting_background" ? (
-                <ProcessWaitingChip label={presentation.activityLabel} />
-              ) : undefined
-            }
-            activityDetail={
-              presentation.activity === "working" && liveTurn?.working
-                ? [
-                    liveTurn.activity,
-                    elapsed === undefined ? "" : elapsedLabel(elapsed),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : undefined
-            }
-            activityKind={
-              presentation.activity === "working"
-                ? "working"
-                : presentation.activity === "unknown"
-                  ? "unknown"
-                  : "neutral"
-            }
-            settings={nativeSettings}
-            contextIndicator={
-              contextState ? (
-                <ContextRing
-                  usage={contextState}
-                  open={contextOpen}
-                  onToggle={toggleContext}
+                  // A restored conversation has no live RPC handle. Use the
+                  // native-history operation, which proves there is no writer;
+                  // never retry a failed live write through the other operation.
+                  const operation =
+                    current?.state === "stopped" ||
+                    current?.state === "start_failed"
+                      ? retitleHistory(id, workspace.workspace_id, csrf)
+                      : regenerateTitle(id, csrf);
+                  void operation
+                    .then(() => {
+                      if (generation.current !== version || !alive.current)
+                        return;
+                      setTitleActionState((previous) =>
+                        previous?.key === key
+                          ? { key, version, pending: false, error: null }
+                          : previous,
+                      );
+                    })
+                    .catch((error: unknown) => {
+                      if (generation.current !== version || !alive.current)
+                        return;
+                      const reason =
+                        error instanceof TitleGenerationFailed
+                          ? error.reason
+                          : "uncertain";
+                      // A refusal wrote nothing: say why, not that the
+                      // outcome is unknown.
+                      const description =
+                        namingRefusal(error) ??
+                        (reason === "model_unavailable"
+                          ? titleModelUnavailable()
+                          : reason === "model_timeout" ||
+                              reason === "model_invalid_response"
+                            ? txt.titleInvalid
+                            : txt.titleUncertain);
+                      setTitleActionState((previous) =>
+                        previous?.key === key
+                          ? { key, version, pending: false, error: description }
+                          : previous,
+                      );
+                    });
+                },
+              }}
+              activityLabel={
+                // No top-bar state while messages wait for Pi: the dashed
+                // bubble says it (Jari 16.10.2026).
+                notStarted && held.waiting.length
+                  ? ""
+                  : restCard && rest.wake !== "awake"
+                    ? txt.rests
+                    : (presentation.operationLabel ??
+                      presentation.activityLabel)
+              }
+              activityControl={
+                presentation.activity === "waiting_background" ? (
+                  <ProcessWaitingChip label={presentation.activityLabel} />
+                ) : undefined
+              }
+              activityDetail={
+                presentation.activity === "working" && liveTurn?.working
+                  ? [
+                      liveTurn.activity,
+                      elapsed === undefined ? "" : elapsedLabel(elapsed),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : undefined
+              }
+              activityKind={
+                presentation.activity === "working"
+                  ? "working"
+                  : presentation.activity === "unknown"
+                    ? "unknown"
+                    : "neutral"
+              }
+              settings={nativeSettings}
+              emptyConversation={emptyConversation}
+              contextIndicator={
+                contextState ? (
+                  <ContextRing
+                    usage={contextState}
+                    open={contextOpen}
+                    onToggle={toggleContext}
+                  />
+                ) : undefined
+              }
+              terminal={shell.toggle}
+              gitStatus={
+                <ConversationGitStatus
+                  workspace={workspace}
+                  csrf={csrf}
+                  working={presentation.activity === "working"}
                 />
-              ) : undefined
-            }
-            terminal={shell.toggle}
-            gitStatus={
-              <ConversationGitStatus
-                workspace={workspace}
-                csrf={csrf}
-                working={presentation.activity === "working"}
-              />
-            }
-            modelPicker={
-              emptyConversation ? (
-                <ModelChip
-                  compact
-                  model={selectedModel}
-                  thinking={selectedThinking}
-                  models={models?.models}
-                />
-              ) : (
-                // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
-                <details
-                  className="md-chip-picker"
-                  key={id}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      event.currentTarget.open = false;
-                      setChipOpen(false);
-                      event.currentTarget.querySelector("summary")?.focus();
-                    }
-                  }}
-                  onToggle={(event) => setChipOpen(event.currentTarget.open)}
-                >
+              }
+              modelPicker={
+                emptyConversation ? (
                   <ModelChip
-                    as="summary"
-                    data-testid="conversation-model"
                     compact
                     model={selectedModel}
                     thinking={selectedThinking}
                     models={models?.models}
-                    aria-label={modelSummary(
-                      selectedModel,
-                      selectedThinking,
-                      models?.models,
-                    )}
                   />
-                  <div className="md-pop">
-                    {chipOpen ? (
-                      <ConversationModelInfo
-                        model={selectedModel}
-                        thinking={selectedThinking}
-                      />
-                    ) : null}
-                  </div>
-                </details>
-              )
-            }
-            detailsExtra={
-              <Button
-                label={txt.modelSettings}
-                variant="quiet"
-                size="row"
-                onPress={() => navigate("/settings")}
-              />
-            }
-            detailsFacts={[
-              ...(workspace.place
-                ? [
-                    {
-                      label: txt.workspace,
-                      value: workspace.place.parent.path ?? txt.unknown,
-                      copy: !!workspace.place.parent.path,
-                    },
-                    {
-                      label: txt.worktree,
-                      value: workspace.path || txt.unknown,
-                      copy: !!workspace.path,
-                    },
-                    {
-                      label: txt.branch,
-                      value: workspace.place.worktree.branch ?? txt.unknown,
-                    },
-                  ]
-                : [
-                    {
-                      label: txt.workspace,
-                      value: workspace.path ?? txt.unknown,
-                      copy: !!workspace.path,
-                    },
-                  ]),
-              {
-                label: txt.model,
-                value: nativeSettings.model ?? txt.agentDefault,
-                copy: !!nativeSettings.model,
-              },
-              {
-                label: txt.thinkingLevel,
-                value: nativeSettings.thinking ?? txt.agentDefault,
-              },
-              {
-                label: txt.control,
-                value: controlled ? txt.browserControl : txt.notAvailable,
-              },
-              {
-                label: txt.started,
-                value: archive?.started_at
-                  ? formatDate(new Date(archive.started_at), {
-                      dateStyle: "short",
-                      timeStyle: "medium",
-                    })
-                  : txt.unknown,
-              },
-              { label: txt.nativeId, value: id, copy: true },
-            ]}
-            controlKind={controlled ? "neutral" : "read-only"}
-            controlLabel={
-              controlled ? txt.browserControl : txt.controlUnavailable
-            }
-            workspaceLabel={workspace.display_name ?? workspace.name}
-            workspaceHref={`/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}`}
-            detailsExpanded={details}
-            onToggleDetails={() => {
-              setDetails(!details);
-              setModelExpanded(false);
-            }}
-          />
-          {contextOpen ? (
+                ) : (
+                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
+                  <details
+                    className="md-chip-picker"
+                    key={id}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.currentTarget.open = false;
+                        setChipOpen(false);
+                        const phoneTrigger = event.currentTarget
+                          .closest("header")
+                          ?.querySelector<HTMLElement>(".ah-phone-facts");
+                        if (phoneTrigger?.getClientRects().length)
+                          phoneTrigger.focus();
+                        else
+                          event.currentTarget.querySelector("summary")?.focus();
+                      }
+                    }}
+                    onToggle={(event) => {
+                      setChipOpen(event.currentTarget.open);
+                      if (
+                        event.currentTarget.open &&
+                        window.matchMedia("(max-width: 800px)").matches
+                      )
+                        event.currentTarget
+                          .querySelector<HTMLElement>(".md-pop")
+                          ?.focus();
+                    }}
+                  >
+                    <ModelChip
+                      as="summary"
+                      data-testid="conversation-model"
+                      compact
+                      model={selectedModel}
+                      thinking={selectedThinking}
+                      models={models?.models}
+                      aria-label={modelSummary(
+                        selectedModel,
+                        selectedThinking,
+                        models?.models,
+                      )}
+                    />
+                    <div className="md-pop" tabIndex={-1}>
+                      {chipOpen ? (
+                        <ConversationModelInfo
+                          model={selectedModel}
+                          thinking={selectedThinking}
+                        />
+                      ) : null}
+                    </div>
+                  </details>
+                )
+              }
+              detailsExtra={
+                <Button
+                  label={txt.modelSettings}
+                  variant="quiet"
+                  size="row"
+                  onPress={() => navigate("/settings")}
+                />
+              }
+              detailsFacts={[
+                ...(workspace.place
+                  ? [
+                      {
+                        label: txt.workspace,
+                        value: workspace.place.parent.path ?? txt.unknown,
+                        copy: !!workspace.place.parent.path,
+                      },
+                      {
+                        label: txt.worktree,
+                        value: workspace.path || txt.unknown,
+                        copy: !!workspace.path,
+                      },
+                      {
+                        label: txt.branch,
+                        value: workspace.place.worktree.branch ?? txt.unknown,
+                      },
+                    ]
+                  : [
+                      {
+                        label: txt.workspace,
+                        value: workspace.path ?? txt.unknown,
+                        copy: !!workspace.path,
+                      },
+                    ]),
+                {
+                  label: txt.model,
+                  value: nativeSettings.model ?? txt.agentDefault,
+                  copy: !!nativeSettings.model,
+                },
+                {
+                  label: txt.thinkingLevel,
+                  value: nativeSettings.thinking ?? txt.agentDefault,
+                },
+                {
+                  label: txt.control,
+                  value: controlled ? txt.browserControl : txt.notAvailable,
+                },
+                {
+                  label: txt.started,
+                  value: archive?.started_at
+                    ? formatDate(new Date(archive.started_at), {
+                        dateStyle: "short",
+                        timeStyle: "medium",
+                      })
+                    : txt.unknown,
+                },
+                { label: txt.nativeId, value: id ?? "", copy: true },
+              ]}
+              controlKind={controlled ? "neutral" : "read-only"}
+              controlLabel={
+                controlled ? txt.browserControl : txt.controlUnavailable
+              }
+              workspaceLabel={workspace.display_name ?? workspace.name}
+              workspaceHref={`/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}`}
+              detailsExpanded={details}
+              onToggleDetails={() => {
+                setDetails(!details);
+                setModelExpanded(false);
+              }}
+            />
+          )}
+          {view === "opened" && contextOpen ? (
             <ContextPage
               detail={contextDetail}
               usage={contextState}
               title={title ?? txt.conversation}
               onClose={toggleContext}
+              view={
+                contextViewOn
+                  ? (detail) => (
+                      <ContextView
+                        detail={detail}
+                        usage={contextState}
+                        compaction={compaction}
+                      />
+                    )
+                  : undefined
+              }
             />
           ) : null}
-          <ConversationStream
-            streamRef={feed}
-            onScroll={() => {
-              const el = feed.current;
-              if (!el || isReadingIntro(el)) return;
-              const move = scrolled(el);
-              if (move === "end") {
-                wasAtBottom.current = true;
-                setAwayFromLatest(false);
-                readingAnchor.current = undefined;
-                if (id) store.savePosition(id);
-                setUnseen(0);
-              } else {
-                if (move === "left") {
-                  wasAtBottom.current = false;
-                  setAwayFromLatest(
-                    el.scrollHeight - el.scrollTop - el.clientHeight > 120,
-                  );
+          {view === "opened" ? (
+            <ConversationStream
+              streamRef={feed}
+              onScroll={() => {
+                const el = feed.current;
+                if (!el || isReadingIntro(el)) return;
+                const move = scrolled(el);
+                if (move === "end") {
+                  wasAtBottom.current = true;
+                  setAwayFromLatest(false);
+                  readingAnchor.current = undefined;
+                  if (id) store.savePosition(id);
+                  setUnseen(0);
+                } else {
+                  if (move === "left") {
+                    wasAtBottom.current = false;
+                    setAwayFromLatest(
+                      el.scrollHeight - el.scrollTop - el.clientHeight > 120,
+                    );
+                  }
+                  captureAnchor();
                 }
-                captureAnchor();
-              }
-            }}
-          >
-            {next ? (
-              <div className="ah-history-pager">
-                <Button
-                  data-testid="older-history"
-                  size="row"
-                  label={txt.loadOlder}
-                  onPress={() => {
-                    captureAnchor();
-                    void store.older(id);
-                  }}
-                />
-              </div>
-            ) : null}
-            {transientNotices.map((notice) => (
-              <NoticeEntry key={notice.notice_id} notice={notice} />
-            ))}
-            {storagePressure.full ? null : (
-              <UnpresentedEvents events={events} liveEvents={live?.fragments} />
-            )}
-            {cutOff && (
-              <InlineNotice
-                data-testid="history-cut-off"
-                tone="warning"
-                title={txt.cutOff}
-                description={txt.cutOffDetail}
-                actions={[
-                  {
-                    label: txt.newConversation,
-                    onPress: () =>
-                      navigate(`/workspaces/${workspace.workspace_id}`),
-                  },
-                ]}
-              />
-            )}
-            <ConversationTimeline
-              emptyLabel={
-                controlled ? (
-                  <StartPageRead
-                    key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
-                    workspaceId={runWorkspace}
-                    agentId={current?.agent_id}
-                    store={store}
-                    draft={draft}
-                    onChange={changeDraft}
-                    onPage={(read) =>
-                      setStartPage({ key: pageKey, page: read })
-                    }
-                    onStarted={(started, title, prepared) => {
-                      // A goal names the conversation it starts, until the
-                      // person renames it.
-                      const name = goalConversationName(started);
-                      if (current?.agent_id && csrf && name)
-                        void renameConversation(
-                          current.agent_id,
-                          workspace.workspace_id,
-                          name,
-                          csrf,
-                        ).catch(() => {
-                          /* The automatic title then stands. */
-                        });
-                      if (!guide) return;
-                      prepareField(guide, {
-                        text: prepared.text,
-                        start: prepared.selectionStart,
-                        end: prepared.selectionEnd,
-                      });
-                      setGuide(guide, {
-                        goal: started,
-                        page: title,
-                        open: guideOpensItself(),
-                      });
+              }}
+            >
+              {next ? (
+                <div className="ah-history-pager">
+                  <Button
+                    data-testid="older-history"
+                    size="row"
+                    label={txt.loadOlder}
+                    onPress={() => {
+                      captureAnchor();
+                      if (id) void store.older(id);
                     }}
                   />
-                ) : undefined
-              }
-              state={
-                visibleHistoryError && !storagePressure.full
-                  ? entries.length
-                    ? "stale"
-                    : "error"
-                  : // A live turn ends the start page even before its
-                    // native history is read; otherwise the intro would stay
-                    // above it and keep the view from following the work.
-                    entries.length ||
-                      held.waiting.length ||
-                      liveRow ||
-                      ownMessage
-                    ? "ready"
-                    : "empty"
-              }
-              items={[
-                ...timeline,
-                ...(restCard
-                  ? [{ id: "rest-card", kind: "receipt", content: restCard }]
-                  : []),
-                ...(ownMessage
-                  ? [
-                      {
-                        id: `sent:${ownMessage.command}`,
-                        kind: "user",
-                        content: (
-                          <UserMessage
-                            delivery={
-                              ownMessage.pending ? "pending" : "accepted"
-                            }
-                            sourceText={ownMessage.text}
-                            deliveryState={
-                              ownMessage.pending ? txt.sending : undefined
-                            }
-                            onCopy={() =>
-                              void navigator.clipboard?.writeText(
-                                ownMessage.text,
-                              )
-                            }
-                          />
-                        ),
-                      },
-                    ]
-                  : sendObservation &&
-                      // The bubble or the queue card shows a message on its
-                      // way; a reload knows only that one is.
-                      !(
-                        sendObservation.kind &&
-                        sendObservation.state === "pending"
-                      )
+                </div>
+              ) : null}
+              {transientNotices.map((notice) => (
+                <NoticeEntry key={notice.notice_id} notice={notice} />
+              ))}
+              {storagePressure.full ? null : (
+                <UnpresentedEvents
+                  events={events}
+                  liveEvents={live?.fragments}
+                />
+              )}
+              {cutOff && (
+                <InlineNotice
+                  data-testid="history-cut-off"
+                  tone="warning"
+                  title={txt.cutOff}
+                  description={txt.cutOffDetail}
+                  actions={[
+                    {
+                      label: txt.newConversation,
+                      onPress: () =>
+                        navigate(`/workspaces/${workspace.workspace_id}`),
+                    },
+                  ]}
+                />
+              )}
+              <ConversationTimeline
+                emptyLabel={
+                  controlled ? (
+                    <StartPageRead
+                      key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
+                      workspaceId={runWorkspace}
+                      agentId={current?.agent_id}
+                      store={store}
+                      draft={draft}
+                      onChange={changeDraft}
+                      onPage={(read) =>
+                        setStartPage({ key: pageKey, page: read })
+                      }
+                      onStarted={(started, title, prepared) => {
+                        // A goal names the conversation it starts, until the
+                        // person renames it.
+                        const name = goalConversationName(started);
+                        if (current?.agent_id && csrf && name)
+                          void renameConversation(
+                            current.agent_id,
+                            workspace.workspace_id,
+                            name,
+                            csrf,
+                          ).catch(() => {
+                            /* The automatic title then stands. */
+                          });
+                        if (!guide) return;
+                        prepareField(guide, {
+                          text: prepared.text,
+                          start: prepared.selectionStart,
+                          end: prepared.selectionEnd,
+                        });
+                        setGuide(guide, {
+                          goal: started,
+                          page: title,
+                          open: guideOpensItself(),
+                        });
+                      }}
+                    />
+                  ) : undefined
+                }
+                state={
+                  visibleHistoryError && !storagePressure.full
+                    ? entries.length
+                      ? "stale"
+                      : "error"
+                    : // A live turn ends the start page even before its
+                      // native history is read; otherwise the intro would stay
+                      // above it and keep the view from following the work.
+                      entries.length ||
+                        held.waiting.length ||
+                        keptItems.length ||
+                        liveRow ||
+                        ownMessage
+                      ? "ready"
+                      : "empty"
+                }
+                items={[
+                  ...timeline,
+                  ...(restCard
+                    ? [{ id: "rest-card", kind: "receipt", content: restCard }]
+                    : []),
+                  ...(ownMessage
                     ? [
                         {
-                          id: "send-observation",
-                          kind: "receipt",
+                          id: `sent:${ownMessage.command}`,
+                          kind: "user",
                           content: (
-                            <SendObservation
-                              text={sendObservation.text}
-                              state={sendObservation.state}
-                              showText
+                            <UserMessage
+                              delivery={
+                                ownMessage.pending ? "pending" : "accepted"
+                              }
+                              sourceText={ownMessage.text}
+                              deliveryState={
+                                ownMessage.pending ? txt.sending : undefined
+                              }
                               onCopy={() =>
                                 void navigator.clipboard?.writeText(
-                                  sendObservation.text,
+                                  ownMessage.text,
                                 )
                               }
                             />
                           ),
                         },
                       ]
+                    : sendObservation &&
+                        // The bubble or the queue card shows a message on its
+                        // way; a reload knows only that one is.
+                        !(
+                          sendObservation.kind &&
+                          sendObservation.state === "pending"
+                        )
+                      ? [
+                          {
+                            id: "send-observation",
+                            kind: "receipt",
+                            content: (
+                              <SendObservation
+                                text={sendObservation.text}
+                                state={sendObservation.state}
+                                showText
+                                onCopy={() =>
+                                  void navigator.clipboard?.writeText(
+                                    sendObservation.text,
+                                  )
+                                }
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                  ...held.waiting.map((w) => ({
+                    id: `held:${w.command_id}`,
+                    kind: "user",
+                    content: (
+                      <WaitingMessage
+                        text={w.text}
+                        state={w.state}
+                        onCopy={() =>
+                          void navigator.clipboard?.writeText(w.text)
+                        }
+                      />
+                    ),
+                  })),
+                  ...keptItems.map((k) => ({
+                    id: `kept:${k.id}`,
+                    kind: "user",
+                    content: (
+                      <WaitingMessage
+                        text={k.text}
+                        state="waiting"
+                        onCopy={() =>
+                          void navigator.clipboard?.writeText(k.text)
+                        }
+                      />
+                    ),
+                  })),
+                  ...(startFailed
+                    ? [
+                        {
+                          id: "held-start-failure",
+                          kind: "receipt",
+                          content: (
+                            <HeldStartFailure
+                              count={held.waiting.length}
+                              reason={startProblemReason(
+                                current?.start_problem,
+                              )}
+                              onRetry={() => void held.retry()}
+                              onEdit={() => void held.cancel()}
+                            />
+                          ),
+                        },
+                      ]
                     : []),
-                ...held.waiting.map((w) => ({
-                  id: `held:${w.command_id}`,
-                  kind: "user",
-                  content: (
-                    <WaitingMessage
-                      text={w.text}
-                      state={w.state}
-                      onCopy={() => void navigator.clipboard?.writeText(w.text)}
-                    />
-                  ),
-                })),
-                ...(startFailed
-                  ? [
-                      {
-                        id: "held-start-failure",
-                        kind: "receipt",
-                        content: (
-                          <HeldStartFailure
-                            count={held.waiting.length}
-                            reason={startProblemReason(current?.start_problem)}
-                            onRetry={() => void held.retry()}
-                            onEdit={() => void held.cancel()}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(!statusStale && current?.pending_question
-                  ? [
-                      {
-                        id: `question:${current.pending_question.request_id}`,
-                        kind: "question",
-                        content: (
-                          <PiQuestion
-                            question={current.pending_question}
-                            agentId={current.agent_id}
-                            identity={identity}
-                            csrf={csrf}
-                            refresh={refresh}
-                            onLogin={onLogin}
-                            onOutcome={setQuestionOutcome}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(showRun && bash
-                  ? [
-                      {
-                        id: `bash:${bash.command_id}`,
-                        kind: "bash",
-                        content: (
-                          <CommandRun
-                            command={bash.command}
-                            excludeFromContext={bash.exclude_from_context}
-                            state={
-                              bashStopState === "uncertain"
-                                ? "uncertain"
-                                : bash.state
-                            }
-                            exitCode={bash.exit_code}
-                            startedAt={
-                              bash.started_at
-                                ? Date.parse(bash.started_at)
-                                : undefined
-                            }
-                            output={bashOutput}
-                            stopping={bashStopState === "pending"}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(liveTurn && settled.liveKey
-                  ? [
-                      {
-                        id: settled.liveKey,
-                        kind: "assistant",
-                        content: (
-                          <AgentTurn
-                            steps={liveTurn.steps}
-                            working={liveTurn.working}
-                            activity={liveTurn.activity}
-                            duration={liveTurn.duration}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-              historyMode="pagedAccessible"
-              newContentCount={unseen}
-              latestWorking={
-                current?.run_active ??
-                (current?.state === "working" || current?.state === "accepted")
-              }
-              latestDuration={duration}
-              showJumpToLatest={awayFromLatest}
-              onJumpToLatest={() => {
-                wasAtBottom.current = true;
-                readingAnchor.current = undefined;
-                if (id) store.savePosition(id);
-                setAwayFromLatest(false);
-                feed.current?.scrollTo({
-                  top: feed.current.scrollHeight,
-                  behavior: window.matchMedia(
-                    "(prefers-reduced-motion: reduce)",
-                  ).matches
-                    ? "instant"
-                    : "smooth",
-                });
-                feed.current?.focus({ preventScroll: true });
-                setUnseen(0);
-              }}
-            />
-            {(!current?.pending_question || statusStale) && questionOutcome ? (
-              <p className="ah-native-question" role="status">
-                {questionOutcome === "stale"
-                  ? txt.questionStale
-                  : txt.questionUncertain}
-              </p>
-            ) : null}
-            {/* Normal progress belongs to the turn header, not a second row
+                  ...(!statusStale && current?.pending_question
+                    ? [
+                        {
+                          id: `question:${current.pending_question.request_id}`,
+                          kind: "question",
+                          content: (
+                            <PiQuestion
+                              question={current.pending_question}
+                              agentId={current.agent_id}
+                              identity={identity}
+                              csrf={csrf}
+                              refresh={refresh}
+                              onLogin={onLogin}
+                              onOutcome={setQuestionOutcome}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
+                  ...(showRun && bash
+                    ? [
+                        {
+                          id: `bash:${bash.command_id}`,
+                          kind: "bash",
+                          content: (
+                            <CommandRun
+                              command={bash.command}
+                              excludeFromContext={bash.exclude_from_context}
+                              state={
+                                bashStopState === "uncertain"
+                                  ? "uncertain"
+                                  : bash.state
+                              }
+                              exitCode={bash.exit_code}
+                              startedAt={
+                                bash.started_at
+                                  ? Date.parse(bash.started_at)
+                                  : undefined
+                              }
+                              output={bashOutput}
+                              stopping={bashStopState === "pending"}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
+                  ...(liveTurn && settled.liveKey
+                    ? [
+                        {
+                          id: settled.liveKey,
+                          kind: "assistant",
+                          content: (
+                            <AgentTurn
+                              steps={liveTurn.steps}
+                              working={liveTurn.working}
+                              activity={liveTurn.activity}
+                              duration={liveTurn.duration}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+                historyMode="pagedAccessible"
+                newContentCount={unseen}
+                latestWorking={
+                  current?.run_active ??
+                  (current?.state === "working" ||
+                    current?.state === "accepted")
+                }
+                latestDuration={duration}
+                showJumpToLatest={awayFromLatest}
+                onJumpToLatest={() => {
+                  wasAtBottom.current = true;
+                  readingAnchor.current = undefined;
+                  if (id) store.savePosition(id);
+                  setAwayFromLatest(false);
+                  feed.current?.scrollTo({
+                    top: feed.current.scrollHeight,
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "instant"
+                      : "smooth",
+                  });
+                  feed.current?.focus({ preventScroll: true });
+                  setUnseen(0);
+                }}
+              />
+              {(!current?.pending_question || statusStale) &&
+              questionOutcome ? (
+                <p className="ah-native-question" role="status">
+                  {questionOutcome === "stale"
+                    ? txt.questionStale
+                    : txt.questionUncertain}
+                </p>
+              ) : null}
+              {/* Normal progress belongs to the turn header, not a second row
                 that mounts/unmounts beneath streaming content. */}
-            {current?.state === "stopping" || current?.state === "uncertain" ? (
-              <WorkingProgress state={current.state} events={events} />
-            ) : current?.state === "stopped" &&
-              current.interrupted &&
-              !held.waiting.length ? (
-              <WorkingProgress state="uncertain" events={events} />
-            ) : null}
-            {!storagePressure.full && statusStale && !serverUnavailable ? (
-              <InlineNotice
-                data-testid="conversation-stale"
-                title={txt.stale}
-                description={txt.staleDetail}
-                tone="warning"
-                actions={[
-                  {
-                    label: txt.check,
-                    onPress: () => {
+              {current?.state === "stopping" ||
+              current?.state === "uncertain" ? (
+                <WorkingProgress state={current.state} events={events} />
+              ) : current?.state === "stopped" &&
+                current.interrupted &&
+                !held.waiting.length ? (
+                <WorkingProgress state="uncertain" events={events} />
+              ) : null}
+              {!storagePressure.full && statusStale && !serverUnavailable ? (
+                <InlineNotice
+                  data-testid="conversation-stale"
+                  title={txt.stale}
+                  description={txt.staleDetail}
+                  tone="warning"
+                  actions={[
+                    {
+                      label: txt.check,
+                      onPress: () => {
+                        if (
+                          continuation &&
+                          continuation !== "uncertain" &&
+                          continuation !== "pending"
+                        )
+                          setContinuation(undefined);
+                        void refresh(true, true);
+                      },
+                    },
+                  ]}
+                />
+              ) : null}
+              {!storagePressure.full &&
+              journalOffline &&
+              !statusStale &&
+              !serverUnavailable ? (
+                <InlineNotice
+                  title={txt.journalLost}
+                  description={txt.journalLostDetail}
+                  tone="warning"
+                />
+              ) : null}
+              {!statusStale &&
+              !serverUnavailable &&
+              showMissedEvents(!!live?.missed, current) ? (
+                <InlineNotice
+                  data-testid="event-gap"
+                  title={txt.missed}
+                  description={txt.missedDetail}
+                  tone="warning"
+                />
+              ) : null}
+              {events.length && current?.native_history !== "present" ? (
+                <p role="status">{txt.eventsBeforeHistory}</p>
+              ) : null}
+              {replaceNotes.notes.map((note) => (
+                <EditorReplaceNote
+                  key={note.id}
+                  path={note.path}
+                  at={note.at}
+                  changes={note.changes}
+                  tellBlocked={tellBlocked}
+                  onTell={() => {
+                    tell(messageFor(note));
+                    closeReplaceNote(note.id);
+                  }}
+                  onDismiss={() => closeReplaceNote(note.id)}
+                />
+              ))}
+            </ConversationStream>
+          ) : view === "loading" || !creation ? (
+            <LoadingStream
+              waiting={keptItems.map((k) => k.text)}
+              problem={problem || undefined}
+              onRetry={() => setOpenAttempt((n) => n + 1)}
+            />
+          ) : (
+            <CreationStream
+              workspace={workspace}
+              creation={creation}
+              waiting={held.waiting}
+              draft={draft}
+              guide={guide ?? ""}
+              snapshot={recoverySnapshot}
+              csrf={csrf}
+              onChange={changeDraft}
+              onPage={(read) => setStartPage({ key: pageKey, page: read })}
+              onGiveBack={creationView.giveBack}
+            />
+          )}
+          {view === "opened" ? (
+            <>
+              <div className="ah-actionable-notices">
+                {github}
+                {aiNotice}
+                {!statusStale &&
+                current?.auth_error === "pi_model_unsupported" ? (
+                  <WarningBanner
+                    data-testid="model-unavailable"
+                    tone="danger"
+                    title={txt.modelUnsupported}
+                    actions={
+                      <ControlButton
+                        data-testid="notice-action"
+                        size="row"
+                        onPress={() => {
+                          setModelExpanded(!modelExpanded);
+                        }}
+                      >
+                        {txt.chooseModel}
+                      </ControlButton>
+                    }
+                  >
+                    {txt.modelUnsupportedDetail}
+                  </WarningBanner>
+                ) : null}
+                {!statusStale &&
+                current?.auth_error === "pi_model_unsupported" &&
+                modelExpanded ? (
+                  <PiModelSelector
+                    csrf={csrf}
+                    scope="recovery"
+                    onChoice={(choice) =>
+                      void start(
+                        choice,
+                        !entries.some((e) => e.kind === "user"),
+                      )
+                    }
+                  />
+                ) : null}
+              </div>
+              {!storagePressure.full &&
+              !statusStale &&
+              (visibleRecovery || details) ? (
+                <div className="ah-status-check">
+                  <Button
+                    data-testid="conversation-recheck"
+                    size="row"
+                    label={txt.recheck}
+                    variant="quiet"
+                    onPress={() => {
                       if (
                         continuation &&
                         continuation !== "uncertain" &&
                         continuation !== "pending"
                       )
                         setContinuation(undefined);
-                      void refresh(true, true);
-                    },
-                  },
-                ]}
-              />
-            ) : null}
-            {!storagePressure.full &&
-            journalOffline &&
-            !statusStale &&
-            !serverUnavailable ? (
-              <InlineNotice
-                title={txt.journalLost}
-                description={txt.journalLostDetail}
-                tone="warning"
-              />
-            ) : null}
-            {!statusStale &&
-            !serverUnavailable &&
-            showMissedEvents(!!live?.missed, current) ? (
-              <InlineNotice
-                data-testid="event-gap"
-                title={txt.missed}
-                description={txt.missedDetail}
-                tone="warning"
-              />
-            ) : null}
-            {events.length && current?.native_history !== "present" ? (
-              <p role="status">{txt.eventsBeforeHistory}</p>
-            ) : null}
-            {replaceNotes.notes.map((note) => (
-              <EditorReplaceNote
-                key={note.id}
-                path={note.path}
-                at={note.at}
-                changes={note.changes}
-                tellBlocked={tellBlocked}
-                onTell={() => {
-                  tell(messageFor(note));
-                  closeReplaceNote(note.id);
-                }}
-                onDismiss={() => closeReplaceNote(note.id)}
-              />
-            ))}
-          </ConversationStream>
-          <div className="ah-actionable-notices">
-            {github}
-            {!statusStale && current?.auth_error === "pi_auth_failed" ? (
-              <WarningBanner
-                data-testid="provider-auth-error"
-                tone="danger"
-                title={txt.authFailed}
-                actions={
-                  <ControlButton
-                    data-testid="notice-action"
-                    size="row"
-                    variant="primary"
-                    onPress={() =>
-                      navigate(
-                        `/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
-                      )
-                    }
-                  >
-                    {txt.signInAgain}
-                  </ControlButton>
-                }
-              >
-                {txt.authFailedDetail}
-              </WarningBanner>
-            ) : null}
-            {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
-              <WarningBanner
-                data-testid="model-unavailable"
-                tone="danger"
-                title={txt.modelUnsupported}
-                actions={
-                  <ControlButton
-                    data-testid="notice-action"
-                    size="row"
-                    onPress={() => {
-                      setModelExpanded(!modelExpanded);
+                      void refresh(true, true); // explicit check may prove an ended conversation
                     }}
+                  />
+                </div>
+              ) : null}
+              <div className="ah-conversation-notices">
+                {titleError ? (
+                  <InlineNotice
+                    data-testid="title-error"
+                    title={txt.titleFailed}
+                    description={titleError || undefined}
+                    tone="danger"
+                  />
+                ) : null}
+                {statusStale || storagePressure.full ? null : notices}
+                {held.notice ? (
+                  <p
+                    data-testid="held-message-notice"
+                    className="ah-held-notice"
+                    role="status"
                   >
-                    {txt.chooseModel}
-                  </ControlButton>
-                }
-              >
-                {txt.modelUnsupportedDetail}
-              </WarningBanner>
-            ) : null}
-            {!statusStale &&
-            current?.auth_error === "pi_model_unsupported" &&
-            modelExpanded ? (
-              <PiModelSelector
-                csrf={csrf}
-                scope="recovery"
-                onChoice={(choice) =>
-                  void start(choice, !entries.some((e) => e.kind === "user"))
-                }
-              />
-            ) : null}
-          </div>
-          {!storagePressure.full &&
-          !statusStale &&
-          (visibleRecovery || details) ? (
-            <div className="ah-status-check">
-              <Button
-                data-testid="conversation-recheck"
-                size="row"
-                label={txt.recheck}
-                variant="quiet"
-                onPress={() => {
-                  if (
-                    continuation &&
-                    continuation !== "uncertain" &&
-                    continuation !== "pending"
-                  )
-                    setContinuation(undefined);
-                  void refresh(true, true); // explicit check may prove an ended conversation
-                }}
-              />
-            </div>
-          ) : null}
-          <div className="ah-conversation-notices">
-            {titleError ? (
-              <InlineNotice
-                data-testid="title-error"
-                title={txt.titleFailed}
-                description={titleError || undefined}
-                tone="danger"
-              />
-            ) : null}
-            {statusStale || storagePressure.full ? null : notices}
-            {held.notice ? (
-              <p
-                data-testid="held-message-notice"
-                className="ah-held-notice"
-                role="status"
-              >
-                {held.notice}
-              </p>
-            ) : null}
-          </div>
-          {(recapFailed
-            ? !recapFailedDismissed
-            : !recapDismissed &&
-              (shownRecap ||
-                outdatedRequest ||
-                recapBusy ||
-                recapError ||
-                recapUncertain)) && (
-            <RecapCard
-              // Only "Tilannekatsaus": the header and sidebar already say
-              // who is waiting (Jari 16.10.2026).
-              recap={shownRecap}
-              latestAt={recapCurrent?.latestAt}
-              now={recapNow}
-              pending={!!recapBusy}
-              onDismiss={
-                recapFailed
-                  ? () =>
-                      setDismissedRecap(
-                        `${dismissalKey}:failed:${recapFailed.through}`,
-                      )
-                  : recapFingerprint
-                    ? () => {
-                        setDismissedRecap(
-                          `${dismissalKey}:${recapFingerprint}`,
-                        );
-                        try {
-                          localStorage.setItem(dismissalKey, recapFingerprint);
-                        } catch {
-                          /* Keep it dismissed in this tab. */
-                        }
-                      }
-                    : undefined
-              }
-              error={!!recapError || (!recapBusy && !!recapFailed)}
-              failure={recapBusy ? undefined : recapReason}
-              uncertain={!!recapUncertain}
-              unverifiable={!!recapCurrent?.unavailable}
-              unavailable={recapUnavailable}
-              unavailableReason={recapUnavailableReason}
-              onRequest={requestRecapNow}
-              settingsHref={settingsHref("tilannekatsaus")}
-              onOpenSettings={() => navigate(settingsHref("tilannekatsaus"))}
-            />
+                    {held.notice}
+                  </p>
+                ) : null}
+              </div>
+              {(recapFailed
+                ? !recapFailedDismissed
+                : !recapDismissed &&
+                  (shownRecap ||
+                    outdatedRequest ||
+                    recapBusy ||
+                    recapError ||
+                    recapUncertain)) && (
+                <RecapCard
+                  // Only "Tilannekatsaus": the header and sidebar already say
+                  // who is waiting (Jari 16.10.2026).
+                  recap={shownRecap}
+                  latestAt={recapCurrent?.latestAt}
+                  now={recapNow}
+                  pending={!!recapBusy}
+                  onDismiss={
+                    recapFailed
+                      ? () =>
+                          setDismissedRecap(
+                            `${dismissalKey}:failed:${recapFailed.through}`,
+                          )
+                      : recapFingerprint
+                        ? () => {
+                            setDismissedRecap(
+                              `${dismissalKey}:${recapFingerprint}`,
+                            );
+                            try {
+                              localStorage.setItem(
+                                dismissalKey,
+                                recapFingerprint,
+                              );
+                            } catch {
+                              /* Keep it dismissed in this tab. */
+                            }
+                          }
+                        : undefined
+                  }
+                  error={!!recapError || (!recapBusy && !!recapFailed)}
+                  failure={recapBusy ? undefined : recapReason}
+                  uncertain={!!recapUncertain}
+                  unverifiable={!!recapCurrent?.unavailable}
+                  unavailable={recapUnavailable}
+                  unavailableReason={recapUnavailableReason}
+                  onRequest={requestRecapNow}
+                  settingsHref={settingsHref("tilannekatsaus")}
+                  onOpenSettings={() =>
+                    navigate(settingsHref("tilannekatsaus"))
+                  }
+                />
+              )}
+            </>
+          ) : (
+            <CreationNotice notice={creationView.notice} />
           )}
-          {controlled ? (
+          {view === "opened" && controlled ? (
             <>
               {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
                   the strip marks only which work is waited on. */}
@@ -2486,147 +3123,14 @@ function BrowserConversationContent({
                 <NextWaitingDock
                   next={nextWaiting}
                   agentId={id}
-                  open={waitingWindow.open}
+                  open={waitingWindow.open && draft.length === 0}
                 />
               ) : null}
-              <Composer
-                csrf={csrf}
-                speech={speech}
-                modelPicker={
-                  canChooseFirstModel ? (
-                    <ComposerModelPicker
-                      key={id}
-                      model={selectedModel}
-                      thinking={selectedThinking}
-                      models={models?.models}
-                    >
-                      {(close) => (
-                        <PiModelSelector
-                          csrf={csrf}
-                          scope="empty"
-                          onBlocked={setModelBlocked}
-                          current={selectedModel}
-                          currentThinking={selectedThinking}
-                          onChoice={(choice) => {
-                            setModelChoice(choice);
-                            close();
-                          }}
-                        />
-                      )}
-                    </ComposerModelPicker>
-                  ) : undefined
-                }
-                value={draft}
-                goals={goals}
-                onChange={(value) => {
-                  changeDraft(value);
-                  // The first character wakes a resting agent; nothing else does.
-                  if (value.trim() && resting) rest.onTyping();
-                }}
-                idlePlaceholder={
-                  restCard && rest.wake !== "awake"
-                    ? txt.wakePlaceholder
-                    : undefined
-                }
-                onActivity={recapHold.note}
-                activity={
-                  !notStarted &&
-                  (current?.run_active ?? current?.state === "accepted")
-                    ? "working"
-                    : "idle"
-                }
-                selectedWorkingMode={workingMode}
-                queue={
-                  shownQueue
-                    ? {
-                        steering: shownQueue.steering,
-                        followUp: shownQueue.follow_up,
-                      }
-                    : undefined
-                }
-                queueKnown={!!current?.queue}
-                onRestoreQueue={() => void clearNativeQueue()}
-                restoreAvailability={queueRestoreAvailability}
-                shell={composerShell}
-                stopState={
-                  current?.state === "stopping"
-                    ? "pending"
-                    : current?.state === "uncertain"
-                      ? "uncertain"
-                      : stopPhase
-                }
-                sources={composerSources}
-                sendState={
-                  busy
-                    ? "pending"
-                    : ambiguous && !notStarted
-                      ? "uncertain"
-                      : "idle"
-                }
-                // The outage/status notice already explains the block and its remedy.
-                // Keep the control's reason accessible, but do not show a second warning.
-                suppressAvailabilityReason={
-                  archive?.archive !== "archived" &&
-                  archive?.archive !== "unknown" &&
-                  (serverUnavailable ||
-                    statusStale ||
-                    journalOffline ||
-                    showMissedEvents(!!live?.missed, current) ||
-                    Boolean(
-                      ambiguous && sendObservation?.state === "uncertain",
-                    ))
-                }
-                // Status refreshes (including turn completion) guard host writes,
-                // not the local draft. Disabling the textarea here drops focus
-                // and the caret even if the next status read succeeds.
-                editorAvailability={{ state: "enabled" }}
-                availability={
-                  canSend
-                    ? { state: "enabled" }
-                    : { state: "unknown", reason: sendBlocked }
-                }
-                onSendNow={(text = draft) => {
-                  if (text !== draft) changeDraft(text);
-                  if (draft.trim() && canSend) {
-                    dismissRecapOnSend();
-                    rest.onSend();
-                  }
-                  if (notStarted) {
-                    // A new conversation's first message carries the model
-                    // chosen in its field, as a direct first send does.
-                    if (canSend)
-                      held.submit(
-                        text,
-                        canChooseFirstModel ? modelChoice : undefined,
-                      );
-                  } else void submit(text);
-                }}
-                onSteer={(text = draft) => {
-                  if (text !== draft) changeDraft(text);
-                  if (draft.trim()) dismissRecapOnSend();
-                  void submitQueue("steer", text);
-                }}
-                onFollowUp={(text = draft) => {
-                  if (text !== draft) changeDraft(text);
-                  if (draft.trim()) dismissRecapOnSend();
-                  void submitQueue("follow_up", text);
-                }}
-                onModeChange={setWorkingMode}
-                onInterrupt={
-                  (current?.run_active ?? current?.state === "accepted") &&
-                  !statusStale
-                    ? () => void stopNow()
-                    : undefined
-                }
-                onStopWaiting={
-                  waitingForPi && current?.state === "starting" && !statusStale
-                    ? () => void held.cancel()
-                    : undefined
-                }
-              />
             </>
           ) : null}
-          {shell.panel}
+          {view === "opened" ? rewind.sheet : null}
+          {view !== "opened" || controlled ? <Composer {...composer} /> : null}
+          {view === "opened" ? shell.panel : null}
         </ConversationFrame>
       )}
       {!id ? notices : null}

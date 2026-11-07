@@ -115,9 +115,23 @@ for line in sys.stdin:
 	done := make(chan struct{})
 	go func() { c.nameConversation(s, "some text", false); close(done) }()
 	<-entered
-	// A second request is not admitted while generation is in flight.
+	// A second request is not admitted while generation is in flight, and
+	// it says why. The settled-history operation chosen from a stale browser
+	// view reaches the same live Pi rather than refusing it as a writer.
 	if !s.naming {
 		t.Fatal("lost naming reservation")
+	}
+	pending := httptest.NewRecorder()
+	c.regenerateTitle(pending, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
+	if pending.Code != 409 || !strings.Contains(pending.Body.String(), `"title_pending"`) {
+		t.Fatalf("regeneration during automatic title: %d %s", pending.Code, pending.Body.String())
+	}
+	historyRequest := httptest.NewRequest("POST", "http://unix/history_title", strings.NewReader(`{"workspace_id":"ws_fixture123"}`))
+	historyRequest.Header.Set("Content-Type", "application/json")
+	pending = httptest.NewRecorder()
+	c.historyTitle(pending, historyRequest, id)
+	if pending.Code != 409 || !strings.Contains(pending.Body.String(), `"title_pending"`) {
+		t.Fatalf("history title on a live Pi during automatic title: %d %s", pending.Code, pending.Body.String())
 	}
 	appendName("Chosen in terminal")
 	close(release)
@@ -211,6 +225,19 @@ for line in sys.stdin:
 	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
 		t.Fatalf("retry failed: %d %s", w.Code, w.Body.String())
+	}
+	// The settled-history request for this running conversation is served by
+	// its Pi: the native name changes and no temporary Pi is started.
+	c.titleGenerator = func(string) (string, error) { return "Live history title", nil }
+	historyRequest = httptest.NewRequest("POST", "http://unix/history_title", strings.NewReader(`{"workspace_id":"ws_fixture123"}`))
+	historyRequest.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	c.historyTitle(w, historyRequest, id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
+		t.Fatalf("history title on a live Pi: %d %s", w.Code, w.Body.String())
+	}
+	if name, _ := c.sessionName(s); name != "Live history title" {
+		t.Fatalf("history title on a live Pi wrote %q", name)
 	}
 	// The third turn does not refine a name supplied by a person or by
 	// explicit regeneration, even if automatic naming failed earlier.

@@ -60,8 +60,6 @@ const fi = {
   noControl: "Ohjaus ei ole käytettävissä.",
   retitle: "Luo uusi otsikko",
   nothingToName: "Keskustelussa ei ole vielä nimettävää sisältöä.",
-  titleModelUnavailable:
-    "Otsikointimalli ei vastannut. Tarkista mallipalvelun kirjautuminen asetuksista ja yritä uudelleen.",
   titleInvalid:
     "Mallilta ei saatu kelvollista otsikkoa. Voit yrittää uudelleen.",
   titleUncertain:
@@ -102,10 +100,6 @@ const fi = {
   missedDetail:
     "Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia.",
   eventsBeforeHistory: "Agentin tapahtumia vastaanotettu; historiaa odotetaan.",
-  authFailed: "Kielimallikirjautuminen ei ole kunnossa",
-  signInAgain: "Kirjaudu uudelleen",
-  authFailedDetail:
-    "Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy.",
   modelUnsupported: "Valittu kielimalli ei ole käytettävissä",
   chooseModel: "Valitse toinen malli",
   modelUnsupportedDetail:
@@ -113,6 +107,8 @@ const fi = {
   recheck: "Tarkista keskustelun tila",
   titleFailed: "Otsikkoa ei voitu luoda",
   wakePlaceholder: "Kirjoita, niin agentti herää…",
+  keptNotSent: (reason: string) =>
+    `Viestiä ei lähetetty: ${reason} Teksti on taas kentässä.`,
 };
 
 export const browserConversationText = catalog(fi, {
@@ -167,8 +163,6 @@ export const browserConversationText = catalog(fi, {
   noControl: "Control is not available.",
   retitle: "Make a new title",
   nothingToName: "The conversation has nothing to name yet.",
-  titleModelUnavailable:
-    "The titling model did not answer. Check your model provider sign-in in Settings and try again.",
   titleInvalid: "The model did not return a usable title. You can try again.",
   titleUncertain:
     "It is unclear whether the title changed. Check the current title and the conversation's status before trying again.",
@@ -208,10 +202,6 @@ export const browserConversationText = catalog(fi, {
   missedDetail:
     "The tail of the live events is incomplete. Check the native history.",
   eventsBeforeHistory: "Agent events received; waiting for the history.",
-  authFailed: "The language model sign-in is not working",
-  signInAgain: "Sign in again",
-  authFailedDetail:
-    "Sign in to your OpenAI account again, then continue the conversation. The message is not resent automatically; your draft is kept.",
   modelUnsupported: "The chosen language model is not available",
   chooseModel: "Choose another model",
   modelUnsupportedDetail:
@@ -219,6 +209,8 @@ export const browserConversationText = catalog(fi, {
   recheck: "Check the conversation's status",
   titleFailed: "The title could not be made",
   wakePlaceholder: "Type to wake the agent…",
+  keptNotSent: (reason) =>
+    `The message was not sent: ${reason} The text is back in the field.`,
 });
 
 ```
