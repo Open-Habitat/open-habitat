@@ -42,13 +42,14 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
   api.events.on('processes:command:kill', q => { kills.push(q); q.reply({ ok: true }); });
   api.events.on('processes:command:clear', q => { records = records.filter(p => p.status === 'running'); q.reply(1); });
   const now = Date.now();
-  records = [{ id: 'proc_abcd', name: 'fixture', startTime: now, status: 'running' }];
+  records = [{ id: 'proc_abcd', name: 'fixture', command: 'taskfleet run wait 01m531x6y92ggdqcmb1exzmn10', startTime: now, status: 'running' }];
   const branch = [{ message: { role: 'toolResult', toolName: 'process', details: { action: 'start', process: records[0], notify: { onSuccess: 'turn', onFailure: 'context' } } } }];
   try {
     await hooks.get('session_start')({}, { sessionManager: { getBranch: () => branch } });
     assert.equal((await stat(path)).mode & 0o777, 0o600);
     const list = await request(path, { op: 'list' });
     assert.equal(list.data.records[0].wakes_agent, true);
+    assert.deepEqual(list.data.records[0].run_ids, ['01m531x6y92ggdqcmb1exzmn10']);
     const hints = [];
     let ready, outputReady;
     const watching = new Promise(resolve => { ready = resolve; });

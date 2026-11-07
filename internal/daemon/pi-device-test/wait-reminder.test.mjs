@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
-import companion, { liveWaitRuns, remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
+import companion, { inventoryWaitRuns, liveWaitRuns, remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
 
 const ids = { a: '01m531x6y92ggdqcmb1exzmn10', b: '01m531x6y92ggdqcmb1exzmn11', c: '01m531x6y92ggdqcmb1exzmn12', foreign: '01m531x6y92ggdqcmb1exzmn13', asks: '01m531x6y92ggdqcmb1exzmn14' };
 const run = (id, extra = {}) => ({ run_id: id, kind: 'spinoff', status: 'running', title: `t-${id.slice(-2)}`, created_at: `2026-10-27T10:00:${id.slice(-2)}Z`, source_repo: '/w', created_by_session: { harness: 'pi', session_id: 's1' }, created_by_run_id: null, ...extra });
@@ -43,6 +43,12 @@ test('expanded waits use live argv, with bounded unknown rather than false cover
       await new Promise(resolve => setTimeout(resolve, 10));
     }
     assert.deepEqual(observed, [ids.a]);
+    assert.deepEqual(await inventoryWaitRuns([
+      { command, pid: child.pid, status: 'running' },
+      { command, pid: child.pid, status: 'exited' },
+      { command, pid: -1, status: 'running' },
+      { command: `taskfleet run wait ${ids.b}`, status: 'running' },
+    ]), [[ids.a], [], [], [ids.b]], 'the badge gets only observed live expansions; ended and unreadable trees cannot claim a wait');
     const uncovered = await uncoveredRuns({ sessionId: 's1', cwd: directory, waits: [{ command, pid: child.pid }], read: async () => ({ runs }) });
     assert.deepEqual(uncovered.map(r => r.run_id), [ids.b], 'only the actually expanded id is covered');
     assert.equal(await liveWaitRuns(child.pid, { uid: process.getuid() + 1 }), null, 'foreign ownership is not read');

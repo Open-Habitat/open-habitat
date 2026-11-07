@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -84,6 +85,47 @@ func TestProcessSocketRejectsWrongChild(t *testing.T) {
 		t.Fatal("another same-UID process accepted")
 	}
 }
+func TestProcessInventoryExpandedWaitIDs(t *testing.T) {
+	const run = "01m531x6y92ggdqcmb1exzmn10"
+	for _, tc := range []struct {
+		name      string
+		ids       []string
+		available bool
+	}{
+		{"expanded", []string{run}, true},
+		{"unknown", []string{}, true},
+		{"invalid", []string{"not-a-run"}, false},
+		{"oversized", make([]string, 201), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := testProcessPeer(t, os.Getpid(), func(c net.Conn) {
+				var q map[string]any
+				if json.NewDecoder(c).Decode(&q) != nil {
+					return
+				}
+				json.NewEncoder(c).Encode(map[string]any{"ok": true, "data": map[string]any{"protocol": 1, "records": []any{map[string]any{
+					"id": "proc_abcd", "name": "wait", "command": "taskfleet run wait $(cat active.txt) --any", "startTime": 1000, "status": "running", "wakes_agent": true, "run_ids": tc.ids,
+				}}}})
+			})
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			inv := p.inventory(ctx)
+			if (inv.Availability == "available") != tc.available {
+				t.Fatalf("inventory: %+v", inv)
+			}
+			if tc.available {
+				if len(inv.Processes) != 1 || !reflect.DeepEqual(inv.Processes[0].RunIDs, tc.ids) {
+					t.Fatalf("lost expanded IDs: %+v", inv)
+				}
+				waiting := inventoryWaiting(inv)
+				if len(waiting) != 1 || !reflect.DeepEqual(waiting[0].RunIDs, tc.ids) {
+					t.Fatalf("waiting: %+v", waiting)
+				}
+			}
+		})
+	}
+}
+
 func TestProcessSocketInventoryAndStaleFence(t *testing.T) {
 	requests := make(chan map[string]any, 4)
 	p := testProcessPeer(t, os.Getpid(), func(c net.Conn) {

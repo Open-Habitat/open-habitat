@@ -94,6 +94,27 @@ export async function liveWaitRuns(pid, { procRoot = '/proc', uid = process.getu
     return [...ids];
   } catch { return null; } // exits, permissions and exhausted bounds are unknown
 }
+// Shared by the reminder and the browser inventory: shell text first, then
+// the actual expanded argv. Unknown must never manufacture covered run IDs.
+export async function processWaitRuns(wait) {
+  const command = typeof wait === 'string' ? wait : wait?.command;
+  const literal = waitRuns(command);
+  if (literal.length) return literal;
+  const ids = typeof wait === 'string' ? [] : await liveWaitRuns(wait?.pid);
+  return ids?.length === 0 && /\btaskfleet\b/.test(command ?? '') ? null : ids;
+}
+export async function inventoryWaitRuns(records) {
+  // Bound the whole inventory too, not 100 ms times up to 200 processes.
+  const deadline = Date.now() + 200;
+  const result = [];
+  for (const p of records) {
+    const literal = waitRuns(p.command);
+    const ids = literal.length ? literal : live(p) && Date.now() < deadline
+      ? (await processWaitRuns(p) ?? []) : [];
+    result.push(ids.length <= 200 ? ids : []);
+  }
+  return result;
+}
 // What the branch says about process lifetimes and earlier catch-ups. Same
 // rule as the daemon's tray (process_interrupted_linux.go): a start without an
 // end notification or stop result. Graceful shutdown stops leave no record.
@@ -293,13 +314,7 @@ export async function uncoveredRuns({ sessionId, cwd, waits, read = taskfleet })
   // Unknown coverage cannot justify telling the agent that nothing waits.
   // A string is useful to static callers; live inventory also supplies the PID.
   for (const wait of waits) {
-    const command = typeof wait === 'string' ? wait : wait.command;
-    let ids = waitRuns(command);
-    if (!ids.length) {
-      ids = typeof wait === 'string' ? [] : await liveWaitRuns(wait?.pid);
-      // A named wait may still be expanding, before its child exists.
-      if (ids?.length === 0 && /\btaskfleet\b/.test(command ?? '')) ids = null;
-    }
+    const ids = await processWaitRuns(wait);
     if (ids === null) return null;
     for (const id of ids) covered.add(id);
   }
@@ -413,11 +428,12 @@ export default function (pi) {
       const records = inventories;
       if (!Array.isArray(records) || records.length > 200) throw new Error('inventory_unavailable');
       const branch = context.sessionManager.getBranch();
-      return { records: records.map(p => ({
+      const runIDs = await inventoryWaitRuns(records);
+      return { records: records.map((p, i) => ({
         id: p.id, name: p.name, command: String(p.command ?? '').slice(0, 8192),
         startTime: p.startTime, endTime: p.endTime, status: p.status,
         exitCode: p.exitCode, signal: p.signal, endReason: p.endReason,
-        wakes_agent: wakes(p, branch),
+        wakes_agent: wakes(p, branch), run_ids: runIDs[i],
       })), protocol: 1, extension_version: extensionVersion };
     }
     if (q.op === 'clear') { await ask('command:clear'); return { result: 'cleared' }; }

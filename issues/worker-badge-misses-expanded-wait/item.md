@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: worker-badge-wait
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Worker badge says not waited while the agent waits on expanded ids
@@ -20,4 +21,4 @@ Workerin merkki näyttää *ei odoteta*, vaikka agentti odottaa (Jari 7.11., pil
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

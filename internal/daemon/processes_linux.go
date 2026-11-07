@@ -116,8 +116,9 @@ type nativeProcess struct {
 	Signal   *struct {
 		Name string `json:"name"`
 	} `json:"signal"`
-	EndReason *string `json:"endReason"`
-	Wakes     *bool   `json:"wakes_agent"`
+	EndReason *string  `json:"endReason"`
+	Wakes     *bool    `json:"wakes_agent"`
+	RunIDs    []string `json:"run_ids"`
 }
 type processRecord struct {
 	Spinoff   []processSpinoff `json:"spinoff,omitempty"`
@@ -197,7 +198,20 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 			v := prefixBytes(*reason, 80)
 			reason = &v
 		}
-		ids := taskfleetWait(r.Command)
+		// The companion uses the reminder's live-argv detection for shell
+		// expansions. Keep the static fallback for native fixture records.
+		ids := r.RunIDs
+		if len(ids) > 200 {
+			return result
+		}
+		for _, id := range ids {
+			if !taskfleetIDPattern.MatchString(id) {
+				return result
+			}
+		}
+		if ids == nil {
+			ids = taskfleetWait(r.Command)
+		}
 		if ids == nil {
 			ids = []string{}
 		}
