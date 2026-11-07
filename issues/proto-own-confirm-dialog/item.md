@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 lane: own-dialog-proto
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Prototype: Habitat's own dialog for unsaved changes instead of the browser's confirm
