@@ -90,9 +90,12 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		// Every installation selects integrations; never publish a release
-		// that apply would refuse as a target.
+		// Every installation selects core and integrations; never publish a
+		// release that apply would refuse as a target.
 		if e = r.RequireIntegrationTools(); e != nil {
+			return e
+		}
+		if e = r.RequireCoreRuntime(); e != nil {
 			return e
 		}
 		if e = r.VerifyArchives(context.Background(), allProfiles(m), opener(*dir)); e != nil {

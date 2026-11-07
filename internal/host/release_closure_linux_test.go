@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"runtime"
@@ -185,7 +186,7 @@ func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]s
 }
 
 func TestReleaseClosureCoreAgentTools(t *testing.T) {
-	if !validRuntimeClosure(coreClosure(nil)) {
+	if !validRuntimeClosure(coreClosure(nil)) || !validCoreRuntime(coreClosure(nil)) {
 		t.Fatal("valid core refused")
 	}
 	for name, mutate := range map[string]func(map[string]RuntimeFile, map[string]string){
@@ -212,10 +213,34 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if validRuntimeClosure(coreClosure(mutate)) {
+			if validCoreRuntime(coreClosure(mutate)) {
 				t.Fatal("accepted core without its pinned agent tools")
 			}
 		})
+	}
+}
+
+// An upgrade authenticates its predecessor's manifest with the successor's
+// code. A core from before the agent tools, on an older Pi, is still a valid
+// manifest; only a release installed as the target must carry this one's.
+func TestReleaseOlderCoreAuthenticatesAsPredecessor(t *testing.T) {
+	older := coreClosure(func(f map[string]RuntimeFile, v map[string]string) {
+		for path := range f {
+			if strings.HasPrefix(path, "runtime/agent-bin/") || strings.HasPrefix(path, "runtime/taskfleet/") {
+				delete(f, path)
+			}
+		}
+		v["npm:node_modules/@earendil-works/pi-coding-agent"] = "1.2.0"
+	})
+	older.Archive, older.SHA256, older.Size, older.ExpandedSize, older.Requires, older.Packages = "core.tar.gz", strings.Repeat("a", 64), 1, 1024, []string{}, []RuntimePackage{}
+	r := authenticatedFixture(t, releaseManifest(older))
+	if e := r.RequireCoreRuntime(); !errors.Is(e, ErrReleaseProfile) {
+		t.Fatalf("older core as a target: %v", e)
+	}
+	current := coreClosure(nil)
+	current.Archive, current.SHA256, current.Size, current.ExpandedSize, current.Requires, current.Packages = "core.tar.gz", strings.Repeat("a", 64), 1, 1024, []string{}, []RuntimePackage{}
+	if e := authenticatedFixture(t, releaseManifest(current)).RequireCoreRuntime(); e != nil {
+		t.Fatalf("current core as a target: %v", e)
 	}
 }
 

@@ -145,6 +145,10 @@ func hostErrorBase(e error) *cliError {
 		return &cliError{code: "release_platform_mismatch", message: "the pinned release is for another Ubuntu architecture; obtain the release built for this host's platform", exit: 1}
 	case errors.Is(e, host.ErrReleaseTarget):
 		return &cliError{code: "release_target_mismatch", message: "release.json does not hash to site.release.manifest_sha256 or carry site.release.version, or the installed generation, packages or selectors do not match the declared release; inspect the mismatch before continuing", exit: 1}
+	case errors.Is(e, host.ErrReleaseProfile):
+		return &cliError{code: "release_profile_unavailable", message: "the release lacks a selected profile or dependency, or its core or integrations do not carry what this binary pins; obtain a release built from this binary's commit", exit: 1}
+	case errors.Is(e, host.ErrRelease):
+		return &cliError{code: "invalid_release", message: "a release manifest (the target's, or the installed predecessor's during an upgrade) is not one this binary accepts; inspect which manifest before continuing", exit: 1}
 	case errors.Is(e, context.DeadlineExceeded):
 		code := "host_deadline_exceeded"
 		if errors.Is(e, host.ErrRuntimeStage) {

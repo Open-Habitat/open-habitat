@@ -136,27 +136,47 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 			return false
 		}
 	}
-	if a.Profile == "core" {
-		if components["node"].Version != "22.21.1" || files["runtime/bin/node"].Component != "node" {
-			return false
+	return true
+}
+
+// RequireCoreRuntime refuses a target release whose core does not carry what
+// this release pins: Node, Pi and its extensions at their versions, and the
+// agent tools. It is a requirement on the release being installed, not part
+// of manifest validity: an upgrade authenticates its predecessor's manifest
+// too, and an older core lacks what this release added.
+func (r AuthenticatedRelease) RequireCoreRuntime() error {
+	for _, a := range r.manifest.Artifacts {
+		// Without a closure there is nothing to judge here; staging and
+		// verification refuse such an archive.
+		if a.Profile == "core" && a.Closure != nil && !validCoreRuntime(a) {
+			return ErrReleaseProfile
 		}
-		for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
-			// npm may nest the overridden parser below its consumer.
-			found := false
-			for id, p := range components {
-				if p.Kind == "npm" && strings.HasSuffix(id, "node_modules/"+name) && p.Version == version {
-					found = true
-				}
-			}
-			if !found {
-				return false
+	}
+	return nil
+}
+
+func validCoreRuntime(a ReleaseArtifact) bool {
+	files := closureFileMap(a.Closure)
+	components := map[string]RuntimeComponent{}
+	for _, c := range a.Closure.Components {
+		components[c.Name] = c
+	}
+	if components["node"].Version != "22.21.1" || files["runtime/bin/node"].Component != "node" {
+		return false
+	}
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
+		// npm may nest the overridden parser below its consumer.
+		found := false
+		for id, p := range components {
+			if p.Kind == "npm" && strings.HasSuffix(id, "node_modules/"+name) && p.Version == version {
+				found = true
 			}
 		}
-		if !validCoreAgentTools(files, components) {
+		if !found {
 			return false
 		}
 	}
-	return true
+	return validCoreAgentTools(files, components)
 }
 
 // CoreAgentTools are the commands every installation's core runtime puts on
@@ -315,7 +335,7 @@ func SortRuntimeComponents(c *RuntimeClosure) {
 
 // coreAgentToolsObserved is the host check's own row for Taskfleet, so an
 // operator sees it by name: the target release carries the pinned agent
-// tools (closure validation already refuses one that does not), and once
+// tools (RequireCoreRuntime already refuses one that does not), and once
 // the site's generation is installed, its bytes are exactly those. gen is
 // that generation's core payload directory, with a trailing slash.
 func coreAgentToolsObserved(ctx context.Context, r AuthenticatedRelease, gen string) (string, string) {

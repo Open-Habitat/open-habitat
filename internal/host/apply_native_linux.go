@@ -111,6 +111,9 @@ func loadRelease(s Site) (AuthenticatedRelease, error) {
 	if e = r.RequireIntegrationTools(); e != nil {
 		return r, e
 	}
+	if e = r.RequireCoreRuntime(); e != nil {
+		return r, e
+	}
 	_, e = r.Select(s.Profiles)
 	return r, e
 }
