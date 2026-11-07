@@ -31,3 +31,10 @@ päivityskehotusta.
 ## Acceptance Criteria
 
 - [ ] syy löydetty; päivitys kesken istunnon → yksi lataus → uusi versio eikä kellon kehotusta; selaintesti
+
+## Decision (Jari 2026-11-07)
+
+**A**: kun yhteys palaa ja palvelimella on uusi versio, sivu latautuu itsestään
+uuteen versioon, jos henkilö ei ole kirjoittamassa tai kesken lähetystä;
+luonnos säilyy. Muuten yhteyspalkin tilalle *Palvelin päivitettiin · Lataa
+uudelleen*. Kellon kehotus poistuu latauksen myötä.
