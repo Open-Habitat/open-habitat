@@ -170,8 +170,15 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   await page.getByTestId("command-palette").click();
   await expect(list(page)).toHaveAttribute("data-kind", "cmd");
   await search.fill("fix");
+  // The command catalog loads independently of the file tree. Enter only
+  // chooses a ready selection, not a future search result.
+  await expect(
+    list(page).getByTestId("composer-command-fix-tests"),
+  ).toHaveAttribute("aria-selected", "true");
   await search.press("Enter");
-  await expect(field).toHaveValue(/^\/fix-tests Katso @/);
+  await expect(field).toHaveValue(`/fix-tests Katso @${first} @${second} `);
+  await expect(list(page)).toHaveCount(0);
+  await expect(field).toBeFocused();
 });
 
 test("@lab command preview starts at the top for each selection", async ({

@@ -3,10 +3,11 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-07
 ---
 
 # Command chosen after marked paths does not go first in the composer
@@ -31,5 +32,5 @@ it so the spec passes reliably.
 
 ## Acceptance Criteria
 
-- [ ] `lab-composer-lists-in-field.spec.ts` passes three runs in a row.
-- [ ] Root cause stated in `result.md`.
+- [x] `lab-composer-lists-in-field.spec.ts` passes three runs in a row.
+- [x] Root cause stated in `result.md`.
