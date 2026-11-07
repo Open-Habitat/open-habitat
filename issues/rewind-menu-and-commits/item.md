@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: rewind-fixes
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Palaa tähän: menu position, oversized Viimeisimpään, and committed changes
@@ -20,4 +21,4 @@ Palaa tähän, kolme asiaa ennen jatkoa (Jari 7.11., pilot.612, työpöytä): (1
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

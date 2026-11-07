@@ -155,7 +155,7 @@ function Message({
   actions,
 }: {
   speaker: string;
-  /** A message's own actions beside copy, such as Palaa tähän's menu. */
+  /** A message's own actions in its top-right corner, such as Palaa tähän's menu. */
   actions?: ReactNode;
   /** A message this page sent that Pi's history does not show yet. */
   delivery?: "pending" | "accepted";
@@ -207,7 +207,6 @@ function Message({
           size="row"
           onPress={onCopy}
         />
-        {actions}
         {time ? <time>{time}</time> : null}
         {state ? (
           <StatusMark
@@ -217,6 +216,9 @@ function Message({
             kind={stateKind}
           />
         ) : null}
+        {/* The card's own menu sits in its top-right corner, apart from
+            copy and the time. */}
+        {actions ? <span className="ah-message-actions">{actions}</span> : null}
       </header>
       <div className="ah-prose">{children}</div>
     </article>

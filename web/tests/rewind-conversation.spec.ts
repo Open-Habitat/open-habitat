@@ -67,7 +67,24 @@ for (const width of [1440, 390]) {
       const second = page
         .getByTestId("message")
         .filter({ hasText: "Kirjoita tiedosto taulukolle" });
-      await second.getByTestId(/^message-menu-/).click();
+      // The own message's ⋯ is in the card's top-right corner, not after
+      // copy at the left.
+      const menu = second.getByTestId(/^message-menu-/);
+      const card = second.filter({
+        has: page.getByTestId(/^message-menu-/),
+      });
+      const [cardBox, menuBox] = await Promise.all([
+        card.boundingBox(),
+        menu.boundingBox(),
+      ]);
+      expect(cardBox && menuBox).toBeTruthy();
+      expect(
+        (cardBox?.x ?? 0) +
+          (cardBox?.width ?? 0) -
+          ((menuBox?.x ?? 0) + (menuBox?.width ?? 0)),
+      ).toBeLessThan(24);
+      expect((menuBox?.y ?? 0) - (cardBox?.y ?? 0)).toBeLessThan(24);
+      await menu.click();
       await page.getByRole("menuitem", { name: /Palaa tähän/ }).click();
 
       const sheet = page.getByTestId("rewind-sheet");
@@ -98,6 +115,27 @@ for (const width of [1440, 390]) {
         .analyze();
       expect(audit.violations).toEqual([]);
       await page.screenshot({ path: testInfo.outputPath("sheet.png") });
+      // Read back up on a short page with the sheet open: the jump to the
+      // latest stays a pill above the sheet, not a column as tall as the
+      // sheet beside it.
+      await page.setViewportSize({ width, height: 640 });
+      // The wheel marks the scroll as the reader's own, as a real one does.
+      await page.locator(".ah-conversation-stream").evaluate((el) => {
+        el.dispatchEvent(new WheelEvent("wheel", { deltaY: -400 }));
+        el.scrollTop = 0;
+      });
+      const jump = page.getByTestId("jump-latest");
+      await expect(jump).toBeVisible();
+      const [jumpBox, shortSheetBox] = await Promise.all([
+        jump.boundingBox(),
+        sheet.boundingBox(),
+      ]);
+      expect(jumpBox?.height ?? 999).toBeLessThan(56);
+      expect((jumpBox?.y ?? 0) + (jumpBox?.height ?? 0)).toBeLessThanOrEqual(
+        shortSheetBox?.y ?? 0,
+      );
+      await page.screenshot({ path: testInfo.outputPath("sheet-short.png") });
+      await page.setViewportSize({ width, height: 900 });
       if (process.env.OH_VISUAL_CAPTURE === "1")
         await page.screenshot({
           path: `../issues/rewind-conversation/evidence/sheet-${width}.png`,

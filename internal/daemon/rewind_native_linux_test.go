@@ -402,3 +402,101 @@ func TestRewindLineCountAndUnavailableCopies(t *testing.T) {
 		t.Fatalf("preview of the first checkpoint: %+v", p)
 	}
 }
+
+// A file the agent changed and committed after the message is named as
+// committed: a restore leaves the commit and brings the file back as an
+// uncommitted change. A change left uncommitted, and a commit from before
+// the message, are not.
+func TestRewindPreviewNamesCommittedFiles(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		t.Skip("git not installed")
+	}
+	home := t.TempDir()
+	cwd := filepath.Join(home, "w")
+	store := filepath.Join(home, ".pi", "agent", "file-history", "s")
+	for _, d := range []string{cwd, store} {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git := func(date string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("/usr/bin/git", append([]string{"-C", cwd, "-c", "user.name=T", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Env = append(os.Environ(), "HOME="+home, "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_DATE="+date, "GIT_COMMITTER_DATE="+date)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	write := func(path, text string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("2026-06-01T08:00:00Z", "init", "-q")
+	if err := os.MkdirAll(filepath.Join(cwd, "gone"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	write(filepath.Join(cwd, "gone", "a.txt"), "was\n")
+	write(filepath.Join(store, "gone-a"), "was\n")
+	for _, name := range []string{"kept.txt", "loose.txt", "old.txt"} {
+		write(filepath.Join(cwd, name), "was\n")
+		write(filepath.Join(store, name), "was\n")
+	}
+	git("2026-06-01T08:00:00Z", "add", ".")
+	git("2026-06-01T08:00:00Z", "commit", "-q", "-m", "before")
+	// old.txt: committed before the message, then changed and left.
+	write(filepath.Join(cwd, "old.txt"), "now\n")
+	// After the message at 09:00 the agent commits kept.txt and new.txt,
+	// removes the directory gone in a commit and leaves loose.txt
+	// uncommitted.
+	write(filepath.Join(cwd, "kept.txt"), "now\n")
+	write(filepath.Join(cwd, "new.txt"), "new\n")
+	git("2026-06-01T09:00:10Z", "rm", "-q", "-r", "gone")
+	git("2026-06-01T09:00:10Z", "add", "kept.txt", "new.txt")
+	git("2026-06-01T09:00:10Z", "commit", "-q", "-m", "agent")
+	write(filepath.Join(cwd, "loose.txt"), "now\n")
+	version := func(name string) string {
+		if name == "new.txt" {
+			return `{"backupFileName":null,"storeId":"s"}`
+		}
+		if name == "gone/a.txt" {
+			return `{"backupFileName":"gone-a","storeId":"s"}`
+		}
+		return `{"backupFileName":"` + name + `","storeId":"s"}`
+	}
+	files := []string{}
+	for _, name := range []string{"kept.txt", "loose.txt", "old.txt", "new.txt", "gone/a.txt"} {
+		files = append(files, `"`+name+`":`+version(name))
+	}
+	lines := []string{
+		`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","timestamp":"2026-06-01T08:30:00Z","cwd":"` + cwd + `"}`,
+		`{"type":"message","id":"u1","parentId":null,"timestamp":"2026-06-01T09:00:00.000Z","message":{"role":"user","content":"one"}}`,
+		`{"type":"custom","customType":"oh-rewind-checkpoint","id":"c1","parentId":"u1","timestamp":"2026-06-01T09:00:01.000Z","data":{"version":1,"kind":"snapshot","userEntryId":"u1","cwd":"` + cwd + `","files":{` + strings.Join(files, ",") + `}}}`,
+		`{"type":"message","id":"a1","parentId":"c1","timestamp":"2026-06-01T09:00:20.000Z","message":{"role":"assistant","content":[{"type":"text","text":"ok"}]}}`,
+	}
+	path := filepath.Join(home, "s.jsonl")
+	write(path, strings.Join(lines, "\n")+"\n")
+	s, ok := readRewindSession(path, os.Geteuid())
+	if !ok {
+		t.Fatal("session unreadable")
+	}
+	p, ok := s.preview(home, "u1")
+	if !ok || len(p.Files) != 5 {
+		t.Fatalf("preview: %+v", p)
+	}
+	committed := map[string]bool{}
+	for _, f := range p.Files {
+		committed[f.Path] = f.Committed
+	}
+	want := map[string]bool{"kept.txt": true, "new.txt": true, "gone/a.txt": true, "loose.txt": false, "old.txt": false}
+	for name, c := range want {
+		if committed[name] != c {
+			t.Fatalf("%s committed=%v, want %v (%+v)", name, committed[name], c, p.Files)
+		}
+	}
+	body, _ := json.Marshal(p.Files)
+	if strings.Count(string(body), `"committed":true`) != 3 || strings.Contains(string(body), `"committed":false`) {
+		t.Fatalf("wire form: %s", body)
+	}
+}

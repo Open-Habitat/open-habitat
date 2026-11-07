@@ -38,6 +38,11 @@ const fi = {
   deleted: "poistettu",
   more: (n: number) => `ja ${n} muuta`,
   stays: "jää",
+  // A restore never rewrites Git history: what was already committed stays
+  // in its commits, and the restored files become uncommitted changes.
+  committedTag: "commitoitu",
+  committed: (names: string[], more: number) =>
+    `Jo commitoitu: ${names.join(", ")}${more ? ` ja ${more} muuta` : ""}. Palautus ei kumoa committeja, joten nämä tiedostot näkyvät palautuksen jälkeen commitoimattomina muutoksina.`,
   unreadable: (n: number) =>
     n === 1 ? "1 tiedostoa ei voitu lukea" : `${n} tiedostoa ei voitu lukea`,
   busy: "Agentti on työssä; se pysäytetään ensin.",
@@ -133,6 +138,9 @@ export const rewindText = catalog(fi, {
   deleted: "deleted",
   more: (n) => `and ${n} more`,
   stays: "stays",
+  committedTag: "committed",
+  committed: (names, more) =>
+    `Already committed: ${names.join(", ")}${more ? ` and ${more} more` : ""}. Restoring does not undo commits, so after it these files show as uncommitted changes.`,
   unreadable: (n) => `${enFiles(n)} could not be read`,
   busy: "The agent is working; it is stopped first.",
   cancel: "Cancel",

@@ -1844,8 +1844,13 @@ details[open] > summary:not([class])::before {
   );
   left: 0;
   right: 0;
+  /* One control above another, each its own size: the jump to the latest
+     stays a pill above an open Palaa tähän sheet instead of stretching to
+     the sheet's height beside it. */
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ah-s2);
   pointer-events: none;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Pointer events do not override the earlier rail layout rules. */

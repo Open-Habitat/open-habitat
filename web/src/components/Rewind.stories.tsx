@@ -60,6 +60,16 @@ type Story = StoryObj<typeof meta>;
 export const Sheet: Story = {};
 export const FilesOffByDefault: Story = { args: { filesByDefault: false } };
 export const AgentWorking: Story = { args: { busy: true } };
+export const AlreadyCommitted: Story = {
+  args: {
+    preview: {
+      ...preview,
+      files: preview.files.map((f, i) =>
+        i < 2 ? { ...f, committed: true } : f,
+      ),
+    },
+  },
+};
 export const NoCopies: Story = {
   args: { preview: { ...preview, checkpoint: false, files: [], commands: [] } },
 };

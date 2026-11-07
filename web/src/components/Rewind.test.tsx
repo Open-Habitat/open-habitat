@@ -66,6 +66,31 @@ it("offers the conversation and the files together by default and says what each
   );
 });
 
+it("names the already committed files before the restore and says their commits stay", () => {
+  sheet({
+    preview: {
+      ...preview,
+      files: [{ ...preview.files[0], committed: true }, preview.files[1]],
+    },
+  });
+  const note = screen.getByTestId("rewind-committed");
+  expect(note.textContent).toBe(
+    "Jo commitoitu: src/shadow.py. Palautus ei kumoa committeja, joten nämä tiedostot näkyvät palautuksen jälkeen commitoimattomina muutoksina.",
+  );
+  fireEvent.click(screen.getByTestId("rewind-files-toggle"));
+  expect(screen.getByTestId("rewind-file-list").textContent).toContain(
+    "commitoitu +10 −3",
+  );
+  // The conversation alone touches no file, so nothing is said of commits.
+  toggle("rewind-files");
+  expect(screen.queryByTestId("rewind-committed")).toBeNull();
+});
+
+it("says nothing of commits when none were made after the message", () => {
+  sheet();
+  expect(screen.queryByTestId("rewind-committed")).toBeNull();
+});
+
 it("expresses the three choices with two checkboxes and refuses neither", () => {
   const go = sheet();
   toggle("rewind-files");

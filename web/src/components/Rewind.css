@@ -1,7 +1,11 @@
 /* Palaa tähän (prototype round 2026-11-06-palaa-tahan-vahvistus, C Pieni arkki). */
 
-/* The own message's ⋯ sits beside its copy action. On a desktop it shows on
-   hover or focus like copy; on a phone it stays visible. */
+/* The own message's ⋯ sits in the card's top-right corner. On a desktop it
+   shows on hover or focus like copy; on a phone it stays visible. */
+.ah-message-actions {
+  display: inline-flex;
+  margin-inline-start: auto;
+}
 .ah-rewind-more {
   --i-bg: transparent;
   --i-border: transparent;
@@ -33,6 +37,11 @@
 .ah-rewind-busy {
   color: var(--ah-ink);
   font-weight: 600;
+}
+.ah-rewind-committed {
+  display: block;
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
 }
 .ah-rewind-error {
   margin: 0;
@@ -91,8 +100,10 @@
 }
 
 /* The sheet: as wide as the composer's field box below it, in the frame's
-   floating slot. */
+   floating slot, and nearest the composer when another floating control
+   (the jump to the latest) is there too. */
 .ah-rewind-sheet {
+  order: 1;
   pointer-events: auto;
   box-sizing: border-box;
   width: min(

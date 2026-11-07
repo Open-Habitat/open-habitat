@@ -41,6 +41,8 @@ export type RewindFile = {
   change: "modified" | "created" | "deleted";
   additions?: number;
   deletions?: number;
+  /** A commit after the message changed it; the restore leaves the commit. */
+  committed?: true;
 };
 export type RewindPreview = {
   schema_version: 1;

@@ -5,6 +5,7 @@ package daemon
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -54,6 +56,8 @@ const (
 	maxRewindDiffEdits = 4000
 	// The replaced continuation shown under its row, newest last.
 	maxRewindBranchEntries = 200
+	// How long one preview may spend asking Git which files were committed.
+	rewindGitLimit = 3 * time.Second
 )
 
 // A copy's name and store as the extension writes them (better-pi-rewind's
@@ -171,6 +175,7 @@ type rewindLine struct {
 	root                         bool
 	text                         bool // a person's message, or a reply with text
 	commands                     []string
+	at                           time.Time // Pi's timestamp of the entry
 	record                       *rewindRecord
 	marker                       *rewindMarkerData
 	offset                       int64
@@ -227,6 +232,7 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 				ID         string           `json:"id"`
 				Type       string           `json:"type"`
 				ParentID   *json.RawMessage `json:"parentId"`
+				Timestamp  string           `json:"timestamp"`
 				CustomType string           `json:"customType"`
 				Data       json.RawMessage  `json:"data"`
 				Message    *struct {
@@ -245,6 +251,7 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 					return nil, false
 				}
 				l := rewindLine{id: e.ID, kind: e.Type, customType: e.CustomType, offset: start}
+				l.at, _ = time.Parse(time.RFC3339Nano, e.Timestamp)
 				var parent *string
 				if e.ParentID != nil {
 					_ = json.Unmarshal(*e.ParentID, &parent)
@@ -404,6 +411,10 @@ type rewindFile struct {
 	Change    string `json:"change"`
 	Additions *int   `json:"additions,omitempty"`
 	Deletions *int   `json:"deletions,omitempty"`
+	// Committed: a Git commit after the message changed the file. A restore
+	// never touches Git history, so that change stays in the commit and the
+	// restored file shows as an uncommitted change against it.
+	Committed bool `json:"committed,omitempty"`
 }
 
 type rewindPreview struct {
@@ -462,11 +473,14 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 			}
 		}
 	}
+	since := branch[at].at
 	checkpoints, first := s.checkpoints()
 	checkpoint := checkpoints[entry]
 	if checkpoint == nil {
 		return out, true
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), rewindGitLimit)
+	defer cancel()
 	out.Checkpoint = true
 	paths := make([]string, 0, len(first))
 	for p := range first {
@@ -500,9 +514,41 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 			out.FilesMore++
 			continue
 		}
-		out.Files = append(out.Files, rewindFile{Path: rewindDisplayPath(home, checkpoint.cwd, p), Change: change, Additions: added, Deletions: deleted})
+		out.Files = append(out.Files, rewindFile{Path: rewindDisplayPath(home, checkpoint.cwd, p), Change: change, Additions: added, Deletions: deleted, Committed: rewindCommitted(ctx, home, file, since)})
 	}
 	return out, true
+}
+
+// rewindCommitted says whether a commit on HEAD since the message changed
+// file, in whichever repository holds it: agents often commit each change,
+// and the sheet says that a restore leaves those commits as they are. Git
+// is only read, as the person, and an unknown answer (no repository, no
+// time, a slow read) is no.
+func rewindCommitted(ctx context.Context, home, file string, since time.Time) bool {
+	if since.IsZero() || ctx.Err() != nil {
+		return false
+	}
+	// A committed removal can take the file's directory with it: ask from
+	// the nearest directory that still exists.
+	dir := filepath.Dir(file)
+	for {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			break
+		}
+		if parent := filepath.Dir(dir); parent != dir {
+			dir = parent
+		} else {
+			return false
+		}
+	}
+	rel, err := filepath.Rel(dir, file)
+	if err != nil {
+		return false
+	}
+	out, err := nativeCommand(ctx, rewindGitLimit, io.Discard, "/usr/bin/git", home, "",
+		"--no-replace-objects", "--literal-pathspecs", "-c", "core.fsmonitor=false", "-c", "log.showSignature=false",
+		"-C", dir, "log", "-1", "--format=%H", "--since=@"+strconv.FormatInt(since.Unix(), 10), "HEAD", "--", rel)
+	return err == nil && len(bytes.TrimSpace(out)) > 0
 }
 
 // rewindDisplayPath names a file as the person knows it: relative to the

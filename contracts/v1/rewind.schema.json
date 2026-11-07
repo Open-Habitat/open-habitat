@@ -35,7 +35,8 @@
               "path": { "description": "Relative to the workspace, ~/ for the rest of the home, absolute elsewhere.", "type": "string", "minLength": 1, "maxLength": 4096 },
               "change": { "enum": ["modified", "created", "deleted"] },
               "additions": { "$ref": "#/$defs/count" },
-              "deletions": { "$ref": "#/$defs/count" }
+              "deletions": { "$ref": "#/$defs/count" },
+              "committed": { "description": "A Git commit after the message changed the file. A restore never rewrites Git history: the change stays in its commit and the restored file becomes an uncommitted change against it. Absent when no such commit was found.", "const": true }
             }
           }
         },

@@ -56,6 +56,7 @@ function FileList({
           <span className="ah-rewind-stat">
             {f.change === "created" ? `${t.created} ` : null}
             {f.change === "deleted" ? `${t.deleted} ` : null}
+            {f.committed && restoring ? `${t.committedTag} ` : null}
             {f.additions !== undefined && f.deletions !== undefined
               ? `+${f.additions} −${f.deletions}`
               : null}
@@ -117,6 +118,9 @@ export function RewindSheet({
     conversation && withFiles ? "both" : withFiles ? "files" : "conversation";
   const none = !conversation && !withFiles;
   const total = n + (preview?.files_more ?? 0);
+  // Named before the person confirms: the restore brings these files back
+  // in the working tree and leaves their commits as they are.
+  const committed = preview?.files.filter((f) => f.committed) ?? [];
   const filesHint =
     previewState === "loading"
       ? t.reading
@@ -201,6 +205,17 @@ export function RewindSheet({
                 >
                   {listOpen ? t.hideFiles : t.showFiles}
                 </button>
+              </p>
+            ) : null}
+            {withFiles && committed.length ? (
+              <p
+                className="ah-rewind-meta ah-rewind-committed"
+                data-testid="rewind-committed"
+              >
+                {t.committed(
+                  committed.slice(0, 3).map((f) => f.path),
+                  Math.max(0, committed.length - 3),
+                )}
               </p>
             ) : null}
             {preview?.file_errors ? (
