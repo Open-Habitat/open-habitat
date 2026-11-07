@@ -1,5 +1,171 @@
 # Tulokset
 
+## Kierros 3 (7.11.2026): siru ja palkki
+
+Kierros: `design-system/prototypes/rounds/2026-11-07-palvelinselain-siru/`
+(NOTES.md kertoo tarinan ja ohjaimet). Jari päätti kierroksen 2 jälkeen:
+keskustelussa on siru, josta aukeaa palkki pienine kuvineen. Siru ja palkki
+kantavat agentin kaikki ikkunat, agentin osoitin ja klikkaukset näkyvät, ja
+selain on yksi rivi sivupalkissa. Kierroksen akseli on sirun paikka ja se,
+mihin palkki aukeaa. Osoittimen muoto ja sivupalkin rivi vaihtelevat
+riffeittäin, jotta niistäkin voi valita. Tarina: *Lokakuun ostolaskut* työskentelee kolmessa
+ikkunassa (Netvisor, kustannuspaikat, AWS:n lasku), ja *Rekrytointi: myyjä*
+odottaa vuoroaan. Kesken työn Netvisor pyytää koodia, ja lopuksi agentti
+sulkee ylimääräiset ikkunansa ja selain siirtyy odottavalle.
+
+- **1 Siru vuorossa**: siru agentin vuoron lopussa avaa palkin keskusteluun; osoitin on nimetty piste, ja selain on sivupalkin ylin rivi.
+- **2 Siru kentän yllä**: siru kirjoituskentän yllä kaikissa keskusteluissa avaa palkin kentän päälle; osoitin on nuoli, jonka perässä näkyvät viimeiset klikkaukset, ja sivupalkin rivillä on pieni kuva.
+- **3 Siru otsikossa**: siru otsikkorivillä avaa palkin otsikon alle, ja ikkuna, jossa agentti toimii, on siinä isona; osoittimessa lukee keskustelun nimi, ja selain on sivupalkin alin rivi.
+
+Kuvat: `evidence/r3-<riffi>-<vaihe>-<leveys>-<teema>.avif`, riffit
+`1-vuorossa`, `2-kentan-ylla` ja `3-otsikossa`. Vaiheet: `0-oletus` (myös
+tummana), `1-siru` (palkki kiinni), `2-toinen` (odottava keskustelu ja
+*Siirrä tälle*), `3-arkki` (kuvasta avattu arkki ikkunoineen ja
+osoittimineen), `4-pyytaa` (koodi kesken työn), `5-valmis` (valmis, toinen
+keskustelu käyttää), `6-vapaa` (molemmat valmiit) ja `7-rivi` (sivupalkin
+rivi; puhelimessa valikko auki).
+
+### Mitä kukin riffi päättää
+
+| | 1 Siru vuorossa | 2 Siru kentän yllä | 3 Siru otsikossa |
+|---|---|---|---|
+| Sirun paikka | historiassa sen keskustelun lopussa, jonka työtä se kuvaa | kentän yllä kaikissa keskusteluissa | otsikkorivillä kaikissa keskusteluissa |
+| Palkki | aukeaa historiaan ja vierittyy sen mukana | aukeaa kentän päälle eikä vierity pois | aukeaa otsikon alle; agentin ikkuna isona, muut pieninä |
+| Mitä näyttää | keskustelun oman työn; valmiina viimeisen sivun | yhteisen selaimen sellaisena kuin se on nyt | yhteisen selaimen sellaisena kuin se on nyt |
+| Osoitin | piste ja *Agentti* | nuoli ja kahden edellisen klikkauksen jälki | nuoli ja keskustelun nimi |
+| Sivupalkin rivi | ylin, kuvake ja teksti | ylin, pieni elävä kuva | alin, tilivalikon yllä |
+| Hinta | vierittyy pois ja näkyy vain kahdessa asianomaisessa keskustelussa | vie kentän yltä tilaa jokaisessa keskustelussa | puhelimessa otsikko lyhenee ja palkki vie puolet näytöstä |
+
+Yhteistä: siru kertoo ikkunoiden määrän ja kuka selainta käyttää ja avaa ja
+sulkee palkin. Palkissa jokainen ikkuna on pieni kuva, ja ikkunan, jossa
+agentti toimii, alla lukee *agentti tässä*. Viimeisin klikkaus jää renkaaksi.
+Kuvan painaminen avaa arkin siihen ikkunaan. Arkissa ikkunat ovat
+välilehtinä, ja mukana on *Seuraa agenttia*. Etänäyttö skaalataan tasaisesti,
+joten osoitin osuu samaan kohtaan kuvassa ja arkissa. Sivupalkin rivi
+*Oma selain* kertoo, kuka käyttää ja montako ikkunaa on auki, ja avaa arkin.
+
+### Suositus
+
+**1 Siru vuorossa, osoittimena riffin 2 nuoli ja klikkausten jälki,
+sivupalkin rivi ylimpänä tekstinä (riffi 1).**
+
+- **Paikka 1**: Jari valitsi Pyydettäessä-suunnan, koska se antaa tilaa.
+  Kiinni oleva siru on yksi rivi siinä keskustelussa, jonka työtä se kuvaa,
+  eikä vie tilaa muilta keskusteluilta. Kun sivupalkissa on nyt selaimen
+  rivi, yhteistä tilaa ei tarvitse toistaa jokaisen keskustelun kentän
+  yllä (2) tai otsikossa (3). Valmiin työn siru jää historiaan viimeisine
+  sivuineen, mikä vastaa kierroksen 2 suositusta jähmettyneestä kuvasta.
+  **2** pitää selaimen näkyvissä vieritettäessä, mutta vie tilaa kaikista
+  keskusteluista. **3** on aina näkyvissä ja näyttää agentin ikkunan isona,
+  mutta puhelimen otsikkorivi ei kanna sirua.
+- **Osoitin 2**: nuoli luetaan heti osoittimeksi, ja klikkausten jälki
+  kertoo pysäytyskuvastakin, mitä agentti juuri painoi. Nimilappua ei
+  tarvita, koska selainta ohjaa yksi kerrallaan ja siru ja rivi kertovat,
+  kuka. Riffin 1 piste ja nimi peittävät pientä kuvaa eniten.
+- **Rivi 1**: ylin rivi on lähellä keskusteluja, joita se koskee. Pieni kuva
+  (2) on 51 × 32 px, joten siitä ei tunnista mitään. Alin rivi (3) jää
+  tilivalikon viereen, kauas keskusteluista.
+
+### Host-tiedot
+
+**Osoitin piirretään agentin syötetapahtumista, ei X:n osoittimesta.** CDP:n
+`Input.dispatchMouseEvent` toimitetaan Chromen sisällä suoraan sivulle, eikä
+se kulje X-palvelimen kautta, joten X:n osoitin ei liiku. Myöskään noVNC ei
+näytä etäosoittimen paikkaa, vaan se piirtää osoittimen katsojan omaan
+hiiren kohtaan. Pelkkä etäkuva ei siis näyttäisi agentin osoitinta
+koskaan. Playwrightin `click()` ja `hover()` lähettävät
+`mouseMoved`/`mousePressed`/`mouseReleased`-tapahtumat sivun
+koordinaateissa (CSS-pikseleinä). Selainisäntä omistaa CDP-putken ja välittää
+jo jokaisen viestin, joten se voi lukea nämä viestejä muuttamatta ja
+julkaista tilassaan viimeisimmän kohdan: ikkuna (CDP-istunnosta kohteeseen),
+x, y ja klikkaus. Daemon välittää tämän katsojalle, eikä mitään tallenneta.
+Näkymä muuntaa sivun koordinaatit kuvaan ikkunan sijainnin ja selaimen
+yläpalkin korkeuden avulla (`Browser.getWindowForTarget`), ja tasainen
+skaalaus pitää kuvan ja arkin samoina. Vaihtoehto, jossa agentti liikuttaisi
+oikeaa X-osoitinta (`xdotool` jokaisen CDP-klikkauksen rinnalla), tekisi
+saman työn kahdesti, kilpailisi henkilön oman osoittimen kanssa ja jäisi
+silti näkymättä noVNC:ssä. Rajat:
+
+- Toimi, jossa ei ole hiiritapahtumaa, ei näy osoittimena: `fill()`
+  (`Input.insertText`), näppäimet ja skriptin `element.click()`
+  (`Runtime.evaluate`). Niistä jää vain toimen teksti.
+- Varakeinossa (computer use, `xdotool`) X:n osoitin liikkuu oikeasti.
+  Isäntä voi lukea sen paikan X:ltä (`XQueryPointer`) ja julkaista sen samalla
+  tavalla.
+
+**Ikkunat**: isäntä näkee CDP:n `Target.targetCreated`/`targetDestroyed`
+-tapahtumat (tyyppi `page`) ja tietää, minkä asiakkaan pyynnöstä ikkuna
+avattiin (`Target.createTarget` tai sivun `window.open`, `openerId`). Siitä
+saadaan ikkunoiden lista nimineen ja osoitteineen ilman uutta varastoa.
+
+Prototyypin oletukset, jotka toteutuksen pitää vahvistaa:
+
+- **Taustaikkunoiden kuvat.** X-näyttö näyttää vain päällimmäisen ikkunan,
+  joten noVNC-kuvassa ei näy muiden ikkunoiden sisältöä. Pienet kuvat
+  tulisivat isännän omasta CDP-istunnosta (`Page.captureScreenshot` harvalla
+  välillä tai `Page.startScreencast` katsottaessa). Täytyy kokeilla, piirtääkö
+  Chrome peitetyt ikkunat X11:llä ajan tasalle; taustavälilehdet se jättää
+  piirtämättä.
+- **Arkin välilehti.** Arkki näyttää noVNC:llä päällimmäisen ikkunan.
+  Toisen ikkunan valinta joko nostaa sen päällimmäiseksi
+  (`Target.activateTarget`) tai näyttää sen screencast-kuvana, kunnes
+  henkilö ottaa ohjauksen. Ikkunan nostaminen agentin työn aikana saattaa
+  muuttaa sivun fokusta. Prototyyppi ei ota tähän kantaa.
+- **Agentti sulkee ikkunansa.** Tarinassa agentti sulkee lopuksi
+  avaamansa ylimääräiset ikkunat (taidon ohje). Edellisen keskustelun
+  auki jättämät ikkunat näkyisivät seuraavalle. Prototyyppi ei näytä tätä.
+- Kierroksen 2 oletukset pätevät yhä: keskustelun nimi isännälle
+  (nimilappu, ei valtuus), odottajan tieto daemonille ja *Siirrä tälle*
+  ohjauksen ottamisen muunnelmana.
+
+### Kysymykset Jarille
+
+1. **Sirun paikka: 1, 2 vai 3?** `r3-1-vuorossa-0-oletus-1440-light`,
+   `r3-2-kentan-ylla-0-oletus-1440-light`,
+   `r3-3-otsikossa-0-oletus-1440-light`. Suositus 1.
+2. **Osoittimen muoto: piste ja nimi, nuoli ja klikkausten jälki vai nuoli ja
+   keskustelun nimi?** `r3-1-vuorossa-3-arkki-1440-light`,
+   `r3-2-kentan-ylla-3-arkki-1440-light`,
+   `r3-3-otsikossa-3-arkki-1440-light`. Suositus nuoli ja jälki (2).
+3. **Sivupalkin rivi: ylin tekstirivi, rivi pienellä kuvalla vai alin
+   rivi?** `r3-1-vuorossa-7-rivi-390-light`,
+   `r3-2-kentan-ylla-7-rivi-390-light`, `r3-3-otsikossa-7-rivi-390-light`.
+   Suositus ylin tekstirivi (1).
+
+### Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-07-palvelinselain-siru/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/palvelinselain-siru/offline.html \
+  --title "Oma palvelinselain – kierros 3: siru ja palkki" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
+### Tarkistus
+
+`check.mjs`: 321 tarkistuspistettä, konsoli puhdas. Jokainen riffi ajettiin
+1440 ja 390 px vaaleana koko tarinan läpi. Oletuksessa tarkistettiin kolme
+ikkunaa, yksi agentin ikkuna, sirun paikka, liikkuva osoitin ja klikkauksen
+merkki. Lisäksi ajettiin palkin sulkeminen ja avaaminen, odottava keskustelu
+ja *Siirrä tälle*, kuvasta avattu arkki (kolme välilehteä, osoitin, vain
+katseltava, ikkunan valinta), ohjauksen ottaminen (agentti pysähtyy eikä
+osoitinta näy) ja takaisin antaminen, koodi kesken työn arkissa, valmis ja
+vapaa sekä sivupalkin rivistä avattu arkki. Oletukset ajettiin myös tummana.
+Kuvat ovat kertoimella 2 (AVIF). Kyse on synteettisestä komponenttilabrasta,
+jota ei ole ajettu hostia vasten. Kierros ei muuttanut tuotantokoodia.
+
+### Päätökset myöhempää katselmointia varten
+
+- **Riffit vaihtelevat kolmea asiaa yhtä aikaa** (paikka, osoitin ja rivi),
+  jotta kaikki kolme Jarin pyytämää asiaa ovat valittavissa yhdellä
+  kierroksella. Osat ovat riippumattomia ja yhdisteltävissä.
+- **Palkki on oletuksena auki**, jotta ikkunat ja osoitin näkyvät
+  oletusnäkymässä. Vaihe `1-siru` näyttää sirun yksin.
+- **Riffeissä 2 ja 3 siru näyttää selaimen sellaisena kuin se on nyt**,
+  myös valmiissa keskustelussa. Riffissä 1 siru kuuluu keskustelun omaan
+  työhön.
+
 ## Kierros 2 (7.11.2026): pienoiskuva
 
 Kierros: `design-system/prototypes/rounds/2026-11-07-palvelinselain-kuva/`
