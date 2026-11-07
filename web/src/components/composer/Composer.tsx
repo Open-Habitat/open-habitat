@@ -22,7 +22,9 @@ import { composerText } from "../../text/composer";
 import { fieldListText } from "../../text/fieldList";
 import {
   AttachmentChips,
+  attachmentsIn,
   joinAttachments,
+  messageText,
   splitAttachments,
 } from "../AttachmentChips";
 import { Icon } from "../Icon";
@@ -1752,7 +1754,10 @@ export function Composer({
                   <Icon name={modeIcon[q.kind]} />
                   {MODE[q.kind].queued}
                 </span>
-                <span className="ah-cq-text">{q.text}</span>
+                <div className="ah-cq-content">
+                  <div className="ah-cq-text">{messageText(q.text)}</div>
+                  <AttachmentChips attachments={attachmentsIn(q.text)} />
+                </div>
                 <span className="ah-cq-when">
                   {q.kind === "steer" ? (
                     <>

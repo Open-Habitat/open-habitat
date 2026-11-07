@@ -1221,13 +1221,26 @@ test("@browser-conversation one Enter queues a steer with an attachment once", a
       posts.push(route);
   });
   await page.evaluate(() => {
-    const w = window as unknown as { rows: number[] };
+    const w = window as unknown as {
+      rows: number[];
+      rawReferences: string[];
+      thumbnails: number[];
+    };
     w.rows = [];
+    w.rawReferences = [];
+    w.thumbnails = [];
     const tick = () => {
       w.rows.push(
         [
           ...document.querySelectorAll('[data-testid="composer-queue"] li'),
         ].filter((e) => e.textContent?.includes("ohjaus liitteellä")).length,
+      );
+      const queue = document.querySelector('[data-testid="composer-queue"]');
+      if (queue?.textContent?.includes("/api/v1/attachments/"))
+        w.rawReferences.push(queue.textContent);
+      w.thumbnails.push(
+        queue?.querySelectorAll('[data-testid="attachment-chip"] img').length ??
+          0,
       );
       requestAnimationFrame(tick);
     };
@@ -1244,6 +1257,15 @@ test("@browser-conversation one Enter queues a steer with an attachment once", a
   expect(rows).toContain(1);
   expect(Math.max(...rows)).toBe(1);
   expect(posts).toEqual(["steer"]);
+  const presentation = await page.evaluate(() => {
+    const w = window as unknown as {
+      rawReferences: string[];
+      thumbnails: number[];
+    };
+    return { rawReferences: w.rawReferences, thumbnails: w.thumbnails };
+  });
+  expect(presentation.rawReferences).toEqual([]);
+  expect(presentation.thumbnails).toContain(1);
 });
 // Jari 31.10.: a steer pressed as the turn ended was refused (Tila muuttui)
 // and the text came back to the field. A steer that finds the agent idle

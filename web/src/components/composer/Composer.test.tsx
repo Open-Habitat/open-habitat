@@ -84,6 +84,43 @@ describe("composer text rules", () => {
   });
 });
 
+describe("queued attachments", () => {
+  it.each(["steering", "followUp"] as const)(
+    "renders %s text, image and file without exposing reference syntax",
+    (kind) => {
+      const image = "/api/v1/attachments/11111111-1111-1111-1111-111111111111";
+      const file = "/api/v1/attachments/22222222-2222-2222-2222-222222222222";
+      const view = render(
+        <Composer
+          {...base}
+          value=""
+          activity="working"
+          queue={{
+            steering: [],
+            followUp: [],
+            [kind]: [`Test\n![screen.png](${image})\n[notes.txt](${file})`],
+          }}
+        />,
+      );
+      const queue = view.getByTestId("composer-queue");
+      expect(queue.textContent).toContain("Test");
+      expect(queue.textContent).toContain("notes.txt");
+      expect(queue.textContent).not.toContain("/api/v1/attachments/");
+      expect(queue.querySelector("img")?.getAttribute("src")).toBe(image);
+      expect(
+        queue.querySelectorAll('[data-testid="attachment-chip"]'),
+      ).toHaveLength(2);
+      expect(
+        queue.querySelector('[data-testid="attachment-remove"]'),
+      ).toBeNull();
+      const open = queue.querySelector('[data-testid="attachment-open"]');
+      if (!open) throw new Error("missing attachment control");
+      fireEvent.click(open);
+      expect(view.getByTestId("attachment-preview")).toBeTruthy();
+    },
+  );
+});
+
 describe("composer keys and controls", () => {
   it("sends with Enter, steers while Pi works, and Alt+Enter goes once the other way", () => {
     const now = vi.fn();

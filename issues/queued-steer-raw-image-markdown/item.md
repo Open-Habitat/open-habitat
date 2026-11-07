@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: queued-steer
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Queued steer card shows an image attachment as raw Markdown
@@ -20,4 +21,4 @@ Jonossa odottava ohjausviesti näyttää kuvaliitteen raakana Markdown-linkkinä
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

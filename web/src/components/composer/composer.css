@@ -405,6 +405,9 @@
 .ah-cq-steer .ah-cq-kind svg {
   color: var(--ah-accent);
 }
+.ah-cq-content {
+  min-width: 0;
+}
 .ah-cq-text {
   min-width: 0;
   overflow: hidden;
