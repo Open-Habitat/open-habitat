@@ -7,7 +7,7 @@ import {
   xlsxFixture,
 } from "../src/app/documentFixtures";
 import { hostOrigin } from "../test-ports.mjs";
-import { dropFiles } from "./conversation-view";
+import { dropFiles, openedConversation } from "./conversation-view";
 import { expect, type Page, test } from "./worker-host";
 
 test.use({
@@ -186,12 +186,49 @@ async function dropInNewConversation(
     .getByRole("navigation")
     .getByTestId("workspace-ordinary-dir")
     .click();
-  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page).toHaveURL(/conversation=pi:/);
-  // A drop is taken only once the composer accepts attachments, the same
-  // state that enables its attach button; earlier the files are ignored.
-  await expect(page.getByTestId("attach-file")).toBeEnabled();
-  await dropFiles(page, list);
+  // Hold creation and the first upload independently: an accepted drop must
+  // survive creation's redirect and snapshot, not just an already-open view.
+  // The barriers cover that lifetime; concurrent-render replay still depends
+  // on scheduling, so this also serves as a repeated load probe.
+  let releaseCreation!: () => void;
+  const creationHeld = new Promise<void>((resolve) => {
+    releaseCreation = resolve;
+  });
+  let releaseUpload!: () => void;
+  const uploadHeld = new Promise<void>((resolve) => {
+    releaseUpload = resolve;
+  });
+  await page.route("**/api/v1/conversations", async (route) => {
+    if (route.request().method() === "POST") await creationHeld;
+    await route.continue();
+  });
+  await page.route("**/api/v1/attachments", async (route) => {
+    await uploadHeld;
+    await route.continue();
+  });
+  try {
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    // The workspace start page has its own composer too. Drop into the new
+    // conversation, not that previous page while navigation is committing.
+    await expect(
+      page.locator('.ah-conversation-frame[data-view="creation"]'),
+    ).toBeVisible();
+    await expect(page.getByTestId("attach-file")).toBeEnabled();
+    const field = await page.getByTestId("message-input").elementHandle();
+    const uploading = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        request.url().endsWith("/api/v1/attachments"),
+    );
+    await dropFiles(page, list);
+    await uploading;
+    releaseCreation();
+    await openedConversation(page);
+    expect(await field?.evaluate((node) => node.isConnected)).toBe(true);
+  } finally {
+    releaseCreation();
+    releaseUpload();
+  }
 }
 
 // Built-ins newer than many browsers people use: pdf.js's modern build calls

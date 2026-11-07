@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: attachment-flake
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Attachment chip does not appear under full-suite load (attachment-documents PDF case)

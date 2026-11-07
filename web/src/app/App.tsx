@@ -2574,8 +2574,13 @@ export function App() {
               let viewKey: string | undefined;
               let creation: Creation | undefined;
               if (creationRoute) {
-                viewKey = creationViewKeys.current[ws] ??=
-                  `${identity}:new:${ws}:${crypto.randomUUID()}`;
+                // A concurrent render of the new route can resume after the
+                // ID route retired its workspace key. Once adopted, the
+                // conversation's key wins; never give it a second view.
+                viewKey = id ? createdViews.current.get(id) : undefined;
+                if (!viewKey)
+                  viewKey = creationViewKeys.current[ws] ??=
+                    `${identity}:new:${ws}:${crypto.randomUUID()}`;
                 if (id) createdViews.current.set(id, viewKey);
               } else if (id) {
                 viewKey = createdViews.current.get(id);
