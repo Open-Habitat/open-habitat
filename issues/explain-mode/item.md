@@ -1,6 +1,6 @@
 ---
 created: 2026-11-01
-updated: 2026-11-03
+updated: 2026-11-07
 type: feature
 reporter: jari
 status: open
@@ -8,7 +8,7 @@ priority: normal
 lane: explain-mode
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r5']
-preparation: pending
+preparation: ready
 ---
 
 # Explain mode: dim the screen and explain whatever the pointer is on
@@ -35,3 +35,14 @@ Ships as an experimental feature (Kokeelliset ominaisuudet), off by default.
 ## Jari 3.11.
 
 Before building, a more precise prototype round on the real views: `proto-explain-mode-r6`. Round 5's page is built from `issues/proto-conversation-header-actions-r5/prototypes/build.py` (`selitystila.html`).
+
+## Decision (Jari 2026-11-07)
+
+Toteutetaan nyt kokeellisena ominaisuutena, jotta Jari voi kokeilla sitä
+testipalvelimella. Spesifikaatio on `proto-explain-mode-r6` kierrokset 6–9
+(viimeisimmät päätökset sen item.md:ssä): riffi 1 *Kuten aina* (piilopainikkeet
+tulevat näkyviin ja selittyvät, tyhjän kohdan päällä viimeisin kortti jää),
+kohta selittyy vain näkyvän sisältönsä päällä, tila alkaa kierroksen 7
+tilakortista, ja kierroksen 9 suunta C: selitystilan palkin tilanne
+(esim. *Odottaa sinua*) on painike, joka tuo tilakortin takaisin; Selitä
+lopettaa tilan. Puhelimen palkissa pelkkä tila.

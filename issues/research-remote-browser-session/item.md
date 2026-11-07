@@ -1,13 +1,14 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 lane: remote-browser-research
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Research and architecture sketch: a person's own server-side browser, opened remotely, then used by the agent
@@ -76,3 +77,20 @@ Kokeilu Birchlla (arm64) vahvisti putki- ja Unix-socket-välityksen
 Playwrightille ja Puppeteerille sekä AppArmorin userns-vaatimuksen
 sandboxille. Viisi kysymystä Jarille, joista tärkein on, mistä Chrome
 tulee. Kokeen skriptit ovat hakemistossa [experiment/](experiment/).
+
+## Decision (Jari 2026-11-07)
+
+1. **Chrome**: Googlen apt-reposta, päivittyy käyttöjärjestelmän mukana;
+   vaaditaan vain vähimmäisversio. Jari: versioita ei pidä kiinnittää, vaan
+   uudet asennetaan sitä mukaa kuin alla oleva käyttöjärjestelmä ne tuo
+   (kirjattu `internal/AGENTS.md`:n pakettisääntöön).
+2. **Päällä ilman käyttöä**: 24 tuntia viimeisestä katselijasta tai agentista,
+   istunnon palautuksella: ok.
+3. **Agentti käyttää käynnissä olevaa selainta kysymättä**: kyllä, se on koko
+   ominaisuuden pointti.
+4. **Seuranta**: ei kaikkien keskustelujen selainlokia eikä tallennetta.
+5. **TigerVNC Xvnc ja noVNC appin originissa**: ok.
+
+Selain on henkilökohtainen (yksi henkilöä kohden, kirjautumiset yhteiset hänen
+agenteilleen); Jari kysyi, ovatko selaimet agenttikohtaisia, vastaus ja
+suositus keskustelussa. UI: `proto-remote-browser-session` kierros 2.

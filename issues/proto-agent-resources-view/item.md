@@ -1,9 +1,9 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-agent-resources-view
 lane: resources-view-proto
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Prototype: browsable view of every resource and integration the agent can use
@@ -50,3 +51,12 @@ mitä agentti näkee ja mitä ei).
 - [x] kierros 2: kaikkien lajien osiot yhdessä, kolme riffiä, mitkä lajit tarvitsevat oman kierroksen (hylätty suunta)
 - [x] kierros 3 (uusittu): B:n lista ennallaan, kolme suuntaa lajin sisällöstä tiedostoissa, postissa ja koodissa
 - [ ] Jarin valinta kierroksesta 3
+
+## Decision (Jari 2026-11-07, kierros 3)
+
+**C Vain rajat** on ok. Kysymykseen 3 (näkyykö agentin luoma luonnos
+lähteessä vai vain keskustelussa) Jari: näkymä on mahdollisuus tutkia niitä
+tiedostoja, joihin agentilla on pääsy. Tulkinta toteutukseen: muut lajit
+kuten C, mutta Tiedostot-lajissa henkilö voi selata agentin saatavilla olevia
+tiedostoja (peilikansio henkilön omana käyttäjänä, ei uutta lukureittiä), joten
+agentin luoma tiedosto näkyy siellä luonnostaan. Toteutus: `agent-resources-view`.

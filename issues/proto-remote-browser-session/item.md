@@ -1,12 +1,12 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 type: task
 reporter: jari
 status: open
 priority: normal
 related: ['@research-remote-browser-session']
-preparation: pending
+preparation: ready
 lane: remote-browser-proto
 lane_seq: 1
 ---
@@ -32,3 +32,12 @@ enintään kolme kysymystä.
 ## Acceptance Criteria
 
 - [x] kierros 1: kolme suuntaa, näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-07, kierros 1)
+
+Suunta **3 Pyydettäessä**: selkein, koska se antaa selaimelle eniten tilaa.
+Agentin selaintyö näkyy keskustelussa pienoiskuvana, kun selain ei ole auki:
+kyllä, ja sitä prototypoidaan. Kaikkien keskustelujen selainlokia ei tarvita.
+Kierros 2: Pyydettäessä-suunnan riffit pienoiskuvasta ja siitä, miten
+henkilö näkee, mikä keskustelu selainta käyttää (selain on henkilön oma ja
+yhteinen hänen agenteilleen; yksi ohjaa kerrallaan).

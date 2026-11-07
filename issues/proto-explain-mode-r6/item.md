@@ -1,13 +1,14 @@
 ---
 created: 2026-11-03
-updated: 2026-11-06
+updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: explain-mode
 lane_seq: 0
 preparation: pending
+closed: 2026-11-07
 ---
 
 # Prototype: explain mode in detail, on the real views (round 6)
@@ -74,3 +75,11 @@ go through them all; implementation proceeds from those texts. Directions,
 if any, are only about the style of the cards (tone, length, structure),
 shown on the same few elements, with the full set written in the
 recommended style.
+
+## Decision (Jari 2026-11-07, kierros 9)
+
+Kierroksen 9 suunnat olivat Jarin mielestä samankaltaisia; sivu aukesi hitaasti
+eikä ollut tavallinen interaktiivinen prototyyppi (brief pyysi kuvasarjoja).
+Seuraavaksi toteutus kokeellisena ominaisuutena suositusten mukaan: C (palkin
+tilanne avaa tilakortin), tila alkaa tilakortista, puhelimen palkissa pelkkä
+tila. Toteutus: `explain-mode`.

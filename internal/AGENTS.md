@@ -87,7 +87,11 @@ The packages divide the work as follows.
   profiles declare qualified minimum versions, never exact Ubuntu pins or shipped
   deb closures. Newer security updates must not block convergence. Deliberate
   maintenance installs unmet requirements through the host's apt, with no removals,
-  downgrades or holds. Non-Ubuntu components alone remain exact pinned archives.
+  downgrades or holds. A non-Ubuntu package from a vendor apt repository that the
+  host keeps updated (Google Chrome) is treated the same way: a qualified
+  minimum version, updated as the OS delivers it, because a browser that opens
+  the web goes stale within days. Other non-Ubuntu components, archives with no
+  OS update channel, remain exact pinned archives.
   Release trust is the site's exact manifest digest/version, which the operator
   takes from the SHA-256 GitHub states for the release's manifest asset. The
   digest is compared before the manifest is parsed, and nothing supplied by the

@@ -1,9 +1,9 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-browse-what-agent-sees-m365']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-conversation-context-view
 lane: context-view-proto
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Prototype: conversation context analysis view (from the read/changed log)
@@ -54,3 +55,13 @@ kierroksen 2 tutkimus todellisista toiminnoista.
 - [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
 - [x] kierros 2: tutkimus todellisista toiminnoista ja kolme B-riffiä tiedostosuodattimella, näkymätarjous ja kysymykset Jarille
 - [x] kierros 3: B Koko yksinkertaistettuna, jokaisen tiedon ja painikkeen lähde nimetty; kolme suuntaa, näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-07, kierros 3)
+
+**2 Lista ja tiivistys** on hyvä, mutta ilman omaa Avaa-saraketta: tiedoston
+nimen napsautus avaa sen, jolloin näkymä on lähellä suuntaa 3 *Pelkkä lista*.
+Jari kysyi, mistä tieto siitä, mikä tiivistyy ja mikä ei, tulee: vastattu
+keskustelussa (Pi:n oma `prepareCompaction` henkilön asetuksilla; Pi tiivistää
+aina vanhimmat ja jättää uusimmat noin `keepRecentTokens`, oletus 20 000;
+arvio muuttuu, jos keskustelu jatkuu ennen tiivistystä). Toteutus:
+`conversation-context-view`.
