@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: composer-lists-fixes
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # In-field lists: preview keeps its scroll, folders cannot be opened
@@ -22,4 +23,4 @@ Kentän sisäisen tiedostopuun kansioita ei saa auki (Jari 7.11., pilot.612): jo
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

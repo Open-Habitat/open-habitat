@@ -1599,9 +1599,11 @@ export function Composer({
         }
         onKeyDown={listKeys}
         onPick={(i) =>
-          open.marks.length && open.kind === "file"
-            ? toggleMark(i, false)
-            : accept(i)
+          flat[i]?.type === "folder"
+            ? toggleRow(i)
+            : open.marks.length && open.kind === "file"
+              ? toggleMark(i, false)
+              : accept(i)
         }
         onHover={(i) => {
           if (open.sel !== i)

@@ -1229,6 +1229,14 @@ describe("composer lists inside the field (experimental)", () => {
       agents.querySelector('[data-testid="composer-mark"]') as Element,
     );
     expect(view.getByTestId("composer-marked")).toBeTruthy();
+    // Marks must not turn folder navigation into another mark toggle.
+    const docs = view.getAllByRole("option")[0];
+    fireEvent.click(docs.querySelector(".ah-choice-twist") as Element);
+    expect(options(view)).not.toContain("docs/AGENTS.md");
+    expect(docs.getAttribute("data-marked")).toBe("true");
+    fireEvent.click(docs.querySelector(".ah-choice-path") as Element);
+    await waitFor(() => expect(options(view)).toContain("docs/AGENTS.md"));
+    expect(docs.getAttribute("data-marked")).toBe("true");
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() =>
       expect(field(view).value).toBe("Katso @docs/ @AGENTS.md "),

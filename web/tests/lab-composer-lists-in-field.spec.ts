@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
+test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true, hasTouch: true });
 
 // The composer's lists inside the field (composer-lists-in-field,
 // experimental; proto-composer-popover-placement rounds 3 and 4, Puu and
@@ -111,10 +111,20 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   ).toEqual([]);
   await shot(page, "tree-1440");
 
-  // A closed folder opens in place from the daemon's read of it.
-  await row(page, "cmd/").click();
+  // A box marks without opening. Even with marks, the caret and name
+  // navigate rather than toggling that mark (desktop and touch regression).
+  await row(page, "cmd/").getByTestId("composer-mark").click();
+  await expect(row(page, "cmd/")).toHaveAttribute("data-open", "false");
+  await row(page, "cmd/").locator(".ah-choice-twist").click();
   await expect(row(page, "cmd/")).toHaveAttribute("data-open", "true");
   await expect(row(page, "cmd/main.go")).toBeVisible({ timeout: 10000 });
+  await expect(row(page, "cmd/")).toHaveAttribute("data-marked", "true");
+  await row(page, "cmd/").locator(".ah-choice-path").click();
+  await expect(row(page, "cmd/")).toHaveAttribute("data-open", "false");
+  await expect(row(page, "cmd/")).toHaveAttribute("data-marked", "true");
+  await row(page, "cmd/").locator(".ah-choice-path").click();
+  await row(page, "cmd/").getByTestId("composer-mark").click();
+  await expect(row(page, "cmd/")).toHaveAttribute("data-open", "true");
   const search = page.getByTestId("command-search");
   await search.press("ArrowLeft");
   await expect(row(page, "cmd/")).toHaveAttribute("data-open", "false");
@@ -164,6 +174,54 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   await expect(field).toHaveValue(/^\/fix-tests Katso @/);
 });
 
+test("@lab command preview starts at the top for each selection", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await newConversation(page, 1440);
+  // Long synthetic skill descriptions expose retained scrolling without
+  // depending on how much text the lab's ordinary commands happen to have.
+  await page.route("**/api/v1/**/commands*", async (route) => {
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        answered_by: "helper",
+        commands: ["skill:alpha", "skill:beta"].map((name) => ({
+          name,
+          description: `${name} ${"Preview paragraph. ".repeat(50)}`,
+          source: "skill",
+          scope: "project",
+          terminal_only: false,
+        })),
+      },
+    });
+  });
+  await page.getByTestId("command-palette").click();
+  const search = page.getByTestId("command-search");
+  const preview = list(page).locator(".ah-pal-prev");
+  await expect(list(page).getByRole("option")).toHaveCount(2);
+  await search.press("Home");
+  await expect(preview.locator("h2")).toHaveText("/skill:alpha");
+  await preview.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect
+    .poll(() => preview.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  await search.press("ArrowDown");
+  await expect(preview.locator("h2")).toHaveText("/skill:beta");
+  await expect.poll(() => preview.evaluate((el) => el.scrollTop)).toBe(0);
+  await preview.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect
+    .poll(() => preview.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  await search.press("ArrowUp");
+  await expect(preview.locator("h2")).toHaveText("/skill:alpha");
+  await expect.poll(() => preview.evaluate((el) => el.scrollTop)).toBe(0);
+});
+
 test("@lab composer lists in the field on a phone: no preview, boxes mark and the row adds them", async ({
   page,
 }) => {
@@ -184,6 +242,10 @@ test("@lab composer lists in the field on a phone: no preview, boxes mark and th
     .getByTestId("composer-mark")
     .click();
   await row(page, "tests/").getByTestId("composer-mark").click();
+  await row(page, "cmd/").locator(".ah-choice-twist").tap();
+  await expect(row(page, "cmd/main.go")).toBeVisible();
+  await row(page, "cmd/").locator(".ah-choice-path").tap();
+  await expect(row(page, "cmd/")).toHaveAttribute("data-open", "false");
   await shot(page, "marked-390");
   await page.getByTestId("composer-marked-add").click();
   await expect(field).toHaveValue("@scripts/status_rows.py @tests/ ");

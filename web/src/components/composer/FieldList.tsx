@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import type { FilePreview, TreeFolder } from "../../app/composerReads";
 import { useText } from "../../i18n";
 import { fieldListText } from "../../text/fieldList";
@@ -62,6 +63,21 @@ export function FieldList({
 }) {
   const t = useText(fieldListText);
   const flat = flatChoices(groups);
+  const previewElement = useRef<HTMLElement>(null);
+  const choice = flat[selected];
+  const previewKey =
+    !choice || choice.type === "status"
+      ? undefined
+      : choice.type === "command"
+        ? `command:${choice.tone}:${choice.name}`
+        : `${choice.type}:${choice.path}`;
+  // Reset by identity, not index: opening a folder can shift the same row.
+  useLayoutEffect(() => {
+    if (previewKey && previewElement.current) {
+      previewElement.current.scrollTop = 0;
+      previewElement.current.scrollLeft = 0;
+    }
+  }, [previewKey]);
   const files = kind === "file";
   const searching = !!query;
   const k = (key: string) => <kbd>{key}</kbd>;
@@ -127,6 +143,7 @@ export function FieldList({
           onHover={onHover}
         />
         <section
+          ref={previewElement}
           className="ah-pal-prev"
           aria-label={t.preview}
           aria-live="polite"
