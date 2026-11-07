@@ -28,7 +28,15 @@
       "modified_files": ["/work/b.go"]
     }
   ],
-  "next_compaction": { "from_turn": 2, "through_turn": 2, "kept_from_turn": 3, "split_turn": false, "summarized_tokens": 1100 },
+  "next_compaction": { "from_turn": 2, "through_turn": 2, "kept_from_turn": 3, "split_turn": false, "summarized_tokens": 1100, "from_at": "2026-10-27T10:03:00.000Z", "through_at": "2026-10-27T10:04:00.000Z", "kept_from_at": "2026-10-27T10:06:00.000Z", "estimated_tokens_after": 1500 },
+  "just_compacted": false,
+  "context_from_at": "2026-10-27T10:03:00.000Z",
+  "items": [
+    { "kind": "command", "name": "cat example.txt", "tokens": 1000, "in_context": true, "kept_tokens": 0, "ops": [{ "verb": "ran", "at": "2026-10-27T10:03:30.000Z" }], "ops_omitted": 0 },
+    { "kind": "file", "name": "src/b.go", "tokens": 20, "in_context": true, "kept_tokens": 20, "ops": [{ "verb": "edited", "at": "2026-10-27T10:06:30.000Z", "added": 4, "removed": 2 }], "ops_omitted": 0 },
+    { "kind": "file", "name": "a.go", "tokens": 0, "in_context": false, "ops": [{ "verb": "read", "at": "2026-10-27T10:01:30.000Z" }], "ops_omitted": 0 }
+  ],
+  "items_omitted": 0,
   "turns": [
     { "n": 1, "at": "2026-10-27T10:01:00.000Z", "request": "first", "replies": 2, "context_tokens": 30000, "input": 20, "output": 40, "cache_read": 59940, "cache_write": 0, "cost": 0 },
     { "n": 2, "at": "2026-10-27T10:03:00.000Z", "request": "second", "replies": 2, "context_tokens": 41000, "input": 20, "output": 40, "cache_read": 81940, "cache_write": 0, "cost": 0 },

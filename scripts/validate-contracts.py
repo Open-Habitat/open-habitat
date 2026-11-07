@@ -127,6 +127,8 @@ checks = {
     "rewind-request.json": "rewind.schema.json",
     "rewind-result.json": "rewind.schema.json",
     "context-detail.json": "context-detail.schema.json",
+    "compaction-request.json": "compaction.schema.json",
+    "compaction-result.json": "compaction.schema.json",
     "title-failure.json": "command.schema.json",
     "claude-login.json": "claude-login.schema.json",
     "pi-status.json": "pi-status.schema.json",
@@ -548,6 +550,8 @@ else:
 rewind_request = json.loads((BASE / "examples" / "rewind-request.json").read_text())
 must_reject("rewind.schema.json", {**rewind_request, "conversation": False, "files": False})
 must_reject("rewind.schema.json", {**rewind_request, "entry_key": "../x"})
+must_reject("compaction.schema.json", {"instructions": "x" * 2001})
+must_reject("compaction.schema.json", {"instructions": "x", "keep_recent_tokens": 1})
 recap_settings = json.loads((BASE / "examples" / "recap-settings.json").read_text())
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "delay_seconds": 30}})
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "mode": "manual"}})

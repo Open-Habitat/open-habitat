@@ -46,6 +46,17 @@ const fi = {
         "Tiedostot palautuvat viesteistä, jotka lähetit ominaisuuden ollessa päällä. Palautuvat agentin muokkaamat tiedostot; komentojen tekemät muutokset jäävät. Kopiot tiedostoista jäävät omalle tilillesi.",
       caption: "Oman viestin valikko",
     },
+    "conversation-context-view": {
+      name: "Kontekstinäkymä ja tiivistys",
+      desc: "Konteksti-sivu näyttää, mihin keskustelun konteksti kuluu: tiedostot, komennot ja tulosteet, jotka agentti näkee nyt, ja ne, jotka ovat enää vain yhteenvedossa. Keskustelun voi tiivistää heti omalla ohjeella.",
+      where:
+        "Keskustelun kontekstirenkaasta avautuvalla Konteksti-sivulla. Tiedoston nimestä tiedosto avautuu editoriin keskustelun viereen.",
+      shows:
+        "Kuinka täynnä konteksti on, listan suurimmasta pienimpään ja suodattimen Vain tiedostot. Tiivistyksen vahvistus kertoo kellonajoin, mitkä viestit tiivistyvät ja mitkä jäävät.",
+      needs:
+        "Tiivistää voi, kun agentti odottaa viestiä. Pi:n tekniset luvut (osat, tiivistykset ja vuorot) jäävät pois sivulta, kun ominaisuus on päällä.",
+      caption: "Konteksti-sivu",
+    },
     "empty-conversation-start-page": {
       name: "Aloitussivupainike keskustelussa",
       desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
@@ -181,6 +192,17 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "Files are restored for messages you sent while the feature was on. Files the agent edited are restored; changes made by commands stay. Copies of the files stay in your own account.",
       caption: "Your message's menu",
+    },
+    "conversation-context-view": {
+      name: "Context view and compaction",
+      desc: "The Context page shows what fills the conversation's context: the files, commands and outputs the agent sees now, and those that are only in a summary. You can compact the conversation right away with your own instruction.",
+      where:
+        "On the Context page that opens from the conversation's context ring. A file's name opens it in the editor beside the conversation.",
+      shows:
+        "How full the context is, a list from the largest to the smallest and a Files only filter. The compaction confirmation tells by clock time which messages are summarized and which stay.",
+      needs:
+        "You can compact while the agent waits for a message. Pi's technical figures (parts, compactions and turns) are left off the page while the feature is on.",
+      caption: "Context page",
     },
     "empty-conversation-start-page": {
       name: "Start-page button in conversations",

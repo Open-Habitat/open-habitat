@@ -5,7 +5,7 @@
   "description": "Pi's own reading of its session file: the measured total from the last valid usage, part sizes by Pi's chars/4 estimate, compaction entries, and the next compaction by Pi's own cut rule. Sizes are tokens.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "agent_id", "harness", "estimated_tokens", "trailing_tokens", "parts", "instructions", "tools", "conversation", "largest_outputs", "compactions", "next_compaction", "turns", "turns_omitted"],
+  "required": ["schema_version", "agent_id", "harness", "estimated_tokens", "trailing_tokens", "parts", "instructions", "tools", "conversation", "largest_outputs", "compactions", "next_compaction", "just_compacted", "items", "items_omitted", "turns", "turns_omitted"],
   "properties": {
     "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
     "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
@@ -113,17 +113,39 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["from_turn", "through_turn", "kept_from_turn", "split_turn", "summarized_tokens"],
+          "required": ["from_turn", "through_turn", "kept_from_turn", "split_turn", "summarized_tokens", "estimated_tokens_after"],
           "properties": {
             "from_turn": { "$ref": "#/$defs/turn" },
             "through_turn": { "$ref": "#/$defs/turn" },
             "kept_from_turn": { "$ref": "#/$defs/turn" },
             "split_turn": { "type": "boolean" },
-            "summarized_tokens": { "$ref": "#/$defs/tokens" }
+            "summarized_tokens": { "$ref": "#/$defs/tokens" },
+            "from_at": { "description": "When the first message Pi would summarize was written.", "$ref": "#/$defs/time" },
+            "through_at": { "description": "When the last message Pi would summarize was written.", "$ref": "#/$defs/time" },
+            "kept_from_at": { "description": "When the first entry Pi would keep was written.", "$ref": "#/$defs/time" },
+            "estimated_tokens_after": {
+              "description": "Pi's estimate of the context right after: prompt, tools, the earlier summary standing in for the new one, and every entry Pi keeps.",
+              "$ref": "#/$defs/tokens"
+            }
           }
         }
       ]
     },
+    "just_compacted": {
+      "description": "The active path ends in a compaction, so Pi refuses another until the conversation continues.",
+      "type": "boolean"
+    },
+    "context_from_at": {
+      "description": "When the first entry the model sees word for word was written: the latest compaction's first kept entry, else the first message.",
+      "$ref": "#/$defs/time"
+    },
+    "items": {
+      "description": "Every file, command and tool target the agent used on the active path, one row each: in-context rows by size, at most 200, then rows only in a summary by recency, at most 100. Files follow Pi's own file rule (read, write and edit paths, also from codemode scripts) and known document readers run as commands.",
+      "type": "array",
+      "maxItems": 300,
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "items_omitted": { "type": "integer", "minimum": 0 },
     "turns": {
       "description": "Turns on the active path, oldest first: a person's message and the replies until the next one. Usage is summed over the turn's replies; context_tokens is the last valid reply's.",
       "type": "array",
@@ -161,6 +183,40 @@
         "replaced": { "type": "boolean" }
       }
     },
-    "files": { "type": "array", "maxItems": 50, "items": { "type": "string", "maxLength": 512 } }
+    "files": { "type": "array", "maxItems": 50, "items": { "type": "string", "maxLength": 512 } },
+    "time": { "type": "string", "maxLength": 64 },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name", "tokens", "in_context", "ops", "ops_omitted"],
+      "properties": {
+        "kind": { "enum": ["file", "command", "tool"] },
+        "name": {
+          "description": "A file's path relative to the conversation's folder, ~/ for the rest of the home, absolute elsewhere; a command's text; a tool's name and target.",
+          "type": "string", "minLength": 1, "maxLength": 512
+        },
+        "tokens": { "description": "Pi's estimate of the outputs the model still sees word for word.", "$ref": "#/$defs/tokens" },
+        "in_context": { "description": "Some output is still in the model's context; false when it is only in a summary.", "type": "boolean" },
+        "kept_tokens": { "description": "Of tokens, what Pi's next compaction would keep; absent when there is nothing to compact.", "$ref": "#/$defs/tokens" },
+        "ops": {
+          "description": "What the agent did with it, oldest first, at most 10.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["verb", "at"],
+            "properties": {
+              "verb": { "enum": ["read", "wrote", "edited", "ran", "used"] },
+              "at": { "$ref": "#/$defs/time" },
+              "added": { "description": "Lines a write wrote or an edit added.", "$ref": "#/$defs/tokens" },
+              "removed": { "description": "Lines an edit removed.", "$ref": "#/$defs/tokens" }
+            }
+          }
+        },
+        "ops_omitted": { "type": "integer", "minimum": 0 }
+      }
+    }
   }
 }

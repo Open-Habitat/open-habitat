@@ -26,6 +26,7 @@ const features = [
   "rewind-conversation",
   "explain-mode",
   "agent-resources-view",
+  "conversation-context-view",
 ];
 
 async function signIn(page: Page) {

@@ -149,6 +149,11 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		if r.URL.Path == "/api/v1/workspaces/github/publish" && r.Method == http.MethodPost {
 			ceiling = 46 * time.Minute
 		}
+		// Pi answers a compaction once its summary is written; the daemon
+		// waits for that up to ten minutes (compaction_linux.go).
+		if r.Method == http.MethodPost && compactPath.MatchString(r.URL.Path) {
+			ceiling = 11 * time.Minute
+		}
 		ctx, cancel = context.WithTimeout(ctx, ceiling)
 		defer cancel()
 	}

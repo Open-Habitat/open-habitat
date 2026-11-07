@@ -1,0 +1,242 @@
+/* The context view (experimental, prototype round 2026-11-06-kontekstinakyma-3,
+   direction 2): one number, one meter, the compaction row and the list. A
+   row's source is a small round mark, never a coloured edge. */
+.ah-cv {
+  max-width: 880px;
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-cv > * {
+  min-width: 0;
+}
+.ah-cv-lead {
+  margin: 0;
+  color: var(--ah-ink-2);
+  line-height: 1.5;
+}
+.ah-cv-fine,
+.ah-cv-desc {
+  margin: 0;
+  max-width: 640px;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+}
+.ah-cv-desc {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+  margin-bottom: var(--ah-s2);
+}
+.ah-cv-big {
+  margin: var(--ah-s1) 0 0;
+  font-size: var(--ah-size-h1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ah-ink);
+}
+.ah-cv-big span {
+  margin-inline-start: 6px;
+  font-size: var(--ah-size-ui);
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-cv-meter {
+  position: relative;
+  max-width: 640px;
+  height: 12px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  box-shadow: inset 0 0 0 1px var(--ah-line-soft);
+}
+.ah-cv-meter i {
+  display: block;
+  height: 100%;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+}
+.ah-cv-meter b {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--ah-ink-2);
+}
+.ah-cv-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s3);
+  margin-top: var(--ah-s2);
+}
+.ah-cv-compact .ah-cv-fine {
+  flex: 1 1 22em;
+}
+.ah-cv-bar-note {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: var(--ah-s2) 0 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-cv-bar-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.ah-cv-spin {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--ah-line-strong);
+  border-top-color: var(--ah-accent);
+  animation: ah-cv-spin 0.9s linear infinite;
+}
+@keyframes ah-cv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-cv-spin {
+    animation: none;
+  }
+}
+.ah-cv-outcome {
+  color: var(--ah-ink-2);
+}
+.ah-cv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2) var(--ah-s3);
+  margin-top: var(--ah-s4);
+}
+.ah-cv-head h3 {
+  margin: 0;
+  color: var(--ah-ink);
+  font-size: var(--ah-size-body);
+}
+.ah-cv-group {
+  display: grid;
+  gap: var(--ah-s1);
+  margin-top: var(--ah-s3);
+}
+.ah-cv-group h4 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6em;
+  gap: var(--ah-s3);
+  align-items: baseline;
+  margin: 0;
+  padding: 0 var(--ah-s1);
+  font-size: var(--ah-size-ui);
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-cv-tok {
+  text-align: right;
+  color: var(--ah-muted);
+  font-weight: 400;
+  font-size: var(--ah-size-meta);
+}
+.ah-cv-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.ah-cv-row {
+  display: grid;
+  align-items: center;
+  gap: 2px var(--ah-s2);
+  grid-template-columns: auto minmax(0, 1fr) 6em;
+  padding: var(--ah-s2) var(--ah-s1);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-cv-row:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-cv-empty {
+  grid-template-columns: 1fr;
+}
+.ah-cv-src {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  align-self: start;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ah-surface-2);
+  border: 1px solid var(--ah-line);
+  color: var(--ah-ink-2);
+}
+.ah-cv-src svg {
+  width: 11px;
+  height: 11px;
+}
+.ah-cv-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.ah-cv-name > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-ink);
+}
+.ah-cv-meta {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-cv-size,
+.ah-cv-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-modal.ah-cv-modal {
+  max-width: 560px;
+}
+.ah-cv-stay {
+  list-style: none;
+  margin: 0 0 var(--ah-s2);
+  padding: 0;
+  display: grid;
+  gap: var(--ah-s1);
+}
+.ah-cv-stay li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s2);
+  font-size: var(--ah-size-meta);
+}
+.ah-cv-stay li > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .ah-cv-row,
+  .ah-cv-group h4 {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .ah-cv-group h4 {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ah-cv-name > :first-child {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

@@ -134,6 +134,7 @@ func runFakePi(args []string) {
 				if entry.Type == "custom" && entry.CustomType == "conversation-recap" {
 					s.lastRecap = s.lastMessage
 				}
+				s.track(entry.Type, entry.Message.Role, entry.ID)
 			}
 		}
 	}
@@ -147,6 +148,7 @@ func runFakePi(args []string) {
 	for in.Scan() {
 		var req struct {
 			ID, Type, Message, Name, Provider, ModelId, Level, Command string
+			CustomInstructions                                         string
 			ExcludeFromContext                                         bool
 		}
 		if json.Unmarshal(in.Bytes(), &req) != nil {
@@ -210,6 +212,16 @@ func runFakePi(args []string) {
 				<-idle
 				emit(map[string]any{"type": "response", "id": id, "command": "abort", "success": true})
 			}(req.ID)
+		case "compact":
+			// Pi answers when its summary is written, after other commands.
+			go func(id, instructions string) {
+				result, refused := s.compact(instructions, emit)
+				if refused != "" {
+					emit(map[string]any{"type": "response", "id": id, "command": "compact", "success": false, "error": refused})
+					return
+				}
+				emit(map[string]any{"type": "response", "id": id, "command": "compact", "success": true, "data": result})
+			}(req.ID, req.CustomInstructions)
 		case "abort_bash":
 			bashes.abort()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "abort_bash", "success": true})
@@ -333,6 +345,10 @@ type fakeSession struct {
 	// usage would; compacted says the history was just summarized.
 	context   int
 	compacted bool
+	// What Pi's own compact checks: the last entry's type and the person's
+	// messages since the last compaction (track).
+	lastType, lastUser string
+	usersSince         int
 	// system is Pi 1.3's recorded prompt state: sections and tools.
 	system map[string]any
 }
@@ -425,11 +441,15 @@ func (s *fakeSession) write(v map[string]any) {
 	}
 	v["timestamp"] = time.Now().UTC().Format(time.RFC3339Nano)
 	s.parent = entry
+	role := ""
 	if v["type"] == "message" {
 		if m, ok := v["message"].(map[string]any); ok && (m["role"] == "user" || m["role"] == "assistant") {
 			s.lastMessage = entry
+			role, _ = m["role"].(string)
 		}
 	}
+	kind, _ := v["type"].(string)
+	s.track(kind, role, entry)
 	if v["type"] == "custom" && v["customType"] == "conversation-recap" {
 		s.lastRecap = s.lastMessage
 	}
@@ -440,6 +460,47 @@ func (s *fakeSession) write(v map[string]any) {
 	}
 	defer f.Close()
 	_, _ = f.Write(append(b, '\n'))
+}
+
+func (s *fakeSession) track(kind, role, id string) {
+	s.lastType = kind
+	if kind == "compaction" {
+		s.usersSince = 0
+	}
+	if kind == "message" && role == "user" {
+		s.lastUser = id
+		s.usersSince++
+	}
+}
+
+// compact is Pi's RPC compact as far as the page can tell: it refuses right
+// after a compaction and in a conversation too small to cut, and otherwise
+// summarizes everything before the latest message of the person.
+func (s *fakeSession) compact(instructions string, emit func(any)) (map[string]any, string) {
+	s.appendMu.Lock()
+	lastType, users, kept, before := s.lastType, s.usersSince, s.lastUser, s.context
+	s.appendMu.Unlock()
+	emit(map[string]any{"type": "compaction_start", "reason": "manual"})
+	refuse := ""
+	if lastType == "compaction" {
+		refuse = "Already compacted"
+	} else if users < 2 {
+		refuse = "Nothing to compact (session too small)"
+	}
+	if refuse != "" {
+		emit(map[string]any{"type": "compaction_end", "reason": "manual", "aborted": false, "willRetry": false, "errorMessage": "Compaction failed: " + refuse})
+		return nil, refuse
+	}
+	time.Sleep(1200 * time.Millisecond)
+	summary := "Synteettinen tiivistelmä aiemmasta keskustelusta."
+	if instructions != "" {
+		summary += "\n\nOhje: " + instructions
+	}
+	s.append(map[string]any{"type": "compaction", "summary": summary, "firstKeptEntryId": kept, "tokensBefore": before, "systemMessage": s.system})
+	s.compacted = true
+	result := map[string]any{"summary": summary, "firstKeptEntryId": kept, "tokensBefore": before, "estimatedTokensAfter": 4200}
+	emit(map[string]any{"type": "compaction_end", "reason": "manual", "result": result, "aborted": false, "willRetry": false})
+	return result, ""
 }
 
 func message(role string, content any, extra map[string]any) map[string]any {
@@ -728,6 +789,13 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		process := map[string]any{"id": "proc_c0de", "name": "kehityspalvelin", "command": "npm run dev", "startTime": time.Now().UnixMilli(), "status": "running"}
 		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "process", "id": "process-start", "arguments": map[string]any{"action": "start", "name": "kehityspalvelin", "command": "npm run dev"}}}, nil))
 		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Started process kehityspalvelin (proc_c0de)."}}, map[string]any{"toolCallId": "process-start", "toolName": "process", "details": map[string]any{"action": "start", "process": process, "notify": map[string]any{"onSuccess": "turn", "onFailure": "turn", "onKilled": "context"}}}))
+	}
+	if strings.Contains(prompt, "lue loki") {
+		// A large read the context view lists by its file name; Pi's own
+		// compaction cut needs this much to have something to summarize.
+		id := fmt.Sprintf("read-log-%d", time.Now().UnixNano())
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "read", "id": id, "arguments": map[string]any{"path": "cmd/main.go"}}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": strings.Repeat("synteettinen lokirivi\n", 4000)}}, map[string]any{"toolCallId": id, "toolName": "read"}))
 	}
 	if strings.Contains(prompt, "virhekortti") {
 		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "read", "id": "failed-read", "arguments": map[string]any{"path": "missing.ts"}}}, nil))

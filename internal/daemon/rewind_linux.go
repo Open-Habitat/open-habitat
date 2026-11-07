@@ -908,7 +908,7 @@ func (c *ConversationController) rewind(w http.ResponseWriter, r *http.Request, 
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.state == "stopping" || s.state == "uncertain" || s.rewinding || s.recapping || s.rpc.overflow.Load() {
+	if c.closed || s.dead || s.state == "stopping" || s.state == "uncertain" || s.rewinding || s.compacting || s.recapping || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

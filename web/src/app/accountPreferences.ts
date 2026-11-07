@@ -31,6 +31,7 @@ export const experimentalFeatureIds = [
   "rewind-conversation",
   "explain-mode",
   "agent-resources-view",
+  "conversation-context-view",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

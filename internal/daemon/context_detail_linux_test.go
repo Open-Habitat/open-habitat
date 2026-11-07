@@ -225,3 +225,113 @@ func TestContextDetailFitsTheDaemonLimit(t *testing.T) {
 		t.Fatalf("oversized reading: %d %d", code, len(d.Compactions))
 	}
 }
+
+// toolTurn is one turn whose single tool call and result are given.
+func (s *contextSession) toolTurn(ask, tool string, args map[string]any, output string, details map[string]any) {
+	s.message(map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": ask}}, "timestamp": 1})
+	call := fmt.Sprintf("call_%d", s.n)
+	usage := map[string]any{"input": 10, "output": 20, "cacheRead": 1000, "cacheWrite": 0, "totalTokens": 1030, "cost": map[string]any{"total": 0}}
+	s.message(map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "toolCall", "id": call, "name": tool, "arguments": args}}, "api": "test", "provider": "openai-codex", "model": "m", "usage": usage, "stopReason": "toolUse", "timestamp": 1})
+	result := map[string]any{"role": "toolResult", "toolCallId": call, "toolName": tool, "content": []any{map[string]any{"type": "text", "text": output}}, "isError": false, "timestamp": 1}
+	if details != nil {
+		result["details"] = details
+	}
+	s.message(result)
+	s.message(map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "ok"}}, "api": "test", "provider": "openai-codex", "model": "m", "usage": usage, "stopReason": "stop", "timestamp": 1})
+}
+
+// The context view's list: one row per file, command or tool target, from
+// Pi's own file rule and known document readers, with what the model still
+// sees of it and what Pi's next compaction would keep.
+func TestContextDetailItems(t *testing.T) {
+	p, home := piFixture(t)
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	h := ContextDetailHandler(cfg, func(*http.Request) bool { return true }, p)
+	const id = "77777777-7777-4777-8777-777777777777"
+	writeContextSession(t, home, id, "openai-codex", func(s *contextSession) {
+		s.toolTurn("read the plan", "bash", map[string]any{"command": `docx2txt "Plan 2026.docx" -`}, strings.Repeat("p", 8000), nil)
+		s.toolTurn("read a", "read", map[string]any{"path": "src/a.go"}, strings.Repeat("a", 400), nil)
+		kept := s.message(map[string]any{"role": "user", "content": "go on", "timestamp": 1})
+		s.compact(map[string]any{"summary": "s", "firstKeptEntryId": kept, "tokensBefore": 9000})
+		s.toolTurn("read a again", "read", map[string]any{"path": "/work/src/a.go"}, strings.Repeat("a", 4000), nil)
+		s.toolTurn("edit b", "edit", map[string]any{"path": "/work/b.go"}, "Edited", map[string]any{"patch": "--- a\n+++ b\n@@\n-old\n+new\n+more\n"})
+		s.toolTurn("note", "write", map[string]any{"path": filepath.Join(home, "notes.md"), "content": "one\ntwo\nthree\n"}, "Wrote", nil)
+		s.toolTurn("test", "bash", map[string]any{"command": "go  test ./..."}, strings.Repeat("t", 2000), nil)
+	})
+	code, d := readContextDetail(t, h, "pi:"+id)
+	if code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	byName := map[string]contextItem{}
+	for _, item := range d.Items {
+		byName[item.Name] = item
+	}
+	plan, a, b, notes, test := byName["Plan 2026.docx"], byName["src/a.go"], byName["b.go"], byName["~/notes.md"], byName["go test ./..."]
+	if plan.Kind != "file" || plan.InContext || plan.Ops[0].Verb != "read" {
+		t.Fatalf("a document read by a known reader, only in the summary now: %+v", plan)
+	}
+	if a.Kind != "file" || !a.InContext || len(a.Ops) != 2 || a.Tokens != 1000 {
+		t.Fatalf("the same file by relative and absolute path is one row, sized by what the model still sees: %+v", a)
+	}
+	if b.Ops[0].Verb != "edited" || b.Ops[0].Added == nil || *b.Ops[0].Added != 2 || *b.Ops[0].Removed != 1 {
+		t.Fatalf("an edit's lines from Pi's patch: %+v", b)
+	}
+	if notes.Ops[0].Verb != "wrote" || notes.Ops[0].Added == nil || *notes.Ops[0].Added != 3 {
+		t.Fatalf("a write in the home: %+v", notes)
+	}
+	if test.Kind != "command" || test.Ops[0].Verb != "ran" || test.Tokens != 500 {
+		t.Fatalf("a command: %+v", test)
+	}
+	if d.Items[0].Name != "src/a.go" || d.Items[len(d.Items)-1].Name != "Plan 2026.docx" || d.ItemsOmitted != 0 {
+		t.Fatalf("in-context rows by size, then the summarized ones: %+v", d.Items)
+	}
+	if d.JustCompacted || d.ContextFromAt == "" {
+		t.Fatalf("after the compaction the conversation continued: %+v", d)
+	}
+	if d.NextCompaction != nil {
+		t.Fatalf("Pi keeps 20 000 tokens by default; nothing to compact: %+v", d.NextCompaction)
+	}
+
+	// With the person's setting Pi would keep only the newest turn: the
+	// cut in clock times, what stays and Pi's estimate after.
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"compaction":{"keepRecentTokens":600}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, d = readContextDetail(t, h, "pi:"+id)
+	n := d.NextCompaction
+	now := d.Parts.Instructions + d.Parts.Tools + d.Parts.Summary + d.Parts.Conversation + d.Parts.ToolOutput
+	if n == nil || n.FromAt == "" || n.ThroughAt == "" || n.KeptFromAt == "" || n.EstimatedTokensAfter <= d.Parts.Instructions || n.EstimatedTokensAfter >= now {
+		t.Fatalf("next compaction: %+v (estimate now %d)", n, now)
+	}
+	for _, item := range d.Items {
+		if item.Name == "go test ./..." && (item.KeptTokens == nil || *item.KeptTokens != 500) || item.Name == "src/a.go" && (item.KeptTokens == nil || *item.KeptTokens != 0) {
+			t.Fatalf("what the next compaction keeps: %+v", item)
+		}
+	}
+
+	// Pi's cut can fall in the tail an earlier compaction kept, before that
+	// compaction's own entry: its summary counts once in the estimate after.
+	const tail = "99999999-9999-4999-8999-999999999999"
+	writeContextSession(t, home, tail, "openai-codex", func(s *contextSession) {
+		s.turn("openai-codex", "first", 400, 1000, false)
+		kept := s.turn("openai-codex", "second", 2400, 1000, false)
+		s.compact(map[string]any{"summary": strings.Repeat("s", 40000), "firstKeptEntryId": kept, "tokensBefore": 9000})
+		s.turn("openai-codex", "third", 40, 1000, false)
+	})
+	_, d = readContextDetail(t, h, "pi:"+tail)
+	n = d.NextCompaction
+	now = d.Parts.Instructions + d.Parts.Tools + d.Parts.Summary + d.Parts.Conversation + d.Parts.ToolOutput
+	if n == nil || n.EstimatedTokensAfter >= now {
+		t.Fatalf("the earlier summary counted twice: %+v (estimate now %d)", n, now)
+	}
+
+	// Right after a compaction Pi refuses another.
+	const fresh = "88888888-8888-4888-8888-888888888888"
+	writeContextSession(t, home, fresh, "openai-codex", func(s *contextSession) {
+		kept := s.turn("openai-codex", "only", 400, 9000, false)
+		s.compact(map[string]any{"summary": "s", "firstKeptEntryId": kept, "tokensBefore": 9000})
+	})
+	if _, d = readContextDetail(t, h, "pi:"+fresh); !d.JustCompacted || d.NextCompaction != nil {
+		t.Fatalf("just compacted: %+v", d)
+	}
+}

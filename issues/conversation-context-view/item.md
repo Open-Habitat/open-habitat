@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: context-view
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Conversation context view: list and compaction, open a file by its name (experimental)
@@ -27,4 +28,4 @@ uutta tietovarastoa. Kokeellinen ominaisuus.
 
 ## Acceptance Criteria
 
-- [ ] näkymä kokeellisena ominaisuutena prototyypin suunnan 2 mukaan, nimen napsautus avaa tiedoston, tiivistys toimii oikealla Pi:llä; työpöytä ja puhelin; testit
+- [x] näkymä kokeellisena ominaisuutena prototyypin suunnan 2 mukaan, nimen napsautus avaa tiedoston, tiivistys toimii oikealla Pi:llä; työpöytä ja puhelin; testit

@@ -141,3 +141,50 @@ func TestRewindRouteRelaysExactShapes(t *testing.T) {
 		t.Fatalf("forwarded %d", forwarded)
 	}
 }
+
+// Tiivistä nyt is one exact POST that needs the CSRF proof like a send.
+func TestCompactRouteRelaysExactShapes(t *testing.T) {
+	forwarded := 0
+	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	call := func(method, target string, csrf bool) int {
+		body := ""
+		if method == "POST" {
+			body = `{"instructions":"keep the figures"}`
+		}
+		r := httptest.NewRequest(method, "https://host.test"+target, strings.NewReader(body))
+		r.RequestURI = target
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+		r.Header.Set("Origin", "https://host.test")
+		if method == "POST" {
+			r.Header.Set("Content-Type", "application/json")
+		}
+		if csrf {
+			r.Header.Set("X-Agent-Host-CSRF", "token")
+		}
+		w := httptest.NewRecorder()
+		host.ServeHTTP(w, r)
+		return w.Code
+	}
+	const compact = "/api/v1/conversations/4f6c2a9e-1d3b-4c8a-9e7f-0a1b2c3d4e5f/compact"
+	if code := call("POST", compact, true); code != 200 {
+		t.Fatalf("compact: %d", code)
+	}
+	for _, bad := range []struct{ method, target string }{
+		{"GET", compact},
+		{"POST", compact + "?now=1"},
+	} {
+		if code := call(bad.method, bad.target, true); code != 400 {
+			t.Fatalf("%s %s: %d, want 400", bad.method, bad.target, code)
+		}
+	}
+	if code := call("POST", compact, false); code != 403 {
+		t.Fatalf("compact without CSRF: %d", code)
+	}
+	if forwarded != 1 {
+		t.Fatalf("forwarded %d", forwarded)
+	}
+}

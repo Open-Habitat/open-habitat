@@ -110,7 +110,7 @@ func (c *ConversationController) holdLocked(w http.ResponseWriter, s *conversati
 		s.heldChoice = choice
 	}
 	c.receipt(s, commandID, "held")
-	start := s.state != "starting" && !s.waking
+	start := s.state != "starting" && !s.waking && !s.compacting
 	if start {
 		s.state = "starting"
 		s.startProblem = ""
@@ -341,7 +341,7 @@ func (c *ConversationController) closeUnneeded(s *conversation) {
 // Their command IDs share that prompt's correlated receipt. Caller holds c.mu
 // and calls finishPrompt after unlocking when ok.
 func (c *ConversationController) takeHeldLocked(s *conversation) (heldBatch, bool) {
-	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.dead || s.rpc.overflow.Load() {
+	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.compacting || s.dead || s.rpc.overflow.Load() {
 		return heldBatch{}, false
 	}
 	b := heldBatch{choice: s.heldChoice, oldState: s.state, wasSettled: s.settled, previousSettlement: s.settlement}

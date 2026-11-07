@@ -623,6 +623,21 @@ export const settingsSections = [
         desc: "Selaa kaikkea, mitä agenttisi käyttävät, lajeittain: mikä on mukana, mikä ei ja mitä agentti saa tehdä.",
       },
       {
+        id: "conversation-context-view",
+        label: "Kontekstinäkymä ja tiivistys",
+        kw: [
+          "konteksti",
+          "context",
+          "tiivistys",
+          "tiivistä",
+          "compact",
+          "compaction",
+          "tokenit",
+          "tokens",
+        ],
+        desc: "Katso, mihin keskustelun konteksti kuluu, ja tiivistä keskustelu omalla ohjeella.",
+      },
+      {
         id: "next-waiting-row",
         label: "Seuraava odottava keskustelu",
         kw: [

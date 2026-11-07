@@ -201,7 +201,7 @@ func (c *ConversationController) recapResting(ctx context.Context, id string, ol
 		time.Sleep(100 * time.Millisecond)
 	}
 	c.mu.Lock()
-	ready := !c.closed && c.sessions[id] == s && s.recapOnly && recapIdle(s) && !s.dead && !s.recapping && !s.rpc.overflow.Load()
+	ready := !c.closed && c.sessions[id] == s && s.recapOnly && recapIdle(s) && !s.dead && !s.recapping && !s.compacting && !s.rpc.overflow.Load()
 	epoch := s.recapActivity
 	if ready {
 		s.recapping = true

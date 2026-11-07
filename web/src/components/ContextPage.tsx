@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { ContextDetail, ContextDetailState } from "../app/contextDetail";
 import { formatDate, formatNumber, liveText, useLanguage } from "../i18n";
 import { contextPageText } from "../text/contextPage";
@@ -544,11 +544,14 @@ export function ContextPage({
   usage,
   title,
   onClose,
+  view: replacement,
 }: {
   detail: ContextDetailState;
   usage?: ContextUsage;
   title: string;
   onClose: () => void;
+  /** The experimental context view, in place of Pi's technical figures. */
+  view?: (detail: ContextDetail) => ReactNode;
 }) {
   useLanguage();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -598,88 +601,95 @@ export function ContextPage({
                 {txt.showingPrevious}
               </p>
             ) : null}
-            <div className="ah-cd-top" data-level={level}>
-              <p
-                className="ah-cd-big"
-                data-testid="context-total"
-                data-measured={view.measured}
-              >
-                {view.measured === undefined ? (
-                  <>
-                    ? <span>{txt.estimateAbout(full(view.total))}</span>
-                  </>
-                ) : view.percent !== undefined && view.window ? (
-                  <>
-                    {pc(view.percent)}{" "}
-                    <span>
-                      {txt.ofWindow(full(view.measured), full(view.window))}
+            {replacement ? replacement(detail) : null}
+            {replacement ? null : (
+              <>
+                <div className="ah-cd-top" data-level={level}>
+                  <p
+                    className="ah-cd-big"
+                    data-testid="context-total"
+                    data-measured={view.measured}
+                  >
+                    {view.measured === undefined ? (
+                      <>
+                        ? <span>{txt.estimateAbout(full(view.total))}</span>
+                      </>
+                    ) : view.percent !== undefined && view.window ? (
+                      <>
+                        {pc(view.percent)}{" "}
+                        <span>
+                          {txt.ofWindow(full(view.measured), full(view.window))}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {full(view.measured)} <span>{txt.windowUnknown}</span>
+                      </>
+                    )}
+                  </p>
+                  <Bar view={view} estimate={view.measured === undefined} />
+                  <p className="ah-cd-text">
+                    {view.measured === undefined
+                      ? txt.measuresNext
+                      : view.threshold !== undefined && view.window
+                        ? view.threshold > view.measured
+                          ? txt.roomBefore(
+                              full(view.threshold - view.measured),
+                              full(view.threshold),
+                            )
+                          : txt.overThreshold(full(view.threshold))
+                        : detail.settings?.enabled === false
+                          ? txt.autoOffShort
+                          : txt.noThresholdWithoutWindow}
+                    {detail.trailing_tokens && view.measured !== undefined
+                      ? txt.trailing(full(detail.trailing_tokens))
+                      : ""}
+                  </p>
+                  <p className="ah-cd-meta">
+                    <span className="mono">
+                      {usage?.model ?? detail.model ?? txt.modelUnknown}
                     </span>
-                  </>
-                ) : (
-                  <>
-                    {full(view.measured)} <span>{txt.windowUnknown}</span>
-                  </>
-                )}
-              </p>
-              <Bar view={view} estimate={view.measured === undefined} />
-              <p className="ah-cd-text">
-                {view.measured === undefined
-                  ? txt.measuresNext
-                  : view.threshold !== undefined && view.window
-                    ? view.threshold > view.measured
-                      ? txt.roomBefore(
-                          full(view.threshold - view.measured),
-                          full(view.threshold),
+                    {" · "}
+                    {txt.windowMeta(
+                      view.window ? full(view.window) : undefined,
+                    )}
+                    {detail.settings
+                      ? txt.settingsMeta(
+                          full(detail.settings.reserve_tokens),
+                          full(detail.settings.keep_recent_tokens),
                         )
-                      : txt.overThreshold(full(view.threshold))
-                    : detail.settings?.enabled === false
-                      ? txt.autoOffShort
-                      : txt.noThresholdWithoutWindow}
-                {detail.trailing_tokens && view.measured !== undefined
-                  ? txt.trailing(full(detail.trailing_tokens))
-                  : ""}
-              </p>
-              <p className="ah-cd-meta">
-                <span className="mono">
-                  {usage?.model ?? detail.model ?? txt.modelUnknown}
-                </span>
-                {" · "}
-                {txt.windowMeta(view.window ? full(view.window) : undefined)}
-                {detail.settings
-                  ? txt.settingsMeta(
-                      full(detail.settings.reserve_tokens),
-                      full(detail.settings.keep_recent_tokens),
-                    )
-                  : ""}
-              </p>
-              {detail.harness === "claude_code" ? (
-                <p className="ah-cd-fine" data-testid="context-harness">
-                  {txt.claudeBridge}
-                </p>
-              ) : null}
-            </div>
-            <div className="ah-cd-grid">
-              <section aria-labelledby="ah-cd-parts">
-                <h3 id="ah-cd-parts">{txt.composedOf}</h3>
-                <Composition view={view} />
-                <p className="ah-cd-fine">
-                  {txt.partsFine(
-                    view.measured !== undefined,
-                    view.over ? full(view.over) : undefined,
-                  )}
-                </p>
-              </section>
-              <section aria-labelledby="ah-cd-next">
-                <h3 id="ah-cd-next">{txt.nextHeading}</h3>
-                <NextCompaction detail={detail} view={view} />
-                <h3>{txt.compactions}</h3>
-                <Compactions detail={detail} />
-              </section>
-            </div>
-            <section aria-labelledby="ah-cd-turns">
-              <h3 id="ah-cd-turns">{txt.turns}</h3>
-              <Turns detail={detail} view={view} />
-            </section>
+                      : ""}
+                  </p>
+                  {detail.harness === "claude_code" ? (
+                    <p className="ah-cd-fine" data-testid="context-harness">
+                      {txt.claudeBridge}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="ah-cd-grid">
+                  <section aria-labelledby="ah-cd-parts">
+                    <h3 id="ah-cd-parts">{txt.composedOf}</h3>
+                    <Composition view={view} />
+                    <p className="ah-cd-fine">
+                      {txt.partsFine(
+                        view.measured !== undefined,
+                        view.over ? full(view.over) : undefined,
+                      )}
+                    </p>
+                  </section>
+                  <section aria-labelledby="ah-cd-next">
+                    <h3 id="ah-cd-next">{txt.nextHeading}</h3>
+                    <NextCompaction detail={detail} view={view} />
+                    <h3>{txt.compactions}</h3>
+                    <Compactions detail={detail} />
+                  </section>
+                </div>
+                <section aria-labelledby="ah-cd-turns">
+                  <h3 id="ah-cd-turns">{txt.turns}</h3>
+                  <Turns detail={detail} view={view} />
+                </section>
+              </>
+            )}
           </>
         ) : null}
       </div>

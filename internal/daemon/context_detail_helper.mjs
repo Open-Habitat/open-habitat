@@ -4,7 +4,7 @@
 // estimate, its usage rule and its compaction cut. Nothing is written.
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, normalize, relative, resolve } from 'node:path';
 
 const [entry, manifest] = process.argv.slice(-2);
 const text = (value, max) => typeof value === 'string' ? (value.length > max ? value.slice(0, max) : value) : '';
@@ -13,7 +13,7 @@ try {
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
   const pi = pathToFileURL(entry);
   const { SessionManager, SettingsManager, parseSessionEntries, migrateSessionEntries } = await import(pi.href);
-  const { estimateTokens, estimateProjectedContextTokens, prepareCompaction, calculateContextTokens } =
+  const { estimateTokens, estimateProjectedContextTokens, prepareCompaction, calculateContextTokens, extractFileOpsFromMessage } =
     await import(new URL('./core/compaction/index.js', pi).href);
   const { getCurrentSystemMessage } = await import(new URL('../../pi-ai/dist/index.js', pi).href);
 
@@ -68,6 +68,8 @@ try {
   const conversation = { user: 0, assistant: 0, thinking: 0, tool_calls: 0, other: 0 };
   const outputs = [];
   const calls = new Map();
+  // What the model sees of each entry's output now, and of each entry at all.
+  const seenOutput = new Map(), seenEntry = new Map();
   const system = getCurrentSystemMessage(projection.messages);
   if (system) {
     const content = est({ role: 'system', content: system.content });
@@ -83,6 +85,7 @@ try {
   for (const projected of projection.entries) {
     const n = turnOf.get(projected.sourceEntry.id) ?? 0;
     for (const m of projected.messages) {
+      if (m.role !== 'system') seenEntry.set(projected.sourceEntry.id, (seenEntry.get(projected.sourceEntry.id) ?? 0) + est(m));
       switch (m.role) {
         case 'system': break;
         case 'compactionSummary': case 'branchSummary': parts.summary += est(m); break;
@@ -106,6 +109,7 @@ try {
           const args = call?.arguments ?? {};
           const label = m.role === 'bashExecution' ? `! ${m.command}` : `${m.toolName ?? call?.name ?? ''} ${args.command ?? args.path ?? args.file_path ?? ''}`;
           if (words > 0) outputs.push({ name: text(label.replace(/\s+/g, ' ').trim(), 120), turn: n, tokens: words });
+          seenOutput.set(projected.sourceEntry.id, (seenOutput.get(projected.sourceEntry.id) ?? 0) + words);
           break;
         }
         default: { const t = est(m); conversation.other += t; parts.conversation += t; }
@@ -117,7 +121,7 @@ try {
 
   // Compactions on the active path, newest last.
   const compactions = [];
-  let keptFrom = 1;
+  let keptFrom = 1, lastKept;
   for (const [i, e] of branch.entries()) {
     if (e.type !== 'compaction') continue;
     // Pi's first valid measurement after this compaction.
@@ -131,7 +135,10 @@ try {
       read_files: files(e.details?.readFiles), modified_files: files(e.details?.modifiedFiles),
       ...(after ? { tokens_after: count(calculateContextTokens(after.message.usage)) } : {}) });
     keptFrom = kept || keptFrom;
+    lastKept = e.firstKeptEntryId;
   }
+  // Where what the model sees word for word begins.
+  const startEntry = lastKept ? branch.find(e => e.id === lastKept) : branch.find(e => e.type === 'message' && e.message?.role === 'user');
 
   // What Pi's own cut rule would summarize next, with the person's settings.
   // An invalid setting is Pi's to report; the page then shows no forecast.
@@ -150,9 +157,107 @@ try {
     const first = turnOf.get(prep.firstKeptEntryId) ?? 0;
     const before = at > 0 ? turnOf.get(branch[at - 1].id) ?? 0 : 0;
     const summarized = [...prep.messagesToSummarize, ...prep.turnPrefixMessages].reduce((a, m) => a + est(m), 0);
+    // The same cut in clock times, which the person remembers better than
+    // turn numbers, and Pi's estimate of what stays: the prompt, the earlier
+    // summary as a stand-in for the new one, and every entry from the cut on.
+    const start = Math.max(0, branch.findIndex(e => e.id === lastKept));
+    const said = branch.slice(start, Math.max(at, 0)).filter(e => e.type === 'message' && e.message?.role !== 'system');
+    // The earlier compaction itself can follow the cut; its summary is
+    // already the stand-in.
+    const kept = branch.slice(Math.max(at, 0)).filter(e => e.type !== 'compaction').reduce((a, e) => a + (seenEntry.get(e.id) ?? 0), 0);
     next = { from_turn: keptFrom, through_turn: before, kept_from_turn: first,
-      split_turn: prep.isSplitTurn || (first > 0 && before === first), summarized_tokens: summarized };
+      split_turn: prep.isSplitTurn || (first > 0 && before === first), summarized_tokens: summarized,
+      ...(said.length ? { from_at: text(said[0].timestamp, 64), through_at: text(said.at(-1).timestamp, 64) } : {}),
+      ...(at >= 0 ? { kept_from_at: text(branch[at].timestamp, 64) } : {}),
+      estimated_tokens_after: count(parts.instructions + parts.tools + parts.summary + kept) };
   }
+
+  // Everything the agent read, changed, ran or looked up on the active path,
+  // one row per file, command or tool target, and how much of it the model
+  // still sees word for word. Files follow Pi's own file rule (read, write
+  // and edit paths, also from codemode scripts) and a few known readers of
+  // documents Pi cannot read itself.
+  const cut = prep ? branch.findIndex(e => e.id === prep.firstKeptEntryId) : -1;
+  const cwd = typeof entries[0]?.cwd === 'string' && isAbsolute(entries[0].cwd) ? entries[0].cwd : undefined;
+  const home = process.env.HOME;
+  const inside = (root, p) => { const r = relative(root, p); return r && !r.startsWith('..') && !isAbsolute(r) ? r : undefined; };
+  // As the conversation shows paths: relative to its folder, ~/ for the rest
+  // of the home, absolute elsewhere.
+  const shown = path => {
+    const full = home && path.startsWith('~/') ? join(home, path.slice(2))
+      : isAbsolute(path) ? normalize(path) : cwd ? resolve(cwd, path) : normalize(path);
+    if (!isAbsolute(full)) return full;
+    const r = cwd && inside(cwd, full);
+    if (r) return r;
+    const h = home && inside(home, full);
+    return h ? `~/${h}` : full;
+  };
+  const reader = /^\s*(?:docx2txt|pdftotext|xlsx2csv)\s+(?:-\S+\s+)*(?:"([^"]+)"|'([^']+)'|([^\s|;&<>]+))/;
+  const lines = value => typeof value === 'string' && value ? value.split('\n').length - (value.endsWith('\n') ? 1 : 0) : 0;
+  const changes = patch => {
+    let added = 0, removed = 0;
+    for (const l of typeof patch === 'string' ? patch.split('\n') : []) {
+      if (l.startsWith('+') && !l.startsWith('+++')) added++;
+      else if (l.startsWith('-') && !l.startsWith('---')) removed++;
+    }
+    return { added, removed };
+  };
+  const items = new Map();
+  const note = (kind, name, entry, index, op, tokens) => {
+    const key = `${kind}\u0000${name}`;
+    const item = items.get(key) ?? { kind, name: text(name, 512), tokens: 0, in_context: false, ...(prep ? { kept_tokens: 0 } : {}), ops: [], ops_omitted: 0, last: '' };
+    items.set(key, item);
+    if (tokens !== undefined) {
+      item.in_context = true;
+      item.tokens += tokens;
+      if (prep && cut >= 0 && index >= cut) item.kept_tokens += tokens;
+    }
+    item.last = text(entry.timestamp, 64);
+    if (item.ops.length < 10) item.ops.push({ ...op, at: text(entry.timestamp, 64) });
+    else item.ops_omitted++;
+  };
+  const fileOps = (name, args) => {
+    const found = { read: new Set(), written: new Set(), edited: new Set() };
+    extractFileOpsFromMessage({ role: 'assistant', content: [{ type: 'toolCall', name, arguments: args }] }, found);
+    return [...[...found.read].map(p => ['read', p]), ...[...found.written].map(p => ['wrote', p]), ...[...found.edited].map(p => ['edited', p])];
+  };
+  const command = (entry, index, cmd, tokens) => {
+    const m = reader.exec(cmd);
+    const path = m && (m[1] ?? m[2] ?? m[3]);
+    if (path) note('file', shown(path), entry, index, { verb: 'read' }, tokens);
+    else note('command', cmd.replace(/\s+/g, ' ').trim(), entry, index, { verb: 'ran' }, tokens);
+  };
+  const called = new Map();
+  for (const [index, e] of branch.entries()) {
+    if (e.type !== 'message') continue;
+    const m = e.message;
+    if (m?.role === 'assistant' && Array.isArray(m.content)) for (const b of m.content) if (b?.type === 'toolCall') called.set(b.id, b);
+    if (m?.role === 'bashExecution' && typeof m.command === 'string' && m.command.trim()) command(e, index, m.command, seenOutput.get(e.id));
+    if (m?.role !== 'toolResult') continue;
+    const call = called.get(m.toolCallId);
+    const name = m.toolName ?? call?.name ?? '';
+    const args = call?.arguments && typeof call.arguments === 'object' ? call.arguments : {};
+    const tokens = seenOutput.get(e.id) ?? (seenEntry.has(e.id) ? 0 : undefined);
+    const ops = fileOps(name, args);
+    if (ops.length) {
+      for (const [verb, path] of ops) {
+        const extra = verb === 'wrote' ? { added: count(lines(args.content)) } : verb === 'edited' ? changes(m.details?.patch) : {};
+        note('file', shown(path), e, index, { verb, ...extra }, tokens);
+      }
+    } else if (name === 'bash' && typeof args.command === 'string' && args.command.trim()) {
+      command(e, index, args.command, tokens);
+    } else if (name) {
+      const target = args.query ?? args.url ?? args.path ?? args.file_path ?? args.command ?? '';
+      note('tool', `${name} ${typeof target === 'string' ? target : ''}`.replace(/\s+/g, ' ').trim(), e, index, { verb: 'used' }, tokens);
+    }
+    // A codemode script's own file calls: the script's output is its row.
+    for (const nested of Array.isArray(m.nestedCalls?.calls) ? m.nestedCalls.calls : [])
+      for (const [verb, path] of fileOps(nested?.name, nested?.arguments)) note('file', shown(path), e, index, { verb }, seenEntry.has(e.id) ? 0 : undefined);
+  }
+  const all = [...items.values()];
+  const seenItems = all.filter(i => i.in_context).sort((a, b) => b.tokens - a.tokens);
+  const goneItems = all.filter(i => !i.in_context).sort((a, b) => (a.last < b.last ? 1 : -1));
+  const listed = [...seenItems.slice(0, 200), ...goneItems.slice(0, 100)].map(({ last, ...i }) => i);
 
   const result = {
     schema_version: 1, harness,
@@ -162,6 +267,9 @@ try {
     ...(compaction ? { settings: { enabled: compaction.enabled === true, reserve_tokens: count(compaction.reserveTokens), keep_recent_tokens: count(compaction.keepRecentTokens) } } : {}),
     parts, instructions: instructions.slice(0, 40), tools: tools.slice(0, 100), conversation,
     largest_outputs: outputs.slice(0, 5), compactions: compactions.slice(-20), next_compaction: next,
+    just_compacted: branch.at(-1)?.type === 'compaction',
+    ...(startEntry ? { context_from_at: text(startEntry.timestamp, 64) } : {}),
+    items: listed, items_omitted: all.length - listed.length,
     turns: turns.slice(-500).map(t => ({ ...t, cost: Math.round(t.cost * 1e6) / 1e6 })), turns_omitted: Math.max(0, turns.length - 500),
   };
   // Every list is bounded, but not their sum: drop the oldest summaries'

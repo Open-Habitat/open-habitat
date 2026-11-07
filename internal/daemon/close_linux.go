@@ -94,7 +94,7 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 	// Command IDs are never forgotten, so a reaped handle keeps those of a
 	// held send that was cancelled; there the native check below is the
 	// evidence of emptiness. A live child may have taken one.
-	if c.closed || s == nil || !(live || reaped) || s.owner == nil || (live && len(s.commands) != 0) || s.bash.active() || len(s.held) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.questionID != "" || s.owner.id != id {
+	if c.closed || s == nil || !(live || reaped) || s.owner == nil || (live && len(s.commands) != 0) || s.bash.active() || len(s.held) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.compacting || s.questionID != "" || s.owner.id != id {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

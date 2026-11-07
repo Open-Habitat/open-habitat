@@ -283,6 +283,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Agent resources",
         desc: "Browse everything your agents use, by kind: what is included, what is not and what the agent may do.",
       },
+      "conversation-context-view": {
+        label: "Context view and compaction",
+        desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
+      },
       "next-waiting-row": {
         label: "Next waiting conversation",
         desc: "Go through the conversations waiting for you in one round while the agent works.",

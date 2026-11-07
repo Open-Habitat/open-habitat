@@ -126,6 +126,7 @@ type conversation struct {
 	naming, automaticFirst, automaticRefined, refinementDue bool
 	recapping                                               bool
 	rewinding                                               bool // a Palaa tähän is in flight (rewind_linux.go)
+	compacting                                              bool // Pi compacts at the person's request (compaction_linux.go)
 	recapTimer                                              *time.Timer
 	recapDue                                                time.Time // when recapTimer fires; kept by the idle stop only for a timer it cancelled
 	recapActivity                                           uint64    // activity fence, protected by c.mu
@@ -467,6 +468,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.rewindRead(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "rewind":
 		c.rewind(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "compact":
+		c.compact(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "recap":
 		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "presence":
@@ -908,8 +911,9 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		kind = "send"
 	}
 	// A plain send to a conversation whose Pi is not running (yet) is held by
-	// the daemon and starts Pi if nothing is starting it already.
-	if kind == "send" && (notRunning(s) || s.waking) {
+	// the daemon and starts Pi if nothing is starting it already. Pi refuses
+	// a prompt while it compacts, so a send then is held until it is done.
+	if kind == "send" && (notRunning(s) || s.waking || s.compacting) {
 		if archiveState != "active" {
 			c.mu.Unlock()
 			snapshotError(w, 409, "control_uncertain")

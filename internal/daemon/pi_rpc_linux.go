@@ -51,9 +51,12 @@ type piRPC struct {
 	// correlated requests. Its ID is registered here before the write, and the
 	// reader routes that one response through the event drain, past the
 	// ordinary request queue (bashMu), so publication cannot overtake output.
-	bashMu        sync.Mutex
-	bashReplies   map[string]chan json.RawMessage
-	eventsDrained chan struct{} // controller consumed all queued native events
+	bashMu      sync.Mutex
+	bashReplies map[string]chan json.RawMessage
+	// A `compact` reply arrives when Pi's summary is written; it goes
+	// straight to its waiter (compaction_linux.go), also guarded by bashMu.
+	compactReplies map[string]chan json.RawMessage
+	eventsDrained  chan struct{} // controller consumed all queued native events
 	// The recap extension's last reported outcome (recap-extension.mjs). Pi
 	// writes it before the prompt's response, and read is sequential, so the
 	// requester sees it once that response arrives.
@@ -325,6 +328,10 @@ func (p *piRPC) read() {
 		}
 		queue := p.events
 		if envelope.Type == "response" {
+			if reply := p.takeCompactReply(frame); reply != nil {
+				reply <- frame // buffered for its one reply
+				continue
+			}
 			queue = p.frames
 			if p.isBashReply(frame) || isClearReply(frame) {
 				// Completion follows its output through the same ordered queue.

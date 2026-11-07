@@ -8,11 +8,13 @@ import (
 	"strings"
 )
 
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/capacity|/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|name|recap|presence|turn|question|abort|status|eligibility|rest|receipt|stop|continue|cancel_held|close|commands|bash|abort_bash|rewind))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/capacity|/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|name|recap|presence|turn|question|abort|status|eligibility|rest|receipt|stop|continue|cancel_held|close|commands|bash|abort_bash|rewind|compact))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 const conversationBase = "/api/v1/conversations"
+
+var compactPath = regexp.MustCompile(`^/api/v1/conversations/[0-9a-fA-F-]{36}/compact$`)
 
 func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.EscapedPath()

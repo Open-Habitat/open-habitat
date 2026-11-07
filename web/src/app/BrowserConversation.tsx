@@ -34,6 +34,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
+import { ContextView } from "../components/ContextView";
 import { ControlButton, controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
@@ -81,6 +82,7 @@ import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
+import { useCompaction } from "./compactionView";
 import {
   readCommands,
   readFiles,
@@ -463,10 +465,12 @@ function BrowserConversationContent({
   const location = useLocation();
   const contextOpen =
     !!id && new URLSearchParams(location.search).get("context") === "1";
+  // A compaction from the page reads it again when Pi has answered.
+  const [contextRead, setContextRead] = useState(0);
   const contextDetail = useContextDetail(
     id,
     contextOpen,
-    `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}`,
+    `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}:${contextRead}`,
     contextState?.phase === "known" ? contextState.tokens : undefined,
     onLogin,
   );
@@ -1830,6 +1834,18 @@ function BrowserConversationContent({
       : undefined;
   // Palaa tähän (experimental): the own messages' menu, the sheet above the
   // composer and the rows a return leaves.
+  // The context view (experimental): the page's list and Tiivistä nyt.
+  const contextViewOn = useExperimentalFeature("conversation-context-view");
+  const compaction = useCompaction({
+    id,
+    csrf,
+    enabled: contextViewOn && controlled,
+    busy: controlled && turnUnderway(current?.state, current?.run_active),
+    stopped: notStarted,
+    workspaceId: runWorkspace,
+    onLogin,
+    onSettled: () => setContextRead((n) => n + 1),
+  });
   const rewindOn = useExperimentalFeature("rewind-conversation");
   const rewind = useRewind({
     id,
@@ -2542,6 +2558,17 @@ function BrowserConversationContent({
               usage={contextState}
               title={title ?? txt.conversation}
               onClose={toggleContext}
+              view={
+                contextViewOn
+                  ? (detail) => (
+                      <ContextView
+                        detail={detail}
+                        usage={contextState}
+                        compaction={compaction}
+                      />
+                    )
+                  : undefined
+              }
             />
           ) : null}
           {view === "opened" ? (

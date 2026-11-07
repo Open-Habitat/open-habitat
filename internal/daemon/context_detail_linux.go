@@ -51,11 +51,33 @@ type contextCompaction struct {
 	TokensAfter      *int64   `json:"tokens_after,omitempty"`
 }
 type contextNext struct {
-	FromTurn         int64 `json:"from_turn"`
-	ThroughTurn      int64 `json:"through_turn"`
-	KeptFromTurn     int64 `json:"kept_from_turn"`
-	SplitTurn        bool  `json:"split_turn"`
-	SummarizedTokens int64 `json:"summarized_tokens"`
+	FromTurn             int64  `json:"from_turn"`
+	ThroughTurn          int64  `json:"through_turn"`
+	KeptFromTurn         int64  `json:"kept_from_turn"`
+	SplitTurn            bool   `json:"split_turn"`
+	SummarizedTokens     int64  `json:"summarized_tokens"`
+	FromAt               string `json:"from_at,omitempty"`
+	ThroughAt            string `json:"through_at,omitempty"`
+	KeptFromAt           string `json:"kept_from_at,omitempty"`
+	EstimatedTokensAfter int64  `json:"estimated_tokens_after"`
+}
+
+// contextItem is one file, command or tool target the agent used on the
+// active path, and how much of it the model still sees word for word.
+type contextItem struct {
+	Kind       string          `json:"kind"`
+	Name       string          `json:"name"`
+	Tokens     int64           `json:"tokens"`
+	InContext  bool            `json:"in_context"`
+	KeptTokens *int64          `json:"kept_tokens,omitempty"`
+	Ops        []contextItemOp `json:"ops"`
+	OpsOmitted int64           `json:"ops_omitted"`
+}
+type contextItemOp struct {
+	Verb    string `json:"verb"`
+	At      string `json:"at"`
+	Added   *int64 `json:"added,omitempty"`
+	Removed *int64 `json:"removed,omitempty"`
 }
 type contextTurn struct {
 	N             int64   `json:"n"`
@@ -102,6 +124,10 @@ type contextDetail struct {
 	LargestOutputs []contextOutput     `json:"largest_outputs"`
 	Compactions    []contextCompaction `json:"compactions"`
 	NextCompaction *contextNext        `json:"next_compaction"`
+	JustCompacted  bool                `json:"just_compacted"`
+	ContextFromAt  string              `json:"context_from_at,omitempty"`
+	Items          []contextItem       `json:"items"`
+	ItemsOmitted   int64               `json:"items_omitted"`
 	Turns          []contextTurn       `json:"turns"`
 	TurnsOmitted   int64               `json:"turns_omitted"`
 }
@@ -229,6 +255,19 @@ func (d *contextDetail) valid() bool {
 	for _, c := range d.Compactions {
 		if len(c.Summary) > 96000 || len(c.ReadFiles) > 50 || len(c.ModifiedFiles) > 50 {
 			return false
+		}
+	}
+	if len(d.Items) > 300 || d.Items == nil {
+		return false
+	}
+	for _, item := range d.Items {
+		if item.Kind != "file" && item.Kind != "command" && item.Kind != "tool" || item.Name == "" || len(item.Name) > 2048 || len(item.Ops) == 0 || len(item.Ops) > 10 {
+			return false
+		}
+		for _, op := range item.Ops {
+			if op.Verb != "read" && op.Verb != "wrote" && op.Verb != "edited" && op.Verb != "ran" && op.Verb != "used" || len(op.At) > 256 {
+				return false
+			}
 		}
 	}
 	if d.Instructions == nil {

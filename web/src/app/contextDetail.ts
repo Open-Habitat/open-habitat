@@ -4,6 +4,21 @@ import schema from "../../../contracts/v1/context-detail.schema.json";
 import { LazyAjv } from "./lazyAjv";
 
 type Part = { name: string; tokens: number; replaced?: boolean };
+/** One file, command or tool target the agent used on the active path. */
+export type ContextItem = {
+  kind: "file" | "command" | "tool";
+  name: string;
+  tokens: number;
+  in_context: boolean;
+  kept_tokens?: number;
+  ops: {
+    verb: "read" | "wrote" | "edited" | "ran" | "used";
+    at: string;
+    added?: number;
+    removed?: number;
+  }[];
+  ops_omitted: number;
+};
 /** Pi's reading of one session (contracts/v1/context-detail.schema.json). */
 export interface ContextDetail {
   schema_version: 1;
@@ -54,7 +69,15 @@ export interface ContextDetail {
     kept_from_turn: number;
     split_turn: boolean;
     summarized_tokens: number;
+    from_at?: string;
+    through_at?: string;
+    kept_from_at?: string;
+    estimated_tokens_after: number;
   } | null;
+  just_compacted: boolean;
+  context_from_at?: string;
+  items: ContextItem[];
+  items_omitted: number;
   turns: {
     n: number;
     at: string;

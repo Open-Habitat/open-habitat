@@ -1,4 +1,4 @@
-import type { ContextDetail } from "../app/contextDetail";
+import type { ContextDetail, ContextItem } from "../app/contextDetail";
 
 // Synthetic readings for stories and tests; the shape is the contract's.
 const turn = (n: number, request: string, context: number) => ({
@@ -13,6 +13,36 @@ const turn = (n: number, request: string, context: number) => ({
   cache_write: 2400,
   cost: 0,
 });
+
+type Op = [
+  verb: ContextItem["ops"][number]["verb"],
+  at: string,
+  added?: number,
+  removed?: number,
+];
+function item(
+  kind: ContextItem["kind"],
+  name: string,
+  tokens: number,
+  kept: number | undefined,
+  ops: Op[],
+  seen = true,
+): ContextItem {
+  return {
+    kind,
+    name,
+    tokens,
+    in_context: seen,
+    ...(kept !== undefined ? { kept_tokens: kept } : {}),
+    ops: ops.map(([verb, at, added, removed]) => ({
+      verb,
+      at: `2026-10-27T${at}:00.000Z`,
+      ...(added !== undefined ? { added } : {}),
+      ...(removed !== undefined ? { removed } : {}),
+    })),
+    ops_omitted: 0,
+  };
+}
 
 export const piReading: ContextDetail = {
   schema_version: 1,
@@ -78,7 +108,41 @@ export const piReading: ContextDetail = {
     kept_from_turn: 22,
     split_turn: false,
     summarized_tokens: 149000,
+    from_at: "2026-10-27T11:10:00.000Z",
+    through_at: "2026-10-27T12:27:00.000Z",
+    kept_from_at: "2026-10-27T12:34:00.000Z",
+    estimated_tokens_after: 61800,
   },
+  just_compacted: false,
+  context_from_at: "2026-10-27T11:10:00.000Z",
+  items: [
+    item("file", "logs/ci-2026-10-19.txt", 26400, 0, [["read", "11:52"]]),
+    item("command", "npm test", 44100, 22500, [
+      ["ran", "11:31"],
+      ["ran", "12:34"],
+    ]),
+    item("command", "git log --stat -20", 18800, 0, [["ran", "11:17"]]),
+    item("file", "src/status.ts", 3200, 1400, [
+      ["read", "11:10"],
+      ["edited", "11:45", 12, 3],
+      ["edited", "12:41", 4, 1],
+    ]),
+    item("tool", "web_fetch https://example.invalid/issues/42", 2600, 0, [
+      ["used", "12:20"],
+    ]),
+    item("file", "CHANGELOG.md", 120, 120, [["wrote", "12:48", 9]]),
+    item("file", "src/format.ts", 0, undefined, [["read", "10:21"]], false),
+    item("file", "README.md", 0, undefined, [["edited", "10:56", 6, 2]], false),
+    item(
+      "command",
+      "npm test -- status",
+      0,
+      undefined,
+      [["ran", "10:35"]],
+      false,
+    ),
+  ],
+  items_omitted: 0,
   turns: [
     "Write a status script that puts the workspace's state on one line",
     "Add the git branch and the number of dirty files",
@@ -126,4 +190,6 @@ export const claudeAfterCompaction: ContextDetail = {
   ],
   parts: { ...piReading.parts, instructions: 15569, tool_output: 9000 },
   next_compaction: null,
+  just_compacted: true,
+  items: piReading.items.map(({ kept_tokens: _, ...i }) => i),
 };

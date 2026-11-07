@@ -266,7 +266,7 @@ func (c *ConversationController) noteRecapActivity(s *conversation) {
 // Called after a verified native settlement, with c.mu held. One timer per
 // controlled session survives tab disconnects; its epoch fences later work.
 func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
-	if c.closed || s.dead || s.recapping || !recapIdle(s) || !automaticRecapsEnabled(c.home) {
+	if c.closed || s.dead || s.recapping || s.compacting || !recapIdle(s) || !automaticRecapsEnabled(c.home) {
 		return
 	}
 	s.recapReschedule = false
@@ -297,7 +297,7 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 		if s.recapping && s.recapActivity == epoch {
 			s.recapReschedule = true
 		}
-		if c.closed || c.sessions[s.id] != s || s.dead || !recapIdle(s) || !s.settled || s.recapping || s.rpc.overflow.Load() || s.recapActivity != epoch {
+		if c.closed || c.sessions[s.id] != s || s.dead || !recapIdle(s) || !s.settled || s.recapping || s.compacting || s.rpc.overflow.Load() || s.recapActivity != epoch {
 			c.mu.Unlock()
 			return
 		}
@@ -549,7 +549,7 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.recapping || !recapIdle(s) || s.rpc.overflow.Load() {
+	if c.closed || s.dead || s.recapping || s.compacting || !recapIdle(s) || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

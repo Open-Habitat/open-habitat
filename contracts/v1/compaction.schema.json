@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/compaction.schema.json",
+  "title": "Compact a conversation now (experimental)",
+  "description": "The daemon sends Pi's own RPC compact to the conversation's running Pi. Pi chooses the cut itself (it always keeps about keepRecentTokens of the newest entries); the instructions only shape the summary.",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/result" }
+  ],
+  "$defs": {
+    "request": {
+      "description": "POST /api/v1/conversations/{id}/compact. Offered only while the agent waits for a message; a running turn is refused, never interrupted.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "description": "What the summary must keep, in the person's words; empty or absent leaves Pi's own summary prompt alone.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "result": {
+      "description": "Pi's answer once its summary is written. A refusal is an error: 409 already_compacted or nothing_to_compact (Pi's own refusals), turn_running, compacting or cancelled; 404 when Pi is not running in the conversation (the browser wakes it and asks once more); 409 compaction_failed (Pi tried and failed; nothing changed); 503 control_uncertain (an uncertain outcome, never repeated).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "state", "tokens_before", "estimated_tokens_after"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "state": { "const": "done" },
+        "tokens_before": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "estimated_tokens_after": {
+          "description": "Pi's heuristic estimate of the rebuilt context, not a measurement.",
+          "type": "integer", "minimum": 0, "maximum": 1000000000000
+        }
+      }
+    }
+  }
+}
