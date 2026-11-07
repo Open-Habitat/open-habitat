@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -153,6 +154,67 @@ func TestWorkspaceIconSuggestionsValidateTheModel(t *testing.T) {
 	postIconSuggestions(t, c, body)
 	if facts, _ := input["facts"].(map[string]any); facts["readme"] != nil {
 		t.Fatalf("followed a symlinked README: %v", facts)
+	}
+}
+
+func TestWorkspaceIconSuggestionsCancellationDiagnostic(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	body := fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"","history":[]}`, h.workspace)
+	for _, canceled := range []bool{true, false} {
+		t.Run(fmt.Sprintf("canceled=%v", canceled), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			c.iconSuggester = func(ctx context.Context, _ []byte) (string, string, []iconSuggestion, error) {
+				if canceled {
+					cancel()
+					<-ctx.Done()
+				}
+				return "", "", nil, titleModelTimeout
+			}
+			r := httptest.NewRequest("POST", "http://unix"+WorkspaceIconSuggestionsPath, strings.NewReader(body)).WithContext(ctx)
+			r.RequestURI = WorkspaceIconSuggestionsPath
+			r.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			log := captureStorageLog(t, func() { c.WorkspaceIconSuggestions().ServeHTTP(w, r) })
+			var event struct {
+				Event, Outcome, Reason, Level string
+				Duration                      int64 `json:"duration_ms"`
+			}
+			if err := json.Unmarshal([]byte(log), &event); err != nil {
+				t.Fatal(err, log)
+			}
+			if event.Event != "workspace_icon_suggestions" || event.Duration < 0 {
+				t.Fatalf("unexpected diagnostic: %s", log)
+			}
+			if canceled {
+				if event.Outcome != "client_canceled" || event.Reason != "" || w.Body.Len() != 0 {
+					t.Fatalf("cancel counted as failure: %s body=%s", log, w.Body)
+				}
+			} else if event.Outcome != "failed" || event.Reason != "model_timeout" || !strings.Contains(w.Body.String(), `"model_timeout"`) {
+				t.Fatalf("timeout lost: %s body=%s", log, w.Body)
+			}
+		})
+	}
+}
+
+func TestIconHelperContextFailures(t *testing.T) {
+	c := &ConversationController{home: t.TempDir(), runtime: &core.PiRuntimeConfig{Node: nativeNodePath(t)}}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer stop()
+	for _, tc := range []struct {
+		name string
+		ctx  context.Context
+		want error
+	}{{"cancel", canceled, context.Canceled}, {"deadline", expired, titleModelTimeout}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, _, _, err := c.suggestIcons(tc.ctx, []byte(`{}`)); !errors.Is(err, tc.want) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+		})
 	}
 }
 

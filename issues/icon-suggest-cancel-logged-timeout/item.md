@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: icon-log
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Icon suggestion cancel is logged as a model timeout
@@ -20,4 +21,4 @@ Kuvake-ehdotuksen peruminen kirjautuu aikakatkaisuna (agentti 7.11., pilot.612):
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

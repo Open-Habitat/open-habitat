@@ -140,6 +140,12 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		started := time.Now()
 		model, text, raw, err := suggest(ctx, input)
 		elapsed := time.Since(started).Milliseconds()
+		// A disconnected browser no longer needs an answer. Do not count
+		// its cancellation as a model failure, even if the helper raced it.
+		if errors.Is(ctx.Err(), context.Canceled) {
+			diagnostic.New(os.Stderr, "daemon").Info("workspace_icon_suggestions", "outcome", "client_canceled", "duration_ms", elapsed)
+			return
+		}
 		var suggestions []iconSuggestion
 		if err == nil {
 			suggestions = validIconSuggestions(raw, facts.Logo, append(avoid, current))
@@ -473,7 +479,10 @@ func (c *ConversationController) suggestIcons(ctx context.Context, input []byte)
 	cmd.Stdout = &output
 	cmd.Stderr = &storageDiagnostics{operation: "workspace_icon_suggestions"}
 	if err := cmd.Run(); err != nil {
-		if ctx.Err() != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return "", "", nil, context.Canceled
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return "", "", nil, titleModelTimeout
 		}
 		if output.overflow {
