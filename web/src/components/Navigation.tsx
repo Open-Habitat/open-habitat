@@ -546,9 +546,10 @@ export interface RailRename {
   reason: (agentId: string) => string;
   save: (agentId: string, name: string) => Promise<void>;
 }
-/** The rail rows' raise and lower (raise-to-your-turn, experimental). */
+/** The rail rows' up and down (raise-to-your-turn, experimental): raise a
+ * quiet row, lower a raised one, or say Ei nyt to one waiting on a reply. */
 export interface RailTurn {
-  run: (agentId: string, action: "raise" | "lower") => void;
+  run: (agentId: string, action: "raise" | "lower" | "not_now") => void;
 }
 /** The rail rows' archive button: why a row cannot be archived now ("" when
  * it can) and the archive itself. */
@@ -574,7 +575,10 @@ export function ballOf(
   >,
 ): BallKind {
   if (agent.failed) return "fail";
-  if (agent.attentionLabel || agent.question || agent.turnMark) return "you";
+  // A raise is the person's own act, not the agent's state: the row's mark
+  // goes on saying what the agent does (Jari 7.11.2026).
+  if (agent.attentionLabel || agent.question || agent.turnMark === "read")
+    return "you";
   const activity =
     agent.activity ??
     (/työ|käynnissä|working/i.test(agent.activityLabel)
@@ -591,8 +595,7 @@ export function ballOf(
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
-/** A raised row's ball is an arrow and a read reply's a ring
- * (raise-to-your-turn, experimental). */
+/** A read reply's ball is a ring (raise-to-your-turn, experimental). */
 function Ball({
   kind,
   turn,
@@ -603,7 +606,7 @@ function Ball({
   return (
     <span
       className={`ah-nav-mark ah-ball ah-ball-${kind}`}
-      data-turn={turn}
+      data-turn={turn === "read" ? turn : undefined}
       aria-hidden="true"
       title={ballLabel(kind)}
     />
@@ -666,12 +669,9 @@ export function AgentNavItem({
 }) {
   const t = useText(navigationText);
   const archiveReasonId = useId();
-  // The rail raises a quiet row and lowers a raised one; Ei nyt to a reply
-  // is the composer's.
-  const turnRow =
-    turn && (turnAction === "raise" || turnAction === "lower")
-      ? turnAction
-      : undefined;
+  // Up raises a quiet row; down lowers a raised one or says Ei nyt to a
+  // reply. The rail is the only place for them (Jari 7.11.2026).
+  const turnRow = turn ? turnAction : undefined;
   const archiveReason = archive?.reason(agentId);
   const renameReason = rename?.reason(agentId);
   const [editing, setEditing] = useState(false);
@@ -743,14 +743,22 @@ export function AgentNavItem({
                   {turn && turnRow ? (
                     <span>
                       <ControlButton
-                        title={turnRow === "raise" ? t.raise : t.lower}
-                        data-testid={`rail-${turnRow}-conversation`}
+                        title={
+                          turnRow === "raise"
+                            ? t.raise
+                            : turnRow === "lower"
+                              ? t.lower
+                              : t.notNow
+                        }
+                        data-testid={`rail-${turnRow === "not_now" ? "not-now" : turnRow}-conversation`}
                         variant="quiet"
                         size="inline"
                         aria-label={
                           turnRow === "raise"
                             ? t.raiseNamed(shownTitle)
-                            : t.lowerNamed(shownTitle)
+                            : turnRow === "lower"
+                              ? t.lowerNamed(shownTitle)
+                              : t.notNowNamed(shownTitle)
                         }
                         onPress={() => turn.run(agentId, turnRow)}
                       >

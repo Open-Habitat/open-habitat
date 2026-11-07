@@ -29,7 +29,6 @@ import {
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
-import { TurnControl } from "../components/composer/TurnControl";
 import { ExplainMode } from "../components/ExplainMode";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
@@ -2033,9 +2032,8 @@ export function App() {
         if (result.outcome === "uncertain") refresh();
       });
   };
-  const railTurn = turnMarksOn
-    ? { run: (id: string, action: "raise" | "lower") => changeTurn(id, action) }
-    : undefined;
+  // Up and down live only in the rail's rows (Jari 7.11.2026).
+  const railTurn = turnMarksOn ? { run: changeTurn } : undefined;
   // Naming a conversation from the rail. Pi writes the name; a running Pi
   // directly, a resting one through its settled history.
   const railRename = {
@@ -2729,20 +2727,6 @@ export function App() {
                       return open && agentTitle(open.title);
                     })()}
                     nextWaiting={{ yours: now.yours }}
-                    turnControl={(() => {
-                      if (!id || !turnMarksOn) return undefined;
-                      const row = [...now.yours, ...now.quiet].find(
-                        (r) => r.agentId === id,
-                      );
-                      return row?.turnAction ? (
-                        <TurnControl
-                          action={row.turnAction}
-                          onPress={() =>
-                            row.turnAction && changeTurn(id, row.turnAction)
-                          }
-                        />
-                      ) : undefined;
-                    })()}
                     onSessionCreated={(session) => {
                       setDaemonSessions((old) => [...old, session]);
                       refresh(); // The new agent must be in the snapshot before its live turn is seeded.

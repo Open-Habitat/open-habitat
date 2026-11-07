@@ -108,9 +108,9 @@ const fi = {
       name: "Nosta ja Ei nyt",
       desc: "Keskustelu pysyy Sinun vuorosissa, kunnes vastaat tai painat Ei nyt; pelkkä avaaminen ei enää siirrä sitä Hiljaisiin. Hiljaisen keskustelun voit nostaa takaisin Sinun vuoroosi.",
       where:
-        "Kirjoituskentän rivillä Sanele-painikkeen vasemmalla puolella, kun agentti ei työskentele, sekä sivupalkin Hiljaiset-rivillä.",
+        "Sivupalkin keskustelurivin painikkeissa hiiren alla (puhelimella aina näkyvissä), Sinun vuorosi- ja Hiljaiset-riveillä.",
       shows:
-        "Nosta, Ei nyt tai nostetussa oranssi Sinun vuorossasi ✕. Luettu vastaus näkyy renkaana ja nostettu nuolena.",
+        "Hiljaisella rivillä ylös-painikkeen (Nosta), Sinun vuorosi -rivillä alas-painikkeen (Ei nyt tai nostetun laskeminen). Luettu vastaus näkyy renkaana; muuten rivin merkki kertoo agentin tilan.",
       needs:
         "Ei muuta. Nosto ja Ei nyt tallentuvat tilillesi ja näkyvät kaikilla laitteillasi.",
       caption: "Kirjoituskentän rivi",
@@ -255,9 +255,9 @@ export const experimentalFeaturesText = catalog(fi, {
       name: "Raise and Not now",
       desc: "A conversation stays in Your turn until you reply or press Not now; opening it no longer moves it to Quiet. You can raise a quiet conversation back to Your turn.",
       where:
-        "On the message field's row, left of Dictate, while the agent is not working, and on the rail's Quiet rows.",
+        "Among a rail conversation row's buttons on hover (always shown on a phone), on Your turn and Quiet rows.",
       shows:
-        "Raise, Not now or, once raised, an orange Your turn ✕. A read reply shows as a ring and a raised conversation as an arrow.",
+        "An up button (Raise) on a Quiet row and a down button (Not now, or lowering a raised one) on a Your turn row. A read reply shows as a ring; otherwise the row's mark says what the agent is doing.",
       needs:
         "Nothing else. Raise and Not now are saved to your account and show on all your devices.",
       caption: "Message field row",

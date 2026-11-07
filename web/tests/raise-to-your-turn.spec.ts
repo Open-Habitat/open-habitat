@@ -46,6 +46,13 @@ async function markOnHost(page: Page, id: string) {
     ?.turn_mark?.state as string | undefined;
 }
 
+/** Hover the row and press its up or down button. */
+async function press(page: Page, section: string, id: string, button: string) {
+  const r = row(page, section, id);
+  await r.hover();
+  await r.getByTestId(`rail-${button}-conversation`).click();
+}
+
 test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person replies", async ({
   page,
   browser,
@@ -60,25 +67,28 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const id = new URL(page.url()).searchParams.get("conversation") ?? "";
-  const turn = page.getByTestId("composer-turn");
   await page.getByTestId("message-input").fill("first");
   await page.getByTestId("send").click();
   await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
     timeout: 30000,
   });
-  // Off, the reply this page showed is answered by showing it.
-  await expect(row(page, "rail-quiet", id)).toBeVisible({ timeout: 15000 });
-  await expect(turn).toHaveCount(0);
+  // Off, the reply this page showed is answered by showing it, and the
+  // rows offer no up or down.
+  const quietHere = row(page, "rail-quiet", id);
+  await expect(quietHere).toBeVisible({ timeout: 15000 });
+  await quietHere.hover();
+  await expect(quietHere.getByTestId("rail-raise-conversation")).toHaveCount(0);
 
   await switchOn(page);
-  // On, it waits read in Sinun vuorosi, and the middle slot says Ei nyt.
+  // On, it waits read in Sinun vuorosi with a ring, and only the rail row
+  // says Ei nyt: the composer has no turn button (Jari 7.11.2026).
   const yours = row(page, "rail-yours", id);
   await expect(yours).toBeVisible();
   await expect(yours.locator(".ah-ball")).toHaveAttribute("data-turn", "read");
-  await expect(turn).toHaveText("Ei nyt");
-  await turn.click();
-  await expect(row(page, "rail-quiet", id)).toBeVisible();
-  await expect(turn).toHaveText("Nosta");
+  await expect(page.locator(".ah-crow")).not.toContainText("Ei nyt");
+  await expect(page.locator(".ah-crow")).not.toContainText("Nosta");
+  await press(page, "rail-yours", id, "not-now");
+  await expect(quietHere).toBeVisible();
   await expect.poll(() => markOnHost(page, id)).toBe("not_now");
 
   // Another device of the same person, whose browser never showed the reply.
@@ -87,34 +97,27 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   await expect(row(other, "rail-quiet", id)).toBeVisible();
   await expect(row(other, "rail-yours", id)).toHaveCount(0);
 
-  await turn.click();
-  await expect(turn).toHaveText("Sinun vuorossasi");
-  await expect(turn).toHaveAttribute("aria-pressed", "true");
-  await expect(yours.locator(".ah-ball")).toHaveAttribute(
-    "data-turn",
-    "raised",
-  );
+  // Raised from this rail: the row leads Sinun vuorosi, and its mark is
+  // still the agent's state, not an arrow.
+  await press(page, "rail-quiet", id, "raise");
+  await expect(yours).toBeVisible();
+  await expect(yours.locator(".ah-ball")).not.toHaveAttribute("data-turn");
+  await expect(page.locator(".ah-crow")).not.toContainText("Sinun vuorossasi");
   // The other device follows the host's event without a reload.
   const there = row(other, "rail-yours", id);
   await expect(there).toBeVisible({ timeout: 15000 });
-  await expect(there.locator(".ah-ball")).toHaveAttribute(
-    "data-turn",
-    "raised",
-  );
   // Lowered from that device's rail row, without opening it.
-  await there.hover();
-  await there.getByTestId("rail-lower-conversation").click();
+  await press(other, "rail-yours", id, "lower");
   await expect(row(other, "rail-quiet", id)).toBeVisible();
-  await expect(turn).toHaveText("Nosta", { timeout: 15000 });
-  await expect(row(page, "rail-quiet", id)).toBeVisible();
+  await expect(quietHere).toBeVisible({ timeout: 15000 });
 
   // Raised from the rail row there, and it stays through a reload here.
-  const quiet = row(other, "rail-quiet", id);
-  await quiet.hover();
-  await quiet.getByTestId("rail-raise-conversation").click();
+  await press(other, "rail-quiet", id, "raise");
   await expect(row(other, "rail-yours", id)).toBeVisible();
   await page.reload();
-  await expect(turn).toHaveText("Sinun vuorossasi", { timeout: 15000 });
+  await expect(yours).toBeVisible({ timeout: 15000 });
+  await yours.hover();
+  await expect(yours.getByTestId("rail-lower-conversation")).toBeVisible();
 
   // Replying ends the raise on the host; the agent's answer asks anew.
   await page.getByTestId("message-input").fill("second");
@@ -127,9 +130,6 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   });
   const answered = row(other, "rail-yours", id);
   await expect(answered).toBeVisible({ timeout: 15000 });
-  await expect(answered.locator(".ah-ball")).not.toHaveAttribute(
-    "data-turn",
-    "raised",
-  );
-  await expect(turn).toHaveText("Ei nyt");
+  await answered.hover();
+  await expect(answered.getByTestId("rail-not-now-conversation")).toBeVisible();
 });

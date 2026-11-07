@@ -642,7 +642,6 @@ export function Composer({
   preparedPlaceholder,
   speech,
   onDictating,
-  turnControl,
   inFieldLists = false,
   waiting,
 }: {
@@ -693,8 +692,6 @@ export function Composer({
   /** A dictation is under way, or ending into a send: its text is not yet
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
-  /** Nosta or Ei nyt (TurnControl): the middle slot while it is free. */
-  turnControl?: ReactNode;
   /** The lists open inside the field: a folder tree, a search by name, a
    * preview beside them and marking several (experimental
    * composer-lists-in-field). Needs `sources.tree`. */
@@ -2091,8 +2088,7 @@ export function Composer({
           {rowChip}
           {rowRun}
           {rowStop}
-          {rowChip || rowRun || rowStop ? null : turnControl}
-          {rowChip || rowRun || rowStop || turnControl ? (
+          {rowChip || rowRun || rowStop ? (
             <span className="ah-crow-sep" aria-hidden="true" />
           ) : null}
           {mic ? (

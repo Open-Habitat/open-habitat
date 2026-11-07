@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: rail-rework
 lane_seq: 3
+closed: 2026-11-07
 ---
 
 # Nosta and Ei nyt only in the rail, on every row; status mark shows only agent state

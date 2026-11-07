@@ -301,11 +301,12 @@ describe("Ryhmät rows", () => {
     expect(ballOf(agent("a", { failed: true }))).toBe("fail");
     expect(ballOf(agent("a", { activity: "unknown" }))).toBe("unknown");
   });
-  it("raises a quiet row and lowers a raised one from the rail, not Ei nyt", () => {
+  it("raises a quiet row and lowers a raised one or says Ei nyt to a reply from the rail", () => {
     const pressed: [string, string][] = [];
     const turn = {
-      run: (id: string, action: "raise" | "lower") =>
-        pressed.push([id, action]),
+      run: (id: string, action: "raise" | "lower" | "not_now") => {
+        pressed.push([id, action]);
+      },
     };
     const view = render(
       <MemoryRouter>
@@ -323,28 +324,34 @@ describe("Ryhmät rows", () => {
       </MemoryRouter>,
     );
     const row = (id: string) => view.getByTestId(`agent-item-${id}`);
-    row("q")
-      .querySelector<HTMLButtonElement>(
-        '[data-testid="rail-raise-conversation"]',
-      )
-      ?.click();
-    row("r")
-      .querySelector<HTMLButtonElement>(
-        '[data-testid="rail-lower-conversation"]',
-      )
-      ?.click();
+    const press = (id: string, testId: string) => {
+      const button = row(id).querySelector<HTMLButtonElement>(
+        `[data-testid="${testId}"]`,
+      );
+      expect(button).not.toBeNull();
+      button?.click();
+    };
+    press("q", "rail-raise-conversation");
+    press("r", "rail-lower-conversation");
+    press("n", "rail-not-now-conversation");
     expect(pressed).toEqual([
       ["q", "raise"],
       ["r", "lower"],
+      ["n", "not_now"],
     ]);
-    // Ei nyt to a reply is the composer's; the row only shows the ring.
-    expect(row("n").querySelector("button")).toBeNull();
+    expect(
+      row("n")
+        .querySelector('[data-testid="rail-not-now-conversation"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Ei nyt: siirrä Keskustelu n Hiljaisiin");
+    // A read reply keeps its ring; a raised row's mark is its agent's state.
     expect(row("n").getAttribute("data-ball")).toBe("you");
     expect(row("n").querySelector(".ah-ball")?.getAttribute("data-turn")).toBe(
       "read",
     );
-    expect(row("r").querySelector(".ah-ball")?.getAttribute("data-turn")).toBe(
-      "raised",
+    expect(row("r").getAttribute("data-ball")).toBe("done");
+    expect(row("r").querySelector(".ah-ball")?.hasAttribute("data-turn")).toBe(
+      false,
     );
   });
   it("keeps the row to one line and says the rest", () => {
