@@ -572,7 +572,7 @@ function FileUse({
  */
 export function TurnText(props: Parameters<typeof ReadableBlock>[0]) {
   return (
-    <div className="ah-ordered-blocks">
+    <div className="ah-ordered-blocks" data-reply-entry={props.entryKey}>
       <ReadableBlock {...props} />
     </div>
   );

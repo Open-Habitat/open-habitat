@@ -3542,62 +3542,94 @@ test("@conversation-details failed bash has a cause corner and one failed tool i
   ]);
 });
 
-test("@conversation-details latest pill names working and unread reply with its count", async ({
-  page,
-}) => {
-  await open(page);
-  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  // Establish a native baseline before leaving the end, then send a second turn.
-  await page.getByTestId("message-input").fill("unread baseline");
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-  await expectNativeContent(page, 'Selvä. Kysyit: "unread baseline".', {
-    exact: true,
+for (const navigation of ["jump", "small scrolls"] as const) {
+  test(`@conversation-details latest pill clears unread replies with ${navigation}`, async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    // Establish a native baseline before leaving the end, then send a second turn.
+    await page.getByTestId("message-input").fill("unread baseline");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(page, 'Selvä. Kysyit: "unread baseline".', {
+      exact: true,
+    });
+    await page.addStyleTag({
+      content: ".ah-timeline { min-height: 4000px !important; }",
+    });
+    await page.getByTestId("message-input").fill("unread reply");
+    const stream = page.locator(".ah-conversation-stream");
+    await expect
+      .poll(() => stream.evaluate((node) => node.scrollTop))
+      .toBeGreaterThan(0);
+    // Scroll as a reader, after layout has put the following view at its end.
+    // A synthetic scrollTop assignment can race the native-page resize.
+    await expect
+      .poll(() =>
+        stream.evaluate(
+          (node) => node.scrollHeight - node.clientHeight - node.scrollTop,
+        ),
+      )
+      .toBeLessThan(2);
+    await stream.hover();
+    await page.mouse.wheel(0, -5000);
+    await expect(page.getByTestId("jump-latest")).toBeVisible();
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expect(page.getByTestId("jump-latest")).toBeVisible();
+    const reply = page.getByTestId("jump-latest");
+    await expect(reply).toHaveAttribute("data-unread-count", "2", {
+      timeout: 25000,
+    });
+    // jump-latest-chip-layout: the arrow once wrapped below the label. It sits
+    // on the label's line, on the chip's vertical centre.
+    const offset = await reply.evaluate((chip) => {
+      const own = chip.getBoundingClientRect();
+      const icon = chip.querySelector("svg")?.getBoundingClientRect();
+      if (!icon) return Number.NaN;
+      return icon.top + icon.height / 2 - (own.top + own.height / 2);
+    });
+    expect(Math.abs(offset)).toBeLessThan(1);
+    if (navigation === "jump") {
+      await reply.press("Enter");
+      await expect(reply).toHaveCount(0);
+      await expect(stream).toBeFocused();
+    } else {
+      // Make each reply taller than the viewport: a percentage-visible rule
+      // must not leave these unread, nor may reaching the bottom clear both.
+      await page.addStyleTag({
+        content: "[data-reply-entry] { min-height: 900px; }",
+      });
+      await stream.hover();
+      const counts = new Set<number>();
+      for (let step = 0; step < 500; step++) {
+        const count = Number(await reply.getAttribute("data-unread-count"));
+        counts.add(count);
+        if (count === 0) break;
+        const before = await stream.evaluate((node) => node.scrollTop);
+        await page.mouse.wheel(0, 40);
+        await expect
+          .poll(() => stream.evaluate((node) => node.scrollTop))
+          .toBeGreaterThan(before);
+      }
+      expect(counts.has(1)).toBe(true);
+      expect(counts.has(0)).toBe(true);
+      // All answers were seen before reaching the bottom of the tall last one.
+      expect(
+        await stream.evaluate(
+          (node) => node.scrollHeight - node.clientHeight - node.scrollTop,
+        ),
+      ).toBeGreaterThan(120);
+      await page.mouse.wheel(0, 20000);
+      await expect(reply).toHaveCount(0);
+    }
   });
-  await page.addStyleTag({
-    content: ".ah-timeline { min-height: 4000px !important; }",
-  });
-  await page.getByTestId("message-input").fill("unread reply");
-  const stream = page.locator(".ah-conversation-stream");
-  await expect
-    .poll(() => stream.evaluate((node) => node.scrollTop))
-    .toBeGreaterThan(0);
-  // Scroll as a reader, after layout has put the following view at its end.
-  // A synthetic scrollTop assignment can race the native-page resize.
-  await expect
-    .poll(() =>
-      stream.evaluate(
-        (node) => node.scrollHeight - node.clientHeight - node.scrollTop,
-      ),
-    )
-    .toBeLessThan(2);
-  await stream.hover();
-  await page.mouse.wheel(0, -5000);
-  await expect(page.getByTestId("jump-latest")).toBeVisible();
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-  await expect(page.getByTestId("jump-latest")).toBeVisible();
-  const reply = page.getByTestId("jump-latest");
-  await expect(reply).toHaveAttribute("data-unread-count", "2", {
-    timeout: 25000,
-  });
-  // jump-latest-chip-layout: the arrow once wrapped below the label. It sits
-  // on the label's line, on the chip's vertical centre.
-  const offset = await reply.evaluate((chip) => {
-    const own = chip.getBoundingClientRect();
-    const icon = chip.querySelector("svg")?.getBoundingClientRect();
-    if (!icon) return Number.NaN;
-    return icon.top + icon.height / 2 - (own.top + own.height / 2);
-  });
-  expect(Math.abs(offset)).toBeLessThan(1);
-  await reply.press("Enter");
-  await expect(reply).toHaveCount(0);
-  await expect(stream).toBeFocused();
-});
+}
 // Jari 17.10.2026 (rail-home-and-hover): the server name is the way home, and
 // rail rows change on hover although the rail's grey is near the hover grey.
 test("@browser-conversation rail server name goes home by mouse, keyboard and from the phone drawer; rail rows show hover", async ({

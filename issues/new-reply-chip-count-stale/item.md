@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: new-reply-chip
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Floating “Uusi vastaus (N)” count does not drop while scrolling down slowly
@@ -21,4 +22,4 @@ viestit tulevat näkyviin, ja siru poistua, kun viimeinenkin on nähty.
 
 ## Acceptance Criteria
 
-- [ ] luku pienenee hitaassa vierityksessä ja siru poistuu lopussa; selaintesti, joka vierittää pienin askelin
+- [x] luku pienenee hitaassa vierityksessä ja siru poistuu lopussa; selaintesti, joka vierittää pienin askelin

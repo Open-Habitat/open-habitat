@@ -133,7 +133,13 @@ export function useReadingPosition(
   id: string | undefined,
   store: ConversationStore,
 ) {
-  const [unseen, setUnseen] = useState(0);
+  const [unseen, updateUnseen] = useState(0);
+  const unseenReplies = useRef(new Set<string>());
+  const setUnseen = useCallback<Dispatch<SetStateAction<number>>>((value) => {
+    // Existing end/jump paths clear both the count and its identities.
+    unseenReplies.current.clear();
+    updateUnseen(value);
+  }, []);
   const [awayFromLatest, setAwayFromLatest] = useState(false);
   const wasAtBottom = useRef(true);
   const previousTail = useRef<{ id?: string; key?: string }>({
@@ -158,7 +164,8 @@ export function useReadingPosition(
           ) ||
             (!entry.blocks?.length && !!entry.content.text)),
       );
-    if (replies.length) setUnseen((count) => count + replies.length);
+    for (const reply of replies) unseenReplies.current.add(reply.entry_key);
+    if (replies.length) updateUnseen(unseenReplies.current.size);
   }, [id, entries]);
   const feed = useRef<HTMLElement>(null);
   const latest = useRef({ entries, next, unseen });
@@ -175,7 +182,42 @@ export function useReadingPosition(
     if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
     setUnseen(0);
     setAwayFromLatest(false);
-  }, [id]);
+  }, [id, setUnseen]);
+  // Observe the reply text, not its turn row: a tall turn can start with
+  // tools well before the answer reaches the viewport. Scroll checks have
+  // no intersection-ratio threshold, so even very tall replies are seen.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries rebinds after the stream and new reply nodes mount.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const markVisible = () => {
+      if (isReadingIntro(viewport) || !unseenReplies.current.size) return;
+      const bounds = viewport.getBoundingClientRect();
+      for (const node of viewport.querySelectorAll<HTMLElement>(
+        "[data-reply-entry]",
+      )) {
+        const key = node.dataset.replyEntry;
+        if (!key || !unseenReplies.current.has(key)) continue;
+        const rect = node.getBoundingClientRect();
+        if (
+          rect.height > 0 &&
+          rect.bottom > bounds.top &&
+          rect.top < bounds.bottom
+        )
+          unseenReplies.current.delete(key);
+      }
+      updateUnseen(unseenReplies.current.size);
+    };
+    viewport.addEventListener("scroll", markVisible, { passive: true });
+    const observer = new ResizeObserver(markVisible);
+    observer.observe(viewport);
+    for (const child of viewport.children) observer.observe(child);
+    markVisible();
+    return () => {
+      viewport.removeEventListener("scroll", markVisible);
+      observer.disconnect();
+    };
+  }, [id, entries]);
   const captureAnchor = useCallback(() => {
     const viewport = feed.current;
     if (!viewport || wasAtBottom.current || overscrolled(viewport)) return;
