@@ -287,10 +287,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Context view and compaction",
         desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
       },
-      "next-waiting-row": {
-        label: "Next waiting conversation",
-        desc: "Go through the conversations waiting for you in one round while the agent works.",
-      },
       "worker-row-sentence": {
         label: "Worker's work on its row",
         desc: "A worker's row tells its commits, changes and pull request checks.",

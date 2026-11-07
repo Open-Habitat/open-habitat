@@ -25,21 +25,7 @@ async function create(page: Page) {
   await expect(page.getByTestId("message-input")).toBeEnabled();
   return page.url();
 }
-async function switchOn(page: Page) {
-  await page.getByTestId("account-menu-trigger").click();
-  await page.getByTestId("menu-settings").click();
-  await page
-    .getByTestId("settings-navigation")
-    .getByTestId("settings-kokeelliset")
-    .click();
-  const on = page
-    .getByTestId("experimental-next-waiting-row-choice")
-    .getByTestId("segment-on");
-  await on.click();
-  await expect(on).toHaveAttribute("aria-pressed", "true");
-  await page.getByTestId("settings-close").click();
-}
-async function setup(page: Page, writer: Page, count = 2, enabled = true) {
+async function setup(page: Page, writer: Page, count = 2) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
@@ -61,7 +47,6 @@ async function setup(page: Page, writer: Page, count = 2, enabled = true) {
   }
   await page.bringToFront();
   const here = await create(page);
-  if (enabled) await switchOn(page);
   return { here, hrefs };
 }
 // The replies are written on another machine: a tab of this browser that
@@ -97,16 +82,7 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
 }) => {
   test.setTimeout(180000);
   const writer = await elsewhere(browser);
-  const { hrefs } = await setup(page, writer, 2, false);
-  await hold(page);
-  await send(page, "feature off");
-  await expect(page.getByTestId("composer-stop")).toBeVisible();
-  await expect(line(page)).toHaveCount(0);
-  await page.request.get("/fixture/scenario?value=ready");
-  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
-    timeout: 30000,
-  });
-  await switchOn(page);
+  const { hrefs } = await setup(page, writer, 2);
   await hold(page);
   // Delay only the POST reply: running alone must not open the window.
   let accept!: () => void;
@@ -303,18 +279,14 @@ test("@next-waiting-row question, failed send and archive close the window", asy
   await writer.context().close();
 });
 
-test("@next-waiting-row off by default; a send with nobody waiting opens an empty window, reload forgets it", async ({
+test("@next-waiting-row a send with nobody waiting opens an empty window, reload forgets it", async ({
   page,
   browser,
 }) => {
   test.setTimeout(180000);
   const writer = await elsewhere(browser);
-  await setup(page, writer, 0, false);
+  await setup(page, writer, 0);
   await hold(page);
-  await send(page, "off by default");
-  await expect(page.getByTestId("composer-stop")).toBeVisible();
-  await expect(line(page)).toHaveCount(0);
-  await switchOn(page);
   await send(page, "empty window");
   await expect(line(page)).toHaveCount(0);
   await page.route("**/api/v1/conversations/*/status", async (route) => {

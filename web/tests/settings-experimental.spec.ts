@@ -16,7 +16,6 @@ test.use({
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
-  "next-waiting-row",
   "worker-row-sentence",
   "workspace-icons",
   "server-settings-own-area",
@@ -89,11 +88,11 @@ test("@settings-experimental a feature is off by default, switches on the daemon
       request.url().endsWith("/api/v1/account/preferences") &&
       request.method() === "PUT",
   );
-  await segment(page, "next-waiting-row", "on").click();
+  await segment(page, "explain-mode", "on").click();
   expect((await write).postDataJSON()).toEqual({
-    experimental: { "next-waiting-row": true },
+    experimental: { "explain-mode": true },
   });
-  await expect(segment(page, "next-waiting-row", "on")).toHaveAttribute(
+  await expect(segment(page, "explain-mode", "on")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -106,7 +105,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
   const other = await context.newPage();
   try {
     await other.goto("/settings/experimental");
-    await expect(segment(other, "next-waiting-row", "on")).toHaveAttribute(
+    await expect(segment(other, "explain-mode", "on")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -117,7 +116,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
         window.dispatchEvent(new Event("nah:theme-change"));
       });
       await other.setViewportSize({ width: 390, height: 844 });
-      await card(other, "next-waiting-row").scrollIntoViewIfNeeded();
+      await card(other, "explain-mode").scrollIntoViewIfNeeded();
       await other.screenshot({
         path: `${evidence}/kokeelliset-phone-dark-paalla.png`,
       });
@@ -127,8 +126,8 @@ test("@settings-experimental a feature is off by default, switches on the daemon
     await other.close();
   }
 
-  await segment(page, "next-waiting-row", "off").click();
-  await expect(segment(page, "next-waiting-row", "off")).toHaveAttribute(
+  await segment(page, "explain-mode", "off").click();
+  await expect(segment(page, "explain-mode", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );

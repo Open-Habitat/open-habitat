@@ -21,7 +21,6 @@ export type QuietSort = "newest" | "workspace" | "name";
  * A feature reads its switch with `useExperimentalFeature(id)`. An id the
  * daemon returns that is not listed here is ignored. */
 export const experimentalFeatureIds = [
-  "next-waiting-row",
   "worker-row-sentence",
   "workspace-icons",
   "server-settings-own-area",

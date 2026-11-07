@@ -21,7 +21,6 @@ export type ExperimentalFeature = {
 };
 
 const featureIds = [
-  { id: "next-waiting-row", landed: true },
   { id: "worker-row-sentence", landed: true },
   { id: "workspace-icons", landed: true },
   { id: "server-settings-own-area", landed: true },
@@ -64,21 +63,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <b>{txt.features[id].caption}</b>
         <span className="ex-ghost" />
         <span className="ex-ghost" style={{ width: "70%" }} />
-      </>
-    );
-  else if (id === "next-waiting-row")
-    body = (
-      <>
-        <span className="ex-ghost ex-ghost-own" />
-        <span className="ex-ghost" style={{ width: "80%" }} />
-        <span className="ex-ghost" style={{ width: "55%" }} />
-        <span className="ex-next">
-          <span className="ex-dot" />
-          <b>{txt.picture.waiting}</b>
-          <span className="ex-why">{txt.picture.waitingWhy}</span>
-          <span className="ex-open">{txt.picture.goThrough}</span>
-        </span>
-        <span className="ex-composer">{txt.picture.composer}</span>
       </>
     );
   else if (id === "raise-to-your-turn")

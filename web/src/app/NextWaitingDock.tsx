@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { AgentNavModel } from "../components/Navigation";
 import { NextWaitingRow } from "../components/NextWaitingRow";
-import { useExperimentalFeature } from "./accountPreferences";
 
 export type NextWaiting = { yours: AgentNavModel[] };
 
@@ -16,10 +15,9 @@ export function NextWaitingDock({
   agentId: string;
   open: boolean;
 }) {
-  const on = useExperimentalFeature("next-waiting-row");
   const navigate = useNavigate();
   const others = next?.yours.filter((a) => a.agentId !== agentId) ?? [];
-  const first = on && open ? others[0] : undefined;
+  const first = open ? others[0] : undefined;
   useEffect(() => {
     if (!first) return;
     const onKey = (e: KeyboardEvent) => {
