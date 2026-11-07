@@ -81,6 +81,10 @@ test("@site-onboarding an administrator's every change saves itself, and the pre
     "",
   ) as string;
   expect(picked).toBeTruthy();
+  await finder
+    .getByTestId("repository-search")
+    .fill(`git@github.com:${picked}.git`);
+  await expect(finder.getByTestId("repository-search")).toHaveValue(picked);
   const rows = finder.getByTestId(`repository-option-${picked}`);
   const shown = await rows.count();
   await rows.first().click();

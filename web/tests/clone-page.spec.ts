@@ -80,7 +80,10 @@ test("@lab @a11y a clone succeeds, is opened from its card and the page passes a
   await page
     .getByRole("searchbox")
     .and(page.getByTestId("repository-search"))
-    .fill("public-org/workmux");
+    .fill("https://github.com/public-org/workmux.git/tree/main");
+  await expect(page.getByTestId("repository-search")).toHaveValue(
+    "public-org/workmux",
+  );
   await page
     .getByRole("link")
     .and(page.getByTestId("repository-option-public-org/workmux"))

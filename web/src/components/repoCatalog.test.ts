@@ -1,5 +1,49 @@
 import { expect, it } from "vitest";
-import { arrange, type CatalogRepo, exactName } from "./repoCatalog";
+import {
+  arrange,
+  type CatalogRepo,
+  exactName,
+  repositoryQuery,
+} from "./repoCatalog";
+
+it.each([
+  "https://github.com/Owner/repo",
+  "https://github.com/Owner/repo.git",
+  "https://github.com/Owner/repo/tree/main/file.ts",
+  "https://github.com/Owner/repo.git/",
+  "https://github.com/Owner/repo?tab=readme#readme",
+  "git@github.com:Owner/repo",
+  "git@github.com:Owner/repo.git",
+  "  https://GITHUB.com/Owner/repo  ",
+])("normalizes a copied GitHub address: %s", (value) => {
+  expect(repositoryQuery(value)).toBe("Owner/repo");
+  expect(exactName(value)).toBe("Owner/repo");
+});
+
+it.each([
+  "https://github.com.evil.example/Owner/repo",
+  "https://github.com@evil.example/Owner/repo",
+  "https://user:secret@github.com/Owner/repo",
+  "https://gitlab.com/Owner/repo",
+  "https://github.com/Owner/",
+  "https://github.com/Owner/..",
+  "https://github.com/Owner/repo%2Fother",
+  "git@github.com.evil.example:Owner/repo",
+])("leaves unsupported or incomplete addresses untouched: %s", (value) => {
+  expect(repositoryQuery(value)).toBe(value);
+  expect(exactName(value)).toBeUndefined();
+});
+
+it("does not rewrite ordinary search terms or repo names while typing", () => {
+  for (const value of [
+    " repo ",
+    "Owner/",
+    "Owner/repo.git",
+    "group/subgroup/repo",
+  ]) {
+    expect(repositoryQuery(value)).toBe(value);
+  }
+});
 
 const now = Date.parse("2026-10-17T12:00:00Z");
 const ago = (days: number) => new Date(now - days * 86400000).toISOString();

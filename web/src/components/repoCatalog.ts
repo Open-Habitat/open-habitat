@@ -186,14 +186,25 @@ export function arrange<R extends CatalogRepo>(
 
 /** An exact owner/repo as GitHub names them; such a query is looked up. */
 export function exactName(query: string): string | undefined {
-  const q = query
-    .trim()
-    .replace(/^https:\/\/github\.com\//, "")
-    .replace(/\.git$/, "");
+  const input = query.trim();
+  // Match the literal GitHub authority, not a lookalike host or a URL with
+  // credentials. A copied file/branch/issue URL still names its repository.
+  const address =
+    /^(?:https:\/\/github\.com\/|git@github\.com:)([^/?#]+\/[^/?#]+)(?:[/?#].*)?$/i.exec(
+      input,
+    );
+  const q = (address?.[1] ?? input).replace(/\.git$/, "");
   return /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(q) &&
     !/^[^/]+\/\.\.?$/.test(q)
     ? q
     : undefined;
+}
+
+/** Normalize pasted addresses visibly, leaving ordinary search typing alone. */
+export function repositoryQuery(value: string): string {
+  return /^(?:https:\/\/github\.com\/|git@github\.com:)/i.test(value.trim())
+    ? (exactName(value) ?? value)
+    : value;
 }
 
 const fixed = (n: number, digits: number) =>

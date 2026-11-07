@@ -9,6 +9,7 @@ import {
   type CatalogRepo,
   largeKiB,
   repoKey,
+  repositoryQuery,
   type Since,
   sectionLimit,
   sinceChoices,
@@ -195,7 +196,7 @@ export function RepoFinder({
             id={searchId}
             type="search"
             value={query}
-            onChange={(e) => onQuery(e.target.value)}
+            onChange={(e) => onQuery(repositoryQuery(e.target.value))}
             placeholder={txt.searchPlaceholder}
             autoComplete="off"
             spellCheck={false}
