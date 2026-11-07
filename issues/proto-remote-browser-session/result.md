@@ -1,5 +1,143 @@
 # Tulokset
 
+## Kierros 2 (7.11.2026): pienoiskuva
+
+Kierros: `design-system/prototypes/rounds/2026-11-07-palvelinselain-kuva/`
+(NOTES.md kertoo tarinan ja ohjaimet). Jari valitsi kierroksella 1 suunnan
+3 Pyydettäessä. Kierroksen akseli on agentin selaintyön pienoiskuva, kun
+arkki on kiinni. Tarina on kaikissa sama: *Lokakuun ostolaskut* lataa
+laskuja Ainon selaimella, ja *Rekrytointi: myyjä* haluaa samaa selainta ja
+odottaa vuoroaan. Kesken työn Netvisor pyytää koodia, ja lopuksi selain
+siirtyy odottavalle keskustelulle.
+
+- **1 Kuva keskustelussa**: iso elävä kuva keskustelun lopussa; kun agentti odottaa sinua, kuva on itse pyyntö, ja toisen keskustelun kuva kertoo, kuka selainta käyttää.
+- **2 Palkki kentän yllä**: kapea palkki pienellä kuvalla kirjoituskentän yllä kaikissa keskusteluissa; se nimeää keskustelun, joka selainta käyttää, ja sen, joka odottaa.
+- **3 Kelluva ikkuna**: pieni ikkuna keskustelun nurkassa seuraa sinua keskustelusta toiseen; otsikko on selainta käyttävä keskustelu, ja valmiina ikkuna kutistuu napiksi.
+
+Kuvat: `evidence/r2-<riffi>-<vaihe>-<leveys>-<teema>.avif`, riffit `1-kuva`,
+`2-palkki` ja `3-kelluva`. Vaiheet: `0-oletus` (myös tummana), `1-toinen`
+(odottava keskustelu), `2-siirretty` (selain annettu odottavalle),
+`3-otit` (ohjaus otettu), `4-pyytaa` (koodi kesken työn), `5-koodi` (arkissa
+koodi hyväksytty), `6-valmis` (valmis, toinen keskustelu käyttää) ja
+`7-vapaa` (molemmat valmiit).
+
+### Mitä kukin riffi päättää
+
+| | 1 Kuva keskustelussa | 2 Palkki kentän yllä | 3 Kelluva ikkuna |
+|---|---|---|---|
+| Missä | historian lopussa, vain sen keskustelun, jota asia koskee | kentän yllä kaikissa keskusteluissa | nurkassa kaikissa keskusteluissa, pysyy vierittäessä |
+| Koko | 352 × 220 px, puhelimessa koko leveys | 80 × 50 px | 238 × 149 px, puhelimessa 170 × 106 |
+| Mitä näkyy | sivu luettavana, agentin osoitin, nykyinen toimi | että selain on käytössä, toimi tekstinä | sivu tunnistettavana, toimi |
+| Arkin avaus | kuva tai *Näytä isona* | kuva tai *Näytä* | kuva |
+| Odottaa sinua | kuva ja pyyntö ovat sama kortti: *Syötä koodi* | palkista tulee pyyntö | ikkunasta tulee pyyntö, eikä sitä voi pienentää |
+| Valmis | kuva jähmettyy pieneksi: *Valmis klo 10.19 · 7 tointa* | palkki poistuu, ja keskusteluun jää rivi | ikkuna kutistuu napiksi *Selain vapaa* |
+| Kuka käyttää | odottavan keskustelun kortti: haalistettu kuva, *X käyttää*, *Siirrä tälle*; käyttävässä rivi *Y odottaa vuoroaan* | palkki nimeää käyttäjän ja odottajan joka keskustelussa | otsikko on käyttävä keskustelu (linkki), alla odottaja |
+| Hinta | näkyy vain siinä keskustelussa, jota asia koskee; vierittyy pois | kuva liian pieni sisällön lukemiseen | peittää osan keskustelusta, puhelimessa noin puolet |
+
+Yhteistä: sivupalkki kertoo sanoin, mitä kukin keskustelu tekee (*Käyttää
+selainta*, *Odottaa selainta*, *Odottaa sinua*). Kuvan painaminen avaa
+kierroksen 1 arkin. *Siirrä tälle* antaa selaimen odottavalle keskustelulle,
+ja keskeytetty jatkaa, kun selain vapautuu.
+
+### Suositus
+
+**1 Kuva keskustelussa.** Jari valitsi Pyydettäessä-suunnan, koska selain
+saa siinä eniten tilaa. Sama periaate puoltaa kuvaa, joka ei vie tilaa muilta
+keskusteluilta ja joka on niin iso, että sivun voi lukea avaamatta arkkia.
+Kuva on siinä keskustelussa, jossa tehtävä annettiin, ja agentin pyyntö ja
+kuva ovat sama kortti, joten henkilö näkee yhdellä silmäyksellä, mitä
+Netvisor pyytää. Kilpailutilanteen henkilö kohtaa siinä keskustelussa, joka
+odottaa, ja sivupalkki kertoo saman muissa.
+
+- **2** näyttää yhteisen selaimen samassa paikassa kaikkialla, mikä vastaa
+  totuutta (yksi selain henkilöllä), mutta 80 px:n kuvasta ei tunnista
+  sivua. Palkki on käytännössä tilarivi, ja sen tiedot ovat jo sivupalkissa.
+- **3** on näistä ainoa, joka pysyy näkyvissä vierittäessä, mutta se peittää
+  keskustelua ja puhelimessa puolet leveydestä, eli juuri sitä tilaa, jonka
+  takia suunta 3 valittiin.
+
+### Host-tiedot
+
+Tutkimuksen `research-remote-browser-session` päätöksestä:
+
+- **Yksi selain henkilöllä**: oma systemd-käyttäjäyksikkö, ja kaikki
+  henkilön keskustelut käyttävät samaa kirjautunutta profiilia.
+- **Yksi ohjaa kerrallaan**: selainisäntä hyväksyy yhden CDP-asiakkaan
+  ja kieltäytyy muista. Toisen keskustelun `selain`-kutsu epäonnistuu
+  tavallisena työkalurivinä "selain on toisen keskustelun käytössä".
+- **Ota ohjaus**: kytkin katkaisee nykyisen asiakkaan ja kieltäytyy
+  uusista, kunnes henkilö antaa selaimen takaisin.
+- **24 h joutokäynti**: selain sammuu 24 tuntia viimeisen katselijan tai
+  agentin jälkeen, ja istunto palautetaan.
+
+Prototyypin oletukset, jotka toteutuksen pitää vahvistaa:
+
+- **Kuka käyttää, nimellä**: isäntä kertoo, minkä keskustelun asiakas
+  ohjaa. Joko taito antaa liittyessään keskustelun tunnisteen (saman UID:n
+  prosessi, pelkkä nimilappu eikä valtuus), tai daemon päättelee sen
+  asiakkaan prosessista. Ilman tätä näkymä voi sanoa vain "toinen
+  keskustelu".
+- **Odottaminen ja vuoro**: odottavan agentin taito odottaa, että selain
+  vapautuu (isännän tila tai uusintayritys), ja jatkaa itse. Sivupalkin
+  *Odottaa selainta* vaatii, että daemon tietää odottajan. Vapautuminen ei
+  saa jäädä tilan lukemisen varaan.
+- ***Siirrä tälle*** on ohjauksen ottamisen muunnelma: isäntä katkaisee
+  nykyisen asiakkaan ja päästää valitun sisään. Keskeytetyn agentin taito
+  selittää, että henkilö antoi selaimen toiselle keskustelulle.
+- **Kuva** tulee samasta noVNC-yhteydestä katseluna ja harvemmalla
+  päivitysvälillä. Mitään ei tallenneta. Valmiin työn jähmettynyt kuva elää
+  vain sivun muistissa, ja uudelleenlatauksen jälkeen kortissa on pelkkä
+  teksti.
+- *Selain vapaa · kirjautunut* olettaa, että selain on päällä. 24 tunnin
+  pysäytyksen jälkeen teksti olisi *Selain suljettu*; prototyyppi ei näytä
+  sitä.
+
+### Kysymykset Jarille
+
+1. **1, 2 vai 3?** `r2-1-kuva-0-oletus-1440-light`,
+   `r2-2-palkki-0-oletus-1440-light`, `r2-3-kelluva-0-oletus-1440-light`.
+   Suositus 1.
+2. **Saako henkilö siirtää selaimen kesken toisen keskustelun työn
+   (*Siirrä tälle*), vai odottaako keskustelu aina vuoroaan?**
+   `r2-1-kuva-1-toinen-1440-light`. Suosittelen siirtoa: henkilö tietää,
+   kumpi on kiireellisempi, ja keskeytetty jatkaa itse.
+3. **Mitä valmiista työstä jää näkyviin: jähmettynyt kuva (1), rivi (2) vai
+   nappi (3)?** `r2-1-kuva-7-vapaa-1440-light`,
+   `r2-2-palkki-7-vapaa-1440-light`, `r2-3-kelluva-7-vapaa-1440-light`.
+   Suosittelen jähmettynyttä kuvaa: viimeinen sivu näyttää, mihin agentti
+   jäi.
+
+### Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-07-palvelinselain-kuva/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/palvelinselain-kuva/offline.html \
+  --title "Oma palvelinselain – kierros 2: pienoiskuva" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
+### Tarkistus
+
+`check.mjs`: 204 tarkistuspistettä, konsoli puhdas. Jokainen riffi ajettiin
+1440 ja 390 px vaaleana koko tarinan läpi: oletus, odottava keskustelu,
+selaimen siirto, kuvasta avattu arkki vain katseltavana, ohjauksen
+ottaminen ja agentin pysähtyminen, koodi kesken työn arkissa, valmis ja
+vapaa. Oletukset ajettiin myös tummana. Kuvat ovat kertoimella 2 (AVIF).
+Kyse on synteettisestä komponenttilabrasta, jota ei ole ajettu hostia
+vasten. Kierros ei muuttanut tuotantokoodia.
+
+### Päätökset myöhempää katselmointia varten
+
+- **Toinen keskustelu odottaa jo oletusnäkymässä.** Kilpailutilanne näkyy
+  heti eikä vaadi erillistä kohtausta.
+- **Valitsimen nimet ovat lyhyet** (1 Kuva, 2 Palkki, 3 Ikkuna), koska
+  pitkät nimet eivät mahdu puhelimen valitsimeen. Yläpalkin rivit kertovat
+  koko nimen.
+- **Kierroksen 1 pyyntökortti on riffeissä yhdistetty kuvaan.** Koodin
+  pyyntö on riffissä 1 kuvan kortti ja riffeissä 2 ja 3 palkki tai ikkuna.
+  Agentin oma viesti jää keskusteluun kaikissa.
+
 ## Kierros 1 (6.11.2026)
 
 Kierros: `design-system/prototypes/rounds/2026-11-06-palvelinselain/`
@@ -35,7 +173,7 @@ käyttäessä selainta etänäkymä on vain katseltava. *Valmis* on käytössä
 vasta, kun sivu näyttää kirjautuneen tilan. Agentti päättelee kirjautumisen
 itse sivulta, ja sulkeminen ei kirjaa ulos.
 
-## Suositus
+### Suositus
 
 **1 Rinnakkain.** Selain on samassa paikassa ja samalla eleellä kuin editori
 ja agentin näkymät, joten Habitat ei saa uutta navigointikäsitettä. Henkilö
@@ -53,7 +191,7 @@ muutkin näkymät.
   keskustelun juuri silloin, kun agentin pyyntöä pitäisi lukea. Pienoiskuva
   keskustelussa on silti hyvä tapa näyttää työ paneelin ollessa kiinni.
 
-## Host-tiedot (oletuksia)
+### Host-tiedot (oletuksia)
 
 Rinnakkainen selvitys `research-remote-browser-session` ei ollut vielä
 mainissa, joten nämä ovat uskottavia oletuksia. Raportin pitää vahvistaa tai
@@ -85,7 +223,7 @@ kumota ne.
   näkyy keskustelussa pyyntökorttina (kuten Pi:n natiivi kysymys), siirtää
   ohjauksen henkilölle ja palaa, kun henkilö antaa selaimen takaisin.
 
-## Kysymykset Jarille
+### Kysymykset Jarille
 
 1. **1, 2 vai 3?** `r1-1-rinnakkain-4-agentti-1440-light`,
    `r1-2-oma-nakyma-4-agentti-1440-light`,
@@ -98,7 +236,7 @@ kumota ne.
    `r1-2-oma-nakyma-8-valmis-1440-light`. Suosittelen ei: toimet ovat jo
    keskusteluissaan, ja loki olisi toinen paikka samalle tiedolle.
 
-## Näyttäminen
+### Näyttäminen
 
 ```
 node design-system/prototypes/rounds/2026-11-06-palvelinselain/build.mjs
@@ -108,7 +246,7 @@ open-habitat agent view offer --current \
   --idempotency-key "$(uuidgen)" --json
 ```
 
-## Tarkistus
+### Tarkistus
 
 `check.mjs`: 194 tarkistuspistettä, konsoli puhdas. Kaikki suunnat ajettiin
 1440 ja 390 px vaaleana koko tarinan läpi (avaaminen, kirjautuminen
@@ -118,7 +256,7 @@ Oletukset ajettiin myös tummana. Kuvat ovat kertoimella 2 (AVIF). Kyse on
 synteettisestä komponenttilabrasta, jota ei ole ajettu hostia vasten.
 Kierros ei muuttanut tuotantokoodia.
 
-## Päätökset myöhempää katselmointia varten
+### Päätökset myöhempää katselmointia varten
 
 - **Netvisor esimerkkinä.** Valittu, koska Contosoin tutkimus käsittelee sitä.
   Sivu on yleinen mock eikä jäljittele palvelun ulkoasua.

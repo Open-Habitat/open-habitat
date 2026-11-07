@@ -1,0 +1,272 @@
+/* Round 2. Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rb-reviewbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rb-reviewbar strong { font-weight: 600; }
+.rb-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rb-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rb-reviewbar select, .rb-reviewbar button { font: inherit; }
+@media (max-width: 600px) {
+  .rb-reviewbar { padding: 6px 10px; gap: 2px 10px; }
+  .rb-reviewbar > strong { display: none; }
+  .rb-lines { font-size: 11px; line-height: 1.3; }
+  .rb-lines li:not([aria-current]) { display: none; }
+}
+.rb-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rb-stage .ah-rail { top: var(--review-h, 0px); }
+.rb-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+.rb-main { display: flex; flex-direction: column; min-height: 0; height: 100%; position: relative; }
+.rb-main > .ah-conversation-frame, .rb-main > .ah-view-split { flex: 1 1 auto; min-height: 0; }
+
+/* ---- Who holds the browser: words and an icon in a pill ---- */
+.rb-driver {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  min-height: 24px; padding: 0 10px; border-radius: var(--ah-r-pill);
+  border: 1px solid var(--ah-line); background: var(--ah-surface-2);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600; white-space: nowrap;
+}
+.rb-driver svg { width: 14px; height: 14px; }
+.rb-driver-agent { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+
+/* ---- Bottom bar under the screen: the sentence and the one action ---- */
+.rb-bar {
+  display: flex; align-items: center; gap: var(--ah-s3); flex-wrap: wrap;
+  padding: var(--ah-s2) var(--ah-s4); border-top: 1px solid var(--ah-line); background: var(--ah-surface);
+}
+.rb-bar-now { flex: 1 1 14rem; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+
+/* ---- The remote browser frame ---- */
+.rb-screen {
+  position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%;
+  background: #fff; color: #1d2430; overflow: hidden;
+}
+.rb-chrome {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  padding: 6px 10px; background: #eceef1; border-bottom: 1px solid #d5d9df; color: #4a5260;
+  font: 12px/1.3 system-ui, sans-serif;
+}
+.rb-chrome-btns { display: inline-flex; gap: 8px; }
+.rb-chrome svg { width: 14px; height: 14px; }
+.rb-url {
+  display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+  padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid #d5d9df;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rb-site { flex: 1; min-height: 0; overflow: auto; font: 13px/1.45 system-ui, sans-serif; }
+.rb-site-center { display: grid; place-items: center; min-height: 100%; padding: 24px 16px; background: #f3f5f8; box-sizing: border-box; }
+.rb-site-card {
+  display: grid; gap: 10px; width: min(320px, 100%); padding: 24px; box-sizing: border-box;
+  background: #fff; border: 1px solid #dde1e7; border-radius: 10px; box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
+}
+.rb-site-card h3 { margin: 0; font-size: 18px; }
+.rb-site-card label { display: grid; gap: 4px; color: #4a5260; font-size: 12px; }
+.rb-site-brand { margin: 0; font-weight: 800; letter-spacing: 0.02em; color: #0b5c8c; }
+.rb-site-note { margin: 0; color: #6b4b00; background: #fff6dc; border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+.rb-site-field {
+  display: block; padding: 8px 10px; border: 1px solid #c9cfd8; border-radius: 6px; background: #fff;
+  color: #1d2430; font: 13px system-ui, sans-serif; box-sizing: border-box; width: 100%;
+}
+.rb-site-filter .rb-site-field { display: inline-block; width: auto; padding: 4px 8px; }
+.rb-site-btn {
+  padding: 9px 12px; border: 0; border-radius: 6px; background: #0b5c8c; color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer;
+}
+.rb-site-btn:disabled { opacity: 0.55; cursor: default; }
+.rb-site-app { display: flex; flex-direction: column; min-height: 100%; }
+.rb-site-top { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #e3e6eb; color: #4a5260; }
+.rb-site-user { margin-left: auto; font-weight: 600; color: #1d2430; }
+.rb-site-body { display: flex; flex: 1; min-height: 0; }
+.rb-site-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; width: 120px; flex: none; background: #f3f5f8; color: #4a5260; }
+.rb-site-nav span { padding: 6px 10px; border-radius: 6px; }
+.rb-site-nav span.on { background: #dcebf5; color: #0b5c8c; font-weight: 600; }
+.rb-site-main { flex: 1; min-width: 0; padding: 14px 18px; }
+.rb-site-main h3 { margin: 0 0 10px; font-size: 17px; }
+.rb-site-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.rb-site-tiles div { padding: 12px; border: 1px solid #e3e6eb; border-radius: 8px; }
+.rb-site-tiles b { display: block; font-size: 20px; }
+.rb-site-filter { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #4a5260; }
+.rb-site-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rb-site-table td { padding: 6px 8px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+.rb-site-table td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.rb-site-table td.dl { color: #1f7a3d; font-weight: 600; }
+@media (max-width: 600px) {
+  .rb-site-nav { display: none; }
+  .rb-site-table td:nth-child(4) { display: none; }
+}
+/* The agent's pointer: a dot with its name, so the person sees where it acts. */
+.rb-pointer {
+  position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  background: var(--ah-accent); border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  transition: left 0.5s ease, top 0.5s ease; pointer-events: none; z-index: 3;
+}
+.rb-pointer span {
+  position: absolute; left: 14px; top: 10px; padding: 1px 6px; border-radius: 4px;
+  background: var(--ah-accent); color: var(--ah-on-accent); font: 600 11px system-ui, sans-serif; white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) { .rb-pointer { transition: none; } }
+/* While the agent holds the browser the remote view is view-only. */
+.rb-viewonly {
+  position: absolute; inset: 0; z-index: 2; border: 0; padding: 0; background: transparent; cursor: not-allowed;
+  display: grid; place-items: end center;
+}
+.rb-viewonly-hint {
+  margin-bottom: 16px; padding: 8px 12px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* ---- Conversation pieces ---- */
+.rb-step-said { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rb-request {
+  display: flex; gap: var(--ah-s3); max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rb-request-mark, .rb-rail-mark {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px;
+  border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); color: var(--ah-accent-ink);
+}
+.rb-request-mark svg, .rb-rail-mark svg { width: 18px; height: 18px; }
+.rb-request-body { display: grid; gap: var(--ah-s2); min-width: 0; }
+.rb-request-body h3 { margin: 0; font-size: var(--ah-size-ui); }
+.rb-request-body p { margin: 0; color: var(--ah-ink-2); }
+.rb-request-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: center; }
+.rb-request-actions svg { width: 15px; height: 15px; }
+.rb-request-where { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rb-request-done, .rb-note {
+  display: flex; align-items: center; gap: var(--ah-s2); margin: 0; max-width: min(var(--ah-measure), 100%);
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+}
+.rb-request-done svg, .rb-note svg { width: 14px; height: 14px; flex: none; }
+.rb-note { padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); color: var(--ah-ink-2); }
+.rb-note > span { flex: 1; }
+
+/* ---- Direction 3: the sheet ---- */
+.rb-sheet-overlay { align-items: center; inset: var(--review-h, 0px) 0 60px 0; }
+.ah-modal.rb-sheet {
+  width: min(1100px, calc(100vw - 48px)); max-width: none; height: min(780px, calc(100% - 32px)); max-height: none; padding: 0; overflow: hidden;
+  display: flex;
+}
+.rb-sheet { border-radius: var(--ah-r-xl); box-shadow: var(--ah-shadow-dialog); }
+.rb-sheet-dialog { display: flex; flex-direction: column; flex: 1; min-width: 0; outline: none; background: var(--ah-surface); border-radius: inherit; overflow: hidden; }
+.rb-sheet-head { display: flex; align-items: center; gap: var(--ah-s3); padding: var(--ah-s2) var(--ah-s3) var(--ah-s2) var(--ah-s4); border-bottom: 1px solid var(--ah-line); }
+.rb-sheet-head h2 { margin: 0 auto 0 0; font-size: var(--ah-size-title); }
+.rb-sheet-screen { flex: 1; min-height: 0; }
+@media (max-width: 600px) {
+  .rb-sheet-overlay { align-items: flex-end; padding: 0; }
+  .ah-modal.rb-sheet {
+    width: 100%; height: calc(100% - 24px); border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; margin: 0;
+  }
+  .rb-sheet .rb-bar .rb-bar-now { flex-basis: 100%; }
+  .rb-sheet .rb-bar [data-testid="hand-over"], .rb-sheet .rb-bar [data-testid="take-control"] { width: 100%; justify-content: center; }
+}
+
+.rb-scenes { display: inline-flex; gap: 6px; }
+.rb-driver-ask { border-color: var(--ah-line-strong); background: var(--ah-surface); color: var(--ah-ink); }
+.rb-link {
+  padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: inherit; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer;
+}
+.rb-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: center; }
+.rb-actions svg { width: 15px; height: 15px; }
+
+/* The second site: a recruiting search, again in the site's own colours. */
+.rb-site-li .rb-site-brand { color: #0a66c2; }
+.rb-site-search { padding: 3px 10px; border-radius: 999px; background: #eef3f8; }
+.rb-site-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rb-site-people li { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid #e3e6eb; border-radius: 8px; }
+.rb-site-people span:last-child { display: grid; }
+.rb-site-people small { color: #5c6470; }
+.rb-site-face { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #dbe7f3; color: #0a66c2; font-weight: 700; }
+
+/* ---- The picture: the person's real browser, scaled down, never interactive ---- */
+.rb-pic {
+  flex: none; position: relative; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm);
+  overflow: hidden; cursor: zoom-in; background: #fff;
+}
+.rb-pic .rb-screen-small { width: 640px; height: 400px; transform-origin: 0 0; }
+.rb-pic:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; }
+
+/* Riff 1: large, in the conversation's flow. */
+.rb-inline {
+  display: flex; gap: var(--ah-s4); align-items: flex-start; max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rb-pic-live, .rb-pic-other { width: 352px; height: 220px; }
+.rb-pic-live .rb-screen-small, .rb-pic-other .rb-screen-small { transform: scale(0.55); }
+.rb-pic-done { width: 192px; height: 120px; }
+.rb-pic-done .rb-screen-small { transform: scale(0.3); }
+.rb-pic-other .rb-screen-small { filter: saturate(0.4); opacity: 0.8; }
+.rb-inline-body { display: grid; gap: var(--ah-s2); min-width: 0; justify-items: start; }
+.rb-inline-title, .rb-inline-head { display: flex; align-items: center; gap: var(--ah-s2); margin: 0; font-size: var(--ah-size-ui); font-weight: 600; color: var(--ah-ink); }
+.rb-inline-title svg, .rb-inline-head svg, .rb-inline-meta svg { width: 15px; height: 15px; flex: none; }
+.rb-inline-now { margin: 0; color: var(--ah-ink); }
+.rb-inline-meta { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rb-inline-ask { background: var(--ah-surface); border-color: var(--ah-line-strong); box-shadow: var(--ah-shadow-raised, 0 1px 4px rgb(0 0 0 / 8%)); }
+.rb-inline-done { background: transparent; }
+.rb-inline-done .rb-inline-now { color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+@media (max-width: 600px) {
+  .rb-inline { flex-direction: column; }
+  .rb-pic-live, .rb-pic-other { width: 100%; height: 0; padding-bottom: 62.5%; }
+  .rb-pic-live .rb-screen-small, .rb-pic-other .rb-screen-small { position: absolute; transform: scale(var(--pic-scale, 0.52)); }
+  .rb-inline-done { flex-direction: row; }
+  .rb-pic-done { width: 128px; height: 80px; }
+  .rb-pic-done .rb-screen-small { transform: scale(0.2); }
+}
+
+/* Riff 2: a strip docked above the composer. */
+.rb-strip {
+  display: flex; align-items: center; gap: var(--ah-s3); flex: none;
+  width: min(100%, var(--ah-conversation-width)); margin: 0 auto var(--ah-s2); box-sizing: border-box;
+  padding: 6px var(--ah-s2) 6px 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rb-pic-strip { width: 80px; height: 50px; }
+.rb-pic-strip .rb-screen-small { transform: scale(0.125); }
+.rb-strip-text { display: grid; flex: 1; min-width: 0; font-size: var(--ah-size-meta); line-height: 1.35; }
+.rb-strip-text b { display: flex; align-items: center; gap: 6px; color: var(--ah-ink); font-weight: 600; font-size: var(--ah-size-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-strip-text b svg { width: 15px; height: 15px; flex: none; }
+.rb-strip-text span { color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-strip .rb-actions { flex-wrap: nowrap; }
+.rb-strip-ask { background: var(--ah-surface); border-color: var(--ah-line-strong); box-shadow: var(--ah-shadow-raised, 0 1px 4px rgb(0 0 0 / 8%)); }
+@media (max-width: 600px) {
+  .rb-strip { width: calc(100% - 2 * var(--ah-s2)); gap: var(--ah-s2); }
+  .rb-pic-strip { width: 56px; height: 35px; }
+  .rb-pic-strip .rb-screen-small { transform: scale(0.0875); }
+  .rb-strip-text b { font-size: var(--ah-size-meta); }
+  .rb-strip [data-testid="show-big"] { display: none; }
+}
+
+/* Riff 3: a small window floating in the conversation's corner. */
+.rb-float, .rb-float-pill { pointer-events: auto; margin: 0 var(--ah-s4) 0 auto; }
+.rb-float {
+  display: grid; gap: var(--ah-s2); width: 256px; padding: var(--ah-s2); box-sizing: border-box;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg, 12px); background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-dialog);
+}
+.rb-float-head { display: flex; align-items: center; gap: var(--ah-s2); min-width: 0; font-size: var(--ah-size-meta); }
+.rb-float-head > svg { width: 15px; height: 15px; flex: none; color: var(--ah-muted); }
+.rb-float-head b, .rb-float-title { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.rb-pic-float { width: 238px; height: 149px; }
+.rb-pic-float .rb-screen-small { transform: scale(0.37); }
+.rb-float-body { display: grid; gap: 6px; justify-items: start; }
+.rb-float-now { margin: 0; color: var(--ah-ink); font-size: var(--ah-size-meta); }
+.rb-float-wait { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rb-float-ask { border-color: var(--ah-line-strong); }
+.rb-float-pill { display: inline-flex; gap: 4px; align-items: center; padding: 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.rb-float-pill svg { width: 15px; height: 15px; }
+@media (max-width: 600px) {
+  .rb-float { width: 184px; margin-right: var(--ah-s2); padding: 6px; gap: 6px; }
+  .rb-pic-float { width: 170px; height: 106px; }
+  .rb-pic-float .rb-screen-small { transform: scale(0.265); }
+  .rb-float .rb-driver, .rb-float:not(.rb-float-ask) .rb-float-now { display: none; }
+  .rb-float-pill { margin-right: var(--ah-s2); }
+}
