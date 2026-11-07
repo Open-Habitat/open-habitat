@@ -1,0 +1,374 @@
+/* Round 4. Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rb-reviewbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rb-reviewbar strong { font-weight: 600; }
+.rb-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rb-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rb-reviewbar select, .rb-reviewbar button { font: inherit; }
+@media (max-width: 600px) {
+  .rb-reviewbar { padding: 6px 10px; gap: 2px 10px; }
+  .rb-reviewbar > strong { display: none; }
+  .rb-lines { font-size: 11px; line-height: 1.3; }
+  .rb-lines li:not([aria-current]) { display: none; }
+}
+.rb-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rb-stage .ah-rail { top: var(--review-h, 0px); }
+.rb-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+.rb-main { display: flex; flex-direction: column; min-height: 0; height: 100%; position: relative; }
+.rb-main > .ah-conversation-frame, .rb-main > .ah-view-split { flex: 1 1 auto; min-height: 0; }
+
+/* ---- Who holds the browser: words and an icon in a pill ---- */
+.rb-driver {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  min-height: 24px; padding: 0 10px; border-radius: var(--ah-r-pill);
+  border: 1px solid var(--ah-line); background: var(--ah-surface-2);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600; white-space: nowrap;
+}
+.rb-driver svg { width: 14px; height: 14px; }
+.rb-driver-agent { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+
+/* ---- Bottom bar under the screen: the sentence and the one action ---- */
+.rb-bar {
+  display: flex; align-items: center; gap: var(--ah-s3); flex-wrap: wrap;
+  padding: var(--ah-s2) var(--ah-s4); border-top: 1px solid var(--ah-line); background: var(--ah-surface);
+}
+.rb-bar-now { flex: 1 1 14rem; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+
+/* ---- The remote browser frame ---- */
+.rb-screen {
+  position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%;
+  background: #fff; color: #1d2430; overflow: hidden;
+}
+.rb-chrome {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  padding: 6px 10px; background: #eceef1; border-bottom: 1px solid #d5d9df; color: #4a5260;
+  font: 12px/1.3 system-ui, sans-serif;
+}
+.rb-chrome-btns { display: inline-flex; gap: 8px; }
+.rb-chrome svg { width: 14px; height: 14px; }
+.rb-url {
+  display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+  padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid #d5d9df;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rb-site { flex: 1; min-height: 0; overflow: auto; font: 13px/1.45 system-ui, sans-serif; }
+.rb-site-center { display: grid; place-items: center; min-height: 100%; padding: 24px 16px; background: #f3f5f8; box-sizing: border-box; }
+.rb-site-card {
+  display: grid; gap: 10px; width: min(320px, 100%); padding: 24px; box-sizing: border-box;
+  background: #fff; border: 1px solid #dde1e7; border-radius: 10px; box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
+}
+.rb-site-card h3 { margin: 0; font-size: 18px; }
+.rb-site-card label { display: grid; gap: 4px; color: #4a5260; font-size: 12px; }
+.rb-site-brand { margin: 0; font-weight: 800; letter-spacing: 0.02em; color: #0b5c8c; }
+.rb-site-note { margin: 0; color: #6b4b00; background: #fff6dc; border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+.rb-site-field {
+  display: block; padding: 8px 10px; border: 1px solid #c9cfd8; border-radius: 6px; background: #fff;
+  color: #1d2430; font: 13px system-ui, sans-serif; box-sizing: border-box; width: 100%;
+}
+.rb-site-filter .rb-site-field { display: inline-block; width: auto; padding: 4px 8px; }
+.rb-site-btn {
+  padding: 9px 12px; border: 0; border-radius: 6px; background: #0b5c8c; color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer;
+}
+.rb-site-btn:disabled { opacity: 0.55; cursor: default; }
+.rb-site-app { display: flex; flex-direction: column; min-height: 100%; }
+.rb-site-top { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #e3e6eb; color: #4a5260; }
+.rb-site-user { margin-left: auto; font-weight: 600; color: #1d2430; }
+.rb-site-body { display: flex; flex: 1; min-height: 0; }
+.rb-site-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; width: 120px; flex: none; background: #f3f5f8; color: #4a5260; }
+.rb-site-nav span { padding: 6px 10px; border-radius: 6px; }
+.rb-site-nav span.on { background: #dcebf5; color: #0b5c8c; font-weight: 600; }
+.rb-site-main { flex: 1; min-width: 0; padding: 14px 18px; }
+.rb-site-main h3 { margin: 0 0 10px; font-size: 17px; }
+.rb-site-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.rb-site-tiles div { padding: 12px; border: 1px solid #e3e6eb; border-radius: 8px; }
+.rb-site-tiles b { display: block; font-size: 20px; }
+.rb-site-filter { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #4a5260; }
+.rb-site-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rb-site-table td { padding: 6px 8px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+.rb-site-table td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.rb-site-table td.dl { color: #1f7a3d; font-weight: 600; }
+@media (max-width: 600px) {
+  .rb-site-nav { display: none; }
+  .rb-site-table td:nth-child(4) { display: none; }
+}
+/* While the agent holds the browser the remote view is view-only. */
+.rb-viewonly {
+  position: absolute; inset: 0; z-index: 2; border: 0; padding: 0; background: transparent; cursor: not-allowed;
+  display: grid; place-items: end center;
+}
+.rb-viewonly-hint {
+  margin-bottom: 16px; padding: 8px 12px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* ---- Conversation pieces ---- */
+.rb-step-said { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rb-request {
+  display: flex; gap: var(--ah-s3); max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rb-request-mark, .rb-rail-mark {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px;
+  border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); color: var(--ah-accent-ink);
+}
+.rb-request-mark svg, .rb-rail-mark svg { width: 18px; height: 18px; }
+.rb-request-body { display: grid; gap: var(--ah-s2); min-width: 0; }
+.rb-request-body h3 { margin: 0; font-size: var(--ah-size-ui); }
+.rb-request-body p { margin: 0; color: var(--ah-ink-2); }
+.rb-request-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: center; }
+.rb-request-actions svg { width: 15px; height: 15px; }
+.rb-request-where { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rb-request-done, .rb-note {
+  display: flex; align-items: center; gap: var(--ah-s2); margin: 0; max-width: min(var(--ah-measure), 100%);
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+}
+.rb-request-done svg, .rb-note svg { width: 14px; height: 14px; flex: none; }
+.rb-note { padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); color: var(--ah-ink-2); }
+.rb-note > span { flex: 1; }
+
+/* ---- Direction 3: the sheet ---- */
+.rb-sheet-overlay { align-items: center; inset: var(--review-h, 0px) 0 60px 0; }
+.ah-modal.rb-sheet {
+  width: min(1100px, calc(100vw - 48px)); max-width: none; height: min(780px, calc(100% - 32px)); max-height: none; padding: 0; overflow: hidden;
+  display: flex;
+}
+.rb-sheet { border-radius: var(--ah-r-xl); box-shadow: var(--ah-shadow-dialog); }
+.rb-sheet-dialog { display: flex; flex-direction: column; flex: 1; min-width: 0; outline: none; background: var(--ah-surface); border-radius: inherit; overflow: hidden; }
+.rb-sheet-head { display: flex; align-items: center; gap: var(--ah-s3); padding: var(--ah-s2) var(--ah-s3) var(--ah-s2) var(--ah-s4); border-bottom: 1px solid var(--ah-line); }
+.rb-sheet-head h2 { margin: 0 auto 0 0; font-size: var(--ah-size-title); }
+.rb-sheet-screen { flex: 1; min-height: 0; }
+@media (max-width: 600px) {
+  .rb-sheet-overlay { align-items: flex-end; padding: 0; }
+  .ah-modal.rb-sheet {
+    width: 100%; height: calc(100% - 24px); border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; margin: 0;
+  }
+  .rb-sheet .rb-bar .rb-bar-now { flex-basis: 100%; }
+  .rb-sheet .rb-bar [data-testid="hand-over"], .rb-sheet .rb-bar [data-testid="take-control"] { width: 100%; justify-content: center; }
+}
+
+.rb-scenes { display: inline-flex; gap: 6px; }
+.rb-driver-ask { border-color: var(--ah-line-strong); background: var(--ah-surface); color: var(--ah-ink); }
+.rb-link {
+  padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: inherit; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer;
+}
+.rb-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: center; }
+.rb-actions svg { width: 15px; height: 15px; }
+
+/* The second site: a recruiting search, again in the site's own colours. */
+.rb-site-li .rb-site-brand { color: #0a66c2; }
+.rb-site-search { padding: 3px 10px; border-radius: 999px; background: #eef3f8; }
+.rb-site-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rb-site-people li { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid #e3e6eb; border-radius: 8px; }
+.rb-site-people span:last-child { display: grid; }
+.rb-site-people small { color: #5c6470; }
+.rb-site-face { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #dbe7f3; color: #0a66c2; font-weight: 700; }
+
+
+/* Extra pages: an invoice PDF in the browser's viewer and a recruiting profile. */
+.rb-site-pdf { min-height: 100%; padding: 18px; background: #525659; box-sizing: border-box; }
+.rb-site-sheet { max-width: 420px; margin: 0 auto; padding: 22px 26px; background: #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 35%); }
+.rb-site-sheet h3 { margin: 4px 0 6px; font-size: 18px; }
+.rb-site-sheet p { margin: 0 0 12px; color: #4a5260; font-size: 12px; }
+.rb-site-aws { color: #232f3e; }
+.rb-site-profile { display: grid; gap: 6px; justify-items: start; }
+.rb-site-profile h3, .rb-site-profile p { margin: 0; }
+.rb-site-face-big { width: 56px; height: 56px; font-size: 22px; }
+
+/* ---- Pictures: a window of the person's browser, scaled, never interactive ---- */
+.rb-pic {
+  --ptr-k: calc(0.85 / var(--pic-scale));
+  flex: none; position: relative; display: block; padding: 0; overflow: hidden; cursor: zoom-in;
+  width: calc(800px * var(--pic-scale)); height: calc(500px * var(--pic-scale));
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); background: #fff;
+}
+.rb-pic .rb-screen-small, .rb-fit > .rb-screen { position: absolute; left: 0; top: 0; width: 800px; height: 500px; transform-origin: 0 0; transform: scale(var(--pic-scale)); }
+.rb-sheet-screen { display: grid; place-items: center; overflow: hidden; background: var(--ah-surface-2); }
+.rb-fit { position: relative; --ptr-k: calc(1 / var(--pic-scale)); box-shadow: 0 0 0 1px var(--ah-line); }
+.rb-pic:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; }
+.rb-win { --pic-scale: 0.24; display: grid; gap: 4px; flex: none; margin: 0; width: calc(800px * var(--pic-scale)); }
+.rb-win[data-active] .rb-pic { border-color: var(--ah-accent-line); box-shadow: 0 0 0 1px var(--ah-accent-line); }
+.rb-win figcaption { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.rb-win-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-win-here { display: inline-flex; align-items: center; gap: 3px; flex: none; color: var(--ah-accent-ink); font-weight: 600; }
+.rb-win-here .rb-arrow, .rb-tab-here .rb-arrow { width: 9px; height: 12px; }
+
+/* ---- The agent's pointer and clicks (from its CDP input events) ---- */
+.rb-ptr { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.rb-ptr-at { position: absolute; width: 1px; height: 1px; transition: left 0.45s ease, top 0.45s ease; }
+.rb-arrow { display: block; width: calc(16px * var(--ptr-k, 1)); height: calc(22px * var(--ptr-k, 1)); fill: var(--ah-accent); stroke: #fff; stroke-width: 1.4; stroke-linejoin: round; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 40%)); }
+.rb-ptr-dot-mark {
+  position: absolute; display: block; width: calc(14px * var(--ptr-k, 1)); height: calc(14px * var(--ptr-k, 1));
+  transform: translate(-50%, -50%); border-radius: 50%; background: var(--ah-accent);
+  border: calc(2px * var(--ptr-k, 1)) solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+}
+.rb-ptr-label {
+  position: absolute; left: calc(12px * var(--ptr-k, 1)); top: calc(14px * var(--ptr-k, 1)); padding: 0 calc(6px * var(--ptr-k, 1));
+  border-radius: calc(4px * var(--ptr-k, 1)); background: var(--ah-accent); color: var(--ah-on-accent, #fff);
+  font: 600 calc(11px * var(--ptr-k, 1))/1.5 system-ui, sans-serif; white-space: nowrap;
+}
+.rb-click, .rb-trail {
+  position: absolute; display: block; border-radius: 50%; transform: translate(-50%, -50%);
+  width: calc(26px * var(--ptr-k, 1)); height: calc(26px * var(--ptr-k, 1)); box-sizing: border-box;
+  border: calc(2.5px * var(--ptr-k, 1)) solid var(--ah-accent); background: color-mix(in srgb, var(--ah-accent) 18%, transparent);
+  animation: rb-click 0.7s ease-out both;
+}
+@keyframes rb-click { from { transform: translate(-50%, -50%) scale(0.3); opacity: 1; } 60% { transform: translate(-50%, -50%) scale(1.35); opacity: 1; } to { transform: translate(-50%, -50%) scale(1); opacity: 0.75; } }
+.rb-trail { animation: none; width: calc(12px * var(--ptr-k, 1)); height: calc(12px * var(--ptr-k, 1)); opacity: 0.55; }
+.rb-trail[data-age="2"] { opacity: 0.3; }
+@media (prefers-reduced-motion: reduce) { .rb-ptr-at { transition: none; } .rb-click { animation: none; opacity: 0.75; } }
+
+/* ---- The chip ---- */
+.rb-chip {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; min-height: 30px; box-sizing: border-box;
+  padding: 3px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface-2);
+  color: var(--ah-ink); font: inherit; font-size: var(--ah-size-meta); cursor: pointer; text-align: left;
+}
+.rb-chip:hover { border-color: var(--ah-line-strong); }
+.rb-chip:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; }
+.rb-chip > svg { width: 15px; height: 15px; flex: none; }
+.rb-chip b { font-weight: 600; }
+.rb-chip-faces { display: inline-flex; gap: 3px; flex: none; }
+.rb-chip-faces i { display: block; width: 12px; height: 8px; border: 1px solid var(--ah-line-strong); border-radius: 2px; background: var(--ah-surface); }
+.rb-chip-faces i[data-active] { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); }
+.rb-chip-n { color: var(--ah-ink-2); white-space: nowrap; }
+.rb-chip-count { display: none; font-weight: 600; }
+.rb-chip-state { min-width: 0; color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-chip-state::before { content: "·"; margin-right: 7px; }
+.rb-chip .rb-chip-fold { width: 14px; height: 14px; flex: none; color: var(--ah-muted); transition: transform 0.15s; }
+.rb-chip[aria-expanded="true"] .rb-chip-fold { transform: rotate(180deg); }
+.rb-chip-ask { border-color: var(--ah-line-strong); background: var(--ah-surface); box-shadow: var(--ah-shadow-raised, 0 1px 4px rgb(0 0 0 / 8%)); }
+.rb-chip-ask .rb-chip-state { color: var(--ah-ink); font-weight: 600; }
+
+/* ---- The strip ---- */
+.rb-strip {
+  display: grid; gap: var(--ah-s3); min-width: 0; box-sizing: border-box;
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rb-strip-title { display: flex; align-items: center; gap: var(--ah-s2); margin: 0; font-size: var(--ah-size-ui); }
+.rb-strip-title svg { width: 16px; height: 16px; }
+.rb-strip-pics { display: flex; gap: var(--ah-s3); min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+.rb-strip-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3); }
+.rb-strip-now { flex: 1 1 16rem; margin: 0; color: var(--ah-ink); }
+.rb-strip-wait { flex-basis: 100%; display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rb-strip-wait svg { width: 14px; height: 14px; }
+.rb-strip-other .rb-screen-small { filter: saturate(0.5); }
+.rb-strip-ask { background: var(--ah-surface); border-color: var(--ah-line-strong); box-shadow: var(--ah-shadow-raised, 0 1px 4px rgb(0 0 0 / 8%)); }
+
+/* The chip and its strip above the composer in every conversation (round 3 riff 2). */
+.rb-dock { display: grid; gap: 6px; flex: none; width: min(100%, var(--ah-conversation-width)); margin: 0 auto var(--ah-s2); padding: 0 var(--ah-s4); box-sizing: border-box; justify-items: start; }
+.rb-dock .rb-strip { width: 100%; box-shadow: var(--ah-shadow-dialog); background: var(--ah-surface); max-height: 56dvh; overflow-y: auto; }
+.rb-win-small { --pic-scale: 0.216; }
+.rb-chip-faces i[data-ask] { border-color: var(--ah-ink); background: var(--ah-ink); }
+.rb-chip-faces i[data-mine] { border-color: var(--ah-ink); background: var(--ah-surface); border-style: dashed; }
+
+/* Who acts in a window: words and an icon under its picture or on its tab. */
+.rb-who { display: inline-flex; align-items: center; gap: 3px; flex: none; font-weight: 600; white-space: nowrap; }
+.rb-who svg { width: 12px; height: 12px; }
+.rb-who .rb-arrow { width: 9px; height: 12px; }
+.rb-who-agent { color: var(--ah-accent-ink); }
+.rb-who-you, .rb-who-ask { color: var(--ah-ink); }
+.rb-win[data-ask] .rb-pic, .rb-win[data-mine] .rb-pic { border-color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-ink); }
+
+/* The request, attached to its window. */
+.rb-ask { display: grid; gap: 6px; min-width: 0; }
+.rb-ask p, .rb-ask h3 { display: flex; align-items: flex-start; gap: 6px; margin: 0; }
+.rb-ask svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.rb-ask-under p { font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink); line-height: 1.35; }
+.rb-ask-under { justify-items: start; }
+/* Riff 2: the card beside the window's large picture. */
+.rb-strip-lead { display: flex; gap: var(--ah-s3); align-items: flex-start; min-width: 0; }
+.rb-win-big { --pic-scale: 0.34; }
+.rb-ask-beside, .rb-beside { flex: 1 1 12rem; display: grid; gap: var(--ah-s2); align-content: start; min-width: 0; }
+.rb-ask-beside h3, .rb-beside h3 { font-size: var(--ah-size-ui); margin: 0; }
+.rb-ask-beside p { color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; }
+.rb-beside-state { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rb-beside-state svg { width: 14px; height: 14px; flex: none; }
+.rb-beside .rb-link { justify-self: start; font-size: var(--ah-size-meta); }
+.rb-strip-focus .rb-strip-pics:empty { display: none; }
+/* Riff 3: the request on the picture itself, and control per window. */
+.rb-pic-badge {
+  position: absolute; left: 6px; top: 26px; z-index: 4; display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: var(--ah-r-pill); background: var(--ah-ink); color: var(--ah-bg);
+  font: 600 11px/1.5 var(--ah-font, system-ui); pointer-events: none;
+}
+.rb-pic-badge svg { width: 12px; height: 12px; }
+.rb-ask-on { justify-items: start; }
+.rb-ask-on .rb-ask-text { font-size: var(--ah-size-meta); font-weight: 600; line-height: 1.35; }
+.rb-win-mine { display: flex; }
+
+/* The sheet's band over the remote screen: watching or in control (riffs 2 and 3). */
+.rb-band {
+  display: flex; align-items: center; gap: var(--ah-s2) var(--ah-s3); flex-wrap: wrap;
+  padding: var(--ah-s2) var(--ah-s4); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface);
+}
+.rb-band > svg { width: 16px; height: 16px; flex: none; color: var(--ah-ink-2); }
+.rb-band p { flex: 1 1 14rem; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+.rb-band[data-mode="control"] { background: var(--ah-surface-2); }
+.rb-band[data-mode="control"] > svg, .rb-band[data-mode="control"] p { color: var(--ah-ink); font-weight: 600; }
+.rb-sheet-dialog[data-mode="control"] .rb-fit { box-shadow: 0 0 0 2px var(--ah-ink); }
+.rb-tab .rb-who { font-size: 11px; }
+
+@media (max-width: 600px) {
+  .rb-win-small { --pic-scale: 0.176; }
+  .rb-win-big { --pic-scale: 0.42; }
+  .rb-strip-lead { flex-direction: column; }
+  .rb-ask-beside, .rb-beside { flex-basis: auto; }
+  .rb-dock { padding: 0 var(--ah-s2); }
+  .rb-strip { padding: var(--ah-s2); gap: var(--ah-s2); }
+  .rb-band { padding: var(--ah-s2) var(--ah-s3); }
+}
+
+/* ---- The browser as one row in the rail ---- */
+.rb-railrow-wrap { padding: 2px var(--ah-s2) var(--ah-s2); }
+.rb-railrow {
+  display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 6px 8px;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+  color: var(--ah-ink); font: inherit; text-align: left; cursor: pointer;
+}
+.rb-railrow:hover { border-color: var(--ah-line-strong); }
+.rb-railrow-mark { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: var(--ah-r-sm); background: var(--ah-surface); border: 1px solid var(--ah-line); }
+.rb-railrow-mark svg { width: 16px; height: 16px; }
+.rb-pic-rail { --pic-scale: 0.064; cursor: pointer; }
+.rb-railrow-text { display: grid; min-width: 0; line-height: 1.3; }
+.rb-railrow-text b { font-size: var(--ah-size-ui); font-weight: 600; }
+.rb-railrow-text small { color: var(--ah-ink-2); font-size: var(--ah-size-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Sheet: the windows as tabs above the screen ---- */
+.rb-sheet-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px var(--ah-s3); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); }
+.rb-tab {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm); background: var(--ah-surface); color: var(--ah-ink-2); font: inherit; font-size: var(--ah-size-meta); cursor: pointer;
+}
+.rb-tab svg { width: 13px; height: 13px; }
+.rb-tab[aria-pressed="true"] { border-color: var(--ah-line-strong); color: var(--ah-ink); font-weight: 600; }
+.rb-tab-here { display: inline-flex; align-items: center; gap: 3px; color: var(--ah-accent-ink); font-weight: 600; }
+.rb-follow { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rb-ptr-label[data-flip] { left: auto; right: calc(8px * var(--ptr-k, 1)); }
+.rb-strip-empty { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+/* The phone's rail drawer opens below the review bar, so the browser row shows. */
+.rb-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+.rb-tab { white-space: nowrap; }
+.rb-strip-pics { align-items: flex-start; }
+@media (max-width: 600px) {
+  .rb-win-big { --pic-scale: 0.3; }
+  .rb-ask-beside p { display: none; }
+  .rb-strip-foot .rb-strip-now { flex-basis: 100%; }
+}
+/* The strip scrolls as a whole; its rows keep their height. */
+.rb-dock .rb-strip { display: flex; flex-direction: column; }
+.rb-strip > * { flex: none; }
+@media (max-width: 600px) { .rb-strip-lead { display: grid; gap: var(--ah-s2); } }

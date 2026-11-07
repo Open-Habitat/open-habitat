@@ -1,5 +1,156 @@
 # Tulokset
 
+## Kierros 4 (7.11.2026): pyyntö ikkunalle
+
+Kierros: `design-system/prototypes/rounds/2026-11-07-palvelinselain-pyynto/`
+(NOTES.md kertoo tarinan ja ohjaimet). Jari päätti kierroksen 3 jälkeen:
+siru on kentän yllä. Riffataan sitä, mitä sirusta aukeaa, kun agentilla on
+monta ikkunaa ja yksi niistä tarvitsee henkilöä: pyynnön pitää kuulua sille
+ikkunalle, ja tarkempi katselu ei saa ottaa ohjausta agentilta. Akseli on
+se, missä pyyntö on ja kuinka laajalle ohjauksen ottaminen ulottuu. Kaikissa
+riffeissä pysyvät siru ja palkki kentän yllä, nuoli ja klikkausten jälki sekä
+selain sivupalkin ylimpänä tekstirivinä. Oletusnäkymä on hetki, jolloin
+Netvisor-ikkuna pyytää vahvistuskoodia kolmesta ikkunasta.
+
+- **1 Alla – pyyntö ikkunan alla**: pyyntö on sen ikkunan kuvan alla, joka tarvitsee sinua; painallus avaa arkin katseltavaksi, ja ohjaus otetaan arkissa erikseen koko selaimelle.
+- **2 Esiin – ikkuna esiin**: sinua tarvitseva ikkuna nousee palkissa isoksi ja pyyntö on sen vieressä; kuvaa voi katsoa isompana, ja *Ota ohjaus ja syötä koodi* on yksi nimetty painallus.
+- **3 Ikkunalle – ohjaus ikkunalle**: pyyntö on ikkunan kuvassa, ja ohjaus otetaan vain siihen ikkunaan; agentti jatkaa muissa ikkunoissa, ja jokainen ikkuna kertoo, kuka sitä ohjaa.
+
+Kuvat: `evidence/r4-<riffi>-<vaihe>-<leveys>-<teema>.avif`, riffit
+`1-ikkunan-alla`, `2-ikkuna-esiin` ja `3-ohjaus-ikkunalle`. Vaiheet:
+`0-oletus` (pyyntö, myös tummana), `1-katselet` (kuvasta avattu arkki
+katselutilassa, agentti jatkaa), `2-otit` (ohjaus otettu arkissa), `3-pyynto`
+(pyynnön painikkeesta avattu arkki: riffissä 1 katselu, riffeissä 2 ja 3
+ohjaus), `4-vahvistettu` (koodi hyväksytty, takaisin antaminen odottaa),
+`5-ohjaat` (arkki suljettu, palkki sanoo *Sinä ohjaat*), `6-jatkaa`
+(annettu takaisin, agentti jatkaa), `7-isompi` (vain riffi 2: pieni kuva
+isona palkissa) ja `8-rivi` (sivupalkin rivi; puhelimessa valikko auki).
+
+### Mitä kukin riffi päättää
+
+| | 1 Alla | 2 Esiin | 3 Ikkunalle |
+|---|---|---|---|
+| Pyynnön paikka | teksti ja *Syötä koodi* ikkunan kuvan alla | kortti ison kuvan vieressä | merkki kuvassa, *Ota tämä ikkuna* kuvan alla |
+| Pyynnön painike | avaa arkin katseltavaksi | ottaa ohjauksen ja avaa arkin (*Katso ensin* vain katsoo) | ottaa ikkunan ja avaa arkin |
+| Painalluksia koodiin | kaksi (katso, ota ohjaus) | yksi | yksi |
+| Ohjauksen laajuus | koko selain, agentti odottaa | koko selain, agentti odottaa | yksi ikkuna, agentti jatkaa muissa |
+| Katselu arkissa | otsikon pilleri ja alapalkki | nauha ruudun yllä | nauha ja välilehtien *agentti/sinä/odottaa sinua* |
+| Isompi kuva palkissa | ei, kuva avaa arkin | pieni kuva nousee isoksi, *Seuraa agenttia* palauttaa | ei, kuva avaa arkin |
+| Hinta | yksi painallus lisää kiireessä | palkki on korkea, puhelimessa varsinkin | isännälle uusi ikkunakohtainen ohjaus (alla), ja agentti toimii henkilön vieressä |
+
+Yhteistä: vain sinua tarvitseva ikkuna kantaa pyynnön, ja palkin alarivi
+kertoo, mitä agentti tekee, toistamatta pyyntöä. Siru nimeää ikkunan
+(*Netvisor odottaa sinua*). Kuva, *Katso isona* ja sivupalkin rivi
+avaavat arkin aina katseluun: etäsivu ei ota syötettä, ja agentti jatkaa.
+Ohjaus otetaan vain nimetyllä painikkeella. Arkin sulkeminen ei palauta
+ohjausta, vaan siru ja rivi sanovat *Sinä ohjaat*, kunnes henkilö painaa
+*Anna takaisin agentille*.
+
+### Suositus
+
+**2 Esiin.** Se vastaa suorimmin Jarin kahteen huomioon. Pyyntö on kortti
+juuri sen ikkunan kuvan vieressä, joten sitä ei voi lukea muiden ikkunoiden
+asiaksi. Painike sanoo, mitä se tekee (*Ota ohjaus ja syötä koodi*), ja
+*Katso ensin* on erikseen. Siksi katselu ja ohjaus eivät sekoitu, vaikka
+koodiin pääsee yhdellä painalluksella. Isompi kuva palkissa antaa tarkemman
+katselun avaamatta arkkia, ja arkin nauha kertoo tilan kuvan päällä, jossa
+silmä joka tapauksessa on.
+
+- **1** on varmin erottelu, mutta MFA-koodilla on kiire, ja painallus, joka
+  vain avaa näkymän, jossa pitää painaa uudelleen, tuntuu esteeltä.
+- **3** on houkutteleva (agentti ei seiso turhaan), mutta se vaatii isännältä
+  ikkunakohtaisen ohjauksen, jota tutkimus ei kattanut. Lisäksi henkilö ja
+  agentti toimisivat samassa selaimessa yhtä aikaa, mikä on vaikeampi
+  selittää. Ehdotan sen ikkunakohtaisia välilehtimerkintöjä (*agentti tässä*,
+  *sinä ohjaat*) riffiin 2 ilman ikkunakohtaista ohjausta.
+
+### Host-tiedot
+
+- **Katselu ei maksa agentille mitään.** noVNC:llä on katselutila
+  (`viewOnly`), jossa se ei lähetä hiiri- eikä näppäintapahtumia. Arkki
+  avautuu siinä, ja selainisäntä ei muuta mitään. Agentin CDP-asiakas jatkaa.
+  Isompi kuva palkissa on sama pienikuva suurempana.
+- **Ohjauksen ottaminen on isännän olemassa oleva kytkin.** Tutkimuksen
+  selainisäntä "kieltäytyy uusista asiakkaista, kun henkilö on ottanut
+  ohjauksen" ja daemon välittää "ota ohjaus" -kytkimen. Riffeissä 1 ja 2
+  kytkin pysäyttää agentin syötteen koko selaimeen ja noVNC vaihtaa
+  `viewOnly`-tilasta pois. *Anna takaisin agentille* kääntää molemmat.
+  Pyynnön ratkeaminen (koodi hyväksytty) ei palauta ohjausta itsestään,
+  koska isäntä ei tiedä, onko henkilö valmis.
+- **Pyyntö kuuluu ikkunalle**: agentti kertoo tavallisessa vastauksessaan,
+  mikä ikkuna tarvitsee henkilöä. Näkymä tarvitsee siitä ikkunan
+  tunnisteen (CDP-kohde), jotta pyyntö voidaan kiinnittää oikeaan kuvaan.
+  Prototyyppi olettaa, että Habitatin selaintaito antaa agentille tavan
+  merkitä pyyntö kohteeseen (esim. `selain pyydä --kohde <id>`), ja isäntä
+  julkaisee sen tilassaan kuten osoittimen. Tämä on uusi pieni rajapinta,
+  ei uusi varasto, ja se täytyy vahvistaa toteutuksessa.
+- **Riffi 3 vaatisi ikkunakohtaisen ohjauksen**: isännän pitäisi hylätä
+  agentin `Input.*`-viestit vain henkilön ikkunan CDP-istunnossa ja
+  päästää muut läpi. X:n syöte (henkilön hiiri ja näppäimistö noVNC:stä)
+  menee kuitenkin X:n fokusikkunaan, eikä X tiedä CDP-ohjauksesta. Agentin
+  `Target.activateTarget` tai uusi ikkuna voisi siis viedä fokuksen kesken
+  henkilön kirjoittamisen. Tämä pitää kokeilla ennen kuin riffi 3 valitaan.
+- Kierrosten 2 ja 3 oletukset pätevät yhä: osoitin agentin CDP-syötteestä,
+  ikkunat CDP-kohteista ja taustaikkunoiden kuvat isännän omasta
+  CDP-istunnosta.
+
+### Kysymykset Jarille
+
+1. **Missä pyyntö on: kuvan alla, ison kuvan vieressä vai kuvassa?**
+   `r4-1-ikkunan-alla-0-oletus-1440-light`,
+   `r4-2-ikkuna-esiin-0-oletus-1440-light`,
+   `r4-3-ohjaus-ikkunalle-0-oletus-1440-light`. Suositus 2.
+2. **Pyynnön painike: avaako se vain katseltavaksi (1) vai ottaako se
+   ohjauksen, kun painike sanoo sen (2 ja 3)?**
+   `r4-1-ikkunan-alla-3-pyynto-1440-light`,
+   `r4-2-ikkuna-esiin-3-pyynto-1440-light`. Suositus 2.
+3. **Koko selain vai yksi ikkuna: odottaako agentti, kun otat ohjauksen,
+   vai jatkaako se muissa ikkunoissa?**
+   `r4-2-ikkuna-esiin-2-otit-1440-light`,
+   `r4-3-ohjaus-ikkunalle-2-otit-1440-light`. Suositus koko selain (2);
+   ikkunakohtainen ohjaus vaatii ensin isäntäkokeen.
+
+### Näyttäminen
+
+```
+node design-system/prototypes/rounds/2026-11-07-palvelinselain-pyynto/build.mjs
+open-habitat agent view offer --current \
+  --source design-system/prototypes/dist/palvelinselain-pyynto/offline.html \
+  --title "Oma palvelinselain – kierros 4: pyyntö ikkunalle" \
+  --idempotency-key "$(uuidgen)" --json
+```
+
+### Tarkistus
+
+`check.mjs`: 329 tarkistuspistettä, konsoli puhdas. Jokainen riffi ajettiin
+1440 ja 390 px vaaleana koko tarinan läpi. Oletuksessa tarkistettiin, että
+pyyntöjä on yksi, se on Netvisor-ikkunan osa ja palkin alarivi ei toista
+sitä, siru nimeää ikkunan, kukaan ei ottanut ohjausta pyytämällä ja agentti
+odottaa (riffissä 3 jatkaa muissa ikkunoissa). Lisäksi tarkistettiin, että
+kuvasta avattu arkki on katselutilassa, agentti etenee katselun aikana ja
+osoitin näkyy arkissa. Ohjauksen ottaminen tarkistettiin koko selaimelle tai
+riffissä 3 yhdelle ikkunalle, samoin agentin odottaminen tai jatkaminen ja
+takaisin antaminen. Pyynnön oma painike tarkistettiin (riffissä 1 katselu),
+samoin koodin syöttäminen ohjatessa, pyynnön katoaminen, takaisin antaminen
+palkista ja agentin jatkaminen. Riffissä 2 tarkistettiin isompi kuva ja
+*Seuraa agenttia*. Tarkistettiin myös odottavan keskustelun *Siirrä tälle* -painike,
+sivupalkin rivistä katseluun avautuva arkki sekä valmis ja vapaa. Oletukset
+ajettiin myös tummana. Kuvat ovat kertoimella 2 (AVIF). Kyse on synteettisestä
+komponenttilabrasta, jota ei ole ajettu hostia vasten. Kierros ei muuttanut
+tuotantokoodia.
+
+### Päätökset myöhempää katselmointia varten
+
+- **Oletusnäkymä on pyyntö**, ei agentin työ, koska kierros koskee pyyntöä.
+  *Agentti työssä* on kohtauspainikkeen takana.
+- **Koodin hyväksyminen ei palauta ohjausta**: henkilö antaa selaimen
+  takaisin itse, koska hän voi haluta tehdä muutakin.
+- **Arkin sulkeminen ei palauta ohjausta.** Siru ja rivi muistuttavat
+  ohjauksesta, ja palkissa on *Anna takaisin agentille*. Vaihtoehto olisi
+  kysyä sulkiessa; se olisi taas yksi este.
+- **Ohjatessa ruudun ympärillä on tekstinvärinen kehys** koko ruudun
+  ympärillä, ei värillinen reunaviiva. Tila on aina myös sanoina.
+
 ## Kierros 3 (7.11.2026): siru ja palkki
 
 Kierros: `design-system/prototypes/rounds/2026-11-07-palvelinselain-siru/`
