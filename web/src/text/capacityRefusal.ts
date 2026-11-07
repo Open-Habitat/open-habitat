@@ -10,6 +10,8 @@ const fi = {
     `Ylläpitäjä on antanut sinulle rajan ${limit} yhtä aikaa työskentelevää keskustelua, ja ${n} työskentelee jo.`,
   server: (limit: number, n: number) =>
     `Palvelimen raja on ${limit} yhtä aikaa työskentelevää keskustelua, ja ${n} työskentelee jo.`,
+  scope:
+    "Raja koskee yhtä aikaa työskenteleviä keskusteluja, ei avoimien keskustelujen määrää. Levossa oleva keskustelu ei vie paikkaa.",
   stillFull: "Yritit uudelleen: yhä täynnä.",
   who: "Mitkä pitävät paikkaa?",
   changeLimitAdmin: "Muuta rajaa (ylläpitäjä)",
@@ -43,6 +45,8 @@ export const capacityRefusalText = catalog(fi, {
     `The administrator has given you a limit of ${limit} conversations working at once, and ${n} ${n === 1 ? "is" : "are"} already working.`,
   server: (limit, n) =>
     `The server's limit is ${limit} conversations working at once, and ${n} ${n === 1 ? "is" : "are"} already working.`,
+  scope:
+    "The limit counts conversations working at the same time, not open conversations. A resting conversation does not hold a place.",
   stillFull: "You tried again: still full.",
   who: "What holds the places?",
   changeLimitAdmin: "Change the limit (administrator)",

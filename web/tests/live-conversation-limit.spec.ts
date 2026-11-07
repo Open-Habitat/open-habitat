@@ -11,6 +11,7 @@ test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
   viewport: { width: 1440, height: 900 },
+  deviceScaleFactor: 2,
 });
 test.beforeEach(async ({ page }) => {
   expect(
@@ -78,10 +79,19 @@ async function busyConversation(page: Page, id: string, text: string) {
 async function refused(page: Page, id: string) {
   await page.goto(`/workspaces/${id}`);
   await page.getByTestId("conversation-start").click();
-  const card = page
-    .getByTestId("conversation-stream")
-    .locator('[data-testid="creation-problem"][data-reason="capacity"]');
+  const card = page.locator(
+    '[data-testid="creation-problem"][data-reason="capacity"]',
+  );
   await expect(card).toBeVisible({ timeout: 20000 });
+  // No click/scrollIntoView before this assertion: the refusal and its
+  // actions must already be on screen when the host refuses creation.
+  await expect(card).toBeInViewport({ ratio: 1 });
+  await expect(card.getByTestId("retry")).toBeInViewport({ ratio: 1 });
+  const bounds = await card.boundingBox();
+  const composer = await page.getByTestId("message-input").boundingBox();
+  if (!bounds || !composer)
+    throw new Error("Missing refusal or composer bounds");
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(composer.y);
   return card;
 }
 
@@ -137,9 +147,7 @@ test("@live-limit the administrator's limit refuses at the limit and a stop make
   // Trying again at the limit says it is still full.
   await card.getByTestId("retry").click();
   await expect(
-    page
-      .getByTestId("conversation-stream")
-      .locator('[data-testid="creation-problem"][data-reason="capacity"]'),
+    page.locator('[data-testid="creation-problem"][data-reason="capacity"]'),
   ).toContainText("Yritit uudelleen: yhä täynnä.", { timeout: 20000 });
 
   await page.getByTestId("capacity-who").click();

@@ -5,7 +5,7 @@ import { catalog, plural } from "../i18n";
 // estimate is computed from the limits; how many conversations another
 // person has working is not shown, because only their own daemon knows it.
 const fi = {
-  lead: "Keskustelu pitää paikkaa, kun sen vuoro on kesken, se odottaa vastausta tai sen käynnistämä taustaprosessi on käynnissä. Rajaan törmäävä näkee, mitkä pitävät paikkaa, ja voi pysäyttää jonkin.",
+  lead: "Raja koskee yhtä aikaa työskenteleviä keskusteluja, ei avoimien keskustelujen määrää. Levossa oleva keskustelu ei vie paikkaa. Keskustelu pitää paikkaa, kun sen vuoro on kesken, se odottaa vastausta tai sen käynnistämä taustaprosessi on käynnissä. Rajaan törmäävä näkee, mitkä pitävät paikkaa, ja voi pysäyttää jonkin.",
   memory: "Muisti",
   memoryDesc: (total: string, child: string) =>
     `Palvelimella ${total}. Yksi työskentelevä keskustelu vie noin ${child}.`,
@@ -35,7 +35,7 @@ const fi = {
 };
 
 export const serverConversationsText = catalog(fi, {
-  lead: "A conversation holds a place while its turn is under way, while it waits for an answer or while a background process it started is running. Whoever reaches the limit sees what holds the places and can stop one.",
+  lead: "The limit counts conversations working at the same time, not open conversations. A resting conversation does not hold a place. A conversation holds a place while its turn is under way, while it waits for an answer or while a background process it started is running. Whoever reaches the limit sees what holds the places and can stop one.",
   memory: "Memory",
   memoryDesc: (total, child) =>
     `The server has ${total}. One working conversation takes about ${child}.`,

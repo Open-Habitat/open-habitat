@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: limit-card
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Limit card opens below the composer and needs scrolling; say the limit counts working conversations
@@ -22,4 +23,4 @@ Yhtäaikaisten keskustelujen raja 1 ei näyttänyt estävän mitään (Jari 7.11
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

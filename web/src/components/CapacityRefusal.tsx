@@ -134,6 +134,7 @@ export function CapacityRefusal({
     >
       <strong>{pending.conversationNotCreated}</strong>
       <p id={sentence}>{tries ? `${said} ${t.stillFull}` : said}</p>
+      <p>{t.scope}</p>
       {groups.length ? (
         <div className="ah-capacity-chips" data-testid="capacity-workspaces">
           {groups

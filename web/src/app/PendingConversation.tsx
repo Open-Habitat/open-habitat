@@ -185,103 +185,113 @@ export function CreationStream({
 }) {
   const { problem, refused, worktree, onCreateAgain, onRetry } = creation;
   return (
-    <ConversationStream>
-      {worktree && !waiting.length ? (
-        <WorktreeIntro workspace={workspace} {...worktree} />
-      ) : null}
-      <ConversationTimeline
-        state={waiting.length ? "ready" : "empty"}
-        emptyLabel={
-          <StartPageRead
-            workspaceId={workspace.workspace_id}
-            draft={draft}
-            onChange={onChange}
-            onPage={onPage}
-            onStarted={(goal, title, prepared) => {
-              prepareField(guide, {
-                text: prepared.text,
-                start: prepared.selectionStart,
-                end: prepared.selectionEnd,
-              });
-              setGuide(guide, {
-                goal,
-                page: title,
-                open: guideOpensItself(),
-              });
-            }}
-          />
-        }
-        historyMode="pagedAccessible"
-        onJumpToLatest={() => {}}
-        items={waiting.map((w) => ({
-          id: `held:${w.command_id}`,
-          kind: "user",
-          content: (
-            <WaitingMessage
-              text={w.text}
-              state={problem ? "failed" : "waiting"}
-              onCopy={() => void navigator.clipboard?.writeText(w.text)}
-            />
-          ),
-        }))}
-      />
-      {problem && refused && creation.capacity ? (
-        // At the limit there is nothing to edit: the text is already back
-        // in the field (Jari 6.11.2026, Muokkaa pois).
-        <CapacityCard
-          workspace={workspace}
-          snapshot={snapshot}
-          csrf={csrf}
-          tries={creation.capacity.tries}
-          onRetry={onCreateAgain}
-          fallback={
-            <InlineNotice
-              data-testid="creation-problem"
-              data-state="refused"
-              title={txt.conversationNotCreated}
-              description={problem}
-              tone="warning"
-              actions={
-                onCreateAgain
-                  ? [
-                      {
-                        testId: "retry",
-                        label: txt.retry,
-                        onPress: onCreateAgain,
-                      },
-                    ]
-                  : []
-              }
+    <>
+      <ConversationStream>
+        {worktree && !waiting.length ? (
+          <WorktreeIntro workspace={workspace} {...worktree} />
+        ) : null}
+        <ConversationTimeline
+          state={waiting.length ? "ready" : "empty"}
+          emptyLabel={
+            <StartPageRead
+              workspaceId={workspace.workspace_id}
+              draft={draft}
+              onChange={onChange}
+              onPage={onPage}
+              onStarted={(goal, title, prepared) => {
+                prepareField(guide, {
+                  text: prepared.text,
+                  start: prepared.selectionStart,
+                  end: prepared.selectionEnd,
+                });
+                setGuide(guide, {
+                  goal,
+                  page: title,
+                  open: guideOpensItself(),
+                });
+              }}
             />
           }
+          historyMode="pagedAccessible"
+          onJumpToLatest={() => {}}
+          items={waiting.map((w) => ({
+            id: `held:${w.command_id}`,
+            kind: "user",
+            content: (
+              <WaitingMessage
+                text={w.text}
+                state={problem ? "failed" : "waiting"}
+                onCopy={() => void navigator.clipboard?.writeText(w.text)}
+              />
+            ),
+          }))}
         />
-      ) : problem ? (
-        <InlineNotice
-          data-testid="creation-problem"
-          data-state={refused ? "refused" : "uncertain"}
-          title={refused ? txt.conversationNotCreated : txt.stateUnconfirmed}
-          description={problem}
-          tone="warning"
-          actions={[
-            ...(onCreateAgain
-              ? [{ testId: "retry", label: txt.retry, onPress: onCreateAgain }]
-              : []),
-            ...(onRetry
-              ? [
-                  {
-                    testId: "creation-recheck",
-                    label: creation.retryLabel ?? txt.retry,
-                    onPress: onRetry,
-                  },
-                ]
-              : []),
-            ...(waiting.length
-              ? [{ label: txt.edit, onPress: onGiveBack }]
-              : []),
-          ]}
-        />
-      ) : null}
-    </ConversationStream>
+      </ConversationStream>
+      <div className="ah-actionable-notices">
+        {problem && refused && creation.capacity ? (
+          // At the limit there is nothing to edit: the text is already back
+          // in the field (Jari 6.11.2026, Muokkaa pois).
+          <CapacityCard
+            workspace={workspace}
+            snapshot={snapshot}
+            csrf={csrf}
+            tries={creation.capacity.tries}
+            onRetry={onCreateAgain}
+            fallback={
+              <InlineNotice
+                data-testid="creation-problem"
+                data-state="refused"
+                title={txt.conversationNotCreated}
+                description={problem}
+                tone="warning"
+                actions={
+                  onCreateAgain
+                    ? [
+                        {
+                          testId: "retry",
+                          label: txt.retry,
+                          onPress: onCreateAgain,
+                        },
+                      ]
+                    : []
+                }
+              />
+            }
+          />
+        ) : problem ? (
+          <InlineNotice
+            data-testid="creation-problem"
+            data-state={refused ? "refused" : "uncertain"}
+            title={refused ? txt.conversationNotCreated : txt.stateUnconfirmed}
+            description={problem}
+            tone="warning"
+            actions={[
+              ...(onCreateAgain
+                ? [
+                    {
+                      testId: "retry",
+                      label: txt.retry,
+                      onPress: onCreateAgain,
+                    },
+                  ]
+                : []),
+              ...(onRetry
+                ? [
+                    {
+                      testId: "creation-recheck",
+                      label: creation.retryLabel ?? txt.retry,
+                      onPress: onRetry,
+                    },
+                  ]
+                : []),
+              ...(waiting.length
+                ? [{ label: txt.edit, onPress: onGiveBack }]
+                : []),
+            ]}
+          />
+        ) : null}
+      </div>
+    </>
   );
 }
 
