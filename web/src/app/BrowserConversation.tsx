@@ -129,12 +129,7 @@ import {
   usePreparedField,
 } from "./goalGuide";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
-import {
-  adoptCreation,
-  piNotRunning,
-  restoreToDraft,
-  useHeldMessages,
-} from "./heldMessages";
+import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
 import { useNextWaitingWindow } from "./nextWaiting";
@@ -334,15 +329,6 @@ function BrowserConversationContent({
 }) {
   const transientNotices = useAgentNotices(store, id ?? "");
   const creating = !id && !!creation;
-  // The created conversation takes over what was written while it was being
-  // created. App adopts it when the creation answers; this catches what was
-  // typed between that and the render that gives this view its ID.
-  const creationOf = useRef<string | undefined>(undefined);
-  if (creating) creationOf.current = workspace.workspace_id;
-  else if (id && creationOf.current) {
-    adoptCreation(identity, creationOf.current, id);
-    creationOf.current = undefined;
-  }
   const {
     current,
     statusStale,

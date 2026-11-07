@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { liveText } from "../i18n";
 import { heldMessagesText } from "../text/heldMessages";
 import {
@@ -156,7 +162,11 @@ export function useHeldMessages({
     refresh,
     entries,
   });
-  latest.current = { key, draft, changeDraft, csrf, id, refresh, entries };
+  // The still-mounted creation view must not post through an ID that only
+  // exists in a speculative render. Adoption commits before the passive flush.
+  useLayoutEffect(() => {
+    latest.current = { key, draft, changeDraft, csrf, id, refresh, entries };
+  }, [key, draft, changeDraft, csrf, id, refresh, entries]);
   useEffect(() => {
     setLocalState(readHeld(key));
     setNotice("");

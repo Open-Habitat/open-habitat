@@ -2,7 +2,7 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet spinoff clean gate
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: attachment-flake
 lane_seq: 2
 preparation: ready
+closed: 2026-11-07
 ---
 
 # First of six dropped attachments lost under full-gate load (attachment-documents)
@@ -54,3 +55,17 @@ vanha.doc, an empty focused field, and no upload notice.
 
 Effect if real: a person who drops several files into a conversation that is
 still being created can silently lose one attachment from the message.
+
+## Acceptance Criteria
+
+- [x] Deterministically exercise the first-upload reply during creation handover and preserve all six attachments without remounting the field.
+- [x] Preserve drafts and held messages for ordinary and worktree creation; keep identity and existing-conversation drafts separate.
+
+## Tests Run
+
+- [x] Focused web checks: 1381 tests; four affected browser specs: eight cases.
+- [x] Independent review and assessment; both confirmed findings fixed and regression-tested.
+
+## Implementation Notes
+
+Cause, red/green evidence, review findings and validation limits are in result.md.

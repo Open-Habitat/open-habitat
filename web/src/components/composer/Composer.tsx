@@ -713,7 +713,11 @@ export function Composer({
   // attachment reference per line after it. The field edits only the text;
   // the attachments show as chips (Jari 24.10.2026).
   const draft = useRef({ value: draftValue, onChange: onDraftChange, goals });
-  draft.current = { value: draftValue, onChange: onDraftChange, goals };
+  // Upload replies belong to the mounted field, not a concurrent render
+  // that may still be suspended or discarded during creation handover.
+  useLayoutEffect(() => {
+    draft.current = { value: draftValue, onChange: onDraftChange, goals };
+  }, [draftValue, onDraftChange, goals]);
   const { text: whole, attachments } = splitAttachments(draftValue);
   const { goal, text: value } = splitGoal(whole, goals);
   // The field's text with the draft's goal chip and attachments kept.

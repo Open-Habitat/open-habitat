@@ -16,6 +16,7 @@ import {
 } from "./conversations";
 import { ownWrites, type SendObservationValue } from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
+import { useConversationDraft } from "./useConversationDraft";
 import { useReadingPosition } from "./useReadingPosition";
 
 const txt = liveText(useConversationText);
@@ -58,7 +59,11 @@ export function useConversation({
   const [openAttempt, setOpenAttempt] = useState(0);
   const entries = windowView?.entries ?? [];
   const next = windowView?.next;
-  const [draftState, setDraftState] = useState({ key: "", value: "" });
+  const { draft, changeDraft } = useConversationDraft(
+    identity,
+    workspace.workspace_id,
+    id,
+  );
   const [receipt, setReceipt] = useState("");
   const [sendObservation, setSendObservation] =
     useState<SendObservationValue>();
@@ -140,13 +145,6 @@ export function useConversation({
   // so its outcome is pending until a receipt or status says otherwise.
   const answeredKey = storage("answered");
   const continuationKey = storage("continue");
-  // Before the conversation has an ID its draft is the workspace's creation
-  // draft, which the created conversation adopts (heldMessages.ts).
-  const draftKey = storage("draft", id ?? `new:${workspace.workspace_id}`);
-  const draft =
-    draftState.key === draftKey
-      ? draftState.value
-      : (sessionStorage.getItem(draftKey) ?? "");
   const uncertainKey = storage("uncertain");
   const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
@@ -265,10 +263,6 @@ export function useConversation({
     setCurrent,
   ]);
   useEffect(() => {
-    setDraftState({
-      key: draftKey,
-      value: sessionStorage.getItem(draftKey) ?? "",
-    });
     setContinuation(
       (sessionStorage.getItem(continuationKey) as
         | "uncertain"
@@ -292,14 +286,7 @@ export function useConversation({
           }
         : undefined,
     );
-  }, [draftKey, continuationKey, submittedKey, uncertainKey, answeredKey]);
-  const changeDraft = useCallback(
-    (value: string) => {
-      setDraftState({ key: draftKey, value });
-      sessionStorage.setItem(draftKey, value);
-    },
-    [draftKey],
-  );
+  }, [continuationKey, submittedKey, uncertainKey, answeredKey]);
   // The person's command ends where the record of its command_id says so:
   // its receipt, or any status naming it, whichever reader applied that
   // status. A newer command is never settled by an older one's record.
