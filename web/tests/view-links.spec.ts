@@ -1,3 +1,4 @@
+import { snapshot } from "../lab/session.mjs";
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Locator, type Page } from "./worker-host";
 
@@ -8,6 +9,7 @@ import { createHostTest, expect, type Locator, type Page } from "./worker-host";
 // Public again revives the same link; only deletion ends it for good. Same-UID synthetic evidence; it says
 // nothing about separate Unix users or a real ingress.
 const test = createHostTest(false, {
+  BROWSER_HOST_LAB: process.env.OH_VISUAL_CAPTURE === "1" ? "1" : "0",
   BROWSER_HOST_VIEWS: "1",
   BROWSER_HOST_VIEW_LINKS: "1",
 });
@@ -20,6 +22,7 @@ test.use({
   },
   ignoreHTTPSErrors: true,
   viewport: { width: 1366, height: 800 },
+  deviceScaleFactor: 2,
 });
 
 async function conversation(page: Page): Promise<string> {
@@ -29,7 +32,11 @@ async function conversation(page: Page): Promise<string> {
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByTestId("workspace-ordinary-dir")
+    .getByTestId(
+      process.env.OH_VISUAL_CAPTURE === "1"
+        ? "workspace-aurinkokello"
+        : "workspace-ordinary-dir",
+    )
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
@@ -70,12 +77,41 @@ test("anyone with the link opens the view without a session while it is public",
   );
   // The date opens the lengths; a choice applies at once.
   await card.getByTestId("view-public-until").click();
+  await expect(
+    page.getByRole("menuitemradio", { checked: true }),
+  ).toHaveAttribute("data-testid", "view-duration-30");
+  const mark = page
+    .getByTestId("view-duration-30")
+    .locator('[aria-hidden="true"]');
+  await expect(mark).not.toHaveCSS("color", "rgba(0, 0, 0, 0)");
+  await expect(mark).toHaveCSS("border-top-width", "0px");
+  if (process.env.OH_VISUAL_CAPTURE === "1")
+    await snapshot(
+      page,
+      "../issues/choice-menu-single-select/evidence/view-duration",
+      { labOrigin: app },
+    );
   await page.getByTestId("view-duration-7").click();
   await card.getByTestId("view-public-until").click();
   await expect(page.getByTestId("view-duration-7")).toHaveAttribute(
     "aria-checked",
     "true",
   );
+  await page.keyboard.press("Escape");
+  // Later, the saved expiry is no longer one of the presets counted from
+  // today. Show that exact current date rather than an empty selection.
+  const now = Date.now();
+  await page.clock.setFixedTime(now + 2 * 24 * 60 * 60 * 1000);
+  await card.getByTestId("view-public-until").click();
+  await expect(
+    page.getByRole("menuitemradio", { checked: true }),
+  ).toHaveAttribute("data-testid", "view-duration-current");
+  await page.getByTestId("view-duration-current").click();
+  await page.clock.setFixedTime(now);
+  await card.getByTestId("view-public-until").click();
+  await expect(
+    page.getByRole("menuitemradio", { checked: true }),
+  ).toHaveAttribute("data-testid", "view-duration-7");
   await page.keyboard.press("Escape");
   await page.screenshot({ path: info.outputPath("public.png") });
 

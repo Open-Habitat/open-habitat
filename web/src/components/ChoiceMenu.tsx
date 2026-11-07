@@ -78,12 +78,13 @@ export function ChoiceMenu<T extends string>({
             <ControlMenuItem
               key={option.id}
               id={option.id}
+              className="ah-single-choice-item"
               data-testid={`choice-${option.id}`}
               textValue={option.label}
             >
               {({ isSelected }) => (
                 <>
-                  <span className="ah-choice-check" aria-hidden="true">
+                  <span className="ah-single-choice-mark" aria-hidden="true">
                     {isSelected ? "✓" : ""}
                   </span>
                   <span className="ah-choice-option">

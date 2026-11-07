@@ -1,4 +1,6 @@
 import "./ViewPanel.css";
+import "./ChoiceMenu.css";
+import { useState } from "react";
 import { Menu, MenuTrigger, Popover, Switch } from "react-aria-components";
 import { daysLabel, expiryChoices } from "../app/viewLinks";
 import { formatDate, formatNumber, liveText } from "../i18n";
@@ -75,7 +77,7 @@ const day = 24 * 60 * 60 * 1000;
  * counts from now (proto-view-offer-card-r3, riff A). */
 function DurationMenu({ visibility }: { visibility: ViewVisibility }) {
   const until = visibility.until ?? "";
-  const now = Date.now();
+  const [now, setNow] = useState(Date.now);
   const choices = expiryChoices(visibility.maxDays).map((days) => ({
     days,
     label:
@@ -86,7 +88,11 @@ function DurationMenu({ visibility }: { visibility: ViewVisibility }) {
   }));
   const current = choices.find((c) => c.ends === formatUntil(until));
   return (
-    <MenuTrigger>
+    <MenuTrigger
+      onOpenChange={(open) => {
+        if (open) setNow(Date.now());
+      }}
+    >
       <ControlButton
         size="row"
         variant="quiet"
@@ -108,19 +114,37 @@ function DurationMenu({ visibility }: { visibility: ViewVisibility }) {
         <Menu
           aria-label={txt.duration}
           selectionMode="single"
-          selectedKeys={current ? [String(current.days)] : []}
-          onAction={(key) => visibility.onDuration(Number(key))}
+          selectedKeys={[current ? String(current.days) : "current"]}
+          onAction={(key) => {
+            if (key !== "current") visibility.onDuration(Number(key));
+          }}
         >
+          {!current && (
+            <ControlMenuItem
+              id="current"
+              className="ah-single-choice-item"
+              data-testid="view-duration-current"
+              textValue={txt.until(formatUntil(until))}
+            >
+              <span className="ah-single-choice-mark" aria-hidden="true">
+                ✓
+              </span>
+              <span className="ah-view-offer-duration">
+                {txt.until(formatUntil(until))}
+              </span>
+            </ControlMenuItem>
+          )}
           {choices.map((c) => (
             <ControlMenuItem
               key={c.days}
               id={String(c.days)}
+              className="ah-single-choice-item"
               data-testid={`view-duration-${c.days}`}
               textValue={c.label}
             >
               {({ isSelected }) => (
                 <>
-                  <span className="ah-choice-check" aria-hidden="true">
+                  <span className="ah-single-choice-mark" aria-hidden="true">
                     {isSelected ? "✓" : ""}
                   </span>
                   <span className="ah-view-offer-duration">{c.label}</span>

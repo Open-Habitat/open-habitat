@@ -24,9 +24,14 @@
   align-items: start;
   gap: var(--ah-s3);
 }
-.ah-choice-check {
+.ah-single-choice-mark {
   width: 1em;
   flex: none;
+  color: var(--ah-accent);
+}
+.ah-single-choice-item[data-selected] {
+  background: var(--ah-accent-soft);
+  font-weight: 600;
 }
 .ah-choice-option {
   display: flex;

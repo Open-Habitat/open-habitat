@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: settings-polish
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Single-choice menus show checkboxes and no current choice

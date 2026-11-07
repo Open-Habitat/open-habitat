@@ -1,6 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test } from "./worker-host";
+import { createHostTest, expect } from "./worker-host";
+
+const test = createHostTest(false, {
+  BROWSER_HOST_LAB: process.env.OH_VISUAL_CAPTURE === "1" ? "1" : "0",
+});
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -13,6 +18,7 @@ for (const locale of ["fi-FI", "en-US"]) {
       ignoreHTTPSErrors: true,
       locale,
       hasTouch: true,
+      deviceScaleFactor: 2,
     });
     try {
       const page = await context.newPage();
@@ -45,6 +51,28 @@ for (const locale of ["fi-FI", "en-US"]) {
         const before = await trigger.getAttribute("data-value");
         await trigger.click();
         await expect(page.getByRole("menuitemradio")).toHaveCount(4);
+        const selected = page.getByRole("menuitemradio", { checked: true });
+        await expect(selected).toHaveCount(1);
+        await expect(selected).toHaveAttribute(
+          "data-testid",
+          `choice-${before}`,
+        );
+        const mark = selected.locator('[aria-hidden="true"]');
+        await expect(mark).not.toHaveCSS("color", "rgba(0, 0, 0, 0)");
+        await expect(mark).toHaveCSS("border-top-width", "0px");
+        await expect(selected).not.toHaveCSS(
+          "background-color",
+          "rgba(0, 0, 0, 0)",
+        );
+        if (
+          process.env.OH_VISUAL_CAPTURE === "1" &&
+          [1440, 390].includes(width)
+        )
+          await snapshot(
+            page,
+            `../issues/choice-menu-single-select/evidence/language-${locale}-${width}`,
+            { labOrigin: hostOrigin },
+          );
         // Opening a bottom sheet must not accidentally choose the item
         // now covering the mouse pointer that opened it.
         await expect(trigger).toHaveAttribute("data-value", before ?? "system");
