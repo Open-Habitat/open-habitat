@@ -122,19 +122,23 @@ function Section({
                       limit={p.limit}
                       text={`${p.used} GiB / ${p.limit} GiB`}
                     />,
-                    <NumberStepper
+                    <LimitReset
                       key="limit"
-                      label={`Raja: ${p.name}`}
-                      value={p.limit}
-                      min={1}
-                      max={500}
-                      step={5}
-                      onChange={noop}
-                    />,
+                      own={p.own}
+                      label="Palauta oletukseen (20 GiB)"
+                      name={`Palauta oletukseen (20 GiB): ${p.name}`}
+                      onPress={noop}
+                    >
+                      <NumberStepper
+                        label={`Raja: ${p.name}`}
+                        value={p.limit}
+                        min={1}
+                        max={500}
+                        step={5}
+                        onChange={noop}
+                      />
+                    </LimitReset>,
                   ]}
-                  end={
-                    <LimitReset own={p.own} label="Oletukseen" onPress={noop} />
-                  }
                 />
               ))}
             </PeopleList>

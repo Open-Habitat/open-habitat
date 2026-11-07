@@ -252,6 +252,21 @@ div.ah-section-subhead > .s-h3 {
   }
 }
 
+/* A limit and its reset; the gap holds the reset's place on rows without
+   one. */
+.ah-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+}
+.ah-limit > [data-ah-primitive="button"] {
+  --i-fg: var(--ah-muted);
+}
+.ah-limit-gap {
+  flex: none;
+  width: var(--ah-control-row);
+}
+
 /* A person's use of their limit. */
 .ah-usage {
   display: grid;

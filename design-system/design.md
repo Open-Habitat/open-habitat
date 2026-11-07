@@ -43,7 +43,10 @@ Toiminnot ja tilat näytetään ikoneilla ja pienillä graafisilla merkeillä
 aina kun merkitys on tunnistettava: uusi keskustelu "+", päivitys kahtena
 kiertävänä nuolena, sulkeminen, arkistointi, tiedot ja tila. Tekstipainike
 on poikkeus, ei oletus. Pelkällä ikonilla on aina saavutettava nimi ja
-vihjeteksti (Jari 12.10.2026).
+vihjeteksti (Jari 12.10.2026). Täällä suositaan aina symboleita: kun
+valitaan sanan ja kuvakkeen välillä, kuvake voittaa, ja vihjeteksti kertoo
+tarkemmin, mitä painike tekee, esimerkiksi henkilörivin palautuskuvakkeen
+*Palauta oletukseen (20 GiB)* (Jari 7.11.2026).
 
 Järjestelmäteema on oletus; käyttäjä voi valita myös vaalean tai tumman teeman.
 Fokus näkyy molemmissa teemoissa. Vähennetyn liikkeen asetus poistaa pulssit ja

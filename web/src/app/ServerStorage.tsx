@@ -32,7 +32,7 @@ import {
 // Palvelimen ylläpito › Levytila on the server sections' norm: the disk as a
 // meter, the default limit and every person's limit as steppers in whole
 // GiB, and each person's use beside their limit. The host keeps one limit
-// per person and the default applies only to new users, so Oletukseen sets
+// per person and the default applies only to new users, so the reset sets
 // the person's limit to the current default rather than making it follow
 // the default.
 
@@ -249,28 +249,31 @@ export function ServerStorage({ csrf }: { csrf?: string }) {
                             limit={limit}
                             text={`${bytes(quota.usage_bytes)} / ${bytes(limit)}`}
                           />,
-                          <NumberStepper
+                          <LimitReset
                             key="limit"
-                            label={t.personLimit(user.username)}
-                            testId={`storage-limit-${user.username}`}
-                            value={limit / GiB}
-                            min={1}
-                            max={maxGiB}
-                            step={stepGiB}
+                            own={own}
+                            label={t.toDefault(bytes(fallback))}
+                            name={t.toDefaultFor(
+                              user.username,
+                              bytes(fallback),
+                            )}
+                            testId={`storage-limit-${user.username}-reset`}
                             disabled={!csrf}
-                            onChange={(n) => change(user.id, n * GiB)}
-                          />,
+                            onPress={() => change(user.id, fallback)}
+                          >
+                            <NumberStepper
+                              label={t.personLimit(user.username)}
+                              testId={`storage-limit-${user.username}`}
+                              value={limit / GiB}
+                              min={1}
+                              max={maxGiB}
+                              step={stepGiB}
+                              disabled={!csrf}
+                              onChange={(n) => change(user.id, n * GiB)}
+                            />
+                          </LimitReset>,
                         ]
                       : [t.unknownUsage, null]
-                }
-                end={
-                  <LimitReset
-                    own={own}
-                    label={t.toDefault}
-                    testId={`storage-limit-${user.username}-reset`}
-                    disabled={!csrf}
-                    onPress={() => change(user.id, fallback)}
-                  />
                 }
               />
             );

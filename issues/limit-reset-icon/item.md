@@ -3,13 +3,14 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: limit-reset-proto
 lane_seq: 2
 blocked_by: ['@proto-limit-reset-placement']
 collision: [web/src/components/ServerSection.tsx]
 preparation: ready
+closed: 2026-11-07
 ---
 
 # Person row's own-limit reset is an icon beside the stepper
@@ -38,8 +39,8 @@ Defect fix, not an experimental feature.
 
 ## Acceptance Criteria
 
-- [ ] Reset is an icon button beside the stepper in Levytila and Keskustelut;
+- [x] Reset is an icon button beside the stepper in Levytila and Keskustelut;
       rows equal height with and without own limit (440/720 pane, 390,
       light and dark).
-- [ ] Tooltip and accessible name name the default value, both languages.
-- [ ] Touched specs/stories green; screenshots at 2x; `KOKEILTAVAA.md` line.
+- [x] Tooltip and accessible name name the default value, both languages.
+- [x] Touched specs/stories green; screenshots at 2x; `KOKEILTAVAA.md` line.

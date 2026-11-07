@@ -395,31 +395,50 @@ export function UsageFigure({
   );
 }
 
-/** Returns a person's own limit to the default; nothing when they have none. */
+/** A person's limit control with its reset beside it (Jari 7.11.2026,
+ * proto-limit-reset-placement round 1, A Säädin): a small restore icon right
+ * of the stepper while the person has an own limit, and the same empty space
+ * when they do not, so the steppers stay in one column and every row keeps
+ * the same height. The icon names the default it restores to. */
 export function LimitReset({
   own,
   label,
+  name,
   disabled,
   testId,
   onPress,
+  children,
 }: {
   own: boolean;
+  /** What the reset does, with the default value: the tooltip. */
   label: string;
+  /** The same for this person: the accessible name. */
+  name: string;
   disabled?: boolean;
   testId?: string;
   onPress: () => void;
+  /** The limit's own control, normally a NumberStepper. */
+  children?: ReactNode;
 }) {
-  if (!own) return null;
   return (
-    <ControlButton
-      data-testid={testId}
-      size="row"
-      variant="quiet"
-      isDisabled={disabled}
-      onPress={onPress}
-    >
-      {label}
-    </ControlButton>
+    <span className="ah-limit">
+      {children}
+      {own ? (
+        <ControlButton
+          data-testid={testId}
+          size="row"
+          variant="quiet"
+          title={label}
+          aria-label={name}
+          isDisabled={disabled}
+          onPress={onPress}
+        >
+          <Icon name="restore" />
+        </ControlButton>
+      ) : (
+        <span className="ah-limit-gap" aria-hidden="true" />
+      )}
+    </span>
   );
 }
 

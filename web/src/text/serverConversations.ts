@@ -30,7 +30,11 @@ const fi = {
   usesDefault: "oletus",
   ownLimit: "oma raja",
   personLimit: (name: string) => `Raja: ${name}`,
-  toDefault: "Oletukseen",
+  // The reset beside a person's stepper is an icon; its tooltip and its
+  // accessible name say what it restores to.
+  toDefault: (limit: string) => `Palauta oletukseen (${limit})`,
+  toDefaultFor: (name: string, limit: string) =>
+    `Palauta oletukseen (${limit}): ${name}`,
   saving: "Tallennetaan…",
   unavailable: "Rajoja ei voitu lukea.",
   refused: "Rajaa ei muutettu.",
@@ -63,7 +67,8 @@ export const serverConversationsText = catalog(fi, {
   usesDefault: "default",
   ownLimit: "own limit",
   personLimit: (name) => `Limit: ${name}`,
-  toDefault: "Back to default",
+  toDefault: (limit) => `Reset to default (${limit})`,
+  toDefaultFor: (name, limit) => `Reset to default (${limit}): ${name}`,
   saving: "Saving…",
   unavailable: "The limits could not be read.",
   refused: "The limit was not changed.",

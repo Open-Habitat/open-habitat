@@ -170,27 +170,31 @@ export function ServerConversations({ csrf }: { csrf?: string }) {
                   </span>
                 }
                 cells={[
-                  <NumberStepper
-                    key="limit"
-                    label={t.personLimit(u.username)}
-                    testId={`live-person-${u.username}-limit`}
-                    value={own ?? installation}
-                    min={1}
-                    max={view.max_limit}
-                    disabled={!csrf}
-                    onChange={(n) =>
-                      change(u.id, n === installation ? null : n)
-                    }
-                  />,
-                ]}
-                end={
                   <LimitReset
+                    key="limit"
                     own={own !== null}
-                    label={t.toDefault}
+                    label={t.toDefault(t.conversations(installation))}
+                    name={t.toDefaultFor(
+                      u.username,
+                      t.conversations(installation),
+                    )}
                     testId={`live-person-${u.username}-reset`}
+                    disabled={!csrf}
                     onPress={() => change(u.id, null)}
-                  />
-                }
+                  >
+                    <NumberStepper
+                      label={t.personLimit(u.username)}
+                      testId={`live-person-${u.username}-limit`}
+                      value={own ?? installation}
+                      min={1}
+                      max={view.max_limit}
+                      disabled={!csrf}
+                      onChange={(n) =>
+                        change(u.id, n === installation ? null : n)
+                      }
+                    />
+                  </LimitReset>,
+                ]}
               />
             );
           })}

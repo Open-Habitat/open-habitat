@@ -80,7 +80,10 @@ it("shows memory first and estimates from the limits alone", async () => {
   expect(screen.getByTestId("live-person-alice").hasAttribute("data-own")).toBe(
     false,
   );
-  expect(screen.getByTestId("live-person-bob-reset")).toBeTruthy();
+  // The reset is an icon that names the default it restores to.
+  expect(
+    screen.getByTestId("live-person-bob-reset").getAttribute("aria-label"),
+  ).toBe("Palauta oletukseen (12 keskustelua): bob");
   expect(screen.queryByTestId("live-person-alice-reset")).toBeNull();
   // Nothing in the view says how many conversations someone has working.
   expect(document.body.textContent).not.toMatch(/työssä nyt/i);

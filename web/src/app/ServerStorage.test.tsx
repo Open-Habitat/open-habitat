@@ -101,7 +101,7 @@ it("shows the disk as a meter and each person's use beside their limit", async (
   expect(screen.queryByTestId("storage-limit-alice-reset")).toBeNull();
 });
 
-it("writes a stepped limit once it settles, and Oletukseen sets the current default", async () => {
+it("writes a stepped limit once it settles, and the reset sets the current default", async () => {
   const writes = host({ users: [alice()], capacity: 400 * GiB });
   render(<ServerStorage csrf="csrf" />);
   await screen.findByTestId("storage-limit-alice-input");
@@ -120,6 +120,10 @@ it("writes a stepped limit once it settles, and Oletukseen sets the current defa
     ]),
   );
   const reset = await screen.findByTestId("storage-limit-alice-reset");
+  // The reset is an icon that names the default it restores to.
+  expect(reset.getAttribute("aria-label")).toBe(
+    "Palauta oletukseen (8 GiB): alice",
+  );
   expect(
     screen.getByTestId("administration-user-alice").dataset.own,
   ).toBeDefined();
