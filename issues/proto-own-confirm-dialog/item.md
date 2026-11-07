@@ -29,3 +29,11 @@ selaimen oma eikä sitä voi korvata; prototyyppi kertoo, missä se jää.
 ## Acceptance Criteria
 
 - [x] kierros 1: nykytila, kolme suuntaa, näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-07, kierros 1)
+
+**C Ei kysy** (suosituksen mukaan): poistuminen tallentaa, ilmoituksessa
+*Kumoa*, ja vain epäonnistunut tallennus kysyy A:n ikkunalla. Kysymykset 2
+(Kumoan merkitys / oma *Hylkää muutokset*) ja 3 (VS Coden vaihto puhelimen
+editoriin) olivat Jarille epäselviä; ne selitettiin keskustelussa uudelleen
+suosituksineen ja odottavat vastausta.
