@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: reduced-motion
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Live work row still flickers with reduced motion
@@ -20,4 +21,4 @@ Vähennetty liike: työrivi vilkkuu vielä (Jari 7.11., pilot.613, macOS *Reduce
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

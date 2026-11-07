@@ -1,9 +1,54 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./worker-host";
 
-test.use({ reducedMotion: "no-preference" });
+test.use({ reducedMotion: "no-preference", deviceScaleFactor: 2 });
 
 for (const width of [1440, 390]) {
+  test(`reduced-motion activity stays quiet across tool changes at ${width}px`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/?fixture=design-quiet-turn&stream");
+    await page.evaluate(() => document.fonts.ready);
+    const line = page.getByTestId("turn-progress");
+    const activity = line.locator(".ah-turn-activity");
+    const mark = line.getByTestId("status-mark");
+    await expect(line).toBeVisible();
+    const baseline = await line.evaluate((node) => ({
+      y: node.getBoundingClientRect().y,
+      height: node.getBoundingClientRect().height,
+    }));
+    for (let phase = 1; phase <= 7; phase++) {
+      await page.getByTestId("stream-next").click();
+      await expect(page.getByTestId("stream-phase")).toHaveAttribute(
+        "data-phase",
+        String(phase),
+      );
+      await expect(activity).toBeHidden();
+      await expect(mark).toBeVisible();
+      await expect(line.locator(".ah-turn-clock")).toBeVisible();
+      expect(
+        await line.evaluate(
+          (node) => node.getAnimations({ subtree: true }).length,
+        ),
+      ).toBe(0);
+      const box = await line.evaluate((node) => ({
+        y: node.getBoundingClientRect().y,
+        height: node.getBoundingClientRect().height,
+      }));
+      expect(Math.abs(box.y - baseline.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.height - baseline.height)).toBeLessThanOrEqual(1);
+    }
+    // The preference can change while a turn runs, without a reload.
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect(activity).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(activity).toBeHidden();
+    await page.getByTestId("turn-work-toggle").click();
+    await expect(page.locator(".ah-turn-work .ah-tool-row")).toHaveCount(3);
+  });
+
   test(`@a11y activity line stays put through empty blocks and hidden work at ${width}px`, async ({
     page,
   }) => {

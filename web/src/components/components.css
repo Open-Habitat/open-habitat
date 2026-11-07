@@ -3083,6 +3083,11 @@ details[open] > summary:not([class])::before {
   .ah-work-revealing > * {
     animation: none;
   }
+  /* Instant tool-label swaps still flicker in a busy turn. Keep the steady
+     working indicator and clock; individual tools remain in the disclosure. */
+  .ah-turn-activity {
+    display: none;
+  }
 }
 @media (max-width: 480px) {
   .ah-turn-working > .ah-turn-status {
