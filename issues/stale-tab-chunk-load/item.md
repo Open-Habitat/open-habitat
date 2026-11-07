@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: stale-chunk
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # A tab from an older release crashes on a lazily loaded part instead of offering reload
@@ -20,4 +21,4 @@ Editori kaatui *Unexpected Application Error!* -sivuun versiopäivityksen jälke
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa
