@@ -88,55 +88,94 @@ test("@version open settings follow the running release across upgrades", async 
   }
 });
 
-test("@version an open tab asks to reload after an upgrade, and the draft survives", async ({
-  page,
-}) => {
-  await signIn(page);
-  const readsFinished = settingsReads(page);
-  await page
-    .getByRole("navigation")
-    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
-    .click();
-  await page.getByTestId("conversation-start").click();
-  const editor = page.getByTestId("message-input");
-  await editor.fill("Puolivalmis luonnos");
-  const bell = page.locator('[data-testid="status-bell"]:visible');
-  await expect(bell).toHaveCount(0);
+for (const reload of ["bell", "browser"] as const) {
+  test(`@version recovery keeps the old bundle until one ${reload} reload, then clears the bell`, async ({
+    page,
+  }) => {
+    await signIn(page);
+    const readsFinished = settingsReads(page);
+    await page
+      .getByRole("navigation")
+      .locator(
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
+      )
+      .click();
+    await page.getByTestId("conversation-start").click();
+    const editor = page.getByTestId("message-input");
+    await editor.fill("Puolivalmis luonnos");
+    const bell = page.locator('[data-testid="status-bell"]:visible');
+    await expect(bell).toHaveCount(0);
 
-  // A release switch: the gateway restarts with another version and serves a
-  // bundle whose index.html names different asset URLs.
-  await readsFinished();
-  // Returning to the tab is what a person does after leaving it open.
-  await upgrade(page, 1);
-  // The conversation's top bar has the bell; the new version is behind it.
-  await expect(bell).toBeVisible();
-  await bell.click();
-  const item = page
-    .getByTestId("status-panel")
-    .locator('[data-testid="status-item"][data-key="version"]');
-  await expect(item).toBeVisible();
-  await expect(editor).toHaveValue("Puolivalmis luonnos");
+    // Hold recovery long enough to observe the bar. A reconnect is not a
+    // document reload: the old bundle remains until the person reloads it.
+    let navigations = 0;
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) navigations++;
+    });
+    await page.route("**/api/v1/events*", (route) =>
+      route.fulfill({ status: 503 }),
+    );
+    await page.request.get("/fixture/daemon-restart?transport_only=1");
+    await expect(page.locator(".ah-connection")).toBeVisible();
+    await readsFinished();
+    // Returning to the tab is what a person does after leaving it open.
+    await upgrade(page, 1);
+    // The conversation's top bar has the bell; the new version is behind it.
+    await expect(bell).toBeVisible();
+    await page.unroute("**/api/v1/events*");
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect(page.locator(".ah-connection")).toHaveCount(0);
+    expect(navigations).toBe(0);
+    await expect(
+      page.locator("script[type=module][src*='?release=']"),
+    ).toHaveCount(0);
+    await bell.click();
+    const item = page
+      .getByTestId("status-panel")
+      .locator('[data-testid="status-item"][data-key="version"]');
+    await expect(item).toBeVisible();
+    await expect(editor).toHaveValue("Puolivalmis luonnos");
 
-  await item.getByTestId("version-reload").click();
-  await expect(
-    page.locator("script[type=module][src*='?release=1']"),
-  ).toHaveCount(1);
-  await expect(page.getByTestId("message-input")).toHaveValue(
-    "Puolivalmis luonnos",
-  );
-  await page.goto("/settings");
-  await page.getByTestId("settings-palvelin").click();
-  const row = page.getByTestId("server-version");
-  await expect(row.getByTestId("version-value")).toHaveText(
-    "0.0.0-lab.1 (1111111)",
-  );
-  await expect(
-    row.locator('[data-testid="bundle-state"][data-state="current"]'),
-  ).toBeVisible();
-  await expect(page.locator('[data-testid="status-bell"]:visible')).toHaveCount(
-    0,
-  );
-});
+    const documentResponse = page.waitForResponse(
+      (response) =>
+        response.request().isNavigationRequest() &&
+        response.frame() === page.mainFrame(),
+    );
+    if (reload === "bell") await item.getByTestId("version-reload").click();
+    else await page.reload();
+    expect((await documentResponse).headers()["cache-control"]).toBe(
+      "no-store",
+    );
+    await expect(
+      page.locator("script[type=module][src*='?release=1']"),
+    ).toHaveCount(1);
+    await expect(page.getByTestId("message-input")).toHaveValue(
+      "Puolivalmis luonnos",
+    );
+    expect(navigations).toBe(1);
+    const loadedAt = await page.evaluate(() => performance.timeOrigin);
+    // Navigate inside the app: page.goto would load a second document and
+    // conceal a bell that survived the first reload. Require a positive
+    // bundle verdict, rather than only an initially absent bell.
+    await page.getByTestId("account-menu-trigger").click();
+    await page.getByTestId("menu-administration").click();
+    const row = page.getByTestId("server-version");
+    await expect(row.getByTestId("version-value")).toHaveText(
+      "0.0.0-lab.1 (1111111)",
+    );
+    await expect(
+      row.locator('[data-testid="bundle-state"][data-state="current"]'),
+    ).toBeVisible();
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(loadedAt);
+    await page.getByTestId("settings-close").click();
+    await expect(page.getByTestId("message-input")).toHaveValue(
+      "Puolivalmis luonnos",
+    );
+    await expect(
+      page.locator('[data-testid="status-bell"]:visible'),
+    ).toHaveCount(0);
+  });
+}
 
 test("@version a tab whose bundle cannot read the upgraded host offers reload, not reconnect", async ({
   page,
@@ -220,4 +259,7 @@ test("@version a tab whose bundle cannot read the upgraded host offers reload, n
     "Luonnos versionvaihdon yli",
   );
   await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(page.locator('[data-testid="status-bell"]:visible')).toHaveCount(
+    0,
+  );
 });
