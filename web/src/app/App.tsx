@@ -54,6 +54,7 @@ import {
 } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
 import { BrowserConversation } from "./BrowserConversation";
+import type { LeaveSave } from "./BrowserDocument";
 import { checkBundle, reloadForNewBundle, watchBundle } from "./bundleRelease";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
@@ -73,6 +74,8 @@ import {
   sendTurnMark,
   worktreeNameFrom,
 } from "./conversations";
+import { EditorSaveNotice } from "./EditorSaveNotice";
+import { conversationLocation } from "./editorRoute";
 import { FallbackAccount } from "./FallbackAccount";
 import { seededRouteOpen } from "./firstRoute";
 import { GitHubConnectionNotice } from "./GitHubConnectionNotice";
@@ -348,6 +351,12 @@ export function App() {
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
   const archiveFocusPending = useRef<string | undefined>(undefined);
+  // Leaving the editor saved its text: the notice offers Kumoa to the person
+  // and session that saved it, and to no one after them.
+  const [editorSave, setEditorSave] = useState<
+    LeaveSave & { id: number; identity?: string; csrf?: string }
+  >();
+  const editorSaveId = useRef(0);
   const [archiveNotice, setArchiveNotice] = useState<{
     id: string;
     title: string;
@@ -3007,7 +3016,7 @@ export function App() {
     );
   // The workspace editor sits beside a workspace's conversation; the wrapper
   // is there on every conversation route, so opening it remounts nothing.
-  const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
+  const editorRoute = conversationLocation(location);
   // A conversation's top bar carries the bell; elsewhere, and while Settings
   // lies over the conversation, the rail or the phone's toolbar does. One
   // bell per screen.
@@ -3204,6 +3213,17 @@ export function App() {
                       onClose={() => setTrashOutcome(undefined)}
                     />
                   ) : null}
+                  {editorSave &&
+                  csrf &&
+                  editorSave.csrf === csrf &&
+                  editorSave.identity === identity ? (
+                    <EditorSaveNotice
+                      key={editorSave.id}
+                      save={editorSave}
+                      csrf={csrf}
+                      onClose={() => setEditorSave(undefined)}
+                    />
+                  ) : null}
                   {archiveNotice ? (
                     <ArchiveNotice
                       kind="archive"
@@ -3310,6 +3330,14 @@ export function App() {
                                 workspaceId={editorWorkspaceId}
                                 identity={identity}
                                 onShownChange={showEditor}
+                                onLeaveSaved={(save) =>
+                                  setEditorSave({
+                                    ...save,
+                                    id: ++editorSaveId.current,
+                                    identity,
+                                    csrf,
+                                  })
+                                }
                                 csrf={
                                   phase === "authenticated" || phase === "stale"
                                     ? csrf

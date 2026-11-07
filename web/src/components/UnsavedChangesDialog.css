@@ -1,0 +1,30 @@
+.ah-unsaved-modal {
+  width: min(480px, 100%);
+}
+.ah-unsaved-dialog {
+  display: grid;
+  gap: var(--ah-s3);
+}
+.ah-unsaved-dialog h2 {
+  margin: 0;
+}
+.ah-unsaved-dialog p {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-unsaved-dialog .ah-dialog-actions {
+  margin-top: var(--ah-s2);
+  flex-wrap: wrap;
+}
+@media (max-width: 800px) {
+  /* On a phone the window rises from the bottom, its buttons full width
+     with the one that keeps the text nearest the thumb. */
+  .ah-unsaved-overlay {
+    place-items: end center;
+    padding: var(--ah-s2);
+  }
+  .ah-unsaved-dialog .ah-dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}

@@ -239,3 +239,10 @@
   font-size: var(--ah-size-meta);
   border-bottom: 1px solid var(--ah-line);
 }
+/* VS Code below the phone breakpoint: Habitat's own row under the frame asks
+   to save there first, and VS Code stays usable above it. */
+.ah-editor-phone-ask {
+  flex: none;
+  padding: var(--ah-s3);
+  border-top: 1px solid var(--ah-line);
+}

@@ -186,9 +186,6 @@ for (const engine of ["codemirror6"])
         await page.getByTestId("editor-picker").click();
         await expect(file).toBeVisible();
         if (width === 390) await picker.getByRole("button").first().click();
-        page.once("dialog", (d) => d.dismiss());
-        await page.getByTestId("close-editor").click();
-        await expect(doc).toBeVisible();
         await page.getByTestId("editor-save").click();
         await expect(page.getByTestId("editor-dirty")).toBeEmpty();
         // A native change through the same confined API makes the local token stale.
@@ -363,16 +360,6 @@ for (const engine of ["codemirror6"])
   }) => {
     await openFile(page, false);
     await edit(page, "old identity private buffer");
-    const oldURL = page.url();
-    const rejected = page
-      .waitForEvent("dialog")
-      .then((dialog) => dialog.dismiss());
-    await page.evaluate(() => history.back());
-    await rejected;
-    await expect(page).toHaveURL(oldURL);
-    await expect(page.getByTestId("editor-document")).toContainText(
-      "old identity private buffer",
-    );
     const other = await browser.newContext({
       baseURL: hostOrigin,
       ignoreHTTPSErrors: true,
@@ -397,7 +384,8 @@ for (const engine of ["codemirror6"])
         await held;
         await route.fulfill({ response }).catch(() => {});
       });
-      page.once("dialog", (dialog) => dialog.accept());
+      // Opening reads the file before it saves the buffer; the held read
+      // keeps the buffer unsaved while the identity changes.
       await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
       await seen;
       await context.addCookies(await other.cookies());
@@ -1043,3 +1031,197 @@ for (const width of [1366, 390])
       ).toEqual([]);
     });
   });
+
+async function diskText(page: Page, path = "cmd/main.go") {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const workspace = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  ).workspace_id;
+  const url = `/api/v1/workspaces/editor/file?${new URLSearchParams({ workspace_id: workspace, path })}`;
+  return (await (await page.request.get(url)).json()) as {
+    content: string;
+    version: string;
+    bom: boolean;
+    newline: string;
+    workspace_id: string;
+  };
+}
+// Issue evidence for own-unsaved-changes-dialog, refreshed only on request.
+async function leaveEvidence(page: Page, name: string) {
+  if (process.env.OH_VISUAL_CAPTURE !== "1") return;
+  const base = fileURLToPath(
+    new URL(
+      `../../issues/own-unsaved-changes-dialog/evidence/${name}`,
+      import.meta.url,
+    ),
+  );
+  await mkdir(join(base, ".."), { recursive: true });
+  await page.screenshot({ path: `${base}.png` });
+  await writeFile(`${base}.html`, await page.content());
+}
+function nativeDialogs(page: Page) {
+  const seen: string[] = [];
+  page.on("dialog", (dialog) => {
+    seen.push(dialog.type());
+    void dialog.dismiss();
+  });
+  return seen;
+}
+
+test("@browser-editor leaving the editor saves without asking, and Kumoa writes the earlier version back", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const native = nativeDialogs(page);
+  const original = (await diskText(page)).content;
+  await edit(page, "saved by closing\n");
+  await page.getByTestId("close-editor").click();
+  await expect(page.getByTestId("browser-editor")).toHaveCount(0);
+  const notice = page
+    .getByTestId("archive-notice")
+    .and(page.locator('[data-kind="editor-save"]'));
+  await expect(notice).toContainText("Tallennettu main.go");
+  await leaveEvidence(page, "saved-notice-1366");
+  expect((await diskText(page)).content).toBe("saved by closing\n");
+  await notice.getByTestId("restore-notice").click();
+  await expect(notice).toContainText("Tallennus kumottu: main.go");
+  expect((await diskText(page)).content).toBe(original);
+  // A change after the save makes Kumoa refuse rather than overwrite it.
+  await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    'println("hei")',
+  );
+  await edit(page, "saved again\n");
+  await page.getByTestId("close-editor").click();
+  await expect(notice).toContainText("Tallennettu main.go");
+  const saved = await diskText(page);
+  const session = await (await page.request.get("/auth/session")).json();
+  const outside = await page.request.put("/api/v1/workspaces/editor/file", {
+    headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": session.csrf },
+    data: {
+      workspace_id: saved.workspace_id,
+      path: "cmd/main.go",
+      base_version: saved.version,
+      content: "changed by someone else\n",
+      bom: saved.bom,
+      newline: saved.newline,
+    },
+  });
+  expect(outside.status()).toBe(200);
+  await notice.getByTestId("restore-notice").click();
+  await expect(notice.getByTestId("archive-error")).toContainText(
+    "Tiedosto on muuttunut tallennuksen jälkeen",
+  );
+  await leaveEvidence(page, "undo-refused-1366");
+  expect((await diskText(page)).content).toBe("changed by someone else\n");
+  expect(native).toEqual([]);
+});
+
+test("@browser-editor @a11y only a failed save asks, in Habitat's own window", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const native = nativeDialogs(page);
+  const original = (await diskText(page)).content;
+  await edit(page, "cannot be saved\n");
+  await page.route("**/api/v1/workspaces/editor/file", (route) =>
+    route.request().method() === "PUT"
+      ? route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: '{"schema_version":1,"error":{"code":"file_denied"}}',
+        })
+      : route.fallback(),
+  );
+  if (!(await page.getByTestId("editor-file-picker").isVisible()))
+    await page.getByTestId("editor-picker").click();
+  await page
+    .getByTestId("editor-file-entry")
+    .and(page.locator('[data-path="cmd/notes.md"]'))
+    .click();
+  const dialog = page
+    .getByRole("alertdialog")
+    .and(page.getByTestId("unsaved-dialog"));
+  await expect(dialog).toContainText("Muutoksia ei voitu tallentaa");
+  await expect(dialog.getByTestId("unsaved-keep")).toBeFocused();
+  await leaveEvidence(page, "save-failed-window-1366");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await leaveEvidence(page, "save-failed-window-390");
+  await page.setViewportSize({ width: 1366, height: 844 });
+  expect(
+    (await new AxeBuilder({ page }).include('[role="alertdialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  await dialog.getByTestId("unsaved-keep").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "cannot be saved",
+  );
+  await page.getByTestId("close-editor").click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("browser-editor")).toBeVisible();
+  await page.getByTestId("close-editor").click();
+  await dialog.getByTestId("unsaved-discard").click();
+  await expect(page.getByTestId("browser-editor")).toHaveCount(0);
+  await expect(
+    page
+      .getByTestId("archive-notice")
+      .and(page.locator('[data-kind="editor-save"]')),
+  ).toHaveCount(0);
+  expect((await diskText(page)).content).toBe(original);
+  expect(native).toEqual([]);
+});
+
+test("@browser-editor switching conversation in the same workspace asks nothing and keeps the text unsaved", async ({
+  page,
+}) => {
+  await login(page);
+  await page
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
+    .click();
+  await page.getByTestId("conversation-start").click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  const first = new URL(page.url()).searchParams.get("conversation") ?? "";
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await page.getByTestId("message-input").fill("Hei");
+  await page.getByTestId("send").click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
+    .click();
+  await page.getByTestId("conversation-start").click();
+  await expect(page).not.toHaveURL(new RegExp(first.replace(":", "(?:%3A|:)")));
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await page.getByTestId("message-input").fill("Näytä tiedosto");
+  await page.getByTestId("send").click();
+  const link = page
+    .getByRole("link")
+    .and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]'));
+  await expect(link).toBeVisible({ timeout: 20000 });
+  await link.click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    'println("hei")',
+  );
+  const native = nativeDialogs(page);
+  let writes = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().includes("/editor/file"))
+      writes++;
+  });
+  await edit(page, "still mine, unsaved\n");
+  await page.locator(`a[href*="${first}"]`).first().click();
+  await expect(page).toHaveURL(new RegExp(first.replace(":", "(?:%3A|:)")));
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "still mine, unsaved",
+  );
+  await expect(page.getByTestId("editor-save")).toBeEnabled();
+  await expect(page.getByTestId("unsaved-dialog")).toHaveCount(0);
+  expect(writes).toBe(0);
+  expect(native).toEqual([]);
+});

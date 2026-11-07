@@ -1,10 +1,20 @@
-import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { createRef, StrictMode, useLayoutEffect } from "react";
-import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { createRef, StrictMode } from "react";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
 import type { EditorMergeApi, MergeState } from "../components/editorMerge";
-import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
+import BrowserDocument, {
+  type BrowserDocumentHandle,
+  type LeaveSave,
+} from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
 import {
   EditorReadError,
@@ -111,58 +121,133 @@ it.each(["codemirror6"] as const)(
   },
 );
 
-it.each(["codemirror6"] as const)(
-  "%s keeps observations quiet and scopes discard permission to the committed route layout",
-  async (engine) => {
-    const ref = createRef<BrowserDocumentHandle>();
-    const retentionAtCommit = new Map<string, boolean>();
-    function Frame() {
-      const location = useLocation();
-      useLayoutEffect(() => {
-        retentionAtCommit.set(location.key, ref.current?.retains() ?? false);
-      }, [location.key]);
-      return (
-        <BrowserDocument
-          engine={engine}
-          workspace="ws_example123"
-          csrf="synthetic"
-          ref={ref}
-        />
-      );
-    }
-    const router = createMemoryRouter([{ path: "*", element: <Frame /> }], {
-      initialEntries: ["/one"],
-    });
-    render(<RouterProvider router={router} />);
-    await act(async () => {
-      await ref.current?.open({ path: "text.txt" });
-    });
-    act(() => change("dirty text"));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    expect(ref.current?.retains()).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
-    await act(async () => {
-      await router.navigate("/two");
-    });
-    expect(router.state.location.pathname).toBe("/one");
-    expect(ref.current?.retains()).toBe(true);
-    expect(model.dirty).toBe(true);
-    expect(confirm).toHaveBeenCalledTimes(1);
-    confirm.mockReturnValue(true);
-    await act(async () => {
-      await router.navigate("/two");
-    });
-    expect(router.state.location.pathname).toBe("/two");
-    expect(retentionAtCommit.get(router.state.location.key)).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(2);
-    // If no resource rebind happened in that commit, later observations cannot
-    // reuse permission to discard the still-visible dirty document.
-    expect(ref.current?.retains()).toBe(true);
-    act(() => change("new dirty text"));
-    expect(ref.current?.retains()).toBe(true);
-    confirm.mockRestore();
-  },
-);
+const conversation = (id: string) =>
+  `/workspaces/ws_example123?conversation=pi:${id}`;
+async function openOnRoute() {
+  const ref = createRef<BrowserDocumentHandle>();
+  const left: LeaveSave[] = [];
+  const router = createMemoryRouter(
+    [
+      {
+        path: "*",
+        element: (
+          <BrowserDocument
+            workspace="ws_example123"
+            csrf="synthetic"
+            ref={ref}
+            onLeaveSaved={(save) => left.push(save)}
+          />
+        ),
+      },
+    ],
+    { initialEntries: [conversation("a")] },
+  );
+  render(<RouterProvider router={router} />);
+  await act(async () => {
+    await ref.current?.open({ path: "text.txt" });
+  });
+  return { ref, router, left };
+}
+
+it("keeps the text unsaved across conversations and saves it before a route that unmounts the editor", async () => {
+  const { ref, router, left } = await openOnRoute();
+  act(() => change("dirty text"));
+  const confirm = vi.spyOn(window, "confirm");
+  expect(ref.current?.retains()).toBe(true);
+  // Another conversation keeps the editor: nothing is asked or written.
+  await act(async () => {
+    await router.navigate(conversation("b"));
+  });
+  expect(router.state.location.search).toBe("?conversation=pi:b");
+  expect(model.dirty).toBe(true);
+  expect(saveEditorFile).not.toHaveBeenCalled();
+  const after: EditorDocument = {
+    schema_version: 1,
+    workspace_id: "ws_example123",
+    path: "text.txt",
+    content: "dirty text",
+    version: `sha256:v1:${"b".repeat(64)}`,
+    bom: false,
+    newline: "none",
+    encoding: "utf-8",
+    size_bytes: 10,
+    mode: 384,
+  };
+  vi.mocked(saveEditorFile).mockResolvedValueOnce({
+    kind: "ok",
+    document: after,
+  });
+  await act(async () => {
+    await router.navigate("/workspaces");
+  });
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/workspaces"),
+  );
+  expect(saveEditorFile).toHaveBeenCalledWith(
+    expect.objectContaining({ content: "base" }),
+    "dirty text",
+    "synthetic",
+  );
+  expect(left).toEqual([
+    {
+      before: expect.objectContaining({ content: "base" }),
+      after: expect.objectContaining({ version: after.version }),
+    },
+  ]);
+  expect(confirm).not.toHaveBeenCalled();
+  confirm.mockRestore();
+});
+
+it("opening another file saves the current text after the new one was read", async () => {
+  const { ref, left } = await openOnRoute();
+  act(() => change("dirty text"));
+  vi.mocked(saveEditorFile).mockImplementationOnce(async (doc, content) => ({
+    kind: "ok",
+    document: { ...doc, content, version: `sha256:v1:${"b".repeat(64)}` },
+  }));
+  await act(async () => {
+    expect(await ref.current?.open({ path: "text.txt" })).toBe(true);
+  });
+  expect(saveEditorFile).toHaveBeenCalledTimes(1);
+  expect(left).toHaveLength(1);
+  expect(model.dirty).toBe(false);
+});
+
+it("asks with Habitat's own window only when the save on leaving fails", async () => {
+  const { router, left } = await openOnRoute();
+  act(() => change("dirty text"));
+  vi.mocked(saveEditorFile).mockResolvedValue({
+    kind: "refused",
+    status: 403,
+    code: "file_denied",
+  });
+  await act(async () => {
+    await router.navigate("/workspaces");
+  });
+  await screen.findByTestId("unsaved-dialog");
+  expect(screen.getByRole("alertdialog").textContent).toContain(
+    "Tallennus ei onnistunut. Oma teksti säilyy.",
+  );
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("unsaved-keep"));
+  });
+  await waitFor(() =>
+    expect(screen.queryByTestId("unsaved-dialog")).toBeNull(),
+  );
+  expect(router.state.location.pathname).toBe("/workspaces/ws_example123");
+  expect(model.dirty).toBe(true);
+  await act(async () => {
+    await router.navigate("/workspaces");
+  });
+  await act(async () => {
+    fireEvent.click(await screen.findByTestId("unsaved-discard"));
+  });
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/workspaces"),
+  );
+  expect(left).toEqual([]);
+  vi.mocked(saveEditorFile).mockReset();
+});
 
 it.each(["codemirror6"] as const)(
   "%s retains the local document on unsupported reads and refused read-only saves",
@@ -186,7 +271,6 @@ it.each(["codemirror6"] as const)(
       await ref.current?.open({ path: "text.txt" });
     });
     act(() => change("unsaved text"));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(readEditorFile).mockRejectedValueOnce(
       new EditorReadError("unsupported"),
     );
@@ -195,6 +279,8 @@ it.each(["codemirror6"] as const)(
     });
     expect(model.document?.path).toBe("text.txt");
     expect(model.dirty).toBe(true);
+    // A file that cannot be opened is no reason to write the current one.
+    expect(saveEditorFile).not.toHaveBeenCalled();
     vi.mocked(saveEditorFile).mockResolvedValueOnce({
       kind: "refused",
       status: 415,
@@ -211,7 +297,6 @@ it.each(["codemirror6"] as const)(
     expect(model.dirty).toBe(true);
     expect(model.saving).toBe(false);
     expect(model.document?.path).toBe("text.txt");
-    confirm.mockRestore();
   },
 );
 

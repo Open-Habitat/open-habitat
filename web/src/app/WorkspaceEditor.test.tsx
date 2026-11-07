@@ -157,3 +157,46 @@ it("retains a live VS Code frame when a background choice changes", async () => 
   expect(screen.queryByTestId("workspace-editor")).toBe(frame);
   expect(screen.queryByTestId("browser-editor")).toBeNull();
 });
+
+it("asks on Habitat's own row to save in VS Code before the phone editor, once per crossing", async () => {
+  const confirm = vi.spyOn(window, "confirm");
+  render(
+    <WorkspaceEditor
+      identity="wid-narrow"
+      workspaceId="ws_synthetic"
+      csrf="narrow-choice"
+    >
+      <EditorHeaderControls />
+      <textarea data-testid="message-input" />
+    </WorkspaceEditor>,
+  );
+  fireEvent.click(await screen.findByTestId("toggle-editor"));
+  const frame = await screen.findByTestId("workspace-editor");
+  const resize = (width: number) =>
+    act(() => {
+      window.innerWidth = width;
+      window.dispatchEvent(new Event("resize"));
+    });
+  const wide = window.innerWidth;
+  try {
+    resize(780);
+    expect(screen.getByTestId("editor-phone-ask").textContent).toContain(
+      "Tallenna VS Codessa ensin",
+    );
+    // VS Code stays usable behind the row until the person switches.
+    expect(screen.getByTestId("workspace-editor")).toBe(frame);
+    fireEvent.click(screen.getByTestId("editor-phone-stay"));
+    expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
+    resize(770);
+    expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
+    resize(1000);
+    resize(790);
+    expect(screen.getByTestId("editor-phone-ask")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("editor-phone-switch"));
+    expect(screen.queryByTestId("workspace-editor")).toBeNull();
+    expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
+    expect(confirm).not.toHaveBeenCalled();
+  } finally {
+    resize(wide);
+  }
+});

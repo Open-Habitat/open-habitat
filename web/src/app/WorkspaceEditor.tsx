@@ -21,10 +21,11 @@ import { EditorHeader, EditorHeaderActions } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
+import { WarningBanner } from "../components/WarningBanner";
 import { liveText } from "../i18n";
 import { workspaceEditorText } from "../text/workspaceEditor";
 import { type EditorEngine, useEditorChoice } from "./accountPreferences";
-import type { BrowserDocumentHandle } from "./BrowserDocument";
+import type { BrowserDocumentHandle, LeaveSave } from "./BrowserDocument";
 import type { ConversationJournal } from "./conversationJournal";
 import {
   clampConversationWidth,
@@ -86,6 +87,7 @@ function WorkspaceEditorInner({
   identity,
   children,
   onShownChange,
+  onLeaveSaved,
   journal,
 }: {
   journal?: ConversationJournal;
@@ -94,6 +96,7 @@ function WorkspaceEditorInner({
   identity?: string;
   children: ReactNode;
   onShownChange?: (shown: boolean) => void;
+  onLeaveSaved?: (save: LeaveSave) => void;
 }) {
   const { engine: preference, busy: preferenceBusy } = useEditorChoice(
     identity,
@@ -170,8 +173,23 @@ function WorkspaceEditorInner({
   );
   useLayoutEffect(() => {
     if (!browser || browserWorkspace === workspaceId) return;
-    if (browserDocument.current?.retains()) return;
-    setBrowserWorkspace(workspaceId);
+    const handle = browserDocument.current;
+    if (!handle?.retains()) {
+      setBrowserWorkspace(workspaceId);
+      return;
+    }
+    // A workspace that vanished from an observation is not the person
+    // leaving: the document stays bound to its own until they act.
+    if (!workspaceId) return;
+    // Going to another workspace's conversation leaves the document, so it
+    // saves as closing does; only a failed save asks.
+    let live = true;
+    void handle.leave().then((ok) => {
+      if (live && ok) setBrowserWorkspace(workspaceId);
+    });
+    return () => {
+      live = false;
+    };
   }, [browser, workspaceId, browserWorkspace]);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -202,39 +220,33 @@ function WorkspaceEditorInner({
     return () => abort.abort();
   }, [workspaceId, csrf, browser]);
 
+  // Below 800 px an open VS Code asks, on Habitat's own row, to be saved
+  // there first: Habitat cannot see or save VS Code's buffers, so VS Code
+  // stays until the person switches (Jari 7.11.2026). Staying holds until
+  // the window crosses the breakpoint again.
   const compactDeclined = useRef(false);
+  const [phoneAsk, setPhoneAsk] = useState(false);
+  const toPhoneEditor = useCallback(() => {
+    setPhoneAsk(false);
+    setFrame(undefined);
+    setPhase("idle");
+    setEngine("codemirror6");
+  }, []);
   useEffect(() => {
     const resize = () => {
       setTotal(window.innerWidth);
       if (window.innerWidth > 800) {
         compactDeclined.current = false;
+        setPhoneAsk(false);
         return;
       }
-      if (compactDeclined.current) return;
-      if (window.innerWidth <= 800 && engine !== "codemirror6") {
-        if (
-          engine === "vscode" &&
-          frame &&
-          !window.confirm(txt.switchToPhoneEditor)
-        ) {
-          compactDeclined.current = true;
-          return;
-        }
-        if (
-          browserDocument.current &&
-          !browserDocument.current.switchEngine()
-        ) {
-          compactDeclined.current = true;
-          return;
-        }
-        setFrame(undefined);
-        setPhase("idle");
-        setEngine("codemirror6");
-      }
+      if (compactDeclined.current || engine === "codemirror6") return;
+      if (frame) setPhoneAsk(true);
+      else toPhoneEditor();
     };
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [engine, frame]);
+  }, [engine, frame, toPhoneEditor]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Only a changed stored preference requests an engine switch; growing the viewport does not.
   useEffect(() => {
     const next = window.innerWidth <= 800 ? "codemirror6" : preference;
@@ -308,11 +320,27 @@ function WorkspaceEditorInner({
     }
   }, [csrf, workspaceId, frame, browser]);
 
+  const latest = useRef({ browser, workspaceId });
+  latest.current = { browser, workspaceId };
+  const close = useCallback(() => {
+    if (latest.current.browser) setBrowserWorkspace(latest.current.workspaceId);
+    setCollapsed(false);
+    focusConversationPending.current = true;
+    setOpen(false);
+  }, []);
   const show = useCallback(
     (next: boolean) => {
-      if (!next && browserDocument.current && !browserDocument.current.leave())
+      if (!next) {
+        // Closing saves the document's text; only a failed save asks.
+        const handle = browserDocument.current;
+        if (!handle) close();
+        else
+          void handle.leave().then((ok) => {
+            if (ok) close();
+          });
         return;
-      if (next && !open) {
+      }
+      if (!open) {
         const selected = window.innerWidth <= 800 ? "codemirror6" : preference;
         if (selected !== engine) {
           setFrame(undefined);
@@ -320,14 +348,9 @@ function WorkspaceEditorInner({
           setEngine(selected);
         }
       }
-      if (!next) {
-        if (browser) setBrowserWorkspace(workspaceId);
-        setCollapsed(false);
-        focusConversationPending.current = true;
-      }
-      setOpen(next);
+      setOpen(true);
     },
-    [open, preference, engine, browser, workspaceId],
+    [open, preference, engine, close],
   );
 
   // A workspace change while the editor is open opens that workspace.
@@ -377,10 +400,17 @@ function WorkspaceEditorInner({
         return;
       }
       if (browser && workspaceId !== browserWorkspace) {
-        if (browserDocument.current && !browserDocument.current.leave()) return;
-        pendingOpen.current = { ref, workspace: workspaceId, text };
-        setBrowserWorkspace(workspaceId);
-        setOpen(true);
+        const move = () => {
+          pendingOpen.current = { ref, workspace: workspaceId, text };
+          setBrowserWorkspace(workspaceId);
+          setOpen(true);
+        };
+        const handle = browserDocument.current;
+        if (!handle) move();
+        else
+          void handle.leave().then((ok) => {
+            if (ok) move();
+          });
         return;
       }
       if (browser) {
@@ -605,6 +635,7 @@ function WorkspaceEditorInner({
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}
+              onLeaveSaved={onLeaveSaved}
               onReplaced={(note) =>
                 setNotes((before) => [
                   ...before,
@@ -637,6 +668,40 @@ function WorkspaceEditorInner({
             ) : null}
           </div>
         )}
+        {!browser && phoneAsk ? (
+          <div className="ah-editor-phone-ask">
+            <WarningBanner
+              data-testid="editor-phone-ask"
+              tone="neutral"
+              title={txt.phoneTitle}
+              actions={
+                <>
+                  <ControlButton
+                    data-testid="editor-phone-stay"
+                    size="row"
+                    variant="quiet"
+                    onPress={() => {
+                      compactDeclined.current = true;
+                      setPhoneAsk(false);
+                    }}
+                  >
+                    {txt.phoneStay}
+                  </ControlButton>
+                  <ControlButton
+                    data-testid="editor-phone-switch"
+                    size="row"
+                    variant="primary"
+                    onPress={toPhoneEditor}
+                  >
+                    {txt.phoneSwitch}
+                  </ControlButton>
+                </>
+              }
+            >
+              {txt.phoneBody}
+            </WarningBanner>
+          </div>
+        ) : null}
       </>
     ) : null;
 
@@ -682,6 +747,8 @@ export function WorkspaceEditor(props: {
   children: ReactNode;
   /** Whether the editor is beside the conversation now. */
   onShownChange?: (shown: boolean) => void;
+  /** Leaving the editor saved its text; the owner offers to undo it. */
+  onLeaveSaved?: (save: LeaveSave) => void;
 }) {
   return (
     <WorkspaceEditorInner

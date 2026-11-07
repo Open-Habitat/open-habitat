@@ -1,5 +1,6 @@
-import { rename, unlink, writeFile } from "node:fs/promises";
+import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { workerHostPort } from "../test-ports.mjs";
 import { openHeaderPanel } from "./conversation-view";
@@ -526,7 +527,7 @@ test("@workspace-editor leftover editor document cannot inherit the next person'
   ).toBe("blocked");
 });
 
-test("@workspace-editor refusing compact transition prompts once per breakpoint crossing", async ({
+test("@workspace-editor narrowing VS Code asks on Habitat's own row once per breakpoint crossing", async ({
   page,
 }) => {
   await conversationWithFileLink(page);
@@ -539,12 +540,17 @@ test("@workspace-editor refusing compact transition prompts once per breakpoint 
     dialogs++;
     await dialog.dismiss();
   });
+  const row = page.getByTestId("editor-phone-ask");
   await page.setViewportSize({ width: 799, height: 844 });
-  await expect.poll(() => dialogs).toBe(1);
+  await expect(row).toContainText("Tallenna VS Codessa ensin");
+  // Habitat does not save for VS Code: it stays usable until the switch.
+  await expect(page.getByTestId("workspace-editor")).toBeVisible();
+  await row.getByTestId("editor-phone-stay").click();
+  await expect(row).toHaveCount(0);
   await page.setViewportSize({ width: 780, height: 844 });
   await page.setViewportSize({ width: 770, height: 844 });
   await expect(page.getByTestId("workspace-editor")).toBeVisible();
-  expect(dialogs).toBe(1);
+  await expect(row).toHaveCount(0);
   await page.setViewportSize({ width: 1000, height: 844 });
   // Resize events can coalesce if both sizes happen before a rendering step.
   // A wide frame is the actual breakpoint crossing, not merely a CDP setting.
@@ -553,5 +559,20 @@ test("@workspace-editor refusing compact transition prompts once per breakpoint 
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   await page.setViewportSize({ width: 790, height: 844 });
-  await expect.poll(() => dialogs).toBe(2);
+  await expect(row).toBeVisible();
+  if (process.env.OH_VISUAL_CAPTURE === "1") {
+    const base = fileURLToPath(
+      new URL(
+        "../../issues/own-unsaved-changes-dialog/evidence/vscode-phone-row-790",
+        import.meta.url,
+      ),
+    );
+    await mkdir(join(base, ".."), { recursive: true });
+    await page.screenshot({ path: `${base}.png` });
+    await writeFile(`${base}.html`, await page.content());
+  }
+  await row.getByTestId("editor-phone-switch").click();
+  await expect(page.getByTestId("workspace-editor")).toHaveCount(0);
+  await expect(page.getByTestId("browser-editor")).toBeVisible();
+  expect(dialogs).toBe(0);
 });

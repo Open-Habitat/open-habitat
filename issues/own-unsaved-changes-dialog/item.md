@@ -3,13 +3,14 @@ created: 2026-11-07
 updated: 2026-11-07
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: own-dialog-proto
 lane_seq: 2
 blocked_by: ['@proto-own-confirm-dialog']
 collision: [web/src/app/BrowserDocument.tsx, web/src/app/WorkspaceEditor.tsx]
 preparation: ready
+closed: 2026-11-07
 ---
 
 # Leaving the editor saves with Kumoa instead of the browser's confirm
@@ -58,12 +59,12 @@ feature: no Settings › Kokeelliset ominaisuudet gate.
 
 ## Acceptance Criteria
 
-- [ ] No `window.confirm` remains on the editor's leave paths or the VS Code
+- [x] No `window.confirm` remains on the editor's leave paths or the VS Code
       switch.
-- [ ] Leaving with unsaved text saves and shows a notice with *Kumoa*;
+- [x] Leaving with unsaved text saves and shows a notice with *Kumoa*;
       *Kumoa* restores the previous disk version and refuses on a later
       change.
-- [ ] A failed save on leave shows Habitat's own window; VS Code switch
+- [x] A failed save on leave shows Habitat's own window; VS Code switch
       shows Habitat's own row.
-- [ ] Same-workspace conversation switch asks nothing and keeps the text.
-- [ ] Touched and added browser specs green; live checks in `KOKEILTAVAA.md`.
+- [x] Same-workspace conversation switch asks nothing and keeps the text.
+- [x] Touched and added browser specs green; live checks in `KOKEILTAVAA.md`.

@@ -17,7 +17,8 @@ export type NoticeKind =
   | "archive"
   | "trash"
   | "workspace-archive"
-  | "workspace-icon";
+  | "workspace-icon"
+  | "editor-save";
 
 type Entry = {
   id: string;

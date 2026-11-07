@@ -16,6 +16,7 @@ const icons: Record<NoticeKind, IconName> = {
   trash: "trash",
   "workspace-archive": "eyeOff",
   "workspace-icon": "check",
+  "editor-save": "check",
 };
 
 /** Transient undo offer; the archive itself remains native host state. A

@@ -284,8 +284,17 @@ Editor engines are bundled trusted app code, loaded only on an effective choice
 and document open; settings and unselected engines must not fetch their chunks
 or workers. CodeMirror is the sole browser engine, with no CDN, extension host,
 workspace plugin or language-server process. Keep the shared document controller
-as the sole save, conflict and uncertainty owner. No autosave, force save,
-persistent drafts or resent writes. Selecting VS Code only records a choice;
+as the sole save, conflict and uncertainty owner. No timed autosave, force
+save, persistent drafts or resent writes. Leaving a document is the one save
+nobody presses (Jari's choice): closing the editor, opening another file,
+another workspace's conversation and a route that unmounts the editor save
+through that same save, and the notice's Kumoa writes the earlier version back
+on the saved version, so the daemon refuses it after any later change. Only a
+save that cannot be done asks, in Habitat's own window; moving between
+conversations that keep the editor asks and writes nothing, and the browser's
+`window.confirm` is never used. Habitat cannot see or save VS Code's buffers:
+narrowing past the phone breakpoint asks on its own row to save there first,
+and VS Code stays until the person switches. Selecting VS Code only records a choice;
 only explicitly opening it may start code-server. Leaving it unmounts the frame,
 not the shared per-user process another tab may still use. Browser engines never
 mint editor grants or borrow code-server's separate-origin relay.

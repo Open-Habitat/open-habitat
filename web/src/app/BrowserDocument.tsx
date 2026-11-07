@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useBlocker, useLocation } from "react-router";
+import { useBlocker } from "react-router";
 import { BrowserEditor, type DiskChanges } from "../components/BrowserEditor";
 import {
   changeCount,
@@ -24,6 +24,7 @@ import {
 } from "../components/editorMerge";
 import type { TreeDirectories } from "../components/editorTree";
 import type { FileRef } from "../components/fileRefs";
+import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { formatDate, liveText } from "../i18n";
 import { browserDocumentText } from "../text/browserDocument";
 import {
@@ -38,6 +39,7 @@ import {
   readEditorFile,
   saveEditorFile,
 } from "./editorFiles";
+import { keepsEditor } from "./editorRoute";
 import { blockAutomaticReload } from "./reloadSafety";
 
 // Jari's choice (2026-10-24): a change someone else wrote to the open file is
@@ -71,10 +73,26 @@ interface Claim {
 }
 const txt = liveText(browserDocumentText);
 
+/** What a save that leaving made replaced: the version on disk before it and
+ * the one it wrote. Kumoa writes the first back on the second's version. */
+export interface LeaveSave {
+  before: EditorDocument;
+  after: EditorDocument;
+}
+type SaveOutcome =
+  | { kind: "saved"; before: EditorDocument; after: EditorDocument }
+  | { kind: "clean" }
+  | { kind: "busy" }
+  | { kind: "gone" }
+  /** Nothing was written; the reason says why in the person's words. */
+  | { kind: "held"; reason: string };
+
 export interface BrowserDocumentHandle {
   open: (ref: FileRef) => Promise<boolean>;
-  leave: () => boolean;
-  switchEngine: () => boolean;
+  /** Leaving keeps the person's text: it is saved without asking, and only
+   * a save that cannot be done asks whether to discard it (Jari 7.11.2026).
+   * Resolves whether the document may go. */
+  leave: () => Promise<boolean>;
   retains: () => boolean;
   focus: () => void;
   /** An agent tool call finished in a conversation beside the editor. */
@@ -86,6 +104,7 @@ export default function BrowserDocument({
   csrf,
   ref,
   onReplaced,
+  onLeaveSaved,
   toolbarActions,
 }: {
   toolbarActions?: ReactNode;
@@ -95,6 +114,8 @@ export default function BrowserDocument({
   ref?: Ref<BrowserDocumentHandle>;
   /** A save replaced changes an agent's file tool wrote. */
   onReplaced?: (note: Omit<ReplaceNote, "id">) => void;
+  /** Leaving saved unsaved text; the owner offers to undo it. */
+  onLeaveSaved?: (save: LeaveSave) => void;
 }) {
   const [doc, setDoc] = useState<EditorDocument>();
   const [content, setContent] = useState("");
@@ -146,6 +167,8 @@ export default function BrowserDocument({
   }, []);
   const abort = useRef(new AbortController());
   const generation = useRef(0);
+  const [asking, setAsking] = useState<string>();
+  const answer = useRef<((discard: boolean) => void) | undefined>(undefined);
   useLayoutEffect(() => {
     abort.current = new AbortController();
     return () => {
@@ -153,28 +176,78 @@ export default function BrowserDocument({
       pendingDirectories.current.clear();
       generation.current++;
       window.clearTimeout(timer.current);
+      answer.current?.(false);
     };
   }, []);
-  const leave = useCallback(() => {
-    if (current.current.saving) return false;
-    return !current.current.dirty || window.confirm(txt.discardQuestion);
-  }, []);
-  const location = useLocation();
-  const approvedRoute = useRef<string | undefined>(undefined);
-  const blocker = useBlocker(({ nextLocation }) => {
-    const allowed = leave();
-    approvedRoute.current = allowed ? nextLocation.key : undefined;
-    return !allowed;
-  });
+  // The save in flight, which leaving waits for before it decides.
+  const inflight = useRef<Promise<SaveOutcome>>(
+    Promise.resolve({ kind: "clean" }),
+  );
+  const saveRef = useRef(() => inflight.current);
+  // Read at the moment it is needed: a save adopts its reply before the
+  // render that would refresh `dirty`.
+  const unsaved = useCallback(
+    () =>
+      !!current.current.doc &&
+      current.current.doc.content !== current.current.content,
+    [],
+  );
+  const leftSaved = useRef(onLeaveSaved);
+  leftSaved.current = onLeaveSaved;
+  const leaving = useRef<Promise<boolean> | undefined>(undefined);
+  const leave = useCallback((): Promise<boolean> => {
+    leaving.current ??= (async () => {
+      let first: EditorDocument | undefined;
+      let last: EditorDocument | undefined;
+      const ask = (reason: string) =>
+        new Promise<boolean>((resolve) => {
+          answer.current = (discard) => {
+            answer.current = undefined;
+            setAsking(undefined);
+            resolve(discard);
+          };
+          setAsking(reason);
+        });
+      try {
+        // Typing during a save makes the text dirty again; it is saved too.
+        for (let attempt = 0; ; attempt++) {
+          while (current.current.saving && !abort.current.signal.aborted)
+            await inflight.current;
+          if (abort.current.signal.aborted) return false;
+          if (!unsaved()) return true;
+          if (attempt === 3) return false;
+          const outcome = await saveRef.current();
+          if (outcome.kind === "saved") {
+            first ??= outcome.before;
+            last = outcome.after;
+          } else if (outcome.kind === "clean") return true;
+          else if (outcome.kind === "gone") return false;
+          else if (outcome.kind === "held") return await ask(outcome.reason);
+        }
+      } finally {
+        leaving.current = undefined;
+        if (first && last && !abort.current.signal.aborted)
+          leftSaved.current?.({ before: first, after: last });
+      }
+    })();
+    return leaving.current;
+  }, [unsaved]);
+  // A route that unmounts the editor waits for the save; one that keeps it
+  // (another conversation, Settings) keeps the text as it is.
+  const blocker = useBlocker(
+    ({ nextLocation }) =>
+      (unsaved() || current.current.saving) && !keepsEditor(nextLocation),
+  );
+  const answered = useRef<unknown>(undefined);
   useEffect(() => {
-    if (blocker.state === "blocked") blocker.reset();
-  }, [blocker]);
-  useEffect(() => {
-    // Permission covers this commit's resource rebind, not later observations
-    // when navigation happened to keep the same document mounted.
-    if (approvedRoute.current === location.key)
-      approvedRoute.current = undefined;
-  }, [location.key]);
+    if (blocker.state !== "blocked" || answered.current === blocker) return;
+    answered.current = blocker;
+    void leave().then((ok) => {
+      if (abort.current.signal.aborted) return;
+      if (ok) blocker.proceed();
+      else blocker.reset();
+    });
+  }, [blocker, leave]);
   useEffect(
     () =>
       blockAutomaticReload(
@@ -248,9 +321,11 @@ export default function BrowserDocument({
           void loadDirectory(parts.slice(0, i).join("/"));
         return true;
       }
-      if (!leave()) return false;
-      // Do not discard the current buffer until the candidate was read safely.
-      const before = current.current.content;
+      // A save in flight finishes before a new read can supersede it.
+      while (current.current.saving && !abort.current.signal.aborted)
+        await inflight.current;
+      // Do not save or replace the current buffer until the candidate was
+      // read safely.
       const token = ++generation.current;
       setLoading(true);
       try {
@@ -261,8 +336,13 @@ export default function BrowserDocument({
         );
         if (abort.current.signal.aborted || token !== generation.current)
           return false;
-        // Typing during the read must not be overwritten by its delayed reply.
-        if (current.current.content !== before && !leave()) return false;
+        // Opening another file saves the text, also what was typed during
+        // the read, before the reply replaces it.
+        if (unsaved()) {
+          if (!(await leave())) return false;
+          if (abort.current.signal.aborted || token !== generation.current)
+            return false;
+        }
         // Reveal only the explicit target's ancestors, never scan recursively.
         const parts = next.path.split("/");
         for (let i = 1; i < parts.length; i++)
@@ -291,7 +371,7 @@ export default function BrowserDocument({
         if (token === generation.current) setLoading(false);
       }
     },
-    [leave, workspace, loadDirectory, forget, adopt],
+    [leave, workspace, loadDirectory, forget, adopt, unsaved],
   );
   // Brings the waiting version into the text: one undoable history event.
   // Its disk version becomes the base the next save is compared against.
@@ -449,25 +529,15 @@ export default function BrowserDocument({
     () => ({
       open,
       leave,
-      switchEngine: () => {
-        if (!leave()) return false;
-        forget();
-        setContent(current.current.doc?.content ?? "");
-        setRevision((r) => r + 1);
-        return true;
-      },
-      // Observations cannot request a discard. A committed route may already
-      // have obtained one for this document; do not prompt a second time.
-      retains: () =>
-        current.current.saving ||
-        (current.current.dirty && approvedRoute.current !== location.key),
+      // Observations cannot request a discard or a save.
+      retains: () => current.current.saving || unsaved(),
       focus: () =>
         document
           .querySelector<HTMLElement>('[data-testid="editor-document"]')
           ?.focus(),
       observe: (report) => observeRef.current(report),
     }),
-    [open, leave, location.key, forget],
+    [open, leave, unsaved],
   );
   const saved = (next: EditorDocument, text: string) => {
     adopt(next);
@@ -500,13 +570,28 @@ export default function BrowserDocument({
           : txt.savedReplacedDisk(lost.length),
     );
   };
-  const save = async () => {
+  const held = (): SaveOutcome => {
+    const name = current.current.doc?.path.split("/").pop() ?? "";
+    const source =
+      pendingRef.current?.source ?? mergeApi.current?.merge().source;
+    return {
+      kind: "held",
+      reason: txt.leaveConflict(name, source === "agent"),
+    };
+  };
+  const failed = (reason: string): SaveOutcome => {
+    setProblem(reason);
+    return { kind: "held", reason };
+  };
+  const saveNow = async (): Promise<SaveOutcome> => {
     const state = current.current;
-    if (!state.doc || state.saving || state.saveBlocked) return;
+    if (!state.doc) return { kind: "clean" };
+    if (state.saving) return { kind: "busy" };
+    if (state.saveBlocked) return { kind: "held", reason: txt.saveUnknown };
     // Save is the latest moment waiting changes come in. With a conflict the
     // save waits for the person's choices.
-    if (pendingRef.current && !importNow()) return;
-    if (mergeApi.current?.merge().conflicts.length) return;
+    if (pendingRef.current && !importNow()) return held();
+    if (mergeApi.current?.merge().conflicts.length) return held();
     current.current.saving = true;
     setSaving(true);
     const token = generation.current;
@@ -517,7 +602,7 @@ export default function BrowserDocument({
       // into an ordinary import. A write landing in between is read again.
       for (let attempt = 0; attempt < 3; attempt++) {
         const base = current.current.doc;
-        if (!base) return;
+        if (!base) return { kind: "clean" };
         let fresh: EditorDocument | undefined;
         try {
           fresh = await readEditorFile(
@@ -528,22 +613,22 @@ export default function BrowserDocument({
         } catch {
           // The write below still carries the base version.
         }
-        if (gone()) return;
+        if (gone()) return { kind: "gone" };
         if (fresh && fresh.version !== base.version) {
           detect(fresh);
-          if (pendingRef.current && !importNow()) return;
+          if (pendingRef.current && !importNow()) return held();
           // Open conflicts, new or from an earlier import, hold the write.
-          if (mergeApi.current?.merge().conflicts.length) return;
+          if (mergeApi.current?.merge().conflicts.length) return held();
         }
         const doc = current.current.doc;
         const text = mergeApi.current?.text() ?? current.current.content;
-        if (!doc || text === doc.content) return;
+        if (!doc || text === doc.content) return { kind: "clean" };
         const result = await saveEditorFile(doc, text, csrf);
-        if (gone()) return;
+        if (gone()) return { kind: "gone" };
         if (result.kind === "ok") {
           // The changed resource is this document reply, not a workspace snapshot.
           saved(result.document, text);
-          return;
+          return { kind: "saved", before: doc, after: result.document };
         }
         if (result.kind === "refused" && result.code === "file_changed")
           continue;
@@ -555,36 +640,43 @@ export default function BrowserDocument({
               doc.path,
               abort.current.signal,
             );
-            if (gone()) return;
+            if (gone()) return { kind: "gone" };
             if (after.content === text) {
               saved(after, text);
-              return;
+              return { kind: "saved", before: doc, after };
             }
             detect(after);
-            setProblem(txt.noSaveReply);
+            return failed(txt.noSaveReply);
           } catch {
-            if (gone()) return;
+            if (gone()) return { kind: "gone" };
             setSaveBlocked(true);
-            setProblem(txt.saveUnknown);
+            return failed(txt.saveUnknown);
           }
-          return;
         }
-        setProblem(
+        return failed(
           result.kind === "invalid" ? txt.invalidText : txt.saveFailed,
         );
-        return;
       }
-      setProblem(txt.keptChanging);
+      return failed(txt.keptChanging);
     } finally {
-      if (!gone()) {
+      // A newer opening superseded this save, but the document lives on and
+      // must not stay marked as saving.
+      if (!abort.current.signal.aborted) {
         current.current.saving = false;
         setSaving(false);
+      }
+      if (!gone()) {
         const queued = deferred.current;
         deferred.current = undefined;
         if (queued) check(queued.claim);
       }
     }
   };
+  const save = () => {
+    if (!current.current.saving) inflight.current = saveNow();
+    return inflight.current;
+  };
+  saveRef.current = save;
   const changes: DiskChanges | undefined =
     pending && !merge.state.conflicts.length
       ? { kind: "pending", source: pending.source, count: pending.count }
@@ -600,56 +692,64 @@ export default function BrowserDocument({
           ? { kind: "undone", source: written.source }
           : undefined;
   return (
-    <BrowserEditor
-      toolbarActions={toolbarActions}
-      engine={engine}
-      document={
-        doc
-          ? { path: doc.path, content: doc.content, revision, selection }
-          : undefined
-      }
-      directories={directories}
-      reveal={reveal}
-      onLoadDirectory={loadDirectory}
-      picker={picker}
-      dirty={dirty}
-      saveBlocked={saveBlocked}
-      saving={saving}
-      loading={loading}
-      problem={problem}
-      changes={changes}
-      notice={notice}
-      mergeApi={mergeApi}
-      onPicker={() => setPicker(!picker)}
-      onOpen={(path) => void open({ path })}
-      onChange={(next: string, change: EditorChange) => {
-        approvedRoute.current = undefined;
-        current.current.content = next;
-        setContent(next);
-        setMerge({ state: change.merge, latest: change.importLatest });
-        if (change.typed) {
-          lastTyped.current = Date.now();
-          setNotice(undefined);
+    <>
+      <BrowserEditor
+        toolbarActions={toolbarActions}
+        engine={engine}
+        document={
+          doc
+            ? { path: doc.path, content: doc.content, revision, selection }
+            : undefined
         }
-        // Typing restarts the pause; resolving the last conflict lets a
-        // version that waited behind it come in.
-        if (change.typed || !change.merge.conflicts.length) schedule();
-      }}
-      onSave={() => void save()}
-      onReload={() => {
-        if (doc) void open({ path: doc.path });
-      }}
-      onImportNow={() => void importNow()}
-      onUndoImport={() => mergeApi.current?.undo()}
-      onReimport={() => {
-        const write = writtenRef.current;
-        const api = mergeApi.current;
-        if (!write || !api) return;
-        api.bring(
-          threeWay(api.text(), write.origin, write.theirs),
-          write.source,
-        );
-      }}
-    />
+        directories={directories}
+        reveal={reveal}
+        onLoadDirectory={loadDirectory}
+        picker={picker}
+        dirty={dirty}
+        saveBlocked={saveBlocked}
+        saving={saving}
+        loading={loading}
+        problem={problem}
+        changes={changes}
+        notice={notice}
+        mergeApi={mergeApi}
+        onPicker={() => setPicker(!picker)}
+        onOpen={(path) => void open({ path })}
+        onChange={(next: string, change: EditorChange) => {
+          current.current.content = next;
+          setContent(next);
+          setMerge({ state: change.merge, latest: change.importLatest });
+          if (change.typed) {
+            lastTyped.current = Date.now();
+            setNotice(undefined);
+          }
+          // Typing restarts the pause; resolving the last conflict lets a
+          // version that waited behind it come in.
+          if (change.typed || !change.merge.conflicts.length) schedule();
+        }}
+        onSave={() => void save()}
+        onReload={() => {
+          if (doc) void open({ path: doc.path });
+        }}
+        onImportNow={() => void importNow()}
+        onUndoImport={() => mergeApi.current?.undo()}
+        onReimport={() => {
+          const write = writtenRef.current;
+          const api = mergeApi.current;
+          if (!write || !api) return;
+          api.bring(
+            threeWay(api.text(), write.origin, write.theirs),
+            write.source,
+          );
+        }}
+      />
+      {asking !== undefined ? (
+        <UnsavedChangesDialog
+          reason={asking}
+          onDiscard={() => answer.current?.(true)}
+          onKeep={() => answer.current?.(false)}
+        />
+      ) : null}
+    </>
   );
 }
