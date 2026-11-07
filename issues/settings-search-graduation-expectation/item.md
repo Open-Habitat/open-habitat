@@ -2,13 +2,16 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed focused browser test failure, reproduced on main
 source_ref: taskfleet:01m6tg9xw5q2mc893bmzg5xbxm/test-failure:settings-search-server-key
 originating_run: 01m6tg9xw5q2mc893bmzg5xbxm
 originating_run_kind: spinoff
+lane: settings-search-fix
+lane_seq: 1
+preparation: ready
 ---
 
 # Settings search browser test still expects server keys in personal results
