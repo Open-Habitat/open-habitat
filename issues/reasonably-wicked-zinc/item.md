@@ -35,3 +35,9 @@ Make the product's work inventory distinguish a failed start from an active turn
 Evidence: Alder `/var/tmp/agent-keep/birch-v0.1.0-pilot.21/01m6vbf3whpnh6wb0q3h1yyyy8/` (original and corrected previews, before/after comparison, operation terminals) and `/var/tmp/agent-keep/open-habitat-upgrade/01m6vbf3whpnh6wb0q3h1yyyy8/agent-birch-commands.jsonl`.
 
 Release source: `241d5ae8f73f10d4be6276428704c27d7b9aa0cc`. Program origin: `01m6vbf3whpnh6wb0q3h1yyyy8`; worker origin: `01m6vcjv9yj5rkrstma9kbar47` (spinoff).
+
+## Comments
+
+### 2026-11-07T16:22:58Z · @agent
+
+Workaround verified on Birch: pilot.19 → published pilot.21 completed at 2026-11-07T16:19:28Z under plan 1ad52d45a00a6db734362c83d53f6baf50061df8809a446c5567635830a293a4, exact-owner operation 11c5062a935c8b50c27cde1dacdfe8c4 completed seq 6, repeat no_change and operation readback completed. Final host check 21/21; before/after users, access/admission, settings projection/hash, bindings hash, native quotas, homes, user managers and product digests compare preserved; public HTTPS/sign-in/OAuth redirect/editor/view checks pass. Taskfleet supervisor and tmux PIDs survived. Fleetrepo helper/program regression suite: 51 tests pass. A separate installer count-only host-check comparison was corrected to accept the newly added passing runtime.taskfleet check while retaining every predecessor check identity. No product binary was patched; the product inventory bug remains open for correction. Human OAuth callback acceptance untested.
