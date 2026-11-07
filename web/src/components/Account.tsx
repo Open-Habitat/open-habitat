@@ -322,6 +322,19 @@ export function AccountSettings({
   const section = onNavigate ? (routeSection ?? "tili") : localSection;
   const detail = onNavigate ? routeSection != null : localDetail;
   const row = onNavigate ? routeRow : localRow;
+  useEffect(() => {
+    const folded = window.matchMedia("(max-width: 1050px)");
+    const preserveSection = (event: MediaQueryListEvent) => {
+      // /settings shows Account beside the list on desktop. When that
+      // visible section becomes a separate screen, give it its own route.
+      // Entering /settings while already narrow still opens the list.
+      if (!event.matches || detail) return;
+      if (onNavigate) onNavigate(settingsHref(section), { replace: true });
+      else setLocalDetail(true);
+    };
+    folded.addEventListener("change", preserveSection);
+    return () => folded.removeEventListener("change", preserveSection);
+  }, [detail, section, onNavigate]);
   /** The search opens results beside it as the selection moves: those
    * route changes move no focus out of the field. Typing outruns the route,
    * so this is one flag rather than the place last previewed. */

@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: settings-polish
 lane_seq: 2
+closed: 2026-11-07
 ---
 
 # Below 1050 px settings show only the section list, not the selected section

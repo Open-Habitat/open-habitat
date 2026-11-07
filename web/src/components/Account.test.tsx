@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getThemeChoice, setThemeChoice } from "../theme";
 import {
   AccountLogoutDialog,
@@ -15,6 +15,13 @@ import {
 } from "./Account";
 
 describe("account presentation", () => {
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  });
   it("shares name, email and image across compact rail, opened menu and settings, with image fallback", async () => {
     const profile = {
       name: "Alice Example",
@@ -216,7 +223,6 @@ describe("account presentation", () => {
       window.history.replaceState(null, "", path),
     );
     // A desktop: results and the previewed section side by side.
-    vi.stubGlobal("matchMedia", () => ({ matches: false }));
     // jsdom lays nothing out.
     Element.prototype.scrollIntoView = () => {};
     window.history.replaceState(null, "", "/settings/recap#recap-model");
