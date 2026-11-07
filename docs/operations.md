@@ -367,8 +367,11 @@ install a new product. Publish the new manifest together with the product and
 identify unchanged archive hashes in the handoff.
 
 `scripts/release-cut.py` cuts such a product-only release of this repository
-from a commit whose clean gate passed, and refuses one whose runtime inputs
-changed since the predecessor. Its parts also work alone.
+from a commit whose clean gate passed. When runtime inputs changed since the
+predecessor it refuses unless each changed profile is passed as a native
+build output with `--rebuilt ARCH=DIR` for both architectures; those archives
+then replace the profile's descriptor and are uploaded with the release. Its
+parts also work alone.
 `scripts/successor-descriptors.py --archive-release vPREDECESSOR` annotates
 archives without a source tag and preserves an existing source tag, so
 repeated cuts point directly to the original asset. A rebuilt profile uses its
