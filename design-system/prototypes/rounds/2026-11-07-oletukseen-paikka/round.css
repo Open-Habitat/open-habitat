@@ -1,0 +1,56 @@
+/* Review chrome above Levytila and Keskustelut side by side. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+.rq-pane-width { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+  .rq-pane-width { display: none; }
+}
+.rq-sheet { padding: calc(var(--review-h, 0px) + var(--ah-s5)) var(--ah-s5) 96px; max-width: 1600px; margin: 0 auto; box-sizing: border-box; }
+.rq-sheet-title { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.rq-sheet-title span { display: block; font: 400 var(--ah-size-meta) var(--ah-font); color: var(--ah-muted); margin-top: 2px; }
+.rq-grid { display: flex; flex-wrap: wrap; gap: var(--ah-s6) var(--ah-s8); align-items: flex-start; }
+/* The settings pane as the app gives it: about 440px beside both rails,
+   at most 720px with the rails closed (Settings.css .s-main). */
+.rq-grid > .s-main { flex: none; width: var(--rq-pane, 440px); max-width: 100%; }
+.rq-grid > .s-main > h2 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+@media (max-width: 900px) { .rq-sheet { padding-inline: var(--ah-s3); } .rq-grid > .s-main { width: 100%; } }
+
+/* ---- A: the restore icon after the stepper; the same gap without one. */
+.rq-a-limit { display: inline-flex; align-items: center; gap: var(--ah-s1); }
+.rq-a-limit > [data-ah-primitive="button"] { --i-fg: var(--ah-muted); }
+.rq-a-gap { display: inline-block; flex: none; width: var(--ah-control-row); height: 1px; }
+
+/* ---- B: Oletukseen as a link in the row's own line. */
+.rq-b-link {
+  appearance: none; border: 0; background: none; padding: 0; margin: 0;
+  font: inherit; line-height: inherit; color: var(--ah-accent);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.rq-b-link:hover { color: var(--ah-ink); }
+.rq-b-link:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 2px; border-radius: 2px; }
+
+/* ---- C: a quiet … at every row's end, beside the limit even when narrow. */
+.rq-c-trigger { --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); }
+.rq-c-trigger .ah-menu-chevron { display: none; }
+@container people-list (max-width: 559px) {
+  [data-place="c"] .ah-people:not([data-compact]) > li { grid-template-columns: minmax(0, 1fr) auto auto; }
+  [data-place="c"] .ah-people:not([data-compact]) > li > .ah-people-end { grid-column: 3; grid-row: 1; }
+  [data-place="c"] .ah-people:not([data-compact]) > .ah-people-head > :last-child { grid-column: 3; grid-row: 1; }
+}
+@container people-list (max-width: 379px) {
+  [data-place="c"] .ah-people[data-compact] > li { grid-template-columns: minmax(0, 1fr) auto auto; }
+  [data-place="c"] .ah-people[data-compact] > li > .ah-people-end { grid-column: 3; grid-row: 1; }
+  [data-place="c"] .ah-people[data-compact] > .ah-people-head > :last-child { grid-column: 3; grid-row: 1; }
+}
