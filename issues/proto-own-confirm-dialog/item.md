@@ -37,3 +37,16 @@ selaimen oma eikä sitä voi korvata; prototyyppi kertoo, missä se jää.
 (Kumoan merkitys / oma *Hylkää muutokset*) ja 3 (VS Coden vaihto puhelimen
 editoriin) olivat Jarille epäselviä; ne selitettiin keskustelussa uudelleen
 suosituksineen ja odottavat vastausta.
+
+## Decision (Jari 2026-11-07, kysymykset 2 ja 3)
+
+2. *Kumoa* on oikea undo: se palauttaa tiedoston ennalleen ja hylkää muutoksen
+   kokonaan (ei jätä sitä editoriin tallentamattomana). Erillistä *Hylkää
+   muutokset* -painiketta ei tarvita.
+3. VS Coden vaihtuessa puhelimen editoriin (ikkuna alle 800 px): Habitat ei
+   tallenna VS Coden puolesta. Selaimen dialogin tilalle Habitatin oma rivi,
+   joka pyytää tallentamaan VS Codessa ensin; VS Code pysyy auki, kunnes
+   henkilö painaa vaihtoa.
+
+Seuraavaksi toteutus kokeellisena tai korjauksena (nykyinen selaimen dialogi on
+vika); toteutusissue tehdään seuraavassa sessiossa.
