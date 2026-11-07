@@ -164,14 +164,16 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
         a.top < b.bottom - 0.5 &&
         b.top < a.bottom - 0.5;
       const out: string[] = [];
-      for (const row of Array.from(list.children)) {
+      for (const row of Array.from(
+        list.querySelectorAll("[data-testid^=si-row-]"),
+      )) {
         const id = row.getAttribute("data-testid");
         const box = row.getBoundingClientRect();
         const name = row.querySelector(".si-name");
         const parts = [
           name,
-          row.querySelector(".si-state > *"),
-          row.querySelector(".si-act > *"),
+          row.querySelector(".ah-people-cell > *"),
+          row.querySelector(".ah-people-end > *"),
         ].map((e) => e?.getBoundingClientRect());
         if (name?.getClientRects().length !== 1) out.push(`${id}: name wraps`);
         parts.forEach((a, i) => {

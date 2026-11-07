@@ -7,6 +7,7 @@ import {
 } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
+import { SectionLead, ServerSection } from "../components/ServerSection";
 import {
   at,
   earlierHolders,
@@ -179,7 +180,8 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
     </ControlButton>
   );
   return (
-    <div className="sk-stack">
+    <ServerSection>
+      <SectionLead testId="site-key-terms">{txt.terms}</SectionLead>
       <SiteKeyPage
         siteKey={siteKey}
         disabled={!csrf || busy || stopped || giving !== undefined}
@@ -266,6 +268,6 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
           }}
         />
       )}
-    </div>
+    </ServerSection>
   );
 }

@@ -859,7 +859,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
   await expect(page.getByTestId("access-row-42")).toBeVisible();
   await page.getByRole("link").and(page.getByTestId("settings-levy")).click();
   await expect(page.getByTestId("server-storage")).toBeVisible();
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByTestId(/^administration-user-/).first()).toBeVisible();
   let releaseServer = () => {};
   const serverReady = new Promise<void>((resolve) => {
     releaseServer = resolve;
@@ -908,7 +908,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
   ]) {
     await page.goto(path);
     await expect(page.getByTestId("administration-denied")).toBeVisible();
-    await expect(page.getByRole("table")).toHaveCount(0);
+    await expect(page.getByTestId("server-storage-section")).toHaveCount(0);
     await expect(page.getByTestId("server-access")).toHaveCount(0);
     await expect(page.getByTestId("server-name-input")).toHaveCount(0);
     await expect(

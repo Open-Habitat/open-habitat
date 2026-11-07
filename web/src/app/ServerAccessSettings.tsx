@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ControlButton } from "../components/ControlElements";
 import {
   type AddOutcome,
   type PendingChange,
   ServerAccess,
 } from "../components/ServerAccess";
+import { SectionCard } from "../components/ServerSection";
 import { liveText } from "../i18n";
 import { serverAccessText } from "../text/serverAccess";
 import {
@@ -24,7 +31,14 @@ const txt = liveText(serverAccessText);
 // The host side of Käyttäjät ja pääsy: one request per change, its row marked
 // until the reply settles it. An uncertain reply stays uncertain until the
 // administrator reads the list again; nothing is retried.
-export function ServerAccessSettings({ csrf }: { csrf?: string }) {
+export function ServerAccessSettings({
+  csrf,
+  children,
+}: {
+  csrf?: string;
+  /** Further rows of the section's first card. */
+  children?: ReactNode;
+}) {
   const [view, setView] = useState<AccessView>();
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<Record<string, PendingChange>>({});
@@ -142,25 +156,32 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
     return { kind: "uncertain" };
   };
   if (!view)
-    return failed ? (
-      <div className="s-row" role="alert">
-        {txt.listFailed}
-        <ControlButton size="row" onPress={() => void reload()}>
-          {txt.reload}
-        </ControlButton>
-      </div>
-    ) : (
-      <p className="s-row">{txt.loading}</p>
+    return (
+      <SectionCard>
+        {failed ? (
+          <div className="s-row" role="alert">
+            {txt.listFailed}
+            <ControlButton size="row" onPress={() => void reload()}>
+              {txt.reload}
+            </ControlButton>
+          </div>
+        ) : (
+          <p className="s-row">{txt.loading}</p>
+        )}
+        {children}
+      </SectionCard>
     );
   return (
     <>
       {failed && (
-        <div className="s-row" role="alert">
-          {txt.refreshFailed}
-          <ControlButton size="row" onPress={() => void reload()}>
-            {txt.reload}
-          </ControlButton>
-        </div>
+        <SectionCard>
+          <div className="s-row" role="alert">
+            {txt.refreshFailed}
+            <ControlButton size="row" onPress={() => void reload()}>
+              {txt.reload}
+            </ControlButton>
+          </div>
+        </SectionCard>
       )}
       <ServerAccess
         view={view}
@@ -201,7 +222,9 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
           })
         }
         teamPending={teamPending}
-      />
+      >
+        {children}
+      </ServerAccess>
     </>
   );
 }

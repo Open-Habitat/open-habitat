@@ -1,7 +1,4 @@
 /* Asetukset › Käyttäjät ja pääsy (proto-admin-server-onboarding round 6). */
-.sa > * + * {
-  border-top: 1px solid var(--ah-line-soft);
-}
 .sa .s-row {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -56,40 +53,6 @@
   display: block;
   color: var(--ah-ink-2);
 }
-.sa-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ah-s3);
-  flex-wrap: wrap;
-}
-.sa-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.sa-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--ah-s3);
-  align-items: center;
-  padding: var(--ah-s3) var(--ah-s5);
-}
-.sa-row + .sa-row {
-  border-top: 1px solid var(--ah-line-soft);
-}
-.sa-main {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-.sa-who {
-  display: flex;
-  gap: var(--ah-s2);
-  align-items: center;
-  flex-wrap: wrap;
-  min-width: 0;
-}
 /* Ordinary list size and weight (Jari r6: the names were far too large). */
 .sa-login {
   overflow-wrap: anywhere;
@@ -104,12 +67,6 @@
 }
 .sa-receipt {
   overflow-wrap: anywhere;
-}
-.sa-act {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: var(--ah-s2);
 }
 .sa-consequences {
   list-style: none;
@@ -129,14 +86,6 @@
   margin-top: 4px;
   flex: none;
   color: var(--ah-muted);
-}
-@container settings-admin (max-width: 460px) {
-  .sa-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .sa-act {
-    justify-content: flex-start;
-  }
 }
 .sa-inline textarea {
   flex: 1 1 220px;

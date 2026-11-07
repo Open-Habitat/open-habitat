@@ -5,6 +5,7 @@ import {
   type PendingApp,
   ServerIntegrations,
 } from "../components/ServerIntegrations";
+import { SectionCard } from "../components/ServerSection";
 import { liveText } from "../i18n";
 import { serverIntegrationsText } from "../text/serverIntegrations";
 import {
@@ -140,18 +141,35 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
       : result;
   };
   if (!apps)
-    return failed ? (
-      <div className="s-row" role="alert">
-        {txt.loadFailed}
-        <ControlButton size="row" onPress={() => void reload()}>
-          {txt.reload}
-        </ControlButton>
-      </div>
-    ) : (
-      <p className="s-row">{txt.loading}</p>
+    return (
+      <SectionCard>
+        {failed ? (
+          <div className="s-row" role="alert">
+            {txt.loadFailed}
+            <ControlButton size="row" onPress={() => void reload()}>
+              {txt.reload}
+            </ControlButton>
+          </div>
+        ) : (
+          <p className="s-row">{txt.loading}</p>
+        )}
+      </SectionCard>
     );
   return (
-    <>
+    <ServerIntegrations
+      providers={providers}
+      apps={apps}
+      steps={steps}
+      pending={pending}
+      problem={problem}
+      names={names}
+      canWrite={!!csrf}
+      onboardingHref={settingsHref("kayttoonotto")}
+      onOpenOnboarding={() => navigate(settingsHref("kayttoonotto"))}
+      onSave={(provider, fields) => change(provider, fields)}
+      onRemove={(provider) => void change(provider)}
+      onRefresh={() => void reload()}
+    >
       {failed && (
         <div className="s-row" role="alert">
           {txt.refreshFailed}
@@ -165,20 +183,6 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
           {txt.catalogFailed}
         </p>
       )}
-      <ServerIntegrations
-        providers={providers}
-        apps={apps}
-        steps={steps}
-        pending={pending}
-        problem={problem}
-        names={names}
-        canWrite={!!csrf}
-        onboardingHref={settingsHref("kayttoonotto")}
-        onOpenOnboarding={() => navigate(settingsHref("kayttoonotto"))}
-        onSave={(provider, fields) => change(provider, fields)}
-        onRemove={(provider) => void change(provider)}
-        onRefresh={() => void reload()}
-      />
-    </>
+    </ServerIntegrations>
   );
 }

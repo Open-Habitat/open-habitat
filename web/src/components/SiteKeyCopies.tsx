@@ -11,6 +11,7 @@ import {
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Checkbox } from "./Primitives";
+import { PeopleList, PeopleRow } from "./ServerSection";
 import { keyNames } from "./SiteKeySettings";
 import { StatusMark } from "./Status";
 import "./ServerAccess.css";
@@ -111,17 +112,17 @@ export function JoinedCard({
           </ControlButton>
         </div>
       </div>
-      <ul className="sk-given" data-testid="given-list">
+      <PeopleList testId="given-list" compact columns={[txt.person, txt.copy]}>
         {copies.people.map((p) => (
-          <li key={p.id} data-testid={`given-${p.id}`}>
-            <span>
-              <strong>{at(p)}</strong>{" "}
-              {p.username && (
-                <span className="sk-muted">Unix {p.username}</span>
-              )}
-            </span>
-            <span className="sk-muted">
-              {p.copy ? (
+          <PeopleRow
+            key={p.id}
+            testId={`given-${p.id}`}
+            name={at(p)}
+            detail={
+              p.username && <span className="s-desc">Unix {p.username}</span>
+            }
+            cells={[
+              p.copy ? (
                 <>
                   {txt.given(day(p.copy.at))}
                   {!p.copy.current && (
@@ -135,11 +136,11 @@ export function JoinedCard({
                 </>
               ) : (
                 txt.notGiven
-              )}
-            </span>
-          </li>
+              ),
+            ]}
+          />
         ))}
-      </ul>
+      </PeopleList>
       <p className="s-row sk-muted" data-testid="joined-waiting">
         {copies.waiting > 0 ? txt.waiting(copies.waiting) : ""}
         {txt.removedNotListed}

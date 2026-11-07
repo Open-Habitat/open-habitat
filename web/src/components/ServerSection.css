@@ -1,0 +1,274 @@
+/* Palvelimen ylläpito: the parts every server section is written from
+   (proto-server-sections-norm, C Yhdistelmä). */
+.ah-server-section > .ah-section-subhead {
+  margin: var(--ah-s3) 0 0;
+}
+div.ah-section-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ah-s2) var(--ah-s3);
+}
+div.ah-section-subhead > .s-h3 {
+  margin: 0;
+}
+
+/* The meter: figures beside the label, a thick bar, the legend. */
+.s-row.ah-meter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ah-s2);
+}
+.ah-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s3);
+}
+.ah-meter-head > .s-lbl {
+  flex: 1 1 8rem;
+}
+.ah-meter-figure {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ah-meter {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--ah-line-soft);
+}
+.ah-meter > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  border-radius: 999px;
+}
+.ah-meter-worst,
+.ah-meter-key-worst {
+  background: var(--ah-accent-line);
+}
+.ah-meter-worst[data-over],
+.ah-meter-key-worst[data-over] {
+  background: var(--ah-err-line);
+}
+.ah-meter-now,
+.ah-meter-key-now {
+  background: var(--ah-accent);
+}
+.ah-meter-legend {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: var(--ah-size-meta);
+}
+.ah-meter-legend > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--ah-s3);
+}
+.ah-meter-legend dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  color: var(--ah-ink-2);
+}
+.ah-meter-legend dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ah-meter-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ah-meter-over {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink);
+}
+.ah-meter-over svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ah-err);
+}
+
+/* The list: one grid, every row a subgrid of it, so the headers and the
+   readings line up while each column takes the width its widest entry
+   needs. */
+.ah-people {
+  container: people-list / inline-size;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) repeat(var(--ah-people-cells, 1), auto)
+    auto;
+  column-gap: var(--ah-s4);
+  --ah-people-mark: 24px;
+}
+.ah-people > li {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s2) var(--ah-s5);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-people > li:last-child {
+  border-bottom: 0;
+}
+.ah-people > .ah-people-head {
+  font: 600 var(--ah-size-label) / 1.3 var(--ah-font);
+  color: var(--ah-muted);
+}
+.ah-people-who {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+/* A row under another starts where the one above has its name. */
+.ah-people-row[data-indent] > .ah-people-who {
+  padding-left: calc(var(--ah-people-mark) + var(--ah-s2));
+}
+.ah-people-mark {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: var(--ah-people-mark);
+}
+.ah-people-person {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ah-people-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-people-cell {
+  min-width: 0;
+  font-size: var(--ah-size-meta);
+}
+.ah-people-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s2);
+}
+/* Too narrow for one line, the last column stays beside the name and the
+   others go below it; the headers keep the name's and that column's. In a
+   list of actions the action stays beside the name instead, with the
+   readings under the name and no headers, until a phone puts the action
+   below too. A compact list
+   (one short reading, a short action) keeps one line longest. The settings
+   pane is about 440px wide on a desktop beside both rails. */
+@container people-list (max-width: 559px) {
+  .ah-people:not([data-compact], [data-actions]) > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ah-people:not([data-compact], [data-actions])
+    > .ah-people-head
+    > span:not(:first-child, :nth-last-child(2)) {
+    display: none;
+  }
+  .ah-people:not([data-compact], [data-actions]) > li > :nth-child(n + 2) {
+    grid-column: 1 / -1;
+  }
+  .ah-people:not([data-compact], [data-actions])
+    > .ah-people-head
+    > :nth-last-child(2),
+  .ah-people:not([data-compact], [data-actions])
+    > li
+    > .ah-people-cell[data-beside] {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .ah-people:not([data-compact], [data-actions]) > li > .ah-people-end {
+    justify-content: flex-start;
+  }
+  .ah-people[data-actions] > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ah-people[data-actions] > .ah-people-head {
+    display: none;
+  }
+  .ah-people[data-actions] > li > .ah-people-cell {
+    grid-column: 1;
+  }
+  .ah-people[data-actions]
+    > li:is([data-mark], [data-indent])
+    > .ah-people-cell {
+    padding-left: calc(var(--ah-people-mark) + var(--ah-s2));
+  }
+  .ah-people[data-actions] > li > .ah-people-end {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
+@container people-list (max-width: 399px) {
+  .ah-people[data-actions] > li > .ah-people-end {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-content: flex-start;
+  }
+}
+@container people-list (max-width: 379px) {
+  .ah-people[data-compact] > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ah-people[data-compact]
+    > .ah-people-head
+    > span:not(:first-child, :nth-last-child(2)) {
+    display: none;
+  }
+  .ah-people[data-compact] > li > :nth-child(n + 2) {
+    grid-column: 1 / -1;
+  }
+  .ah-people[data-compact] > .ah-people-head > :nth-last-child(2),
+  .ah-people[data-compact] > li > .ah-people-cell[data-beside] {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .ah-people[data-compact] > li > .ah-people-end {
+    justify-content: flex-start;
+  }
+}
+
+/* A person's use of their limit. */
+.ah-usage {
+  display: grid;
+  gap: 4px;
+  min-width: 9rem;
+  font-variant-numeric: tabular-nums;
+}
+.ah-usage-value {
+  white-space: nowrap;
+}
+
+.ah-section-status {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-people-end:empty {
+  display: none;
+}

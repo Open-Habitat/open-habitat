@@ -981,9 +981,7 @@ export function AccountSettings({
               onReconnect={onReconnect}
             />
           ) : admin && section === "palvelinintegraatiot" ? (
-            <div className="s-card ah-administration">
-              <ServerIntegrationsSettings csrf={csrf} />
-            </div>
+            <ServerIntegrationsSettings csrf={csrf} />
           ) : admin && section === "keskustelut" ? (
             <ServerConversations csrf={csrf} />
           ) : admin && section === "aiavain" ? (

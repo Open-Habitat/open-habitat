@@ -307,9 +307,6 @@ export function SiteKeyPage({
       data-settings-row="site-key"
       tabIndex={-1}
     >
-      <p className="sk-terms" data-testid="site-key-terms">
-        {txt.terms}
-      </p>
       <SiteKeyEditor
         key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}
         siteKey={siteKey}

@@ -70,10 +70,11 @@ test("server name saves in place, refreshes the mounted rail without navigation;
   );
 });
 
-test("user storage stays on one line and fits desktop and phone, including limit editing", async ({
+test("user storage stays on one line and fits desktop and phone, and a limit steps and writes", async ({
   page,
 }) => {
   await page.route("**/api/v1/server/storage", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
     const response = await route.fetch();
     const json = await response.json();
     for (const user of json.users) user.usage_bytes = 164280402;
@@ -92,9 +93,9 @@ test("user storage stays on one line and fits desktop and phone, including limit
     .click();
   await page.getByRole("link").and(page.getByTestId("settings-levy")).click();
   const row = page
-    .getByRole("row")
+    .getByRole("listitem")
     .and(page.getByTestId("administration-user-synthetic-admin"));
-  const storage = row.getByRole("cell").nth(1);
+  const storage = row.getByTestId("storage-use-synthetic-admin");
   await expect(storage).toBeVisible();
   await expect(storage).not.toBeEmpty();
   for (const width of [1280, 1024, 390]) {
@@ -131,16 +132,33 @@ test("user storage stays on one line and fits desktop and phone, including limit
         layout.cardRight + 1,
       );
     }
-    await row
-      .getByRole("button")
-      .and(row.getByTestId("storage-limit-edit"))
-      .click();
-    await expect(row.getByTestId("storage-limit-input")).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth - innerWidth,
       ),
     ).toBeLessThanOrEqual(1);
-    await row.getByRole("button").and(row.getByTestId("cancel")).click();
   }
+  // A step is written once it settles, and the host's limit comes back.
+  const limit = row.getByTestId("storage-limit-synthetic-admin-input");
+  // The person starts on the default limit.
+  await expect(row).not.toHaveAttribute("data-own");
+  const before = Number(await limit.inputValue());
+  const written = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/v1/server/storage") &&
+      r.request().method() === "PUT",
+  );
+  await row
+    .getByRole("button")
+    .and(row.getByTestId("storage-limit-synthetic-admin-more"))
+    .click();
+  expect((await written).ok()).toBe(true);
+  await expect(limit).toHaveValue(String(before + 5));
+  await expect(row).toHaveAttribute("data-own", "");
+  await row
+    .getByRole("button")
+    .and(row.getByTestId("storage-limit-synthetic-admin-reset"))
+    .click();
+  await expect(limit).toHaveValue(String(before));
+  await expect(row).not.toHaveAttribute("data-own");
 });

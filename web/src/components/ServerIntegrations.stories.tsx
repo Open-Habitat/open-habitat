@@ -100,7 +100,7 @@ const save = async () => ({ kind: "changed" as const, view: google });
 
 function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
   return (
-    <div className="s-card" style={{ maxWidth: 900, margin: 24 }}>
+    <div style={{ maxWidth: 900, margin: 24 }}>
       <ServerIntegrations
         providers={googleSet}
         apps={google}

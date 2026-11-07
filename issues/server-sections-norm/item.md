@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: server-norm
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Server settings sections on one component norm (C Yhdistelmä)
@@ -27,4 +28,4 @@ ulkoasua, ei kokeellinen.
 
 ## Acceptance Criteria
 
-- [ ] palvelinosiot samalla normilla jaetuin komponentein; kuvat DSF 2 (1440, 390, vaalea ja tumma); muutetut selaintestit
+- [x] palvelinosiot samalla normilla jaetuin komponentein; kuvat DSF 2 (1440, 390, vaalea ja tumma); muutetut selaintestit

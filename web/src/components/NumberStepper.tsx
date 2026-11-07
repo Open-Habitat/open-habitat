@@ -36,7 +36,14 @@ export function NumberStepper({
   useEffect(() => setDraft(String(value)), [value]);
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v)));
   const commit = () => {
-    const parsed = Number(draft.replace(/[\s,]/g, ""));
+    // Spaces and comma thousands (16 000, 16,000) group digits; any other
+    // comma is a decimal one, so 9,5 rounds to 10 rather than reading 95.
+    const text = draft.replace(/\s/g, "");
+    const parsed = Number(
+      /^\d{1,3}(,\d{3})+$/.test(text)
+        ? text.replace(/,/g, "")
+        : text.replace(",", "."),
+    );
     const next =
       Number.isFinite(parsed) && draft.trim() ? clamp(parsed) : value;
     setDraft(String(next));

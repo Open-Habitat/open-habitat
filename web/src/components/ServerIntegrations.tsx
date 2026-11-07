@@ -24,6 +24,12 @@ import { Icon } from "./Icon";
 import { levelName, ProviderMark, providerCopy } from "./Integrations";
 import { Menu } from "./Overlays";
 import { TextField } from "./Primitives";
+import {
+  PeopleList,
+  PeopleRow,
+  SectionCard,
+  SectionLead,
+} from "./ServerSection";
 import { Badge, StatusMark } from "./Status";
 import "./ServerIntegrations.css";
 import { formatDate, liveText } from "../i18n";
@@ -1221,6 +1227,7 @@ export function ServerIntegrations({
   onSave,
   onRemove,
   onRefresh,
+  children,
 }: {
   /** The administrator's own catalog; undefined when it could not be read. */
   providers?: Provider[];
@@ -1238,149 +1245,278 @@ export function ServerIntegrations({
   onSave: (provider: AppSection, fields: AppFields) => Promise<AppChange>;
   onRemove: (provider: AppSection) => void;
   onRefresh: () => void;
+  /** Rows above the services, such as a failed refresh. */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState<Open>();
   const locked = !canWrite || !apps.browser_setup;
   return (
     <div
-      className="si"
+      className="si s-stack"
       data-testid="server-integrations"
       data-browser-setup={apps.browser_setup}
     >
-      <p className="s-row s-desc" data-testid="si-connect-note">
-        {txt.connectNote}
-      </p>
-      {!apps.browser_setup && (
-        <p className="s-row si-note" data-testid="si-setup-off">
-          <Icon name="info" />
-          {txt.setupOff}
-        </p>
-      )}
-      <ul className="si-rows" data-testid="si-rows">
-        {providerOrder.map((p) => {
-          const catalog = providers?.find((x) => x.id === p);
-          const s = statusOf(p, catalog, pending[p]);
-          const app = isAppProvider(p)
-            ? apps.apps.find((a) => a.provider === p)
-            : undefined;
-          const step = steps.includes(p);
-          const hidden = s.kind !== "ready";
-          // A provider's narrower levels are separate applications, offered
-          // once the provider's tools are installed.
-          const levels =
-            isAppProvider(p) && (s.kind === "ready" || s.kind === "needs_app")
-              ? (levelSections[p] ?? [])
-              : [];
-          return (
-            <Fragment key={p}>
-              <li
-                className="si-row"
-                data-testid={`si-row-${p}`}
-                data-settings-row={`server-${p}`}
-                tabIndex={-1}
-                data-status={s.kind}
-              >
-                <ProviderMark provider={p} small />
-                <span className="si-main">
-                  <span className="si-name">{name(p)}</span>
-                  {step && (
-                    <a
-                      className="si-step"
-                      data-testid={`si-step-${p}`}
-                      data-hidden={hidden || undefined}
-                      href={onboardingHref}
-                      aria-label={txt.onboardingStep(name(p), hidden)}
-                      onClick={(e) => {
-                        if (
-                          !onOpenOnboarding ||
-                          e.button ||
-                          e.metaKey ||
-                          e.ctrlKey ||
-                          e.shiftKey ||
-                          e.altKey
-                        )
-                          return;
-                        e.preventDefault();
-                        onOpenOnboarding();
-                      }}
-                    >
-                      <Badge
-                        label={
-                          hidden ? txt.inOnboardingHidden : txt.inOnboarding
+      <SectionLead testId="si-connect-note">{txt.connectNote}</SectionLead>
+      <SectionCard>
+        {children}
+        {!apps.browser_setup && (
+          <p className="s-row si-note" data-testid="si-setup-off">
+            <Icon name="info" />
+            {txt.setupOff}
+          </p>
+        )}
+        <PeopleList testId="si-rows" actions columns={[txt.service, txt.state]}>
+          {providerOrder.map((p) => {
+            const catalog = providers?.find((x) => x.id === p);
+            const s = statusOf(p, catalog, pending[p]);
+            const app = isAppProvider(p)
+              ? apps.apps.find((a) => a.provider === p)
+              : undefined;
+            const step = steps.includes(p);
+            const hidden = s.kind !== "ready";
+            // A provider's narrower levels are separate applications, offered
+            // once the provider's tools are installed.
+            const levels =
+              isAppProvider(p) && (s.kind === "ready" || s.kind === "needs_app")
+                ? (levelSections[p] ?? [])
+                : [];
+            return (
+              <Fragment key={p}>
+                <PeopleRow
+                  className="si-row"
+                  testId={`si-row-${p}`}
+                  row={`server-${p}`}
+                  data-status={s.kind}
+                  mark={<ProviderMark provider={p} small />}
+                  name={
+                    <span className="si-main">
+                      <span className="si-name">{name(p)}</span>
+                      {step && (
+                        <a
+                          className="si-step"
+                          data-testid={`si-step-${p}`}
+                          data-hidden={hidden || undefined}
+                          href={onboardingHref}
+                          aria-label={txt.onboardingStep(name(p), hidden)}
+                          onClick={(e) => {
+                            if (
+                              !onOpenOnboarding ||
+                              e.button ||
+                              e.metaKey ||
+                              e.ctrlKey ||
+                              e.shiftKey ||
+                              e.altKey
+                            )
+                              return;
+                            e.preventDefault();
+                            onOpenOnboarding();
+                          }}
+                        >
+                          <Badge
+                            label={
+                              hidden ? txt.inOnboardingHidden : txt.inOnboarding
+                            }
+                            tone={hidden ? "warning" : "neutral"}
+                          />
+                        </a>
+                      )}
+                    </span>
+                  }
+                  detail={
+                    <>
+                      {app && !pending[p] && invalidApp(app) && (
+                        <span
+                          className="si-bad"
+                          data-testid={`si-invalid-${p}`}
+                        >
+                          <Icon name="warning" />
+                          {txt.invalid} {invalidText(app)}
+                        </span>
+                      )}
+                      {problem?.provider === p && !pending[p] && (
+                        <span className="si-bad" role="alert">
+                          <Icon name="warning" />
+                          {problem.text}
+                        </span>
+                      )}
+                    </>
+                  }
+                  cells={[<Mark key="state" p={p} s={s} />]}
+                  end={
+                    s.kind === "uncertain" ? (
+                      <ControlButton
+                        data-testid={`si-refresh-${p}`}
+                        size="row"
+                        variant="secondary"
+                        onPress={onRefresh}
+                      >
+                        <Icon name="refresh" />
+                        {txt.refresh}
+                      </ControlButton>
+                    ) : s.kind === "tool_missing" ? (
+                      <ControlButton
+                        data-testid={`si-fix-${p}`}
+                        size="row"
+                        variant="secondary"
+                        onPress={() =>
+                          setOpen({ kind: "fix", provider: p, tools: s.tools })
                         }
-                        tone={hidden ? "warning" : "neutral"}
-                      />
-                    </a>
-                  )}
-                  {app && !pending[p] && invalidApp(app) && (
-                    <span className="si-bad" data-testid={`si-invalid-${p}`}>
-                      <Icon name="warning" />
-                      {txt.invalid} {invalidText(app)}
-                    </span>
-                  )}
-                  {problem?.provider === p && !pending[p] && (
-                    <span className="si-bad" role="alert">
-                      <Icon name="warning" />
-                      {problem.text}
-                    </span>
-                  )}
-                </span>
-                <span className="si-state">
-                  <Mark p={p} s={s} />
-                </span>
-                <span className="si-act">
-                  {s.kind === "uncertain" ? (
-                    <ControlButton
-                      data-testid={`si-refresh-${p}`}
-                      size="row"
-                      variant="secondary"
-                      onPress={onRefresh}
-                    >
-                      <Icon name="refresh" />
-                      {txt.refresh}
-                    </ControlButton>
-                  ) : s.kind === "tool_missing" ? (
-                    <ControlButton
-                      data-testid={`si-fix-${p}`}
-                      size="row"
-                      variant="secondary"
-                      onPress={() =>
-                        setOpen({ kind: "fix", provider: p, tools: s.tools })
+                      >
+                        {txt.fix}
+                      </ControlButton>
+                    ) : s.kind === "needs_app" && isAppProvider(p) ? (
+                      <ControlButton
+                        data-testid={`si-setup-${p}`}
+                        size="row"
+                        variant="secondary"
+                        isDisabled={locked}
+                        onPress={() => setOpen({ kind: "setup", provider: p })}
+                      >
+                        {txt.setCredentials}
+                      </ControlButton>
+                    ) : s.kind === "ready" && app && isAppProvider(p) ? (
+                      <span data-testid={`si-menu-${p}`}>
+                        <Menu
+                          label={txt.credentialsOf(name(p))}
+                          trigger={<span>{txt.credentialsMenu}</span>}
+                          placement="bottom end"
+                          heading={<AppLine app={app} names={names} />}
+                          items={[
+                            ...(p === "google" && googleProject(app.client_id)
+                              ? [
+                                  {
+                                    id: "apis",
+                                    label: txt.enableApis,
+                                  },
+                                ]
+                              : []),
+                            ...(p === "google" && app.client_id
+                              ? [
+                                  {
+                                    id: "replace",
+                                    label: txt.replaceCredentials,
+                                    availability: locked
+                                      ? {
+                                          state: "disabled" as const,
+                                          reason: txt.setupDisabled,
+                                        }
+                                      : undefined,
+                                  },
+                                ]
+                              : []),
+                            {
+                              id: "remove",
+                              label: txt.removeCredentialsMenu,
+                              danger: true,
+                              availability: locked
+                                ? {
+                                    state: "disabled" as const,
+                                    reason: txt.setupDisabled,
+                                  }
+                                : undefined,
+                            },
+                          ]}
+                          onAction={(k) =>
+                            k === "apis"
+                              ? window.open(
+                                  googleEnable(googleProject(app.client_id)),
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
+                              : setOpen(
+                                  k === "replace"
+                                    ? {
+                                        kind: "setup",
+                                        provider: p,
+                                        replace: app,
+                                      }
+                                    : { kind: "remove", provider: p },
+                                )
+                          }
+                        />
+                      </span>
+                    ) : null
+                  }
+                />
+                {levels.map(({ section, level }) => {
+                  const levelApp = apps.apps.find(
+                    (a) => a.provider === section,
+                  );
+                  const ls: Status = pending[section]
+                    ? { kind: pending[section] }
+                    : levelApp?.usable
+                      ? { kind: "ready" }
+                      : { kind: "needs_app" };
+                  return (
+                    <PeopleRow
+                      key={section}
+                      className="si-row si-level"
+                      testId={`si-row-${section}`}
+                      data-status={ls.kind}
+                      indent
+                      name={
+                        <span className="si-name">
+                          {txt.level(levelName(p, level))}
+                        </span>
                       }
-                    >
-                      {txt.fix}
-                    </ControlButton>
-                  ) : s.kind === "needs_app" && isAppProvider(p) ? (
-                    <ControlButton
-                      data-testid={`si-setup-${p}`}
-                      size="row"
-                      variant="secondary"
-                      isDisabled={locked}
-                      onPress={() => setOpen({ kind: "setup", provider: p })}
-                    >
-                      {txt.setCredentials}
-                    </ControlButton>
-                  ) : s.kind === "ready" && app && isAppProvider(p) ? (
-                    <span data-testid={`si-menu-${p}`}>
-                      <Menu
-                        label={txt.credentialsOf(name(p))}
-                        trigger={<span>{txt.credentialsMenu}</span>}
-                        placement="bottom end"
-                        heading={<AppLine app={app} names={names} />}
-                        items={[
-                          ...(p === "google" && googleProject(app.client_id)
-                            ? [
+                      detail={
+                        <>
+                          {levelApp &&
+                            !pending[section] &&
+                            invalidApp(levelApp) && (
+                              <span
+                                className="si-bad"
+                                data-testid={`si-invalid-${section}`}
+                              >
+                                <Icon name="warning" />
+                                {txt.invalid} {invalidText(levelApp)}
+                              </span>
+                            )}
+                          {problem?.provider === section &&
+                            !pending[section] && (
+                              <span className="si-bad" role="alert">
+                                <Icon name="warning" />
+                                {problem.text}
+                              </span>
+                            )}
+                        </>
+                      }
+                      cells={[
+                        ls.kind === "needs_app" ? (
+                          // A level is optional: without its application
+                          // people see it greyed out, not the provider gone.
+                          <StatusMark
+                            key="state"
+                            data-testid={`si-status-${section}`}
+                            label={txt.notInUse}
+                          />
+                        ) : (
+                          <Mark key="state" p={section} s={ls} />
+                        ),
+                      ]}
+                      end={
+                        ls.kind === "uncertain" ? (
+                          <ControlButton
+                            data-testid={`si-refresh-${section}`}
+                            size="row"
+                            variant="secondary"
+                            onPress={onRefresh}
+                          >
+                            <Icon name="refresh" />
+                            {txt.refresh}
+                          </ControlButton>
+                        ) : levelApp ? (
+                          <span data-testid={`si-menu-${section}`}>
+                            <Menu
+                              label={txt.credentialsOf(sectionName(section))}
+                              trigger={<span>{txt.credentials}</span>}
+                              placement="bottom end"
+                              heading={<AppLine app={levelApp} names={names} />}
+                              items={[
                                 {
-                                  id: "apis",
-                                  label: txt.enableApis,
-                                },
-                              ]
-                            : []),
-                          ...(p === "google" && app.client_id
-                            ? [
-                                {
-                                  id: "replace",
-                                  label: txt.replaceCredentials,
+                                  id: "remove",
+                                  label: txt.removeCredentialsMenu,
+                                  danger: true,
                                   availability: locked
                                     ? {
                                         state: "disabled" as const,
@@ -1388,144 +1524,34 @@ export function ServerIntegrations({
                                       }
                                     : undefined,
                                 },
-                              ]
-                            : []),
-                          {
-                            id: "remove",
-                            label: txt.removeCredentialsMenu,
-                            danger: true,
-                            availability: locked
-                              ? {
-                                  state: "disabled" as const,
-                                  reason: txt.setupDisabled,
-                                }
-                              : undefined,
-                          },
-                        ]}
-                        onAction={(k) =>
-                          k === "apis"
-                            ? window.open(
-                                googleEnable(googleProject(app.client_id)),
-                                "_blank",
-                                "noopener,noreferrer",
-                              )
-                            : setOpen(
-                                k === "replace"
-                                  ? { kind: "setup", provider: p, replace: app }
-                                  : { kind: "remove", provider: p },
-                              )
-                        }
-                      />
-                    </span>
-                  ) : null}
-                </span>
-              </li>
-              {levels.map(({ section, level }) => {
-                const levelApp = apps.apps.find((a) => a.provider === section);
-                const ls: Status = pending[section]
-                  ? { kind: pending[section] }
-                  : levelApp?.usable
-                    ? { kind: "ready" }
-                    : { kind: "needs_app" };
-                return (
-                  <li
-                    key={section}
-                    className="si-row si-level"
-                    data-testid={`si-row-${section}`}
-                    data-status={ls.kind}
-                  >
-                    <span className="si-level-indent" aria-hidden="true" />
-                    <span className="si-main">
-                      <span className="si-name">
-                        {txt.level(levelName(p, level))}
-                      </span>
-                      {levelApp &&
-                        !pending[section] &&
-                        invalidApp(levelApp) && (
-                          <span
-                            className="si-bad"
-                            data-testid={`si-invalid-${section}`}
-                          >
-                            <Icon name="warning" />
-                            {txt.invalid} {invalidText(levelApp)}
+                              ]}
+                              onAction={() =>
+                                setOpen({ kind: "remove", provider: section })
+                              }
+                            />
                           </span>
-                        )}
-                      {problem?.provider === section && !pending[section] && (
-                        <span className="si-bad" role="alert">
-                          <Icon name="warning" />
-                          {problem.text}
-                        </span>
-                      )}
-                    </span>
-                    <span className="si-state">
-                      {ls.kind === "needs_app" ? (
-                        // A level is optional: without its application
-                        // people see it greyed out, not the provider gone.
-                        <StatusMark
-                          data-testid={`si-status-${section}`}
-                          label={txt.notInUse}
-                        />
-                      ) : (
-                        <Mark p={section} s={ls} />
-                      )}
-                    </span>
-                    <span className="si-act">
-                      {ls.kind === "uncertain" ? (
-                        <ControlButton
-                          data-testid={`si-refresh-${section}`}
-                          size="row"
-                          variant="secondary"
-                          onPress={onRefresh}
-                        >
-                          <Icon name="refresh" />
-                          {txt.refresh}
-                        </ControlButton>
-                      ) : levelApp ? (
-                        <span data-testid={`si-menu-${section}`}>
-                          <Menu
-                            label={txt.credentialsOf(sectionName(section))}
-                            trigger={<span>{txt.credentials}</span>}
-                            placement="bottom end"
-                            heading={<AppLine app={levelApp} names={names} />}
-                            items={[
-                              {
-                                id: "remove",
-                                label: txt.removeCredentialsMenu,
-                                danger: true,
-                                availability: locked
-                                  ? {
-                                      state: "disabled" as const,
-                                      reason: txt.setupDisabled,
-                                    }
-                                  : undefined,
-                              },
-                            ]}
-                            onAction={() =>
-                              setOpen({ kind: "remove", provider: section })
+                        ) : ls.kind === "needs_app" ? (
+                          <ControlButton
+                            data-testid={`si-setup-${section}`}
+                            size="row"
+                            variant="secondary"
+                            isDisabled={locked}
+                            onPress={() =>
+                              setOpen({ kind: "setup", provider: section })
                             }
-                          />
-                        </span>
-                      ) : ls.kind === "needs_app" ? (
-                        <ControlButton
-                          data-testid={`si-setup-${section}`}
-                          size="row"
-                          variant="secondary"
-                          isDisabled={locked}
-                          onPress={() =>
-                            setOpen({ kind: "setup", provider: section })
-                          }
-                        >
-                          {txt.setCredentials}
-                        </ControlButton>
-                      ) : null}
-                    </span>
-                  </li>
-                );
-              })}
-            </Fragment>
-          );
-        })}
-      </ul>
+                          >
+                            {txt.setCredentials}
+                          </ControlButton>
+                        ) : null
+                      }
+                    />
+                  );
+                })}
+              </Fragment>
+            );
+          })}
+        </PeopleList>
+      </SectionCard>
       {open?.kind === "setup" && (
         <AppSetupDialog
           provider={open.provider}

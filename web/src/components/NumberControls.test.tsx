@@ -65,4 +65,28 @@ describe("NumberStepper", () => {
       true,
     );
   });
+  it("reads digit groups as one number and a decimal comma as a decimal", () => {
+    const onChange = vi.fn();
+    render(
+      <NumberStepper
+        testId="n"
+        label="Raja"
+        value={8}
+        min={1}
+        max={100000}
+        onChange={onChange}
+      />,
+    );
+    const input = screen.getByTestId("n-input");
+    for (const [typed, read] of [
+      ["16 000", 16000],
+      ["16,000", 16000],
+      ["9,5", 10],
+      ["20", 20],
+    ] as const) {
+      fireEvent.change(input, { target: { value: typed } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(onChange).toHaveBeenLastCalledWith(read);
+    }
+  });
 });

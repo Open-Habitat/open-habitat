@@ -170,6 +170,8 @@ const fi = {
   runOnServer: "Aja palvelimella:",
   command: "komento",
   close: "Sulje",
+  service: "Palvelu",
+  state: "Tila",
   connectNote:
     "Tarjolla olevat palvelut jokainen yhdistää itse kohdassa Asetukset › Tiedot agenteille.",
   setupOff:
@@ -377,6 +379,8 @@ export const serverIntegrationsText = catalog(
     runOnServer: "Run on the server:",
     command: "command",
     close: "Close",
+    service: "Service",
+    state: "Status",
     connectNote:
       "Everyone connects the offered services themselves under Settings › Data for agents.",
     setupOff:

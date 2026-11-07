@@ -167,6 +167,14 @@ kierros `prototypes/rounds/2026-10-14-palkki`, suunta Tilivalikko alhaalla;
 kirjastossa `lib/account.*`). Asetusten osiot ovat Tili,
 Yhteydet tällä palvelimella, Ulkoasu ja Istunto.
 
+Palvelimen ylläpidon osiot noudattavat yhtä normia (Jari 7.11.2026, kierros
+`prototypes/rounds/2026-11-07-palvelinosioiden-normi`, suunta C Yhdistelmä):
+johdanto kortin yllä, kortti nimi–selite–arvo-riveistä, mittari luvut
+otsikon vieressä, paksu palkki ja selite, luvut stepperillä sekä väliotsikon
+alla oma kortti henkilö- tai palvelulistalle, jossa on sarakeotsikot ja
+jokaisen rivin lukema omassa sarakkeessaan. Uusi palvelinosio kootaan
+`ServerSection`-osista. Käyttöönoton reittieditori on oma työkalunsa.
+
 ## Keskustelun arkisto
 
 Työtilasivulla arkistoidut keskustelut löytyvät erillisestä Arkisto-osiosta,

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import {
   type AccessEntry,
@@ -14,6 +14,12 @@ import {
 } from "../app/serverAccess";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
+import {
+  PeopleList,
+  PeopleRow,
+  SectionCard,
+  SectionSubhead,
+} from "./ServerSection";
 import { InlineNotice, StatusMark } from "./Status";
 import "./ServerAccess.css";
 import { formatDate, liveText } from "../i18n";
@@ -1052,6 +1058,7 @@ export function ServerAccess({
   onRemoveTeam,
   onForget,
   teamPending = {},
+  children,
 }: {
   view: AccessView;
   pending?: Record<string, PendingChange>;
@@ -1071,6 +1078,8 @@ export function ServerAccess({
   onForget?: (entry: AccessEntry) => void;
   /** Team removals in flight, by org_id/slug. */
   teamPending?: Record<string, "remove" | "uncertain">;
+  /** Further rows of the section's first card, such as shared links. */
+  children?: ReactNode;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [removing, setRemoving] = useState<Row>();
@@ -1111,182 +1120,199 @@ export function ServerAccess({
   const leavers = rows.filter((r) => leaver(r) && !r.pending);
   const canAllow = !open && canWrite && view.runtime_admission;
   return (
-    <div className="sa" data-testid="server-access" data-mode={view.mode}>
-      {leavers.length > 0 && (
-        <div className="s-row sa-leavers">
-          {leavers.map((r) => (
-            <InlineNotice
-              key={r.id}
-              data-testid={`access-leaver-${r.id}`}
-              tone="warning"
-              title={txt.leaverTitle(who(r), (r.teams ?? []).join(", "))}
-              description={txt.leaverDetail(day(r.at))}
-              actions={[
-                ...(canAllow
-                  ? [
-                      {
-                        label: txt.allowAsPerson,
-                        testId: `access-leaver-allow-${r.id}`,
-                        onPress: () =>
-                          void onAdd(
-                            {
-                              id: r.id,
-                              login: r.login_hint ?? "",
-                              name: r.name ?? "",
-                            },
-                            false,
-                          ),
-                      },
-                    ]
-                  : []),
-                ...(onForget && canWrite
-                  ? [
-                      {
-                        label: txt.dismiss,
-                        testId: `access-leaver-dismiss-${r.id}`,
-                        onPress: () => onForget(r),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          ))}
-        </div>
-      )}
-      {open ? (
-        <p
-          className="s-row sa-open"
-          data-testid="access-open"
-          data-settings-row="access-add"
-          tabIndex={-1}
-        >
-          <Icon name="info" />
-          {txt.open}
-        </p>
-      ) : (
-        <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
-          <AddLogin
-            rows={rows}
-            teams={view.teams}
-            disabled={!canWrite || !view.runtime_admission}
-            reason={addReason}
-            lookup={lookup}
-            onAdd={onAdd}
-            onAddTeam={onAddTeam}
-          />
-          {view.teams.map((t) => (
-            <TeamLine
-              key={`${t.org_id}/${t.slug}`}
-              team={t}
-              members={
-                rows.filter(
-                  (r) =>
-                    r.team_state === "member" &&
-                    r.teams?.includes(`${t.org}/${t.slug}`),
-                ).length
-              }
-              busy={teamPending[`${t.org_id}/${t.slug}`]}
-              locked={!canWrite || !onRemoveTeam}
-              onDetach={() => setDetaching(t)}
-            />
-          ))}
-        </div>
-      )}
-      <div
-        className="s-row sa-head"
-        data-settings-row="access-people"
-        tabIndex={-1}
-      >
-        <strong>
-          {txt.people} <span className="sa-muted">{rows.length}</span>
-        </strong>
-        <Segmented
-          data-testid="access-filter"
-          label={txt.show}
-          size="row"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { id: "all", label: txt.all },
-            { id: "joined", label: txt.joined(count("joined")) },
-            { id: "allowed", label: txt.allowed(count("allowed")) },
-            { id: "withdrawn", label: txt.withdrawn(count("withdrawn")) },
-          ]}
-        />
-      </div>
-      <ul className="sa-list" data-testid="access-list">
-        {shown.map((r) => (
-          <li
-            key={r.id}
-            className="sa-row"
-            data-testid={`access-row-${r.id}`}
-            data-state={unfinished(r) ? "unfinished" : stage(r)}
-            data-pending={r.pending?.kind}
-            data-admin={r.administrator_role?.state}
-          >
-            <span className="sa-main">
-              <span className="sa-who">
-                <Who r={r} />
-                {r.name && <span className="sa-muted">{r.name}</span>}
-                <StateMark r={r} />
-              </span>
-              {reasons && <Reasons r={r} />}
-              <Facts r={r} />
-              {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
-              {r.site_key_copy && (
-                <span
-                  className="sa-receipt"
-                  data-testid={`access-ai-given-${r.id}`}
-                >
-                  {txt.aiGiven(day(r.site_key_copy.at))}
-                  {!r.site_key_copy.current && txt.earlierKey}
-                </span>
-              )}
-              {r.state === "withdrawn" && r.username && !r.pending && (
-                <span className="sa-muted">
-                  {txt.unixRemains(<code>{r.username}</code>)}
-                </span>
-              )}
-              {problem?.id === r.id && !r.pending && (
-                <span className="sa-bad" role="alert">
-                  <Icon name="warning" />
-                  {problem.text}
-                </span>
-              )}
-            </span>
-            <span className="sa-act">
-              {onRole && (
-                <RoleAction
-                  r={r}
-                  locked={!canWrite}
-                  onGrant={setGranting}
-                  onRevoke={(x) => onRole(x, false)}
-                />
-              )}
-              <RowAction
-                r={r}
-                locked={open || !canWrite}
-                addLocked={!view.runtime_admission}
-                onRemove={setRemoving}
-                onRestore={(x) =>
-                  void onAdd(
-                    { id: x.id, login: x.login_hint ?? "", name: x.name ?? "" },
-                    x.state === "withdrawn",
-                  )
-                }
-                onRefresh={onRefresh}
+    <div
+      className="sa s-stack"
+      data-testid="server-access"
+      data-mode={view.mode}
+    >
+      <SectionCard>
+        {leavers.length > 0 && (
+          <div className="s-row sa-leavers">
+            {leavers.map((r) => (
+              <InlineNotice
+                key={r.id}
+                data-testid={`access-leaver-${r.id}`}
+                tone="warning"
+                title={txt.leaverTitle(who(r), (r.teams ?? []).join(", "))}
+                description={txt.leaverDetail(day(r.at))}
+                actions={[
+                  ...(canAllow
+                    ? [
+                        {
+                          label: txt.allowAsPerson,
+                          testId: `access-leaver-allow-${r.id}`,
+                          onPress: () =>
+                            void onAdd(
+                              {
+                                id: r.id,
+                                login: r.login_hint ?? "",
+                                name: r.name ?? "",
+                              },
+                              false,
+                            ),
+                        },
+                      ]
+                    : []),
+                  ...(onForget && canWrite
+                    ? [
+                        {
+                          label: txt.dismiss,
+                          testId: `access-leaver-dismiss-${r.id}`,
+                          onPress: () => onForget(r),
+                        },
+                      ]
+                    : []),
+                ]}
               />
-            </span>
-          </li>
-        ))}
-        {!shown.length && <li className="sa-row sa-muted">{txt.nobody}</li>}
-      </ul>
-      {problem && !rows.some((r) => r.id === problem.id) && (
-        <p className="s-row sa-bad" role="alert" data-testid="access-problem">
-          <Icon name="warning" />
-          {problem.text}
-        </p>
-      )}
+            ))}
+          </div>
+        )}
+        {open ? (
+          <p
+            className="s-row sa-open"
+            data-testid="access-open"
+            data-settings-row="access-add"
+            tabIndex={-1}
+          >
+            <Icon name="info" />
+            {txt.open}
+          </p>
+        ) : (
+          <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
+            <AddLogin
+              rows={rows}
+              teams={view.teams}
+              disabled={!canWrite || !view.runtime_admission}
+              reason={addReason}
+              lookup={lookup}
+              onAdd={onAdd}
+              onAddTeam={onAddTeam}
+            />
+            {view.teams.map((t) => (
+              <TeamLine
+                key={`${t.org_id}/${t.slug}`}
+                team={t}
+                members={
+                  rows.filter(
+                    (r) =>
+                      r.team_state === "member" &&
+                      r.teams?.includes(`${t.org}/${t.slug}`),
+                  ).length
+                }
+                busy={teamPending[`${t.org_id}/${t.slug}`]}
+                locked={!canWrite || !onRemoveTeam}
+                onDetach={() => setDetaching(t)}
+              />
+            ))}
+          </div>
+        )}
+        {children}
+      </SectionCard>
+      <SectionSubhead
+        aside={
+          <Segmented
+            data-testid="access-filter"
+            label={txt.show}
+            size="row"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { id: "all", label: txt.all },
+              { id: "joined", label: txt.joined(count("joined")) },
+              { id: "allowed", label: txt.allowed(count("allowed")) },
+              { id: "withdrawn", label: txt.withdrawn(count("withdrawn")) },
+            ]}
+          />
+        }
+      >
+        {txt.people} <span className="s-count">{rows.length}</span>
+      </SectionSubhead>
+      <SectionCard>
+        <PeopleList
+          row="access-people"
+          testId="access-list"
+          actions
+          columns={[txt.person, txt.role]}
+        >
+          {shown.map((r) => (
+            <PeopleRow
+              key={r.id}
+              testId={`access-row-${r.id}`}
+              data-state={unfinished(r) ? "unfinished" : stage(r)}
+              data-pending={r.pending?.kind}
+              data-admin={r.administrator_role?.state}
+              name={<Who r={r} />}
+              detail={
+                <>
+                  {r.name && <span className="sa-muted">{r.name}</span>}
+                  {reasons && <Reasons r={r} />}
+                  <Facts r={r} />
+                  {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
+                  {r.site_key_copy && (
+                    <span
+                      className="sa-receipt"
+                      data-testid={`access-ai-given-${r.id}`}
+                    >
+                      {txt.aiGiven(day(r.site_key_copy.at))}
+                      {!r.site_key_copy.current && txt.earlierKey}
+                    </span>
+                  )}
+                  {r.state === "withdrawn" && r.username && !r.pending && (
+                    <span className="sa-muted">
+                      {txt.unixRemains(<code>{r.username}</code>)}
+                    </span>
+                  )}
+                  {problem?.id === r.id && !r.pending && (
+                    <span className="sa-bad" role="alert">
+                      <Icon name="warning" />
+                      {problem.text}
+                    </span>
+                  )}
+                </>
+              }
+              cells={[<StateMark key="state" r={r} />]}
+              end={
+                <>
+                  {onRole && (
+                    <RoleAction
+                      r={r}
+                      locked={!canWrite}
+                      onGrant={setGranting}
+                      onRevoke={(x) => onRole(x, false)}
+                    />
+                  )}
+                  <RowAction
+                    r={r}
+                    locked={open || !canWrite}
+                    addLocked={!view.runtime_admission}
+                    onRemove={setRemoving}
+                    onRestore={(x) =>
+                      void onAdd(
+                        {
+                          id: x.id,
+                          login: x.login_hint ?? "",
+                          name: x.name ?? "",
+                        },
+                        x.state === "withdrawn",
+                      )
+                    }
+                    onRefresh={onRefresh}
+                  />
+                </>
+              }
+            />
+          ))}
+          {!shown.length && (
+            <li className="ah-people-row sa-muted">{txt.nobody}</li>
+          )}
+        </PeopleList>
+        {problem && !rows.some((r) => r.id === problem.id) && (
+          <p className="s-row sa-bad" role="alert" data-testid="access-problem">
+            <Icon name="warning" />
+            {problem.text}
+          </p>
+        )}
+      </SectionCard>
       {removing && (
         <RemoveDialog
           r={removing}

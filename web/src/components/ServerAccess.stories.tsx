@@ -167,7 +167,7 @@ const lookup = async (login: string): Promise<LookupResult> =>
 
 function Tab(props: Partial<Parameters<typeof ServerAccess>[0]>) {
   return (
-    <div className="s-card" style={{ maxWidth: 900, margin: 24 }}>
+    <div style={{ maxWidth: 900, margin: 24 }}>
       <ServerAccess
         view={view}
         lookup={lookup}

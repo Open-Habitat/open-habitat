@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
+import { SectionLead, ServerSection } from "../components/ServerSection";
 import { formatDate, liveText } from "../i18n";
 import { speechSettingsText } from "../text/speechSettings";
 import {
@@ -355,9 +356,9 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
   const given = Object.entries(state.given ?? {}).filter(([, n]) => n);
   const missed = !!(state.given?.not_reached || state.given?.unknown);
   return (
-    <div className="s-stack">
-      <p className="s-intro">{txt.siteIntro}</p>
-      <div className="s-card">
+    <ServerSection>
+      <SectionLead>{txt.siteIntro}</SectionLead>
+      <div className="s-card ah-administration">
         <div
           className="s-row s-marked"
           data-testid="site-speech-key"
@@ -456,6 +457,6 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
           </SpeechKeyMore>
         </div>
       </div>
-    </div>
+    </ServerSection>
   );
 }
