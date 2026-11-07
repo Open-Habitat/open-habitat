@@ -86,3 +86,38 @@ test("@rail-now @a11y workspaces stay alphabetical, the filter finds archived on
   await nav.getByTestId("rail-all-workspaces").click();
   await expect(nav.getByTestId("workspace-ordinary-dir")).toBeVisible();
 });
+
+test("@rail-now a new conversation waits in Sinun vuorosi until its first message", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const nav = page
+    .getByRole("navigation")
+    .and(page.getByTestId("workspace-navigation"));
+  await nav.getByTestId("workspace-start-ordinary-dir").click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  // Opened with + and still empty, it waits for the person (Jari 7.11.2026).
+  await expect(
+    nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(
+    nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`),
+  ).toHaveCount(0);
+  // Written, answered and read, it is quiet again while Ei nyt is off.
+  await page.getByTestId("message-input").fill("ensimmäinen");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(
+    nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(
+    nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`),
+  ).toHaveCount(0);
+});

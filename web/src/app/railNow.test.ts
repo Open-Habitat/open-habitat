@@ -381,6 +381,47 @@ describe("rail Nyt groups", () => {
     expect(ids(now.yours)).toEqual(["started"]);
   });
 
+  it("puts a new conversation in Sinun vuorosi until its first message is written", () => {
+    // Opened with +: its Pi waits for the first message, no history yet.
+    const fresh = agent("fresh", {
+      history: "missing",
+      process: "daemon_managed_live",
+      run_active: false,
+      title: { display: "Uusi keskustelu", source: "new_conversation" },
+    });
+    const sessions: Session[] = [
+      { agent_id: "fresh", workspace_id: "ws_example00", state: "live" },
+    ];
+    let now = run([fresh], { sessions });
+    expect(ids(now.yours)).toEqual(["fresh"]);
+    expect(ids(now.quiet)).toEqual([]);
+    // Written and at work, it runs; a crash before the history stays failed.
+    now = run([{ ...fresh, run_active: true }], { sessions });
+    expect(ids(now.running)).toEqual(["fresh"]);
+    now = run(
+      [
+        {
+          ...fresh,
+          process: "confirmed_exited",
+          rest: { cause: "crash", awake: false, at: "2026-11-07T00:00:00Z" },
+        },
+      ],
+      { sessions },
+    );
+    expect(now.running[0]).toMatchObject({ agentId: "fresh", failed: true });
+    // Ei nyt names no reply and moves it to Hiljaiset.
+    now = run(
+      [
+        {
+          ...fresh,
+          turn_mark: { state: "not_now", at: "2026-11-07T00:00:00Z" },
+        },
+      ],
+      { sessions, turnMarks: true },
+    );
+    expect(ids(now.quiet)).toEqual(["fresh"]);
+  });
+
   it("hints each workspace with its strongest state", () => {
     const now = run(
       [

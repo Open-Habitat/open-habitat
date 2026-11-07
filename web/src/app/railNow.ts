@@ -26,7 +26,7 @@ import { placeWorkClause } from "./workSentence";
 const txt = liveText(statusText);
 
 export interface RailNow {
-  /** A new reply or a question: the person's turn. */
+  /** A new reply, a question or a new conversation: the person's turn. */
   yours: AgentNavModel[];
   /** Work going on without the person: working, or waiting on background
    * work (a process or a worker). */
@@ -157,10 +157,23 @@ export function railNow({
     // that is gone (its turn was cut, say) does not wait.
     const read =
       turnMarks && !live && !!reply && facts.attention === "seen" && !dismissed;
+    // A conversation opened with + waits for the person until its first
+    // message is written, as a reply does (Jari 7.11.2026): Pi has written
+    // no history yet. Ei nyt, which has no reply to name, moves it to
+    // Hiljaiset; a Pi that crashed before writing stays failed.
+    const unanswered =
+      (current ?? a).history === "missing" &&
+      !live &&
+      !reply &&
+      !dismissed &&
+      !facts.pendingQuestion &&
+      !a.failure &&
+      !(a.rest?.cause === "crash" && !a.rest.awake);
     const turn =
       (attention && !dismissed) ||
       read ||
       raised ||
+      unanswered ||
       (facts.pendingQuestion && observed.running);
     // Pi ended unasked: the conversation rests until the person writes, and
     // stays in Käynnissä as failed so it is not silently gone. The snapshot's
