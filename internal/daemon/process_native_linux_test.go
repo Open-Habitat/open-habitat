@@ -123,9 +123,24 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	if inv.Availability != "available" || calls.Load() != 3 {
 		t.Fatal("list disturbed run")
 	}
-	c.journal.mu.Lock()
-	events := append([][]byte{}, c.journal.frames...)
-	c.journal.mu.Unlock()
+	// The notification is projected at its message_end, a frame after
+	// agent_start that Pi wrote before the held provider call; drain may not
+	// have read it yet when the run is first seen active.
+	journal := func() [][]byte {
+		c.journal.mu.Lock()
+		defer c.journal.mu.Unlock()
+		return append([][]byte{}, c.journal.frames...)
+	}
+	wakeProjected := func(events [][]byte) bool {
+		for _, event := range events {
+			if strings.Contains(string(event), `"kind":"process.notification"`) && strings.Contains(string(event), `"delivery":"wake"`) {
+				return true
+			}
+		}
+		return false
+	}
+	wait("live wake delivery projected", func() bool { return wakeProjected(journal()) })
+	events := journal()
 	c.mu.Lock()
 	diagnostics, _ := json.Marshal(s.events)
 	c.mu.Unlock()
@@ -136,15 +151,6 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 		if strings.Contains(string(event), "synthetic-process-secret") {
 			t.Fatal("serialized Pi process argument leaked into journal")
 		}
-	}
-	wakeSeen := false
-	for _, event := range events {
-		if strings.Contains(string(event), `"kind":"process.notification"`) && strings.Contains(string(event), `"delivery":"wake"`) {
-			wakeSeen = true
-		}
-	}
-	if !wakeSeen {
-		t.Fatal("live wake delivery not projected")
 	}
 	close(wakeRelease)
 	wait("wake settlement", func() bool { c.mu.Lock(); defer c.mu.Unlock(); return s.settled && !s.runActive })
