@@ -231,7 +231,8 @@ test("@mutation-layer record exhaustion is a refusal, not the live-limit card", 
       : route.continue(),
   );
   await page.getByTestId("conversation-start").click();
-  const conversation = page.getByTestId("conversation-stream");
+  // Creation feedback sits above the composer, outside the history.
+  const conversation = page.getByRole("main");
   await expect(
     conversation.locator(
       '[data-testid="creation-problem"][data-state="refused"]',

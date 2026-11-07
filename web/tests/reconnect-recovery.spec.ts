@@ -268,7 +268,7 @@ for (const created of [false, true]) {
     await start.click();
     await expect(
       page
-        .getByTestId("conversation-stream")
+        .getByRole("main")
         .locator('[data-testid="creation-problem"][data-state="uncertain"]'),
     ).toBeVisible();
     const sidebarStart = page

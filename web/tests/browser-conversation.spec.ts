@@ -891,7 +891,7 @@ test("@browser-conversation lost create acknowledgement is rechecked on reload w
   });
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(
-    page.getByTestId("conversation-stream").getByTestId("creation-problem"),
+    page.getByRole("main").getByTestId("creation-problem"),
   ).toBeVisible();
   await page.reload();
   await expect(

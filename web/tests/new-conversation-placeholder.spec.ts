@@ -106,7 +106,7 @@ test("@placeholder lost creation reply stays in the conversation, including relo
   });
   await newButton(page).click();
   await expect(
-    page.getByTestId("conversation-stream").getByTestId("creation-problem"),
+    page.getByRole("main").getByTestId("creation-problem"),
   ).toBeVisible();
   await expect(page).toHaveURL(/conversation=new$/);
   // Typing stays possible, but nothing can be sent to an unconfirmed creation.
