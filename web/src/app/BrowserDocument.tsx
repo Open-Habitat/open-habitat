@@ -184,14 +184,15 @@ export default function BrowserDocument({
     return () => window.removeEventListener("beforeunload", unload);
   }, []);
   const loadDirectory = useCallback(
-    async (path: string) => {
+    async (path: string, background = false) => {
       if (pendingDirectories.current.has(path)) return;
       const signal = abort.current.signal;
       pendingDirectories.current.set(path, signal);
-      setDirectories((before) => ({
-        ...before,
-        [path]: { ...before[path], loading: true, error: false },
-      }));
+      if (!background)
+        setDirectories((before) => ({
+          ...before,
+          [path]: { ...before[path], loading: true, error: false },
+        }));
       try {
         const next = await listEditorFiles(workspace, path, signal);
         if (!signal.aborted) {
@@ -601,7 +602,7 @@ export default function BrowserDocument({
       }
       directories={directories}
       reveal={reveal}
-      onLoadDirectory={(path) => void loadDirectory(path)}
+      onLoadDirectory={loadDirectory}
       picker={picker}
       dirty={dirty}
       saveBlocked={saveBlocked}

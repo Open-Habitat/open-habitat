@@ -235,7 +235,10 @@ it("keeps simultaneous directory observations separate and offers retry without 
         resolveA = resolve;
       }),
   );
-  act(() => model.onLoadDirectory("a"));
+  act(() => {
+    // Leave this read pending while the other directory completes.
+    void model.onLoadDirectory("a");
+  });
   vi.mocked(listEditorFiles).mockResolvedValueOnce({
     workspace_id: "ws_example123",
     path: "b",

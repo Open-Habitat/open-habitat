@@ -83,7 +83,7 @@ export interface BrowserEditorProps {
   };
   directories: TreeDirectories;
   reveal?: FileRef;
-  onLoadDirectory: (path: string) => void;
+  onLoadDirectory: (path: string, background?: boolean) => void;
   picker: boolean;
   dirty: boolean;
   saving: boolean;

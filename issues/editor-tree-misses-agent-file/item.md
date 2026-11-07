@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: editor-tree
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Open editor's file list does not show a file the agent just created
@@ -27,4 +28,4 @@ on yksi epäilty.
 
 ## Acceptance Criteria
 
-- [ ] syy löydetty; agentin luoma tiedosto näkyy auki olevan editorin listassa; testi rajapinnassa
+- [x] syy löydetty; agentin luoma tiedosto näkyy auki olevan editorin listassa; testi rajapinnassa

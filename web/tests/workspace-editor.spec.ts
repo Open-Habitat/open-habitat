@@ -1,3 +1,5 @@
+import { rename, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { workerHostPort } from "../test-ports.mjs";
 import { openHeaderPanel } from "./conversation-view";
@@ -71,6 +73,43 @@ async function conversationWithFileLink(
     timeout: 20_000,
   });
 }
+
+test("@native-editor-tree code-server Explorer observes external file changes through the editor relay", async ({
+  page,
+}) => {
+  test.skip(
+    !process.env.BROWSER_HOST_CODE_SERVER,
+    "Requires an explicitly selected native code-server",
+  );
+  await conversationWithFileLink(page);
+  await page.getByTestId("toggle-editor").click();
+  const frame = editorFrame(page);
+  const trust = frame.getByRole("button", { name: /Yes, I trust/ });
+  // Native VS Code owns these controls, not Habitat's translated catalog.
+  await expect(
+    frame.getByRole("treeitem", { name: "cmd", exact: true }).or(trust).first(),
+  ).toBeVisible({ timeout: 20000 });
+  if (await trust.isVisible()) await trust.click();
+  await expect(
+    frame.getByRole("treeitem", { name: "cmd", exact: true }),
+  ).toBeVisible();
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const root = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  ).path;
+  const entry = (name: string) =>
+    frame.getByRole("treeitem", { name, exact: true });
+  await writeFile(join(root, "agent-created.txt"), "external writer\n");
+  await expect(entry("agent-created.txt")).toBeVisible({ timeout: 10000 });
+  await rename(
+    join(root, "agent-created.txt"),
+    join(root, "agent-renamed.txt"),
+  );
+  await expect(entry("agent-renamed.txt")).toBeVisible();
+  await expect(entry("agent-created.txt")).toHaveCount(0);
+  await unlink(join(root, "agent-renamed.txt"));
+  await expect(entry("agent-renamed.txt")).toHaveCount(0);
+});
 
 const columnWidth = (page: Page) =>
   page

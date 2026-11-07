@@ -1,3 +1,5 @@
+import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
@@ -60,6 +62,50 @@ async function openFile(page: Page, phone: boolean) {
     true,
   );
 }
+test("@browser-editor external file creation, rename and removal refresh the open tree without losing edits", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const workspace = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  );
+  const root = workspace.path;
+  await page.clock.pauseAt(new Date());
+  await edit(page, "unsaved personal text");
+  if (!(await page.getByTestId("editor-file-picker").isVisible()))
+    await page.getByTestId("editor-picker").click();
+  const entry = (name: string) =>
+    page.getByTestId("editor-file-entry").filter({
+      has: page.locator("code", { hasText: new RegExp(`^${name}$`) }),
+    });
+  const listings: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/editor/list")) listings.push(request.url());
+  });
+  await writeFile(join(root, "agent-created.txt"), "from outside the editor\n");
+  await writeFile(join(root, "cmd", "agent-nested.txt"), "nested\n");
+  await page.clock.runFor(4000);
+  await expect(entry("agent-created.txt")).toBeVisible();
+  await expect(entry("agent-nested.txt")).toBeVisible();
+  // Refresh replies must not restart the refresh effect into a read loop.
+  expect(listings.length).toBeLessThanOrEqual(4);
+  await rename(
+    join(root, "agent-created.txt"),
+    join(root, "agent-renamed.txt"),
+  );
+  await unlink(join(root, "cmd", "agent-nested.txt"));
+  await mkdir(join(root, "agent-folder"));
+  await page.clock.runFor(4000);
+  await expect(entry("agent-created.txt")).toHaveCount(0);
+  await expect(entry("agent-nested.txt")).toHaveCount(0);
+  await expect(entry("agent-renamed.txt")).toBeVisible();
+  await expect(entry("agent-folder")).toBeVisible();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "unsaved personal text",
+  );
+});
+
 async function edit(page: Page, content: string) {
   const input = page.getByTestId("editor-document");
   await input.fill(content);
@@ -113,6 +159,8 @@ for (const engine of ["codemirror6"])
         const noteRead = (request: import("@playwright/test").Request) => {
           if (request.url().includes("/editor/list")) reads.push(request.url());
         };
+        // Filtering is local; hold the independent background refresh timer.
+        await page.clock.pauseAt(new Date());
         page.on("request", noteRead);
         await filter.fill("cmd/main.go");
         await expect(file).toBeVisible();
@@ -122,6 +170,7 @@ for (const engine of ["codemirror6"])
         await expect(file).toHaveCount(0);
         expect(reads).toEqual([]);
         page.off("request", noteRead);
+        await page.clock.resume();
         await folder.click();
         await expect(file).toBeVisible();
         expect(
