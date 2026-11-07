@@ -26,7 +26,11 @@ export default defineConfig(({ command }) => {
       environment: "jsdom",
       globals: true,
       maxWorkers: Number(process.env.OH_WEB_WORKERS ?? 8),
-      include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
+      include: [
+        "src/**/*.test.tsx",
+        "src/**/*.test.ts",
+        "scripts/**/*.test.mjs",
+      ],
       setupFiles: ["src/test/setupLanguage.ts"],
     },
   };

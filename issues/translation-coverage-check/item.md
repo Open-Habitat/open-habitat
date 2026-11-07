@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: translation-check
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Machine check of translation coverage and quality, plus an extract for agent review
@@ -20,4 +21,4 @@ Käännösten kattavuus ja laatu tarkistettavaksi koneellisesti (Jarin ehdotus 7
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

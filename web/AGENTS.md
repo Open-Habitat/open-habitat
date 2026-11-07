@@ -44,7 +44,28 @@ translated: route slugs (`/settings/tili`), test ids, settings row ids and
 anything another program compares stay as they are, and a comparison against
 a displayed word (a status in the rail) accepts both languages.
 `src/i18n/catalogs.test.ts` checks every catalog for parity and Finnish
-letters in English, and `src/i18n/finnishScan.test.ts` fails on Finnish (a
+letters in English. `scripts/catalog-review.test.mjs`, included in the fast
+web checks, also checks literal text inside every function branch and JSX
+message, a small fixed catalog-derived vocabulary in both directions, and
+regional spelling. It is a leftover detector, not a semantic translation
+review. External names and native identifiers need a reasoned, key-scoped
+exception in the checker.
+
+From the repository root, after installing web dependencies:
+
+```sh
+node web/scripts/catalog-review.mjs > /var/tmp/catalog-review.json
+```
+
+Give that one JSON file to a reviewing agent: each key has Finnish, US and effective UK
+English side by side, including UK fallbacks, nested entries, arrays, complete
+function source, local helper source and literal text fragments. Settings search labels are included
+from their separate index; bilingual search synonyms are not messages. Review
+meaning, missing translations and regional usage from source rather than
+assuming the heuristic proves quality. The extract is disposable, not a second
+catalog to maintain.
+
+`src/i18n/finnishScan.test.ts` fails on Finnish (a
 Finnish letter, or a word only the Finnish catalogs use) in a string, template
 or JSX text anywhere in `src` outside the catalogs, tests, stories and
 fixtures. Finnish that stays on purpose, such as an identifier or a value the
