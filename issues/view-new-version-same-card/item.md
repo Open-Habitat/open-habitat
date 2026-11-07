@@ -5,7 +5,7 @@ type: feature
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: view-versions
 lane_seq: 1
 ---
