@@ -2,12 +2,16 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: ci
 source_ref: taskfleet:01m6v4fwchjk9y365ebg4cn7t6/gate:rest-report-stop
 originating_run: 01m6v4fwchjk9y365ebg4cn7t6
 originating_run_kind: spinoff
+closed: 2026-11-07
+commits:
+- hash: 4d37fa11c
+  summary: wait for the controller to record a stop
 ---
 
 # Daemon tests send right after Stop before the controller has recorded it (TestRestReportReadsTaskfleetWithoutStarting 409)
