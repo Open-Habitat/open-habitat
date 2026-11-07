@@ -3,7 +3,9 @@ import { adoptCreation } from "./heldMessages";
 
 /** The mounted creation view keeps its draft when it receives its ID. Storage
  * adoption can happen before that render commits; it is not newer than input
- * still arriving in the mounted field (including an upload reply). */
+ * still arriving in the mounted field (including an upload reply). A field
+ * nobody wrote in holds nothing newer: it may have mounted only after
+ * adoption had emptied the creation draft, so the adopted draft wins. */
 export function useConversationDraft(
   identity: string,
   workspaceId: string,
@@ -16,15 +18,20 @@ export function useConversationDraft(
     key,
     value: sessionStorage.getItem(key) ?? "",
     origin,
+    written: false,
   }));
   if (draft.key !== key) {
+    const stored = sessionStorage.getItem(key);
     setDraft({
       key,
       value:
         id && draft.origin?.identity === identity
-          ? draft.value
-          : (sessionStorage.getItem(key) ?? ""),
+          ? draft.written
+            ? draft.value
+            : (stored ?? draft.value)
+          : (stored ?? ""),
       origin,
+      written: false,
     });
   }
   const committed = useRef(draft);
@@ -43,6 +50,7 @@ export function useConversationDraft(
         key,
         value,
         origin: id ? undefined : { identity, workspaceId },
+        written: true,
       });
       sessionStorage.setItem(key, value);
     },

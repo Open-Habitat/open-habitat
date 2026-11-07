@@ -49,6 +49,27 @@ it("does not carry a draft to another workspace, identity or existing conversati
   expect(result.current.draft).toBe("existing draft");
 });
 
+it("keeps a prepared draft adopted before the creation view first renders", () => {
+  // A start-page goal prepares the draft and starts creation; the daemon's
+  // reply can be adopted before the routed creation view commits.
+  const id = "pi:33333333-3333-4333-8333-333333333333";
+  sessionStorage.setItem(
+    creationKeys("person", "workspace").draft,
+    "/skill:korjaa-ongelma [kuvaile havainto]",
+  );
+  adoptCreation("person", "workspace", id);
+  const { result, rerender } = renderHook(
+    ({ id }) => useConversationDraft("person", "workspace", id),
+    { initialProps: { id: undefined as string | undefined } },
+  );
+  expect(result.current.draft).toBe("");
+  rerender({ id });
+  expect(result.current.draft).toBe("/skill:korjaa-ongelma [kuvaile havainto]");
+  expect(sessionStorage.getItem(`nah:person:draft:${id}`)).toBe(
+    "/skill:korjaa-ongelma [kuvaile havainto]",
+  );
+});
+
 it.each([
   ["before", "workspace"],
   ["during", "workspace"],
