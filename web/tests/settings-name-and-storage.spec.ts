@@ -86,6 +86,10 @@ test("user storage stays on one line and fits desktop and phone, including limit
     await route.fulfill({ response, json });
   });
   await settings(page);
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-palvelin"))
+    .click();
   await page.getByRole("link").and(page.getByTestId("settings-levy")).click();
   const row = page
     .getByRole("row")

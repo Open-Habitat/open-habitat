@@ -21,9 +21,11 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
   await expect(page.getByTestId("settings-section-editori")).toBeVisible();
   await page.goto("/settings");
   const navigation = page.getByTestId("settings-navigation");
-  await expect(navigation.getByTestId("settings-levy")).toBeVisible();
+  await expect(navigation.getByTestId("settings-palvelin")).toBeVisible();
   // Independent English vocabulary catches both non-ASCII and ASCII Finnish slugs.
-  const slugs = [
+  // The personal list ends in the entry to the separate server area, which
+  // lists its own sections.
+  const personal = [
     "account",
     "devices",
     "keys",
@@ -38,24 +40,34 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "storage",
     "experimental",
     "server",
+  ];
+  const server = [
+    "server",
     "server-integrations",
     "ai-key",
     "speech-key",
     "onboarding",
     "users",
+    "conversations",
     "disk",
   ];
-  const links = await navigation.getByRole("link").all();
-  expect(
-    await Promise.all(links.map((link) => link.getAttribute("href"))),
-  ).toEqual(slugs.map((slug) => `/settings/${slug}`));
-  for (const [index, link] of links.entries()) {
-    await link.click();
-    await expect(page).toHaveURL(new RegExp(`/settings/${slugs[index]}$`));
-    await expect(link).toHaveAttribute("aria-current", "page");
+  for (const slugs of [personal, server]) {
+    if (slugs === server)
+      await expect(page.getByTestId("server-section-links")).toBeVisible();
+    const links = await navigation.getByRole("link").all();
+    expect(
+      await Promise.all(links.map((link) => link.getAttribute("href"))),
+    ).toEqual(slugs.map((slug) => `/settings/${slug}`));
+    for (const [index, link] of links.entries()) {
+      await link.click();
+      await expect(page).toHaveURL(new RegExp(`/settings/${slugs[index]}$`));
+      // Entering the server area replaces the list the link was in.
+      if (slugs === personal && slugs[index] === "server") break;
+      await expect(link).toHaveAttribute("aria-current", "page");
+    }
   }
   await page.goBack();
-  await expect(page).toHaveURL(/\/settings\/users$/);
+  await expect(page).toHaveURL(/\/settings\/conversations$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/settings\/disk$/);
   await page.reload();

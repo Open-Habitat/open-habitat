@@ -847,6 +847,11 @@ test("@account-settings administration is host-authorized, not only hidden", asy
 }) => {
   await login(page);
   await settings(page);
+  // Administration is its own area, entered from the personal list.
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-palvelin"))
+    .click();
   await page
     .getByRole("link")
     .and(page.getByTestId("settings-kayttajat"))

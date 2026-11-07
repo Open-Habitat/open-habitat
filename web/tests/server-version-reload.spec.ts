@@ -64,7 +64,8 @@ test("@version open settings follow the running release across upgrades", async 
   await expect(
     row.locator('[data-testid="bundle-state"][data-state="current"]'),
   ).toBeVisible();
-  await page.getByTestId("settings-tili").click();
+  // The server area returns to the personal settings with its own back.
+  await page.getByTestId("settings-own-back").click();
   await expect(
     page.locator(".s-version-line").getByTestId("version-value"),
   ).toHaveText("0.0.0-lab (0000000)");
