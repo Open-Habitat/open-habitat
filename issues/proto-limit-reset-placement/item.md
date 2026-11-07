@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
-preparation: pending
+preparation: ready
 lane: limit-reset-proto
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Prototype: where Oletukseen sits on a person's limit row
@@ -32,3 +33,13 @@ rivit pysyvät samankorkuisina. Levytila ja Keskustelut samalla ratkaisulla;
 ## Acceptance Criteria
 
 - [ ] kierros 1: nykytila, kolme suuntaa, näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-07, kierros 1)
+
+**A Säädin**: palautus on pieni kuvakepainike heti − n + -säätimen oikealla
+puolella, ja riveillä ilman omaa rajaa on sama tyhjä tila. Peruste Jarin
+sanoin: painikkeessa on symboli, ja täällä suositaan aina symboleita. Nykytila
+(painike omalla rivillään palkin alla, rivi selvästi paksumpi) on virhe.
+Kysymykseen 2 (näytetäänkö oletusarvo) Jari ei vastannut; kapellimestari
+päätti: ei tekstiä painikkeeseen, vaan vihje ja saavutettava nimi kertovat
+mihin palautetaan (*Palauta oletukseen (20 GiB)*).
