@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@research-remote-browser-session']
-preparation: pending
+preparation: ready
 lane: remote-browser-proto
 lane_seq: 1
 ---
@@ -42,3 +42,14 @@ kyllä, ja sitä prototypoidaan. Kaikkien keskustelujen selainlokia ei tarvita.
 Kierros 2: Pyydettäessä-suunnan riffit pienoiskuvasta ja siitä, miten
 henkilö näkee, mikä keskustelu selainta käyttää (selain on henkilön oma ja
 yhteinen hänen agenteilleen; yksi ohjaa kerrallaan).
+
+## Decision (Jari 2026-11-07, kierros 2)
+
+Riffataan: keskustelussa **siru**, josta aukeaa kierroksen 2 suunnan 2
+kaltainen **palkki** (kaistale pienine kuvineen). Agentilla voi olla
+**useita selainikkunoita** (Jari on nähnyt agentin avaavan muita ikkunoita
+tehdäkseen jotain usealla yhtä aikaa), joten siru ja palkki kantavat useita.
+**Agentin hiiren liike ei näy** kierroksen 2 kuvissa: sen pitää näkyä.
+Lisäksi (Jari kysyi, näkyvätkö selaimet esim. vasemmassa palkissa;
+kapellimestarin suositus kyllä): henkilön oma selain yhtenä rivinä
+vasemmassa palkissa (tila, mikä keskustelu ohjaa, avaa arkin).
