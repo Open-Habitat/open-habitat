@@ -180,7 +180,7 @@ func TestRestCausesWakeAndTell(t *testing.T) {
 	// person: the Stop button.
 	w := httptest.NewRecorder()
 	c.stop(w, httptest.NewRequest("POST", "http://unix/stop", nil), id)
-	h.eventually("stopped", func() bool { return !h.live(c, id) })
+	h.eventually("stopped", func() bool { return h.stopped(c, id) })
 	h.expectRest(c, id, "person", false)
 
 	// crash: Pi ends on its own, here on the next prompt.
@@ -214,7 +214,7 @@ func TestRacingWakesShareOnePi(t *testing.T) {
 	h.quiescent(c, id)
 	w := httptest.NewRecorder()
 	c.stop(w, httptest.NewRequest("POST", "http://unix/stop", nil), id)
-	h.eventually("stopped", func() bool { return !h.live(c, id) })
+	h.eventually("stopped", func() bool { return h.stopped(c, id) })
 	launches := len(h.lines("launches.log"))
 	release, ok := c.proofPermit(context.Background())
 	if !ok {
@@ -251,7 +251,7 @@ func TestRestReportReadsTaskfleetWithoutStarting(t *testing.T) {
 	if taskfleetBinary(h.root) == "" {
 		w := httptest.NewRecorder()
 		c.stop(w, httptest.NewRequest("POST", "http://unix/stop", nil), id)
-		h.eventually("stopped", func() bool { return !h.live(c, id) })
+		h.eventually("stopped", func() bool { return h.stopped(c, id) })
 		w = httptest.NewRecorder()
 		c.restReport(w, httptest.NewRequest("GET", "http://unix/rest", nil), id)
 		var reply map[string]any
@@ -290,7 +290,7 @@ func TestRestReportReadsTaskfleetWithoutStarting(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	c.stop(w, httptest.NewRequest("POST", "http://unix/stop", nil), id)
-	h.eventually("stopped", func() bool { return !h.live(c, id) })
+	h.eventually("stopped", func() bool { return h.stopped(c, id) })
 	launches := len(h.lines("launches.log"))
 	reply := read()
 	report := reply["report"].(map[string]any)

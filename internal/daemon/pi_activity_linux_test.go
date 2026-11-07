@@ -27,6 +27,16 @@ func (h *heldHarness) live(c *ConversationController, id string) bool {
 	return s != nil && liveChild(s)
 }
 
+// stopped is true once a stop has finished: the child is reaped and the
+// controller has recorded it. The child exits before the stop's own goroutine
+// takes the lock again, and a send in that gap meets "stopping" and is refused.
+func (h *heldHarness) stopped(c *ConversationController, id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	s := c.sessions[id]
+	return s == nil || !liveChild(s) && s.state != "stopping"
+}
+
 // converse sends one message and waits until Pi has answered it and is idle.
 func (h *heldHarness) converse(c *ConversationController, id, text, command string) {
 	h.t.Helper()

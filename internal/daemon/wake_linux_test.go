@@ -248,7 +248,7 @@ func TestCutOffWaitsWakeAtOnceButThePersonsStopHolds(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("stop: %d %s", w.Code, w.Body.String())
 	}
-	h.eventually("stopped", func() bool { return !h.live(c, id) })
+	h.eventually("stopped", func() bool { return h.stopped(c, id) })
 	h.cutProcess(c, id, "until false; do sleep 5; done")
 	c.wakeWaitingRests(context.Background(), time.Now())
 	if len(h.wakes()) != 0 || h.live(c, id) {
@@ -276,7 +276,7 @@ func TestThePersonsStopAfterATypingWakeHoldsAcrossARestart(t *testing.T) {
 	if w := h.post(func(w http.ResponseWriter, r *http.Request) { first.stop(w, r, id) }, ""); w.Code != 200 {
 		t.Fatalf("stop: %d", w.Code)
 	}
-	h.eventually("stopped", func() bool { return !h.live(first, id) })
+	h.eventually("stopped", func() bool { return h.stopped(first, id) })
 	if sessions, _ := nativeSessions(first.nativeCfg()); len(sessions) != 1 {
 		t.Fatal("native history not found")
 	} else if b, _ := os.ReadFile(sessions[0].path); !strings.Contains(string(b), `"oh-person-stop"`) {
@@ -312,7 +312,7 @@ func TestDeclinedWakeRestsOn(t *testing.T) {
 	if len(h.wakes()) != 1 {
 		t.Fatalf("wakes: %v", h.wakes())
 	}
-	h.eventually("stopped again", func() bool { return !h.live(c, id) })
+	h.eventually("stopped again", func() bool { return h.stopped(c, id) })
 	if f, _, resting := h.rest(c, id); !resting || f.cause != "crash" {
 		t.Fatalf("rest %+v %v", f, resting)
 	}
