@@ -123,11 +123,18 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 				}
 			}
 			c := &ConversationController{writerProc: proc, cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{id: {id: id, workspace: ws, cwd: home, rpc: p, owner: owner, state: "idle", commands: map[string]bool{}}}}
-			go c.watch(c.sessions[id])
+			s := c.sessions[id]
+			go c.watch(s)
 			request := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+id+"/close", strings.NewReader("")).WithContext(context.Background())
 			w := httptest.NewRecorder()
 			c.closeEmpty(w, request, id)
 			if mode == "absent" || mode == "empty" {
+				c.mu.Lock()
+				cause := s.stopCause
+				c.mu.Unlock()
+				if cause != "person" || !p.personStop.Load() {
+					t.Fatalf("requested close reported as %q, person marker %v", cause, p.personStop.Load())
+				}
 				if w.Code != 200 || c.sessions[id] != nil {
 					t.Fatalf("close: %d %s", w.Code, w.Body.String())
 				}
@@ -142,6 +149,12 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 			} else {
 				if w.Code != 409 || c.sessions[id] == nil {
 					t.Fatalf("refusal: %d %s", w.Code, w.Body.String())
+				}
+				c.mu.Lock()
+				cause := s.stopCause
+				c.mu.Unlock()
+				if cause != "" || p.personStop.Load() {
+					t.Fatalf("refused close recorded a stop: %q", cause)
 				}
 				if mode == "nonempty" {
 					if _, err := os.Stat(path); err != nil {

@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: archive-conflict
 lane_seq: 2
+closed: 2026-11-07
 ---
 
 # Pi end during fast archives logged as unasked
@@ -20,4 +21,4 @@ Pi päättyi pyytämättä samassa jaksossa (agentti 7.11., pilot.612): journali
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

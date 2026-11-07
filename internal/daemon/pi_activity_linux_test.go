@@ -235,6 +235,12 @@ func TestArchiveStopsIdlePiButNotBackgroundWork(t *testing.T) {
 	h.converse(c, id, "Arkistoitava", activityCommand(1))
 	h.archive(c, id)
 	h.eventually("archived idle Pi stopped", func() bool { return !h.live(c, id) })
+	c.mu.Lock()
+	cause := c.sessions[id].stopCause
+	c.mu.Unlock()
+	if cause != "person" {
+		t.Fatalf("archive stop reported as %q", cause)
+	}
 
 	h.setFile("background", "1")
 	working := h.create(c)

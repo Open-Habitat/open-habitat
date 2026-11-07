@@ -167,6 +167,11 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	if live {
+		// Record the person's close only after the refusal checks, but before
+		// ending Pi: the exit watcher can run as soon as close touches stdin.
+		c.mu.Lock()
+		stopFor(s, "person")
+		c.mu.Unlock()
 		// Close the pipes and signal only the direct child, never a process group.
 		// piRPC.close returns an intentionally uncertain error even on a reaped child.
 		_ = s.rpc.close()
