@@ -144,7 +144,7 @@ func TestFileOfferFreezesOnlyWhatItNames(t *testing.T) {
 		{map[string]any{"paths": []string{"raportti.pdf", "taulukko.csv"}}, "invalid_arguments"}, // several need a title
 		{map[string]any{"paths": []string{}}, "invalid_arguments"},
 		{map[string]any{"paths": []string{"../secret/token.txt"}}, "invalid_arguments"},
-		{map[string]any{"paths": []string{"/etc/passwd"}}, "invalid_arguments"},
+		{map[string]any{"paths": []string{"/var/tmp/../report.pdf"}}, "invalid_arguments"},
 		{map[string]any{"paths": []string{".", "raportti.pdf"}, "title": "x"}, "invalid_arguments"},
 		{map[string]any{"paths": []string{"out/kaavio.png", "out/kaavio.png"}, "title": "x"}, "duplicate_file_name"},
 		{map[string]any{"paths": []string{"leak.txt"}}, "unsafe_file_source"},

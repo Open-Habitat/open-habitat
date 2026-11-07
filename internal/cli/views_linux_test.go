@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -10,9 +11,10 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
 )
 
-// Malformed offers are usage errors decided before the socket is touched;
-// a well-formed one reaches the socket (absent here) and fails there instead.
+// Malformed offers are refused before transport; valid paths reach the
+// injected exchange without contacting a person's installed daemon.
 func TestViewArgumentsRefuseBeforeSocket(t *testing.T) {
+	agentViewCommand := func(args []string) (any, error) { return runAgentViewCommand(args, refuseOfferTestExchange) }
 	t.Setenv("OPEN_HABITAT_CONVERSATION_ID", "")
 	id := "pi:11111111-1111-4111-8111-111111111111"
 	key := "22222222-2222-4222-8222-222222222222"
@@ -23,7 +25,7 @@ func TestViewArgumentsRefuseBeforeSocket(t *testing.T) {
 		{"show"},
 		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html"},
 		{"offer", "--conversation", id, "--workspace", ws, "--idempotency-key", key},
-		{"offer", "--conversation", id, "--workspace", ws, "--source", "/etc/passwd", "--idempotency-key", key},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "", "--idempotency-key", key},
 		{"offer", "--conversation", id, "--workspace", "home", "--source", "r.html", "--idempotency-key", key},
 		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--conversation", id, "--current"},
 		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key},
@@ -42,16 +44,23 @@ func TestViewArgumentsRefuseBeforeSocket(t *testing.T) {
 			t.Errorf("%q: %v", args, err)
 		}
 	}
-	_, err := agentViewCommand([]string{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key})
-	var c *cliError
-	if !errors.As(err, &c) || c.code == usageCode {
-		t.Fatalf("well-formed offer refused as usage: %v", err)
+	for _, source := range []string{"r.html", "/var/tmp/r.html", "/home/person/src/project/r.html"} {
+		_, err := agentViewCommand([]string{"offer", "--conversation", id, "--workspace", ws, "--source", source, "--idempotency-key", key})
+		var c *cliError
+		if !errors.As(err, &c) || c.code == usageCode {
+			t.Fatalf("well-formed offer refused as usage: %v", err)
+		}
 	}
+}
+
+func refuseOfferTestExchange(string, string, []byte) (json.RawMessage, error) {
+	return nil, system("test_transport", "synthetic transport reached")
 }
 
 // --current names the conversation's workspace too: without --workspace it
 // takes the launch context's, and outside one it says the context is missing.
 func TestViewOfferCurrentResolvesWorkspace(t *testing.T) {
+	agentViewCommand := func(args []string) (any, error) { return runAgentViewCommand(args, refuseOfferTestExchange) }
 	key := "22222222-2222-4222-8222-222222222222"
 	args := []string{"offer", "--current", "--source", "r.html", "--idempotency-key", key}
 	for _, k := range []string{"OPEN_HABITAT_CONVERSATION_ID", "OPEN_HABITAT_WORKSPACE_ID", "OPEN_HABITAT_LAUNCH_GENERATION"} {

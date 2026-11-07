@@ -195,7 +195,7 @@ func TestViewOfferFreezesOnlyWhatItNames(t *testing.T) {
 		{map[string]any{"path": "site", "entry": ".env"}, "invalid_arguments"},
 		{map[string]any{"path": "notes.txt"}, "view_entry_not_html"},
 		{map[string]any{"path": "../secret/token.html"}, "invalid_arguments"},
-		{map[string]any{"path": "/etc/passwd"}, "invalid_arguments"},
+		{map[string]any{"path": "/var/tmp/../report.html"}, "invalid_arguments"},
 		{map[string]any{"path": "leak.html"}, "unsafe_view_source"},
 		{map[string]any{"path": "linked-site-dir", "entry": "token.html"}, "unsafe_view_source"},
 		{map[string]any{"path": "linked-site", "entry": "index.html"}, "view_source_symlink"},

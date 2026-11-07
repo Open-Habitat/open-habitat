@@ -118,17 +118,16 @@ func validViewName(name string) bool {
 	return utf8.ValidString(name) && name != "" && len(name) <= 255
 }
 
-// validViewSource is the workspace-relative path the agent names. "." is the
-// workspace itself; an explicitly named dot path is allowed, since the agent
-// chose it.
+// validViewSource accepts a workspace-relative or absolute source. "." is
+// the workspace itself; an explicitly named dot path is allowed.
 func validViewSource(p string) bool {
 	if p == "." {
 		return true
 	}
-	if p == "" || len(p) > maxViewPath || !utf8.ValidString(p) || path.Clean(p) != p || strings.HasPrefix(p, "/") {
+	if p == "" || len(p) > maxViewPath || !utf8.ValidString(p) || path.Clean(p) != p {
 		return false
 	}
-	for _, part := range strings.Split(p, "/") {
+	for _, part := range strings.Split(strings.TrimPrefix(p, "/"), "/") {
 		if part == ".." || !validViewName(part) {
 			return false
 		}
@@ -189,11 +188,36 @@ func viewOpenError(err error) error {
 	}
 }
 
+// openOfferSource keeps relative sources beneath the workspace. Absolute
+// sources may name another filesystem, so their lookup allows mount
+// crossings. Neither lookup follows symlinks; descendants of a named
+// directory retain the same beneath/no-mount rules as workspace sources.
+func openOfferSource(root int, source, descendant string) (int, error) {
+	noMount := !path.IsAbs(source)
+	if !noMount {
+		parent, err := unix.Openat2(unix.AT_FDCWD, path.Dir(source), &unix.OpenHow{
+			Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
+			Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+		})
+		if err != nil {
+			return -1, err
+		}
+		defer unix.Close(parent)
+		root, source = parent, path.Base(source)
+	}
+	fd, err := open(unix.Openat2, root, source, unix.O_RDONLY|unix.O_NONBLOCK, noMount)
+	if err != nil || descendant == "" {
+		return fd, err
+	}
+	defer unix.Close(fd)
+	return open(unix.Openat2, fd, descendant, unix.O_RDONLY|unix.O_NONBLOCK, true)
+}
+
 // planView observes what an offer would export without copying anything:
 // a regular HTML file, or a directory's regular files below it. Symlinks and
 // special files refuse the offer; hidden entries are skipped and counted.
 func planView(root int, req viewRequest) (viewPlan, error) {
-	fd, err := open(unix.Openat2, root, req.Path, unix.O_RDONLY|unix.O_NONBLOCK, true)
+	fd, err := openOfferSource(root, req.Path, "")
 	if err != nil {
 		return viewPlan{}, viewOpenError(err)
 	}
@@ -355,11 +379,11 @@ func exportView(home string, root int, req viewRequest, plan viewPlan, summary v
 	}
 	defer unix.Close(files)
 	for _, f := range plan.files {
-		source := req.Path
+		descendant := ""
 		if !plan.single {
-			source = path.Join(req.Path, f.rel)
+			descendant = f.rel
 		}
-		if err := copyViewFile(root, source, files, f); err != nil {
+		if err := copyViewFile(root, req.Path, descendant, files, f); err != nil {
 			return err
 		}
 	}
@@ -395,8 +419,8 @@ func writeViewFile(parent int, name string, b []byte) error {
 	return nil
 }
 
-func copyViewFile(root int, source string, files int, f viewFile) error {
-	in, err := open(unix.Openat2, root, source, unix.O_RDONLY|unix.O_NONBLOCK, true)
+func copyViewFile(root int, source, descendant string, files int, f viewFile) error {
+	in, err := openOfferSource(root, source, descendant)
 	if err != nil {
 		return viewOpenError(err)
 	}

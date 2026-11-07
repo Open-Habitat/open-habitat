@@ -58,7 +58,7 @@ Lists cover the latest 200 notices on the current native branch; use
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):
 
-    open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key UUID --json
+    open-habitat agent view offer --current --source /var/tmp/report.html --title "Quarterly report" --idempotency-key UUID --json
     open-habitat agent view offer --current --source site --entry-file index.html --title "Recent sidebar – prototype, round 2" --idempotency-key UUID --json
     open-habitat agent view list --json
     open-habitat agent view remove --view VIEW_ID --json
@@ -68,6 +68,11 @@ language (at most 200 UTF-8 bytes), not a filename or just "Prototype". Name
 what the person will see and, when useful, its iteration; for example,
 "Viimeisimmät sivupalkissa – prototyyppi, kierros 2". Without it the card falls
 back to a filename, not the HTML document's `<title>`.
+
+For both view and file offers, `--source` accepts an absolute path inside or
+outside the workspace (for example `/var/tmp/report.html`), or a path relative
+to the conversation's workspace (for example `site/index.html`). The source
+must be readable as the person; symlinks in the path are refused.
 
 The offer copies the file, or the directory's files, into a frozen view: later
 edits do not change it, so offer again (new key) after a change. The person sees
@@ -97,7 +102,7 @@ link the view's files sit below the link's key, so root-relative URLs
 To hand the person files you produced (a chart, a spreadsheet, a PDF, a zip,
 a folder of photos) so they can preview and download them:
 
-    open-habitat agent file offer --current --source out/report.pdf --title "Quarterly report" --idempotency-key UUID --json
+    open-habitat agent file offer --current --source /var/tmp/report.pdf --title "Quarterly report" --idempotency-key UUID --json
     open-habitat agent file offer --current --source out/chart.png --source out/data.xlsx --title "Q3 package" --idempotency-key UUID --json
     open-habitat agent file offer --current --source out/partner-package --title "Partner briefing materials" --idempotency-key UUID --json
     open-habitat agent file list --json

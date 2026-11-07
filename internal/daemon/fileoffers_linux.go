@@ -194,8 +194,9 @@ func fileOfferError(err error) error {
 }
 
 type offerFile struct {
-	source   string // workspace-relative path to copy from
-	viewFile        // rel: the path inside the offer
+	source     string // explicitly named source, absolute or workspace-relative
+	descendant string // empty for a single file; otherwise relative to source
+	viewFile          // rel: the path inside the offer
 }
 
 type offerPlan struct {
@@ -214,7 +215,7 @@ func planFileOffer(root int, paths []string) (offerPlan, error) {
 	plan := offerPlan{}
 	seen := map[string]bool{}
 	for _, p := range paths {
-		fd, err := open(unix.Openat2, root, p, unix.O_RDONLY|unix.O_NONBLOCK, true)
+		fd, err := openOfferSource(root, p, "")
 		if err != nil {
 			return offerPlan{}, fileOfferError(viewOpenError(err))
 		}
@@ -233,7 +234,7 @@ func planFileOffer(root int, paths []string) (offerPlan, error) {
 			if !validViewPath(name) {
 				return offerPlan{}, viewFail(400, "unsupported_file_name")
 			}
-			plan.files = append(plan.files, offerFile{p, viewFile{name, st.Size}})
+			plan.files = append(plan.files, offerFile{p, "", viewFile{name, st.Size}})
 			plan.bytes += st.Size
 		case unix.S_IFDIR:
 			alone := len(paths) == 1
@@ -253,7 +254,7 @@ func planFileOffer(root int, paths []string) (offerPlan, error) {
 				if !alone {
 					rel = name + "/" + f.rel
 				}
-				plan.files = append(plan.files, offerFile{path.Join(p, f.rel), viewFile{rel, f.size}})
+				plan.files = append(plan.files, offerFile{p, f.rel, viewFile{rel, f.size}})
 				plan.bytes += f.size
 			}
 			if alone && validViewPath(name) {
@@ -317,7 +318,7 @@ func exportFileOffer(home string, root int, req fileOfferRequest, plan offerPlan
 	defer unix.Close(files)
 	items := make([]fileOfferItem, 0, len(plan.files))
 	for _, f := range plan.files {
-		if err := copyViewFile(root, f.source, files, f.viewFile); err != nil {
+		if err := copyViewFile(root, f.source, f.descendant, files, f.viewFile); err != nil {
 			return fileOfferError(err)
 		}
 		items = append(items, frozenFacts(files, f.rel, f.size))

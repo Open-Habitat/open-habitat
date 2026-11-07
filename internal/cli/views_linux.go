@@ -15,12 +15,16 @@ import (
 
 var viewIDArgPattern = regexp.MustCompile(`^v[a-z2-7]{26}$`)
 
-// agentViewCommand offers a workspace HTML file or directory as a frozen view
+// agentViewCommand offers a readable HTML file or directory as a frozen view
 // (ADR 0032), lists the person's views, or removes one. An offer reaches the
 // person's open browsers as a card in its conversation, with Avaa and Avaa
 // omalle välilehdelle; the reply says it was published, never that anyone
 // opened it.
 func agentViewCommand(args []string) (any, error) {
+	return runAgentViewCommand(args, exchangeAgentBody)
+}
+
+func runAgentViewCommand(args []string, exchange func(string, string, []byte) (json.RawMessage, error)) (any, error) {
 	if len(args) == 0 || (args[0] != "offer" && args[0] != "list" && args[0] != "remove") {
 		return nil, usage("expected agent view offer|list|remove; inspect --help")
 	}
@@ -70,7 +74,7 @@ func agentViewCommand(args []string) (any, error) {
 		if provided && (output == "" || !strings.HasSuffix(output, ".jsonl") || strings.TrimSpace(output) != output) {
 			return nil, usage("--output requires a new FILE.jsonl path")
 		}
-		data, err := exchangeAgent(daemon.AgentViewsPath)
+		data, err := exchange("GET", daemon.AgentViewsPath, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +94,7 @@ func agentViewCommand(args []string) (any, error) {
 			return nil, usage(fmt.Sprintf("invalid --view %q; expected a view_id from agent view list", id))
 		}
 		body, _ := json.Marshal(map[string]any{"view_id": id, "dry_run": dry})
-		data, err := exchangeAgentBody("POST", daemon.AgentViewRemovePath, body)
+		data, err := exchange("POST", daemon.AgentViewRemovePath, body)
 		if err != nil {
 			return nil, err
 		}
@@ -125,8 +129,8 @@ func agentViewCommand(args []string) (any, error) {
 		return nil, usage(fmt.Sprintf("invalid --workspace %q; expected ws_ ID from agent workspace list (optional only with --current)", workspace))
 	}
 	source, ok := values["--source"]
-	if !ok || source == "" || strings.HasPrefix(source, "/") || len(source) > 1024 {
-		return nil, usage("--source requires a workspace-relative file or directory path, not an absolute path")
+	if !ok || source == "" || len(source) > 1024 {
+		return nil, usage("--source requires an absolute or workspace-relative file or directory path (at most 1024 bytes)")
 	}
 	request := map[string]any{"idempotency_key": key, "workspace_id": workspace, "path": source, "dry_run": dry}
 	if entry, ok := values["--entry-file"]; ok {
@@ -139,7 +143,7 @@ func agentViewCommand(args []string) (any, error) {
 		request["title"] = title
 	}
 	body, _ := json.Marshal(request)
-	data, err := exchangeAgentBody("POST", path, body)
+	data, err := exchange("POST", path, body)
 	if err != nil {
 		return nil, err
 	}

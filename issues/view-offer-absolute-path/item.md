@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: view-offer-path
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Agent's first view offer fails on an absolute --source path
@@ -20,4 +21,4 @@ Agentin ensimmäinen näkymätarjous epäonnistuu absoluuttisella polulla (agent
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

@@ -10,6 +10,7 @@ import (
 // Malformed file offers are usage errors decided before the socket is
 // touched; a well-formed one reaches the socket (absent here) and fails there.
 func TestFileOfferArgumentsRefuseBeforeSocket(t *testing.T) {
+	agentFileCommand := func(args []string) (any, error) { return runAgentFileCommand(args, refuseOfferTestExchange) }
 	t.Setenv("OPEN_HABITAT_CONVERSATION_ID", "")
 	id := "pi:11111111-1111-4111-8111-111111111111"
 	key := "22222222-2222-4222-8222-222222222222"
@@ -22,7 +23,6 @@ func TestFileOfferArgumentsRefuseBeforeSocket(t *testing.T) {
 		{},
 		{"show"},
 		offer(),
-		offer("--source", "/etc/passwd"),
 		offer("--source", ""),
 		offer("--source", "a.pdf", "--source", "b.pdf"), // several sources need a title
 		offer("--source", "a.pdf", "--title", " "),
@@ -42,7 +42,7 @@ func TestFileOfferArgumentsRefuseBeforeSocket(t *testing.T) {
 			t.Errorf("%q: %v", args, err)
 		}
 	}
-	for _, args := range [][]string{offer("--source", "a.pdf"), offer("--source", "a.pdf", "--source", "out", "--title", "Paketti")} {
+	for _, args := range [][]string{offer("--source", "a.pdf"), offer("--source", "/var/tmp/a.pdf"), offer("--source", "a.pdf", "--source", "/var/tmp/out", "--title", "Paketti")} {
 		_, err := agentFileCommand(args)
 		var c *cliError
 		if !errors.As(err, &c) || c.code == usageCode {

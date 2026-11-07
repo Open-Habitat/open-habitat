@@ -20,6 +20,10 @@ var fileOfferIDArgPattern = regexp.MustCompile(`^f[a-z2-7]{26}$`)
 // An offer reaches the person's open browsers as a card in its conversation;
 // the reply says it was published, never that anyone downloaded it.
 func agentFileCommand(args []string) (any, error) {
+	return runAgentFileCommand(args, exchangeAgentBody)
+}
+
+func runAgentFileCommand(args []string, exchange func(string, string, []byte) (json.RawMessage, error)) (any, error) {
 	if len(args) == 0 || (args[0] != "offer" && args[0] != "list" && args[0] != "remove") {
 		return nil, usage("expected agent file offer|list|remove; inspect --help")
 	}
@@ -75,7 +79,7 @@ func agentFileCommand(args []string) (any, error) {
 		if provided && (output == "" || !strings.HasSuffix(output, ".jsonl") || strings.TrimSpace(output) != output) {
 			return nil, usage("--output requires a new FILE.jsonl path")
 		}
-		data, err := exchangeAgent(daemon.AgentFileOffersPath)
+		data, err := exchange("GET", daemon.AgentFileOffersPath, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +99,7 @@ func agentFileCommand(args []string) (any, error) {
 			return nil, usage(fmt.Sprintf("invalid --offer-id %q; expected an offer_id from agent file list", id))
 		}
 		body, _ := json.Marshal(map[string]any{"offer_id": id, "dry_run": dry})
-		data, err := exchangeAgentBody("POST", daemon.AgentFileOfferRemovePath, body)
+		data, err := exchange("POST", daemon.AgentFileOfferRemovePath, body)
 		if err != nil {
 			return nil, err
 		}
@@ -110,11 +114,11 @@ func agentFileCommand(args []string) (any, error) {
 		return nil, usage("provide exactly one of --current or --conversation pi:UUID; the card appears in that conversation")
 	}
 	if len(sources) == 0 || len(sources) > 20 {
-		return nil, usage("provide 1 to 20 --source flags, each a workspace-relative file or directory")
+		return nil, usage("provide 1 to 20 --source flags, each an absolute or workspace-relative file or directory")
 	}
 	for _, source := range sources {
-		if source == "" || strings.HasPrefix(source, "/") || len(source) > 1024 {
-			return nil, usage("--source requires a workspace-relative file or directory path, not an absolute path")
+		if source == "" || len(source) > 1024 {
+			return nil, usage("--source requires an absolute or workspace-relative file or directory path (at most 1024 bytes)")
 		}
 	}
 	title, hasTitle := values["--title"]
@@ -148,7 +152,7 @@ func agentFileCommand(args []string) (any, error) {
 		request["title"] = title
 	}
 	body, _ := json.Marshal(request)
-	data, err := exchangeAgentBody("POST", daemon.AgentFileOffersPath+"?"+query, body)
+	data, err := exchange("POST", daemon.AgentFileOffersPath+"?"+query, body)
 	if err != nil {
 		return nil, err
 	}
