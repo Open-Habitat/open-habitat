@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: server-norm-proto
 lane_seq: 1
 ---
