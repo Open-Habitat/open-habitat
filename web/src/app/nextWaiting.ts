@@ -3,7 +3,7 @@ import type { Status } from "./conversations";
 
 export type SendWindowEvent = "pending" | "accepted" | "failed";
 
-/** View state only: neither a running agent nor a restored receipt opens it. */
+/** View state only: a send or arrival at a working conversation opens it. */
 export function useNextWaitingWindow(
   id: string | undefined,
   status: Status | undefined,
@@ -46,6 +46,32 @@ export function useNextWaitingWindow(
     },
     [visit],
   );
+  const observedVisit = useRef<object | undefined>(undefined);
+  useEffect(() => {
+    // Wait for this visit's first fresh observation, not a restored receipt.
+    // Later external sends must not reopen a window that has already ended.
+    if (!status || stale || observedVisit.current === visit) return;
+    observedVisit.current = visit;
+    if (
+      status.run_active &&
+      !archived &&
+      !status.pending_question &&
+      !status.start_problem &&
+      !status.interrupted
+    ) {
+      setWindow((previous) =>
+        previous?.visit === visit
+          ? previous
+          : {
+              visit,
+              baseline: status,
+              accepted: true,
+              worked: true,
+              settled: status.turn_settled?.native_key,
+            },
+      );
+    }
+  }, [visit, status, stale, archived]);
   const working = !!status?.run_active;
   const ended =
     !!window &&
@@ -61,8 +87,8 @@ export function useNextWaitingWindow(
       (!!status?.turn_settled?.native_key &&
         status.turn_settled.native_key !== window.settled));
   useEffect(() => {
-    if (!window) return;
-    if (window.visit !== visit || ended) setWindow(undefined);
+    if (!window || window.visit !== visit) return;
+    if (ended) setWindow(undefined);
     else if (working && !window.worked) setWindow({ ...window, worked: true });
   }, [window, visit, ended, working]);
   useEffect(() => {

@@ -5,7 +5,7 @@ import { NextWaitingRow } from "../components/NextWaitingRow";
 
 export type NextWaiting = { yours: AgentNavModel[] };
 
-/** The live rail list, offered only inside this visit's accepted-send window. */
+/** The live rail list, offered during this visit's send or arrival window. */
 export function NextWaitingDock({
   next,
   agentId,

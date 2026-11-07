@@ -161,7 +161,7 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   await writer.context().close();
 });
 
-test("@next-waiting-row next and rail departure do not carry a window, nor does reload or an external send", async ({
+test("@next-waiting-row returning to a working conversation opens a window, but a later external send does not", async ({
   page,
   browser,
 }) => {
@@ -192,10 +192,10 @@ test("@next-waiting-row next and rail departure do not carry a window, nor does 
     .getByTestId("agent-link")
     .click();
   await expect.poll(() => page.url()).toBe(here);
-  await expect(line(page)).toHaveCount(0);
+  await expect(line(page)).toHaveAttribute("data-waiting", "1");
   await page.reload();
   await expect(page.getByTestId("message-input")).toBeVisible();
-  await expect(line(page)).toHaveCount(0);
+  await expect(line(page)).toHaveAttribute("data-waiting", "1");
   await page.request.get("/fixture/scenario?value=ready");
   await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
     timeout: 30000,
@@ -279,7 +279,7 @@ test("@next-waiting-row question, failed send and archive close the window", asy
   await writer.context().close();
 });
 
-test("@next-waiting-row a send with nobody waiting opens an empty window, reload forgets it", async ({
+test("@next-waiting-row a send with nobody waiting opens an empty window, reload observes the working turn", async ({
   page,
   browser,
 }) => {
@@ -308,9 +308,6 @@ test("@next-waiting-row a send with nobody waiting opens an empty window, reload
   await writer.goto(`${hostOrigin}/workspaces`);
   await create(writer);
   await send(writer, "another waiting reply after reload");
-  await expect(
-    page.getByTestId("rail-yours").getByTestId("agent-link").first(),
-  ).toBeVisible({ timeout: 25000 });
-  await expect(line(page)).toHaveCount(0);
+  await expect(line(page)).toBeVisible({ timeout: 25000 });
   await writer.context().close();
 });

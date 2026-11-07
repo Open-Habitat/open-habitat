@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: graduate
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Next waiting row missing on return to a still-working conversation

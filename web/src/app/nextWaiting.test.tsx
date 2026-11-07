@@ -23,7 +23,20 @@ function setup() {
     { initialProps },
   );
 }
-describe("accepted-send window", () => {
+describe("accepted-send and arrival window", () => {
+  it("opens on return to a working conversation after its first fresh status", () => {
+    const { result, rerender } = setup();
+    rerender({ id: "b", status: running, stale: true });
+    expect(result.current.open).toBe(false);
+    rerender({ id: "b", status: running, stale: false });
+    expect(result.current.open).toBe(true);
+    rerender({ id: "b", status: settled, stale: false });
+    expect(result.current.open).toBe(false);
+    rerender({ id: "b", status: running, stale: false });
+    expect(result.current.open).toBe(false);
+    rerender({ id: "a", status: running, stale: false });
+    expect(result.current.open).toBe(true);
+  });
   it("opens on acceptance before running, ends at a fast settled turn and never reopens from status alone", () => {
     const { result, rerender } = setup();
     act(() => result.current.outcome("pending"));
@@ -49,9 +62,9 @@ describe("accepted-send window", () => {
       old("pending");
       old("accepted");
     });
-    rerender({ id: "b", status: running, stale: false });
+    rerender({ id: "b", status: idle, stale: false });
     expect(result.current.open).toBe(false);
-    rerender({ id: "a", status: running, stale: false });
+    rerender({ id: "a", status: idle, stale: false });
     act(() => old("accepted"));
     expect(result.current.open).toBe(false);
   });
