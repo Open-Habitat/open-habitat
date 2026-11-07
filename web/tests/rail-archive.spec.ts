@@ -54,6 +54,25 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await expect(slot).toHaveCSS("opacity", "1");
   // The row's age gives way to the button rather than sitting under it.
   await expect(row.locator("time")).toBeHidden();
+  // The button's help opens beside the row, toward the page, so it covers
+  // no other row of the rail (Jari 7.11.2026); the row's own native title
+  // does not open over its buttons.
+  await archive.hover();
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toHaveText("Arkistoi");
+  const tipBox = await tip.boundingBox();
+  const rowBox = await row.boundingBox();
+  if (!tipBox || !rowBox) throw new Error("Missing tooltip geometry");
+  expect(tipBox.x).toBeGreaterThanOrEqual(rowBox.x + rowBox.width - 1);
+  // Beside the rail it is drawn on top, not clipped by the rail's box.
+  expect(
+    await page.evaluate(
+      ([x, y]) =>
+        !!document.elementFromPoint(x, y)?.closest('[role="tooltip"]'),
+      [tipBox.x + tipBox.width - 4, tipBox.y + tipBox.height / 2],
+    ),
+  ).toBe(true);
+  await expect(slot).toHaveAttribute("title", "");
   await page.mouse.move(0, 0);
   await expect(slot).toHaveCSS("opacity", "0");
   // Keyboard: the row's actions follow its link in the tab order, rename

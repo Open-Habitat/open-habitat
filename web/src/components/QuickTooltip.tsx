@@ -1,5 +1,6 @@
 import {
   type ComponentProps,
+  createContext,
   type ReactNode,
   useContext,
   useEffect,
@@ -15,6 +16,11 @@ import {
 } from "react-aria-components";
 import { flushSync } from "react-dom";
 import styles from "./QuickTooltip.module.css";
+
+/** Where quick help opens. Below by default; beside the control, toward the
+ * page, in the rail, whose rows are stacked so closely that help below a
+ * row's small buttons would cover the next row's (Jari 7.11.2026). */
+export const TooltipSide = createContext<"bottom" | "end">("bottom");
 
 /** Native disabled buttons cannot receive focus or tooltip trigger props.
  * Give their help a keyboard stop and a real description owner, not just an
@@ -75,6 +81,7 @@ function TooltipContent({ label }: { label: string }) {
   const [props] = useContextProps(defaults, null, TooltipContext);
   const state = useContext(TooltipTriggerStateContext);
   const isOpen = state?.isOpen ?? false;
+  const side = useContext(TooltipSide);
   // React Aria's open tooltip takes every Escape in the document, so help
   // that the resting pointer opened would swallow the key meant for the
   // focused element, such as the composer's stop. Escape elsewhere closes
@@ -104,7 +111,7 @@ function TooltipContent({ label }: { label: string }) {
   return (
     <Tooltip
       className={styles.tooltip}
-      placement="bottom"
+      placement={side}
       offset={8}
       UNSTABLE_portalContainer={container ?? undefined}
     >

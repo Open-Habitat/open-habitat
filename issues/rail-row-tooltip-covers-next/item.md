@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: rail-rework
 lane_seq: 2
+closed: 2026-11-07
 ---
 
 # Rail row button tooltip covers the row below

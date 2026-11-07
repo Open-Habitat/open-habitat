@@ -23,6 +23,7 @@ import {
   usePhoneHeaderReadout,
 } from "./PhoneHeaderFacts";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
+import { TooltipSide } from "./QuickTooltip";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
@@ -732,6 +733,9 @@ export function AgentNavItem({
               {archive || rename || turnRow ? (
                 <span
                   className="ah-nav-archive"
+                  // The row's own description is a native title; over its
+                  // buttons it would open below them, on the next row.
+                  title=""
                   data-actions={
                     [archive, rename, turnRow].filter(Boolean).length
                   }
@@ -1265,174 +1269,178 @@ export function WorkspaceRail({
       tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
-      <header className="ah-rail-head">
-        <div className="ah-rail-title">
-          {/* The server name is the way home, like Etusivu below it. */}
-          <strong title={`${serverLabel} · ${t.home}`}>
+      <TooltipSide.Provider value="end">
+        <header className="ah-rail-head">
+          <div className="ah-rail-title">
+            {/* The server name is the way home, like Etusivu below it. */}
+            <strong title={`${serverLabel} · ${t.home}`}>
+              <LinkRow
+                href="/workspaces"
+                kind="header"
+                data-testid="server-home"
+                className="ah-rail-server"
+              >
+                {collapsed ? "NAH" : serverLabel}
+              </LinkRow>
+            </strong>
+            {collapsed ? (
+              <span className="ah-rail-mobile-label">{t.workspaces}</span>
+            ) : null}
+            <span title={connectionLabel}>
+              <StatusMark
+                label={connectionLabel}
+                tone={
+                  connectionTone ??
+                  (listState === "stale" ? "warning" : "neutral")
+                }
+              />
+            </span>
+            <Button
+              data-testid={collapsed ? "navigation-open" : "close-navigation"}
+              ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
+              label={collapsed ? t.openNavigation : t.closeNavigation}
+              icon={collapsed ? "forward" : "back"}
+              variant="secondary"
+              size="row"
+              onPress={onToggle}
+            />
+          </div>
+          <div className="ah-rail-home-row">
             <LinkRow
               href="/workspaces"
-              kind="header"
-              data-testid="server-home"
-              className="ah-rail-server"
+              data-testid="home-link"
+              kind="home"
+              current={homeCurrent}
+              className="ah-rail-home"
+              aria-label={collapsed ? t.home : undefined}
             >
-              {collapsed ? "NAH" : serverLabel}
+              <Icon name="home" />
+              <span className="ah-rail-home-label">{t.home}</span>
             </LinkRow>
-          </strong>
-          {collapsed ? (
-            <span className="ah-rail-mobile-label">{t.workspaces}</span>
-          ) : null}
-          <span title={connectionLabel}>
-            <StatusMark
-              label={connectionLabel}
-              tone={
-                connectionTone ??
-                (listState === "stale" ? "warning" : "neutral")
-              }
-            />
-          </span>
-          <Button
-            data-testid={collapsed ? "navigation-open" : "close-navigation"}
-            ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
-            label={collapsed ? t.openNavigation : t.closeNavigation}
-            icon={collapsed ? "forward" : "back"}
-            variant="secondary"
-            size="row"
-            onPress={onToggle}
-          />
-        </div>
-        <div className="ah-rail-home-row">
-          <LinkRow
-            href="/workspaces"
-            data-testid="home-link"
-            kind="home"
-            current={homeCurrent}
-            className="ah-rail-home"
-            aria-label={collapsed ? t.home : undefined}
-          >
-            <Icon name="home" />
-            <span className="ah-rail-home-label">{t.home}</span>
-          </LinkRow>
-          {bell}
-        </div>
-        {pages}
-      </header>
-      <div className="ah-rail-content">
-        {now}
-        {only && !collapsed ? (
-          <section
-            data-testid="rail-only-workspace"
-            className="ah-rail-only"
-            aria-label={t.yourWorkspace}
-          >
-            {clones}
-            <LinkRow
-              href={only.href}
-              data-testid="rail-only-workspace-link"
-              current={only.current}
-              className="ah-rail-only-link"
+            {bell}
+          </div>
+          {pages}
+        </header>
+        <div className="ah-rail-content">
+          {now}
+          {only && !collapsed ? (
+            <section
+              data-testid="rail-only-workspace"
+              className="ah-rail-only"
+              aria-label={t.yourWorkspace}
             >
-              <Icon name="folder" aria-hidden="true" />
-              <span>{only.name}</span>
-            </LinkRow>
-            {onCreateWorkspace ? (
+              {clones}
               <LinkRow
-                href="/workspaces/new"
-                data-testid="workspace-create"
-                current={only.adding}
-                className="ah-rail-only-add"
+                href={only.href}
+                data-testid="rail-only-workspace-link"
+                current={only.current}
+                className="ah-rail-only-link"
               >
-                <Icon name="plus" aria-hidden="true" />
-                <span>{t.addWorkspaces}</span>
+                <Icon name="folder" aria-hidden="true" />
+                <span>{only.name}</span>
               </LinkRow>
-            ) : null}
-            {archived}
-          </section>
-        ) : only ? null : collapsed ? (
-          <ControlButton
-            data-testid="rail-all-workspaces"
-            size="row"
-            variant="quiet"
-            className="ah-now-expand"
-            aria-label={t.allWorkspaces}
-            title={t.allWorkspaces}
-            onPress={onToggle}
-          >
-            <Icon name="folder" />
-          </ControlButton>
-        ) : (
-          <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
-            <div className="ah-rail-section-head">
-              <h2 id="rail-ws">
-                {t.workspaces}
-                <span
-                  data-testid="workspace-summary"
-                  className="ah-rail-count"
-                  role="status"
-                >
-                  {resultSummary}
-                </span>
-              </h2>
               {onCreateWorkspace ? (
-                <ControlButton
+                <LinkRow
+                  href="/workspaces/new"
                   data-testid="workspace-create"
-                  size="row"
-                  variant="quiet"
-                  aria-label={t.newWorkspace}
-                  title={t.newWorkspace}
-                  onPress={onCreateWorkspace}
+                  current={only.adding}
+                  className="ah-rail-only-add"
                 >
-                  <Icon name="folderPlus" />
-                </ControlButton>
+                  <Icon name="plus" aria-hidden="true" />
+                  <span>{t.addWorkspaces}</span>
+                </LinkRow>
               ) : null}
-            </div>
-            <div className="ah-rail-filter">
-              <TextField
-                className="ah-rail-search"
-                value={filterValue}
-                onChange={onFilter}
-              >
-                <Label className="ah-visually-hidden">
-                  {t.filterWorkspaces}
-                </Label>
-                <Input
-                  data-testid="workspace-filter"
-                  placeholder={t.filterWorkspaces}
-                  autoComplete="off"
-                />
-              </TextField>
-              {filterValue ? (
-                <Button
-                  data-testid="clear-filter"
-                  label="×"
-                  ariaLabel={t.clearSearch}
-                  variant="quiet"
-                  size="row"
-                  onPress={() => onFilter("")}
-                />
+              {archived}
+            </section>
+          ) : only ? null : collapsed ? (
+            <ControlButton
+              data-testid="rail-all-workspaces"
+              size="row"
+              variant="quiet"
+              className="ah-now-expand"
+              aria-label={t.allWorkspaces}
+              title={t.allWorkspaces}
+              onPress={onToggle}
+            >
+              <Icon name="folder" />
+            </ControlButton>
+          ) : (
+            <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
+              <div className="ah-rail-section-head">
+                <h2 id="rail-ws">
+                  {t.workspaces}
+                  <span
+                    data-testid="workspace-summary"
+                    className="ah-rail-count"
+                    role="status"
+                  >
+                    {resultSummary}
+                  </span>
+                </h2>
+                {onCreateWorkspace ? (
+                  <ControlButton
+                    data-testid="workspace-create"
+                    size="row"
+                    variant="quiet"
+                    aria-label={t.newWorkspace}
+                    title={t.newWorkspace}
+                    onPress={onCreateWorkspace}
+                  >
+                    <Icon name="folderPlus" />
+                  </ControlButton>
+                ) : null}
+              </div>
+              <div className="ah-rail-filter">
+                <TextField
+                  className="ah-rail-search"
+                  value={filterValue}
+                  onChange={onFilter}
+                >
+                  <Label className="ah-visually-hidden">
+                    {t.filterWorkspaces}
+                  </Label>
+                  <Input
+                    data-testid="workspace-filter"
+                    placeholder={t.filterWorkspaces}
+                    autoComplete="off"
+                  />
+                </TextField>
+                {filterValue ? (
+                  <Button
+                    data-testid="clear-filter"
+                    label="×"
+                    ariaLabel={t.clearSearch}
+                    variant="quiet"
+                    size="row"
+                    onPress={() => onFilter("")}
+                  />
+                ) : null}
+                <span className="ah-rail-refresh">
+                  <RefreshIconButton onPress={onRefresh} />
+                </span>
+              </div>
+              {clones}
+              {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
+              {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
+              {listState === "filtered-empty" ? (
+                <p data-testid="filter-empty">{t.filterEmpty}</p>
               ) : null}
-              <span className="ah-rail-refresh">
-                <RefreshIconButton onPress={onRefresh} />
-              </span>
-            </div>
-            {clones}
-            {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
-            {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
-            {listState === "filtered-empty" ? (
-              <p data-testid="filter-empty">{t.filterEmpty}</p>
-            ) : null}
-            {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
-            {listState === "error" || listState === "unknown" ? (
-              <p>{t.workspacesUnavailable}</p>
-            ) : (
-              <ul className="ah-workspace-list">{children}</ul>
-            )}
-            {listState === "error" || listState === "loading" ? null : archived}
-          </section>
-        )}
-      </div>
-      {sessionActions ? (
-        <footer className="ah-rail-foot">{sessionActions}</footer>
-      ) : null}
+              {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
+              {listState === "error" || listState === "unknown" ? (
+                <p>{t.workspacesUnavailable}</p>
+              ) : (
+                <ul className="ah-workspace-list">{children}</ul>
+              )}
+              {listState === "error" || listState === "loading"
+                ? null
+                : archived}
+            </section>
+          )}
+        </div>
+        {sessionActions ? (
+          <footer className="ah-rail-foot">{sessionActions}</footer>
+        ) : null}
+      </TooltipSide.Provider>
     </nav>
   );
 }
