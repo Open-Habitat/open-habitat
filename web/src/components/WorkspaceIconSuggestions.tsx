@@ -195,6 +195,7 @@ export function WorkspaceIconSuggestions({
               }
               editorAvailability={{ state: "enabled" }}
               idlePlaceholder={t.wishPlaceholder}
+              field={{ label: t.wishLabel, testId: "workspace-icon-wish" }}
               onSendNow={send}
               onSteer={send}
               onFollowUp={send}

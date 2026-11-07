@@ -644,6 +644,7 @@ export function Composer({
   onDictating,
   inFieldLists = false,
   waiting,
+  field: purpose,
 }: {
   value: string;
   csrf?: string;
@@ -696,6 +697,10 @@ export function Composer({
    * preview beside them and marking several (experimental
    * composer-lists-in-field). Needs `sources.tree`. */
   inFieldLists?: boolean;
+  /** A field that is not a message to the agent (the icon wish) has its own
+   * name and hook, so the page's message field stays the only one: focus
+   * returning to the work must not land in it. */
+  field?: { label: string; testId: string };
   /** The field's message waits to go by itself, and what the person reads
    * about it under the field (an AI sign-in to renew). */
   waiting?: string;
@@ -2011,12 +2016,12 @@ export function Composer({
         {dictating ? <DictationLive dictation={dictation} /> : null}
         <textarea
           hidden={dictating}
-          data-testid="message-input"
+          data-testid={purpose?.testId ?? "message-input"}
           autoComplete="off"
           data-working={working}
           ref={field}
           className="ah-cbox-field"
-          aria-label={t.messageToAgent}
+          aria-label={purpose?.label ?? t.messageToAgent}
           aria-describedby={shellOn ? shellLabelId : undefined}
           aria-autocomplete={sources ? "list" : undefined}
           aria-controls={open && open.place === "caret" ? listId : undefined}

@@ -88,7 +88,7 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   ).toEqual([]);
   await shot(page, "sirut");
 
-  const field = row.getByTestId("message-input");
+  const field = row.getByTestId("workspace-icon-wish");
   const shortHeight = await field.evaluate((el) => el.clientHeight);
   const wish = Array.from({ length: 6 }, (_, i) => `reference line ${i}`).join(
     "\n",
@@ -256,7 +256,9 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   await expect(row).toHaveAttribute("data-state", "loading");
   await expect(row.locator("[aria-busy=true]").first()).toBeVisible();
   await expect(row.getByTestId("send")).toBeDisabled();
-  await row.getByTestId("message-input").fill("draft during first request");
+  await row
+    .getByTestId("workspace-icon-wish")
+    .fill("draft during first request");
   await shot(page, "lataa");
   release();
   await expect(row).toHaveAttribute("data-state", "failed");
@@ -266,7 +268,7 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   await expect(
     row.getByTestId("workspace-icon-suggestion").first(),
   ).toHaveAttribute("data-local", "true");
-  await expect(row.getByTestId("message-input")).toHaveValue(
+  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue(
     "draft during first request",
   );
   await shot(page, "aikakatkaisu");
@@ -285,7 +287,7 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   );
   await openWorkspace(page, "muistiinpanot");
   await expect(row).toHaveAttribute("data-state", "failed");
-  await expect(row.getByTestId("message-input")).toHaveCount(0);
+  await expect(row.getByTestId("workspace-icon-wish")).toHaveCount(0);
   await expect(
     row.getByTestId("workspace-icon-suggestions-settings"),
   ).toBeVisible();
@@ -362,7 +364,7 @@ test("@workspace-icons the wish is dictated with the composer's dictation and as
   await openWorkspace(page, "tilastoharjoitus");
   const row = page.getByTestId("workspace-icon-suggestions");
   await expect(row).toHaveAttribute("data-state", "done");
-  await row.getByTestId("message-input").fill("kettu");
+  await row.getByTestId("workspace-icon-wish").fill("kettu");
   await row.getByRole("button").and(row.getByTestId("dictation-mic")).click();
   await expect(row.getByTestId("dictation-stop")).toHaveAttribute(
     "data-phase",
@@ -399,6 +401,6 @@ test("@workspace-icons the wish is dictated with the composer's dictation and as
   await row.getByTestId("send").click();
   expect((await asked).postDataJSON().wish).toMatch(/^kettu sininen\n+pieni$/);
   await expect(row).toHaveAttribute("data-state", "done");
-  await expect(row.getByTestId("message-input")).toHaveValue("");
+  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue("");
   await expect(row.getByTestId("dictation-mic")).toBeVisible();
 });
