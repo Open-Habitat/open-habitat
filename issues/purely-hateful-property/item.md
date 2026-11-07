@@ -2,13 +2,17 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: untriaged
+status: fixed
 priority: high
 provenance: other
 provenance_detail: observed named-release installation failure on Birch
 source_ref: taskfleet:01m6v8x5ae9asbnt52h6rcnqa9/upgrade-predecessor-closure
 originating_run: 01m6v8x5ae9asbnt52h6rcnqa9
 originating_run_kind: spinoff
+closed: 2026-11-07
+commits:
+- hash: ff22165d7
+  summary: RequireCoreRuntime of the target only
 ---
 
 # pilot.20 rejects authentic pilot.19 predecessor closure before upgrade preview
@@ -37,3 +41,9 @@ Source at release commit 9d3a5ca1802497132e1f0db4716e77d93ce26572: `validRuntime
 No released executable/manifest was patched, and no authentication guard, security boundary, journal, fence or selector was bypassed. Since no owner was invoked, the operator restores only staged release inputs and site.json from complete root-only predecessor copies, retaining overwritten successor inputs separately. No service interruption or reboot is needed. Recovery verification is recorded in Fleetrepo `infra/habitat-birch/pilot20-result.md`.
 
 A corrected published release must distinguish authenticated predecessor closure validation from successor-only feature requirements, preserving all digest/inventory authentication. Add a real pilot.19 -> new Taskfleet-bearing core upgrade regression, not just synthetic manifests with current mandatory fields. Also return a useful typed predecessor-manifest rejection instead of a generic host observation error. This issue remains open/untriaged after recovery; pilot.20 was not installed.
+
+## Resolution
+
+### 2026-11-07T15:33:00Z · @issuectl
+
+Same defect as upgrade-refuses-older-core-predecessor, filed in parallel by the pilot.20 release run; fixed there by ff22165d7, shipping in pilot.21.
