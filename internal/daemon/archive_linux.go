@@ -77,11 +77,12 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	// A readable header alone does not establish readable native history.
-	// Check the entire settled file, then reject a changed header observation.
-	a := readNativeSettled(native.path, c.cfg.UID)
-	b := readNativeSettled(native.path, c.cfg.UID)
-	if a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd || a.revision == "" || a.revision != b.revision || readNativeHeader(native.path, c.cfg.UID).revision != native.revision {
+	// A readable header alone does not establish a native history. Prove both
+	// ends of a settled file, then reject a changed header observation.
+	// Archive is an annotation, so it never reads a long history whole.
+	a, _, aOK := nativeTailProof(native.path, c.cfg.UID, id, cwd)
+	b, _, bOK := nativeTailProof(native.path, c.cfg.UID, id, cwd)
+	if !aOK || !bOK || a != b || readNativeHeader(native.path, c.cfg.UID).revision != native.revision {
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}

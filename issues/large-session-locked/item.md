@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 preparation: ready
 lane: large-session
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # A conversation over 32 MiB cannot be continued, renamed or archived

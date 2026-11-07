@@ -3,8 +3,6 @@
 package daemon
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,55 +13,63 @@ import (
 
 // emptyNativeFile checks every branch, not just the active leaf projected by
 // readNative. A malformed or changing history is never evidence of emptiness.
+// The first conversation record ends the check, so a long history is refused
+// after reading only its beginning.
 func emptyNativeFile(path string, uid int, id, cwd string) (os.FileInfo, error) {
-	s := readNativeSettled(path, uid)
-	if s.state != "readable" || s.id != id || s.cwd != cwd {
-		return nil, errors.New("history unavailable")
-	}
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() {
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxHistoryFile {
 		return nil, errors.New("history changed")
 	}
 	if owner, ok := fileOwner(info); !ok || owner != uid {
 		return nil, errors.New("history owner changed")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, maxLegacyHistoryFile+1))
-	if err != nil || len(data) > maxLegacyHistoryFile || len(data) == 0 || data[len(data)-1] != '\n' {
-		return nil, errors.New("history incomplete")
+	stamp, err := stampOfFile(f)
+	if err != nil {
+		return nil, err
 	}
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	scanner.Buffer(make([]byte, 4096), maxLegacyHistoryFile+1)
-	if !scanner.Scan() {
-		return nil, errors.New("history header missing")
-	}
-	var header nativeHeader
-	if json.Unmarshal(scanner.Bytes(), &header) != nil || header.Type != "session" || header.Version != 3 || header.ID != id || header.Cwd != cwd {
-		return nil, errors.New("history header changed")
-	}
-	for scanner.Scan() {
+	var problem error
+	header := true
+	tail, err := eachNativeLine(io.LimitReader(f, maxHistoryFile), func(line []byte) bool {
+		if header {
+			header = false
+			var h nativeHeader
+			if json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || h.ID != id || h.Cwd != cwd {
+				problem = errors.New("history header changed")
+			}
+			return problem == nil
+		}
 		var entry nativeEntry
-		if json.Unmarshal(scanner.Bytes(), &entry) != nil || !entryIDPattern.MatchString(entry.ID) {
-			return nil, errors.New("history invalid")
+		if json.Unmarshal(line, &entry) != nil || !entryIDPattern.MatchString(entry.ID) {
+			problem = errors.New("history invalid")
+			return false
 		}
 		// Only native session settings are inert before the first user turn.
 		// Custom messages and assistant/tool messages are visible content, even
 		// when an extension wrote them before the browser sent a prompt.
 		switch entry.Type {
 		case "model_change", "thinking_level_change", "session_info", "label":
-		default:
-			return nil, errors.New("history contains conversation content")
+			return true
 		}
+		problem = errors.New("history contains conversation content")
+		return false
+	})
+	if problem != nil {
+		return nil, problem
 	}
-	if scanner.Err() != nil {
-		return nil, scanner.Err()
+	if err != nil {
+		return nil, err
 	}
-	current, err := os.Lstat(path)
-	if err != nil || !os.SameFile(info, current) || readNativeSettled(path, uid).revision != s.revision {
+	if header || len(tail) > 0 {
+		return nil, errors.New("history incomplete")
+	}
+	// The whole-file proof must have read the very bytes scanned above.
+	s := proveNativeSettled(path, uid)
+	if s.state != "readable" || s.id != id || s.cwd != cwd || s.stamp != stamp {
 		return nil, errors.New("history changed")
 	}
 	return info, nil

@@ -83,8 +83,8 @@ func (c *ConversationController) turnCut(path string) bool {
 		scan, ok := c.facts.sessions.branch(path, c.cfg.UID)
 		return ok && scan.turnCut
 	}
-	b, ok := readNativeBytes(path, c.cfg.UID)
-	return ok && scanBranch(b).turnCut
+	scan, ok := scanBranchFile(path, c.cfg.UID)
+	return ok && scan.turnCut
 }
 
 // restView is the snapshot's and the report's projection of a rest.

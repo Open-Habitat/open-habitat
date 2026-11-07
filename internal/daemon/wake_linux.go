@@ -220,8 +220,8 @@ func (c *ConversationController) cutWaits(w waitingRest, now time.Time) ([]branc
 	ok := false
 	if c.facts != nil {
 		scan, ok = c.facts.sessions.branch(path, c.cfg.UID)
-	} else if b, read := readNativeBytes(path, c.cfg.UID); read {
-		scan, ok = scanBranch(b), true
+	} else {
+		scan, ok = scanBranchFile(path, c.cfg.UID)
 	}
 	if !ok {
 		return nil, false

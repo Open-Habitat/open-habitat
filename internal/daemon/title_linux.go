@@ -162,32 +162,41 @@ func titleExcerpt(first, latest string) string {
 // A continued handle has no accepted-prompt memory. Use only the active native
 // branch, and never treat an unreadable history as evidence of newer language.
 func latestNativeUserPrompt(path string, uid int, id, cwd string) string {
-	s := readNativeSettled(path, uid)
-	if s.state != "readable" || s.id != id || s.cwd != cwd {
-		return ""
-	}
-	for i := len(s.entries) - 1; i >= 0; i-- {
-		if s.entries[i].Kind == "user" {
-			return prefixBytes(s.entries[i].full, 2048)
-		}
+	if e, ok := latestNativeEntry(path, uid, id, cwd, "user"); ok {
+		return prefixBytes(e.full, 2048)
 	}
 	return ""
+}
+
+// latestNativeEntry is the active branch's newest entry of kind. It reads
+// back from the tail one page at a time and stops at the first match, so a
+// long history is read only as far back as the answer.
+func latestNativeEntry(path string, uid int, id, cwd, kind string) (historyEntry, bool) {
+	for limit := 16; ; limit *= 8 {
+		s := readNativeTail(path, uid, limit)
+		if s.state != "readable" || s.id != id || s.cwd != cwd {
+			return historyEntry{}, false
+		}
+		for i := len(s.entries) - 1; i >= 0; i-- {
+			if s.entries[i].Kind == kind {
+				return s.entries[i], true
+			}
+		}
+		if s.olderComplete {
+			return historyEntry{}, false
+		}
+	}
 }
 
 // The conversation's model as its active native branch last recorded it, for a
 // history without a running Pi. Nil when the branch records none.
 func latestNativeModel(path string, uid int, id, cwd string) *piStartupChoice {
-	s := readNativeSettled(path, uid)
-	if s.state != "readable" || s.id != id || s.cwd != cwd {
+	e, ok := latestNativeEntry(path, uid, id, cwd, "model_change")
+	if !ok {
 		return nil
 	}
-	for i := len(s.entries) - 1; i >= 0; i-- {
-		if s.entries[i].Kind == "model_change" {
-			if provider, model, ok := strings.Cut(s.entries[i].full, "/"); ok && provider != "" && model != "" {
-				return &piStartupChoice{Provider: provider, Model: model}
-			}
-			return nil
-		}
+	if provider, model, ok := strings.Cut(e.full, "/"); ok && provider != "" && model != "" {
+		return &piStartupChoice{Provider: provider, Model: model}
 	}
 	return nil
 }

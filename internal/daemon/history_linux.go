@@ -26,7 +26,6 @@ import (
 
 const historyRoot = ".pi/agent/sessions"
 const maxHistoryFile = 512 << 20
-const maxLegacyHistoryFile = 32 << 20
 
 var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
@@ -54,7 +53,10 @@ type nativeSession struct {
 	// changedAt is the session file's modification time: Pi appends every
 	// entry to it, so it is when the conversation last changed. Only
 	// discovery's header read sets it.
-	changedAt                    string
+	changedAt string
+	// stamp is the file's identity, size and times when a whole-file read
+	// proved it stable; a later equal stamp means the bytes stood still.
+	stamp                        fileStamp
 	entries                      []historyEntry
 	boundaryFound, olderComplete bool
 	cutOff                       bool
@@ -230,104 +232,151 @@ func readNativeHeader(path string, uid int) nativeSession {
 // A concurrent append can change size/mtime during one read. Retry once;
 // repeated instability is unavailable, never proof of a missing history.
 func readNativeSettled(path string, uid int) nativeSession {
-	s := readNative(path, uid)
+	return settleNative(func() nativeSession { return readNative(path, uid) })
+}
+
+func settleNative(read func() nativeSession) nativeSession {
+	s := read()
 	if s.id == "" || s.state == "corrupt" {
-		return readNative(path, uid)
+		return read()
 	}
 	return s
 }
+
 func readNative(path string, uid int) nativeSession {
-	b, ok := readNativeBytes(path, uid)
+	return readNativeKept(path, uid, true)
+}
+
+// proveNativeSettled checks the whole file as readNativeSettled does but keeps
+// no entries: a precondition that only asks whether the history is intact
+// does not hold a projection of it. Its stamp says whether the file stands
+// still later.
+func proveNativeSettled(path string, uid int) nativeSession {
+	return settleNative(func() nativeSession { return readNativeKept(path, uid, false) })
+}
+
+func readNativeKept(path string, uid int, keep bool) nativeSession {
+	var result nativeSession
+	stamp, ok := readNativeStream(path, uid, func(r io.Reader) { result = decodeNativeStream(r, path, keep) })
 	if !ok {
 		return nativeSession{}
 	}
-	return decodeNative(b, path)
-}
-
-// readNativeBytes reads one stable, owned, bounded native session file.
-func readNativeBytes(path string, uid int) ([]byte, bool) {
-	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxLegacyHistoryFile || before.Size() < 1 {
-		return nil, false
-	}
-	if uid >= 0 {
-		if owner, ok := fileOwner(before); !ok || owner != uid {
-			return nil, false
-		}
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, false
-	}
-	defer f.Close()
-	opened, err := f.Stat()
-	if err != nil || !os.SameFile(before, opened) {
-		return nil, false
-	}
-	b, err := io.ReadAll(io.LimitReader(f, maxLegacyHistoryFile+1))
-	if err != nil || len(b) > maxLegacyHistoryFile {
-		return nil, false
-	}
-	after, err := os.Lstat(path)
-	if err != nil || !os.SameFile(before, after) || opened.Size() != after.Size() || !opened.ModTime().Equal(after.ModTime()) || int64(len(b)) != after.Size() {
-		return nil, false
-	}
-	return b, true
+	result.stamp = stamp
+	return result
 }
 
 func decodeNative(b []byte, path string) nativeSession {
-	var result nativeSession
-	sum := sha256.Sum256(b)
-	result.revision = base64.RawURLEncoding.EncodeToString(sum[:18])
+	return decodeNativeStream(bytes.NewReader(b), path, true)
+}
+
+// decodeNativeStream projects the active branch of one native session read
+// once from r, holding a single record at a time. The revision hashes every
+// byte of r, so it equals the history window's revision of the same file.
+func decodeNativeStream(r io.Reader, path string, keep bool) (result nativeSession) {
+	hash := sha256.New()
+	r = io.TeeReader(r, hash)
+	// The revision must cover every byte, also after a walk that stopped.
+	defer func() {
+		_, _ = io.Copy(io.Discard, r)
+		if result.id != "" || result.state == "corrupt" {
+			result.revision = base64.RawURLEncoding.EncodeToString(hash.Sum(nil)[:18])
+		}
+	}()
 	result.path = path
 	result.state = "readable"
 	result.entries = []historyEntry{}
-	// A quota failure may cut the final record, even inside a UTF-8 rune.
-	// Never repair the file: decode only the complete prefix, hash all bytes.
-	if len(b) > 0 && b[len(b)-1] != '\n' {
-		end := bytes.LastIndexByte(b, '\n') + 1
-		var value any
-		err := json.Unmarshal(b[end:], &value)
-		if err == nil || err.Error() != "unexpected end of JSON input" {
-			result.state = "corrupt"
-			return result
-		}
-		result.cutOff = true
-		b = b[:end]
-	}
-	if !utf8.Valid(b) {
-		return nativeSession{}
-	}
-	scanner := bufio.NewScanner(bytes.NewReader(b))
-	scanner.Buffer(make([]byte, 4096), maxLegacyHistoryFile+1)
-	if !scanner.Scan() {
-		return nativeSession{}
-	}
-	var h nativeHeader
-	if json.Unmarshal(scanner.Bytes(), &h) != nil || h.Type != "session" || h.Version != 3 || !sessionIDPattern.MatchString(h.ID) || !filepath.IsAbs(h.Cwd) {
-		return nativeSession{}
-	}
-	result.id, result.cwd, result.startedAt = h.ID, h.Cwd, nativeTimestamp(h.Timestamp)
+	header := true
+	invalid := false
 	seen := map[string]bool{}
 	parents := map[string]*string{}
 	var leaf string
-	for scanner.Scan() {
+	tail, err := eachNativeLine(r, func(line []byte) bool {
+		if !utf8.Valid(line) {
+			invalid = true
+			return false
+		}
+		if header {
+			header = false
+			var h nativeHeader
+			if json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || !sessionIDPattern.MatchString(h.ID) || !filepath.IsAbs(h.Cwd) {
+				invalid = true
+				return false
+			}
+			result.id, result.cwd, result.startedAt = h.ID, h.Cwd, nativeTimestamp(h.Timestamp)
+			return true
+		}
+		if result.state == "corrupt" {
+			// Later records only still decide whether the file is valid UTF-8.
+			return true
+		}
+		// A proof refuses what a projection refuses: every typed field of
+		// nativeEntry, but not the message, which may be any JSON value and
+		// is the bulk of a picture record.
 		var e nativeEntry
-		if json.Unmarshal(scanner.Bytes(), &e) != nil || !entryIDPattern.MatchString(e.ID) || seen[e.ID] {
+		var tree struct {
+			ID        string  `json:"id"`
+			Type      string  `json:"type"`
+			Provider  string  `json:"provider"`
+			ModelID   string  `json:"modelId"`
+			ParentID  *string `json:"parentId"`
+			Timestamp string  `json:"timestamp"`
+		}
+		var err error
+		if keep {
+			err = json.Unmarshal(line, &e)
+			tree.ID, tree.ParentID = e.ID, e.ParentID
+		} else {
+			err = json.Unmarshal(line, &tree)
+		}
+		if err != nil || !entryIDPattern.MatchString(tree.ID) || seen[tree.ID] {
 			result.state = "corrupt"
-			break
+			return true
 		}
-		e.Raw = append([]byte(nil), scanner.Bytes()...)
-		seen[e.ID] = true
-		parents[e.ID] = e.ParentID
-		leaf = e.ID
-		entry := nativeBlocks(e)
-		if entry.Kind != "" {
-			result.entries = append(result.entries, entry)
+		seen[tree.ID] = true
+		parents[tree.ID] = tree.ParentID
+		leaf = tree.ID
+		if keep {
+			e.Raw = line
+			entry := nativeBlocks(e)
+			if entry.Kind != "" {
+				result.entries = append(result.entries, entry)
+			}
 		}
+		return true
+	})
+	if invalid {
+		result = nativeSession{}
+		return result
 	}
-	if scanner.Err() != nil {
+	if err != nil {
+		if result.id == "" {
+			result = nativeSession{}
+			return result
+		}
 		result.state = "corrupt"
+		return result
+	}
+	// A quota failure may cut the final record, even inside a UTF-8 rune.
+	// Never repair the file: decode only the complete prefix, hash all bytes.
+	if len(tail) > 0 {
+		var value any
+		err := json.Unmarshal(tail, &value)
+		if header || err == nil || err.Error() != "unexpected end of JSON input" {
+			if header {
+				result = nativeSession{}
+			} else {
+				result.state = "corrupt"
+			}
+			return result
+		}
+		result.cutOff = true
+	}
+	if header {
+		result = nativeSession{}
+		return result
+	}
+	if result.state == "corrupt" {
+		return result
 	}
 	// Pi's append-only JSONL is a tree. Only the current leaf ancestry is
 	// the active conversation; old branches remain in Pi but not this view.

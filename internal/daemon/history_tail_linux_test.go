@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,7 +112,8 @@ func TestPartialTailUnderFullQuotaKeepsFile(t *testing.T) {
 	}
 	original := writeQuarantine
 	defer func() { writeQuarantine = original }()
-	writeQuarantine = func(f *os.File, b []byte) error {
+	writeQuarantine = func(f *os.File, r io.Reader) error {
+		b, _ := io.ReadAll(r)
 		_, _ = f.Write(b[:len(b)/2])
 		return &os.PathError{Op: "write", Path: f.Name(), Err: syscall.EDQUOT}
 	}

@@ -197,20 +197,24 @@ func (p *PiDevice) contextDetail(ctx context.Context, s *nativeSession, uid int)
 	if err := p.validateSettings(); err != nil {
 		return result, err
 	}
-	b, ok := readNativeBytes(s.path, uid)
-	if !ok {
-		b, ok = readNativeBytes(s.path, uid)
-	}
+	f, info, ok := openNative(s.path, uid)
 	if !ok {
 		return result, errors.New("native session unavailable")
 	}
-	line, err := bufio.NewReader(bytes.NewReader(b)).ReadBytes('\n')
+	defer f.Close()
+	line, err := bufio.NewReader(io.NewSectionReader(f, 0, 16385)).ReadBytes('\n')
 	var h nativeHeader
-	if err != nil || json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || h.ID != s.id {
+	if err != nil || len(line) > 16384 || json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || h.ID != s.id {
 		return result, errors.New("native session changed")
 	}
-	// A record cut by a full disk is not Pi's; read the complete prefix.
-	b = b[:bytes.LastIndexByte(b, '\n')+1]
+	// Pi only appends, so the complete records up to the last newline are a
+	// stable prefix however the file grows meanwhile; the helper streams them
+	// rather than the daemon holding the file. A record cut by a full disk is
+	// not Pi's and stays outside.
+	end, err := lastNativeNewline(f, info.Size())
+	if err != nil || end == 0 {
+		return result, errors.New("native session unavailable")
+	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", contextDetailHelper, p.Entry, p.Manifest)
@@ -222,7 +226,9 @@ func (p *PiDevice) contextDetail(ctx context.Context, s *nativeSession, uid int)
 	}
 	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
 	cmd.Dir = p.Home
-	cmd.Stdin = bytes.NewReader(b)
+	// The session is closed as soon as the helper has it: an open descriptor
+	// would refuse continuation's write lease (cutPartialTail) meanwhile.
+	cmd.Stdin = closeAtEOF{io.NewSectionReader(f, 0, end), f}
 	cmd.Stderr = io.Discard
 	cmd.WaitDelay = time.Second
 	stdout, err := cmd.StdoutPipe()
@@ -277,4 +283,17 @@ func (d *contextDetail) valid() bool {
 		d.Tools = []contextPart{}
 	}
 	return d.LargestOutputs != nil && d.Compactions != nil && d.Turns != nil
+}
+
+type closeAtEOF struct {
+	io.Reader
+	f *os.File
+}
+
+func (c closeAtEOF) Read(p []byte) (int, error) {
+	n, err := c.Reader.Read(p)
+	if err != nil {
+		_ = c.f.Close()
+	}
+	return n, err
 }

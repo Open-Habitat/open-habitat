@@ -574,10 +574,8 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			var scan branchScan
 			if facts != nil {
 				scan, ok = facts.sessions.branch(session.path, cfg.UID)
-			} else if b, read := readNativeBytes(session.path, cfg.UID); read {
-				scan = scanBranch(b)
 			} else {
-				ok = false
+				scan, ok = scanBranchFile(session.path, cfg.UID)
 			}
 			if ok {
 				scans = append(scans, scan)

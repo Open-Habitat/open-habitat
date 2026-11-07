@@ -3,9 +3,9 @@
 package daemon
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"strconv"
 	"time"
 )
@@ -80,6 +80,17 @@ func scanBranchProcesses(b []byte) []branchProcess {
 // scanBranch reads only process lifecycle and catch-up facts from the current
 // leaf's ancestry. Commands stay daemon-side; callers project a preview.
 func scanBranch(b []byte) branchScan {
+	return scanBranchStream(bytes.NewReader(b))
+}
+
+// scanBranchFile scans one stable pass over a native session file.
+func scanBranchFile(path string, uid int) (branchScan, bool) {
+	var scan branchScan
+	_, ok := readNativeStream(path, uid, func(r io.Reader) { scan = scanBranchStream(r) })
+	return scan, ok
+}
+
+func scanBranchStream(r io.Reader) branchScan {
 	type fact struct {
 		id, parent   string
 		start        *branchProcess
@@ -99,10 +110,8 @@ func scanBranch(b []byte) branchScan {
 	}
 	facts := []fact{}
 	parents := map[string]string{}
-	scanner := bufio.NewScanner(bytes.NewReader(b))
-	scanner.Buffer(make([]byte, 4096), maxLegacyHistoryFile+1)
 	leaf := ""
-	for scanner.Scan() {
+	visit := func(line []byte) bool {
 		var e struct {
 			ID         string          `json:"id"`
 			Type       string          `json:"type"`
@@ -120,8 +129,8 @@ func scanBranch(b []byte) branchScan {
 				Details      json.RawMessage `json:"details"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(scanner.Bytes(), &e) != nil || e.Type == "session" || !entryIDPattern.MatchString(e.ID) {
-			continue
+		if json.Unmarshal(line, &e) != nil || e.Type == "session" || !entryIDPattern.MatchString(e.ID) {
+			return true
 		}
 		f := fact{id: e.ID}
 		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {
@@ -215,6 +224,12 @@ func scanBranch(b []byte) branchScan {
 			}
 		}
 		facts = append(facts, f)
+		return true
+	}
+	// As a line scanner would, read up to an unreadable record and also try
+	// a final record without its newline.
+	if tail, err := eachNativeLine(r, visit); err == nil && len(tail) > 0 {
+		visit(tail)
 	}
 	active := map[string]bool{}
 	for node := leaf; node != "" && !active[node]; node = parents[node] {

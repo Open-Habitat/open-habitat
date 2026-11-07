@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -26,25 +25,26 @@ import (
 var errHistoryDamaged = errors.New("native Pi history damaged")
 
 // reconciledNativeTail is reconciledNativeHistory that also admits a stable
-// cut-off tail, reporting it. Two equal damaged reads are errHistoryDamaged.
+// cut-off tail, reporting it. A damaged read that stands still is
+// errHistoryDamaged. One whole-file pass proves the history; the file's
+// unchanged stamp afterwards proves it settled, without a second pass.
 func reconciledNativeTail(path string, uid int, id, cwd string) (cutOff bool, err error) {
-	a := readNativeSettled(path, uid)
-	b := readNativeSettled(path, uid)
-	if a.revision == "" || a.revision != b.revision {
+	a := proveNativeSettled(path, uid)
+	if a.revision == "" || !nativeStill(path, a.stamp) {
 		return false, errors.New("native Pi history unsettled or unavailable")
 	}
-	if a.state == "corrupt" && b.state == "corrupt" {
+	if a.state == "corrupt" {
 		return false, errHistoryDamaged
 	}
-	if a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd {
+	if a.state != "readable" || a.id != id || a.cwd != cwd {
 		return false, errors.New("native Pi history unsettled or unavailable")
 	}
 	return a.cutOff, nil
 }
 
 // writeQuarantine writes the copy; a test replaces it to simulate EDQUOT.
-var writeQuarantine = func(f *os.File, b []byte) error {
-	_, err := f.Write(b)
+var writeQuarantine = func(f *os.File, r io.Reader) error {
+	_, err := io.Copy(f, r)
 	return err
 }
 
@@ -70,27 +70,32 @@ func cutPartialTail(path string, uid int, id, cwd string, now time.Time) (quaran
 	// Closing the file releases the lease too.
 	defer func() { _, _ = unix.FcntlInt(f.Fd(), unix.F_SETLEASE, unix.F_UNLCK) }()
 	before, err := f.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() < 1 || before.Size() > maxLegacyHistoryFile {
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 1 || before.Size() > maxHistoryFile {
 		return "", 0, errors.New("native Pi history unavailable")
 	}
 	if owner, ok := fileOwner(before); !ok || owner != uid {
 		return "", 0, errors.New("native Pi history owner mismatch")
 	}
-	original, err := io.ReadAll(io.NewSectionReader(f, 0, maxLegacyHistoryFile+1))
-	if err != nil || int64(len(original)) != before.Size() {
+	// The lease holds every other writer off, so the file is read in a
+	// stream, never held whole, and copied by a second stream below.
+	counter := &countingReader{r: io.NewSectionReader(f, 0, before.Size())}
+	native := decodeNativeStream(counter, path, false)
+	if counter.n != before.Size() {
 		return "", 0, errors.New("native Pi history changed")
 	}
-	native := decodeNative(original, path)
 	if !native.cutOff || native.state != "readable" || native.id != id || native.cwd != cwd {
 		return "", 0, errors.New("native Pi history has no repairable tail")
 	}
-	end := bytes.LastIndexByte(original, '\n') + 1
+	end, err := lastNativeNewline(f, before.Size())
+	if err != nil || end == 0 {
+		return "", 0, errors.New("native Pi history has no repairable tail")
+	}
 	quarantine = path + ".partial-" + now.UTC().Format("20060102T150405.000000000Z")
 	q, err := os.OpenFile(quarantine, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
 	if err != nil {
 		return "", 0, err
 	}
-	err = writeQuarantine(q, original)
+	err = writeQuarantine(q, io.NewSectionReader(f, 0, before.Size()))
 	if err == nil {
 		err = q.Sync()
 	}
@@ -116,7 +121,7 @@ func cutPartialTail(path string, uid int, id, cwd string, now time.Time) (quaran
 	if err := f.Sync(); err != nil {
 		return quarantine, 0, err
 	}
-	return quarantine, len(original) - end, nil
+	return quarantine, int(before.Size() - end), nil
 }
 
 func syncDir(dir string) error {

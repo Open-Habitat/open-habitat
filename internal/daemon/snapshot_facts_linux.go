@@ -135,11 +135,10 @@ func (f *sessionFileFacts) branch(path string, uid int) (branchScan, bool) {
 		return c.scan, true
 	}
 	f.mu.Unlock()
-	b, ok := readNativeBytes(path, uid)
+	scan, ok := scanBranchFile(path, uid)
 	if !ok {
 		return branchScan{}, false
 	}
-	scan := scanBranch(b)
 	if after, err := stampOf(path); err == nil && after == before {
 		f.mu.Lock()
 		f.procs[path] = &sessionProcesses{stamp: before, scan: scan}

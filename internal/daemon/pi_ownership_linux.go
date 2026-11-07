@@ -82,16 +82,18 @@ func (o *piOwnership) release() error {
 	return o.file.Close()
 }
 
-// reconciledNativeHistory re-reads the native source, without caching it.
-// A stable read is necessary but NOT sufficient for restart resume: the
-// previous child's exit, terminal owners, and detached tools remain unknown.
+// reconciledNativeHistory re-proves the native source before naming it,
+// without caching it. Naming appends one record, so both ends of a settled
+// file are proof enough (nativeTailProof); the returned revision is the file
+// stamp, which any write changes. A cut-off tail is left to continuation,
+// which repairs it before Pi appends.
 func reconciledNativeHistory(path string, uid int, id, cwd string) (string, error) {
-	a := readNativeSettled(path, uid)
-	b := readNativeSettled(path, uid)
-	if a.cutOff || b.cutOff || a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd || a.revision == "" || a.revision != b.revision {
+	a, aCut, aOK := nativeTailProof(path, uid, id, cwd)
+	b, bCut, bOK := nativeTailProof(path, uid, id, cwd)
+	if !aOK || !bOK || aCut || bCut || a != b {
 		return "", errors.New("native Pi history unsettled or unavailable")
 	}
-	return a.revision, nil
+	return fmt.Sprintf("%+v", a), nil
 }
 
 // The lock inode also carries the minimal browser-origin proof needed after a

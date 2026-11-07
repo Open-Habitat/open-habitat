@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -43,6 +42,17 @@ func conversational(e historyEntry) bool {
 // or, when messages > 0, the messages-th conversational entry. The before
 // boundary is a witness and counts toward neither bound.
 func readNativeWindowBounded(path string, uid int, beforeKey string, limit, messages int, contentKey string) nativeSession {
+	return nativeWindow(path, uid, beforeKey, limit, messages, contentKey, true)
+}
+
+// readNativeTail reads the newest limit visible entries of the active branch
+// without hashing the file: a reader that answers from the tail and binds no
+// revision reads only the tail.
+func readNativeTail(path string, uid int, limit int) nativeSession {
+	return settleNativeWindow(func() nativeSession { return nativeWindow(path, uid, "", limit, 0, "", false) })
+}
+
+func nativeWindow(path string, uid int, beforeKey string, limit, messages int, contentKey string, hashed bool) nativeSession {
 	var result nativeSession
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxHistoryFile {
@@ -63,14 +73,16 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 	if err != nil || !os.SameFile(info, opened) {
 		return result
 	}
-	hash := sha256.New()
-	if _, err = io.Copy(hash, io.LimitReader(f, maxHistoryFile+1)); err != nil {
-		return result
+	if hashed {
+		hash := sha256.New()
+		if _, err = io.Copy(hash, io.LimitReader(f, maxHistoryFile+1)); err != nil {
+			return result
+		}
+		if end, e := f.Seek(0, io.SeekCurrent); e != nil || end != info.Size() {
+			return result
+		}
+		result.revision = base64.RawURLEncoding.EncodeToString(hash.Sum(nil)[:18])
 	}
-	if end, e := f.Seek(0, io.SeekCurrent); e != nil || end != info.Size() {
-		return result
-	}
-	result.revision = base64.RawURLEncoding.EncodeToString(hash.Sum(nil)[:18])
 	result.path, result.state = path, "readable"
 	header := readNativeHeader(path, uid)
 	if header.id == "" {
@@ -95,22 +107,25 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 		return nativeSession{}
 	}
 	if last[0] != '\n' {
-		start := size - (64 << 20)
-		if start < 0 {
-			start = 0
-		}
-		tail := make([]byte, size-start)
-		if _, err := f.ReadAt(tail, start); err != nil {
+		end, err := lastNativeNewline(f, size)
+		if err != nil {
 			return nativeSession{}
 		}
-		end := bytes.LastIndexByte(tail, '\n') + 1
-		var value any
-		err := json.Unmarshal(tail[end:], &value)
-		if end == 0 || err == nil || err.Error() != "unexpected end of JSON input" {
+		if end == 0 {
 			result.state = "corrupt"
 			return result
 		}
-		size = start + int64(end)
+		fragment := make([]byte, size-end)
+		if _, err := f.ReadAt(fragment, end); err != nil {
+			return nativeSession{}
+		}
+		var value any
+		err = json.Unmarshal(fragment, &value)
+		if err == nil || err.Error() != "unexpected end of JSON input" {
+			result.state = "corrupt"
+			return result
+		}
+		size = end
 		result.cutOff = true
 	}
 	err = reverseLines(f, size, func(line []byte) bool {
@@ -142,8 +157,10 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 			return true
 		}
 		if chain {
+			// An absent parent ends the chain, as a null one does and as
+			// the whole-file reader (decodeNativeStream) reads it.
 			var parent *string
-			if json.Unmarshal(e.ParentID, &parent) != nil {
+			if len(e.ParentID) > 0 && json.Unmarshal(e.ParentID, &parent) != nil {
 				broken = true
 				return false
 			}
@@ -211,7 +228,7 @@ func readNativeWindowBounded(path string, uid int, beforeKey string, limit, mess
 // the whole file. The per-record bound rejects pathological native records.
 func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 	const block = 64 << 10
-	const maxLine = 64 << 20
+	const maxLine = maxNativeLine
 	if size == 0 {
 		return io.ErrUnexpectedEOF
 	}
