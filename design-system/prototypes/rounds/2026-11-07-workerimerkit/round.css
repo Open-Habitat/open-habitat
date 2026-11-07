@@ -1,0 +1,187 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar, left of the sheet and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+:root { --wb-sheet-w: 0px; }
+@media (min-width: 1000px) { :root { --wb-sheet-w: 420px; } }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; }
+.wb-sheet-toggle { display: none; }
+@media (max-width: 999px) {
+  .wb-sheet-toggle { display: inline-block; }
+}
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  right: var(--wb-sheet-w);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+.wb-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.wb-main > .ah-conversation-frame { flex: 1 1 auto; min-height: 0; }
+
+/* ---- The sheet: every state in its three places ---- */
+.wb-sheet {
+  position: fixed; z-index: 40; right: 0; top: var(--review-h, 0px); bottom: 60px; width: var(--wb-sheet-w);
+  box-sizing: border-box; overflow: auto; padding: 10px 14px 16px;
+  background: var(--ah-surface); color: var(--ah-ink); border-left: 1px solid var(--ah-line);
+  font: 12px/1.35 var(--ah-font);
+}
+@media (max-width: 999px) {
+  .wb-sheet { display: none; left: 0; width: auto; border-left: 0; }
+  .wb-sheet-open .wb-sheet { display: block; }
+}
+.wb-sheet h2 { margin: 0 0 6px; font: 600 13px var(--ah-font); }
+.wb-sheet table { width: 100%; border-collapse: collapse; }
+.wb-sheet thead th { position: sticky; top: -10px; background: var(--ah-surface); text-align: left; font-weight: 600; color: var(--ah-ink-2); padding: 4px 4px 4px 0; border-bottom: 1px solid var(--ah-line); }
+.wb-sheet tbody th { text-align: left; font-weight: 400; color: var(--ah-ink-2); padding: 5px 6px 5px 0; width: 34%; }
+.wb-sheet td { padding: 5px 4px 5px 0; vertical-align: middle; }
+.wb-sheet tbody tr { border-bottom: 1px solid var(--ah-line-soft, var(--ah-line)); }
+.wb-sheet tr[data-k="merged"] { border-top: 2px solid var(--ah-line); }
+.wb-sheet tr[data-k="checking"] { border-top: 2px solid var(--ah-line); }
+.wb-cell { min-height: 16px; padding: 0; }
+.wb-rowcell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.wb-rowcell .ah-bg-mark { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex: none; }
+.wb-rowcell .ah-bg-mark svg { width: 13px; height: 13px; }
+.wb-word { color: var(--ah-ink-2); font-size: 11.5px; }
+.wb-none { color: var(--ah-faint); }
+.wb-sheet-note { margin: 10px 0 0; color: var(--ah-muted); }
+.wb-rball { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.wb-rball-fail { border-radius: 1px; background: var(--ah-err); transform: scale(0.9) rotate(45deg); }
+@media (max-width: 999px) {
+  .wb-sheet { font-size: 11.5px; padding: 8px 10px 16px; }
+  .wb-sheet tbody th { width: 30%; }
+  .wb-word { font-size: 11px; }
+}
+
+/* ---- In place: the direction's marks over production's ---- */
+.variant-1 [data-testid="background-spinoffs"] > .ah-bg-marks:not(.wb-pill-marks),
+.variant-2 [data-testid="background-spinoffs"] > .ah-bg-marks:not(.wb-pill-marks),
+.variant-3 [data-testid="background-spinoffs"] > .ah-bg-marks:not(.wb-pill-marks),
+.variant-1 .ah-bg-row[data-kind="spin"] .ah-bg-mark > :not(.wb-row-mark),
+.variant-2 .ah-bg-row[data-kind="spin"] .ah-bg-mark > :not(.wb-row-mark),
+.variant-3 .ah-bg-row[data-kind="spin"] .ah-bg-mark > :not(.wb-row-mark),
+.variant-1 .ah-rail .ah-nav-spinoff,
+.variant-2 .ah-rail .ah-nav-spinoff,
+.variant-3 .ah-rail .ah-nav-spinoff { display: none; }
+.wb-pill-marks { gap: 5px; }
+.wb-pill-marks:empty { display: none; }
+.wb-row-mark { display: inline-flex; align-items: center; justify-content: center; }
+.wb-sep { width: 1px; height: 10px; background: var(--ah-line-strong, var(--ah-line)); margin: 0 1px; }
+.wb-rail-slot { display: inline-flex; align-items: center; flex: none; padding-right: 2px; }
+.wb-rail-slot:empty { display: none; }
+.wb-rail { display: inline-flex; align-items: center; gap: 5px; color: var(--ah-accent); }
+.wb-branch { width: 13px; height: 13px; flex: none; }
+.wb-ic { width: 12px; height: 12px; }
+.wb-ok { color: var(--ah-ok); }
+.wb-err { color: var(--ah-err); }
+
+/* Shared drawing for every direction's own mark. */
+.wb-m { display: inline-block; flex: none; box-sizing: border-box; width: 8px; height: 8px; border-radius: 50%; }
+.wb-m[data-place="row"] { width: 10px; height: 10px; }
+@keyframes wb-turn { to { transform: rotate(360deg); } }
+
+/* 1 Pallot: the rail's balls for the worker's own state; a waited worker
+   gets an accent halo, the same ring and core as the top bar's wait mark. */
+.wb-m[data-d="1"][data-k^="work"], .wb-m[data-d="1"][data-k="unread"] {
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.wb-m[data-d="1"][data-k^="you"] { background: var(--ah-turn); }
+.wb-m[data-d="1"][data-k^="parent"] { background: var(--ah-faint); }
+.wb-m[data-d="1"][data-k="unknown"] { border: 1.5px solid var(--ah-faint); }
+.wb-m[data-d="1"][data-k^="merged"] { background: var(--ah-ok); }
+.wb-m[data-d="1"][data-k="unfinished"], .wb-m[data-d="1"][data-k="failedkept"] {
+  border-radius: 1px; background: var(--ah-err); transform: scale(0.85) rotate(45deg);
+}
+.wb-m[data-d="1"][data-k="failed"] { border-radius: 1px; border: 1.5px solid var(--ah-err); transform: scale(0.85) rotate(45deg); }
+.wb-m[data-d="1"][data-k="unmergedgone"] { border-radius: 1px; border: 1.5px solid var(--ah-faint); transform: scale(0.85) rotate(45deg); }
+.wb-m[data-d="1"][data-k="checking"] { border: 1.5px solid var(--ah-accent-line); border-top-color: var(--ah-accent); animation: wb-turn 1s linear infinite; }
+.wb-m[data-d="1"][data-k="answer"] { border: 1.5px solid var(--ah-turn); }
+.wb-m[data-d="1"][data-k$="-w"] {
+  box-shadow: none; outline: 1.5px solid var(--ah-accent); outline-offset: 2px; margin: 0 3px;
+}
+
+/* 2 Kotelo: state-only marks; the capsule says who is waited. */
+.wb-m[data-d="2"][data-k^="work"], .wb-m[data-d="2"][data-k="unread"] {
+  width: 7px; height: 7px; background: var(--ah-accent);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.wb-m[data-d="2"][data-place="row"][data-k^="work"], .wb-m[data-d="2"][data-place="row"][data-k="unread"] { width: 8px; height: 8px; }
+.wb-m[data-d="2"][data-k^="you"], .wb-m[data-d="2"][data-k="answer"] { border: 1.5px solid var(--ah-turn); }
+.wb-m[data-d="2"][data-k^="parent"] { width: 7px; height: 7px; background: var(--ah-faint); }
+.wb-m[data-d="2"][data-k="unknown"] { border: 1.5px solid var(--ah-faint); }
+.wb-m[data-d="2"][data-k="unfinished"], .wb-m[data-d="2"][data-k="failedkept"] { background: var(--ah-err); }
+.wb-m[data-d="2"][data-k="unmergedgone"] { width: 9px; height: 2px; border-radius: 1px; background: var(--ah-faint); }
+.wb-m[data-d="2"][data-k="checking"] { border: 1.5px solid var(--ah-accent-line); border-top-color: var(--ah-accent); animation: wb-turn 1s linear infinite; }
+.wb-cap {
+  display: inline-flex; align-items: center; gap: 4px; box-sizing: border-box;
+  padding: 2px 6px 2px 3px; border-radius: var(--ah-r-pill, 999px);
+  background: var(--ah-accent-soft); box-shadow: inset 0 0 0 1px var(--ah-accent-line);
+  font: 600 11px var(--ah-font); color: var(--ah-accent-ink);
+}
+.wb-cap-dot { width: 9px; height: 9px; }
+.wb-cap[data-place="rail"] { padding: 1px 5px 1px 2px; gap: 3px; }
+.wb-cap[data-place="rail"] .wb-cap-dot { width: 8px; height: 8px; }
+.wb-rowcap { padding: 2px 6px 2px 2px; border-radius: 6px; background: var(--ah-accent-soft); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+/* In the panel the waited rows are one block under their own heading. */
+.wb-group-head:empty { display: none; }
+.wb-group-head {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px 2px;
+  font: 600 12px var(--ah-font); color: var(--ah-accent-ink);
+  background: var(--ah-accent-soft); border-radius: 8px 8px 0 0;
+  box-shadow: inset 1px 0 0 var(--ah-accent-line), inset -1px 0 0 var(--ah-accent-line), inset 0 1px 0 var(--ah-accent-line);
+}
+.wb-group-n { margin-left: auto; font-weight: 400; color: var(--ah-ink-2); }
+.variant-2 .wb-group-head:not(:empty) ~ .ah-bg-row[data-waited="true"] {
+  background: var(--ah-accent-soft); border-radius: 0;
+  box-shadow: inset 1px 0 0 var(--ah-accent-line), inset -1px 0 0 var(--ah-accent-line);
+}
+.variant-2 .wb-group-head:not(:empty) ~ .ah-bg-row[data-waited="true"]:not(:has(+ .ah-bg-row[data-waited="true"])) {
+  border-radius: 0 0 8px 8px; margin-bottom: 6px;
+  box-shadow: inset 1px 0 0 var(--ah-accent-line), inset -1px 0 0 var(--ah-accent-line), inset 0 -1px 0 var(--ah-accent-line);
+}
+
+/* 3 Täyttö: a live worker is a ring; its core is the wait. */
+.wb-m[data-d="3"] { width: 9px; height: 9px; }
+.wb-m[data-d="3"][data-place="row"] { width: 11px; height: 11px; }
+.wb-m[data-d="3"][data-k^="work"], .wb-m[data-d="3"][data-k="unread"] {
+  border: 1.5px solid var(--ah-accent-line); border-top-color: var(--ah-accent); animation: wb-turn 1.2s linear infinite;
+}
+.wb-m[data-d="3"][data-k^="you"] { border: 1.5px solid var(--ah-turn); }
+.wb-m[data-d="3"][data-k^="parent"] { border: 1px solid var(--ah-muted); }
+.wb-m[data-d="3"][data-k="unknown"] { border: 1.5px dotted var(--ah-muted); }
+.wb-m[data-d="3"][data-k$="-w"] { background: radial-gradient(circle closest-side, var(--ah-accent) 0 50%, transparent 60%); }
+.wb-m[data-d="3"][data-k="unread"] { background: radial-gradient(circle closest-side, var(--ah-faint) 0 50%, transparent 60%); }
+.wb-m[data-d="3"][data-k^="merged"] { background: var(--ah-ok); }
+.wb-m[data-d="3"][data-k="unfinished"], .wb-m[data-d="3"][data-k="failedkept"] { background: var(--ah-err); }
+.wb-m[data-d="3"][data-k="unmergedgone"] { width: 9px; height: 2px; border-radius: 1px; background: var(--ah-faint); }
+.wb-m[data-d="3"][data-k="checking"] {
+  border: 1.5px solid var(--ah-accent-line); border-top-color: var(--ah-accent); animation: wb-turn 1.2s linear infinite;
+  background: radial-gradient(circle closest-side, var(--ah-err) 0 50%, transparent 60%);
+}
+.wb-m[data-d="3"][data-k="answer"] { border: 1.5px solid var(--ah-turn); background: radial-gradient(circle closest-side, var(--ah-err) 0 50%, transparent 60%); }
+/* The rail's branch: its end is the worker, filled when the agent waits. */
+.wb-rail[data-d="3"] .wb-branch-end { fill: none; }
+.wb-rail[data-d="3"] .wb-branch[data-k$="-w"] .wb-branch-end { fill: currentColor; }
+.wb-rail[data-d="3"] .wb-branch[data-k^="you"] .wb-branch-end { stroke: var(--ah-turn); }
+.wb-rail[data-d="3"] .wb-branch[data-k^="you"][data-k$="-w"] .wb-branch-end { fill: var(--ah-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-m { animation: none !important; }
+}
+/* Four picker labels on a phone: keep each on one line. */
+.proto-picker-item { white-space: nowrap; }

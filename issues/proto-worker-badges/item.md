@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: worker-badges-proto
 lane_seq: 1
 ---
@@ -24,4 +24,4 @@ ne erottuvat toisistaan. Tunnistusvika korjataan erikseen
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: nykyinen merkistö, kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: nykyinen merkistö, kolme suuntaa, näkymätarjous ja kysymykset Jarille
