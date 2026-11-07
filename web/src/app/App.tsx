@@ -133,6 +133,8 @@ import {
   sessionCSRF,
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
+import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
+import { ownWrites } from "./sentMessages";
 import {
   isSettingsRoute,
   settingsHref,
@@ -254,6 +256,7 @@ async function bothReads<A, B>(
 export function App() {
   const dispatch = useDispatch();
   useEffect(watchBundle, []);
+  useEffect(watchReloadInput, []);
   const navigate = useNavigate();
   // The router's location. Settings opened from inside the app lies over the
   // view it was opened from, which stays mounted under it at its own location
@@ -495,6 +498,8 @@ export function App() {
       )
         sessionStorage.removeItem(key);
     setJournalOffline(false);
+    setRecoveredUpdate(false);
+    connectionLost.current = false;
     setJournalConnection({ state: "online" });
     outside.current = undefined;
     setSettingsFromMenu(false);
@@ -619,6 +624,8 @@ export function App() {
   // bundle validates against its own contract, so a newer host's snapshot
   // can be one it rejects, and retrying repeats the same rejection.
   const [versionChanged, setVersionChanged] = useState(false);
+  const [recoveredUpdate, setRecoveredUpdate] = useState(false);
+  const connectionLost = useRef(false);
   const [journalConnection, setJournalConnection] = useState<{
     state: "connecting" | "online" | "failed";
     reason?: string;
@@ -645,6 +652,25 @@ export function App() {
   // again: a stale page leaves its connection notice and reads the snapshot
   // now rather than at the next invalidation.
   journalCallbacks.current.onOpen = () => {
+    if (connectionLost.current && !recoveredUpdate) {
+      connectionLost.current = false;
+      const generation = identityGeneration.current;
+      void checkBundle().then((status) => {
+        if (generation !== identityGeneration.current || status !== "newer")
+          return;
+        // Read blockers after the network read, not before: the person may
+        // have started typing or sending while the check was in flight.
+        if (
+          interactionBlocksReload() ||
+          ownWrites.snapshot().size ||
+          mutations?.entries("").length
+        ) {
+          setRecoveredUpdate(true);
+        } else {
+          reloadForNewBundle();
+        }
+      });
+    }
     if (phase !== "stale") return;
     dispatch(streamOpen());
     refresh();
@@ -666,6 +692,7 @@ export function App() {
             onLogin: () => journalCallbacks.current.onLogin(),
             onOffline: (value) => journalCallbacks.current.onOffline(value),
             onConnection: (state, reason) => {
+              if (state === "failed") connectionLost.current = true;
               setJournalConnection({ state, reason });
               if (state === "online") journalCallbacks.current.onOpen();
             },
@@ -3067,7 +3094,9 @@ export function App() {
                         versionChanged ? undefined : journalConnection.reason
                       }
                       state={
-                        (phase === "stale" || journalOffline) && versionChanged
+                        recoveredUpdate ||
+                        ((phase === "stale" || journalOffline) &&
+                          versionChanged)
                           ? "version-changed"
                           : (phase === "stale" || journalOffline) &&
                               journalConnection.state === "connecting"

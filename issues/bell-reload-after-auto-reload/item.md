@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: bell-reload
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Bell still asks to reload after the page already reloaded into the new release

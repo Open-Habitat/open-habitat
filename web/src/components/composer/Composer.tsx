@@ -17,6 +17,7 @@ import type {
   TreeFolder,
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
+import { blockAutomaticReload } from "../../app/reloadSafety";
 import { useText } from "../../i18n";
 import { composerText } from "../../text/composer";
 import { fieldListText } from "../../text/fieldList";
@@ -760,6 +761,7 @@ export function Composer({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => blockAutomaticReload(() => !!uploadController.current), []);
   const picker = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   // The reference of the attachment whose chip takes the focus to the field

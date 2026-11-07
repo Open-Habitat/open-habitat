@@ -76,6 +76,11 @@ test("@version open settings follow the running release across upgrades", async 
   await expect(row.getByTestId("version-value")).toHaveText(
     "0.0.0-lab (0000000)",
   );
+  // Keep the stream disconnected: this case tests version observations,
+  // not the automatic reload on recovery exercised below.
+  await page.route("**/api/v1/events*", (route) =>
+    route.fulfill({ status: 503 }),
+  );
   for (const n of [1, 2]) {
     await readsFinished();
     await upgrade(page, n);
@@ -88,8 +93,14 @@ test("@version open settings follow the running release across upgrades", async 
   }
 });
 
-for (const reload of ["bell", "browser"] as const) {
-  test(`@version recovery keeps the old bundle until one ${reload} reload, then clears the bell`, async ({
+for (const reload of [
+  "automatic",
+  "bar",
+  "bell",
+  "browser",
+  "upload",
+] as const) {
+  test(`@version recovery uses one ${reload} reload and clears the bell`, async ({
     page,
   }) => {
     await signIn(page);
@@ -105,9 +116,25 @@ for (const reload of ["bell", "browser"] as const) {
     await editor.fill("Puolivalmis luonnos");
     const bell = page.locator('[data-testid="status-bell"]:visible');
     await expect(bell).toHaveCount(0);
+    let releaseUpload = () => {};
+    if (reload === "upload") {
+      const held = new Promise<void>((resolve) => {
+        releaseUpload = resolve;
+      });
+      await page.route("**/api/v1/attachments", async (route) => {
+        await held;
+        await route.abort();
+      });
+      const started = page.waitForRequest("**/api/v1/attachments");
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "draft.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("attachment"),
+      });
+      await started;
+    }
 
-    // Hold recovery long enough to observe the bar. A reconnect is not a
-    // document reload: the old bundle remains until the person reloads it.
+    // Hold recovery so the typing/idle choice is made at a known boundary.
     let navigations = 0;
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) navigations++;
@@ -122,27 +149,38 @@ for (const reload of ["bell", "browser"] as const) {
     await upgrade(page, 1);
     // The conversation's top bar has the bell; the new version is behind it.
     await expect(bell).toBeVisible();
-    await page.unroute("**/api/v1/events*");
-    await page.evaluate(() => window.dispatchEvent(new Event("online")));
-    await expect(page.locator(".ah-connection")).toHaveCount(0);
-    expect(navigations).toBe(0);
-    await expect(
-      page.locator("script[type=module][src*='?release=']"),
-    ).toHaveCount(0);
-    await bell.click();
-    const item = page
-      .getByTestId("status-panel")
-      .locator('[data-testid="status-item"][data-key="version"]');
-    await expect(item).toBeVisible();
-    await expect(editor).toHaveValue("Puolivalmis luonnos");
-
+    if (reload === "automatic" || reload === "upload") await editor.blur();
+    else {
+      // Recent input and focus, not merely a saved draft, prevent reload.
+      await editor.fill("Puolivalmis luonnos!");
+      await editor.fill("Puolivalmis luonnos");
+    }
     const documentResponse = page.waitForResponse(
       (response) =>
         response.request().isNavigationRequest() &&
         response.frame() === page.mainFrame(),
     );
-    if (reload === "bell") await item.getByTestId("version-reload").click();
-    else await page.reload();
+    await page.unroute("**/api/v1/events*");
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    if (reload !== "automatic") {
+      const banner = page.getByTestId("connection-version-changed");
+      await expect(banner).toBeVisible();
+      expect(navigations).toBe(0);
+      await expect(editor).toHaveValue("Puolivalmis luonnos");
+      await expect(
+        page.locator("script[type=module][src*='?release=']"),
+      ).toHaveCount(0);
+      if (reload === "bar" || reload === "upload") {
+        releaseUpload();
+        await banner.getByTestId("connection-reload").click();
+      } else if (reload === "bell") {
+        await bell.click();
+        await page
+          .getByTestId("status-panel")
+          .getByTestId("version-reload")
+          .click();
+      } else await page.reload();
+    }
     expect((await documentResponse).headers()["cache-control"]).toBe(
       "no-store",
     );

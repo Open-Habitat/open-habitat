@@ -26,9 +26,8 @@ const fi = {
         "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
     },
     "version-changed": {
-      title: "Palvelin on päivitetty",
-      detail:
-        "Tämä välilehti käyttää vanhempaa versiota, joka ei saa yhteyttä uuteen. Lataa sivu uudelleen; luonnokset säilyvät.",
+      title: "Palvelin päivitettiin",
+      detail: "Lataa sivu uudelleen; luonnokset säilyvät.",
     },
     "authentication-required": {
       title: "Istunto puuttuu tai on vanhentunut",
@@ -180,9 +179,8 @@ export const statusText = catalog(fi, {
         "The connection was down too long for the updates to continue directly.",
     },
     "version-changed": {
-      title: "The server has been updated",
-      detail:
-        "This tab uses an older version that cannot connect to the new one. Reload the page; drafts are kept.",
+      title: "The server was updated",
+      detail: "Reload the page; drafts are kept.",
     },
     "authentication-required": {
       title: "The session is missing or has expired",

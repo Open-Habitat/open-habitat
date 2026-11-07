@@ -38,6 +38,7 @@ import {
   readEditorFile,
   saveEditorFile,
 } from "./editorFiles";
+import { blockAutomaticReload } from "./reloadSafety";
 
 // Jari's choice (2026-10-24): a change someone else wrote to the open file is
 // noticed at once and marked where it will land, but it comes into the text
@@ -174,6 +175,13 @@ export default function BrowserDocument({
     if (approvedRoute.current === location.key)
       approvedRoute.current = undefined;
   }, [location.key]);
+  useEffect(
+    () =>
+      blockAutomaticReload(
+        () => current.current.dirty || current.current.saving,
+      ),
+    [],
+  );
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       if (!current.current.dirty && !current.current.saving) return;

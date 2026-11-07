@@ -1,72 +1,72 @@
-# Investigation result — not reproduced; issue remains open
+# Result — implemented decision A
 
-Base: `4f135603b417569e3c3a0e46992dc243d95b529f`.
-Run: `01m6txg5brcgd1b2fk1khz7e6v`.
+Run: `01m6ty2hxwr520zs630sz68vd7`.
+Base: `fbf72d747b8351e083a104a3b3db53f920f85d99`.
 
-The synthetic browser host does **not** reproduce a second reload requirement.
-Both the bell's reload and the browser's ordinary reload load release 1 after
-one document navigation, preserve the conversation draft, report the bundle
-as current, and leave no bell. No production code was changed and this is not
-a claim that Jari's live occurrence was fixed.
+The investigation established that reconnect did not reload the document: the
+old bundle kept running, so the bell's reload item was correct. One actual
+reload already cleared it and preserved the draft. A real manual reload leaving
+an outdated bell was not reproduced. Jari's 2026-11-07 decision A supersedes the
+investigation's recommendation to retain manual-only recovery.
 
-## What was established
-
-- Reconnection is not an automatic page reload. With an open conversation,
-  hold the event endpoint unavailable, observe the connection bar, upgrade the
-  gateway, then restore networking: the bar disappears, but there are zero
-  document navigations and the script still names the old bundle. The version
-  item correctly remains. This explains the automatic-recovery interpretation
-  of the report, but not a confirmed manual reload that left the item behind.
-- After either actual reload, the document names `?release=1`, the application
-  is running and its draft is restored. Its document response has
-  `Cache-Control: no-store`. The running gateway reports `0.0.0-lab.1` and the
-  same document's bundle comparison reports `current`.
-- `internal/gateway/server.go` serves the shell routes and index with
-  `Cache-Control: no-store`. `bundleRelease.ts` fetches the comparison index
-  with `cache: no-store`; its state and captured own key are module-local,
-  not persisted across document loads. No service-worker registration was
-  found in `web/src` or `web/public`.
-- The former regression used `page.goto('/settings')` after the first reload:
-  it inadvertently loaded another document before checking `current` and the
-  absence of a bell. The strengthened test uses in-app administration
-  navigation and verifies unchanged `performance.timeOrigin`, then returns
-  to the conversation and checks the bell there.
-
-The fixture changes asset references but uses the same compiled code for both
-releases. It proves the browser/gateway interaction, not two historical release
-builds, Cloudflare behavior, or the live browser's cache. A stale live response,
-concurrent second deployment, or a real manual-reload failure remains unverified.
+After a failed event connection opens again, the tab now checks the served
+bundle and reloads automatically if different and safe. Recent focused input,
+unanswered sends/queued messages, uploads, pending mutations, editable dialogs,
+and dirty/saving browser documents keep it in place with the reload banner.
+Deferred recovery stays manual rather than reloading later after a typing pause.
+The existing draft persistence and bundle comparison remain unchanged.
+Finnish and English banner copy now describes an update, not a failed connection.
 
 ## Checks and review
 
-- Installed locked web dependencies and the Pi SDK fixture dependencies.
-- `OH_PORT_BASE=17200 OH_BROWSER_WORKERS=2 ./scripts/test-focused.sh --area browser --spec server-version-reload.spec.ts`: original three cases passed;
-  strengthened final four cases passed (5.4 s Playwright run).
-- `./scripts/test-focused.sh --area web`: static checks and 184 test files /
-  1,389 tests passed. Final subsequent changes were confined to the Playwright
-  spec and were formatted and rerun as above.
-- Focused self-review: removed the second-document blind spot, asserted a
-  positive bundle verdict before checking absence, distinguished reconnect
-  from navigation, retained draft and incompatible-contract coverage. No
-  production/session/contract/authority change requiring independent review.
-- No full gate, live browser capture, deployment, or Go changes.
+Final runnable tree: the production/test changes in this issue's Fixes-Issue
+commit. On Birch, locked web and Pi fixture dependencies installed; Go/browser
+commands used umask 077, a private /var/tmp directory, OH_PORT_BASE=17300 and
+OH_BROWSER_WORKERS=2.
+
+- `./scripts/test-focused.sh --area web`: static checks and 186 test files /
+  1,394 tests passed after the final production changes.
+- `./scripts/test-focused.sh --area browser --spec server-version-reload.spec.ts`:
+  seven passed. Idle recovery navigates exactly once to release 1; typing and
+  a held upload preserve the old document until explicit reload. Bar, bell and
+  browser reload preserve the draft, serve no-store HTML and leave no bell;
+  in-app settings confirm the bundle is current without a second navigation.
+  Incompatible-contract manual recovery remains covered.
+- `./scripts/test-focused.sh --area browser --spec reconnect-recovery.spec.ts`:
+  ten passed. `--spec reconnect-paths.spec.ts`: two passed.
+- Unit regressions cover focused input versus idle draft, ten-second expiry,
+  editable dialogs without focus, and live editor blocker cleanup.
+- Focused self-review traced the actual request owners: uploads do not enter
+  MutationLayer, and conversation sends use ownWrites. Both are explicitly
+  guarded instead of assuming the layer sees all writes. Reviewed identity
+  generation fencing, late input during the bundle read, editor buffer safety,
+  and sticky manual deferral. No daemon, contract, persisted session state or
+  authority changes; no independent model review required.
+- One invocation repeated `--spec`; the runner only selected the last value.
+  The two omitted specs were then run separately and passed. Exploratory rg
+  calls included nonexistent guessed paths; scoped searches corrected them.
+- `issuectl doctor --json`, project-view validation and `git diff --check`
+  passed (doctor lists existing unreferenced image attachments, no schema errors).
+- No full gate, deployment or live-server verification. Browser evidence is
+  host-backed synthetic: both release references use the same compiled code.
+  No claim about two historical bundles, edge caches or UID isolation.
 
 ## Decisions for later review
 
-Keep the existing reconnect behavior rather than adding an unsolicited document
-reload. Alternative: force reload after recovery whenever a new bundle exists.
-That would change product behavior and could discard in-memory editor work;
-there is no reproduced bundle-comparison defect justifying it here.
-
-Do not mark this bug fixed or attach a Fixes-Issue trailer to test-only work.
-The original acceptance requires finding and fixing the manual-reload cause,
-which this investigation has not established. Preserve the test and evidence
-for the conductor rather than inventing a cache workaround.
-
-## Next discriminating observation
-
-On the next live occurrence, distinguish a real document reload from recovery
-and record the old/new module script URL plus the freshly fetched shell's module
-URL, shell cache headers, and server release. If one manual document reload
-leaves the same version item, those three values separate stale shell delivery
-from a false bundle mismatch without inspecting personal conversation content.
+- Recent typing means focused input within ten seconds. Alternative: any draft
+  or focus blocks indefinitely. Ten seconds protects an active pause without
+  treating a restored, idle draft as ongoing typing. Other focused form fields
+  get the same protection as the composer.
+- Any editable dialog blocks, even if pristine; alternative: bespoke dirty
+  tracking in every dialog. Conservative deferral avoids losing selections and
+  passwords without adding duplicate form state. Dirty/saving browser editor
+  buffers also block because unlike conversation drafts they are not persisted.
+- Pending/uncertain MutationLayer commands also block, not just sends/uploads;
+  alternative: classify each command individually. Keeping visible unconfirmed
+  work is safer than interrupting it for a convenience reload.
+- A deferred update stays an explicit reload action until the next document
+  load, rather than surprising the person on blur or a subsequent reconnect.
+- Retain bundle-content comparison: a server-only release with identical web
+  assets does not require a document reload. Alternative: reload on every
+  server version change. The current comparison is exactly the bell's notion
+  of outdated UI and avoids reloads that cannot change the page.
