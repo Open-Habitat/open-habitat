@@ -2,13 +2,16 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet spinoff clean gate
 source_ref: taskfleet:01m6tmzqp0grzgswdh9g7d4r0s/gate-load-residual:attachment-documents
 originating_run: 01m6tmzqp0grzgswdh9g7d4r0s
 originating_run_kind: spinoff
+lane: attachment-flake
+lane_seq: 2
+preparation: ready
 ---
 
 # First of six dropped attachments lost under full-gate load (attachment-documents)
