@@ -55,6 +55,8 @@ it("tells the administrator's limit, lists workspaces and lets an administrator 
   const calls = card({ admin: true });
   const notice = screen.getByTestId("creation-problem");
   expect(notice.dataset.state).toBe("refused");
+  expect(notice.getAttribute("role")).toBe("alert");
+  expect(notice.dataset.tone).toBe("danger");
   expect(notice.textContent).toContain(
     "Ylläpitäjän asettama raja on 3 yhtä aikaa työskentelevää keskustelua, ja 3 työskentelee jo.",
   );
@@ -120,6 +122,8 @@ it("says there is room once a stop freed a place", () => {
   });
   const notice = screen.getByTestId("creation-problem");
   expect(notice.dataset.state).toBe("room");
+  expect(notice.getAttribute("role")).toBe("status");
+  expect(notice.dataset.tone).toBe("success");
   expect(notice.textContent).toContain("Tilaa on nyt");
   expect(notice.textContent).toContain(
     "2 keskustelua työskentelee; rajasi on 3.",

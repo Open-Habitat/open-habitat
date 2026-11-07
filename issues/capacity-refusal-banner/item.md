@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 collision: [web/src/components/CapacityRefusal.tsx, web/src/app/PendingConversation.tsx]
 preparation: ready
+closed: 2026-11-07
 ---
 
 # Capacity refusal covers the start page, is not a warning and hides the conversation's controls
@@ -47,12 +48,12 @@ experimental gate.
 
 ## Acceptance Criteria
 
-- [ ] Refusal is a `WarningBanner` in danger tone; holders list, stops, Try
+- [x] Refusal is a `WarningBanner` in danger tone; holders list, stops, Try
       again and Change the limit keep working.
-- [ ] It no longer overlaps the start page; the start page scrolls away and
+- [x] It no longer overlaps the start page; the start page scrolls away and
       the banner sits in the column with edges aligned to the composer
       (1440 and 390, light and dark).
-- [ ] The refused conversation keeps its controls (archive and the others it
+- [x] The refused conversation keeps its controls (archive and the others it
       normally has) while the refusal shows.
-- [ ] Touched specs and Storybook stories updated; live check in
+- [x] Touched specs and Storybook stories updated; live check in
       `KOKEILTAVAA.md`.

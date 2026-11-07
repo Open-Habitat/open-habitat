@@ -84,6 +84,14 @@ async function refused(page: Page, id: string) {
   if (!bounds || !composer)
     throw new Error("Missing refusal or composer bounds");
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(composer.y);
+  await expect(card).toHaveAttribute("data-tone", "danger");
+  const entry = await page.locator(".ah-cbox").boundingBox();
+  if (!entry) throw new Error("Missing composer entry");
+  expect(Math.abs(bounds.x - entry.x)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(bounds.x + bounds.width - entry.x - entry.width),
+  ).toBeLessThanOrEqual(1);
+  await expect(page.getByTestId("dialog-close")).toBeEnabled();
   return card;
 }
 

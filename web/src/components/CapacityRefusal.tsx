@@ -12,6 +12,7 @@ import { statusText } from "../text/status";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { StatusMark } from "./Status";
+import { WarningBanner } from "./WarningBanner";
 import "./CapacityRefusal.css";
 
 /** One conversation holding a place, as the card shows it. */
@@ -97,14 +98,13 @@ export function CapacityRefusal({
   if (room)
     return (
       <>
-        <aside
-          className="ah-notice ah-tone-success"
+        <WarningBanner
+          tone="success"
+          placement="inline"
           data-testid="creation-problem"
           data-state="room"
-        >
-          <strong>{t.room}</strong>
-          <p>{t.roomText(n, limit)}</p>
-          <div className="ah-actions">
+          title={t.room}
+          actions={
             <ControlButton
               data-testid="retry"
               size="row"
@@ -114,8 +114,10 @@ export function CapacityRefusal({
             >
               {t.start}
             </ControlButton>
-          </div>
-        </aside>
+          }
+        >
+          {t.roomText(n, limit)}
+        </WarningBanner>
         {windowView}
       </>
     );
@@ -126,13 +128,45 @@ export function CapacityRefusal({
         ? t.installation(limit, n)
         : t.server(limit, n);
   return (
-    <aside
-      className="ah-notice ah-tone-warning ah-capacity"
+    <WarningBanner
+      tone="danger"
+      placement="inline"
       data-testid="creation-problem"
       data-state="refused"
       data-reason="capacity"
+      title={pending.conversationNotCreated}
+      actions={
+        <>
+          <ControlButton
+            data-testid="capacity-who"
+            size="row"
+            variant="primary"
+            onPress={() => setWindow({ open: true })}
+          >
+            {t.who}
+          </ControlButton>
+          <ControlButton
+            data-testid="retry"
+            size="row"
+            variant="secondary"
+            isDisabled={!onRetry}
+            onPress={onRetry}
+          >
+            {pending.retry}
+          </ControlButton>
+          <ControlButton
+            data-testid="capacity-admin"
+            size="row"
+            variant="quiet"
+            isDisabled={!admin}
+            aria-describedby={!admin ? sentence : undefined}
+            onPress={admin ? onAdmin : undefined}
+          >
+            {admin ? t.changeLimitAdmin : t.changeLimit}
+          </ControlButton>
+        </>
+      }
     >
-      <strong>{pending.conversationNotCreated}</strong>
       <p id={sentence}>{tries ? `${said} ${t.stillFull}` : said}</p>
       <p>{t.scope}</p>
       {groups.length ? (
@@ -156,47 +190,8 @@ export function CapacityRefusal({
             ))}
         </div>
       ) : null}
-      <div className="ah-actions">
-        <ControlButton
-          data-testid="capacity-who"
-          size="row"
-          variant="primary"
-          onPress={() => setWindow({ open: true })}
-        >
-          {t.who}
-        </ControlButton>
-        <ControlButton
-          data-testid="retry"
-          size="row"
-          variant="secondary"
-          isDisabled={!onRetry}
-          onPress={onRetry}
-        >
-          {pending.retry}
-        </ControlButton>
-        {admin ? (
-          <ControlButton
-            data-testid="capacity-admin"
-            size="row"
-            variant="quiet"
-            onPress={onAdmin}
-          >
-            {t.changeLimitAdmin}
-          </ControlButton>
-        ) : (
-          <ControlButton
-            data-testid="capacity-admin"
-            size="row"
-            variant="quiet"
-            isDisabled
-            aria-describedby={sentence}
-          >
-            {t.changeLimit}
-          </ControlButton>
-        )}
-      </div>
       {windowView}
-    </aside>
+    </WarningBanner>
   );
 }
 

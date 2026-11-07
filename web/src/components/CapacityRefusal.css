@@ -1,8 +1,5 @@
 /* The new conversation refused at the limit, and its window of what holds a
    place (proto-live-conversation-limit-setting, round 3). */
-.ah-capacity .ah-actions {
-  flex-wrap: wrap;
-}
 .ah-capacity-chips {
   display: flex;
   flex-wrap: wrap;

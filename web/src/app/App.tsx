@@ -2662,6 +2662,9 @@ export function App() {
                     ? manualRefresh
                     : undefined,
                   retryLabel: t.app.checkCreation,
+                  onClose: creationViews[ws]?.refused
+                    ? () => navigate(`/workspaces/${ws}`, { replace: true })
+                    : undefined,
                   refused: creationViews[ws]?.refused,
                   capacity: creationViews[ws]?.capacity
                     ? { tries: creationViews[ws]?.tries ?? 0 }

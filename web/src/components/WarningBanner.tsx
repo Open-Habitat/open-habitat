@@ -22,6 +22,7 @@ const icons: Record<Exclude<WarningTone, "progress">, IconName> = {
 export function WarningBanner({
   "data-testid": testId,
   "data-state": state,
+  "data-reason": reason,
   tone,
   title,
   children,
@@ -32,6 +33,7 @@ export function WarningBanner({
 }: {
   "data-testid"?: string;
   "data-state"?: string;
+  "data-reason"?: string;
   tone: WarningTone;
   /** Left out for a one-line state such as "yritetään uudelleen…". */
   title?: ReactNode;
@@ -49,6 +51,7 @@ export function WarningBanner({
     <div
       data-testid={testId}
       data-state={state}
+      data-reason={reason}
       data-tone={tone}
       className={`ah-warning ah-warning-${tone} ah-warning-${placement}${title ? "" : " ah-warning-line"}`}
       role={tone === "danger" ? "alert" : "status"}
@@ -68,7 +71,7 @@ export function WarningBanner({
             <span className="ah-warning-narrow">{short}</span>
           </p>
         ) : children ? (
-          <p>{children}</p>
+          <div className="ah-warning-content">{children}</div>
         ) : null}
       </div>
       {actions ? <div className="ah-warning-actions">{actions}</div> : null}

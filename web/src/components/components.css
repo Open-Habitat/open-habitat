@@ -1497,6 +1497,9 @@ details[open] > summary:not([class])::before {
 .ah-actionable-notices > .ah-warning {
   margin: 0 var(--ah-column-pad-inline) var(--ah-s2);
 }
+.ah-creation-notices:empty {
+  display: none;
+}
 @media (max-height: 600px) {
   .ah-conversation-frame .ah-composer {
     max-height: min(45vh, calc(100dvh - 14rem));

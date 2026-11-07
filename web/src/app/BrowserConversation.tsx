@@ -2152,6 +2152,27 @@ function BrowserConversationContent({
         >
           {view !== "opened" ? (
             <AgentHeader
+              terminal={shell.toggle}
+              editorControl={<EditorHeaderControls />}
+              filesControl={<FilesHeaderControl conversationId={id} />}
+              titleAction={{
+                label: txt.retitle,
+                availability: { state: "disabled", reason: txt.nothingToName },
+                onPress: () => {},
+              }}
+              archive={
+                creation?.refused && creation.onClose
+                  ? {
+                      state: "active",
+                      empty: true,
+                      eligible: true,
+                      busy: false,
+                      onClose: creation.onClose,
+                      onArchive: () => {},
+                      onRestore: () => {},
+                    }
+                  : undefined
+              }
               {...(view === "loading" || !creation
                 ? loadingHeader(workspace, problem, details, () =>
                     setDetails(!details),

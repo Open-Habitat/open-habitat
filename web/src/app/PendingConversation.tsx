@@ -2,6 +2,8 @@ import {
   type ComponentProps,
   type RefObject,
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -44,6 +46,8 @@ export type Creation = {
    * counts the attempts since the first refusal. */
   capacity?: { tries: number };
   onCreateAgain?: () => void;
+  /** A refused creation has no native history to archive; close its local view. */
+  onClose?: () => void;
   /** A new worktree agent (ADR 0025): nothing exists until the first
    * message, which creates the branch and worktree from `base`. */
   worktree?: {
@@ -184,50 +188,63 @@ export function CreationStream({
   onGiveBack: () => void;
 }) {
   const { problem, refused, worktree, onCreateAgain, onRetry } = creation;
+  const stream = useRef<HTMLElement>(null);
+  const notice = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!problem || !notice.current) return;
+    // The refusal follows the start page in the same scroll, rather than
+    // covering it. Capacity details can arrive after the initial refusal.
+    const reveal = () => {
+      if (stream.current)
+        stream.current.scrollTop = stream.current.scrollHeight;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(notice.current);
+    return () => observer.disconnect();
+  }, [problem]);
   return (
-    <>
-      <ConversationStream>
-        {worktree && !waiting.length ? (
-          <WorktreeIntro workspace={workspace} {...worktree} />
-        ) : null}
-        <ConversationTimeline
-          state={waiting.length ? "ready" : "empty"}
-          emptyLabel={
-            <StartPageRead
-              workspaceId={workspace.workspace_id}
-              draft={draft}
-              onChange={onChange}
-              onPage={onPage}
-              onStarted={(goal, title, prepared) => {
-                prepareField(guide, {
-                  text: prepared.text,
-                  start: prepared.selectionStart,
-                  end: prepared.selectionEnd,
-                });
-                setGuide(guide, {
-                  goal,
-                  page: title,
-                  open: guideOpensItself(),
-                });
-              }}
+    <ConversationStream streamRef={stream}>
+      {worktree && !waiting.length ? (
+        <WorktreeIntro workspace={workspace} {...worktree} />
+      ) : null}
+      <ConversationTimeline
+        state={waiting.length ? "ready" : "empty"}
+        emptyLabel={
+          <StartPageRead
+            workspaceId={workspace.workspace_id}
+            draft={draft}
+            onChange={onChange}
+            onPage={onPage}
+            onStarted={(goal, title, prepared) => {
+              prepareField(guide, {
+                text: prepared.text,
+                start: prepared.selectionStart,
+                end: prepared.selectionEnd,
+              });
+              setGuide(guide, {
+                goal,
+                page: title,
+                open: guideOpensItself(),
+              });
+            }}
+          />
+        }
+        historyMode="pagedAccessible"
+        onJumpToLatest={() => {}}
+        items={waiting.map((w) => ({
+          id: `held:${w.command_id}`,
+          kind: "user",
+          content: (
+            <WaitingMessage
+              text={w.text}
+              state={problem ? "failed" : "waiting"}
+              onCopy={() => void navigator.clipboard?.writeText(w.text)}
             />
-          }
-          historyMode="pagedAccessible"
-          onJumpToLatest={() => {}}
-          items={waiting.map((w) => ({
-            id: `held:${w.command_id}`,
-            kind: "user",
-            content: (
-              <WaitingMessage
-                text={w.text}
-                state={problem ? "failed" : "waiting"}
-                onCopy={() => void navigator.clipboard?.writeText(w.text)}
-              />
-            ),
-          }))}
-        />
-      </ConversationStream>
-      <div className="ah-actionable-notices">
+          ),
+        }))}
+      />
+      <div ref={notice} className="ah-creation-notices">
         {problem && refused && creation.capacity ? (
           // At the limit there is nothing to edit: the text is already back
           // in the field (Jari 6.11.2026, Muokkaa pois).
@@ -291,7 +308,7 @@ export function CreationStream({
           />
         ) : null}
       </div>
-    </>
+    </ConversationStream>
   );
 }
 
