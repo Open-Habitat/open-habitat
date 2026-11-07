@@ -3,9 +3,10 @@ created: 2026-11-07
 updated: 2026-11-07
 type: feature
 reporter: jari
-status: open
+status: wontfix
 priority: normal
 preparation: pending
+closed: 2026-11-07
 ---
 
 # Site-wide skill packs declared by the administrator
@@ -45,3 +46,7 @@ Kapellimestarin luonnos keskusteluun (7.11.):
 ## Acceptance Criteria
 
 - [ ] suunnittelu sovittu Jarin kanssa (malli, valtuus, ylläpitäjän näkymä); sen jälkeen prototyyppi- ja toteutusissuet
+
+## Decision (Jari 2026-11-07)
+
+Ei tehdä. Tällaiset taidot laitetaan suoraan repoon (projektin omat taidot).
