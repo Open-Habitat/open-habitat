@@ -7,9 +7,8 @@ status: done
 priority: normal
 lane: explain-mode
 lane_seq: 1
-related: ['@proto-conversation-header-actions-r5']
-preparation: ready
 closed: 2026-11-07
+preparation: ready
 ---
 
 # Explain mode: dim the screen and explain whatever the pointer is on

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-11-07
 type: improvement
 reporter: jari
 status: done
@@ -11,11 +11,10 @@ originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
 related: ['@fleetrepo-gitea-habitat']
-blocked_by: ['@gitea-clone-jobs']
+closed: 2026-10-24
 collision: [contracts/v1/, internal/nativegitea/, web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, web/src/app/, web/src/components/]
 lane: gitea
 lane_seq: 4
-closed: 2026-10-24
 ---
 
 # Gitea common catalog, source identities and existing clone matching

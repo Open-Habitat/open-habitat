@@ -1,17 +1,16 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 type: feature
 reporter: jari
 status: done
 priority: normal
-related: ['@proto-composer-popover-placement']
+closed: 2026-11-06
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/composer-lists-in-field
 lane: composer-lists
 lane_seq: 1
-closed: 2026-11-06
 ---
 
 # Composer lists inside the field: folder tree, changed as state, preview, list search (experimental)

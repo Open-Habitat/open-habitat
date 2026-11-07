@@ -1,15 +1,14 @@
 ---
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-07
 type: feature
 reporter: jari
 status: done
 priority: normal
 lane: language-en-us-gb
 lane_seq: 1
-related: ['@ui-language-choice']
-preparation: ready
 closed: 2026-10-31
+preparation: ready
 ---
 
 # Language: English (US) and English (UK) as separate choices
