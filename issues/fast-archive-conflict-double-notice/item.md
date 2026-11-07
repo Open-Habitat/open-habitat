@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: archive-conflict
 lane_seq: 1
+closed: 2026-11-07
 ---
 
 # Fast archive right after a stop is refused as a conflict and the refusal shows twice
@@ -20,4 +21,4 @@ Nopea arkistointi hylätään ja hylkäys näkyy kahdesti, ylempi ei poistu (Jar
 
 ## Acceptance Criteria
 
-- [ ] havainto korjattu; testi rajapinnassa
+- [x] havainto korjattu; testi rajapinnassa

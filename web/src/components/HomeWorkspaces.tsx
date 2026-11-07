@@ -80,7 +80,7 @@ export function HomeCard({
   const unwritten = conversation.history === "missing";
   useEffect(() => {
     let active = true;
-    // A native JSONL append changes the token even when the ID is stable.
+    // A native JSONL append changes the revision even when the ID is stable.
     void conversation.revision;
     setError(false);
     if (unwritten) return;

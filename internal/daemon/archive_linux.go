@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -17,6 +18,14 @@ type archiveRequest struct {
 	ObservationToken string `json:"observation_token"`
 	PreviousArchive  string `json:"previous_archive"`
 	ClientCommandID  string `json:"client_command_id,omitempty"`
+}
+
+// Archive changes presentation, not history content. A completed turn or stop
+// may append native entries after the browser's observation. Bind the token to
+// the native identity and location instead; PreviousArchive fences competing
+// annotation changes, and archiveInput re-proves settled history and ownership.
+func archiveObservation(s nativeSession) string {
+	return opaque("obs_", fmt.Sprintf("%q:%q:%q", s.id, s.cwd, s.path))
 }
 
 func (c *ConversationController) archive(w http.ResponseWriter, r *http.Request, id string) {
@@ -64,7 +73,7 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	if in.ObservationToken != opaque("obs_", id+":"+native.revision) {
+	if in.ObservationToken != archiveObservation(*native) {
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}

@@ -116,7 +116,7 @@ func (c *ConversationController) agentConversations(w http.ResponseWriter, r *ht
 	}
 }
 
-// The same native header revision used by snapshot/archiveInput. A token is an
+// The same native identity used by snapshot/archiveInput. A token is an
 // observation, not a reservation; archiveInput re-proves ownership and freshness.
 func (c *ConversationController) agentArchiveObservation(w http.ResponseWriter, id string) {
 	sessions, err := nativeSessions(c.nativeCfg())
@@ -137,7 +137,7 @@ func (c *ConversationController) agentArchiveObservation(w http.ResponseWriter, 
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "observation_token": opaque("obs_", id+":"+s.revision), "archive": archiveFact(state, nil, "pi:"+id)})
+		historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "observation_token": archiveObservation(s), "archive": archiveFact(state, nil, "pi:"+id)})
 		return
 	}
 	snapshotError(w, 404, "resource_not_found")

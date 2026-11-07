@@ -348,6 +348,7 @@ export function App() {
     id: string;
     title: string;
     route: string;
+    problem?: string;
   }>();
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
   const [railStartError, setRailStartError] = useState("");
@@ -1663,8 +1664,18 @@ export function App() {
     if (result.outcome === "uncertain") refresh();
     // The notice, if any, stays and says why; the conversation is back. A
     // home card shows its own refusal.
-    if (result.outcome === "refused" && origin !== "home")
-      setArchiveProblem(result.text);
+    if (result.outcome === "refused" && origin !== "home") {
+      if (archived || archiveNotice?.id === agent.agent_id) {
+        // A late refusal must still be seen if its pending notice was
+        // dismissed or replaced by another archive in the meantime.
+        setArchiveNotice({
+          id: agent.agent_id,
+          title: agentTitle(agent.title),
+          route: fromRoute,
+          problem: result.text,
+        });
+      } else setArchiveProblem(result.text);
+    }
     return result.outcome !== "refused" && result.outcome !== "login";
   };
   // Leaving settings rereads the default: a credential or Pi sign-in there can
@@ -1888,7 +1899,7 @@ export function App() {
         return {
           id: a.agent_id,
           workspaceId: a.workspace_id,
-          revision: a.observation_token,
+          revision: a.changed_at ?? a.observation_token,
           href: daemonSession
             ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
             : `/agents/${a.agent_id}`,
@@ -2501,7 +2512,8 @@ export function App() {
           ? workspacePage(selected)
           : null}
         {new URLSearchParams(location.search).has("conversation") &&
-          archiveProblem && (
+          archiveProblem &&
+          !archiveNotice && (
             <InlineNotice
               data-testid="archive-error"
               title={
@@ -3157,24 +3169,40 @@ export function App() {
                       kind="archive"
                       key={archiveNotice.id}
                       title={archiveNotice.title}
+                      message={
+                        archiveNotice.problem
+                          ? t.app.archiveChangeFailed
+                          : undefined
+                      }
+                      expireProblem
                       busy={
+                        !archiveNotice.problem &&
                         snapshot?.agents.find(
                           (a) => a.agent_id === archiveNotice.id,
                         )?.archive !== "archived"
                       }
-                      problem={archiveProblem}
-                      onClose={() => setArchiveNotice(undefined)}
-                      onRestore={() => {
-                        const agent = snapshot?.agents.find(
-                          (a) => a.agent_id === archiveNotice.id,
-                        );
-                        if (!agent) return;
-                        void changeArchive(agent, false).then((restored) => {
-                          if (!restored) return;
-                          navigate(archiveNotice.route);
-                          setArchiveNotice(undefined);
-                        });
+                      problem={archiveNotice.problem}
+                      onClose={() => {
+                        setArchiveNotice(undefined);
+                        setArchiveProblem("");
                       }}
+                      onRestore={
+                        archiveNotice.problem
+                          ? undefined
+                          : () => {
+                              const agent = snapshot?.agents.find(
+                                (a) => a.agent_id === archiveNotice.id,
+                              );
+                              if (!agent) return;
+                              void changeArchive(agent, false).then(
+                                (restored) => {
+                                  if (!restored) return;
+                                  navigate(archiveNotice.route);
+                                  setArchiveNotice(undefined);
+                                },
+                              );
+                            }
+                      }
                     />
                   ) : null}
                   <AccountLogoutDialog

@@ -51,7 +51,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		return Discovery{State: "present", Entries: []Workspace{{Name: "project", Kind: "directory", WorkspaceID: wsid, dev: uint64(info.Dev), ino: info.Ino}}}
 	}
 	native := readNativeHeader(path, cfg.UID)
-	token := opaque("obs_", id+":"+native.revision)
+	token := archiveObservation(native)
 	requestDetail := func(archived bool, observation string) (int, string) {
 		t.Helper()
 		body, _ := json.Marshal(map[string]any{"workspace_id": wsid, "archived": archived, "previous_archive": func() string {
@@ -82,7 +82,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		if header.state != "readable" {
 			t.Fatalf("%s: native history not readable: %s", label, header.state)
 		}
-		fresh := opaque("obs_", id+":"+header.revision)
+		fresh := archiveObservation(header)
 		if status, code := requestDetail(true, fresh); status != http.StatusOK {
 			t.Fatalf("%s: archive rejected: %d (%s)", label, status, code)
 		}
@@ -148,7 +148,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
 	c.mu.Unlock()
 	// The live-child fence is independent of the native writer census.
-	fresh := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	fresh := archiveObservation(readNativeHeader(path, cfg.UID))
 	if status, code := requestDetail(true, fresh); status != 409 || code != "writer_conflict" {
 		t.Fatalf("active writer archive rejection: %d (%s)", status, code)
 	}
@@ -158,7 +158,15 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if status, code := requestDetail(true, "obs_stale123"); status != 409 || code != "control_uncertain" {
 		t.Fatalf("stale view archive rejection: %d (%s)", status, code)
 	}
-	archiveWhenAbsent("idle child")
+	// Finishing an abort writes native entries after the browser observed the
+	// conversation. That is not a competing archive edit.
+	original = append(original[:bytes.LastIndexByte(original[:len(original)-1], '\n')+1], []byte(`{"type":"message","id":"stopped1","message":{"role":"assistant","content":"stopped"}}`+"\n")...)
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if status, code := requestDetail(true, fresh); status != 200 {
+		t.Fatalf("settled stop invalidated archive observation: %d (%s)", status, code)
+	}
 	state, err := loadVisibility(home)
 	if err != nil || archiveFact(state, nil, "pi:"+id) != "archived" {
 		t.Fatalf("archive missing: %v %v", state, err)
@@ -191,7 +199,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if err := os.WriteFile(path, append(bytes.Clone(original), []byte("{broken\n")...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	corruptToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	corruptToken := archiveObservation(readNativeHeader(path, cfg.UID))
 	c.mu.Lock()
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
 	c.mu.Unlock()
@@ -206,7 +214,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if err := os.WriteFile(stateDir, []byte("{broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	restoredToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	restoredToken := archiveObservation(readNativeHeader(path, cfg.UID))
 	got, code := requestDetail(true, restoredToken)
 	if got != http.StatusServiceUnavailable {
 		t.Fatalf("corrupt annotation overwritten: %d %s", got, code)

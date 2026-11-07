@@ -92,6 +92,52 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await notice.getByTestId("restore-notice").click();
   await expect(row).toBeVisible();
   expect(page.url()).toBe(here);
+
+  // A definite refusal is one transient notice, not a permanent banner plus
+  // an undo offer for an archive that never happened. Keep a conversation
+  // open to exercise the former duplicate banner path too.
+  await row.getByTestId("agent-link").click();
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (route.request().postDataJSON()?.action !== "conversation_archive")
+      return route.continue();
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "control_uncertain" } }),
+    });
+  });
+  await page.clock.install();
+  await archive.click();
+  await expect(page.getByTestId("archive-error")).toHaveCount(1);
+  await expect(notice.getByTestId("archive-error")).toBeVisible();
+  await expect(notice.getByTestId("restore-notice")).toHaveCount(0);
+  await expect(row).toBeVisible();
+  await page.mouse.move(0, 0);
+  await page.clock.runFor(8_100);
+  await expect(notice).toHaveCount(0);
+  await expect(page.getByTestId("archive-error")).toHaveCount(0);
+
+  await page.unroute("**/api/v1/workspaces");
+  let answer!: () => void;
+  const heldReply = new Promise<void>((resolve) => {
+    answer = resolve;
+  });
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (route.request().postDataJSON()?.action !== "conversation_archive")
+      return route.continue();
+    await heldReply;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "control_uncertain" } }),
+    });
+  });
+  await archive.click();
+  await notice.getByTestId("notice-close").click();
+  await expect(notice).toHaveCount(0);
+  answer();
+  await expect(notice.getByTestId("archive-error")).toBeVisible();
+  await expect(page.getByTestId("archive-error")).toHaveCount(1);
 });
 
 test.describe("on a touch screen", () => {

@@ -432,7 +432,7 @@ func (h *heldHarness) unarchive(c *ConversationController, id string) {
 	token := ""
 	for _, n := range sessions {
 		if n.id == id {
-			token = opaque("obs_", id+":"+n.revision)
+			token = archiveObservation(n)
 		}
 	}
 	w := httptest.NewRecorder()

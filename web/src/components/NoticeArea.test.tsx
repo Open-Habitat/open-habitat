@@ -110,6 +110,29 @@ describe("NoticeArea", () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it("gives a late definite refusal a full reading interval", () => {
+    vi.useFakeTimers();
+    const close = vi.fn();
+    const notice = (problem?: string) => (
+      <NoticeAreaProvider>
+        <NoticeSlot />
+        <ArchiveNotice
+          busy={false}
+          expireProblem
+          problem={problem}
+          onClose={close}
+        />
+      </NoticeAreaProvider>
+    );
+    const { rerender } = render(notice());
+    act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS - 100));
+    rerender(notice("refused"));
+    act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS - 100));
+    expect(close).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(101));
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it("closes on Esc only from inside, and hands focus back to the work", () => {
     render(<Harness initial={[{ id: "only", kind: "archive" }]} />);
     const editor = screen.getByTestId("message-input");
