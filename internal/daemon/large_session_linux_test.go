@@ -1,4 +1,10 @@
-//go:build linux
+//go:build linux && !race
+
+// The race detector instruments every byte encoding/json scans, which makes
+// one projecting read of these 40 MiB of pictures some fifty times slower
+// (0.4 s → 20 s) and a resumed turn alone outlast any honest wait. The race
+// build covers the same reading and continuation code on small sessions;
+// the gate runs these tests separately, without -race, at full size.
 
 package daemon
 
@@ -344,23 +350,5 @@ func TestLargeSessionContinuesWithNativePi(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("the resumed turn left the pictures' branch")
-	}
-}
-
-// The proof that admits continuation keeps no entries but refuses every
-// record the projecting reader refuses.
-func TestNativeProofRefusesWhatHistoryRefuses(t *testing.T) {
-	dir := t.TempDir()
-	id := "12345678-1234-4123-8123-123456789abc"
-	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, dir)
-	for i, record := range []string{`{"id":"bad","parentId":null,"type":17}`, `{"id":"bad","parentId":null,"type":"message","timestamp":5}`, `{"id":"bad","parentId":null,"type":"model_change","provider":[]}`, `{"id":"bad","parentId":3}`, `{"id":"ok1","parentId":null,"type":"message","message":{"role":"user","content":"hei"}}`} {
-		path := filepath.Join(dir, fmt.Sprintf("s%d.jsonl", i))
-		if err := os.WriteFile(path, []byte(header+record+"\n"), 0600); err != nil {
-			t.Fatal(err)
-		}
-		whole, proof := readNativeSettled(path, os.Geteuid()), proveNativeSettled(path, os.Geteuid())
-		if whole.state != proof.state || whole.revision != proof.revision {
-			t.Fatalf("%s: history %s, proof %s", record, whole.state, proof.state)
-		}
 	}
 }

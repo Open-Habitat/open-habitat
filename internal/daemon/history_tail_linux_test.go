@@ -243,3 +243,21 @@ func TestDamagedHistoryStartFailsWithReason(t *testing.T) {
 		t.Fatal("Pi was started on damaged history")
 	}
 }
+
+// The proof that admits continuation keeps no entries but refuses every
+// record the projecting reader refuses.
+func TestNativeProofRefusesWhatHistoryRefuses(t *testing.T) {
+	dir := t.TempDir()
+	id := "12345678-1234-4123-8123-123456789abc"
+	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, dir)
+	for i, record := range []string{`{"id":"bad","parentId":null,"type":17}`, `{"id":"bad","parentId":null,"type":"message","timestamp":5}`, `{"id":"bad","parentId":null,"type":"model_change","provider":[]}`, `{"id":"bad","parentId":3}`, `{"id":"ok1","parentId":null,"type":"message","message":{"role":"user","content":"hei"}}`} {
+		path := filepath.Join(dir, fmt.Sprintf("s%d.jsonl", i))
+		if err := os.WriteFile(path, []byte(header+record+"\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		whole, proof := readNativeSettled(path, os.Geteuid()), proveNativeSettled(path, os.Geteuid())
+		if whole.state != proof.state || whole.revision != proof.revision {
+			t.Fatalf("%s: history %s, proof %s", record, whole.state, proof.state)
+		}
+	}
+}

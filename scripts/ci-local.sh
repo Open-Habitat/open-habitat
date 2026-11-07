@@ -108,6 +108,8 @@ if ! $reuse_phases; then
     step=$SECONDS
     go vet ./...
     go test -race ./...
+    # Built without the race detector only: 40 MiB of JSON is too slow under it.
+    go test ./internal/daemon -run '^TestLargeSession'
     echo "ci-local phase go-checks: $((SECONDS-step))s"
     "$PYTHON" scripts/test-ui-reference.py
     "$PYTHON" scripts/validate-contracts.py
