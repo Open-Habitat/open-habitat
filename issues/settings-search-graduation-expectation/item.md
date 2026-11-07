@@ -2,7 +2,7 @@
 created: 2026-11-07
 updated: 2026-11-07
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed focused browser test failure, reproduced on main
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: settings-search-fix
 lane_seq: 1
 preparation: ready
+closed: 2026-11-07
 ---
 
 # Settings search browser test still expects server keys in personal results

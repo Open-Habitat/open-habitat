@@ -43,7 +43,7 @@ test("@settings-search every index row is on its section's page and every page r
   await page.goto("/settings");
   for (const section of settingsSections) {
     if (section.id === "keskustelut") {
-      // Listed only in the experimental server area; its route still opens.
+      // Listed only in the server area; its route still opens.
       await page.goto("/settings/conversations");
       await expect(row(page, "live-limit-people")).toBeAttached();
       continue;
@@ -93,9 +93,9 @@ test("@settings-search / finds a setting, arrows preview results beside the list
   ).toHaveCount(0);
   const options = results(page).getByRole("option");
   await expect(options.first()).toHaveAttribute("aria-selected", "true");
-  // An administrator finds the server's keys beside their own.
+  // Even an administrator searches only their own settings here.
   await expect(option(page, "row-api-keys")).toBeVisible();
-  await expect(option(page, "row-site-key")).toBeVisible();
+  await expect(option(page, "row-site-key")).toHaveCount(0);
 
   // The selected result is open beside the list; focus stays in the field.
   await page.keyboard.press("Control+a");
@@ -126,23 +126,8 @@ test("@settings-search / finds a setting, arrows preview results beside the list
   // second result of a partial query).
   await field(page).fill("malli");
   await expect(option(page, "row-theme")).toHaveCount(0);
-  // The administrator check, a read, can still add the server's rows to the
-  // list; read its second result once the list has held for two reads.
-  let listed = "";
-  await expect
-    .poll(
-      async () => {
-        const now = (await options.evaluateAll((o) => o.map((e) => e.id))).join(
-          " ",
-        );
-        const settled = now === listed;
-        listed = now;
-        return settled;
-      },
-      { intervals: [300] },
-    )
-    .toBe(true);
   const second = options.nth(1);
+  await expect(second).toBeVisible();
   const secondKey = (await second.getAttribute("data-testid"))?.replace(
     "settings-result-",
     "",
