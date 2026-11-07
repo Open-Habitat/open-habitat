@@ -22,7 +22,6 @@ export type QuietSort = "newest" | "workspace" | "name";
  * daemon returns that is not listed here is ignored. */
 export const experimentalFeatureIds = [
   "worker-row-sentence",
-  "workspace-icons",
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",

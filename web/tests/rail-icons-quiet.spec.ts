@@ -32,16 +32,6 @@ async function headers(page: Page) {
 async function preferences(page: Page) {
   return (await page.request.get("/api/v1/account/preferences")).json();
 }
-async function setIcons(page: Page, on: boolean) {
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await headers(page),
-        data: { experimental: { "workspace-icons": on } },
-      })
-    ).ok(),
-  ).toBe(true);
-}
 // Contrast is judged on the settled theme, not mid-transition.
 const settled = (page: Page) =>
   page.evaluate(() =>
@@ -149,22 +139,15 @@ test("@rail-quiet every other conversation as one flat list, in every layout", a
   );
   await page.goto(`/agents/${quietId(0)}`);
   const open = quiet.getByTestId(`agent-item-${quietId(0)}`);
-  for (const icons of [false, true]) {
+  {
+    const icons = true;
     await page.setViewportSize({ width: 1280, height: 900 });
-    await setIcons(page, icons);
     await page.reload();
     await expect(open).toBeVisible();
     await expect(quiet.getByTestId("workspace-icon-button")).toHaveCount(
-      icons ? await rows.count() : 0,
+      await rows.count(),
     );
-    // Without icons the row names its workspace quietly, not as a heading.
-    await expect(open.getByTestId("rail-row-workspace")).toHaveCount(
-      icons ? 0 : 1,
-    );
-    if (!icons)
-      await expect(open.getByTestId("rail-row-workspace")).toHaveText(
-        firstWorkspace,
-      );
+    await expect(open.getByTestId("rail-row-workspace")).toHaveCount(0);
     for (const phone of [false, true]) {
       await page.setViewportSize(
         phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
@@ -211,7 +194,6 @@ test("@rail-quiet the icon grid orders and narrows, follows the account and keep
   test.setTimeout(120000);
   const ids = await quietWorld(page);
   await login(page);
-  await setIcons(page, true);
   await page.goto(`/agents/${quietId(0)}`);
   const nav = page.getByTestId("workspace-navigation");
   const quiet = nav.getByTestId("rail-quiet");
@@ -347,8 +329,8 @@ test("@rail-quiet folding is per device and keeps the open row and the workspace
   const nav = page.getByTestId("workspace-navigation");
   const quiet = nav.getByTestId("rail-quiet");
   const rows = quiet.getByTestId(/^agent-item-/);
-  for (const icons of [true, false]) {
-    await setIcons(page, icons);
+  {
+    const icons = true;
     await page.reload();
     await expect(rows.first()).toBeVisible();
     const fold = quiet.getByTestId("rail-quiet-fold");
@@ -369,7 +351,7 @@ test("@rail-quiet folding is per device and keeps the open row and the workspace
       quiet
         .getByTestId(`rail-quiet-pill-${ids.first}`)
         .getByTestId("workspace-icon"),
-    ).toHaveCount(icons ? 1 : 0);
+    ).toHaveCount(1);
     await page.reload();
     await expect(fold).toHaveAttribute("aria-expanded", "false");
     // Per device: the browser keeps it, the account does not.

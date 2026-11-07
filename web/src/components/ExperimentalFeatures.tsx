@@ -22,7 +22,6 @@ export type ExperimentalFeature = {
 
 const featureIds = [
   { id: "worker-row-sentence", landed: true },
-  { id: "workspace-icons", landed: true },
   { id: "raise-to-your-turn", landed: true },
   { id: "composer-lists-in-field", landed: true },
   { id: "rewind-conversation", landed: true },
@@ -99,21 +98,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <span>{txt.picture.composer}</span>
       </span>
     );
-  else if (id === "workspace-icons")
-    body = [
-      ["🦊", txt.picture.iconRows, txt.picture.now],
-      ["🦊", txt.picture.railIcons, txt.picture.minutes(3)],
-      ["OH", txt.picture.pilot, txt.picture.minutes(22)],
-    ].map(([icon, title, age], i) => (
-      <span key={title} className="ex-irow" data-gap={i === 2 || undefined}>
-        <span className="ex-icon" data-glyph={icon === "OH" || undefined}>
-          {icon}
-        </span>
-        <span className="ex-dot" />
-        <b>{title}</b>
-        <span>{age}</span>
-      </span>
-    ));
   else
     body = (
       <>

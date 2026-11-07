@@ -17,7 +17,6 @@ const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
   "worker-row-sentence",
-  "workspace-icons",
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",

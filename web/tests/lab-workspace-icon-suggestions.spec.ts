@@ -60,26 +60,18 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.waitForURL(/\/workspaces/);
   const headers = await session(page);
-  for (const [url, data] of [
-    [
-      "/api/v1/account/preferences",
-      { experimental: { "workspace-icons": true } },
-    ],
-    [
-      "/api/v1/account/git-identity",
-      {
-        name: "Synthetic lab",
-        email: "synthetic@example.invalid",
-        mode: "settings",
-      },
-    ],
-  ] as const) {
-    const r =
-      url === "/api/v1/account/preferences"
-        ? await page.request.put(url, { headers, data })
-        : await page.request.post(url, { headers, data });
-    expect(r.ok()).toBeTruthy();
-  }
+  expect(
+    (
+      await page.request.post("/api/v1/account/git-identity", {
+        headers,
+        data: {
+          name: "Synthetic lab",
+          email: "synthetic@example.invalid",
+          mode: "settings",
+        },
+      })
+    ).ok(),
+  ).toBeTruthy();
   await page.reload();
   const id = await openWorkspace(page, "aurinkokello");
   const row = page.getByTestId("workspace-icon-suggestions");
@@ -357,15 +349,6 @@ test("@workspace-icons the wish is dictated with the composer's dictation and as
     .click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.waitForURL(/\/workspaces/);
-  const headers = await session(page);
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers,
-        data: { experimental: { "workspace-icons": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
   await page.goto("/settings/speech");
   await page
     .getByTestId("speech-key-input")

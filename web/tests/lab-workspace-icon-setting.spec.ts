@@ -62,17 +62,8 @@ test("@workspace-icons the heading's icon sets the workspace icon and commits on
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const picker = page.getByTestId("workspace-icon-picker");
   const id = await openWorkspace(page, "aurinkokello");
-  // Without the experiment the heading has no icon.
   await expect(page.getByTestId("workspace-title")).toBeVisible();
-  await expect(picker).toHaveCount(0);
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "workspace-icons": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
+  await expect(picker).toBeVisible();
   // The person's Git identity, which a commit needs; without it the page
   // says the file waits for a commit.
   expect(

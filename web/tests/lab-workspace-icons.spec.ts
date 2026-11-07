@@ -23,13 +23,6 @@ async function shot(page: Page, name: string) {
   await page.emulateMedia({ colorScheme: "light" });
 }
 
-async function session(page: Page) {
-  const s = await (await page.request.get("/auth/session")).json();
-  return {
-    Origin: new URL(page.url()).origin,
-    "X-Agent-Host-CSRF": s.csrf as string,
-  };
-}
 const rail = (page: Page) => page.getByRole("navigation");
 // The conversations this test started; see the wire seam below.
 const started = new Set<string>();
@@ -48,7 +41,7 @@ async function start(page: Page, name: string) {
 const listIcon = (page: Page, name: string) =>
   rail(page).getByTestId(`workspace-${name}`).getByTestId("workspace-icon");
 
-test("@workspace-icons the rail shows each workspace's icon from its repository only while the feature is on", async ({
+test("@workspace-icons the rail shows each workspace's icon from its repository by default", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -76,21 +69,9 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   await start(page, "aurinkokello");
   await start(page, "reseptikirja");
   const running = rail(page).getByTestId("rail-running");
-  await expect(running.getByTestId("rail-group-aurinkokello")).toBeVisible();
   const aurinkokello = [...started][0];
   const reseptikirja = [...started][1];
   const row = running.getByTestId(`agent-item-${aurinkokello}`);
-  await expect(rail(page).getByTestId("workspace-icon")).toHaveCount(0);
-
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "workspace-icons": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
-  await page.reload();
 
   // Iconed rows are flat, without repeated workspace groups/headings.
   await expect(running.getByTestId("rail-group-aurinkokello")).toHaveCount(0);

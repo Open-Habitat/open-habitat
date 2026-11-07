@@ -375,9 +375,7 @@ export function AccountSettings({
   // its route opens anyway, as the limit card's administrator link does.
   const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
   const hits = searching
-    ? searchSettings(query, { admin: false }).filter(
-        listed,
-      )
+    ? searchSettings(query, { admin: false }).filter(listed)
     : [];
   // The list can shrink under the selection (the administrator check).
   const selected = Math.max(0, Math.min(chosen, hits.length - 1));
@@ -591,9 +589,7 @@ export function AccountSettings({
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
   const adminLinks = adminSections;
   const inServerArea =
-    detail &&
-    admin === true &&
-    adminSections.some(({ id }) => id === section);
+    detail && admin === true && adminSections.some(({ id }) => id === section);
   const sectionLabel = (id: string, label: string) =>
     inServerArea
       ? id === "palvelin"

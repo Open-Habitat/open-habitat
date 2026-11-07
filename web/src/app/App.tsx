@@ -1363,21 +1363,14 @@ export function App() {
     identity,
     csrf,
   });
-  const workspaceIconsOn = useExperimentalFeature("workspace-icons", {
-    identity,
-    csrf,
-  });
   const resourcesOn = useExperimentalFeature("agent-resources-view", {
     identity,
     csrf,
   });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   const icons = useMemo(
-    () =>
-      workspaceIconsOn && snapshot
-        ? workspaceIcons(snapshot.workspaces)
-        : undefined,
-    [workspaceIconsOn, snapshot],
+    () => (snapshot ? workspaceIcons(snapshot.workspaces) : undefined),
+    [snapshot],
   );
   const now = useRailNow({
     names: new Map(
