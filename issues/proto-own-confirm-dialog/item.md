@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: own-dialog-proto
 lane_seq: 1
 ---
@@ -28,4 +28,4 @@ selaimen oma eikä sitä voi korvata; prototyyppi kertoo, missä se jää.
 
 ## Acceptance Criteria
 
-- [ ] kierros 1: nykytila, kolme suuntaa, näkymätarjous ja kysymykset Jarille
+- [x] kierros 1: nykytila, kolme suuntaa, näkymätarjous ja kysymykset Jarille
