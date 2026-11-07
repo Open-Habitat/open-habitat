@@ -23,7 +23,6 @@ export type QuietSort = "newest" | "workspace" | "name";
 export const experimentalFeatureIds = [
   "worker-row-sentence",
   "workspace-icons",
-  "server-settings-own-area",
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",

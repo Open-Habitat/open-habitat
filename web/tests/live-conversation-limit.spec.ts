@@ -33,15 +33,7 @@ async function signIn(page: Page, code: "42" | "43") {
 }
 
 async function serverArea(page: Page) {
-  await page.goto("/settings/experimental");
-  const choice = page.getByTestId(
-    "experimental-server-settings-own-area-choice",
-  );
-  await choice.getByTestId("segment-on").click();
-  await expect(choice.getByTestId("segment-on")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await page.goto("/settings/server");
 }
 
 /** Types a limit into a stepper and waits for the host's confirmation. */

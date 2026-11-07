@@ -18,7 +18,6 @@ const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
   "worker-row-sentence",
   "workspace-icons",
-  "server-settings-own-area",
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",

@@ -646,12 +646,6 @@ export const settingsSections = [
         desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
       },
       {
-        id: "server-settings-own-area",
-        label: "Palvelimen asetukset omana alueena",
-        kw: ["palvelin", "ylläpito", "server", "admin"],
-        desc: "Palvelimen osiot omassa listassa ja puhelimen välilehtirivinä.",
-      },
-      {
         id: "workspace-icons",
         label: "Työtilan kuvake",
         kw: [

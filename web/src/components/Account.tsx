@@ -7,7 +7,6 @@ import {
 } from "react-aria-components";
 import { AccountKeys } from "../app/AccountKeys";
 import { useAISignIn } from "../app/AISignIn";
-import { useExperimentalFeature } from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
@@ -311,7 +310,6 @@ export function AccountSettings({
   const theme = useThemeChoice();
   const language = useLanguage();
   const t = accountText[language];
-  const ownServerArea = useExperimentalFeature("server-settings-own-area");
   const serverText = useText(serverSettingsText);
   const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
@@ -377,7 +375,7 @@ export function AccountSettings({
   // its route opens anyway, as the limit card's administrator link does.
   const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
   const hits = searching
-    ? searchSettings(query, { admin: admin === true && !ownServerArea }).filter(
+    ? searchSettings(query, { admin: false }).filter(
         listed,
       )
     : [];
@@ -412,7 +410,7 @@ export function AccountSettings({
     else
       preview(
         searchSettings(next, {
-          admin: admin === true && !ownServerArea,
+          admin: false,
         }).filter(listed)[0],
       );
   };
@@ -591,12 +589,9 @@ export function AccountSettings({
   }, [hitRows]);
   const sections = settingsSections.filter((entry) => !("admin" in entry));
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
-  const adminLinks = adminSections.filter(
-    ({ id }) => ownServerArea || id !== "keskustelut",
-  );
+  const adminLinks = adminSections;
   const inServerArea =
     detail &&
-    ownServerArea &&
     admin === true &&
     adminSections.some(({ id }) => id === section);
   const sectionLabel = (id: string, label: string) =>
@@ -622,6 +617,7 @@ export function AccountSettings({
         <>
           <Icon name={icon} />
           {sectionLabel(id, label)}
+          {!inServerArea && id === "palvelin" && <Icon name="forward" />}
         </>
       );
       return onNavigate ? (
@@ -739,16 +735,14 @@ export function AccountSettings({
                 {admin && (
                   <>
                     <span className="s-nav-h">{t.administration}</span>
-                    {ownServerArea
-                      ? nav(
-                          settingsSections
-                            .filter(({ id }) => id === "palvelin")
-                            .map((entry) => ({
-                              ...entry,
-                              label: t.administration,
-                            })),
-                        )
-                      : nav(adminLinks)}
+                    {nav(
+                      settingsSections
+                        .filter(({ id }) => id === "palvelin")
+                        .map((entry) => ({
+                          ...entry,
+                          label: t.administration,
+                        })),
+                    )}
                   </>
                 )}
               </>

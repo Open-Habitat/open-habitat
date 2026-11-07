@@ -29,18 +29,6 @@ async function start(page: Page, person = 0) {
   await page.getByRole("link").nth(person).click();
   await expect(page.getByTestId("account-menu-trigger")).toBeAttached();
   await page.goto("/settings/experimental");
-  const choice = page.getByTestId(
-    "experimental-server-settings-own-area-choice",
-  );
-  await expect(choice.getByTestId("segment-off")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await choice.getByTestId("segment-on").click();
-  await expect(choice.getByTestId("segment-on")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
 }
 async function audit(page: Page) {
   expect(
@@ -54,9 +42,13 @@ async function audit(page: Page) {
 async function capture(page: Page, name: string) {
   if (process.env.OH_VISUAL_CAPTURE !== "1") return;
   const { snapshot } = await import("../lab/session.mjs");
-  await snapshot(page, `../issues/server-settings-own-area/evidence/${name}`, {
-    labOrigin,
-  });
+  await snapshot(
+    page,
+    `../issues/graduate-server-settings-area/evidence/${name}`,
+    {
+      labOrigin,
+    },
+  );
 }
 
 test("server area enters from the menu, keeps every section visible, returns and preserves browser history", async ({
@@ -78,6 +70,7 @@ test("server area enters from the menu, keeps every section visible, returns and
   await page.getByTestId("settings-own-back").click();
   await expect(page).toHaveURL(/\/settings\/account$/);
   await expect(link(page, "palvelinintegraatiot")).toHaveCount(0);
+  await capture(page, "personal-entry");
   await link(page, "palvelin").click();
   await expect(page.getByTestId("server-section-links")).toBeVisible();
   await page.goBack();
@@ -87,20 +80,6 @@ test("server area enters from the menu, keeps every section visible, returns and
   await page.goto("/settings/server#server-name");
   await expect(page.locator('[data-settings-row="server-name"]')).toBeFocused();
   await expect(page.getByTestId("server-section-links")).toBeVisible();
-  await page.goto("/settings/experimental");
-  await page
-    .getByTestId("experimental-server-settings-own-area-choice")
-    .getByTestId("segment-off")
-    .click();
-  await expect(
-    page
-      .getByTestId("experimental-server-settings-own-area-choice")
-      .getByTestId("segment-off"),
-  ).toHaveAttribute("aria-pressed", "true");
-  await link(page, "palvelin").click();
-  await expect(page.getByTestId("server-section-links")).toHaveCount(0);
-  await expect(link(page, "tili")).toBeVisible();
-  await expect(link(page, "palvelinintegraatiot")).toBeAttached();
 });
 
 test("phone deep links show a scrollable section row, keyboard navigation and return to personal list", async ({
@@ -147,7 +126,7 @@ test("phone deep links show a scrollable section row, keyboard navigation and re
   await expect(page).not.toHaveURL(/\/settings/);
 });
 
-test("enabled feature does not expose server navigation to a non-administrator", async ({
+test("server navigation remains unavailable to a non-administrator", async ({
   page,
 }) => {
   await start(page, 1);

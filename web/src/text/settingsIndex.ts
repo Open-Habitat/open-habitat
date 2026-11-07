@@ -287,10 +287,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Worker's work on its row",
         desc: "A worker's row tells its commits, changes and pull request checks.",
       },
-      "server-settings-own-area": {
-        label: "Server settings in their own area",
-        desc: "Server sections in their own list and a phone tab row.",
-      },
       "workspace-icons": {
         label: "Workspace icon",
         desc: "Conversations in the sidebar carry the workspace's icon from the repository's setting, a logo or its name; it can be changed from the workspace page's title.",

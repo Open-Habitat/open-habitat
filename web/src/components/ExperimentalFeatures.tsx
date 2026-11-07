@@ -23,7 +23,6 @@ export type ExperimentalFeature = {
 const featureIds = [
   { id: "worker-row-sentence", landed: true },
   { id: "workspace-icons", landed: true },
-  { id: "server-settings-own-area", landed: true },
   { id: "raise-to-your-turn", landed: true },
   { id: "composer-lists-in-field", landed: true },
   { id: "rewind-conversation", landed: true },
@@ -49,7 +48,6 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
-    id === "server-settings-own-area" ||
     id === "rewind-conversation" ||
     id === "explain-mode" ||
     id === "agent-resources-view" ||
