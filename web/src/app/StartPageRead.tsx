@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { goalDraft, StartHere } from "../components/StartHere";
 import { useText } from "../i18n";
 import { workspaceLandingText } from "../text/workspaceLanding";
-import { useExperimentalFeature } from "./accountPreferences";
 import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
 import type { ConversationStore } from "./conversationStore";
 import { resolveGoal } from "./goalGuide";
@@ -34,9 +33,6 @@ export function StartPageRead({
   const latest = useRef({ draft, onChange, onPage, onStarted });
   latest.current = { draft, onChange, onPage, onStarted };
   const t = useText(workspaceLandingText);
-  const startPageButton = useExperimentalFeature(
-    "empty-conversation-start-page",
-  );
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
@@ -99,18 +95,14 @@ export function StartPageRead({
         state={state}
         onRetry={() => retry((v) => v + 1)}
         preparing={preparing}
-        onCreatePage={
-          startPageButton
-            ? () => {
-                const prepared = startPageDraft(latest.current.draft);
-                setPreparedDraft({
-                  ...prepared,
-                  chip: `/skill:${startPageSkill} `.length,
-                });
-                latest.current.onChange(prepared.text);
-              }
-            : undefined
-        }
+        onCreatePage={() => {
+          const prepared = startPageDraft(latest.current.draft);
+          setPreparedDraft({
+            ...prepared,
+            chip: `/skill:${startPageSkill} `.length,
+          });
+          latest.current.onChange(prepared.text);
+        }}
         onGoal={async (goal) => {
           if (preparation.current) return;
           const controller = new AbortController();

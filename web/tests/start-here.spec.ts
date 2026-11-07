@@ -202,7 +202,7 @@ for (const width of [1440, 390]) {
       // Reload below must reopen a confirmed conversation, not abandon an
       // in-flight creation route whose page already happens to be visible.
       await expect(page).toHaveURL(/\?conversation=pi:/);
-      await expect(page.getByTestId("start-page-hint")).toBeVisible();
+      await expect(page.getByTestId("start-page-create")).toBeVisible();
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(page.getByTestId("start-page-title")).toHaveCount(0);
       await snapshot(page, testInfo.outputPath(`absent-${width}-${theme}`), {
@@ -223,7 +223,7 @@ for (const width of [1440, 390]) {
         document.documentElement.dataset.theme = t;
       }, theme);
       await expect(page.getByTestId("start-page-needs-update")).toBeVisible();
-      await expect(page.getByTestId("start-page-hint")).toHaveCount(0);
+      await expect(page.getByTestId("start-page-create")).toHaveCount(0);
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
       await settled(page);

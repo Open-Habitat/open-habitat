@@ -48,7 +48,7 @@ describe("start page lifetime", () => {
       };
       const first = render(<StartPageRead {...props} />);
       const ready = !page
-        ? "start-page-hint"
+        ? "start-page-create"
         : "state" in page
           ? "start-page-needs-update"
           : "starting-goal";
@@ -126,7 +126,7 @@ describe("start page lifetime", () => {
         />,
       );
       await waitFor(() =>
-        expect(screen.queryByTestId("start-page-hint")).not.toBeNull(),
+        expect(screen.queryByTestId("start-page-create")).not.toBeNull(),
       );
       view.unmount();
     };

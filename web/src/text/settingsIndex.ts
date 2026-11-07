@@ -259,10 +259,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
-      "empty-conversation-start-page": {
-        label: "Start-page button in conversations",
-        desc: "A button in an empty conversation prepares a start-page request in the message field. You send it yourself.",
-      },
       "raise-to-your-turn": {
         label: "Raise and Not now",
         desc: "Keep a conversation in Your turn, move it to Quiet or raise it back.",

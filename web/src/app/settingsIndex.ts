@@ -554,12 +554,6 @@ export const settingsSections = [
       "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
     rows: [
       {
-        id: "empty-conversation-start-page",
-        label: "Aloitussivupainike keskustelussa",
-        kw: ["aloitussivu", "start page", "tyhjä", "empty", "keskustelu"],
-        desc: "Tyhjän keskustelun painike valmistelee aloitussivupyynnön viestikenttään. Lähetät sen itse.",
-      },
-      {
         id: "raise-to-your-turn",
         label: "Nosta ja Ei nyt",
         kw: [

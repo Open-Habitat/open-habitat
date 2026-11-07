@@ -24,7 +24,6 @@ export const experimentalFeatureIds = [
   "worker-row-sentence",
   "workspace-icons",
   "server-settings-own-area",
-  "empty-conversation-start-page",
   "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",

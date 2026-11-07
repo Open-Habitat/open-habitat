@@ -27,21 +27,6 @@ for (const width of [1440, 390]) {
       .getByTestId("workspace-start-muistiinpanot")
       .click();
     await expect(page).toHaveURL(/\?conversation=pi:/);
-    await expect(page.getByTestId("start-page-hint")).toBeVisible();
-    await expect(page.getByTestId("start-page-create")).toHaveCount(0);
-    const session = await (await page.request.get("/auth/session")).json();
-    expect(
-      (
-        await page.request.put("/api/v1/account/preferences", {
-          headers: {
-            Origin: new URL(page.url()).origin,
-            "X-Agent-Host-CSRF": session.csrf,
-          },
-          data: { experimental: { "empty-conversation-start-page": true } },
-        })
-      ).ok(),
-    ).toBe(true);
-    await page.reload();
     await expect(page.getByTestId("start-page-create")).toBeVisible();
     const { snapshot } = await import("../lab/session.mjs");
     const capture = async (name: string) => {

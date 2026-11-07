@@ -3,11 +3,12 @@ created: 2026-11-07
 updated: 2026-11-07
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: graduate
 lane_seq: 3
+closed: 2026-11-07
 ---
 
 # Graduate Aloitussivupainike keskustelussa from experimental
