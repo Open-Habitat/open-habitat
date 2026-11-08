@@ -293,11 +293,12 @@ export function railNow({
               : undefined,
       // A sub-agent at work, whether or not the parent still waits for it:
       // a daemon restart ends the wait, not the run.
-      spinoffWorking:
+      spinoffWorking: phase !== "stale" && (a.spinoffs_working ?? 0) > 0,
+      spinoffIdle: phase !== "stale" && workerIdle,
+      spinoffWaited:
         phase !== "stale" &&
-        ((a.spinoffs_working ?? 0) > 0 ||
-          (observed.activity === "waiting_background" &&
-            waitsOnWorker(a.waiting_on))),
+        observed.activity === "waiting_background" &&
+        waitsOnWorker(a.waiting_on),
       selected:
         a.agent_id === selectedAgentId ||
         (selectedId === w.workspace_id && openConversation === a.agent_id),

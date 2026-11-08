@@ -249,19 +249,18 @@ describe("rail activity marks", () => {
     expect(ball(view)).toContain("ah-ball-work");
     expect(view.container.querySelector('[data-waiting="true"]')).toBeTruthy();
   });
-  it("pulses only the branch of a working spinoff's mark", () => {
+  it("shows the shared working ball beside the worker branch", () => {
     const view = row(
       { process: "daemon_managed_live", runActive: false },
       true,
     );
     const mark = view.container.querySelector("svg.ah-nav-spinoff");
     expect(mark).not.toBeNull();
-    const branch = mark?.querySelector(".ah-nav-spinoff-branch");
-    expect(branch?.querySelectorAll("path, circle")).toHaveLength(2);
-    // The trunk (top dot and stem) stays outside the pulsing group.
     expect(
-      mark?.querySelectorAll(":scope > path, :scope > circle"),
-    ).toHaveLength(2);
+      view.container
+        .querySelector(".ah-worker-rail .ah-worker-mark")
+        ?.getAttribute("data-kind"),
+    ).toBe("working");
   });
 });
 
@@ -297,6 +296,7 @@ describe("Ryhmät rows", () => {
     expect(ballOf(agent("a", { activity: "working" }))).toBe("work");
     expect(ballOf(agent("a", { activity: "waiting_background" }))).toBe("work");
     expect(ballOf(agent("a", { spinoffWorking: true }))).toBe("work");
+    expect(ballOf(agent("a", { spinoffIdle: true }))).toBe("you");
     expect(ballOf(agent("a"))).toBe("done");
     expect(ballOf(agent("a", { failed: true }))).toBe("fail");
     expect(ballOf(agent("a", { activity: "unknown" }))).toBe("unknown");

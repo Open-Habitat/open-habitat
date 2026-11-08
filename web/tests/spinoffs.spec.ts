@@ -585,7 +585,7 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
     panel.getByRole("button").and(page.getByTestId("spinoff-ui-test-fail")),
   ).toBeVisible();
   await expect(panel).not.toContainText("odota-ui-test");
-  await expect(panel.locator('[data-waited="true"]')).toHaveCount(1);
+  await expect(panel.locator('.ah-bg-row[data-waited="true"]')).toHaveCount(1);
   expect(
     (await new AxeBuilder({ page }).include(".ah-bg-strip").analyze())
       .violations,
@@ -680,7 +680,9 @@ test("@spinoffs a live run in another state keeps its mark on the closed pill", 
     .and(page.getByTestId("background-spinoffs"));
   await expect(pill).toHaveAttribute("data-working", "0");
   await expect(pill).not.toHaveClass(/\bidle\b/);
-  await expect(pill.locator(".ah-bg-marks .ah-bg-dot.unknown")).toHaveCount(1);
+  await expect(
+    pill.locator('.ah-bg-marks .ah-worker-mark[data-kind="unknown"]'),
+  ).toHaveCount(1);
   await expect(pill).toHaveAccessibleName(/1 muussa tilassa/);
   await pill.click();
   await expect(

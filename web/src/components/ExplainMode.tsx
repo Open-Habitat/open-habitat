@@ -14,7 +14,9 @@ import { useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { ControlButton } from "./ControlElements";
 import { type CardId, hoverOnly, parts, waiting } from "./explainParts";
+import { Icon } from "./Icon";
 import "./ExplainMode.css";
+import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
 
 /* The explain mode (proto-explain-mode-r6, rounds 6–9): the screen dims and
  * whatever the pointer is on explains itself in a card beside it. Pointing
@@ -25,6 +27,49 @@ import "./ExplainMode.css";
  * opens at the state card, and the bar's state brings it back. The layer
  * lets the pointer through, so production's own hover rules and presses
  * need nothing from it. */
+
+const workerKinds: WorkerMarkKind[] = [
+  "working",
+  "idle",
+  "waiting_parent",
+  "unknown",
+  "merged",
+  "unfinished",
+  "failed",
+  "unmerged",
+  "checking",
+  "answer",
+];
+function WorkerLegend() {
+  const t = useText(explainModeText).workerLegend;
+  return (
+    <table className="ah-worker-legend" data-testid="worker-legend">
+      <caption>{t.caption}</caption>
+      <tbody>
+        {workerKinds.map((kind) => (
+          <tr key={kind}>
+            <td>
+              <WorkerMark kind={kind} />
+            </td>
+            <th scope="row">{t[kind]}</th>
+          </tr>
+        ))}
+        <tr>
+          <td>
+            <WorkerMark kind="working" waited />
+          </td>
+          <th scope="row">{t.waited}</th>
+        </tr>
+        <tr>
+          <td>
+            <Icon name="check" className="ah-bg-gone" aria-hidden="true" />
+          </td>
+          <th scope="row">{t.gone}</th>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
 
 export type Situation =
   | "notStarted"
@@ -870,6 +915,7 @@ function ExplainLayer({
         <h2>{text.name}</h2>
         <p>{text.lead}</p>
         {text.know ? <p className="ah-explain-know">{text.know}</p> : null}
+        {part.workerLegend ? <WorkerLegend /> : null}
         {disabled && text.grey ? (
           <p className="ah-explain-note">{text.grey}</p>
         ) : null}

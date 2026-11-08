@@ -20,6 +20,7 @@ import {
   useProcessView,
 } from "./ProcessTray";
 import { SpinoffContext } from "./Spinoffs";
+import { WorkerMark } from "./WorkerMark";
 import "./BackgroundStrip.css";
 
 // Merkit (Jari 16.10.2026, round 2026-10-16-taustatyo-riff): two small pills
@@ -89,9 +90,7 @@ export interface SpinoffItem {
 }
 /** Above this many marks the pill counts each kind instead. */
 const MAX_MARKS = 5;
-/** Live, but neither waited on nor known to be working. */
-const other = (i: SpinoffItem) => !i.waited && i.run.state !== "working";
-/** Working without the agent waiting on it: the dashed ring. */
+/** Working without a recognized wait; absence of a ring makes no stronger claim. */
 const unwaited = (marks: SpinoffItem[]) =>
   marks.filter((i) => !i.waited && i.run.state === "working");
 
@@ -583,16 +582,16 @@ export function BackgroundStrip({
               <RequestMark phase={phase} />
             ) : i.live ? (
               <WaitMark item={i} />
-            ) : unfinished(r) ? (
-              <span className="ah-bg-ball" />
             ) : (
-              <Icon
-                name={
-                  r.state === "merged"
-                    ? "merge"
-                    : r.state === "failed" && !r.preserved
-                      ? "cross"
-                      : "warning"
+              <WorkerMark
+                kind={
+                  unfinished(r)
+                    ? "unfinished"
+                    : r.state === "merged"
+                      ? "merged"
+                      : r.state === "failed"
+                        ? "failed"
+                        : "unmerged"
                 }
               />
             )}
@@ -1044,10 +1043,10 @@ export function phaseWord(
 /** A turning ring while the agent has the request, a still one while it
  * waits for the person's answer (the rail's Odottaa sinua). */
 function RequestMark({ phase }: { phase?: RequestPhase }) {
-  return <span className={`ah-bg-ring${phase === "answer" ? " still" : ""}`} />;
+  return <WorkerMark kind={phase === "answer" ? "answer" : "checking"} />;
 }
 
-/** The pill's ended marks: a ring per handled row, a ball per waiting one. */
+/** The pill's ended marks: a request ring or an unfinished-work diamond. */
 function EndedMarks({
   phases,
   waiting,
@@ -1064,7 +1063,7 @@ function EndedMarks({
       {phases.length > 3 ? `+${phases.length - 3}` : null}
       {Array.from({ length: Math.min(waiting, 3) }, (_, n) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: identical marks in a fixed order.
-        <span className="ah-bg-ball" key={`b${n}`} />
+        <WorkerMark kind="unfinished" key={`b${n}`} />
       ))}
       {waiting > 3 ? <span className="ah-bg-more">+{waiting - 3}</span> : null}
     </span>
@@ -1084,17 +1083,18 @@ function runAgent(r: Spinoff) {
   return [name, profile].filter(Boolean).join(" · ");
 }
 
-/** A live spinoff's mark: waiting at its own prompt (a still ring, the
- * rail's Odottaa sinua), waited on, working without a wait, or neither. */
+/** Keep the worker's state visible even when the parent waits for it. */
 function WaitMark({ item }: { item: SpinoffItem }) {
-  return item.run.state === "idle" ? (
-    <span className="ah-bg-ring still" />
-  ) : item.waited ? (
-    <span className="ah-bg-wait-dot ah-background-dot" />
-  ) : item.run.state === "working" ? (
-    <span className="ah-bg-wait-dot nowait" />
-  ) : (
-    <span className="ah-bg-dot unknown" />
+  const state = item.run.state;
+  return (
+    <WorkerMark
+      kind={
+        state === "working" || state === "idle" || state === "waiting_parent"
+          ? state
+          : "unknown"
+      }
+      waited={item.waited}
+    />
   );
 }
 
@@ -1107,31 +1107,22 @@ function WaitMarks({ marks }: { marks: SpinoffItem[] }) {
         ))}
       </span>
     );
-  // Many workers: one mark per kind with its count, so the dashed ring of
-  // a forgotten wait can never be cut off.
-  const waited = marks.filter((i) => i.waited).length;
-  const working = unwaited(marks).length;
-  const rest = marks.filter(other).length;
+  // Count identical marks without losing either the state or the wait ring.
+  const groups = new Map<string, { item: SpinoffItem; count: number }>();
+  for (const item of marks) {
+    const key = `${item.run.state}:${item.waited}`;
+    const group = groups.get(key);
+    if (group) group.count++;
+    else groups.set(key, { item, count: 1 });
+  }
   return (
     <span className="ah-bg-marks" aria-hidden="true">
-      {waited ? (
-        <>
-          <span className="ah-bg-wait-dot ah-background-dot" />
-          {waited}
-        </>
-      ) : null}
-      {working ? (
-        <>
-          <span className="ah-bg-wait-dot nowait" />
-          {working}
-        </>
-      ) : null}
-      {rest ? (
-        <>
-          <span className="ah-bg-dot unknown" />
-          {rest}
-        </>
-      ) : null}
+      {[...groups].map(([key, { item, count }]) => (
+        <span className="ah-bg-marks" key={key}>
+          <WaitMark item={item} />
+          {count}
+        </span>
+      ))}
     </span>
   );
 }

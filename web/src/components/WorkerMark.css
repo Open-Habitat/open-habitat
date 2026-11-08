@@ -1,0 +1,93 @@
+.ah-worker-mark {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ah-bg-mark .ah-worker-mark {
+  width: 10px;
+  height: 10px;
+}
+.ah-worker-mark[data-kind="working"] {
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.ah-worker-mark[data-kind="idle"] {
+  background: var(--ah-turn);
+}
+.ah-worker-mark[data-kind="waiting_parent"] {
+  background: var(--ah-faint);
+}
+.ah-worker-mark[data-kind="unknown"] {
+  border: 1.5px solid var(--ah-faint);
+}
+.ah-worker-mark[data-kind="merged"] {
+  background: var(--ah-ok);
+}
+.ah-worker-mark[data-kind="unfinished"],
+.ah-worker-mark[data-kind="failed"],
+.ah-worker-mark[data-kind="unmerged"] {
+  border-radius: 1px;
+  transform: scale(0.85) rotate(45deg);
+}
+.ah-worker-mark[data-kind="unfinished"] {
+  background: var(--ah-err);
+}
+.ah-worker-mark[data-kind="failed"] {
+  border: 1.5px solid var(--ah-err);
+}
+.ah-worker-mark[data-kind="unmerged"] {
+  border: 1.5px solid var(--ah-faint);
+}
+.ah-worker-mark[data-kind="checking"] {
+  border: 1.5px solid var(--ah-accent-line);
+  border-top-color: var(--ah-accent);
+  animation: ah-worker-turn 1s linear infinite;
+}
+.ah-worker-mark[data-kind="answer"] {
+  border: 1.5px solid var(--ah-turn);
+}
+.ah-worker-mark[data-waited] {
+  box-shadow: none;
+  outline: 1.5px solid var(--ah-accent);
+  outline-offset: 2px;
+  margin: 0 3px;
+}
+.ah-worker-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ah-worker-legend {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: inherit;
+}
+.ah-worker-legend caption {
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ah-worker-legend td {
+  width: 28px;
+  text-align: center;
+  padding: 4px;
+}
+.ah-worker-legend th {
+  text-align: left;
+  font-weight: 400;
+  padding: 4px;
+}
+@keyframes ah-worker-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-worker-mark[data-kind] {
+    animation: none;
+  }
+}

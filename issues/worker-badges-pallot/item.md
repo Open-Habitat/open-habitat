@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: worker-badges-proto
 lane_seq: 2
 blocked_by: ['@proto-worker-badges']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Worker marks use the rail's balls, with a legend in Explain mode

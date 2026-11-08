@@ -29,6 +29,7 @@ import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
+import { WorkerMark } from "./WorkerMark";
 import {
   type WorkspaceCardActions,
   WorkspaceIcon,
@@ -503,6 +504,8 @@ export interface AgentNavModel {
   presence?: "present" | "absent";
   stale?: boolean;
   spinoffWorking?: boolean;
+  spinoffIdle?: boolean;
+  spinoffWaited?: boolean;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
@@ -572,6 +575,7 @@ export function ballOf(
     | "activity"
     | "activityLabel"
     | "spinoffWorking"
+    | "spinoffIdle"
   >,
 ): BallKind {
   if (agent.failed) return "fail";
@@ -592,6 +596,7 @@ export function ballOf(
     agent.spinoffWorking
   )
     return "work";
+  if (agent.spinoffIdle) return "you";
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
@@ -642,6 +647,8 @@ export function AgentNavItem({
   presence = "present",
   stale = false,
   spinoffWorking = false,
+  spinoffIdle = false,
+  spinoffWaited = false,
   pendingLabel,
   worktree,
   question = false,
@@ -687,6 +694,7 @@ export function AgentNavItem({
     activity,
     activityLabel,
     spinoffWorking,
+    spinoffIdle,
   });
   const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
   const said = [
@@ -695,6 +703,7 @@ export function AgentNavItem({
     worktree ? (worktree.merged ? t.worktreeMerged : t.worktree) : null,
     worktree?.work?.text,
     spinoffWorking ? t.workerWorking : null,
+    spinoffIdle ? textNow(statusText).rail.workerWaiting : null,
     controlLabel,
     detail ? null : operationLabel,
     historyLabel,
@@ -712,7 +721,7 @@ export function AgentNavItem({
       title={`${shownTitle} · ${said}`}
       data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
-      className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
+      className={`ah-agent-item${spinoffWorking || spinoffIdle || spinoffWaited ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow
@@ -727,9 +736,29 @@ export function AgentNavItem({
           ) : undefined
         }
         trailing={
-          !editing && (spinoffWorking || archive || rename || turnRow) ? (
+          !editing &&
+          (spinoffWorking ||
+            spinoffIdle ||
+            spinoffWaited ||
+            archive ||
+            rename ||
+            turnRow) ? (
             <>
-              {spinoffWorking ? <SpinoffWorkingMark /> : null}
+              {spinoffWorking || spinoffIdle || spinoffWaited ? (
+                <span className="ah-worker-rail">
+                  <SpinoffWorkingMark />
+                  <WorkerMark
+                    kind={
+                      spinoffWorking
+                        ? "working"
+                        : spinoffIdle
+                          ? "idle"
+                          : "unknown"
+                    }
+                    waited={spinoffWaited}
+                  />
+                </span>
+              ) : null}
               {archive || rename || turnRow ? (
                 <span
                   className="ah-nav-archive"
@@ -897,7 +926,7 @@ export function AgentNavItem({
     </li>
   );
 }
-/** A sub-agent at work: the trunk stays, only the branch and its end pulse. */
+/** The branch identifies background workers; the adjacent ball carries state. */
 function SpinoffWorkingMark() {
   return (
     <svg
@@ -911,7 +940,7 @@ function SpinoffWorkingMark() {
     >
       <circle cx="7" cy="6" r="2" />
       <path d="M7 8v10" />
-      <g className="ah-nav-spinoff-branch">
+      <g>
         <path d="M7 12c0 3 3 4 7 4" />
         <circle cx="17" cy="16" r="2" />
       </g>

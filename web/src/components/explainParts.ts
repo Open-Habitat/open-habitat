@@ -13,6 +13,7 @@ export type Part = {
   key?: string;
   /** A press opens something though the card names no action. */
   opens?: true;
+  workerLegend?: true;
 };
 
 /** A settings section's entry in the settings navigation. */
@@ -75,7 +76,7 @@ export const parts: Record<CardId, Part> = {
   S08: { kind: "menu", sel: '[data-testid="rail-quiet-menu"]' },
   S09: { kind: "nav", sel: '.ah-rail [data-testid="agent-link"]' },
   S10: { kind: "info", sel: ".ah-rail .ah-ball" },
-  S11: { kind: "info", sel: ".ah-rail .ah-nav-spinoff" },
+  S11: { kind: "info", sel: ".ah-rail .ah-worker-rail", workerLegend: true },
   S12: { kind: "once", sel: '[data-testid="rail-rename-conversation"]' },
   S13: { kind: "once", sel: '[data-testid="rail-archive-conversation"]' },
   S14: { kind: "list", sel: '[data-testid="workspace-summary"]' },
@@ -187,7 +188,16 @@ export const parts: Record<CardId, Part> = {
   V08: { kind: "menu", sel: '[data-testid="composer-mode"]', key: "Alt+Enter" },
   V09: { kind: "info", sel: '[data-testid="background-work"]' },
   V10: { kind: "panel", sel: '[data-testid="background-processes"]' },
-  V11: { kind: "panel", sel: '[data-testid="background-spinoffs"]' },
+  V11: {
+    kind: "panel",
+    sel: '[data-testid="background-spinoffs"]',
+    workerLegend: true,
+  },
+  V12: {
+    kind: "info",
+    sel: '.ah-bg-group:has(.ah-bg-row[data-kind="spin"])',
+    workerLegend: true,
+  },
   L01: { kind: "input", sel: '[data-testid="command-search"]' },
   L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
   L03: {
@@ -252,7 +262,8 @@ export const parts: Record<CardId, Part> = {
   },
   P15: {
     kind: "nav",
-    sel: '[data-testid^="spinoff-"][data-testid$="-ok"], .ah-bg-panel [data-testid^="spinoff-"]:not([data-testid="spinoff-facts"])',
+    sel: '.ah-bg-row[data-kind="spin"] .ah-bg-main',
+    workerLegend: true,
   },
   R01: {
     kind: "panel",

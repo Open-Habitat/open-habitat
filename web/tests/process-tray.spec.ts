@@ -318,14 +318,17 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   const waitingRow = page.locator(".ah-waiting-spinoff");
   await expect(waitingRow).toHaveCount(1);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  // Only the branch and its end dot pulse; the trunk stays (rail-mark-pulse).
+  // The wait is independent of state: this snapshot has no worker activity.
+  await expect(waitingRow.locator(".ah-worker-mark")).toHaveAttribute(
+    "data-waited",
+    "true",
+  );
   const mark = waitingRow.locator("svg.ah-nav-spinoff");
   await expect(mark).toBeVisible();
-  expect(
-    await mark
-      .locator(".ah-nav-spinoff-branch")
-      .evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("ah-pulse");
+  await expect(waitingRow.locator(".ah-worker-mark")).toHaveAttribute(
+    "data-kind",
+    "unknown",
+  );
   expect(await mark.evaluate((el) => getComputedStyle(el).animationName)).toBe(
     "none",
   );
