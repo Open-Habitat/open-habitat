@@ -4346,6 +4346,12 @@ details[open] > summary:not([class])::before {
   .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-time {
     display: none;
   }
+  /* Hide the whole worker mark (branch, state and wait badge) beneath the
+     action overlay, retaining its space. NavLink's description says its state. */
+  .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive)
+  .ah-worker-rail {
+    opacity: 0;
+  }
   .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-link {
     padding-inline-end: 30px;
   }

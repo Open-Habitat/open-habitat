@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Rail row's worker (branch) mark shows through the hover action buttons
@@ -26,5 +27,5 @@ otherwise.
 
 ## Acceptance Criteria
 
-- [ ] With hover or keyboard focus on a rail row, no trailing mark shows under or beside the action buttons; without, the mark shows as before; 1440 and 390 (touch: actions as today).
-- [ ] Touched rail specs green; screenshot before/after.
+- [x] With hover or keyboard focus on a rail row, no trailing mark shows under or beside the action buttons; without, the mark shows as before; 1440 and 390 (touch: actions as today).
+- [x] Touched rail specs green; screenshot before/after.
