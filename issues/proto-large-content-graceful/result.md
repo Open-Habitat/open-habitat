@@ -119,3 +119,11 @@ olisi jatkuvaa hälyä harvinaisen asian vuoksi. B:n kansiolähetys muuttaisi
 sitä, mitä agentti viestistä näkee, ja se on isompi päätös kuin tämä
 ongelma vaatii. 512 MiB:n raja on joka tapauksessa korjattava
 (`session-over-512mib-stuck`).
+
+## Jarin päätös (8.11.2026)
+
+Suosituksen mukaan: **C Vasta rajalla, ja siihen A:sta lähetyksen
+esitarkistus**. Siis ei kansiolähetystä (B), ei pysyvää kokomittaria;
+yksi varoitus kun keskustelu lähestyy rajaa; liian suuri keskustelu avautuu
+uusimmista viesteistä ja ohjaa jatkamaan uudessa keskustelussa. Tämä
+prototyyppi on toteutuksen määrittely (`large-content-graceful`).

@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: large-content-proto
 lane_seq: 1
 blocked_by: ['@recheck-button-unexplained']
-preparation: pending
+preparation: ready
+closed: 2026-11-08
 ---
 
 # Design and prototype: graceful handling of very large conversation content
