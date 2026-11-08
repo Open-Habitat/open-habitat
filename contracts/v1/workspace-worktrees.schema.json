@@ -196,6 +196,58 @@
         }
       }
     },
+    "owner": {
+      "description": "The Taskfleet run the worktree belongs to, read from the same run list as the taskfleet_run blocker: a live run, else the newest ended run that still names it. Absent when no run names it or Taskfleet could not be read.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "role",
+        "state"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+        },
+        "role": {
+          "description": "helper: a named resident worker that keeps the worktree between rounds. worker: any other live run. ended: the run has ended and nobody keeps the worktree.",
+          "enum": [
+            "helper",
+            "worker",
+            "ended"
+          ]
+        },
+        "title": {
+          "description": "The run's task as Taskfleet records it.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "name": {
+          "description": "For a helper: its name.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "state": {
+          "description": "working: works on its own. waiting: a helper between rounds, or an interactive worker waiting for its conversation's agent to merge or cancel it. attention: stalled, its supervisor is gone, or idle expiry kept unlanded work. ended: role ended.",
+          "enum": [
+            "working",
+            "waiting",
+            "attention",
+            "ended"
+          ]
+        },
+        "conversation_id": {
+          "description": "The conversation that started the run.",
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "releases_at": {
+          "description": "For a waiting helper whose worktree is merged: when Taskfleet's idle expiry removes the worktree by itself (the helper's session stays).",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "worktree": {
       "type": "object",
       "additionalProperties": false,
@@ -316,6 +368,9 @@
           "items": {
             "$ref": "#/$defs/blocker"
           }
+        },
+        "owner": {
+          "$ref": "#/$defs/owner"
         },
         "actions": {
           "description": "The disposals the daemon would accept for this observation. Empty when blocked, locked or unknown.",

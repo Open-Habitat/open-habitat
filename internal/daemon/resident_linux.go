@@ -35,6 +35,8 @@ type taskfleetResident struct {
 	RoundState        string `json:"round_state"`
 	RoundsReported    int    `json:"rounds_reported"`
 	ExpiryAttentionAt string `json:"expiry_attention_at"`
+	WorkerRunning     bool   `json:"worker_running"`
+	IdleExpirySecs    int64  `json:"idle_expiry_secs"`
 	LastRound         *struct {
 		Round      int    `json:"round"`
 		ReportedAt string `json:"reported_at"`

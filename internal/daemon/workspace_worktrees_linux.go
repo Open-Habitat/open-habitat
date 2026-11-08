@@ -69,6 +69,7 @@ type worktreeView struct {
 	SizeBytes        *int64            `json:"size_bytes,omitempty"`
 	SizeComplete     *bool             `json:"size_complete,omitempty"`
 	Blockers         []deletionBlocker `json:"blockers"`
+	Owner            *worktreeOwner    `json:"owner,omitempty"`
 	Actions          []string          `json:"actions"`
 	ObservationToken string            `json:"observation_token"`
 }
@@ -360,13 +361,14 @@ func observeRegistry(ctx context.Context, cfg transport.Config, entry Workspace,
 		out = append(out, o)
 	}
 	if len(out) > 0 {
-		blockers, ok := worktreeRunBlockers(ctx, cfg.Home, wsPath, out)
+		blockers, owners, ok := worktreeRuns(ctx, cfg.Home, wsPath, out)
 		for i := range out {
 			if !ok {
 				out[i].view.Blockers = append(out[i].view.Blockers, deletionBlocker{Kind: "unknown", Check: "taskfleet"})
 			} else if b, live := blockers[i]; live {
 				out[i].view.Blockers = append(out[i].view.Blockers, b)
 			}
+			out[i].view.Owner = owners[i]
 			out[i].finish()
 		}
 	}
@@ -663,13 +665,16 @@ func porcelainCounts(status []byte) (statusCounts, bool) {
 	return out, true
 }
 
-// worktreeRunBlockers asks Taskfleet, with the argv the deletion check
-// uses, which runs of this repository own a listed worktree. A run that
-// owns one blocks unless it has ended: done (merged), cancelled or failed.
-func worktreeRunBlockers(ctx context.Context, home, wsPath string, obs []worktreeObs) (map[int]deletionBlocker, bool) {
+// worktreeRuns asks Taskfleet, with the argv the deletion check uses, which
+// runs of this repository own a listed worktree. A run that owns one blocks
+// unless it has ended: done (merged), cancelled or failed. The same read
+// names each worktree's run for the person (owner): a live one, else the
+// newest ended run that still names it.
+func worktreeRuns(ctx context.Context, home, wsPath string, obs []worktreeObs) (map[int]deletionBlocker, map[int]*worktreeOwner, bool) {
 	out := map[int]deletionBlocker{}
+	owners := map[int]*worktreeOwner{}
 	if taskfleetBinary(home) == "" {
-		return out, true
+		return out, owners, true
 	}
 	var reply struct {
 		Schema int `json:"schema_version"`
@@ -678,15 +683,14 @@ func worktreeRunBlockers(ctx context.Context, home, wsPath string, obs []worktre
 		} `json:"data"`
 	}
 	if !taskfleetRead(ctx, home, []string{"run", "list", "--repo", wsPath, "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
-		return nil, false
+		return nil, nil, false
 	}
+	endedAt := map[int]string{}
 	for _, r := range reply.Data.Runs {
 		if !taskfleetIDPattern.MatchString(r.ID) {
-			return nil, false
+			return nil, nil, false
 		}
-		if r.Status == "done" || r.Status == "cancelled" || r.Status == "failed" {
-			continue
-		}
+		ended := r.Status == "done" || r.Status == "cancelled" || r.Status == "failed"
 		paths := []string{r.WorktreePath}
 		for _, n := range r.Nodes {
 			paths = append(paths, n.Worktree)
@@ -698,20 +702,89 @@ func worktreeRunBlockers(ctx context.Context, home, wsPath string, obs []worktre
 			named = named || p != "" && filepath.IsAbs(p)
 		}
 		if !named {
-			return nil, false
+			if ended {
+				continue
+			}
+			return nil, nil, false
 		}
 		for _, p := range paths {
 			if p == "" || !filepath.IsAbs(p) {
 				continue
 			}
 			for i := range obs {
-				if sameWorktreePath(filepath.Clean(p), &obs[i]) {
+				if !sameWorktreePath(filepath.Clean(p), &obs[i]) {
+					continue
+				}
+				if !ended {
 					out[i] = deletionBlocker{Kind: "taskfleet_run", RunID: r.ID}
+					owners[i] = runOwner(r, &obs[i])
+				} else if _, live := out[i]; !live && (owners[i] == nil || r.CreatedAt > endedAt[i]) {
+					owners[i], endedAt[i] = runOwner(r, &obs[i]), r.CreatedAt
 				}
 			}
 		}
 	}
-	return out, true
+	return out, owners, true
+}
+
+// worktreeOwner is what a worktree is for the person: a helper (a named
+// resident worker), a worker, or the leftover of an ended run, and the
+// conversation that started it. The browser joins the conversation to its
+// own list for the title and whether it is archived.
+type worktreeOwner struct {
+	RunID string `json:"run_id"`
+	Role  string `json:"role"` // helper, worker, ended
+	Title string `json:"title,omitempty"`
+	Name  string `json:"name,omitempty"`
+	// working; waiting (a helper between rounds, or an interactive worker
+	// waiting for its conversation to merge or cancel it); attention
+	// (stalled, its supervisor gone, or idle expiry kept unlanded work);
+	// ended.
+	State          string `json:"state"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	// When Taskfleet's idle expiry removes a helper's wholly landed
+	// worktree by itself.
+	ReleasesAt string `json:"releases_at,omitempty"`
+}
+
+func runOwner(r nativeSpinoff, o *worktreeObs) *worktreeOwner {
+	w := &worktreeOwner{RunID: r.ID, Role: "worker", Title: prefixBytes(r.Title, 200)}
+	if r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && sessionIDPattern.MatchString(r.Creator.SessionID) {
+		w.ConversationID = "pi:" + r.Creator.SessionID
+	}
+	switch r.Status {
+	case "done", "cancelled", "failed":
+		w.Role, w.State = "ended", "ended"
+		return w
+	}
+	v := r.resident()
+	if v != nil {
+		w.Role, w.Name = "helper", v.Name
+	}
+	switch spinoffState(r) {
+	case "working":
+		w.State = "working"
+	case "waiting_parent":
+		w.State = "waiting"
+	default:
+		w.State = "attention"
+	}
+	if v == nil || w.State != "waiting" {
+		return w
+	}
+	if v.ExpiryAttentionAt != "" {
+		w.State = "attention"
+		return w
+	}
+	// Idle expiry counts from the open round's report once the worker has
+	// exited, and removes the worktree only when nothing would be lost:
+	// Git sees it merged into its source branch.
+	if v.RoundState == "waiting" && !v.WorkerRunning && v.IdleExpirySecs > 0 && v.IdleExpirySecs <= 366*24*3600 && v.LastRound != nil && v.LastRound.Open && o.view.State == "merged" {
+		if at, err := time.Parse(time.RFC3339Nano, v.LastRound.ReportedAt); err == nil {
+			w.ReleasesAt = at.Add(time.Duration(v.IdleExpirySecs) * time.Second).UTC().Format(time.RFC3339)
+		}
+	}
+	return w
 }
 
 func sameWorktreePath(p string, o *worktreeObs) bool {

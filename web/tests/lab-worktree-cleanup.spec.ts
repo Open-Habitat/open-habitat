@@ -75,13 +75,24 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   };
 
   // Each Git state, and the removals the host offers for it.
+  // The row a live run keeps takes care of itself: it is behind the one
+  // line of the rest until opened.
+  await expect(section(page).getByRole("listitem")).toHaveCount(5);
+  await section(page)
+    .getByRole("button")
+    .and(page.getByTestId("worktree-rest"))
+    .click();
   await expect(section(page).getByRole("listitem")).toHaveCount(6);
   await expect(row(page, "valmis")).toHaveAttribute("data-state", "merged");
   await expect(row(page, "kesken")).toHaveAttribute("data-state", "unmerged");
   await expect(row(page, "muokattu")).toHaveAttribute("data-state", "dirty");
   await expect(row(page, "kadonnut")).toHaveAttribute("data-state", "missing");
   await expect(row(page, "ajossa")).toHaveAttribute("data-blocked", "true");
-  await expect(row(page, "ajossa").getByRole("button")).toHaveCount(0);
+  // Only Git details opens; nothing removes what a live run keeps.
+  await expect(row(page, "ajossa").getByRole("button")).toHaveCount(1);
+  await expect(
+    row(page, "ajossa").getByTestId("worktree-git-toggle"),
+  ).toBeVisible();
   await expect(
     row(page, "muokattu")
       .getByRole("button")

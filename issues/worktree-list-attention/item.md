@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: worktree-list-proto
 lane_seq: 2
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Implement the worktree list's Huomio direction
@@ -28,5 +29,5 @@ Jari reported; not a new feature behind a flag).
 
 ## Acceptance Criteria
 
-- [ ] The section matches direction 1 for Jari's rows and the prototype's cases, fi and en, 1440 and 390, light and dark.
-- [ ] Explain-mode cards for its rows and actions; touched specs green; KOKEILTAVAA line.
+- [x] The section matches direction 1 for Jari's rows and the prototype's cases, fi and en, 1440 and 390, light and dark.
+- [x] Explain-mode cards for its rows and actions; touched specs green; KOKEILTAVAA line.

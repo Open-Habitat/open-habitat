@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import {
+  type OwnerConversation,
+  WorktreeAttention,
+  worktreeTotal,
+} from "../components/WorktreeAttention";
+import {
   WorktreeCleanDialog,
   WorktreeList,
   WorktreeRemoveDialog,
   worktreeKey,
 } from "../components/WorktreeList";
 import { liveText } from "../i18n";
+import { worktreeAttentionText } from "../text/worktreeAttention";
 import { worktreeCleanupText } from "../text/worktreeCleanup";
 import { WorkspaceTrashError } from "./workspaceTrash";
 import {
@@ -21,6 +27,7 @@ import {
 import { plainBlocker, removedText, worktreeRefusalText } from "./worktreeText";
 
 const txt = liveText(worktreeCleanupText);
+const attentionTxt = liveText(worktreeAttentionText);
 
 const problemOf = (e: unknown) =>
   worktreeRefusalText(
@@ -34,6 +41,8 @@ export function WorktreeCleanup({
   workspaceId,
   hideWhenEmpty = false,
   onChanged,
+  conversation,
+  onOpenConversation,
 }: {
   csrf: string;
   /** Without it, every Git workspace's worktrees are listed. */
@@ -42,6 +51,11 @@ export function WorktreeCleanup({
   hideWhenEmpty?: boolean;
   /** Something was removed: storage and the workspace list may differ. */
   onChanged?: () => void;
+  /** On a workspace page: the conversation that started a worktree's run.
+   * With it the rows that need the person come first (WorktreeAttention). */
+  conversation?: (id: string) => OwnerConversation | undefined;
+  /** Restores an archived conversation, then opens it. */
+  onOpenConversation?: (conversation: OwnerConversation) => void;
 }) {
   const [listing, setListing] = useState<Listing>();
   const [loadProblem, setLoadProblem] = useState("");
@@ -150,6 +164,7 @@ export function WorktreeCleanup({
       });
   };
   if (hideWhenEmpty && !status && (!listing || !worktrees.length)) return null;
+  const attention = !!workspaceId && !!conversation;
   return (
     <section
       data-testid="worktrees"
@@ -157,18 +172,31 @@ export function WorktreeCleanup({
       aria-labelledby="worktrees-heading"
     >
       <div className="ah-trash-head">
-        <h3 id="worktrees-heading">{txt.title}</h3>
-        <ControlButton
-          data-testid="cleanup-worktrees"
-          variant="secondary"
-          size="row"
-          isDisabled={!merged.length || !!busy}
-          onPress={() => setCleanOpen(true)}
-        >
-          {txt.cleanAll(merged.length)}
-        </ControlButton>
+        <h3 id="worktrees-heading" data-testid="worktrees-heading">
+          {txt.title}
+          {attention && worktrees.length ? (
+            <span className="ah-wt-count">
+              {attentionTxt.count(worktrees.length, worktreeTotal(worktrees))}
+            </span>
+          ) : null}
+        </h3>
+        {/* Huomio hides the button when nothing merged is free to go; its
+            rows say which worktrees release themselves instead. */}
+        {!attention || merged.length ? (
+          <ControlButton
+            data-testid="cleanup-worktrees"
+            variant="secondary"
+            size="row"
+            isDisabled={!merged.length || !!busy}
+            onPress={() => setCleanOpen(true)}
+          >
+            {txt.cleanAll(merged.length)}
+          </ControlButton>
+        ) : null}
       </div>
-      <p className="ah-trash-intro">{txt.intro(!workspaceId)}</p>
+      <p className="ah-trash-intro">
+        {attention ? attentionTxt.intro : txt.intro(!workspaceId)}
+      </p>
       {status ? <p role="status">{status}</p> : null}
       {loadProblem ? (
         <p role="alert">
@@ -179,6 +207,15 @@ export function WorktreeCleanup({
         </p>
       ) : !listing ? (
         <p>{txt.reading}</p>
+      ) : attention && conversation ? (
+        <WorktreeAttention
+          worktrees={worktrees}
+          conversation={conversation}
+          now={Date.now()}
+          busy={busy}
+          onAction={onAction}
+          onOpen={onOpenConversation}
+        />
       ) : (
         <WorktreeList
           worktrees={worktrees}

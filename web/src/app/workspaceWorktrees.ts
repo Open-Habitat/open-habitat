@@ -37,6 +37,16 @@ export type WorktreeBlocker = {
   run_id?: string;
   path?: string;
 };
+/** The Taskfleet run the worktree belongs to (worktree-list-attention). */
+export type WorktreeOwner = {
+  run_id: string;
+  role: "helper" | "worker" | "ended";
+  title?: string;
+  name?: string;
+  state: "working" | "waiting" | "attention" | "ended";
+  conversation_id?: string;
+  releases_at?: string;
+};
 export type WorktreeDisposal = "remove" | "commit" | "force" | "prune";
 export type Worktree = {
   workspace_id: string;
@@ -60,6 +70,7 @@ export type Worktree = {
   size_bytes?: number;
   size_complete?: boolean;
   blockers: WorktreeBlocker[];
+  owner?: WorktreeOwner;
   actions: WorktreeDisposal[];
   observation_token: string;
 };

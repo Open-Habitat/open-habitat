@@ -22,6 +22,7 @@ import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { WorkspaceIconPicker } from "../components/WorkspaceIconPicker";
 import { WorkspaceIconSuggestions } from "../components/WorkspaceIconSuggestions";
+import type { OwnerConversation } from "../components/WorktreeAttention";
 import { liveText } from "../i18n";
 import { workspacePageText } from "../text/workspacePage";
 import { useGitStatus } from "./ConversationGitStatus";
@@ -133,6 +134,8 @@ export function WorkspacePage({
   onDeleted,
   icon,
   onLogin,
+  ownerConversation,
+  onRestoreConversation,
 }: {
   workspace: Workspace;
   conversations: HomeConversation[];
@@ -168,6 +171,12 @@ export function WorkspacePage({
    * the heading shows it and it opens the icon picker. */
   icon?: WorkspaceIconModel;
   onLogin?: () => void;
+  /** The conversation that started a worktree's run, archived or not. */
+  ownerConversation?: (id: string) => OwnerConversation | undefined;
+  /** Restores an archived conversation; false when it was refused. An
+   * unconfirmed restore still opens it, where the conversation shows its
+   * own archive state and Restore. */
+  onRestoreConversation?: (id: string) => Promise<boolean>;
 }) {
   const navigate = useNavigate();
   const archiveAction = useCardArchiveAction(onArchive);
@@ -562,6 +571,14 @@ export function WorkspacePage({
           workspaceId={workspace.workspace_id}
           hideWhenEmpty
           onChanged={refresh}
+          conversation={ownerConversation}
+          onOpenConversation={(c) => {
+            if (!c.archived) navigate(c.href);
+            else if (onRestoreConversation)
+              void onRestoreConversation(c.id).then((ok) => {
+                if (ok) navigate(c.href);
+              });
+          }}
         />
       ) : null}
       <div className="ah-workspace-rename">

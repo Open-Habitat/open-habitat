@@ -70,8 +70,15 @@ test("cross-workspace child belongs to target worktrees and parent spinoffs", as
   const child = trees
     .getByRole("listitem")
     .and(page.getByTestId("worktree-row-cross-worker"));
+  // A working worker's row is behind the line of the rest.
+  await trees
+    .getByRole("button")
+    .and(page.getByTestId("worktree-rest"))
+    .click();
   await expect(child).toHaveAttribute("data-blocked", "true");
-  await expect(child.getByRole("button")).toHaveCount(0);
+  // Only Git details opens; nothing removes what a live run keeps.
+  await expect(child.getByRole("button")).toHaveCount(1);
+  await expect(child.getByTestId("worktree-git-toggle")).toBeVisible();
   // Not a worktree of A, even though A created the run.
   const source = snapshot.workspaces.find(
     (w: { name: string }) => w.name === "ordinary-dir",

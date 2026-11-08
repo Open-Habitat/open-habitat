@@ -1,0 +1,217 @@
+/* A workspace page's worktrees (WorktreeAttention.tsx), direction 1 Huomio
+   of the worktree list prototype. */
+.ah-wt-count {
+  margin-left: 6px;
+  color: var(--ah-muted);
+  font-weight: 400;
+  font-size: var(--ah-size-meta);
+}
+.ah-wt-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ah-wt-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4) var(--ah-s5);
+}
+.ah-wt-row + .ah-wt-row {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-wt-row.quiet {
+  padding-top: var(--ah-s3);
+  padding-bottom: var(--ah-s3);
+}
+.ah-wt-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ah-wt-who {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-wt-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 22px;
+}
+.ah-wt-lines {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.ah-wt-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  color: var(--ah-ink);
+}
+.ah-wt-name b {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ah-wt-kind {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-wt-from {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-wt-tag {
+  display: inline-flex;
+  padding: 0 7px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  color: var(--ah-muted);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.ah-wt-tag.live {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-wt-keeper {
+  margin: 0 0 0 24px;
+  max-width: 640px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+.ah-wt-keeper b {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-wt-disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-left: 20px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ah-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ah-wt-disclose svg {
+  width: 12px;
+  height: 12px;
+}
+.ah-wt-disclose:hover {
+  color: var(--ah-ink);
+}
+.ah-wt-disclose:focus-visible,
+.ah-wt-rest-toggle:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 1px;
+}
+.ah-wt-git {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 4px 0 0 24px;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+  font-size: 12px;
+}
+.ah-wt-git dt {
+  color: var(--ah-muted);
+}
+.ah-wt-git dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-wt-git code {
+  font-family: var(--ah-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+.ah-wt-actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+}
+.ah-wt-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-wt-empty svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ah-ok);
+}
+.ah-wt-rest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+}
+.ah-wt-rest-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font: inherit;
+  font-size: var(--ah-size-meta);
+  text-align: left;
+  cursor: pointer;
+}
+.ah-wt-rest-toggle b {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+/* Disclosure chevron: points right when closed, down when open. */
+.ah-wt-chev {
+  flex: none;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 6px 4px 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--ah-fade);
+}
+[aria-expanded="true"] > .ah-wt-chev {
+  transform: rotate(45deg);
+  margin-top: 3px;
+}
+@media (max-width: 600px) {
+  .ah-wt-row {
+    flex-direction: column;
+    padding: var(--ah-s3) var(--ah-s4);
+  }
+  .ah-wt-actions {
+    margin-left: 24px;
+  }
+}

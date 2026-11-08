@@ -464,6 +464,53 @@ const fi = {
       name: "Työtilan arkisto",
       lead: "Tämän työtilan arkistoidut keskustelut. Täältä saat ne palautettua.",
     },
+    T15: {
+      name: "Worktreet",
+      lead: "Agenttien ja omat Git-työkopiot (worktreet) ja niiden viemä levytila.",
+      know: "Työtilan sivulla näkyvät ensin ne, jotka tarvitsevat sinua. Muut hoituvat itsestään.",
+    },
+    T16: {
+      name: "Työkopio",
+      lead: "Kertoo, kenen työkopio on, mistä keskustelusta se tuli ja mitä sille tapahtuu seuraavaksi.",
+      know: "Avustajan työkopio vapautuu itsestään, kun sen kierrokset on yhdistetty ja se on ollut vuorokauden joutilaana.",
+    },
+    T17: {
+      name: "Git-tiedot",
+      lead: "Näyttää työkopion hakemiston, haaran, koon ja ajon tunnuksen.",
+      know: "Niillä löydät saman työkopion terminaalista. Katsominen ei muuta mitään.",
+      try: "Näytä Git-tiedot",
+    },
+    T18: {
+      name: "Hoituu ilman sinua",
+      lead: "Työkopiot, joita agentti vielä käyttää tai jotka vapautuvat itsestään.",
+      know: "Niille ei tarvitse tehdä mitään.",
+      try: "Näytä ne",
+    },
+    T19: {
+      name: "Palauta keskustelu",
+      lead: "Palauttaa keskustelun arkistosta ja avaa sen, jotta agentti voi päättää workerista.",
+      know: "Habitat ei itse yhdistä eikä hylkää workeria; sen tekee keskustelun agentti. Keskustelun voi arkistoida uudelleen.",
+    },
+    T20: {
+      name: "Keskustelu",
+      lead: "Avaa keskustelun, jossa agentti hoitaa tämän työkopion.",
+      try: "Avaa keskustelu",
+    },
+    T21: {
+      name: "Poista…",
+      lead: "Poistaa työkopion, jota kukaan ei enää käytä. Ensin näet, mitä häviää.",
+      know: "Yhdistämätön työ jää haaraan. Tallenna ja poista commitoi muutokset haaraan ensin.",
+    },
+    T22: {
+      name: "Siivoa merkintä",
+      lead: "Poistaa Gitin luettelosta työkopion, jonka hakemisto on jo poistettu.",
+      know: "Tiedostoja ei häviä, koska niitä ei enää ole.",
+    },
+    T23: {
+      name: "Siivoa kaikki yhdistetyt",
+      lead: "Poistaa kerralla työkopiot, joiden työ on yhdistetty ja joita kukaan ei pidä.",
+      know: "Ensin näet listan. Commitoitua työtä ei häviä. Työtilan sivulla painike näkyy vain, kun siivottavaa on.",
+    },
     A01: {
       name: "Työtilan esittely",
       lead: "Kertoo, mikä tämä työtila on, ennen kuin kirjoitat ensimmäisen viestin.",
@@ -1601,6 +1648,53 @@ export const explainModeText = catalog(fi, {
     T14: {
       name: "Workspace archive",
       lead: "This workspace's archived conversations. Restore them from here.",
+    },
+    T15: {
+      name: "Worktrees",
+      lead: "The agents' and your own Git working copies (worktrees) and the disk they take.",
+      know: "On a workspace page the ones that need you come first. The rest take care of themselves.",
+    },
+    T16: {
+      name: "Working copy",
+      lead: "Says whose working copy it is, which conversation it came from and what happens to it next.",
+      know: "A helper's working copy releases itself once its rounds are merged and it has been idle for a day.",
+    },
+    T17: {
+      name: "Git details",
+      lead: "Shows the working copy's directory, branch, size and run ID.",
+      know: "With them you find the same working copy in a terminal. Looking changes nothing.",
+      try: "Show Git details",
+    },
+    T18: {
+      name: "Takes care of itself",
+      lead: "Working copies an agent is still using, or that release themselves.",
+      know: "You do not need to do anything with them.",
+      try: "Show them",
+    },
+    T19: {
+      name: "Restore conversation",
+      lead: "Brings the conversation back from the archive and opens it, so the agent can decide about the worker.",
+      know: "Habitat does not merge or discard the worker itself; the conversation's agent does. You can archive the conversation again.",
+    },
+    T20: {
+      name: "Conversation",
+      lead: "Opens the conversation where the agent looks after this working copy.",
+      try: "Open the conversation",
+    },
+    T21: {
+      name: "Delete…",
+      lead: "Deletes a working copy nobody uses any more. First you see what would be lost.",
+      know: "Unmerged work stays on the branch. Save and delete commits the changes to the branch first.",
+    },
+    T22: {
+      name: "Clean up entry",
+      lead: "Removes a working copy whose directory is already gone from Git's list.",
+      know: "No files are lost, because they no longer exist.",
+    },
+    T23: {
+      name: "Clean up all merged",
+      lead: "Deletes at once the working copies whose work is merged and that nobody keeps.",
+      know: "First you see the list. No committed work is lost. On a workspace page the button shows only when there is something to clean up.",
     },
     A01: {
       name: "Workspace introduction",

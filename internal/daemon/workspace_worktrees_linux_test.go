@@ -343,6 +343,56 @@ func TestWorktreeRemovalBlockers(t *testing.T) {
 	}
 }
 
+// The listing names each worktree's run from the same Taskfleet read: a
+// helper with when idle expiry releases its merged worktree, a worker, an
+// ended run's leftover, and the conversation that started it.
+func TestWorktreeListNamesTheOwningRun(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.add("helper", false)   // merged: nothing of its own
+	f.add("kept", true)      // helper with unlanded work
+	f.add("decide", true)    // interactive worker waiting for its decision
+	f.add("leftover", true)  // ended run, nobody keeps it
+	f.add("handmade", false) // no run names it
+	session := "11111111-1111-4111-8111-111111111111"
+	creator := `"created_by_session":{"harness":"pi","session_id":"` + session + `"},"created_by_run_id":null`
+	resident := func(name, extra string) string {
+		return `"resident":{"name":"` + name + `","round_state":"waiting","rounds_reported":2,"worker_running":false,"idle_expiry_secs":86400,"last_round":{"round":2,"reported_at":"2030-01-01T10:00:00Z","summary":"ok","open":true}` + extra + `}`
+	}
+	runs := []string{
+		`{"run_id":"01m53433zdhmcc9q1spepb30g1","status":"running","title":"Helper","supervisor":{"state":"alive"},` + creator + `,"worktree_path":"` + f.wt("helper") + `",` + resident("testaaja", "") + `}`,
+		`{"run_id":"01m53433zdhmcc9q1spepb30g2","status":"running","title":"Kept","supervisor":{"state":"alive"},` + creator + `,"worktree_path":"` + f.wt("kept") + `",` + resident("pitaja", `,"expiry_attention_at":"2030-01-02T10:00:00Z"`) + `}`,
+		`{"run_id":"01m53433zdhmcc9q1spepb30g3","status":"running","lifecycle":"interactive","attention_required":true,"title":"Decide","supervisor":{"state":"alive"},` + creator + `,"worktree_path":"` + f.wt("decide") + `"}`,
+		`{"run_id":"01m53433zdhmcc9q1spepb30g4","status":"cancelled","title":"Older","created_at":"2030-01-01T00:00:00Z","worktree_path":"` + f.wt("leftover") + `"}`,
+		`{"run_id":"01m53433zdhmcc9q1spepb30g5","status":"done","title":"Leftover task","created_at":"2030-01-02T00:00:00Z",` + creator + `,"worktree_path":"` + f.wt("leftover") + `"}`,
+		`{"run_id":"01m53433zdhmcc9q1spepb30g6","status":"failed","title":"Unnamed","worktree_path":null}`,
+	}
+	script := filepath.Join(f.cfg.Home, ".local", "bin", "taskfleet")
+	write(t, script, "#!/bin/sh\ncat <<'EOF'\n{\"schema_version\":1,\"data\":{\"runs\":["+strings.Join(runs, ",")+"]}}\nEOF\n")
+	if e := os.Chmod(script, 0700); e != nil {
+		t.Fatal(e)
+	}
+	owner := func(name string) map[string]any {
+		o, _ := f.row(name)["owner"].(map[string]any)
+		return o
+	}
+	if o := owner("helper"); o["role"] != "helper" || o["name"] != "testaaja" || o["state"] != "waiting" || o["releases_at"] != "2030-01-02T10:00:00Z" || o["conversation_id"] != "pi:"+session {
+		t.Fatalf("helper: %v", o)
+	}
+	if o := owner("kept"); o["role"] != "helper" || o["state"] != "attention" || o["releases_at"] != nil {
+		t.Fatalf("helper with unlanded work: %v", o)
+	}
+	if o := owner("decide"); o["role"] != "worker" || o["state"] != "waiting" || o["title"] != "Decide" {
+		t.Fatalf("interactive worker: %v", o)
+	}
+	// The newest ended run names the leftover; an ended run blocks nothing.
+	if r := f.row("leftover"); r["owner"].(map[string]any)["run_id"] != "01m53433zdhmcc9q1spepb30g5" || r["owner"].(map[string]any)["state"] != "ended" || actions(r) != "remove" {
+		t.Fatalf("leftover: %v", r)
+	}
+	if o := owner("handmade"); o != nil {
+		t.Fatalf("handmade: %v", o)
+	}
+}
+
 func TestWorktreeRemovalRefusesChangedFacts(t *testing.T) {
 	f := newWorktreeFixture(t)
 	f.add("w", true)

@@ -1998,6 +1998,20 @@ export function App() {
     setAutoStart(undefined);
     startFromHome(created.workspace_id);
   }, [autoStart, snapshot, identity, defaultStart, csrf, phase, route]);
+  // A worktree's run names the conversation that started it; the workspace
+  // page's worktree section shows its title and whether it is archived.
+  const ownerConversation = (id: string) => {
+    const a = snapshot?.agents.find((agent) => agent.agent_id === id);
+    if (!a) return undefined;
+    return {
+      id,
+      title: agentTitle(a.title),
+      href: browserOwned(a, daemonSessions)
+        ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
+        : `/agents/${a.agent_id}`,
+      archived: a.archive === "archived",
+    };
+  };
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -2326,6 +2340,11 @@ export function App() {
             : undefined
         }
         onNewWorktree={newWorktree(ws)}
+        ownerConversation={ownerConversation}
+        onRestoreConversation={(id) => {
+          const agent = snapshot?.agents.find((a) => a.agent_id === id);
+          return agent ? changeArchive(agent, false) : Promise.resolve(false);
+        }}
         icon={icons?.get(ws.workspace_id)}
         onLogin={requireLogin}
         refresh={refresh}
