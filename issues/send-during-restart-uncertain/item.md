@@ -38,6 +38,10 @@ notices; when it is truly unknown, show one notice (the shared
 `WarningBanner`) with one clear action, not three. Reproduce with a browser
 spec that restarts the synthetic host between send and acknowledgement.
 
+Jari 19:33: reloading the page does not clear it, so the uncertain state is
+persisted (browser storage or a host record), not only in memory; the fix must
+reconcile the persisted record too.
+
 ## Acceptance Criteria
 
 - [ ] A message that reached history after a restart shows once, delivered, with no uncertainty notices.
