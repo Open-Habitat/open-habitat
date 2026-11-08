@@ -43,7 +43,7 @@ const txt = liveText(offerPanelText);
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
-/** One offered file's content, as far as the browser can show it, and its
+/** One offered file's content, as far as the browser can show it, else its
  * facts. The panel and the offer's own tab both show a file this way. */
 export function OfferedFileView({
   offerId,
@@ -74,8 +74,7 @@ export function OfferedFileView({
       data-kind={item.kind}
       data-path={item.path}
     >
-      {content}
-      {facts}
+      {content ?? facts}
     </div>
   );
 }

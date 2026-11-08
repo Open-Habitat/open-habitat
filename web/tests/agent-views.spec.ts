@@ -172,6 +172,21 @@ test("a view downloads as one zip and is listed with the conversation's files", 
   await expect(card).toHaveAttribute("data-open", "true");
   await row.getByTestId("asset-open").click();
   await expect(page.getByTestId("view-panel")).toHaveCount(0);
+
+  if (process.env.OH_VISUAL_CAPTURE) {
+    // The view open beside its highlighted card, the card's corner icons
+    // under the pointer, in both themes.
+    const evidence = "../issues/offer-cards-and-assets-list/evidence";
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await card.getByTestId("offer-open").click();
+    await expect(page.getByTestId("view-frame")).toBeVisible();
+    await card.hover();
+    for (const theme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: `${evidence}/nakyma-1440-${theme}.png` });
+    }
+  }
 });
 
 test("a view cannot navigate its frame to a foreign origin", async ({

@@ -620,8 +620,9 @@ func serveViewZipRoute(w http.ResponseWriter, r *http.Request, home string) {
 	defer unix.Close(files)
 	// The whole listing is known before the first byte goes out, so a store
 	// that does not match its manifest is an error reply, not a short zip.
-	var list []string
-	if err := listViewFiles(files, "", 0, &list); err != nil || len(list) != m.Files {
+	var list []viewFile
+	budget := 2 * maxViewFiles
+	if err := listViewFiles(files, "", 0, &list, &budget); err != nil || len(list) != m.Files || viewFileBytes(list) != m.Bytes {
 		snapshotError(w, 503, "view_store_unavailable")
 		return
 	}
@@ -636,14 +637,15 @@ func serveViewZipRoute(w http.ResponseWriter, r *http.Request, home string) {
 	created, _ := time.Parse(time.RFC3339Nano, m.CreatedAt)
 	z := zip.NewWriter(w)
 	var total int64
-	for _, rel := range list {
+	for _, vf := range list {
+		rel := vf.rel
 		fd, err := open(unix.Openat2, files, rel, unix.O_RDONLY|unix.O_NONBLOCK, true)
 		if err != nil {
 			panic(http.ErrAbortHandler)
 		}
 		f := os.NewFile(uintptr(fd), "view file")
 		st, err := stat(fd)
-		if err == nil && (st.Mode&unix.S_IFMT != unix.S_IFREG || total+st.Size > maxViewBytes) {
+		if err == nil && (st.Mode&unix.S_IFMT != unix.S_IFREG || st.Size != vf.size || total+st.Size > maxViewBytes) {
 			err = errors.New("view file changed")
 		}
 		var out io.Writer
@@ -667,9 +669,19 @@ func serveViewZipRoute(w http.ResponseWriter, r *http.Request, home string) {
 	_ = z.Close()
 }
 
-// listViewFiles lists an export's regular files in name order, without
-// following any symlink, as far as an export may reach.
-func listViewFiles(parent int, prefix string, depth int, out *[]string) error {
+func viewFileBytes(list []viewFile) int64 {
+	var n int64
+	for _, f := range list {
+		n += f.size
+	}
+	return n
+}
+
+// listViewFiles lists an export's regular files and their sizes in name
+// order, without following any symlink, as far as an export may reach. The
+// budget bounds every entry read, directories included, so a tree changed
+// after the export cannot make the listing grow without end.
+func listViewFiles(parent int, prefix string, depth int, out *[]viewFile, budget *int) error {
 	if depth > maxViewDepth {
 		return errors.New("view too deep")
 	}
@@ -679,9 +691,12 @@ func listViewFiles(parent int, prefix string, depth int, out *[]string) error {
 	}
 	f := os.NewFile(uintptr(d), "view directory")
 	defer f.Close()
-	names, err := f.Readdirnames(-1)
-	if err != nil {
+	names, err := f.Readdirnames(*budget + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
 		return err
+	}
+	if *budget -= len(names); *budget < 0 {
+		return errors.New("too many view entries")
 	}
 	sort.Strings(names)
 	for _, name := range names {
@@ -701,13 +716,13 @@ func listViewFiles(parent int, prefix string, depth int, out *[]string) error {
 			if len(*out) == maxViewFiles {
 				return errors.New("too many view files")
 			}
-			*out = append(*out, rel)
+			*out = append(*out, viewFile{rel, st.Size})
 		case unix.S_IFDIR:
 			sub, err := dir(unix.Openat2, d, name, true)
 			if err != nil {
 				return err
 			}
-			err = listViewFiles(sub, rel, depth+1, out)
+			err = listViewFiles(sub, rel, depth+1, out, budget)
 			unix.Close(sub)
 			if err != nil {
 				return err

@@ -188,13 +188,16 @@ test("five large offered images transfer thumbnails only until opened", async ({
   expect(bytes).toHaveLength(5);
   expect(bytes.reduce((a, b) => a + b, 0)).toBeLessThan(200_000);
   expect(fullReads).toEqual([]);
-  await thumbs.first().click();
+  // The folder opens to its files with the same small pictures; only an
+  // image opened in the panel is read whole.
+  await card(page, id).getByTestId("offer-open").click();
+  const panel = page.getByTestId("offer-panel");
+  await panel.getByTestId("offer-folder-row").first().click();
   await expect.poll(() => fullReads.length).toBe(1);
   await expect
     .poll(() =>
-      page
-        .getByTestId("attachment-preview")
-        .locator("img")
+      panel
+        .locator("img.ah-attachment-preview-image")
         .evaluate((img: HTMLImageElement) => img.naturalWidth),
     )
     .toBe(480);

@@ -133,6 +133,7 @@ import {
   useGuide,
   usePreparedField,
 } from "./goalGuide";
+import { HelperRestoreNote } from "./HelperArchiveFlow";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
@@ -413,6 +414,36 @@ function BrowserConversationContent({
     historyError,
     `${identity}/${id ?? ""}`,
   );
+  // An explicit check shows that it ran: Checking… while it runs, and for
+  // a history that still cannot be read, that it was checked.
+  const [recheck, setRecheck] = useState<{
+    key: string;
+    state: "running" | "done";
+  }>();
+  const recheckKey = `${identity}/${id ?? ""}`;
+  const recheckState = recheck?.key === recheckKey ? recheck.state : undefined;
+  const runRecheck = () => {
+    if (
+      continuation &&
+      continuation !== "uncertain" &&
+      continuation !== "pending"
+    )
+      setContinuation(undefined);
+    setRecheck({ key: recheckKey, state: "running" });
+    // An explicit check may prove an ended conversation.
+    void refresh(true, true).finally(() =>
+      setRecheck((r) =>
+        r?.key === recheckKey && r.state === "running"
+          ? { key: recheckKey, state: "done" }
+          : r,
+      ),
+    );
+  };
+  // A result belongs to the failure it checked: once the history reads
+  // again, a later failure starts without one.
+  useEffect(() => {
+    if (!historyError) setRecheck(undefined);
+  }, [historyError]);
   const visibleRecovery = useSettledWarning(
     !!(
       (ambiguous && !busy && sendObservation?.state !== "pending") ||
@@ -2643,6 +2674,10 @@ function BrowserConversationContent({
                 />
               )}
               <ConversationTimeline
+                problem={{
+                  title: txt.historyUnavailable,
+                  description: txt.historyUnavailableDetail,
+                }}
                 emptyLabel={
                   controlled ? (
                     <StartPageRead
@@ -2963,6 +2998,7 @@ function BrowserConversationContent({
                   onDismiss={() => closeReplaceNote(note.id)}
                 />
               ))}
+              {id ? <HelperRestoreNote agent={id} /> : null}
             </ConversationStream>
           ) : view === "loading" || !creation ? (
             <LoadingStream
@@ -3025,24 +3061,46 @@ function BrowserConversationContent({
                   />
                 ) : null}
               </div>
-              {!storagePressure.full &&
-              !statusStale &&
-              (visibleRecovery || details) ? (
+              {!storagePressure.full && !statusStale && visibleHistoryError ? (
+                <div className="ah-status-check">
+                  <WarningBanner
+                    data-testid="history-unavailable"
+                    data-state={recheckState}
+                    tone="danger"
+                    title={txt.historyUnavailable}
+                    actions={
+                      <Button
+                        data-testid="conversation-recheck"
+                        size="row"
+                        variant="secondary"
+                        label={
+                          recheckState === "running"
+                            ? txt.rechecking
+                            : txt.recheck
+                        }
+                        pending={recheckState === "running"}
+                        onPress={runRecheck}
+                      />
+                    }
+                  >
+                    {recheckState === "done"
+                      ? txt.historyStillUnavailable
+                      : txt.historyUnavailableDetail}
+                  </WarningBanner>
+                </div>
+              ) : !storagePressure.full &&
+                !statusStale &&
+                (visibleRecovery || details) ? (
                 <div className="ah-status-check">
                   <Button
                     data-testid="conversation-recheck"
                     size="row"
-                    label={txt.recheck}
+                    label={
+                      recheckState === "running" ? txt.rechecking : txt.recheck
+                    }
                     variant="quiet"
-                    onPress={() => {
-                      if (
-                        continuation &&
-                        continuation !== "uncertain" &&
-                        continuation !== "pending"
-                      )
-                        setContinuation(undefined);
-                      void refresh(true, true); // explicit check may prove an ended conversation
-                    }}
+                    pending={recheckState === "running"}
+                    onPress={runRecheck}
                   />
                 </div>
               ) : null}

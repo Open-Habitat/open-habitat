@@ -443,6 +443,19 @@ func TestViewZipHoldsOnlyThatExport(t *testing.T) {
 	if uw.Code != 403 {
 		t.Fatalf("untrusted peer: %d", uw.Code)
 	}
+	// A frozen file truncated after the export fails the zip instead of
+	// downloading a shorter one.
+	index := filepath.Join(h.root, ".local", "state", "open-habitat", "views", a.View.ID, "files", "index.html")
+	original, _ := os.ReadFile(index)
+	if err := os.WriteFile(index, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if w := read("GET", ViewsPath+"/"+a.View.ID+"/zip"); w.Code != 503 {
+		t.Fatalf("truncated file: %d", w.Code)
+	}
+	if err := os.WriteFile(index, original, 0600); err != nil {
+		t.Fatal(err)
+	}
 	// A file planted in the export as a symlink makes the store unreadable
 	// for a zip rather than following it.
 	files := filepath.Join(h.root, ".local", "state", "open-habitat", "views", a.View.ID, "files")

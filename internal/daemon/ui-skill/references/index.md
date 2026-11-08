@@ -126,6 +126,7 @@ A label alone does not establish that a control is available to this person.
 - [text/goalChip.ts](text--goalChip.ts.md)
 - [text/guide.ts](text--guide.ts.md)
 - [text/heldMessages.ts](text--heldMessages.ts.md)
+- [text/helperArchive.ts](text--helperArchive.ts.md)
 - [text/historyView.ts](text--historyView.ts.md)
 - [text/homeWorkspaces.ts](text--homeWorkspaces.ts.md)
 - [text/inlineSettings.ts](text--inlineSettings.ts.md)

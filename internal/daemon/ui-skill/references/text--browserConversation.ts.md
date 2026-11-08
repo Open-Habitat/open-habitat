@@ -105,6 +105,12 @@ const fi = {
   modelUnsupportedDetail:
     "Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy.",
   recheck: "Tarkista keskustelun tila",
+  rechecking: "Tarkistetaan",
+  historyUnavailable: "Historiaa ei saada",
+  historyUnavailableDetail:
+    "Palvelin ei pystynyt lukemaan tämän keskustelun tallennettua historiaa. Mitään ei ole kadonnut. Tarkista tila uudelleen; jos sama toistuu, kerro ylläpitäjälle.",
+  historyStillUnavailable:
+    "Tarkistettu: historiaa ei vieläkään saada. Mitään ei ole kadonnut; kerro ylläpitäjälle.",
   titleFailed: "Otsikkoa ei voitu luoda",
   wakePlaceholder: "Kirjoita, niin agentti herää…",
   keptNotSent: (reason: string) =>
@@ -207,6 +213,12 @@ export const browserConversationText = catalog(fi, {
   modelUnsupportedDetail:
     "The agent reported that the chosen model is not supported on this ChatGPT account. Choose another model and start a new conversation. The message is not repeated; your draft is kept.",
   recheck: "Check the conversation's status",
+  rechecking: "Checking",
+  historyUnavailable: "The history is not available",
+  historyUnavailableDetail:
+    "The server could not read this conversation's saved history. Nothing has been lost. Check the status again; if it keeps happening, tell your administrator.",
+  historyStillUnavailable:
+    "Checked: the history is still not available. Nothing has been lost; tell your administrator.",
   titleFailed: "The title could not be made",
   wakePlaceholder: "Type to wake the agent…",
   keptNotSent: (reason) =>

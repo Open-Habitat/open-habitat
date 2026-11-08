@@ -448,12 +448,20 @@ export function ConversationAssets({
         title={t.title}
         onPress={toggle}
       >
-        <span className="ah-assets-count-view" aria-hidden="true">
-          {"</>"}
-        </span>
-        <span className="ah-bg-n">{views}</span>
-        <Icon name="file" className="ah-bg-kind-ic" />
-        <span className="ah-bg-n">{files}</span>
+        {views ? (
+          <>
+            <span className="ah-assets-count-view" aria-hidden="true">
+              {"</>"}
+            </span>
+            <span className="ah-bg-n">{views}</span>
+          </>
+        ) : null}
+        {files ? (
+          <>
+            <Icon name="file" className="ah-bg-kind-ic" />
+            <span className="ah-bg-n">{files}</span>
+          </>
+        ) : null}
       </ControlButton>
     </>
   );

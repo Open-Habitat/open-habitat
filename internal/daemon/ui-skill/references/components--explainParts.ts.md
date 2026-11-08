@@ -58,7 +58,7 @@ export const parts: Record<CardId, Part> = {
   },
   Y11: {
     kind: "once",
-    sel: '[data-testid="archive-conversation"], [data-testid="menu-archive"]',
+    sel: '[data-testid="archive-conversation"], [data-testid="menu-archive"], [data-testid="helper-archive-accept"]',
   },
   Y12: {
     kind: "once",

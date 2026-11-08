@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: offer-cards-proto
 lane_seq: 2
 blocked_by: ['@proto-offer-cards-consistent', '@proto-conversation-assets']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # One offer card and a conversation assets list, opening beside
