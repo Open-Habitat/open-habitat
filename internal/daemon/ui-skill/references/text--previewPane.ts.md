@@ -1,19 +1,12 @@
-# text/palette.tsx
+# text/previewPane.ts
 
-Generated from web/src/text/palette.tsx; do not edit.
+Generated from web/src/text/previewPane.ts; do not edit.
 
 ```tsx
-import type { ReactNode } from "react";
 import { catalog, plural } from "../i18n";
 
-// The composer's Ctrl/⌘+P picker (components/composer/Palette.tsx): its
-// tabs, search, preview pane and key hints.
+// The selected file, folder or command beside the composer's in-field list.
 const fi = {
-  tabs: {
-    all: "Tiedostot",
-    changed: "Muutetut",
-    cmd: "Komennot",
-  },
   nothingSelected: "Ei valittua.",
   source: "Lähde",
   runsAtOnce: "Ajetaan heti, kun valitset sen. Ei lähetä mitään agentille.",
@@ -36,35 +29,9 @@ const fi = {
       other: `${n} muutettua tiedostoa`,
     }),
   emptyFolder: "Kansio on tyhjä.",
-  close: "Sulje valitsin",
-  dialog: "Valitse tiedostot tai komento",
-  search: "Hae",
-  searchCommand: "Hae komentoa tai taitoa",
-  searchFile: "Hae tiedostoa · Tab merkitsee useamman",
-  commands: "Komennot",
-  files: "Tiedostot",
-  noMatches: (query: string) =>
-    query ? `Ei osumia haulle “${query}”.` : "Ei osumia.",
-  preview: "Esikatselu",
-  select: "valitse",
-  addToStart: "lisää viestin alkuun",
-  mark: "merkitse",
-  addPaths: (n: number) => (n > 1 ? `lisää ${n} polkua` : "lisää polku"),
-  nextTab: "seuraava välilehti",
-  backToField: "takaisin kenttään",
-  path: "polku",
-  insertedAs: (form: ReactNode) => <>lisätään muodossa {form}</>,
-  insertedInCommand: (form: ReactNode) => (
-    <>lisätään muodossa {form} komentoon</>
-  ),
 };
 
-export const paletteText = catalog(fi, {
-  tabs: {
-    all: "Files",
-    changed: "Changed",
-    cmd: "Commands",
-  },
+export const previewPaneText = catalog(fi, {
   nothingSelected: "Nothing selected.",
   source: "Source",
   runsAtOnce: "Runs as soon as you choose it. Sends nothing to the agent.",
@@ -84,24 +51,6 @@ export const paletteText = catalog(fi, {
   changedBeneath: (n) =>
     `${n} changed ${plural("en", n, { one: "file", other: "files" })}`,
   emptyFolder: "The folder is empty.",
-  close: "Close the picker",
-  dialog: "Choose files or a command",
-  search: "Search",
-  searchCommand: "Search commands and skills",
-  searchFile: "Search files · Tab marks several",
-  commands: "Commands",
-  files: "Files",
-  noMatches: (query) => (query ? `No matches for “${query}”.` : "No matches."),
-  preview: "Preview",
-  select: "select",
-  addToStart: "add at the start of the message",
-  mark: "mark",
-  addPaths: (n) => (n > 1 ? `add ${n} paths` : "add the path"),
-  nextTab: "next tab",
-  backToField: "back to the field",
-  path: "path",
-  insertedAs: (form) => <>inserted as {form}</>,
-  insertedInCommand: (form) => <>inserted in the command as {form}</>,
 });
 
 ```

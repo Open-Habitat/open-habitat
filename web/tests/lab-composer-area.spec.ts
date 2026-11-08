@@ -230,7 +230,7 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   await expect(list).toBeVisible();
   await expect(field).not.toHaveAttribute("aria-activedescendant", /./);
   await page.keyboard.press("Escape");
-  // `@` lists the workspace's own files and Tab inserts the top match.
+  // `@` lists the workspace's own files; Enter inserts the top match.
   await field.fill("");
   await page.keyboard.type("lue @status");
   await expect(
@@ -241,7 +241,7 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   ).toBeVisible({
     timeout: 10000,
   });
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
   await expect(field).toHaveValue(/^lue @\S*status\S* $/);
   // The Komennot button opens the same list with a search; Enter puts the
   // command at the start of the message.
@@ -255,63 +255,29 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   await expect(field).toBeFocused();
 });
 
-test("@lab composer: Ctrl/⌘+P opens the palette, marks two files with Tab and inserts both", async ({
+test("@lab composer: Ctrl/⌘+P searches files inside the field and preserves a dismissed query", async ({
   page,
 }) => {
-  test.setTimeout(90000);
   const field = await newConversation(page);
   await field.fill("Katso ");
   await field.press(`${mod}+p`);
-  const palette = page.getByTestId("composer-palette");
-  await expect(palette).toBeVisible();
-  await expect(palette.getByTestId("palette-tab-all")).toHaveAttribute(
-    "aria-selected",
-    "true",
+  const list = page.getByTestId("composer-field-list");
+  await expect(list).toBeVisible();
+  await expect(field).toBeFocused();
+  await field.pressSequentially("status_rows");
+  const option = list
+    .getByRole("option")
+    .and(page.locator('[data-path="scripts/status_rows.py"]'));
+  await expect(option).toBeVisible();
+  await expect(option.getByTestId("file-git-mark")).toHaveAttribute(
+    "data-git-mark",
+    "modified",
   );
-  // Ctrl/⌘+P again moves to the explicit changed-only filter.
-  await page.keyboard.press(`${mod}+p`);
-  await expect(palette.getByTestId("palette-tab-changed")).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await palette.getByTestId("palette-tab-all").click();
-  const search = palette.getByTestId("file-search");
-  // Terms do not have to occur in path order; both must match the same file.
-  await search.fill("rows scripts");
-  await expect(palette.getByRole("option")).toHaveCount(1);
-  await expect(palette.getByRole("option")).toContainText(
-    "scripts/status_rows.py",
-  );
-  await expect(
-    palette.getByRole("option").getByTestId("file-git-mark"),
-  ).toHaveAttribute("data-git-mark", "modified");
-  await search.fill("scripts missing");
-  await expect(palette.getByRole("option")).toHaveCount(0);
-  await search.fill("");
-  const options = palette.getByRole("option");
-  await expect(options.nth(1)).toBeVisible({ timeout: 10000 });
-  expect(
-    (await new AxeBuilder({ page }).include(".ah-palette").analyze())
-      .violations,
-  ).toEqual([]);
-  const paths = await palette
-    .locator(".ah-choice-path")
-    .evaluateAll((nodes) => nodes.slice(0, 2).map((node) => node.textContent));
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
-  await expect(palette.getByTestId("palette-hints")).toHaveAttribute(
-    "data-mark-count",
-    "2",
-  );
-  await page.keyboard.press("Enter");
-  await expect(palette).toHaveCount(0);
-  await expect(field).toHaveValue(`Katso @${paths[0]} @${paths[1]} `);
-  // Esc returns to the field at the same caret without changing the text.
+  await field.fill("Katso @missing-file");
+  await expect(list.getByRole("option")).toHaveCount(0);
   const before = await field.inputValue();
-  await field.press(`${mod}+p`);
-  await expect(palette).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(palette).toHaveCount(0);
+  await field.press("Escape");
+  await expect(list).toHaveCount(0);
   await expect(field).toBeFocused();
   await expect(field).toHaveValue(before);
 });

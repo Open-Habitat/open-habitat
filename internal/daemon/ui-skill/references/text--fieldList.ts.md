@@ -6,7 +6,7 @@ Generated from web/src/text/fieldList.ts; do not edit.
 import { catalog, plural } from "../i18n";
 
 // The composer's lists inside the field (components/composer/FieldList.tsx,
-// experimental composer-lists-in-field): the head's count, the search, the
+// the message field): the head's count, the search, the
 // marked row, the tree's status rows, the command groups and the key hints.
 const fi = {
   changedCount: (n: number) =>

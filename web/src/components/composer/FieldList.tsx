@@ -9,7 +9,7 @@ import {
   flatChoices,
   optionId,
 } from "./ChoiceList";
-import { PreviewPane } from "./Palette";
+import { PreviewPane } from "./PreviewPane";
 
 /** The composer's list inside the field box, between the text and the
  * button row (Kentän sisällä, Jari 3.11.2026): the files as a folder tree

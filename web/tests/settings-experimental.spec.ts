@@ -16,7 +16,6 @@ test.use({
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
-  "composer-lists-in-field",
   "rewind-conversation",
   "explain-mode",
   "agent-resources-view",
@@ -93,7 +92,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
     "aria-pressed",
     "true",
   );
-  await expect(segment(page, "composer-lists-in-field", "off")).toHaveAttribute(
+  await expect(segment(page, "rewind-conversation", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -135,7 +134,7 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
 }) => {
   await signIn(page);
   await page.goto("/settings/experimental");
-  await expect(segment(page, "composer-lists-in-field", "off")).toBeEnabled();
+  await expect(segment(page, "rewind-conversation", "off")).toBeEnabled();
   await page.route("**/api/v1/account/preferences", async (route) => {
     if (route.request().method() === "PUT")
       await route.fulfill({
@@ -148,12 +147,12 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
       });
     else await route.fallback();
   });
-  await segment(page, "composer-lists-in-field", "on").click();
+  await segment(page, "rewind-conversation", "on").click();
   const alert = page
     .getByRole("alert")
-    .and(page.getByTestId("experimental-composer-lists-in-field-error"));
+    .and(page.getByTestId("experimental-rewind-conversation-error"));
   await expect(alert).toBeVisible();
-  await expect(segment(page, "composer-lists-in-field", "off")).toHaveAttribute(
+  await expect(segment(page, "rewind-conversation", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -164,7 +163,7 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
   await page.unroute("**/api/v1/account/preferences");
   await page
     .getByRole("button")
-    .and(page.getByTestId("experimental-composer-lists-in-field-error-reload"))
+    .and(page.getByTestId("experimental-rewind-conversation-error-reload"))
     .click();
   await expect(alert).toBeHidden();
 });

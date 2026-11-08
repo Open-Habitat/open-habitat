@@ -50,16 +50,14 @@ test("@composer-english the composer speaks English to an English browser", asyn
   );
   await field.press("Escape");
 
-  // The picker.
+  // The file list opens inside the field without a preference.
   await field.fill("");
   await field.press("ControlOrMeta+p");
-  const palette = page.getByTestId("composer-palette");
-  await expect(palette).toHaveAccessibleName("Choose files or a command");
-  await expect(page.getByTestId("palette-tab-all")).toHaveText("Files");
-  await expect(page.getByTestId("palette-tab-cmd")).toHaveText("Commands");
-  await expect(page.getByTestId("palette-hints")).toContainText("next tab");
+  const list = page.getByTestId("composer-field-list");
+  await expect(list).toBeVisible();
+  await expect(field).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(palette).toHaveCount(0);
+  await expect(list).toHaveCount(0);
 
   // A `!` command.
   await field.fill("!ls");

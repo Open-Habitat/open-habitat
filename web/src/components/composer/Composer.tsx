@@ -36,7 +36,6 @@ import { AttachmentMenu } from "./AttachmentMenu";
 import {
   type Choice,
   type ChoiceGroup,
-  ChoiceList,
   flatChoices,
   optionId,
   pickable,
@@ -81,7 +80,6 @@ import {
   splitGoal,
   unwrapGoal,
 } from "./GoalChip";
-import { Palette, type PaletteTab } from "./Palette";
 import "./composer.css";
 
 const isMac =
@@ -151,8 +149,7 @@ export type ComposerShell = {
   stopState?: "pending" | "uncertain";
 };
 
-/** The in-field list's own state (composer-lists-in-field); the other
- * lists carry it unused. */
+/** The in-field list's selection and expanded folders. */
 type InField = {
   /** Marked paths in marking order; a folder's ends with a slash. */
   marks: string[];
@@ -185,21 +182,9 @@ type Open =
       sel: number;
       /** Accepting replaces start..end (an `@token` carried into it). */
       replace?: boolean;
-    } & InField)
-  | {
-      place: "palette";
-      tab: PaletteTab;
-      start: number;
-      end: number;
-      /** Accepting replaces start..end (an `@token` carried into it). */
-      replace: boolean;
-      query: string;
-      sel: number;
-      marks: Set<string>;
-    };
+    } & InField);
 
-const kindOf = (o: Open) =>
-  o.place === "palette" ? (o.tab === "cmd" ? "cmd" : "file") : o.kind;
+const kindOf = (o: Open) => o.kind;
 
 function mmss(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -215,41 +200,6 @@ function useNow(active: boolean) {
     return () => window.clearInterval(timer);
   }, [active]);
   return now;
-}
-
-/** The field's caret x within its box, for placing the caret list. */
-function caretX(field: HTMLTextAreaElement, pos: number) {
-  const style = getComputedStyle(field);
-  const mirror = document.createElement("div");
-  for (const k of [
-    "font",
-    "fontKerning",
-    "fontFeatureSettings",
-    "fontVariantLigatures",
-    "letterSpacing",
-    "padding",
-    "border",
-    "boxSizing",
-    "lineHeight",
-  ] as const)
-    mirror.style[k] = style[k];
-  Object.assign(mirror.style, {
-    position: "absolute",
-    visibility: "hidden",
-    whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
-    width: `${field.offsetWidth}px`,
-    top: "0",
-    left: "0",
-  });
-  mirror.textContent = field.value.slice(0, pos);
-  const mark = document.createElement("span");
-  mark.textContent = "​";
-  mirror.appendChild(mark);
-  field.parentElement?.appendChild(mirror);
-  const x = mark.offsetLeft + field.offsetLeft;
-  mirror.remove();
-  return x;
 }
 
 /** The caret's line top within the field as the field shows it now. */
@@ -290,13 +240,9 @@ function caretTop(field: HTMLTextAreaElement, pos: number) {
 
 /** Commands and files, read when a list opens. A command list is reused for
  * half a minute, then read again in the background while the old one shows.
- * The in-field list (`inField`) reads its search ranked by name and browses
+ * The list reads its search ranked by name and browses
  * the folder tree, read when it opens and a folder at a time after that. */
-function useSources(
-  sources: ComposerSources | undefined,
-  open: Open | null,
-  inField: boolean,
-) {
+function useSources(sources: ComposerSources | undefined, open: Open | null) {
   const [commands, setCommands] = useState<{
     state: "idle" | "loading" | "ready" | "failed";
     list?: CommandList;
@@ -309,8 +255,7 @@ function useSources(
   }>({ state: "idle", query: "" });
   const kind = open ? kindOf(open) : null;
   // The in-field list browses the tree without a search.
-  const fileQuery =
-    open && kind === "file" && !(inField && !open.query) ? open.query : null;
+  const fileQuery = open && kind === "file" && open.query ? open.query : null;
   const wantCommands = kind === "cmd";
   // biome-ignore lint/correctness/useExhaustiveDependencies: reread only when a command list opens.
   useEffect(() => {
@@ -332,10 +277,7 @@ function useSources(
     const abort = new AbortController();
     setFiles((f) => ({ ...f, state: "loading" }));
     const timer = window.setTimeout(() => {
-      (inField
-        ? sources.files(fileQuery, abort.signal, "name")
-        : sources.files(fileQuery, abort.signal)
-      ).then(
+      sources.files(fileQuery, abort.signal, "name").then(
         (list) => setFiles({ state: "ready", query: fileQuery, list }),
         () => {
           if (!abort.signal.aborted)
@@ -347,11 +289,11 @@ function useSources(
       window.clearTimeout(timer);
       abort.abort();
     };
-  }, [sources, fileQuery, inField]);
+  }, [sources, fileQuery]);
 
   // The tree lives while the in-field file list is open; it is read the
   // first time the list browses, and forgotten when the list closes.
-  const treeSource = inField ? sources?.tree : undefined;
+  const treeSource = sources?.tree;
   const treeOpen = !!treeSource && kind === "file";
   const browsing = treeOpen && !open?.query;
   const [tree, setTree] = useState<TreeState>(idleTree);
@@ -525,42 +467,6 @@ function commandGroups(
   return groups;
 }
 
-function fileGroups(
-  t: Text,
-  state: ReturnType<typeof useSources>["files"],
-  query: string,
-  changedOnly: boolean,
-): ChoiceGroup[] {
-  if (!state.list || state.query !== query) {
-    if (state.state === "failed")
-      return [
-        {
-          label: t.files,
-          choices: [{ type: "status", text: t.filesFailed }],
-        },
-      ];
-    if (!state.list)
-      return [
-        {
-          label: t.files,
-          choices: [{ type: "status", text: t.filesLoading, loading: true }],
-        },
-      ];
-  }
-  const files = (state.list?.files ?? []).filter((f) => !changedOnly || f.git);
-  const choice = (f: (typeof files)[number]): Choice => ({
-    type: "file",
-    path: f.path,
-    git: f.git,
-  });
-  return [
-    {
-      label: query ? t.matches : changedOnly ? t.changed : t.files,
-      choices: files.map(choice),
-    },
-  ];
-}
-
 /** The in-field file list: the folder tree while browsing, Lista while
  * searching (the daemon's name order, the folder after the name). */
 function fieldFileGroups(
@@ -585,7 +491,7 @@ function fieldFileGroups(
       ];
     return [{ label: "", choices: searchChoices(files.list.files) }];
   }
-  const folding = open.place === "palette" ? unfolded : open.folding;
+  const folding = open.folding;
   const rows =
     tree.state === "failed"
       ? null
@@ -640,7 +546,6 @@ export function Composer({
   preparedPlaceholder,
   speech,
   onDictating,
-  inFieldLists = false,
   waiting,
   field: purpose,
 }: {
@@ -691,10 +596,6 @@ export function Composer({
   /** A dictation is under way, or ending into a send: its text is not yet
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
-  /** The lists open inside the field: a folder tree, a search by name, a
-   * preview beside them and marking several (experimental
-   * composer-lists-in-field). Needs `sources.tree`. */
-  inFieldLists?: boolean;
   /** A field that is not a message to the agent (the icon wish) has its own
    * name and hook, so the page's message field stays the only one: focus
    * returning to the work must not land in it. */
@@ -705,7 +606,6 @@ export function Composer({
 }) {
   const t = useText(composerText);
   const ft = useText(fieldListText);
-  const inField = inFieldLists && !!sources?.tree;
   const MODE = t.modes;
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -850,11 +750,7 @@ export function Composer({
   const [open, setOpen] = useState<Open | null>(null);
   const [notice, setNotice] = useState("");
   const lastCaret = useRef<[number, number] | null>(null);
-  const { commands, files, tree, readFolders } = useSources(
-    sources,
-    open,
-    inField,
-  );
+  const { commands, files, tree, readFolders } = useSources(sources, open);
   const working = activity === "working";
   // A goal chip makes the draft a skill call; its text is never a command.
   const shellOn = !!shell && !goal && isShell(value);
@@ -881,42 +777,31 @@ export function Composer({
         commands,
         open.query,
         runsAtStart,
-        inField && runsAtStart ? ft.groups : undefined,
+        runsAtStart ? ft.groups : undefined,
       );
-    if (inField) return fieldFileGroups(t, ft, files, tree, open);
-    return fileGroups(
-      t,
-      files,
-      open.query,
-      open.place === "palette" && open.tab === "changed",
-    );
-  }, [t, ft, open, sources, commands, files, tree, inField]);
+    return fieldFileGroups(t, ft, files, tree, open);
+  }, [t, ft, open, sources, commands, files, tree]);
   const flat = useMemo(() => flatChoices(groups), [groups]);
   // A selection past the end, or on a status row, moves to the first
   // pickable; the in-field list lets its rows choose (autoSelect).
   const sel = !open
     ? -1
-    : inField && open.place !== "palette"
-      ? open.selKey && flat.some((c) => rowKey(c) === open.selKey)
-        ? flat.findIndex((c) => rowKey(c) === open.selKey)
-        : open.sel === AUTO || (open.sel >= 0 && !pickable(flat[open.sel]))
-          ? autoSelect(flat, {
-              reveal: open.reveal,
-              searching: kindOf(open) === "file" && !!open.query,
-            })
-          : open.sel
-      : open.sel >= 0 && !pickable(flat[open.sel])
-        ? flat.findIndex(pickable)
+    : open.selKey && flat.some((c) => rowKey(c) === open.selKey)
+      ? flat.findIndex((c) => rowKey(c) === open.selKey)
+      : open.sel === AUTO || (open.sel >= 0 && !pickable(flat[open.sel]))
+        ? autoSelect(flat, {
+            reveal: open.reveal,
+            searching: kindOf(open) === "file" && !!open.query,
+          })
         : open.sel;
   // The tree reads a folder it shows open but has not read, and the folder
   // whose contents the preview shows once the selection rests on it.
-  const toRead = inField ? foldersToRead(flat).join("\n") : "";
+  const toRead = foldersToRead(flat).join("\n");
   useEffect(() => {
     if (toRead) readFolders(toRead.split("\n"));
   }, [toRead, readFolders]);
   const selected = flat[sel];
-  const previewFolder =
-    inField && selected?.type === "folder" ? selected.path : "";
+  const previewFolder = selected?.type === "folder" ? selected.path : "";
   useEffect(() => {
     if (!previewFolder) return;
     const timer = window.setTimeout(() => readFolders([previewFolder]), 150);
@@ -1051,7 +936,7 @@ export function Composer({
   /** The in-field list: a folder opens or closes in place. */
   const toggleRow = (index: number) => {
     const row = flat[index];
-    if (!open || open.place === "palette" || row?.type !== "folder") return;
+    if (!open || row?.type !== "folder") return;
     setOpen({
       ...open,
       folding: toggleFolder(open.folding, row.path, row.changed),
@@ -1064,7 +949,7 @@ export function Composer({
    * the selection moves on to the next row. */
   const toggleMark = (index: number, advance: boolean) => {
     const row = flat[index];
-    if (!open || open.place === "palette") return;
+    if (!open) return;
     if (row?.type !== "file" && row?.type !== "folder") return;
     const marks = open.marks.includes(row.path)
       ? open.marks.filter((p) => p !== row.path)
@@ -1077,15 +962,11 @@ export function Composer({
   };
   const accept = (index: number) => {
     if (!open) return;
-    const inFieldMarks =
-      inField && open.place !== "palette" ? open.marks : undefined;
-    if (inFieldMarks && !inFieldMarks.length && flat[index]?.type === "folder")
+    if (!open.marks.length && flat[index]?.type === "folder")
       return toggleRow(index);
-    const marked = inFieldMarks?.length
-      ? inFieldMarks.map((path): Choice => ({ type: "file", path }))
-      : open.place === "palette" && open.marks.size
-        ? flat.filter((c) => c.type === "file" && open.marks.has(c.path))
-        : [flat[index]].filter(Boolean);
+    const marked = open.marks.length
+      ? open.marks.map((path): Choice => ({ type: "file", path }))
+      : [flat[index]].filter(Boolean);
     const first = marked[0];
     if (!first || first.type === "status" || first.type === "folder") return;
     if (first.type === "command" && first.terminalOnly) {
@@ -1123,12 +1004,12 @@ export function Composer({
     setOpen({
       ...open,
       sel: i,
-      ...(open.place !== "palette" ? { selKey: rowKey(flat[i]) } : {}),
+      selKey: rowKey(flat[i]),
     });
   };
   /** → and ← in the in-field file list's search line. */
   const sidewaysKey = (right: boolean) => {
-    if (!open || open.place === "palette") return false;
+    if (!open) return false;
     const step = sideways(flat, sel, right);
     if (!step) return false;
     if (step.do === "select")
@@ -1155,8 +1036,7 @@ export function Composer({
   const fromText = (text: string, caret: number) => {
     if (!sources) return;
     const t = caretToken(text, caret);
-    if (open && open.place !== "caret" && !(inField && t?.kind === "file"))
-      return;
+    if (open && open.place !== "caret" && t?.kind !== "file") return;
     if (!t) {
       if (open) setOpen(null);
       return;
@@ -1178,16 +1058,7 @@ export function Composer({
           ? open.folding
           : unfolded,
       marks: same ? open.marks : [],
-      sel:
-        t.kind === "cmd" && !t.atStart
-          ? same
-            ? open.sel
-            : -1
-          : inField
-            ? AUTO
-            : same
-              ? open.sel
-              : 0,
+      sel: t.kind === "cmd" && !t.atStart ? (same ? open.sel : -1) : AUTO,
     });
   };
   const fieldCaret = (): [number, number] => {
@@ -1216,40 +1087,23 @@ export function Composer({
     replaceRange(start, end, `${pad}@`, fromText);
   };
   const fromButton = (kind: "cmd" | "file") => {
-    if (inField && kind === "file") return writeAt();
+    if (kind === "file") return writeAt();
     if (open?.place === "button" && open.kind === kind) return close(true);
     // From one in-field list to the other keeps the place in the text.
-    const [start, end] =
-      inField && open && open.place !== "palette"
-        ? [open.start, open.end]
-        : fieldCaret();
+    const [start, end] = open ? [open.start, open.end] : fieldCaret();
     setOpen({
       place: "button",
       kind,
       start,
       end,
       query: "",
-      sel: inField ? AUTO : 0,
-      replace: inField && open?.place === "button" ? open.replace : false,
+      sel: AUTO,
+      replace: open?.place === "button" ? open.replace : false,
       ...fresh,
     });
   };
-  const toPalette = () => {
-    if (!sources) return;
-    const fromCaret = open?.place === "caret" && open.kind === "file";
-    const [cs, ce] = fieldCaret();
-    // The in-field list has one file entry point: the message's @ token.
-    if (inField) return writeAt();
-    setOpen({
-      place: "palette",
-      tab: "all",
-      start: fromCaret ? open.start : cs,
-      end: fromCaret ? open.end : ce,
-      replace: fromCaret,
-      query: fromCaret ? open.query : "",
-      sel: 0,
-      marks: new Set(),
-    });
+  const openFiles = () => {
+    if (sources) writeAt();
   };
 
   // ---- what Stop stops, what Send does ----
@@ -1368,10 +1222,10 @@ export function Composer({
       sources
     ) {
       e.preventDefault();
-      return toPalette();
+      return openFiles();
     }
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    if (inField && open?.place === "caret" && open.kind === "file") {
+    if (open?.place === "caret" && open.kind === "file") {
       if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
         return toggleMark(sel, true);
@@ -1425,13 +1279,7 @@ export function Composer({
     if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
       e.stopPropagation();
-      if (inField && open.place === "button") return writeAt();
-      if (open.place === "palette") {
-        const tabs: PaletteTab[] = ["all", "changed", "cmd"];
-        const tab = tabs[(tabs.indexOf(open.tab) + 1) % tabs.length];
-        return setOpen({ ...open, tab, sel: 0 });
-      }
-      return toPalette();
+      return openFiles();
     }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -1444,20 +1292,8 @@ export function Composer({
     }
     if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
-      if (inField && open.place === "button" && open.kind === "file")
+      if (open.place === "button" && open.kind === "file")
         return toggleMark(sel, true);
-      if (open.place === "palette" && open.tab !== "cmd") {
-        const c = flat[sel];
-        if (c?.type !== "file") return;
-        const marks = new Set(open.marks);
-        if (marks.has(c.path)) marks.delete(c.path);
-        else marks.add(c.path);
-        const n = flat.length;
-        let i = sel;
-        do i = (i + 1) % n;
-        while (flat[i]?.type === "status" && i !== sel);
-        return setOpen({ ...open, marks, sel: i });
-      }
       return accept(sel < 0 ? 0 : sel);
     }
     if (e.key === "Enter") {
@@ -1467,7 +1303,6 @@ export function Composer({
     // → at the end of the search and ← at its start move in the tree.
     const input = e.currentTarget;
     if (
-      inField &&
       ((e.key === "ArrowRight" &&
         input.selectionStart === input.value.length) ||
         (e.key === "ArrowLeft" &&
@@ -1479,8 +1314,8 @@ export function Composer({
       e.preventDefault();
   };
   // Ctrl/⌘+P from anywhere in the page that is not another text input.
-  const palette = useRef(toPalette);
-  palette.current = toPalette;
+  const fileShortcut = useRef(openFiles);
+  fileShortcut.current = openFiles;
   useEffect(() => {
     if (!sources) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1494,7 +1329,7 @@ export function Composer({
       )
         return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest?.(".ah-choice-pop, .ah-palette")) return;
+      if (target?.closest?.(".ah-choice-in")) return;
       if (
         target &&
         target !== field.current &&
@@ -1503,7 +1338,7 @@ export function Composer({
       )
         return;
       e.preventDefault();
-      palette.current();
+      fileShortcut.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -1528,9 +1363,7 @@ export function Composer({
       const run = dictationKey.current;
       const target = e.target as HTMLElement | null;
       // A dialog or list over the conversation keeps its own keys.
-      const over = target?.closest?.(
-        'dialog, [role="dialog"], .ah-choice-pop, .ah-palette',
-      );
+      const over = target?.closest?.('dialog, [role="dialog"], .ah-choice-in');
       if (!run || (over && !over.contains(box.current))) return;
       if (
         target &&
@@ -1566,173 +1399,78 @@ export function Composer({
       : shellOn
         ? t.filesToCommand
         : t.filesIn(sources?.workspaceName ?? "");
-  const [popLeft, setPopLeft] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: placement follows the open token.
-  useEffect(() => {
-    if (!open || open.place === "palette" || !box.current || !field.current)
-      return;
-    const width = Math.min(
-      box.current.clientWidth,
-      kindOf(open) === "cmd" ? 460 : 400,
-    );
-    let left = 0;
-    if (open.place === "button") {
-      const b = box.current.querySelector<HTMLElement>(
-        `[data-composer-list="${open.kind}"]`,
-      );
-      left = b ? b.offsetLeft - 4 : 0;
-    } else left = caretX(field.current, open.start) - 14;
-    setPopLeft(Math.max(0, Math.min(left, box.current.clientWidth - width)));
-  }, [
-    open?.place,
-    open && kindOf(open),
-    open?.place === "palette" ? 0 : open?.start,
-  ]);
-  const fieldList =
-    inField && open && open.place !== "palette" ? (
-      <FieldList
-        listId={listId}
-        kind={open.kind}
-        from={open.place}
-        head={headText}
-        note={
-          open.kind !== "file" || shellOn
-            ? undefined
-            : open.query
-              ? files.list && files.query === open.query
-                ? ft.matchCount(files.list.matched)
-                : undefined
-              : tree.changed !== undefined
-                ? ft.changedCount(tree.changed)
-                : undefined
-        }
-        query={open.query}
-        groups={groups}
-        selected={sel}
-        marks={open.marks}
-        searchInput={open.place === "button"}
-        emptyText={open.query ? t.noMatches(open.query) : ft.noFiles}
-        preview={sources?.preview}
-        folder={
-          selected?.type === "folder"
-            ? tree.listings.get(selected.path)
-            : undefined
-        }
-        onQuery={(query) =>
-          setOpen({
-            ...open,
-            query,
-            reveal: undefined,
-            sel: AUTO,
-            selKey: undefined,
-            // Into or out of a search, the folders start again as they open.
-            folding: !query !== !open.query ? unfolded : open.folding,
-          })
-        }
-        onKeyDown={listKeys}
-        onPick={(i) =>
-          flat[i]?.type === "folder"
-            ? toggleRow(i)
-            : open.marks.length && open.kind === "file"
-              ? toggleMark(i, false)
-              : accept(i)
-        }
-        onHover={(i) => {
-          if (open.sel !== i)
-            setOpen({ ...open, sel: i, selKey: rowKey(flat[i]) });
-        }}
-        onMark={(i) => toggleMark(i, false)}
-        onClearMarks={() => setOpen({ ...open, marks: [] })}
-        onAdd={() => accept(sel)}
-      />
-    ) : null;
+  const fieldList = open ? (
+    <FieldList
+      listId={listId}
+      kind={open.kind}
+      from={open.place}
+      head={headText}
+      note={
+        open.kind !== "file" || shellOn
+          ? undefined
+          : open.query
+            ? files.list && files.query === open.query
+              ? ft.matchCount(files.list.matched)
+              : undefined
+            : tree.changed !== undefined
+              ? ft.changedCount(tree.changed)
+              : undefined
+      }
+      query={open.query}
+      groups={groups}
+      selected={sel}
+      marks={open.marks}
+      searchInput={open.place === "button"}
+      emptyText={open.query ? t.noMatches(open.query) : ft.noFiles}
+      preview={sources?.preview}
+      folder={
+        selected?.type === "folder"
+          ? tree.listings.get(selected.path)
+          : undefined
+      }
+      onQuery={(query) =>
+        setOpen({
+          ...open,
+          query,
+          reveal: undefined,
+          sel: AUTO,
+          selKey: undefined,
+          // Into or out of a search, the folders start again as they open.
+          folding: !query !== !open.query ? unfolded : open.folding,
+        })
+      }
+      onKeyDown={listKeys}
+      onPick={(i) =>
+        flat[i]?.type === "folder"
+          ? toggleRow(i)
+          : open.marks.length && open.kind === "file"
+            ? toggleMark(i, false)
+            : accept(i)
+      }
+      onHover={(i) => {
+        if (open.sel !== i)
+          setOpen({ ...open, sel: i, selKey: rowKey(flat[i]) });
+      }}
+      onMark={(i) => toggleMark(i, false)}
+      onClearMarks={() => setOpen({ ...open, marks: [] })}
+      onAdd={() => accept(sel)}
+    />
+  ) : null;
   // While the in-field list is open the text keeps the caret's two lines,
   // scrolled so the line where the choice goes shows; closed, it scrolls
   // back to the caret.
-  const listAt =
-    fieldList && open && open.place !== "palette" ? open.start : -1;
+  const listAt = fieldList && open ? open.start : -1;
   useLayoutEffect(() => {
     const el = field.current;
     const b = box.current;
-    if (!inField || !el || !b) return;
+    if (!el || !b) return;
     const c = caretTop(el, listAt >= 0 ? listAt : el.selectionStart);
     el.scrollTop =
       listAt >= 0
         ? Math.max(0, c.y - c.line - c.pad)
         : Math.max(0, c.y - el.clientHeight + 2 * c.line);
     b.dataset.clipped = String(listAt >= 0 && el.scrollTop > 0);
-  }, [inField, listAt]);
-  const pop =
-    !inField && open && open.place !== "palette" ? (
-      // biome-ignore lint/a11y: a press inside the list keeps focus in the field; the list's keys stay with the field.
-      <div
-        className="ah-choice-pop"
-        data-kind={open.kind}
-        style={{ left: popLeft }}
-        onMouseDown={(e) => {
-          if (!(e.target as HTMLElement).closest("input")) e.preventDefault();
-        }}
-      >
-        <div className="ah-choice-head">{headText}</div>
-        {open.place === "button" ? (
-          <label className="ah-choice-search">
-            <Icon name={open.kind === "cmd" ? "slash" : "at"} />
-            <input
-              data-testid="command-search"
-              // biome-ignore lint/a11y/noAutofocus: the button opened this search; focus goes to it as in the chosen round.
-              autoFocus
-              type="text"
-              className="ah-choice-search-input"
-              autoComplete="off"
-              spellCheck={false}
-              role="combobox"
-              aria-expanded="true"
-              aria-controls={listId}
-              aria-activedescendant={
-                sel >= 0 ? optionId(listId, sel) : undefined
-              }
-              aria-label={open.kind === "cmd" ? t.searchCommand : t.searchFile}
-              placeholder={open.kind === "cmd" ? t.searchCommand : t.searchFile}
-              value={open.query}
-              onChange={(e) =>
-                setOpen({ ...open, query: e.target.value, sel: 0 })
-              }
-              onKeyDown={listKeys}
-            />
-          </label>
-        ) : null}
-        <ChoiceList
-          id={listId}
-          label={headText}
-          groups={groups}
-          selected={sel}
-          emptyText={t.noMatches(open.query)}
-          onPick={accept}
-          onHover={(i) => setOpen({ ...open, sel: i })}
-        />
-        <div className="ah-choice-keys">
-          {open.place === "caret" && sel < 0 ? (
-            <>
-              <kbd>Tab</kbd> {t.keyAddTop} · <kbd>↓</kbd> {t.keySelects} ·{" "}
-              <kbd>Enter</kbd> {t.keySendsAsIs} · <kbd>Esc</kbd> {t.keyClose}
-            </>
-          ) : (
-            <>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd> {t.keySelect} · <kbd>Enter</kbd> {t.keyInsert} ·{" "}
-              <kbd>Esc</kbd> {t.keyClose}
-              {open.kind === "file" ? (
-                <>
-                  {" "}
-                  · <kbd>{MOD}</kbd>
-                  <kbd>P</kbd> {t.keyPicker}
-                </>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-    ) : null;
+  }, [listAt]);
 
   // ---- the area's parts ----
   // Equal texts may repeat in Pi's queue; the nth occurrence is the key.
@@ -2067,7 +1805,7 @@ export function Composer({
           // A press in the text closes an in-field button list, and writing
           // goes on where the press put the caret.
           onMouseDown={() => {
-            if (inField && open?.place === "button") setOpen(null);
+            if (open?.place === "button") setOpen(null);
           }}
           onChange={(e) => {
             onActivity?.();
@@ -2143,7 +1881,6 @@ export function Composer({
           ) : null}
           {rowSend}
         </div>
-        {pop}
       </div>
       {fieldReason && !suppressAvailabilityReason ? (
         <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
@@ -2207,29 +1944,6 @@ export function Composer({
           title={t.rejectedTitle}
           description={t.rejectedDetail}
           tone="danger"
-        />
-      ) : null}
-      {open?.place === "palette" && sources ? (
-        <Palette
-          listId={listId}
-          tab={open.tab}
-          query={open.query}
-          groups={groups}
-          selected={sel}
-          marks={open.marks}
-          shell={shellOn}
-          changedCount={
-            files.list && !open.query
-              ? files.list.files.filter((f) => f.git).length
-              : undefined
-          }
-          preview={sources.preview}
-          onQuery={(query) => setOpen({ ...open, query, sel: 0 })}
-          onTab={(tab) => setOpen({ ...open, tab, sel: 0 })}
-          onPick={accept}
-          onHover={(i) => setOpen({ ...open, sel: i })}
-          onKeyDown={listKeys}
-          onClose={() => close(true)}
         />
       ) : null}
     </section>

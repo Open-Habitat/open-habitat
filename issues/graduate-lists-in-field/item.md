@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [web/src/components/ExperimentalFeatures.tsx]
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Graduate lists inside the message field to a default feature
@@ -27,6 +28,6 @@ of the lab), settings search, explain mode and the agent UI reference.
 
 ## Acceptance Criteria
 
-- [ ] A fresh account gets the in-field lists with no setting; the card is gone.
-- [ ] No gate or off-path code for the id remains.
-- [ ] Composer specs green; `KOKEILTAVAA.md` line.
+- [x] A fresh account gets the in-field lists with no setting; the card is gone.
+- [x] No gate or off-path code for the id remains.
+- [x] Composer specs green; `KOKEILTAVAA.md` line.

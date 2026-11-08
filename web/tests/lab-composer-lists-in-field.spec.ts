@@ -11,9 +11,8 @@ test.use({
   deviceScaleFactor: 2,
 });
 
-// The composer's lists inside the field (composer-lists-in-field,
-// experimental; proto-composer-popover-placement rounds 3 and 4, Puu and
-// Lista) against the real gateway, daemon and the lab's aurinkokello
+// The default composer's lists inside the field against the real gateway,
+// daemon and the lab's aurinkokello
 // checkout: scripts/ and tests/ hold changes, cmd/ does not. The folders,
 // their counts, the ranked search and the previews come from the person's
 // own daemon reading Git.
@@ -40,24 +39,6 @@ async function newConversation(page: Page, width: number) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const session = async () =>
-    (await (await page.request.get("/auth/session")).json()) as {
-      csrf?: string;
-    };
-  await expect.poll(async () => (await session()).csrf).toBeTruthy();
-  const s = await session();
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: {
-          Origin: new URL(page.url()).origin,
-          "X-Agent-Host-CSRF": s.csrf as string,
-        },
-        data: { experimental: { "composer-lists-in-field": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
-  await page.reload();
   if (width < 600) await page.getByTestId("navigation-open").click();
   await page
     .getByRole("navigation")

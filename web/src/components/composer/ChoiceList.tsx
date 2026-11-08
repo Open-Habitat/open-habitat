@@ -86,15 +86,13 @@ export function GitBadge({ mark }: { mark: GitMark }) {
   );
 }
 
-/** The list the caret list, the buttons' lists and the palette share: same
- * rows, groups and tags; only the placement differs. Rows are picked with the
- * mouse here; keys stay with the field or the search input that owns focus. */
+/** Rows are picked with the mouse here; keys stay with the message field
+ * or the command search input that owns focus. */
 export function ChoiceList({
   id,
   label,
   groups,
   selected,
-  marks,
   checks,
   emptyText,
   onPick,
@@ -104,7 +102,6 @@ export function ChoiceList({
   label: string;
   groups: ChoiceGroup[];
   selected: number;
-  marks?: Set<string>;
   /** The in-field list: a box on every file and folder row marks it. */
   checks?: { marked: readonly string[]; onMark: (index: number) => void };
   emptyText: string;
@@ -240,35 +237,7 @@ export function ChoiceList({
             </div>
           );
         }
-        if (choice.type === "folder") return null;
-        if (choice.type === "file") {
-          const slash = choice.path.lastIndexOf("/");
-          return (
-            <div
-              data-path={choice.path}
-              key={`f:${choice.path}`}
-              className="ah-choice-file"
-              {...common}
-            >
-              {marks ? (
-                <span className="ah-choice-mark" aria-hidden="true">
-                  {marks.has(choice.path) ? "●" : ""}
-                </span>
-              ) : null}
-              <Icon name="file" className="ah-choice-icon" />
-              <span className="ah-choice-path">
-                <span className="ah-choice-dir">
-                  {choice.path.slice(0, slash + 1)}
-                </span>
-                {choice.path.slice(slash + 1)}
-              </span>
-              {choice.git ? <GitBadge mark={choice.git} /> : null}
-              {marks?.has(choice.path) ? (
-                <span className="ah-visually-hidden"> {t.marked}</span>
-              ) : null}
-            </div>
-          );
-        }
+        if (choice.type !== "command") return null;
         return (
           <div
             key={`c:${choice.tone}:${choice.name}`}

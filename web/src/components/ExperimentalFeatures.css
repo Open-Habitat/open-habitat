@@ -147,28 +147,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.ex-irow {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 2px 6px;
-  font-size: 12px;
-}
-.ex-irow[data-gap] {
-  margin-top: 5px;
-}
-.ex-irow b {
-  flex: 1;
-  min-width: 0;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ex-irow > span:last-child {
-  color: var(--ah-muted);
-  font-size: 11px;
-}
 .ex-icon {
   flex: none;
   display: inline-grid;
@@ -183,32 +161,6 @@
   background: color-mix(in srgb, var(--ah-glyph-0) 15%, var(--ah-surface));
   color: var(--ah-glyph-0);
   font: 600 8px / 1 var(--ah-font);
-}
-
-/* composer-lists-in-field: the field box with its file tree inside. */
-.ex-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ex-field-list {
-  display: flex;
-  flex-direction: column;
-  padding: 2px 0;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface-2);
-  color: var(--ah-ink);
-}
-.ex-field-list b {
-  font: 400 11.5px var(--ah-mono);
-}
-.ex-check {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid var(--ah-line-strong);
-  border-radius: 3px;
 }
 
 /* Oma palvelinselain: three window pictures, the one that waits outlined. */

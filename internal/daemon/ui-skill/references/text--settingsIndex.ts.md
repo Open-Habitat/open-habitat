@@ -264,10 +264,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
-      "composer-lists-in-field": {
-        label: "Lists inside the message field",
-        desc: "Browse files and commands inside the message field and mark several files at once.",
-      },
       "explain-mode": {
         label: "Explain mode",
         desc: "Dim the screen and see what any part of it does.",

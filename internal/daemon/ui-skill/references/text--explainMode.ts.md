@@ -614,7 +614,7 @@ const fi = {
     V04: {
       name: "Tiedosto",
       lead: "Lisää viestiin viittauksen työtilan tiedostoon, jotta agentti tietää, mitä tarkoitat.",
-      know: "Kirjoita @ kentässä, niin sama lista aukeaa kursorin kohdalle. Ctrl+P avaa valitsimen.",
+      know: "Kirjoita @ kentässä tai paina Ctrl+P, niin sama kansiopuu aukeaa kentän sisään. Tab merkitsee tiedostoja, Enter lisää merkityt.",
       try: "Avaa tiedostot",
     },
     V05: {
@@ -1623,7 +1623,7 @@ export const explainModeText = catalog(fi, {
     V04: {
       name: "File",
       lead: "Adds a reference to a workspace file, so the agent knows what you mean.",
-      know: "Type @ in the field to open the same list at the cursor. Ctrl+P opens the picker.",
+      know: "Type @ in the field or press Ctrl+P to open the same folder tree inside the field. Tab marks files; Enter adds the marked files.",
       try: "Open files",
     },
     V05: {

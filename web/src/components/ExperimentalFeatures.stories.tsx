@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 export const Off: Story = {};
 export const On: Story = { args: { enabled: () => true } };
 export const Saving: Story = {
-  args: { disabled: true, busy: "composer-lists-in-field" },
+  args: { disabled: true, busy: "rewind-conversation" },
 };
-export const SaveFailed: Story = { args: { error: "composer-lists-in-field" } };
+export const SaveFailed: Story = { args: { error: "rewind-conversation" } };
 export const ReadFailed: Story = { args: { error: "read" } };

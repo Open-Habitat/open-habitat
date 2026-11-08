@@ -412,35 +412,6 @@ function Controlled({
 }
 
 describe("composer lists", () => {
-  it("opens all files in source rank order, keeping Git marks without a separate group", async () => {
-    const src = sources();
-    src.files = vi.fn(async () => ({
-      files: [
-        { path: "README.md" },
-        { path: "src/main.go", git: "modified" as const },
-      ],
-      matched: 2,
-      truncated: false,
-    }));
-    const view = render(<Controlled initial="" src={src} />);
-    field(view).focus();
-    fireEvent.keyDown(document, { key: "p", code: "KeyP", ctrlKey: true });
-    await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(2));
-    expect(view.getAllByRole("option")[0].textContent).toContain("README.md");
-    expect(
-      view.getByTestId("palette-tab-all").getAttribute("aria-selected"),
-    ).toBe("true");
-    expect(
-      view.container.ownerDocument.querySelector(".ah-choice-git-changed"),
-    ).toBeTruthy();
-    expect(
-      view.container.ownerDocument.querySelectorAll(".ah-choice-group"),
-    ).toHaveLength(1);
-    fireEvent.click(view.getByTestId("palette-tab-changed"));
-    await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(1));
-    expect(view.getByRole("option").textContent).toContain("src/main.go");
-  });
-
   it("completes `/` at the caret without offering terminal-only commands", async () => {
     const src = sources();
     const view = render(<Controlled initial="" src={src} />);
@@ -498,11 +469,15 @@ describe("composer lists", () => {
       target: { value: "@status", selectionStart: 7, selectionEnd: 7 },
     });
     await waitFor(() =>
-      expect(view.getByRole("option").textContent).toContain(
+      expect(view.getByRole("option").getAttribute("data-path")).toBe(
         "scripts/status_rows.py",
       ),
     );
-    expect(src.files).toHaveBeenLastCalledWith("status", expect.anything());
+    expect(src.files).toHaveBeenLastCalledWith(
+      "status",
+      expect.anything(),
+      "name",
+    );
     fireEvent.keyDown(el, { key: "Escape" });
     expect(view.queryByRole("listbox")).toBeNull();
     expect(field(view).value).toBe("@status");
@@ -1113,7 +1088,7 @@ describe("focus after an attachment", () => {
   });
 });
 
-describe("composer lists inside the field (experimental)", () => {
+describe("composer lists inside the field", () => {
   const tree: Record<string, FileTree> = {
     "": {
       folders: [
@@ -1172,13 +1147,7 @@ describe("composer lists inside the field (experimental)", () => {
   function Field({ initial, src }: { initial: string; src: ComposerSources }) {
     const [value, setValue] = useState(initial);
     return (
-      <Composer
-        {...base}
-        value={value}
-        onChange={setValue}
-        sources={src}
-        inFieldLists
-      />
+      <Composer {...base} value={value} onChange={setValue} sources={src} />
     );
   }
   const options = (view: ReturnType<typeof render>) =>

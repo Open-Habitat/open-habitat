@@ -3,8 +3,7 @@
    bottom row carries what the message takes (Komennot, Tiedosto, the model)
    on the left, and how it goes (mode chip, Stop, Send) on the right. */
 
-/* The caret list opens above the field, so the area does not clip it. The
-   field scrolls itself and the queue card is bounded. */
+/* The field scrolls itself and the queue card is bounded. */
 .ah-composer.ah-composer,
 .ah-conversation-frame .ah-composer.ah-composer {
   max-height: none;
@@ -408,30 +407,10 @@
   color: var(--ah-muted);
 }
 
-/* ---- the one list: at the caret or at its button ---- */
-.ah-choice-pop {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  z-index: 7;
+/* ---- the list inside the field ---- */
+.ah-choice-in {
   display: flex;
   flex-direction: column;
-  width: min(460px, 100%);
-  max-height: min(340px, 46vh);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
-  box-shadow: var(--ah-shadow-menu);
-  transform-origin: bottom left;
-  animation: ah-choice-in 140ms ease-out;
-}
-.ah-choice-pop[data-kind="file"] {
-  width: min(400px, 100%);
-}
-@keyframes ah-choice-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.98);
-  }
 }
 .ah-choice-head {
   padding: 8px 12px 2px;
@@ -640,76 +619,7 @@
   font: 400 11.5px var(--ah-mono);
 }
 
-/* ---- Ctrl/⌘+P: the palette over the conversation ---- */
-.ah-palette-host {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 8vh 16px 16px;
-}
-.ah-palette-scrim {
-  position: absolute;
-  inset: 0;
-  background: var(--ah-scrim);
-  animation: ah-choice-fade 140ms ease-out;
-}
-@keyframes ah-choice-fade {
-  from {
-    opacity: 0;
-  }
-}
-.ah-palette {
-  position: relative;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: min(860px, 100%);
-  height: min(520px, 78vh);
-  overflow: hidden;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-xl);
-  background: var(--ah-surface);
-  box-shadow: var(--ah-shadow-dialog);
-  animation: ah-choice-in 160ms ease-out;
-  transform-origin: top center;
-}
-.ah-pal-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 8px 10px 0;
-}
-.ah-pal-tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--ah-r-md) var(--ah-r-md) 0 0;
-  background: none;
-  box-shadow: inset 0 -2px 0 transparent;
-  color: var(--ah-muted);
-  font: 500 12.5px var(--ah-font);
-  cursor: pointer;
-}
-.ah-pal-tabs button[aria-selected="true"] {
-  box-shadow: inset 0 -2px 0 var(--ah-accent);
-  color: var(--ah-ink);
-}
-.ah-pal-n {
-  font: 500 11px var(--ah-mono);
-  color: var(--ah-muted);
-}
-.ah-pal-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  min-height: 0;
-}
-.ah-pal-body .ah-choice-list {
-  border-right: 1px solid var(--ah-line-soft);
-}
+/* ---- the selected row's preview ---- */
 .ah-pal-prev {
   min-width: 0;
   overflow: auto;
@@ -768,11 +678,8 @@
 .ah-pal-none {
   color: var(--ah-muted);
 }
-.ah-pal-where {
-  margin-left: auto;
-}
 
-/* ---- the lists inside the field (composer-lists-in-field) ----
+/* ---- the lists inside the field ----
    Part of the box between the text and the button row, no shadow, no
    floating (Kentän sisällä, Jari 3.11.2026). The text above keeps the
    caret's two lines. */
@@ -1102,10 +1009,6 @@
   .ah-cq-when {
     display: none;
   }
-  .ah-choice-pop {
-    left: 0;
-    width: 100%;
-  }
   .ah-choice-keys {
     display: none;
   }
@@ -1113,32 +1016,15 @@
     min-height: var(--ah-touch);
     box-sizing: border-box;
   }
-  .ah-palette-host {
-    padding: 0;
-  }
-  .ah-palette {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    border-radius: 0;
-  }
-  .ah-pal-body {
-    grid-template-columns: 1fr;
-  }
   .ah-pal-prev {
     display: none;
-  }
-  .ah-pal-body .ah-choice-list {
-    border-right: 0;
   }
   .ah-cmd-run {
     width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ah-choice-pop,
-  .ah-palette,
-  .ah-palette-scrim,
+  .ah-choice-in,
   .ah-choice-dot {
     animation: none;
   }

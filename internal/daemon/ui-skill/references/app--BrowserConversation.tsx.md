@@ -1521,7 +1521,6 @@ function BrowserConversationContent({
                 } as const),
         }
       : undefined;
-  const listsInField = useExperimentalFeature("composer-lists-in-field");
   const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
   const composerSources = useMemo(
@@ -1921,7 +1920,6 @@ function BrowserConversationContent({
           goals,
           preparedPlaceholder,
           sources: composerSources,
-          inFieldLists: listsInField,
           onChange: changeDraft,
           activity: "idle",
           selectedWorkingMode: "follow_up",
@@ -2010,7 +2008,6 @@ function BrowserConversationContent({
                 ? "uncertain"
                 : stopPhase,
           sources: composerSources,
-          inFieldLists: listsInField,
           sendState: busy
             ? "pending"
             : ambiguous && !notStarted

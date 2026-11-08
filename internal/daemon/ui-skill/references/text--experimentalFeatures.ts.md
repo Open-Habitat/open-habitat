@@ -20,16 +20,6 @@ const fi = {
       needs: "Ei muuta. Näkymä lukee vain sen, mikä on jo yhdistetty.",
       caption: "Agentin käytössä",
     },
-    "composer-lists-in-field": {
-      name: "Listat kirjoituskentän sisällä",
-      desc: "Tiedosto, Komennot ja kirjoitettu @ avautuvat kentän sisään. Tiedostoja selataan kansiopuuna, muutetut näkyvät paikallaan, ja useamman voi merkitä kerralla.",
-      where:
-        "Keskustelun kirjoituskentässä Tiedosto- ja Komennot-napeista, kirjoitetusta @- ja /-merkistä sekä Ctrl/⌘+P:llä.",
-      shows:
-        "Kansiopuun, jossa muutoksia sisältävät kansiot ovat auki, haun nimi ensin ja kansio perässä sekä tietokoneella valitun rivin esikatselun listan vieressä.",
-      needs: "Ei muuta.",
-      caption: "Kirjoituskenttä",
-    },
     "explain-mode": {
       name: "Selitystila",
       desc: "Himmentää näytön ja selittää kohdan, jonka päällä osoitin on: mitä se tekee ja mitä siitä kannattaa tietää. Keskustelussa tila kertoo ensin keskustelun tilanteen ja sen, mitä voit nyt tehdä.",
@@ -160,16 +150,6 @@ export const experimentalFeaturesText = catalog(fi, {
         "Every account's sources by kind, with their levels. You can browse the synced folders, so files the agent creates show too. Mail, calendars and contacts are not opened here.",
       needs: "Nothing else. The view reads only what is already connected.",
       caption: "Agent resources",
-    },
-    "composer-lists-in-field": {
-      name: "Lists inside the message field",
-      desc: "File, Commands and a typed @ open inside the field. Files are browsed as a folder tree, changed files show in place, and several can be marked at once.",
-      where:
-        "In a conversation's message field, from the File and Commands buttons, a typed @ or / and Ctrl/⌘+P.",
-      shows:
-        "A folder tree with the folders that hold changes open, a search with the name first and its folder after, and on a computer the selected row's preview beside the list.",
-      needs: "Nothing else.",
-      caption: "Message field",
     },
     "explain-mode": {
       name: "Explain mode",

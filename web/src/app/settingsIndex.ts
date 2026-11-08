@@ -554,20 +554,6 @@ export const settingsSections = [
       "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
     rows: [
       {
-        id: "composer-lists-in-field",
-        label: "Listat kirjoituskentän sisällä",
-        kw: [
-          "tiedosto",
-          "file",
-          "komennot",
-          "commands",
-          "kansiopuu",
-          "composer",
-          "@",
-        ],
-        desc: "Selaa tiedostoja ja komentoja kirjoituskentän sisällä ja merkitse useampi tiedosto kerralla.",
-      },
-      {
         id: "explain-mode",
         label: "Selitystila",
         kw: ["selitä", "explain", "opastus", "ohje", "help", "guide", "?"],

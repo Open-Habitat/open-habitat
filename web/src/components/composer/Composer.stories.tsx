@@ -4,12 +4,11 @@ import type { FilePreview, TreeFolder } from "../../app/composerReads";
 import { textNow } from "../../i18n";
 import { composerText } from "../../text/composer";
 import { fieldListText } from "../../text/fieldList";
-import { type ChoiceGroup, ChoiceList } from "./ChoiceList";
+import type { ChoiceGroup } from "./ChoiceList";
 import { CommandRun } from "./CommandRun";
 import { Composer, type ComposerSources } from "./Composer";
 import { FieldList } from "./FieldList";
 import { searchChoices, treeChoices, unfolded } from "./fieldTree";
-import { Palette } from "./Palette";
 
 // Production components only, with synthetic data. The lists open from typing
 // or a button in the app; here each list state is also shown on its own.
@@ -64,6 +63,11 @@ const sources: ComposerSources = {
       { path: "Makefile" },
     ],
     matched: 4,
+    truncated: false,
+  }),
+  tree: async () => ({
+    folders: [...listings.values()],
+    changed: 3,
     truncated: false,
   }),
   workspaceName: "aurinkokello",
@@ -337,154 +341,13 @@ export const PhoneWhilePiWorks: Story = {
 
 // The lists in the toolbar's language; a language change remounts the story.
 const t = () => textNow(composerText);
-const commandGroups = (): ChoiceGroup[] => [
-  {
-    label: t().agentAtStart,
-    choices: [
-      {
-        type: "command",
-        name: "review",
-        description: "Review the working-tree diff before committing",
-        tag: `${t().sources.prompt} · ${t().scopes.user}`,
-        tone: "prompt",
-      },
-      {
-        type: "command",
-        name: "skill:git-commit",
-        description: "Stage and commit working-tree changes.",
-        tag: `${t().sources.skill} · ${t().scopes.user}`,
-        tone: "skill",
-      },
-      {
-        type: "command",
-        name: "mcp",
-        description: "Manage MCP servers",
-        tag: `${t().sources.extension} · ${t().scopes.builtin}`,
-        tone: "extension",
-        terminalOnly: true,
-      },
-    ],
-  },
-];
-const fileGroups = (): ChoiceGroup[] => [
-  {
-    label: t().changed,
-    choices: [
-      { type: "file", path: "scripts/status_rows.py", git: "modified" },
-      { type: "file", path: "notes/2026-10-13-status.md", git: "untracked" },
-    ],
-  },
-  {
-    label: t().files,
-    choices: [
-      { type: "file", path: "README.md" },
-      { type: "file", path: "pyproject.toml" },
-    ],
-  },
-];
-
-function Pop({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ position: "relative", height: 340 }}>
-      <div className="ah-choice-pop" style={{ left: 0, bottom: 0 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-export const CaretCommandList: Story = {
-  render: () => (
-    <Frame>
-      <Pop>
-        <div className="ah-choice-head">{t().commandsAndSkills}</div>
-        <ChoiceList
-          id="story-cmds"
-          label={t().commandsAndSkills}
-          groups={commandGroups()}
-          selected={0}
-          emptyText={t().noMatches("")}
-          onPick={noop}
-        />
-      </Pop>
-    </Frame>
-  ),
-};
-export const CommandListWhileHelperLoads: Story = {
-  render: () => (
-    <Frame>
-      <Pop>
-        <div className="ah-choice-head">{t().commandsAndSkills}</div>
-        <ChoiceList
-          id="story-loading"
-          label={t().commandsAndSkills}
-          groups={[
-            {
-              label: t().agent,
-              choices: [
-                {
-                  type: "status",
-                  text: t().commandsLoading,
-                  loading: true,
-                },
-              ],
-            },
-          ]}
-          selected={-1}
-          emptyText={t().noMatches("")}
-          onPick={noop}
-        />
-      </Pop>
-    </Frame>
-  ),
-};
-export const CaretFileList: Story = {
-  render: () => (
-    <Frame>
-      <Pop>
-        <div className="ah-choice-head">{t().filesIn("aurinkokello")}</div>
-        <ChoiceList
-          id="story-files"
-          label={t().files}
-          groups={fileGroups()}
-          selected={0}
-          emptyText={t().noMatches("")}
-          onPick={noop}
-        />
-      </Pop>
-    </Frame>
-  ),
-};
-
 const preview = async (path: string): Promise<FilePreview> => ({
   path,
   kind: "diff",
   text: '@@ -1,3 +1,4 @@\n-def select(rows, since):\n+def select(rows, since, today):\n+    """Rows from since to today."""\n     return rows\n',
   truncated: false,
 });
-export const PalettePickingTwoFiles: Story = {
-  render: () => (
-    <Palette
-      listId="story-palette"
-      tab="changed"
-      query=""
-      groups={[fileGroups()[0]]}
-      selected={0}
-      marks={new Set(["scripts/status_rows.py", "notes/2026-10-13-status.md"])}
-      shell={false}
-      changedCount={2}
-      preview={preview}
-      onQuery={noop}
-      onTab={noop}
-      onPick={noop}
-      onHover={noop}
-      onKeyDown={noop}
-      onClose={noop}
-    />
-  ),
-};
-
-// The lists inside the field (experimental composer-lists-in-field): the
+// The lists inside the field: the
 // folder tree with the changed folder open, the search by name, and two
 // marked paths, each in the field box between the text and the row.
 const ft = () => textNow(fieldListText);
