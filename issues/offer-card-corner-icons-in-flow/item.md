@@ -2,7 +2,7 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed by prototype worker in synthetic lab
@@ -11,6 +11,7 @@ originating_run: 01m6y7pa54ymerjamysezfphzn
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Offer card's hidden corner icons stay in flow and squeeze the title
@@ -36,3 +37,9 @@ there, but the narrow assets list and any narrow layout suffer the same.
 Likely fix: `.ah-offer > .ah-offer-acts` (or raise the rule's specificity)
 for the floating position, keeping the `hover: none` row as is; check with a
 spec measuring the body width of a card with a long title.
+
+## Acceptance Criteria
+
+- [x] Pointer-screen corner actions consume no title-column width in narrow cards.
+- [x] Touch actions remain visible on their final row and tooltip sizing still passes.
+- [x] Browser regression, focused checks and paired 2x visual evidence recorded in result.md.

@@ -139,7 +139,7 @@
 
 /* The icon row floats in the card's top-right corner under the pointer and
    on keyboard focus; the chevron steps aside meanwhile. */
-.ah-offer-acts {
+.ah-offer > .ah-offer-acts {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -164,7 +164,7 @@
 /* On a touch screen the icons are always there, as the card's last row at
    its right, so the title keeps the card's width. */
 @media (hover: none) {
-  .ah-offer-acts {
+  .ah-offer > .ah-offer-acts {
     position: static;
     order: 10;
     flex-basis: 100%;
