@@ -93,8 +93,11 @@ The explain mode finds each part of the screen by the element's own test id
 or class, never by position: `src/components/explainParts.ts` names the
 element and `src/text/explainMode.ts` holds its card, which the agent
 reference reads too. Renaming such a test id or class means updating its
-part, and a new control a person would wonder about gets a card in the same
-style. Presses keep working in the mode; only lasting effects (archive,
+part, and every new chip, button, panel or row control gets its card in the
+same change, in both languages: a control without one is unfinished (Jari
+8.11.2026, after the Avustajat chip shipped without). Standing rule text
+about how a feature works belongs in that card, not as a permanent line in
+the panel. Presses keep working in the mode; only lasting effects (archive,
 delete, sign out, send, stop, close, save) wait, so exploring never changes
 anything by accident.
 

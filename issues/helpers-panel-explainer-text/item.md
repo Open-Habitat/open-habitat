@@ -22,7 +22,14 @@ agent UI reference. Remove it from the panel (both languages) and add it to
 the helpers chip's/panel's explanation card. Jari asked for this exact change,
 so no prototype.
 
+Jari 8.11.: the Avustajat chip has no Explain-mode card at all; add one
+(what the chip, its marks and the panel's rows mean) together with the moved
+line. While there, check this round's other new controls for a missing card:
+the assets chip and its list rows, the offer card's corner icons, the server
+browser chip and strip, the helper archive rows.
+
 ## Acceptance Criteria
 
+- [ ] Avustajat chip and the other new controls listed above have Explain-mode cards, fi and en.
 - [ ] Panel without the line; Explain mode card for helpers carries it, fi and en.
 - [ ] Touched specs green.
