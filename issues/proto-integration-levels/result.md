@@ -346,3 +346,123 @@ tw browser-open design-system/prototypes/dist/integraatiotasot-3/levels.html
 
 `check.mjs` (kierroksessa) läpäisee 2743 tarkistuspistettä puhtaalla
 konsolilla.
+
+# Kierros 4: neljä sovellusta pelkkänä klikkauspolkuna
+
+Kierros: `design-system/prototypes/rounds/2026-11-08-integraatiotasot-4/`
+(NOTES.md kertoo suunnat ja vuorovaikutukset). Jari valitsi kierroksen 3
+**Sovellus kerrallaan** -suunnan. Cloud Shell ei auennut Jarin tenantissa,
+koska siinä ei ole Azure-tilausta (`evidence/jari-2026-11-08-cloud-shell-*.png`),
+joten Yksi komento -suunta on poistettu ja ohje on pelkkä klikkauspolku.
+Akseli: miten neljä sovellusta käydään läpi klikkaamalla.
+
+- **Jokainen kokonaan**: kierroksen 3 Sovellus kerrallaan ilman Cloud Shelliä. Jokaisessa neljästä sovelluksesta käydään läpi samat 17 kohtaa, ja tunnukset tallentuvat kunkin lopussa.
+- **Lyhenevä toisto**: ensimmäinen sovellus käydään läpi kohta kohdalta. Sen jälkeen jokainen vaihe on yksi sivu, jossa korostuu vain se, mikä eroaa edellisestä (nimi, oikeudet, tunnus).
+- **Tarkistuslista**: dialogin vasemmassa reunassa on lista neljästä sovelluksesta vaiheineen, ja vain meneillään oleva on auki. Rasti kertoo, mikä on tehty ja tallennettu.
+
+Kaikissa kolmessa on kierroksen 2 ja 3 päätökset: vertailutaulukko on auki
+ennen asetusta ja *Mitä tasot sallivat* -painikkeen takana sen jälkeen, solu
+ilman oikeutta on ✕ Ei, ja kaikki neljä sovellusta tehdään yhdessä
+työnkulussa. Mukana on myös `proto-m365-setup-flow`-kierroksen 5 *Yksi nappi*:
+vain alareunan nappi vie eteenpäin, ja alakohtien rivi näyttää vain sijainnin.
+Kaistaleen kuvat ovat samoja peitettyjä Entra-leikkeitä kuin ennenkin. Neljästä
+näkymästä kuvaa ei ole. Niissä kaistaleen alla lukee **Kuva puuttuu:** ja
+näkymän nimi, ja kuvassa näkyy sivu, josta näkymä avautuu:
+
+1. *Add Redirect URI › Mobile and desktop applications* -paneeli
+2. *Request API permissions* -paneeli (Microsoft Graph › Delegated permissions)
+3. *Select permissions* -haku ja *Add permissions*
+4. *Grant admin consent* -vahvistus (*Yes*)
+
+Kuvat: `evidence/r4-d<suunta>-<näkymä>-<leveys>-<teema>.avif`. Suunta 1 on
+Jokainen kokonaan, 2 Lyhenevä toisto ja 3 Tarkistuslista. Jokaisessa
+suunnassa on näkymät `alku` (oletusnäkymä) ja `sovellus2` (toisen
+sovelluksen alku). Suunnassa 1 on lisäksi `puuttuu` (kuvaamaton
+paneeli), `oikeudet` ja sivun tilat `ennen`, `kesken`, `asetettu` ja
+`asetettu-auki`. Suunnassa 2 on `toisto-oikeudet` (toisen sovelluksen
+oikeudet ja ero ensimmäiseen) ja suunnassa 3 `puuttuu`. Jokaisesta on kuva
+molemmilla leveyksillä ja molemmilla teemoilla; `oikeudet` on vain
+1440-vaaleana.
+
+## Mitä kukin päättää
+
+| | Sovellus 1 | Sovellukset 2–4 | Painalluksia | Sijainti |
+|---|---|---|---|---|
+| Jokainen kokonaan | 17 kohtaa | 17 kohtaa kukin | 68 | sovellusrivi yllä |
+| Lyhenevä toisto | 17 kohtaa | 4 sivua kukin, erot korostettuina | 29 | sovellusrivi, jossa kohtien määrä |
+| Tarkistuslista | 17 kohtaa | 17 kohtaa kukin | 68 | lista vasemmalla, yksi auki |
+
+## Mitä näkymä olettaa hostilta
+
+- **Ei mitään uutta kierrokseen 3 verrattuna.** Tarvitaan neljäs
+  Microsoft-osio (`microsoft_nosend`) ja sen taso `microsoftLevelScopes`-tauluun.
+  Kukin sovellus tallennetaan omana nykyisenlaisena tallennuksenaan samalla
+  tenantilla. Kun tallennus tehdään sovellus kerrallaan, kertatallennusta
+  ei tarvita.
+- **Sama client ID kahdelle tasolle** hylätään selaimessa. Brokerin
+  pitäisi tarkistaa sama, koska vain se näkee kaikki osiot.
+- **Taulukon tila tulee hostilta.** *Tarjolla* / *Ei tunnuksia* on sama tieto
+  kuin nyt: onko tasolla tunnukset.
+- **Lyhenevän toiston erot** lasketaan selaimessa tasojen oikeuslistoista.
+  Lista on sama kuin tuotannon tasoilla, ja uudesta tasosta puuttuu vain
+  `Mail.Send`.
+
+## Cloud Shell tenanteille, joilla on tilaus
+
+**Ei mainita.** Ohje tehdään Microsoft 365 -ylläpitäjälle, ja tyypillisellä
+M365-tenantilla ei ole Azure-tilausta. Cloud Shell kertoo tämän vasta, kun
+sen yrittää avata (Jarin kuvat). Pelkkä maininta veisi osan lukijoista
+umpikujaan ja jättäisi muut miettimään, kumpi tie on oikea. Komentoa ei ole
+myöskään koskaan ajettu oikeassa tenantissa: kierroksen 3 avoimet kysymykset
+(palveluprinsipaalin syntymisen ajoitus ja `permission grant`in näkyminen
+Entrassa) ovat yhä tarkistamatta. Kaksi rinnakkaista polkua tarkoittaisi
+kahta ylläpidettävää ja testattavaa ohjetta, ja niistä vain klikkauspolku on
+todettu toimivaksi (Jari teki SharePointin klikkaamalla). Lyhenevä toisto
+vie jo suurimman osan siitä ajasta, jonka komento olisi säästänyt.
+Komennon voi lisätä myöhemmin, jos joku tilauksen omistava ylläpitäjä pyytää
+sitä ja komento on ensin ajettu oikeassa tenantissa.
+
+## Ei tarkistettu
+
+- **Neljä kuvaamatonta näkymää** (yllä). Ohjeteksti niissä on Microsoftin
+  nimien varassa, eikä sitä ole verrattu oikeaan näkymään.
+- **Pitääkö Lyhenevän toiston muistutusrivi paikkansa**: Entra voi muistaa
+  edellisen rekisteröinnin valinnat. Ohje olettaa, että *Single tenant only*
+  on valittuna oletuksena kuten ensimmäisessä kuvassa.
+
+## Suositus
+
+**Lyhenevä toisto.** Ensimmäinen sovellus opettaa polun kohta kohdalta
+oikeilla kuvilla, eikä toisella kerralla tarvitse käydä samoja 17 kohtaa läpi
+vain siksi, että ohje toistaa ne. Painalluksia on 29 eikä 68, ja ylläpitäjän
+huomio menee siihen, mikä todella vaihtuu: nimeen, oikeuksiin ja
+tunnukseen. Ero edelliseen (*− Mail.Send*) kertoo samalla, mitä tasot
+tarkoittavat, mikä oli koko issuen lähtökohta. Tallennus on yhä jokaisen
+sovelluksen lopussa, joten keskeytys ei hukkaa mitään. Tarkistuslista näyttää
+kokonaisuuden selkeimmin, mutta se ei lyhennä työtä ja vie dialogista 236 px
+leveyttä kaistaleelta. Jokainen kokonaan on turvallisin vain, jos
+sovellukset tehdään eri päivinä eikä edellinen ole enää muistissa. Silloinkin
+lyhyen sivun voi avata kokonaiseksi lisäämällä siihen linkin, jos tarve
+ilmenee.
+
+## Kysymykset Jarille
+
+1. Mikä suunta: `r4-d1-sovellus2-1440-light` (jokainen kokonaan),
+   `r4-d2-sovellus2-1440-light` (lyhenevä toisto) vai
+   `r4-d3-sovellus2-1440-light` (tarkistuslista)?
+2. Riittääkö toisen sovelluksen oikeussivu tällaisena
+   (`r4-d2-toisto-oikeudet-1440-light`): koko lista kopiointinapein ja ero
+   edelliseen korostettuna?
+3. Otatko kuvat neljästä puuttuvasta näkymästä (`r4-d1-puuttuu-1440-light`
+   näyttää merkinnän), kun teet seuraavan sovelluksen Entrassa? Peitän
+   tunnukset kuten ennenkin.
+
+## Näkymä (kierros 4)
+
+```
+node design-system/prototypes/rounds/2026-11-08-integraatiotasot-4/build.mjs
+tw browser-open design-system/prototypes/dist/integraatiotasot-4/levels.html
+```
+
+`check.mjs` (kierroksessa) läpäisee 2018 tarkistuspistettä puhtaalla
+konsolilla.

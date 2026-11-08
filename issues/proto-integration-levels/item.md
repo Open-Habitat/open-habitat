@@ -1,12 +1,12 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 type: task
 reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -80,7 +80,8 @@ tarvitaan häneltä; peitä tunnukset kuten kierroksella 3.
 - [x] kierros 2: kolme riffiä Ruudukosta (vertailutaulukko, avautuva ruudukko, erillinen ikkuna), solut ilman oikeutta kieltomuodossa; näkymätarjous ja kysymykset Jarille
 - [x] kierros 3: yksi työnkulku neljälle Entra-sovellukselle kolmena riffinä (sovellus kerrallaan, vaihe kerrallaan, yksi komento) ja taulukko auki ennen asetusta, avattavissa sen jälkeen; näkymätarjous ja kysymykset Jarille
 - [x] Jari valitsee kierroksen 3 riffin
-- [ ] kierros 4: sovellus kerrallaan pelkkänä klikkauspolkuna ilman Cloud Shelliä, näkymätarjous ja kysymykset Jarille
+- [x] kierros 4: sovellus kerrallaan pelkkänä klikkauspolkuna ilman Cloud Shelliä, näkymätarjous ja kysymykset Jarille
+- [ ] Jari valitsee kierroksen 4 riffin
 
 ## Jari 2026-11-08: Cloud Shell ei aukea
 
