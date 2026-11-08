@@ -16,7 +16,23 @@ const token =
 
 const directoryToken = /^(?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)+$/;
 
+/** Bare addresses are ambiguous with filenames. Recognise common web suffixes;
+ * an explicit ./ always means a workspace path (including e.g. ./example.com).
+ * Do not guess from an arbitrary extension: notes.txt and docs/asennus.md are files.
+ */
+export function webAddress(text: string): string | null {
+  if (/^https?:\/\/[^\s]+$/i.test(text)) return text;
+  if (
+    /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:com|org|net|edu|gov|mil|int|io|ai|app|dev|cloud|online|site|info|biz|me|tv|xyz|tech|fi|se|no|dk|de|fr|uk|eu|us|ca|au|nz|jp|cn|in)(?::[0-9]{1,5})?(?:[/?#][^\s]*)?$/i.test(
+      text,
+    )
+  )
+    return `https://${text}`;
+  return null;
+}
+
 export function parseFileRef(text: string): FileRef | null {
+  if (webAddress(text.trim())) return null;
   const directory = text.trim().replace(/^\.\//, "");
   if (directory.length <= 1024 && directoryToken.test(directory))
     return { path: directory };

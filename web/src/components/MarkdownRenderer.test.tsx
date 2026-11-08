@@ -7,6 +7,9 @@ afterEach(cleanup);
 
 // Representative model reply syntax, not transcripts from the live server.
 const samples = [
+  ["See docs/asennus.md.", "docs/asennus.md", { path: "docs/asennus.md" }],
+  ["See `notes.txt`.", "notes.txt", { path: "notes.txt" }],
+  ["See `./example.com`.", "./example.com", { path: "example.com" }],
   ["See [folder](./src/components/).", "folder", { path: "src/components/" }],
   ["See `src/components/`.", "src/components/", { path: "src/components/" }],
   ["See src/components/.", "src/components/", { path: "src/components/" }],
@@ -43,6 +46,40 @@ const samples = [
 ] as const;
 
 describe("file links in rendered Markdown", () => {
+  it.each([
+    ["portal.azure.com", "https://portal.azure.com"],
+    ["`shell.azure.com`", "https://shell.azure.com"],
+    ["[Entra](entra.microsoft.com)", "https://entra.microsoft.com"],
+    [
+      "[Entra][site]\n\n[site]: entra.microsoft.com",
+      "https://entra.microsoft.com",
+    ],
+    ["`http://example.com`", "http://example.com"],
+    ["[Azure](https://portal.azure.com)", "https://portal.azure.com"],
+    [
+      "https://example.com/docs/readme.md",
+      "https://example.com/docs/readme.md",
+    ],
+    ["example.fi/docs/readme.md", "https://example.fi/docs/readme.md"],
+    ["[`shell.azure.com`](https://example.com)", "https://example.com"],
+  ])("opens web addresses outside the editor: %s", (text, href) => {
+    for (const editor of [true, false]) {
+      const open = vi.fn();
+      const { container, unmount } = render(
+        <FileLinkContext.Provider value={editor ? { open } : null}>
+          <MarkdownRenderer text={text} />
+        </FileLinkContext.Provider>,
+      );
+      const link = screen.getByRole("link");
+      expect(link.getAttribute("href")).toBe(href);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toContain("noopener");
+      expect(container.querySelectorAll("a a, .ah-file-link")).toHaveLength(0);
+      fireEvent.click(link);
+      expect(open).not.toHaveBeenCalled();
+      unmount();
+    }
+  });
   it.each(samples)("opens the referenced file: %s", (text, label, expected) => {
     const open = vi.fn();
     render(

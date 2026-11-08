@@ -1,13 +1,15 @@
 import type { Link, Root, RootContent, Text } from "mdast";
-import { parseFileRef } from "./fileRefs";
+import { parseFileRef, webAddress } from "./fileRefs";
 
 // Work on Markdown nodes, never the source string: fences, existing links and
 // inline code must not be scanned as prose (or produce nested anchors).
 export default function remarkFileRefs() {
   return (tree: Root) => {
     function visit(node: Root | RootContent) {
-      if (node.type === "link") {
-        if (parseFileRef(node.url))
+      if (node.type === "link" || node.type === "definition") {
+        const web = webAddress(node.url);
+        if (web) node.url = web;
+        else if (parseFileRef(node.url))
           node.url = `./${node.url.replace(/^\.\//, "")}`;
         return;
       }
@@ -25,7 +27,8 @@ export default function remarkFileRefs() {
           const word = match[0];
           const leading = word.match(/^[([“"']*/)?.[0].length ?? 0;
           const candidate = word.slice(leading).replace(/[)\],;.!?“”"']+$/, "");
-          if (!parseFileRef(candidate)) continue;
+          const web = webAddress(candidate);
+          if (!web && !parseFileRef(candidate)) continue;
           const start = match.index + leading;
           if (start > offset)
             parts.push({
@@ -34,7 +37,7 @@ export default function remarkFileRefs() {
             });
           parts.push({
             type: "link",
-            url: `./${candidate.replace(/^\.\//, "")}`,
+            url: web ?? `./${candidate.replace(/^\.\//, "")}`,
             children: [{ type: "text", value: candidate }],
           });
           offset = start + candidate.length;

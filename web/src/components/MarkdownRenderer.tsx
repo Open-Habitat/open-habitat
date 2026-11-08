@@ -18,7 +18,7 @@ import { liveText } from "../i18n";
 import { markdownRendererText } from "../text/markdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink } from "./ControlElements";
-import { FileLinkContext, parseFileRef } from "./fileRefs";
+import { FileLinkContext, parseFileRef, webAddress } from "./fileRefs";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { OutputBox } from "./OutputBox";
 import rehypeStableText from "./rehypeStableText";
@@ -26,6 +26,7 @@ import remarkBreaks from "./remarkBreaks";
 import remarkFileRefs from "./remarkFileRefs";
 
 const txt = liveText(markdownRendererText);
+const InsideLink = createContext(false);
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
 const schema = {
@@ -138,7 +139,17 @@ function InlineCode({
   children?: ReactNode;
 }) {
   const links = useContext(FileLinkContext);
+  const insideLink = useContext(InsideLink);
   const text = typeof children === "string" ? children : "";
+  const web = !insideLink && !className ? webAddress(text) : null;
+  if (web)
+    return (
+      <code>
+        <ExternalLink href={web} target="_blank" rel="noopener noreferrer">
+          {children}
+        </ExternalLink>
+      </code>
+    );
   const ref = links && !className && text ? parseFileRef(text) : null;
   if (!links || !ref) return <code className={className}>{children}</code>;
   const where = ref.line
@@ -189,7 +200,7 @@ function MarkdownLink({
         }}
       >
         <FileLinkContext.Provider value={null}>
-          {children}
+          <InsideLink.Provider value={true}>{children}</InsideLink.Provider>
         </FileLinkContext.Provider>
       </a>
     );
@@ -207,7 +218,7 @@ function MarkdownLink({
       rel="noopener noreferrer"
     >
       <FileLinkContext.Provider value={null}>
-        {children}
+        <InsideLink.Provider value={true}>{children}</InsideLink.Provider>
       </FileLinkContext.Provider>
     </ExternalLink>
   );
