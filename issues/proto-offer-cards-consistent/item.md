@@ -7,14 +7,14 @@ status: open
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
 
 ## Description
 
-Jari 8.11.2026, test server (`evidence/jari-2026-11-08-cards.png`): the cards an
+Jari 8.11.2026, test server (`evidence/jari-2026-11-08-cards.avif`): the cards an
 agent offers in a conversation look and behave differently by content type,
 and they open in different places, which he finds disturbing. He wants them
 consistent.
