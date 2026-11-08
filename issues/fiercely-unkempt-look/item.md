@@ -2,12 +2,13 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6y0hs793yx5dwshtp42gnxa/observed:rail-running-after-done-48
 originating_run: 01m6y0hs793yx5dwshtp42gnxa
 originating_run_kind: spinoff
+closed: 2026-11-08
 ---
 
 # rail-running-after-done spec fails on main: finished conversation stays in Sinun
@@ -31,3 +32,7 @@ the failure is before any file offer in the spec, and it reproduces on a
 clean main worktree, so it is not caused by that work. Either the rail's
 grouping changed on purpose and the spec is stale, or a finished
 conversation is wrongly kept in *Sinun*.
+
+## Resolution
+
+Fixed by `main-suite-red-r68b` (8.11.2026); closed on Jari's standing approval to close intake reports a landed fix covers.
