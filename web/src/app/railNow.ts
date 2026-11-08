@@ -56,8 +56,16 @@ export function railNow({
   workFacts = false,
   icons,
   turnMarks = false,
+  creations = [],
 }: {
   agents: Agent[];
+  /** This tab's in-flight creations bridge the interval before the catalog
+   * can name them. Drafts and creation outcomes remain owned by App. */
+  creations?: {
+    workspaceId: string;
+    agentId?: string;
+    route?: "new" | "new-worktree";
+  }[];
   snapshot: Snapshot;
   workspaces: Workspace[];
   metadata: ConversationMetadata;
@@ -326,6 +334,34 @@ export function railNow({
       else if (workerBusy) count.background++;
       else if (workerIdle) count.waiting++;
     }
+  }
+  for (const creation of creations) {
+    const w = workspaces.find((w) => w.workspace_id === creation.workspaceId);
+    if (!w) continue;
+    const id = creation.agentId ?? `new:${w.workspace_id}`;
+    if ([...yours, ...running, ...quiet].some((row) => row.agentId === id))
+      continue;
+    const conversation = creation.agentId ?? creation.route ?? "new";
+    yours.push({
+      agentId: id,
+      href: `/workspaces/${w.workspace_id}?conversation=${conversation}`,
+      title: txt.newConversation,
+      workspaceId: w.workspace_id,
+      workspaceName: w.display_name ?? w.name,
+      workspaceIcon: icons?.get(w.workspace_id),
+      activityLabel: "",
+      controlLabel: "",
+      selected:
+        selectedId === w.workspace_id && openConversation === conversation,
+    });
+    const count = counts.get(w.workspace_id) ?? {
+      yours: 0,
+      working: 0,
+      background: 0,
+      waiting: 0,
+    };
+    count.yours++;
+    counts.set(w.workspace_id, count);
   }
   const hints = new Map<string, WorkspaceHint>();
   for (const [id, c] of counts) {

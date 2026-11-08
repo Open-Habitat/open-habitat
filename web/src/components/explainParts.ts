@@ -55,7 +55,10 @@ export const parts: Record<CardId, Part> = {
     kind: "once",
     sel: '[data-testid="archive-conversation"], [data-testid="menu-archive"]',
   },
-  Y12: { kind: "once", sel: `${H} [data-testid="dialog-close"]` },
+  Y12: {
+    kind: "once",
+    sel: `${H} [data-testid="dialog-close"], [data-testid="rail-close-conversation"]`,
+  },
   Y13: {
     kind: "panel",
     sel: '[data-testid="workspace-details"], [data-testid="menu-details"]',

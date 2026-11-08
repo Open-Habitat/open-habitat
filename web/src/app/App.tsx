@@ -95,9 +95,10 @@ import {
   goalConversationName,
   guideOwner,
   readGuide,
+  setGuide,
 } from "./goalGuide";
 import { HistoryView } from "./HistoryView";
-import { adoptCreation } from "./heldMessages";
+import { adoptCreation, creationKeys } from "./heldMessages";
 import {
   archiveKey,
   closeKey,
@@ -371,6 +372,7 @@ export function App() {
       {
         problem?: string;
         refused?: boolean;
+        route?: "new" | "new-worktree";
         session?: Session;
         rechecked?: boolean;
         /** Refused at the limit on conversations working at once, and how
@@ -1411,6 +1413,18 @@ export function App() {
     [snapshot],
   );
   const now = useRailNow({
+    creations: Object.entries(creationViews).flatMap(([workspaceId, view]) => {
+      if (view.rechecked) return [];
+      if (
+        view.session &&
+        (!daemonSessions.some((s) => s.agent_id === view.session?.agent_id) ||
+          snapshot?.agents.some((a) => a.agent_id === view.session?.agent_id))
+      )
+        return [];
+      return [
+        { workspaceId, agentId: view.session?.agent_id, route: view.route },
+      ];
+    }),
     names: new Map(
       (mutations?.entries<string>("conversation:") ?? [])
         .filter((entry) => entry.command === "conversation.name")
@@ -1807,9 +1821,12 @@ export function App() {
     // Trying again after a refusal at the limit is counted for its card.
     setCreationViews((old) => ({
       ...old,
-      [workspaceId]: old[workspaceId]?.capacity
-        ? { tries: (old[workspaceId]?.tries ?? 0) + 1 }
-        : {},
+      [workspaceId]: {
+        route: newWorktree === undefined ? "new" : "new-worktree",
+        ...(old[workspaceId]?.capacity
+          ? { tries: (old[workspaceId]?.tries ?? 0) + 1 }
+          : {}),
+      },
     }));
     const pendingRoute = `/workspaces/${workspaceId}?conversation=${newWorktree === undefined ? "new" : "new-worktree"}`;
     navigate(pendingRoute);
@@ -1869,6 +1886,7 @@ export function App() {
             [workspaceId]: {
               problem: message,
               refused: refusal,
+              route: newWorktree === undefined ? "new" : "new-worktree",
               capacity,
               tries: capacity ? (old[workspaceId]?.tries ?? 0) : undefined,
             },
@@ -2024,14 +2042,48 @@ export function App() {
   const archiveFromCard = (id: string) => putAway(id, "home");
   // A rail row is archived like a home card, but the refusal shows in the
   // archive notice, and the open conversation is left as from its own page.
+  const closeCreation = (ws: string) => {
+    if (!creationViews[ws]?.refused) return;
+    setRailStartError("");
+    if (
+      selectedId === ws &&
+      ["new", "new-worktree"].includes(openConversation ?? "")
+    )
+      navigate(`/workspaces/${ws}`, { replace: true });
+    setCreationViews((old) => {
+      const next = { ...old };
+      delete next[ws];
+      return next;
+    });
+    for (const key of Object.values(creationKeys(identity ?? "", ws)))
+      sessionStorage.removeItem(key);
+    setGuide(creationGuideOwner(identity ?? "", ws), undefined);
+  };
   const railArchive = {
+    closes: (id: string) => {
+      if (id.startsWith("new:")) return true;
+      const agent = snapshot?.agents.find((a) => a.agent_id === id);
+      const status = conversationStore?.readMetadata().statuses.get(id);
+      if (!agent)
+        return Object.values(creationViews).some(
+          (view) => view.session?.agent_id === id,
+        );
+      return (
+        agent.history === "missing" && status?.native_history !== "present"
+      );
+    },
     reason: (id: string) => {
+      if (id.startsWith("new:"))
+        return creationViews[id.slice(4)]?.refused
+          ? ""
+          : t.app.archiveStateUnconfirmed;
       const conversation = returnConversations.find((c) => c.id === id);
       return conversation
         ? cardArchiveReason(conversation)
         : t.app.archiveUnavailable;
     },
     run: (id: string) => {
+      if (id.startsWith("new:")) return closeCreation(id.slice(4));
       const open = selectedAgentId === id || openConversation === id;
       void putAway(id, open ? "conversation" : "rail");
     },
@@ -2672,7 +2724,7 @@ export function App() {
                     : undefined,
                   retryLabel: t.app.checkCreation,
                   onClose: creationViews[ws]?.refused
-                    ? () => navigate(`/workspaces/${ws}`, { replace: true })
+                    ? () => closeCreation(ws)
                     : undefined,
                   refused: creationViews[ws]?.refused,
                   capacity: creationViews[ws]?.capacity
@@ -3311,6 +3363,7 @@ export function App() {
                         >
                           {railStartError ? (
                             <InlineNotice
+                              data-testid="rail-creation-problem"
                               title={t.app.railCreateUncertain}
                               description={railStartError}
                               tone="warning"

@@ -557,6 +557,8 @@ export interface RailTurn {
 /** The rail rows' archive button: why a row cannot be archived now ("" when
  * it can) and the archive itself. */
 export interface RailArchive {
+  /** An unwritten conversation closes rather than entering the archive. */
+  closes?: (agentId: string) => boolean;
   reason: (agentId: string) => string;
   run: (agentId: string) => void;
 }
@@ -680,6 +682,7 @@ export function AgentNavItem({
   // reply. The rail is the only place for them (Jari 7.11.2026).
   const turnRow = turn ? turnAction : undefined;
   const archiveReason = archive?.reason(agentId);
+  const closes = archive?.closes?.(agentId) ?? false;
   const renameReason = rename?.reason(agentId);
   const [editing, setEditing] = useState(false);
   // A saved name shows at once, until the snapshot's title changes.
@@ -813,11 +816,19 @@ export function AgentNavItem({
                   {archive ? (
                     <span>
                       <ControlButton
-                        title={archiveReason || t.archive}
-                        data-testid="rail-archive-conversation"
+                        title={archiveReason || (closes ? t.close : t.archive)}
+                        data-testid={
+                          closes
+                            ? "rail-close-conversation"
+                            : "rail-archive-conversation"
+                        }
                         variant="quiet"
                         size="inline"
-                        aria-label={t.archiveNamed(shownTitle)}
+                        aria-label={
+                          closes
+                            ? t.closeNamed(shownTitle)
+                            : t.archiveNamed(shownTitle)
+                        }
                         aria-describedby={
                           archiveReason ? archiveReasonId : undefined
                         }
@@ -841,7 +852,7 @@ export function AgentNavItem({
                           archive.run(agentId);
                         }}
                       >
-                        <Icon name="archive" />
+                        <Icon name={closes ? "cross" : "archive"} />
                       </ControlButton>
                     </span>
                   ) : null}

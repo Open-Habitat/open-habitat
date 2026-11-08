@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Unsent new conversation is missing from the rail and its rail row offers Archive
@@ -26,3 +27,9 @@ Jari 8.11.2026, two observations about a new conversation:
 
 Defect fix, not experimental. Expect the rail (`web/src/components/Navigation.tsx`
 and the rail rows), `web/src/app/PendingConversation.tsx` and the draft store.
+
+## Acceptance Criteria
+
+- [x] Empty native rail rows offer Close; written conversations offer Archive.
+- [x] Creation has a rail return path before its reply; navigating away and back retains the unsent draft.
+- [x] Focused tests and paired 2× synthetic before/after evidence are recorded in result.md.
