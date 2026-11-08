@@ -425,13 +425,19 @@ test("@rail-quiet a finished native conversation remains after idle stop and dae
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  // A newly created empty conversation is already quiet. Stay to read the
-  // native reply before leaving, otherwise it correctly becomes unread.
+  // Stay to read the native reply before leaving, otherwise it correctly
+  // becomes unread. Read, it waits in Sinun vuorosi until Ei nyt.
   await expect(page.getByTestId("conversation-timeline")).toContainText(
     'Selvä. Kysyit: "Ensimmäinen viesti".',
     { timeout: 25000 },
   );
   await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send");
+  const read = nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`);
+  await expect(read.locator(".ah-ball")).toHaveAttribute("data-turn", "read", {
+    timeout: 25000,
+  });
+  await read.hover();
+  await read.getByTestId("rail-not-now-conversation").click();
   const row = nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`);
   await expect(row).toBeVisible({ timeout: 25000 });
   await page.request.get("/fixture/taskfleet?status=empty");

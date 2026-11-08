@@ -1,5 +1,9 @@
 import { expect, test } from "./lab-host";
 
+// Settings keeps the app rail beside it only above 1400 px; below that the
+// rail gives Settings its room and its plus is not on screen.
+test.use({ viewport: { width: 1440, height: 900 } });
+
 for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
   test(`@sidebar-default saved default reaches ${surface} without reload`, async ({
     page,

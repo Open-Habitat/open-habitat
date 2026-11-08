@@ -850,6 +850,23 @@
   .ah-shell-body:has(.s-page) > .ah-rail-slot {
     display: none;
   }
+  /* The rail's bell goes with it: Settings carries it beside its X. */
+  .ah-shell-body:not(.ah-shell-no-rail) .s-bell:not(:empty) {
+    display: flex;
+  }
+  .ah-shell-body:not(.ah-shell-no-rail) .s-bell:not(:empty) + .s-close {
+    margin-left: 0;
+  }
+}
+.s-bell {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  order: 3;
+  flex: none;
+  align-self: flex-start;
+  margin-left: calc(var(--ah-s2) - var(--ah-s8));
 }
 /* Tilannekatsaus (proto-recap-settings, Tasot). */
 .ah-recap-label {

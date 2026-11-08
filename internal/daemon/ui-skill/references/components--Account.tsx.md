@@ -74,6 +74,7 @@ import {
   settingsHitKey,
 } from "./SettingsSearch";
 import { StatusMark } from "./Status";
+import { StatusBell } from "./StatusBell";
 
 // Gitea and GitLab are code hosts: Koodipalvelut shows them beside GitHub.
 const codeHosts: ProviderId[] = ["gitea", "gitlab"];
@@ -676,6 +677,11 @@ export function AccountSettings({
         section === "kayttoonotto" && admin ? " wide" : ""
       }`}
     >
+      {/* Between the phone and the widest screens the app rail, and the
+          bell in its head, give Settings their room (Settings.css). */}
+      <span className="s-bell">
+        <StatusBell />
+      </span>
       <ControlButton
         data-testid="settings-close"
         className="s-close"

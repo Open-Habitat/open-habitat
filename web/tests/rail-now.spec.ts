@@ -111,18 +111,23 @@ test("@rail-now a new conversation waits in Sinun vuorosi until its first messag
   const row = nav.getByTestId(`agent-item-${id}`);
   await expect(row.getByTestId("rail-close-conversation")).toBeEnabled();
   await expect(row.getByTestId("rail-archive-conversation")).toHaveCount(0);
-  // Written, answered and read, it is quiet again while Ei nyt is off.
+  // Written, answered and read, its reply waits read until Ei nyt, which
+  // makes it quiet (raise-to-your-turn).
   await page.getByTestId("message-input").fill("ensimmäinen");
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
+  const read = nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`);
+  await expect(read.locator(".ah-ball")).toHaveAttribute("data-turn", "read", {
+    timeout: 30000,
+  });
+  await read.hover();
+  await read.getByTestId("rail-not-now-conversation").click();
   await expect(
     nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`),
-  ).toBeVisible({ timeout: 30000 });
-  await expect(
-    nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(read).toHaveCount(0);
   await expect(row.getByTestId("rail-archive-conversation")).toBeEnabled();
   await expect(row.getByTestId("rail-close-conversation")).toHaveCount(0);
 });

@@ -712,8 +712,9 @@ function FileOfferEntry({
 }
 
 /** The conversation's views and files: the chip beside the workers above
- * the message field, and its list. Nothing while there are none. */
-export function AssetsControl({ conversationId }: { conversationId?: string }) {
+ * the message field, and its list. Nothing (null) while there are none, so
+ * the strip that holds it is not drawn empty. */
+export function useAssetsControl(conversationId?: string): ReactNode {
   const controls = useContext(OfferContext);
   const list = useConversationOffers(conversationId);
   const offers = Array.isArray(list) ? list : [];
@@ -725,6 +726,7 @@ export function AssetsControl({ conversationId }: { conversationId?: string }) {
     views,
     offers.map((offer, i) => ({ offer, state: states[i] })),
   );
+  if (!entries.length) return null;
   const assetControls: AssetControls = {
     openedId: controls.openedId,
     toggle: controls.toggle,

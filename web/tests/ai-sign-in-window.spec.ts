@@ -153,11 +153,9 @@ test("@ai-sign-in Settings does not call a refused Claude sign-in signed in", as
   const row = page.getByTestId("claude-sign-in");
   await expect(row.getByTestId("claude-refused")).toHaveText("Hylätty");
   await expect(row.getByTestId("claude-login-state")).toContainText("hylkäsi");
-  // The bell says it too, with the same repair.
-  await page
-    .getByTestId("workspace-navigation")
-    .getByTestId("status-bell")
-    .click();
+  // The bell says it too, with the same repair. Settings carries it while
+  // the app rail gives Settings its room.
+  await page.locator('[data-testid="status-bell"]:visible').click();
   await page.getByTestId("status-ai-fix").click();
   await expect(page.getByTestId("sign-in-window")).toHaveAttribute(
     "data-state",

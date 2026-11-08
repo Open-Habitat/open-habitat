@@ -105,12 +105,23 @@ const fi = {
   modelUnsupportedDetail:
     "Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy.",
   recheck: "Tarkista keskustelun tila",
+  // A send whose outcome was lost, e.g. across a server restart: one warning
+  // with the check as its action. It goes away once history shows the message.
+  sendUncertain: "Ei tiedossa, saiko agentti viestin",
+  sendUncertainDetail:
+    "Viestiä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
+  sendUncertainFailed:
+    "Yhteys katkesi lähetettäessä. Tila tarkistetaan, kun yhteys palaa; viestiä ei lähetetä uudelleen automaattisesti.",
+  sendStillUnknown:
+    "Tarkistettu: viesti ei näy keskustelussa. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
   rechecking: "Tarkistetaan",
   historyUnavailable: "Historiaa ei saada",
   historyUnavailableDetail:
     "Palvelin ei pystynyt lukemaan tämän keskustelun tallennettua historiaa. Mitään ei ole kadonnut. Tarkista tila uudelleen; jos sama toistuu, kerro ylläpitäjälle.",
   historyStillUnavailable:
     "Tarkistettu: historiaa ei vieläkään saada. Mitään ei ole kadonnut; kerro ylläpitäjälle.",
+  historyUnavailableSend:
+    "Siksi ei myöskään tiedetä, saiko agentti viimeisen viestisi. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
   titleFailed: "Otsikkoa ei voitu luoda",
   wakePlaceholder: "Kirjoita, niin agentti herää…",
   keptNotSent: (reason: string) =>
@@ -213,12 +224,21 @@ export const browserConversationText = catalog(fi, {
   modelUnsupportedDetail:
     "The agent reported that the chosen model is not supported on this ChatGPT account. Choose another model and start a new conversation. The message is not repeated; your draft is kept.",
   recheck: "Check the conversation's status",
+  sendUncertain: "It is not known whether the agent got the message",
+  sendUncertainDetail:
+    "The message is not resent automatically, and its text is in the field. This notice goes away once the message shows in the conversation.",
+  sendUncertainFailed:
+    "The connection broke while sending. The status is checked when the connection is back; the message is not resent automatically.",
+  sendStillUnknown:
+    "Checked: the message does not show in the conversation. It is not resent automatically, and its text is in the field.",
   rechecking: "Checking",
   historyUnavailable: "The history is not available",
   historyUnavailableDetail:
     "The server could not read this conversation's saved history. Nothing has been lost. Check the status again; if it keeps happening, tell your administrator.",
   historyStillUnavailable:
     "Checked: the history is still not available. Nothing has been lost; tell your administrator.",
+  historyUnavailableSend:
+    "So it is also not known whether the agent got your last message. It is not resent automatically, and its text is in the field.",
   titleFailed: "The title could not be made",
   wakePlaceholder: "Type to wake the agent…",
   keptNotSent: (reason) =>

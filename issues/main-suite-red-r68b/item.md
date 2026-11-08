@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Integrated main browser suite red at the end of round 68
@@ -38,4 +39,4 @@ Most are rail specs (rail-turn-returns, rail-unread, rail-now, rail-icons-quiet,
 
 ## Acceptance Criteria
 
-- [ ] Every listed spec passes, run by name; cause per group in result.md.
+- [x] Every listed spec passes, run by name; cause per group in result.md.

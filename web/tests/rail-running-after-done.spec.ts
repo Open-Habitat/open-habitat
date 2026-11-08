@@ -40,12 +40,15 @@ test("@rail-running-after-done a finished conversation leaves Käynnissä and re
   const row = running.getByTestId(`agent-item-${id}`);
   await expect(row).toHaveAttribute("data-ball", "work", { timeout: 25000 });
 
-  // The turn ends: read here, so not the person's turn, and not work.
+  // The turn ends: not work. Read here, its reply waits read in Sinun
+  // vuorosi until the person answers or says Ei nyt (raise-to-your-turn).
   await expect(page.getByTestId("message-input")).toBeEnabled({
     timeout: 25000,
   });
   await expect(row).toHaveCount(0, { timeout: 25000 });
-  await expect(yours.getByTestId(`agent-item-${id}`)).toHaveCount(0);
+  await expect(
+    yours.getByTestId(`agent-item-${id}`).locator(".ah-ball"),
+  ).toHaveAttribute("data-turn", "read");
 
   // The agent leaves a file and its notice after the turn: still finished.
   expect(

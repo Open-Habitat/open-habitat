@@ -88,7 +88,7 @@ import {
   scrollToEnd,
   visibleEntryKeys,
 } from "./useReadingPosition";
-import { AssetsControl, NoticeEntry } from "./ViewHost";
+import { NoticeEntry, useAssetsControl } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 const txt = liveText(historyViewText);
@@ -1488,6 +1488,7 @@ function HistoryViewContent({
     csrf,
     onLogin,
   });
+  const assets = useAssetsControl(agent.agent_id);
   const [actionError, setActionError] = useState("");
   useEffect(() => {
     let controller = new AbortController();
@@ -1906,10 +1907,7 @@ function HistoryViewContent({
           {txt.newConversation}
         </LinkRow>
       </div>
-      <BackgroundStrip
-        ask={workerAsk}
-        assets={<AssetsControl conversationId={agent.agent_id} />}
-      />
+      <BackgroundStrip ask={workerAsk} assets={assets} />
       {shell.panel}
     </ConversationFrame>
   );

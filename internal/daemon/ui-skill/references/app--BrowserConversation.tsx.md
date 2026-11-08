@@ -187,7 +187,7 @@ import {
   useReadingPositionLayout,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
-import { AssetsControl, GuideHeaderControl, NoticeEntry } from "./ViewHost";
+import { GuideHeaderControl, NoticeEntry, useAssetsControl } from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -378,6 +378,7 @@ function BrowserConversationContent({
     sendKey,
     uncertainKey,
     answeredKey,
+    sentAfterKey,
     changeDraft,
     refresh,
     setBusy,
@@ -444,6 +445,11 @@ function BrowserConversationContent({
   useEffect(() => {
     if (!historyError) setRecheck(undefined);
   }, [historyError]);
+  // Likewise a check belongs to the send whose outcome it looked for.
+  useEffect(() => {
+    void sendObservation?.command;
+    setRecheck(undefined);
+  }, [sendObservation?.command]);
   const visibleRecovery = useSettledWarning(
     !!(
       (ambiguous && !busy && sendObservation?.state !== "pending") ||
@@ -891,6 +897,7 @@ function BrowserConversationContent({
     clearStopAttempt,
     restoredQueue,
     notices,
+    sendUncertain,
   } = useConversationActions({
     firstChoice: canChooseFirstModel ? modelChoice : undefined,
     workspace,
@@ -911,6 +918,7 @@ function BrowserConversationContent({
     sendKey,
     uncertainKey,
     answeredKey,
+    sentAfterKey,
     setBusy,
     setReceipt,
     setSendObservation,
@@ -918,6 +926,7 @@ function BrowserConversationContent({
     changeDraft,
     onSent,
     onQueued,
+    queued,
     onSendOutcome: waitingWindow.outcome,
     refresh,
     onLogin,
@@ -1297,6 +1306,7 @@ function BrowserConversationContent({
   // A request during a turn waits as a follow-up; a steer would redirect
   // the turn the person started.
   const spinoffs = useContext(SpinoffContext);
+  const assets = useAssetsControl(id);
   const workerAsk: WorkerAsk = {
     target: "here",
     blocked: tellBlocked,
@@ -2764,7 +2774,10 @@ function BrowserConversationContent({
                       ]
                     : sendObservation &&
                         // The bubble or the queue card shows a message on its
-                        // way; a reload knows only that one is.
+                        // way; a reload knows only that one is. An unknown
+                        // outcome is the one warning above the composer, and
+                        // its text is back in the field.
+                        sendObservation.state !== "uncertain" &&
                         !(
                           sendObservation.kind &&
                           sendObservation.state === "pending"
@@ -3090,9 +3103,42 @@ function BrowserConversationContent({
                       />
                     }
                   >
+                    {/* The one warning also says what the person's own
+                        message is waiting for. */}
                     {recheckState === "done"
                       ? txt.historyStillUnavailable
                       : txt.historyUnavailableDetail}
+                    {sendUncertain ? ` ${txt.historyUnavailableSend}` : null}
+                  </WarningBanner>
+                </div>
+              ) : !storagePressure.full && !statusStale && sendUncertain ? (
+                <div className="ah-status-check">
+                  <WarningBanner
+                    data-testid="send-uncertain"
+                    data-reason={sendUncertain}
+                    data-state={recheckState}
+                    tone="neutral"
+                    title={txt.sendUncertain}
+                    actions={
+                      <Button
+                        data-testid="conversation-recheck"
+                        size="row"
+                        variant="secondary"
+                        label={
+                          recheckState === "running"
+                            ? txt.rechecking
+                            : txt.recheck
+                        }
+                        pending={recheckState === "running"}
+                        onPress={runRecheck}
+                      />
+                    }
+                  >
+                    {recheckState === "done"
+                      ? txt.sendStillUnknown
+                      : sendUncertain === "failed"
+                        ? txt.sendUncertainFailed
+                        : txt.sendUncertainDetail}
                   </WarningBanner>
                 </div>
               ) : !storagePressure.full &&
@@ -3196,7 +3242,7 @@ function BrowserConversationContent({
                 }
                 piNotRunning={bridgeExpected}
                 ask={workerAsk}
-                assets={<AssetsControl conversationId={id} />}
+                assets={assets}
               />
             </>
           ) : null}

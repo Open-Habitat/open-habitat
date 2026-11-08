@@ -423,11 +423,14 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   const row = page
     .getByRole("navigation")
     .getByTestId(`agent-item-pi:${parent}`);
-  // Its turn ended: in Hiljaiset, not Running.
+  // Its turn ended: not Running; the reply read here waits in Sinun vuorosi
+  // until the person answers or says Ei nyt (raise-to-your-turn).
   const rail = page.getByRole("navigation");
-  await expect(
-    rail.getByTestId("rail-quiet").getByTestId(`agent-item-pi:${parent}`),
-  ).toBeVisible();
+  const read = rail
+    .getByTestId("rail-yours")
+    .getByTestId(`agent-item-pi:${parent}`)
+    .locator(".ah-ball");
+  await expect(read).toHaveAttribute("data-turn", "read");
   await expect(
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
   ).toHaveCount(0);
@@ -462,9 +465,7 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   await expect(
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
   ).toHaveCount(0);
-  await expect(
-    rail.getByTestId("rail-quiet").getByTestId(`agent-item-pi:${parent}`),
-  ).toBeVisible();
+  await expect(read).toHaveAttribute("data-turn", "read");
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
 });
 

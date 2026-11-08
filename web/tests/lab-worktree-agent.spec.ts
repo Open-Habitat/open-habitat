@@ -146,10 +146,11 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     timeout: 20000,
   });
   const rail = page.getByRole("navigation");
-  // A finished worktree conversation rests in Hiljaiset with its worktree
-  // mark; its Git state is also available here and on the workspace card.
+  // A finished worktree conversation whose reply was read here waits in
+  // Sinun vuorosi until answered or Ei nyt (raise-to-your-turn), with its
+  // worktree mark; its Git state is also available here and on the card.
   await expect(
-    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree"),
+    rail.getByTestId("rail-yours").locator(".ah-nav-worktree"),
   ).toHaveCount(1);
   await chip.click();
   const details = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
@@ -172,7 +173,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   );
   await expect(chip).toHaveAttribute("data-merged", "true", { timeout: 20000 });
   await expect(
-    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree.merged"),
+    rail.getByTestId("rail-yours").locator(".ah-nav-worktree.merged"),
   ).toHaveCount(1);
   await page.screenshot({
     path: "test-results-lab/evidence/worktree-agent-desktop-3-merged.png",

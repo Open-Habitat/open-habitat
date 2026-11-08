@@ -4,7 +4,7 @@ import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
-test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it only when opened", async ({
+test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it only on Ei nyt", async ({
   page,
   browser,
 }) => {
@@ -67,10 +67,19 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
   await expect
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(new URL(urls[0], hostOrigin).searchParams.get("conversation"));
-  // Opened, the reply is no longer the person's turn; the other one still is.
-  // Its turn has ended, so it is not in Käynnissä either.
-  await expect(yours).toHaveCount(1);
-  await expect(yours.first()).toHaveAttribute("href", urls[1]);
+  // Opened, the reply is read but still the person's turn until they answer
+  // or say Ei nyt (raise-to-your-turn, default since 8.11.); the other one is
+  // still news. Its turn has ended, so it is not in Käynnissä either.
+  const ball = (url: string) =>
+    page
+      .getByRole("navigation")
+      .getByTestId(
+        `agent-item-${new URL(url, hostOrigin).searchParams.get("conversation")}`,
+      )
+      .locator(".ah-ball");
+  await expect(yours).toHaveCount(2);
+  await expect(ball(urls[0])).toHaveAttribute("data-turn", "read");
+  await expect(ball(urls[1])).not.toHaveAttribute("data-turn");
   await expect(
     page.getByTestId("rail-running").locator(`a[href="${urls[0]}"]`),
   ).toHaveCount(0);
@@ -78,10 +87,25 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("navigation-badge")).toBeVisible();
   await page.getByTestId("navigation-open").click();
-  await expect(yours.first()).toBeVisible();
-  await yours.first().focus();
+  const second = yours.and(page.locator(`a[href="${urls[1]}"]`));
+  await expect(second).toBeVisible();
+  await second.focus();
   await page.keyboard.press("Enter");
+  await expect(page.getByTestId("message-input")).toBeFocused();
+  // Ei nyt from each row empties Sinun vuorosi and the badge with it.
+  await page.getByTestId("navigation-open").click();
+  await expect(ball(urls[1])).toHaveAttribute("data-turn", "read");
+  for (const url of urls) {
+    const row = page
+      .getByRole("navigation")
+      .getByTestId("rail-yours")
+      .getByTestId(
+        `agent-item-${new URL(url, hostOrigin).searchParams.get("conversation")}`,
+      );
+    await row.hover();
+    await row.getByTestId("rail-not-now-conversation").click();
+    await expect(row).toHaveCount(0);
+  }
   await expect(yours).toHaveCount(0);
   await expect(page.getByTestId("navigation-badge")).toHaveCount(0);
-  await expect(page.getByTestId("message-input")).toBeFocused();
 });

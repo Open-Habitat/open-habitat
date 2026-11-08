@@ -182,7 +182,7 @@ import {
   useReadingPositionLayout,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
-import { AssetsControl, GuideHeaderControl, NoticeEntry } from "./ViewHost";
+import { GuideHeaderControl, NoticeEntry, useAssetsControl } from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -1301,6 +1301,7 @@ function BrowserConversationContent({
   // A request during a turn waits as a follow-up; a steer would redirect
   // the turn the person started.
   const spinoffs = useContext(SpinoffContext);
+  const assets = useAssetsControl(id);
   const workerAsk: WorkerAsk = {
     target: "here",
     blocked: tellBlocked,
@@ -3236,7 +3237,7 @@ function BrowserConversationContent({
                 }
                 piNotRunning={bridgeExpected}
                 ask={workerAsk}
-                assets={<AssetsControl conversationId={id} />}
+                assets={assets}
               />
             </>
           ) : null}
