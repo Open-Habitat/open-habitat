@@ -97,9 +97,13 @@ import {
   readGuide,
   setGuide,
 } from "./goalGuide";
+import {
+  ArchivedHelpers,
+  HelperRestoreContext,
+  useHelperArchiveConfirmation,
+} from "./HelperArchiveFlow";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation, creationKeys } from "./heldMessages";
-import { readHelpersArchiveDetail } from "./helpersArchive";
 import {
   archiveKey,
   closeKey,
@@ -432,6 +436,13 @@ export function App() {
   const [profile, setProfile] = useState<AccountProfile>();
   const [profileSkipped, setProfileSkipped] = useState(false);
   const identity = hostSnapshot?.identity.web_identity_id;
+  const helperConfirmation = useHelperArchiveConfirmation(csrf);
+  const archiveInFlight = useRef(new Set<string>());
+  const [helperRestores, setHelperRestores] = useState<{
+    binding?: string;
+    ids: ReadonlySet<string>;
+  }>({ ids: new Set() });
+  const [helperArchiveOpen, setHelperArchiveOpen] = useState(false);
   const conversationStore = useMemo(
     () => (identity ? new ConversationStore(identity) : undefined),
     [identity],
@@ -1647,6 +1658,22 @@ export function App() {
   const changeArchive = async (
     agent: Agent,
     archived: boolean,
+    origin: "conversation" | "home" | "rail" = "conversation",
+  ) => {
+    // Repeated presses share one preflight/write; the inverse (Undo) must
+    // still enter MutationLayer's queue while the first write is pending.
+    const key = `${csrf}:${agent.agent_id}:${archived}`;
+    if (archiveInFlight.current.has(key)) return false;
+    archiveInFlight.current.add(key);
+    try {
+      return await performArchive(agent, archived, origin);
+    } finally {
+      archiveInFlight.current.delete(key);
+    }
+  };
+  const performArchive = async (
+    agent: Agent,
+    archived: boolean,
     // The rail archives in place unless the conversation is the open one.
     origin: "conversation" | "home" | "rail" = "conversation",
   ) => {
@@ -1661,6 +1688,21 @@ export function App() {
     )
       return false;
     const writeCSRF = csrf;
+    const generation = identityGeneration.current;
+    if (archived && helpersOn) {
+      const accepted = await helperConfirmation.confirm(
+        agent.agent_id,
+        agentTitle(agent.title),
+      );
+      // The card's boolean is error feedback, not the archive state. A
+      // cancelled question is not a failed write; native state stays put.
+      if (!accepted) return origin === "home";
+      if (
+        generation !== identityGeneration.current ||
+        sessionBinding.current !== writeCSRF
+      )
+        return false;
+    }
     setArchiveProblem("");
     const fromRoute = `${currentRoute.current.pathname}${currentRoute.current.search}`;
     if (archived) {
@@ -1673,18 +1715,6 @@ export function App() {
         archiveFocusPending.current = agent.workspace_id;
         navigate(`/workspaces/${agent.workspace_id}`);
       }
-      // Its named workers go with it; the notice says so once read.
-      if (helpersOn)
-        void readHelpersArchiveDetail(
-          agent.agent_id,
-          AbortSignal.timeout(10000),
-        ).then((detail) =>
-          setArchiveNotice((n) =>
-            detail && n?.id === agent.agent_id && !n.problem
-              ? { ...n, detail }
-              : n,
-          ),
-        );
     }
     const result = await mutations.run({
       command: "conversation.archive",
@@ -1704,7 +1734,11 @@ export function App() {
         ),
       read: (response, commandId) =>
         readArchiveResult(response, agent.agent_id, archived, commandId),
-      confirmed: (reply) =>
+      confirmed: (reply) => {
+        if (!archived)
+          setArchiveNotice((notice) =>
+            notice?.id === agent.agent_id ? undefined : notice,
+          );
         dispatch(
           hostChanged({
             kind: "archive",
@@ -1712,7 +1746,20 @@ export function App() {
             archive: reply.archive,
             cursor: reply.event_cursor,
           }),
-        ),
+        );
+        if (
+          helpersOn &&
+          generation === identityGeneration.current &&
+          sessionBinding.current === writeCSRF
+        ) {
+          setHelperRestores((old) => {
+            const ids = new Set(old.binding === writeCSRF ? old.ids : []);
+            if (archived) ids.delete(agent.agent_id);
+            else ids.add(agent.agent_id);
+            return { binding: writeCSRF, ids };
+          });
+        }
+      },
       refused: archived
         ? t.app.archiveConversationRefused
         : t.app.restoreRefused,
@@ -2864,7 +2911,13 @@ export function App() {
                 tone="warning"
               />
             )}
-            <details className="ah-workspace-archive">
+            <details
+              className="ah-workspace-archive"
+              open={helperArchiveOpen}
+              onToggle={(event) =>
+                setHelperArchiveOpen(event.currentTarget.open)
+              }
+            >
               <summary>
                 {t.app.archive} ·{" "}
                 {snapshot?.sources.find((f) => f.source === "annotation")
@@ -2901,7 +2954,7 @@ export function App() {
                           a.archive === "archived",
                       )
                       .map((a) => (
-                        <p key={a.agent_id}>
+                        <div key={a.agent_id}>
                           <LinkRow
                             href={
                               browserOwned(a, daemonSessions)
@@ -2935,7 +2988,13 @@ export function App() {
                                 : { state: "enabled" }
                             }
                           />
-                        </p>
+                          {helpersOn && helperArchiveOpen ? (
+                            <ArchivedHelpers
+                              key={`${csrf}:${a.agent_id}`}
+                              agent={a.agent_id}
+                            />
+                          ) : null}
+                        </div>
                       ))}
                   </>
                 )}
@@ -3093,6 +3152,7 @@ export function App() {
   };
   return (
     <AccountPreferencesProvider identity={identity} csrf={csrf}>
+      {helperConfirmation.dialog}
       <PiModelsProvider key={identity} enabled={!!identity}>
         <AISignInProvider
           key={identity}
@@ -3400,31 +3460,40 @@ export function App() {
                                 : undefined
                             }
                           >
-                            {editorRoute ? (
-                              <WorkspaceEditor
-                                journal={journal}
-                                workspaceId={editorWorkspaceId}
-                                identity={identity}
-                                onShownChange={showEditor}
-                                onLeaveSaved={(save) =>
-                                  setEditorSave({
-                                    ...save,
-                                    id: ++editorSaveId.current,
-                                    identity,
-                                    csrf,
-                                  })
-                                }
-                                csrf={
-                                  phase === "authenticated" || phase === "stale"
-                                    ? csrf
-                                    : undefined
-                                }
-                              >
-                                {main}
-                              </WorkspaceEditor>
-                            ) : (
-                              main
-                            )}
+                            <HelperRestoreContext.Provider
+                              value={
+                                helpersOn && helperRestores.binding === csrf
+                                  ? helperRestores.ids
+                                  : new Set()
+                              }
+                            >
+                              {editorRoute ? (
+                                <WorkspaceEditor
+                                  journal={journal}
+                                  workspaceId={editorWorkspaceId}
+                                  identity={identity}
+                                  onShownChange={showEditor}
+                                  onLeaveSaved={(save) =>
+                                    setEditorSave({
+                                      ...save,
+                                      id: ++editorSaveId.current,
+                                      identity,
+                                      csrf,
+                                    })
+                                  }
+                                  csrf={
+                                    phase === "authenticated" ||
+                                    phase === "stale"
+                                      ? csrf
+                                      : undefined
+                                  }
+                                >
+                                  {main}
+                                </WorkspaceEditor>
+                              ) : (
+                                main
+                              )}
+                            </HelperRestoreContext.Provider>
                           </ViewHost>
                         </div>
                       }

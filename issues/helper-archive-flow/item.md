@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: helper-archive-proto
 lane_seq: 2
 blocked_by: ['@proto-helper-archive-notice']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Archiving a conversation with helpers: confirmation and helper rows in the archive
@@ -36,5 +37,5 @@ Part of the experimental *Avustajat* feature; gate with it.
 
 ## Acceptance Criteria
 
-- [ ] Confirmation lists helpers and branch work; archive rows; restore line with Avaa haara.
-- [ ] Touched specs green; screenshots; `KOKEILTAVAA.md` line.
+- [x] Confirmation lists helpers and branch work; archive rows; restore line with Avaa haara.
+- [x] Touched specs green; screenshots; `KOKEILTAVAA.md` line.

@@ -1,0 +1,35 @@
+.ah-helper-dialog {
+  max-width: 38rem;
+}
+.ah-helper-archive-rows {
+  list-style: none;
+  padding: 0;
+  margin: var(--ah-s3) 0;
+}
+.ah-helper-archive-rows > li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s2);
+  margin-block: var(--ah-s3);
+}
+.ah-helper-archive-rows p {
+  margin: var(--ah-s1) 0;
+  color: var(--ah-ink-2);
+}
+.ah-helper-archive-rows svg {
+  flex-shrink: 0;
+}
+.ah-helper-archive-rows p > svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+}
+.ah-helper-dialog code {
+  overflow-wrap: anywhere;
+}
+.ah-helper-restore {
+  margin: var(--ah-s4) 0;
+  padding: var(--ah-s3);
+  background: var(--ah-surface-2);
+  border-radius: var(--ah-r-md);
+}

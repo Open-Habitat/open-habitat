@@ -1,6 +1,6 @@
 import { textNow } from "../i18n";
 import { archiveNoticeText } from "../text/archiveNotice";
-import { liveHelper, readSpinoffs, type Spinoff } from "./spinoffs";
+import { liveHelper, type Spinoff } from "./spinoffs";
 
 /** What the archive notice says about the conversation's named workers
  * (Jari 2026-11-08): they go with it, keep waiting, and come back with it
@@ -36,15 +36,4 @@ export function helpersArchiveDetail(runs: Spinoff[]): string | undefined {
   ]
     .filter(Boolean)
     .join(" ");
-}
-
-export async function readHelpersArchiveDetail(
-  agent: string,
-  signal: AbortSignal,
-): Promise<string | undefined> {
-  try {
-    return helpersArchiveDetail((await readSpinoffs(agent, null, signal)).runs);
-  } catch {
-    return undefined;
-  }
 }

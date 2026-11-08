@@ -128,6 +128,7 @@ import {
   useGuide,
   usePreparedField,
 } from "./goalGuide";
+import { HelperRestoreNote } from "./HelperArchiveFlow";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
@@ -2964,6 +2965,7 @@ function BrowserConversationContent({
                   onDismiss={() => closeReplaceNote(note.id)}
                 />
               ))}
+              {id ? <HelperRestoreNote agent={id} /> : null}
             </ConversationStream>
           ) : view === "loading" || !creation ? (
             <LoadingStream

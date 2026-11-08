@@ -53,6 +53,7 @@ import {
   retitleHistory,
   TitleGenerationFailed,
 } from "./conversations";
+import { HelperRestoreNote } from "./HelperArchiveFlow";
 import {
   type BlockChunk,
   type HistoryBlock,
@@ -1855,6 +1856,9 @@ function HistoryViewContent({
             description: txt.unavailableDetail,
           }}
         />
+        {agent.archive !== "archived" ? (
+          <HelperRestoreNote agent={agent.agent_id} />
+        ) : null}
       </ConversationStream>
       {actionError && (
         <InlineNotice
