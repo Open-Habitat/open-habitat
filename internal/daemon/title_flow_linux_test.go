@@ -319,4 +319,81 @@ for line in sys.stdin:
 	if name, _ := c.sessionName(s); name != "Third refined title" {
 		t.Fatalf("native refined title: %q", name)
 	}
+
+	for _, recover := range []bool{true, false} {
+		if err := os.WriteFile(path, []byte(fmt.Sprintf(`{"type":"session","version":3,"id":%q,"cwd":%q}`+"\n", id, cwd)), 0600); err != nil {
+			t.Fatal(err)
+		}
+		c.mu.Lock()
+		s.acceptedMessages = 1
+		s.automaticFirst = true
+		s.automaticRetried = false
+		s.titleRetryAfter = 0
+		s.automaticName = ""
+		s.refinementDue = false
+		s.thirdText = ""
+		s.settled = true
+		c.mu.Unlock()
+		calls = 0
+		c.titleGenerator = func(text string) (string, error) {
+			calls++
+			if calls == 1 || !recover {
+				return "", titleModelInvalid
+			}
+			if text != titleExcerpt("first message", "second message") {
+				t.Errorf("retry excerpt: %q", text)
+			}
+			return "Recovered automatic title", nil
+		}
+		if failure := c.nameConversation(s, "first message", false); failure != titleModelInvalid {
+			t.Fatalf("first failure: %s", failure)
+		}
+		c.mu.Lock()
+		if s.naming || calls != 1 {
+			t.Fatal("immediate retry after failure")
+		}
+		s.acceptedMessages = 2
+		if recover {
+			// Multiple prompts can settle while the first title is running.
+			s.acceptedMessages = 3
+			s.automaticRefined = false
+			s.thirdText = "second message"
+		}
+		s.latestText = "second message"
+		s.settled = false
+		c.startAutomaticTitle(s)
+		if s.naming {
+			t.Fatal("retry before settlement")
+		}
+		s.settled = true
+		c.startAutomaticTitle(s)
+		c.mu.Unlock()
+		deadline := time.Now().Add(3 * time.Second)
+		for time.Now().Before(deadline) {
+			c.mu.Lock()
+			naming := s.naming
+			c.mu.Unlock()
+			if !naming {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		c.mu.Lock()
+		if s.naming || !s.automaticRetried || calls != 2 {
+			t.Fatal("next-turn retry did not finish exactly once")
+		}
+		s.acceptedMessages = 4
+		c.startAutomaticTitle(s)
+		if s.naming {
+			t.Fatal("unbounded automatic retries")
+		}
+		c.mu.Unlock()
+		want := ""
+		if recover {
+			want = "Recovered automatic title"
+		}
+		if name, _ := c.sessionName(s); name != want {
+			t.Fatalf("retry native name %q, want %q", name, want)
+		}
+	}
 }

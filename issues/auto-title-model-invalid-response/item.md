@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Automatic title failed with model_invalid_response
@@ -17,4 +18,4 @@ preparation: ready
 
 ## Acceptance Criteria
 
-- [ ] Reproduced in a test; fixed; touched specs green.
+- [x] Reproduced in a test; fixed; touched specs green.

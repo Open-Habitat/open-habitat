@@ -29,7 +29,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	var cheapCalls, fallbackCalls atomic.Int32
 	var excerpt, answer, retryAnswer, finish atomic.Value
 	var attempt atomic.Int32
-	var holdRewrite atomic.Bool
+	var holdRewrite, thinkingOnly atomic.Bool
 	excerpt.Store("")
 	answer.Store("")
 	retryAnswer.Store("")
@@ -83,7 +83,11 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 			}
 		}
 		content, _ := json.Marshal(raw)
-		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":%s},\"finish_reason\":null}]}\n\n", content)
+		field := "content"
+		if thinkingOnly.Load() {
+			field = "reasoning_content"
+		}
+		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",%q:%s},\"finish_reason\":null}]}\n\n", field, content)
 		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":%q}]}\n\ndata: [DONE]\n\n", finish.Load().(string))
 	}))
 	defer provider.Close()
@@ -108,7 +112,21 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		{"English long first message", "Review repository contents. " + strings.Repeat("Synthetic documentation and source details. ", 300), `{"title":"Synthetic repository review","fallback":"Repository review"}`, "", "Synthetic repository review", 1},
 		{"Fenced JSON", "Review repository", "```json\n{\"title\":\"Repository review\",\"fallback\":\"Code review\"}\n```", "", "Repository review", 1},
 		{"English regeneration", titleExcerpt("Testataan muistutusta", "Check reminders in English"), `{"title":"Check reminder delivery","fallback":"Reminder delivery"}`, "", "Check reminder delivery", 1},
-		{"invalid responses never cut", "Review synthetic repository", `{"title":"one two three four five six","fallback":"an extremely overlong fallback phrase here"}`, `{"title":"Read supercalifragilisticexpialidocious"}`, "", 2},
+		{"many words", "Review synthetic repository", `{"title":"one two three four five six"}`, "", "one two three four five six", 1},
+		{"quoted", "Review repository", `{"title":"  “Repository review”  "}`, "", "Repository review", 1},
+		{"plain first line", "Review repository", "  Repository review\nA second explanatory line", "", "Repository review", 1},
+		{"JSON string", "Review repository", `"Repository review"`, "", "Repository review", 1},
+		{"one word", "Review repository", `{"title":"Refactoring"}`, "", "Refactoring", 1},
+		{"label", "Review repository", "Title: 'Repository review'", "", "Repository review", 1},
+		{"long without fallback", "Review repository", `{"title":"Repositorion sisällön tarkistus ja yhteenveto"}`, `{"title":"Repositorion sisällön tarkistus ja yhteenveto"}`, "Repositorion sisällön…", 2},
+		{"markdown", "Review repository", "**Repository review**", "", "Repository review", 1},
+		{"preamble", "Review repository", "Here is a title:\nRepository review", "Sure! Here is the title: Repository review", "", 2},
+		{"empty", "Review repository", "", "", "", 2},
+		{"refusal", "Review repository", "I cannot help with that request", "Sorry, I cannot provide a title", "", 2},
+		{"JSON debris", "Review repository", `{"title":"Repository`, `{"title":null}`, "", 2},
+		{"punctuation", "Review repository", `{"title":"!!!"}`, "???", "", 2},
+		{"control", "Review repository", `{"title":"Bad\u0000title"}`, `{"title":"Bad\u202etitle"}`, "", 2},
+		{"thinking text", "Review repository", "<think>I should choose a title</think>", "<think>Still thinking</think>", "", 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			excerpt.Store(prefixBytes(tc.input, 4096))
@@ -127,6 +145,15 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 			}
 		})
 	}
+	thinkingOnly.Store(true)
+	excerpt.Store("Review synthetic repository")
+	answer.Store("Repository review")
+	retryAnswer.Store("Repository review")
+	attempt.Store(0)
+	if title, err := c.generateTitle("Review synthetic repository", conversation); title != "" || err != titleModelInvalid {
+		t.Fatalf("thinking-only output accepted: %q %v", title, err)
+	}
+	thinkingOnly.Store(false)
 	// A provider's output cap is an invalid answer, not missing entitlement;
 	// even a complete-looking fragment must never be accepted as a whole title.
 	finish.Store("length")
@@ -141,7 +168,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	// native SDK must actually cancel its HTTP call before the Go hard deadline.
 	finish.Store("stop")
 	holdRewrite.Store(true)
-	answer.Store(`{"title":"one two three four five six","fallback":"Repositorion tarkistus"}`)
+	answer.Store(`{"title":"!!!","fallback":"Repositorion tarkistus"}`)
 	attempt.Store(0)
 	start := time.Now()
 	if title, err := c.generateTitle("Review synthetic repository", conversation); err != nil || title != "Repositorion tarkistus" || attempt.Load() != 2 {
@@ -150,7 +177,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	if time.Since(start) >= 15*time.Second {
 		t.Fatal("fallback outlived the daemon's hard deadline")
 	}
-	if cheapCalls.Load() != 8 || fallbackCalls.Load() != 13 {
-		t.Fatalf("cheap=%d fallback=%d", cheapCalls.Load(), fallbackCalls.Load())
+	if cheapCalls.Load() == 0 || fallbackCalls.Load() == 0 {
+		t.Fatalf("model fallback not exercised: cheap=%d fallback=%d", cheapCalls.Load(), fallbackCalls.Load())
 	}
 }

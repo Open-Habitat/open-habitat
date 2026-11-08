@@ -197,12 +197,12 @@ func TestGeneratedTitleBound(t *testing.T) {
 		{"Ääkköset säilyvät kokonaisina nyt", ""},
 		{"123456789012345678901234567890 x", "123456789012345678901234567890 x"},
 		{"1234567890123456789012345678901 xx", ""},
-		{"one two three four five six", ""},
+		{"one two three four five six", "one two three four five six"},
 		{"Read supercalifragilisticexpialidocious", ""},
 		{"Test synthetic workspace reminder delivery", ""},
 		{"Repositorion sisällön tarkistus ja yhteenveto", ""},
 		{"one  two\u00a0three", "one two three"},
-		{"Repository", ""},
+		{"Repository", "Repository"},
 	} {
 		got, err := boundGeneratedTitle(tc.input)
 		if got != tc.want || (err != nil) != (tc.want == "") {

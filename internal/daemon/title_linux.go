@@ -95,13 +95,12 @@ func (c *ConversationController) generateTitle(text string, model *piStartupChoi
 	return boundGeneratedTitle(response.Title)
 }
 
-// Validate the complete model phrase, never turn an overlong answer into a
-// different (and potentially unfinished) title. User-chosen names retain their
-// separate safety limit.
+// The helper normalizes model formatting and caps generated names. Keep the
+// native write boundary strict; user-chosen names have a separate safety limit.
 func boundGeneratedTitle(title string) (string, error) {
 	words := strings.Fields(title)
 	name := strings.Join(words, " ")
-	if !validTitle(title) || len(words) < 2 || len(words) > 5 || utf8.RuneCountInString(name) > 32 {
+	if !validTitle(title) || len(words) == 0 || utf8.RuneCountInString(name) > 32 {
 		return "", titleModelInvalid
 	}
 	return name, nil
@@ -233,6 +232,14 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 		s.automaticFirst = true
 		c.beginNaming(s)
 		go c.nameConversation(s, s.firstText, false)
+	} else if s.titleRetryAfter > 0 && s.acceptedMessages > s.titleRetryAfter && s.settled && !s.automaticRetried {
+		s.automaticRetried = true
+		if s.acceptedMessages >= 3 {
+			// This retry already includes the context a refinement would use.
+			s.refinementDue, s.automaticRefined = false, true
+		}
+		c.beginNaming(s)
+		go c.nameConversation(s, titleExcerpt(s.firstText, s.latestText), false)
 	} else if s.refinementDue && s.automaticName != "" && !s.automaticRefined {
 		s.refinementDue = false
 		s.automaticRefined = true
@@ -274,6 +281,7 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	}
 	c.mu.Lock()
 	ours := s.automaticName
+	attemptTurn := s.acceptedMessages
 	c.mu.Unlock()
 	if !explicit && before != "" && before != ours {
 		// A name this handle did not generate, such as one the person gave
@@ -289,6 +297,13 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	}
 	name, err := generate(text)
 	if err != nil {
+		// A later settled turn gets one new chance, not an immediate retry
+		// loop. Existing and explicitly chosen names are left alone.
+		if !explicit && before == "" {
+			c.mu.Lock()
+			s.titleRetryAfter = attemptTurn
+			c.mu.Unlock()
+		}
 		return titleReason(err)
 	}
 	c.mu.Lock()
