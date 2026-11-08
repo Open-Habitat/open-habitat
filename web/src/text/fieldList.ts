@@ -9,6 +9,7 @@ const fi = {
   matchCount: (n: number) =>
     plural("fi", n, { one: `${n} osuma`, other: `${n} osumaa` }),
   searchFile: "Hae tiedostoa",
+  typeAfterAt: "Kirjoita tekstiin @:n perään",
   searchFilePlaceholder: "Hae koko työtilasta",
   searchCommand: "Hae komentoa tai taitoa",
   preview: "Esikatselu",
@@ -44,6 +45,7 @@ export const fieldListText = catalog(fi, {
   matchCount: (n) =>
     `${n} ${plural("en", n, { one: "match", other: "matches" })}`,
   searchFile: "Search for a file",
+  typeAfterAt: "Type after @ in the message",
   searchFilePlaceholder: "Search the whole workspace",
   searchCommand: "Search for a command or skill",
   preview: "Preview",

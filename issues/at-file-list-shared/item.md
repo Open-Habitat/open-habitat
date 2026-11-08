@@ -3,13 +3,14 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: at-file-list-proto
 lane_seq: 2
 blocked_by: ['@proto-at-file-list']
 collision: [web/src/components/composer/Composer.tsx]
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Typed @ and the file button open one shared file list
@@ -32,7 +33,7 @@ as it is.
 
 ## Acceptance Criteria
 
-- [ ] Button and typed `@` open the identical list; typing after `@` filters
+- [x] Button and typed `@` open the identical list; typing after `@` filters
       it from the text; Tab marks; Esc keeps the text.
-- [ ] `lab-composer-lists-in-field.spec.ts` and touched composer specs green;
+- [x] `lab-composer-lists-in-field.spec.ts` and touched composer specs green;
       `KOKEILTAVAA.md` line.

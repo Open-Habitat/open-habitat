@@ -4,7 +4,12 @@ import type { Page } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true, hasTouch: true });
+test.use({
+  baseURL: labOrigin,
+  ignoreHTTPSErrors: true,
+  hasTouch: true,
+  deviceScaleFactor: 2,
+});
 
 // The composer's lists inside the field (composer-lists-in-field,
 // experimental; proto-composer-popover-placement rounds 3 and 4, Puu and
@@ -125,12 +130,15 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   await row(page, "cmd/").locator(".ah-choice-path").click();
   await row(page, "cmd/").getByTestId("composer-mark").click();
   await expect(row(page, "cmd/")).toHaveAttribute("data-open", "true");
-  const search = page.getByTestId("command-search");
+  const search = field;
+  await expect(field).toHaveValue("Katso @");
+  await expect(field).toBeFocused();
   await search.press("ArrowLeft");
   await expect(row(page, "cmd/")).toHaveAttribute("data-open", "false");
 
   // A search lists by name with the folder after it, changed files first.
-  await search.fill("status");
+  await field.fill("Katso @status");
+  await expect(page.getByTestId("composer-file-query")).toContainText("status");
   await expect(row(page, "scripts/status_rows.py")).toBeVisible({
     timeout: 10000,
   });
@@ -147,7 +155,7 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   await search.press("ArrowDown");
   await search.press("End");
   await search.press("ArrowRight");
-  await expect(search).toHaveValue("");
+  await expect(field).toHaveValue("Katso @");
   await expect(selectedPath(page)).toHaveAttribute(
     "data-path",
     "tests/test_status_rows.py",
@@ -169,13 +177,14 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
   // Komennot opens inside the field too; Enter puts the command first.
   await page.getByTestId("command-palette").click();
   await expect(list(page)).toHaveAttribute("data-kind", "cmd");
-  await search.fill("fix");
+  const commandSearch = page.getByTestId("command-search");
+  await commandSearch.fill("fix");
   // The command catalog loads independently of the file tree. Enter only
   // chooses a ready selection, not a future search result.
   await expect(
     list(page).getByTestId("composer-command-fix-tests"),
   ).toHaveAttribute("aria-selected", "true");
-  await search.press("Enter");
+  await commandSearch.press("Enter");
   await expect(field).toHaveValue(`/fix-tests Katso @${first} @${second} `);
   await expect(list(page)).toHaveCount(0);
   await expect(field).toBeFocused();
@@ -256,4 +265,42 @@ test("@lab composer lists in the field on a phone: no preview, boxes mark and th
   await shot(page, "marked-390");
   await page.getByTestId("composer-marked-add").click();
   await expect(field).toHaveValue("@scripts/status_rows.py @tests/ ");
+});
+
+test("@lab typed and button @ share the list without taking typing out of the message", async ({
+  page,
+}) => {
+  const field = await newConversation(page, 1440);
+  await field.fill("Before after");
+  await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(7, 7));
+  await page.getByTestId("file-picker").click();
+  await expect(field).toHaveValue("Before @after");
+  await expect(field).toBeFocused();
+  await field.pressSequentially("status");
+  await expect(row(page, "scripts/status_rows.py")).toBeVisible();
+  await expect(field).toHaveValue("Before @statusafter");
+  await field.press("Escape");
+  await expect(list(page)).toHaveCount(0);
+  await expect(field).toHaveValue("Before @statusafter");
+
+  await field.fill("Before @status");
+  await expect(row(page, "scripts/status_rows.py")).toBeVisible();
+  await expect(page.getByTestId("composer-file-query")).toContainText("status");
+  await expect(page.getByTestId("command-search")).toHaveCount(0);
+  await field.press("Tab");
+  await expect(row(page, "scripts/status_rows.py")).toHaveAttribute(
+    "data-marked",
+    "true",
+  );
+  await expect(field).toHaveValue("Before @status");
+  await field.press("Escape");
+  await expect(field).toHaveValue("Before @status");
+
+  await field.fill("Next ");
+  await page.getByTestId("command-palette").click();
+  await page.getByTestId("command-search").press("Control+p");
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue("Next @");
+  await expect(page.getByTestId("command-search")).toHaveCount(0);
+  await expect(page.getByTestId("composer-file-query")).toBeVisible();
 });

@@ -1183,8 +1183,7 @@ describe("composer lists inside the field (experimental)", () => {
   }
   const options = (view: ReturnType<typeof render>) =>
     view.getAllByRole("option").map((o) => o.getAttribute("data-path"));
-  const search = (view: ReturnType<typeof render>) =>
-    view.getByTestId("command-search") as HTMLInputElement;
+  const search = (view: ReturnType<typeof render>) => field(view);
 
   it("browses a tree with the changed folder open, opens a folder in place and adds two marked paths", async () => {
     const src = inField();
@@ -1249,7 +1248,7 @@ describe("composer lists inside the field (experimental)", () => {
     const view = render(<Field initial="" src={src} />);
     fireEvent.click(view.getByTestId("file-picker"));
     await waitFor(() => expect(options(view)).toContain("src/shadow.py"));
-    fireEvent.change(search(view), { target: { value: "AGENTS" } });
+    fireEvent.change(search(view), { target: { value: "@AGENTS" } });
     await waitFor(() =>
       expect(options(view)).toEqual([
         "src/AGENTS.md",
@@ -1278,18 +1277,18 @@ describe("composer lists inside the field (experimental)", () => {
     fireEvent.keyDown(search(view), { key: "ArrowDown" });
     fireEvent.keyDown(search(view), { key: "ArrowDown" });
     const input = search(view);
-    input.setSelectionRange(6, 6);
+    input.setSelectionRange(7, 7);
     fireEvent.keyDown(input, { key: "ArrowRight" });
     await waitFor(() =>
       expect(
         view.getByRole("option", { selected: true }).getAttribute("data-path"),
       ).toBe("docs/AGENTS.md"),
     );
-    expect(search(view).value).toBe("");
+    expect(search(view).value).toBe("@");
     expect(options(view)).toContain("docs/");
   });
 
-  it("opens Ctrl/⌘+P inside the field with a typed @token and moves to the commands", async () => {
+  it("Ctrl/⌘+P writes @ and closes an existing search without removing its text", async () => {
     const src = inField();
     const view = render(<Field initial="" src={src} />);
     const el = field(view);
@@ -1300,16 +1299,15 @@ describe("composer lists inside the field (experimental)", () => {
     await waitFor(() => expect(options(view)[0]).toBe("src/AGENTS.md"));
     fireEvent.keyDown(el, { key: "p", code: "KeyP", ctrlKey: true });
     expect(view.queryByTestId("composer-palette")).toBeNull();
-    await waitFor(() => expect(search(view).value).toBe("AGE"));
-    fireEvent.keyDown(search(view), { key: "p", code: "KeyP", ctrlKey: true });
-    await waitFor(() =>
-      expect(view.getByTestId("composer-command-review")).toBeTruthy(),
-    );
-    fireEvent.keyDown(search(view), { key: "p", code: "KeyP", ctrlKey: true });
+    expect(view.queryByRole("listbox")).toBeNull();
+    expect(el.value).toBe("lue @AGE");
+    fireEvent.change(el, { target: { value: "lue " } });
+    el.setSelectionRange(4, 4);
+    fireEvent.keyDown(el, { key: "p", code: "KeyP", ctrlKey: true });
     await waitFor(() => expect(options(view)).toContain("src/shadow.py"));
-    fireEvent.keyDown(search(view), { key: "Enter" });
-    // The typed token is replaced by the chosen path.
-    await waitFor(() => expect(field(view).value).toBe("lue @src/shadow.py "));
+    expect(el.value).toBe("lue @");
+    fireEvent.keyDown(el, { key: "Enter" });
+    await waitFor(() => expect(el.value).toBe("lue @src/shadow.py "));
   });
 
   it("keeps the selected row when a folder read adds rows above it, and ends a read that lacks its folder", async () => {
@@ -1387,7 +1385,7 @@ describe("composer lists inside the field (experimental)", () => {
     await waitFor(() => expect(field(view).value).toBe("@src/AGENTS.md "));
   });
 
-  it("completes the top match with Tab at the caret and keeps a closed list's text with Esc", async () => {
+  it("marks the top match with Tab at the caret and keeps the query with Esc", async () => {
     const src = inField();
     const view = render(<Field initial="" src={src} />);
     const el = field(view);
@@ -1397,12 +1395,13 @@ describe("composer lists inside the field (experimental)", () => {
     });
     await waitFor(() => expect(options(view)[0]).toBe("src/AGENTS.md"));
     fireEvent.keyDown(el, { key: "Tab" });
-    await waitFor(() => expect(field(view).value).toBe("@src/AGENTS.md "));
-    fireEvent.click(view.getByTestId("file-picker"));
-    await waitFor(() => expect(search(view)).toBeTruthy());
-    fireEvent.keyDown(search(view), { key: "Escape" });
+    expect(field(view).value).toBe("@AGENTS");
+    expect(view.getAllByRole("option")[0].getAttribute("data-marked")).toBe(
+      "true",
+    );
+    fireEvent.keyDown(el, { key: "Escape" });
     expect(view.queryByRole("listbox")).toBeNull();
-    expect(field(view).value).toBe("@src/AGENTS.md ");
+    expect(field(view).value).toBe("@AGENTS");
     expect(document.activeElement).toBe(field(view));
   });
 });

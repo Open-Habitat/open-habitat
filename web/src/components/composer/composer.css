@@ -450,6 +450,13 @@
 .ah-choice-pop .ah-choice-search {
   border-top: 0;
 }
+.ah-choice-query {
+  color: var(--ah-ink);
+  font: inherit;
+}
+.ah-choice-query-hint {
+  color: var(--ah-ink-3);
+}
 /* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
 .ah-choice-search svg {
   width: 16px;

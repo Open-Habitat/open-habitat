@@ -1021,7 +1021,12 @@ export function Composer({
 
   // ---- inserting text ----
   const replaceRange = useCallback(
-    (start: number, end: number, text: string) => {
+    (
+      start: number,
+      end: number,
+      text: string,
+      onFallback?: (value: string, caret: number) => void,
+    ) => {
       const el = field.current;
       if (!el) return;
       el.focus();
@@ -1030,6 +1035,7 @@ export function Composer({
       if (!document.execCommand?.("insertText", false, text)) {
         const next = el.value.slice(0, start) + text + el.value.slice(end);
         onChange(next);
+        onFallback?.(next, start + text.length);
         requestAnimationFrame(() => {
           field.current?.setSelectionRange(
             start + text.length,
@@ -1133,13 +1139,17 @@ export function Composer({
   };
   /** → and ← in the in-field file list's search line. */
   const sidewaysKey = (right: boolean) => {
-    if (open?.place !== "button") return false;
+    if (!open || open.place === "palette") return false;
     const step = sideways(flat, sel, right);
     if (!step) return false;
     if (step.do === "select")
       setOpen({ ...open, sel: step.index, selKey: rowKey(flat[step.index]) });
     else if (step.do === "toggle") toggleRow(sel);
-    else
+    else if (open.place === "caret") {
+      // Revealing a search result clears the query in its owning text token.
+      shown.current = step.path;
+      replaceRange(open.start, open.end, "@", fromText);
+    } else
       setOpen({
         ...open,
         query: "",
@@ -1151,24 +1161,33 @@ export function Composer({
     return true;
   };
 
+  const shown = useRef<string | null>(null);
   // ---- opening ----
   const fromText = (text: string, caret: number) => {
     if (!sources) return;
-    if (open && open.place !== "caret") return;
     const t = caretToken(text, caret);
+    if (open && open.place !== "caret" && !(inField && t?.kind === "file"))
+      return;
     if (!t) {
       if (open) setOpen(null);
       return;
     }
     const same =
       open?.place === "caret" && open.kind === t.kind && open.start === t.start;
+    const revealing = shown.current;
+    shown.current = null;
     // A mid-line `/` opens with nothing highlighted, so Enter still sends.
     setOpen({
       place: "caret",
       ...t,
       ...fresh,
       // Typing on in the same token keeps what was opened and marked.
-      folding: same ? open.folding : unfolded,
+      reveal: revealing ?? undefined,
+      folding: revealing
+        ? revealFolding(revealing)
+        : same
+          ? open.folding
+          : unfolded,
       marks: same ? open.marks : [],
       sel:
         t.kind === "cmd" && !t.atStart
@@ -1197,7 +1216,18 @@ export function Composer({
       return fieldCaret();
     return [value.length, value.length];
   };
+  const writeAt = () => {
+    if (open?.place === "caret" && open.kind === "file") {
+      if (!open.query) return replaceRange(open.start, open.end, "", fromText);
+      return close(true);
+    }
+    const [start, end] = fieldCaret();
+    const pad = start > 0 && !/\s/.test(value[start - 1]) ? " " : "";
+    setOpen(null);
+    replaceRange(start, end, `${pad}@`, fromText);
+  };
   const fromButton = (kind: "cmd" | "file") => {
+    if (inField && kind === "file") return writeAt();
     if (open?.place === "button" && open.kind === kind) return close(true);
     // From one in-field list to the other keeps the place in the text.
     const [start, end] =
@@ -1219,21 +1249,8 @@ export function Composer({
     if (!sources) return;
     const fromCaret = open?.place === "caret" && open.kind === "file";
     const [cs, ce] = fieldCaret();
-    // The in-field list has no palette: Ctrl/⌘+P opens its file search
-    // here, a typed @token going with it.
-    if (inField) {
-      setOpen({
-        place: "button",
-        kind: "file",
-        start: fromCaret ? open.start : cs,
-        end: fromCaret ? open.end : ce,
-        replace: fromCaret,
-        query: fromCaret ? open.query : "",
-        sel: AUTO,
-        ...fresh,
-      });
-      return;
-    }
+    // The in-field list has one file entry point: the message's @ token.
+    if (inField) return writeAt();
     setOpen({
       place: "palette",
       tab: "all",
@@ -1365,6 +1382,26 @@ export function Composer({
       return toPalette();
     }
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (inField && open?.place === "caret" && open.kind === "file") {
+      if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        return toggleMark(sel, true);
+      }
+      const el = e.currentTarget;
+      const atEnd =
+        el.selectionStart === open.end && el.selectionEnd === open.end;
+      const atStart =
+        el.selectionStart === open.start + 1 &&
+        el.selectionEnd === open.start + 1;
+      if (
+        ((e.key === "ArrowRight" && atEnd) ||
+          (e.key === "ArrowLeft" && atStart)) &&
+        sidewaysKey(e.key === "ArrowRight")
+      ) {
+        e.preventDefault();
+        return;
+      }
+    }
     if (open?.place === "caret") {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
@@ -1399,15 +1436,7 @@ export function Composer({
     if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
       e.stopPropagation();
-      // The in-field list moves between the files and the commands.
-      if (inField && open.place === "button")
-        return setOpen({
-          ...open,
-          kind: open.kind === "cmd" ? "file" : "cmd",
-          query: "",
-          sel: AUTO,
-          ...fresh,
-        });
+      if (inField && open.place === "button") return writeAt();
       if (open.place === "palette") {
         const tabs: PaletteTab[] = ["all", "changed", "cmd"];
         const tab = tabs[(tabs.indexOf(open.tab) + 1) % tabs.length];
@@ -2067,7 +2096,13 @@ export function Composer({
           }}
           onKeyDown={onFieldKey}
           onKeyUp={(e) => {
-            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+            if (
+              ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key) &&
+              !(
+                open?.place === "caret" &&
+                e.currentTarget.selectionStart === open.end
+              )
+            )
               fromText(e.currentTarget.value, e.currentTarget.selectionStart);
           }}
           onClick={(e) =>

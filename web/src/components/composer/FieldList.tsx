@@ -86,6 +86,7 @@ export function FieldList({
     /Mac|iPhone|iPad/.test(navigator.platform)
       ? "⌘"
       : "Ctrl";
+
   return (
     // biome-ignore lint/a11y: a press inside the list keeps the focus where typing goes; the keys stay with the field or the search.
     <div
@@ -130,6 +131,13 @@ export function FieldList({
             onKeyDown={onKeyDown}
           />
         </label>
+      ) : files ? (
+        <div className="ah-choice-search" data-testid="composer-file-query">
+          <Icon name="at" />
+          <span className={query ? "ah-choice-query" : "ah-choice-query-hint"}>
+            {query || t.typeAfterAt}
+          </span>
+        </div>
       ) : null}
       <div className="ah-choice-body">
         <ChoiceList
@@ -181,23 +189,16 @@ export function FieldList({
         </div>
       ) : null}
       <div className="ah-choice-keys">
-        {from === "caret" && selected < 0 ? (
+        {from === "caret" && !files && selected < 0 ? (
           <>
             {k("Tab")} {t.keyAddTop} · {k("↓")} {t.keySelects} · {k("Enter")}{" "}
             {t.keySendsAsIs} · {k("Esc")} {t.keyClose}
           </>
-        ) : from === "caret" ? (
+        ) : from === "caret" && !files ? (
           <>
             {k("↑")}
             {k("↓")} {t.keySelect} · {k("Tab")} {t.keyAddTop} · {k("Enter")}{" "}
             {t.keyInsert} · {k("Esc")} {t.keyClose}
-            {files ? (
-              <>
-                {" "}
-                · {k(mod)}
-                {k("P")} {t.keySearchAndSeveral}
-              </>
-            ) : null}
           </>
         ) : files ? (
           <>

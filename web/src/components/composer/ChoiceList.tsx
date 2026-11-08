@@ -292,7 +292,13 @@ export function ChoiceList({
     ];
   });
   return (
-    <div className="ah-choice-list" role="listbox" id={id} aria-label={label}>
+    <div
+      className="ah-choice-list"
+      role="listbox"
+      id={id}
+      aria-label={label}
+      tabIndex={checks ? 0 : undefined}
+    >
       {index < 0 ? (
         <div className="ah-choice-empty" role="presentation">
           {emptyText}
