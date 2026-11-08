@@ -8,7 +8,20 @@ import {
   useRef,
   useState,
 } from "react";
-import { uploadAttachment } from "../../../../web/src/app/attachments";
+// proto-attachment-refusal: the round's refusal state and its three
+// presentations replace uploadError (refusal.tsx).
+import {
+  countLimit,
+  fileLimit,
+  messageLimit,
+  type Presentation,
+  RefusalBanner,
+  RefusalChips,
+  RefusalLine,
+  type Refused,
+  UploadRefused,
+  uploadWithReason,
+} from "./refusal";
 import type {
   CommandList,
   FileList,
@@ -548,7 +561,10 @@ export function Composer({
   onDictating,
   waiting,
   field: purpose,
+  refusal,
 }: {
+  /** proto-attachment-refusal: how a refused file is shown. */
+  refusal: Presentation;
   value: string;
   csrf?: string;
   modelPicker?: ReactNode;
@@ -656,7 +672,15 @@ export function Composer({
     ],
   );
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
+  // Every refused file with its reason, newest drop only. A drop is checked
+  // file by file: what fits goes in, the rest is named (today the first
+  // refusal ends the whole drop and later files are silently skipped).
+  const [refused, setRefused] = useState<Refused[]>([]);
+  // What each attachment uploaded from this page weighs, so the 100 MiB a
+  // message carries is checked when a file is added, not first at send. An
+  // attachment restored from an earlier page counts as 0 here; the host
+  // still refuses that send.
+  const sizes = useRef(new Map<string, number>());
   const uploadController = useRef<AbortController | null>(null);
   useEffect(() => blockAutomaticReload(() => !!uploadController.current), []);
   const picker = useRef<HTMLInputElement>(null);
@@ -671,43 +695,58 @@ export function Composer({
   // the focus of a person using it.
   const attachable = availability.state === "enabled" || sendWhenReady;
   const addFiles = useCallback(
-    async (files: File[], focus: boolean) => {
+    async (files: File[], focus: boolean, keep: Refused[] = []) => {
       if (!csrf || uploadController.current || !attachable) return;
-      if (
-        files.length > 30 ||
-        new Set(
-          draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
-            [],
-        ).size +
-          files.length >
-          30
-      ) {
-        setUploadError(t.tooManyFiles);
-        return;
+      const inDraft = new Set(
+        draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ?? [],
+      );
+      let room = countLimit - inDraft.size;
+      let used = [...inDraft].reduce((sum, url) => sum + (sizes.current.get(url) ?? 0), 0);
+      const out: Refused[] = [...keep];
+      const fits: File[] = [];
+      for (const file of files) {
+        const name = file.name;
+        if (!file.size) out.push({ name, size: 0, reason: "empty" });
+        else if (file.size > fileLimit) out.push({ name, size: file.size, reason: "large" });
+        else if (room <= 0) out.push({ name, size: file.size, reason: "count" });
+        else if (used + file.size > messageLimit)
+          out.push({ name, size: file.size, reason: "total", used });
+        else {
+          fits.push(file);
+          room--;
+          used += file.size;
+        }
       }
+      setRefused(out);
+      if (!fits.length) return;
       const controller = new AbortController();
       uploadController.current = controller;
       setUploading(true);
-      setUploadError("");
       try {
-        for (const file of files) {
-          const uploaded = await uploadAttachment(
-            file,
-            csrf,
-            controller.signal,
-          );
+        for (let index = 0; index < fits.length; index++) {
+          const file = fits[index];
+          let uploaded: Awaited<ReturnType<typeof uploadWithReason>>;
+          try {
+            uploaded = await uploadWithReason(file, csrf, controller.signal);
+          } catch (error) {
+            if (controller.signal.aborted) return;
+            const reason = error instanceof UploadRefused ? error.reason : "failed";
+            // A full space or disk refuses the rest of the drop as well.
+            const rest = reason === "quota" || reason === "disk" ? fits.slice(index) : [file];
+            for (const f of rest) out.push({ name: f.name, size: f.size, reason, file: f });
+            setRefused([...out]);
+            if (rest.length > 1) break;
+            continue;
+          }
           if (controller.signal.aborted) return;
+          const url = `/api/v1/attachments/${uploaded.id}`;
+          sizes.current.set(url, uploaded.size);
           const current = draft.current;
           const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
           draft.current = { ...current, value: next };
           if (focus) attachFocus.current = uploaded.reference;
           current.onChange(next);
         }
-      } catch (error) {
-        if (!controller.signal.aborted)
-          setUploadError(
-            error instanceof Error ? error.message : t.uploadFailed,
-          );
       } finally {
         if (uploadController.current === controller) {
           uploadController.current = null;
@@ -715,8 +754,14 @@ export function Composer({
         }
       }
     },
-    [csrf, attachable, t],
+    [csrf, attachable],
   );
+  const retry = (item: Refused) => {
+    if (!item.file) return;
+    void addFiles([item.file], false, refused.filter((r) => r !== item && r.reason !== "failed"));
+  };
+  const dismiss = (index?: number) =>
+    setRefused(index === undefined ? [] : refused.filter((_, i) => i !== index));
   useEffect(() => {
     if (csrf) setUploading(false);
     return () => {
@@ -1751,6 +1796,9 @@ export function Composer({
         />
       ) : null}
       <DictationCeiling view={dictation.view} />
+      {refusal === "chips" ? (
+        <RefusalChips refused={refused} onDismiss={dismiss} onRetry={retry} />
+      ) : null}
       <AttachmentChips
         attachments={attachments}
         onRemove={fieldDisabled ? undefined : removeAttachment}
@@ -1771,7 +1819,11 @@ export function Composer({
             }}
           />
           {uploading ? <p role="status">{t.savingAttachment}</p> : null}
-          {uploadError ? <p role="alert">{uploadError}</p> : null}
+          {refusal === "banner" ? (
+            <RefusalBanner refused={refused} onDismiss={dismiss} onRetry={retry} />
+          ) : refusal === "line" ? (
+            <RefusalLine refused={refused} onDismiss={dismiss} onRetry={retry} />
+          ) : null}
         </>
       ) : null}
       <div

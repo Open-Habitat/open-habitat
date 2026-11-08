@@ -7,14 +7,14 @@ status: open
 priority: normal
 lane: attachment-refusal-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: attachment refusal message, look and wording
 
 ## Description
 
-Jari 8.11.2026, test server (`evidence/jari-2026-11-08-refusal.png`): attaching
+Jari 8.11.2026, test server (`evidence/jari-2026-11-08-refusal.avif`): attaching
 a too-large file shows a bare line of text above the composer, *Valitse 1
 tavun – 20 MiB:n tiedosto.* Its look does not match the other error messages
 (the shared `web/src/components/WarningBanner.tsx`), and the wording is
