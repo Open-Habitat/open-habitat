@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
@@ -60,3 +60,13 @@ place should be the same one that list uses. 1440 and 390, light and dark.
 - miten kohteen saa auki omaan välilehteen;
 - miten kohteen voi asettaa julkiseksi: Jari ehdottaa samaa tapaa kuin
   HTML-näkymissä nyt (*Julkinen*-kytkin ja jaettava osoite), kaikille lajeille.
+
+## Decision (Jari 2026-11-08, kierros 2)
+
+**A Viereen**: kohde avautuu oikean reunan paneeliin. Lisäksi:
+
+- saman kortin painaminen uudelleen sulkee paneelin (nyt ei sulje);
+- julkaisu ja muut toiminnot (oma välilehti, lataus, jakaminen) ovat kortissa
+  hiiren alla näkyvinä painikkeina (hover). Riffataan (kierros 3).
+- [x] round 2: riffs on Kortti
+- [ ] round 3: beside, card press toggles the panel, hover actions on the card (publish, own tab, download), view offer and questions for Jari
