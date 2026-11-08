@@ -111,7 +111,7 @@ async function alignedWithComposer(page: Page) {
   const [warning, field] = await page.evaluate(() =>
     [
       ".ah-actionable-notices > .ah-warning",
-      ".ah-conversation-frame > .ah-composer .ah-cbox",
+      ".ah-conversation-frame .ah-composer-stack > .ah-composer .ah-cbox",
     ].map((selector) => {
       const box = document.querySelector(selector)?.getBoundingClientRect();
       return box ? [Math.round(box.left), Math.round(box.right)] : [];

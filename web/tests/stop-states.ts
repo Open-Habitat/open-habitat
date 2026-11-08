@@ -41,7 +41,9 @@ export async function recordStopStates(page: Page) {
           )?.value ?? "",
         height: Math.round(
           document
-            .querySelector(".ah-conversation-frame > .ah-composer")
+            .querySelector(
+              ".ah-conversation-frame .ah-composer-stack > .ah-composer",
+            )
             ?.getBoundingClientRect().height ?? 0,
         ),
         running: !!document.querySelector(

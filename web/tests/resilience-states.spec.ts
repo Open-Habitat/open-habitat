@@ -327,7 +327,9 @@ test("@resilience active conversation stays readable and blocks writes during sn
   expect(row.rightGap).toBeLessThan(16);
   await expect(page.getByTestId("conversation-stop")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
-  const composer = page.locator(".ah-conversation-frame > .ah-composer");
+  const composer = page.locator(
+    ".ah-conversation-frame .ah-composer-stack > .ah-composer",
+  );
   await expect(composer).toBeVisible();
   expect(
     await composer.evaluate((node) => node.getBoundingClientRect().bottom),

@@ -1495,7 +1495,7 @@ details[open] > summary:not([class])::before {
 }
 /* A warning above the composer lines up with the composer's field. */
 .ah-actionable-notices > .ah-warning {
-  margin: 0 var(--ah-column-pad-inline) var(--ah-s2);
+  margin: 0 0 var(--ah-s2);
 }
 .ah-creation-notices:empty {
   display: none;
@@ -4516,13 +4516,14 @@ details[open] > summary:not([class])::before {
     height: var(--ah-visible-height, 100dvh);
     min-height: 0;
   }
-  .ah-conversation-frame > .ah-recap {
+  .ah-conversation-frame .ah-composer-stack > .ah-recap {
     max-height: min(20vh, calc(var(--ah-visible-height, 100dvh) * 0.2));
   }
   /* While typing, the overview steps aside to leave room above the keyboard.
      The phone header is already compact, so its facts remain available. */
   .ah-app-shell[data-keyboard]
     .ah-conversation-frame:has(.ah-composer :focus)
+    .ah-composer-stack
     > .ah-recap {
     display: none;
   }

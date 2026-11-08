@@ -715,7 +715,9 @@ test.describe(() => {
       Array.from({ length: 60 }, (_, i) => `Luonnoksen rivi ${i}`).join("\n"),
     );
     const stream = page.getByTestId("conversation-stream");
-    const composer = page.locator(".ah-conversation-frame > .ah-composer");
+    const composer = page.locator(
+      ".ah-conversation-frame .ah-composer-stack > .ah-composer",
+    );
     // The draft stays reachable inside the field, and the conversation
     // keeps at least as much height as the composer takes.
     const holds = async () =>

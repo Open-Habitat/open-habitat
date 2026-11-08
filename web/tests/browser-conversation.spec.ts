@@ -27,7 +27,9 @@ async function expectPhoneComposerWithinViewport(
   // into its menu, which the desktop steps after this check do not open.
   const previous = page.viewportSize();
   await page.setViewportSize({ width: 390, height: 844 });
-  const composer = page.locator(".ah-conversation-frame > .ah-composer");
+  const composer = page.locator(
+    ".ah-conversation-frame .ah-composer-stack > .ah-composer",
+  );
   await expect(composer).toBeVisible();
   const bounds = await composer.evaluate((element) => {
     const box = element.getBoundingClientRect();
