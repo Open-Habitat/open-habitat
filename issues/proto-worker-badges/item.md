@@ -1,13 +1,14 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 lane: worker-badges-proto
 lane_seq: 1
+closed: 2026-11-08
 ---
 
 # Prototype: the worker badge set (state and whether someone waits)
@@ -25,3 +26,11 @@ ne erottuvat toisistaan. Tunnistusvika korjataan erikseen
 ## Acceptance Criteria
 
 - [x] kierros 1: nykyinen merkistö, kolme suuntaa, näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-08, kierros 1)
+
+**1 Pallot.** Kysymyksiin 2 ja 3 suosituksen mukaan (kapellimestari):
+*ei odoteta* on merkin puuttuminen, ja *odottaa sinua* on kaikkialla
+sivupalkin keltainen. Lisäksi Jarin toive: prototyypin merkistötaulukko
+(mitä kukin merkki tarkoittaa) näkyy myös Selitystilassa (`explain-mode`).
+Toteutus: `worker-badges-pallot`.

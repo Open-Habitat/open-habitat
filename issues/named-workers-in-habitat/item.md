@@ -50,3 +50,12 @@ kertoo henkilölle.
 ## Acceptance Criteria
 
 - [ ] nimetty worker näkyy ja herättää pääkeskustelun kokeellisena ominaisuutena; testit daemonin luennasta ja herätyksestä synteettisellä Taskfleet-tilalla
+
+## Decision (Jari 2026-11-08): pääkeskustelun päättyminen
+
+- Pääkeskustelun Pi päättyy: avustajat jäävät odottamaan, ja niiden seuraava
+  raportti herättää keskustelun kuten nyt.
+- Pääkeskustelu arkistoidaan: avustajat arkistoidaan sen mukana (valmis työ
+  yhdistetään, keskeneräinen säilyy haarana, arkistointi kertoo tästä).
+- Pääkeskustelu palautetaan: avustajat palaavat arkistoituina, eli ne ovat
+  taas näkyvissä ja palautettavissa, mutta niitä ei käynnistetä heti.

@@ -1,15 +1,16 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-markdown-block-preview
 lane: markdown-preview-proto
 lane_seq: 1
+closed: 2026-11-08
 ---
 
 # Prototype: open a Markdown code block in the editor's preview
@@ -38,3 +39,9 @@ joukossa (kopioinnin ja kielimerkinnän rinnalla). Kierros 2 riffaa sitä.
 
 - [x] kierros 1: tämänhetkinen tila ja kolme suuntaa, näkymätarjous ja kysymykset Jarille
 - [ ] kierros 2: lohkon oman painikkeen kolme riffiä (paikallaan, editoriin, valikko), näkymätarjous ja kysymykset Jarille
+
+## Decision (Jari 2026-11-08, kierros 2)
+
+**1 Paikallaan**: silmä vaihtaa lohkon renderöidyksi samaan kohtaan ja
+takaisin. Kysymyksiin 2 ja 3 kierroksen suosituksen mukaan (kapellimestari).
+Toteutus: `markdown-block-preview`.

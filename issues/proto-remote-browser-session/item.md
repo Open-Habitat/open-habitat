@@ -1,14 +1,15 @@
 ---
 created: 2026-11-06
-updated: 2026-11-07
+updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@research-remote-browser-session']
 preparation: pending
 lane: remote-browser-proto
 lane_seq: 1
+closed: 2026-11-08
 ---
 
 # Prototype: open your server browser, sign in, hand it to the agent
@@ -64,3 +65,12 @@ henkilöä (esim. palaute tai MFA), pyyntö luki kaikkien ikkunoiden alla
 hassusti; sen pitää kuulua sille ikkunalle. Tarkempi katselu (esikatselun
 avaaminen) ei saa ottaa ohjausta agentilta: katselu ja ohjauksen ottaminen
 ovat eri tekoja.
+
+## Decision (Jari 2026-11-08, kierros 4)
+
+**2 Esiin**: pyytävä ikkuna nousee palkissa isoksi ja pyyntö on sen vieressä;
+*Ota ohjaus ja syötä koodi* ottaa ohjauksen yhdellä painalluksella, *Katso
+ensin* vain katsoo. Ohjaus koko selaimelle, agentti odottaa (suositus;
+ikkunakohtainen ohjaus ei kuulu ensimmäiseen versioon). Seuraavaksi
+toteutus kokeellisena ominaisuutena, jotta Jari voi kokeilla sitä:
+`remote-browser-experimental`.

@@ -79,4 +79,19 @@ tarvitaan häneltä; peitä tunnukset kuten kierroksella 3.
 - [x] kierros 1: tämänhetkiset tasot ja kolme suuntaa, näkymätarjous ja kysymykset Jarille; Graphin tekniset rajat result.md:ssä
 - [x] kierros 2: kolme riffiä Ruudukosta (vertailutaulukko, avautuva ruudukko, erillinen ikkuna), solut ilman oikeutta kieltomuodossa; näkymätarjous ja kysymykset Jarille
 - [x] kierros 3: yksi työnkulku neljälle Entra-sovellukselle kolmena riffinä (sovellus kerrallaan, vaihe kerrallaan, yksi komento) ja taulukko auki ennen asetusta, avattavissa sen jälkeen; näkymätarjous ja kysymykset Jarille
-- [ ] Jari valitsee kierroksen 3 riffin
+- [x] Jari valitsee kierroksen 3 riffin
+- [ ] kierros 4: sovellus kerrallaan pelkkänä klikkauspolkuna ilman Cloud Shelliä, näkymätarjous ja kysymykset Jarille
+
+## Jari 2026-11-08: Cloud Shell ei aukea
+
+Jari yritti avata Cloud Shellin Azure-portaalista (yläpalkin `>_`-kuvake):
+*Welcome to Azure Cloud Shell* → Bash → **No valid subscriptions found · You
+need an Azure subscription to use Azure cloud Shell**
+(`evidence/jari-2026-11-08-cloud-shell-{1,2,3}.png`). Tavallisella M365-tenantilla
+ei ole Azure-tilausta, joten kierroksen 3 riffi *3 Yksi komento* ei toimi
+juuri niille ylläpitäjille, joille ohje on tehty. Klikkaamalla Jari pystyy
+tekemään integraation (SharePoint onnistui).
+
+Kapellimestarin päätös: Cloud Shell -reitti poistetaan ohjeesta; ohjattu
+asetus on **1 Sovellus kerrallaan** klikkauspolkuna olemassa olevin oikein
+kuvakaappauksin. Kierros 4 näyttää sen ilman Cloud Shelliä.
