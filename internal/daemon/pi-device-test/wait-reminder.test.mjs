@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
-import companion, { inventoryWaitRuns, liveWaitRuns, remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
+import companion, { foregroundWaitRuns, inventoryWaitRuns, liveWaitRuns, remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
 
 const ids = { a: '01m531x6y92ggdqcmb1exzmn10', b: '01m531x6y92ggdqcmb1exzmn11', c: '01m531x6y92ggdqcmb1exzmn12', foreign: '01m531x6y92ggdqcmb1exzmn13', asks: '01m531x6y92ggdqcmb1exzmn14' };
 const run = (id, extra = {}) => ({ run_id: id, kind: 'spinoff', status: 'running', title: `t-${id.slice(-2)}`, created_at: `2026-10-27T10:00:${id.slice(-2)}Z`, source_repo: '/w', created_by_session: { harness: 'pi', session_id: 's1' }, created_by_run_id: null, ...extra });
@@ -33,8 +33,8 @@ test('expanded waits use live argv, with bounded unknown rather than false cover
     await writeFile(source, '#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n');
     execFileSync('cc', [source, '-o', binary]);
     await writeFile(join(directory, 'active.txt'), `${ids.a}\n`);
-    const command = `"${binary}" run wait $(tr '\\n' ' ' < active.txt) --any; :`;
-    child = spawn('/bin/sh', ['-c', command], { cwd: directory, detached: true, stdio: 'ignore' });
+    const command = `cd "${directory}" && taskfleet run wait $(tr '\\n' ' ' < active.txt) --any --output json 2>&1 | grep . | head -4`;
+    child = spawn('/bin/bash', ['-c', command], { env: { ...process.env, PATH: `${directory}:${process.env.PATH}` }, detached: true, stdio: 'ignore' });
     // Wait for the shell to finish expanding and start the native executable.
     let observed;
     for (let n = 0; n < 100; n++) {
@@ -71,6 +71,30 @@ test('expanded waits use live argv, with bounded unknown rather than false cover
     if (child?.exitCode === null && child?.signalCode === null) { process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit'); }
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('foreground scans retry a completed tool, not an unrelated addition, and stay bounded', async () => {
+  for (const ended of ['other', 'wait']) {
+    const tools = new Set(['wait', 'other']);
+    let reads = 0;
+    const found = await foregroundWaitRuns(tools, [{ pid: 123 }], async (_pid, { exclude }) => {
+      assert.ok(exclude.has(123));
+      if (++reads === 1) { tools.delete(ended); return [ids.a]; }
+      return ended === 'wait' ? [] : [ids.a];
+    });
+    assert.equal(reads, 2);
+    assert.deepEqual(found, ended === 'wait' ? [] : [ids.a]);
+  }
+  const tools = new Set(['wait']);
+  let reads = 0;
+  assert.deepEqual(await foregroundWaitRuns(tools, [], async () => {
+    reads++; tools.add('other'); return [ids.a];
+  }), [ids.a]);
+  assert.equal(reads, 1);
+  assert.deepEqual(await foregroundWaitRuns(tools, [], async () => {
+    tools.delete([...tools][0]); return [ids.a];
+  }), [], 'repeated completion never publishes stale coverage');
+  assert.deepEqual(await foregroundWaitRuns(tools, [], () => { throw new Error('no active tool must not scan'); }), []);
 });
 
 test('a reminder once per uncovered set, again after a wait for it has returned', () => {

@@ -53,7 +53,7 @@ export function waitOperands(command) {
 // Inspect only this waking process tree, never a host-wide process inventory.
 // Pin each proc directory before checking its UID: PID reuse must not redirect
 // the subsequent argv read to another person's process. No argv is persisted.
-export async function liveWaitRuns(pid, { procRoot = '/proc', uid = process.getuid?.() } = {}) {
+export async function liveWaitRuns(pid, { procRoot = '/proc', uid = process.getuid?.(), exclude = new Set() } = {}) {
   if (!Number.isSafeInteger(pid) || pid <= 0 || uid === undefined) return null;
   const queue = [pid], seen = new Set(), ids = new Set();
   const deadline = Date.now() + 100;
@@ -72,7 +72,7 @@ export async function liveWaitRuns(pid, { procRoot = '/proc', uid = process.getu
     while (queue.length) {
       if (Date.now() > deadline || seen.size >= 64) return null;
       const current = queue.shift();
-      if (seen.has(current)) continue;
+      if (seen.has(current) || exclude.has(current)) continue;
       seen.add(current);
       const dir = await open(`${procRoot}/${current}`, 'r');
       try {
@@ -121,6 +121,17 @@ export async function inventoryWaitRuns(records) {
     result.push(ids.length <= 200 ? ids : []);
   }
   return result;
+}
+// A tool can finish while procfs is being read. Retry once rather than losing
+// a continuing wait to an unrelated parallel tool's completion. Additions do
+// not invalidate a read; repeated completions remain bounded and unknown.
+export async function foregroundWaitRuns(tools, records, scan = liveWaitRuns) {
+  for (let attempt = 0; attempt < 2 && tools.size; attempt++) {
+    const started = [...tools];
+    const ids = await scan(process.pid, { exclude: new Set(records.map(p => p.pid)) });
+    if (started.every(id => tools.has(id))) return ids && ids.length <= 200 ? ids : [];
+  }
+  return [];
 }
 // What the branch says about process lifetimes and earlier catch-ups. Same
 // rule as the daemon's tray (process_interrupted_linux.go): a start without an
@@ -374,6 +385,7 @@ export function waitReminder(uncovered, reminded) {
 export default function (pi) {
   let server, context, extensionVersion = null, shuttingDown = false;
   const launchedAt = Date.now();
+  const foregroundTools = new Set();
   // The rest belongs to this launch only. Left in the environment it would
   // pass to every tool, tmux window and nested Pi this one starts, each of
   // which would then claim the same stop as its own.
@@ -464,7 +476,11 @@ export default function (pi) {
       if (!Array.isArray(records) || records.length > 200) throw new Error('inventory_unavailable');
       const branch = context.sessionManager.getBranch();
       const runIDs = await inventoryWaitRuns(records);
-      return { records: records.map((p, i) => ({
+      // Bash tools do not belong to pi-processes. While one is executing,
+      // observe this Pi's descendants, excluding all managed background trees:
+      // those have their own wake policy and must not gain a foreground mark.
+      const foreground_run_ids = await foregroundWaitRuns(foregroundTools, records);
+      return { foreground_run_ids, records: records.map((p, i) => ({
         id: p.id, name: p.name, command: String(p.command ?? '').slice(0, 8192),
         startTime: p.startTime, endTime: p.endTime, status: p.status,
         exitCode: p.exitCode, signal: p.signal, endReason: p.endReason,
@@ -522,6 +538,13 @@ export default function (pi) {
   };
   pi.on('tool_call', event => {
     if (shuttingDown && event.toolName === 'process' && event.input?.action === 'start') return { block: true, reason: 'Pi is shutting down' };
+  });
+  pi.on('tool_execution_start', event => {
+    if (event.toolName !== 'bash') return;
+    foregroundTools.add(event.toolCallId);
+  });
+  pi.on('tool_execution_end', event => {
+    foregroundTools.delete(event.toolCallId);
   });
   pi.events.on('processes:changed', () => hint('process.changed'));
   pi.events.on('processes:output_changed', e => hint('process.output', e.id));

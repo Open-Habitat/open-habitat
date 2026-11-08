@@ -166,7 +166,8 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
         availability: "available",
         unavailable_reason: null,
         interrupted: [],
-        processes: [wait("a", id.waited), wait("b", id.elsewhere)],
+        processes: [wait("a", id.waited)],
+        foreground_run_ids: [id.elsewhere],
       },
     });
   });
@@ -208,7 +209,15 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
       row(r.title).getByTestId("spinoff-facts"),
       `${r.title} says what it is`,
     ).not.toBeEmpty();
-  // Waited rows carry the stop; the unwaited and parent-waiting do not.
+  // Background waits carry their stop; foreground waits use the agent's stop.
+  await expect(row("Hakuindeksin päivitys")).toHaveAttribute(
+    "data-waited",
+    "true",
+  );
+  await expect(
+    row("Hakuindeksin päivitys").getByTestId("stop-wait"),
+  ).toHaveCount(0);
+  // Unwaited and parent-waiting rows have no wait process to stop.
   const waited = row("Kastelun ajastus");
   await expect(waited).toHaveAttribute("data-waited", "true");
   await expect(waited.getByTestId("stop-wait")).toHaveCount(1);

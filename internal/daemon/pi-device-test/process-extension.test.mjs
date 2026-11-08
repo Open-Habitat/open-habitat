@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { spawn, execFileSync } from 'node:child_process';
+import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import companion, { waitOperands, waitRuns } from '../process-extension.mjs';
+import companion, { liveWaitRuns, waitOperands, waitRuns } from '../process-extension.mjs';
 
 // Shared with the daemon's TestTaskfleetWaitSharedGrammar so the two grammars agree.
 test('waitRuns recognises exactly the daemon\'s Taskfleet wait shapes', async () => {
@@ -126,6 +128,50 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
     await rm(directory, { recursive: true, force: true });
   }
 });
+test('foreground bash pipeline exposes expanded waits without inventing a background process', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'oh-pipe-'));
+  const path = join(directory, 'p.sock');
+  const previous = process.env.OH_PROCESS_SOCKET;
+  process.env.OH_PROCESS_SOCKET = path;
+  const hooks = new Map();
+  let records = [], child;
+  companion({ on: (k, f) => hooks.set(k, f), events: {
+    on() {}, emit(k, q) { if (k === 'processes:request:list') q.reply(records); },
+  } });
+  const id = '01m531x6y92ggdqcmb1exzmn10';
+  try {
+    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [] } });
+    await writeFile(join(directory, 'wait.c'), '#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n');
+    execFileSync('cc', [join(directory, 'wait.c'), '-o', join(directory, 'taskfleet')]);
+    await writeFile(join(directory, 'active.txt'), `${id}\n`);
+    const command = `cd "${directory}" && taskfleet run wait $(tr '\\n' ' ' < active.txt) --any --output json 2>&1 | grep . | head -4`;
+    // Pi emits execution_start before the shell is spawned.
+    await hooks.get('tool_execution_start')({ toolName: 'bash', toolCallId: 'call1' });
+    child = spawn('/bin/bash', ['-c', command], { env: { ...process.env, PATH: `${directory}:${process.env.PATH}` }, detached: true, stdio: 'ignore' });
+    let observed;
+    for (let n = 0; n < 100; n++) {
+      observed = await liveWaitRuns(child.pid);
+      if (observed?.length) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.deepEqual(observed, [id], 'the argv scanner already sees the expanded pipeline');
+    // Foreground bash has no pi-processes record: the old inventory lost it here.
+    const list = await request(path, { op: 'list' });
+    assert.deepEqual(list.data.foreground_run_ids, [id]);
+    assert.deepEqual(list.data.records, [], 'no fake process row or stop target');
+    records = [{ pid: child.pid, command, status: 'running' }];
+    assert.deepEqual((await request(path, { op: 'list' })).data.foreground_run_ids, [], 'managed backgrounds are not foreground waits');
+    records = [];
+    await hooks.get('tool_execution_end')({ toolName: 'bash', toolCallId: 'call1' });
+    assert.deepEqual((await request(path, { op: 'list' })).data.foreground_run_ids, [], 'a surviving child after tool completion is not a foreground wait');
+  } finally {
+    if (child?.exitCode === null && child?.signalCode === null) { process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit'); }
+    hooks.get('session_shutdown')();
+    if (previous === undefined) delete process.env.OH_PROCESS_SOCKET; else process.env.OH_PROCESS_SOCKET = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('missing owner is unavailable, not an empty inventory', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'oh-companion-test-'));
   const path = join(directory, 'p.sock');

@@ -134,6 +134,29 @@ func TestProcessInventoryExpandedWaitIDs(t *testing.T) {
 	}
 }
 
+func TestProcessInventoryForegroundWaitIDs(t *testing.T) {
+	const run = "01m531x6y92ggdqcmb1exzmn10"
+	for _, ids := range [][]string{{run}, {}, {"not-a-run"}, make([]string, 201)} {
+		p := testProcessPeer(t, os.Getpid(), func(c net.Conn) {
+			var q map[string]any
+			if json.NewDecoder(c).Decode(&q) != nil {
+				return
+			}
+			json.NewEncoder(c).Encode(map[string]any{"ok": true, "data": map[string]any{"protocol": 1, "records": []any{}, "foreground_run_ids": ids}})
+		})
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		inv := p.inventory(ctx)
+		cancel()
+		valid := len(ids) == 0 || len(ids) == 1 && ids[0] == run
+		if (inv.Availability == "available") != valid {
+			t.Fatalf("inventory: %+v", inv)
+		}
+		if valid && (!reflect.DeepEqual(inv.ForegroundRunIDs, ids) || len(inv.Processes) != 0) {
+			t.Fatalf("lost foreground wait or invented process: %+v", inv)
+		}
+	}
+}
+
 func TestProcessSocketInventoryAndStaleFence(t *testing.T) {
 	requests := make(chan map[string]any, 4)
 	p := testProcessPeer(t, os.Getpid(), func(c net.Conn) {

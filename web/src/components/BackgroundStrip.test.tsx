@@ -40,6 +40,37 @@ describe("background strip facts", () => {
     process_token: "pt_wait",
     run_ids: ["01m53wnktnxb4w2xgdd79a66de"],
   });
+  it("marks foreground tool waits without offering a background process stop", () => {
+    const own = run({});
+    const other = run({ run_id: "01m53wnje1f3ybcw17qsx2sysd" });
+    const f = backgroundFacts({
+      runs: [own, other],
+      spinoffsStale: false,
+      processes: [],
+      foregroundRunIDs: [own.run_id],
+      interrupted: 0,
+      failed: false,
+      agentIdle: false,
+    });
+    expect(f.spin.marks.map((i) => [i.run.run_id, i.waited])).toEqual([
+      [own.run_id, true],
+      [other.run_id, false],
+    ]);
+    expect(f.spin.marks[0].wait).toBeUndefined();
+    expect(f.proc.records).toEqual([]);
+    expect(facts([own], [], false).spin.marks[0].waited).toBe(false);
+    expect(
+      backgroundFacts({
+        runs: [run({ state: "merged" })],
+        spinoffsStale: false,
+        processes: [],
+        foregroundRunIDs: [own.run_id],
+        interrupted: 0,
+        failed: false,
+        agentIdle: false,
+      }).spin.marks.every((i) => !i.waited),
+    ).toBe(true);
+  });
   it("shows a taskfleet wait on its spinoff, never as a process", () => {
     const f = facts([run({})], [wait, proc({ wakes_agent: false })]);
     expect(f.proc.records.map((p) => p.id)).toEqual(["proc_example"]);

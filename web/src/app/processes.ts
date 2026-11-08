@@ -82,6 +82,7 @@ export interface InterruptedProcess {
   run_ids: string[];
 }
 export interface ProcessInventory {
+  foreground_run_ids?: string[];
   schema_version: 1;
   owner_generation: string | null;
   availability: "available" | "unavailable";

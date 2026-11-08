@@ -151,11 +151,12 @@ type processRecord struct {
 	RunIDs    []string         `json:"run_ids"`
 }
 type processInventory struct {
-	Schema       int             `json:"schema_version"`
-	Generation   *string         `json:"owner_generation"`
-	Availability string          `json:"availability"`
-	Reason       *string         `json:"unavailable_reason"`
-	Processes    []processRecord `json:"processes"`
+	ForegroundRunIDs []string        `json:"foreground_run_ids,omitempty"`
+	Schema           int             `json:"schema_version"`
+	Generation       *string         `json:"owner_generation"`
+	Availability     string          `json:"availability"`
+	Reason           *string         `json:"unavailable_reason"`
+	Processes        []processRecord `json:"processes"`
 	// Interrupted is read from the native branch and needs no running Pi.
 	Interrupted []interruptedProcess `json:"interrupted"`
 }
@@ -178,8 +179,9 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 	default:
 	}
 	var reply struct {
-		Records  []nativeProcess `json:"records"`
-		Protocol int             `json:"protocol"`
+		Records          []nativeProcess `json:"records"`
+		Protocol         int             `json:"protocol"`
+		ForegroundRunIDs []string        `json:"foreground_run_ids"`
 	}
 	if err := p.processRequest(ctx, map[string]string{"op": "list"}, &reply); err != nil {
 		if err.Error() == "duplicate_owner" {
@@ -192,6 +194,14 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 	}
 	if reply.Protocol != 1 || reply.Records == nil || len(reply.Records) > 200 {
 		return result
+	}
+	if len(reply.ForegroundRunIDs) > 200 {
+		return result
+	}
+	for _, id := range reply.ForegroundRunIDs {
+		if !taskfleetIDPattern.MatchString(id) {
+			return result
+		}
 	}
 	records := make([]processRecord, 0, len(reply.Records))
 	for _, r := range reply.Records {
@@ -238,7 +248,7 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 			records[i].Spinoff = readProcessSpinoffs(ctx, home, env, records[i].RunIDs, nativeSession{id: p.processParentID, cwd: p.processWorkspace})
 		}
 	}
-	return processInventory{1, &p.processGeneration, "available", nil, records, []interruptedProcess{}}
+	return processInventory{ForegroundRunIDs: reply.ForegroundRunIDs, Schema: 1, Generation: &p.processGeneration, Availability: "available", Processes: records, Interrupted: []interruptedProcess{}}
 }
 func inventoryWaiting(inv processInventory) []waitingProcess {
 	waiting := []waitingProcess{}

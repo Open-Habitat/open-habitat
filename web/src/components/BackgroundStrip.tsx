@@ -101,6 +101,7 @@ export function backgroundFacts({
   runs,
   spinoffsStale,
   processes,
+  foregroundRunIDs = [],
   interrupted,
   availability,
   reason,
@@ -117,6 +118,7 @@ export function backgroundFacts({
   runs: Spinoff[];
   spinoffsStale: boolean;
   processes: ProcessRecord[];
+  foregroundRunIDs?: string[];
   interrupted: number;
   availability?: "available" | "unavailable";
   reason?: string | null;
@@ -154,7 +156,7 @@ export function backgroundFacts({
       run,
       live,
       wait,
-      waited: live && waking(wait),
+      waited: live && (waking(wait) || foregroundRunIDs.includes(run.run_id)),
       // Jari 16.10.2026: a failed spinoff needs the person until its branch
       // is gone (merged or discarded), not until it has been looked at.
       attention:
@@ -274,6 +276,7 @@ export function BackgroundStrip({
       !!spinoffs?.stale ||
       (!!spinoffs?.data && spinoffs.data.availability !== "available"),
     processes: inventory?.processes ?? [],
+    foregroundRunIDs: inventory?.foreground_run_ids ?? [],
     interrupted: interrupted.length,
     availability: inventory?.availability,
     reason: inventory?.unavailable_reason,
