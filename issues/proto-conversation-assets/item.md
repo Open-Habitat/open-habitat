@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: list of a conversation's views and files
