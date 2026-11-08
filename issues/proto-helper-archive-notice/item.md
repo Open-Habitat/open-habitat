@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: helper-archive-proto
 preparation: pending
+closed: 2026-11-08
 ---
 
 # Prototype: how archiving a conversation with helpers is told to the person
@@ -32,3 +33,13 @@ archive with their state). 1440 and 390, light and dark.
 ## Acceptance Criteria
 
 - [x] round 1: today, three directions, view offer and questions for Jari
+
+## Decision (Jari 2026-11-08, kierros 1)
+
+**1 Vahvistus ja sen jälkeen 3 Arkistossa**: arkistointi kysyy ensin ja
+luettelee avustajat tiloineen ja sen, mikä jää haaraan; arkistossa avustajat
+näkyvät keskustelun alla omina riveinään tiloineen. Kysymykset 2 ja 3
+kapellimestarin päätöksellä suosituksen mukaan: palautus kertoo rivillä
+keskustelun lopussa, ja haaraan pääsee *Avaa haara* -toiminnolla; haaran
+ikkunassa ei muutosten määrää (ei uutta host-tietoa). Toteutus:
+`helper-archive-flow`.
