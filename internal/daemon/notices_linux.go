@@ -64,7 +64,7 @@ func readNativeNotices(path string, uid int, id, cwd string) ([]agentNotice, err
 		return nil, errors.New("native unavailable")
 	}
 	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+	if err != nil || !before.Mode().IsRegular() {
 		return nil, errors.New("native unavailable")
 	}
 	if uid >= 0 {

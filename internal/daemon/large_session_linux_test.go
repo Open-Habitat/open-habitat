@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -29,7 +30,30 @@ import (
 
 // largeSessionSize is above the 32 MiB cap that once locked a pilot's main
 // conversation (7.11.2026: 35 MiB, 14 image records over 1 MiB).
-const largeSessionSize = 40 << 20
+// OH_LARGE_SESSION_MIB raises it for a manual run past the former 512 MiB
+// whole-file bound (8.11.2026), which is too slow for every gate; such a run
+// logs the test process's peak resident memory.
+var largeSessionSize = func() int64 {
+	if mib, err := strconv.ParseInt(os.Getenv("OH_LARGE_SESSION_MIB"), 10, 64); err == nil && mib > 40 {
+		return mib << 20
+	}
+	return 40 << 20
+}()
+
+// peakRSS is the process's resident high-water mark from /proc, in KiB.
+func peakRSS(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("/proc/self/status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "VmHWM:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "VmHWM:"))
+		}
+	}
+	return "unknown"
+}
 
 // inflateSession appends picture turns to a settled native session until it
 // passes largeSessionSize: each a person's message with a text and a >1 MiB
@@ -97,11 +121,26 @@ func inflateSession(t *testing.T, path string) string {
 			parent = entry["id"].(string)
 		}
 	}
+	// Past what one provider request can carry, Pi has compacted: the
+	// pictures stay in the file, and the context starts at the summary.
+	if largeSessionCompacted() {
+		compaction, _ := json.Marshal(map[string]any{"type": "compaction", "id": "c0000000", "parentId": parent, "timestamp": time.Now().UTC().Format(time.RFC3339Nano), "summary": "Kuvia ja vastauksia niihin.", "firstKeptEntryId": "c0000000", "tokensBefore": 100000})
+		if _, err := f.Write(append(compaction, '\n')); err != nil {
+			t.Fatal(err)
+		}
+		parent = "c0000000"
+	}
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 	return parent
 }
+
+// largeSessionCompacted says the synthetic session ends in a compaction: Pi
+// serializes its whole context into one request, which a branch of hundreds
+// of MiB of pictures cannot fit (V8 strings end near 512 MiB, providers far
+// earlier).
+func largeSessionCompacted() bool { return largeSessionSize > 256<<20 }
 
 func (h *heldHarness) sessionFile(id string) string {
 	h.t.Helper()
@@ -170,6 +209,8 @@ func TestLargeSessionStaysUsable(t *testing.T) {
 	if info, _ := os.Stat(path); info.Size() < largeSessionSize {
 		t.Fatalf("session only %d bytes", info.Size())
 	}
+	t.Logf("session %d MiB, peak RSS after writing it %s", largeSessionSize>>20, peakRSS(t))
+	defer func() { t.Logf("peak RSS after using it %s", peakRSS(t)) }()
 
 	c, stop := h.daemon()
 	defer stop()
@@ -215,6 +256,12 @@ func TestLargeSessionStaysUsable(t *testing.T) {
 	// A held window continues forward from a known entry.
 	if forward := h.historyPage(id, "?after="+"u0000000"+"&limit=3"); len(forward.Entries) != 3 || forward.Entries[0].Key != "a0000000" || forward.NextAfter == "" {
 		t.Fatalf("forward page: %+v", forward)
+	}
+
+	t.Logf("peak RSS after paging %s", peakRSS(t))
+	// Palaa tähän reads the branch's structure from the whole file.
+	if rs, ok := c.rewindSource(id); !ok || rs.leaf != last {
+		t.Fatalf("rewind source: %v", ok)
 	}
 
 	// The model's name: generated from the newest prompt, written by Pi.
@@ -323,8 +370,11 @@ func TestLargeSessionContinuesWithNativePi(t *testing.T) {
 	if w := h.send(second, id, "Jatko", heldB); w.Code != 200 {
 		t.Fatalf("resume send: %d %s", w.Code, w.Body.String())
 	}
-	h.eventually("resumed provider request", answered(2))
-	h.eventually("resumed turn settled", func() bool {
+	// Pi loads the whole file and sends it all; a manual run past the
+	// default size waits in proportion.
+	wait := time.Duration(max(1, largeSessionSize/(40<<20))) * 15 * time.Second
+	h.eventuallyWithin(wait, "resumed provider request", answered(2))
+	h.eventuallyWithin(wait, "resumed turn settled", func() bool {
 		_, v := h.status(second, id)
 		if v.State == "start_failed" {
 			t.Fatalf("resume failed to start: %+v", v)
@@ -334,7 +384,7 @@ func TestLargeSessionContinuesWithNativePi(t *testing.T) {
 	mu.Lock()
 	sent, body := requests[1], lastBody
 	mu.Unlock()
-	if sent < largeSessionSize*9/10 || !strings.Contains(body, "Jatko") {
+	if !largeSessionCompacted() && int64(sent) < largeSessionSize*9/10 || !strings.Contains(body, "Jatko") {
 		t.Fatalf("Pi sent %d bytes ending %q; the continued branch is missing", sent, body)
 	}
 	after, _ := os.Stat(path)

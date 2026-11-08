@@ -250,7 +250,12 @@ func (h *heldHarness) prompts() []string {
 
 func (h *heldHarness) eventually(label string, ok func() bool) {
 	h.t.Helper()
-	deadline := time.Now().Add(15 * time.Second)
+	h.eventuallyWithin(15*time.Second, label, ok)
+}
+
+func (h *heldHarness) eventuallyWithin(wait time.Duration, label string, ok func() bool) {
+	h.t.Helper()
+	deadline := time.Now().Add(wait)
 	for !ok() {
 		if time.Now().After(deadline) {
 			h.t.Fatalf("timed out: %s", label)

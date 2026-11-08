@@ -2,7 +2,7 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: found by proto-large-content-graceful investigation
@@ -11,6 +11,7 @@ originating_run: 01m6y4rgvm21vzj44k9wgv3kvq
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Conversation over 512 MiB can no longer be read, archived or resumed

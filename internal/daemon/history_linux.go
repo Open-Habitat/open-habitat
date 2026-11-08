@@ -25,7 +25,6 @@ import (
 )
 
 const historyRoot = ".pi/agent/sessions"
-const maxHistoryFile = 512 << 20
 
 var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
@@ -60,6 +59,9 @@ type nativeSession struct {
 	entries                      []historyEntry
 	boundaryFound, olderComplete bool
 	cutOff                       bool
+	// active is the active branch of a whole-file read of a branched file;
+	// nil when every entry is on it.
+	active map[string]bool
 }
 type recapData struct {
 	Recap       string `json:"recap"`
@@ -222,19 +224,11 @@ func readNativeHeader(path string, uid int) nativeSession {
 	if json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || !sessionIDPattern.MatchString(h.ID) || !filepath.IsAbs(h.Cwd) {
 		return nativeSession{}
 	}
-	state := "readable"
-	if info.Size() > maxHistoryFile {
-		state = "unavailable"
-	}
-	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: state, startedAt: nativeTimestamp(h.Timestamp), changedAt: info.ModTime().UTC().Format(time.RFC3339Nano), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
+	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: "readable", startedAt: nativeTimestamp(h.Timestamp), changedAt: info.ModTime().UTC().Format(time.RFC3339Nano), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
 }
 
 // A concurrent append can change size/mtime during one read. Retry once;
 // repeated instability is unavailable, never proof of a missing history.
-func readNativeSettled(path string, uid int) nativeSession {
-	return settleNative(func() nativeSession { return readNative(path, uid) })
-}
-
 func settleNative(read func() nativeSession) nativeSession {
 	s := read()
 	if s.id == "" || s.state == "corrupt" {
@@ -243,19 +237,86 @@ func settleNative(read func() nativeSession) nativeSession {
 	return s
 }
 
-func readNative(path string, uid int) nativeSession {
-	return readNativeKept(path, uid, true)
+// readNativeRetaining proves the whole file stable and intact and keeps only
+// what retain selects of the active branch, so a reader that needs a few
+// entries of a long history does not hold a projection of all of it.
+func readNativeRetaining(path string, uid int, retain retainEntry) nativeSession {
+	return settleNative(func() nativeSession { return readNativeActive(path, uid, retain) })
 }
 
-// proveNativeSettled checks the whole file as readNativeSettled does but keeps
-// no entries: a precondition that only asks whether the history is intact
+// proveNativeSettled checks the whole file as readNativeRetaining does but
+// keeps no entries: a precondition that only asks whether the history is intact
 // does not hold a projection of it. Its stamp says whether the file stands
 // still later.
 func proveNativeSettled(path string, uid int) nativeSession {
-	return settleNative(func() nativeSession { return readNativeKept(path, uid, false) })
+	return settleNative(func() nativeSession { return readNativeKept(path, uid, nil) })
 }
 
-func readNativeKept(path string, uid int, keep bool) nativeSession {
+// readNativeActive is one stable pass of readNativeKept in which retain sees
+// only entries on the active branch, so an abandoned branch, however large,
+// is never projected. The branch is only known at the end of the file, so a
+// first pass proves the file and finds it; both passes must see the same
+// bytes.
+func readNativeActive(path string, uid int, retain retainEntry) nativeSession {
+	tree := readNativeKept(path, uid, nil)
+	if tree.id == "" || tree.state != "readable" {
+		return tree
+	}
+	s := readNativeKept(path, uid, func(id string, project func() historyEntry) (historyEntry, bool) {
+		if tree.active != nil && !tree.active[id] {
+			return historyEntry{}, false
+		}
+		return retain(id, project)
+	})
+	if s.stamp != tree.stamp {
+		return nativeSession{}
+	}
+	return s
+}
+
+// readNativeForward reads the active branch's entries after the after key, or
+// from the start when it is empty, keeping at most limit+1 of them: the extra
+// one says more follow. found says the after key was a visible entry on the
+// branch.
+func readNativeForward(path string, uid int, after string, limit int) (page nativeSession, found bool) {
+	page = settleNative(func() nativeSession {
+		found = after == ""
+		kept := 0
+		return readNativeActive(path, uid, func(id string, project func() historyEntry) (historyEntry, bool) {
+			if found && kept > limit || !found && id != after {
+				return historyEntry{}, false
+			}
+			e := project()
+			if e.Kind == "" {
+				return e, false
+			}
+			if !found {
+				found = true
+				return e, false
+			}
+			kept++
+			return e, true
+		})
+	})
+	return page, found
+}
+
+// retainEntry decides what a whole-file read keeps of each entry of the file,
+// in file order: the entry's projection, a smaller stand-in, or nothing. The
+// file has no size bound, so a projection of all its entries would grow with
+// it; a reader keeps what it uses. Projecting is most of a read's cost (a
+// picture record is decoded whole), so project is called only for an entry
+// the reader wants; its Kind is empty for an entry the browser never shows.
+// readNativeKept drops entries off the active branch only afterwards, so its
+// retain also sees them; readNativeActive does not.
+type retainEntry func(id string, project func() historyEntry) (historyEntry, bool)
+
+func retainAll(_ string, project func() historyEntry) (historyEntry, bool) {
+	e := project()
+	return e, e.Kind != ""
+}
+
+func readNativeKept(path string, uid int, keep retainEntry) nativeSession {
 	var result nativeSession
 	stamp, ok := readNativeStream(path, uid, func(r io.Reader) { result = decodeNativeStream(r, path, keep) })
 	if !ok {
@@ -266,13 +327,14 @@ func readNativeKept(path string, uid int, keep bool) nativeSession {
 }
 
 func decodeNative(b []byte, path string) nativeSession {
-	return decodeNativeStream(bytes.NewReader(b), path, true)
+	return decodeNativeStream(bytes.NewReader(b), path, retainAll)
 }
 
 // decodeNativeStream projects the active branch of one native session read
 // once from r, holding a single record at a time. The revision hashes every
 // byte of r, so it equals the history window's revision of the same file.
-func decodeNativeStream(r io.Reader, path string, keep bool) (result nativeSession) {
+// A nil keep proves the file and projects nothing.
+func decodeNativeStream(r io.Reader, path string, keep retainEntry) (result nativeSession) {
 	hash := sha256.New()
 	r = io.TeeReader(r, hash)
 	// The revision must cover every byte, also after a walk that stopped.
@@ -309,10 +371,9 @@ func decodeNativeStream(r io.Reader, path string, keep bool) (result nativeSessi
 			// Later records only still decide whether the file is valid UTF-8.
 			return true
 		}
-		// A proof refuses what a projection refuses: every typed field of
-		// nativeEntry, but not the message, which may be any JSON value and
-		// is the bulk of a picture record.
-		var e nativeEntry
+		// The tree's fields are every typed field of nativeEntry; the message
+		// may be any JSON value and is the bulk of a picture record, so only
+		// an entry the reader keeps is decoded whole and projected.
 		var tree struct {
 			ID        string  `json:"id"`
 			Type      string  `json:"type"`
@@ -321,25 +382,31 @@ func decodeNativeStream(r io.Reader, path string, keep bool) (result nativeSessi
 			ParentID  *string `json:"parentId"`
 			Timestamp string  `json:"timestamp"`
 		}
-		var err error
-		if keep {
-			err = json.Unmarshal(line, &e)
-			tree.ID, tree.ParentID = e.ID, e.ParentID
-		} else {
-			err = json.Unmarshal(line, &tree)
-		}
-		if err != nil || !entryIDPattern.MatchString(tree.ID) || seen[tree.ID] {
+		if json.Unmarshal(line, &tree) != nil || !entryIDPattern.MatchString(tree.ID) || seen[tree.ID] {
 			result.state = "corrupt"
 			return true
 		}
 		seen[tree.ID] = true
 		parents[tree.ID] = tree.ParentID
 		leaf = tree.ID
-		if keep {
-			e.Raw = line
-			entry := nativeBlocks(e)
-			if entry.Kind != "" {
-				result.entries = append(result.entries, entry)
+		if keep != nil {
+			broken := false
+			project := func() historyEntry {
+				var e nativeEntry
+				if json.Unmarshal(line, &e) != nil {
+					broken = true
+					return historyEntry{}
+				}
+				e.Raw = line
+				return nativeBlocks(e)
+			}
+			kept, ok := keep(tree.ID, project)
+			if broken {
+				result.state = "corrupt"
+				return true
+			}
+			if ok {
+				result.entries = append(result.entries, kept)
 			}
 		}
 		return true
@@ -398,6 +465,7 @@ func decodeNativeStream(r io.Reader, path string, keep bool) (result nativeSessi
 			}
 			node = *parent
 		}
+		result.active = active
 		filtered := make([]historyEntry, 0, len(result.entries))
 		for _, e := range result.entries {
 			if active[e.Key] {
@@ -654,38 +722,23 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				historyJSON(w, body)
 				return
 			}
-			loaded := readNativeSettled(s.path, cfg.UID)
+			loaded, found := readNativeForward(s.path, cfg.UID, q.Get("after"), limit)
 			if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
 				snapshotError(w, 503, "native_source_unavailable")
 				return
 			}
+			if !found {
+				snapshotError(w, 409, "stale_precondition")
+				return
+			}
 			s = &loaded
-			start := 0
-			if q.Has("after") && q.Get("after") != "" {
-				if len(q["after"]) != 1 {
-					snapshotError(w, 400, "invalid_request")
-					return
-				}
-				found := false
-				for i, e := range s.entries {
-					if e.Key == q.Get("after") {
-						start = i + 1
-						found = true
-						break
-					}
-				}
-				if !found {
-					snapshotError(w, 409, "stale_precondition")
-					return
-				}
+			more := len(s.entries) > limit
+			if more {
+				s.entries = s.entries[:limit]
 			}
-			end := start + limit
-			if end > len(s.entries) {
-				end = len(s.entries)
-			}
-			entries := make([]historyEntry, 0, end-start)
+			entries := make([]historyEntry, 0, len(s.entries))
 			pageBytes := 0
-			for _, e := range s.entries[start:end] {
+			for _, e := range s.entries {
 				inline(s, &e)
 				enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &e)
 				wire, err := json.Marshal(e)
@@ -700,10 +753,10 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				e.full = ""
 				entries = append(entries, e)
 			}
-			end = start + len(entries)
-			body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": s.revision, "entries": entries, "complete": end == len(s.entries), "cut_off": s.cutOff}
-			if end < len(s.entries) {
-				body["next_after"] = s.entries[end-1].Key
+			complete := !more && len(entries) == len(s.entries)
+			body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": s.revision, "entries": entries, "complete": complete, "cut_off": s.cutOff}
+			if !complete {
+				body["next_after"] = entries[len(entries)-1].Key
 			}
 			historyJSON(w, body)
 			return
@@ -782,7 +835,7 @@ func firstPrompt(s nativeSession, uid int) string {
 		return ""
 	}
 	before, err := os.Lstat(s.path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+	if err != nil || !before.Mode().IsRegular() {
 		return ""
 	}
 	if uid >= 0 {
@@ -863,7 +916,7 @@ func readNativeName(s nativeSession, uid int, strict bool) (string, bool) {
 		return "", false
 	}
 	before, err := os.Lstat(s.path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+	if err != nil || !before.Mode().IsRegular() {
 		return "", false
 	}
 	if uid >= 0 {
@@ -925,7 +978,7 @@ func readNativeName(s nativeSession, uid int, strict bool) (string, bool) {
 }
 
 func scanNativeNames(f *os.File) (string, bool) {
-	reader := bufio.NewReaderSize(io.LimitReader(f, maxHistoryFile+1), 16<<10)
+	reader := bufio.NewReaderSize(f, 16<<10)
 	var name string
 	for {
 		line, readErr := reader.ReadSlice('\n')

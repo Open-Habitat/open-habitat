@@ -175,7 +175,7 @@ func scanNativeRecap(path string, uid int, id, cwd string, full bool) (recapScan
 		return recapScan{}, false
 	}
 	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+	if err != nil || !before.Mode().IsRegular() {
 		return recapScan{}, false
 	}
 	if uid >= 0 {

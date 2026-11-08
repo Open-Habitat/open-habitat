@@ -70,7 +70,7 @@ func cutPartialTail(path string, uid int, id, cwd string, now time.Time) (quaran
 	// Closing the file releases the lease too.
 	defer func() { _, _ = unix.FcntlInt(f.Fd(), unix.F_SETLEASE, unix.F_UNLCK) }()
 	before, err := f.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() < 1 || before.Size() > maxHistoryFile {
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 1 {
 		return "", 0, errors.New("native Pi history unavailable")
 	}
 	if owner, ok := fileOwner(before); !ok || owner != uid {
@@ -79,7 +79,7 @@ func cutPartialTail(path string, uid int, id, cwd string, now time.Time) (quaran
 	// The lease holds every other writer off, so the file is read in a
 	// stream, never held whole, and copied by a second stream below.
 	counter := &countingReader{r: io.NewSectionReader(f, 0, before.Size())}
-	native := decodeNativeStream(counter, path, false)
+	native := decodeNativeStream(counter, path, nil)
 	if counter.n != before.Size() {
 		return "", 0, errors.New("native Pi history changed")
 	}

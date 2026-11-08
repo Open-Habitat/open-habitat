@@ -511,7 +511,7 @@ func (c *ConversationController) stoppedStatus(w http.ResponseWriter, id, positi
 		return
 	}
 	history, revision := "unavailable", ""
-	if info, err := os.Lstat(path); err == nil && info.Mode().IsRegular() && info.Size() <= maxHistoryFile {
+	if info, err := os.Lstat(path); err == nil && info.Mode().IsRegular() {
 		if owner, ok := fileOwner(info); ok && owner == c.cfg.UID {
 			history = "present"
 			revision = opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"os"
 	"time"
@@ -352,7 +353,9 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 // only its existing active-branch entries; the next settlement must not
 // flood the per-user event ring with old history.
 func existingHistoryKeys(path string, uid int, id, cwd string) (map[string]bool, error) {
-	native := readNativeSettled(path, uid)
+	// Every key of the branch, without projecting: a key the browser never
+	// shows is never published either, so marking it is harmless.
+	native := readNativeRetaining(path, uid, func(id string, _ func() historyEntry) (historyEntry, bool) { return historyEntry{Key: id}, true })
 	if native.cutOff || native.state != "readable" || native.id != id || native.cwd != cwd {
 		return nil, errors.New("native history changed before continuation")
 	}
@@ -397,7 +400,18 @@ func (c *ConversationController) publishNativeHistoryForTurnKind(s *conversation
 		if header.id != s.id || header.cwd != s.cwd || header.state != "readable" {
 			continue
 		}
-		native := readNativeSettled(header.path, c.cfg.UID)
+		// Only what is not yet published is kept; the check under the lock
+		// below still decides, since a racing publication may add keys.
+		c.mu.Lock()
+		published := maps.Clone(s.publishedHistory)
+		c.mu.Unlock()
+		native := readNativeRetaining(header.path, c.cfg.UID, func(id string, project func() historyEntry) (historyEntry, bool) {
+			if published[id] {
+				return historyEntry{}, false
+			}
+			e := project()
+			return e, e.Kind != "" && (kind == "" || e.Kind == kind)
+		})
 		if native.state != "readable" || native.id != s.id || native.cwd != s.cwd {
 			break
 		}

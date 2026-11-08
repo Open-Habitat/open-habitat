@@ -55,7 +55,7 @@ func readNativeTail(path string, uid int, limit int) nativeSession {
 func nativeWindow(path string, uid int, beforeKey string, limit, messages int, contentKey string, hashed bool) nativeSession {
 	var result nativeSession
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxHistoryFile {
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 {
 		return result
 	}
 	if uid >= 0 {
@@ -75,7 +75,7 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 	}
 	if hashed {
 		hash := sha256.New()
-		if _, err = io.Copy(hash, io.LimitReader(f, maxHistoryFile+1)); err != nil {
+		if _, err = io.Copy(hash, f); err != nil {
 			return result
 		}
 		if end, e := f.Seek(0, io.SeekCurrent); e != nil || end != info.Size() {
@@ -241,7 +241,7 @@ func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 	}
 	emit := func(start, end int64) (bool, error) {
 		if end-start > maxLine {
-			return false, io.ErrUnexpectedEOF
+			return false, nativeRecordOverBound(end - start)
 		}
 		if end == start {
 			return true, nil
@@ -277,7 +277,7 @@ func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 			lineEnd = start + int64(i)
 		}
 		if lineEnd-start > maxLine {
-			return io.ErrUnexpectedEOF
+			return nativeRecordOverBound(lineEnd - start)
 		}
 		pos = start
 	}

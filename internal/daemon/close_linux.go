@@ -5,7 +5,6 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"os"
 	"syscall"
@@ -22,7 +21,7 @@ func emptyNativeFile(path string, uid int, id, cwd string) (os.FileInfo, error) 
 	}
 	defer f.Close()
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > maxHistoryFile {
+	if err != nil || !info.Mode().IsRegular() {
 		return nil, errors.New("history changed")
 	}
 	if owner, ok := fileOwner(info); !ok || owner != uid {
@@ -34,7 +33,7 @@ func emptyNativeFile(path string, uid int, id, cwd string) (os.FileInfo, error) 
 	}
 	var problem error
 	header := true
-	tail, err := eachNativeLine(io.LimitReader(f, maxHistoryFile), func(line []byte) bool {
+	tail, err := eachNativeLine(f, func(line []byte) bool {
 		if header {
 			header = false
 			var h nativeHeader

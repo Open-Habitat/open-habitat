@@ -1271,7 +1271,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			// A removed file is not readable; do not continue to trust its hint.
-		case err != nil || !info.Mode().IsRegular() || info.Size() > maxHistoryFile:
+		case err != nil || !info.Mode().IsRegular():
 			history = "unavailable"
 		default:
 			if owner, ok := fileOwner(info); !ok || owner != c.cfg.UID {

@@ -390,6 +390,60 @@ func TestTailPageFollowsActiveNativeBranch(t *testing.T) {
 	}
 }
 
+// A forward page keeps only the entries it returns, yet follows the active
+// branch, which the file names only at its end: an abandoned branch written
+// first is neither returned nor counted, and its key is no cursor.
+func TestForwardPageFollowsActiveNativeBranch(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "branch.jsonl")
+	lines := []string{
+		`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"/synthetic"}`,
+		`{"type":"message","id":"a","parentId":null,"message":{"role":"user","content":"root"}}`,
+		`{"type":"message","id":"b","parentId":"a","message":{"role":"user","content":"old"}}`,
+		`{"type":"message","id":"b2","parentId":"b","message":{"role":"assistant","content":"old reply"}}`,
+		`{"type":"model_change","id":"m","parentId":"a","provider":"p","modelId":"x"}`,
+		`{"type":"message","id":"c","parentId":"m","message":{"role":"user","content":"active"}}`,
+		`{"type":"message","id":"d","parentId":"c","message":{"role":"assistant","content":"reply"}}`,
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	keys := func(s nativeSession) string {
+		var k []string
+		for _, e := range s.entries {
+			k = append(k, e.Key)
+		}
+		return strings.Join(k, ",")
+	}
+	for _, c := range []struct {
+		after string
+		limit int
+		want  string
+		found bool
+	}{
+		{"", 2, "a,m,c", true},
+		{"", 10, "a,m,c,d", true},
+		{"m", 1, "c,d", true},
+		{"d", 5, "", true},
+		{"b", 5, "", false},
+		{"gone", 5, "", false},
+	} {
+		page, found := readNativeForward(path, os.Getuid(), c.after, c.limit)
+		if page.state != "readable" || found != c.found || found && keys(page) != c.want {
+			t.Fatalf("after %q limit %d: %s %v %q", c.after, c.limit, page.state, found, keys(page))
+		}
+	}
+	// Publication keeps what is not yet published; an abandoned branch is
+	// never even projected.
+	asked := map[string]bool{}
+	all := readNativeRetaining(path, os.Getuid(), func(id string, project func() historyEntry) (historyEntry, bool) {
+		asked[id] = true
+		return retainAll(id, project)
+	})
+	if keys(all) != "a,m,c,d" || asked["b"] || asked["b2"] {
+		t.Fatalf("active read kept %q, asked %v", keys(all), asked)
+	}
+}
+
 func TestTailWindowRetriesUnstableNativeReadOnce(t *testing.T) {
 	for _, first := range []nativeSession{{}, {id: "native", state: "corrupt"}} {
 		calls := 0

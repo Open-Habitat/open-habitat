@@ -194,7 +194,7 @@ type rewindSession struct {
 // as a history read apply.
 func readRewindSession(path string, uid int) (*rewindSession, bool) {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxHistoryFile {
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 {
 		return nil, false
 	}
 	if uid >= 0 {
@@ -215,18 +215,13 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 		return nil, false
 	}
 	s := &rewindSession{path: path, cwd: header.cwd, index: map[string]int{}}
-	reader := bufio.NewReaderSize(io.LimitReader(f, info.Size()), 64<<10)
+	// What follows the last newline is a record Pi is still writing; it is
+	// not part of the tree yet.
 	var offset int64
-	for {
-		line, err := reader.ReadBytes('\n')
+	bad := false
+	_, err = eachNativeLine(io.LimitReader(f, info.Size()), func(line []byte) bool {
 		start := offset
-		offset += int64(len(line))
-		if len(line) > 64<<20 {
-			return nil, false
-		}
-		if err == io.EOF && len(line) > 0 && line[len(line)-1] != '\n' {
-			break // Pi is writing this record; it is not part of the tree yet
-		}
+		offset += int64(len(line)) + 1
 		if len(bytes.TrimSpace(line)) > 0 {
 			var e struct {
 				ID         string           `json:"id"`
@@ -241,14 +236,17 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 				} `json:"message"`
 			}
 			if json.Unmarshal(line, &e) != nil {
-				return nil, false
+				bad = true
+				return false
 			}
 			if e.Type != "session" {
 				if !entryIDPattern.MatchString(e.ID) {
-					return nil, false
+					bad = true
+					return false
 				}
 				if _, dup := s.index[e.ID]; dup {
-					return nil, false
+					bad = true
+					return false
 				}
 				l := rewindLine{id: e.ID, kind: e.Type, customType: e.CustomType, offset: start}
 				l.at, _ = time.Parse(time.RFC3339Nano, e.Timestamp)
@@ -294,12 +292,10 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 				s.leaf = e.ID
 			}
 		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, false
-		}
+		return true
+	})
+	if err != nil || bad {
+		return nil, false
 	}
 	after, err := os.Lstat(path)
 	if err != nil || !os.SameFile(info, after) || after.Size() < info.Size() {
@@ -770,8 +766,8 @@ func readReplacedEntries(s *rewindSession, uid int, lines []rewindLine) ([]histo
 		if _, err := f.Seek(l.offset, io.SeekStart); err != nil {
 			return nil, false, false
 		}
-		line, err := bufio.NewReaderSize(io.LimitReader(f, 64<<20+1), 64<<10).ReadBytes('\n')
-		if err != nil || len(line) > 64<<20 {
+		line, err := bufio.NewReaderSize(io.LimitReader(f, maxNativeLine+1), 64<<10).ReadBytes('\n')
+		if err != nil || len(line) > maxNativeLine {
 			return nil, false, false
 		}
 		var full nativeEntry

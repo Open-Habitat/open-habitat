@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"golang.org/x/sys/unix"
 )
 
@@ -17,8 +18,10 @@ import (
 // MiB, so a long conversation with pictures passes tens of MiB in a week
 // (7.11.2026: a 35 MiB conversation could not be continued, named or
 // archived). Whole-history readers therefore stream the file one record at a
-// time and never hold it whole. maxHistoryFile is the only bound on the file,
-// and maxNativeLine bounds the one record held at a time.
+// time, or read back from its end, and never hold it whole. The file itself
+// has no bound: it only grows, and a bound on it once left a conversation
+// that could no longer be read, archived or continued (8.11.2026, 512 MiB).
+// maxNativeLine bounds the one record held at a time, and is the only guard.
 //
 // The largest record is a person's message: Pi writes every admitted
 // attachment into it as base64, the same payload it echoes on its RPC frame.
@@ -27,6 +30,14 @@ import (
 const maxNativeLine = piFrameLimit
 
 var errNativeLine = errors.New("native record over bound")
+
+// nativeRecordOverBound names the guard's refusal. The history it stops reads
+// as unavailable, a word the browser shares with other failures, so the
+// daemon's journal says which record bound refused it and how large it was.
+func nativeRecordOverBound(atLeast int64) error {
+	diagnostic.New(os.Stderr, "daemon").Warn("native_history_record", "outcome", "refused", "reason", "record_over_bound", "bytes_at_least", atLeast, "bound", maxNativeLine)
+	return errNativeLine
+}
 
 // eachNativeLine calls visit with every newline-terminated record of r, without
 // its newline, until visit returns false. The record is only valid during the
@@ -41,7 +52,7 @@ func eachNativeLine(r io.Reader, visit func([]byte) bool) (tail []byte, err erro
 			return nil, readErr
 		}
 		if len(long)+len(chunk) > maxNativeLine {
-			return nil, errNativeLine
+			return nil, nativeRecordOverBound(int64(len(long) + len(chunk)))
 		}
 		switch readErr {
 		case bufio.ErrBufferFull:
@@ -67,11 +78,11 @@ func eachNativeLine(r io.Reader, visit func([]byte) bool) (tail []byte, err erro
 	}
 }
 
-// openNative opens one owned, regular, bounded native session file without
+// openNative opens one owned, regular native session file without
 // trusting a path swapped between the check and the open.
 func openNative(path string, uid int) (*os.File, os.FileInfo, bool) {
 	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile || before.Size() < 1 {
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 1 {
 		return nil, nil, false
 	}
 	if uid >= 0 {
@@ -117,7 +128,7 @@ func readNativeStream(path string, uid int, read func(io.Reader)) (fileStamp, bo
 	if err != nil {
 		return fileStamp{}, false
 	}
-	counter := &countingReader{r: io.LimitReader(f, maxHistoryFile+1)}
+	counter := &countingReader{r: f}
 	read(counter)
 	if _, err := io.Copy(io.Discard, counter); err != nil {
 		return fileStamp{}, false
@@ -142,7 +153,11 @@ func stampOfFile(f *os.File) (fileStamp, error) {
 func lastNativeNewline(f *os.File, size int64) (int64, error) {
 	const block = 64 << 10
 	buf := make([]byte, block)
-	for end := size; end > 0 && size-end <= maxNativeLine; {
+	for end := size; end > 0; {
+		if size-end > maxNativeLine {
+			_ = nativeRecordOverBound(size - end)
+			return 0, nil
+		}
 		start := max(end-block, 0)
 		chunk := buf[:end-start]
 		if _, err := f.ReadAt(chunk, start); err != nil {
