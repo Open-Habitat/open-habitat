@@ -20,6 +20,8 @@ async function settings(page: Page) {
 test("server name saves in place, refreshes the mounted rail without navigation; a refused save keeps the typed text", async ({
   page,
 }) => {
+  // This case observes the mounted app rail; Settings yields its space below 1401px.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await settings(page);
   await page
     .getByRole("link")

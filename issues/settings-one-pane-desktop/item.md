@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Settings opens as a full-width bare list at a desktop window width
@@ -36,7 +37,7 @@ any desktop width must show a section's content, not only the list.
 
 ## Acceptance Criteria
 
-- [ ] At 801–1400 px Settings shows the list and Tili side by side; at
+- [x] At 801–1400 px Settings shows the list and Tili side by side; at
       ≤800 px the phone list/detail, list not stretched.
-- [ ] Width-sweep and settings specs green; screenshots at 900, 1030, 1280,
+- [x] Width-sweep and settings specs green; screenshots at 900, 1030, 1280,
       390, light and dark.

@@ -30,11 +30,11 @@ for (const collapsed of [false, true])
     // Resize the mounted page in both directions, including the formerly
     // squeezed width just above the app rail's own mobile breakpoint.
     for (const width of [
-      1600, 1401, 1400, 1366, 1280, 1101, 1100, 1060, 1051, 1050, 1040, 810,
-      390, 1600,
+      1600, 1401, 1400, 1366, 1280, 1101, 1100, 1060, 1051, 1050, 1040, 1030,
+      900, 810, 801, 800, 799, 390, 1600,
     ]) {
       await page.setViewportSize({ width, height: 900 });
-      const folded = width <= 1050;
+      const folded = width <= 800;
       await expect(page.getByTestId("settings-tili")).toBeVisible({
         visible: !folded,
       });
@@ -50,18 +50,38 @@ for (const collapsed of [false, true])
       ).toBe(true);
       if (
         process.env.OH_VISUAL_CAPTURE === "1" &&
-        [1280, 1060, 1040, 390].includes(width)
-      )
-        await snapshot(
-          page,
-          `../issues/main-suite-red-r68/evidence/settings-${collapsed ? "closed" : "open"}-${width}`,
-          { labOrigin: hostOrigin },
-        );
+        !collapsed &&
+        [1280, 1030, 900, 390].includes(width)
+      ) {
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate(
+            (theme) =>
+              document.documentElement.setAttribute("data-theme", theme),
+            theme,
+          );
+          await snapshot(
+            page,
+            `../issues/settings-one-pane-desktop/evidence/settings-${width}-${theme}`,
+            { labOrigin: hostOrigin },
+          );
+        }
+      }
       if (folded) {
         await page.getByTestId("settings-list-back").click();
         await expect(page.getByTestId("settings-section-tili")).toBeHidden();
         await page.getByTestId("settings-tili").click();
         await expect(page.getByTestId("settings-section-tili")).toBeVisible();
       }
+    }
+    // A fresh root entry must show Account, not just a desktop-wide list.
+    for (const width of [1400, 1280, 1030, 900, 801, 800, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/settings");
+      await expect(page.getByTestId("settings-tili")).toBeVisible();
+      await expect(page.getByTestId("settings-section-tili")).toBeVisible({
+        visible: width > 800,
+      });
+      const nav = await page.locator(".s-nav").boundingBox();
+      expect(nav?.width).toBeLessThanOrEqual(400);
     }
   });

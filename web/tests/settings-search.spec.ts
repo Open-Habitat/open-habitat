@@ -76,6 +76,7 @@ test("@settings-search every index row is on its section's page and every page r
 test("@settings-search / finds a setting, arrows preview results beside the list, Enter lands and Esc steps back", async ({
   page,
 }, testInfo) => {
+  await page.setViewportSize({ width: 1030, height: 900 });
   await signIn(page);
   await page.goto("/settings");
   await expect(
@@ -197,7 +198,7 @@ test("@settings-search Esc in the field clears then closes; a folded row lands o
   await expect(page.locator(".ah-account-settings")).toHaveCount(0);
 });
 
-for (const width of [390, 1040])
+for (const width of [390, 800])
   test(`@settings-search at ${width}px results replace the list, a result opens its row and the back row returns to the results`, async ({
     page,
   }, testInfo) => {
