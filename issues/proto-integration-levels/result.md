@@ -466,3 +466,106 @@ tw browser-open design-system/prototypes/dist/integraatiotasot-4/levels.html
 
 `check.mjs` (kierroksessa) läpäisee 2018 tarkistuspistettä puhtaalla
 konsolilla.
+
+# Kierros 5: aloitus, joka valitsee tasot ja ohittaa tehdyt
+
+Kierros: `design-system/prototypes/rounds/2026-11-08-integraatiotasot-5/`
+(NOTES.md kertoo suunnat ja vuorovaikutukset). Jari valitsi kierroksen 4
+**Jokainen kokonaan** -suunnan. Hänen ehtonsa: ohje ohittaa jo tehdyt
+tasot, tai alussa valitaan, mitkä neljästä asetetaan nyt, ja aloituksessa
+on myös vertailutaulukko. Akseli: miten aloitus näyttää tasot ja miten
+asetettavat valitaan. Valittujen tasojen läpikäynti on kierroksen 4
+Jokainen kokonaan sellaisenaan, ilman tehtyjä tasoja.
+
+- **Rastit taulukossa**: aloitus on vertailutaulukko. Jokaisen asettamattoman tason sarakkeessa on rasti *Aseta nyt*, ja asetetuissa sarakkeissa lukee *Asetettu*. *Aloita* käy rastitetut läpi.
+- **Taulukko valitsimena**: sama taulukko, mutta asettamattoman tason sarake on itse painike. Sen painaminen aloittaa juuri sen tason, ja tallennuksen jälkeen palataan taulukkoon.
+- **Tilalista**: aloitus on neljän tason lista, jossa näkyy asetettu / ei asetettu sekä kuka ja milloin. Jokaisella puuttuvalla rivillä on *Aseta*, ja taulukko on *Mitä tasot sallivat* -painikkeen takana.
+
+Lähtötila on sama kuin Jarilla: yksi taso on tehty klikkaamalla
+(*Täysi*), *Vain luku* on asetettu palvelimella, ja kaksi puuttuu.
+Kuvat: `evidence/r5-d<suunta>-<näkymä>-<leveys>-<teema>.avif`. Kaikissa
+suunnissa on näkymät `alku` (oletusnäkymä), `kavely` (läpikäynnin
+ensimmäinen kohta) ja `takaisin` tai `valmis` (aloitus tallennuksen
+jälkeen). Suunnassa 1 on lisäksi `ei-tunnuksia` (aloitus, kun mitään ei ole
+asetettu), `sovellus2` ja `tenantti` (tenantti tallennetulta tasolta,
+1440-vaalea). Suunnassa 3 on `taulukko` (taulukko auki) ja `sivu`
+(ylläpitäjän sivu, 1440-vaalea).
+
+## Mitä kukin päättää
+
+| | Valinta | Taulukko aloituksessa | Usea taso kerralla | Tallennuksen jälkeen |
+|---|---|---|---|---|
+| Rastit taulukossa | rastit sarakkeissa, puuttuvat valmiiksi rastitettuina | auki | kyllä, yhtenä jatkumona | seuraava valittu, lopuksi aloitus |
+| Taulukko valitsimena | sarakkeen *Aseta* tai mikä tahansa sen solu | auki | ei, yksi kerrallaan | takaisin taulukkoon |
+| Tilalista | rivin *Aseta* tai *Aseta puuttuvat (2)* | painikkeen takana | kyllä (*Aseta puuttuvat*) | seuraava, lopuksi lista |
+
+## Mitä näkymä olettaa hostilta
+
+- **Tieto asetetuista tasoista on jo olemassa.** `GET
+  /api/v1/server/integrations` palauttaa jokaisesta osiosta `usable`,
+  `client_id`, `tenant_id`, `source` (`site_admin` tai `operator`),
+  `actor` ja `at`. Taso on asetettu, kun sen osio on olemassa ja
+  `usable` on tosi. Aloituksen tunnusrivi on tuotannon `AppLine`:
+  lyhennetty client ID, päivä ja GitHub-nimi, tai *asetettu palvelimella*,
+  kun root kirjoitti osion. Selaimen ei tarvitse muistaa mitään omaa,
+  eikä kesken jäänyttä asetusta tarvitse tallentaa minnekään: ohittaminen
+  perustuu siihen, mitä tiedostossa on.
+- **Tenantti otetaan tallennetusta osiosta.** `set`-pyyntö vaatii yhä
+  jokaiselle osiolle `client_id`:n ja `tenant_id`:n. Selain lähettää tunnetun
+  tenantin, joten muutosta hostiin ei tarvita. Broker voisi lisäksi
+  tarkistaa, että kaikkien Microsoft-osioiden tenantti on sama.
+- **Sama client ID kahdelle tasolle** hylätään selaimessa, myös aiemmin
+  asetetun tason tunnus, koska lista palauttaa ne. Kuten kierroksella 4,
+  brokerin pitäisi tarkistaa sama.
+- **Uutta on vain neljäs osio** `microsoft_nosend`, kuten kierroksella 4:
+  `provider`-enum, `levelSections`, `microsoftLevelScopes` ja listan
+  `maxItems` 6 → 7.
+
+## Ei piirretty
+
+- **Osio, jonka `usable` on epätosi** (root kirjoitti kelvottoman arvon,
+  `client_id` puuttuu). Aloitus käsittelisi sitä asettamattomana ja
+  tarjoaisi sitä tehtäväksi. Rivillä pitäisi silloin lukea, miksi
+  (*tunnukset eivät kelpaa*), jotta ylläpitäjä ei ihmettele, miksi
+  *asetettu palvelimella* -taso tarjotaan uudelleen.
+- **`browser_setup` pois päältä.** Silloin koko dialogi on estetty kuten
+  tuotannossa nyt, ja aloitus näyttäisi tasot vain luettavina ja syyn.
+
+## Suositus
+
+**Rastit taulukossa.** Siinä Jarin kaksi toivetta ovat samassa näkymässä:
+taulukko on aloitus, ja valinta tehdään sarakkeessa, jonka erot juuri
+luettiin. Oletus on tehdä kaikki puuttuvat yhtenä jatkumona, kuten
+Jokainen kokonaan, ja rastin poistamalla tason voi jättää myöhemmäksi.
+Asetetut tasot eivät ole valittavissa, ja niiden tunnusrivi on heti
+taulukon yläpuolella, joten näkee, mistä ohje tietää ne tehdyiksi.
+Taulukko valitsimena on hyvä yhden tason lisäämiseen myöhemmin. Kahden
+tai useamman tason kanssa se kuitenkin palauttaa taulukkoon jokaisen
+välissä, eikä pelkkä sarakkeen klikattavuus ole yhtä selvä kuin rasti.
+Tilalista on lyhyin ja paras puhelimessa, mutta se piilottaa taulukon,
+jonka Jari halusi aloitukseen. Tilalistan rivikuvaus (*Kuten Täysi,
+mutta ei lähetä postia*) kannattaa ottaa mukaan, jos taulukosta tulee
+liian raskas puhelimessa.
+
+## Kysymykset Jarille
+
+1. Mikä aloitus: `r5-d1-alku-1440-light` (rastit taulukossa),
+   `r5-d2-alku-1440-light` (taulukko valitsimena) vai
+   `r5-d3-alku-1440-light` (tilalista)?
+2. Riittääkö tunnusrivi taulukon yläpuolella (`r5-d1-alku-1440-light`:
+   *Täysi · client id 4f2c9a1e-… · 7.11.2026 · @kaisa-admin*) kertomaan,
+   miksi taso on asetettu? Vai pitäisikö sarakkeen itse näyttää kuka ja
+   milloin?
+3. Kun taulukko on nyt dialogin aloituksessa, saako sivulla oleva taulukko
+   olla aina *Mitä tasot sallivat* -painikkeen takana, myös ennen
+   asetusta (`r5-d3-sivu-1440-light`)?
+
+## Näkymä (kierros 5)
+
+```
+node design-system/prototypes/rounds/2026-11-08-integraatiotasot-5/build.mjs
+tw browser-open design-system/prototypes/dist/integraatiotasot-5/levels.html
+```
+
+`check.mjs` (kierroksessa) läpäisee 2924 tarkistuspistettä puhtaalla
+konsolilla.

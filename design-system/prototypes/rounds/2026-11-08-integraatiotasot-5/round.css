@@ -1,0 +1,356 @@
+/* Review chrome above the settings page and the dialog (round 4's); the round's own
+   pieces on production tokens. No coloured edge stripes: emphasis is a soft
+   surface and a full line. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.m-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px;
+  padding: 6px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.m-bar strong { font-weight: 600; }
+.m-bar select, .m-bar button { font: inherit; }
+/* All three riffs' lines on a desktop, the current one in full ink; on a
+   phone only the current one, so the dialog keeps the height. */
+.m-lines { flex-basis: 100%; margin: 0; padding-left: 1.3em; color: var(--ah-muted); font-size: 12px; line-height: 1.4; }
+.m-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.m-common { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.4; color: var(--ah-ink-2); }
+.m-bar-note { font-size: 12px; color: var(--ah-muted); }
+@media (max-width: 640px) {
+  .m-bar { gap: 2px 8px; padding: 6px 10px; font-size: 12px; }
+  .m-bar > strong { display: none; }
+  .m-lines { font-size: 11.5px; line-height: 1.35; padding-left: 0; list-style: none; }
+  .m-lines li:not([aria-current]) { display: none; }
+  .m-common, .m-bar-note, .m-bar-label { display: none; }
+}
+/* The dialog sits below the review bar and above the floating picker. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+.ah-overlay { padding: var(--ah-s2) var(--ah-s4); }
+@media (max-width: 640px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s4); }
+}
+
+/* The dialog: heading, progress and step name close together, so the band and
+   the sub-item get the height. */
+.m-dialog { gap: var(--ah-s3); }
+.m-stephead { display: grid; gap: var(--ah-s2); }
+.m-stepbody { gap: var(--ah-s2); justify-items: stretch; min-height: 0; }
+.m-stepbody > * { max-width: 100%; min-width: 0; }
+
+.m-quiet { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.m-note { display: flex; gap: var(--ah-s1); align-items: flex-start; }
+.m-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* Where: the console path is the main instruction, so it reads at body size
+   in full ink; the separators are quiet and nothing looks like a disclosure. */
+.m-where { display: grid; gap: 2px; min-width: 0; }
+.m-path {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font-size: var(--ah-size-body); line-height: 1.45; color: var(--ah-ink); font-weight: 600;
+}
+.m-sep { color: var(--ah-muted); font-weight: 400; }
+.m-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s1) var(--ah-s2); font-weight: 600; font-size: var(--ah-size-meta); }
+
+/* One sub-item: its instruction at reading size, a value with its copy. */
+.m-panel { display: grid; gap: var(--ah-s2); align-content: start; min-height: 150px; min-width: 0; }
+.m-act { font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.m-value { display: flex; align-items: center; gap: var(--ah-s1); min-width: 0; }
+.m-value code {
+  font-family: var(--ah-mono); font-size: 13px; padding: 2px 6px; border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken); overflow-wrap: anywhere; min-width: 0;
+}
+.m-done {
+  display: flex; gap: var(--ah-s2); align-items: flex-start; box-sizing: border-box;
+  padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-ok-soft);
+  font-size: var(--ah-size-ui); color: var(--ah-ink);
+}
+.m-done svg { color: var(--ah-ok); width: 14px; height: 14px; flex: none; margin-top: 3px; }
+.m-idfield { max-width: 460px; }
+.m-handoff { font-size: var(--ah-size-meta); }
+
+/* Permissions: one name per chip with its own copy; no ticks (Jari, round 2).
+   Chips rather than rows, so nine of them fit beside each other. */
+.m-perms { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 4px; }
+.m-perm { display: flex; min-width: 0; }
+.m-perm-btn {
+  flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--ah-s2); min-width: 0; min-height: 34px;
+  padding: 0 var(--ah-s2) 0 var(--ah-s3); border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-soft);
+  background: transparent; color: var(--ah-ink); cursor: pointer; text-align: left;
+}
+.m-perm-btn:hover { background: var(--ah-hover, var(--ah-sunken)); border-color: var(--ah-line); }
+.m-perm-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-perm-btn svg { width: 14px; height: 14px; flex: none; color: var(--ah-ink-2); }
+.m-perm-btn[data-done] svg { color: var(--ah-ok); }
+.m-perm-name { font-family: var(--ah-mono); font-size: 13px; color: var(--ah-ink); overflow-wrap: anywhere; min-width: 0; }
+.m-count { font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .m-perms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .m-perm-btn { min-height: 32px; padding: 0 6px 0 8px; gap: 4px; }
+  .m-perm-name { font-size: 11.5px; }
+}
+
+/* The band: real pieces of Jari's Entra screenshots, ids and domain masked by
+   round 3's crops.py. One height inside a step; the lit target is a hole in a
+   scrim with a full 2 px line, never an edge stripe. Dark theme: dimmed, so
+   the white page does not outshine the dialog (round 3's choice for A1b). */
+.m-shot { margin: 0; width: 100%; min-width: 0; }
+.m-shot-frame { position: relative; overflow: hidden; width: 100%; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line); }
+.m-shot-frame img { position: absolute; display: block; max-width: none; user-select: none; }
+.m-mark {
+  position: absolute; box-sizing: border-box; border-radius: 6px; border: 2px solid var(--ah-accent);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32);
+  transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .m-mark { transition: none; } }
+[data-theme="dark"] .m-shot-frame img { filter: brightness(0.82) contrast(1.05); }
+[data-theme="dark"] .m-mark { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45); }
+
+/* A1b2: a numbered line; passed sub-items carry a tick, the current one the
+   accent. The line between dots is a plain rule. */
+.m-stepper { display: flex; margin: 0; padding: 0; list-style: none; gap: 0; }
+.m-stepper li { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; }
+.m-stepper li + li::before { content: ""; flex: 1 1 8px; min-width: 6px; height: 1px; margin: 0 6px; background: var(--ah-line); }
+.m-stepper li[data-passed] + li::before, .m-stepper li[aria-current] + li::before { background: var(--ah-line); }
+.m-dot-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border: 0; border-radius: var(--ah-r-md);
+  background: transparent; color: var(--ah-ink-2); font: 500 var(--ah-size-meta) / 1.2 var(--ah-font); cursor: pointer;
+}
+.m-dot-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.m-dot {
+  display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 11px;
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ah-ink-2);
+}
+.m-dot svg { width: 12px; height: 12px; }
+.m-stepper li[data-passed] .m-dot { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-accent); }
+.m-stepper li[aria-current] .m-dot { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.m-stepper li[aria-current] .m-dot-btn { color: var(--ah-ink); font-weight: 600; }
+.m-dot-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Narrow: only the current sub-item keeps its name, like A1b1's tabs. */
+@container si-step (max-width: 760px) {
+  .m-stepper li:not([aria-current]) .m-dot-name { display: none; }
+  .m-stepper li[aria-current] { flex: 1 1 auto; }
+  .m-stepper li:not([aria-current]) { flex: 0 1 auto; }
+}
+.m-progress-fill { display: block; height: 100%; border-radius: 2px; background: var(--ah-accent); }
+.m-dialog .si-progress span { overflow: hidden; }
+
+/* A phone: the step still fits 390×844 under the review bar, so the
+   dialog's gaps tighten one notch. */
+@media (max-width: 640px) {
+  .m-dialog, .m-stepbody { gap: var(--ah-s2); }
+}
+
+/* The comparison table */
+.il-cmprow{grid-template-columns:auto minmax(0,1fr)!important}
+.il-cmpbox{display:grid;gap:var(--ah-s2);min-width:0;padding-bottom:var(--ah-s1)}
+.il-cmp-title{font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.il-cmp-wrap{min-width:0;overflow-x:auto;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-surface)}
+.il-cmp{width:100%;border-collapse:collapse;font-size:var(--ah-size-meta);table-layout:fixed}
+.il-cmp th,.il-cmp td{padding:7px 10px;text-align:left;vertical-align:middle;border-top:1px solid var(--ah-line-soft);line-height:1.3}
+.il-cmp thead th{vertical-align:bottom;background:var(--ah-sunken);border-top:0;border-bottom:1px solid var(--ah-line);font-weight:600}
+.il-cmp thead th+th,.il-cmp td{border-left:1px solid var(--ah-line-soft)}
+.il-cmp-corner{width:34%}
+.il-cmp.cols-1 .il-cmp-corner{width:60%}
+.il-cmp-name{display:block}
+.il-cmp-state{display:block;margin-top:2px;font-weight:400;color:var(--ah-muted);font-size:12px}
+.il-cmp .il-cmp-svc th{background:var(--ah-surface-2);font-weight:600;color:var(--ah-ink);border-top:1px solid var(--ah-line)}
+.il-cmp-svc svg{width:14px;height:14px;color:var(--ah-muted);vertical-align:-2px;margin-right:6px}
+.il-cmp tbody th[scope=row]{font-weight:400;color:var(--ah-ink)}
+.il-cmp tbody th[scope=row]>span:first-child{display:block}
+.il-cmp-warn{display:flex;gap:5px;align-items:flex-start;margin-top:3px;font-size:12px;color:var(--ah-ink-2)}
+.il-cmp-warn svg{width:12px;height:12px;flex:none;margin-top:1px}
+.il-cmp td.on{background:var(--ah-ok-soft);color:var(--ah-ink);font-weight:600}
+.il-cmp td.part{background:var(--ah-sunken);font-weight:400}
+.il-cmp td.off{color:var(--ah-ink-2)}
+.il-cmp-val{display:flex;align-items:center;gap:6px}
+.il-cmp-val svg{width:14px;height:14px;flex:none}
+.il-cmp td.on svg{color:var(--ah-ok)}
+.il-cmp td.off svg{color:var(--ah-err)}
+/* The chosen column: outlined, not filled, so Kyllä and Ei stay readable. */
+.il-cmp-foot{margin:0}
+
+
+/* The administrator's page behind the dialog (round 2's frame). */
+.shell { max-width: 1200px; margin: calc(var(--review-h, 0px) + var(--ah-s4)) auto 96px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-bg); }
+.hostbar { padding: var(--ah-s4) var(--ah-s5); display: flex; align-items: center; gap: var(--ah-s4); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.hostbar span { flex: 1; color: var(--ah-muted); }
+.hostbar svg { width: 20px; height: 20px; }
+.ah-account-settings.s-page { padding: var(--ah-s5); max-width: none; gap: var(--ah-s6); }
+.s-main { max-width: 860px; min-width: 0; }
+.s-main h2 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s2); }
+.s-nav { position: static; }
+.s-nav-i { display: flex; align-items: center; }
+.mobilecrumb { display: none; margin: 0 0 var(--ah-s1); }
+.il-lead { margin: 0 0 var(--ah-s4); }
+@media (max-width: 800px) {
+  .shell { margin-left: var(--ah-s2); margin-right: var(--ah-s2); }
+  .s-nav { display: none; }
+  .ah-account-settings.s-page { padding: var(--ah-s3); }
+  .mobilecrumb { display: block; }
+}
+
+/* A provider's row: name, its levels in one line, and the disclosure. */
+.si-row.il-prow { align-items: start; }
+.il-main { flex-direction: column; align-items: flex-start; gap: 2px; }
+.il-provnote { font-size: var(--ah-size-meta); line-height: 1.45; color: var(--ah-ink-2); }
+.il-disclose { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 2px 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-accent-ink); cursor: pointer; border-radius: var(--ah-r-sm); }
+.il-disclose svg { width: 14px; height: 14px; }
+.il-disclose:hover { text-decoration: underline; }
+.il-disclose:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.si-row.il-cmprow { display: block; padding-top: 0; }
+.il-cmp-foot { margin: 0; }
+@media (max-width: 640px) {
+  .il-cmp { font-size: 12px; }
+  .il-cmp th, .il-cmp td { padding: 6px 5px; overflow-wrap: anywhere; hyphens: auto; }
+  .il-cmp thead th { overflow-wrap: normal; hyphens: manual; }
+  .il-cmp-corner { width: 30%; }
+  .il-cmp-val { gap: 3px; }
+  .il-cmp-val svg { width: 12px; height: 12px; }
+  .si-row.il-cmprow { padding-left: var(--ah-s2); padding-right: var(--ah-s2); }
+}
+
+/* The four applications in a row. The current one is a soft accent surface
+   with a full line, done ones carry a tick; never an edge stripe. */
+.il-rail { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.il-rail li { flex: 1 1 0; min-width: 0; display: flex; }
+.il-rail-btn {
+  flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 30px; padding: 0 8px;
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: transparent;
+  font: 500 var(--ah-size-meta) / 1.2 var(--ah-font); color: var(--ah-ink-2); text-align: left;
+}
+button.il-rail-btn { cursor: pointer; }
+button.il-rail-btn:hover { background: var(--ah-hover, var(--ah-sunken)); }
+button.il-rail-btn:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: 1px; }
+.il-rail li[aria-current] .il-rail-btn { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); font-weight: 600; }
+.il-rail-n { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 9px; border: 1px solid var(--ah-line); font-size: 11px; font-variant-numeric: tabular-nums; }
+.il-rail li[data-done] .il-rail-n { background: var(--ah-ok-soft); border-color: transparent; color: var(--ah-ok); }
+.il-rail-n svg { width: 11px; height: 11px; }
+.il-rail-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.il-stepapp { font-weight: 400; color: var(--ah-ink-2); }
+@media (max-width: 640px) {
+  .il-rail li { flex: 0 0 auto; }
+  .il-rail li[aria-current] { flex: 1 1 auto; }
+  .il-rail li:not([aria-current]) .il-rail-name { display: none; }
+  .il-stepapp { display: none; }
+}
+
+/* Vaihe kerrallaan: the four names in one row, this one marked and copyable. */
+.il-names { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px; }
+.il-names li { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 4px 0 8px; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); color: var(--ah-ink-2); }
+.il-names li:not([aria-current]) { padding-right: 8px; }
+.il-names li[aria-current] { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); color: var(--ah-ink); }
+.il-names li[aria-current] code { font-weight: 600; }
+.il-names code { font-family: var(--ah-mono); font-size: 12.5px; }
+.il-names-n { display: inline-grid; place-items: center; width: 14px; font-size: 11px; color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.il-names li[data-passed] .il-names-n svg { width: 12px; height: 12px; color: var(--ah-ok); }
+@media (max-width: 640px) { .il-names code { font-size: 11px; } .il-names li { min-height: 28px; } }
+.il-ids { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--ah-s4); }
+.il-ids .m-idfield { max-width: none; }
+@media (max-width: 640px) { .il-ids { gap: 2px var(--ah-s2); } .il-ids input { font-size: 11px; } }
+
+/* Yksi komento */
+.il-four { display: grid; gap: var(--ah-s1); padding: var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-sunken); }
+.il-four-head { font-weight: 600; }
+.il-four ol { margin: 0; padding-left: 1.3em; display: grid; gap: 2px; }
+.il-four li code { font-family: var(--ah-mono); font-size: 13px; margin-right: var(--ah-s2); }
+.il-script { display: flex; align-items: flex-start; gap: var(--ah-s1); min-width: 0; }
+.il-script pre { flex: 1; min-width: 0; margin: 0; max-height: 300px; overflow: auto; white-space: pre; font-size: 12px; line-height: 1.45; }
+.il-parsed { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--ah-s4); font-size: var(--ah-size-meta); }
+.il-parsed li { display: grid; grid-template-columns: 16px minmax(9em, auto) minmax(0, 1fr); gap: var(--ah-s2); align-items: center; }
+.il-parsed svg { width: 14px; height: 14px; color: var(--ah-err); }
+.il-parsed li[data-ok] svg { color: var(--ah-ok); }
+.il-parsed code { font-family: var(--ah-mono); font-size: 12px; overflow-wrap: anywhere; }
+.il-manual-tag { font-weight: 400; color: var(--ah-ink-2); }
+@media (max-width: 640px) {
+  .il-script pre { max-height: 260px; font-size: 10.5px; }
+  .il-parsed { grid-template-columns: minmax(0, 1fr); }
+  .il-parsed li { grid-template-columns: 14px auto minmax(0, 1fr); gap: 6px; }
+  .il-parsed code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+  .il-four li .m-quiet { display: none; }
+}
+
+/* Round 4 */
+/* A screen nobody captured: said under the band, on a quiet surface. */
+.il-nocap { display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; padding: 4px 8px; border: 1px dashed var(--ah-line); border-radius: var(--ah-r-sm); background: var(--ah-sunken); font-size: 12px; line-height: 1.35; color: var(--ah-ink-2); }
+.il-nocap svg { width: 13px; height: 13px; flex: none; margin-top: 1px; }
+.il-nocap strong { font-weight: 600; color: var(--ah-ink); }
+
+.il-rail-count { margin-left: auto; padding-left: 6px; font-size: 12px; font-weight: 400; color: var(--ah-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 640px) { .il-rail li:not([aria-current]) .il-rail-count { display: none; } }
+
+/* Round 5: the start page. */
+.m-dialog[data-page="start"] { grid-template-rows: auto minmax(0, 1fr) auto; }
+.il-start { display: grid; gap: var(--ah-s3); align-content: start; min-width: 0; min-height: 0; }
+.il-lead2 { display: grid; gap: var(--ah-s1); }
+.il-lead2 .m-act, .il-lead2 .m-done { margin: 0; }
+.il-how { display: flex; gap: 6px; align-items: flex-start; margin: 0; }
+.il-how svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--ah-muted); }
+/* Column headers: the level's state, its checkbox or its button. */
+.il-cmp thead th { vertical-align: top; }
+.il-colset { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-weight: 400; font-size: 12px; color: var(--ah-ok); }
+.il-colset svg { width: 12px; height: 12px; }
+.il-colpick { display: block; margin-top: 4px; font-weight: 400; }
+.il-colpick .ah-checkbox { font-size: 12.5px; }
+.il-cmp thead th .ah-button, .il-cmp thead th button { margin-top: 4px; }
+/* A chosen level's column carries a quiet tint; a pickable one lights on hover. */
+.il-cmp [data-chosen] { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ah-accent-soft) 55%, transparent); }
+.il-cmp td[data-pick], .il-cmp th[data-pick] { cursor: pointer; }
+.il-cmp [data-hot] { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ah-accent-soft) 80%, transparent); }
+.il-cmp thead th[data-hot] { color: var(--ah-ink); }
+/* Under the table: the set levels as the host knows them. */
+.il-known { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.il-known li { display: flex; gap: 6px; align-items: baseline; }
+.il-known svg { width: 12px; height: 12px; flex: none; color: var(--ah-ok); align-self: center; }
+.il-known strong { color: var(--ah-ink); font-weight: 600; margin-right: 4px; }
+.il-prov { font-size: 12px; color: var(--ah-ink-2); }
+.il-prov code { font-family: var(--ah-mono); font-size: 12px; }
+/* Tilalista: one row per level. */
+.il-levels { margin: 0; padding: 0; list-style: none; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.il-levels li { display: grid; grid-template-columns: minmax(0, 1fr) auto 84px; gap: var(--ah-s3); align-items: center; padding: 10px 12px; }
+.il-levels li + li { border-top: 1px solid var(--ah-line-soft); }
+.il-lv-main { display: grid; gap: 2px; min-width: 0; }
+.il-lv-name { font-weight: 600; }
+.il-lv-gist { font-size: var(--ah-size-meta); color: var(--ah-ink-2); line-height: 1.4; }
+.il-lv-act { justify-self: end; }
+/* The walk: only the chosen applications, the skipped ones named beside. */
+.il-railrow { display: flex; gap: var(--ah-s3); align-items: center; min-width: 0; }
+.il-railrow .il-rail { flex: 1 1 auto; }
+.il-rail li { max-width: 260px; }
+.il-skipped { margin: 0; flex: none; font-size: 12px; color: var(--ah-muted); }
+@media (max-width: 640px) {
+  .m-dialog[data-page="start"] { grid-template-rows: auto auto auto; }
+  .il-levels li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px var(--ah-s2); }
+  .il-lv-state { grid-row: 2; }
+  .il-lv-act { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+  .il-railrow { gap: var(--ah-s2); }
+  .il-colpick .ah-checkbox { font-size: 11.5px; }
+  .il-colpick .ah-checkbox > span:last-child { overflow-wrap: anywhere; }
+}
+/* The start page fits a laptop screen with its footer: a denser table, and
+   the content scrolls above the footer rather than pushing it out of view. */
+.m-dialog[data-page="start"] .il-cmp th, .m-dialog[data-page="start"] .il-cmp td { padding: 4px 10px; }
+.m-dialog[data-page="start"] .il-cmp .il-cmp-warn { margin-top: 1px; }
+.m-dialog[data-page="start"] .il-start { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2) - 220px); overflow: auto; }
+.m-dialog[data-page="start"] { padding-top: var(--ah-s5); padding-bottom: var(--ah-s5); }
+@media (max-width: 640px) {
+  .m-dialog[data-page="start"] .il-start { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2) - 170px); }
+  .m-dialog[data-page="start"] .il-cmp th, .m-dialog[data-page="start"] .il-cmp td { padding: 4px 5px; }
+}
+.il-start { grid-auto-rows: max-content; }
+@media (max-width: 640px) {
+  .m-dialog[data-page="start"] .il-cmp-corner { width: 25%; }
+  .il-colset { font-size: 11px; gap: 2px; flex-wrap: wrap; }
+  .il-colpick .ah-checkbox { flex-direction: column; align-items: flex-start; gap: 2px; font-size: 11px; line-height: 1.2; }
+  .il-colpick .ah-checkbox > span:last-child { overflow-wrap: normal; }
+  .il-cmp thead th .ah-button, .il-cmp thead th button { padding-inline: 6px; min-width: 0; font-size: 12px; gap: 2px; }
+}
+.m-dialog[data-page="start"] .il-start { gap: var(--ah-s2); }
+.il-known { padding-left: 20px; }
+@media (max-width: 640px) {
+  .il-cmp thead th button svg { display: none; }
+  .il-known { padding-left: 0; }
+}

@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -103,4 +103,5 @@ kuvakaappauksin. Kierros 4 näyttää sen ilman Cloud Shelliä.
 henkilö valitsee alussa, mitkä neljästä tasosta hän nyt asettaa. Aloitukseen
 myös vertailutaulukko. Kierros 5: riffit aloitusnäkymästä ja aloitusaskeleista.
 - [x] kierros 4: klikkauspolku ilman Cloud Shelliä
-- [ ] kierros 5: Jokainen kokonaan, aloitusnäkymä (valitse tasot, ohita tehdyt, taulukko), näkymätarjous ja kysymykset Jarille
+- [x] kierros 5: Jokainen kokonaan, aloitusnäkymä (valitse tasot, ohita tehdyt, taulukko), näkymätarjous ja kysymykset Jarille
+- [ ] Jari valitsee kierroksen 5 aloituksen
