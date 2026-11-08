@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useLocation } from "react-router";
+import "./composerStack.css";
 import {
   AgentHeader,
   Button,
@@ -3028,226 +3029,232 @@ function BrowserConversationContent({
               onGiveBack={creationView.giveBack}
             />
           )}
-          {view === "opened" && controlled && id ? (
-            <NextWaitingDock
-              next={nextWaiting}
-              agentId={id}
-              open={waitingWindow.open && draft.length === 0}
-            />
-          ) : null}
-          {view === "opened" ? (
-            <>
-              <div className="ah-actionable-notices">
-                {github}
-                {aiNotice}
-                {!statusStale &&
-                current?.auth_error === "pi_model_unsupported" ? (
-                  <WarningBanner
-                    data-testid="model-unavailable"
-                    tone="danger"
-                    title={txt.modelUnsupported}
-                    actions={
-                      <ControlButton
-                        data-testid="notice-action"
-                        size="row"
-                        onPress={() => {
-                          setModelExpanded(!modelExpanded);
-                        }}
-                      >
-                        {txt.chooseModel}
-                      </ControlButton>
-                    }
-                  >
-                    {txt.modelUnsupportedDetail}
-                  </WarningBanner>
-                ) : null}
-                {!statusStale &&
-                current?.auth_error === "pi_model_unsupported" &&
-                modelExpanded ? (
-                  <PiModelSelector
-                    csrf={csrf}
-                    scope="recovery"
-                    onChoice={(choice) =>
-                      void start(
-                        choice,
-                        !entries.some((e) => e.kind === "user"),
-                      )
-                    }
-                  />
-                ) : null}
-              </div>
-              {!storagePressure.full && !statusStale && visibleHistoryError ? (
-                <div className="ah-status-check">
-                  <WarningBanner
-                    data-testid="history-unavailable"
-                    data-state={recheckState}
-                    tone="danger"
-                    title={txt.historyUnavailable}
-                    actions={
-                      <Button
-                        data-testid="conversation-recheck"
-                        size="row"
-                        variant="secondary"
-                        label={
-                          recheckState === "running"
-                            ? txt.rechecking
-                            : txt.recheck
-                        }
-                        pending={recheckState === "running"}
-                        onPress={runRecheck}
-                      />
-                    }
-                  >
-                    {/* The one warning also says what the person's own
-                        message is waiting for. */}
-                    {recheckState === "done"
-                      ? txt.historyStillUnavailable
-                      : txt.historyUnavailableDetail}
-                    {sendUncertain ? ` ${txt.historyUnavailableSend}` : null}
-                  </WarningBanner>
-                </div>
-              ) : !storagePressure.full && !statusStale && sendUncertain ? (
-                <div className="ah-status-check">
-                  <WarningBanner
-                    data-testid="send-uncertain"
-                    data-reason={sendUncertain}
-                    data-state={recheckState}
-                    tone="neutral"
-                    title={txt.sendUncertain}
-                    actions={
-                      <Button
-                        data-testid="conversation-recheck"
-                        size="row"
-                        variant="secondary"
-                        label={
-                          recheckState === "running"
-                            ? txt.rechecking
-                            : txt.recheck
-                        }
-                        pending={recheckState === "running"}
-                        onPress={runRecheck}
-                      />
-                    }
-                  >
-                    {recheckState === "done"
-                      ? txt.sendStillUnknown
-                      : sendUncertain === "failed"
-                        ? txt.sendUncertainFailed
-                        : txt.sendUncertainDetail}
-                  </WarningBanner>
-                </div>
-              ) : !storagePressure.full &&
-                !statusStale &&
-                (visibleRecovery || details) ? (
-                <div className="ah-status-check">
-                  <Button
-                    data-testid="conversation-recheck"
-                    size="row"
-                    label={
-                      recheckState === "running" ? txt.rechecking : txt.recheck
-                    }
-                    variant="quiet"
-                    pending={recheckState === "running"}
-                    onPress={runRecheck}
-                  />
-                </div>
-              ) : null}
-              <div className="ah-conversation-notices">
-                {titleError ? (
-                  <InlineNotice
-                    data-testid="title-error"
-                    title={txt.titleFailed}
-                    description={titleError || undefined}
-                    tone="danger"
-                  />
-                ) : null}
-                {statusStale || storagePressure.full ? null : notices}
-                {held.notice ? (
-                  <p
-                    data-testid="held-message-notice"
-                    className="ah-held-notice"
-                    role="status"
-                  >
-                    {held.notice}
-                  </p>
-                ) : null}
-              </div>
-              {(recapFailed
-                ? !recapFailedDismissed
-                : !recapDismissed &&
-                  (shownRecap ||
-                    outdatedRequest ||
-                    recapBusy ||
-                    recapError ||
-                    recapUncertain)) && (
-                <RecapCard
-                  // Only "Tilannekatsaus": the header and sidebar already say
-                  // who is waiting (Jari 16.10.2026).
-                  recap={shownRecap}
-                  latestAt={recapCurrent?.latestAt}
-                  now={recapNow}
-                  pending={!!recapBusy}
-                  onDismiss={
-                    recapFailed
-                      ? () =>
-                          setDismissedRecap(
-                            `${dismissalKey}:failed:${recapFailed.through}`,
-                          )
-                      : recapFingerprint
-                        ? () => {
-                            setDismissedRecap(
-                              `${dismissalKey}:${recapFingerprint}`,
-                            );
-                            try {
-                              localStorage.setItem(
-                                dismissalKey,
-                                recapFingerprint,
-                              );
-                            } catch {
-                              /* Keep it dismissed in this tab. */
-                            }
-                          }
-                        : undefined
-                  }
-                  error={!!recapError || (!recapBusy && !!recapFailed)}
-                  failure={recapBusy ? undefined : recapReason}
-                  uncertain={!!recapUncertain}
-                  unverifiable={!!recapCurrent?.unavailable}
-                  unavailable={recapUnavailable}
-                  unavailableReason={recapUnavailableReason}
-                  onRequest={requestRecapNow}
-                  settingsHref={settingsHref("tilannekatsaus")}
-                  onOpenSettings={() =>
-                    navigate(settingsHref("tilannekatsaus"))
-                  }
-                />
-              )}
-            </>
-          ) : (
-            <CreationNotice notice={creationView.notice} />
-          )}
-          {view === "opened" && controlled ? (
-            <>
-              {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
-                  the strip marks only which work is waited on. */}
-              <BackgroundStrip
-                agentIdle={
-                  presentation.activity === "waiting_background" ||
-                  presentation.activity === "waiting"
-                }
-                piNotRunning={bridgeExpected}
-                ask={workerAsk}
-                assets={assets}
+          <div className="ah-composer-stack">
+            {view === "opened" && controlled && id ? (
+              <NextWaitingDock
+                next={nextWaiting}
+                agentId={id}
+                open={waitingWindow.open && draft.length === 0}
               />
-            </>
-          ) : null}
-          {view === "opened" ? rewind.sheet : null}
-          {view !== "opened" || controlled ? (
-            <>
-              <ServerBrowserDock identity={identity} csrf={csrf} />
-              <Composer {...composer} />
-            </>
-          ) : null}
+            ) : null}
+            {view === "opened" ? (
+              <>
+                <div className="ah-actionable-notices">
+                  {github}
+                  {aiNotice}
+                  {!statusStale &&
+                  current?.auth_error === "pi_model_unsupported" ? (
+                    <WarningBanner
+                      data-testid="model-unavailable"
+                      tone="danger"
+                      title={txt.modelUnsupported}
+                      actions={
+                        <ControlButton
+                          data-testid="notice-action"
+                          size="row"
+                          onPress={() => {
+                            setModelExpanded(!modelExpanded);
+                          }}
+                        >
+                          {txt.chooseModel}
+                        </ControlButton>
+                      }
+                    >
+                      {txt.modelUnsupportedDetail}
+                    </WarningBanner>
+                  ) : null}
+                  {!statusStale &&
+                  current?.auth_error === "pi_model_unsupported" &&
+                  modelExpanded ? (
+                    <PiModelSelector
+                      csrf={csrf}
+                      scope="recovery"
+                      onChoice={(choice) =>
+                        void start(
+                          choice,
+                          !entries.some((e) => e.kind === "user"),
+                        )
+                      }
+                    />
+                  ) : null}
+                </div>
+                {!storagePressure.full &&
+                !statusStale &&
+                visibleHistoryError ? (
+                  <div className="ah-status-check">
+                    <WarningBanner
+                      data-testid="history-unavailable"
+                      data-state={recheckState}
+                      tone="danger"
+                      title={txt.historyUnavailable}
+                      actions={
+                        <Button
+                          data-testid="conversation-recheck"
+                          size="row"
+                          variant="secondary"
+                          label={
+                            recheckState === "running"
+                              ? txt.rechecking
+                              : txt.recheck
+                          }
+                          pending={recheckState === "running"}
+                          onPress={runRecheck}
+                        />
+                      }
+                    >
+                      {/* The one warning also says what the person's own
+                        message is waiting for. */}
+                      {recheckState === "done"
+                        ? txt.historyStillUnavailable
+                        : txt.historyUnavailableDetail}
+                      {sendUncertain ? ` ${txt.historyUnavailableSend}` : null}
+                    </WarningBanner>
+                  </div>
+                ) : !storagePressure.full && !statusStale && sendUncertain ? (
+                  <div className="ah-status-check">
+                    <WarningBanner
+                      data-testid="send-uncertain"
+                      data-reason={sendUncertain}
+                      data-state={recheckState}
+                      tone="neutral"
+                      title={txt.sendUncertain}
+                      actions={
+                        <Button
+                          data-testid="conversation-recheck"
+                          size="row"
+                          variant="secondary"
+                          label={
+                            recheckState === "running"
+                              ? txt.rechecking
+                              : txt.recheck
+                          }
+                          pending={recheckState === "running"}
+                          onPress={runRecheck}
+                        />
+                      }
+                    >
+                      {recheckState === "done"
+                        ? txt.sendStillUnknown
+                        : sendUncertain === "failed"
+                          ? txt.sendUncertainFailed
+                          : txt.sendUncertainDetail}
+                    </WarningBanner>
+                  </div>
+                ) : !storagePressure.full &&
+                  !statusStale &&
+                  (visibleRecovery || details) ? (
+                  <div className="ah-status-check">
+                    <Button
+                      data-testid="conversation-recheck"
+                      size="row"
+                      label={
+                        recheckState === "running"
+                          ? txt.rechecking
+                          : txt.recheck
+                      }
+                      variant="quiet"
+                      pending={recheckState === "running"}
+                      onPress={runRecheck}
+                    />
+                  </div>
+                ) : null}
+                <div className="ah-conversation-notices">
+                  {titleError ? (
+                    <InlineNotice
+                      data-testid="title-error"
+                      title={txt.titleFailed}
+                      description={titleError || undefined}
+                      tone="danger"
+                    />
+                  ) : null}
+                  {statusStale || storagePressure.full ? null : notices}
+                  {held.notice ? (
+                    <p
+                      data-testid="held-message-notice"
+                      className="ah-held-notice"
+                      role="status"
+                    >
+                      {held.notice}
+                    </p>
+                  ) : null}
+                </div>
+                {(recapFailed
+                  ? !recapFailedDismissed
+                  : !recapDismissed &&
+                    (shownRecap ||
+                      outdatedRequest ||
+                      recapBusy ||
+                      recapError ||
+                      recapUncertain)) && (
+                  <RecapCard
+                    // Only "Tilannekatsaus": the header and sidebar already say
+                    // who is waiting (Jari 16.10.2026).
+                    recap={shownRecap}
+                    latestAt={recapCurrent?.latestAt}
+                    now={recapNow}
+                    pending={!!recapBusy}
+                    onDismiss={
+                      recapFailed
+                        ? () =>
+                            setDismissedRecap(
+                              `${dismissalKey}:failed:${recapFailed.through}`,
+                            )
+                        : recapFingerprint
+                          ? () => {
+                              setDismissedRecap(
+                                `${dismissalKey}:${recapFingerprint}`,
+                              );
+                              try {
+                                localStorage.setItem(
+                                  dismissalKey,
+                                  recapFingerprint,
+                                );
+                              } catch {
+                                /* Keep it dismissed in this tab. */
+                              }
+                            }
+                          : undefined
+                    }
+                    error={!!recapError || (!recapBusy && !!recapFailed)}
+                    failure={recapBusy ? undefined : recapReason}
+                    uncertain={!!recapUncertain}
+                    unverifiable={!!recapCurrent?.unavailable}
+                    unavailable={recapUnavailable}
+                    unavailableReason={recapUnavailableReason}
+                    onRequest={requestRecapNow}
+                    settingsHref={settingsHref("tilannekatsaus")}
+                    onOpenSettings={() =>
+                      navigate(settingsHref("tilannekatsaus"))
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <CreationNotice notice={creationView.notice} />
+            )}
+            {view === "opened" && controlled ? (
+              <>
+                {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
+                  the strip marks only which work is waited on. */}
+                <BackgroundStrip
+                  agentIdle={
+                    presentation.activity === "waiting_background" ||
+                    presentation.activity === "waiting"
+                  }
+                  piNotRunning={bridgeExpected}
+                  ask={workerAsk}
+                  assets={assets}
+                />
+              </>
+            ) : null}
+            {view === "opened" ? rewind.sheet : null}
+            {view !== "opened" || controlled ? (
+              <>
+                <ServerBrowserDock identity={identity} csrf={csrf} />
+                <Composer {...composer} />
+              </>
+            ) : null}
+          </div>
           {view === "opened" ? shell.panel : null}
         </ConversationFrame>
       )}

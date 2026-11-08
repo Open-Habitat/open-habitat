@@ -12,11 +12,12 @@
 .ah-composer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--ah-s3);
 }
 .ah-composer > * {
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
+  margin-block: 0;
   box-sizing: border-box;
 }
 

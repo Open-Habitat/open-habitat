@@ -47,7 +47,9 @@ export function ConversationFrame({
     };
     const size = new ResizeObserver(measure);
     const attach = () => {
-      const nextComposer = root.querySelector(":scope > .ah-composer");
+      const nextComposer = root.querySelector(
+        ":scope > .ah-composer-stack, :scope > .ah-composer",
+      );
       const nextDock = root.querySelector(":scope > .ah-terminal-dock");
       const nextHeader = root.querySelector(":scope > .ah-agent-header");
       if (

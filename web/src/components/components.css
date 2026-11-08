@@ -1483,7 +1483,7 @@ details[open] > summary:not([class])::before {
   display: none;
 }
 /* An actionable error stays outside the shrinking history scroll when a recap arrives. */
-.ah-conversation-frame > .ah-actionable-notices:not(:empty) {
+.ah-conversation-frame .ah-actionable-notices:not(:empty) {
   flex: none;
   width: min(
     calc(100% - 2 * var(--ah-column-pad-inline)),
@@ -3829,7 +3829,8 @@ details[open] > summary:not([class])::before {
   padding-block: 0;
 }
 /* Recap is a dismissible card adjacent to the editor, outside the transcript scroll. */
-.ah-conversation-frame > .ah-recap {
+.ah-conversation-frame > .ah-recap,
+.ah-composer-stack > .ah-recap {
   flex: none;
   width: min(
     calc(100% - 2 * var(--ah-column-pad-inline)),

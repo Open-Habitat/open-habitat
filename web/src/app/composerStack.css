@@ -1,0 +1,40 @@
+/* One rhythm from the transcript's last status row through the draft.
+   Strip insets and the composer's top padding must not add a second gap. */
+.ah-composer-stack {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: var(--ah-s3);
+  padding-bottom: var(--ah-composer-pad-block);
+}
+.ah-conversation-frame:has(> .ah-composer-stack) > .ah-conversation-stream {
+  padding-bottom: var(--ah-s3);
+}
+.ah-composer-stack > .ah-next-waiting,
+.ah-composer-stack > .ah-bg-strip,
+.ah-conversation-frame .ah-composer-stack > .ah-composer {
+  padding-block: 0;
+  margin-block: 0;
+}
+.ah-composer-stack > .ah-status-check,
+.ah-composer-stack > .ah-recap,
+.ah-composer-stack > .ah-creation-notices,
+.ah-composer-stack > .ah-conversation-notices,
+.ah-composer-stack > .ah-actionable-notices {
+  margin-block: 0;
+}
+.ah-composer-stack > .ah-conversation-notices,
+.ah-composer-stack > .ah-actionable-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-composer-stack > .ah-conversation-notices:empty,
+.ah-composer-stack > .ah-actionable-notices:empty {
+  display: none;
+}
+.ah-state .ah-composer-stack > .ah-conversation-notices > *,
+.ah-state .ah-composer-stack > .ah-actionable-notices > *,
+.ah-state .ah-composer-stack > .ah-composer > * {
+  margin-block: 0;
+}
