@@ -2,13 +2,15 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: browser spec run in taskfleet worker
 source_ref: taskfleet:01m6y5wmcfs49saf901vkk6608/test-failure:phone-composer-helper-selector
 originating_run: 01m6y5wmcfs49saf901vkk6608
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # browser-conversation phone composer helper uses a selector the composer stack broke
