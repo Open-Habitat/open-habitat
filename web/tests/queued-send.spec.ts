@@ -600,6 +600,56 @@ async function stoppedQuietly(page: Page, id: string, text: string) {
   return (await nativeUserTexts(page, id)).filter((t) => t === text).length;
 }
 
+test("@queued-send a queued follow-up never duplicates the preceding reply at turn end", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const id = await workingTurn(page);
+  await page.evaluate(() => {
+    const samples: string[][] = [];
+    Object.assign(window, { replySamples: samples });
+    const timeline = document.querySelector(
+      '[data-testid="conversation-timeline"]',
+    );
+    if (!timeline) throw new Error("missing timeline");
+    const sample = () => {
+      samples.push(
+        [...timeline.querySelectorAll("p")]
+          .map((node) => node.textContent ?? "")
+          .filter(
+            (text) => text.includes("Kysyit:") && text.includes("hidas päätyö"),
+          ),
+      );
+    };
+    new MutationObserver(sample).observe(timeline, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    sample();
+  });
+  await editor(page).fill("hidas seuraava kysymys");
+  await editor(page).press("Alt+Enter");
+  await expect(editor(page)).toHaveValue("");
+  await expect(
+    page.getByTestId("composer-queue").getByRole("listitem"),
+  ).toHaveCount(1);
+  await expect
+    .poll(async () => (await status(page, id)).state, { timeout: 30000 })
+    .toBe("idle");
+  await expect(stopAgent(page)).toHaveCount(0);
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    'Kysyit: "hidas seuraava kysymys"',
+    { count: 1 },
+  );
+  const samples = await page.evaluate(
+    () => (window as unknown as { replySamples: string[][] }).replySamples,
+  );
+  expect(samples.some((sample) => sample.length === 1)).toBe(true);
+  expect(samples.filter((sample) => sample.length > 1)).toEqual([]);
+});
+
 test("@queued-send Stop returns a still-queued message to the field and sends nothing", async ({
   page,
 }) => {
