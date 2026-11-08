@@ -93,13 +93,15 @@
   display: flex;
   flex-wrap: wrap;
 }
-.s-row:has(
-    > [data-ah-primitive="segmented"],
-    > .s-val > [data-ah-primitive="segmented"],
-    > .ah-choice-trigger,
-    > .s-val > .ah-choice-trigger,
-    > .ah-stepper,
-    > .s-val > .ah-stepper
+:where(
+    .s-row:has(
+      > [data-ah-primitive="segmented"],
+      > .s-val > [data-ah-primitive="segmented"],
+      > .ah-choice-trigger,
+      > .s-val > .ah-choice-trigger,
+      > .ah-stepper,
+      > .s-val > .ah-stepper
+    )
   )
   > .s-lbl {
   flex: 1 1 160px;
@@ -243,9 +245,9 @@
 .s-nav-i:focus-visible {
   z-index: 1;
 }
-/* Keep in sync with Account's search preview: folded navigation and the
-   section cannot be shown together. Row and touch sizing stay phone-only. */
-@media (max-width: 1050px) {
+/* Fold before the two rails squeeze the section's controls. Keep in sync
+   with Account's search preview and section-preserving resize handler. */
+@media (max-width: 1400px) {
   .ah-account-settings.s-page {
     flex-direction: column;
     gap: var(--ah-s5);
@@ -279,14 +281,6 @@
     margin-bottom: var(--ah-s3);
   }
 }
-@media (max-width: 760px) {
-  .s-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .s-val {
-    justify-content: flex-start;
-  }
-}
 /* The detail pane can be narrow even in a desktop window beside both rails. */
 @container settings-admin (max-width: 460px) {
   .s-table,
@@ -317,18 +311,18 @@
   flex: none;
 }
 /* The shell's ordinary message measure must not squeeze list + detail into 720px. */
-.ah-state:has(> .s-page) {
+.ah-app-shell:has(.ah-rail) .ah-state:has(.s-page) {
   max-width: 1100px;
 }
 /* Käyttöönotto keeps its route list beside the step's settings. */
-.ah-app-shell .ah-state:has(> .s-page.wide) {
+.ah-app-shell:has(.ah-rail) .ah-state:has(.s-page.wide) {
   max-width: 1400px;
 }
 .s-nav {
   position: sticky;
   top: 0;
 }
-@media (max-width: 1050px) {
+@media (max-width: 1400px) {
   .s-nav {
     position: static;
   }
@@ -356,7 +350,7 @@
 :where(.s-server-area .s-nav) > .s-desc {
   margin-bottom: var(--ah-s4);
 }
-@media (max-width: 1050px) {
+@media (max-width: 1400px) {
   .s-page.s-server-area.detail .s-nav > :not(h1) {
     display: flex;
   }
@@ -403,7 +397,7 @@
   border-top: 1px solid var(--ah-line);
   color: var(--ah-ink-2);
 }
-@media (max-width: 760px) {
+@container settings-main (max-width: 520px) {
   .s-val.s-version {
     align-items: flex-start;
     text-align: left;
@@ -455,7 +449,7 @@
   color: var(--ah-err);
   text-align: right;
 }
-@media (max-width: 800px) {
+@container settings-main (max-width: 520px) {
   .s-inline .s-val {
     align-items: stretch;
   }
@@ -640,20 +634,15 @@
     background: var(--ah-accent-soft);
   }
 }
-@media (max-width: 760px) {
-  .s-row.s-marked {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .s-row.s-marked > .s-val {
-    grid-column: 2 / -1;
-  }
-}
-/* Beside the sidebar and Settings' own list a desktop window can leave the
-   section column (.s-main) as narrow as a phone's, so the column, not the
-   window, also decides when a row's control goes under its label. */
-@container settings-main (max-width: 400px) {
+/* Row layout follows the section, not the window or the navigation state. */
+@container settings-main (max-width: 520px) {
   .s-row {
     grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .s-row > .s-lbl {
+    flex-basis: auto;
   }
   .s-val {
     justify-content: flex-start;
@@ -810,7 +799,7 @@
   flex: none;
   margin-left: calc(var(--ah-s2) - var(--ah-s8));
 }
-@media (max-width: 1050px) {
+@media (max-width: 1400px) {
   /* In the folded layout the X shares the list heading or section's back
      row, and scrolls away with it instead of floating over the text. */
   .s-close {
@@ -841,6 +830,17 @@
 @media (max-width: 800px) {
   .ah-settings-layer {
     padding: var(--ah-s6);
+  }
+}
+/* Settings needs its content room before the ordinary phone breakpoint.
+   The close control returns to the unchanged workspace navigation. Otherwise
+   a row can stack beside the app rail and widen again when that rail hides. */
+@media (min-width: 801px) and (max-width: 1100px) {
+  .ah-shell-body:has(.s-page) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ah-shell-body:has(.s-page) > .ah-rail-slot {
+    display: none;
   }
 }
 /* Tilannekatsaus (proto-recap-settings, Tasot). */

@@ -298,7 +298,7 @@ async function coveredWhileScrolling(page: Page) {
 }
 
 for (const [device, viewport] of [
-  ["desktop", { width: 1280, height: 600 }],
+  ["desktop", { width: 1600, height: 600 }],
   ["folded desktop", { width: 1040, height: 700 }],
   ["phone", { width: 390, height: 700 }],
 ] as const)

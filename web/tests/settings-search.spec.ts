@@ -9,7 +9,7 @@ import { expect, type Page, test } from "./worker-host";
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
-  viewport: { width: 1280, height: 800 },
+  viewport: { width: 1600, height: 800 },
 });
 
 /** Signs in the first identity, who administers the synthetic server. */

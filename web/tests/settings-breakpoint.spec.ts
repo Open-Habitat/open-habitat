@@ -16,7 +16,7 @@ for (const collapsed of [false, true])
   test(`Settings folds at the window boundary with the app rail ${collapsed ? "closed" : "open"}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto("/workspaces");
     await page.getByTestId("github-sign-in").click();
     await page
@@ -29,9 +29,11 @@ for (const collapsed of [false, true])
     await page.goto("/settings");
     // Resize the mounted page in both directions, including the formerly
     // squeezed width just above the app rail's own mobile breakpoint.
-    for (const width of [1280, 1060, 1051, 1050, 1040, 810, 390, 1060]) {
+    for (const width of [
+      1600, 1401, 1400, 1101, 1100, 1060, 1051, 1050, 1040, 810, 390, 1600,
+    ]) {
       await page.setViewportSize({ width, height: 900 });
-      const folded = width <= 1050;
+      const folded = width <= 1400;
       await expect(page.getByTestId("settings-tili")).toBeVisible({
         visible: !folded,
       });
@@ -51,7 +53,7 @@ for (const collapsed of [false, true])
       )
         await snapshot(
           page,
-          `../issues/settings-narrow-content-hidden/evidence/settings-${collapsed ? "closed" : "open"}-${width}`,
+          `../issues/settings-breakpoint-jump/evidence/settings-${collapsed ? "closed" : "open"}-${width}`,
           { labOrigin: hostOrigin },
         );
       if (folded) {

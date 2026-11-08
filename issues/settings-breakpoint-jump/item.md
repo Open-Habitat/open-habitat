@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Settings rows jump between stacked and side-by-side around the one-pane breakpoint
@@ -33,7 +34,7 @@ prototype.
 
 ## Acceptance Criteria
 
-- [ ] Narrowing the window from 1600 to 390 px changes each settings row's
+- [x] Narrowing the window from 1600 to 390 px changes each settings row's
       layout at most once, never back to wider; checked with a width sweep in
       a browser spec across sections.
-- [ ] Screenshots at the old jump widths, light and dark.
+- [x] Screenshots at the old jump widths, light and dark.
