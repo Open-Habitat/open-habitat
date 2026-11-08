@@ -156,11 +156,14 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 	}
 	defer transport.CloseIdleConnections()
 	out := &url.URL{Scheme: "http", Host: "unix", Path: fileOffersPath + "/" + id + "/zip"}
-	if mode != "zip" {
+	switch mode {
+	case "zip":
+	case "view-zip":
+		out.Path = viewsPath + "/" + id + "/zip"
+	case "thumbnail":
+		out.Path = fileOffersPath + "/" + id + "/thumbnail/" + rel
+	default:
 		out.Path = fileOffersPath + "/" + id + "/files/" + rel
-		if mode == "thumbnail" {
-			out.Path = fileOffersPath + "/" + id + "/thumbnail/" + rel
-		}
 	}
 	// A large file to a slow phone takes long; each write is bounded below.
 	ctx, cancel := context.WithTimeout(r.Context(), time.Hour)
@@ -172,7 +175,7 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 	}
 	// Only one byte range crosses, for media seeking and resumed downloads:
 	// several would come back as a multipart body this relay does not frame.
-	if v := r.Header.Get("Range"); mode != "zip" && singleRangePattern.MatchString(v) {
+	if v := r.Header.Get("Range"); mode != "zip" && mode != "view-zip" && singleRangePattern.MatchString(v) {
 		req.Header.Set("Range", v)
 		if v := r.Header.Get("If-Range"); v != "" && len(v) <= 200 {
 			req.Header.Set("If-Range", v)
@@ -204,7 +207,7 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 	h.Set("Cross-Origin-Resource-Policy", "same-origin")
 	kind, inline := fileInlineTypes[strings.ToLower(path.Ext(rel))]
 	switch {
-	case mode == "zip":
+	case mode == "zip" || mode == "view-zip":
 		h.Set("Content-Type", "application/zip")
 		// No file name: the page's download attribute names the archive.
 		h.Set("Content-Disposition", "attachment")

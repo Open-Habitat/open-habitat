@@ -232,6 +232,28 @@ func (a *Auth) viewList(w http.ResponseWriter, r *http.Request) {
 	a.proxy(w, r, s, false)
 }
 
+// viewZip is the app origin's download of one view's frozen files as one
+// zip (GET /api/v1/views/<id>/zip), for the owner's own session. The bytes
+// are an attachment like an offered file's: a view's content is presented
+// only on its own view host.
+func (a *Auth) viewZip(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead || !a.exact(r, r.URL.Path) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	id, ok := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, viewsPath+"/"), "/zip")
+	if a.cfg.ViewOrigin == "" || !ok || !viewIDPattern.MatchString(id) || r.URL.RawPath != "" {
+		safe(w, 404, "view_not_found")
+		return
+	}
+	a.fileRelay(w, r, s, id, "", "view-zip")
+}
+
 // viewHeaders are set before anything else on a view host, so an error from
 // any layer still runs sandboxed. Sources name the exact view host, never a
 // sibling, and frames are allowed only inside the app. Eval (which also

@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"archive/zip"
 	"context"
 	"crypto/rand"
 	"encoding/base32"
@@ -545,14 +546,24 @@ func removeView(home, id string) error {
 	return os.RemoveAll(filepath.Join(append(append([]string{home}, viewsDirParts...), gone)...))
 }
 
-// ViewsHandler is the browser's list of the person's views.
+// ViewsHandler is the browser's read of the person's views:
+//
+//	GET /api/v1/views            the person's views, newest first
+//	GET /api/v1/views/<id>/zip   one view's frozen files as one stored zip
+//
+// The zip is a download for the owner's own session; the view's content is
+// only ever presented on its own view host.
 func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if r.Method != http.MethodGet || r.URL.Path != ViewsPath || r.URL.EscapedPath() != ViewsPath || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		if r.URL.Path != ViewsPath {
+			serveViewZipRoute(w, r, cfg.Home)
+			return
+		}
+		if r.Method != http.MethodGet || r.URL.EscapedPath() != ViewsPath || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -570,6 +581,142 @@ func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.H
 		}
 		historyJSON(w, map[string]any{"schema_version": 1, "views": views})
 	})
+}
+
+func serveViewZipRoute(w http.ResponseWriter, r *http.Request, home string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead || r.URL.RawPath != "" || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	id, ok := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, ViewsPath+"/"), "/zip")
+	if !ok || !viewIDPattern.MatchString(id) {
+		snapshotError(w, 404, "view_not_found")
+		return
+	}
+	views, err := openViews(home)
+	if errors.Is(err, os.ErrNotExist) {
+		snapshotError(w, 404, "view_not_found")
+		return
+	}
+	if err != nil {
+		snapshotError(w, 503, "view_store_unavailable")
+		return
+	}
+	defer views.Close()
+	m, err := readViewManifest(int(views.Fd()), id)
+	if err != nil {
+		if errors.Is(err, unix.ENOENT) {
+			snapshotError(w, 404, "view_not_found")
+		} else {
+			snapshotError(w, 503, "view_store_unavailable")
+		}
+		return
+	}
+	files, err := dir(unix.Openat2, int(views.Fd()), id+"/files", true)
+	if err != nil {
+		snapshotError(w, 503, "view_store_unavailable")
+		return
+	}
+	defer unix.Close(files)
+	// The whole listing is known before the first byte goes out, so a store
+	// that does not match its manifest is an error reply, not a short zip.
+	var list []string
+	if err := listViewFiles(files, "", 0, &list); err != nil || len(list) != m.Files {
+		snapshotError(w, 503, "view_store_unavailable")
+		return
+	}
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(time.Hour))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(200)
+	if r.Method == http.MethodHead {
+		return
+	}
+	created, _ := time.Parse(time.RFC3339Nano, m.CreatedAt)
+	z := zip.NewWriter(w)
+	var total int64
+	for _, rel := range list {
+		fd, err := open(unix.Openat2, files, rel, unix.O_RDONLY|unix.O_NONBLOCK, true)
+		if err != nil {
+			panic(http.ErrAbortHandler)
+		}
+		f := os.NewFile(uintptr(fd), "view file")
+		st, err := stat(fd)
+		if err == nil && (st.Mode&unix.S_IFMT != unix.S_IFREG || total+st.Size > maxViewBytes) {
+			err = errors.New("view file changed")
+		}
+		var out io.Writer
+		if err == nil {
+			total += st.Size
+			out, err = z.CreateHeader(&zip.FileHeader{Name: rel, Method: zip.Store, Modified: created})
+		}
+		if err == nil {
+			var n int64
+			n, err = io.Copy(out, io.LimitReader(f, st.Size+1))
+			if err == nil && n != st.Size {
+				err = errors.New("view file changed")
+			}
+		}
+		f.Close()
+		if err != nil {
+			// Abort the response, so the archive is a failed download.
+			panic(http.ErrAbortHandler)
+		}
+	}
+	_ = z.Close()
+}
+
+// listViewFiles lists an export's regular files in name order, without
+// following any symlink, as far as an export may reach.
+func listViewFiles(parent int, prefix string, depth int, out *[]string) error {
+	if depth > maxViewDepth {
+		return errors.New("view too deep")
+	}
+	d, err := dir(unix.Openat2, parent, ".", true)
+	if err != nil {
+		return err
+	}
+	f := os.NewFile(uintptr(d), "view directory")
+	defer f.Close()
+	names, err := f.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		rel := name
+		if prefix != "" {
+			rel = prefix + "/" + name
+		}
+		if !validViewPath(rel) {
+			return errors.New("invalid view file")
+		}
+		var st unix.Stat_t
+		if err := unix.Fstatat(d, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			return err
+		}
+		switch st.Mode & unix.S_IFMT {
+		case unix.S_IFREG:
+			if len(*out) == maxViewFiles {
+				return errors.New("too many view files")
+			}
+			*out = append(*out, rel)
+		case unix.S_IFDIR:
+			sub, err := dir(unix.Openat2, d, name, true)
+			if err != nil {
+				return err
+			}
+			err = listViewFiles(sub, rel, depth+1, out)
+			unix.Close(sub)
+			if err != nil {
+				return err
+			}
+		default:
+			return errors.New("invalid view file")
+		}
+	}
+	return nil
 }
 
 // ViewExportHandler is the fixed export-read route, for the gateway's view

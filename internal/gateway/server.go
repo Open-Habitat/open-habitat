@@ -128,6 +128,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
 		mux.HandleFunc(viewsPath, s.auth.viewList)
+		mux.HandleFunc(viewsPath+"/", s.auth.viewZip)
 		mux.HandleFunc(viewEntryPrefix, func(w http.ResponseWriter, r *http.Request) {
 			if !s.auth.viewEntry(w, r) {
 				s.index(w, r)
@@ -248,5 +249,5 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
 func knownUIRoute(path string) bool {
-	return path == "/" || path == "/link" || path == "/view" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/resources" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
+	return path == "/" || path == "/link" || path == "/view" || path == "/offer" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/resources" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
 }

@@ -158,3 +158,56 @@ func TestFileOfferBytesArePresentedByTheGateway(t *testing.T) {
 		}
 	}
 }
+
+func TestViewZipIsAnAttachmentForTheOwner(t *testing.T) {
+	const viewID = "vaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	seen := make(chan *http.Request, 16)
+	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Clone(context.Background())
+		if r.URL.Path != "/api/v1/views/"+viewID+"/zip" {
+			w.WriteHeader(404)
+			return
+		}
+		// The daemon's headers never decide how the app origin presents it.
+		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Disposition", "inline")
+		io.WriteString(w, "PK-zip")
+	})
+	d := newEditorDesk(t, daemon)
+	path := "/api/v1/views/" + viewID + "/zip"
+	// Without a view origin the installation offers no views at all.
+	if res := d.do("GET", "host.test", path, "", appCookie); res.StatusCode != 404 {
+		t.Fatalf("without views: %d", res.StatusCode)
+	}
+	d.a.cfg.ViewOrigin = "https://oh-view-*.test"
+	res := d.do("GET", "host.test", path, "", appCookie)
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 || string(body) != "PK-zip" || res.Header.Get("Content-Type") != "application/zip" || res.Header.Get("Content-Disposition") != "attachment" || !strings.HasPrefix(res.Header.Get("Content-Security-Policy"), "sandbox;") || res.Header.Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("zip: %d %q %v", res.StatusCode, body, res.Header)
+	}
+	if res := d.do("GET", "host.test", path, "", nil); res.StatusCode != 401 {
+		t.Fatalf("without session: %d", res.StatusCode)
+	}
+	for _, tc := range []struct{ method, path string }{
+		{"POST", path},
+		{"GET", path + "?x=1"},
+		{"GET", "/api/v1/views/vzz/zip"},
+		{"GET", "/api/v1/views/" + viewID},
+		{"GET", "/api/v1/views/" + viewID + "/zip/x"},
+		{"GET", "/api/v1/views/" + viewID + "%2Fzip"},
+	} {
+		if res := d.do(tc.method, "host.test", tc.path, "", appWrite); res.StatusCode < 400 {
+			t.Fatalf("%s %s: %d", tc.method, tc.path, res.StatusCode)
+		}
+	}
+	got := 0
+	for len(seen) > 0 {
+		if r := <-seen; r.URL.Path != "/api/v1/views/"+viewID+"/zip" {
+			t.Fatalf("daemon was asked for %q", r.URL.Path)
+		}
+		got++
+	}
+	if got != 1 {
+		t.Fatalf("daemon reads: %d", got)
+	}
+}

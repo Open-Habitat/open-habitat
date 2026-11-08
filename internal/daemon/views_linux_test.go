@@ -3,6 +3,8 @@
 package daemon
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -383,5 +385,71 @@ func TestViewOfferRefusedWithoutViewOrigin(t *testing.T) {
 	// Invalid input is still named as such.
 	if code, v := offerView(t, c, h.q, map[string]any{"idempotency_key": "x"}); code != 400 || v.Error.Code != "invalid_arguments" {
 		t.Fatalf("invalid offer: %d %+v", code, v)
+	}
+}
+
+func TestViewZipHoldsOnlyThatExport(t *testing.T) {
+	h := viewFixture(t)
+	c, ws := h.c, h.ws
+	_, a := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000031", "workspace_id": ws, "path": "site", "entry": "index.html"})
+	if a.View.ID == "" {
+		t.Fatalf("offer: %+v", a)
+	}
+	views := ViewsHandler(h.cfg, func(*http.Request) bool { return true })
+	read := func(method, path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		views.ServeHTTP(w, httptest.NewRequest(method, "http://unix"+path, nil))
+		return w
+	}
+	w := read("GET", ViewsPath+"/"+a.View.ID+"/zip")
+	if w.Code != 200 || w.Header().Get("Content-Type") != "application/octet-stream" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("zip: %d %v", w.Code, w.Header())
+	}
+	z, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, f := range z.File {
+		names = append(names, f.Name)
+		if f.Method != zip.Store {
+			t.Errorf("%s: method %d", f.Name, f.Method)
+		}
+	}
+	if strings.Join(names, ",") != "app.js,index.html,sub/x.css" {
+		t.Fatalf("entries: %v", names)
+	}
+	if w := read("HEAD", ViewsPath+"/"+a.View.ID+"/zip"); w.Code != 200 || w.Body.Len() != 0 {
+		t.Fatalf("head: %d %d", w.Code, w.Body.Len())
+	}
+	// Another or a missing view, a malformed path or a write is refused.
+	for path, code := range map[string]int{
+		ViewsPath + "/vzzzzzzzzzzzzzzzzzzzzzzzzzz/zip": 404,
+		ViewsPath + "/" + a.View.ID:                    404,
+		ViewsPath + "/" + a.View.ID + "/zip/x":         404,
+		ViewsPath + "/../" + a.View.ID + "/zip":        404,
+		ViewsPath + "/" + a.View.ID + "/zip?x=1":       400,
+	} {
+		if w := read("GET", path); w.Code != code {
+			t.Errorf("%s: %d, want %d", path, w.Code, code)
+		}
+	}
+	if w := read("POST", ViewsPath+"/"+a.View.ID+"/zip"); w.Code != 400 {
+		t.Errorf("post: %d", w.Code)
+	}
+	untrusted := ViewsHandler(h.cfg, func(*http.Request) bool { return false })
+	uw := httptest.NewRecorder()
+	untrusted.ServeHTTP(uw, httptest.NewRequest("GET", "http://unix"+ViewsPath+"/"+a.View.ID+"/zip", nil))
+	if uw.Code != 403 {
+		t.Fatalf("untrusted peer: %d", uw.Code)
+	}
+	// A file planted in the export as a symlink makes the store unreadable
+	// for a zip rather than following it.
+	files := filepath.Join(h.root, ".local", "state", "open-habitat", "views", a.View.ID, "files")
+	if err := os.Symlink(filepath.Join(h.root, "secret", "token.html"), filepath.Join(files, "planted.html")); err != nil {
+		t.Fatal(err)
+	}
+	if w := read("GET", ViewsPath+"/"+a.View.ID+"/zip"); w.Code != 503 || strings.Contains(w.Body.String(), "salaisuus") {
+		t.Fatalf("planted symlink: %d %q", w.Code, w.Body.String())
 	}
 }
