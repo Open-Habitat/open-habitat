@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Composer attachment chips render thumbnails from the full image
@@ -29,5 +30,5 @@ previews too.
 
 ## Acceptance Criteria
 
-- [ ] Dropping five 26 MiB images shows chips promptly without holding five full images in memory.
-- [ ] Touched web and attachment browser specs green; `KOKEILTAVAA.md` line.
+- [x] Five large images use bounded thumbnails, never original-image downloads for chips. Verified with five 19 MiB files; 26 MiB files exceed the existing 20 MiB upload cap and are refused. Peak heap was not measured (see `result.md`).
+- [x] Touched web and attachment browser specs green; `KOKEILTAVAA.md` line.

@@ -1,5 +1,4 @@
 import AxeBuilder from "@axe-core/playwright";
-import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
 import { dropFiles } from "./conversation-view";
 import { expect, test } from "./worker-host";
@@ -201,6 +200,9 @@ test("picker, image paste and conversation drop persist authenticated attachment
   );
   await page.reload();
   await expect(sent.locator(".ah-attachment-chips img").first()).toBeVisible();
+  await expect(
+    sent.locator(".ah-attachment-chips img").first(),
+  ).toHaveAttribute("src", `${url}/thumbnail`);
   await expectNativeContent(
     page.locator(".ah-user-content"),
     "Katso liitteet",
@@ -303,7 +305,7 @@ test("picker, image paste and conversation drop persist authenticated attachment
   }
 });
 
-test("large image chips download only thumbnails, including after sending and reloading", async ({
+test("large draft image chips download only thumbnails, including after reloading", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
@@ -406,35 +408,26 @@ test("large image chips download only thumbnails, including after sending and re
   expect(originals).toEqual([]);
   await expect.poll(() => thumbnails.length).toBe(5);
   expect(thumbnails.every((size) => size > 0 && size < 100 * 1024)).toBe(true);
-  if (process.env.OH_VISUAL_CAPTURE === "1") {
-    await snapshot(
-      page,
-      "../issues/attachment-chip-thumbnails/evidence/draft-chips",
-    );
-  }
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-  const sent = page
-    .locator('.ah-feed > li[data-kind="user"]')
-    .getByTestId("attachment-chip");
-  await loaded(sent);
+  // Drafts reload from attachment references too. Sending 95 MiB through
+  // fake Pi would exceed its 1 MiB RPC scanner; sent/history behavior is
+  // covered by the picker/paste/drop journey above with ordinary PNGs.
   await page.reload();
-  await loaded(sent);
+  await loaded(chips);
   expect(originals).toEqual([]);
   // A server refusal shows an icon, never an automatic full-image retry.
-  const firstURL = await sent.first().getAttribute("data-attachment-url");
+  const firstURL = await chips.first().getAttribute("data-attachment-url");
   await page.route(`**${firstURL}/thumbnail`, (route) =>
     route.fulfill({ status: 404 }),
   );
   await page.reload();
-  await expect(sent).toHaveCount(5);
-  await expect(sent.first().locator("img")).toHaveCount(0);
-  await expect(sent.first().locator("svg")).toBeVisible();
+  await expect(chips).toHaveCount(5);
+  await expect(chips.first().locator("img")).toHaveCount(0);
+  await expect(
+    chips.first().getByTestId("attachment-open").locator("svg"),
+  ).toBeVisible();
   expect(originals).toEqual([]);
   // Only explicitly opening the image may fetch the original.
-  await sent.first().getByTestId("attachment-open").click();
+  await chips.first().getByTestId("attachment-open").click();
   await expect(
     page.getByTestId("attachment-preview").locator("img"),
   ).toBeVisible();
