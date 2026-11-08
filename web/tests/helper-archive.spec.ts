@@ -130,6 +130,10 @@ test("helpers confirm before archive, stay discoverable, and return without star
   await page.getByTestId("helper-archive-accept").click();
   await expect(rail).toHaveCount(0);
   expect(writes).toBe(1);
+  await expect(page.getByTestId("archive-notice-detail")).toHaveCount(1);
+  await expect(page.getByTestId("archive-notice-detail")).toContainText(
+    "reviewer",
+  );
   await page.getByRole("navigation").getByTestId(workspaceTestId).click();
   await page.locator(".ah-workspace-archive > summary").click();
   const archived = page.getByTestId("workspace-archive-panel");
@@ -167,6 +171,8 @@ test("helpers confirm before archive, stay discoverable, and return without star
   await archive.click();
   await page.getByTestId("helper-archive-accept").click();
   await expect(rail).toHaveCount(0);
+  await expect(page.getByTestId("archive-notice")).toBeVisible();
+  await expect(page.getByTestId("archive-notice-detail")).toHaveCount(0);
   await page.getByRole("navigation").getByTestId(workspaceTestId).click();
   await archived.locator(`a[href*="${id}"]`).click();
   await expect(page.getByTestId("helper-restore-note")).toHaveCount(0);

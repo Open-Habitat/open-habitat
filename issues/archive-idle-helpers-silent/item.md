@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Archiving a conversation with idle helpers shows no helper notice
@@ -26,5 +27,5 @@ conversation, so it needs no notice. Fixing agreed behaviour; no prototype.
 
 ## Acceptance Criteria
 
-- [ ] Archiving with only idle helpers shows the ordinary archive notice with no helper lines; with a helper mid-round, one line says so; fi and en.
-- [ ] Touched specs green.
+- [x] Archiving with only idle helpers shows the ordinary archive notice with no helper lines; with a helper mid-round, one line says so; fi and en.
+- [x] Touched specs green.

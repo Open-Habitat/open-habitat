@@ -111,7 +111,9 @@ export function ArchiveNotice({
             <b>{title}</b>
           </>
         ) : null}
-        {detail ? <span> · {detail}</span> : null}
+        {detail ? (
+          <span data-testid="archive-notice-detail"> · {detail}</span>
+        ) : null}
         {problem ? (
           <span data-testid="archive-error" className="ah-archive-notice-error">
             {" "}

@@ -104,6 +104,7 @@ import {
 } from "./HelperArchiveFlow";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation, creationKeys } from "./heldMessages";
+import { helpersArchiveDetail } from "./helpersArchive";
 import {
   archiveKey,
   closeKey,
@@ -1689,10 +1690,14 @@ export function App() {
       return false;
     const writeCSRF = csrf;
     const generation = identityGeneration.current;
+    let helperDetail: string | undefined;
     if (archived && helpersOn) {
       const accepted = await helperConfirmation.confirm(
         agent.agent_id,
         agentTitle(agent.title),
+        (runs) => {
+          helperDetail = helpersArchiveDetail(runs);
+        },
       );
       // The card's boolean is error feedback, not the archive state. A
       // cancelled question is not a failed write; native state stays put.
@@ -1710,6 +1715,7 @@ export function App() {
         id: agent.agent_id,
         title: agentTitle(agent.title),
         route: fromRoute,
+        detail: helperDetail,
       });
       if (origin === "conversation") {
         archiveFocusPending.current = agent.workspace_id;

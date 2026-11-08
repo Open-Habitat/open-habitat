@@ -147,7 +147,11 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
     [binding],
   );
   return {
-    confirm: async (agent: string, title = ""): Promise<boolean> => {
+    confirm: async (
+      agent: string,
+      title = "",
+      onAccepted?: (runs: Spinoff[]) => void,
+    ): Promise<boolean> => {
       if (active.current) return false;
       const operation = {
         controller: new AbortController(),
@@ -170,9 +174,11 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
         const incomplete = reply?.availability !== "available";
         if (!incomplete && !runs.length) return true;
         setQuestion({ agent, title, binding, runs, incomplete });
-        return await new Promise<boolean>((resolve) => {
+        const accepted = await new Promise<boolean>((resolve) => {
           operation.answer = resolve;
         });
+        if (accepted) onAccepted?.(runs);
+        return accepted;
       } finally {
         if (active.current === operation) {
           active.current = undefined;
