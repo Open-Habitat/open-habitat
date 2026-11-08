@@ -60,3 +60,10 @@ kertoo henkilölle.
   yhdistetään, keskeneräinen säilyy haarana, arkistointi kertoo tästä).
 - Pääkeskustelu palautetaan: avustajat palaavat arkistoituina, eli ne ovat
   taas näkyvissä ja palautettavissa, mutta niitä ei käynnistetä heti.
+
+## Decision (Jari 2026-11-08): arkistointi ja yhdistäminen
+
+Suositus hyväksytty: arkistointi ei yhdistä mitään; valmiit kierrokset on jo
+yhdistetty, kesken oleva kierros jää avustajan haaraan ja arkistointi kertoo
+siitä. Miten tämä kerrotaan henkilölle, prototypoidaan:
+`proto-helper-archive-notice`.

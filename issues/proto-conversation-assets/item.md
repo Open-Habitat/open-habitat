@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: list of a conversation's views and files
@@ -26,3 +26,11 @@ Prototype round (`AGENTS-WORKFLOW.md`), one view: three directions (for
 example a chip or header button with a count opening a list, a section in the
 conversation's side panel shared with files, a rail-level row under the
 conversation), 1440 and 390, light and dark.
+
+## Decision (Jari 2026-11-08, kierros 1)
+
+**1 Siru**, mutta riffataan sen paikkaa: olisiko siru parempi alhaalla
+kirjoituskentän luona, siellä missä Workerit-siru ja muut taustatyön sirut
+ovat. Kierros 2: siru alhaalla -riffit. Tarjouskorttien avautumispaikka
+(`proto-offer-cards-consistent` kierros 2) sovitetaan tähän.
+- [ ] round 2: riffs on the chip in the bottom strip beside Workers, view offer and questions for Jari

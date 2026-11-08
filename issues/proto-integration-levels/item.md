@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@proto-m365-setup-flow']
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
@@ -96,3 +96,11 @@ tekemään integraation (SharePoint onnistui).
 Kapellimestarin päätös: Cloud Shell -reitti poistetaan ohjeesta; ohjattu
 asetus on **1 Sovellus kerrallaan** klikkauspolkuna olemassa olevin oikein
 kuvakaappauksin. Kierros 4 näyttää sen ilman Cloud Shelliä.
+
+## Decision (Jari 2026-11-08, kierros 4)
+
+**Jokainen kokonaan**, mutta ohjeen pitää osata ohittaa jo tehdyt kohdat, tai
+henkilö valitsee alussa, mitkä neljästä tasosta hän nyt asettaa. Aloitukseen
+myös vertailutaulukko. Kierros 5: riffit aloitusnäkymästä ja aloitusaskeleista.
+- [x] kierros 4: klikkauspolku ilman Cloud Shelliä
+- [ ] kierros 5: Jokainen kokonaan, aloitusnäkymä (valitse tasot, ohita tehdyt, taulukko), näkymätarjous ja kysymykset Jarille
