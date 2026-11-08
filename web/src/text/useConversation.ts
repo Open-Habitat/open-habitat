@@ -7,7 +7,12 @@ const fi = {
   rejected:
     "Agentti ei ottanut viestiä vastaan. Teksti on kentässä: lähetä se uudelleen.",
   pending: "Viesti odottaa kuittausta. Tarkistetaan uudelleen.",
-  uncertain: "Lähetyksen tulos on yhä epävarma. Viestiä ei lähetetä uudelleen.",
+  uncertain:
+    "Lähetyksen tulos on yhä epävarma. Viesti lähetetään uudelleen vain, jos varmistuu, ettei agentti saanut sitä.",
+  // A lost message proven undelivered is not sent again when the
+  // conversation has moved on meanwhile (another message or turn).
+  movedOn:
+    "Viestiä ei lähetetty uudelleen, koska keskustelu on sillä välin jatkunut. Teksti on kentässä: lähetä se, jos se on yhä ajankohtainen.",
   continued:
     "Jatkaminen kuitattiin. Aiemman vuoron tulos on epävarma; tarkista natiivi historia.",
   controlGone:
@@ -21,7 +26,9 @@ export const useConversationText = catalog(fi, {
     "The agent did not accept the message. The text is back in the field: send it again.",
   pending: "The message is waiting to be acknowledged. Checking again.",
   uncertain:
-    "It is still unclear whether the message was sent. It will not be sent again.",
+    "It is still unclear whether the message was sent. It is sent again only if it turns out the agent did not get it.",
+  movedOn:
+    "The message was not sent again because the conversation has moved on in the meantime. The text is in the field: send it if it still applies.",
   continued:
     "Continuing was acknowledged. The outcome of the previous turn is unclear; check the native history.",
   controlGone:

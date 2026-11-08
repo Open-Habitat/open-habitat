@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Status } from "./conversations";
 import { restoreToDraft } from "./heldMessages";
 import type { HistoryEntry } from "./history";
 
@@ -84,6 +85,71 @@ export function lostSendArrived(
   return entries
     .slice(start + 1)
     .some((e) => e.kind === "user" && (e.content?.text ?? "").includes(wanted));
+}
+
+/** What a send whose outcome was lost and which the host does not know
+ * (its receipt is gone) comes to (Jari 8.11.2026). The no-resend rule
+ * guards against Pi doing the work twice; once it is proven that Pi never
+ * received the message, that reason is gone:
+ * - `resend`: native history, read after the host was found not to know the
+ *   command, holds no user message newer than `after`, Pi's queue and the
+ *   daemon's held messages are empty and the agent is idle. Pi never got it.
+ * - `moved-on`: a newer user message (any tab's) that does not carry the
+ *   text, or a rewind: sending it now would land out of context.
+ * - `read-history`: the shown history may predate that finding or the status
+ *   held now, and the agent looks settled; read it again.
+ * - undefined: nothing is proven (history unreadable, no mark, the agent
+ *   busy, or history shows the message, which settles it elsewhere). */
+export function lostSendVerdict({
+  text,
+  command,
+  after,
+  entries,
+  status,
+  historyCurrent,
+}: {
+  text: string;
+  command: string;
+  /** `lastUserKey` at sending; null when the send kept no mark. */
+  after: string | null;
+  entries: readonly HistoryEntry[];
+  status?: Status;
+  /** The shown history comes from a read begun after the host was found not
+   * to know the command and after the status held now arrived. */
+  historyCurrent: boolean;
+}): "resend" | "moved-on" | "read-history" | undefined {
+  const wanted = text.trim();
+  if (
+    !wanted ||
+    after === null ||
+    !status ||
+    status.command_id === command ||
+    status.native_history !== "present"
+  )
+    return undefined;
+  const queue = status.queue;
+  const idle =
+    status.run_active !== true &&
+    (status.state === "idle" || status.state === "rejected") &&
+    !queue?.steering.length &&
+    !queue?.follow_up.length &&
+    !status.held?.length;
+  // Only a settled agent can prove anything, so only then is history read
+  // again for it.
+  if (!historyCurrent) return idle ? "read-history" : undefined;
+  const start = after ? entries.findIndex((e) => e.entry_key === after) : -1;
+  if (after && start < 0) return undefined;
+  const later = entries.slice(start + 1);
+  const newer = later
+    .filter((e) => e.kind === "user")
+    .map((e) => e.content?.text ?? "");
+  if (newer.some((t) => t.includes(wanted))) return undefined;
+  // A rewind since then may have taken the delivered message off the
+  // conversation's branch: absence proves nothing, and the conversation has
+  // moved anyway.
+  if (newer.length || later.some((e) => e.kind === "rewind")) return "moved-on";
+  if (!idle) return undefined;
+  return "resend";
 }
 
 /** A steering or follow-up message this tab sent while Pi works. */
@@ -270,6 +336,16 @@ export function useSentMessages({
       );
       // A text given back as unknown, then shown accepted after all.
       if (restored.current.has(command) && draft === text) changeDraft("");
+      return;
+    }
+    // Sent again after it proved undelivered: the text moves back into the
+    // conversation, unless the person has edited it meanwhile.
+    if (state === "pending") {
+      if (restored.current.has(command) && draft === text) {
+        changeDraft("");
+        // Should this send be lost too, its text comes back again.
+        restored.current.delete(command);
+      }
       return;
     }
     if (state !== "rejected" && state !== "uncertain") return;

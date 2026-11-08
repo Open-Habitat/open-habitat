@@ -1,10 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { Status } from "./conversations";
 import type { HistoryEntry } from "./history";
 import {
   DELIVERY_GRACE_MS,
   lastUserKey,
   lostSendArrived,
+  lostSendVerdict,
   type QueuedSend,
   reconcileQueued,
   sendArrived,
@@ -63,6 +65,95 @@ describe("lostSendArrived", () => {
   it("counts every message of a conversation empty at sending", () => {
     expect(lastUserKey([])).toBe("");
     expect(lostSendArrived([entry("u1", "user", "eka")], "eka", "")).toBe(true);
+  });
+});
+
+describe("lostSendVerdict", () => {
+  const command = "c1";
+  const before = [
+    entry("u1", "user", "aiempi"),
+    entry("a1", "assistant", "ok"),
+  ];
+  const idle = {
+    state: "idle",
+    run_active: false,
+    command_id: "",
+    native_history: "present",
+    queue: { revision: 1, steering: [], follow_up: [] },
+    held: [],
+  } as unknown as Status;
+  const verdict = (
+    fields: Partial<Parameters<typeof lostSendVerdict>[0]> = {},
+  ) =>
+    lostSendVerdict({
+      text: "Tee se.",
+      command,
+      after: lastUserKey(before),
+      entries: before,
+      status: idle,
+      historyCurrent: true,
+      ...fields,
+    });
+  it("sends again what an idle agent with fresh history never got", () => {
+    expect(verdict()).toBe("resend");
+    expect(verdict({ status: { ...idle, state: "rejected" } })).toBe("resend");
+  });
+  it("reads history first when the shown history may predate the finding", () => {
+    expect(verdict({ historyCurrent: false })).toBe("read-history");
+  });
+  it("keeps the text out of a conversation that moved on", () => {
+    const moved = [...before, entry("u2", "user", "toinen asia")];
+    expect(verdict({ entries: moved })).toBe("moved-on");
+    // Even while that newer turn still runs.
+    expect(
+      verdict({ entries: moved, status: { ...idle, state: "accepted" } }),
+    ).toBe("moved-on");
+  });
+  it("proves nothing while anything else could still be the message", () => {
+    expect(verdict({ status: { ...idle, state: "accepted" } })).toBeUndefined();
+    expect(verdict({ status: { ...idle, run_active: true } })).toBeUndefined();
+    expect(verdict({ status: { ...idle, state: "stopped" } })).toBeUndefined();
+    expect(
+      verdict({
+        status: {
+          ...idle,
+          queue: { revision: 2, steering: ["x"], follow_up: [] },
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      verdict({
+        status: { ...idle, held: [{ command_id: "h", text: "x" }] },
+      }),
+    ).toBeUndefined();
+    // The host names the command: its own record decides.
+    expect(
+      verdict({ status: { ...idle, command_id: command } }),
+    ).toBeUndefined();
+  });
+  it("proves nothing without readable history reaching the mark", () => {
+    expect(
+      verdict({ status: { ...idle, native_history: "missing" } }),
+    ).toBeUndefined();
+    expect(verdict({ after: null })).toBeUndefined();
+    expect(verdict({ entries: [entry("u9", "user", "x")] })).toBeUndefined();
+  });
+  it("counts a rewind since the send as the conversation moving on", () => {
+    // The delivered message may be off the branch now: never a proof.
+    const rewound = [...before, entry("r1", "rewind", "")];
+    expect(verdict({ entries: rewound })).toBe("moved-on");
+  });
+  it("reads history again only for an agent that looks settled", () => {
+    expect(
+      verdict({
+        historyCurrent: false,
+        status: { ...idle, state: "accepted" },
+      }),
+    ).toBeUndefined();
+  });
+  it("leaves a message history shows to be settled as arrived", () => {
+    const arrived = [...before, entry("u2", "user", "Tee se.")];
+    expect(verdict({ entries: arrived })).toBeUndefined();
   });
 });
 

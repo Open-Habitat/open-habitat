@@ -96,6 +96,8 @@ export function useConversationActions({
   uncertainKey,
   answeredKey,
   sentAfterKey,
+  resentKey,
+  lostSend,
   setBusy,
   setReceipt,
   setSendObservation,
@@ -131,6 +133,9 @@ export function useConversationActions({
   uncertainKey: string;
   answeredKey: string;
   sentAfterKey: string;
+  resentKey: string;
+  /** This tab's lost send, proven never to have reached Pi (useConversation). */
+  lostSend?: { command: string; text: string };
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -231,6 +236,81 @@ export function useConversationActions({
       sessionStorage.removeItem(sentAfterKey);
     else sessionStorage.setItem(sentAfterKey, lastUserKey(entries));
   };
+  // One direct send of a command already recorded as this tab's outstanding
+  // one: drawn at once, then settled by its reply, receipt or status.
+  const post = async (
+    agent: string,
+    command: string,
+    text: string,
+    token: string,
+    choice: typeof firstChoice,
+    report: boolean,
+  ) => {
+    try {
+      ownWrites.begin(command);
+      setSendObservation({ text, state: "pending", command, kind: "send" });
+      onSent({ command, text, before: userKeys(entries) });
+      setReceipt(txt.awaitingAck);
+      await send(agent, text, command, token, choice);
+      answered(command);
+      if (report) onSendOutcome?.("accepted");
+      if (!alive.current) return;
+      setReceipt(txt.awaitingNative);
+      await refresh();
+    } catch (error) {
+      if (report) onSendOutcome?.("failed");
+      ownWrites.end(command);
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current && error instanceof NotAdmitted) {
+        sessionStorage.removeItem(sendKey);
+        sessionStorage.removeItem(uncertainKey);
+        sessionStorage.removeItem(resentKey);
+        setSendObservation({ text, state: "rejected", command });
+        setReceipt(messageRefusal(error.code, "send"));
+        void refresh();
+      } else if (alive.current && sessionStorage.getItem(sendKey) === command) {
+        // A status read while the reply was on its way may have settled the
+        // command already; a reply lost after that (a host restart) does not
+        // make a known outcome unknown again.
+        sessionStorage.setItem(uncertainKey, command);
+        setSendObservation({ text, state: "uncertain", command });
+        setReceipt(txt.sendError);
+        void refresh();
+      }
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+  // A lost send proven never to have reached Pi goes again by itself, once
+  // (Jari 8.11.2026), under its own command ID: within one daemon life the
+  // daemon answers an ID it already took as that same message and never
+  // runs it twice, so another tab holding the same record (a duplicated tab)
+  // or a late original request cannot double it. (Its record does not
+  // survive a daemon restart; a request still on its way across one is the
+  // residual case, as for any send.) The once is recorded before the
+  // request can fail.
+  useEffect(() => {
+    if (
+      !lostSend ||
+      busy ||
+      !current ||
+      !csrf ||
+      serverUnavailable ||
+      sessionStorage.getItem(sendKey) !== lostSend.command ||
+      sessionStorage.getItem(resentKey) === lostSend.command
+    )
+      return;
+    sessionStorage.setItem(resentKey, lostSend.command);
+    setBusy(true);
+    void post(
+      current.agent_id,
+      lostSend.command,
+      lostSend.text,
+      csrf,
+      undefined,
+      false,
+    );
+  });
   // The text leaves the field at once and is drawn where it is going; a
   // refused or unknown outcome gives it back (see sentMessages.ts). A message
   // not typed in the field (the editor's note) keeps the draft.
@@ -256,48 +336,15 @@ export function useConversationActions({
       return false;
     const command = commandId ?? crypto.randomUUID();
     setBusy(true);
-
-    try {
-      const token = csrf;
-      if (!alive.current) return true;
-      sessionStorage.setItem(submittedKey, text);
-      sessionStorage.setItem(sendKey, command);
-      sessionStorage.setItem(uncertainKey, command);
-      markSent();
-      ownWrites.begin(command);
-      setSendObservation({ text, state: "pending", command, kind: "send" });
-      onSent({ command, text, before: userKeys(entries) });
-      if (!keepDraft) changeDraft("");
-      setReceipt(txt.awaitingAck);
-      onSendOutcome?.("pending");
-      await send(current.agent_id, text, command, token, firstChoice);
-      answered(command);
-      onSendOutcome?.("accepted");
-      if (!alive.current) return true;
-      setReceipt(txt.awaitingNative);
-      await refresh();
-    } catch (error) {
-      onSendOutcome?.("failed");
-      ownWrites.end(command);
-      if ((error as Error).message === "identity_lost") onLogin();
-      else if (alive.current && error instanceof NotAdmitted) {
-        sessionStorage.removeItem(sendKey);
-        sessionStorage.removeItem(uncertainKey);
-        setSendObservation({ text, state: "rejected", command });
-        setReceipt(messageRefusal(error.code, "send"));
-        void refresh();
-      } else if (alive.current && sessionStorage.getItem(sendKey) === command) {
-        // A status read while the reply was on its way may have settled the
-        // command already; a reply lost after that (a host restart) does not
-        // make a known outcome unknown again.
-        sessionStorage.setItem(uncertainKey, command);
-        setSendObservation({ text, state: "uncertain", command });
-        setReceipt(txt.sendError);
-        void refresh();
-      }
-    } finally {
-      if (alive.current) setBusy(false);
-    }
+    if (!alive.current) return true;
+    sessionStorage.setItem(submittedKey, text);
+    sessionStorage.setItem(sendKey, command);
+    sessionStorage.setItem(uncertainKey, command);
+    sessionStorage.removeItem(resentKey);
+    markSent();
+    if (!keepDraft) changeDraft("");
+    onSendOutcome?.("pending");
+    await post(current.agent_id, command, text, csrf, firstChoice, true);
     return true;
   };
   const submitQueue = async (

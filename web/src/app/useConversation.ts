@@ -16,6 +16,7 @@ import {
 } from "./conversations";
 import {
   lostSendArrived,
+  lostSendVerdict,
   ownWrites,
   type SendObservationValue,
 } from "./sentMessages";
@@ -71,6 +72,13 @@ export function useConversation({
   const [receipt, setReceipt] = useState("");
   const [sendObservation, setSendObservation] =
     useState<SendObservationValue>();
+  // The host was found not to know this tab's command (its receipt is gone),
+  // and how many history reads had begun by then: only a later read can
+  // prove that Pi never got the message.
+  const [forgotten, setForgotten] = useState<{
+    command: string;
+    after: number;
+  }>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   const historyError =
@@ -157,6 +165,8 @@ export function useConversation({
   // (lastUserKey), so that history can show it arrived after its outcome
   // was lost.
   const sentAfterKey = storage("sent-after");
+  // The command this tab sent again after it proved undelivered: once.
+  const resentKey = storage("resent");
   const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
   const generation = useRef(0);
@@ -318,8 +328,10 @@ export function useConversation({
       sessionStorage.removeItem(submittedKey);
       sessionStorage.removeItem(answeredKey);
       sessionStorage.removeItem(sentAfterKey);
+      sessionStorage.removeItem(resentKey);
+      setForgotten(undefined);
     },
-    [sendKey, uncertainKey, submittedKey, answeredKey, sentAfterKey],
+    [sendKey, uncertainKey, submittedKey, answeredKey, sentAfterKey, resentKey],
   );
   // A send whose outcome was lost (its request failed, or a host restart
   // forgot its acknowledgement) has arrived once Pi's own history shows it:
@@ -350,6 +362,90 @@ export function useConversation({
     if (outcome === "accepted" || outcome === "rejected")
       settleCommand(command, outcome);
   }, [current, localReady, sendKey, settleCommand]);
+  // A lost send the host does not know either: proven undelivered it is sent
+  // again once (ConversationActions), after the conversation moved on its
+  // text stays in the field, and otherwise the warning stays.
+  const statusStaleHere = id ? metadata.staleStatuses.has(id) : false;
+  const lostCommand =
+    localReady &&
+    id &&
+    sendObservation?.state === "uncertain" &&
+    sendObservation.command &&
+    forgotten?.command === sendObservation.command &&
+    sessionStorage.getItem(sendKey) === sendObservation.command &&
+    !statusStaleHere &&
+    !problem
+      ? sendObservation.command
+      : undefined;
+  const lostVerdict =
+    lostCommand && id && forgotten && sendObservation
+      ? lostSendVerdict({
+          text: sendObservation.text,
+          command: lostCommand,
+          after: sessionStorage.getItem(sentAfterKey),
+          entries,
+          status: current,
+          historyCurrent:
+            (windowView?.state === "ready" || windowView?.state === "empty") &&
+            store.newestRead(id) > forgotten.after &&
+            store.historyFollowsStatus(id),
+        })
+      : undefined;
+  const lostSend =
+    lostCommand &&
+    sendObservation &&
+    (lostVerdict === "moved-on" ||
+      (lostVerdict === "resend" &&
+        sessionStorage.getItem(resentKey) !== lostCommand))
+      ? {
+          command: lostCommand,
+          text: sendObservation.text,
+          verdict: lostVerdict,
+        }
+      : undefined;
+  // The history shown may be older than the finding or than the status
+  // held now: read it again, once per such pair, after any read already
+  // running.
+  const historyAsked = useRef("");
+  const historyAsk =
+    lostVerdict === "read-history" && id
+      ? `${lostCommand}:${store.newestRead(id)}:${store.statusVersion(id)}`
+      : "";
+  useEffect(() => {
+    if (!historyAsk || !id || historyAsked.current === historyAsk) return;
+    historyAsked.current = historyAsk;
+    store.readNewest(id);
+  }, [historyAsk, id, store]);
+  // Moved on: nothing is sent, the record ends and the text, already given
+  // back to the field as unknown, stays there.
+  const movedOn = lostSend?.verdict === "moved-on" ? lostSend : undefined;
+  useEffect(() => {
+    if (!movedOn || sessionStorage.getItem(sendKey) !== movedOn.command) return;
+    for (const key of [
+      sendKey,
+      uncertainKey,
+      submittedKey,
+      answeredKey,
+      sentAfterKey,
+      resentKey,
+    ])
+      sessionStorage.removeItem(key);
+    setForgotten(undefined);
+    setSendObservation({
+      text: movedOn.text,
+      command: movedOn.command,
+      state: "rejected",
+    });
+    setReceipt(txt.movedOn);
+  }, [
+    movedOn,
+    sendKey,
+    uncertainKey,
+    submittedKey,
+    answeredKey,
+    sentAfterKey,
+    resentKey,
+  ]);
   // Ref contents are sampled when refresh runs, not part of callback identity.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mutable reading refs do not drive refresh recreation.
   const refresh = useCallback(
@@ -423,9 +519,11 @@ export function useConversation({
                   ? nextStatus.ack
                   : undefined)
               : undefined;
+          let unknownToHost = false;
           if (!outcome) {
             try {
               const receipt = await sendReceipt(id, command);
+              unknownToHost = receipt === undefined;
               // A held message is not yet delivered; a cancelled one never was.
               outcome =
                 receipt === "held"
@@ -467,6 +565,17 @@ export function useConversation({
               setReceipt(outcome === "pending" ? txt.pending : txt.uncertain);
               if (outcome === "pending") receiptPending = true;
             }
+            // Kept from the first such finding: the history reads begun
+            // after it are the ones that can prove the message undelivered.
+            setForgotten((old) =>
+              !outcome && unknownToHost
+                ? old?.command === command
+                  ? old
+                  : { command, after: store.readsBegun() }
+                : old?.command === command
+                  ? undefined
+                  : old,
+            );
           }
         }
         const reconcileContinuation =
@@ -635,6 +744,8 @@ export function useConversation({
     uncertainKey,
     answeredKey,
     sentAfterKey,
+    resentKey,
+    lostSend: lostSend?.verdict === "resend" ? lostSend : undefined,
     changeDraft,
     refresh,
     setBusy,

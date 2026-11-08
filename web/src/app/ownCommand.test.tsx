@@ -134,6 +134,8 @@ function useView(id: string | undefined) {
     uncertainKey: view.uncertainKey,
     answeredKey: view.answeredKey,
     sentAfterKey: view.sentAfterKey,
+    resentKey: view.resentKey,
+    lostSend: view.lostSend,
     setBusy: view.setBusy,
     setReceipt: view.setReceipt,
     setSendObservation: view.setSendObservation,

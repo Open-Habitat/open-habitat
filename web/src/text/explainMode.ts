@@ -588,7 +588,7 @@ const fi = {
     K19: {
       name: "Tarkista keskustelun tila",
       lead: "Kysyy palvelimelta keskustelun tilan uudelleen, kun se näyttää jääneen jumiin.",
-      know: "Mitään ei lähetetä uudelleen; vain näkyvä tila päivittyy.",
+      know: "Tarkistus ei itse lähetä mitään. Jos se osoittaa, ettei agentti saanut viestiäsi, Habitat lähettää viestin kerran uudelleen.",
     },
     V01: {
       name: "Viesti agentille",
@@ -1718,7 +1718,7 @@ export const explainModeText = catalog(fi, {
     K19: {
       name: "Check the conversation's state",
       lead: "Asks the server for the conversation's state again when it seems stuck.",
-      know: "Nothing is sent again; only what you see is updated.",
+      know: "The check itself sends nothing. If it shows that the agent never got your message, Habitat sends it once more.",
     },
     V01: {
       name: "Message to the agent",

@@ -47,6 +47,11 @@ type WindowRecord = {
   missedBefore?: number;
   // How far the stream had come when the current newest-page read began.
   readFrom?: { instance: string; sequence: number };
+  // The read (readSeq) whose newest page the window last joined, and the
+  // status version (statusVersions) current when that read began.
+  newestRead?: number;
+  newestReadStatus?: number;
+  readStatus?: number;
 };
 const streamPosition = (live?: LiveTurn) =>
   live && { instance: live.instance, sequence: live.sequence };
@@ -646,10 +651,41 @@ export class ConversationStore {
     }
     return record.value;
   }
+  /** Every history read begun from now on is numbered above this. */
+  readsBegun() {
+    return this.readSeq;
+  }
+  /** The number of the read whose newest page the window last joined; a
+   * page read begun after `readsBegun()` returned n is numbered above n. */
+  newestRead(id: string) {
+    return this.windows.get(id)?.newestRead ?? 0;
+  }
+  /** Counts the statuses applied for one conversation. */
+  statusVersion(id: string) {
+    return this.statusVersions.get(id) ?? 0;
+  }
+  /** Whether the window's newest page was read after the status held now
+   * was applied: it then shows everything that status could know of. */
+  historyFollowsStatus(id: string) {
+    const record = this.windows.get(id);
+    return (
+      record?.newestReadStatus !== undefined &&
+      record.newestReadStatus === (this.statusVersions.get(id) ?? 0)
+    );
+  }
+  /** Reads the newest page now, or right after a read already running (an
+   * older page, for example), so the request is never lost. */
+  readNewest(id: string) {
+    const record = this.windows.get(id);
+    if (!record) return;
+    if (record.loading) record.readAgain = true;
+    else void this.reconnect(id);
+  }
   async loadTail(id: string, missing = false): Promise<void> {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
     record.loading = ++this.readSeq;
+    record.readStatus = this.statusVersions.get(id) ?? 0;
     record.readFrom = streamPosition(record.value.live);
     const read = record.loading;
     const epoch = this.epoch;
@@ -708,6 +744,7 @@ export class ConversationStore {
     const cursor = record?.value.next;
     if (!record || !cursor || record.loading) return;
     record.loading = ++this.readSeq;
+    record.readStatus = this.statusVersions.get(id) ?? 0;
     const read = record.loading;
     const epoch = this.epoch;
     try {
@@ -738,6 +775,7 @@ export class ConversationStore {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
     record.loading = ++this.readSeq;
+    record.readStatus = this.statusVersions.get(id) ?? 0;
     record.readFrom = streamPosition(record.value.live);
     const read = record.loading;
     const epoch = this.epoch;
@@ -906,6 +944,10 @@ export class ConversationStore {
     ) {
       live = { ...live, missed: false };
       record.missedBefore = undefined;
+    }
+    if (newest && record.loading !== false) {
+      record.newestRead = record.loading;
+      record.newestReadStatus = record.readStatus;
     }
     this.noteHistoryRead(id, false);
     this.publish(id, {
