@@ -23,6 +23,10 @@ import (
 // unstarted, because they belong to it by Taskfleet's creator session (Jari
 // 2026-11-08); Habitat keeps no store of its own for them.
 
+// HelpersFeature is the experimental switch in the person's preferences
+// that shows helpers in the browser and gives the agent their recipe.
+const HelpersFeature = "named-workers"
+
 var residentNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,47}$`)
 
 // taskfleetResident is Taskfleet's read view of a resident run.

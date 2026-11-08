@@ -262,3 +262,22 @@ func TestSpinoffRouteCarriesTheNamedWorker(t *testing.T) {
 		}
 	}
 }
+
+// Jari 2026-11-08: a conversation's helpers are its own. Two conversations
+// in one repository with a same-named helper (one of them archived and its
+// helper waiting) each see and wait on only their own, by creator session.
+func TestHelpersBelongToTheirConversation(t *testing.T) {
+	mine, archived := "aaaaaaaa-0000-4000-8000-00000000000a", "aaaaaaaa-0000-4000-8000-0000000000ff"
+	own := residentRun(wakeRun, mine, "working", 1, false)
+	other := residentRun("01m6y3dkm0dhhfq5hw4ctn0000", archived, "waiting", 1, true)
+	runs := []nativeSpinoff{other, own}
+	if !belongsSpinoff(own, nativeSession{id: mine}) || belongsSpinoff(other, nativeSession{id: mine}) || belongsSpinoff(own, nativeSession{id: archived}) {
+		t.Fatal("a helper shown outside its conversation")
+	}
+	if got := resolveWaitOperands([]string{"proto-m365"}, runs, mine); len(got) != 1 || got[0] != wakeRun {
+		t.Fatalf("own name resolved to %v", got)
+	}
+	if got := resolveWaitOperands([]string{"proto-m365"}, runs, archived); len(got) != 1 || got[0] != other.ID {
+		t.Fatalf("archived conversation's name resolved to %v", got)
+	}
+}

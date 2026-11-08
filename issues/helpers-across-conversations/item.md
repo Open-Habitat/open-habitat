@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Starting a helper is awkward for the agent, and helpers leak across conversations (archived leftovers, name collisions)

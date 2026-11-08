@@ -27,6 +27,26 @@ import (
 //go:embed host-context.md
 var hostContext string
 
+// helpersContext is the helper recipe, given only to a conversation whose
+// person turned helpers on: without the switch nothing shows a helper, and
+// the recipe would only invite runs the browser keeps quiet about.
+//
+//go:embed helpers-context.md
+var helpersContext string
+
+// launchContext is the Open Habitat prompt section for a launch. Only a
+// conversation launch (create, resume, held) gets the helper recipe; the
+// switch is read when Pi starts, so turning it on reaches the next launch.
+func launchContext(home, launchWorkspace string) string {
+	if launchWorkspace == "" {
+		return hostContext
+	}
+	if p, err := readPreferences(home); err == nil && p.Experimental[HelpersFeature] {
+		return hostContext + helpersContext
+	}
+	return hostContext
+}
+
 // piRPC is a private, bounded native-protocol transport. The daemon's fresh
 // browser-owned controller uses it; it does not fence a terminal TUI.
 // A caller must not expose it as an agent capability until that fence exists.
@@ -180,7 +200,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 	// Use Pi's native prompt-section hook. --append-system-prompt would
 	// suppress the person's discovered APPEND_SYSTEM.md. This child-lifetime
 	// artifact always comes from the release, never from a home/settings copy.
-	contextJSON, err := json.Marshal(hostContext)
+	contextJSON, err := json.Marshal(launchContext(home, launchWorkspace))
 	if err != nil {
 		return nil, err
 	}

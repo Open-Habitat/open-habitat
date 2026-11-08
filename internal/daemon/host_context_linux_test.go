@@ -125,3 +125,27 @@ func TestHostContextCrossWorkspaceGuidance(t *testing.T) {
 		}
 	}
 }
+
+// The helper recipe reaches a conversation launch only when the person has
+// helpers on, and it carries the steps an agent otherwise had to discover.
+func TestLaunchContextHelperRecipe(t *testing.T) {
+	home := t.TempDir()
+	if got := launchContext(home, "ws_0123456789"); got != hostContext {
+		t.Fatal("helper recipe given without the switch")
+	}
+	if err := savePreferences(home, accountPreferences{Engine: "codemirror6", Experimental: map[string]bool{HelpersFeature: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := launchContext(home, ""); got != hostContext {
+		t.Fatal("helper recipe given to an auxiliary launch")
+	}
+	got := launchContext(home, "ws_0123456789")
+	if !strings.HasPrefix(got, hostContext) || !strings.Contains(got, "\n## Helpers\n") {
+		t.Fatal("helper recipe missing with the switch on")
+	}
+	for _, want := range []string{"--resident --name", "resident_name_in_use", "<name>-2", "48 bytes", "round_reported: true", "taskfleet run land <run-id>", "taskfleet run message <run-id>", "taskfleet run merge <run-id>", "$ENV.TASKFLEET_CREATOR_SESSION", "archives this conversation"} {
+		if !strings.Contains(helpersContext, want) {
+			t.Errorf("helper recipe lacks %q", want)
+		}
+	}
+}

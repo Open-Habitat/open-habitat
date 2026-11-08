@@ -103,7 +103,7 @@ const fi = {
       shows:
         "Jokaisen avustajan kierrokset ja tilan: tekee kierrosta, odottaa pääagenttia, lepää tai uusi raportti, jota et ole vielä avannut. Avustajan raportti herättää pysähtyneen pääkeskustelun. Arkistoitaessa avustajat arkistoituvat keskustelun mukana.",
       needs:
-        "Taskfleet, jossa on nimetyt workerit (run create --resident). Avustajalle et kirjoita itse: viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta.",
+        "Taskfleet, jossa on nimetyt workerit (run create --resident). Pyydä agenttia tekemään avustaja; se saa ohjeen, kun keskustelu seuraavan kerran käynnistyy. Avustajalle et kirjoita itse: viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta. Keskustelu näkee vain omat avustajansa.",
       caption: "Avustajat",
     },
   },
@@ -234,7 +234,7 @@ export const experimentalFeaturesText = catalog(fi, {
       shows:
         "Each helper's rounds and state: working on a round, waiting for the main agent, resting, or a new report you have not opened yet. A helper's report wakes a stopped main conversation. Archiving a conversation archives its helpers with it.",
       needs:
-        "A Taskfleet with named workers (run create --resident). You do not write to a helper yourself: messages, landing rounds and stopping go through the main agent.",
+        "A Taskfleet with named workers (run create --resident). Ask the agent to make a helper; it learns how the next time the conversation starts. You do not write to a helper yourself: messages, landing rounds and stopping go through the main agent. A conversation sees only its own helpers.",
       caption: "Helpers",
     },
   },
