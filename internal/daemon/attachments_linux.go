@@ -237,7 +237,7 @@ func promptAttachments(home, message string, includeImages bool) (string, []piAt
 	if len(refs) == 0 {
 		return message, nil, nil
 	}
-	if len(refs) > 8 {
+	if len(refs) > 30 {
 		return "", nil, errors.New("too many attachments")
 	}
 	root, err := attachmentRoot(home)

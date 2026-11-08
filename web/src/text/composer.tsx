@@ -42,7 +42,7 @@ const fi = {
   matches: "Osumat",
   changed: "Muutetut",
   idlePlaceholder: "Kirjoita agentille…",
-  tooManyFiles: "Viestiin voi liittää enintään kahdeksan tiedostoa.",
+  tooManyFiles: "Viestiin voi liittää enintään 30 tiedostoa.",
   uploadFailed: "Liitteen tallennus epäonnistui.",
   previousRunning: "Edellinen komento on vielä käynnissä. Pysäytä se ensin.",
   terminalOnly: (name: string) =>
@@ -155,7 +155,7 @@ export const composerText = catalog(fi, {
   matches: "Matches",
   changed: "Changed",
   idlePlaceholder: "Write to the agent…",
-  tooManyFiles: "A message can have at most eight attachments.",
+  tooManyFiles: "A message can have at most 30 attachments.",
   uploadFailed: "The attachment could not be saved.",
   previousRunning: "The previous command is still running. Stop it first.",
   terminalOnly: (name) =>

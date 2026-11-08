@@ -582,7 +582,7 @@ const fi = {
     V02: {
       name: "Liitä",
       lead: "Liittää viestiin tiedostoja tai kuvia omalta laitteeltasi.",
-      know: "Viestiin voi liittää enintään kahdeksan tiedostoa. Voit myös vetää ne kenttään.",
+      know: "Voit myös vetää tiedostot kenttään.",
     },
     V03: {
       name: "Komennot",
@@ -1570,7 +1570,7 @@ export const explainModeText = catalog(fi, {
     V02: {
       name: "Attach",
       lead: "Attaches files or pictures from your own device to the message.",
-      know: "A message can carry up to eight files. You can also drag them into the field.",
+      know: "You can also drag files into the field.",
     },
     V03: {
       name: "Commands",

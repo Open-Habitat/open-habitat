@@ -777,13 +777,13 @@ export function Composer({
     async (files: File[], focus: boolean) => {
       if (!csrf || uploadController.current || !attachable) return;
       if (
-        files.length > 8 ||
+        files.length > 30 ||
         new Set(
           draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
             [],
         ).size +
           files.length >
-          8
+          30
       ) {
         setUploadError(t.tooManyFiles);
         return;
@@ -793,7 +793,7 @@ export function Composer({
       setUploading(true);
       setUploadError("");
       try {
-        for (const file of files.slice(0, 8)) {
+        for (const file of files) {
           const uploaded = await uploadAttachment(
             file,
             csrf,

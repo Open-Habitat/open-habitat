@@ -13,6 +13,51 @@ const png = Buffer.from(
   "base64",
 );
 
+test("thirty attachments send, while an extra file is refused without losing the draft", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const composer = page.locator(".ah-composer");
+  const input = composer.locator('input[type="file"]');
+  const chips = composer.getByTestId("attachment-chip");
+  const files = Array.from({ length: 31 }, (_, i) => ({
+    name: `file-${i}.txt`,
+    mimeType: "text/plain",
+    buffer: Buffer.from(`file ${i}`),
+  }));
+  await page.getByTestId("message-input").fill("Read these files");
+  await input.setInputFiles(files);
+  await expect(composer.getByRole("alert")).toBeVisible();
+  await expect(chips).toHaveCount(0);
+  await input.setInputFiles(files.slice(0, 30));
+  await expect(chips).toHaveCount(30);
+  await input.setInputFiles(files.slice(30));
+  await expect(composer.getByRole("alert")).toBeVisible();
+  await expect(chips).toHaveCount(30);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Read these files",
+  );
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(
+    page
+      .locator('.ah-feed > li[data-kind="user"]')
+      .last()
+      .getByTestId("attachment-chip"),
+  ).toHaveCount(30);
+});
+
 test("picker, image paste and conversation drop persist authenticated attachments", async ({
   page,
 }) => {

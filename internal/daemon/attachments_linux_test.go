@@ -5,6 +5,7 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -77,6 +78,34 @@ func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	}
 	if _, _, err := promptAttachments(home, AttachmentsPath+"/"+reply.ID, true); err == nil {
 		t.Fatal("symlink passed to Pi")
+	}
+}
+
+func TestPromptAttachmentCountLimit(t *testing.T) {
+	home := t.TempDir()
+	root, err := attachmentRoot(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	var refs []string
+	for i := 0; i < 31; i++ {
+		id := fmt.Sprintf("%08x-1111-4111-8111-aaaaaaaaaaaa", i)
+		if err := os.WriteFile(filepath.Join(home, "attachments", id), []byte("file"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		refs = append(refs, AttachmentsPath+"/"+id)
+	}
+	for _, images := range []bool{false, true} {
+		// Repeated references count once, including at the boundary.
+		message := strings.Join(append(append([]string{}, refs[:30]...), refs[0]), "\n")
+		got, _, err := promptAttachments(home, message, images)
+		if err != nil || strings.Count(got, "Attachment path: ") != 30 {
+			t.Fatalf("30 distinct attachments: %v", err)
+		}
+		if _, _, err := promptAttachments(home, strings.Join(refs, "\n"), images); err == nil {
+			t.Fatal("31 distinct attachments accepted")
+		}
 	}
 }
 
