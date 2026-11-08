@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Readable worker conversation drops the 'Pääte · vain luku' row
@@ -25,5 +26,5 @@ direct request; no prototype. Screenshot `evidence/`.
 
 ## Acceptance Criteria
 
-- [ ] No terminal row under a readable live worker or helper; awaiting-input and unreadable-harness paths still reach the terminal.
-- [ ] Explain-mode card and UI reference no longer describe the row; touched specs green.
+- [x] No terminal row under a readable live worker or helper; awaiting-input and unreadable-harness paths still reach the terminal.
+- [x] Explain-mode card and UI reference no longer describe the row; touched specs green.

@@ -252,27 +252,6 @@ export function WorkerView({
         </div>
       ),
     });
-  if (live && readable && terminal)
-    feed.push({
-      id: "worker-terminal-row",
-      kind: "marker",
-      content: (
-        <ControlButton
-          data-testid="worker-terminal-row"
-          size="row"
-          variant="quiet"
-          className="ah-worker-termrow"
-          onPress={() => setFull(true)}
-        >
-          <Icon name="terminal" />
-          <span>{txt.terminalRow}</span>
-          <span className="ah-worker-termrow-tail">
-            {run?.awaiting_input ? txt.awaitsInput : txt.openFull}
-          </span>
-          <Icon name="expand" />
-        </ControlButton>
-      ),
-    });
   if (live && !readable && run)
     feed.push({
       id: "worker-terminal-card",

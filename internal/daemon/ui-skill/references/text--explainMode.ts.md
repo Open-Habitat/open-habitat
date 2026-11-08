@@ -890,11 +890,6 @@ const fi = {
       name: "Pääagentti · tehtävä",
       lead: "Tehtävä, jonka pääagentti antoi workerille, sanatarkasti.",
     },
-    W06: {
-      name: "Pääte · vain luku",
-      lead: "Workerin oma pääte; painallus avaa sen koko näkymään katsottavaksi.",
-      know: "Päätteeseen ei voi kirjoittaa selaimesta.",
-    },
     M01: {
       name: "Hae asetuksista",
       lead: "Löytää asetuksen nimellä tai sen kuvauksen sanalla, kaikilta sivuilta kerralla.",
@@ -1909,11 +1904,6 @@ export const explainModeText = catalog(fi, {
     W05: {
       name: "Main agent · task",
       lead: "The task the main agent gave the worker, word for word.",
-    },
-    W06: {
-      name: "Terminal · read only",
-      lead: "The worker's own terminal; a press opens it to the whole view for watching.",
-      know: "You cannot type into it from the browser.",
     },
     M01: {
       name: "Search settings",

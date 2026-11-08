@@ -301,7 +301,6 @@ export const parts: Record<CardId, Part> = {
   W03: { kind: "info", sel: ".ah-worker-meta" },
   W04: { kind: "nav", sel: '[data-testid="worker-ask"]' },
   W05: { kind: "info", sel: '[data-testid="message"][data-voice="brief"]' },
-  W06: { kind: "panel", sel: '[data-testid="worker-terminal-row"]' },
   M01: { kind: "input", sel: '[data-testid="settings-search"]', key: "/" },
   M02: { kind: "once", sel: '[data-testid="settings-close"]' },
   M03: { kind: "page", sel: page("tili") },

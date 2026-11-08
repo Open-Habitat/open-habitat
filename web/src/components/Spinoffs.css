@@ -178,25 +178,6 @@
     opacity: 0.5;
   }
 }
-.ah-feed .ah-worker-termrow {
-  display: flex;
-  width: 100%;
-  justify-content: flex-start;
-  gap: var(--ah-s2);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-ink-2);
-}
-.ah-worker-termrow-tail {
-  flex: 1;
-  min-width: 0;
-  text-align: start;
-  color: var(--ah-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 /* The terminal opened to the whole view, under the band and header. */
 .ah-conversation-frame > .ah-worker-termview {
   flex: 1 1 0;

@@ -30,9 +30,6 @@ const fi = {
       pääte on vain luku, eikä pääagentin viesti vastaa kehotteeseen.
     </>
   ),
-  terminalRow: "Pääte · vain luku",
-  awaitsInput: "odottaa syötettä",
-  openFull: "avaa koko näkymään",
   terminalLabel: "Workerin pääte",
   terminal: "Pääte",
   readOnly: "vain luku",
@@ -99,9 +96,6 @@ export const spinoffsText = catalog(fi, {
       answer the prompt.
     </>
   ),
-  terminalRow: "Terminal · read only",
-  awaitsInput: "waiting for input",
-  openFull: "open full view",
   terminalLabel: "Worker's terminal",
   terminal: "Terminal",
   readOnly: "read only",

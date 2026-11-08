@@ -96,6 +96,10 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
   // The recorded window is only a pointer: the terminal route, which finds
   // no such Taskfleet window here, refuses it, and the card says so.
   await expect(card.getByTestId("worker-terminal-problem")).toBeVisible();
+  await page.getByTestId("worker-terminal-expand").click();
+  await expect(page.getByTestId("worker-terminal-full")).toBeVisible();
+  await page.getByTestId("worker-terminal-close").click();
+  await expect(card).toBeVisible();
   // Workers are not listed in the sidebar; the parent row stays current.
   await expect(page.getByRole("navigation")).not.toContainText("ui-test-ok");
   await shot(page, "claude-ei-viela-historiaa");
@@ -115,11 +119,15 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
     page.locator('[data-testid="tool-row"][data-tool-name="bash"]'),
   ).toBeVisible();
   await expect(page.locator(".ah-worker-arrived[role=status]")).toBeVisible();
-  // The terminal folds to one row at the end and opens to the whole view.
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("worker-terminal-row"))
-    .click();
+  // Readable workers have no terminal marker; a native prompt still opens it.
+  await expect(page.getByTestId("worker-terminal-row")).toHaveCount(0);
+  await page.route("**/api/v1/agents/pi:*/spinoffs**", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const run of body.runs) run.awaiting_input = true;
+    await route.fulfill({ response, json: body });
+  });
+  await page.getByTestId("worker-prompt-terminal").click();
   await expect(
     page.getByRole("region").and(page.getByTestId("worker-terminal-full")),
   ).toBeVisible();
@@ -127,7 +135,8 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
     .getByRole("button")
     .and(page.getByTestId("worker-terminal-close"))
     .click();
-  await expect(page.getByTestId("worker-terminal-row")).toBeVisible();
+  await expect(page.getByTestId("worker-terminal-row")).toHaveCount(0);
+  await page.unroute("**/api/v1/agents/pi:*/spinoffs**");
   // The history's first message is the brief, shown once.
   await expect(page.locator('[data-voice="brief"]')).toHaveCount(1);
   await expect(composer).toHaveCount(0);
