@@ -1,5 +1,7 @@
+import { fireEvent, render } from "@testing-library/react";
 import { expect, it } from "vitest";
 import {
+  AttachmentChips,
   joinAttachments,
   messageText,
   splitAttachments,
@@ -26,6 +28,26 @@ it.each(["", "hei", "hei\n", "\n", "rivi\n\ntoinen"])(
 it("leaves a reference inside a sentence as the person's text", () => {
   const value = `katso ${notes} tästä`;
   expect(splitAttachments(value)).toEqual({ text: value, attachments: [] });
+});
+
+it("replaces a failed thumbnail with an icon without requesting the original", () => {
+  const { attachments } = splitAttachments(shot);
+  const view = render(<AttachmentChips attachments={attachments} />);
+  const image = view.container.querySelector("img");
+  expect(image?.getAttribute("src")).toBe(`${attachments[0].url}/thumbnail`);
+  if (!image) throw new Error("missing thumbnail");
+  fireEvent.error(image);
+  expect(view.container.querySelector("img")).toBeNull();
+  expect(view.getByTestId("attachment-open").hasAttribute("disabled")).toBe(
+    false,
+  );
+
+  // A changed resource gets its own attempt, not the previous one's failure.
+  const next = splitAttachments(shot.replaceAll("11111111", "33333333"));
+  view.rerender(<AttachmentChips attachments={next.attachments} />);
+  expect(view.container.querySelector("img")?.getAttribute("src")).toBe(
+    `${next.attachments[0].url}/thumbnail`,
+  );
 });
 
 const dimensionNote =

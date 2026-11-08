@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
 import { dropFiles } from "./conversation-view";
 import { expect, test } from "./worker-host";
@@ -299,6 +300,117 @@ test("picker, image paste and conversation drop persist authenticated attachment
       ).toBeVisible();
     }
   }
+});
+
+test("large image chips download only thumbnails, including after sending and reloading", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const originals: string[] = [];
+  const thumbnails: number[] = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "GET" &&
+      /\/attachments\/[a-f0-9-]+$/.test(request.url())
+    )
+      originals.push(request.url());
+  });
+  page.on("response", async (response) => {
+    if (
+      /\/attachments\/[a-f0-9-]+\/thumbnail$/.test(response.url()) &&
+      response.ok()
+    )
+      thumbnails.push((await response.body()).length);
+  });
+  const composer = page.locator(".ah-composer");
+  const chips = composer.getByTestId("attachment-chip");
+  // Keep large encoded files inside the browser, without copying 95 MiB
+  // through Playwright. PNG permits trailing bytes; pixels stay synthetic.
+  await composer
+    .locator('input[type="file"]')
+    .evaluate(async (element: HTMLInputElement) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 800;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("missing canvas");
+      ctx.fillStyle = "#6495ad";
+      ctx.fillRect(0, 0, 1200, 800);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(200, 100, 400, 500);
+      const png = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("missing PNG"))),
+          "image/png",
+        ),
+      );
+      const data = new DataTransfer();
+      for (let i = 0; i < 5; i++) {
+        data.items.add(
+          new File(
+            [png, new Uint8Array(19 * 1024 * 1024 - png.size)],
+            `large-${i}.png`,
+            { type: "image/png" },
+          ),
+        );
+      }
+      element.files = data.files;
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  await expect(chips).toHaveCount(5);
+  const loaded = (scope: import("@playwright/test").Locator) =>
+    expect
+      .poll(() =>
+        scope.locator("img").evaluateAll(
+          (images) =>
+            images.length === 5 &&
+            images.every((node) => {
+              const image = node as HTMLImageElement;
+              return (
+                image.complete &&
+                image.naturalWidth > 0 &&
+                Math.max(image.naturalWidth, image.naturalHeight) <= 320
+              );
+            }),
+        ),
+      )
+      .toBe(true);
+  await loaded(chips);
+  expect(originals).toEqual([]);
+  await expect.poll(() => thumbnails.length).toBe(5);
+  expect(thumbnails.every((size) => size > 0 && size < 100 * 1024)).toBe(true);
+  if (process.env.OH_VISUAL_CAPTURE === "1") {
+    await snapshot(
+      page,
+      "../issues/attachment-chip-thumbnails/evidence/draft-chips",
+    );
+  }
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const sent = page
+    .locator('.ah-feed > li[data-kind="user"]')
+    .getByTestId("attachment-chip");
+  await loaded(sent);
+  await page.reload();
+  await loaded(sent);
+  expect(originals).toEqual([]);
+  // Only explicitly opening the image may fetch the original.
+  await sent.first().getByTestId("attachment-open").click();
+  await expect(
+    page.getByTestId("attachment-preview").locator("img"),
+  ).toBeVisible();
+  await expect.poll(() => originals.length).toBe(1);
 });
 
 test("a dropped or picked attachment leaves the person writing on from the end of the draft", async ({
