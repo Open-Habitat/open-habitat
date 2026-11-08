@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { liveText } from "../i18n";
 import { outputBoxText } from "../text/outputBox";
 import { ControlButton, IconButton } from "./ControlElements";
@@ -22,6 +28,8 @@ export function OutputBox({
   detect = false,
   copyLabel = txt.copyOutput,
   onCopy,
+  actions,
+  rendered,
 }: {
   text: string;
   language?: string;
@@ -30,6 +38,8 @@ export function OutputBox({
   detect?: boolean;
   copyLabel?: string;
   onCopy?: () => void;
+  actions?: ReactNode;
+  rendered?: ReactNode;
 }) {
   const lines = text.replace(/\n$/, "").split("\n");
   const long = lines.length > 10;
@@ -107,7 +117,7 @@ export function OutputBox({
     for (const mounted of [head.current, tail.current, pre, all.current])
       if (mounted) update(mounted);
     checkOverflow();
-  }, [text, view, wrap, running]);
+  }, [text, view, wrap, running, rendered]);
   // Recreate the observer when measurement inputs change so its callback does
   // not use the pre-wrap state after a wrapped viewport resizes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: Recapture the current measurement inputs, not the per-render callback identities.
@@ -127,7 +137,7 @@ export function OutputBox({
       observer.observe(pre);
     });
     return () => observer.disconnect();
-  }, [view, wrap, text]);
+  }, [view, wrap, text, rendered]);
   useEffect(() => {
     if (!dialog || !dialogRef.current) return;
     if (typeof dialogRef.current.showModal === "function")
@@ -240,28 +250,40 @@ export function OutputBox({
             {long ? txt.lines(lines.length) : ""}
           </small>
         ) : null}
-        {view === "edges" ? (
-          <div className="ah-output-edges">
-            {pre(lines.slice(0, 3), "ah-bash-head", head)}
-            <ControlButton
-              variant="quiet"
-              size="inline"
-              className="ah-bash-gap"
-              data-testid="output-expand-gap"
-              onPress={() => select("all")}
-            >
-              {txt.hiddenLines(lines.length - 10)}
-            </ControlButton>
-            {pre(lines.slice(-7), "ah-bash-tail", tail)}
-          </div>
-        ) : (
-          pre(
-            lines,
-            view === "scroll" ? "ah-output-scroll" : "ah-output-all",
-            view === "scroll" ? viewport : all,
-          )
-        )}
-        <fieldset className="ah-bash-rail" aria-label={txt.actions}>
+        {rendered ??
+          (view === "edges" ? (
+            <div className="ah-output-edges">
+              {pre(lines.slice(0, 3), "ah-bash-head", head)}
+              <ControlButton
+                variant="quiet"
+                size="inline"
+                className="ah-bash-gap"
+                data-testid="output-expand-gap"
+                onPress={() => select("all")}
+              >
+                {txt.hiddenLines(lines.length - 10)}
+              </ControlButton>
+              {pre(lines.slice(-7), "ah-bash-tail", tail)}
+            </div>
+          ) : (
+            pre(
+              lines,
+              view === "scroll" ? "ah-output-scroll" : "ah-output-all",
+              view === "scroll" ? viewport : all,
+            )
+          ))}
+        <fieldset
+          className="ah-bash-rail"
+          aria-label={txt.actions}
+          style={
+            long && actions
+              ? {
+                  minWidth:
+                    "calc(var(--ah-output-rail-width) + 2 * var(--ah-focus-room))",
+                }
+              : undefined
+          }
+        >
           <div className="ah-output-group">
             {button(
               copied ? txt.copied : copyLabel,
@@ -269,7 +291,8 @@ export function OutputBox({
               () => void copy(),
             )}
           </div>
-          {long ? (
+          {actions ? <div className="ah-output-group">{actions}</div> : null}
+          {!rendered && long ? (
             <fieldset
               className="ah-output-group ah-output-selector"
               aria-label={txt.view}
@@ -289,7 +312,7 @@ export function OutputBox({
               {button(txt.all, "expand", () => select("all"), view === "all")}
             </fieldset>
           ) : null}
-          {view === "scroll" ? (
+          {!rendered && view === "scroll" ? (
             <fieldset className="ah-output-group" aria-label={txt.go}>
               {button(
                 txt.top,
@@ -311,7 +334,7 @@ export function OutputBox({
             </fieldset>
           ) : null}
           <div className="ah-output-group">
-            {overflows
+            {!rendered && overflows
               ? button(
                   wrap ? txt.noWrap : txt.wrap,
                   "wrap",
@@ -319,7 +342,7 @@ export function OutputBox({
                   wrap,
                 )
               : null}
-            {long
+            {!rendered && long
               ? button(txt.window, "external", () => setDialog(true))
               : null}
           </div>

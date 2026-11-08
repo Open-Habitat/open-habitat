@@ -543,6 +543,14 @@ const fi = {
       name: "Kaavion lähde",
       lead: "Näyttää kaavion tekstinä, jotta voit kopioida tai muokata sitä.",
     },
+    K20: {
+      name: "Markdown-esikatselu",
+      lead: "Vaihtaa lohkon lähteen ja muotoillun esikatselun välillä. Kopiointi ottaa aina lähteen.",
+    },
+    K21: {
+      name: "Esikatselun pituus",
+      lead: "Avaa pitkän luonnoksen kokonaan tai rajaa sen taas lyhyemmäksi.",
+    },
     K15: {
       name: "Kopioi koodi",
       lead: "Kopioi laatikon koko sisällön leikepöydälle.",
@@ -1525,6 +1533,14 @@ export const explainModeText = catalog(fi, {
     K14: {
       name: "Diagram source",
       lead: "Shows the diagram as text, so you can copy or change it.",
+    },
+    K20: {
+      name: "Markdown preview",
+      lead: "Switches between the block's source and formatted preview. Copy always takes the source.",
+    },
+    K21: {
+      name: "Preview length",
+      lead: "Expands a long draft or limits its height again.",
     },
     K15: { name: "Copy code", lead: "Copies the whole box to the clipboard." },
     K16: {

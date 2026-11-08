@@ -1,0 +1,18 @@
+.ah-markdown-block-preview {
+  min-width: 0;
+  padding: calc(2 * var(--ah-s4)) var(--ah-s4) var(--ah-s3);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: 8px;
+}
+.ah-markdown-block-document[data-collapsed] {
+  max-height: 22rem;
+  overflow: auto;
+}
+.ah-markdown-block-preview > button {
+  display: block;
+  margin: var(--ah-s2) auto 0;
+}
+.ah-markdown-block-document > .ah-markdown > :first-child {
+  margin-top: 0;
+}

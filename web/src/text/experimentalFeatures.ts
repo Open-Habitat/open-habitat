@@ -5,6 +5,16 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "markdown-block-preview": {
+      name: "Markdown-lohkon esikatselu",
+      desc: "Katso Markdown-luonnos muotoiltuna suoraan keskustelussa ja palaa lähteeseen samalla painikkeella.",
+      where:
+        "Markdown-lohkon oikeassa reunassa, silmäpainikkeesta kopioinnin alla.",
+      shows:
+        "Otsikot, listat ja taulukot lohkon paikalla. Pitkän luonnoksen voi avata kokonaan. Kopiointi ottaa aina alkuperäisen tekstin.",
+      needs: "Ei muuta. Lohko näkyy aluksi lähteenä.",
+      caption: "Markdown-lohko",
+    },
     "agent-resources-view": {
       name: "Agentin käytössä",
       desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
@@ -152,6 +162,16 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "markdown-block-preview": {
+      name: "Markdown block preview",
+      desc: "Read a formatted Markdown draft right in the conversation and return to its source with the same button.",
+      where:
+        "At the right edge of a Markdown block, from the eye button below copy.",
+      shows:
+        "Headings, lists and tables in place of the source. Long drafts can be expanded. Copy always takes the original text.",
+      needs: "Nothing else. Blocks start as source text.",
+      caption: "Markdown block",
+    },
     "agent-resources-view": {
       name: "Agent resources",
       desc: "One view of everything your agents use: files, mail, calendar, contacts, code and machines. Each source tells what is included, what is not and what the agent may do.",

@@ -4,6 +4,10 @@ import { catalog } from "../i18n";
 // diagrams (components/MermaidDiagram.tsx).
 const fi = {
   copyCode: "Kopioi koodi",
+  showSource: "Näytä Markdown-lähde",
+  showPreview: "Näytä esikatselu",
+  showAll: "Näytä kaikki",
+  showLess: "Näytä vähemmän",
   openInEditor: (path: string) => `Avaa editorissa: ${path}`,
   openAttachment: (name: string) => `Avaa liite ${name}`,
   attachment: "Liite",
@@ -15,6 +19,10 @@ const fi = {
 
 export const markdownRendererText = catalog(fi, {
   copyCode: "Copy code",
+  showSource: "Show Markdown source",
+  showPreview: "Show preview",
+  showAll: "Show all",
+  showLess: "Show less",
   openInEditor: (path) => `Open in the editor: ${path}`,
   openAttachment: (name) => `Open attachment ${name}`,
   attachment: "Attachment",

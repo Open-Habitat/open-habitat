@@ -21,6 +21,7 @@ export type ExperimentalFeature = {
 };
 
 const featureIds = [
+  { id: "markdown-block-preview", landed: true },
   { id: "worker-row-sentence", landed: true },
   { id: "raise-to-your-turn", landed: true },
   { id: "composer-lists-in-field", landed: true },
@@ -47,6 +48,7 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
+    id === "markdown-block-preview" ||
     id === "rewind-conversation" ||
     id === "explain-mode" ||
     id === "agent-resources-view" ||

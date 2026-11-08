@@ -13,12 +13,15 @@ import ReactMarkdown, {
 } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import { useExperimentalFeature } from "../app/accountPreferences";
 import { attachmentURL } from "../app/attachments";
 import { liveText } from "../i18n";
 import { markdownRendererText } from "../text/markdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
-import { ControlButton, ExternalLink } from "./ControlElements";
+import { ControlButton, ExternalLink, IconButton } from "./ControlElements";
 import { FileLinkContext, parseFileRef, webAddress } from "./fileRefs";
+import { Icon } from "./Icon";
+import "./MarkdownBlockPreview.css";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { OutputBox } from "./OutputBox";
 import rehypeStableText from "./rehypeStableText";
@@ -110,6 +113,10 @@ function MarkdownCode({
   language?: string;
   complete: boolean;
 }) {
+  const enabled = useExperimentalFeature("markdown-block-preview");
+  const [preview, setPreview] = useState(false);
+  const eligible = enabled && (language === "markdown" || language === "md");
+  const rendered = eligible && preview;
   return (
     <figure className="ah-markdown-code">
       <OutputBox
@@ -124,8 +131,52 @@ function MarkdownCode({
         copyLabel={txt.copyCode}
         complete={complete}
         detect={!language}
+        actions={
+          eligible ? (
+            <IconButton
+              size="inline"
+              variant="quiet"
+              data-testid="markdown-preview-toggle"
+              aria-label={rendered ? txt.showSource : txt.showPreview}
+              aria-pressed={rendered}
+              onPress={() => setPreview(!preview)}
+            >
+              <Icon name="eye" />
+            </IconButton>
+          ) : undefined
+        }
+        rendered={rendered ? <MarkdownBlockPreview text={text} /> : undefined}
       />
     </figure>
+  );
+}
+
+function MarkdownBlockPreview({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.replace(/\n$/, "").split("\n").length > 10;
+  return (
+    <div
+      className="ah-markdown-block-preview"
+      data-testid="markdown-block-preview"
+    >
+      <div
+        className="ah-markdown-block-document"
+        data-collapsed={(long && !expanded) || undefined}
+      >
+        <MarkdownRenderer text={text} />
+      </div>
+      {long ? (
+        <ControlButton
+          size="inline"
+          variant="quiet"
+          data-testid="markdown-preview-expand"
+          aria-expanded={expanded}
+          onPress={() => setExpanded(!expanded)}
+        >
+          {expanded ? txt.showLess : txt.showAll}
+        </ControlButton>
+      ) : null}
+    </div>
   );
 }
 
@@ -320,7 +371,7 @@ const rehypePlugins: Options["rehypePlugins"] = [
 
 // A settled reply re-renders with its parent (clock ticks, live updates of
 // other turns); unchanged text needs no new parse.
-export default memo(function MarkdownRenderer({
+const MarkdownRenderer = memo(function MarkdownRenderer({
   text,
   breaks = false,
 }: {
@@ -343,3 +394,4 @@ export default memo(function MarkdownRenderer({
     </div>
   );
 });
+export default MarkdownRenderer;
