@@ -208,3 +208,94 @@ kuvitettu sivun sisään; oikeaa uutta välilehteä prototyyppi ei avaa.
 node design-system/prototypes/rounds/2026-11-08-tarjouskortit-2/build.mjs
 open-habitat agent view offer --current --source design-system/prototypes/dist/tarjouskortit-2/offline.html --title "Tarjouskortit · kierros 2" --idempotency-key 512bc1bf-fdff-4772-a004-9a53ed2aa4ea --json
 ```
+
+# Kierros 3: kortti avaa ja sulkee, toiminnot kortissa
+
+Kierros: `design-system/prototypes/rounds/2026-11-08-tarjouskortit-3/`
+(`NOTES.md` kertoo sivun, riffit ja tarkistuksen). Kaikissa riffeissä on
+kierroksen 2 A Viereen: kohde avautuu oikeaan paneeliin. Saman kortin uusi
+painallus sulkee paneelin. Avattu kortti on korostettu aksenttireunuksella
+ja -taustalla, ja sen › on aksentinvärinen; hiiren alla › vaihtuu ✕:ksi.
+Riffit eroavat siinä, miltä kortin omat toiminnot (julkinen ja kesto,
+*Kopioi linkki*, oma välilehti, lataus) näyttävät, mikä korvaa hiiren
+kosketusnäytöllä ja mitä paneelin yläpalkkiin jää. Oletusnäkymässä
+työpöydällä PDF on auki ja kiitossivun kortti piirretty hiiren alle;
+puhelimessa näkyy riffin kosketustila.
+
+- **A Kulma**: hiiren alla kortin oikeaan yläkulmaan pienet kuvakkeet (julkinen, välilehti, lataus); kosketuksella aina näkyvissä; paneelin yläpalkissa sama rivi.
+- **B Palkki**: hiiren alla kortin alareunaan palkki lyhyin sanoin, avatussa kortissa pysyvästi; kosketuksella pitkä painallus; paneelissa vain ✕.
+- **C Jako**: kortissa aina lukko tai maapallo, joka avaa jakamisen; ⋯ hiiren alla (välilehti, lataus); kosketuksella ⋯ on paneelin yläpalkissa.
+
+Kuvat: `evidence/r3-<riffi>-<vaihe>-<leveys>-<teema>.avif`. Vaiheet:
+`0-oletus`, `0-kortit` (kaikki kortit, mitään ei auki), `1-nakyma` …
+`5-kansio` (avattuna, kortti korostettuna), `6-hover` (hiiri CSV-kortilla;
+puhelimessa `6-kosketus`), `7-julkinen` (CSV julkiseksi kortista),
+`8-valilehti` (oma välilehti kortista) ja `9-lataus`.
+
+## Host-tiedot
+
+Kierros ei tuo uusia host-vaatimuksia. Kierroksen 2 lista pätee
+sellaisenaan: tiedostotarjouksen julkisuus ja pysyvä osoite, `/file?id=f…`
+-välilehti ja näkymän lataus zipinä. Lisäksi kierros olettaa seuraavat:
+
+- **Kortin auki-tila on selaimen tila.** Sovellus tietää jo, mikä näkymä on
+  paneelissa. Kortti saa tiedon propsina ja palauttaa painalluksesta
+  avaa- tai sulje-intentin. Host ei osallistu.
+- **Hover ei ole ainoa tie.** Design-järjestelmän mukaan olennainen ei saa
+  olla pelkästään hoverissa. Kaikissa riffeissä toiminnot tulevat näkyviin
+  myös näppäimistöfokuksella (`:focus-within`), ja kaikki ovat myös
+  paneelin kautta saatavilla (B:ssä työpöydällä avatun kortin pysyvässä
+  palkissa). Kuka näkee näkyy A:ssa ja B:ssä tietorivin merkkinä ja C:ssä
+  aina näkyvänä merkkinä.
+- **Kortti ei enää ole yksi `<button>`.** Painikkeita ei voi sijoittaa
+  painikkeen sisään, joten kortin painallus on kortin alla oleva kerros ja
+  toiminnot ovat sen päällä. Toteutuksessa tämä on `FileOffer`- ja
+  `ViewOffer`-korttien rakennemuutos.
+
+## Päätökset myöhempää tarkistusta varten
+
+- **Puhelimessa oletuksena mitään ei ole auki**, koska paneeli peittäisi
+  keskustelun ja kortin tilan.
+- **A:n maapallo julkaisee yhdellä painalluksella 30 päiväksi** kuten kytkin
+  nyt. Kesto muutetaan päivästä sen vieressä.
+- **B:n hover-palkki peittää tietorivin eikä kasvata korttia**, jotta
+  keskustelu ei hyppää, kun hiiri kulkee sen yli.
+- **A:ssa kosketusnäytön kuvakkeet ovat kortin alimmalla rivillä**, eivät
+  kulmassa, koska kulmassa ne kaventaisivat otsikon 390 px:n leveydellä.
+
+## Suositus
+
+**A Kulma.** Se tekee täsmälleen sen, mitä pyysit: julkaisu, välilehti ja
+lataus ovat yhden painalluksen päässä kortissa. Se käyttää symboleita
+sanojen sijaan, kuten design-järjestelmä haluaa. Sama kuvakerivi on myös
+paneelin yläpalkissa, joten opittavaa on yksi asia. B on selkein ensi
+kertaa käyttävälle, koska siinä on sanat, mutta se on raskas: palkki peittää
+tietorivin, avattu kortti kasvaa, eikä pitkää painallusta löydä ilman
+neuvoa. C on rauhallisin ja näyttää aina, kuka kohteen näkee, mutta
+välilehti ja lataus ovat kahden painalluksen takana. Puhelimessa C:n
+toiminnot ovat vain avatun kohteen yläpalkissa.
+
+## Kysymykset Jarille
+
+1. Mikä riffi: A (`r3-a-kulma-0-oletus-1440-light`), B
+   (`r3-b-palkki-0-oletus-1440-light`) vai C (`r3-c-jako-0-oletus-1440-light`)?
+2. Mikä puhelimessa: aina näkyvät kuvakkeet (`r3-a-kulma-0-oletus-390-light`),
+   pitkä painallus (`r3-b-palkki-0-oletus-390-light`) vai toiminnot vain
+   avatun kohteen yläpalkissa (`r3-c-jako-6-kosketus-390-light`)?
+3. Riittääkö julkaisuun pelkkä maapallo (`r3-a-kulma-7-julkinen-1440-light`),
+   vai pitääkö sana *Julkinen* ja kytkin näkyä (`r3-b-palkki-7-julkinen-1440-light`)?
+
+## Ympäristö ja näyttö
+
+Rakennettu tuotannon komponenteista tämän worktreen puusta (pohja
+`b55b79e58`). Kuvat on otettu Playwright 1.63:n Chromiumilla
+(`chromium-1243`) headless-tilassa, 1440 × 900 ja 390 × 844 (kosketus),
+DPR 2, vaalea ja tumma. `check.mjs`: 734 tarkistuspistettä, konsoli puhdas.
+Pitkä painallus on tarkistettu kosketuksen pointer-tapahtumilla, ei oikealla
+laitteella. Välilehti on kuvitettu sivun sisään, ja lataus näyttää vain
+ilmoituksen.
+
+```
+node design-system/prototypes/rounds/2026-11-08-tarjouskortit-3/build.mjs
+open-habitat agent view offer --current --source design-system/prototypes/dist/tarjouskortit-3/offline.html --title "Tarjouskortit · kierros 3" --idempotency-key 19200bd5-6b93-4459-a9ea-12ffabfe3d4a --json
+```

@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
@@ -69,4 +69,4 @@ place should be the same one that list uses. 1440 and 390, light and dark.
 - julkaisu ja muut toiminnot (oma välilehti, lataus, jakaminen) ovat kortissa
   hiiren alla näkyvinä painikkeina (hover). Riffataan (kierros 3).
 - [x] round 2: riffs on Kortti
-- [ ] round 3: beside, card press toggles the panel, hover actions on the card (publish, own tab, download), view offer and questions for Jari
+- [x] round 3: beside, card press toggles the panel, hover actions on the card (publish, own tab, download), view offer and questions for Jari
