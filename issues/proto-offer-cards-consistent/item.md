@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-08
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
@@ -70,3 +71,11 @@ place should be the same one that list uses. 1440 and 390, light and dark.
   hiiren alla näkyvinä painikkeina (hover). Riffataan (kierros 3).
 - [x] round 2: riffs on Kortti
 - [x] round 3: beside, card press toggles the panel, hover actions on the card (publish, own tab, download), view offer and questions for Jari
+
+## Decision (Jari 2026-11-08, kierros 3)
+
+**A Kulma**: hiiren alla kortin kulmaan kuvakerivi (julkaisu, oma välilehti,
+lataus), kosketuksella aina näkyvissä, sama rivi paneelin yläpalkissa; kortin
+painallus avaa viereen ja uusi painallus sulkee. Toteutus tehdään yhdessä
+keskustelun aineistolistan kanssa (`proto-conversation-assets`), koska ne
+jakavat paneelin ja toiminnot.

@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: list of a conversation's views and files
@@ -43,3 +43,11 @@ hiiren alla näkyvät painikkeet listan riveillä (oma välilehti, julkaisu,
 lataus), samalla mallilla kuin tarjouskorttien kierros 3.
 - [x] round 2: chip in the bottom strip
 - [x] round 3: Oma siru, actions on list rows and the opened item (hover buttons, own tab), view offer and questions for Jari
+
+## Decision (Jari 2026-11-08, kierros 3)
+
+Tarjouskortit valitsivat **A Kulman**. Sirun listan riveillä pitää olla
+samat hiiren alla näkyvät painikkeet. Kierros 4: riffit listan rivien
+hover-painikkeista Kulman mallilla.
+- [x] round 3: actions on list rows
+- [ ] round 4: hover buttons on the chip list rows matching the cards' Kulma, view offer and questions for Jari
