@@ -248,9 +248,14 @@
 /* The app rail yields first, keeping both settings panes at desktop widths.
    Keep in sync with Account's search preview and resize handler. */
 @media (max-width: 800px) {
-  .ah-account-settings.s-page {
+  .ah-account-settings.s-page,
+  .ah-account-settings.s-page.wide {
     flex-direction: column;
     gap: var(--ah-s5);
+    /* Centre the whole column, including search, back and close controls. */
+    width: 100%;
+    max-width: 400px;
+    margin-inline: auto;
   }
   .s-nav {
     width: 100%;

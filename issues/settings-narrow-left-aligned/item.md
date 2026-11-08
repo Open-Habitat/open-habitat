@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Settings' narrowest layout sits against the left edge
@@ -25,5 +26,5 @@ Check 390, 600 and 800 px, light and dark.
 
 ## Acceptance Criteria
 
-- [ ] At 390–800 px Settings' column is centred or full width with even margins, list and detail alike.
-- [ ] Settings specs and width sweep green; screenshots.
+- [x] At 390–800 px Settings' column is centred or full width with even margins, list and detail alike.
+- [x] Settings specs and width sweep green; screenshots.
