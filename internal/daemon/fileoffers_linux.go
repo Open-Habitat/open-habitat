@@ -42,7 +42,8 @@ import (
 // and nothing else; who may read is the gateway's decision (the owner's own
 // session only), what bytes exist is this daemon's, and how the bytes are
 // presented (type, inline or attachment) is again the gateway's: the daemon
-// sends opaque octets.
+// sends original files as opaque octets. Thumbnails are separately generated
+// bounded JPEGs; the gateway fixes their presentation too.
 
 const (
 	AgentFileOffersPath      = "/agent/v1/file-offers"
@@ -714,6 +715,8 @@ func FileOffersHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 			historyJSON(w, map[string]any{"schema_version": 1, "offer": m.fileOfferSummary, "items": m.Items})
 		case sub == "zip":
 			serveOfferZip(w, r, int(store.Fd()), m)
+		case strings.HasPrefix(sub, "thumbnail/") && validViewPath(strings.TrimPrefix(sub, "thumbnail/")):
+			serveOfferThumbnail(w, r, int(store.Fd()), id, strings.TrimPrefix(sub, "thumbnail/"))
 		case strings.HasPrefix(sub, "files/") && validViewPath(strings.TrimPrefix(sub, "files/")):
 			serveOfferFile(w, r, int(store.Fd()), id, strings.TrimPrefix(sub, "files/"))
 		default:
@@ -1013,6 +1016,15 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 		"paketti/LUE MINUT ä.txt": []byte("synteettinen\n"),
 		"paketti/.salainen":       []byte("hidden"),
 	}
+	if set == "large-images" {
+		// Real large inputs but cheap fixture generation: PNG permits trailing
+		// bytes. The regression measures what the browser actually transfers.
+		large := append(append([]byte(nil), png...), make([]byte, 26<<20-len(png))...)
+		contents = map[string][]byte{}
+		for _, name := range []string{"a.png", "b.png", "c.png", "d.png", "e.png"} {
+			contents["large/"+name] = large
+		}
+	}
 	for name, data := range contents {
 		if os.MkdirAll(filepath.Dir(filepath.Join(base, name)), 0700) != nil || os.WriteFile(filepath.Join(base, name), data, 0600) != nil {
 			return nil, false
@@ -1027,6 +1039,8 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 	switch set {
 	case "single", "removed":
 		groups = [][]string{{"kaavio.png"}}
+	case "large-images":
+		groups = [][]string{{"large"}}
 	case "folder":
 		groups = [][]string{{"paketti"}}
 	case "types":

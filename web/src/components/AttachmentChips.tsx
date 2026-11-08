@@ -4,6 +4,7 @@ import { attachmentChipsText } from "../text/attachmentChips";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+import { ImageThumbnail } from "./ImageThumbnail";
 
 const reference =
   "(!?)\\[([^\\]\\n]*)\\]\\((\\/api\\/v1\\/attachments\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\\)";
@@ -126,7 +127,7 @@ export function AttachmentChips({
               onPress={() => setOpen(item)}
             >
               {item.image ? (
-                <img src={item.url} alt="" loading="lazy" />
+                <ImageThumbnail src={`${item.url}/thumbnail`} />
               ) : (
                 <Icon name="file" />
               )}

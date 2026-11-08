@@ -15,6 +15,7 @@ import {
   inlineURL,
   type OfferState,
   readOfferedFile,
+  thumbnailURL,
   zipName,
   zipURL,
 } from "../app/fileOffers";
@@ -23,6 +24,7 @@ import { fileOfferText, type KindText } from "../text/fileOffer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
+import { ImageThumbnail } from "./ImageThumbnail";
 import { TooltipLink } from "./QuickTooltip";
 
 // Agent file offers (prototype rounds Kortti, Tunniste and Hylly): one file
@@ -172,12 +174,9 @@ function Thumb({
   className?: string;
 }) {
   return item.kind === "image" || item.kind === "svg" ? (
-    <img
+    <ImageThumbnail
       className={className}
-      src={inlineURL(offerId, item.path)}
-      alt=""
-      loading="lazy"
-      decoding="async"
+      src={thumbnailURL(offerId, item.path)}
     />
   ) : (
     <span className={`${className ?? ""} ah-file-offer-ext`}>
@@ -279,12 +278,7 @@ export function FileOfferCard({
             aria-label={txt.showLarge(baseName(single.path))}
             onClick={() => setPreviewing(single)}
           >
-            <img
-              src={inlineURL(offer.offer_id, single.path)}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
+            <ImageThumbnail src={thumbnailURL(offer.offer_id, single.path)} />
           </button>
         ) : null}
         {single && single.kind === "file" ? (

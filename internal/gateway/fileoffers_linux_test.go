@@ -20,6 +20,7 @@ func newOfferDesk(t *testing.T) (*editorDesk, chan *http.Request) {
 	t.Helper()
 	seen := make(chan *http.Request, 64)
 	files := map[string]string{
+		"/api/v1/file-offers/" + offerTestA + "/thumbnail/kaavio.png":    "jpeg-thumb",
 		"/api/v1/file-offers/" + offerTestA + "/files/kaavio.png":        "png-bytes",
 		"/api/v1/file-offers/" + offerTestA + "/files/logo.svg":          "<svg><script>alert(1)</script></svg>",
 		"/api/v1/file-offers/" + offerTestA + "/files/raportti.html":     "<script>alert(1)</script>",
@@ -67,6 +68,7 @@ func TestFileOfferBytesArePresentedByTheGateway(t *testing.T) {
 	for _, tc := range []struct{ path, typ, disposition string }{
 		// Only the app's own media elements get a type, and only inline.
 		{base + "/inline/kaavio.png", "image/png", "inline"},
+		{base + "/thumbnail/kaavio.png", "image/jpeg", "inline"},
 		{base + "/inline/logo.svg", "image/svg+xml", "inline"},
 		// Anything else is opaque octets as a named attachment.
 		{base + "/inline/raportti.html", "application/octet-stream", `attachment; filename="raportti.html"; filename*=UTF-8''raportti.html`},

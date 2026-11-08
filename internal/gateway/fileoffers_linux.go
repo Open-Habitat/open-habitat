@@ -94,7 +94,7 @@ func (a *Auth) fileOffers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mode, rel, _ := strings.Cut(sub, "/")
-	if mode != "inline" && mode != "download" || !validOfferPath(rel) {
+	if mode != "inline" && mode != "download" && mode != "thumbnail" || !validOfferPath(rel) {
 		safe(w, 404, "file_not_found")
 		return
 	}
@@ -158,6 +158,9 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 	out := &url.URL{Scheme: "http", Host: "unix", Path: fileOffersPath + "/" + id + "/zip"}
 	if mode != "zip" {
 		out.Path = fileOffersPath + "/" + id + "/files/" + rel
+		if mode == "thumbnail" {
+			out.Path = fileOffersPath + "/" + id + "/thumbnail/" + rel
+		}
 	}
 	// A large file to a slow phone takes long; each write is bounded below.
 	ctx, cancel := context.WithTimeout(r.Context(), time.Hour)
@@ -205,6 +208,9 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 		h.Set("Content-Type", "application/zip")
 		// No file name: the page's download attribute names the archive.
 		h.Set("Content-Disposition", "attachment")
+	case mode == "thumbnail":
+		h.Set("Content-Type", "image/jpeg")
+		h.Set("Content-Disposition", "inline")
 	case mode == "inline" && inline:
 		h.Set("Content-Type", kind)
 		h.Set("Content-Disposition", "inline")

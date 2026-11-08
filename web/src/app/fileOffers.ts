@@ -93,6 +93,10 @@ export function inlineURL(offerId: string, path: string): string {
   return `${base}/${offerId}/inline/${encodePath(path)}`;
 }
 
+export function thumbnailURL(offerId: string, path: string): string {
+  return `${base}/${offerId}/thumbnail/${encodePath(path)}`;
+}
+
 /** The URL that downloads the file under its own name. */
 export function downloadURL(offerId: string, path: string): string {
   return `${base}/${offerId}/download/${encodePath(path)}`;

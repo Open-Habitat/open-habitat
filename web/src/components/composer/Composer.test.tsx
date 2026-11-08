@@ -105,7 +105,9 @@ describe("queued attachments", () => {
       expect(queue.textContent).toContain("Test");
       expect(queue.textContent).toContain("notes.txt");
       expect(queue.textContent).not.toContain("/api/v1/attachments/");
-      expect(queue.querySelector("img")?.getAttribute("src")).toBe(image);
+      expect(queue.querySelector("img")?.getAttribute("src")).toBe(
+        `${image}/thumbnail`,
+      );
       expect(
         queue.querySelectorAll('[data-testid="attachment-chip"]'),
       ).toHaveLength(2);

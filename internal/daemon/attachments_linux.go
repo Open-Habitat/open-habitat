@@ -81,6 +81,7 @@ func attachmentsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool
 		path := r.URL.Path
 		upload := path == base && r.Method == http.MethodPost
 		id := strings.TrimPrefix(path, base+"/")
+		id, thumb := strings.CutSuffix(id, "/thumbnail")
 		if (!upload && (r.ContentLength > 0 || len(r.TransferEncoding) != 0)) || r.URL.RawQuery != "" || r.URL.EscapedPath() != path || (!upload && (r.Method != http.MethodGet || !attachmentID.MatchString(id))) {
 			snapshotError(w, 400, "invalid_request")
 			return
@@ -100,6 +101,10 @@ func attachmentsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool
 				return
 			}
 			defer f.Close()
+			if thumb {
+				serveThumbnail(w, r, f)
+				return
+			}
 			data, err := io.ReadAll(io.LimitReader(f, attachmentLimit+1))
 			if err != nil || int64(len(data)) > attachmentLimit {
 				snapshotError(w, 503, "attachments_unavailable")

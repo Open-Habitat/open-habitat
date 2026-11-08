@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	home := t.TempDir()
 	cfg := transport.Config{Home: home}
 	h := AttachmentsHandler(cfg, func(*http.Request) bool { return true })
-	png := append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, 32)...)
+	png := fixturePNG(480, 300)
 	request := func(handler http.Handler, method, path string, data []byte) *httptest.ResponseRecorder {
 		t.Helper()
 		r := httptest.NewRequest(method, "http://unix"+path, bytes.NewReader(data))
@@ -59,9 +60,21 @@ func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	if get.Code != 200 || !bytes.Equal(get.Body.Bytes(), png) || get.Header().Get("Content-Type") != "image/png" {
 		t.Fatal(get.Code, get.Header())
 	}
+	thumbPath := AttachmentsPath + "/" + reply.ID + "/thumbnail"
+	thumb := request(h, "GET", thumbPath, nil)
+	thumbConfig, format, err := image.DecodeConfig(bytes.NewReader(thumb.Body.Bytes()))
+	if thumb.Code != 200 || err != nil || format != "jpeg" || thumbConfig.Width != 320 || thumb.Body.Len() > 128<<10 {
+		t.Fatalf("thumbnail: %d %v %s %v", thumb.Code, thumbConfig, format, err)
+	}
+	if request(AttachmentsHandler(cfg, func(*http.Request) bool { return false }), "GET", thumbPath, nil).Code != 403 {
+		t.Fatal("untrusted thumbnail")
+	}
 	other := AttachmentsHandler(transport.Config{Home: t.TempDir()}, func(*http.Request) bool { return true })
 	if request(other, "GET", AttachmentsPath+"/"+reply.ID, nil).Code != 404 {
 		t.Fatal("cross-user attachment accessible")
+	}
+	if request(other, "GET", thumbPath, nil).Code != 404 {
+		t.Fatal("cross-home thumbnail")
 	}
 	message, images, err := promptAttachments(home, "![screen]("+AttachmentsPath+"/"+reply.ID+")", true)
 	if err != nil || len(images) != 1 || images[0].MimeType != "image/png" || !strings.Contains(message, reply.Path) {
@@ -78,6 +91,9 @@ func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	}
 	if request(h, "GET", AttachmentsPath+"/"+reply.ID, nil).Code != 404 {
 		t.Fatal("symlink read")
+	}
+	if request(h, "GET", thumbPath, nil).Code != 404 {
+		t.Fatal("thumbnail followed symlink")
 	}
 	if _, _, err := promptAttachments(home, AttachmentsPath+"/"+reply.ID, true); err == nil {
 		t.Fatal("symlink passed to Pi")

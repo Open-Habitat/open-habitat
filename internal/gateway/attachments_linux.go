@@ -11,6 +11,7 @@ func (a *Auth) attachments(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	upload := path == "/api/v1/attachments" && r.Method == http.MethodPost
 	id := strings.TrimPrefix(path, "/api/v1/attachments/")
+	id = strings.TrimSuffix(id, "/thumbnail")
 	if !a.exact(r, path) || r.URL.EscapedPath() != path || (!upload && (r.Method != http.MethodGet || !conversationUUID.MatchString(id))) {
 		safe(w, 400, "invalid_request")
 		return

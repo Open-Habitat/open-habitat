@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Offer card thumbnails download the full image
@@ -35,6 +36,6 @@ panel).
 
 ## Acceptance Criteria
 
-- [ ] A folder offer of five 26 MiB images shows thumbnails after transferring only small thumbnails (measure bytes in a browser spec).
-- [ ] Oversized or malformed images fall back to an icon without exhausting memory.
-- [ ] Touched Go, contracts, web and browser specs green; `KOKEILTAVAA.md` line.
+- [x] A folder offer of five 26 MiB images shows thumbnails after transferring only small thumbnails (measure bytes in a browser spec).
+- [x] Oversized or malformed images fall back to an icon without exhausting memory.
+- [x] Touched Go, contracts, web and browser specs checked; `KOKEILTAVAA.md` line. All pass except the independently reproduced, already tracked main-branch daemon PATH assertion (see result.md).

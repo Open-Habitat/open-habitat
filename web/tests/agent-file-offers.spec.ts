@@ -54,11 +54,11 @@ test("each kind's card previews in the dialog and downloads under its own name",
   for (const offerId of [png, svg, md, csv, py, zip, parquet])
     await expect(card(page, offerId)).toHaveAttribute("data-state", "ready");
 
-  // The image shows in its card, loaded through the inline route.
+  // The card loads only a bounded thumbnail.
   const image = card(page, png).getByTestId("file-offer-image").locator("img");
   await expect
     .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
-    .toBe(480);
+    .toBe(320);
 
   // Lataa downloads the frozen bytes under the file's own name.
   const download = page.waitForEvent("download");
@@ -125,6 +125,49 @@ test("each kind's card previews in the dialog and downloads under its own name",
     await card(page, png).scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${evidence}/tunniste-desktop-light.png` });
   }
+});
+
+test("five large offered images transfer thumbnails only until opened", async ({
+  page,
+}) => {
+  const target = await conversation(page);
+  const bodies: Promise<number>[] = [];
+  const fullReads: string[] = [];
+  page.on("response", (response) => {
+    if (response.url().includes("/thumbnail/"))
+      bodies.push(response.body().then((body) => body.length));
+  });
+  page.on("request", (request) => {
+    if (/\/file-offers\/.*\/inline\//.test(request.url()))
+      fullReads.push(request.url());
+  });
+  const [id] = await offer(page, target, "large-images");
+  const thumbs = card(page, id).getByTestId("file-offer-thumb");
+  await expect(thumbs).toHaveCount(5);
+  for (const thumb of await thumbs.all()) {
+    await thumb.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() =>
+        thumb
+          .locator("img")
+          .evaluate((img: HTMLImageElement) => img.naturalWidth),
+      )
+      .toBe(320);
+  }
+  const bytes = await Promise.all(bodies);
+  expect(bytes).toHaveLength(5);
+  expect(bytes.reduce((a, b) => a + b, 0)).toBeLessThan(200_000);
+  expect(fullReads).toEqual([]);
+  await thumbs.first().click();
+  await expect.poll(() => fullReads.length).toBe(1);
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("attachment-preview")
+        .locator("img")
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBe(480);
 });
 
 test("an offered file opened directly runs nothing on the app's origin", async ({
