@@ -21,6 +21,7 @@ import (
 
 const AttachmentsPath = "/api/v1/attachments"
 const attachmentLimit int64 = 20 << 20
+const promptAttachmentLimit int64 = 100 << 20
 const attachmentQuota int64 = 1 << 30
 
 // Browser and agent adapters share the same native quota recount/write fence.
@@ -258,7 +259,7 @@ func promptAttachments(home, message string, includeImages bool) (string, []piAt
 			return "", nil, err
 		}
 		total += st.Size()
-		if total > attachmentLimit {
+		if total > promptAttachmentLimit {
 			f.Close()
 			return "", nil, errors.New("attachments too large")
 		}

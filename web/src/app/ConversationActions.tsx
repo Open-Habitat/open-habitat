@@ -59,6 +59,7 @@ const quietReceipt = (receipt: string) =>
  * it as the same message.) */
 function messageRefusal(code: string, kind: "send" | "queue") {
   if (code === "read_only_history") return txt.readOnlyRefusal;
+  if (code === "invalid_attachments") return refusalReason(code, 400);
   return kind === "send" ? txt.sendRefusal : txt.queueRefusal;
 }
 /** One Stop press on a running turn. Its outcome is read from status: the

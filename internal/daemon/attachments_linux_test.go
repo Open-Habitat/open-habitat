@@ -4,13 +4,16 @@ package daemon
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -105,6 +108,106 @@ func TestPromptAttachmentCountLimit(t *testing.T) {
 		}
 		if _, _, err := promptAttachments(home, strings.Join(refs, "\n"), images); err == nil {
 			t.Fatal("31 distinct attachments accepted")
+		}
+	}
+}
+
+// Thirty images totaling exactly 100 MiB exercise the full base64 payload, not
+// just file metadata. Sparse synthetic PNGs keep fixture creation inexpensive.
+func TestPromptAttachmentCombinedSize(t *testing.T) {
+	home := t.TempDir()
+	root, err := attachmentRoot(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	var refs []string
+	for i := 0; i < 30; i++ {
+		id := fmt.Sprintf("%08x-1111-4111-8111-aaaaaaaaaaaa", i)
+		f, err := root.OpenFile(id, os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		size := int64(3 << 20)
+		if i < 10 {
+			size = 4 << 20
+		}
+		if _, err := f.Write([]byte("\x89PNG\r\n\x1a\n")); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.Truncate(size); err != nil {
+			t.Fatal(err)
+		}
+		f.Close()
+		refs = append(refs, AttachmentsPath+"/"+id)
+	}
+	message := strings.Join(refs, "\n")
+	for _, includeImages := range []bool{false, true} {
+		got, images, err := promptAttachments(home, message, includeImages)
+		if err != nil || strings.Count(got, "Attachment path: ") != 30 {
+			t.Fatalf("100 MiB refused: %v", err)
+		}
+		if includeImages {
+			if len(images) != 30 {
+				t.Fatalf("image count: %d", len(images))
+			}
+			var decoded int
+			for _, image := range images {
+				data, err := base64.StdEncoding.DecodeString(image.Data)
+				if err != nil || !bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n")) {
+					t.Fatal("invalid native image payload", err)
+				}
+				decoded += len(data)
+			}
+			if decoded != 100<<20 {
+				t.Fatalf("decoded bytes: %d", decoded)
+			}
+			// Exercise the production writer and echo reader, with Pi's pinned
+			// stdin framing. No provider, personal home or credentials are used.
+			node, err := exec.LookPath("node")
+			if err != nil {
+				t.Fatal(err)
+			}
+			helper, err := filepath.Abs("pi-device-test/attachment-payload.mjs")
+			if err != nil {
+				t.Fatal(err)
+			}
+			script := filepath.Join(home, "pi")
+			if err := os.WriteFile(script, []byte("#!/bin/sh\nexec "+strconv.Quote(node)+" "+strconv.Quote(helper)+"\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer p.close()
+			started := time.Now()
+			accepted, err := p.request("prompt", got, promptRequestTimeout(images), images...)
+			if err != nil || !accepted {
+				t.Fatalf("native Pi input and image echo: accepted=%v, %v", accepted, err)
+			}
+			for _, kind := range []string{"message_start", "message_end"} {
+				select {
+				case event := <-p.events:
+					if len(event) > 1<<20 || !bytes.Contains(event, []byte(kind)) {
+						t.Fatalf("unbounded or missing %s", kind)
+					}
+					if kind == "message_start" && !bytes.Contains(event, []byte(refs[0])) {
+						t.Fatal("lost user text needed for queue matching")
+					}
+				case <-time.After(5 * time.Second):
+					t.Fatalf("missing %s echo", kind)
+				}
+			}
+			t.Logf("100 MiB images through native framing and bounded echoes in %s", time.Since(started))
+		}
+	}
+	if err := os.Truncate(filepath.Join(home, "attachments", strings.TrimPrefix(refs[0], AttachmentsPath+"/")), 5<<20); err != nil {
+		t.Fatal(err)
+	}
+	for _, includeImages := range []bool{false, true} {
+		if _, _, err := promptAttachments(home, message, includeImages); err == nil {
+			t.Fatal("101 MiB accepted")
 		}
 	}
 }

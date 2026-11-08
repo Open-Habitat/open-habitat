@@ -206,6 +206,11 @@ async function json(response: Response): Promise<unknown> {
   if (response.status === 404) throw new ConversationNotFound("not found");
   if (response.status === 409)
     throw new NotAdmitted(await refusalCode(response));
+  if (response.status === 400) {
+    const code = await refusalCode(response);
+    if (code === "invalid_attachments") throw new NotAdmitted(code);
+    throw new Error("unavailable");
+  }
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"

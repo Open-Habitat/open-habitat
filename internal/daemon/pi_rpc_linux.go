@@ -262,6 +262,24 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 	return p, nil
 }
 
+// Pi echoes the prompt's image payload in user message events before the
+// bounded notification reduction. Leave room for base64, text and framing.
+const piFrameLimit = int((promptAttachmentLimit+2)/3*4) + (4 << 20)
+const maxPiRequestTimeout = 2 * time.Minute
+
+func promptRequestTimeout(images []piAttachmentImage) time.Duration {
+	// Pi buffers the base64 frame before parsing. A 100 MiB image batch
+	// measured ~29s on Birch; the ordinary 15s deadline poisons that send.
+	var imageBytes int
+	for _, image := range images {
+		imageBytes += len(image.Data)
+	}
+	if imageBytes > 20<<20 {
+		return maxPiRequestTimeout
+	}
+	return 15 * time.Second
+}
+
 // read never waits for inherited stdout EOF to reap Pi. Closing the read FD
 // breaks a blocked read even when a detached native tool retained its writer.
 func (p *piRPC) read() {
@@ -270,7 +288,7 @@ func (p *piRPC) read() {
 	defer close(p.events)
 	reader := bufio.NewReaderSize(p.out, 64<<10)
 	for {
-		line, err := readPiFrame(reader, 32<<20)
+		line, err := readPiFrame(reader, piFrameLimit)
 		if err != nil {
 			if err != io.EOF {
 				p.overflow.Store(true)
@@ -523,7 +541,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 	if ((kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536)) || (kind == "set_session_name" && (message == "" || len(message) > 200)) {
 		return piReply{}, errors.New("invalid prompt")
 	}
-	if timeout <= 0 || timeout > 30*time.Second {
+	if timeout <= 0 || timeout > maxPiRequestTimeout {
 		return piReply{}, errors.New("invalid timeout")
 	}
 	p.mu.Lock()

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/attachments.schema.json",
   "title": "Attachment upload reply",
-  "description": "POST /api/v1/attachments accepts raw bytes (1 byte to 20 MiB), authenticated and CSRF-protected, independent of conversations. The daemon stores under ~/attachments with a generated ID, capped at 1 GiB plus filesystem quota. GET /api/v1/attachments/{id} requires authentication; only sniffed PNG/JPEG/GIF/WebP are inline, all other content downloads. Message Markdown links to that URL preserve references in native Pi history. The daemon supplies referenced images as native Pi image input and appends each disk path before sending; at most 30 distinct attachments totaling 20 MiB per prompt. Files are never automatically deleted.",
+  "description": "POST /api/v1/attachments accepts raw bytes (1 byte to 20 MiB), authenticated and CSRF-protected, independent of conversations. The daemon stores under ~/attachments with a generated ID, capped at 1 GiB plus filesystem quota. GET /api/v1/attachments/{id} requires authentication; only sniffed PNG/JPEG/GIF/WebP are inline, all other content downloads. Message Markdown links to that URL preserve references in native Pi history. The daemon supplies referenced images as native Pi image input and appends each disk path before sending; at most 30 distinct attachments totaling 100 MiB per prompt. Files are never automatically deleted.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "id", "path", "content_type", "size"],

@@ -13,7 +13,7 @@ const png = Buffer.from(
   "base64",
 );
 
-test("thirty attachments send, while an extra file is refused without losing the draft", async ({
+test("thirty attachments totaling 100 MiB send, while an extra file is refused without losing the draft", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
@@ -38,7 +38,23 @@ test("thirty attachments send, while an extra file is refused without losing the
   await input.setInputFiles(files);
   await expect(composer.getByRole("alert")).toBeVisible();
   await expect(chips).toHaveCount(0);
-  await input.setInputFiles(files.slice(0, 30));
+  // Construct bytes in the browser rather than base64-copying 100 MiB
+  // through the Playwright transport. Ten 4 MiB + twenty 3 MiB files.
+  const pickBatch = (fours: number) =>
+    input.evaluate((element: HTMLInputElement, fours) => {
+      const data = new DataTransfer();
+      for (let i = 0; i < 30; i++) {
+        data.items.add(
+          new File(
+            [new Uint8Array((i < fours ? 4 : 3) * 1024 * 1024)],
+            `file-${i}.bin`,
+          ),
+        );
+      }
+      element.files = data.files;
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    }, fours);
+  await pickBatch(10);
   await expect(chips).toHaveCount(30);
   await input.setInputFiles(files.slice(30));
   await expect(composer.getByRole("alert")).toBeVisible();
@@ -56,6 +72,23 @@ test("thirty attachments send, while an extra file is refused without losing the
       .last()
       .getByTestId("attachment-chip"),
   ).toHaveCount(30);
+  await expect(chips).toHaveCount(0);
+
+  // A valid file count does not bypass the aggregate byte budget. Refusal
+  // preserves all attachments and the draft, rather than silently truncating.
+  await pickBatch(11);
+  await expect(chips).toHaveCount(30);
+  await page.getByTestId("message-input").fill("Too large together");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("send-receipt")).toBeVisible();
+  await expect(chips).toHaveCount(30);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Too large together",
+  );
+  await expect(page.locator('.ah-feed > li[data-kind="user"]')).toHaveCount(1);
 });
 
 test("picker, image paste and conversation drop persist authenticated attachments", async ({

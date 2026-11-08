@@ -1017,7 +1017,7 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 			err = c.applyFirstChoice(s, choice)
 		}
 		if err == nil {
-			accepted, err = s.rpc.request(rpcKind, expanded, 15*time.Second, images...)
+			accepted, err = s.rpc.request(rpcKind, expanded, promptRequestTimeout(images), images...)
 		}
 	}
 	c.mu.Lock()

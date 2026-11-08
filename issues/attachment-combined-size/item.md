@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Allow 100 MiB of attachments per message
@@ -24,5 +25,5 @@ size), and say the limit in the refusal text.
 
 ## Acceptance Criteria
 
-- [ ] 30 files totalling up to 100 MiB send; 101 MiB is refused with the limit stated.
-- [ ] Touched Go, web and attachment browser tests green.
+- [x] 30 files totalling up to 100 MiB send; 101 MiB is refused with the limit stated.
+- [x] Touched Go, web and attachment browser tests green.
