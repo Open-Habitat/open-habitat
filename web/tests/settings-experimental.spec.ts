@@ -25,6 +25,7 @@ const features = [
   "agent-resources-view",
   "conversation-context-view",
   "named-workers",
+  "remote-browser",
 ];
 
 async function signIn(page: Page) {

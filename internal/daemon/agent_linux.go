@@ -50,6 +50,11 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog, claude, speech, onAuthenticated) {
 		routes[path] = handler
 	}
+	if controller != nil && controller.browser != nil {
+		for path, handler := range controller.browser.agentRoutes() {
+			routes[path] = handler
+		}
+	}
 	native := cfg
 	if controller != nil && controller.home != "" {
 		native = controller.nativeCfg()

@@ -30,6 +30,7 @@ const featureIds = [
   { id: "agent-resources-view", landed: true },
   { id: "conversation-context-view", landed: true },
   { id: "named-workers", landed: true },
+  { id: "remote-browser", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -62,6 +63,21 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <b>{txt.features[id].caption}</b>
         <span className="ex-ghost" />
         <span className="ex-ghost" style={{ width: "70%" }} />
+      </>
+    );
+  else if (id === "remote-browser")
+    body = (
+      <>
+        <span className="ex-ghost" style={{ width: "80%" }} />
+        <span className="ex-browser">
+          <span className="ex-browser-pic" data-ask="" />
+          <span className="ex-browser-pic" />
+          <span className="ex-browser-pic" />
+        </span>
+        <span className="ex-composer ex-crow">
+          <span className="ex-turn">◍ {txt.picture.browser}</span>
+          <span>{txt.picture.browserWaits}</span>
+        </span>
       </>
     );
   else if (id === "raise-to-your-turn")

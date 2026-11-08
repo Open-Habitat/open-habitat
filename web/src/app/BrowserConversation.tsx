@@ -165,6 +165,7 @@ import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
 import { useRewind, withRewind } from "./rewindView";
+import { ServerBrowserDock } from "./ServerBrowser";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -3145,7 +3146,12 @@ function BrowserConversationContent({
             </>
           ) : null}
           {view === "opened" ? rewind.sheet : null}
-          {view !== "opened" || controlled ? <Composer {...composer} /> : null}
+          {view !== "opened" || controlled ? (
+            <>
+              <ServerBrowserDock identity={identity} csrf={csrf} />
+              <Composer {...composer} />
+            </>
+          ) : null}
           {view === "opened" ? shell.panel : null}
         </ConversationFrame>
       )}

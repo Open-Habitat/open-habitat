@@ -1,0 +1,1 @@
+{"schema_version": 1, "state": "running", "control": "agent", "agent_connected": false, "cdp_endpoint": "ws+unix:///run/user/1000/open-habitat/browser/cdp.sock:/devtools/browser", "windows": [{"id": "0A1B2C3D4E5F60718293A4B5C6D7E8F9", "title": "Vahvista uudelleen", "origin": "https://login.example.invalid", "agent": true}]}

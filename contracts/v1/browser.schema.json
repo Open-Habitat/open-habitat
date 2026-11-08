@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/browser.schema.json",
+  "title": "The person's own server browser (experimental)",
+  "description": "Read and asked of the person's daemon, which runs one Google Chrome on a virtual display as the person. App routes: GET /api/v1/browser (status; reading never starts it), POST /api/v1/browser/start and /stop (empty bodies), POST /api/v1/browser/control (who drives), GET /api/v1/browser/window?id= (one window's picture as image/jpeg, not JSON) and the viewer WebSocket /api/v1/browser/view, whose first message is the CSRF proof as for the browser shell and the rest RFB. Agent routes: GET /agent/v1/browser, POST /agent/v1/browser/start and POST /agent/v1/browser/request. No field carries a page's address beyond its origin, page content, a cookie or a credential.",
+  "oneOf": [
+    {"$ref": "#/$defs/status"},
+    {"$ref": "#/$defs/controlRequest"},
+    {"$ref": "#/$defs/agentStatus"},
+    {"$ref": "#/$defs/agentRequest"}
+  ],
+  "$defs": {
+    "windowId": {"description": "A Chrome page target id.", "type": "string", "pattern": "^[0-9A-F]{32}$"},
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "origin", "agent"],
+      "properties": {
+        "id": {"$ref": "#/$defs/windowId"},
+        "title": {"description": "The page's own title: untrusted text.", "type": "string", "maxLength": 200},
+        "origin": {"description": "Scheme and host of the page, or empty for an internal page; never the path or query.", "type": "string", "maxLength": 200, "pattern": "^(https?://[^/?#\\s]+)?$"},
+        "agent": {"description": "The window the agent last acted in.", "type": "boolean"}
+      }
+    },
+    "fraction": {"type": "number", "minimum": 0, "maximum": 1},
+    "pointer": {
+      "description": "The agent's pointer in one window, in fractions of its viewport, with its recent presses.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window", "x", "y", "age_ms", "clicks"],
+      "properties": {
+        "window": {"$ref": "#/$defs/windowId"},
+        "x": {"$ref": "#/$defs/fraction"},
+        "y": {"$ref": "#/$defs/fraction"},
+        "age_ms": {"type": "integer", "minimum": 0},
+        "clicks": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "age_ms"],
+            "properties": {"x": {"$ref": "#/$defs/fraction"}, "y": {"$ref": "#/$defs/fraction"}, "age_ms": {"type": "integer", "minimum": 0}}
+          }
+        }
+      }
+    },
+    "request": {
+      "description": "A window needs the person (a sign-in, a code), in the agent's own words: untrusted text. Cleared when control returns to the agent, the agent withdraws it or the window closes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window", "text", "age_ms"],
+      "properties": {
+        "window": {"$ref": "#/$defs/windowId"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 300},
+        "age_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "control": {"description": "agent: the agent may drive; person: the person took control and the agent's commands wait until they give it back.", "enum": ["agent", "person"]},
+    "status": {
+      "description": "GET /api/v1/browser and the replies of start, stop and control. unavailable: this server offers no browser; stopped: not running (it stops itself a day after anyone last used it); running.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state", "survives_restart", "agent_connected", "windows"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "state": {"enum": ["unavailable", "stopped", "running"]},
+        "survives_restart": {"type": "boolean"},
+        "control": {"$ref": "#/$defs/control"},
+        "agent_connected": {"type": "boolean"},
+        "windows": {"type": "array", "maxItems": 24, "items": {"$ref": "#/$defs/window"}},
+        "pointer": {"$ref": "#/$defs/pointer"},
+        "request": {"$ref": "#/$defs/request"}
+      }
+    },
+    "controlRequest": {
+      "description": "POST /api/v1/browser/control: take control of the whole browser (the agent waits) or give it back. Taking it for one window brings that window to the front.",
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["control"], "properties": {"control": {"const": "person"}, "window": {"$ref": "#/$defs/windowId"}}},
+        {"type": "object", "additionalProperties": false, "required": ["control"], "properties": {"control": {"const": "agent"}}}
+      ]
+    },
+    "agentStatus": {
+      "description": "GET /agent/v1/browser and the replies of start and request: what the agent needs to drive the browser. cdp_endpoint is a ws+unix DevTools address reachable only by the person's account.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state", "agent_connected", "windows"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "state": {"enum": ["unavailable", "stopped", "running"]},
+        "control": {"$ref": "#/$defs/control"},
+        "agent_connected": {"type": "boolean"},
+        "cdp_endpoint": {"type": "string", "pattern": "^ws\\+unix:///[^\\s:]+/cdp\\.sock:/devtools/browser$", "maxLength": 300},
+        "windows": {"type": "array", "maxItems": 24, "items": {"$ref": "#/$defs/window"}},
+        "request": {"$ref": "#/$defs/request"}
+      }
+    },
+    "agentRequest": {
+      "description": "POST /agent/v1/browser/request: mark one window (the agent's last one when omitted) as needing the person, or withdraw the request.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text"],
+          "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 300}, "window": {"$ref": "#/$defs/windowId"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clear"],
+          "properties": {"clear": {"const": true}}
+        }
+      ]
+    }
+  }
+}

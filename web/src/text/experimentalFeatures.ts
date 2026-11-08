@@ -56,6 +56,17 @@ const fi = {
         "Tiedostot palautuvat viesteistä, jotka lähetit ominaisuuden ollessa päällä. Palautuvat agentin muokkaamat tiedostot; komentojen tekemät muutokset jäävät. Kopiot tiedostoista jäävät omalle tilillesi.",
       caption: "Oman viestin valikko",
     },
+    "remote-browser": {
+      name: "Oma palvelinselain",
+      desc: "Oma Chrome-selain palvelimella. Kirjaudut sillä palveluun, ja agentti käyttää samaa kirjautunutta selainta. Näet livenä, mitä agentti tekee, ja otat ohjauksen, kun ikkuna tarvitsee sinua.",
+      where:
+        "Keskustelun kirjoituskentän yllä Selain-sirussa, josta aukeaa palkki ikkunoiden kuvineen, ja sivupalkin ylimpänä rivinä.",
+      shows:
+        "Ikkunat pieninä kuvina, agentin osoittimen ja klikkaukset. Ikkuna, joka tarvitsee sinua, nousee isoksi pyyntönsä viereen. Katselu ei vie ohjausta agentilta.",
+      needs:
+        "Palvelimen, jolle selain on asennettu. Agentti toimii selaimessa sinun tunnuksillasi: se saa käyttää kaikkea, mihin selain on kirjautunut. Selain sulkeutuu vuorokauden käyttämättömyyden jälkeen, ja kirjautumiset säilyvät.",
+      caption: "Selain kentän yllä",
+    },
     "conversation-context-view": {
       name: "Kontekstinäkymä ja tiivistys",
       desc: "Konteksti-sivu näyttää, mihin keskustelun konteksti kuluu: tiedostot, komennot ja tulosteet, jotka agentti näkee nyt, ja ne, jotka ovat enää vain yhteenvedossa. Keskustelun voi tiivistää heti omalla ohjeella.",
@@ -154,6 +165,8 @@ const fi = {
     agentNotWaiting: "agentti ei odota",
     noChanges: "ei vielä muutoksia",
     raise: "Nosta",
+    browser: "Selain",
+    browserWaits: "Netvisor odottaa sinua",
     notNow: "Ei nyt",
   },
   reload: "Lue tallennettu valinta",
@@ -223,6 +236,17 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "Files are restored for messages you sent while the feature was on. Files the agent edited are restored; changes made by commands stay. Copies of the files stay in your own account.",
       caption: "Your message's menu",
+    },
+    "remote-browser": {
+      name: "Your own server browser",
+      desc: "Your own Chrome on the server. You sign in to a service with it, and the agent uses the same signed-in browser. You see live what the agent does and take control when a window needs you.",
+      where:
+        "Above the conversation's message field in the Browser chip, which opens a strip with pictures of the windows, and as the top row of the sidebar.",
+      shows:
+        "The windows as small pictures, the agent's pointer and clicks. A window that needs you grows large beside its request. Watching never takes control from the agent.",
+      needs:
+        "A server with the browser installed. The agent may use everything the browser is signed in to, in your name. The browser closes after a day unused, and sign-ins are kept.",
+      caption: "Browser above the field",
     },
     "conversation-context-view": {
       name: "Context view and compaction",
@@ -322,6 +346,8 @@ export const experimentalFeaturesText = catalog(fi, {
     agentNotWaiting: "agent not waiting",
     noChanges: "no changes yet",
     raise: "Raise",
+    browser: "Browser",
+    browserWaits: "Netvisor is waiting for you",
     notNow: "Not now",
   },
   reload: "Read the saved choice",

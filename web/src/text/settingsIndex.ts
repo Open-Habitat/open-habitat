@@ -279,6 +279,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Agent resources",
         desc: "Browse everything your agents use, by kind: what is included, what is not and what the agent may do.",
       },
+      "remote-browser": {
+        label: "Your own server browser",
+        desc: "Your own browser on the server: sign in to a service, and the agent uses the same browser, which you see live.",
+      },
       "conversation-context-view": {
         label: "Context view and compaction",
         desc: "See what fills the conversation's context and compact the conversation with your own instruction.",

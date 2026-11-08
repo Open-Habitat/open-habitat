@@ -635,6 +635,9 @@ esac
 			mux.Handle(daemon.ViewsPath, daemon.ViewsHandler(fixtureWorkspaceCfg, trusted))
 			mux.Handle(daemon.ViewExportPrefix, daemon.ViewExportHandler(fixtureWorkspaceCfg, trusted))
 		}
+		// The person's server browser: a stand-in host (browser.go), or the
+		// real one where BROWSER_HOST_REAL_BROWSER names Xvnc and Chrome.
+		daemon.MountBrowserFixture(context.Background(), mux, fixtureWorkspaceCfg, trusted, daemon.BrowserFixture{Dir: filepath.Join(tmp, "browser-"+m.Username), Start: newBrowserStart(tmp, m.Username)}, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "browser"))
 		if editorMode {
 			editorDir := filepath.Join(tmp, "editor-"+filepath.Base(home))
 			daemon.MountEditorFixture(editorCtx, mux, fixtureWorkspaceCfg, trusted, editorDir, os.Getenv("BROWSER_HOST_CODE_SERVER"), startFakeEditor, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username))
@@ -1008,6 +1011,9 @@ esac
 				return
 			case "/fixture/own-machines":
 				ownMachinesFixture(w, r)
+				return
+			case "/fixture/browser":
+				fakeBrowserFixture(w, r, "alice")
 				return
 			case "/fixture/agent-files":
 				if e := seedAgentFiles(filepath.Join(tmp, "alice")); e != nil {

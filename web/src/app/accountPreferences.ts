@@ -30,6 +30,7 @@ export const experimentalFeatureIds = [
   "agent-resources-view",
   "conversation-context-view",
   "named-workers",
+  "remote-browser",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

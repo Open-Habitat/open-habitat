@@ -63,6 +63,9 @@ func agentCommand(args []string) (any, error) {
 	if len(args) > 0 && args[0] == "model" {
 		return agentModelCommand(args[1:])
 	}
+	if len(args) > 0 && args[0] == "browser" {
+		return agentBrowserCommand(args[1:])
+	}
 	if len(args) > 0 && args[0] == "notice" {
 		return agentNoticeCommand(args[1:])
 	}
@@ -225,6 +228,9 @@ func agentRequestTimeout(path string) time.Duration {
 	}
 	if path == daemon.AgentPiLoginPath {
 		timeout = 25 * time.Second // Pi terminal refresh (15s) plus optional Claude presence (5s).
+	}
+	if path == daemon.AgentBrowserStartPath {
+		timeout = 55 * time.Second // The daemon waits up to 45s for the browser to start.
 	}
 	if path == daemon.AgentModelsPath {
 		timeout = 16 * time.Second // Native catalog lookup has a 12-second deadline.

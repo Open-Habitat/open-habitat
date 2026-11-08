@@ -149,10 +149,13 @@ export function WorkspaceRailView({
   icons,
   quietChoice,
   resources,
+  browser,
 }: {
   /** Agentin käytössä's row under Etusivu (agent-resources-view,
    * experimental). */
   resources?: boolean;
+  /** The person's server browser's row (remote-browser, experimental). */
+  browser?: ReactNode;
   /** The rows' raise and lower (raise-to-your-turn, experimental). */
   turnConversation?: RailTurn;
   /** Hiljaiset's order and workspace from the account preferences. */
@@ -241,22 +244,27 @@ export function WorkspaceRailView({
       }
       homeCurrent={pathname === "/workspaces"}
       pages={
-        resources ? (
-          <div className="ah-rail-home-row">
-            <LinkRow
-              href="/resources"
-              data-testid="rail-resources"
-              kind="home"
-              current={pathname === "/resources"}
-              className="ah-rail-home ar-rail-link"
-              aria-label={collapsed ? resourcesText.railLabel : undefined}
-            >
-              <Icon name="shield" />
-              <span className="ah-rail-home-label">
-                {resourcesText.railLabel}
-              </span>
-            </LinkRow>
-          </div>
+        resources || browser ? (
+          <>
+            {browser}
+            {resources ? (
+              <div className="ah-rail-home-row">
+                <LinkRow
+                  href="/resources"
+                  data-testid="rail-resources"
+                  kind="home"
+                  current={pathname === "/resources"}
+                  className="ah-rail-home ar-rail-link"
+                  aria-label={collapsed ? resourcesText.railLabel : undefined}
+                >
+                  <Icon name="shield" />
+                  <span className="ah-rail-home-label">
+                    {resourcesText.railLabel}
+                  </span>
+                </LinkRow>
+              </div>
+            ) : null}
+          </>
         ) : undefined
       }
       now={

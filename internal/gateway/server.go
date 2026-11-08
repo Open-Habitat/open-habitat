@@ -85,6 +85,10 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(terminalsPath, s.auth.terminalList)
 		mux.HandleFunc(terminalClosePath, s.auth.terminalClose)
 		mux.HandleFunc(terminalPath, s.auth.terminal)
+		for _, path := range []string{browserPath, browserStartPath, browserStopPath, browserControlPath, browserWindowPath} {
+			mux.HandleFunc(path, s.auth.browserHTTP)
+		}
+		mux.HandleFunc(browserViewPath, s.auth.browserView)
 		mux.HandleFunc("/api/v1/workspaces", s.auth.workspaces)
 		mux.HandleFunc("/api/v1/workspaces/github/publish", s.auth.githubPublish)
 		mux.HandleFunc("/api/v1/account/github/disconnect", s.auth.githubDisconnect)

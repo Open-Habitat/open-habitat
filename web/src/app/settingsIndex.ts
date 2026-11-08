@@ -617,6 +617,21 @@ export const settingsSections = [
         desc: "Selaa kaikkea, mitä agenttisi käyttävät, lajeittain: mikä on mukana, mikä ei ja mitä agentti saa tehdä.",
       },
       {
+        id: "remote-browser",
+        label: "Oma palvelinselain",
+        kw: [
+          "selain",
+          "browser",
+          "chrome",
+          "kirjautuminen",
+          "sign in",
+          "mfa",
+          "etänäkymä",
+          "remote",
+        ],
+        desc: "Oma selain palvelimella: kirjaudu palveluun, ja agentti käyttää samaa selainta, jonka näet livenä.",
+      },
+      {
         id: "conversation-context-view",
         label: "Kontekstinäkymä ja tiivistys",
         kw: [

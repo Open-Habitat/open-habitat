@@ -164,6 +164,11 @@ checks = {
     "integration-login-paste.json": "integration-login.schema.json",
     "integration-login-folders.json": "integration-login.schema.json",
     "editor-status.json": "editor.schema.json",
+    "browser-status.json": "browser.schema.json",
+    "browser-stopped.json": "browser.schema.json",
+    "browser-control.json": "browser.schema.json",
+    "browser-agent-status.json": "browser.schema.json",
+    "browser-agent-request.json": "browser.schema.json",
     "editor-handoff.json": "editor.schema.json",
     "editor-open.json": "editor.schema.json",
     "views.json": "view.schema.json",
@@ -282,6 +287,11 @@ for bad in ({}, {"kind": "rsa"}, {"kind": "ssh", "file": "~/.ssh/other"}):
 
 # Own machines: the login link is Tailscale's own, an address is a tailnet
 # address, and a request names a new machine only by its tailnet name.
+browser = json.loads((BASE / "examples" / "browser-status.json").read_text())
+must_reject("browser.schema.json", {**browser, "windows": [{**browser["windows"][0], "origin": "https://login.example.invalid/path?token=x"}]})
+must_reject("browser.schema.json", {**browser, "windows": [{**browser["windows"][0], "url": "https://login.example.invalid/"}]})
+must_reject("browser.schema.json", {**browser, "pointer": {**browser["pointer"], "x": 1.5}})
+must_reject("browser.schema.json", {"schema_version": 1, "state": "running", "agent_connected": False, "windows": [], "cdp_endpoint": "ws://127.0.0.1:9222/devtools/browser"})
 machines = json.loads((BASE / "examples" / "own-machines.json").read_text())
 must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://evil.example/a/x"}})
 must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://login.tailscale.com/a/x?next=https://evil.example"}})

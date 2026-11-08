@@ -150,6 +150,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()
+	browser := newBrowserHost(ctx, cfg, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "browser"))
+	controller.browser = browser
+	browser.mount(mux, server.TrustedPeer)
 	editor := EditorHandler(ctx, cfg, server.TrustedPeer, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "editor"))
 	for _, path := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath, EditorStopPath} {
 		mux.Handle(path, editor)

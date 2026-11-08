@@ -282,3 +282,25 @@
   border: 1.5px solid var(--ah-line-strong);
   border-radius: 3px;
 }
+
+/* Oma palvelinselain: three window pictures, the one that waits outlined. */
+.ex-browser {
+  display: flex;
+  gap: 6px;
+}
+.ex-browser-pic {
+  width: 34%;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: 3px;
+  background: var(--ah-surface);
+}
+.ex-browser-pic[data-ask] {
+  width: 46%;
+  border-color: var(--ah-ink);
+  box-shadow: 0 0 0 1px var(--ah-ink);
+}
+.ex-pic[data-off] .ex-browser-pic[data-ask] {
+  border-color: var(--ah-line-strong);
+  box-shadow: none;
+}

@@ -96,10 +96,7 @@ func (a *Auth) terminalSlot(r *http.Request) (func(), bool) {
 	}, true
 }
 
-// terminal relays one browser terminal to the mapped daemon. Browsers cannot
-// set headers on a WebSocket, so the CSRF proof is the first message; the
-// gateway reads it before it even dials the daemon, which therefore never
-// sees a connection that did not prove it.
+// terminal relays one browser terminal to the mapped daemon.
 func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	id, shell, taskfleet := q.Get("workspace_id"), q.Get("shell"), q.Get("taskfleet")
@@ -114,6 +111,16 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		safe(w, 400, "invalid_request")
 		return
 	}
+	a.relayWebSocket(w, r, terminalPath+"?"+query, "terminal_relay", a.terminalSlot)
+}
+
+// relayWebSocket relays one browser WebSocket to the same path on the
+// mapped daemon. Browsers cannot set headers on a WebSocket, so the CSRF
+// proof is the first message; the gateway reads it before it even dials the
+// daemon, which therefore never sees a connection that did not prove it.
+// After the daemon's handshake the gateway relays bytes without parsing
+// them, and the session's end closes both connections.
+func (a *Auth) relayWebSocket(w http.ResponseWriter, r *http.Request, daemonTarget, event string, slot func(*http.Request) (func(), bool)) {
 	s, ok := a.authenticated(r)
 	if !ok {
 		safe(w, 401, "authentication_required")
@@ -128,7 +135,7 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 	target := s.identity
 	logRelay := func(outcome, reason string) {
 		if a.log != nil {
-			a.log.Info("terminal_relay", "outcome", outcome, "reason", reason, "user", target.Username)
+			a.log.Info(event, "outcome", outcome, "reason", reason, "user", target.Username)
 		}
 	}
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
@@ -136,7 +143,7 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	releaseSlot, ok := a.terminalSlot(r)
+	releaseSlot, ok := slot(r)
 	if !ok {
 		logRelay("refused", "terminal_limit")
 		safe(w, 429, "terminal_limit")
@@ -194,7 +201,7 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		closeBrowser(4503, "daemon_unavailable")
 		return
 	}
-	head := "GET " + terminalPath + "?" + query + " HTTP/1.1\r\nHost: unix\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: " + key + "\r\n"
+	head := "GET " + daemonTarget + " HTTP/1.1\r\nHost: unix\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: " + key + "\r\n"
 	if rid := diagnostic.RequestID(r.Context()); diagnostic.ValidRequestID(rid) {
 		head += diagnostic.RequestIDHeader + ": " + rid + "\r\n"
 	}
@@ -244,8 +251,9 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		running--
 	case <-ctx.Done():
 	}
-	// Closing both ends stops the other direction; the tmux session itself
-	// keeps running, as it would after an SSH connection drops.
+	// Closing both ends stops the other direction; what the daemon serves
+	// (a tmux session, the browser's display) keeps running, as it would
+	// after an SSH connection drops.
 	browser.Close()
 	daemon.Close()
 	for ; running > 0; running-- {

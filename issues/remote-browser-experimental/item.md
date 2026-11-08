@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: remote-browser-proto
 lane_seq: 2
 blocked_by: ['@proto-remote-browser-session']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Server browser as an experimental feature

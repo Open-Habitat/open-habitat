@@ -99,6 +99,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		case "doctor":
 			out, err = doctorCommand(rest[1:])
 		case "gateway", "daemon":
+			if rest[0] == "daemon" && len(rest) >= 2 && rest[1] == "browser-host" {
+				out, err = browserHostCommand(rest[2:], stderr)
+				break
+			}
 			out, err = execCommand(rest[0], rest[1:], opts, stderr)
 		case "broker":
 			out, err = brokerCommand(rest[1:])

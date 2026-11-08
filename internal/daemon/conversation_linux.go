@@ -26,6 +26,9 @@ import (
 // not a gateway route or a durable command ledger. Native history and the
 // browser-origin owner lock permit explicit continuation after daemon restart.
 type ConversationController struct {
+	// browser is the person's server browser, shared with the agent
+	// listener; nil where the daemon offers none (tests).
+	browser  *browserHost
 	viewMu   sync.Mutex // serialize view offer idempotency observation and export
 	noticeMu sync.Mutex // serialize native notice idempotency observation and append
 	nameMu   sync.Mutex // order each name's final native check and its write (title_linux.go)

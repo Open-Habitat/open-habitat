@@ -85,6 +85,11 @@ export const mutationClasses = {
   "account.keys": "confirmed",
   "account.own_machines": "confirmed",
   "editor.stop": "confirmed",
+  // The person's server browser: the chip says it starts or stops until
+  // the host answers; control changes show once the host has them.
+  "browser.start": "confirmed",
+  "browser.stop": "confirmed",
+  "browser.control": "confirmed",
   "view.handoff": "confirmed",
   "view.address": "confirmed",
   "server.view_address": "confirmed",

@@ -140,6 +140,7 @@ import {
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
+import { ServerBrowserRail, ServerBrowserSheetHost } from "./ServerBrowser";
 import { ownWrites } from "./sentMessages";
 import {
   isSettingsRoute,
@@ -3128,7 +3129,12 @@ export function App() {
             onReconnect={syntheticDemo ? undefined : reconnectGitHub}
           >
             <AppShell
-              modeBar={<ExplainMode />}
+              modeBar={
+                <>
+                  <ExplainMode />
+                  <ServerBrowserSheetHost identity={identity} csrf={csrf} />
+                </>
+              }
               bell={conversationBell ? undefined : <StatusBell />}
               navigationBadge={now.yours.length}
               className={landing.entering ? "ah-landing-enter" : undefined}
@@ -3211,6 +3217,11 @@ export function App() {
                 !landing.show ? (
                   <WorkspaceRailView
                     resources={resourcesOn}
+                    browser={
+                      railCompact && !mobileLayout ? undefined : (
+                        <ServerBrowserRail identity={identity} csrf={csrf} />
+                      )
+                    }
                     only={onlyWorkspace}
                     bell={conversationBell ? undefined : <StatusBell />}
                     phase={phase}
