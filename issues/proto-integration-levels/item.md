@@ -3,7 +3,7 @@ created: 2026-11-06
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-m365-setup-flow']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-integration-levels
 lane: integration-levels-proto
 lane_seq: 1
+closed: 2026-11-08
 ---
 
 # Prototype: integration access levels and what each allows
@@ -105,3 +106,10 @@ myös vertailutaulukko. Kierros 5: riffit aloitusnäkymästä ja aloitusaskeleis
 - [x] kierros 4: klikkauspolku ilman Cloud Shelliä
 - [x] kierros 5: Jokainen kokonaan, aloitusnäkymä (valitse tasot, ohita tehdyt, taulukko), näkymätarjous ja kysymykset Jarille
 - [ ] Jari valitsee kierroksen 5 aloituksen
+
+## Decision (Jari 2026-11-08, kierros 5)
+
+**Rastit taulukossa.** Tunnusrivi taulukon yläpuolella riittää (client id,
+kuka, milloin). Asetussivun taulukko on aina *Mitä tasot sallivat* -painikkeen
+takana, myös ennen asetusta. Prototyyppikierrokset ovat valmiit; toteutus:
+`integration-levels-setup`.
