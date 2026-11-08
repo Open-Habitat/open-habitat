@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: archive-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: the workspace's conversation archive from scratch
