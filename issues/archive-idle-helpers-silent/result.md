@@ -28,6 +28,10 @@ Starting revision: `42386b3ef`, with this issue's working-tree changes.
   guard, cancellation, no-helper path, mixed helper selection, both catalogs,
   and generated diff. No authority, daemon or session-state ownership changed.
 
+After rebasing onto main, fast web checks and the changed helper browser spec
+passed again on `ac91403c6`. The only rebase conflict was concurrent additions
+to KOKEILTAVAA.md; both sets of entries were retained.
+
 Browser evidence is synthetic host-backed, not live Taskfleet/provider evidence.
 No visual layout or Explain mapping changed; no screenshot review was performed.
 Generator also refreshed pre-existing BrowserConversation/BackgroundStrip drift
