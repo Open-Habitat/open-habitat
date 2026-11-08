@@ -973,9 +973,12 @@ export function Composer({
     const el = field.current;
     if (caret === null || dictating || !el) return;
     dictatedCaret.current = null;
-    el.focus();
+    el.focus({ preventScroll: true });
     el.setSelectionRange(caret, caret);
-    if (caret === el.value.length) el.scrollTop = el.scrollHeight;
+    // Restoring the selection alone does not undo the textarea's scroll to
+    // its old end on focus. Reveal the insertion, not the untouched suffix.
+    const c = caretTop(el, caret);
+    el.scrollTop = Math.max(0, c.y - el.clientHeight + 2 * c.line);
   }, [dictating, value]);
   // Focus once the added attachment shows as a chip, with the caret at the
   // end of the text. The upload can take a while; a field elsewhere that the

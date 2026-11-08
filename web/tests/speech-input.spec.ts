@@ -349,6 +349,61 @@ test("@speech on a Mac ISO board ⌘ and the key left of 1 dictates at the caret
   await expect(field).toHaveValue("Alku tässä loppu");
 });
 
+test("@speech finishing dictation reveals the insertion in a long draft", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await saveOwnKey(page);
+  await openConversation(page);
+  const field = page.getByTestId("message-input");
+  const draft = Array.from({ length: 80 }, (_, i) => `Line ${i}\n`).join("");
+  // Near the top, in the middle, and at the end: a correct caret can still
+  // be invisible if focus scrolls to the untouched suffix.
+  for (const row of [2, 40, 80]) {
+    await field.fill(draft);
+    const at = row === 80 ? draft.length : draft.indexOf(`Line ${row}\n`);
+    await field.evaluate((el: HTMLTextAreaElement, at) => {
+      el.setSelectionRange(at, at);
+      el.dispatchEvent(new Event("select", { bubbles: true }));
+    }, at);
+    await mic(page).click();
+    await expect(pill(page)).toHaveAttribute("data-phase", "live");
+    await say(page, [
+      { text: " inserted", start_ms: 0, end_ms: 400, is_final: true },
+    ]);
+    await expect(page.getByTestId("dictation-final")).toHaveText("inserted");
+    await pill(page).click();
+    await expect(field).toBeVisible();
+    await expect(field).toBeFocused();
+    const inserted = row === 80 ? "inserted" : "inserted ";
+    await expect(field).toHaveValue(
+      draft.slice(0, at) + inserted + draft.slice(at),
+    );
+    await expect
+      .poll(() =>
+        field.evaluate((el: HTMLTextAreaElement) => [
+          el.selectionStart,
+          el.selectionEnd,
+        ]),
+      )
+      .toEqual([at + "inserted".length, at + "inserted".length]);
+    await expect
+      .poll(() =>
+        field.evaluate((el: HTMLTextAreaElement, row) => {
+          const style = getComputedStyle(el);
+          const line = Number.parseFloat(style.lineHeight);
+          const caretY = Number.parseFloat(style.paddingTop) + row * line;
+          return (
+            caretY >= el.scrollTop &&
+            caretY + line <= el.scrollTop + el.clientHeight
+          );
+        }, row),
+      )
+      .toBe(true);
+  }
+});
+
 test("@speech the microphone listens from the press: what is said while a slow key and stream open reaches Soniox, even after Valmis", async ({
   page,
 }) => {
