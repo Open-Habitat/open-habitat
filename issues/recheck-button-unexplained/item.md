@@ -30,8 +30,26 @@ recovery needed during a healthy turn, so no button), or the explanation must
 show with it as a `WarningBanner` and the button must give visible feedback
 (checking…, then the result). Reproduce in a browser spec first.
 
+## Jari 18:48: after reload, *Historiaa ei saada*
+
+After a page reload the same conversation shows a red *Historiaa ei saada*
+banner at the top with no further text, the history partly drawn (the last
+reply visible), and the same lone *Tarkista keskustelun tila* button above the
+composer (`evidence/jari-2026-11-08-history.png`). So the button is the
+recovery for a failing history read, and the real defect is that the
+conversation's history read fails on the test server (pilot.643 or later),
+with an empty explanation. Suspects from today's landings: the native frame
+capacity raised to base64(100 MiB)+4 MiB (`attachment-combined-size`), the
+ended-turn retirement in `ConversationStore` (`queued-message-duplicate-flash`),
+and offer/view rendering changes. Find the failing read on the real test
+server (daemon journal for that user, through Alder as Fleetrepo's
+`infra/open-habitat-test/` runbook allows, read-only), fix the cause, and
+make *Historiaa ei saada* say why and what to do.
+
 ## Acceptance Criteria
 
 - [ ] A healthy working turn shows no recheck button.
 - [ ] When a recheck is offered, it comes with its reason and visible result.
+- [ ] The conversation's history loads again on the test server; the cause is in result.md.
+- [ ] A history read failure shows its reason.
 - [ ] Touched specs green.
