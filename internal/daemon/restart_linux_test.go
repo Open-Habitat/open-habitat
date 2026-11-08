@@ -31,7 +31,7 @@ func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 			Stopped:         map[string]any{"cause": "idle", "at": "2026-10-26T18:20:00Z"},
 			InterruptedTurn: true,
 			Processes:       []restartProcess{{"proc_8ffc", "wait-gate-evidence"}},
-			Runs:            []restartRun{{run, "release pilot.12", "stalled", "Taskfleet's words", "2026-10-26T18:41:00Z", "wt/pilot"}},
+			Runs:            []restartRun{{run, "release pilot.12", "stalled", "Taskfleet's words", "2026-10-26T18:41:00Z", "wt/pilot", 0, ""}},
 			StillRunning:    []restartRun{{ID: live, Title: "gate"}, {ID: run}},
 		}
 		if a, b := mustJSON(got.Restart), mustJSON(want); a != b {

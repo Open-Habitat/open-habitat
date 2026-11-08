@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import inventory from "../../../contracts/v1/examples/process-inventory.json";
 import type { ProcessRecord } from "../app/processes";
 import type { Spinoff } from "../app/spinoffs";
-import { backgroundFacts, stateWord } from "./BackgroundStrip";
+import { backgroundFacts, helperWord, stateWord } from "./BackgroundStrip";
 
 const base = inventory.processes[0] as ProcessRecord;
 const proc = (edit: Partial<ProcessRecord>): ProcessRecord => ({
@@ -187,5 +187,108 @@ describe("background strip facts", () => {
     expect(starting(true, true)).toBe(false);
     // A running Pi whose bridge is missing is still worth saying.
     expect(starting(false, false)).toBe(true);
+  });
+});
+
+describe("named workers (Avustajat)", () => {
+  const helper = (
+    round_state: "working" | "waiting" | "dormant",
+    edit: Partial<Spinoff> = {},
+  ) =>
+    run({
+      run_id: "01m53wnje1f3ybcw17qsx2syhh",
+      title: "M365-asetusvirta",
+      state: round_state === "working" ? "working" : "waiting_parent",
+      resident: {
+        name: "proto-m365",
+        round_state,
+        rounds: 2,
+        report: "Kolme riffiä A:sta.\nSuositus A1.",
+      },
+      ...edit,
+    });
+  const withHelpers = (
+    runs: Spinoff[],
+    seen?: ReadonlyMap<string, number>,
+    processes: ProcessRecord[] = [],
+  ) =>
+    backgroundFacts({
+      runs,
+      spinoffsStale: false,
+      processes,
+      interrupted: 0,
+      availability: "available",
+      reason: null,
+      failed: false,
+      agentIdle: true,
+      helpers: true,
+      seen,
+    });
+  it("moves live named workers to their own chip only while the feature is on", () => {
+    const runs = [run({}), helper("waiting")];
+    const on = withHelpers(runs);
+    expect(on.spin.items.map((i) => i.run.title)).toEqual(["README"]);
+    expect(on.help.items.map((i) => i.run.resident?.name)).toEqual([
+      "proto-m365",
+    ]);
+    const off = facts(runs, []);
+    expect(off.help.present).toBe(false);
+    expect(off.spin.items).toHaveLength(2);
+    // Off, a waiting helper is a worker waiting for the main agent, not one
+    // waiting at its terminal.
+    expect(stateWord(off.spin.items[1]).text).toBe("odottaa pääagenttia");
+  });
+  it("leaves an ended named worker to the Workers pill and its requests", () => {
+    const ended = helper("waiting", { state: "unmerged", preserved: true });
+    const f = withHelpers([ended]);
+    expect(f.help.present).toBe(false);
+    expect(f.spin.attention).toBe(1);
+  });
+  it("says where each round stands, and marks a report not yet opened", () => {
+    const word = (r: Spinoff, seen?: ReadonlyMap<string, number>) =>
+      helperWord(withHelpers([r], seen).help.items[0]);
+    expect(word(helper("working")).text).toBe("kierros 3 työn alla");
+    expect(word(helper("waiting")).text).toBe("kierros 2 raportoitu");
+    expect(word(helper("waiting")).tone).toBe("wait");
+    const seen = new Map([["01m53wnje1f3ybcw17qsx2syhh", 2]]);
+    expect(word(helper("waiting"), seen).text).toBe("odottaa pääagenttia");
+    expect(word(helper("dormant"), seen).text).toBe(
+      "lepää · herää pääagentin viestistä",
+    );
+    const kept = helper("waiting", {
+      resident: {
+        name: "proto-m365",
+        round_state: "waiting",
+        rounds: 2,
+        unlanded: true,
+      },
+    });
+    expect(word(kept, seen).text).toBe(
+      "odottaa pääagenttia · keskeneräinen työ haarassa",
+    );
+    const f = withHelpers(
+      [
+        helper("waiting"),
+        helper("working", { run_id: "01m53wnje1f3ybcw17qsx2syhj" }),
+      ],
+      seen,
+    );
+    expect(f.help.unseen).toBe(0);
+    expect(f.help.working).toBe(1);
+    // Every helper waiting with nothing new: the chip is quiet.
+    expect(withHelpers([helper("waiting")], seen).help.busy).toBe(0);
+  });
+  it("keeps the main agent's wait on a helper as the wait ring", () => {
+    const wait = proc({
+      id: "proc_wait",
+      name: "odota",
+      process_token: "pt_wait",
+      run_ids: ["01m53wnje1f3ybcw17qsx2syhh"],
+    });
+    const f = withHelpers([helper("working")], undefined, [wait]);
+    expect(f.help.items[0].waited).toBe(true);
+    expect(helperWord(f.help.items[0]).text).toBe(
+      "agentti odottaa · kierros 3 työn alla",
+    );
   });
 });

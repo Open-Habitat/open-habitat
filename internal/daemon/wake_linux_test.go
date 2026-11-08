@@ -22,20 +22,33 @@ const (
 // and shows these runs, which this conversation created unless foreign.
 func (h *heldHarness) taskfleet(id string, runs map[string]string, foreign ...string) {
 	h.t.Helper()
+	extra := map[string]map[string]any{}
+	for run, status := range runs {
+		extra[run] = map[string]any{"status": status}
+		for _, f := range foreign {
+			if f == run {
+				extra[run]["created_by_session"] = map[string]string{"harness": "pi", "session_id": "aaaaaaaa-0000-4000-8000-0000000000ff"}
+			}
+		}
+	}
+	h.taskfleetRuns(id, extra)
+}
+
+// taskfleetRuns is taskfleet with each run's fields given: its status and
+// anything Taskfleet adds, such as a resident run's round state.
+func (h *heldHarness) taskfleetRuns(id string, runs map[string]map[string]any) {
+	h.t.Helper()
 	bin := filepath.Join(h.root, ".local", "bin")
 	if err := os.MkdirAll(bin, 0700); err != nil {
 		h.t.Fatal(err)
 	}
 	var list []any
 	shows := ""
-	for run, status := range runs {
-		creator := id
-		for _, f := range foreign {
-			if f == run {
-				creator = "aaaaaaaa-0000-4000-8000-0000000000ff"
-			}
+	for run, fields := range runs {
+		r := map[string]any{"run_id": run, "kind": "spinoff", "landed": fields["status"] == "done", "title": "työ " + run[len(run)-2:], "created_at": "2030-01-01T00:00:00Z", "source_repo": filepath.Join(h.root, "src", "project"), "agent_owner": "taskfleet", "created_by_session": map[string]string{"harness": "pi", "session_id": id}, "report": map[string]string{"summary": "Valmis."}, "manifest": map[string]string{"updated_at": "2030-01-01T00:10:00Z"}, "node_transcripts": []any{}}
+		for k, v := range fields {
+			r[k] = v
 		}
-		r := map[string]any{"run_id": run, "kind": "spinoff", "status": status, "landed": status == "done", "title": "työ " + run[len(run)-2:], "created_at": "2030-01-01T00:00:00Z", "source_repo": filepath.Join(h.root, "src", "project"), "agent_owner": "taskfleet", "created_by_session": map[string]string{"harness": "pi", "session_id": creator}, "report": map[string]string{"summary": "Valmis."}, "manifest": map[string]string{"updated_at": "2030-01-01T00:10:00Z"}, "node_transcripts": []any{}}
 		list = append(list, r)
 		show, _ := json.Marshal(map[string]any{"schema_version": 1, "data": r})
 		shows += "if [ \"$3\" = " + run + " ]; then cat <<'EOF'\n" + string(show) + "\nEOF\nfi\n"
@@ -208,6 +221,37 @@ func TestStoppedConversationWakesWhenTheAwaitedRunSettles(t *testing.T) {
 	c.wakeWaitingRests(context.Background(), time.Now())
 	if len(h.wakes()) != 1 || h.launchesOf(id) != launches+1 {
 		t.Fatal("woken twice")
+	}
+}
+
+// Jari 2026-11-08: when the main conversation's Pi stops, its named workers
+// keep waiting, and the next round report wakes it as a settled run does.
+func TestStoppedConversationWakesOnItsNamedWorkersRoundReport(t *testing.T) {
+	h := newHeldHarness(t)
+	h.setFile("background", "1")
+	h.setFile("background-state", "finished")
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Pyydä uusi kierros", activityCommand(1))
+	h.quiescent(c, id)
+	resident := func(state string, open bool) map[string]map[string]any {
+		return map[string]map[string]any{wakeRun: {"status": "running", "supervisor": map[string]string{"state": "alive"}, "resident": map[string]any{"name": "proto-m365", "round_state": state, "rounds_reported": 2, "worker_running": state == "working", "idle_expiry_secs": 86400, "last_round": map[string]any{"round": 2, "attempt": 2, "reported_at": "2030-01-01T00:20:00Z", "summary": "Kierros 2 valmis.", "open": open}}}}
+	}
+	h.taskfleetRuns(id, resident("working", false))
+	h.crash(c, id, "taskfleet run wait "+wakeRun+" --output json")
+	launches := h.launchesOf(id)
+	c.wakeWaitingRests(context.Background(), time.Now())
+	if h.launchesOf(id) != launches || h.live(c, id) {
+		t.Fatal("woken while the named worker's round is under way")
+	}
+	h.taskfleetRuns(id, resident("waiting", true))
+	c.wakeWaitingRests(context.Background(), time.Now())
+	if h.launchesOf(id) != launches+1 {
+		t.Fatalf("launches %d, want one more than %d", h.launchesOf(id), launches)
+	}
+	if wakes := h.wakes(); len(wakes) != 1 || wakes[0]["reason"] != "settled" || wakes[0]["session_id"] != id {
+		t.Fatalf("wakes: %v", wakes)
 	}
 }
 

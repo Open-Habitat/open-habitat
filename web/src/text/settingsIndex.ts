@@ -283,6 +283,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Context view and compaction",
         desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
       },
+      "named-workers": {
+        label: "Helpers",
+        desc: "Named workers work in rounds and wait for the main agent's next message.",
+      },
       "worker-row-sentence": {
         label: "Worker's work on its row",
         desc: "A worker's row tells its commits, changes and pull request checks.",

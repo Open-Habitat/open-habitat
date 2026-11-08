@@ -16,7 +16,8 @@ export type RestRunState =
   | "failed"
   | "cancelled"
   | "awaiting"
-  | "stalled";
+  | "stalled"
+  | "round_reported";
 export type RestartNotice = {
   stopped?: RestStop;
   /** Habitat woke the agent itself because what it waited for ended. */
@@ -31,6 +32,9 @@ export type RestartNotice = {
     summary?: string;
     ended_at?: string;
     branch?: string;
+    /** A named worker's reported round and its name (round_reported). */
+    round?: number;
+    name?: string;
   }[];
   still_running: {
     run_id: string;
@@ -47,7 +51,16 @@ const runIcon: Record<RestRunState, IconName> = {
   cancelled: "cross",
   awaiting: "question",
   stalled: "warning",
+  round_reported: "bots",
 };
+
+/** A run's state in the card's words; a named worker's names its round. */
+function runWord(run: RestartNotice["runs"][number]) {
+  const txt = textNow(restartNoticeText);
+  return run.state === "round_reported"
+    ? txt.roundReported(run.round ?? 0)
+    : txt.runState[run.state];
+}
 
 /** The card's first sentence: Habitat's account of the stop. */
 export function stopSentence(
@@ -135,7 +148,7 @@ export function RestCard({
                   <strong>{run.title || run.run_id}</strong>{" "}
                   <span className="ah-rest-meta">
                     {[
-                      txt.runState[run.state],
+                      runWord(run),
                       run.branch ? txt.branchKept : "",
                       run.ended_at ? syncedTime(run.ended_at) : "",
                     ]
@@ -247,7 +260,7 @@ export function RestartNoticeMarker({
           ) : null}
           {notice.runs.map((run) => (
             <li key={run.run_id}>
-              {run.title || run.run_id}: {txt.runState[run.state]}
+              {run.title || run.run_id}: {runWord(run)}
             </li>
           ))}
           {notice.still_running.length ? (

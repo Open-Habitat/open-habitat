@@ -1,5 +1,5 @@
 {
- "_comment": "Shared Taskfleet wait grammar: processes_linux.go taskfleetWait and process-extension.mjs waitRuns must give these run ids (empty = not a recognised wait). Both test suites read this table.",
+ "_comment": "Shared Taskfleet wait grammar: processes_linux.go taskfleetWait and process-extension.mjs waitRuns must give these run ids (empty = not a recognised wait). Both test suites read this table. operands, when present, is what taskfleetWaitOperands and waitOperands give (a named worker's name accepted where a run id is); absent, it equals run_ids.",
  "cases": [
   {
    "command": "/opt/bin/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --any --timeout 2h --output json",
@@ -197,15 +197,15 @@
    "run_ids": []
   },
   {
-   "command": "taskfleet\u0085run wait 01m51veyk0hsa1br34epkr2rpg",
+   "command": "taskfleetrun wait 01m51veyk0hsa1br34epkr2rpg",
    "run_ids": []
   },
   {
-   "command": "taskfleet\ufeffrun wait 01m51veyk0hsa1br34epkr2rpg",
+   "command": "taskfleet﻿run wait 01m51veyk0hsa1br34epkr2rpg",
    "run_ids": []
   },
   {
-   "command": "taskfleet\u00a0run wait 01m51veyk0hsa1br34epkr2rpg",
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
    "run_ids": []
   },
   {
@@ -215,6 +215,31 @@
   {
    "command": "/opt/*/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
    "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait proto-m365 --output json",
+   "run_ids": [],
+   "operands": [
+    "proto-m365"
+   ]
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait proto-m365 01m51veyk0hsa1br34epkr2rpg --terminal",
+   "run_ids": [],
+   "operands": [
+    "proto-m365",
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "taskfleet run wait Proto-m365",
+   "run_ids": [],
+   "operands": []
+  },
+  {
+   "command": "taskfleet run wait -proto",
+   "run_ids": [],
+   "operands": []
   }
  ]
 }

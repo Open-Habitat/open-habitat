@@ -252,14 +252,20 @@ func (c *ConversationController) cutWaits(w waitingRest, now time.Time) ([]branc
 // Taskfleet could not be read: nothing is decided about a run wait then.
 func waitOutcome(waits []branchProcess, runs map[string]nativeSpinoff, id string) string {
 	reason := ""
+	var all []nativeSpinoff
+	for _, r := range runs {
+		all = append(all, r)
+	}
 	for _, p := range waits {
-		ids := taskfleetWait(p.Command)
-		if len(ids) == 0 {
+		ops := taskfleetWaitOperands(p.Command)
+		if len(ops) == 0 {
 			return "cut_off"
 		}
 		if runs == nil {
 			continue
 		}
+		// A named worker's wait is for its run, as Taskfleet resolved it.
+		ids := resolveWaitOperands(ops, all, id)
 		words := strings.FieldsFunc(p.Command, func(r rune) bool { return r == ' ' || r == '\t' })
 		anyOne, terminal := false, false
 		for _, w := range words {

@@ -57,7 +57,7 @@
             "maxLength": 64
           },
           "state": {
-            "description": "working: Taskfleet runs the worker and its agent is at work. idle: Taskfleet still runs it, but the worker's own Pi session says its turn ended and it waits at its prompt for a person (an interactive run waiting for review, or a worker that stopped without finishing).",
+            "description": "working: Taskfleet runs the worker and its agent is at work. idle: Taskfleet still runs it, but the worker's own Pi session says its turn ended and it waits at its prompt for a person (an interactive run waiting for review, or a worker that stopped without finishing). waiting_parent: it waits for the conversation that started it: an interactive run Taskfleet says needs attention, or a named worker between rounds (resident).",
             "enum": [
               "working",
               "idle",
@@ -124,6 +124,57 @@
             "description": "The task Taskfleet gave the worker (its run's prompt); only for the selected run.",
             "type": "string",
             "maxLength": 16000
+          },
+          "resident": {
+            "description": "A named support worker (Taskfleet resident run): it works in rounds, reports each, and waits for the main agent's next message, which resumes the same session. Taskfleet's own round state; absent for an ordinary worker.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "round_state",
+              "rounds"
+            ],
+            "properties": {
+              "name": {
+                "description": "Its Taskfleet name, which the main agent messages it by.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              "round_state": {
+                "description": "working: a round is under way. waiting: it reported its round and waits for the main agent. dormant: it waited past Taskfleet's idle expiry with everything landed, so Taskfleet removed its worktree; the next message brings it back. Meaningful only while the run is live.",
+                "enum": [
+                  "working",
+                  "waiting",
+                  "dormant"
+                ]
+              },
+              "rounds": {
+                "description": "Rounds it has reported.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "report": {
+                "description": "Its latest round report, the worker's own words.",
+                "type": "string",
+                "maxLength": 2000
+              },
+              "reported_at": {
+                "description": "When it reported that round.",
+                "type": "string",
+                "maxLength": 64
+              },
+              "landed_round": {
+                "description": "The latest round Taskfleet landed into the source branch.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "unlanded": {
+                "description": "Taskfleet's idle expiry found work not yet landed and kept it on the worker's branch.",
+                "type": "boolean"
+              }
+            }
           },
           "terminal_workspace": {
             "description": "The workspace whose terminal route lists that window: the one holding the worker's worktree, which may be another than the parent's. Present exactly with terminal.",

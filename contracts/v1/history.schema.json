@@ -586,14 +586,27 @@
                 "maxLength": 200
               },
               "state": {
+                "description": "round_reported: a named worker (Taskfleet resident run) reported a round and waits for its parent's next message; round and name say which.",
                 "enum": [
                   "merged",
                   "not_merged",
                   "failed",
                   "cancelled",
                   "awaiting",
-                  "stalled"
+                  "stalled",
+                  "round_reported"
                 ]
+              },
+              "round": {
+                "description": "The reported round, with state round_reported.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "name": {
+                "description": "The named worker's Taskfleet name, which its parent messages it by; with state round_reported.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
               },
               "summary": {
                 "description": "Taskfleet's report of the run, the worker's own words.",

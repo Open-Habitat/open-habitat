@@ -29,6 +29,7 @@ const featureIds = [
   { id: "explain-mode", landed: true },
   { id: "agent-resources-view", landed: true },
   { id: "conversation-context-view", landed: true },
+  { id: "named-workers", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -52,7 +53,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "rewind-conversation" ||
     id === "explain-mode" ||
     id === "agent-resources-view" ||
-    id === "conversation-context-view"
+    id === "conversation-context-view" ||
+    id === "named-workers"
   )
     body = (
       <>

@@ -45,6 +45,29 @@ export interface Spinoff {
     | "failed"
     | "unknown";
   summary: string;
+  /** A named support worker (Taskfleet resident run): its rounds. */
+  resident?: Resident;
+}
+/** Taskfleet's round state of a named worker (avustaja). */
+export interface Resident {
+  name: string;
+  round_state: "working" | "waiting" | "dormant";
+  /** Rounds it has reported. */
+  rounds: number;
+  /** Its latest round report, in its own words. */
+  report?: string;
+  reported_at?: string;
+  /** The latest round landed into the source branch. */
+  landed_round?: number;
+  /** Idle expiry kept work not yet landed on its branch. */
+  unlanded?: boolean;
+}
+/** A named worker that still works in rounds: its run is live. */
+export function liveHelper(run: Spinoff) {
+  return (
+    !!run.resident &&
+    ["working", "idle", "waiting_parent", "unknown"].includes(run.state)
+  );
 }
 export interface Spinoffs {
   schema_version: 1;
@@ -145,6 +168,13 @@ export function splitBrief(text: string): { task: string; context?: string } {
   return { task, context: text.slice(0, end.index).trim() };
 }
 export function spinoffStateLabel(run: Spinoff) {
+  const r = run.resident;
+  if (r && liveHelper(run) && run.state !== "unknown")
+    return r.round_state === "working"
+      ? txt.roundWorking(r.rounds + 1)
+      : r.round_state === "dormant"
+        ? txt.roundDormant(r.rounds)
+        : txt.roundWaiting(r.rounds);
   return {
     working: txt.working,
     idle: run.awaiting_input ? txt.awaitingInput : txt.idle,

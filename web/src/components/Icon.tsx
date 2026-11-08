@@ -8,6 +8,7 @@ export type IconName =
   | "disk"
   | "server"
   | "users"
+  | "bots"
   | "menu"
   | "more"
   | "up"
@@ -273,6 +274,15 @@ export function Icon({
       <>
         <circle cx="9" cy="8.5" r="3" />
         <path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5M16 6a3 3 0 0 1 0 5.6M17.5 14.6c1.6.6 2.6 2 3 4.4" />
+      </>
+    ),
+    // Botit (proto-named-workers round 3): two agent heads, the front one
+    // whole, as users doubles user; the named workers' chip.
+    bots: (
+      <>
+        <rect x="3" y="10" width="12" height="9" rx="2.5" />
+        <path d="M9 7v3M6.8 14.5h.01M11.2 14.5h.01" />
+        <path d="M9 10V8.5A2.5 2.5 0 0 1 11.5 6h7A2.5 2.5 0 0 1 21 8.5v4a2.5 2.5 0 0 1-2.5 2.5H17M15 3v3" />
       </>
     ),
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,

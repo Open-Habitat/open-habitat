@@ -212,6 +212,7 @@ func scanBranchStream(r io.Reader) branchScan {
 				Spinoffs []struct {
 					ID    string `json:"run_id"`
 					State string `json:"state"`
+					Round int    `json:"round"`
 				} `json:"spinoffs"`
 			}
 			if json.Unmarshal(details, &d) == nil {
@@ -219,7 +220,7 @@ func scanBranchStream(r io.Reader) branchScan {
 					f.reported = append(f.reported, p.ID+":"+strconv.FormatInt(p.Start, 10))
 				}
 				for _, r := range d.Spinoffs {
-					f.runs = append(f.runs, r.ID+":"+r.State)
+					f.runs = append(f.runs, catchUpKey(r.ID, r.State, r.Round))
 				}
 			}
 		}

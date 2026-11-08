@@ -37,7 +37,7 @@ import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { PiToolUse } from "./PiBlocks";
 
-export type BackgroundKind = "spin" | "proc";
+export type BackgroundKind = "spin" | "help" | "proc";
 interface ProcessView {
   inventory?: ProcessInventory;
   deliveryFor: (event: ProcessEvent) => ProcessEvent["delivery"];

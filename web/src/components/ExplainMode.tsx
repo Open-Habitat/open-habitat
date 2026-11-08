@@ -39,6 +39,7 @@ const workerKinds: WorkerMarkKind[] = [
   "unmerged",
   "checking",
   "answer",
+  "reported",
 ];
 function WorkerLegend() {
   const t = useText(explainModeText).workerLegend;

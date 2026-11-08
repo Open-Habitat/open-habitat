@@ -227,7 +227,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ah-bg-row[data-kind="spin"] .ah-bg-name {
+.ah-bg-row[data-kind="spin"] .ah-bg-name,
+.ah-bg-row[data-kind="help"] .ah-bg-name {
   flex: 1;
 }
 .ah-bg-mono {
@@ -252,15 +253,42 @@
 }
 /* Rivi: a worker row has two lines; the second says in words what the row
    means and which agent runs it, so the panel carries no legend. */
-.ah-bg-row[data-kind="spin"] {
+.ah-bg-row[data-kind="spin"],
+.ah-bg-row[data-kind="help"] {
   align-items: flex-start;
 }
-.ah-bg-row[data-kind="spin"] .ah-bg-main {
+.ah-bg-row[data-kind="spin"] .ah-bg-main,
+.ah-bg-row[data-kind="help"] .ah-bg-main {
   align-items: flex-start;
   padding-block: 6px;
 }
-.ah-bg-row[data-kind="spin"] .ah-bg-mark {
+.ah-bg-row[data-kind="spin"] .ah-bg-mark,
+.ah-bg-row[data-kind="help"] .ah-bg-mark {
   height: 19px;
+}
+/* Avustajat (proto-named-workers): the chip beside the Workers pill says its
+   word, then a mark per named worker; a row names the worker, then its task. */
+.ah-bg-chip {
+  max-width: 20em;
+}
+.ah-bg-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-bg-chip[data-unseen]:not([data-unseen="0"]) .ah-bg-chip-name {
+  font-weight: 600;
+}
+.ah-bg-task {
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-bg-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ah-bg-lines {
   flex: 1;
@@ -464,6 +492,12 @@
 @media (max-width: 520px) {
   .ah-bg-wide {
     display: none;
+  }
+  .ah-bg-chip {
+    max-width: 12em;
+  }
+  .ah-bg-row[data-kind="help"] .ah-bg-detail {
+    flex-basis: 100%;
   }
 }
 @media (prefers-reduced-motion: no-preference) {

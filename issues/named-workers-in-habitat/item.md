@@ -1,9 +1,9 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@design-named-workers']
 preparation: ready
@@ -12,6 +12,7 @@ source_ref: chat:2026-11-06/named-workers-in-habitat
 lane: named-workers
 lane_seq: 2
 blocked_by: ['@proto-named-workers']
+closed: 2026-11-08
 ---
 
 # Named support workers in Habitat (experimental): show and wake, Taskfleet owns them
@@ -49,7 +50,7 @@ kertoo henkilölle.
 
 ## Acceptance Criteria
 
-- [ ] nimetty worker näkyy ja herättää pääkeskustelun kokeellisena ominaisuutena; testit daemonin luennasta ja herätyksestä synteettisellä Taskfleet-tilalla
+- [x] nimetty worker näkyy ja herättää pääkeskustelun kokeellisena ominaisuutena; testit daemonin luennasta ja herätyksestä synteettisellä Taskfleet-tilalla
 
 ## Decision (Jari 2026-11-08): pääkeskustelun päättyminen
 

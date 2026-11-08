@@ -102,6 +102,9 @@ type restRun struct {
 	Branch    string `json:"branch,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	Waited    *bool  `json:"waited,omitempty"`
+	// The named worker's reported round and name (state round_reported).
+	Round int    `json:"round,omitempty"`
+	Name  string `json:"name,omitempty"`
 }
 
 // catchUpState is the companion's spinoffState (process-extension.mjs): the
@@ -114,6 +117,12 @@ func catchUpState(r nativeSpinoff) string {
 		return "merged"
 	case r.Stalled:
 		return "stalled"
+	case openRound(r) > 0:
+		// A named worker reported a round and waits for the next message.
+		return "round_reported"
+	case residentBetweenRounds(r):
+		// Its round was answered, or it sleeps after idle expiry: no news.
+		return ""
 	case r.Attention || r.AwaitingInput:
 		return "awaiting"
 	}
@@ -122,8 +131,9 @@ func catchUpState(r nativeSpinoff) string {
 
 // catchUpLive is the companion's liveRun: working on its own, so a default
 // `run wait` would not have returned yet.
+// A named worker between rounds is not: its round report returns the wait.
 func catchUpLive(r nativeSpinoff) bool {
-	return (r.Status == "pending" || r.Status == "running") && !r.Attention && !r.AwaitingInput && !r.Stalled
+	return (r.Status == "pending" || r.Status == "running") && !r.Attention && !r.AwaitingInput && !r.Stalled && !residentBetweenRounds(r)
 }
 
 // unreportedRuns is the companion's readSpinoffs rule, read by the daemon
@@ -139,6 +149,22 @@ func unreportedRuns(ctx context.Context, parent nativeSession, since int64, wait
 		return settled, working, "unavailable"
 	}
 	availability = "available"
+	// A named worker's wait names it; the wait is for its run.
+	if len(waited) > 0 {
+		names := []string{}
+		expanded := map[string]bool{}
+		for k := range waited {
+			if taskfleetIDPattern.MatchString(k) {
+				expanded[k] = true
+			} else {
+				names = append(names, k)
+			}
+		}
+		for _, run := range resolveWaitOperands(names, runs, parent.id) {
+			expanded[run] = true
+		}
+		waited = expanded
+	}
 	var mine, others []nativeSpinoff
 	for _, r := range runs {
 		if !belongsSpinoff(r, parent) {
@@ -188,12 +214,25 @@ func unreportedRuns(ctx context.Context, parent nativeSession, since int64, wait
 		// A stall is computed when read and never advances the record's
 		// time, and a run a cut-off wait was for is news; others must be
 		// newer than the branch.
+		// A round report is fresh by its own time: the run itself goes on.
 		updated, err := time.Parse(time.RFC3339Nano, d.Manifest.UpdatedAt)
-		fresh := waited[r.ID] || state == "stalled" || err == nil && updated.UnixMilli() > since
-		if !fresh || reported[r.ID+":"+state] {
+		// Only a round report carries its round: a stall keeps its caveat.
+		round := 0
+		if state == "round_reported" {
+			round = openRound(*d)
+		}
+		fresh := waited[r.ID] || state == "stalled" || round > 0 && roundReportedAfter(*d, since) || round == 0 && err == nil && updated.UnixMilli() > since
+		if !fresh || reported[catchUpKey(r.ID, state, round)] {
 			continue
 		}
-		run := restRun{ID: r.ID, Title: prefixBytes(r.Title, 200), State: state, Summary: runSummary(*d)}
+		run := restRun{ID: r.ID, Title: prefixBytes(r.Title, 200), State: state, Summary: runSummary(*d), Round: round}
+		if round > 0 {
+			// The worker's own words about the round, and the name the
+			// parent messages it by.
+			v := d.resident()
+			run.Summary = prefixBytes(v.LastRound.Summary, 2000)
+			run.Name = v.Name
+		}
 		if s := d.Status; s == "done" || s == "failed" || s == "cancelled" {
 			run.EndedAt = nativeTimestamp(d.Manifest.UpdatedAt)
 		}
@@ -308,7 +347,7 @@ func (c *ConversationController) restReport(w http.ResponseWriter, r *http.Reque
 	waited := map[string]bool{}
 	for _, p := range unreported[max(0, len(unreported)-20):] {
 		if p.Wakes {
-			for _, run := range taskfleetWait(p.Command) {
+			for _, run := range taskfleetWaitOperands(p.Command) {
 				waited[run] = true
 			}
 		}

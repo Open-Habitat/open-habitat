@@ -226,6 +226,249 @@
    "rearm": [
     "01m531x6y92ggdqcmb1exzmn03"
    ]
+  },
+  {
+   "name": "a named worker's round report is news once per round, by its own time; answered or under way is not; a wait by a named worker's name is for its run",
+   "session": "s1",
+   "since": "2026-10-16T12:00:00Z",
+   "waited": [
+    "proto-a",
+    "fix-c"
+   ],
+   "reported": [
+    "01m531x6y92ggdqcmb1exzmn21:round_reported:2"
+   ],
+   "runs": [
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn20",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 20",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T11:00:00Z"
+     },
+     "resident": {
+      "name": "proto-a",
+      "round_state": "waiting",
+      "rounds_reported": 3,
+      "worker_running": false,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 3,
+       "attempt": 3,
+       "reported_at": "2026-10-16T11:00:00Z",
+       "summary": "Kierros 3 valmis.",
+       "open": true
+      }
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn21",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 21",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T11:00:00Z"
+     },
+     "resident": {
+      "name": "proto-b",
+      "round_state": "waiting",
+      "rounds_reported": 2,
+      "worker_running": false,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 2,
+       "attempt": 2,
+       "reported_at": "2026-10-16T12:30:00Z",
+       "summary": "Kierros 2 valmis.",
+       "open": true
+      }
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn22",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 22",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T11:00:00Z"
+     },
+     "resident": {
+      "name": "review-b",
+      "round_state": "waiting",
+      "rounds_reported": 1,
+      "worker_running": false,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 1,
+       "attempt": 1,
+       "reported_at": "2026-10-16T12:20:00Z",
+       "summary": "Kierros 1 valmis.",
+       "open": true
+      }
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn23",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 23",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T11:00:00Z"
+     },
+     "resident": {
+      "name": "fix-c",
+      "round_state": "working",
+      "rounds_reported": 1,
+      "worker_running": true,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 1,
+       "attempt": 1,
+       "reported_at": "2026-10-16T12:20:00Z",
+       "summary": "Kierros 1 valmis.",
+       "open": false
+      }
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn24",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 24",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T12:40:00Z"
+     },
+     "resident": {
+      "name": "sleep-d",
+      "round_state": "dormant",
+      "rounds_reported": 2,
+      "worker_running": false,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 2,
+       "attempt": 2,
+       "reported_at": "2026-10-16T12:20:00Z",
+       "summary": "Kierros 2 valmis.",
+       "open": false
+      }
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn25",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 25",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "supervisor": {
+      "state": "alive"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T12:50:00Z"
+     },
+     "resident": {
+      "name": "done-e",
+      "round_state": "waiting",
+      "rounds_reported": 2,
+      "worker_running": false,
+      "idle_expiry_secs": 86400,
+      "last_round": {
+       "round": 2,
+       "attempt": 2,
+       "reported_at": "2026-10-16T12:10:00Z",
+       "summary": "Kierros 2 valmis.",
+       "open": true
+      }
+     },
+     "landed": true
+    }
+   ],
+   "settled": [
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn20",
+     "state": "round_reported",
+     "summary": "Kierros 3 valmis.",
+     "round": 3,
+     "name": "proto-a"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn22",
+     "state": "round_reported",
+     "summary": "Kierros 1 valmis.",
+     "round": 1,
+     "name": "review-b"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn25",
+     "state": "merged",
+     "ended_at": "2026-10-16T12:50:00Z"
+    }
+   ],
+   "rearm": [
+    "01m531x6y92ggdqcmb1exzmn23"
+   ]
   }
  ]
 }

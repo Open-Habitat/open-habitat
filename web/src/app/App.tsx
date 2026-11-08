@@ -99,6 +99,7 @@ import {
 } from "./goalGuide";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation, creationKeys } from "./heldMessages";
+import { readHelpersArchiveDetail } from "./helpersArchive";
 import {
   archiveKey,
   closeKey,
@@ -363,6 +364,8 @@ export function App() {
     title: string;
     route: string;
     problem?: string;
+    /** What went with it: its named workers (Avustajat). */
+    detail?: string;
   }>();
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
   const [railStartError, setRailStartError] = useState("");
@@ -1407,6 +1410,10 @@ export function App() {
     identity,
     csrf,
   });
+  const helpersOn = useExperimentalFeature("named-workers", {
+    identity,
+    csrf,
+  });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   const icons = useMemo(
     () => (snapshot ? workspaceIcons(snapshot.workspaces) : undefined),
@@ -1676,6 +1683,18 @@ export function App() {
         archiveFocusPending.current = agent.workspace_id;
         navigate(`/workspaces/${agent.workspace_id}`);
       }
+      // Its named workers go with it; the notice says so once read.
+      if (helpersOn)
+        void readHelpersArchiveDetail(
+          agent.agent_id,
+          AbortSignal.timeout(10000),
+        ).then((detail) =>
+          setArchiveNotice((n) =>
+            detail && n?.id === agent.agent_id && !n.problem
+              ? { ...n, detail }
+              : n,
+          ),
+        );
     }
     const result = await mutations.run({
       command: "conversation.archive",
@@ -3287,6 +3306,10 @@ export function App() {
                           : undefined
                       }
                       expireProblem
+                      detail={
+                        archiveNotice.problem ? undefined : archiveNotice.detail
+                      }
+                      wrap={!!archiveNotice.detail}
                       busy={
                         !archiveNotice.problem &&
                         snapshot?.agents.find(

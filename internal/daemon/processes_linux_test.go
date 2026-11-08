@@ -43,8 +43,9 @@ func TestTaskfleetWaitSharedGrammar(t *testing.T) {
 	}
 	var table struct {
 		Cases []struct {
-			Command string   `json:"command"`
-			RunIDs  []string `json:"run_ids"`
+			Command  string    `json:"command"`
+			RunIDs   []string  `json:"run_ids"`
+			Operands *[]string `json:"operands"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(raw, &table); err != nil || len(table.Cases) == 0 {
@@ -54,6 +55,13 @@ func TestTaskfleetWaitSharedGrammar(t *testing.T) {
 		got := taskfleetWait(tc.Command)
 		if strings.Join(got, ",") != strings.Join(tc.RunIDs, ",") || (got == nil) != (len(tc.RunIDs) == 0) {
 			t.Errorf("%q: got %v, want %v", tc.Command, got, tc.RunIDs)
+		}
+		want := tc.RunIDs
+		if tc.Operands != nil {
+			want = *tc.Operands
+		}
+		if ops := taskfleetWaitOperands(tc.Command); strings.Join(ops, ",") != strings.Join(want, ",") {
+			t.Errorf("%q operands: got %v, want %v", tc.Command, ops, want)
 		}
 	}
 }

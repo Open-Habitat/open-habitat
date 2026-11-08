@@ -71,8 +71,9 @@ type nativeSpinoff struct {
 		Summary string `json:"summary"`
 		Reason  string `json:"reason"`
 	} `json:"report"`
-	Harness       string `json:"harness"`
-	AwaitingInput bool   `json:"awaiting_input"`
+	Harness       string             `json:"harness"`
+	AwaitingInput bool               `json:"awaiting_input"`
+	Resident      *taskfleetResident `json:"resident"`
 	Manifest      struct {
 		Selection struct {
 			Profile string `json:"profile"`
@@ -106,6 +107,8 @@ type spinoffRow struct {
 	CreatedAt     string `json:"created_at"`
 	State         string `json:"state"`
 	Summary       string `json:"summary"`
+	// A named support worker's rounds (resident_linux.go).
+	Resident *spinoffResident `json:"resident,omitempty"`
 }
 type spinoffView struct {
 	NodeID       string         `json:"node_id"`
@@ -145,6 +148,12 @@ func (b *boundedSpinoffBuffer) Write(p []byte) (int, error) {
 func spinoffState(r nativeSpinoff) string {
 	if r.Landed {
 		return "merged"
+	}
+	// A named worker between rounds waits for its parent's next message:
+	// Taskfleet's told round state, also when idle expiry raised attention
+	// over work it kept on the branch. Its exited Pi says nothing more.
+	if residentBetweenRounds(r) && !r.Stalled && r.Supervisor.State != "dead" && r.Supervisor.State != "unknown" {
+		return "waiting_parent"
 	}
 	if r.Stalled || (r.Status == "pending" || r.Status == "running") && (r.Supervisor.State == "dead" || r.Supervisor.State == "unknown") {
 		return "unknown"
@@ -288,7 +297,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 				availability = "partial"
 				break
 			}
-			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput, OtherRepo: otherRepository(r.SourceRepo, parent.cwd)}
+			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput, OtherRepo: otherRepository(r.SourceRepo, parent.cwd), Resident: residentRow(r)}
 			if runID == "" && (r.Status == "pending" || r.Status == "running") {
 				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, r, now)
 				row.SourceBranch = prefixBytes(r.SourceBranch, 200)
@@ -300,6 +309,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			// verified landed flag and retained report/preserved work.
 			if detail, shown := showSpinoff(ctx, cfg.Home, r.ID, *parent); shown {
 				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, detail, now)
+				row.Resident = residentRow(detail)
 				row.Harness = workerHarness(detail.Harness)
 				row.SourceBranch = prefixBytes(detail.SourceBranch, 200)
 				row.Worktree = prefixBytes(detail.WorktreePath, 1024)

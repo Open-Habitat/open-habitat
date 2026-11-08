@@ -16,6 +16,7 @@ test.use({
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
+  "markdown-block-preview",
   "worker-row-sentence",
   "raise-to-your-turn",
   "composer-lists-in-field",
@@ -23,6 +24,7 @@ const features = [
   "explain-mode",
   "agent-resources-view",
   "conversation-context-view",
+  "named-workers",
 ];
 
 async function signIn(page: Page) {

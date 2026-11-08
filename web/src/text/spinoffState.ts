@@ -14,6 +14,12 @@ const fi = {
   failed: "Epäonnistui",
   failedKept: "Epäonnistui · työ tallessa",
   unknown: "Tila ei tiedossa",
+  // A named worker (avustaja) between and during its rounds.
+  roundWorking: (n: number) => `Avustaja · kierros ${n} työn alla`,
+  roundWaiting: (n: number) =>
+    `Avustaja · ${n} ${n === 1 ? "kierros" : "kierrosta"} · odottaa pääagenttia`,
+  roundDormant: (n: number) =>
+    `Avustaja · ${n} ${n === 1 ? "kierros" : "kierrosta"} · lepää`,
 };
 
 export const spinoffStateText = catalog(fi, {
@@ -27,4 +33,9 @@ export const spinoffStateText = catalog(fi, {
   failed: "Failed",
   failedKept: "Failed · work kept",
   unknown: "State unknown",
+  roundWorking: (n) => `Helper · round ${n} under way`,
+  roundWaiting: (n) =>
+    `Helper · ${n} ${n === 1 ? "round" : "rounds"} · waiting for the main agent`,
+  roundDormant: (n) =>
+    `Helper · ${n} ${n === 1 ? "round" : "rounds"} · resting`,
 });

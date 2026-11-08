@@ -17,6 +17,13 @@ const waitRefused = /[|&;<>($`\\"'\n\r)]/;
 const waitExpanded = /[|&;<>($`\\"'\n\r)#*?[\]{}=]/;
 const waitDuration = /^(?:[0-9]+|(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:ns|us|µs|μs|ms|s|m|h))+)$/;
 export function waitRuns(command) {
+  const ops = waitOperands(command);
+  return ops.every(w => runPattern.test(w)) ? ops : [];
+}
+// The same grammar with a named worker's name accepted where a run id is
+// (the daemon's taskfleetWaitOperands); only readers that resolve names
+// against the conversation's own runs use it.
+export function waitOperands(command) {
   if (typeof command !== 'string' || /[\n\r]/.test(command)) return [];
   let words = command.split(/[ \t]+/).filter(Boolean);
   if (words.length > 3 && words[0] === 'cd' && words[2] === '&&') {
@@ -38,7 +45,7 @@ export function waitRuns(command) {
       } else if (!waitDuration.test(v) || !/[1-9]/.test(v)) return [];
       continue;
     }
-    if (!runPattern.test(w) || ids.length >= 20) return [];
+    if (!runPattern.test(w) && !/^[a-z][a-z0-9-]{0,47}$/.test(w) || ids.length >= 20) return [];
     ids.push(w);
   }
   return ids;
@@ -140,7 +147,7 @@ export function branchFacts(branch) {
       if (['success', 'failure', 'crash', 'killed'].includes(custom.details?.kind)) open.delete(custom.details.processId);
     } else if (custom?.customType === catchUpType) {
       for (const p of custom.details?.processes ?? []) reported.add(key(p));
-      for (const r of custom.details?.spinoffs ?? []) runs.add(`${r.run_id}:${r.state}`);
+      for (const r of custom.details?.spinoffs ?? []) runs.add(toldKey(r.run_id, r.state, Number.isInteger(r.round) ? r.round : 0));
     }
   }
   return { open: order.filter(p => open.get(p.id) === p), reported, runs, turnCut };
@@ -153,9 +160,21 @@ function taskfleet(args, cwd, timeout = 2500) {
     try { const v = JSON.parse(stdout); resolve(v?.schema_version === 1 ? v.data : null); } catch { resolve(null); }
   }));
 }
+// A named worker (Taskfleet resident run) between rounds: its round is
+// reported and it waits for its parent's next message (resident_linux.go).
+const residentNames = /^[a-z][a-z0-9-]{0,47}$/;
+function betweenRounds(r) {
+  const v = r?.resident;
+  return !!v && residentNames.test(v.name ?? '') && ['waiting', 'dormant'].includes(v.round_state) && ['pending', 'running'].includes(r.status);
+}
+const openRound = r => (betweenRounds(r) && r.resident.last_round?.open === true && Number.isInteger(r.resident.last_round.round) && r.resident.last_round.round > 0 ? r.resident.last_round.round : 0);
+// Each round report is news once, other states once per state.
+const toldKey = (id, state, round) => (round > 0 ? `${id}:${state}:${round}` : `${id}:${state}`);
 function spinoffState(r) {
   if (r.landed) return 'merged';
   if (r.stalled) return 'stalled';
+  if (openRound(r)) return 'round_reported';
+  if (betweenRounds(r)) return null;
   if (r.attention_required || r.awaiting_input) return 'awaiting';
   return { done: 'not_merged', failed: 'failed', cancelled: 'cancelled' }[r.status] ?? null;
 }
@@ -163,7 +182,7 @@ function spinoffState(r) {
 const ownRun = sessionId => r => typeof r?.source_repo === 'string' && r.source_repo.startsWith('/') &&
   runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId;
 // Still working on its own: a default `run wait` would not have returned yet.
-const liveRun = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
+const liveRun = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled && !betweenRounds(r);
 // Only the user's own Taskfleet records: runs this conversation created that
 // settled after the branch's last entry, and the ones it was waiting for.
 const unread = Object.freeze({ settled: [], rearm: [], available: false });
@@ -174,6 +193,13 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
   if (!Array.isArray(list?.runs)) return unread;
   const belongs = ownRun(sessionId), live = liveRun;
   const mine = list.runs.filter(belongs);
+  // A named worker's wait names it; the wait is for its run (the daemon's
+  // resolveWaitOperands): the one live own resident of that name.
+  waited = new Set([...waited].flatMap(w => {
+    if (runPattern.test(w)) return [w];
+    const named = mine.filter(r => ['pending', 'running'].includes(r.status) && r.resident?.name === w && residentNames.test(w));
+    return named.length === 1 ? [named[0].run_id] : [];
+  }));
   // A waited-for run is always looked at; the rest only up to a bounded number of reads.
   const others = mine.filter(r => !waited.has(r.run_id) && !live(r)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
   await Promise.all([...mine.filter(r => waited.has(r.run_id)), ...others].map(async r => {
@@ -189,8 +215,11 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
     }
     // A stall is computed when read and never advances the record's time, and
     // anything the agent was waiting for is news; others must be newer than the branch.
-    const fresh = waited.has(r.run_id) || state === 'stalled' || Date.parse(d.manifest?.updated_at ?? '') > since;
-    if (fresh && !reported.has(`${r.run_id}:${state}`)) result.settled.push({ run_id: r.run_id, title, state, ...runReport(d, state) });
+    // A round report is fresh by its own time: the run itself goes on.
+    // Only a round report carries its round: a stall keeps its caveat.
+    const round = state === 'round_reported' ? openRound(d) : 0;
+    const fresh = waited.has(r.run_id) || state === 'stalled' || (round ? Date.parse(d.resident.last_round.reported_at ?? '') > since : Date.parse(d.manifest?.updated_at ?? '') > since);
+    if (fresh && !reported.has(toldKey(r.run_id, state, round))) result.settled.push({ run_id: r.run_id, title, state, ...runReport(d, state, round) });
   }));
   // The daemon's card lists them in the same order (rest_linux.go).
   result.settled.sort((a, b) => (a.ended_at ?? '').localeCompare(b.ended_at ?? '') || a.run_id.localeCompare(b.run_id));
@@ -199,8 +228,13 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
 // Taskfleet's own report of a settled run, as the person's card shows it
 // (rest_linux.go runSummary): the worker's summary, when it ended, and the
 // branch kept when the work was not merged.
-function runReport(d, state) {
+function runReport(d, state, round = 0) {
   const out = {};
+  // A named worker's round: its own words about the round and its name.
+  if (round) {
+    const summary = typeof d.resident.last_round.summary === 'string' ? d.resident.last_round.summary : '';
+    return { round, name: d.resident.name, ...(summary ? { summary: summary.slice(0, 2000) } : {}) };
+  }
   let summary = typeof d.report?.summary === 'string' ? d.report.summary : '';
   const reason = typeof d.report?.reason === 'string' ? d.report.reason : '';
   if (reason && reason !== summary) summary = summary ? `${summary}\n\n${reason}` : reason;
@@ -231,7 +265,7 @@ export function stopFact(env = process.env) {
 }
 // Each state is Taskfleet's own report; a stall is Taskfleet's liveness
 // verdict, which a live worker can contradict, so it is not restated as fact.
-const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
+const stateText = { round_reported: 'reported a round and waits for your next message', merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
 // Why Habitat woke a stopped conversation on its own (the daemon's
 // wake_linux.go waitOutcome): what it was waiting for has ended.
 const wokeBecause = {
@@ -258,7 +292,8 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
   if (spinoffs.settled.length) {
     lines.push('', 'Spinoffs whose state changed:');
     for (const r of spinoffs.settled) {
-      lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}${r.ended_at ? ` (${r.ended_at})` : ''}${r.branch ? `; branch ${r.branch} kept` : ''}`);
+      if (r.state === 'round_reported' && r.round) lines.push(`- ${r.run_id} "${r.title}" (named worker \`${r.name}\`) reported round ${r.round} and waits for your next message (\`taskfleet run message ${r.name}\`); land the round with \`taskfleet run land ${r.name}\` if you have not`);
+      else lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}${r.ended_at ? ` (${r.ended_at})` : ''}${r.branch ? `; branch ${r.branch} kept` : ''}`);
       if (r.summary) lines.push(`  Taskfleet's summary: ${r.summary.replace(/\s*\n\s*/g, ' ')}`);
     }
   }
@@ -276,7 +311,7 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
       ...(woke ? { woke } : {}),
       ...(cut ? { interrupted_turn: true } : {}),
       processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
-      spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
+      spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.round ? { round: r.round, name: r.name } : {}), ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
       rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
     },
   };
@@ -532,7 +567,7 @@ export default function (pi) {
       if (!branch?.length) return null;
       const facts = branchFacts(branch);
       const processes = facts.open.filter(p => p.startTime < launchedAt && !facts.reported.has(key(p))).slice(-20);
-      const waited = new Set(processes.filter(p => p.wakes).flatMap(p => waitRuns(p.command)));
+      const waited = new Set(processes.filter(p => p.wakes).flatMap(p => waitOperands(p.command)));
       const sessionId = ctx.sessionManager.getSessionId?.();
       const since = branch.reduce((t, e) => Math.max(t, Date.parse(e?.timestamp ?? '') || 0), 0);
       const read = () => typeof sessionId === 'string' && sessionId && ctx.cwd

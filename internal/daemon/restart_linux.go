@@ -33,12 +33,14 @@ type restartRun struct {
 	Summary string `json:"summary,omitempty"`
 	EndedAt string `json:"ended_at,omitempty"`
 	Branch  string `json:"branch,omitempty"`
+	Round   int    `json:"round,omitempty"`
+	Name    string `json:"name,omitempty"`
 }
 
 // The stop causes the daemon passes to Pi at launch (rest_linux.go).
 var restCauses = map[string]bool{"idle": true, "room": true, "person": true, "crash": true, "restart": true}
 
-var restartStates = map[string]bool{"merged": true, "not_merged": true, "failed": true, "cancelled": true, "awaiting": true, "stalled": true}
+var restartStates = map[string]bool{"merged": true, "not_merged": true, "failed": true, "cancelled": true, "awaiting": true, "stalled": true, "round_reported": true}
 
 func nativeRestart(e nativeEntry) (historyEntry, bool) {
 	raw := e.Raw
@@ -98,9 +100,19 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 			Summary string `json:"summary"`
 			EndedAt string `json:"ended_at"`
 			Branch  string `json:"branch"`
+			Round   int    `json:"round"`
+			Name    string `json:"name"`
 		}
 		if len(n.Runs) < 40 && json.Unmarshal(item, &r) == nil && taskfleetIDPattern.MatchString(r.ID) && restartStates[r.State] {
-			n.Runs = append(n.Runs, restartRun{r.ID, prefixBytes(r.Title, 200), r.State, prefixBytes(r.Summary, 2000), nativeTimestamp(r.EndedAt), prefixBytes(r.Branch, 300)})
+			run := restartRun{r.ID, prefixBytes(r.Title, 200), r.State, prefixBytes(r.Summary, 2000), nativeTimestamp(r.EndedAt), prefixBytes(r.Branch, 300), 0, ""}
+			if r.State == "round_reported" {
+				// A round report names its round and worker, or it is left out.
+				if r.Round < 1 || r.Round > 100000 || !residentNamePattern.MatchString(r.Name) {
+					continue
+				}
+				run.Round, run.Name = r.Round, r.Name
+			}
+			n.Runs = append(n.Runs, run)
 		}
 	}
 	for _, item := range m.Details.Rearm {

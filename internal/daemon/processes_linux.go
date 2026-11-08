@@ -55,6 +55,21 @@ func commandPreview(command string) string {
 // The companion's waitRuns (process-extension.mjs) is the same grammar; both
 // are tested against testdata/taskfleet-wait-grammar.json.
 func taskfleetWait(command string) []string {
+	ops := taskfleetWaitOperands(command)
+	for _, op := range ops {
+		if !taskfleetIDPattern.MatchString(op) {
+			return nil
+		}
+	}
+	return ops
+}
+
+// taskfleetWaitOperands is the same grammar with a named worker's name
+// accepted where a run id is: Taskfleet resolves a resident name among the
+// repository's live runs (ADR 0003). Only readers that resolve names against
+// the conversation's own runs use it (resolveWaitOperands); everything that
+// carries run ids onward uses taskfleetWait.
+func taskfleetWaitOperands(command string) []string {
 	const refused = "|&;<>($`\\\"'\n\r)"
 	const expanded = refused + "#*?[]{}="
 	if strings.ContainsAny(command, "\n\r") {
@@ -93,7 +108,7 @@ func taskfleetWait(command string) []string {
 				return nil
 			}
 		default:
-			if !taskfleetIDPattern.MatchString(w) || len(ids) >= 20 {
+			if !taskfleetIDPattern.MatchString(w) && !residentNamePattern.MatchString(w) || len(ids) >= 20 {
 				return nil
 			}
 			ids = append(ids, w)

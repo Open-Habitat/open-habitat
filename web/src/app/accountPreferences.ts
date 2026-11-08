@@ -29,6 +29,7 @@ export const experimentalFeatureIds = [
   "explain-mode",
   "agent-resources-view",
   "conversation-context-view",
+  "named-workers",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

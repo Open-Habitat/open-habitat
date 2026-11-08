@@ -47,6 +47,15 @@
   border-top-color: var(--ah-accent);
   animation: ah-worker-turn 1s linear infinite;
 }
+/* A named worker's round report the person has not opened yet. */
+.ah-worker-mark[data-kind="reported"] {
+  border: 1.5px solid var(--ah-accent);
+  background: radial-gradient(
+    circle,
+    var(--ah-accent) 0 1.5px,
+    transparent 2px
+  );
+}
 .ah-worker-mark[data-kind="answer"] {
   border: 1.5px solid var(--ah-turn);
 }

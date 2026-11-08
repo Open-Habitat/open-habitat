@@ -6,7 +6,7 @@ import {
   processLive,
   recordExit,
 } from "../app/processes";
-import type { Spinoff } from "../app/spinoffs";
+import { liveHelper, type Spinoff } from "../app/spinoffs";
 import { askable, type RequestPhase, unfinished } from "../app/workerRequests";
 import { checksWord, prName, workClause } from "../app/workSentence";
 import { formatDate, textNow, useText } from "../i18n";
@@ -87,6 +87,8 @@ export interface SpinoffItem {
   /** The agent's turn resumes when this spinoff settles. */
   waited: boolean;
   attention: boolean;
+  /** A named worker's round report the person has not opened yet. */
+  unseen?: boolean;
 }
 /** Above this many marks the pill counts each kind instead. */
 const MAX_MARKS = 5;
@@ -105,7 +107,13 @@ export function backgroundFacts({
   failed,
   agentIdle,
   piNotRunning = false,
+  helpers = false,
+  seen,
 }: {
+  /** Avustajat is on: live named workers leave the Workers pill for theirs. */
+  helpers?: boolean;
+  /** Rounds of each named worker the person has seen, by run id. */
+  seen?: ReadonlyMap<string, number>;
   runs: Spinoff[];
   spinoffsStale: boolean;
   processes: ProcessRecord[];
@@ -137,7 +145,7 @@ export function backgroundFacts({
   // Only a wait whose end starts a turn is the agent waiting (the daemon's
   // waiting_on rule); any running wait can still be stopped from its row.
   const waking = (p?: ProcessRecord) => p?.wakes_agent === true;
-  const spin: SpinoffItem[] = [...runs, ...waitOnly].map((run) => {
+  const all: SpinoffItem[] = [...runs, ...waitOnly].map((run) => {
     const live = ["working", "idle", "waiting_parent", "unknown"].includes(
       run.state,
     );
@@ -153,6 +161,22 @@ export function backgroundFacts({
         (run.state === "unmerged" || run.state === "failed") && run.preserved,
     };
   });
+  // Avustajat (proto-named-workers): a named worker that still works in
+  // rounds has its own chip. One that ended is an ordinary ended worker:
+  // what is left of it is a branch for the Workers pill's requests.
+  const spin = all.filter((i) => !helpers || !liveHelper(i.run));
+  const help = all
+    .filter((i) => helpers && liveHelper(i.run))
+    .map((i) => {
+      const r = i.run.resident;
+      return {
+        ...i,
+        unseen:
+          !!r &&
+          r.round_state === "waiting" &&
+          r.rounds > (seen?.get(i.run.run_id) ?? 0),
+      };
+    });
   const live = [
     ...spin.filter((i) => i.waited),
     ...spin.filter((i) => i.live && !i.waited),
@@ -165,6 +189,18 @@ export function backgroundFacts({
   const stopped = reason === "pi_not_running" || piNotRunning;
   const liveProcs = records.filter(processLive);
   return {
+    help: {
+      items: help,
+      // Quiet when every one waits with nothing new: the chip is muted.
+      busy: help.filter(
+        (i) =>
+          i.unseen || i.waited || i.run.resident?.round_state === "working",
+      ).length,
+      working: help.filter((i) => i.run.resident?.round_state === "working")
+        .length,
+      unseen: help.filter((i) => i.unseen).length,
+      present: help.length > 0,
+    },
     spin: {
       items: spin,
       live,
@@ -220,6 +256,7 @@ export function BackgroundStrip({
   const panelOpen = useRef(false);
   const [endedOpen, setEndedOpen] = useState<Record<BackgroundKind, boolean>>({
     spin: false,
+    help: false,
     proc: false,
   });
   const pills = useRef<Partial<Record<BackgroundKind, HTMLButtonElement>>>({});
@@ -239,6 +276,8 @@ export function BackgroundStrip({
     failed: !!view?.failed,
     agentIdle: !!agentIdle,
     piNotRunning: !!piNotRunning,
+    helpers: !!spinoffs?.helpers,
+    seen: spinoffs?.helpersSeen,
   });
   const now = Date.now();
   const phaseOf = (r: Spinoff): RequestPhase | undefined =>
@@ -252,11 +291,20 @@ export function BackgroundStrip({
     (i) => askable(i.run) && phaseOf(i.run),
   );
   // A row that came back (a partial read, a resumed run) is no longer leaving.
-  const shownLeaving = leaving
-    .map((l) => l.run)
-    .filter((r) => !facts.spin.items.some((i) => i.run.run_id === r.run_id));
-  const kinds = (["spin", "proc"] as const).filter(
-    (k) => facts[k].present || (k === "spin" && shownLeaving.length > 0),
+  const back = (r: Spinoff) =>
+    [...facts.spin.items, ...facts.help.items].some(
+      (i) => i.run.run_id === r.run_id,
+    );
+  // A named worker that leaves says so under its own chip: stopped.
+  const asHelper = (r: Spinoff) => !!spinoffs?.helpers && !!r.resident;
+  const allLeaving = leaving.map((l) => l.run).filter((r) => !back(r));
+  const shownLeaving = allLeaving.filter((r) => !asHelper(r));
+  const helpLeaving = allLeaving.filter(asHelper);
+  const kinds = (["spin", "help", "proc"] as const).filter(
+    (k) =>
+      facts[k].present ||
+      (k === "spin" && shownLeaving.length > 0) ||
+      (k === "help" && helpLeaving.length > 0),
   );
   const panel = view?.panel && kinds.includes(view.panel) ? view.panel : null;
   panelOpen.current = panel === "spin";
@@ -377,6 +425,16 @@ export function BackgroundStrip({
       ? txt.unavailable.failed
       : (txt.unavailable[reason] ?? txt.unavailable.failed);
   const sentence = (kind: BackgroundKind) => {
+    if (kind === "help")
+      return [
+        txt.help.head(facts.help.items.length),
+        ...facts.help.items.map((i) =>
+          txt.help.one(
+            i.run.resident?.name || i.run.title || i.run.run_id,
+            helperWord(i).text,
+          ),
+        ),
+      ].join(", ");
     if (kind === "spin") {
       const f = facts.spin;
       return [
@@ -431,18 +489,22 @@ export function BackgroundStrip({
   };
   const icon: Record<BackgroundKind, IconName> = {
     spin: "branch",
+    help: "bots",
     proc: "terminal",
   };
   const label: Record<BackgroundKind, string> = {
     spin: txt.workers,
+    help: txt.helpers,
     proc: txt.processes,
   };
   const number = (kind: BackgroundKind) =>
-    kind === "proc" && !facts.proc.known
-      ? interrupted.length
-        ? String(interrupted.length)
-        : "?"
-      : String(kind === "spin" ? facts.spin.working : facts.proc.live.length);
+    kind === "help"
+      ? String(facts.help.items.length)
+      : kind === "proc" && !facts.proc.known
+        ? interrupted.length
+          ? String(interrupted.length)
+          : "?"
+        : String(kind === "spin" ? facts.spin.working : facts.proc.live.length);
   const askButton = (
     runs: Spinoff[],
     label: string,
@@ -696,6 +758,117 @@ export function BackgroundStrip({
       </div>
     );
   };
+  // Avustajat (proto-named-workers round 2, riff 3): a named worker's row
+  // is a worker row with its name and task, its rounds, and in words where
+  // its round stands and what it last reported. It opens the worker's own
+  // read-only view; the person writes to it only through the main agent,
+  // so the row has no request or stop of its own.
+  const helpRow = (i: SpinoffItem, gone = false) => {
+    const r = i.run;
+    const res = r.resident;
+    const word = gone
+      ? { text: txt.help.ended, tone: "ok" as const }
+      : helperWord(i);
+    const line = res?.report?.split("\n").find((l) => l.trim()) ?? "";
+    const detail =
+      !gone && res && res.round_state !== "working" && res.rounds > 0 && line
+        ? txt.help.report(res.rounds, line.trim())
+        : "";
+    return (
+      <div
+        className="ah-bg-row"
+        data-kind="help"
+        data-state={r.state}
+        data-round={gone ? "ended" : res?.round_state}
+        data-unseen={i.unseen || undefined}
+        data-waited={i.waited || undefined}
+        data-leaving={gone || undefined}
+        key={r.run_id}
+      >
+        <button
+          data-testid={`helper-${res?.name || r.run_id}`}
+          type="button"
+          className="ah-bg-main"
+          onClick={() => spinoffs?.open(r)}
+          title={txt.help.open}
+        >
+          <span className="ah-bg-mark" aria-hidden="true">
+            {gone ? (
+              <Icon name="check" className="ah-bg-gone" />
+            ) : (
+              <HelperMark item={i} />
+            )}
+          </span>
+          <span className="ah-bg-lines">
+            <span className="ah-bg-line">
+              <span className="ah-bg-name">
+                {res?.name || r.title || r.run_id}
+                {res?.name && r.title ? (
+                  <span className="ah-bg-task"> · {r.title}</span>
+                ) : null}
+              </span>
+              {res?.rounds ? (
+                <span className="ah-bg-meta">
+                  {txt.help.rounds(res.rounds)}
+                </span>
+              ) : null}
+            </span>
+            <span className="ah-bg-sub" data-testid="helper-facts">
+              <span className="ah-bg-word" data-tone={word.tone}>
+                {word.text}
+              </span>
+              {detail ? (
+                <>
+                  <span className="ah-bg-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="ah-bg-detail" data-testid="helper-report">
+                    {detail}
+                  </span>
+                </>
+              ) : null}
+            </span>
+          </span>
+        </button>
+        {i.wait && !gone ? (
+          <ControlButton
+            data-testid="stop-wait"
+            className="ah-bg-stop"
+            size="inline"
+            variant="quiet"
+            aria-label={txt.stopWait(res?.name || r.title || r.run_id)}
+            title={txt.stopWaitTitle}
+            isDisabled={!view.canControl || view.pending}
+            onPress={() => i.wait && void view.control(i.wait)}
+          >
+            <Icon name="stop" />
+          </ControlButton>
+        ) : (
+          <span className="ah-bg-gap" aria-hidden="true" />
+        )}
+      </div>
+    );
+  };
+  const helpPanel = (
+    <>
+      {facts.spin.stale ? (
+        <p className="ah-bg-unavail" role="status">
+          {txt.stale}
+        </p>
+      ) : null}
+      {/* biome-ignore lint/a11y/useSemanticElements: A labelled group of rows, not a form fieldset. */}
+      <div className="ah-bg-group" role="group" aria-label={txt.help.running}>
+        {facts.help.items.map((i) => helpRow(i))}
+        {helpLeaving.map((run) =>
+          helpRow({ run, live: false, waited: false, attention: false }, true),
+        )}
+      </div>
+      <p className="ah-bg-note" data-testid="helpers-note">
+        <Icon name="info" />
+        <span>{txt.help.note}</span>
+      </p>
+    </>
+  );
   const procRow = (p: ProcessRecord) => {
     const live = processLive(p);
     const exit = live ? undefined : recordExit(p);
@@ -886,7 +1059,11 @@ export function BackgroundStrip({
               </div>
               {kinds.map((kind) => (
                 <TabPanel id={kind} key={kind} className="ah-bg-pop-body">
-                  {kind === "spin" ? spinPanel : procPanel}
+                  {kind === "spin"
+                    ? spinPanel
+                    : kind === "help"
+                      ? helpPanel
+                      : procPanel}
                 </TabPanel>
               ))}
             </Tabs>
@@ -900,6 +1077,35 @@ export function BackgroundStrip({
           aria-label={txt.background}
         >
           {kinds.map((kind) => {
+            if (kind === "help")
+              return (
+                <ControlButton
+                  data-testid="background-helpers"
+                  data-count={facts.help.items.length}
+                  data-working={facts.help.working}
+                  data-unseen={facts.help.unseen}
+                  key={kind}
+                  size="inline"
+                  presentation="pill"
+                  ref={(node) => {
+                    if (node) pills.current.help = node;
+                  }}
+                  className={`ah-bg-badge ah-bg-chip${facts.help.busy ? "" : " idle"}`}
+                  data-kind="help"
+                  aria-expanded={panel === "help"}
+                  aria-label={sentence("help")}
+                  title={sentence("help")}
+                  onPress={() =>
+                    view.setPanel(panel === "help" ? null : "help")
+                  }
+                >
+                  <Icon name="bots" className="ah-bg-kind-ic" />
+                  <span className="ah-bg-chip-name">{txt.helpers}</span>
+                  {facts.help.items.length ? (
+                    <HelperMarks items={facts.help.items} />
+                  ) : null}
+                </ControlButton>
+              );
             const f = facts[kind];
             const idle =
               kind === "proc" && !facts.proc.known
@@ -1123,6 +1329,64 @@ function WaitMarks({ marks }: { marks: SpinoffItem[] }) {
           {count}
         </span>
       ))}
+    </span>
+  );
+}
+
+/** A named worker's round in words: under way, reported and not yet seen,
+ * waiting for the main agent, or resting after Taskfleet's idle expiry. */
+export function helperWord(i: SpinoffItem): {
+  text: string;
+  tone: "wait" | "busy" | "ok" | "muted";
+} {
+  const t = textNow(backgroundStripText);
+  const r = i.run.resident;
+  let word: { text: string; tone: "wait" | "busy" | "ok" | "muted" };
+  if (!r || i.run.state === "unknown")
+    word = { text: t.state.unknown, tone: "muted" };
+  else if (r.round_state === "working")
+    word = { text: t.help.working(r.rounds + 1), tone: "busy" };
+  else if (i.unseen) word = { text: t.help.reported(r.rounds), tone: "wait" };
+  else if (r.round_state === "dormant")
+    word = { text: t.help.dormant, tone: "muted" };
+  else word = { text: t.help.waiting, tone: "muted" };
+  if (r?.unlanded)
+    word = { ...word, text: `${word.text} · ${t.help.unlanded}` };
+  return i.waited
+    ? { text: t.state.waitedWith(word.text), tone: "wait" }
+    : word;
+}
+
+/** The Pallot marks for a named worker: a working ball while its round is
+ * under way, an accent ring with a centre for a report not yet seen, the
+ * muted ball while it waits for the main agent; the wait ring as always. */
+function HelperMark({ item }: { item: SpinoffItem }) {
+  const r = item.run.resident;
+  return (
+    <WorkerMark
+      kind={
+        item.run.state === "unknown" || !r
+          ? "unknown"
+          : r.round_state === "working"
+            ? "working"
+            : item.unseen
+              ? "reported"
+              : "waiting_parent"
+      }
+      waited={item.waited}
+    />
+  );
+}
+
+function HelperMarks({ items }: { items: SpinoffItem[] }) {
+  return (
+    <span className="ah-bg-marks" aria-hidden="true">
+      {items.slice(0, MAX_MARKS).map((i) => (
+        <HelperMark item={i} key={i.run.run_id} />
+      ))}
+      {items.length > MAX_MARKS ? (
+        <span className="ah-bg-more">+{items.length - MAX_MARKS}</span>
+      ) : null}
     </span>
   );
 }

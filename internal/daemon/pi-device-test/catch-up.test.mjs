@@ -243,3 +243,13 @@ test('the catch-up names the stop the person\'s card named, and says nothing whe
   assert.match(told.content, /Vienti valmis\. Törmäys\./, 'the agent reads the summary the person saw');
   assert.deepEqual(told.details.spinoffs, [{ run_id: ids.own, state: 'not_merged', title: 'csv', summary: 'Vienti valmis.\n\nTörmäys.', ended_at: '2026-10-26T18:41:00Z', branch: 'wt/csv' }]);
 });
+
+test('a named worker\'s round report is told by its round and name, and a told round is keyed by it', () => {
+  const run = { run_id: '01m531x6y92ggdqcmb1exzmn20', title: 'Prototyyppi', state: 'round_reported', round: 3, name: 'proto-a', summary: 'Kierros 3 valmis.' };
+  const msg = catchUpMessage([], { settled: [run], rearm: [], available: true }, { cause: 'idle', at: '2026-10-26T18:20:00Z' }, false, 'settled');
+  assert.match(msg.content, /named worker `proto-a`\) reported round 3 and waits for your next message \(`taskfleet run message proto-a`\)/);
+  assert.match(msg.content, /Taskfleet's summary: Kierros 3 valmis\./);
+  assert.deepEqual(msg.details.spinoffs, [{ run_id: run.run_id, state: 'round_reported', title: 'Prototyyppi', round: 3, name: 'proto-a', summary: 'Kierros 3 valmis.' }]);
+  const told = branchFacts([{ type: 'custom_message', customType: msg.customType, details: msg.details }]);
+  assert.deepEqual([...told.runs], [`${run.run_id}:round_reported:3`], 'the next round is news again');
+});

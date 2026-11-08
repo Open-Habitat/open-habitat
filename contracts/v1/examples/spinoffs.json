@@ -17,6 +17,27 @@
       "awaiting_input": false,
       "profile": "example-profile",
       "brief": "Update the README examples."
+    },
+    {
+      "run_id": "01m521vczarx5bkx086n64t1t3",
+      "title": "Prototype rounds",
+      "created_at": "2026-10-16T11:00:00Z",
+      "state": "waiting_parent",
+      "summary": "",
+      "preserved": false,
+      "branch": "",
+      "worktree": "",
+      "source_branch": "main",
+      "harness": "claude",
+      "awaiting_input": false,
+      "resident": {
+        "name": "proto-example",
+        "round_state": "waiting",
+        "rounds": 2,
+        "report": "Round 2: three riffs of A; recommends A1.",
+        "reported_at": "2026-10-16T11:40:00Z",
+        "landed_round": 2
+      }
     }
   ],
   "transcripts": [

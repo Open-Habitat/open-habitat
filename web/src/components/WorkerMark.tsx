@@ -10,7 +10,8 @@ export type WorkerMarkKind =
   | "failed"
   | "unmerged"
   | "checking"
-  | "answer";
+  | "answer"
+  | "reported";
 
 /** State and the parent's wait are independent: an idle worker can have both. */
 export function WorkerMark({

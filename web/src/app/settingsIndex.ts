@@ -632,6 +632,20 @@ export const settingsSections = [
         desc: "Katso, mihin keskustelun konteksti kuluu, ja tiivistä keskustelu omalla ohjeella.",
       },
       {
+        id: "named-workers",
+        label: "Avustajat",
+        kw: [
+          "avustaja",
+          "helper",
+          "nimetty worker",
+          "named worker",
+          "kierros",
+          "round",
+          "taskfleet",
+        ],
+        desc: "Nimetyt workerit tekevät työnsä kierroksina ja odottavat pääagentin seuraavaa viestiä.",
+      },
+      {
         id: "worker-row-sentence",
         label: "Workerin työ rivillä",
         kw: [

@@ -114,6 +114,17 @@ const fi = {
         "Valinta kirjoitetaan repon juuren .open-habitat.yaml-tiedostoon ja commitoidaan saman tien, vain se tiedosto eikä pushia. Commit tarvitsee Git-identiteetin. Ehdotukset tekee oma mallisi (API-avain tai tilaus, myös pelkkä Claude-tilaus), ja se näkee vain nimen, README:n alun, aloitussivun, kielet ja logon polun; icon: auto lopettaa ehdotukset.",
       caption: "Sivupalkki",
     },
+    "named-workers": {
+      name: "Avustajat",
+      desc: "Avustaja on nimetty worker, joka tekee työnsä kierroksina: se raportoi kierroksen, jää odottamaan ja jatkaa samasta keskustelusta, kun pääagentti lähettää sille seuraavan viestin.",
+      where:
+        "Kirjoituskentän yläpuolella Workerit-pallon vieressä Avustajat-sirussa. Siru avaa avustajien listan, ja rivistä aukeaa avustajan oma keskustelu.",
+      shows:
+        "Jokaisen avustajan kierrokset ja tilan: tekee kierrosta, odottaa pääagenttia, lepää tai uusi raportti, jota et ole vielä avannut. Avustajan raportti herättää pysähtyneen pääkeskustelun. Arkistoitaessa avustajat arkistoituvat keskustelun mukana.",
+      needs:
+        "Taskfleet, jossa on nimetyt workerit (run create --resident). Avustajalle et kirjoita itse: viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta.",
+      caption: "Avustajat",
+    },
     "raise-to-your-turn": {
       name: "Nosta ja Ei nyt",
       desc: "Keskustelu pysyy Sinun vuorosissa, kunnes vastaat tai painat Ei nyt; pelkkä avaaminen ei enää siirrä sitä Hiljaisiin. Hiljaisen keskustelun voit nostaa takaisin Sinun vuoroosi.",
@@ -270,6 +281,17 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "The choice is written to .open-habitat.yaml at the repository's root and committed at once, only that file and no push. The commit needs a Git identity. Suggestions come from your own model (an API key or a subscription, a Claude subscription alone too), and it sees only the name, the beginning of the README, the start page, the languages and the logo's path; icon: auto stops the suggestions.",
       caption: "Sidebar",
+    },
+    "named-workers": {
+      name: "Helpers",
+      desc: "A helper is a named worker that works in rounds: it reports a round, waits, and continues the same conversation when the main agent sends it the next message.",
+      where:
+        "Above the message field, in the Helpers chip beside the Workers pill. The chip opens the list of helpers, and a row opens the helper's own conversation.",
+      shows:
+        "Each helper's rounds and state: working on a round, waiting for the main agent, resting, or a new report you have not opened yet. A helper's report wakes a stopped main conversation. Archiving a conversation archives its helpers with it.",
+      needs:
+        "A Taskfleet with named workers (run create --resident). You do not write to a helper yourself: messages, landing rounds and stopping go through the main agent.",
+      caption: "Helpers",
     },
     "raise-to-your-turn": {
       name: "Raise and Not now",

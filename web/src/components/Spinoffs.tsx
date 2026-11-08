@@ -45,6 +45,11 @@ export const SpinoffContext = createContext<{
   work?: ReadonlyMap<string, WorkerWork>;
   /** One panel note when gh could not say anything about pull requests. */
   workNote?: { text: string; href?: string };
+  /** The person has Avustajat on (Kokeelliset ominaisuudet): named workers
+   * get their own chip beside the Workers pill. */
+  helpers?: boolean;
+  /** Rounds of each named worker the person has seen, by run id. */
+  helpersSeen?: ReadonlyMap<string, number>;
 } | null>(null);
 
 const harnessName = { pi: "Pi", claude: "Claude Code" };
