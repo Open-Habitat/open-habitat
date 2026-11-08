@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
@@ -49,7 +49,7 @@ place should be the same one that list uses. 1440 and 390, light and dark.
 ## Acceptance Criteria
 
 - [x] round 1: today, three directions, view offer and questions for Jari
-- [ ] round 2: riffs on Kortti (beside vs popup, own tab, making public), view offer and questions for Jari
+- [x] round 2: riffs on Kortti (beside vs popup, own tab, making public), view offer and questions for Jari
 
 ## Decision (Jari 2026-11-08, kierros 1)
 
