@@ -9,8 +9,10 @@ import { catalog } from "../i18n";
 // opening VS Code or the text editor, and the top bar's editor button.
 const fi = {
   waitingForYou: "Odottaa sinua",
-  switchToPhoneEditor:
-    "Vaihda puhelimen tekstieditoriin? Tallenna VS Coden muutokset ensin tai hylkää ne jatkamalla.",
+  phoneTitle: "Ikkuna on liian kapea VS Codelle.",
+  phoneBody: "Tallenna VS Codessa ensin (Ctrl+S), jos siellä on muutoksia.",
+  phoneStay: "Pysy VS Codessa",
+  phoneSwitch: "Vaihda puhelimen editoriin",
   fileNotFound: (path: string) => `Tiedostoa ${path} ei löydy työtilasta.`,
   notYetReceived:
     "VS Code ei vielä ottanut tiedostoa vastaan. Yritä hetken päästä uudelleen.",
@@ -35,8 +37,10 @@ const fi = {
 
 export const workspaceEditorText = catalog(fi, {
   waitingForYou: "Waiting for you",
-  switchToPhoneEditor:
-    "Switch to the phone's text editor? Save your VS Code changes first, or continue to discard them.",
+  phoneTitle: "The window is too narrow for VS Code.",
+  phoneBody: "Save in VS Code first (Ctrl+S) if it has changes.",
+  phoneStay: "Stay in VS Code",
+  phoneSwitch: "Switch to the phone editor",
   fileNotFound: (path) => `${path} was not found in the workspace.`,
   notYetReceived: "VS Code did not take the file yet. Try again in a moment.",
   sessionEnded: "Your session has ended. Sign in again.",

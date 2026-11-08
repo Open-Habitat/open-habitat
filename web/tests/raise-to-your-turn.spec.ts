@@ -8,7 +8,7 @@ test.use({
   viewport: { width: 1280, height: 900 },
 });
 
-// Nosta and Ei nyt (raise-to-your-turn, experimental): one mark the person's
+// Nosta and Ei nyt (raise-to-your-turn): one mark the person's
 // daemon keeps, shown alike on two devices (two browser contexts of the same
 // person, each with its own browser storage).
 async function signIn(page: Page) {
@@ -23,20 +23,6 @@ async function device(browser: Browser) {
     viewport: { width: 1280, height: 900 },
   });
   return context.newPage();
-}
-async function switchOn(page: Page) {
-  await page.getByTestId("account-menu-trigger").click();
-  await page.getByTestId("menu-settings").click();
-  await page
-    .getByTestId("settings-navigation")
-    .getByTestId("settings-kokeelliset")
-    .click();
-  const on = page
-    .getByTestId("experimental-raise-to-your-turn-choice")
-    .getByTestId("segment-on");
-  await on.click();
-  await expect(on).toHaveAttribute("aria-pressed", "true");
-  await page.getByTestId("settings-close").click();
 }
 const row = (page: Page, section: string, id: string) =>
   page.getByTestId(section).getByTestId(`agent-item-${id}`);
@@ -72,15 +58,8 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
     timeout: 30000,
   });
-  // Off, the reply this page showed is answered by showing it, and the
-  // rows offer no up or down.
   const quietHere = row(page, "rail-quiet", id);
-  await expect(quietHere).toBeVisible({ timeout: 15000 });
-  await quietHere.hover();
-  await expect(quietHere.getByTestId("rail-raise-conversation")).toHaveCount(0);
-
-  await switchOn(page);
-  // On, it waits read in Sinun vuorosi with a ring, and only the rail row
+  // By default it waits read in Sinun vuorosi with a ring, and only the rail row
   // says Ei nyt: the composer has no turn button (Jari 7.11.2026).
   const yours = row(page, "rail-yours", id);
   await expect(yours).toBeVisible();

@@ -2,8 +2,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./lab-host";
 
 // The worker-row sentence in the rail, through the real gateway, daemon and
-// native Git: a worktree conversation says its work only once the person has
-// switched the experimental feature on, from the snapshot's own Git summary.
+// native Git: a worktree conversation says its work by default,
+// from the snapshot's own Git summary.
 
 async function session(page: Page) {
   const s = await (await page.request.get("/auth/session")).json();
@@ -13,7 +13,7 @@ async function session(page: Page) {
   };
 }
 
-test("@worker-row-sentence a worktree conversation in the rail says its work only while the feature is on", async ({
+test("@worker-row-sentence a worktree conversation in the rail says its work by default", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -47,11 +47,11 @@ test("@worker-row-sentence a worktree conversation in the rail says its work onl
   await expect(main).toContainText("Commitoin muutoksen.", { timeout: 30000 });
   const rail = page.getByRole("navigation");
   const work = rail.getByTestId("worktree-work");
-  // A finished worktree conversation rests in Hiljaiset. Keep this
+  // A finished worktree conversation stays in Your turn. Keep this
   // conversation in Running with a synthetic waiting worker to exercise
   // the sentence after native Git has observed the commit.
   await expect(
-    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree"),
+    rail.getByTestId("rail-yours").locator(".ah-nav-worktree"),
   ).toHaveCount(1);
   const agentId = new URL(page.url()).searchParams.get("conversation");
   await page.route("**/api/v1/snapshot", async (route) => {
@@ -63,17 +63,6 @@ test("@worker-row-sentence a worktree conversation in the rail says its work onl
   });
   await page.reload();
   await expect(rail.locator(".ah-nav-worktree")).toHaveCount(1);
-  await expect(work).toHaveCount(0);
-
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "worker-row-sentence": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
-  await page.reload();
   // One commit ahead of its base: the row says it has produced something.
   await expect(work).toHaveCount(1, { timeout: 20000 });
   await expect(work).toHaveAttribute("data-tone", "work");

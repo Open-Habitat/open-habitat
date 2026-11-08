@@ -26,7 +26,7 @@ export function EditorFileTree({
   openPath?: string;
   reveal?: FileRef;
   dirty: boolean;
-  onLoad: (path: string) => void;
+  onLoad: (path: string, background?: boolean) => void;
   onOpen: (path: string) => void;
   onClose: () => void;
 }) {
@@ -49,6 +49,33 @@ export function EditorFileTree({
     });
   }, [openPath, reveal]);
   const rows = treeRows(directories, expanded, filter);
+  // Read only the displayed branches (including compacted ancestors), not a
+  // recursive workspace watch. Filtering must not freeze the underlying tree.
+  const refreshPaths = useRef(new Set<string>());
+  const paths = new Set([""]);
+  for (const row of treeRows(directories, expanded, "")) {
+    const parts = row.path.split("/");
+    for (let i = 1; i < parts.length; i++)
+      paths.add(parts.slice(0, i).join("/"));
+    if (row.kind === "directory" && expanded.has(row.path)) paths.add(row.path);
+  }
+  refreshPaths.current = paths;
+  useEffect(() => {
+    if (!visible) return;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      for (const path of refreshPaths.current) onLoad(path, true);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 3000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [visible, onLoad]);
   useEffect(() => {
     if (
       !visible ||

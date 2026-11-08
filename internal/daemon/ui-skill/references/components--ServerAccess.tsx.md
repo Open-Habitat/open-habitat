@@ -3,10 +3,11 @@
 Generated from web/src/components/ServerAccess.tsx; do not edit.
 
 ```tsx
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import {
   type AccessEntry,
+  type AccessTeam,
   type AccessView,
   accessRefusal,
   type GitHubAccount,
@@ -14,10 +15,17 @@ import {
   loginShape,
   type OnboardingReceipt,
   splitLogins,
+  teamInput,
 } from "../app/serverAccess";
 import { ControlButton, Segmented } from "./ControlElements";
-import { Icon } from "./Icon";
-import { StatusMark } from "./Status";
+import { Icon, type IconName } from "./Icon";
+import {
+  PeopleList,
+  PeopleRow,
+  SectionCard,
+  SectionSubhead,
+} from "./ServerSection";
+import { InlineNotice, StatusMark } from "./Status";
 import "./ServerAccess.css";
 import { formatDate, liveText } from "../i18n";
 import { serverAccessText } from "../text/serverAccess";
@@ -27,12 +35,22 @@ const txt = liveText(serverAccessText);
 // Asetukset › Käyttäjät ja pääsy (proto-admin-server-onboarding round 6, Yksi
 // lista): one row per GitHub account whose state is its stage. The broker
 // decides; a change shows as waiting until its reply, and as uncertain when
-// no definite reply came.
+// no definite reply came. A GitHub team is added in the same field
+// (proto-org-admission, Syy riveillä): rows then show their reasons as
+// chips, and someone the latest sign-in found gone from the team is raised
+// as a notice above the list.
 
 /** A change the browser sent and the host has not settled. login and name
  * come from the lookup, for a row the list does not have yet. */
 export type PendingChange = {
-  kind: "add" | "restore" | "remove" | "grant" | "revoke" | "uncertain";
+  kind:
+    | "add"
+    | "restore"
+    | "remove"
+    | "forget"
+    | "grant"
+    | "revoke"
+    | "uncertain";
   login?: string;
   name?: string;
 };
@@ -52,11 +70,18 @@ const day = (iso?: string) => {
   });
 };
 
-/** Withdrawn, a deny with no admission behind it, or a designation whose
- * admission is gone: the person cannot sign in and the row is no longer an
- * open admission. */
+/** Withdrawn, a deny with no admission behind it, a designation whose
+ * admission is gone, or a team row the latest sign-in did not confirm: the
+ * person cannot sign in and the row is no longer an open admission. */
 const closed = (e: AccessEntry) =>
-  e.state === "withdrawn" || e.state === "denied" || e.state === "unlisted";
+  e.state === "withdrawn" ||
+  e.state === "denied" ||
+  e.state === "unlisted" ||
+  e.state === "left" ||
+  e.state === "unconfirmed";
+/** A team row whose latest sign-in found the person in no listed team. */
+const leaver = (e: AccessEntry) =>
+  e.source === "team" && e.state === "left" && !e.denied;
 /** A deny on a row that still admits means a withdrawal was not confirmed. */
 const unfinished = (e: AccessEntry) => e.denied && !closed(e);
 
@@ -107,6 +132,12 @@ function StateMark({ r }: { r: Row }) {
     return <StatusMark data-testid={id} tone="warning" label={txt.removing} />;
   if (r.state === "unlisted")
     return <StatusMark data-testid={id} tone="warning" label={txt.noAccess} />;
+  if (r.state === "left")
+    return <StatusMark data-testid={id} tone="warning" label={txt.leftMark} />;
+  if (r.state === "unconfirmed")
+    return (
+      <StatusMark data-testid={id} tone="warning" label={txt.unconfirmedMark} />
+    );
   if (closed(r))
     return <StatusMark data-testid={id} tone="warning" label={txt.removed} />;
   if (r.state === "allowed")
@@ -151,7 +182,51 @@ function Facts({ r }: { r: Row }) {
     );
   if (r.state === "withdrawn" && r.at)
     items.push(<span key="w">{txt.removedOn(day(r.at))}</span>);
+  if (r.state === "left" && r.at)
+    items.push(<span key="l">{txt.leftOn(day(r.at))}</span>);
+  if (r.state === "unconfirmed")
+    items.push(<span key="c">{txt.unconfirmedFact}</span>);
   return items.length ? <span className="sa-facts">{items}</span> : null;
+}
+
+// Why the person may sign in, one chip per reason: the server's settings,
+// one by one, and each team the latest sign-in confirmed (or found them
+// gone from).
+function Reasons({ r }: { r: Row }) {
+  const chips: [string, IconName, string, string][] = [];
+  if (r.source === "operator")
+    chips.push(["server", "server", "server", txt.chipServer]);
+  if (r.source === "site_admin")
+    chips.push([
+      "individual",
+      "user",
+      r.state === "withdrawn" ? "removed" : "individual",
+      r.state === "withdrawn" ? txt.chipIndividualRemoved : txt.chipIndividual,
+    ]);
+  for (const name of r.teams ?? [])
+    chips.push(
+      r.team_state === "member"
+        ? [`team-${name}`, "github", "team", name]
+        : r.team_state === "left"
+          ? [`left-${name}`, "github", "left", txt.chipLeft(name)]
+          : [
+              `unconfirmed-${name}`,
+              "github",
+              "unconfirmed",
+              txt.chipUnconfirmed(name),
+            ],
+    );
+  if (!chips.length) return null;
+  return (
+    <span className="sa-chips" data-testid={`access-reasons-${r.id}`}>
+      {chips.map(([key, icon, kind, words]) => (
+        <span key={key} className="sa-chip" data-kind={kind}>
+          <Icon name={icon} />
+          {words}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 // The sign-in receipt (ADR 0030), short: how many defaults went to the
@@ -247,6 +322,19 @@ function RowAction({
     );
   if (r.source === "operator")
     return <span className="sa-note">{txt.fromServer}</span>;
+  // A team row that no longer admits is let back in one by one.
+  if (r.state === "left" || r.state === "unconfirmed")
+    return (
+      <ControlButton
+        data-testid={`access-allow-${r.id}`}
+        size="row"
+        variant="secondary"
+        isDisabled={!!r.pending || locked || addLocked}
+        onPress={() => onRestore(r)}
+      >
+        {txt.allowAsPerson}
+      </ControlButton>
+    );
   if (r.state === "withdrawn")
     return (
       <ControlButton
@@ -337,7 +425,8 @@ type Check =
       user: GitHubAccount;
       text?: string;
     }
-  | { kind: "batch"; items: BatchItem[]; sending: boolean };
+  | { kind: "batch"; items: BatchItem[]; sending: boolean }
+  | { kind: "team" | "teamSending"; name: string };
 
 /** What the host settled for one sent addition, in the administrator's words
  * when it was refused. */
@@ -415,16 +504,20 @@ function BatchLine({ item }: { item: BatchItem }) {
 
 function AddLogin({
   rows,
+  teams,
   disabled,
   reason,
   lookup,
   onAdd,
+  onAddTeam,
 }: {
   rows: Row[];
+  teams: AccessTeam[];
   disabled: boolean;
   reason?: string;
   lookup: (login: string) => Promise<LookupResult>;
   onAdd: (user: GitHubAccount, restore: boolean) => Promise<AddOutcome>;
+  onAddTeam?: (name: string) => Promise<AddOutcome>;
 }) {
   const [raw, setRaw] = useState("");
   const [check, setCheck] = useState<Check>({ kind: "idle" });
@@ -525,8 +618,42 @@ function AddLogin({
     setRaw("");
     setCheck({ kind: "batch", items: next, sending: false });
   };
+  // A name with a slash once a profile address is stripped is a team,
+  // added on its own.
+  const teamLike = logins.some((l) => l.includes("/"));
+  const submitTeam = async () => {
+    if (check.kind === "team") {
+      if (!onAddTeam) return;
+      const n = ++asked.current;
+      setCheck({ kind: "teamSending", name: check.name });
+      const outcome = await onAddTeam(check.name);
+      if (n !== asked.current) return;
+      if (outcome.kind === "changed") {
+        setRaw("");
+        setCheck({ kind: "idle" });
+      } else
+        setCheck({
+          kind: "problem",
+          text: outcome.kind === "refused" ? outcome.text : txt.teamUncertain,
+        });
+      return;
+    }
+    const team = teamInput(raw);
+    if (logins.length > 1) setCheck({ kind: "invalid", text: txt.teamMixed });
+    else if (!team || !onAddTeam)
+      setCheck({ kind: "invalid", text: txt.teamShape });
+    else if (
+      teams.some(
+        (t) => `${t.org}/${t.slug}`.toLowerCase() === team.toLowerCase(),
+      )
+    )
+      setCheck({ kind: "invalid", text: txt.teamAlready });
+    else setCheck({ kind: "team", name: team });
+  };
   const submit = async () => {
-    if (disabled) return;
+    if (disabled || check.kind === "teamSending") return;
+    if (check.kind === "team" || (teamLike && check.kind !== "batch"))
+      return submitTeam();
     if (check.kind === "batch") {
       if (batchReady) await sendMany(check.items);
       return;
@@ -553,8 +680,12 @@ function AddLogin({
     );
   };
   const ready =
-    check.kind === "found" || check.kind === "restore" || batchReady;
-  const sending = check.kind === "batch" && check.sending;
+    check.kind === "found" ||
+    check.kind === "restore" ||
+    check.kind === "team" ||
+    batchReady;
+  const sending =
+    (check.kind === "batch" && check.sending) || check.kind === "teamSending";
   const allowable =
     check.kind === "batch"
       ? check.items.filter((i) => i.kind === "found" || i.kind === "restore")
@@ -614,11 +745,13 @@ function AddLogin({
           >
             {check.kind === "restore"
               ? txt.restore
-              : check.kind === "batch" && allowable
-                ? txt.allowN(allowable)
-                : ready
-                  ? txt.allow
-                  : txt.check}
+              : check.kind === "team" || check.kind === "teamSending"
+                ? txt.addTeam
+                : check.kind === "batch" && allowable
+                  ? txt.allowN(allowable)
+                  : ready
+                    ? txt.allow
+                    : txt.check}
           </ControlButton>
         </span>
         <span id="access-hint" className="sa-muted">
@@ -642,12 +775,19 @@ function AddLogin({
           </ul>
         ) : check.kind === "checking" ? (
           <span className="sa-muted">{txt.checkingGithub}</span>
+        ) : check.kind === "team" || check.kind === "teamSending" ? (
+          <span className="sa-found" data-testid="access-team-found">
+            <span>
+              <Icon name="github" /> <strong>{check.name}</strong>
+            </span>
+            <span className="sa-muted">{txt.teamFound(check.name)}</span>
+          </span>
         ) : check.kind === "invalid" || check.kind === "problem" ? (
           <span className="sa-bad">
             <Icon name="warning" />
             {check.text}
           </span>
-        ) : check.kind === "idle" ? null : (
+        ) : !("user" in check) ? null : (
           <span className="sa-found">
             <span>
               <strong>{check.user.name || `@${check.user.login}`}</strong>{" "}
@@ -800,6 +940,115 @@ function GrantDialog({
   );
 }
 
+function DetachDialog({
+  team,
+  onConfirm,
+  onClose,
+}: {
+  team: AccessTeam;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const name = `${team.org}/${team.slug}`;
+  return (
+    <ModalOverlay
+      className="ah-overlay"
+      isOpen
+      isDismissable
+      onOpenChange={(open) => !open && onClose()}
+    >
+      <Modal className="ah-modal">
+        <Dialog
+          className="ah-dialog sa-dialog"
+          data-testid="access-detach-dialog"
+        >
+          <Heading slot="title">{txt.detachQuestion(name)}</Heading>
+          <ul className="sa-consequences">
+            <li>
+              <Icon name="cross" />
+              <span>{txt.detachEnds}</span>
+            </li>
+            <li>
+              <Icon name="user" />
+              <span>{txt.detachKeeps}</span>
+            </li>
+          </ul>
+          <div className="ah-dialog-actions">
+            <ControlButton size="page" variant="secondary" onPress={onClose}>
+              {txt.cancel}
+            </ControlButton>
+            <ControlButton
+              data-testid="access-detach-confirm"
+              size="page"
+              variant="danger"
+              onPress={() => {
+                onConfirm();
+                onClose();
+              }}
+            >
+              {txt.detachConfirm}
+            </ControlButton>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
+/** One listed team under the field: its members on this page, when it was
+ * added, and whether GitHub answered the latest sign-in that asked. */
+function TeamLine({
+  team,
+  members,
+  busy,
+  locked,
+  onDetach,
+}: {
+  team: AccessTeam;
+  members: number;
+  busy?: "remove" | "uncertain";
+  locked: boolean;
+  onDetach: () => void;
+}) {
+  const name = `${team.org}/${team.slug}`;
+  return (
+    <div
+      className="sa-team"
+      data-testid={`access-team-${team.org_id}-${team.slug}`}
+      data-pinned={team.pinned}
+      data-unavailable={team.unavailable_at ? "" : undefined}
+    >
+      <span className="sa-team-line">
+        <Icon name="github" />
+        <span>{txt.teamLine(<code>{name}</code>, members, day(team.at))}</span>
+        {busy === "remove" ? (
+          <StatusMark tone="info" animated="running" label={txt.detaching} />
+        ) : busy === "uncertain" ? (
+          <StatusMark tone="warning" label={txt.uncertain} />
+        ) : (
+          <ControlButton
+            data-testid={`access-detach-${team.org_id}-${team.slug}`}
+            size="inline"
+            variant="quiet"
+            isDisabled={locked}
+            aria-label={txt.detachNamed(name)}
+            onPress={onDetach}
+          >
+            {txt.detach}
+          </ControlButton>
+        )}
+      </span>
+      {!team.pinned && <span className="sa-muted">{txt.teamWaiting}</span>}
+      {team.unavailable_at && (
+        <span className="sa-bad" role="status">
+          <Icon name="warning" />
+          {txt.teamUnavailable(day(team.unavailable_at))}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ServerAccess({
   view,
   pending = {},
@@ -810,6 +1059,11 @@ export function ServerAccess({
   onRemove,
   onRole,
   onRefresh,
+  onAddTeam,
+  onRemoveTeam,
+  onForget,
+  teamPending = {},
+  children,
 }: {
   view: AccessView;
   pending?: Record<string, PendingChange>;
@@ -822,10 +1076,20 @@ export function ServerAccess({
   /** Designate the person as administrator, or revoke that designation. */
   onRole?: (entry: AccessEntry, administrator: boolean) => void;
   onRefresh: () => void;
+  /** List organisation/team as an admission source. */
+  onAddTeam?: (name: string) => Promise<AddOutcome>;
+  onRemoveTeam?: (team: AccessTeam) => void;
+  /** Dismiss a leaver's notice. */
+  onForget?: (entry: AccessEntry) => void;
+  /** Team removals in flight, by org_id/slug. */
+  teamPending?: Record<string, "remove" | "uncertain">;
+  /** Further rows of the section's first card, such as shared links. */
+  children?: ReactNode;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [removing, setRemoving] = useState<Row>();
   const [granting, setGranting] = useState<Row>();
+  const [detaching, setDetaching] = useState<AccessTeam>();
   const open = view.mode === "any";
   const rows: Row[] = view.entries.map((e) => ({
     ...e,
@@ -856,128 +1120,216 @@ export function ServerAccess({
     : !view.runtime_admission
       ? txt.addDisabled
       : undefined;
+  // Reasons are worth a chip once more than one kind can exist.
+  const reasons = view.teams.length > 0 || rows.some((r) => r.team_state);
+  const leavers = rows.filter((r) => leaver(r) && !r.pending);
+  const canAllow = !open && canWrite && view.runtime_admission;
   return (
-    <div className="sa" data-testid="server-access" data-mode={view.mode}>
-      {open ? (
-        <p
-          className="s-row sa-open"
-          data-testid="access-open"
-          data-settings-row="access-add"
-          tabIndex={-1}
-        >
-          <Icon name="info" />
-          {txt.open}
-        </p>
-      ) : (
-        <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
-          <AddLogin
-            rows={rows}
-            disabled={!canWrite || !view.runtime_admission}
-            reason={addReason}
-            lookup={lookup}
-            onAdd={onAdd}
-          />
-        </div>
-      )}
-      <div
-        className="s-row sa-head"
-        data-settings-row="access-people"
-        tabIndex={-1}
-      >
-        <strong>
-          {txt.people} <span className="sa-muted">{rows.length}</span>
-        </strong>
-        <Segmented
-          data-testid="access-filter"
-          label={txt.show}
-          size="row"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { id: "all", label: txt.all },
-            { id: "joined", label: txt.joined(count("joined")) },
-            { id: "allowed", label: txt.allowed(count("allowed")) },
-            { id: "withdrawn", label: txt.withdrawn(count("withdrawn")) },
-          ]}
-        />
-      </div>
-      <ul className="sa-list" data-testid="access-list">
-        {shown.map((r) => (
-          <li
-            key={r.id}
-            className="sa-row"
-            data-testid={`access-row-${r.id}`}
-            data-state={unfinished(r) ? "unfinished" : stage(r)}
-            data-pending={r.pending?.kind}
-            data-admin={r.administrator_role?.state}
-          >
-            <span className="sa-main">
-              <span className="sa-who">
-                <Who r={r} />
-                {r.name && <span className="sa-muted">{r.name}</span>}
-                <StateMark r={r} />
-              </span>
-              <Facts r={r} />
-              {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
-              {r.site_key_copy && (
-                <span
-                  className="sa-receipt"
-                  data-testid={`access-ai-given-${r.id}`}
-                >
-                  {txt.aiGiven(day(r.site_key_copy.at))}
-                  {!r.site_key_copy.current && txt.earlierKey}
-                </span>
-              )}
-              {r.state === "withdrawn" && r.username && !r.pending && (
-                <span className="sa-muted">
-                  {txt.unixRemains(<code>{r.username}</code>)}
-                </span>
-              )}
-              {problem?.id === r.id && !r.pending && (
-                <span className="sa-bad" role="alert">
-                  <Icon name="warning" />
-                  {problem.text}
-                </span>
-              )}
-            </span>
-            <span className="sa-act">
-              {onRole && (
-                <RoleAction
-                  r={r}
-                  locked={!canWrite}
-                  onGrant={setGranting}
-                  onRevoke={(x) => onRole(x, false)}
-                />
-              )}
-              <RowAction
-                r={r}
-                locked={open || !canWrite}
-                addLocked={!view.runtime_admission}
-                onRemove={setRemoving}
-                onRestore={(x) =>
-                  void onAdd(
-                    { id: x.id, login: x.login_hint ?? "", name: x.name ?? "" },
-                    true,
-                  )
-                }
-                onRefresh={onRefresh}
+    <div
+      className="sa s-stack"
+      data-testid="server-access"
+      data-mode={view.mode}
+    >
+      <SectionCard>
+        {leavers.length > 0 && (
+          <div className="s-row sa-leavers">
+            {leavers.map((r) => (
+              <InlineNotice
+                key={r.id}
+                data-testid={`access-leaver-${r.id}`}
+                tone="warning"
+                title={txt.leaverTitle(who(r), (r.teams ?? []).join(", "))}
+                description={txt.leaverDetail(day(r.at))}
+                actions={[
+                  ...(canAllow
+                    ? [
+                        {
+                          label: txt.allowAsPerson,
+                          testId: `access-leaver-allow-${r.id}`,
+                          onPress: () =>
+                            void onAdd(
+                              {
+                                id: r.id,
+                                login: r.login_hint ?? "",
+                                name: r.name ?? "",
+                              },
+                              false,
+                            ),
+                        },
+                      ]
+                    : []),
+                  ...(onForget && canWrite
+                    ? [
+                        {
+                          label: txt.dismiss,
+                          testId: `access-leaver-dismiss-${r.id}`,
+                          onPress: () => onForget(r),
+                        },
+                      ]
+                    : []),
+                ]}
               />
-            </span>
-          </li>
-        ))}
-        {!shown.length && <li className="sa-row sa-muted">{txt.nobody}</li>}
-      </ul>
-      {problem && !rows.some((r) => r.id === problem.id) && (
-        <p className="s-row sa-bad" role="alert" data-testid="access-problem">
-          <Icon name="warning" />
-          {problem.text}
-        </p>
-      )}
+            ))}
+          </div>
+        )}
+        {open ? (
+          <p
+            className="s-row sa-open"
+            data-testid="access-open"
+            data-settings-row="access-add"
+            tabIndex={-1}
+          >
+            <Icon name="info" />
+            {txt.open}
+          </p>
+        ) : (
+          <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
+            <AddLogin
+              rows={rows}
+              teams={view.teams}
+              disabled={!canWrite || !view.runtime_admission}
+              reason={addReason}
+              lookup={lookup}
+              onAdd={onAdd}
+              onAddTeam={onAddTeam}
+            />
+            {view.teams.map((t) => (
+              <TeamLine
+                key={`${t.org_id}/${t.slug}`}
+                team={t}
+                members={
+                  rows.filter(
+                    (r) =>
+                      r.team_state === "member" &&
+                      r.teams?.includes(`${t.org}/${t.slug}`),
+                  ).length
+                }
+                busy={teamPending[`${t.org_id}/${t.slug}`]}
+                locked={!canWrite || !onRemoveTeam}
+                onDetach={() => setDetaching(t)}
+              />
+            ))}
+          </div>
+        )}
+        {children}
+      </SectionCard>
+      <SectionSubhead
+        aside={
+          <Segmented
+            data-testid="access-filter"
+            label={txt.show}
+            size="row"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { id: "all", label: txt.all },
+              { id: "joined", label: txt.joined(count("joined")) },
+              { id: "allowed", label: txt.allowed(count("allowed")) },
+              { id: "withdrawn", label: txt.withdrawn(count("withdrawn")) },
+            ]}
+          />
+        }
+      >
+        {txt.people} <span className="s-count">{rows.length}</span>
+      </SectionSubhead>
+      <SectionCard>
+        <PeopleList
+          row="access-people"
+          testId="access-list"
+          actions
+          columns={[txt.person, txt.role]}
+        >
+          {shown.map((r) => (
+            <PeopleRow
+              key={r.id}
+              testId={`access-row-${r.id}`}
+              data-state={unfinished(r) ? "unfinished" : stage(r)}
+              data-pending={r.pending?.kind}
+              data-admin={r.administrator_role?.state}
+              name={<Who r={r} />}
+              detail={
+                <>
+                  {r.name && <span className="sa-muted">{r.name}</span>}
+                  {reasons && <Reasons r={r} />}
+                  <Facts r={r} />
+                  {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
+                  {r.site_key_copy && (
+                    <span
+                      className="sa-receipt"
+                      data-testid={`access-ai-given-${r.id}`}
+                    >
+                      {txt.aiGiven(day(r.site_key_copy.at))}
+                      {!r.site_key_copy.current && txt.earlierKey}
+                    </span>
+                  )}
+                  {r.state === "withdrawn" && r.username && !r.pending && (
+                    <span className="sa-muted">
+                      {txt.unixRemains(<code>{r.username}</code>)}
+                    </span>
+                  )}
+                  {problem?.id === r.id && !r.pending && (
+                    <span className="sa-bad" role="alert">
+                      <Icon name="warning" />
+                      {problem.text}
+                    </span>
+                  )}
+                </>
+              }
+              cells={[<StateMark key="state" r={r} />]}
+              end={
+                <>
+                  {onRole && (
+                    <RoleAction
+                      r={r}
+                      locked={!canWrite}
+                      onGrant={setGranting}
+                      onRevoke={(x) => onRole(x, false)}
+                    />
+                  )}
+                  <RowAction
+                    r={r}
+                    locked={open || !canWrite}
+                    addLocked={!view.runtime_admission}
+                    onRemove={setRemoving}
+                    onRestore={(x) =>
+                      void onAdd(
+                        {
+                          id: x.id,
+                          login: x.login_hint ?? "",
+                          name: x.name ?? "",
+                        },
+                        x.state === "withdrawn",
+                      )
+                    }
+                    onRefresh={onRefresh}
+                  />
+                </>
+              }
+            />
+          ))}
+          {!shown.length && (
+            <li className="ah-people-row sa-muted">{txt.nobody}</li>
+          )}
+        </PeopleList>
+        {problem && !rows.some((r) => r.id === problem.id) && (
+          <p className="s-row sa-bad" role="alert" data-testid="access-problem">
+            <Icon name="warning" />
+            {problem.text}
+          </p>
+        )}
+      </SectionCard>
       {removing && (
         <RemoveDialog
           r={removing}
           onConfirm={() => onRemove(removing)}
           onClose={() => setRemoving(undefined)}
+        />
+      )}
+      {detaching && onRemoveTeam && (
+        <DetachDialog
+          team={detaching}
+          onConfirm={() => onRemoveTeam(detaching)}
+          onClose={() => setDetaching(undefined)}
         />
       )}
       {granting && onRole && (

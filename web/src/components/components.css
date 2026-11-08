@@ -4882,7 +4882,7 @@ h2.ah-rail-section-head {
   border: 1.5px solid var(--ah-faint);
   background: transparent;
 }
-/* Raise and Ei nyt (raise-to-your-turn, experimental): a reply read but not
+/* Raise and Ei nyt (raise-to-your-turn): a reply read but not
    answered keeps its turn as a ring. A raised row's mark is its agent's
    state; the raise itself shows only in its place and words. */
 .ah-rail .ah-ball-you[data-turn="read"] {

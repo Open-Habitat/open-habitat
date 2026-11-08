@@ -2,27 +2,16 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import MarkdownRenderer from "./MarkdownRenderer";
 
-const feature = vi.hoisted(() => ({ enabled: false }));
-vi.mock("../app/accountPreferences", () => ({
-  useExperimentalFeature: () => feature.enabled,
-}));
-afterEach(() => {
-  cleanup();
-  feature.enabled = false;
-});
+afterEach(cleanup);
 
-it("is opt-in and only offers preview for explicitly labelled Markdown", () => {
+it("offers preview by default only for explicitly labelled Markdown", () => {
   const text = "```md\n# Draft\n```\n\n```js\n# Code\n```\n\n```\n# Plain\n```";
-  const view = render(<MarkdownRenderer text={text} />);
-  expect(screen.queryByTestId("markdown-preview-toggle")).toBeNull();
-  feature.enabled = true;
-  view.rerender(<MarkdownRenderer text={`${text}\n`} />);
+  render(<MarkdownRenderer text={text} />);
   expect(screen.getAllByTestId("markdown-preview-toggle")).toHaveLength(1);
   expect(screen.queryByRole("heading")).toBeNull();
 });
 
 it("keeps source copying, selection and the toggle mounted across preview and streaming updates", async () => {
-  feature.enabled = true;
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,

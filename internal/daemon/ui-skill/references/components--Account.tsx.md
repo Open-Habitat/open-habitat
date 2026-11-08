@@ -11,9 +11,12 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { AccountKeys } from "../app/AccountKeys";
+import { useAISignIn } from "../app/AISignIn";
+import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
+import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
@@ -38,6 +41,7 @@ import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
 import { RecapSettingsSection } from "../app/RecapSettings";
 import { ServerAdministration } from "../app/ServerAdministration";
+import { ServerConversations } from "../app/ServerConversations";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
@@ -59,6 +63,7 @@ import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
+import { useExplainEntry } from "./ExplainMode";
 import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
@@ -154,6 +159,7 @@ export function AccountShelf({
     return () => window.removeEventListener("nah:work-change", sync);
   }, []);
   const t = useText(accountText);
+  const explain = useExplainEntry();
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
     accountLabel(person.name) === t.ownAccount
@@ -217,6 +223,8 @@ export function AccountShelf({
         placement="top start"
         items={[
           { id: "settings", label: t.settings },
+          // Selitä tämä näkymä: in every view, wherever the person is.
+          ...(explain ? [{ id: explain.id, label: explain.label }] : []),
           ...(onAdministration
             ? [{ id: "administration", label: t.administration }]
             : []),
@@ -224,6 +232,7 @@ export function AccountShelf({
         ]}
         onAction={(id) => {
           if (id === "settings") onSettings();
+          if (id === "explain") explain?.run();
           if (id === "administration") onAdministration?.();
           if (id === "logout") onLogout();
         }}
@@ -306,6 +315,7 @@ export function AccountSettings({
   const theme = useThemeChoice();
   const language = useLanguage();
   const t = accountText[language];
+  const serverText = useText(serverSettingsText);
   const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const { data: piModels, refresh: refreshModels } = usePiModels();
@@ -317,6 +327,19 @@ export function AccountSettings({
   const section = onNavigate ? (routeSection ?? "tili") : localSection;
   const detail = onNavigate ? routeSection != null : localDetail;
   const row = onNavigate ? routeRow : localRow;
+  useEffect(() => {
+    const folded = window.matchMedia("(max-width: 800px)");
+    const preserveSection = (event: MediaQueryListEvent) => {
+      // /settings shows Account beside the list on desktop. When that
+      // visible section becomes a separate screen, give it its own route.
+      // Entering /settings while already narrow still opens the list.
+      if (!event.matches || detail) return;
+      if (onNavigate) onNavigate(settingsHref(section), { replace: true });
+      else setLocalDetail(true);
+    };
+    folded.addEventListener("change", preserveSection);
+    return () => folded.removeEventListener("change", preserveSection);
+  }, [detail, section, onNavigate]);
   /** The search opens results beside it as the selection moves: those
    * route changes move no focus out of the field. Typing outruns the route,
    * so this is one flag rather than the place last previewed. */
@@ -340,7 +363,7 @@ export function AccountSettings({
   const toList = () =>
     onNavigate ? onNavigate("/settings") : setLocalDetail(false);
   const [release, setRelease] = useState<
-    Pick<ServerInfo, "version" | "commit">
+    Partial<Pick<ServerInfo, "version" | "commit" | "name">>
   >({});
   // Each bundle check is also when the server may have been upgraded, with or
   // without a new bundle: read its version again.
@@ -353,6 +376,10 @@ export function AccountSettings({
   const [admin, setAdmin] = useState<boolean | null>();
   const [work, setWork] = useState(getWorkPreference);
   const [openAI, setOpenAI] = useState<OpenAIState>("checking");
+  // A stored sign-in the provider refused is not "Kirjautunut".
+  const aiRefused = useAISignIn().refused;
+  const chatgptRefused =
+    openAI === "signed_in" && aiRefused.includes("openai-codex");
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
   // Search (proto-settings-search, Sivupalkissa): while the field holds
@@ -362,8 +389,11 @@ export function AccountSettings({
   const [chosen, setSelected] = useState(0);
   const field = useRef<HTMLInputElement>(null);
   const searching = query.trim() !== "";
+  // Keskustelut lives only in the server area, which is still experimental;
+  // its route opens anyway, as the limit card's administrator link does.
+  const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
   const hits = searching
-    ? searchSettings(query, { admin: admin === true })
+    ? searchSettings(query, { admin: false }).filter(listed)
     : [];
   // The list can shrink under the selection (the administrator check).
   const selected = Math.max(0, Math.min(chosen, hits.length - 1));
@@ -374,20 +404,31 @@ export function AccountSettings({
   // A chosen row that is already open lands again.
   const [landing, setLanding] = useState(0);
   // Match Settings.css: the folded layout shows list or section, not both.
-  const narrow = () => window.matchMedia("(max-width: 1050px)").matches;
+  const narrow = () => window.matchMedia("(max-width: 800px)").matches;
   const preview = (hit: SettingsHit | undefined) => {
     if (!hit || narrow()) return;
     steering.current = true;
-    if (
-      place(section, detail ? row : undefined) !== place(hit.section, hit.row)
-    )
-      go(hit.section, hit.row, { replace: true });
+    // Compared with the URL, not the drawn section: the router draws a
+    // navigation in a transition, which a loaded page holds back over
+    // several arrow presses, and an arrow back to the place still drawn
+    // would leave the preview where the route had already gone.
+    const there = onNavigate
+      ? `${window.location.pathname}${window.location.hash}` ===
+        settingsHref(hit.section, hit.row)
+      : place(section, detail ? row : undefined) ===
+        place(hit.section, hit.row);
+    if (!there) go(hit.section, hit.row, { replace: true });
   };
   const changeQuery = (next: string) => {
     setQuery(next);
     setSelected(0);
     if (!next.trim()) steering.current = false;
-    else preview(searchSettings(next, { admin: admin === true })[0]);
+    else
+      preview(
+        searchSettings(next, {
+          admin: false,
+        }).filter(listed)[0],
+      );
   };
   const choose = (index: number) => {
     const hit = hits[index];
@@ -433,7 +474,11 @@ export function AccountSettings({
       .then((info) => {
         if (!controller.signal.aborted) {
           setAdmin(info.administrator);
-          setRelease({ version: info.version, commit: info.commit });
+          setRelease({
+            version: info.version,
+            commit: info.commit,
+            name: info.name,
+          });
         }
       })
       .catch(() => {
@@ -481,7 +526,8 @@ export function AccountSettings({
       if (slash) {
         // "/" finds a setting from anywhere in Settings; on the phone the
         // field is on the section list.
-        if (field.current?.checkVisibility?.() ?? true) field.current?.focus();
+        if (field.current && (field.current.checkVisibility?.() ?? true))
+          field.current.focus();
         else if (keysRef.current.detail) {
           fieldNext.current = true;
           keysRef.current.toList();
@@ -559,13 +605,33 @@ export function AccountSettings({
   }, [hitRows]);
   const sections = settingsSections.filter((entry) => !("admin" in entry));
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
-  const title = settingsSections.find(({ id }) => id === section)?.label;
+  const adminLinks = adminSections;
+  const inServerArea =
+    detail && admin === true && adminSections.some(({ id }) => id === section);
+  const sectionLabel = (id: string, label: string) =>
+    inServerArea
+      ? id === "palvelin"
+        ? serverText.general
+        : id === "palvelinintegraatiot"
+          ? serverText.integrations
+          : label
+      : label;
+  const serverLinks = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (inServerArea)
+      serverLinks.current
+        ?.querySelector<HTMLElement>(`[data-testid="settings-${section}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [inServerArea, section]);
+  const selectedSection = settingsSections.find(({ id }) => id === section);
+  const title = selectedSection && sectionLabel(section, selectedSection.label);
   const nav = (items: typeof settingsSections) =>
     items.map(({ id, label, icon }) => {
       const content = (
         <>
           <Icon name={icon} />
-          {label}
+          {sectionLabel(id, label)}
+          {!inServerArea && id === "palvelin" && <Icon name="forward" />}
         </>
       );
       return onNavigate ? (
@@ -605,7 +671,7 @@ export function AccountSettings({
     });
   return (
     <section
-      className={`ah-account-settings s-page${detail ? " detail" : ""}${
+      className={`ah-account-settings s-page${inServerArea ? " s-server-area" : ""}${detail ? " detail" : ""}${
         // Käyttöönotto puts the route beside the step's settings.
         section === "kayttoonotto" && admin ? " wide" : ""
       }`}
@@ -624,49 +690,93 @@ export function AccountSettings({
       <nav
         data-testid="settings-navigation"
         className="s-nav"
-        aria-label={t.sections}
+        aria-label={inServerArea ? t.administration : t.sections}
       >
+        {inServerArea && (
+          <ControlButton
+            data-testid="settings-own-back"
+            className="s-own-back"
+            variant="quiet"
+            size="row"
+            presentation="back"
+            onPress={() => {
+              setQuery("");
+              if (narrow()) toList();
+              else openSection("tili");
+            }}
+          >
+            <Icon name="back" />
+            {serverText.ownSettings}
+          </ControlButton>
+        )}
         <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
-          {t.settings}
+          {inServerArea ? t.administration : t.settings}
         </h1>
-        <SettingsSearchField
-          inputRef={field}
-          query={query}
-          hits={hits}
-          selected={selected}
-          onQuery={changeQuery}
-          onKeyDown={searchKeys}
-        />
-        {searching ? (
-          <SettingsSearchResults
-            query={query}
-            hits={hits}
-            selected={selected}
-            onPick={choose}
-          />
+        {inServerArea ? (
+          <>
+            <p className="s-desc">
+              {release.name ? `${release.name} · ` : ""}
+              {serverText.affectsEveryone}
+            </p>
+            <div
+              ref={serverLinks}
+              className="s-server-links"
+              data-testid="server-section-links"
+            >
+              {nav(adminLinks)}
+            </div>
+          </>
         ) : (
           <>
-            {nav(sections)}
-            {admin && (
+            <SettingsSearchField
+              inputRef={field}
+              query={query}
+              hits={hits}
+              selected={selected}
+              onQuery={changeQuery}
+              onKeyDown={searchKeys}
+            />
+            {searching ? (
+              <SettingsSearchResults
+                query={query}
+                hits={hits}
+                selected={selected}
+                onPick={choose}
+              />
+            ) : (
               <>
-                <span className="s-nav-h">{t.administration}</span>
-                {nav(adminSections)}
+                {nav(sections)}
+                {admin && (
+                  <>
+                    <span className="s-nav-h">{t.administration}</span>
+                    {nav(
+                      settingsSections
+                        .filter(({ id }) => id === "palvelin")
+                        .map((entry) => ({
+                          ...entry,
+                          label: t.administration,
+                        })),
+                    )}
+                  </>
+                )}
               </>
             )}
           </>
         )}
       </nav>
       <div className="s-main" ref={main}>
-        <ControlButton
-          data-testid="settings-list-back"
-          className="s-back"
-          variant="quiet"
-          size="row"
-          presentation="back"
-          onPress={toList}
-        >
-          {searching ? t.backToResults : t.backToSettings}
-        </ControlButton>
+        {!inServerArea && (
+          <ControlButton
+            data-testid="settings-list-back"
+            className="s-back"
+            variant="quiet"
+            size="row"
+            presentation="back"
+            onPress={toList}
+          >
+            {searching ? t.backToResults : t.backToSettings}
+          </ControlButton>
+        )}
         <h2
           ref={heading}
           data-testid={`settings-section-${section}`}
@@ -751,19 +861,28 @@ export function AccountSettings({
                     data-testid="openai-credential-state"
                     data-state={openAI}
                   >
-                    {openAI === "signed_in"
-                      ? t.chatgptSignedIn(
-                          modelsLine(piModels?.models, "openai-codex"),
-                        )
-                      : openAI === "checking"
-                        ? t.chatgptChecking
-                        : openAI === "unknown"
-                          ? t.chatgptUnknown
-                          : t.chatgptSignedOut}
+                    {chatgptRefused
+                      ? t.chatgptRefused
+                      : openAI === "signed_in"
+                        ? t.chatgptSignedIn(
+                            modelsLine(piModels?.models, "openai-codex"),
+                          )
+                        : openAI === "checking"
+                          ? t.chatgptChecking
+                          : openAI === "unknown"
+                            ? t.chatgptUnknown
+                            : t.chatgptSignedOut}
                   </span>
                 </div>
                 <div className="s-val">
-                  {openAI === "signed_in" ? (
+                  {chatgptRefused ? (
+                    <StatusMark
+                      data-testid="chatgpt-refused"
+                      kind="error"
+                      tone="danger"
+                      label={t.refused}
+                    />
+                  ) : openAI === "signed_in" ? (
                     <StatusMark
                       kind="success"
                       tone="success"
@@ -783,7 +902,14 @@ export function AccountSettings({
                   )}
                 </div>
               </div>
-              <ClaudeSignIn csrf={csrf} onSignedIn={refreshModels} />
+              <ClaudeSignIn
+                csrf={csrf}
+                onSignedIn={() => {
+                  refreshModels();
+                  announceSignedIn("claude-bridge");
+                }}
+                refused={aiRefused.includes("claude-bridge")}
+              />
             </div>
             {/* A provider's first key makes its model Pi's default: the
                 selector above reads Pi again after every key change. */}
@@ -860,9 +986,9 @@ export function AccountSettings({
               onReconnect={onReconnect}
             />
           ) : admin && section === "palvelinintegraatiot" ? (
-            <div className="s-card ah-administration">
-              <ServerIntegrationsSettings csrf={csrf} />
-            </div>
+            <ServerIntegrationsSettings csrf={csrf} />
+          ) : admin && section === "keskustelut" ? (
+            <ServerConversations csrf={csrf} />
           ) : admin && section === "aiavain" ? (
             <SiteKeyAdministration csrf={csrf} />
           ) : admin && section === "saneluavain" ? (

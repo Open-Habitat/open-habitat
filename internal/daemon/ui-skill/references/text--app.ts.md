@@ -57,6 +57,7 @@ const fi = {
   restoreWorkspaceReverted:
     "Palautus ei tallentunut. Työtila on yhä arkistossa.",
   renameRefused: (reason: string) => `Nimeä ei vaihdettu: ${reason}`,
+  turnRefused: (reason: string) => `Ei siirretty: ${reason}`,
   renameReverted: "Uusi nimi ei tallentunut. Aiempi nimi palautettiin.",
   archiveConversationRefused: (reason: string) =>
     `Arkistointia ei tehty: ${reason} Keskustelu palautettiin listaan.`,
@@ -164,6 +165,7 @@ export const appText = catalog(fi, {
   restoreWorkspaceReverted:
     "Restoring was not saved. The workspace is still in the archive.",
   renameRefused: (reason) => `Not renamed: ${reason}`,
+  turnRefused: (reason) => `Not moved: ${reason}`,
   renameReverted: "The new name was not saved. The previous name is back.",
   archiveConversationRefused: (reason) =>
     `Not archived: ${reason} The conversation is back in the list.`,

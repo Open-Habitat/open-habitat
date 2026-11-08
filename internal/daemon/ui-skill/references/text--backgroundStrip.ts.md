@@ -43,6 +43,24 @@ const fi = {
   },
   workers: "Workerit",
   processes: "Prosessit",
+  // Avustajat (named workers, experimental): the chip beside the Workers
+  // pill and its tab. A helper's name is Taskfleet's; its task is the title.
+  helpers: "Avustajat",
+  help: {
+    head: (n: number) => `Avustajat: ${n}`,
+    one: (name: string, state: string) => `${name} ${state}`,
+    rounds: (n: number) => `${n} ${n === 1 ? "kierros" : "kierrosta"}`,
+    working: (n: number) => `kierros ${n} työn alla`,
+    reported: (n: number) => `kierros ${n} raportoitu`,
+    waiting: "odottaa pääagenttia",
+    dormant: "lepää · herää pääagentin viestistä",
+    unlanded: "keskeneräinen työ haarassa",
+    ended: "lopetettu",
+    report: (n: number, line: string) => `${n}. kierros: ${line}`,
+    note: "Avustajat jäävät odottamaan kierroksen jälkeen. Viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta.",
+    open: "Avaa avustajan keskustelu",
+    running: "Avustajat",
+  },
   askMany: (n: number, toNew: boolean) =>
     `Lähettää yhden pyynnön ${toNew ? "uuteen keskusteluun" : "tähän keskusteluun"}: agentti tarkistaa ${n} workeria ja suosittelee.`,
   askOne: (toNew: boolean) =>
@@ -139,6 +157,22 @@ export const backgroundStripText = catalog(fi, {
   },
   workers: "Workers",
   processes: "Processes",
+  helpers: "Helpers",
+  help: {
+    head: (n) => `Helpers: ${n}`,
+    one: (name, state) => `${name} ${state}`,
+    rounds: (n) => `${n} ${n === 1 ? "round" : "rounds"}`,
+    working: (n) => `round ${n} under way`,
+    reported: (n) => `round ${n} reported`,
+    waiting: "waiting for the main agent",
+    dormant: "resting · wakes at the main agent's message",
+    unlanded: "unfinished work on its branch",
+    ended: "stopped",
+    report: (n, line) => `round ${n}: ${line}`,
+    note: "Helpers wait after each round. Messages, landing rounds and stopping go through the main agent.",
+    open: "Open the helper's conversation",
+    running: "Helpers",
+  },
   askMany: (n, toNew) =>
     `Sends one request ${toNew ? "to a new conversation" : "to this conversation"}: the agent checks ${n} workers and recommends what to do.`,
   askOne: (toNew) =>

@@ -21,9 +21,6 @@ export type ExperimentalFeature = {
 };
 
 const featureIds = [
-  { id: "markdown-block-preview", landed: true },
-  { id: "worker-row-sentence", landed: true },
-  { id: "raise-to-your-turn", landed: true },
   { id: "composer-lists-in-field", landed: true },
   { id: "rewind-conversation", landed: true },
   { id: "explain-mode", landed: true },
@@ -50,7 +47,6 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
-    id === "markdown-block-preview" ||
     id === "rewind-conversation" ||
     id === "explain-mode" ||
     id === "agent-resources-view" ||
@@ -80,19 +76,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         </span>
       </>
     );
-  else if (id === "raise-to-your-turn")
-    body = (
-      <>
-        <span className="ex-ghost ex-ghost-own" />
-        <span className="ex-ghost" style={{ width: "80%" }} />
-        <span className="ex-ghost" style={{ width: "55%" }} />
-        <span className="ex-composer ex-crow">
-          <span>{txt.picture.composer}</span>
-          <span className="ex-turn">⤒ {txt.picture.raise}</span>
-          <span className="ex-send" />
-        </span>
-      </>
-    );
   else if (id === "composer-lists-in-field")
     body = (
       <span className="ex-composer ex-field">
@@ -118,37 +101,7 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <span>{txt.picture.composer}</span>
       </span>
     );
-  else
-    body = (
-      <>
-        <span className="ex-wrow">
-          <span className="ex-dot" />
-          <span className="ex-lines">
-            <span className="ex-l1">
-              <b>{txt.picture.weather}</b>
-              <span>{txt.picture.minutes(18)}</span>
-            </span>
-            <span className="ex-l2">
-              <span className="ex-state">{txt.picture.agentWaits}</span> ·{" "}
-              <span className="ex-hl">{txt.picture.commits}</span>
-            </span>
-          </span>
-        </span>
-        <span className="ex-wrow">
-          <span className="ex-ring" />
-          <span className="ex-lines">
-            <span className="ex-l1">
-              <b>{txt.picture.oldApi}</b>
-              <span>{txt.picture.minutes(2)}</span>
-            </span>
-            <span className="ex-l2">
-              {txt.picture.agentNotWaiting} ·{" "}
-              <span className="ex-hl">{txt.picture.noChanges}</span>
-            </span>
-          </span>
-        </span>
-      </>
-    );
+  else body = null;
   return (
     <div className="ex-pic" data-off={on ? undefined : ""} aria-hidden="true">
       {body}

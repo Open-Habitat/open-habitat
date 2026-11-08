@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 export const Off: Story = {};
 export const On: Story = { args: { enabled: () => true } };
 export const Saving: Story = {
-  args: { disabled: true, busy: "worker-row-sentence" },
+  args: { disabled: true, busy: "composer-lists-in-field" },
 };
-export const SaveFailed: Story = { args: { error: "worker-row-sentence" } };
+export const SaveFailed: Story = { args: { error: "composer-lists-in-field" } };
 export const ReadFailed: Story = { args: { error: "read" } };

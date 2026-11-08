@@ -5,16 +5,6 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
-    "markdown-block-preview": {
-      name: "Markdown-lohkon esikatselu",
-      desc: "Katso Markdown-luonnos muotoiltuna suoraan keskustelussa ja palaa lähteeseen samalla painikkeella.",
-      where:
-        "Markdown-lohkon oikeassa reunassa, silmäpainikkeesta kopioinnin alla.",
-      shows:
-        "Otsikot, listat ja taulukot lohkon paikalla. Pitkän luonnoksen voi avata kokonaan. Kopiointi ottaa aina alkuperäisen tekstin.",
-      needs: "Ei muuta. Lohko näkyy aluksi lähteenä.",
-      caption: "Markdown-lohko",
-    },
     "agent-resources-view": {
       name: "Agentin käytössä",
       desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
@@ -104,16 +94,6 @@ const fi = {
       needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
       caption: "Keskustelun alareuna",
     },
-    "worker-row-sentence": {
-      name: "Workerin työ rivillä",
-      desc: "Workerin rivi kertoo sanoin, onko se jo tehnyt jotain: commitit, muutokset ja pull requestin tarkistukset.",
-      where:
-        "Workerit-paneelin riveillä ja workerin näkymässä. Sivupalkin worktree-keskustelut kertovat commitit ja muutokset ilman PR:ää.",
-      shows:
-        "”2 committia · 3 muutosta”, ”PR #412 luonnos, tarkistukset käynnissä” tai ”ei vielä muutoksia”.",
-      needs: "PR-tiedot näkyvät, kun gh on kirjautunut (Koodipalvelut).",
-      caption: "Workerit-paneeli",
-    },
     "workspace-icons": {
       name: "Työtilan kuvake",
       desc: "Sivupalkin keskustelujen edessä on niiden työtilan kuvake, joten Käynnissä ei enää toista työtilan nimeä otsikkona. Kuvake vaihdetaan työtilan sivun otsikosta, ja mallisi ehdottaa kuvaketta työtilalle, jolla sitä ei vielä ole.",
@@ -136,17 +116,6 @@ const fi = {
         "Taskfleet, jossa on nimetyt workerit (run create --resident). Avustajalle et kirjoita itse: viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta.",
       caption: "Avustajat",
     },
-    "raise-to-your-turn": {
-      name: "Nosta ja Ei nyt",
-      desc: "Keskustelu pysyy Sinun vuorosissa, kunnes vastaat tai painat Ei nyt; pelkkä avaaminen ei enää siirrä sitä Hiljaisiin. Hiljaisen keskustelun voit nostaa takaisin Sinun vuoroosi.",
-      where:
-        "Sivupalkin keskustelurivin painikkeissa hiiren alla (puhelimella aina näkyvissä), Sinun vuorosi- ja Hiljaiset-riveillä.",
-      shows:
-        "Hiljaisella rivillä ylös-painikkeen (Nosta), Sinun vuorosi -rivillä alas-painikkeen (Ei nyt tai nostetun laskeminen). Luettu vastaus näkyy renkaana; muuten rivin merkki kertoo agentin tilan.",
-      needs:
-        "Ei muuta. Nosto ja Ei nyt tallentuvat tilillesi ja näkyvät kaikilla laitteillasi.",
-      caption: "Kirjoituskentän rivi",
-    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -157,17 +126,8 @@ const fi = {
     railIcons: "Rail-ikonit",
     pilot: "pilot.16 testipalvelimelle",
     now: "nyt",
-    minutes: (n: number) => `${n} min`,
-    weather: "Sääaseman CSV-vienti",
-    agentWaits: "agentti odottaa",
-    commits: "2 committia · 3 muutosta",
-    oldApi: "Vanhan rajapinnan poisto",
-    agentNotWaiting: "agentti ei odota",
-    noChanges: "ei vielä muutoksia",
-    raise: "Nosta",
     browser: "Selain",
     browserWaits: "Netvisor odottaa sinua",
-    notNow: "Ei nyt",
   },
   reload: "Lue tallennettu valinta",
   intro:
@@ -186,16 +146,6 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
-    "markdown-block-preview": {
-      name: "Markdown block preview",
-      desc: "Read a formatted Markdown draft right in the conversation and return to its source with the same button.",
-      where:
-        "At the right edge of a Markdown block, from the eye button below copy.",
-      shows:
-        "Headings, lists and tables in place of the source. Long drafts can be expanded. Copy always takes the original text.",
-      needs: "Nothing else. Blocks start as source text.",
-      caption: "Markdown block",
-    },
     "agent-resources-view": {
       name: "Agent resources",
       desc: "One view of everything your agents use: files, mail, calendar, contacts, code and machines. Each source tells what is included, what is not and what the agent may do.",
@@ -285,16 +235,6 @@ export const experimentalFeaturesText = catalog(fi, {
       needs: "Nothing else. For now the order follows the sidebar.",
       caption: "Bottom of the conversation",
     },
-    "worker-row-sentence": {
-      name: "Worker's work on its row",
-      desc: "A worker's row says in words whether it has already done something: commits, changes and pull request checks.",
-      where:
-        "On the rows of the Workers panel and in the worker's view. Worktree conversations in the sidebar tell commits and changes without a PR.",
-      shows:
-        "“2 commits · 3 changes”, “PR #412 draft, checks running” or “no changes yet”.",
-      needs: "PR details show when gh is signed in (Code hosts).",
-      caption: "Workers panel",
-    },
     "workspace-icons": {
       name: "Workspace icon",
       desc: "Conversations in the sidebar carry their workspace's icon, so Running no longer repeats the workspace's name as a heading. The icon is changed from the workspace page's title, and your model suggests an icon for a workspace that has none yet.",
@@ -317,17 +257,6 @@ export const experimentalFeaturesText = catalog(fi, {
         "A Taskfleet with named workers (run create --resident). You do not write to a helper yourself: messages, landing rounds and stopping go through the main agent.",
       caption: "Helpers",
     },
-    "raise-to-your-turn": {
-      name: "Raise and Not now",
-      desc: "A conversation stays in Your turn until you reply or press Not now; opening it no longer moves it to Quiet. You can raise a quiet conversation back to Your turn.",
-      where:
-        "Among a rail conversation row's buttons on hover (always shown on a phone), on Your turn and Quiet rows.",
-      shows:
-        "An up button (Raise) on a Quiet row and a down button (Not now, or lowering a raised one) on a Your turn row. A read reply shows as a ring; otherwise the row's mark says what the agent is doing.",
-      needs:
-        "Nothing else. Raise and Not now are saved to your account and show on all your devices.",
-      caption: "Message field row",
-    },
   },
   picture: {
     waiting: "3 waiting for you",
@@ -338,17 +267,8 @@ export const experimentalFeaturesText = catalog(fi, {
     railIcons: "Rail icons",
     pilot: "pilot.16 to the test server",
     now: "now",
-    minutes: (n) => `${n} min`,
-    weather: "Weather station CSV export",
-    agentWaits: "agent waiting",
-    commits: "2 commits · 3 changes",
-    oldApi: "Removing the old interface",
-    agentNotWaiting: "agent not waiting",
-    noChanges: "no changes yet",
-    raise: "Raise",
     browser: "Browser",
     browserWaits: "Netvisor is waiting for you",
-    notNow: "Not now",
   },
   reload: "Read the saved choice",
   intro:

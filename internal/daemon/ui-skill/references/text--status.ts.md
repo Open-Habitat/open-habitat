@@ -31,9 +31,8 @@ const fi = {
         "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
     },
     "version-changed": {
-      title: "Palvelin on päivitetty",
-      detail:
-        "Tämä välilehti käyttää vanhempaa versiota, joka ei saa yhteyttä uuteen. Lataa sivu uudelleen; luonnokset säilyvät.",
+      title: "Palvelin päivitettiin",
+      detail: "Lataa sivu uudelleen; luonnokset säilyvät.",
     },
     "authentication-required": {
       title: "Istunto puuttuu tai on vanhentunut",
@@ -115,6 +114,8 @@ const fi = {
     turnError: "Vuoro päättyi virheeseen",
     workerFailed: "Worker epäonnistui",
     newReply: "Uusi vastaus",
+    readReply: "Luettu · odottaa vastaustasi",
+    raised: "Nostit Sinun vuoroosi",
     asks: "Kysyy sinulta",
     crashed: "Pi kaatui",
     turnCut: "Työ katkesi kesken",
@@ -183,9 +184,8 @@ export const statusText = catalog(fi, {
         "The connection was down too long for the updates to continue directly.",
     },
     "version-changed": {
-      title: "The server has been updated",
-      detail:
-        "This tab uses an older version that cannot connect to the new one. Reload the page; drafts are kept.",
+      title: "The server was updated",
+      detail: "Reload the page; drafts are kept.",
     },
     "authentication-required": {
       title: "The session is missing or has expired",
@@ -260,6 +260,8 @@ export const statusText = catalog(fi, {
     turnError: "The turn ended in an error",
     workerFailed: "Worker failed",
     newReply: "New reply",
+    readReply: "Read · waiting for your reply",
+    raised: "You raised it to Your turn",
     asks: "Asking you",
     crashed: "Pi crashed",
     turnCut: "Work cut off mid-turn",

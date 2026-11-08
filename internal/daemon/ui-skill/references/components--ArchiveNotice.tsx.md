@@ -21,6 +21,7 @@ const icons: Record<NoticeKind, IconName> = {
   trash: "trash",
   "workspace-archive": "eyeOff",
   "workspace-icon": "check",
+  "editor-save": "check",
 };
 
 /** Transient undo offer; the archive itself remains native host state. A
@@ -39,6 +40,7 @@ export function ArchiveNotice({
   restoreLabel,
   link,
   wrap = false,
+  expireProblem = false,
 }: {
   kind?: NoticeKind;
   /** Long text wraps instead of being cut: a notice that must be read. */
@@ -52,6 +54,8 @@ export function ArchiveNotice({
   busy: boolean;
   /** Something did not go as asked: the notice stays until closed. */
   problem?: string;
+  /** A definite refusal has no unresolved action to keep on screen. */
+  expireProblem?: boolean;
   /** Absent when there is nothing to undo. */
   onRestore?: () => void;
   onClose: () => void;
@@ -62,8 +66,14 @@ export function ArchiveNotice({
   const notice = useNotice(kind, !!onRestore, onClose);
   const row = useRef<HTMLElement>(null);
   const remaining = useRef(NOTICE_LIFETIME_MS);
-  const held = notice.paused || notice.folded || busy || !!problem;
   useEffect(() => {
+    if (problem) remaining.current = NOTICE_LIFETIME_MS;
+  }, [problem]);
+  const held =
+    notice.paused || notice.folded || busy || (!!problem && !expireProblem);
+  useEffect(() => {
+    // A new refusal resets the budget above even when held stays false.
+    void problem;
     if (held) return;
     const start = Date.now();
     const timer = window.setTimeout(onClose, remaining.current);
@@ -71,7 +81,7 @@ export function ArchiveNotice({
       window.clearTimeout(timer);
       remaining.current = Math.max(0, remaining.current - (Date.now() - start));
     };
-  }, [held, onClose]);
+  }, [held, onClose, problem]);
   // Closing a notice that holds focus hands focus back to the work.
   const dismiss = () => {
     const hadFocus = !!row.current?.contains(document.activeElement);

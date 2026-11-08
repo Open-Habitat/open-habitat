@@ -10,7 +10,7 @@ import { catalog } from "../i18n";
 // (components/WorkspaceIntro.tsx).
 // Agent reference: author the shared introduction in .agents/start-page.md;
 // it appears on the workspace page and at the start of new conversations.
-// /open-habitat-start-page invokes the authoring skill.
+// /skill:open-habitat-start-page invokes the authoring skill.
 const fi = {
   unreadable: "Aloitussivua ei saatu luettua.",
   retry: "Yritä uudelleen",

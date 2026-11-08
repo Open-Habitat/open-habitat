@@ -16,9 +16,6 @@ test.use({
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 const features = [
-  "markdown-block-preview",
-  "worker-row-sentence",
-  "raise-to-your-turn",
   "composer-lists-in-field",
   "rewind-conversation",
   "explain-mode",
@@ -96,7 +93,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
     "aria-pressed",
     "true",
   );
-  await expect(segment(page, "worker-row-sentence", "off")).toHaveAttribute(
+  await expect(segment(page, "composer-lists-in-field", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -138,7 +135,7 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
 }) => {
   await signIn(page);
   await page.goto("/settings/experimental");
-  await expect(segment(page, "worker-row-sentence", "off")).toBeEnabled();
+  await expect(segment(page, "composer-lists-in-field", "off")).toBeEnabled();
   await page.route("**/api/v1/account/preferences", async (route) => {
     if (route.request().method() === "PUT")
       await route.fulfill({
@@ -151,12 +148,12 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
       });
     else await route.fallback();
   });
-  await segment(page, "worker-row-sentence", "on").click();
+  await segment(page, "composer-lists-in-field", "on").click();
   const alert = page
     .getByRole("alert")
-    .and(page.getByTestId("experimental-worker-row-sentence-error"));
+    .and(page.getByTestId("experimental-composer-lists-in-field-error"));
   await expect(alert).toBeVisible();
-  await expect(segment(page, "worker-row-sentence", "off")).toHaveAttribute(
+  await expect(segment(page, "composer-lists-in-field", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -167,7 +164,7 @@ test("@settings-experimental a failed save keeps the feature off and offers to r
   await page.unroute("**/api/v1/account/preferences");
   await page
     .getByRole("button")
-    .and(page.getByTestId("experimental-worker-row-sentence-error-reload"))
+    .and(page.getByTestId("experimental-composer-lists-in-field-error-reload"))
     .click();
   await expect(alert).toBeHidden();
 });
@@ -180,11 +177,11 @@ test("@settings-experimental settings search finds a feature and lands on its ca
   await page
     .getByRole("combobox")
     .and(page.getByTestId("settings-search"))
-    .fill("commit");
+    .fill("rewind");
   await page
     .getByRole("option")
-    .and(page.getByTestId("settings-result-row-worker-row-sentence"))
+    .and(page.getByTestId("settings-result-row-rewind-conversation"))
     .click();
-  await expect(page).toHaveURL(/\/settings\/experimental#worker-row-sentence$/);
-  await expect(card(page, "worker-row-sentence")).toBeInViewport();
+  await expect(page).toHaveURL(/\/settings\/experimental#rewind-conversation$/);
+  await expect(card(page, "rewind-conversation")).toBeInViewport();
 });

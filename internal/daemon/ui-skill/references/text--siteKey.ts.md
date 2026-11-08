@@ -57,6 +57,8 @@ const fi = {
     unknown: "Ei vastausta, tulos ei varmistunut",
   } as Record<string, string>,
   joined: "Jo liittyneet",
+  person: "Henkilö",
+  copy: "Avain",
   joinedDesc:
     "Henkilöt, jotka liittyivät ennen avainta tai saivat aiemman avaimen. Lista kertoo, mitä sivusto on antanut. Mitä heidän Pi:llään nyt on, tarkistetaan vasta antaessa.",
   giveAll: "Anna avain liittyneille…",
@@ -157,6 +159,8 @@ export const siteKeyText = catalog(fi, {
     unknown: "No answer, result not confirmed",
   },
   joined: "Already joined",
+  person: "Person",
+  copy: "Key",
   joinedDesc:
     "People who joined before the key or received an earlier key. The list tells what the site has given. What their Pi has now is checked only when giving.",
   giveAll: "Give the key to those joined…",

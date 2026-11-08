@@ -189,11 +189,9 @@ export function SpinoffProvider({
   );
 }
 
-/** The workers' work facts, read only while the person has the worker-row
- * sentence on: each read runs Git and asks GitHub once per worker branch, so
- * it follows the listed runs slowly rather than the spinoffs read's pace. */
+/** Each work-facts read runs Git and asks GitHub once per worker branch,
+ * so it follows the listed runs slowly rather than the spinoffs read's pace. */
 function useWorkerWork(parent: string | undefined, data?: Spinoffs) {
-  const on = useExperimentalFeature("worker-row-sentence");
   const [work, setWork] = useState<SpinoffWork>();
   // A new run or a state change asks again at once.
   const runs =
@@ -202,7 +200,7 @@ function useWorkerWork(parent: string | undefined, data?: Spinoffs) {
       .map((r) => `${r.run_id}:${r.state}`)
       .join(",") ?? "";
   useEffect(() => {
-    if (!on || !parent || !runs) {
+    if (!parent || !runs) {
       setWork(undefined);
       return;
     }
@@ -224,8 +222,8 @@ function useWorkerWork(parent: string | undefined, data?: Spinoffs) {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [on, parent, runs]);
-  return on ? work : undefined;
+  }, [parent, runs]);
+  return work;
 }
 
 /** One note for the panel when gh said nothing about a worker that Git

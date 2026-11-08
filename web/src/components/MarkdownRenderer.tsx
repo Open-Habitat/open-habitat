@@ -13,7 +13,6 @@ import ReactMarkdown, {
 } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import { useExperimentalFeature } from "../app/accountPreferences";
 import { attachmentURL } from "../app/attachments";
 import { liveText } from "../i18n";
 import { markdownRendererText } from "../text/markdownRenderer";
@@ -113,9 +112,8 @@ function MarkdownCode({
   language?: string;
   complete: boolean;
 }) {
-  const enabled = useExperimentalFeature("markdown-block-preview");
   const [preview, setPreview] = useState(false);
-  const eligible = enabled && (language === "markdown" || language === "md");
+  const eligible = language === "markdown" || language === "md";
   const rendered = eligible && preview;
   return (
     <figure className="ah-markdown-code">

@@ -512,19 +512,18 @@ export interface AgentNavModel {
    * base branch. */
   worktree?: {
     merged: boolean;
-    /** What the worktree's work is, in words (worker-row sentence,
-     * experimental); absent while the feature is off. */
+    /** What the worktree's work is, in words; absent after merging. */
     work?: { text: string; tone: "work" | "muted" };
   };
   /** The agent has asked the person something and waits for the answer. */
   question?: boolean;
-  /** In Sinun vuorosi by the person's own hand (raise-to-your-turn,
-   * experimental): raised by them, or a reply they have read and not yet
+  /** In Sinun vuorosi by the person's own hand: raised by them,
+   * or a reply they have read and not yet
    * answered. */
   turnMark?: "raised" | "read";
   /** What the person can do with the conversation's place in Sinun vuorosi
    * now: raise it, lower a raise, or say Ei nyt to a reply. Absent while
-   * the feature is off or the agent works. */
+   * the agent works or awaits an answer to a question. */
   turnAction?: "raise" | "lower" | "not_now";
   /** What the row says about itself beyond its title: workspace, state and
    * what it waits for. The one-line row says it but does not show it. */
@@ -549,7 +548,7 @@ export interface RailRename {
   reason: (agentId: string) => string;
   save: (agentId: string, name: string) => Promise<void>;
 }
-/** The rail rows' up and down (raise-to-your-turn, experimental): raise a
+/** The rail rows' up and down (raise-to-your-turn): raise a
  * quiet row, lower a raised one, or say Ei nyt to one waiting on a reply. */
 export interface RailTurn {
   run: (agentId: string, action: "raise" | "lower" | "not_now") => void;
@@ -602,7 +601,7 @@ export function ballOf(
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
-/** A read reply's ball is a ring (raise-to-your-turn, experimental). */
+/** A read reply's ball is a ring (raise-to-your-turn). */
 function Ball({
   kind,
   turn,

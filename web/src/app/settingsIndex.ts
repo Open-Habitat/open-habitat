@@ -554,25 +554,6 @@ export const settingsSections = [
       "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
     rows: [
       {
-        id: "markdown-block-preview",
-        label: "Markdown-lohkon esikatselu",
-        kw: ["markdown", "esikatselu", "preview", "koodilohko", "code block"],
-        desc: "Näytä Markdown-lohko muotoiltuna tekstinä keskustelussa.",
-      },
-      {
-        id: "raise-to-your-turn",
-        label: "Nosta ja Ei nyt",
-        kw: [
-          "nosta",
-          "raise",
-          "ei nyt",
-          "not now",
-          "sinun vuorosi",
-          "your turn",
-        ],
-        desc: "Pidä keskustelu Sinun vuorossasi, siirrä se Hiljaisiin tai nosta takaisin.",
-      },
-      {
         id: "composer-lists-in-field",
         label: "Listat kirjoituskentän sisällä",
         kw: [
@@ -665,20 +646,6 @@ export const settingsSections = [
           "taskfleet",
         ],
         desc: "Nimetyt workerit tekevät työnsä kierroksina ja odottavat pääagentin seuraavaa viestiä.",
-      },
-      {
-        id: "worker-row-sentence",
-        label: "Workerin työ rivillä",
-        kw: [
-          "worker",
-          "commit",
-          "muutokset",
-          "pull request",
-          "pr",
-          "tarkistukset",
-          "checks",
-        ],
-        desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
       },
     ],
   },

@@ -18,6 +18,9 @@ const fi = {
     awaiting: "odottaa sinua",
     stalled: "Taskfleetin mukaan pysähtynyt",
   },
+  // A named worker (avustaja) reported a round and waits for the main agent.
+  roundReported: (n: number) =>
+    `raportoi kierroksen ${n} ja odottaa pääagenttia`,
   turnCut: " Agentin kesken ollut työ katkesi.",
   cutOff: (n: number) =>
     ` ${n === 1 ? "Yksi taustatyö katkesi" : `${n} taustatyötä katkesi`} samalla.`,
@@ -77,6 +80,7 @@ export const restartNoticeText = catalog(
       awaiting: "waiting for you",
       stalled: "stalled, according to Taskfleet",
     },
+    roundReported: (n) => `reported round ${n} and waits for the main agent`,
     turnCut: " The work the agent had under way was cut off.",
     cutOff: (n) =>
       ` ${n === 1 ? "One background job was" : `${n} background jobs were`} cut off at the same time.`,

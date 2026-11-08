@@ -8,8 +8,10 @@ import { catalog, plural } from "../i18n";
 // The open document's own messages (app/BrowserDocument.tsx): reading,
 // saving and what a save did to changes made on disk.
 const fi = {
-  discardQuestion:
-    "Hylätäänkö tallentamattomat muutokset? Peruuta ja tallenna ensin, jos haluat säilyttää ne.",
+  leaveConflict: (file: string, agent: boolean) =>
+    agent
+      ? `Agentti muutti samaa kohtaa tiedostossa ${file}. Oma teksti säilyy editorissa, kunnes hylkäät sen.`
+      : `Tiedostoa ${file} muutettiin samasta kohdasta muualla. Oma teksti säilyy editorissa, kunnes hylkäät sen.`,
   unsupported: "Tiedoston tyyppiä, merkistöä tai suojausmetadataa ei tueta.",
   tooLarge: "Tiedosto on liian suuri. Enimmäiskoko on 1 MiB.",
   unreadable: "Tiedostoa ei voitu lukea työtilasta.",
@@ -30,8 +32,10 @@ const fi = {
 };
 
 export const browserDocumentText = catalog(fi, {
-  discardQuestion:
-    "Discard unsaved changes? Cancel and save first if you want to keep them.",
+  leaveConflict: (file, agent) =>
+    agent
+      ? `The agent changed the same place in ${file}. Your text stays in the editor until you discard it.`
+      : `${file} was changed in the same place elsewhere. Your text stays in the editor until you discard it.`,
   unsupported:
     "The file's type, character encoding or protection metadata is not supported.",
   tooLarge: "The file is too large. The maximum size is 1 MiB.",

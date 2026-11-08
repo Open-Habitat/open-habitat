@@ -259,14 +259,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
-      "markdown-block-preview": {
-        label: "Markdown block preview",
-        desc: "Show a Markdown block as formatted text in the conversation.",
-      },
-      "raise-to-your-turn": {
-        label: "Raise and Not now",
-        desc: "Keep a conversation in Your turn, move it to Quiet or raise it back.",
-      },
       "composer-lists-in-field": {
         label: "Lists inside the message field",
         desc: "Browse files and commands inside the message field and mark several files at once.",
@@ -294,10 +286,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "named-workers": {
         label: "Helpers",
         desc: "Named workers work in rounds and wait for the main agent's next message.",
-      },
-      "worker-row-sentence": {
-        label: "Worker's work on its row",
-        desc: "A worker's row tells its commits, changes and pull request checks.",
       },
     },
   },

@@ -37,7 +37,7 @@ export type HiddenState = {
 /** Measures the header's one row and applies the fewest steps that leave the
  * title its share. Content decides as much as width does (a long title,
  * Git counts, a guide toggle), so this measures rather than using fixed
- * container widths. A phone keeps its own two rows and takes no steps.
+ * container widths. A phone keeps its compact title/facts block and takes no steps.
  * Returns what the steps hid that the ⋯ menu must now say. */
 export function useHeaderShortening(
   row: RefObject<HTMLElement | null>,

@@ -170,6 +170,7 @@ import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
 import { useRewind, withRewind } from "./rewindView";
+import { ServerBrowserDock } from "./ServerBrowser";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -2157,6 +2158,27 @@ function BrowserConversationContent({
         >
           {view !== "opened" ? (
             <AgentHeader
+              terminal={shell.toggle}
+              editorControl={<EditorHeaderControls />}
+              filesControl={<FilesHeaderControl conversationId={id} />}
+              titleAction={{
+                label: txt.retitle,
+                availability: { state: "disabled", reason: txt.nothingToName },
+                onPress: () => {},
+              }}
+              archive={
+                creation?.refused && creation.onClose
+                  ? {
+                      state: "active",
+                      empty: true,
+                      eligible: true,
+                      busy: false,
+                      onClose: creation.onClose,
+                      onArchive: () => {},
+                      onRestore: () => {},
+                    }
+                  : undefined
+              }
               {...(view === "loading" || !creation
                 ? loadingHeader(workspace, problem, details, () =>
                     setDetails(!details),
@@ -3129,7 +3151,12 @@ function BrowserConversationContent({
             </>
           ) : null}
           {view === "opened" ? rewind.sheet : null}
-          {view !== "opened" || controlled ? <Composer {...composer} /> : null}
+          {view !== "opened" || controlled ? (
+            <>
+              <ServerBrowserDock identity={identity} csrf={csrf} />
+              <Composer {...composer} />
+            </>
+          ) : null}
           {view === "opened" ? shell.panel : null}
         </ConversationFrame>
       )}

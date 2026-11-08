@@ -26,10 +26,12 @@ import { EditorHeader, EditorHeaderActions } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
+import { WarningBanner } from "../components/WarningBanner";
 import { liveText } from "../i18n";
 import { workspaceEditorText } from "../text/workspaceEditor";
 import { type EditorEngine, useEditorChoice } from "./accountPreferences";
-import type { BrowserDocumentHandle } from "./BrowserDocument";
+import type { BrowserDocumentHandle, LeaveSave } from "./BrowserDocument";
+import type { ConversationJournal } from "./conversationJournal";
 import {
   clampConversationWidth,
   conversationMin,
@@ -45,7 +47,7 @@ import {
   rememberConversationWidth,
   rememberedConversationWidth,
 } from "./editor";
-import type { ReplaceNote, ToolReport } from "./editorChanges";
+import type { ReplaceNote } from "./editorChanges";
 
 const txt = liveText(workspaceEditorText);
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
@@ -62,10 +64,9 @@ interface EditorControls {
 
 const EditorContext = createContext<EditorControls | null>(null);
 
-/** Between the browser editor and the conversations beside it: finished agent
- * tool calls one way, notes about replaced agent changes the other. */
+/** Notes from the browser editor to the conversations whose changes a save
+ * replaced. Tool completion arrives directly from the authenticated journal. */
 interface EditorChannel {
-  report: (report: ToolReport) => void;
   notes: ReplaceNote[];
   /** A told or closed note is gone for good: a later save makes a new one. */
   dismiss: (id: number) => void;
@@ -91,12 +92,16 @@ function WorkspaceEditorInner({
   identity,
   children,
   onShownChange,
+  onLeaveSaved,
+  journal,
 }: {
+  journal?: ConversationJournal;
   workspaceId?: string;
   csrf?: string;
   identity?: string;
   children: ReactNode;
   onShownChange?: (shown: boolean) => void;
+  onLeaveSaved?: (save: LeaveSave) => void;
 }) {
   const { engine: preference, busy: preferenceBusy } = useEditorChoice(
     identity,
@@ -107,6 +112,13 @@ function WorkspaceEditorInner({
   );
   const browser = engine !== "vscode";
   const browserDocument = useRef<BrowserDocumentHandle>(null);
+  useLayoutEffect(
+    () =>
+      journal?.subscribeTools((report) =>
+        browserDocument.current?.observe(report),
+      ),
+    [journal],
+  );
   // A document's resource binding is not the selected workspace. A native
   // removal/refresh can remove the latter without permission to lose a buffer.
   const [browserWorkspace, setBrowserWorkspace] = useState(workspaceId);
@@ -134,7 +146,6 @@ function WorkspaceEditorInner({
   const noteId = useRef(0);
   const channel = useMemo<EditorChannel>(
     () => ({
-      report: (report) => browserDocument.current?.observe(report),
       notes,
       dismiss: (id) =>
         setNotes((before) => before.filter((note) => note.id !== id)),
@@ -167,8 +178,23 @@ function WorkspaceEditorInner({
   );
   useLayoutEffect(() => {
     if (!browser || browserWorkspace === workspaceId) return;
-    if (browserDocument.current?.retains()) return;
-    setBrowserWorkspace(workspaceId);
+    const handle = browserDocument.current;
+    if (!handle?.retains()) {
+      setBrowserWorkspace(workspaceId);
+      return;
+    }
+    // A workspace that vanished from an observation is not the person
+    // leaving: the document stays bound to its own until they act.
+    if (!workspaceId) return;
+    // Going to another workspace's conversation leaves the document, so it
+    // saves as closing does; only a failed save asks.
+    let live = true;
+    void handle.leave().then((ok) => {
+      if (live && ok) setBrowserWorkspace(workspaceId);
+    });
+    return () => {
+      live = false;
+    };
   }, [browser, workspaceId, browserWorkspace]);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -199,39 +225,33 @@ function WorkspaceEditorInner({
     return () => abort.abort();
   }, [workspaceId, csrf, browser]);
 
+  // Below 800 px an open VS Code asks, on Habitat's own row, to be saved
+  // there first: Habitat cannot see or save VS Code's buffers, so VS Code
+  // stays until the person switches (Jari 7.11.2026). Staying holds until
+  // the window crosses the breakpoint again.
   const compactDeclined = useRef(false);
+  const [phoneAsk, setPhoneAsk] = useState(false);
+  const toPhoneEditor = useCallback(() => {
+    setPhoneAsk(false);
+    setFrame(undefined);
+    setPhase("idle");
+    setEngine("codemirror6");
+  }, []);
   useEffect(() => {
     const resize = () => {
       setTotal(window.innerWidth);
       if (window.innerWidth > 800) {
         compactDeclined.current = false;
+        setPhoneAsk(false);
         return;
       }
-      if (compactDeclined.current) return;
-      if (window.innerWidth <= 800 && engine !== "codemirror6") {
-        if (
-          engine === "vscode" &&
-          frame &&
-          !window.confirm(txt.switchToPhoneEditor)
-        ) {
-          compactDeclined.current = true;
-          return;
-        }
-        if (
-          browserDocument.current &&
-          !browserDocument.current.switchEngine()
-        ) {
-          compactDeclined.current = true;
-          return;
-        }
-        setFrame(undefined);
-        setPhase("idle");
-        setEngine("codemirror6");
-      }
+      if (compactDeclined.current || engine === "codemirror6") return;
+      if (frame) setPhoneAsk(true);
+      else toPhoneEditor();
     };
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [engine, frame]);
+  }, [engine, frame, toPhoneEditor]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Only a changed stored preference requests an engine switch; growing the viewport does not.
   useEffect(() => {
     const next = window.innerWidth <= 800 ? "codemirror6" : preference;
@@ -305,11 +325,27 @@ function WorkspaceEditorInner({
     }
   }, [csrf, workspaceId, frame, browser]);
 
+  const latest = useRef({ browser, workspaceId });
+  latest.current = { browser, workspaceId };
+  const close = useCallback(() => {
+    if (latest.current.browser) setBrowserWorkspace(latest.current.workspaceId);
+    setCollapsed(false);
+    focusConversationPending.current = true;
+    setOpen(false);
+  }, []);
   const show = useCallback(
     (next: boolean) => {
-      if (!next && browserDocument.current && !browserDocument.current.leave())
+      if (!next) {
+        // Closing saves the document's text; only a failed save asks.
+        const handle = browserDocument.current;
+        if (!handle) close();
+        else
+          void handle.leave().then((ok) => {
+            if (ok) close();
+          });
         return;
-      if (next && !open) {
+      }
+      if (!open) {
         const selected = window.innerWidth <= 800 ? "codemirror6" : preference;
         if (selected !== engine) {
           setFrame(undefined);
@@ -317,14 +353,9 @@ function WorkspaceEditorInner({
           setEngine(selected);
         }
       }
-      if (!next) {
-        if (browser) setBrowserWorkspace(workspaceId);
-        setCollapsed(false);
-        focusConversationPending.current = true;
-      }
-      setOpen(next);
+      setOpen(true);
     },
-    [open, preference, engine, browser, workspaceId],
+    [open, preference, engine, close],
   );
 
   // A workspace change while the editor is open opens that workspace.
@@ -374,10 +405,17 @@ function WorkspaceEditorInner({
         return;
       }
       if (browser && workspaceId !== browserWorkspace) {
-        if (browserDocument.current && !browserDocument.current.leave()) return;
-        pendingOpen.current = { ref, workspace: workspaceId, text };
-        setBrowserWorkspace(workspaceId);
-        setOpen(true);
+        const move = () => {
+          pendingOpen.current = { ref, workspace: workspaceId, text };
+          setBrowserWorkspace(workspaceId);
+          setOpen(true);
+        };
+        const handle = browserDocument.current;
+        if (!handle) move();
+        else
+          void handle.leave().then((ok) => {
+            if (ok) move();
+          });
         return;
       }
       if (browser) {
@@ -602,6 +640,7 @@ function WorkspaceEditorInner({
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}
+              onLeaveSaved={onLeaveSaved}
               onReplaced={(note) =>
                 setNotes((before) => [
                   ...before,
@@ -634,6 +673,40 @@ function WorkspaceEditorInner({
             ) : null}
           </div>
         )}
+        {!browser && phoneAsk ? (
+          <div className="ah-editor-phone-ask">
+            <WarningBanner
+              data-testid="editor-phone-ask"
+              tone="neutral"
+              title={txt.phoneTitle}
+              actions={
+                <>
+                  <ControlButton
+                    data-testid="editor-phone-stay"
+                    size="row"
+                    variant="quiet"
+                    onPress={() => {
+                      compactDeclined.current = true;
+                      setPhoneAsk(false);
+                    }}
+                  >
+                    {txt.phoneStay}
+                  </ControlButton>
+                  <ControlButton
+                    data-testid="editor-phone-switch"
+                    size="row"
+                    variant="primary"
+                    onPress={toPhoneEditor}
+                  >
+                    {txt.phoneSwitch}
+                  </ControlButton>
+                </>
+              }
+            >
+              {txt.phoneBody}
+            </WarningBanner>
+          </div>
+        ) : null}
       </>
     ) : null;
 
@@ -672,12 +745,15 @@ function WorkspaceEditorInner({
 }
 
 export function WorkspaceEditor(props: {
+  journal?: ConversationJournal;
   workspaceId?: string;
   csrf?: string;
   identity?: string;
   children: ReactNode;
   /** Whether the editor is beside the conversation now. */
   onShownChange?: (shown: boolean) => void;
+  /** Leaving the editor saved its text; the owner offers to undo it. */
+  onLeaveSaved?: (save: LeaveSave) => void;
 }) {
   return (
     <WorkspaceEditorInner
@@ -718,11 +794,6 @@ export function useEditorActivity(working: boolean, label: string) {
   useEffect(() => {
     report?.(working, label);
   }, [report, working, label]);
-}
-
-/** The browser editor rereads its file when an agent tool call finishes. */
-export function useEditorToolReport() {
-  return useContext(EditorChannelContext)?.report;
 }
 
 /** Notes for one conversation about agent changes a save replaced. */

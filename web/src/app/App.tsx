@@ -1399,14 +1399,6 @@ export function App() {
                   )
                 ? "filtered-empty"
                 : "ready";
-  const workerRowSentence = useExperimentalFeature("worker-row-sentence", {
-    identity,
-    csrf,
-  });
-  const turnMarksOn = useExperimentalFeature("raise-to-your-turn", {
-    identity,
-    csrf,
-  });
   const resourcesOn = useExperimentalFeature("agent-resources-view", {
     identity,
     csrf,
@@ -1447,10 +1439,7 @@ export function App() {
     selectedAgentId,
     selectedId,
     search: location.search,
-    // App is above AccountPreferencesProvider: it names the session.
-    workFacts: workerRowSentence,
     icons,
-    turnMarks: turnMarksOn,
   });
   const quietChoice = {
     sort: confirmedPreferences.quiet_sort,
@@ -2108,7 +2097,7 @@ export function App() {
       void putAway(id, open ? "conversation" : "rail");
     },
   };
-  // Nosta and Ei nyt (raise-to-your-turn, experimental): the person's daemon
+  // Nosta and Ei nyt (raise-to-your-turn): the person's daemon
   // keeps the mark, so it shows at once here and on their other devices.
   const changeTurn = (id: string, action: "raise" | "lower" | "not_now") => {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
@@ -2146,7 +2135,7 @@ export function App() {
       });
   };
   // Up and down live only in the rail's rows (Jari 7.11.2026).
-  const railTurn = turnMarksOn ? { run: changeTurn } : undefined;
+  const railTurn = { run: changeTurn };
   // Naming a conversation from the rail. Pi writes the name; a running Pi
   // directly, a resting one through its settled history.
   const railRename = {

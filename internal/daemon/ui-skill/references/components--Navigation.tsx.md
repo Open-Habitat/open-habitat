@@ -16,17 +16,25 @@ import {
 } from "./ArchiveControls";
 import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
+import { ExplainToggle, useExplainEntry } from "./ExplainMode";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
 import { NameEditor } from "./NameEditor";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
+import {
+  activateHeaderControl,
+  PhoneHeaderFacts,
+  usePhoneHeaderReadout,
+} from "./PhoneHeaderFacts";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
+import { TooltipSide } from "./QuickTooltip";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
+import { WorkerMark } from "./WorkerMark";
 import {
   type WorkspaceCardActions,
   WorkspaceIcon,
@@ -48,6 +56,7 @@ export function AppShell(props: AppShellProps) {
 
 function Shell({
   className,
+  modeBar,
   connection,
   rail,
   main,
@@ -59,6 +68,8 @@ function Shell({
   navigationBadge = 0,
 }: {
   className?: string;
+  /** A mode's bar above everything else (the explain mode). */
+  modeBar?: ReactNode;
   /** The status bell on a page without a top bar: the phone's toolbar, and
    * beside the fallback account. */
   bell?: ReactNode;
@@ -181,6 +192,7 @@ function Shell({
       >
         {t.skip}
       </ExternalLink>
+      {modeBar}
       {connection}
       <div
         className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
@@ -497,18 +509,27 @@ export interface AgentNavModel {
   presence?: "present" | "absent";
   stale?: boolean;
   spinoffWorking?: boolean;
+  spinoffIdle?: boolean;
+  spinoffWaited?: boolean;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
    * base branch. */
   worktree?: {
     merged: boolean;
-    /** What the worktree's work is, in words (worker-row sentence,
-     * experimental); absent while the feature is off. */
+    /** What the worktree's work is, in words; absent after merging. */
     work?: { text: string; tone: "work" | "muted" };
   };
   /** The agent has asked the person something and waits for the answer. */
   question?: boolean;
+  /** In Sinun vuorosi by the person's own hand: raised by them,
+   * or a reply they have read and not yet
+   * answered. */
+  turnMark?: "raised" | "read";
+  /** What the person can do with the conversation's place in Sinun vuorosi
+   * now: raise it, lower a raise, or say Ei nyt to a reply. Absent while
+   * the agent works or awaits an answer to a question. */
+  turnAction?: "raise" | "lower" | "not_now";
   /** What the row says about itself beyond its title: workspace, state and
    * what it waits for. The one-line row says it but does not show it. */
   detail?: string;
@@ -532,9 +553,16 @@ export interface RailRename {
   reason: (agentId: string) => string;
   save: (agentId: string, name: string) => Promise<void>;
 }
+/** The rail rows' up and down (raise-to-your-turn): raise a
+ * quiet row, lower a raised one, or say Ei nyt to one waiting on a reply. */
+export interface RailTurn {
+  run: (agentId: string, action: "raise" | "lower" | "not_now") => void;
+}
 /** The rail rows' archive button: why a row cannot be archived now ("" when
  * it can) and the archive itself. */
 export interface RailArchive {
+  /** An unwritten conversation closes rather than entering the archive. */
+  closes?: (agentId: string) => boolean;
   reason: (agentId: string) => string;
   run: (agentId: string) => void;
 }
@@ -549,13 +577,18 @@ export function ballOf(
     | "failed"
     | "attentionLabel"
     | "question"
+    | "turnMark"
     | "activity"
     | "activityLabel"
     | "spinoffWorking"
+    | "spinoffIdle"
   >,
 ): BallKind {
   if (agent.failed) return "fail";
-  if (agent.attentionLabel || agent.question) return "you";
+  // A raise is the person's own act, not the agent's state: the row's mark
+  // goes on saying what the agent does (Jari 7.11.2026).
+  if (agent.attentionLabel || agent.question || agent.turnMark === "read")
+    return "you";
   const activity =
     agent.activity ??
     (/työ|käynnissä|working/i.test(agent.activityLabel)
@@ -569,13 +602,22 @@ export function ballOf(
     agent.spinoffWorking
   )
     return "work";
+  if (agent.spinoffIdle) return "you";
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
-function Ball({ kind }: { kind: BallKind }) {
+/** A read reply's ball is a ring (raise-to-your-turn). */
+function Ball({
+  kind,
+  turn,
+}: {
+  kind: BallKind;
+  turn?: AgentNavModel["turnMark"];
+}) {
   return (
     <span
       className={`ah-nav-mark ah-ball ah-ball-${kind}`}
+      data-turn={turn === "read" ? turn : undefined}
       aria-hidden="true"
       title={ballLabel(kind)}
     />
@@ -611,9 +653,13 @@ export function AgentNavItem({
   presence = "present",
   stale = false,
   spinoffWorking = false,
+  spinoffIdle = false,
+  spinoffWaited = false,
   pendingLabel,
   worktree,
   question = false,
+  turnMark,
+  turnAction,
   detail,
   workspaceId,
   workspaceName,
@@ -622,6 +668,7 @@ export function AgentNavItem({
   now = Date.now(),
   archive,
   rename,
+  turn,
   card,
 }: AgentNavModel & {
   /** Say the workspace's name quietly in the row (Hiljaiset without
@@ -630,11 +677,16 @@ export function AgentNavItem({
   now?: number;
   archive?: RailArchive;
   rename?: RailRename;
+  turn?: RailTurn;
   card?: WorkspaceCardActions;
 }) {
   const t = useText(navigationText);
   const archiveReasonId = useId();
+  // Up raises a quiet row; down lowers a raised one or says Ei nyt to a
+  // reply. The rail is the only place for them (Jari 7.11.2026).
+  const turnRow = turn ? turnAction : undefined;
   const archiveReason = archive?.reason(agentId);
+  const closes = archive?.closes?.(agentId) ?? false;
   const renameReason = rename?.reason(agentId);
   const [editing, setEditing] = useState(false);
   // A saved name shows at once, until the snapshot's title changes.
@@ -645,9 +697,11 @@ export function AgentNavItem({
     failed,
     attentionLabel,
     question,
+    turnMark,
     activity,
     activityLabel,
     spinoffWorking,
+    spinoffIdle,
   });
   const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
   const said = [
@@ -656,6 +710,7 @@ export function AgentNavItem({
     worktree ? (worktree.merged ? t.worktreeMerged : t.worktree) : null,
     worktree?.work?.text,
     spinoffWorking ? t.workerWorking : null,
+    spinoffIdle ? textNow(statusText).rail.workerWaiting : null,
     controlLabel,
     detail ? null : operationLabel,
     historyLabel,
@@ -673,7 +728,7 @@ export function AgentNavItem({
       title={`${shownTitle} · ${said}`}
       data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
-      className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
+      className={`ah-agent-item${spinoffWorking || spinoffIdle || spinoffWaited ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow
@@ -688,14 +743,65 @@ export function AgentNavItem({
           ) : undefined
         }
         trailing={
-          !editing && (spinoffWorking || archive || rename) ? (
+          !editing &&
+          (spinoffWorking ||
+            spinoffIdle ||
+            spinoffWaited ||
+            archive ||
+            rename ||
+            turnRow) ? (
             <>
-              {spinoffWorking ? <SpinoffWorkingMark /> : null}
-              {archive || rename ? (
+              {spinoffWorking || spinoffIdle || spinoffWaited ? (
+                <span className="ah-worker-rail">
+                  <SpinoffWorkingMark />
+                  <WorkerMark
+                    kind={
+                      spinoffWorking
+                        ? "working"
+                        : spinoffIdle
+                          ? "idle"
+                          : "unknown"
+                    }
+                    waited={spinoffWaited}
+                  />
+                </span>
+              ) : null}
+              {archive || rename || turnRow ? (
                 <span
                   className="ah-nav-archive"
-                  data-actions={archive && rename ? 2 : 1}
+                  // The row's own description is a native title; over its
+                  // buttons it would open below them, on the next row.
+                  title=""
+                  data-actions={
+                    [archive, rename, turnRow].filter(Boolean).length
+                  }
                 >
+                  {turn && turnRow ? (
+                    <span>
+                      <ControlButton
+                        title={
+                          turnRow === "raise"
+                            ? t.raise
+                            : turnRow === "lower"
+                              ? t.lower
+                              : t.notNow
+                        }
+                        data-testid={`rail-${turnRow === "not_now" ? "not-now" : turnRow}-conversation`}
+                        variant="quiet"
+                        size="inline"
+                        aria-label={
+                          turnRow === "raise"
+                            ? t.raiseNamed(shownTitle)
+                            : turnRow === "lower"
+                              ? t.lowerNamed(shownTitle)
+                              : t.notNowNamed(shownTitle)
+                        }
+                        onPress={() => turn.run(agentId, turnRow)}
+                      >
+                        <Icon name={turnRow === "raise" ? "top" : "bottom"} />
+                      </ControlButton>
+                    </span>
+                  ) : null}
                   {rename ? (
                     <span>
                       <ControlButton
@@ -714,11 +820,19 @@ export function AgentNavItem({
                   {archive ? (
                     <span>
                       <ControlButton
-                        title={archiveReason || t.archive}
-                        data-testid="rail-archive-conversation"
+                        title={archiveReason || (closes ? t.close : t.archive)}
+                        data-testid={
+                          closes
+                            ? "rail-close-conversation"
+                            : "rail-archive-conversation"
+                        }
                         variant="quiet"
                         size="inline"
-                        aria-label={t.archiveNamed(shownTitle)}
+                        aria-label={
+                          closes
+                            ? t.closeNamed(shownTitle)
+                            : t.archiveNamed(shownTitle)
+                        }
                         aria-describedby={
                           archiveReason ? archiveReasonId : undefined
                         }
@@ -742,7 +856,7 @@ export function AgentNavItem({
                           archive.run(agentId);
                         }}
                       >
-                        <Icon name="archive" />
+                        <Icon name={closes ? "cross" : "archive"} />
                       </ControlButton>
                     </span>
                   ) : null}
@@ -787,7 +901,7 @@ export function AgentNavItem({
             }
             leading={
               <>
-                <Ball kind={ball} />
+                <Ball kind={ball} turn={turnMark} />
                 {worktree ? (
                   <Icon
                     name={worktree.merged ? "merge" : "worktree"}
@@ -827,7 +941,7 @@ export function AgentNavItem({
     </li>
   );
 }
-/** A sub-agent at work: the trunk stays, only the branch and its end pulse. */
+/** The branch identifies background workers; the adjacent ball carries state. */
 function SpinoffWorkingMark() {
   return (
     <svg
@@ -841,7 +955,7 @@ function SpinoffWorkingMark() {
     >
       <circle cx="7" cy="6" r="2" />
       <path d="M7 8v10" />
-      <g className="ah-nav-spinoff-branch">
+      <g>
         <path d="M7 12c0 3 3 4 7 4" />
         <circle cx="17" cy="16" r="2" />
       </g>
@@ -963,7 +1077,7 @@ function NowDot(agent: AgentNavModel) {
             {initials(agent.workspaceName ?? agent.title)}
           </span>
         )}
-        <Ball kind={ball} />
+        <Ball kind={ball} turn={agent.turnMark} />
         <span className="ah-visually-hidden">
           {agent.title}: {status}
         </span>
@@ -1043,6 +1157,7 @@ export function NowSections({
   collapsed = false,
   archive,
   rename,
+  turn,
   card,
 }: {
   yours: AgentNavModel[];
@@ -1055,6 +1170,8 @@ export function NowSections({
   archive?: RailArchive;
   /** Absent where the rail offers no renaming (a story). */
   rename?: RailRename;
+  /** Lowering a raise from Sinun vuorosi; absent while the feature is off. */
+  turn?: RailTurn;
   /** The workspace icon card's actions, where rows carry icons. */
   card?: WorkspaceCardActions;
 }) {
@@ -1104,6 +1221,7 @@ export function NowSections({
                 now={now}
                 archive={archive}
                 rename={rename}
+                turn={turn}
                 card={card}
               />
             ))}
@@ -1148,6 +1266,7 @@ export function WorkspaceRail({
   connectionTone,
   homeCurrent = false,
   now,
+  pages,
   filterValue,
   resultSummary,
   onCreateWorkspace,
@@ -1168,6 +1287,8 @@ export function WorkspaceRail({
   homeCurrent?: boolean;
   /** Sinun vuorosi and Käynnissä, above the workspaces (NowSections). */
   now?: ReactNode;
+  /** Rows under Etusivu that lead to pages of their own (Agentin käytössä). */
+  pages?: ReactNode;
   filterValue: string;
   /** The number of listed workspaces, said beside the heading. */
   resultSummary: string;
@@ -1200,173 +1321,178 @@ export function WorkspaceRail({
       tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
-      <header className="ah-rail-head">
-        <div className="ah-rail-title">
-          {/* The server name is the way home, like Etusivu below it. */}
-          <strong title={`${serverLabel} · ${t.home}`}>
+      <TooltipSide.Provider value="end">
+        <header className="ah-rail-head">
+          <div className="ah-rail-title">
+            {/* The server name is the way home, like Etusivu below it. */}
+            <strong title={`${serverLabel} · ${t.home}`}>
+              <LinkRow
+                href="/workspaces"
+                kind="header"
+                data-testid="server-home"
+                className="ah-rail-server"
+              >
+                {collapsed ? "NAH" : serverLabel}
+              </LinkRow>
+            </strong>
+            {collapsed ? (
+              <span className="ah-rail-mobile-label">{t.workspaces}</span>
+            ) : null}
+            <span title={connectionLabel}>
+              <StatusMark
+                label={connectionLabel}
+                tone={
+                  connectionTone ??
+                  (listState === "stale" ? "warning" : "neutral")
+                }
+              />
+            </span>
+            <Button
+              data-testid={collapsed ? "navigation-open" : "close-navigation"}
+              ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
+              label={collapsed ? t.openNavigation : t.closeNavigation}
+              icon={collapsed ? "forward" : "back"}
+              variant="secondary"
+              size="row"
+              onPress={onToggle}
+            />
+          </div>
+          <div className="ah-rail-home-row">
             <LinkRow
               href="/workspaces"
-              kind="header"
-              data-testid="server-home"
-              className="ah-rail-server"
+              data-testid="home-link"
+              kind="home"
+              current={homeCurrent}
+              className="ah-rail-home"
+              aria-label={collapsed ? t.home : undefined}
             >
-              {collapsed ? "NAH" : serverLabel}
+              <Icon name="home" />
+              <span className="ah-rail-home-label">{t.home}</span>
             </LinkRow>
-          </strong>
-          {collapsed ? (
-            <span className="ah-rail-mobile-label">{t.workspaces}</span>
-          ) : null}
-          <span title={connectionLabel}>
-            <StatusMark
-              label={connectionLabel}
-              tone={
-                connectionTone ??
-                (listState === "stale" ? "warning" : "neutral")
-              }
-            />
-          </span>
-          <Button
-            data-testid={collapsed ? "navigation-open" : "close-navigation"}
-            ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
-            label={collapsed ? t.openNavigation : t.closeNavigation}
-            icon={collapsed ? "forward" : "back"}
-            variant="secondary"
-            size="row"
-            onPress={onToggle}
-          />
-        </div>
-        <div className="ah-rail-home-row">
-          <LinkRow
-            href="/workspaces"
-            data-testid="home-link"
-            kind="home"
-            current={homeCurrent}
-            className="ah-rail-home"
-            aria-label={collapsed ? t.home : undefined}
-          >
-            <Icon name="home" />
-            <span className="ah-rail-home-label">{t.home}</span>
-          </LinkRow>
-          {bell}
-        </div>
-      </header>
-      <div className="ah-rail-content">
-        {now}
-        {only && !collapsed ? (
-          <section
-            data-testid="rail-only-workspace"
-            className="ah-rail-only"
-            aria-label={t.yourWorkspace}
-          >
-            {clones}
-            <LinkRow
-              href={only.href}
-              data-testid="rail-only-workspace-link"
-              current={only.current}
-              className="ah-rail-only-link"
+            {bell}
+          </div>
+          {pages}
+        </header>
+        <div className="ah-rail-content">
+          {now}
+          {only && !collapsed ? (
+            <section
+              data-testid="rail-only-workspace"
+              className="ah-rail-only"
+              aria-label={t.yourWorkspace}
             >
-              <Icon name="folder" aria-hidden="true" />
-              <span>{only.name}</span>
-            </LinkRow>
-            {onCreateWorkspace ? (
+              {clones}
               <LinkRow
-                href="/workspaces/new"
-                data-testid="workspace-create"
-                current={only.adding}
-                className="ah-rail-only-add"
+                href={only.href}
+                data-testid="rail-only-workspace-link"
+                current={only.current}
+                className="ah-rail-only-link"
               >
-                <Icon name="plus" aria-hidden="true" />
-                <span>{t.addWorkspaces}</span>
+                <Icon name="folder" aria-hidden="true" />
+                <span>{only.name}</span>
               </LinkRow>
-            ) : null}
-            {archived}
-          </section>
-        ) : only ? null : collapsed ? (
-          <ControlButton
-            data-testid="rail-all-workspaces"
-            size="row"
-            variant="quiet"
-            className="ah-now-expand"
-            aria-label={t.allWorkspaces}
-            title={t.allWorkspaces}
-            onPress={onToggle}
-          >
-            <Icon name="folder" />
-          </ControlButton>
-        ) : (
-          <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
-            <div className="ah-rail-section-head">
-              <h2 id="rail-ws">
-                {t.workspaces}
-                <span
-                  data-testid="workspace-summary"
-                  className="ah-rail-count"
-                  role="status"
-                >
-                  {resultSummary}
-                </span>
-              </h2>
               {onCreateWorkspace ? (
-                <ControlButton
+                <LinkRow
+                  href="/workspaces/new"
                   data-testid="workspace-create"
-                  size="row"
-                  variant="quiet"
-                  aria-label={t.newWorkspace}
-                  title={t.newWorkspace}
-                  onPress={onCreateWorkspace}
+                  current={only.adding}
+                  className="ah-rail-only-add"
                 >
-                  <Icon name="folderPlus" />
-                </ControlButton>
+                  <Icon name="plus" aria-hidden="true" />
+                  <span>{t.addWorkspaces}</span>
+                </LinkRow>
               ) : null}
-            </div>
-            <div className="ah-rail-filter">
-              <TextField
-                className="ah-rail-search"
-                value={filterValue}
-                onChange={onFilter}
-              >
-                <Label className="ah-visually-hidden">
-                  {t.filterWorkspaces}
-                </Label>
-                <Input
-                  data-testid="workspace-filter"
-                  placeholder={t.filterWorkspaces}
-                  autoComplete="off"
-                />
-              </TextField>
-              {filterValue ? (
-                <Button
-                  data-testid="clear-filter"
-                  label="×"
-                  ariaLabel={t.clearSearch}
-                  variant="quiet"
-                  size="row"
-                  onPress={() => onFilter("")}
-                />
+              {archived}
+            </section>
+          ) : only ? null : collapsed ? (
+            <ControlButton
+              data-testid="rail-all-workspaces"
+              size="row"
+              variant="quiet"
+              className="ah-now-expand"
+              aria-label={t.allWorkspaces}
+              title={t.allWorkspaces}
+              onPress={onToggle}
+            >
+              <Icon name="folder" />
+            </ControlButton>
+          ) : (
+            <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
+              <div className="ah-rail-section-head">
+                <h2 id="rail-ws">
+                  {t.workspaces}
+                  <span
+                    data-testid="workspace-summary"
+                    className="ah-rail-count"
+                    role="status"
+                  >
+                    {resultSummary}
+                  </span>
+                </h2>
+                {onCreateWorkspace ? (
+                  <ControlButton
+                    data-testid="workspace-create"
+                    size="row"
+                    variant="quiet"
+                    aria-label={t.newWorkspace}
+                    title={t.newWorkspace}
+                    onPress={onCreateWorkspace}
+                  >
+                    <Icon name="folderPlus" />
+                  </ControlButton>
+                ) : null}
+              </div>
+              <div className="ah-rail-filter">
+                <TextField
+                  className="ah-rail-search"
+                  value={filterValue}
+                  onChange={onFilter}
+                >
+                  <Label className="ah-visually-hidden">
+                    {t.filterWorkspaces}
+                  </Label>
+                  <Input
+                    data-testid="workspace-filter"
+                    placeholder={t.filterWorkspaces}
+                    autoComplete="off"
+                  />
+                </TextField>
+                {filterValue ? (
+                  <Button
+                    data-testid="clear-filter"
+                    label="×"
+                    ariaLabel={t.clearSearch}
+                    variant="quiet"
+                    size="row"
+                    onPress={() => onFilter("")}
+                  />
+                ) : null}
+                <span className="ah-rail-refresh">
+                  <RefreshIconButton onPress={onRefresh} />
+                </span>
+              </div>
+              {clones}
+              {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
+              {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
+              {listState === "filtered-empty" ? (
+                <p data-testid="filter-empty">{t.filterEmpty}</p>
               ) : null}
-              <span className="ah-rail-refresh">
-                <RefreshIconButton onPress={onRefresh} />
-              </span>
-            </div>
-            {clones}
-            {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
-            {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
-            {listState === "filtered-empty" ? (
-              <p data-testid="filter-empty">{t.filterEmpty}</p>
-            ) : null}
-            {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
-            {listState === "error" || listState === "unknown" ? (
-              <p>{t.workspacesUnavailable}</p>
-            ) : (
-              <ul className="ah-workspace-list">{children}</ul>
-            )}
-            {listState === "error" || listState === "loading" ? null : archived}
-          </section>
-        )}
-      </div>
-      {sessionActions ? (
-        <footer className="ah-rail-foot">{sessionActions}</footer>
-      ) : null}
+              {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
+              {listState === "error" || listState === "unknown" ? (
+                <p>{t.workspacesUnavailable}</p>
+              ) : (
+                <ul className="ah-workspace-list">{children}</ul>
+              )}
+              {listState === "error" || listState === "loading"
+                ? null
+                : archived}
+            </section>
+          )}
+        </div>
+        {sessionActions ? (
+          <footer className="ah-rail-foot">{sessionActions}</footer>
+        ) : null}
+      </TooltipSide.Provider>
     </nav>
   );
 }
@@ -1477,6 +1603,7 @@ export function AgentHeader({
   settings,
   contextIndicator,
   modelPicker,
+  emptyConversation = false,
   gitStatus,
   openMachines,
   terminal,
@@ -1511,6 +1638,7 @@ export function AgentHeader({
   /** How full the model's context is (Rengas), just before the model. */
   contextIndicator?: ReactNode;
   modelPicker?: ReactNode;
+  emptyConversation?: boolean;
   /** The workspace's Git status chip, beside the model (Yläpalkissa). */
   gitStatus?: ReactNode;
   /** The person's own computers this conversation used that have an SSH
@@ -1558,6 +1686,19 @@ export function AgentHeader({
   const archiving = archive ? archiveAction(archive) : undefined;
   const topline = useRef<HTMLDivElement>(null);
   const hidden = useHeaderShortening(topline);
+  const phoneReadout = usePhoneHeaderReadout(topline);
+  const phone = hidden.workspace === undefined;
+  const explain = useExplainEntry();
+  const phoneActions = phone
+    ? phoneReadout.actions.map((action) => ({
+        id: action.id,
+        label: action.label,
+        availability: action.disabled
+          ? { state: "disabled" as const, reason: action.label }
+          : undefined,
+        run: () => activateHeaderControl(topline, action.selector),
+      }))
+    : [];
   const fallbackModel =
     settings?.model || settings?.thinking
       ? t.modelSummary(
@@ -1565,18 +1706,21 @@ export function AgentHeader({
           settings.thinking ?? t.thinkingFallback,
         )
       : undefined;
-  // On a phone the secondary actions leave the top bar for this menu, so the
-  // header stays two rows; on a desktop it appears once the row has had to
+  // On a phone panels and secondary actions leave room for the title/facts
+  // block; on a desktop this menu appears once the row has had to
   // move the workspace there to keep the title readable, and lists only what
   // the row no longer shows (CSS shows the trigger, this decides the rows).
   const menuActions = hidden.actions !== false;
   const headerMenu = [
+    ...phoneActions,
+    // On a phone the menu also opens the explain mode (Selitä tämä näkymä).
+    ...(phone && explain ? [explain] : []),
     ...(hidden.workspace !== false
       ? [
           {
             id: "workspace",
-            label: workspaceLabel,
-            description: t.openWorkspace,
+            label: phone ? t.openWorkspace : workspaceLabel,
+            description: phone ? undefined : t.openWorkspace,
             run: () => navigate(workspaceHref),
           },
         ]
@@ -1708,6 +1852,23 @@ export function AgentHeader({
               )}
             </h1>
           )}
+          <PhoneHeaderFacts
+            row={topline}
+            readout={phoneReadout}
+            workspace={workspaceLabel}
+            onWorkspace={() => navigate(workspaceHref)}
+            showModel={!emptyConversation}
+            onDetails={onToggleDetails}
+            activity={
+              visibleActivity ? (
+                <StatusMark
+                  label={activityLabel}
+                  kind={activityKind}
+                  tone="info"
+                />
+              ) : undefined
+            }
+          />
           <span
             className="ah-title-dots"
             data-testid="title-dots"
@@ -1792,6 +1953,7 @@ export function AgentHeader({
         {filesControl}
         {editorControl}
         {terminal}
+        <ExplainToggle />
         {recapAction ? (
           <ControlButton
             data-testid="conversation-recap"

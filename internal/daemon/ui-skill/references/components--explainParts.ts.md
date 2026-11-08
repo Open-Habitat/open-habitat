@@ -1,0 +1,354 @@
+# components/explainParts.ts
+
+Generated from web/src/components/explainParts.ts; do not edit.
+
+```tsx
+import type { explainModeText } from "../text/explainMode";
+
+/** What each part the explain mode explains is, keyed by its card id in
+ * text/explainMode.ts: the production element (its own test id or class,
+ * never a position), its kind and its shortcut. The ids are the prototype's
+ * (proto-explain-mode-r6), so a card can be pointed at by name. */
+export type CardId = keyof typeof explainModeText.fi.cards;
+export type Kind = keyof typeof explainModeText.fi.kinds;
+export type Part = {
+  kind: Kind;
+  sel: string;
+  /** The shortcut, shown as a key cap on the card. */
+  key?: string;
+  /** A press opens something though the card names no action. */
+  opens?: true;
+  workerLegend?: true;
+};
+
+/** A settings section's entry in the settings navigation. */
+const page = (section: string) => `[data-testid="settings-${section}"]`;
+const H = ".ah-agent-header";
+
+export const parts: Record<CardId, Part> = {
+  X01: { kind: "once", sel: '[data-testid="explain-strip"]' },
+  X02: { kind: "info", sel: '[data-testid="explain-bar"]' },
+  X03: { kind: "once", sel: '[data-testid="menu-explain"]' },
+  X05: { kind: "once", sel: '[data-testid="explain-toggle"]' },
+  Y01: {
+    kind: "once",
+    sel: `${H} [data-testid="conversation-rename"], [data-testid="menu-rename"]`,
+  },
+  Y02: {
+    kind: "nav",
+    sel: '[data-testid="conversation-workspace"], [data-testid="menu-workspace"]',
+  },
+  Y03: { kind: "info", sel: '[data-testid="header-activity"]' },
+  Y04: { kind: "panel", sel: '[data-testid="git-chip"]' },
+  Y05: { kind: "panel", sel: '[data-testid="context-ring"]' },
+  Y06: { kind: "menu", sel: '[data-testid="conversation-model"]' },
+  Y07: { kind: "panel", sel: '[data-testid="toggle-editor"]' },
+  Y08: {
+    kind: "panel",
+    sel: '[data-testid="toggle-terminal"]',
+    key: "Ctrl+Alt+T",
+  },
+  Y09: {
+    kind: "once",
+    sel: '[data-testid="conversation-recap"], [data-testid="menu-recap"]',
+  },
+  Y10: {
+    kind: "once",
+    sel: '[data-testid="conversation-retitle"], [data-testid="menu-retitle"]',
+  },
+  Y11: {
+    kind: "once",
+    sel: '[data-testid="archive-conversation"], [data-testid="menu-archive"]',
+  },
+  Y12: {
+    kind: "once",
+    sel: `${H} [data-testid="dialog-close"], [data-testid="rail-close-conversation"]`,
+  },
+  Y13: {
+    kind: "panel",
+    sel: '[data-testid="workspace-details"], [data-testid="menu-details"]',
+  },
+  Y14: { kind: "menu", sel: '[data-testid="conversation-menu"]' },
+  Y15: { kind: "panel", sel: '[data-testid="guide-toggle"]' },
+  Y16: { kind: "nav", sel: '[data-testid="navigation-open"]' },
+  S01: { kind: "nav", sel: '[data-testid="server-home"]', opens: true },
+  S02: {
+    kind: "info",
+    sel: 'strong + span[title] > [data-testid="status-mark"]',
+  },
+  S03: { kind: "nav", sel: '[data-testid="home-link"]' },
+  S04: { kind: "once", sel: '[data-testid="close-navigation"]' },
+  S05: { kind: "list", sel: 'section[data-testid="rail-yours"]' },
+  S06: { kind: "list", sel: 'section[data-testid="rail-running"]' },
+  S07: { kind: "list", sel: '[data-testid="rail-quiet-fold"]' },
+  S08: { kind: "menu", sel: '[data-testid="rail-quiet-menu"]' },
+  S09: { kind: "nav", sel: '.ah-rail [data-testid="agent-link"]' },
+  S10: { kind: "info", sel: ".ah-rail .ah-ball" },
+  S11: { kind: "info", sel: ".ah-rail .ah-worker-rail", workerLegend: true },
+  S12: { kind: "once", sel: '[data-testid="rail-rename-conversation"]' },
+  S13: { kind: "once", sel: '[data-testid="rail-archive-conversation"]' },
+  S14: { kind: "list", sel: '[data-testid="workspace-summary"]' },
+  S15: { kind: "once", sel: '[data-testid="workspace-create"]' },
+  S16: { kind: "input", sel: '[data-testid="workspace-filter"]' },
+  S17: { kind: "once", sel: '[data-testid="snapshot-refresh"]' },
+  S18: { kind: "nav", sel: '.ah-rail a[data-testid^="workspace-"]' },
+  S19: { kind: "once", sel: '[data-testid^="workspace-start-"]' },
+  S20: { kind: "nav", sel: '[data-testid="rail-all-workspaces"]' },
+  S21: { kind: "menu", sel: '[data-testid="account-menu-trigger"]' },
+  S22: { kind: "nav", sel: '[data-testid="menu-settings"]' },
+  S23: { kind: "nav", sel: '[data-testid="menu-administration"]' },
+  S24: { kind: "menu", sel: '[data-testid="theme-choice"]' },
+  S25: {
+    kind: "menu",
+    sel: '.ah-account-menu-theme-row:has(fieldset[data-testid="segmented-choice"])',
+  },
+  S26: {
+    kind: "once",
+    sel: '[data-testid="menu-logout"], [data-testid="logout-open"]',
+  },
+  S27: { kind: "menu", sel: '[data-testid="rail-quiet-sort"]' },
+  S28: { kind: "menu", sel: '[data-testid^="rail-quiet-tile-"]' },
+  S29: { kind: "once", sel: '[data-testid="rail-quiet-done"]' },
+  E01: { kind: "info", sel: '[data-testid="workspaces-title"]' },
+  E02: { kind: "list", sel: ".ah-home-workspace-head" },
+  E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },
+  E04: { kind: "info", sel: '[data-testid="card-read-only"]' },
+  E05: { kind: "info", sel: '[data-testid="recap-age"]' },
+  E06: { kind: "nav", sel: '[data-testid="open-conversation"]' },
+  E07: { kind: "list", sel: '[data-testid="empty-workspaces"]' },
+  T01: {
+    kind: "info",
+    sel: '.ah-workspace-page-head [data-testid="workspace-title"]',
+  },
+  T02: { kind: "once", sel: '[data-testid="copy-path"]' },
+  T03: { kind: "nav", sel: '[data-testid="open-github"]' },
+  T04: { kind: "once", sel: '[data-testid="rename-workspace"]' },
+  T05: { kind: "once", sel: '[data-testid="workspace-archive"]' },
+  T06: { kind: "once", sel: '[data-testid="delete-workspace"]' },
+  T07: { kind: "once", sel: '[data-testid="new-worktree"]' },
+  T08: { kind: "once", sel: '[data-testid="conversation-start"]' },
+  T09: { kind: "info", sel: '[data-testid="landing"]' },
+  T10: { kind: "once", sel: '[data-testid="landing-more"]' },
+  T11: {
+    kind: "once",
+    sel: '.ah-workspace-page [data-testid="starting-goal"]',
+  },
+  T12: { kind: "panel", sel: '[data-testid="workspace-git"]' },
+  T13: { kind: "list", sel: '[data-testid="open-conversations"]' },
+  T14: { kind: "list", sel: '[data-testid="workspace-archive-panel"]' },
+  A01: {
+    kind: "info",
+    sel: '[data-testid="start-page-title"], [data-testid="start-page-body"]',
+  },
+  A02: {
+    kind: "once",
+    sel: '[data-testid="start-here"] [data-testid="starting-goal"]',
+  },
+  A03: { kind: "info", sel: '[data-testid="goal-chip-open"]' },
+  A04: { kind: "once", sel: '[data-testid="goal-chip-remove"]' },
+  A05: { kind: "menu", sel: '[data-testid="composer-model-picker"]' },
+  K01: {
+    kind: "info",
+    sel: '.ah-feed > li[data-kind="user"] > [data-testid="message"]:not([data-voice])',
+  },
+  K02: { kind: "once", sel: '[data-testid="message-copy"]' },
+  K03: { kind: "info", sel: '[data-testid="stage-reply"].ah-turn-interim' },
+  K04: { kind: "info", sel: '[data-testid="history-stage-toggle"]' },
+  K05: {
+    kind: "info",
+    sel: '[data-testid="tool-row"][data-tool-name="bash"]:not([data-state="failed"])',
+  },
+  K06: {
+    kind: "info",
+    sel: '[data-testid="tool-row"][data-tool-name="read"]:not([data-state="failed"])',
+  },
+  K07: {
+    kind: "info",
+    sel: '[data-testid="tool-row"][data-tool-name="write"]',
+  },
+  K08: { kind: "info", sel: '[data-testid="tool-row"][data-tool-name="edit"]' },
+  K09: {
+    kind: "info",
+    sel: '[data-testid="tool-row"][data-tool-name="process"]',
+  },
+  K10: { kind: "info", sel: '[data-testid="tool-row"][data-state="failed"]' },
+  K11: {
+    kind: "info",
+    sel: '[data-testid="stage-reply"]:not(.ah-turn-interim)',
+  },
+  K12: { kind: "nav", sel: ".ah-file-link" },
+  K13: { kind: "info", sel: '[data-testid="mermaid-diagram"] > img' },
+  K14: { kind: "once", sel: ".ah-mermaid-source > summary" },
+  K15: { kind: "once", sel: '[data-testid="output-copy"]' },
+  K16: { kind: "once", sel: '[data-testid="output-wrap"]' },
+  K17: { kind: "info", sel: '[data-testid="turn-progress"]' },
+  K18: { kind: "once", sel: '[data-testid="turn-work-toggle"]' },
+  K19: { kind: "once", sel: '[data-testid="conversation-recheck"]' },
+  K20: { kind: "once", sel: '[data-testid="markdown-preview-toggle"]' },
+  K21: { kind: "once", sel: '[data-testid="markdown-preview-expand"]' },
+  V01: { kind: "input", sel: '[data-testid="message-input"]' },
+  V02: { kind: "once", sel: '[data-testid="attach-file"]' },
+  V03: { kind: "list", sel: '[data-testid="command-palette"]', key: "/" },
+  V04: { kind: "list", sel: '[data-testid="file-picker"]', key: "@" },
+  V05: { kind: "once", sel: '[data-testid="dictation-mic"]', key: "Ctrl+§" },
+  V06: { kind: "once", sel: '[data-testid="send"]', key: "Enter" },
+  V07: { kind: "once", sel: '[data-testid="composer-stop"]', key: "Esc" },
+  V08: { kind: "menu", sel: '[data-testid="composer-mode"]', key: "Alt+Enter" },
+  V09: { kind: "info", sel: '[data-testid="background-work"]' },
+  V10: { kind: "panel", sel: '[data-testid="background-processes"]' },
+  V11: {
+    kind: "panel",
+    sel: '[data-testid="background-spinoffs"]',
+    workerLegend: true,
+  },
+  V12: {
+    kind: "info",
+    sel: '.ah-bg-group:has(.ah-bg-row[data-kind="spin"])',
+    workerLegend: true,
+  },
+  L01: { kind: "input", sel: '[data-testid="command-search"]' },
+  L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
+  L03: {
+    kind: "list",
+    sel: '[data-testid^="composer-command-"]:not([data-testid^="composer-command-skill:"])',
+  },
+  L04: { kind: "list", sel: '[data-testid="composer-file-choice"]' },
+  L05: { kind: "info", sel: '[data-testid="file-git-mark"]' },
+  L06: {
+    kind: "menu",
+    sel: 'fieldset[data-testid="segmented-choice"]:has([data-testid="segment-openai"])',
+  },
+  L07: {
+    kind: "list",
+    sel: '[data-testid="composer-model-menu"] label:has(input[data-testid^="model-"])',
+  },
+  L08: { kind: "once", sel: '[data-testid="older-models-toggle"]' },
+  L09: {
+    kind: "menu",
+    sel: 'fieldset[data-testid="segmented-choice"]:has([data-testid="segment-medium"])',
+  },
+  L10: {
+    kind: "nav",
+    sel: '[data-testid="model-default-settings"]',
+    opens: true,
+  },
+  L11: { kind: "once", sel: '[data-testid="model-commit"]' },
+  P01: { kind: "panel", sel: '[data-testid="git-dialog"] .ah-gs-top' },
+  P02: { kind: "info", sel: ".ah-gs-top + .ah-gs-sec .ah-gs-cmp" },
+  P03: {
+    kind: "list",
+    sel: '.ah-gs-top + .ah-gs-sec [data-testid="git-commits-out"]',
+  },
+  P04: {
+    kind: "list",
+    sel: '.ah-gs-top + .ah-gs-sec [data-testid="git-commits-in"]',
+  },
+  P05: { kind: "info", sel: ".ah-gs-top + .ah-gs-sec + .ah-gs-sec .ah-gs-cmp" },
+  P06: {
+    kind: "list",
+    sel: '.ah-gs-top + .ah-gs-sec + .ah-gs-sec [data-testid="git-commits-out"]',
+  },
+  P07: {
+    kind: "list",
+    sel: '.ah-gs-top + .ah-gs-sec + .ah-gs-sec [data-testid="git-commits-in"]',
+  },
+  P08: {
+    kind: "list",
+    sel: ".ah-gs-top + .ah-gs-sec + .ah-gs-sec + .ah-gs-sec",
+  },
+  P09: { kind: "once", sel: '[data-testid="fetch-git"]' },
+  P10: { kind: "panel", sel: '[data-testid="conversation-details"]' },
+  P11: { kind: "panel", sel: '[data-testid="conversation-model-info"]' },
+  P12: { kind: "panel", sel: '[data-testid="guide-panel"]' },
+  P13: {
+    kind: "once",
+    sel: '[data-testid="resize-view"], [data-testid="resize-editor"]',
+  },
+  P14: {
+    kind: "panel",
+    sel: '[data-testid="background-tab-spinoff"], [data-testid="background-tab-process"]',
+  },
+  P15: {
+    kind: "nav",
+    sel: '.ah-bg-row[data-kind="spin"] .ah-bg-main',
+    workerLegend: true,
+  },
+  R01: {
+    kind: "panel",
+    sel: '[data-testid="terminal-panel"] .xterm, [data-testid="terminal-panel"] [class*="screen"]',
+  },
+  R02: { kind: "list", sel: '[data-testid="terminal-panel"] [role="tab"]' },
+  R03: { kind: "once", sel: '[data-testid="close-terminal"]' },
+  R04: { kind: "once", sel: '[data-testid="new-terminal"]' },
+  R05: { kind: "once", sel: '[data-testid="maximize-terminal"]' },
+  R06: {
+    kind: "once",
+    sel: '[data-testid="hide-terminal"], [data-testid="terminal-back"]',
+  },
+  R07: { kind: "once", sel: '[data-testid="resize-terminal"]' },
+  R08: { kind: "info", sel: '[data-testid="terminal-panel"] kbd' },
+  R09: { kind: "once", sel: '[data-testid="terminal-keys"]' },
+  D01: { kind: "panel", sel: '[data-testid="editor-header"]' },
+  D02: { kind: "panel", sel: '[data-testid="editor-picker"]' },
+  D03: { kind: "once", sel: '[data-testid="editor-save"]', key: "Ctrl+S" },
+  D04: { kind: "once", sel: '[data-testid="hide-conversation"]' },
+  D05: { kind: "once", sel: '[data-testid="close-editor"]' },
+  D06: { kind: "list", sel: '[data-testid="editor-file-picker"]' },
+  D07: { kind: "input", sel: '[data-testid="editor-file-filter"]' },
+  D08: { kind: "info", sel: '.ah-browser-document > p[role="status"]' },
+  W01: { kind: "info", sel: '[data-testid="worker-band"]' },
+  W02: { kind: "nav", sel: '[data-testid="parent-top"]' },
+  W03: { kind: "info", sel: ".ah-worker-meta" },
+  W04: { kind: "nav", sel: '[data-testid="worker-ask"]' },
+  W05: { kind: "info", sel: '[data-testid="message"][data-voice="brief"]' },
+  W06: { kind: "panel", sel: '[data-testid="worker-terminal-row"]' },
+  M01: { kind: "input", sel: '[data-testid="settings-search"]', key: "/" },
+  M02: { kind: "once", sel: '[data-testid="settings-close"]' },
+  M03: { kind: "page", sel: page("tili") },
+  M04: { kind: "page", sel: page("laitteet") },
+  M05: { kind: "page", sel: page("avaimet") },
+  M06: { kind: "page", sel: page("tekoaly") },
+  M07: { kind: "page", sel: page("tilannekatsaus") },
+  M08: { kind: "page", sel: page("sanelu") },
+  M09: { kind: "page", sel: page("koodipalvelut") },
+  M10: { kind: "page", sel: page("tiedot") },
+  M11: { kind: "page", sel: page("omatkoneet") },
+  M12: { kind: "page", sel: page("ulkoasu") },
+  M13: { kind: "page", sel: page("editori") },
+  M14: { kind: "page", sel: page("tila") },
+  M15: { kind: "page", sel: page("kokeelliset") },
+  M16: { kind: "info", sel: ".s-nav-h" },
+  M17: { kind: "page", sel: page("palvelin") },
+  M18: { kind: "page", sel: page("palvelinintegraatiot") },
+  M19: { kind: "page", sel: page("aiavain") },
+  M20: { kind: "page", sel: page("saneluavain") },
+  M21: { kind: "page", sel: page("kayttoonotto") },
+  M22: { kind: "page", sel: page("kayttajat") },
+  M23: { kind: "page", sel: page("levy") },
+  M24: { kind: "once", sel: '[data-testid="git-identity-edit"]' },
+  M25: {
+    kind: "info",
+    sel: '[data-testid="version-value"], [data-testid="bundle-state"]',
+  },
+};
+
+/** Presses whose effect lasts (archive, delete, sign out, close an empty
+ * conversation, send, stop, close a terminal, save). In the mode they wait,
+ * so that nothing happens by accident while the person explores. */
+export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "Y11",
+  "S13",
+  "T05",
+  "T06",
+  "S26",
+  "Y12",
+  "V06",
+  "V07",
+  "R03",
+  "D03",
+]);
+
+/** Controls that production shows only under the pointer. */
+export const hoverOnly = ".ah-nav-archive, .ah-workspace-more";
+
+```

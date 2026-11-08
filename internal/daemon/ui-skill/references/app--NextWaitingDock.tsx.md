@@ -7,11 +7,10 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { AgentNavModel } from "../components/Navigation";
 import { NextWaitingRow } from "../components/NextWaitingRow";
-import { useExperimentalFeature } from "./accountPreferences";
 
 export type NextWaiting = { yours: AgentNavModel[] };
 
-/** The live rail list, offered only inside this visit's accepted-send window. */
+/** The live rail list, offered during this visit's send or arrival window. */
 export function NextWaitingDock({
   next,
   agentId,
@@ -21,10 +20,9 @@ export function NextWaitingDock({
   agentId: string;
   open: boolean;
 }) {
-  const on = useExperimentalFeature("next-waiting-row");
   const navigate = useNavigate();
   const others = next?.yours.filter((a) => a.agentId !== agentId) ?? [];
-  const first = on && open ? others[0] : undefined;
+  const first = open ? others[0] : undefined;
   useEffect(() => {
     if (!first) return;
     const onKey = (e: KeyboardEvent) => {

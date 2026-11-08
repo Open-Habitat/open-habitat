@@ -609,7 +609,7 @@ export function BackgroundStrip({
         ? clock(Date.parse(r.ended_at))
         : "";
     const agent = runAgent(r);
-    // Lause (worker-row sentence, experimental): what the worker has
+    // Worker-row sentence: what the worker has
     // produced, right after the state word, so a narrow row cuts the agent
     // first. A landed run's work is in its source branch: no facts.
     const work =

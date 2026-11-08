@@ -47,7 +47,7 @@ const fi = {
   matches: "Osumat",
   changed: "Muutetut",
   idlePlaceholder: "Kirjoita agentille…",
-  tooManyFiles: "Viestiin voi liittää enintään kahdeksan tiedostoa.",
+  tooManyFiles: "Viestiin voi liittää enintään 30 tiedostoa.",
   uploadFailed: "Liitteen tallennus epäonnistui.",
   previousRunning: "Edellinen komento on vielä käynnissä. Pysäytä se ensin.",
   terminalOnly: (name: string) =>
@@ -60,6 +60,7 @@ const fi = {
   stopUnsent: "Pysäytä: viesti ei lähde",
   skillsUnchecked:
     "Taitoja ei saatu tarkistettua. Viestiä ei lähetetty; yritä uudelleen.",
+  notSent: (reason: string) => `Viestiä ei lähetetty: ${reason}`,
   run: "Aja",
   send: "Lähetä",
   stillRunning: "Edellinen komento on vielä käynnissä",
@@ -159,7 +160,7 @@ export const composerText = catalog(fi, {
   matches: "Matches",
   changed: "Changed",
   idlePlaceholder: "Write to the agent…",
-  tooManyFiles: "A message can have at most eight attachments.",
+  tooManyFiles: "A message can have at most 30 attachments.",
   uploadFailed: "The attachment could not be saved.",
   previousRunning: "The previous command is still running. Stop it first.",
   terminalOnly: (name) =>
@@ -171,6 +172,7 @@ export const composerText = catalog(fi, {
   stopUnsent: "Stop: the message is not sent",
   skillsUnchecked:
     "The skills could not be checked. The message was not sent; try again.",
+  notSent: (reason) => `The message was not sent: ${reason}`,
   run: "Run",
   send: "Send",
   stillRunning: "The previous command is still running",

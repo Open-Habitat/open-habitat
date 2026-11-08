@@ -53,9 +53,7 @@ export function railNow({
   selectedAgentId,
   selectedId,
   search = "",
-  workFacts = false,
   icons,
-  turnMarks = false,
   creations = [],
 }: {
   agents: Agent[];
@@ -75,12 +73,8 @@ export function railNow({
   selectedAgentId?: string;
   selectedId?: string;
   search?: string;
-  /** The worker-row sentence is on: worktree rows say their work. */
-  workFacts?: boolean;
   /** Workspace icons by workspace_id (workspace-icons, experimental). */
   icons?: ReadonlyMap<string, WorkspaceIconModel>;
-  /** Raise and Ei nyt are on (raise-to-your-turn, experimental). */
-  turnMarks?: boolean;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -148,13 +142,13 @@ export function railNow({
         observed.activity !== "waiting") ||
       workerBusy ||
       workerIdle;
-    // Raise and Ei nyt (experimental): the person's own mark, kept by their
+    // Raise and Ei nyt: the person's own mark, kept by their
     // daemon, decides with the replies. Opening a reply no longer answers
     // it; it waits, read, until the person replies or says Ei nyt, which
     // holds until a reply with another ID. A raise waits until the person
     // replies or lowers it; a reply after it takes its place, and work on
     // the conversation shows it in Käynnissä meanwhile.
-    const mark = turnMarks ? (current ?? a).turn_mark : undefined;
+    const mark = (current ?? a).turn_mark;
     const reply = (current ?? a).last_reply;
     const dismissed = mark?.state === "not_now" && mark.reply_id === reply?.id;
     const raised =
@@ -163,8 +157,7 @@ export function railNow({
       !(reply && Date.parse(reply.at) > Date.parse(mark.at));
     // Read means a reply the snapshot still names: a stale entry of a reply
     // that is gone (its turn was cut, say) does not wait.
-    const read =
-      turnMarks && !live && !!reply && facts.attention === "seen" && !dismissed;
+    const read = !live && !!reply && facts.attention === "seen" && !dismissed;
     // A conversation opened with + waits for the person until its first
     // message is written, as a reply does (Jari 7.11.2026): Pi has written
     // no history yet. Ei nyt, which has no reply to name, moves it to
@@ -267,10 +260,7 @@ export function railNow({
             const merged = worktreeMerged(place);
             return {
               merged,
-              work:
-                workFacts && !merged
-                  ? placeWorkClause(place?.git_summary)
-                  : undefined,
+              work: !merged ? placeWorkClause(place?.git_summary) : undefined,
             };
           })()
         : undefined,
@@ -290,15 +280,13 @@ export function railNow({
       // Ei nyt said on another device answers a reply this one has not shown.
       attentionLabel: dismissed ? undefined : presentation.attentionLabel,
       turnMark: raised ? "raised" : read ? "read" : undefined,
-      turnAction: !turnMarks
-        ? undefined
-        : isQuiet
-          ? "raise"
-          : raised
-            ? "lower"
-            : turn && !facts.pendingQuestion && !live
-              ? "not_now"
-              : undefined,
+      turnAction: isQuiet
+        ? "raise"
+        : raised
+          ? "lower"
+          : turn && !facts.pendingQuestion && !live
+            ? "not_now"
+            : undefined,
       // A sub-agent at work, whether or not the parent still waits for it:
       // a daemon restart ends the wait, not the run.
       spinoffWorking: phase !== "stale" && (a.spinoffs_working ?? 0) > 0,

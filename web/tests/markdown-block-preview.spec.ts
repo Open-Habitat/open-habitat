@@ -12,15 +12,6 @@ test("Markdown preview keeps its rail, keyboard focus and source on desktop and 
   page,
 }) => {
   const draft = `# Draft\n\n${Array.from({ length: 18 }, (_, i) => `Paragraph ${i}.\n`).join("\n")}\n| A | B |\n| --- | --- |\n| one | two |\n`;
-  await page.route("**/api/v1/account/preferences", async (route) => {
-    const response = await route.fetch();
-    const json = await response.json();
-    json.experimental = {
-      ...json.experimental,
-      "markdown-block-preview": true,
-    };
-    await route.fulfill({ response, json });
-  });
   await page.route("**/api/v1/agents/*/history?*", async (route) => {
     const response = await route.fetch();
     const json = await response.json();

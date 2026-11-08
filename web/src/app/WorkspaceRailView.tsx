@@ -156,7 +156,7 @@ export function WorkspaceRailView({
   resources?: boolean;
   /** The person's server browser's row (remote-browser, experimental). */
   browser?: ReactNode;
-  /** The rows' raise and lower (raise-to-your-turn, experimental). */
+  /** The rows' raise and lower (raise-to-your-turn). */
   turnConversation?: RailTurn;
   /** Hiljaiset's order and workspace from the account preferences. */
   quietChoice: QuietChoice;

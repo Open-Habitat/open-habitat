@@ -264,17 +264,33 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
-      "next-waiting-row": {
-        label: "Next waiting conversation",
-        desc: "Go through the conversations waiting for you in one round while the agent works.",
+      "composer-lists-in-field": {
+        label: "Lists inside the message field",
+        desc: "Browse files and commands inside the message field and mark several files at once.",
       },
-      "worker-row-sentence": {
-        label: "Worker's work on its row",
-        desc: "A worker's row tells its commits, changes and pull request checks.",
+      "explain-mode": {
+        label: "Explain mode",
+        desc: "Dim the screen and see what any part of it does.",
       },
-      "workspace-icons": {
-        label: "Workspace icon",
-        desc: "Conversations in the sidebar carry the workspace's icon from the repository's setting, a logo or its name; it can be changed from the workspace page's title.",
+      "rewind-conversation": {
+        label: "Go back here",
+        desc: "Go back to an earlier message of yours in the same conversation and, if you want, restore the files the agent changed.",
+      },
+      "agent-resources-view": {
+        label: "Agent resources",
+        desc: "Browse everything your agents use, by kind: what is included, what is not and what the agent may do.",
+      },
+      "remote-browser": {
+        label: "Your own server browser",
+        desc: "Your own browser on the server: sign in to a service, and the agent uses the same browser, which you see live.",
+      },
+      "conversation-context-view": {
+        label: "Context view and compaction",
+        desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
+      },
+      "named-workers": {
+        label: "Helpers",
+        desc: "Named workers work in rounds and wait for the main agent's next message.",
       },
     },
   },
@@ -377,6 +393,23 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "view-links-admin": {
         label: "Shared links",
         desc: "View links people have shared; remove one that is misused.",
+      },
+    },
+  },
+  keskustelut: {
+    label: "Conversations",
+    rows: {
+      "live-limit-memory": {
+        label: "Memory",
+        desc: "The server's memory and how much the limits could use.",
+      },
+      "live-limit-default": {
+        label: "Limit per person",
+        desc: "How many conversations one person can have working at once.",
+      },
+      "live-limit-people": {
+        label: "People",
+        desc: "A limit of their own for a person.",
       },
     },
   },

@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [web/src/components/ExperimentalFeatures.tsx]
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Graduate Markdown preview, worker's work on its row, and Raise/Not now to default features
@@ -31,7 +32,7 @@ these as experimental. Other experimental features stay as they are.
 
 ## Acceptance Criteria
 
-- [ ] The three features work with no setting for a fresh account; their
+- [x] The three features work with no setting for a fresh account; their
       cards are gone from Kokeelliset ominaisuudet.
-- [ ] No gate or off-path code for the three ids remains.
-- [ ] Touched specs green; `KOKEILTAVAA.md` line.
+- [x] No gate or off-path code for the three ids remains.
+- [x] Touched specs green; `KOKEILTAVAA.md` line.

@@ -1,0 +1,84 @@
+# text/fieldList.ts
+
+Generated from web/src/text/fieldList.ts; do not edit.
+
+```tsx
+import { catalog, plural } from "../i18n";
+
+// The composer's lists inside the field (components/composer/FieldList.tsx,
+// experimental composer-lists-in-field): the head's count, the search, the
+// marked row, the tree's status rows, the command groups and the key hints.
+const fi = {
+  changedCount: (n: number) =>
+    plural("fi", n, { one: `${n} muutettu`, other: `${n} muutettua` }),
+  matchCount: (n: number) =>
+    plural("fi", n, { one: `${n} osuma`, other: `${n} osumaa` }),
+  searchFile: "Hae tiedostoa",
+  typeAfterAt: "Kirjoita tekstiin @:n perään",
+  searchFilePlaceholder: "Hae koko työtilasta",
+  searchCommand: "Hae komentoa tai taitoa",
+  preview: "Esikatselu",
+  marked: (n: number) => `${n} valittu`,
+  clear: "Tyhjennä",
+  add: (n: number) => (n === 1 ? "Lisää polku" : `Lisää ${n} polkua`),
+  folderLoading: "Haetaan…",
+  folderMore: "Kansiossa on enemmän tiedostoja. Hae nimellä.",
+  noFiles: "Ei tiedostoja.",
+  groups: {
+    skill: "Taidot",
+    prompt: "Pohjat",
+    extension: "Laajennukset",
+  },
+  keySelect: "valitse",
+  keyMark: "merkitse",
+  keyInsert: "lisää",
+  keyShowInFolder: "näytä kansiossa",
+  keyFolder: "avaa ja sulje kansio",
+  keyBackToText: "takaisin tekstiin",
+  keyAddToStart: "lisää viestin alkuun",
+  keyAddTop: "lisää ylimmän",
+  keySelects: "valitsee",
+  keySendsAsIs: "lähettää tekstin sellaisenaan",
+  keyClose: "sulje",
+  keySearchAndSeveral: "haku ja useampi",
+  keyToFiles: "tiedostot",
+  keyToCommands: "komennot",
+};
+
+export const fieldListText = catalog(fi, {
+  changedCount: (n) => `${n} changed`,
+  matchCount: (n) =>
+    `${n} ${plural("en", n, { one: "match", other: "matches" })}`,
+  searchFile: "Search for a file",
+  typeAfterAt: "Type after @ in the message",
+  searchFilePlaceholder: "Search the whole workspace",
+  searchCommand: "Search for a command or skill",
+  preview: "Preview",
+  marked: (n) => `${n} selected`,
+  clear: "Clear",
+  add: (n) => (n === 1 ? "Add path" : `Add ${n} paths`),
+  folderLoading: "Loading…",
+  folderMore: "The folder has more files. Search by name.",
+  noFiles: "No files.",
+  groups: {
+    skill: "Skills",
+    prompt: "Templates",
+    extension: "Extensions",
+  },
+  keySelect: "select",
+  keyMark: "mark",
+  keyInsert: "insert",
+  keyShowInFolder: "show in folder",
+  keyFolder: "open and close folder",
+  keyBackToText: "back to the text",
+  keyAddToStart: "add to the start of the message",
+  keyAddTop: "insert the top one",
+  keySelects: "selects",
+  keySendsAsIs: "sends the text as it is",
+  keyClose: "close",
+  keySearchAndSeveral: "search and several",
+  keyToFiles: "files",
+  keyToCommands: "commands",
+});
+
+```

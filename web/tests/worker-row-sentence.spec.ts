@@ -188,33 +188,15 @@ const row = (page: Page, title: string) =>
     .locator('[data-kind="spin"]')
     .filter({ has: page.getByTestId(`spinoff-${title}`) });
 
-test("@worker-row-sentence @a11y off by default nothing is read or shown; on, each row says its work and the worker view links its PR", async ({
+test("@worker-row-sentence @a11y each row says its work by default and the worker view links its PR", async ({
   page,
 }) => {
   test.setTimeout(120000);
   const reads = await workers(page);
   await signIn(page);
   await startConversation(page);
-  const conversation = page.url();
   await pill(page).click();
   await expect(row(page, "Sääaseman CSV-vienti")).toBeVisible();
-  await expect(strip(page).getByTestId("spinoff-work")).toHaveCount(0);
-  await expect(strip(page).getByTestId("spinoff-work-note")).toHaveCount(0);
-  expect(reads.work).toBe(0);
-
-  // The person switches it on in Kokeelliset ominaisuudet.
-  await page.goto("/settings/experimental");
-  const choice = page
-    .getByRole("region")
-    .and(page.getByTestId("experimental-worker-row-sentence"))
-    .getByRole("group")
-    .and(page.getByTestId("experimental-worker-row-sentence-choice"));
-  await choice.getByRole("button").and(page.getByTestId("segment-on")).click();
-  await expect(
-    choice.getByRole("button").and(page.getByTestId("segment-on")),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.goto(conversation);
-  await pill(page).click();
   await expect.poll(() => reads.work).toBeGreaterThan(0);
 
   const busy = row(page, "Sääaseman CSV-vienti");

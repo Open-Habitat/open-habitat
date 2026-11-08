@@ -231,7 +231,7 @@ const fi = {
     S05: {
       name: "Sinun vuorosi",
       lead: "Keskustelut, joissa agentti odottaa sinua: vastausta, päätöstä tai luettavaa.",
-      know: "Kun vastaat tai luet uuden vastauksen, keskustelu siirtyy pois tästä.",
+      know: "Keskustelu pysyy tässä, kunnes vastaat tai painat rivin Ei nyt -painiketta. Pelkkä lukeminen ei siirrä sitä pois.",
     },
     S06: {
       name: "Käynnissä",
@@ -241,7 +241,7 @@ const fi = {
     S07: {
       name: "Hiljaiset",
       lead: "Keskustelut, joissa mikään ei odota sinua eikä ole käynnissä.",
-      know: "Otsikko taittaa listan piiloon; auki oleva keskustelu jää silti näkyviin.",
+      know: "Rivin Nosta-painikkeella siirrät keskustelun Sinun vuoroosi. Otsikko taittaa listan piiloon; auki oleva keskustelu jää silti näkyviin.",
       try: "Taita lista",
     },
     S08: {
@@ -1246,7 +1246,7 @@ export const explainModeText = catalog(fi, {
     S05: {
       name: "Your turn",
       lead: "Conversations where the agent waits for you: an answer, a decision or something to read.",
-      know: "Once you answer or read the new reply, the conversation leaves this list.",
+      know: "The conversation stays here until you reply or press Not now on its row. Reading it does not move it away.",
     },
     S06: {
       name: "Running",
@@ -1256,7 +1256,7 @@ export const explainModeText = catalog(fi, {
     S07: {
       name: "Quiet",
       lead: "Conversations where nothing waits for you and nothing runs.",
-      know: "The heading folds the list away; the open conversation stays in view.",
+      know: "Raise on a row moves the conversation to Your turn. The heading folds the list away; the open conversation stays in view.",
       try: "Fold the list",
     },
     S08: {

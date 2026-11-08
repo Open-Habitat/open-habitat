@@ -136,7 +136,7 @@ function Feature() {
   return createElement(
     "output",
     { "data-testid": "feature" },
-    String(useExperimentalFeature("worker-row-sentence")),
+    String(useExperimentalFeature("composer-lists-in-field")),
   );
 }
 const feature = (identity: string, csrf: string) =>
@@ -150,33 +150,40 @@ it("switches an experimental feature only on the daemon's confirmation, one chan
     .fn()
     .mockResolvedValueOnce(reply("wid_feature", "codemirror6"))
     .mockResolvedValueOnce(
-      reply("wid_feature", "codemirror6", { "worker-row-sentence": true }),
+      reply("wid_feature", "codemirror6", { "composer-lists-in-field": true }),
     );
   vi.stubGlobal("fetch", fetch);
   render(feature("wid_feature", "f"));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   expect(screen.getByTestId("feature").textContent).toBe("false");
   await act(() =>
-    setExperimentalFeature("wid_feature", "worker-row-sentence", true, "f"),
+    setExperimentalFeature("wid_feature", "composer-lists-in-field", true, "f"),
   );
   expect(screen.getByTestId("feature").textContent).toBe("true");
   expect(fetch.mock.calls[1][1]).toMatchObject({
     method: "PUT",
     headers: { "X-Agent-Host-CSRF": "f" },
-    body: JSON.stringify({ experimental: { "worker-row-sentence": true } }),
+    body: JSON.stringify({ experimental: { "composer-lists-in-field": true } }),
   });
   fetch.mockRejectedValueOnce(new Error("lost reply"));
   await act(() =>
-    setExperimentalFeature("wid_feature", "worker-row-sentence", false, "f"),
+    setExperimentalFeature(
+      "wid_feature",
+      "composer-lists-in-field",
+      false,
+      "f",
+    ),
   );
   expect(screen.getByTestId("feature").textContent).toBe("true");
 });
 it("keeps a feature off without a session, and ignores ids the browser does not know", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue(
-      reply("wid_unknown", "vscode", { "graduated-feature": true }),
-    );
+  const fetch = vi.fn().mockResolvedValue(
+    reply("wid_unknown", "vscode", {
+      "markdown-block-preview": true,
+      "worker-row-sentence": true,
+      "raise-to-your-turn": true,
+    }),
+  );
   vi.stubGlobal("fetch", fetch);
   render(createElement(Feature));
   expect(screen.getByTestId("feature").textContent).toBe("false");
