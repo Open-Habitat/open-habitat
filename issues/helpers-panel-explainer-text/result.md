@@ -23,7 +23,12 @@ Rebased the implementation from `f80fdb7c9` onto main including
 and public file offers. Both commits replayed without conflict. Range review
 confirmed the removed worker terminal card stayed removed and the helpers
 copy does not claim to list other conversations' helpers. Public file offers
-reuse the same action selectors as views.
+reuse the same action selectors as views. A second rebase onto `9d4e15390`
+replayed only this worker's four commits after main's equivalent earlier
+commits had been rewritten. The sole conflict was KOKEILTAVAA: kept main's
+removal of already-tested items and replaced only the skill placeholder with
+this feature's trial line. No source conflicts. Final web, named-workers and
+Explain-mode checks were rerun on `f6950ec4a`.
 
 Final focused checks on the rebased source plus this issue's changes:
 
@@ -80,7 +85,10 @@ an import separator in the capture script. CSS serialization added trailing
 space to one keyframe line in each HTML snapshot; normalized that whitespace.
 These are disclosed evidence/setup limits, not claimed passes of the failed
 attempts. Shell discovery globs and two exact-edit attempts also missed their
-initial targets; corrected before changing files.
+initial targets; corrected before changing files. The final web rerun hit
+5-second timeouts in untouched GitLabConnection and Integrations tests while
+host load exceeded 90. Both files then passed (36 tests), and the complete web
+check passed again unchanged (194 files / 1463 tests).
 
 ## Decisions for later review
 
