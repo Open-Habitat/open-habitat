@@ -117,6 +117,24 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
     await input.fill("");
     await expect(line(page)).toHaveAttribute("data-waiting", "2");
   }
+  // Other conversations stay furthest from the field; this conversation's
+  // work and queued message remain together beside the draft.
+  await send(page, "Keep the change focused");
+  const queue = page.getByTestId("composer-queue");
+  await expect(queue).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const nextBox = await line(page).boundingBox();
+    const workBox = await page.locator(".ah-bg-strip").boundingBox();
+    const queueBox = await queue.boundingBox();
+    const inputBox = await input.boundingBox();
+    if (!nextBox || !workBox || !queueBox || !inputBox)
+      throw new Error("Composer stack must be visible");
+    expect(nextBox.y + nextBox.height).toBeLessThanOrEqual(workBox.y);
+    expect(workBox.y + workBox.height).toBeLessThanOrEqual(queueBox.y);
+    expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(inputBox.y);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await archiveOther(page, hrefs[0]);
   await expect(line(page)).toHaveAttribute("data-waiting", "1");
   await archiveOther(page, hrefs[1]);

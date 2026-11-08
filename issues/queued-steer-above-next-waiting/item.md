@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Queued steer message should sit next to the composer, the next-waiting strip above it
@@ -26,5 +27,5 @@ to what you are typing.
 
 ## Acceptance Criteria
 
-- [ ] Queued steer directly above the field; next-waiting strip above it; 1440 and 390.
-- [ ] Touched specs green.
+- [x] Queued steer directly above the field; next-waiting strip above it; 1440 and 390.
+- [x] Touched specs green.

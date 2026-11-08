@@ -3015,6 +3015,13 @@ function BrowserConversationContent({
               onGiveBack={creationView.giveBack}
             />
           )}
+          {view === "opened" && controlled && id ? (
+            <NextWaitingDock
+              next={nextWaiting}
+              agentId={id}
+              open={waitingWindow.open && draft.length === 0}
+            />
+          ) : null}
           {view === "opened" ? (
             <>
               <div className="ah-actionable-notices">
@@ -3186,13 +3193,6 @@ function BrowserConversationContent({
                 ask={workerAsk}
                 assets={<AssetsControl conversationId={id} />}
               />
-              {id ? (
-                <NextWaitingDock
-                  next={nextWaiting}
-                  agentId={id}
-                  open={waitingWindow.open && draft.length === 0}
-                />
-              ) : null}
             </>
           ) : null}
           {view === "opened" ? rewind.sheet : null}
