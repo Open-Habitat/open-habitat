@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # File list shows the workspace name as the folder of a root-level file
@@ -25,5 +26,5 @@ row's folder label.
 
 ## Acceptance Criteria
 
-- [ ] A root-level file's folder shows as `/` in search, tree and preview.
-- [ ] Unit or browser test for a root file and a nested file.
+- [x] A root-level file's folder shows as `/` in search; tree and preview checked for the same mistake (they show native relative paths without a separate folder field; see result.md).
+- [x] Unit or browser test for a root file and a nested file.

@@ -150,6 +150,9 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
     "tests/test_status_rows.py",
   ]);
   await expect(page.getByTestId("composer-list-note")).toBeVisible();
+  await expect(
+    row(page, "scripts/status_rows.py").locator(".ah-choice-where"),
+  ).toHaveText("scripts/");
   await shot(page, "search-1440");
   // → shows the selected file in its folder.
   await search.press("ArrowDown");
@@ -160,6 +163,33 @@ test("@lab composer lists in the field: browse the tree, search by name, show in
     "data-path",
     "tests/test_status_rows.py",
   );
+
+  // A root match names the root, never a workspace-named subfolder.
+  // Revealing it keeps the native relative path and selects the top-level row.
+  await field.fill("Katso @README");
+  await expect(row(page, "README.md").locator(".ah-choice-where")).toHaveText(
+    "/",
+  );
+  await expect(selectedPath(page)).toHaveAttribute("data-path", "README.md");
+  await expect(preview.locator("h2")).toContainText("README.md");
+  await shot(page, "root-search-1440");
+  await field.press("End");
+  await field.press("ArrowRight");
+  await expect(field).toHaveValue("Katso @");
+  await expect(selectedPath(page)).toHaveAttribute("data-path", "README.md");
+  await expect(row(page, "README.md").locator(".ah-choice-path")).toHaveText(
+    "README.md",
+  );
+  await expect(preview.locator("h2")).toContainText("README.md");
+  // Return to the nested file for the multi-mark journey.
+  await field.fill("Katso @test_status_rows");
+  await expect(selectedPath(page)).toHaveAttribute(
+    "data-path",
+    "tests/test_status_rows.py",
+  );
+  await field.press("End");
+  await field.press("ArrowRight");
+  await expect(field).toHaveValue("Katso @");
 
   // Tab marks two rows and Enter adds both paths at the caret.
   await search.press("ArrowUp");

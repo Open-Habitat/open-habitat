@@ -108,13 +108,13 @@ describe("the in-field folder tree", () => {
     expect(
       rows[autoSelect(rows, { searching: false, reveal: "AGENTS.md" })],
     ).toMatchObject({ path: "AGENTS.md" });
-    const hits = searchChoices(
-      [{ path: "src/AGENTS.md", git: "modified" }, { path: "AGENTS.md" }],
-      "aurinkokello",
-    );
+    const hits = searchChoices([
+      { path: "src/AGENTS.md", git: "modified" },
+      { path: "AGENTS.md" },
+    ]);
     expect(hits.map((r) => r.type === "file" && r.where)).toEqual([
       "src/",
-      "aurinkokello/",
+      "/",
     ]);
     expect(autoSelect(hits, { searching: true })).toBe(0);
   });
@@ -143,7 +143,7 @@ describe("the in-field folder tree", () => {
       index: at("src/"),
     });
     expect(sideways(rows, at("src/shadow.py"), true)).toBeNull();
-    const hits = searchChoices([{ path: "src/astro/AGENTS.md" }], "x");
+    const hits = searchChoices([{ path: "src/astro/AGENTS.md" }]);
     expect(sideways(hits, 0, true)).toEqual({
       do: "reveal",
       path: "src/astro/AGENTS.md",

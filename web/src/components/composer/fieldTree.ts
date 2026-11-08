@@ -120,17 +120,14 @@ export function foldersToRead(rows: readonly Choice[]): string[] {
   );
 }
 
-/** Lista: one row a match, the name first and its folder after it; the
- * workspace's own name stands for its top folder. */
-export function searchChoices(
-  files: readonly WorkspaceFile[],
-  workspaceName: string,
-): Choice[] {
+/** Lista: one row a match, the name first and its folder after it;
+ * / denotes the workspace root, not a subfolder named after the workspace. */
+export function searchChoices(files: readonly WorkspaceFile[]): Choice[] {
   return files.map((f) => ({
     type: "file",
     path: f.path,
     git: f.git,
-    where: parentFolder(f.path) || `${workspaceName}/`,
+    where: parentFolder(f.path) || "/",
   }));
 }
 

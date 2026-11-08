@@ -592,10 +592,10 @@ export const FieldListSearch: Story = {
       groups={[
         {
           label: "",
-          choices: searchChoices(
-            [{ path: "AGENTS.md" }, { path: "tests/AGENTS.md" }],
-            "aurinkokello",
-          ),
+          choices: searchChoices([
+            { path: "AGENTS.md" },
+            { path: "tests/AGENTS.md" },
+          ]),
         },
       ]}
       selected={0}

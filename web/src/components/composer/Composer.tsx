@@ -569,7 +569,6 @@ function fieldFileGroups(
   files: ReturnType<typeof useSources>["files"],
   tree: TreeState,
   open: Open,
-  workspaceName: string,
 ): ChoiceGroup[] {
   if (open.query) {
     const loaded = files.list && files.query === open.query;
@@ -584,9 +583,7 @@ function fieldFileGroups(
           choices: [{ type: "status", text: t.filesLoading, loading: true }],
         },
       ];
-    return [
-      { label: "", choices: searchChoices(files.list.files, workspaceName) },
-    ];
+    return [{ label: "", choices: searchChoices(files.list.files) }];
   }
   const folding = open.place === "palette" ? unfolded : open.folding;
   const rows =
@@ -886,15 +883,7 @@ export function Composer({
         runsAtStart,
         inField && runsAtStart ? ft.groups : undefined,
       );
-    if (inField)
-      return fieldFileGroups(
-        t,
-        ft,
-        files,
-        tree,
-        open,
-        sources?.workspaceName ?? "",
-      );
+    if (inField) return fieldFileGroups(t, ft, files, tree, open);
     return fileGroups(
       t,
       files,

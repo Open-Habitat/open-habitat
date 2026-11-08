@@ -1271,7 +1271,7 @@ describe("composer lists inside the field (experimental)", () => {
       ]);
     expect(named).toEqual([
       ["AGENTS.md", "src/"],
-      ["AGENTS.md", "aurinkokello/"],
+      ["AGENTS.md", "/"],
       ["AGENTS.md", "docs/"],
     ]);
     fireEvent.keyDown(search(view), { key: "ArrowDown" });
