@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: worktree-list-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: a workspace's worktree list a person can understand and act on
@@ -44,4 +44,4 @@ idle expiry) and recommend.
 
 ## Acceptance Criteria
 
-- [ ] Prototype round 1 with view offer, directions and questions for Jari.
+- [x] Prototype round 1 with view offer, directions and questions for Jari.
