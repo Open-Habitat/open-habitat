@@ -101,8 +101,12 @@ const fi = {
         name: "Täysi",
         sum: "Agentit voivat lukea, muokata ja lähettää sinun nimissäsi.",
       },
+      nosend: {
+        name: "Kaikki paitsi postin lähetys",
+        sum: "Agentit voivat lukea ja muokata kaikkea ja kirjoittaa postiluonnoksia, mutta eivät lähettää postia. Kalenterin muutos lähettää silti kutsut, ja tiedoston voi jakaa.",
+      },
       drafts: {
-        name: "Luonnokset, ei lähetystä",
+        name: "Luonnokset, muu vain luku",
         sum: "Agentit lukevat ja kirjoittavat postiluonnoksia. Tililtä ei lähde mitään: ei postia, kalenterikutsuja eikä jakolinkkejä.",
       },
       read: {
@@ -669,8 +673,12 @@ export const integrationsText = catalog(
           name: "Full",
           sum: "Agents can read, edit and send in your name.",
         },
+        nosend: {
+          name: "Everything but sending mail",
+          sum: "Agents can read and edit everything and write mail drafts, but cannot send mail. A calendar change still sends invitations, and a file can be shared.",
+        },
         drafts: {
-          name: "Drafts, no sending",
+          name: "Drafts, otherwise read only",
           sum: "Agents read and write mail drafts. Nothing leaves the account: no mail, calendar invitations or sharing links.",
         },
         read: {

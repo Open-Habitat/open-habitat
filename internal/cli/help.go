@@ -210,7 +210,7 @@ func commandHelp(args []string) (any, error) {
 				flag["description"] = "Complete recap settings JSON (level short|standard|thorough|custom, delay_seconds 60–540, model provider/id or null for automatic, words 10–80, next_words 4–25, messages 4–128, history_tokens 2000–32000, message_tokens 250–4000, response_tokens 128–2048, first_after_turns 1–10), at most 1024 bytes; own-UID mode 0600 file or - for stdin"
 			}
 			if f == "--provider" && strings.HasPrefix(key, "admin integrations ") {
-				flag["description"] = "Required provider whose app credentials change; microsoft_drafts, microsoft_read and dropbox_app_folder are the applications of a narrower account level"
+				flag["description"] = "Required provider whose app credentials change; microsoft_nosend, microsoft_drafts, microsoft_read and dropbox_app_folder are the applications of a narrower account level"
 				flag["possible_values"] = integrationapps.Providers
 			}
 			if f == "--workspace" && (key == "agent view offer" || key == "agent file offer") {
@@ -399,7 +399,7 @@ func helpFlag(name string) map[string]any {
 	case "--client-secret-file":
 		v["description"] = "Required for google, dropbox and dropbox_app_folder: FILE or - for stdin holding the client secret (Dropbox App secret); one trailing newline is ignored; never passed in argv"
 	case "--tenant-id":
-		v["description"] = "Required for microsoft, microsoft_drafts and microsoft_read: the organisation's Directory (tenant) ID GUID; the app is single tenant, so common, organizations and consumers are refused"
+		v["description"] = "Required for microsoft, microsoft_nosend, microsoft_drafts and microsoft_read: the organisation's Directory (tenant) ID GUID; the app is single tenant, so common, organizations and consumers are refused"
 	case "--github-id":
 		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
 	case "--state":

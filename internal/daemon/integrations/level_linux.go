@@ -24,6 +24,11 @@ type Level string
 
 const (
 	LevelFull Level = "full"
+	// LevelNoSend is everything but sending mail: mail is read, organised
+	// and drafted, and calendars, contacts and files are changed. A calendar
+	// change still sends invitations and a file grant can still create a
+	// sharing link, since Graph has no permission without them.
+	LevelNoSend Level = "nosend"
 	// LevelDrafts is mail read and drafted but never sent, and everything
 	// else read only: the account sends nothing (no invitations, no links).
 	LevelDrafts Level = "drafts"

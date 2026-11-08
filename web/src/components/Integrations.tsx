@@ -154,11 +154,13 @@ const levelCopy = new Proxy(
 export const levelName = (provider: ProviderId, level: Level) =>
   levelCopy[provider]?.[level]?.name ?? level;
 
-/** What a level promises a service: drafts sends nothing, so everything
- * but mail is read only. */
+/** What a level promises a service: nosend is full but for sending mail,
+ * and drafts sends nothing, so everything but mail is read only. */
 function levelAccess(level: Level, service: ServiceId): Access {
   if (level === "full" || level === "app_folder") return "full";
-  if (level === "drafts" && service === "mail") return "drafts";
+  if ((level === "drafts" || level === "nosend") && service === "mail")
+    return "drafts";
+  if (level === "nosend") return "full";
   return "read";
 }
 

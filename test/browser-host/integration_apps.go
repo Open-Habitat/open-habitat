@@ -78,7 +78,7 @@ func (f *fixtureApps) fixture(q url.Values) error {
 			delete(f.apps, v)
 		case key == "set" && integrationapps.ProviderOf(v) == "microsoft" && slices.Contains(integrationapps.Providers, v):
 			// root's own section for one of Microsoft's level applications.
-			f.apps[v] = gateway.IntegrationApp{Provider: v, ClientID: "7c2e5b1a-0d94-4f3b-8a61-3e9f2c7d" + fmt.Sprintf("%04d", len(v)), TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"}
+			f.apps[v] = gateway.IntegrationApp{Provider: v, ClientID: "7c2e5b1a-0d94-4f3b-8a61-3e9f2c7d" + fmt.Sprintf("%04d", slices.Index(integrationapps.Providers, v)), TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"}
 		default:
 			return errors.New("unknown integration-apps fixture")
 		}

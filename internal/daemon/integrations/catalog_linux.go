@@ -367,6 +367,7 @@ type Config struct {
 	Google    *GoogleApp        `json:"google,omitempty"`
 	Microsoft *MicrosoftApp     `json:"microsoft,omitempty"`
 	// The applications of a provider's narrower account levels (level_linux.go).
+	MicrosoftNoSend  *MicrosoftApp `json:"microsoft_nosend,omitempty"`
 	MicrosoftDrafts  *MicrosoftApp `json:"microsoft_drafts,omitempty"`
 	MicrosoftRead    *MicrosoftApp `json:"microsoft_read,omitempty"`
 	DropboxAppFolder *DropboxApp   `json:"dropbox_app_folder,omitempty"`
@@ -478,7 +479,7 @@ func parseConfig(data []byte, log *slog.Logger) (Config, error) {
 				cfg.Google = nil
 				ignored("google", "invalid_entry")
 			}
-		case "microsoft", "microsoft_drafts", "microsoft_read":
+		case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read":
 			var app MicrosoftApp
 			if err := decodeStrict(raw, &app); err != nil || !integrationapps.Usable(name, map[string]string{"client_id": app.ClientID, "tenant_id": app.TenantID}) {
 				ignored(name, "invalid_entry")
@@ -487,6 +488,8 @@ func parseConfig(data []byte, log *slog.Logger) (Config, error) {
 			switch name {
 			case "microsoft":
 				cfg.Microsoft = &app
+			case "microsoft_nosend":
+				cfg.MicrosoftNoSend = &app
 			case "microsoft_drafts":
 				cfg.MicrosoftDrafts = &app
 			default:

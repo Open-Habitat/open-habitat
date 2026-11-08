@@ -242,7 +242,7 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
   await expect(google).toHaveAttribute("data-status", "ready");
 });
 
-test("@server-integrations @a11y an administrator sets Microsoft's single-tenant app through the guide and removes it", async ({
+test("@server-integrations @a11y an administrator sets Microsoft's level apps in one guided walk, skipping the ones set, and removes them", async ({
   page,
 }) => {
   await signIn(page);
@@ -251,29 +251,40 @@ test("@server-integrations @a11y an administrator sets Microsoft's single-tenant
   const row = page.getByTestId("si-row-microsoft");
   await expect(row).toHaveAttribute("data-status", "needs_app");
   expect(await available(page, "microsoft")).toBe(false);
+  // The levels' table is behind its button on the page.
+  await expect(page.getByTestId("si-table-microsoft")).toHaveCount(0);
+  await page.getByTestId("si-levels-microsoft").click();
+  await expect(
+    page.getByTestId("si-table-microsoft").locator("thead th"),
+  ).toHaveCount(5);
 
-  await page
+  await row
     .getByRole("button")
     .and(page.getByTestId("si-setup-microsoft"))
     .click();
-  const dialog = page.getByTestId("si-setup-dialog");
-  await expect(dialog.getByTestId("si-console-link")).toHaveAttribute(
+  const dialog = page.getByTestId("ml-dialog");
+  const begin = dialog.getByTestId("ml-begin");
+  await expect(begin).toHaveText("Aloita: 4 tasoa");
+  // Only the full and the no-send level now; the rest wait.
+  await dialog.getByTestId("ml-pick-drafts").click();
+  await dialog.getByTestId("ml-pick-read").click();
+  await expect(begin).toHaveText("Aloita: 2 tasoa");
+  await begin.click();
+  await expect(dialog.getByTestId("ml-console-link")).toHaveAttribute(
     "href",
     /^https:\/\/entra\.microsoft\.com\//,
   );
-  for (const step of ["register", "public", "permissions"]) {
-    await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
-      "data-step",
-      step,
-    );
-    await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  const stepname = dialog.getByTestId("ml-stepname");
+  const next = dialog.getByRole("button").and(dialog.getByTestId("ml-next"));
+  const save = dialog.getByRole("button").and(dialog.getByTestId("ml-save"));
+  const steps: string[] = [];
+  while (!(await save.count())) {
+    const step = (await stepname.getAttribute("data-step")) ?? "";
+    if (steps.at(-1) !== step) steps.push(step);
+    await next.click();
   }
-  await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
-    "data-step",
-    "consent",
-  );
-  // The longest step, the consent beside the ids and the consent link,
-  // fits a phone.
+  expect(steps).toEqual(["register", "public", "permissions", "consent"]);
+  // The walk's longest sub-item fits a phone.
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(
@@ -283,38 +294,86 @@ test("@server-integrations @a11y an administrator sets Microsoft's single-tenant
   expect(
     (
       await new AxeBuilder({ page })
-        .include("[data-testid=si-setup-dialog]")
+        .include("[data-testid=ml-dialog]")
         .analyze()
     ).violations,
   ).toEqual([]);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(dialog.getByTestId("si-field-client_secret")).toHaveCount(0);
-  await dialog
-    .getByTestId("si-field-client_id")
-    .fill("3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031");
-  // A multi-tenant audience is refused in its field, before the broker.
-  await dialog.getByTestId("si-field-tenant_id").fill("common");
-  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
-  await expect(dialog.getByTestId("si-field-tenant_id")).toHaveAttribute(
+  // Nothing set yet: the tenant is asked once. A save without the client
+  // id opens its sub-item, and an audience keyword is refused in its field
+  // before the broker.
+  await dialog.getByTestId("ml-field-tenant").fill("common");
+  await save.click();
+  await expect(dialog.getByTestId("ml-field-client-full")).toHaveAttribute(
     "aria-invalid",
     "true",
   );
   await dialog
-    .getByTestId("si-field-tenant_id")
+    .getByTestId("ml-field-client-full")
+    .fill("3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031");
+  await next.click();
+  await save.click();
+  await expect(dialog.getByTestId("ml-field-tenant")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await dialog
+    .getByTestId("ml-field-tenant")
     .fill("b81e5c27-4a93-4f0d-86c2-1d9e7a3f5b60");
-  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+  await save.click();
   await expect(row).toHaveAttribute("data-status", "set");
-  await expect(dialog).toHaveCount(0);
+  // Saved: the next chosen level starts, with the saved tenant reused.
+  await expect(stepname).toHaveAttribute("data-level", "nosend");
   await expect(row).toHaveAttribute("data-status", "ready");
   expect(await available(page, "microsoft")).toBe(true);
+  while (!(await save.count())) await next.click();
+  await expect(dialog.getByTestId("ml-tenant-known")).toHaveText(
+    "b81e5c27-4a93-4f0d-86c2-1d9e7a3f5b60",
+  );
+  await dialog.getByRole("button").and(dialog.getByTestId("ml-back")).click();
+  // The full level's id again is refused.
+  await dialog
+    .getByTestId("ml-field-client-nosend")
+    .fill("3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031");
+  await next.click();
+  await save.click();
+  await expect(dialog.getByTestId("ml-field-client-nosend")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await dialog
+    .getByTestId("ml-field-client-nosend")
+    .fill("6d1c0b2e-8f47-4a39-b5e2-7c9a0d3f1e84");
+  await next.click();
+  await save.click();
+  // Back to the start, the two saved and the two left unticked offered.
+  await expect(dialog).toHaveAttribute("data-page", "start");
+  await expect(dialog.getByTestId("ml-just")).toContainText(
+    "Täysi, Ei lähetystä",
+  );
+  await expect(dialog.getByTestId("ml-set-nosend")).toBeVisible();
+  await expect(row.getByTestId("si-levels-note")).toHaveText(
+    "2/4 tasoa asetettu: Täysi · Ei lähetystä",
+  );
 
-  // No secret to replace: removal is the only change.
-  await page.getByTestId("si-menu-microsoft").getByRole("button").click();
-  await expect(page.getByTestId("menu-remove")).toBeVisible();
-  await expect(page.getByTestId("menu-replace")).toHaveCount(0);
-  await page.getByTestId("menu-remove").click();
-  await page
-    .getByRole("dialog")
+  // A level's removal leaves the provider; the last one removes it.
+  await dialog.getByTestId("ml-remove-nosend").click();
+  const confirm = page.getByTestId("si-remove-dialog");
+  await expect(confirm.getByTestId("si-remove-other")).toHaveCount(0);
+  await confirm
+    .getByRole("button")
+    .and(page.getByTestId("si-remove-confirm"))
+    .click();
+  await expect(row.getByTestId("si-levels-note")).toHaveText(
+    "1/4 tasoa asetettu: Täysi",
+  );
+  await row
+    .getByRole("button")
+    .and(page.getByTestId("si-setup-microsoft"))
+    .click();
+  await dialog.getByTestId("ml-remove-full").click();
+  await expect(confirm.getByTestId("si-remove-other")).toBeVisible();
+  await confirm
     .getByRole("button")
     .and(page.getByTestId("si-remove-confirm"))
     .click();

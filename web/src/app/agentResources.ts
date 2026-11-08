@@ -213,7 +213,9 @@ function accessOf(account: Account, service: Service): Access {
   if (service.access) return service.access;
   const level: Level | undefined = account.level;
   if (!level || level === "full" || level === "app_folder") return "full";
-  if (level === "drafts" && service.id === "mail") return "drafts";
+  if ((level === "drafts" || level === "nosend") && service.id === "mail")
+    return "drafts";
+  if (level === "nosend") return "full";
   return "read";
 }
 

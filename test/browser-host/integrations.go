@@ -403,14 +403,18 @@ type levelFixture struct {
 }
 
 type fixtureLevels struct {
+	// order is the levels the page shows, broadest first.
+	order    []integrations.Level
 	sections map[integrations.Level]string
 	granted  map[integrations.Level][]string
 }
 
 var microsoftLevels = fixtureLevels{
-	sections: map[integrations.Level]string{integrations.LevelFull: "microsoft", integrations.LevelDrafts: "microsoft_drafts", integrations.LevelRead: "microsoft_read"},
+	order:    []integrations.Level{integrations.LevelFull, integrations.LevelNoSend, integrations.LevelDrafts, integrations.LevelRead},
+	sections: map[integrations.Level]string{integrations.LevelFull: "microsoft", integrations.LevelNoSend: "microsoft_nosend", integrations.LevelDrafts: "microsoft_drafts", integrations.LevelRead: "microsoft_read"},
 	granted: map[integrations.Level][]string{
 		integrations.LevelFull:   {"Calendars.ReadWrite", "Contacts.ReadWrite", "Files.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Sites.ReadWrite.All", "User.Read"},
+		integrations.LevelNoSend: {"Calendars.ReadWrite", "Contacts.ReadWrite", "Files.ReadWrite.All", "Mail.ReadWrite", "Sites.ReadWrite.All", "User.Read"},
 		integrations.LevelDrafts: {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.ReadWrite", "Sites.Read.All", "User.Read"},
 		integrations.LevelRead:   {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.Read", "Sites.Read.All", "User.Read"},
 	},
@@ -418,6 +422,7 @@ var microsoftLevels = fixtureLevels{
 
 // Google's levels share its one application; it has no drafts level.
 var googleLevels = fixtureLevels{
+	order:    []integrations.Level{integrations.LevelFull, integrations.LevelDrafts, integrations.LevelRead},
 	sections: map[integrations.Level]string{integrations.LevelFull: "google", integrations.LevelRead: "google"},
 	granted: map[integrations.Level][]string{
 		integrations.LevelFull: {"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.modify"},
@@ -427,7 +432,7 @@ var googleLevels = fixtureLevels{
 
 func (f *levelFixture) Levels(integrations.Env) []integrations.LevelOption {
 	var out []integrations.LevelOption
-	for _, l := range []integrations.Level{integrations.LevelFull, integrations.LevelDrafts, integrations.LevelRead} {
+	for _, l := range f.levels.order {
 		section, offered := f.levels.sections[l]
 		switch {
 		case !offered:
@@ -495,8 +500,10 @@ func (f *levelFixture) CheckGrant(ctx context.Context, env integrations.Env, add
 		switch {
 		case level == integrations.LevelFull:
 			out[i].Access = integrations.AccessFull
-		case level == integrations.LevelDrafts && out[i].ID == "mail":
+		case (level == integrations.LevelDrafts || level == integrations.LevelNoSend) && out[i].ID == "mail":
 			out[i].Access = integrations.AccessDrafts
+		case level == integrations.LevelNoSend:
+			out[i].Access = integrations.AccessFull
 		default:
 			out[i].Access = integrations.AccessRead
 		}

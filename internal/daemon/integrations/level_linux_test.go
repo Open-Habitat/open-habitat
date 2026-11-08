@@ -301,7 +301,7 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 		}
 		return base.RoundTrip(r)
 	})
-	if got := m.Levels(env); !slices.Equal(got, []LevelOption{{LevelFull, true, ""}, {LevelDrafts, false, LevelApplicationMissing}, {LevelRead, true, ""}}) {
+	if got := m.Levels(env); !slices.Equal(got, []LevelOption{{LevelFull, true, ""}, {LevelNoSend, false, LevelApplicationMissing}, {LevelDrafts, false, LevelApplicationMissing}, {LevelRead, true, ""}}) {
 		t.Fatal(got)
 	}
 	login, err := m.StartLevelLogin(context.Background(), env, "", LevelRead)
@@ -366,6 +366,72 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 	services, _ = verify("User.Read Files.Read.All Mail.ReadWrite Calendars.ReadWrite Contacts.Read")
 	if m.Level(env, address, services) != "" {
 		t.Fatal("a narrowed grant named a level", accessOf(services))
+	}
+}
+
+const microsoftNoSendGrant = "User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite"
+
+// Everything but sending is its own application: the full level without
+// Mail.Send. Its files sync both ways, its mail reads as drafts, the Outlook
+// server is never allowed to send, and the level is read back from the grant.
+func TestMicrosoftNoSendLevelIsItsApplicationAndNeverSends(t *testing.T) {
+	env := microsoftEnv(t)
+	env.Config.MicrosoftNoSend = &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000003", TenantID: testTenant}
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	microsoftGrantToken(t, m, microsoftNoSendGrant, true)
+	var asked []string
+	base := m.client.Transport
+	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/devicecode") {
+			_ = r.ParseForm()
+			asked = append(asked, r.Form.Get("client_id"))
+		}
+		return base.RoundTrip(r)
+	})
+	if got := m.Levels(env); !slices.Equal(got, []LevelOption{{LevelFull, true, ""}, {LevelNoSend, true, ""}, {LevelDrafts, false, LevelApplicationMissing}, {LevelRead, false, LevelApplicationMissing}}) {
+		t.Fatal(got)
+	}
+	login, err := m.StartLevelLogin(context.Background(), env, "", LevelNoSend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := login.(*microsoftLogin)
+	l.interval = 1
+	t.Cleanup(l.Cancel)
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(asked, []string{"00000000-0000-0000-0000-000000000003"}) {
+		t.Fatal("asked", asked)
+	}
+	if strings.Contains(" "+l.allowed+" ", " Mail.Send ") || !strings.Contains(l.allowed, "Calendars.ReadWrite") || !strings.Contains(l.allowed, "Mail.ReadWrite") {
+		t.Fatal("allowed scopes", l.allowed)
+	}
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil || len(remotes) != 2 || !remotes[0].Writable || !remotes[1].Writable {
+		t.Fatal("no-send grant's roots", remotes, err)
+	}
+	if m.Misaligned(env, address) {
+		t.Fatal("the no-send level's application read as another application")
+	}
+	reply, _ := json.Marshal(map[string]any{"state": "ok", "scopes": strings.Fields(microsoftNoSendGrant)})
+	os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), reply, 0600)
+	services, grant := m.CheckGrant(context.Background(), env, address)
+	if m.Level(env, address, services) != LevelNoSend || grant == nil || len(grant.NotGranted) != 0 {
+		t.Fatal(accessOf(services), grant)
+	}
+	for _, s := range services {
+		want := AccessFull
+		if s.ID == "mail" {
+			want = AccessDrafts
+		}
+		if s.Access != want {
+			t.Fatal(s.ID, s.Access)
+		}
 	}
 }
 

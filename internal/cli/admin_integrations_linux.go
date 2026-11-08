@@ -98,7 +98,7 @@ func readSecret(path string) (string, error) {
 }
 
 func adminIntegrationsCommand(args []string) (any, error) {
-	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox|dropbox_app_folder --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft|microsoft_drafts|microsoft_read --client-id <id> --tenant-id <id> [--dry-run] or admin integrations clear --provider <provider> [--dry-run]"
+	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox|dropbox_app_folder --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft|microsoft_nosend|microsoft_drafts|microsoft_read --client-id <id> --tenant-id <id> [--dry-run] or admin integrations clear --provider <provider> [--dry-run]"
 	if len(args) == 0 {
 		return nil, usage(shape)
 	}

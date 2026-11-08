@@ -22,6 +22,13 @@ import {
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { Icon } from "./Icon";
 import { levelName, ProviderMark, providerCopy } from "./Integrations";
+import {
+  LevelsDisclosure,
+  LevelTable,
+  MicrosoftLevelsDialog,
+  msLevels,
+  type TableProvider,
+} from "./MicrosoftLevels";
 import { Menu } from "./Overlays";
 import { TextField } from "./Primitives";
 import {
@@ -33,14 +40,16 @@ import {
 import { Badge, StatusMark } from "./Status";
 import "./ServerIntegrations.css";
 import { formatDate, liveText } from "../i18n";
+import { microsoftLevelsText } from "../text/microsoftLevels";
 import { serverIntegrationsText } from "../text/serverIntegrations";
 
 const txt = liveText(serverIntegrationsText);
+const levelsTxt = liveText(microsoftLevelsText);
 
 // Asetukset › Palvelimen ylläpito › Palvelinintegraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
-// "Vaiheittain", Microsoft's round 4 direction 1 "Tunnukset lopussa",
-// Dropbox's round 5 direction 2 "Sivu kerrallaan").
+// "Vaiheittain", Dropbox's round 5 direction 2 "Sivu kerrallaan"; Microsoft's
+// four levels are one row and one guided setup, MicrosoftLevels.tsx).
 // Whether a provider is in use is the administrator's own daemon's catalog;
 // the app credentials and who set them are the broker's. A change shows as
 // waiting until the broker's reply, and as uncertain when no definite reply
@@ -87,57 +96,6 @@ const googleRedirect = "http://localhost";
 // Google Auth platform's pages. Each opens in the project last selected in
 // the console, as the enable flow above does; the page names the project.
 const googleAuth = "https://console.cloud.google.com/auth";
-// What the daemon's Microsoft entry needs (internal/daemon/integrations/
-// microsoft_linux.go): microsoftScopes and microsoftMCPScopes, deduplicated,
-// all delegated Graph permissions, and the redirect microsoftConsent() names.
-// The app is single tenant, so only the organisation's accounts sign in.
-// A narrower level is its own application with the level's permissions
-// (microsoftLevelScopes): the drafts level sends nothing, so everything but
-// mail is read only.
-const microsoftIdentity = ["openid", "profile", "User.Read", "offline_access"];
-const microsoftPermissions: Record<
-  "microsoft" | "microsoft_drafts" | "microsoft_read",
-  string[]
-> = {
-  microsoft: [
-    ...microsoftIdentity,
-    "Files.ReadWrite.All",
-    "Sites.ReadWrite.All",
-    "Mail.ReadWrite",
-    "Mail.Send",
-    "Calendars.ReadWrite",
-    "Contacts.ReadWrite",
-  ],
-  microsoft_drafts: [
-    ...microsoftIdentity,
-    "Files.Read.All",
-    "Sites.Read.All",
-    "Mail.ReadWrite",
-    "Calendars.Read",
-    "Contacts.Read",
-  ],
-  microsoft_read: [
-    ...microsoftIdentity,
-    "Files.Read.All",
-    "Sites.Read.All",
-    "Mail.Read",
-    "Calendars.Read",
-    "Contacts.Read",
-  ],
-};
-const microsoftRedirect =
-  "https://login.microsoftonline.com/common/oauth2/nativeclient";
-// Entra admin center › App registrations. An app's own pages need its
-// Application ID, which the guide only learns on its last step, so the
-// steps after New registration open the list.
-const entraAppRegistrations =
-  "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade";
-const entraNewRegistration =
-  "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade/quickStartType~/null/isMSAApp~/false";
-/** The admin-consent link for someone who has the role: filled from the
- * typed ids once both are well formed, a template until then. */
-const microsoftConsent = (tenant?: string, client?: string) =>
-  `https://login.microsoftonline.com/${tenant ?? "{Directory (tenant) ID}"}/adminconsent?client_id=${client ?? "{Application (client) ID}"}`;
 // What the daemon's Dropbox entry needs (internal/daemon/integrations/
 // dropbox_linux.go): dropboxScopes, all requested by name at sign-in, and
 // dropboxRedirect, matched exactly. The full and read levels sync the root
@@ -516,113 +474,6 @@ const googleSteps = (): Step[] => [
   },
 ];
 
-const microsoftAppName = new Proxy(
-  {} as Record<keyof typeof microsoftPermissions, string>,
-  {
-    get: (_target, section: string) =>
-      section === "microsoft"
-        ? "Open Habitat"
-        : section === "microsoft_drafts"
-          ? txt.appDrafts
-          : section === "microsoft_read"
-            ? txt.appRead
-            : undefined,
-  },
-);
-
-/** An Entra page of the app registered on the first step. */
-const EntraPath = ({ p, app }: { p: string; app: string }) => (
-  <Path p={p} href={entraAppRegistrations} pick={txt.chooseApp(app)} />
-);
-
-const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
-  {
-    id: "register",
-    title: txt.register,
-    body: (
-      <>
-        <Path
-          p="Entra ID › App registrations › New registration"
-          href={entraNewRegistration}
-        />
-        <p className="si-quiet" data-testid="si-entra-search">
-          {txt.entraSearch("App registrations")}
-        </p>
-        <Val k="Name" v={microsoftAppName[section]} />
-        {section !== "microsoft" && (
-          <p className="si-effect" data-testid="si-level-app">
-            {txt.levelApp}
-          </p>
-        )}
-        <Val k="Supported account types" v={txt.singleTenant} copy={false} />
-        <p className="si-effect" data-testid="si-single-tenant">
-          {txt.workAccounts}
-        </p>
-        <p className="si-quiet">{txt.leaveRedirect("Register")}</p>
-        <Role>{txt.roleDeveloper}</Role>
-      </>
-    ),
-  },
-  {
-    id: "public",
-    title: txt.publicClient,
-    body: (
-      <>
-        <EntraPath
-          p="Authentication › Settings"
-          app={microsoftAppName[section]}
-        />
-        <Val k="Allow public client flows" v="Enabled" copy={false} />
-        <p className="si-quiet">{txt.deviceCode("Save")}</p>
-        <Path p="Authentication › Redirect URI configuration › Add Redirect URI › Mobile and desktop applications" />
-        <Val k="Redirect URI" v={microsoftRedirect} />
-      </>
-    ),
-  },
-  {
-    id: "permissions",
-    title: txt.scopes,
-    body: (
-      <>
-        <EntraPath
-          p="API permissions › Add a permission › Microsoft Graph › Delegated permissions"
-          app={microsoftAppName[section]}
-        />
-        <div className="si-block" data-testid="si-permissions">
-          <pre className="si-cmd">
-            {microsoftPermissions[section].join("\n")}
-          </pre>
-          <Copy
-            value={microsoftPermissions[section].join(" ")}
-            label={txt.scopesLabel}
-          />
-        </div>
-        <p className="si-quiet">{txt.userRead("Add permissions")}</p>
-      </>
-    ),
-  },
-  {
-    id: "consent",
-    title: txt.consent,
-    console: txt.inEntra,
-    body: (
-      <>
-        <EntraPath p={txt.grantForOrg} app={microsoftAppName[section]} />
-        <p className="si-effect" data-testid="si-consent">
-          {txt.noPrompt(txt.grantedFor)}
-        </p>
-        <Role>{txt.roleAdmin}</Role>
-      </>
-    ),
-    values: (
-      <>
-        <p className="si-quiet">{txt.overviewPage}</p>
-        <Path p="Overview" />
-      </>
-    ),
-  },
-];
-
 /** A page of the app created on the first step. */
 const dropboxPath = (p: string, tab: string) => (
   <Path p={p} href={dropboxApps} pick={txt.chooseAppTab(tab)} />
@@ -726,32 +577,17 @@ function existing(section: AppSection): ReactNode {
           </p>
         </>
       );
-    case "dropbox":
-      return dropboxPath("Settings › App key, App secret (Show)", "Settings");
     default:
-      return (
-        <EntraPath
-          p="Overview"
-          app={
-            microsoftAppName[section as keyof typeof microsoftPermissions] ??
-            microsoftAppName.microsoft
-          }
-        />
-      );
+      return dropboxPath("Settings › App key, App secret (Show)", "Settings");
   }
 }
 
-/** Each section's console steps, the last one beside its values. */
+/** Each section's console steps, the last one beside its values.
+ * Microsoft's four levels have their own guide (MicrosoftLevels.tsx). */
 function guide(section: AppSection): Step[] {
-  switch (section) {
-    case "google":
-      return googleSteps();
-    case "dropbox":
-    case "dropbox_app_folder":
-      return dropboxSteps(section === "dropbox_app_folder");
-    default:
-      return microsoftSteps(section);
-  }
+  return section === "google"
+    ? googleSteps()
+    : dropboxSteps(section === "dropbox_app_folder");
 }
 /** The section's name as the administrator reads it. */
 const sectionName = (section: AppSection) => {
@@ -832,41 +668,6 @@ function Fields({
           error={errors[second]}
         />
       )}
-    </div>
-  );
-}
-
-/** The consent link filled from the typed ids, to send to someone who has
- * the role; a template until both are well formed. */
-function ConsentLink({
-  section,
-  values,
-}: {
-  section: AppSection;
-  values: AppFields;
-}) {
-  const client = (values.client_id ?? "").trim();
-  const tenant = (values.tenant_id ?? "").trim();
-  const ok =
-    Object.keys(appErrors(section, { client_id: client, tenant_id: tenant }))
-      .length === 0;
-  const url = ok ? microsoftConsent(tenant, client) : microsoftConsent();
-  return (
-    <div
-      className="si-handoff"
-      data-testid="si-consent-link"
-      data-filled={ok || undefined}
-    >
-      <span className="si-quiet">
-        {txt.ifNoRole}
-        {!ok && txt.linkFills}
-      </span>
-      <div className="si-block">
-        <pre className="si-cmd" data-template={!ok || undefined}>
-          {url}
-        </pre>
-        {ok && <Copy value={url} label={txt.consentLink} />}
-      </div>
     </div>
   );
 }
@@ -957,14 +758,6 @@ export function AppSetupDialog({
           <Icon name="warning" />
           <span>{txt.secretOnce}</span>
         </p>
-      )}
-      {provider === "microsoft" && (
-        <p className="si-quiet" data-testid="si-no-secret">
-          {txt.noSecret}
-        </p>
-      )}
-      {split && provider === "microsoft" && (
-        <ConsentLink section={section} values={values} />
       )}
       {refusal && (
         <p className="si-bad" role="alert" data-testid="si-refusal">
@@ -1099,16 +892,20 @@ export function AppSetupDialog({
 function RemoveDialog({
   provider: section,
   step,
+  others,
   onConfirm,
   onClose,
 }: {
   provider: AppSection;
   step: boolean;
+  /** Another of the provider's levels stays usable, so removing this one
+   * removes a level, not the provider. */
+  others: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }) {
   const provider = sectionProvider(section);
-  if (section !== provider)
+  if (section !== provider || others)
     return (
       <Modalish
         testId="si-remove-dialog"
@@ -1210,6 +1007,7 @@ function FixDialog({
 }
 
 type Open =
+  | { kind: "levels" }
   | { kind: "setup"; provider: AppSection; replace?: IntegrationApp }
   | { kind: "remove"; provider: AppSection }
   | { kind: "fix"; provider: ProviderId; tools: string[] };
@@ -1249,6 +1047,9 @@ export function ServerIntegrations({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState<Open>();
+  const [tables, setTables] = useState<TableProvider[]>([]);
+  const toggleTable = (p: TableProvider) =>
+    setTables((t) => (t.includes(p) ? t.filter((x) => x !== p) : [...t, p]));
   const locked = !canWrite || !apps.browser_setup;
   return (
     <div
@@ -1268,7 +1069,22 @@ export function ServerIntegrations({
         <PeopleList testId="si-rows" actions columns={[txt.service, txt.state]}>
           {providerOrder.map((p) => {
             const catalog = providers?.find((x) => x.id === p);
-            const s = statusOf(p, catalog, pending[p]);
+            // Microsoft's four levels are one row with one guided setup;
+            // a change to any of them is the row's.
+            const ms = p === "microsoft";
+            const msApps = ms
+              ? msLevels.flatMap((m) => {
+                  const a = apps.apps.find((x) => x.provider === m.section);
+                  return a ? [{ level: m.id, app: a }] : [];
+                })
+              : [];
+            const msSet = msApps.filter((x) => x.app.usable);
+            const msPending = ms
+              ? (["uncertain", "set", "clear"] as const).find((k) =>
+                  msLevels.some((m) => pending[m.section] === k),
+                )
+              : undefined;
+            const s = statusOf(p, catalog, ms ? msPending : pending[p]);
             const app = isAppProvider(p)
               ? apps.apps.find((a) => a.provider === p)
               : undefined;
@@ -1277,9 +1093,13 @@ export function ServerIntegrations({
             // A provider's narrower levels are separate applications, offered
             // once the provider's tools are installed.
             const levels =
-              isAppProvider(p) && (s.kind === "ready" || s.kind === "needs_app")
+              !ms &&
+              isAppProvider(p) &&
+              (s.kind === "ready" || s.kind === "needs_app")
                 ? (levelSections[p] ?? [])
                 : [];
+            const table = isAppProvider(p) ? (p as TableProvider) : undefined;
+            const tableOpen = table !== undefined && tables.includes(table);
             return (
               <Fragment key={p}>
                 <PeopleRow
@@ -1323,27 +1143,113 @@ export function ServerIntegrations({
                     </span>
                   }
                   detail={
-                    <>
-                      {app && !pending[p] && invalidApp(app) && (
+                    ms ? (
+                      <>
                         <span
-                          className="si-bad"
-                          data-testid={`si-invalid-${p}`}
+                          className="ml-provnote"
+                          data-testid="si-levels-note"
                         >
-                          <Icon name="warning" />
-                          {txt.invalid} {invalidText(app)}
+                          {msSet.length
+                            ? levelsTxt.levelsSet(
+                                msSet.length,
+                                msSet
+                                  .map((x) => levelsTxt.short[x.level])
+                                  .join(" · "),
+                              )
+                            : levelsTxt.fourLevels}
                         </span>
-                      )}
-                      {problem?.provider === p && !pending[p] && (
-                        <span className="si-bad" role="alert">
-                          <Icon name="warning" />
-                          {problem.text}
-                        </span>
-                      )}
-                    </>
+                        {msApps.map(
+                          ({ level, app: a }) =>
+                            !pending[a.provider] &&
+                            invalidApp(a) && (
+                              <span
+                                key={level}
+                                className="si-bad"
+                                data-testid={`si-invalid-${a.provider}`}
+                              >
+                                <Icon name="warning" />
+                                {txt.level(levelName("microsoft", level))}:{" "}
+                                {txt.invalid} {invalidText(a)}
+                              </span>
+                            ),
+                        )}
+                        {problem &&
+                          sectionProvider(problem.provider as AppSection) ===
+                            "microsoft" &&
+                          !msPending && (
+                            <span className="si-bad" role="alert">
+                              <Icon name="warning" />
+                              {problem.text}
+                            </span>
+                          )}
+                        <LevelsDisclosure
+                          open={tableOpen}
+                          onToggle={() => toggleTable("microsoft")}
+                          testId="si-levels-microsoft"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {table && (
+                          <LevelsDisclosure
+                            open={tableOpen}
+                            onToggle={() => toggleTable(table)}
+                            testId={`si-levels-${p}`}
+                          />
+                        )}
+                        {app && !pending[p] && invalidApp(app) && (
+                          <span
+                            className="si-bad"
+                            data-testid={`si-invalid-${p}`}
+                          >
+                            <Icon name="warning" />
+                            {txt.invalid} {invalidText(app)}
+                          </span>
+                        )}
+                        {problem?.provider === p && !pending[p] && (
+                          <span className="si-bad" role="alert">
+                            <Icon name="warning" />
+                            {problem.text}
+                          </span>
+                        )}
+                      </>
+                    )
                   }
-                  cells={[<Mark key="state" p={p} s={s} />]}
+                  cells={[
+                    ms &&
+                    s.kind === "ready" &&
+                    msSet.length > 0 &&
+                    msSet.length < msLevels.length ? (
+                      <StatusMark
+                        key="state"
+                        data-testid="si-status-microsoft"
+                        tone="warning"
+                        label={levelsTxt.partlyOffered(msSet.length)}
+                      />
+                    ) : (
+                      <Mark key="state" p={p} s={s} />
+                    ),
+                  ]}
                   end={
-                    s.kind === "uncertain" ? (
+                    ms && (s.kind === "ready" || s.kind === "needs_app") ? (
+                      <ControlButton
+                        data-testid="si-setup-microsoft"
+                        size="row"
+                        variant={
+                          msSet.length === msLevels.length
+                            ? "quiet"
+                            : "secondary"
+                        }
+                        isDisabled={locked}
+                        onPress={() => setOpen({ kind: "levels" })}
+                      >
+                        {msSet.length === msLevels.length
+                          ? levelsTxt.levels
+                          : msSet.length
+                            ? levelsTxt.setMissing
+                            : levelsTxt.createApps}
+                      </ControlButton>
+                    ) : s.kind === "uncertain" ? (
                       <ControlButton
                         data-testid={`si-refresh-${p}`}
                         size="row"
@@ -1438,6 +1344,25 @@ export function ServerIntegrations({
                     ) : null
                   }
                 />
+                {tableOpen && table && (
+                  <li
+                    className="ml-cmprow"
+                    data-testid={`si-levels-table-${p}`}
+                  >
+                    <LevelTable
+                      provider={table}
+                      testId={`si-table-${p}`}
+                      state={
+                        ms
+                          ? (l) =>
+                              msSet.some((x) => x.level === l)
+                                ? levelsTxt.offered
+                                : levelsTxt.noCredentials
+                          : undefined
+                      }
+                    />
+                  </li>
+                )}
                 {levels.map(({ section, level }) => {
                   const levelApp = apps.apps.find(
                     (a) => a.provider === section,
@@ -1552,6 +1477,17 @@ export function ServerIntegrations({
           })}
         </PeopleList>
       </SectionCard>
+      {open?.kind === "levels" && (
+        <MicrosoftLevelsDialog
+          apps={apps.apps}
+          locked={locked}
+          line={(a) => <AppLine app={a} names={names} />}
+          invalid={invalidText}
+          onSave={(section, fields) => onSave(section, fields)}
+          onRemove={(section) => setOpen({ kind: "remove", provider: section })}
+          onClose={() => setOpen(undefined)}
+        />
+      )}
       {open?.kind === "setup" && (
         <AppSetupDialog
           provider={open.provider}
@@ -1564,6 +1500,14 @@ export function ServerIntegrations({
         <RemoveDialog
           provider={open.provider}
           step={(steps as string[]).includes(open.provider)}
+          others={
+            sectionProvider(open.provider) === "microsoft" &&
+            msLevels.some(
+              (m) =>
+                m.section !== open.provider &&
+                apps.apps.find((a) => a.provider === m.section)?.usable,
+            )
+          }
           onConfirm={() => onRemove(open.provider)}
           onClose={() => setOpen(undefined)}
         />

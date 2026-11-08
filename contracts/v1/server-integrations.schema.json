@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-integrations.schema.json",
   "title": "The providers' app credentials, as the root broker keeps them",
-  "description": "GET /api/v1/server/integrations lists the Google, Microsoft and Dropbox application sections of root's integrations file, and the separate applications of the narrower account levels (microsoft_drafts, microsoft_read, dropbox_app_folder), with root's browser_setup switch. POST /api/v1/server/integrations/set {provider, fields} has the broker write one provider's section; POST /api/v1/server/integrations/clear {provider} removes it. A secret is accepted only in a set request and is never returned. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been written, and nothing is retried. Refusals are fixed codes shared with root's admin integrations CLI: browser_setup_disabled (root's switch is off), host_busy (host maintenance holds the lock; nothing was written), integrations_file_invalid (root must repair the file), integration_refused, broker_unavailable. Administrator, session and CSRF are required.",
+  "description": "GET /api/v1/server/integrations lists the Google, Microsoft and Dropbox application sections of root's integrations file, and the separate applications of the narrower account levels (microsoft_nosend, microsoft_drafts, microsoft_read, dropbox_app_folder), with root's browser_setup switch. POST /api/v1/server/integrations/set {provider, fields} has the broker write one provider's section; POST /api/v1/server/integrations/clear {provider} removes it. A secret is accepted only in a set request and is never returned. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been written, and nothing is retried. Refusals are fixed codes shared with root's admin integrations CLI: browser_setup_disabled (root's switch is off), host_busy (host maintenance holds the lock; nothing was written), integrations_file_invalid (root must repair the file), integration_refused, broker_unavailable. Administrator, session and CSRF are required.",
   "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/set_request"}, {"$ref": "#/$defs/clear_request"}],
   "$defs": {
-    "provider": {"description": "A section: a provider's own application, which is its full account level, or the application of one of its narrower levels.", "enum": ["google", "microsoft", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"]},
+    "provider": {"description": "A section: a provider's own application, which is its full account level, or the application of one of its narrower levels.", "enum": ["google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"]},
     "public_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,256}$"},
     "secret": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,256}$"},
     "app": {
@@ -27,7 +27,7 @@
       "properties": {
         "schema_version": {"const": 1},
         "browser_setup": {"description": "Root's site.json integrations.browser_setup as host apply published it; while false, set and clear are refused.", "type": "boolean"},
-        "apps": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/app"}}
+        "apps": {"type": "array", "maxItems": 7, "items": {"$ref": "#/$defs/app"}}
       }
     },
     "set_request": {
@@ -36,7 +36,7 @@
       "properties": {
         "provider": {"$ref": "#/$defs/provider"},
         "fields": {
-          "description": "Exactly the provider's fields: google, dropbox and dropbox_app_folder client_id and client_secret; microsoft, microsoft_drafts and microsoft_read client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, both Microsoft ids are GUIDs (a single-tenant app: the tenant is the organisation's Directory (tenant) ID, never common, organizations or consumers), and no value may be given twice.",
+          "description": "Exactly the provider's fields: google, dropbox and dropbox_app_folder client_id and client_secret; microsoft, microsoft_nosend, microsoft_drafts and microsoft_read client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, both Microsoft ids are GUIDs (a single-tenant app: the tenant is the organisation's Directory (tenant) ID, never common, organizations or consumers), and no value may be given twice.",
           "type": "object", "additionalProperties": false, "minProperties": 2, "maxProperties": 2,
           "properties": {"client_id": {"$ref": "#/$defs/public_id"}, "client_secret": {"$ref": "#/$defs/secret"}, "tenant_id": {"$ref": "#/$defs/public_id"}}
         }

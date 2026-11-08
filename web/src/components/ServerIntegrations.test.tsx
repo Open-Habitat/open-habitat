@@ -93,11 +93,9 @@ it("orders the catalog's seven rows and offers each state's one action", () => {
       .map((r) => [r.dataset.testid, r.dataset.status]),
   ).toEqual([
     ["si-row-google", "ready"],
+    // Microsoft's four levels are one row (MicrosoftLevels.test.tsx); a
+    // provider whose tools are missing has no level to set.
     ["si-row-microsoft", "needs_app"],
-    // A provider's narrower levels follow it; a provider whose tools are
-    // missing has none to set.
-    ["si-row-microsoft_drafts", "needs_app"],
-    ["si-row-microsoft_read", "needs_app"],
     ["si-row-apple", "ready"],
     ["si-row-imap", "ready"],
     ["si-row-caldav", "ready"],
@@ -242,80 +240,6 @@ const tenantID = "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903";
 const invalid = (testId: string) =>
   screen.getByTestId(testId).getAttribute("aria-invalid") === "true";
 
-it("walks Microsoft's single-tenant guide with the ids last and no secret", async () => {
-  const calls = setup({}, { kind: "refused", code: "host_busy" });
-  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
-  expect(walk()).toEqual(["register", "public", "permissions", "consent"]);
-  expect(within(dialog()).queryByTestId("si-field-client_secret")).toBeNull();
-  expect(within(dialog()).queryByRole("radio")).toBeNull();
-
-  // An audience keyword or a domain is not the organisation's tenant id,
-  // and the client id pasted twice is caught, before anything is sent.
-  // The consent link for someone with the role fills only from ids the
-  // save would accept.
-  const consent = () => within(dialog()).getByTestId("si-consent-link");
-  type("si-field-client_id", clientID);
-  for (const tenant of ["common", "organizations", "contoso.onmicrosoft.com"]) {
-    type("si-field-tenant_id", tenant);
-    expect(consent().dataset.filled).toBeUndefined();
-    expect(within(consent()).queryByTestId("si-copy")).toBeNull();
-    fireEvent.click(within(dialog()).getByTestId("si-save"));
-    await waitFor(() => expect(invalid("si-field-tenant_id")).toBe(true));
-  }
-  type("si-field-tenant_id", clientID.toUpperCase());
-  fireEvent.click(within(dialog()).getByTestId("si-save"));
-  await waitFor(() => expect(invalid("si-field-tenant_id")).toBe(true));
-  expect(invalid("si-field-client_id")).toBe(false);
-  expect(calls.onSave).not.toHaveBeenCalled();
-  // Correcting the field clears its error.
-  type("si-field-tenant_id", ` ${tenantID} `);
-  expect(invalid("si-field-tenant_id")).toBe(false);
-  expect(consent().querySelector("pre")?.textContent).toBe(
-    `https://login.microsoftonline.com/${tenantID}/adminconsent?client_id=${clientID}`,
-  );
-  expect(within(consent()).getByTestId("si-copy")).toBeTruthy();
-
-  // A refusal keeps the dialog and what was typed.
-  fireEvent.click(within(dialog()).getByTestId("si-save"));
-  await waitFor(() =>
-    expect(within(dialog()).getByTestId("si-refusal")).toBeTruthy(),
-  );
-  expect(calls.onSave).toHaveBeenCalledWith("microsoft", {
-    client_id: clientID,
-    tenant_id: tenantID,
-  });
-  expect(
-    (screen.getByTestId("si-field-client_id") as HTMLInputElement).value,
-  ).toBe(clientID);
-});
-
-it("names why root's existing section is ignored and replaces it through the guide", () => {
-  setup({
-    apps: {
-      ...apps,
-      apps: [
-        ...apps.apps,
-        // Written for the multi-tenant app before it became single tenant.
-        {
-          provider: "microsoft",
-          client_id: clientID,
-          tenant_id: "common",
-          usable: false,
-          source: "operator",
-        },
-      ],
-    },
-  });
-  expect(
-    within(row("microsoft")).getByTestId("si-invalid-microsoft"),
-  ).toBeTruthy();
-  expect(screen.queryByTestId("si-invalid-google")).toBeNull();
-  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
-  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
-    "register",
-  );
-});
-
 it("tells an audience keyword from a malformed id in an ignored section", () => {
   const ms = (tenant_id?: string, client_id = clientID) => ({
     provider: "microsoft" as const,
@@ -340,48 +264,6 @@ it("tells an audience keyword from a malformed id in an ignored section", () => 
       source: "operator",
     }),
   ).toBe("other");
-});
-
-it("skips Microsoft's guide straight to the ids for an existing app", () => {
-  setup();
-  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
-  fireEvent.click(within(dialog()).getByTestId("si-skip"));
-  expect(within(dialog()).getByTestId("si-step-enter")).toBeTruthy();
-  expect(within(dialog()).getByTestId("si-field-tenant_id")).toBeTruthy();
-  expect(within(dialog()).getByTestId("si-save")).toBeTruthy();
-});
-
-it("offers only removal for Microsoft's app, which has no secret to replace", async () => {
-  const calls = setup({
-    providers: providers.map((p) =>
-      p.id === "microsoft" ? provider("microsoft", true) : p,
-    ),
-    apps: {
-      ...apps,
-      apps: [
-        ...apps.apps,
-        {
-          provider: "microsoft",
-          client_id: clientID,
-          tenant_id: tenantID,
-          usable: true,
-          source: "site_admin",
-          actor: "42",
-          at: "2026-10-24T12:00:00Z",
-        },
-      ],
-    },
-  });
-  fireEvent.click(
-    within(screen.getByTestId("si-menu-microsoft")).getByRole("button"),
-  );
-  await screen.findByTestId("menu-remove");
-  expect(screen.queryByTestId("menu-replace")).toBeNull();
-  fireEvent.click(screen.getByTestId("menu-remove"));
-  const confirm = screen.getByTestId("si-remove-dialog");
-  expect(within(confirm).getByTestId("si-remove-other")).toBeTruthy();
-  fireEvent.click(within(confirm).getByTestId("si-remove-confirm"));
-  expect(calls.onRemove).toHaveBeenCalledWith("microsoft");
 });
 
 const dropboxNeedsApp = providers.map((p) =>
@@ -523,7 +405,7 @@ it("locks credential writes while root's switch is off", () => {
 it("shows a change in flight as waiting and an uncertain one with a refresh", () => {
   const calls = setup({ pending: { google: "clear", microsoft: "uncertain" } });
   expect(row("google").dataset.status).toBe("clear");
-  expect(within(row("google")).queryByRole("button")).toBeNull();
+  expect(within(row("google")).queryByTestId("si-menu-google")).toBeNull();
   fireEvent.click(screen.getByTestId("si-refresh-microsoft"));
   expect(calls.onRefresh).toHaveBeenCalledOnce();
 });
@@ -539,35 +421,4 @@ it("copies the one command that installs a missing tool", async () => {
     );
   });
   expect(writeText).toHaveBeenCalledWith(fixCommand);
-});
-
-it("sets and removes a level's own application as its own section", async () => {
-  const withRead: IntegrationApps = {
-    ...apps,
-    apps: [
-      ...apps.apps,
-      {
-        provider: "microsoft_read",
-        client_id: "11111111-2222-4333-8444-555555555555",
-        tenant_id: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903",
-        usable: true,
-        source: "site_admin",
-        actor: "root",
-        at: "2026-10-28T06:00:00Z",
-      },
-    ],
-  };
-  const calls = setup({ apps: withRead });
-  expect(row("microsoft_read" as ProviderId).dataset.status).toBe("ready");
-  fireEvent.click(screen.getByTestId("si-setup-microsoft_drafts"));
-  fireEvent.click(screen.getByTestId("si-skip"));
-  type("si-field-client_id", "22222222-3333-4444-8555-666666666666");
-  type("si-field-tenant_id", "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903");
-  fireEvent.click(screen.getByTestId("si-save"));
-  await waitFor(() =>
-    expect(calls.onSave).toHaveBeenCalledWith("microsoft_drafts", {
-      client_id: "22222222-3333-4444-8555-666666666666",
-      tenant_id: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903",
-    }),
-  );
 });

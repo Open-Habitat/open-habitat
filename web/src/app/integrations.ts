@@ -78,7 +78,7 @@ export type Provider = {
   }[];
 };
 /** An account level the provider itself enforces. */
-export type Level = "full" | "drafts" | "read" | "app_folder";
+export type Level = "full" | "nosend" | "drafts" | "read" | "app_folder";
 export type SyncProgress = {
   service?: ServiceId;
   phase: "inventory" | "preparing" | "transferring";

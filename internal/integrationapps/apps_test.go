@@ -47,6 +47,7 @@ func TestValidIsTheDaemonRuleAndTheProviderFormat(t *testing.T) {
 		{"imap", map[string]string{"client_id": "a", "client_secret": "b"}, false, false},
 		// A level's application is its provider's kind of registration.
 		{"microsoft_read", map[string]string{"client_id": guid, "tenant_id": other}, true, true},
+		{"microsoft_nosend", map[string]string{"client_id": guid, "tenant_id": other}, true, true},
 		{"microsoft_drafts", map[string]string{"client_id": guid, "tenant_id": "common"}, false, false},
 		{"microsoft_read", map[string]string{"client_id": guid, "client_secret": "h2m5c9xj4ub7ye1"}, false, false},
 		{"dropbox_app_folder", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "h2m5c9xj4ub7ye1"}, true, true},

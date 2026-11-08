@@ -49,47 +49,6 @@ const fi = {
   googleShows: (window: string): ReactNode => (
     <>Google näyttää ikkunan {em(window)}:</>
   ),
-  appDrafts: "Open Habitat – luonnokset",
-  appRead: "Open Habitat – vain luku",
-  chooseApp: (app: string): ReactNode => <>Valitse sovellus {em(app)}.</>,
-  register: "Rekisteröi sovellus",
-  entraSearch: (page: string): ReactNode => (
-    <>
-      Entran yläreunan hakukenttä vie oikealle sivulle: hae {em(page)} ja
-      myöhemmin sovelluksen nimellä.
-    </>
-  ),
-  levelApp:
-    "Oma sovellus tälle tasolle: Microsoft antaa jokaiselle sovelluksen tunnukselle kaikki sovellukselle hyväksytyt oikeudet, joten taso on raja vain omana sovelluksenaan.",
-  singleTenant: "Single tenant only - <organisaatio>",
-  workAccounts:
-    "Vain organisaation työtilit. Henkilökohtaiset Microsoft-tilit eivät voi yhdistää.",
-  leaveRedirect: (button: string): ReactNode => (
-    <>Jätä Redirect URI tyhjäksi ja valitse {em(button)}.</>
-  ),
-  roleDeveloper: "Vaatii vähintään roolin Application Developer.",
-  publicClient: "Julkinen asiakas",
-  deviceCode: (button: string): ReactNode => (
-    <>
-      Valitse {em(button)}. Henkilöt kirjautuvat laitekoodilla, joten client
-      secretiä ei luoda.
-    </>
-  ),
-  userRead: (button: string): ReactNode => (
-    <>User.Read on valmiina. Valitse lopuksi {em(button)}.</>
-  ),
-  consent: "Hyväksyntä ja tunnukset",
-  inEntra: "Microsoft Entrassa",
-  grantForOrg: "API permissions › Grant admin consent for <organisaatio> › Yes",
-  noPrompt: (status: string): ReactNode => (
-    <>
-      Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee {em(status)}.
-    </>
-  ),
-  grantedFor: "Granted for <organisaatio>",
-  roleAdmin:
-    "Vaatii roolin Cloud Application Administrator, Application Administrator tai Privileged Role Administrator.",
-  overviewPage: "Sovelluksen Overview-sivulla:",
   chooseAppTab: (tab: string): ReactNode => (
     <>Valitse sovellus ja välilehti {em(tab)}.</>
   ),
@@ -135,16 +94,12 @@ const fi = {
   levelOf: (provider: string, level: string) => `${provider}, taso ${level}`,
   haveClient: "Minulla on jo asiakas",
   haveApp: "Minulla on jo sovellus",
-  ifNoRole: "Jos rooli puuttuu, lähetä linkki sille, jolla se on.",
-  linkFills: " Linkki täyttyy, kun arvot on liitetty.",
-  consentLink: "hyväksyntälinkki",
   newSecretTitle: "Uusi salaisuus",
   credentials: "Tunnukset",
   replaceEffect:
     "Yhdistetyt tilit käyttävät vanhaa salaisuutta, kunnes poistat sen Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.",
   secretOnce:
     "Google näyttää salaisuuden vain tässä ikkunassa. Liitä se ennen kuin suljet ikkunan.",
-  noSecret: "Salaisuutta ei tarvita.",
   setupTitle: (section: string, replace: boolean) =>
     `${section}: ${replace ? "vaihda tunnukset" : "aseta tunnukset"}`,
   stepOf: (n: number, total: number) => `Vaihe ${n}/${total}`,
@@ -263,48 +218,6 @@ export const serverIntegrationsText = catalog(
     ),
     chooseFinally: (button) => <>Finally choose {em(button)}.</>,
     googleShows: (window) => <>Google shows the window {em(window)}:</>,
-    appDrafts: "Open Habitat – drafts",
-    appRead: "Open Habitat – read only",
-    chooseApp: (app) => <>Choose the app {em(app)}.</>,
-    register: "Register the app",
-    entraSearch: (page) => (
-      <>
-        The search field at the top of Entra takes you to the right page: search
-        for {em(page)} and later for the app's name.
-      </>
-    ),
-    levelApp:
-      "A separate app for this level: Microsoft gives every token of an app all the permissions approved for the app, so a level is a limit only as an app of its own.",
-    singleTenant: "Single tenant only - <organization>",
-    workAccounts:
-      "Only the organization's work accounts. Personal Microsoft accounts cannot connect.",
-    leaveRedirect: (button) => (
-      <>Leave Redirect URI empty and choose {em(button)}.</>
-    ),
-    roleDeveloper: "Needs at least the Application Developer role.",
-    publicClient: "Public client",
-    deviceCode: (button) => (
-      <>
-        Choose {em(button)}. People sign in with a device code, so no client
-        secret is created.
-      </>
-    ),
-    userRead: (button) => (
-      <>User.Read is there already. Finally choose {em(button)}.</>
-    ),
-    consent: "Consent and credentials",
-    inEntra: "In Microsoft Entra",
-    grantForOrg:
-      "API permissions › Grant admin consent for <organization> › Yes",
-    noPrompt: (status) => (
-      <>
-        People are not asked for consent. The Status column reads {em(status)}.
-      </>
-    ),
-    grantedFor: "Granted for <organization>",
-    roleAdmin:
-      "Needs the Cloud Application Administrator, Application Administrator or Privileged Role Administrator role.",
-    overviewPage: "On the app's Overview page:",
     chooseAppTab: (tab) => <>Choose the app and the tab {em(tab)}.</>,
     create: "Create the app",
     openDropbox: "Open the Dropbox App Console",
@@ -345,16 +258,12 @@ export const serverIntegrationsText = catalog(
     levelOf: (provider, level) => `${provider}, level ${level}`,
     haveClient: "I already have a client",
     haveApp: "I already have an app",
-    ifNoRole: "If you lack the role, send the link to someone who has it.",
-    linkFills: " The link fills in once the values are pasted.",
-    consentLink: "consent link",
     newSecretTitle: "New secret",
     credentials: "Credentials",
     replaceEffect:
       "Connected accounts use the old secret until you delete it in Google. After that they have to sign in again.",
     secretOnce:
       "Google shows the secret only in this window. Paste it before you close the window.",
-    noSecret: "No secret is needed.",
     setupTitle: (section, replace) =>
       `${section}: ${replace ? "change credentials" : "set credentials"}`,
     stepOf: (n, total) => `Step ${n}/${total}`,
@@ -439,12 +348,6 @@ export const serverIntegrationsText = catalog(
     chooseProject: "Choose the organisation's Google Cloud project and enable:",
     internal:
       "Internal requires Google Workspace. Only the organisation's accounts can connect, and no verification by Google is needed.",
-    singleTenant: "Single tenant only - <organisation>",
-    workAccounts:
-      "Only the organisation's work accounts. Personal Microsoft accounts cannot connect.",
-    grantForOrg:
-      "API permissions › Grant admin consent for <organisation> › Yes",
-    grantedFor: "Granted for <organisation>",
     dropboxNameFolder: "Open Habitat <organisation> app folder",
     dropboxName: "Open Habitat <organisation>",
     dropboxOwner:

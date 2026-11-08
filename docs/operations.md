@@ -1087,15 +1087,21 @@ delegated permissions:
 | Level | Section | Delegated permissions besides `openid`, `profile`, `User.Read`, `offline_access` |
 |---|---|---|
 | Täysi (full) | `microsoft` | `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, `Contacts.ReadWrite` |
-| Luonnokset, ei lähetystä (drafts) | `microsoft_drafts` | `Files.Read.All`, `Sites.Read.All`, `Mail.ReadWrite`, `Calendars.Read`, `Contacts.Read` |
+| Kaikki paitsi postin lähetys (nosend) | `microsoft_nosend` | `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`, `Calendars.ReadWrite`, `Contacts.ReadWrite` |
+| Luonnokset, muu vain luku (drafts) | `microsoft_drafts` | `Files.Read.All`, `Sites.Read.All`, `Mail.ReadWrite`, `Calendars.Read`, `Contacts.Read` |
 | Vain luku (read) | `microsoft_read` | `Files.Read.All`, `Sites.Read.All`, `Mail.Read`, `Calendars.Read`, `Contacts.Read` |
 
-The drafts level sends nothing: an event with attendees sends invitations
-and a file grant can create a public sharing link, so only mail is writable.
-A level section has the same two fields as `microsoft`
-(`admin integrations set --provider microsoft_drafts|microsoft_read`, or the
-level's row under Microsoft 365 in Palvelinintegraatiot); the tenant is
-normally the same. A level without its application is shown greyed out and
+The nosend level is the full level without `Mail.Send`: mail is read,
+organised and drafted but never sent. Graph cannot change a calendar without
+sending invitations to attendees, nor files without the right to create a
+sharing link, so those stay possible at this level. The drafts level sends
+nothing: an event with attendees sends invitations and a file grant can
+create a public sharing link, so only mail is writable. A level section has
+the same two fields as `microsoft`
+(`admin integrations set --provider microsoft_nosend|microsoft_drafts|microsoft_read`,
+or Microsoft 365's guided setup in Palvelinintegraatiot, which walks the
+levels still missing one application at a time and saves each at its end);
+the tenant is the same for all four. A level without its application is shown greyed out and
 refers people to the administrator; only the full level is needed for the
 integration to be offered. The consent link a person may be shown names the
 level's application and permissions.

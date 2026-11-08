@@ -186,7 +186,10 @@ it("never lets an older catalog answer undo a later confirmed removal", async ()
   };
   await remove("dropbox");
   await waitFor(() => expect(hold).toBeDefined());
-  await remove("microsoft");
+  // Microsoft's levels are removed from its guided setup's start page.
+  fireEvent.click(await screen.findByTestId("si-setup-microsoft"));
+  fireEvent.click(await screen.findByTestId("ml-remove-full"));
+  fireEvent.click(screen.getByTestId("si-remove-confirm"));
   const microsoft = () => screen.getByTestId("si-row-microsoft");
   await waitFor(() => expect(microsoft().dataset.status).toBe("needs_app"));
   hold?.(new Response());

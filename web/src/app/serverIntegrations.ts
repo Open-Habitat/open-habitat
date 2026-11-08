@@ -31,6 +31,7 @@ export const isAppProvider = (p: ProviderId): p is AppProvider =>
  * or the separate application of one of its narrower account levels. */
 export type AppSection =
   | AppProvider
+  | "microsoft_nosend"
   | "microsoft_drafts"
   | "microsoft_read"
   | "dropbox_app_folder";
@@ -39,6 +40,7 @@ export const levelSections: Partial<
   Record<AppProvider, { section: AppSection; level: Level }[]>
 > = {
   microsoft: [
+    { section: "microsoft_nosend", level: "nosend" },
     { section: "microsoft_drafts", level: "drafts" },
     { section: "microsoft_read", level: "read" },
   ],

@@ -44,7 +44,7 @@ func (env Env) microsoftApps() map[Level]MicrosoftApp {
 		app     *MicrosoftApp
 		section string
 		level   Level
-	}{{cfg.Microsoft, "microsoft", LevelFull}, {cfg.MicrosoftDrafts, "microsoft_drafts", LevelDrafts}, {cfg.MicrosoftRead, "microsoft_read", LevelRead}} {
+	}{{cfg.Microsoft, "microsoft", LevelFull}, {cfg.MicrosoftNoSend, "microsoft_nosend", LevelNoSend}, {cfg.MicrosoftDrafts, "microsoft_drafts", LevelDrafts}, {cfg.MicrosoftRead, "microsoft_read", LevelRead}} {
 		if x.app != nil && integrationapps.Usable(x.section, map[string]string{"client_id": x.app.ClientID, "tenant_id": x.app.TenantID}) {
 			out[x.level] = *x.app
 		}
@@ -53,14 +53,16 @@ func (env Env) microsoftApps() map[Level]MicrosoftApp {
 }
 
 // microsoftLevels in the page's order.
-var microsoftLevels = []Level{LevelFull, LevelDrafts, LevelRead}
+var microsoftLevels = []Level{LevelFull, LevelNoSend, LevelDrafts, LevelRead}
 
 // microsoftLevelScopes are the Graph permissions each level's application
-// has, the set its administrator consents to. Drafts sends nothing: mail is
-// drafted, calendars and files only read, since an event sends invitations
-// and a file grant can create a public sharing link.
+// has, the set its administrator consents to. NoSend is the full level
+// without Mail.Send, the one permission that sends mail. Drafts sends
+// nothing: mail is drafted, calendars and files only read, since an event
+// sends invitations and a file grant can create a public sharing link.
 var microsoftLevelScopes = map[Level]string{
 	LevelFull:   microsoftScopes + " " + microsoftMCPScopes,
+	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite",
 	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read",
 	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read",
 }
@@ -163,6 +165,13 @@ func microsoftLevelOf(services []Service) Level {
 	switch {
 	case match(func(string) Access { return AccessFull }):
 		return LevelFull
+	case match(func(id string) Access {
+		if id == "mail" {
+			return AccessDrafts
+		}
+		return AccessFull
+	}):
+		return LevelNoSend
 	case match(func(id string) Access {
 		if id == "mail" {
 			return AccessDrafts

@@ -24,7 +24,7 @@ func microsoftEnv(t *testing.T) Env {
 	script := `#!/bin/sh
 set -eu
 [ "$MS365_MCP_USE_KEYTAR" = false ]
-case "$MS365_MCP_CLIENT_ID" in 00000000-0000-0000-0000-00000000000[12]) ;; *) exit 79;; esac
+case "$MS365_MCP_CLIENT_ID" in 00000000-0000-0000-0000-00000000000[123]) ;; *) exit 79;; esac
 case " $* " in
  '  ')
  read -r payload || :
@@ -85,7 +85,7 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 				t.Error("OAuth method")
 			}
 			_ = r.ParseForm()
-			// The full level's application, or the read level's (level_linux_test.go).
+			// The full level's application, or the read or no-send level's (level_linux_test.go).
 			if !strings.HasPrefix(r.Form.Get("client_id"), "00000000-0000-0000-0000-00000000000") || r.Form.Get("client_secret") != "" {
 				t.Error("public client credentials")
 			}

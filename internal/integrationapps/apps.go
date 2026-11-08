@@ -31,7 +31,7 @@ const MaxFile = 16384
 // folder or Full Dropbox) is fixed when it is created, so a narrower level
 // that the provider itself enforces is another registration. The section
 // name is the provider, an underscore and the level.
-var Providers = []string{"google", "microsoft", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"}
+var Providers = []string{"google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"}
 
 // ProviderOf is the provider a section registers an application for.
 func ProviderOf(section string) string {
@@ -44,7 +44,7 @@ func Fields(provider string) []string {
 	switch provider {
 	case "google", "dropbox", "dropbox_app_folder":
 		return []string{"client_id", "client_secret"}
-	case "microsoft", "microsoft_drafts", "microsoft_read":
+	case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read":
 		return []string{"client_id", "tenant_id"}
 	}
 	return nil

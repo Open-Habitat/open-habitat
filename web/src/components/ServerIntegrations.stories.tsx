@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { Provider, ProviderId } from "../app/integrations";
 import type { IntegrationApps } from "../app/serverIntegrations";
+import { MicrosoftLevelsDialog } from "./MicrosoftLevels";
 import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
 // Synthetic states of the production Palvelimen ylläpito › Palvelinintegraatiot tab
 // (proto-server-integrations-setup, round 2 direction 2, Google's round 3
-// direction 2, Microsoft's round 4 direction 1 and Dropbox's round 5
-// direction 2). No host, broker or provider is involved.
+// direction 2 and Dropbox's round 5 direction 2; Microsoft's levels are
+// proto-integration-levels round 5). No host, broker or provider is involved.
 const provider = (
   id: ProviderId,
   available: boolean,
@@ -221,22 +222,30 @@ export const GoogleExisting: StoryObj<typeof Setup> = {
 export const GoogleNewSecret: StoryObj<typeof Setup> = {
   render: () => <Setup replace={google.apps[0]} />,
 };
-/** Microsoft's guided setup: the Entra console first, the two ids beside
- * the consent. */
-export const MicrosoftStepRegister: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={0} />,
+/** Microsoft's four levels, one guided setup: the start page is the
+ * levels' table with a checkbox per missing level; the set ones are
+ * skipped (proto-integration-levels round 5, Rastit taulukossa). */
+function Levels(props: { apps?: IntegrationApps }) {
+  return (
+    <MicrosoftLevelsDialog
+      apps={(props.apps ?? googleAndMicrosoft).apps}
+      locked={false}
+      line={(a) => a.client_id ?? ""}
+      invalid={() => ""}
+      onSave={save}
+      onRemove={() => {}}
+      onClose={() => {}}
+    />
+  );
+}
+export const MicrosoftLevelsStart: StoryObj<typeof Levels> = {
+  render: () => <Levels />,
 };
-export const MicrosoftStepPublicClient: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={1} />,
+export const MicrosoftLevelsNoneSet: StoryObj<typeof Levels> = {
+  render: () => <Levels apps={google} />,
 };
-export const MicrosoftStepPermissions: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={2} />,
-};
-export const MicrosoftStepConsent: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={3} />,
-};
-export const MicrosoftStepPhone: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={3} />,
+export const MicrosoftLevelsPhone: StoryObj<typeof Levels> = {
+  render: () => <Levels />,
   globals: { viewport: { value: "mobile1" } },
 };
 /** Dropbox's guided setup: one App Console page per step, the keys beside

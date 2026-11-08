@@ -587,6 +587,64 @@ test("an account level is chosen when connecting and changed later by signing in
   ).toBeLessThanOrEqual(0);
 });
 
+test("the no-send level connects with mail drafted but never sent, and everything else changeable", async ({
+  page,
+}) => {
+  await signIn(page);
+  await fixture(page, "action=reset");
+  const apps = async (q: string) =>
+    expect(
+      (await page.request.get(`/fixture/integration-apps?${q}`)).status(),
+    ).toBe(204);
+  await apps("set=microsoft_nosend");
+  await page.reload();
+  await tile(page, "microsoft")
+    .getByRole("button")
+    .and(tile(page, "microsoft").getByTestId("integration-connect-open"))
+    .click();
+  const dialog = page.getByRole("dialog");
+  const level = (id: string) =>
+    dialog.getByTestId(`integration-level-${id}`).getByRole("radio");
+  await expect(dialog.getByTestId("integration-level-nosend")).toContainText(
+    "Kaikki paitsi postin lähetys",
+  );
+  await dialog.getByTestId("integration-level-nosend").click();
+  await expect(level("nosend")).toBeChecked();
+  // The warning names what still leaves the account, and mail is not it.
+  const warning = dialog.getByTestId("integration-level-warning");
+  await expect(warning).toContainText("kalenteria");
+  await expect(warning).not.toContainText("lähettää postia");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  await fixture(page, "action=approve");
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-sync-start"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-microsoft"));
+  await expect(card.getByTestId("integration-account-level")).toHaveAttribute(
+    "data-level",
+    "nosend",
+  );
+  await expect(card.getByTestId("integration-service-mail")).toHaveAttribute(
+    "data-access",
+    "drafts",
+  );
+  await apps("clear=microsoft_nosend");
+  await fixture(page, "action=reset");
+});
+
 test("Google offers Täysi and Vain luku, says it has no drafts level, and a change revokes the old login first", async ({
   page,
 }) => {
