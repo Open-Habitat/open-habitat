@@ -147,3 +147,77 @@ konsoli puhdas.
 node design-system/prototypes/rounds/2026-11-08-keskustelun-aineisto-2/build.mjs
 open-habitat agent view offer --current --source design-system/prototypes/dist/keskustelun-aineisto-2/offline.html --title "Keskustelun näkymät ja tiedostot · kierros 2" --idempotency-key c55ed8a7-bb72-44b7-8973-35c8cb861ec6 --json
 ```
+
+# Kierros 3: kohteen toiminnot listassa ja avatussa kohteessa
+
+Kierros: `design-system/prototypes/rounds/2026-11-08-keskustelun-aineisto-3/`
+(`NOTES.md` kertoo sivun, suunnat ja tarkistuksen). Pohja on kierroksen 2
+Oma siru. Akseli on se, missä kohteen toiminnot ovat: rivillä hiiren
+alla, valikossa vai vain avatussa kohteessa. Kaikissa suunnissa rivin
+painallus avaa kohteen oikeaan paneeliin ja saman rivin painallus sulkee
+sen, joten lista pysyy työpöydällä auki kohteen vieressä. Rivi on linkki
+kohteen omaan osoitteeseen, joten ⌘- tai keskipainikkeen klikkaus avaa
+oman välilehden kaikissa suunnissa. Kuvakkeet ja järjestys ovat
+tarjouskorttien kierroksen 3 mukaiset: julkinen, oma välilehti, lataus,
+ja lisäksi *Näytä keskustelussa*.
+
+- **A Kuvakkeet**: hiiren alla rivin oikeaan päähän pienet kuvakkeet (julkinen, oma välilehti, lataus, keskustelussa); kosketuksella aina näkyvissä; paneelin yläpalkissa sama rivi.
+- **B Valikko**: rivillä aina oma välilehti -nuoli, hiiren alla ⋯, jonka valikossa loput; kosketuksella ⋯ aina näkyvissä; paneelin yläpalkissa ↗ ja ⋯.
+- **C Paneeli**: rivi pysyy puhtaana; toiminnot vain avatun kohteen yläpalkissa, ja ⌘- tai keskipainikkeen klikkaus rivillä avaa oman välilehden kuten linkki.
+
+Kosketuksella hiiren tilalla on A:ssa aina näkyvät kuvakkeet (kellonaika
+siirtyy tietoriville), B:ssä aina näkyvä ⋯ ja C:ssä selaimen oma
+linkkivalikko pitkällä painalluksella sekä paneelin yläpalkki.
+
+Kuvat: `evidence/r3-<suunta>-<vaihe>-<leveys>-<teema>.avif`. Vaiheet ovat
+`0-oletus` (lista auki; työpöydällä CSV viereen avattuna ja uusimman
+raportin rivi hiiren alla), `0-lahi` (lista lähikuvana), `1-valikko` (B:n
+rivivalikko), `2-paneeli` (uusin raportti viereen avattuna ja julkiseksi
+asetettuna yläpalkista) ja `3-valilehti` (sama omalla välilehdellä).
+
+## Host-tiedot
+
+Toiminnot eivät tarvitse uutta tallennetta. Oma välilehti ja julkinen
+linkki ovat sama kohteen pysyvä osoite; näkymille se on olemassa (`entry`
+ja `public_until`), tiedostotarjouksille se tulee tarjouskorttien
+julkisuustyön mukana. Rivin linkki tarvitsee osoitteen jo listassa, joten
+listan lähteen (`GET /api/v1/views` ja keskustelun tarjouslista) pitää
+kertoa se tai sen pitää olla johdettavissa tunnisteesta. Julkisuuden tila
+rivillä (pieni maapallo) tulee samasta `public_until`-kentästä. *Lataa*
+on nykyinen latausreitti, kansiolle ja näkymälle .zip.
+
+## Suositus
+
+**B Valikko.** Oma välilehti on Jarin yleisin toiminto, ja B on ainoa
+suunta, jossa se näkyy jokaisella rivillä ilman hiirtä ja yhtä hyvin
+puhelimessa. Harvemmat toiminnot (julkisuus, lataus, keskusteluun) ovat
+⋯:n takana, joten rivi pysyy rauhallisena eikä otsikko kapene. A on
+nopein, kun hiiri on jo rivillä, mutta puhelimessa kolme kuvaketta joka
+rivillä vie otsikolta tilan. C on siistein, mutta sen välilehtireitti
+(⌘-klikkaus) on piilossa: kukaan ei löydä sitä katsomalla, ja
+puhelimessa se riippuu selaimen pitkästä painalluksesta. Jos kortit
+valitsevat kierroksella 3 kuvakerivin (A Kulma), A on johdonmukaisempi
+pari; silloin tämäkin kannattaa valita A.
+
+## Kysymykset Jarille
+
+1. Mikä suunta: A (`r3-a-kuvakkeet-0-oletus-1440-light`), B
+   (`r3-b-valikko-0-oletus-1440-light`) vai C
+   (`r3-c-paneeli-0-oletus-1440-light`)?
+2. Kelpaako puhelimessa aina näkyvä kuvakerivi
+   (`r3-a-kuvakkeet-0-oletus-390-light`), vai riittääkö ↗ ja ⋯
+   (`r3-b-valikko-0-oletus-390-light`)?
+3. Saako lista jäädä auki avatun kohteen viereen, jotta saman rivin
+   painallus sulkee sen (`r3-a-kuvakkeet-2-paneeli-1440-light`)?
+
+## Ympäristö ja näyttö
+
+Rakennettu tuotannon komponenteista tämän worktreen puusta (pohja
+`2bb4aafe4`), Playwright Chromium headless, 1440 × 900 ja 390 × 844
+(kosketus), DPR 2, vaalea ja tumma. `check.mjs`: 294 tarkistuspistettä,
+konsoli puhdas.
+
+```
+node design-system/prototypes/rounds/2026-11-08-keskustelun-aineisto-3/build.mjs
+open-habitat agent view offer --current --source design-system/prototypes/dist/keskustelun-aineisto-3/offline.html --title "Keskustelun näkymät ja tiedostot · kierros 3" --idempotency-key b6681ade-3def-4f69-a481-7886934c9bf6 --json
+```

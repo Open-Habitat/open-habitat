@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: list of a conversation's views and files
@@ -42,4 +42,4 @@ kohteeseen saa toiminnot: Jari avaa usein omaan välilehteen, joten esim.
 hiiren alla näkyvät painikkeet listan riveillä (oma välilehti, julkaisu,
 lataus), samalla mallilla kuin tarjouskorttien kierros 3.
 - [x] round 2: chip in the bottom strip
-- [ ] round 3: Oma siru, actions on list rows and the opened item (hover buttons, own tab), view offer and questions for Jari
+- [x] round 3: Oma siru, actions on list rows and the opened item (hover buttons, own tab), view offer and questions for Jari

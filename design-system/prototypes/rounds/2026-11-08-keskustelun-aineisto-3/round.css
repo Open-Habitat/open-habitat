@@ -1,0 +1,253 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+.proto-picker-item { white-space: nowrap; }
+.ac-main { position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ac-main .ah-conversation-frame { position: relative; flex: 1 1 auto; min-height: 0; }
+
+/* A card found from a list: a soft ring round the whole card, for a moment. */
+.ac-found {
+  border-radius: var(--ah-r-md);
+  box-shadow: 0 0 0 3px var(--ah-accent-line);
+  background-color: var(--ah-accent-soft);
+  transition: box-shadow .2s, background-color .2s;
+}
+
+/* The right-hand panel wrapper: production's pane inside fills it. */
+.ac-panel-wrap { display: flex; flex-direction: column; }
+.ac-panel-wrap > .ah-view-pane { flex: 1 1 auto; width: auto; min-height: 0; border-left: 0; }
+.ac-back {
+  display: flex; align-items: center; gap: var(--ah-s1); flex: none;
+  min-height: var(--ah-control-row, 32px); padding: 0 var(--ah-s3);
+  border: 0; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface);
+  color: var(--ah-ink-2); font: var(--ah-size-meta) var(--ah-font); cursor: pointer; text-align: left;
+}
+.ac-back:hover { color: var(--ah-ink); background: var(--ah-surface-hover, var(--ah-surface)); }
+.ac-back svg { width: 14px; height: 14px; }
+
+/* ---- Marks and counts ---- */
+.ac-mark {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px;
+  border-radius: var(--ah-r-sm, 6px); font: 600 10px var(--ah-mono);
+}
+.ac-mark svg { width: 14px; height: 14px; }
+.ac-mark-view { border: 1px solid var(--ah-accent-line); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.ac-mark-file { border: 1px solid var(--ah-line); background: var(--ah-sunken, var(--ah-surface)); color: var(--ah-ink-2); }
+.ac-chip.ah-button {
+  display: inline-flex; align-items: center; gap: 4px; width: auto; padding-inline: var(--ah-s2);
+  font-variant-numeric: tabular-nums;
+}
+.ac-chip .ac-count-view { font: 600 10px var(--ah-mono); color: var(--ah-accent-ink); }
+.ac-chip > span + svg { margin-left: 6px; }
+.ac-chip[aria-expanded="true"], .ac-chip[aria-pressed="true"] { background: var(--ah-surface-press); color: var(--ah-ink); }
+
+/* ---- The list, shared by the three directions ---- */
+.ac-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ac-entry { display: grid; }
+.ac-row {
+  text-decoration: none; flex: 1; display: flex; align-items: center; gap: var(--ah-s2); min-width: 0;
+  padding: 6px 4px 6px 6px; border: 0; background: none; color: var(--ah-ink);
+  font: var(--ah-size-body, 14px) var(--ah-font); text-align: left; cursor: pointer; border-radius: var(--ah-r-md);
+}
+.ac-row:focus-visible { outline: var(--ah-focus-width) solid var(--ah-accent); outline-offset: -2px; }
+.ac-text { display: grid; min-width: 0; flex: 1; }
+.ac-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ac-time { flex: none; color: var(--ah-muted); font-size: var(--ah-size-meta); font-variant-numeric: tabular-nums; }
+.ac-versions-toggle {
+  grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 5px;
+  margin: -4px 0 4px 38px; padding: 1px 6px; border: 1px solid var(--ah-line); border-radius: 999px;
+  background: none; color: var(--ah-ink-2); font: var(--ah-size-meta) var(--ah-font); cursor: pointer;
+}
+.ac-versions-toggle:hover { color: var(--ah-ink); border-color: var(--ah-ink-2); }
+.ac-chev { width: 12px; height: 12px; }
+/* Two offset squares: more than one of the same. */
+.ac-versions-stack { position: relative; width: 10px; height: 10px; }
+.ac-versions-stack::before, .ac-versions-stack::after {
+  content: ""; position: absolute; width: 7px; height: 7px; border: 1.2px solid currentColor; border-radius: 2px;
+}
+.ac-versions-stack::before { left: 0; top: 2px; }
+.ac-versions-stack::after { left: 3px; top: -1px; background: var(--ah-surface); }
+.ac-older { grid-column: 1 / -1; list-style: none; margin: 0 0 4px 30px; padding: 0; display: grid; gap: 1px; }
+.ac-row-older { font-size: var(--ah-size-meta); color: var(--ah-ink-2); padding-block: 4px; }
+.ac-version-n {
+  flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--ah-line); color: var(--ah-muted); font: 600 10px var(--ah-font); font-variant-numeric: tabular-nums;
+}
+
+.ac-mark-s { width: 24px; height: 24px; }
+.ac-count-view { font: 600 10px var(--ah-mono); color: var(--ah-accent-ink); }
+.ac-counts { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.ac-counts .ac-n + svg { margin-left: 4px; }
+.ac-n { font: 600 11.5px var(--ah-font); }
+
+/* ---- The strip: production's strip and the assets chip on one line ---- */
+.ac-line { position: relative; display: flex; align-items: center; gap: 6px; }
+/* Production's strip sits in the line; its floating panel anchors to the
+   whole line, so both panels open in the same place. */
+.ac-line > .ah-bg-strip { padding: 0; flex: none; min-width: 0; }
+.ac-line > .ah-bg-strip > * { width: auto; margin: 0; }
+.ac-line > .ah-bg-strip .ah-bg-wrap { position: static; }
+.ac-chip { flex: none; }
+.ac-chip[aria-expanded="true"] { background: var(--ah-surface-press); color: var(--ah-ink); }
+.ah-bg-pop > .ac-pop-head { flex-direction: row; justify-content: space-between; padding-bottom: 6px; }
+.ac-pop-title { display: inline-flex; align-items: center; gap: 6px; padding-left: 6px; font: 600 12.5px var(--ah-font); color: var(--ah-ink); }
+.ac-pop .ah-bg-pop-body { padding: 4px 6px 6px; }
+.ah-bg-tab .ac-count-view { color: var(--ah-muted); }
+.ah-bg-tab[data-selected] .ac-count-view { color: var(--ah-accent-ink); }
+
+/* ---- The opened item: the offer card's place ---- */
+.ac-item { display: flex; flex-direction: column; overflow: hidden; background: var(--ah-surface); }
+.ac-item-head {
+  display: flex; align-items: center; gap: var(--ah-s2); flex: none;
+  padding: var(--ah-s2) var(--ah-s2) var(--ah-s2) var(--ah-s3); border-bottom: 1px solid var(--ah-line);
+}
+.ac-item-title { display: grid; flex: 1; min-width: 0; }
+.ac-item-title h2 { margin: 0; font: 600 var(--ah-size-ui, 14px) var(--ah-font); color: var(--ah-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-item-tools { display: flex; gap: 2px; flex: none; }
+.ac-item-tools .ah-button { width: 32px; }
+.ac-item-share {
+  display: flex; align-items: center; gap: var(--ah-s3); flex: none; min-height: 36px;
+  padding: 2px var(--ah-s3); border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta);
+}
+.ac-item-share .ah-view-offer-switch { font-size: var(--ah-size-meta); }
+.ac-seen { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-muted); }
+.ac-seen svg { width: 13px; height: 13px; }
+.ac-seen[data-public] { color: var(--ah-accent-ink); }
+.ac-item-body { flex: 1; min-height: 0; overflow: auto; }
+.ac-frame { display: block; width: 100%; height: 100%; border: 0; background: #fbfaf7; }
+.ac-table-wrap { padding: var(--ah-s3); overflow: auto; }
+.ac-table { border-collapse: collapse; font: var(--ah-size-meta) var(--ah-font); font-variant-numeric: tabular-nums; }
+.ac-table th, .ac-table td { padding: 5px 10px; border: 1px solid var(--ah-line); text-align: left; white-space: nowrap; color: var(--ah-ink); }
+.ac-table th { background: var(--ah-surface-2, var(--ah-sunken)); font-weight: 600; }
+.ac-note { color: var(--ah-muted); font-size: var(--ah-size-meta); margin: var(--ah-s2) 0 0; }
+.ac-md { padding: var(--ah-s3) var(--ah-s4); color: var(--ah-ink); }
+.ac-doc { display: grid; padding: var(--ah-s4); justify-items: center; background: var(--ah-bg); min-height: 100%; box-sizing: border-box; }
+.ac-page {
+  width: min(100%, 520px); box-sizing: border-box; padding: 36px 40px; background: #fff; color: #1d2026;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .18); font: 13px/1.55 Georgia, serif; aspect-ratio: 1 / 1.414;
+}
+.ac-page h1 { font: 700 22px/1.2 system-ui, sans-serif; margin: 0 0 4px; }
+.ac-page h2 { font: 600 15px system-ui, sans-serif; margin: 18px 0 6px; }
+.ac-page .ac-sub { color: #5b6170; margin: 0 0 12px; }
+.ac-folder { list-style: none; margin: 0; padding: var(--ah-s2); display: grid; gap: 2px; }
+.ac-folder button {
+  display: flex; align-items: center; gap: var(--ah-s2); width: 100%; padding: 6px; border: 0; border-radius: var(--ah-r-md);
+  background: none; color: var(--ah-ink); font: var(--ah-size-body, 14px) var(--ah-font); text-align: left; cursor: pointer;
+}
+.ac-folder button:hover { background: var(--ah-surface-hover, var(--ah-hover)); }
+
+
+/* ---- Round 3: a row, its open state and its actions ---- */
+/* The row line holds the link and the riff's actions; the actions of A and
+   C sit over the time under the pointer, so the title keeps its width. */
+.ac-line-row { position: relative; display: flex; align-items: center; border-radius: var(--ah-r-md); }
+.ac-line-row:hover, .ac-line-row[data-hover] { background: var(--ah-surface-hover, var(--ah-hover)); }
+/* The open row: accent, as the open card. */
+.ac-line-row[data-open] { background: var(--ah-accent-soft); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+.ac-line-row[data-open] .ac-title { color: var(--ah-accent-ink); font-weight: 600; }
+.ac-row .ac-time { padding-right: 6px; }
+.ac-meta { display: flex; align-items: center; gap: 4px; }
+.ac-meta-time { display: none; }
+.ac-seen { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-muted); white-space: nowrap; }
+.ac-seen svg { width: 12px; height: 12px; flex: none; }
+.ac-seen[data-public] { color: var(--ah-accent-ink); }
+.ac-item-title .ac-meta { display: block; }
+.ac-item-title .ac-seen { vertical-align: -2px; }
+.ac-ib.ah-button { width: 30px; padding: 0; }
+.ac-ib svg { width: 16px; height: 16px; }
+.ac-ib[data-public] { color: var(--ah-accent-ink); background: var(--ah-accent-soft); }
+.ac-ib-gap { display: inline-block; width: 30px; }
+.ac-icons .ah-button[data-testid="ac-act-copy"] { width: 30px; padding: 0; }
+.ac-icons { display: flex; align-items: center; }
+
+/* A Kuvakkeet: under the pointer (or keyboard focus) the icons cover the time. */
+.ac-pop[data-riff="a"] .ac-line-row > .ac-icons {
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%); visibility: hidden;
+  padding-left: 12px; background: linear-gradient(to right, transparent, var(--ac-row-bg) 12px);
+  --ac-row-bg: var(--ah-surface-hover, var(--ah-hover));
+}
+.ac-pop[data-riff="a"] .ac-line-row[data-open] > .ac-icons { --ac-row-bg: var(--ah-accent-soft); }
+.ac-pop[data-riff="a"] .ac-line-row:is(:hover, [data-hover], :focus-within) > .ac-icons { visibility: visible; }
+/* On touch they are always there and the time moves into the meta line. */
+.ac-pop[data-riff="a"][data-touch] .ac-line-row > .ac-icons { position: static; transform: none; visibility: visible; padding: 0; background: none; }
+.ac-pop[data-riff="a"][data-touch] .ac-time { display: none; }
+.ac-pop[data-riff="a"][data-touch] .ac-meta-time { display: inline; }
+.ac-pop[data-riff="a"][data-touch] .ac-icons [data-testid="ac-act-locate"] { display: none; }
+
+/* B Valikko: ↗ always, ⋯ keeps its place and shows under the pointer. */
+.ac-menu-acts { display: flex; align-items: center; flex: none; padding-right: 2px; }
+.ac-pop[data-riff="b"] .ac-more { visibility: hidden; }
+.ac-pop[data-riff="b"] .ac-line-row:is(:hover, [data-hover], :focus-within) .ac-more,
+.ac-pop[data-riff="b"] .ac-more[aria-expanded="true"],
+.ac-pop[data-riff="b"][data-touch] .ac-more { visibility: visible; }
+.ac-pop[data-riff="b"] .ac-row .ac-time { padding-right: 2px; }
+.ac-mi { display: inline-flex; align-items: center; gap: var(--ah-s2); }
+.ac-mi svg { width: 15px; height: 15px; }
+
+/* C Paneeli: nothing to press; under the pointer a quiet ⌘ ↗ says a tab is a ⌘-click away. */
+.ac-hint {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%); visibility: hidden; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 3px; padding-left: 12px; color: var(--ah-muted);
+  background: linear-gradient(to right, transparent, var(--ah-surface-hover, var(--ah-hover)) 12px);
+}
+.ac-line-row[data-open] > .ac-hint { background: linear-gradient(to right, transparent, var(--ah-accent-soft) 12px); }
+.ac-line-row:is(:hover, [data-hover]) > .ac-hint { visibility: visible; }
+.ac-hint kbd { font: 600 10.5px var(--ah-font); padding: 0 4px; border: 1px solid var(--ah-line); border-bottom-width: 2px; border-radius: 4px; background: var(--ah-surface); }
+.ac-hint svg { width: 14px; height: 14px; }
+
+/* The panel's top bar. */
+.ac-item-tools { align-items: center; }
+.ac-item-tools .ac-ib.ah-button, .ac-item-tools .ah-button[data-testid="ac-act-copy"] { width: 32px; }
+
+/* Avaa omalle välilehdelle: a drawn browser tab over the page. */
+.ac-tabmock { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--ah-bg); }
+.ac-tabmock-strip { display: flex; align-items: flex-end; gap: 2px; padding: 6px 8px 0; background: var(--ah-surface-2, var(--ah-sunken)); border-bottom: 1px solid var(--ah-line); }
+.ac-tabmock-tab {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 280px; min-width: 0; padding: 6px 10px; border: 0;
+  border-radius: 8px 8px 0 0; background: none; color: var(--ah-ink-2); font: var(--ah-size-meta) var(--ah-font);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.ac-tabmock-tab[data-active] { background: var(--ah-bg); color: var(--ah-ink); cursor: default; }
+.ac-tabmock-tab .ac-mark { width: 18px; height: 18px; font-size: 8px; }
+.ac-tabmock-tab .ac-mark svg { width: 11px; height: 11px; }
+.ac-tabmock-x { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
+.ac-tabmock-x svg { width: 12px; height: 12px; }
+.ac-tabmock-address {
+  display: flex; align-items: center; gap: 6px; margin: 6px 8px; padding: 5px 10px; border-radius: 999px;
+  background: var(--ah-surface-2, var(--ah-sunken)); color: var(--ah-muted); font: var(--ah-size-meta) var(--ah-mono); overflow: hidden; white-space: nowrap;
+}
+.ac-tabmock-address svg { width: 12px; height: 12px; flex: none; }
+.ac-tabpage { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--ah-line); }
+.ac-tabpage-head { display: flex; align-items: center; gap: var(--ah-s3); padding: var(--ah-s3) var(--ah-s4); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.ac-tabpage-head h1 { margin: 0; font: 600 var(--ah-size-ui, 15px) var(--ah-font); color: var(--ah-ink); }
+.ac-tabpage-body { flex: 1; min-height: 0; overflow: auto; background: var(--ah-surface); }
+@media (max-width: 800px) { .ac-tabmock-tab:first-child { max-width: 90px; } }
+
+/* Lataa has no host here: a short note says it started. */
+.ac-toast {
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); font: var(--ah-size-meta) var(--ah-font);
+  box-shadow: var(--ah-shadow-dialog);
+}
+.ac-toast svg { width: 14px; height: 14px; }
