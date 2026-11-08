@@ -168,7 +168,12 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
   // On: the one-shot worker stays in its pill, the two named workers move
   // to the chip with a mark each: a new report and a round under way.
   await expect(chip).toBeVisible();
-  await expect(chip).toContainText("Avustajat");
+  // The chip is icon/marks-only, but remains named for assistive technology.
+  await expect(chip).toHaveText("");
+  await page.keyboard.press("Tab");
+  await chip.focus();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(chip.locator('svg path[d^="M9 7v3"]')).toHaveCount(1);
   await expect(workers).toHaveAttribute("data-working", "1");
   await expect(chip).toHaveAttribute("data-unseen", "1");

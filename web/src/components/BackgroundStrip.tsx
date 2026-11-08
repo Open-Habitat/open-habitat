@@ -1123,7 +1123,6 @@ export function BackgroundStrip({
                   }
                 >
                   <Icon name="bots" className="ah-bg-kind-ic" />
-                  <span className="ah-bg-chip-name">{txt.helpers}</span>
                   {facts.help.items.length ? (
                     <HelperMarks items={facts.help.items} />
                   ) : null}
