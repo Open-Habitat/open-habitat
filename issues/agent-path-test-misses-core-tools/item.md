@@ -2,7 +2,7 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6xa55e9dqhwybytaqf37hxb/test-failure:core-agent-path
@@ -10,6 +10,7 @@ originating_run: 01m6xa55e9dqhwybytaqf37hxb
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Daemon PATH test omits installed core agent tools

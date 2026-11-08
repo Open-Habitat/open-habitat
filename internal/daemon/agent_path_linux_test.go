@@ -76,14 +76,17 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 			t.Fatal(err)
 		}
 		release := filepath.Dir(executable)
-		// The test binary's directory ships no Claude Code; a host selector's
-		// runtime may (as on an installed developer host).
+		// The test binary's directory ships no Claude Code or core tools; a
+		// host selector's runtime may (as on an installed developer host).
 		selected := ""
 		if runtime, err := core.LoadSharedPiRuntime(); err == nil {
 			selected = filepath.Dir(filepath.Dir(runtime.Node))
 		}
 		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + release
 		if dir := agentClaudeCodeDir(release, selected); dir != "" {
+			want += ":" + dir
+		}
+		if dir := agentCoreToolsDir(release, selected); dir != "" {
 			want += ":" + dir
 		}
 		want += "\n"
