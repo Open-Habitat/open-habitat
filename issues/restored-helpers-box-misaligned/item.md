@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Restored-from-archive helpers box sits against the sidebar, not in the conversation column
@@ -24,5 +25,5 @@ the conversation column like the other feed boxes and notices, at 1440 and
 
 ## Acceptance Criteria
 
-- [ ] The restored-helpers box aligns with the conversation column's other boxes at 1440 and 390.
-- [ ] Touched specs green; a check of its left edge against a neighbouring box.
+- [x] The restored-helpers box aligns with the conversation column's other boxes at 1440 and 390.
+- [x] Touched specs green; a check of its left edge against a neighbouring box.

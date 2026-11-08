@@ -28,7 +28,7 @@
   overflow-wrap: anywhere;
 }
 .ah-helper-restore {
-  margin: var(--ah-s4) 0;
+  margin-block: var(--ah-s4);
   padding: var(--ah-s3);
   background: var(--ah-surface-2);
   border-radius: var(--ah-r-md);

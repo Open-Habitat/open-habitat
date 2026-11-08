@@ -4,7 +4,8 @@ import type { Spinoff } from "../src/app/spinoffs";
 import { hostOrigin } from "../test-ports.mjs";
 import { createHostTest, expect } from "./worker-host";
 
-const capture = process.env.OH_VISUAL_CAPTURE === "1";
+const captureAlignment = process.env.OH_RESTORE_ALIGNMENT_CAPTURE === "1";
+const capture = process.env.OH_VISUAL_CAPTURE === "1" || captureAlignment;
 const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
 const workspaceTestId = capture
   ? "workspace-aurinkokello"
@@ -164,6 +165,30 @@ test("helpers confirm before archive, stay discoverable, and return without star
     await snapshot(page, "../issues/helper-archive-flow/evidence/restored", {
       labOrigin: new URL(page.url()).origin,
     });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await note.scrollIntoViewIfNeeded();
+    const neighbour = page
+      .locator('.ah-feed > li[data-kind="assistant"]')
+      .last();
+    await expect(neighbour).toBeVisible();
+    await expect(async () => {
+      const restoredBox = await note.boundingBox();
+      const feedBox = await neighbour.boundingBox();
+      if (!restoredBox || !feedBox) throw new Error("Missing conversation box");
+      expect(Math.abs(restoredBox.x - feedBox.x)).toBeLessThan(1);
+      expect(Math.abs(restoredBox.width - feedBox.width)).toBeLessThan(1);
+      expect(restoredBox.x).toBeGreaterThan(0);
+      expect(restoredBox.x + restoredBox.width).toBeLessThan(width);
+    }).toPass();
+    if (captureAlignment)
+      await snapshot(
+        page,
+        `../issues/restored-helpers-box-misaligned/evidence/restored-${width}`,
+        { labOrigin: new URL(page.url()).origin },
+      );
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await note.getByTestId("helper-archive-branch").click();
   await expect(page.getByTestId("helper-branch-name")).toHaveText("wt/review");
   await page.keyboard.press("Escape");
