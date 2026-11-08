@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: list of a conversation's views and files
@@ -34,3 +34,12 @@ kirjoituskentän luona, siellä missä Workerit-siru ja muut taustatyön sirut
 ovat. Kierros 2: siru alhaalla -riffit. Tarjouskorttien avautumispaikka
 (`proto-offer-cards-consistent` kierros 2) sovitetaan tähän.
 - [x] round 2: riffs on the chip in the bottom strip beside Workers, view offer and questions for Jari
+
+## Decision (Jari 2026-11-08, kierros 2)
+
+**1 Oma siru.** Riffataan (kierros 3), miten listan kohteeseen ja avattuun
+kohteeseen saa toiminnot: Jari avaa usein omaan välilehteen, joten esim.
+hiiren alla näkyvät painikkeet listan riveillä (oma välilehti, julkaisu,
+lataus), samalla mallilla kuin tarjouskorttien kierros 3.
+- [x] round 2: chip in the bottom strip
+- [ ] round 3: Oma siru, actions on list rows and the opened item (hover buttons, own tab), view offer and questions for Jari
