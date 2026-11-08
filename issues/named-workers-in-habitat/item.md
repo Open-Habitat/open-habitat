@@ -5,14 +5,12 @@ type: feature
 reporter: jari
 status: done
 priority: normal
-related: ['@design-named-workers']
+closed: 2026-11-08
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-06/named-workers-in-habitat
 lane: named-workers
 lane_seq: 2
-blocked_by: ['@proto-named-workers']
-closed: 2026-11-08
 ---
 
 # Named support workers in Habitat (experimental): show and wake, Taskfleet owns them

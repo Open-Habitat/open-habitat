@@ -7,9 +7,8 @@ status: done
 priority: normal
 lane: helper-archive-proto
 lane_seq: 2
-blocked_by: ['@proto-helper-archive-notice']
-preparation: ready
 closed: 2026-11-08
+preparation: ready
 ---
 
 # Archiving a conversation with helpers: confirmation and helper rows in the archive
