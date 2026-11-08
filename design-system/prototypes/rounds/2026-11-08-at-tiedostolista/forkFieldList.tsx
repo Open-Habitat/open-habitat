@@ -11,6 +11,9 @@ import {
 } from "../../../../web/src/components/composer/ChoiceList";
 import { PreviewPane } from "../../../../web/src/components/composer/Palette";
 
+// proto-at-file-list, round 1: web/src/components/composer/FieldList.tsx
+// copied unchanged, with `mirror` and `noPicker` added for the directions.
+
 /** The composer's list inside the field box, between the text and the
  * button row (Kentän sisällä, Jari 3.11.2026): the files as a folder tree
  * or a search list with a box on every row for marking several, or the
@@ -37,6 +40,8 @@ export function FieldList({
   onMark,
   onClearMarks,
   onAdd,
+  mirror = false,
+  noPicker = false,
 }: {
   listId: string;
   kind: "cmd" | "file";
@@ -60,6 +65,11 @@ export function FieldList({
   onMark: (index: number) => void;
   onClearMarks: () => void;
   onAdd: () => void;
+  /** variant shared: the typed list shows the button list's search line,
+   * whose text is the @token being typed in the field. */
+  mirror?: boolean;
+  /** variant field and shared: Ctrl/⌘+P writes @ as the button does. */
+  noPicker?: boolean;
 }) {
   const t = useText(fieldListText);
   const flat = flatChoices(groups);
@@ -130,6 +140,15 @@ export function FieldList({
             onKeyDown={onKeyDown}
           />
         </label>
+      ) : mirror ? (
+        <div className="ah-choice-search at-mirror" data-testid="at-mirror">
+          <Icon name="at" />
+          {query ? (
+            <span className="at-mirror-q">{query}</span>
+          ) : (
+            <span className="at-mirror-hint">Kirjoita tekstiin @:n perään</span>
+          )}
+        </div>
       ) : null}
       <div className="ah-choice-body">
         <ChoiceList
@@ -181,17 +200,17 @@ export function FieldList({
         </div>
       ) : null}
       <div className="ah-choice-keys">
-        {from === "caret" && selected < 0 ? (
+        {from === "caret" && selected < 0 && !mirror ? (
           <>
             {k("Tab")} {t.keyAddTop} · {k("↓")} {t.keySelects} · {k("Enter")}{" "}
             {t.keySendsAsIs} · {k("Esc")} {t.keyClose}
           </>
-        ) : from === "caret" ? (
+        ) : from === "caret" && !mirror ? (
           <>
             {k("↑")}
             {k("↓")} {t.keySelect} · {k("Tab")} {t.keyAddTop} · {k("Enter")}{" "}
             {t.keyInsert} · {k("Esc")} {t.keyClose}
-            {files ? (
+            {files && !noPicker ? (
               <>
                 {" "}
                 · {k(mod)}

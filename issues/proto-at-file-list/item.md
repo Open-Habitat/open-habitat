@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: at-file-list-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: typed @ opens the same file list as the file button

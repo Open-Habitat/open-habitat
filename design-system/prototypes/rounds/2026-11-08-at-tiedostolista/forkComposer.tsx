@@ -114,6 +114,14 @@ export type BrowserAction = {
   run: () => void;
 };
 
+// proto-at-file-list, round 1: this is web/src/components/composer/Composer.tsx
+// copied unchanged (the commit before this one), and only the places marked
+// `variant` differ. The diff against that commit is the direction's spec.
+//   search: a typed @ opens the button's list and typing moves into its search
+//   field: the file button writes @ into the field and the text filters
+//   shared: as field, and the typed list has the button list's keys
+export type AtVariant = "search" | "field" | "shared";
+
 /** What the field's lists read. The composer asks when a list opens. */
 export type ComposerSources = {
   commands: (signal: AbortSignal) => Promise<CommandList>;
@@ -646,6 +654,8 @@ export function Composer({
   inFieldLists = false,
   waiting,
   field: purpose,
+  variant,
+  holdOnBlur = false,
 }: {
   value: string;
   csrf?: string;
@@ -705,6 +715,11 @@ export function Composer({
   /** The field's message waits to go by itself, and what the person reads
    * about it under the field (an AI sign-in to renew). */
   waiting?: string;
+  /** The round's direction (proto-at-file-list). */
+  variant?: AtVariant;
+  /** The side-by-side stage: a typed list stays open while the other
+   * composer has the focus, and closes on a press outside, as a button's. */
+  holdOnBlur?: boolean;
 }) {
   const t = useText(composerText);
   const ft = useText(fieldListText);
@@ -1130,6 +1145,19 @@ export function Composer({
   };
   /** → and ← in the in-field file list's search line. */
   const sidewaysKey = (right: boolean) => {
+    if (open?.place === "caret" && variant === "shared") {
+      const step = sideways(flat, sel, right);
+      if (!step) return false;
+      if (step.do === "select")
+        setOpen({ ...open, sel: step.index, selKey: rowKey(flat[step.index]) });
+      else if (step.do === "toggle") toggleRow(sel);
+      else {
+        // The search is the token's text: clearing it leaves the @.
+        shown.current = step.path;
+        replaceRange(open.start, open.end, "@");
+      }
+      return true;
+    }
     if (open?.place !== "button") return false;
     const step = sideways(flat, sel, right);
     if (!step) return false;
@@ -1148,6 +1176,7 @@ export function Composer({
     return true;
   };
 
+  const shown = useRef<string | null>(null);
   // ---- opening ----
   const fromText = (text: string, caret: number) => {
     if (!sources) return;
@@ -1159,13 +1188,39 @@ export function Composer({
     }
     const same =
       open?.place === "caret" && open.kind === t.kind && open.start === t.start;
+    // variant search: the @ just typed opens the button's list, its search
+    // taking what is typed next; the @ waits in the text for the choice.
+    // Typed on after Esc, an @word is plain text.
+    if (variant === "search" && inField && t.kind === "file") {
+      if (t.query) return setOpen(null);
+      setOpen({
+        place: "button",
+        kind: "file",
+        start: t.start,
+        end: t.end,
+        replace: true,
+        query: "",
+        sel: AUTO,
+        ...fresh,
+      });
+      return;
+    }
+    // variant shared: → in a search cleared the token to show the file in
+    // its folder; the tree opens there.
+    const revealing = shown.current;
+    shown.current = null;
     // A mid-line `/` opens with nothing highlighted, so Enter still sends.
     setOpen({
       place: "caret",
       ...t,
       ...fresh,
+      ...(revealing ? { reveal: revealing } : {}),
       // Typing on in the same token keeps what was opened and marked.
-      folding: same ? open.folding : unfolded,
+      folding: revealing
+        ? revealFolding(revealing)
+        : same
+          ? open.folding
+          : unfolded,
       marks: same ? open.marks : [],
       sel:
         t.kind === "cmd" && !t.atStart
@@ -1194,7 +1249,21 @@ export function Composer({
       return fieldCaret();
     return [value.length, value.length];
   };
+  /** variant field and shared: the file button and Ctrl/⌘+P write @ at the
+   * caret, and the typed list opens from it; pressed again with nothing
+   * typed after the @, they take it away. */
+  const writeAt = () => {
+    if (open?.place === "caret" && open.kind === "file") {
+      if (!open.query) return replaceRange(open.start, open.end, "");
+      return close(true);
+    }
+    const [s, e] = fieldCaret();
+    const pad = s > 0 && !/\s/.test(value[s - 1]) ? " " : "";
+    replaceRange(s, e, `${pad}@`);
+  };
+  const writesAt = inField && (variant === "field" || variant === "shared");
   const fromButton = (kind: "cmd" | "file") => {
+    if (writesAt && kind === "file") return writeAt();
     if (open?.place === "button" && open.kind === kind) return close(true);
     // From one in-field list to the other keeps the place in the text.
     const [start, end] =
@@ -1214,6 +1283,7 @@ export function Composer({
   };
   const toPalette = () => {
     if (!sources) return;
+    if (writesAt) return writeAt();
     const fromCaret = open?.place === "caret" && open.kind === "file";
     const [cs, ce] = fieldCaret();
     // The in-field list has no palette: Ctrl/⌘+P opens its file search
@@ -1362,6 +1432,23 @@ export function Composer({
       return toPalette();
     }
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    // variant shared: the typed file list has the button list's keys, the
+    // field's caret standing in for the search line's.
+    if (open?.place === "caret" && variant === "shared" && open.kind === "file") {
+      const el = e.currentTarget;
+      if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        return toggleMark(sel, true);
+      }
+      const atEnd = el.selectionStart === open.end && el.selectionEnd === open.end;
+      const atStart =
+        el.selectionStart === open.start + 1 && el.selectionEnd === open.start + 1;
+      if (
+        ((e.key === "ArrowRight" && atEnd) || (e.key === "ArrowLeft" && atStart)) &&
+        sidewaysKey(e.key === "ArrowRight")
+      )
+        return e.preventDefault();
+    }
     if (open?.place === "caret") {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
@@ -1420,6 +1507,20 @@ export function Composer({
       e.preventDefault();
       e.stopPropagation();
       return close(true);
+    }
+    // variant search: Backspace in the empty search takes the @ away and
+    // returns to the text, as if the @ had not been typed.
+    if (
+      variant === "search" &&
+      e.key === "Backspace" &&
+      !open.query &&
+      open.place === "button" &&
+      open.replace
+    ) {
+      e.preventDefault();
+      const o = open;
+      setOpen(null);
+      return replaceRange(o.start, o.end, "");
     }
     if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
@@ -1526,14 +1627,15 @@ export function Composer({
   }, []);
   // A button's list closes on a press outside the composer.
   useEffect(() => {
-    if (open?.place !== "button") return;
+    if (open?.place !== "button" && !(holdOnBlur && open?.place === "caret"))
+      return;
     const down = (e: MouseEvent) => {
       if (!box.current?.closest(".ah-composer")?.contains(e.target as Node))
         setOpen(null);
     };
     document.addEventListener("mousedown", down);
     return () => document.removeEventListener("mousedown", down);
-  }, [open?.place]);
+  }, [open?.place, holdOnBlur]);
 
   // ---- the list beside the field ----
   const headText = !open
@@ -1590,6 +1692,8 @@ export function Composer({
         selected={sel}
         marks={open.marks}
         searchInput={open.place === "button"}
+        mirror={variant === "shared" && open.place === "caret" && open.kind === "file"}
+        noPicker={writesAt}
         emptyText={open.query ? t.noMatches(open.query) : ft.noFiles}
         preview={sources?.preview}
         folder={
@@ -2071,6 +2175,14 @@ export function Composer({
             fromText(e.currentTarget.value, e.currentTarget.selectionStart)
           }
           onBlur={(e) => {
+            if (holdOnBlur) {
+              lastCaret.current = [
+                e.currentTarget.selectionStart,
+                e.currentTarget.selectionEnd,
+              ];
+              caretText.current = e.currentTarget.value;
+              return;
+            }
             lastCaret.current = [
               e.currentTarget.selectionStart,
               e.currentTarget.selectionEnd,
