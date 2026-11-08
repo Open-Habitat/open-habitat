@@ -8,9 +8,10 @@ test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
+  deviceScaleFactor: 2,
 });
 const png = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYioAAAAASUVORK5CYII=",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
   "base64",
 );
 
@@ -333,6 +334,23 @@ test("large image chips download only thumbnails, including after sending and re
   });
   const composer = page.locator(".ah-composer");
   const chips = composer.getByTestId("attachment-chip");
+  // 26 MiB exceeds the existing upload cap: refuse before any preview request.
+  await composer
+    .locator('input[type="file"]')
+    .evaluate((element: HTMLInputElement) => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File([new Uint8Array(26 * 1024 * 1024)], "too-large.png", {
+          type: "image/png",
+        }),
+      );
+      element.files = data.files;
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  await expect(composer.getByRole("alert")).toBeVisible();
+  await expect(chips).toHaveCount(0);
+  expect(originals).toEqual([]);
+  expect(thumbnails).toEqual([]);
   // Keep large encoded files inside the browser, without copying 95 MiB
   // through Playwright. PNG permits trailing bytes; pixels stay synthetic.
   await composer
@@ -404,6 +422,16 @@ test("large image chips download only thumbnails, including after sending and re
   await loaded(sent);
   await page.reload();
   await loaded(sent);
+  expect(originals).toEqual([]);
+  // A server refusal shows an icon, never an automatic full-image retry.
+  const firstURL = await sent.first().getAttribute("data-attachment-url");
+  await page.route(`**${firstURL}/thumbnail`, (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await page.reload();
+  await expect(sent).toHaveCount(5);
+  await expect(sent.first().locator("img")).toHaveCount(0);
+  await expect(sent.first().locator("svg")).toBeVisible();
   expect(originals).toEqual([]);
   // Only explicitly opening the image may fetch the original.
   await sent.first().getByTestId("attachment-open").click();
