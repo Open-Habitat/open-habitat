@@ -1593,7 +1593,6 @@ export function AgentHeader({
   recapAction,
   archive,
   editorControl,
-  filesControl,
   guideControl,
   settings,
   contextIndicator,
@@ -1624,8 +1623,6 @@ export function AgentHeader({
   archive?: ArchiveControlsProps;
   /** The workspace editor's controls (Rinnakkain), where it is offered. */
   editorControl?: ReactNode;
-  /** The conversation's file panel toggle, where it has offered files. */
-  filesControl?: ReactNode;
   /** The started goal's guide toggle (Opas), where the conversation has one. */
   guideControl?: ReactNode;
   archiveReason?: string;
@@ -1945,7 +1942,6 @@ export function AgentHeader({
           ) : null)}
         <i className="ah-header-sep" aria-hidden="true" />
         {guideControl}
-        {filesControl}
         {editorControl}
         {terminal}
         <ExplainToggle />

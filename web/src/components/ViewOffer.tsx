@@ -1,17 +1,15 @@
 import "./ViewPanel.css";
-import "./ChoiceMenu.css";
-import { useState } from "react";
-import { Menu, MenuTrigger, Popover, Switch } from "react-aria-components";
-import { daysLabel, expiryChoices } from "../app/viewLinks";
+import type { Ref } from "react";
+import { viewZipURL } from "../app/views";
 import { formatDate, formatNumber, liveText } from "../i18n";
-import { viewLinksText } from "../text/viewLinks";
+import { fileOfferText } from "../text/fileOffer";
+import { offerCardText } from "../text/offerCard";
 import { viewOfferText } from "../text/viewOffer";
-import { ControlButton, ControlMenuItem } from "./ControlElements";
-import { Icon } from "./Icon";
-import { CopyButton } from "./ViewLink";
+import { OfferActions, OfferCard, type OfferDownload } from "./OfferCard";
 
 const txt = liveText(viewOfferText);
-const linkTxt = liveText(viewLinksText);
+const cardTxt = liveText(offerCardText);
+const fileTxt = liveText(fileOfferText);
 
 /** One frozen export an agent offered (contracts/v1/view.schema.json). */
 export type ViewSummary = {
@@ -70,201 +68,83 @@ export function formatUntil(iso: string | Date, now = new Date()): string {
   });
 }
 
-const day = 24 * 60 * 60 * 1000;
-
-/** The publication's end as a control: it opens the lengths the site
- * allows, each with the day it would end. A choice applies at once and
- * counts from now (proto-view-offer-card-r3, riff A). */
-function DurationMenu({ visibility }: { visibility: ViewVisibility }) {
-  const until = visibility.until ?? "";
-  const [now, setNow] = useState(Date.now);
-  const choices = expiryChoices(visibility.maxDays).map((days) => ({
-    days,
-    label:
-      days === visibility.maxDays && days > 30
-        ? linkTxt.atMost(daysLabel(days))
-        : daysLabel(days),
-    ends: formatUntil(new Date(now + days * day)),
-  }));
-  const current = choices.find((c) => c.ends === formatUntil(until));
-  return (
-    <MenuTrigger
-      onOpenChange={(open) => {
-        if (open) setNow(Date.now());
-      }}
-    >
-      <ControlButton
-        size="row"
-        variant="quiet"
-        className="ah-view-offer-until"
-        data-testid="view-public-until"
-        title={txt.untilHint(formatUntil(until))}
-        isPending={visibility.pending || visibility.unknown}
-      >
-        {txt.until(formatUntil(until))}
-        <span aria-hidden="true" className="ah-menu-chevron" />
-      </ControlButton>
-      <Popover
-        placement="bottom end"
-        className="ah-popover ah-view-offer-durations"
-      >
-        <p className="ah-view-offer-durations-head">
-          {txt.durationHead(formatUntil(until))}
-        </p>
-        <Menu
-          aria-label={txt.duration}
-          selectionMode="single"
-          selectedKeys={[current ? String(current.days) : "current"]}
-          onAction={(key) => {
-            if (key !== "current") visibility.onDuration(Number(key));
-          }}
-        >
-          {!current && (
-            <ControlMenuItem
-              id="current"
-              className="ah-single-choice-item"
-              data-testid="view-duration-current"
-              textValue={txt.until(formatUntil(until))}
-            >
-              <span className="ah-single-choice-mark" aria-hidden="true">
-                ✓
-              </span>
-              <span className="ah-view-offer-duration">
-                {txt.until(formatUntil(until))}
-              </span>
-            </ControlMenuItem>
-          )}
-          {choices.map((c) => (
-            <ControlMenuItem
-              key={c.days}
-              id={String(c.days)}
-              className="ah-single-choice-item"
-              data-testid={`view-duration-${c.days}`}
-              textValue={c.label}
-            >
-              {({ isSelected }) => (
-                <>
-                  <span className="ah-single-choice-mark" aria-hidden="true">
-                    {isSelected ? "✓" : ""}
-                  </span>
-                  <span className="ah-view-offer-duration">{c.label}</span>
-                  <span className="ah-view-offer-duration-ends">
-                    {txt.until(c.ends)}
-                  </span>
-                </>
-              )}
-            </ControlMenuItem>
-          ))}
-        </Menu>
-      </Popover>
-    </MenuTrigger>
-  );
+/** Where a view downloads: its frozen files as one zip. */
+export function viewDownload(view: ViewSummary): OfferDownload {
+  const name = view.title.replace(/[/\\:*?"<>|\p{Cc}]/gu, "_").trim();
+  return {
+    href: viewZipURL(view.view_id),
+    name: `${name || "view"}.zip`,
+    label: cardTxt.downloadZip,
+  };
 }
 
-/** The accepted card (proto-view-offer-card-r2 riff B, r3 riff A): the
- * title with the Julkinen switch at its right, and the view's own places
- * to open it. One press makes the view public; while it is, the card
- * offers its link and the date it stops. Agent text (the title) is data,
- * never markup or a link. */
+/** A view's facts on its card, in the list and in the panel. */
+export function viewFacts(view: ViewSummary): string[] {
+  return [
+    cardTxt.view,
+    ...(view.files > 1
+      ? [fileTxt.files(view.files, formatNumber(view.files))]
+      : []),
+    formatViewSize(view.bytes),
+  ];
+}
+
+/** One view offer in the conversation, on the one offer card
+ * (proto-offer-cards-consistent). Agent text (the title) is data, never
+ * markup or a link. */
 export function ViewOfferCard({
   view,
   state = "idle",
-  onOpen,
+  open = false,
+  onToggle,
   onOpenTab,
   visibility,
   problem,
+  hitRef,
 }: {
   view: ViewSummary;
   state?: ViewOfferState;
-  /** Open in the panel; the pressed button receives focus back on close. */
-  onOpen: (opener: HTMLElement | null) => void;
+  open?: boolean;
+  /** Open in the panel, or close it when it is the open one; the pressed
+   * card receives focus back on close. */
+  onToggle: (opener: HTMLElement | null) => void;
   onOpenTab: () => void;
   /** Absent where the site shares nothing publicly. */
   visibility?: ViewVisibility;
   /** Why the last change of visibility did not go through. */
   problem?: string;
+  hitRef?: Ref<HTMLButtonElement>;
 }) {
   const shown = visibility?.public && !visibility.unknown;
   return (
-    <aside
-      className="ah-view-offer"
-      role="note"
-      aria-label={txt.label(view.title)}
+    <OfferCard
       data-testid="view-offer"
       data-view-id={view.view_id}
       data-state={state}
       data-public={visibility ? String(!!visibility.public) : undefined}
-    >
-      <span className="ah-view-offer-mark" aria-hidden="true">
-        {"</>"}
-      </span>
-      <div className="ah-view-offer-body">
-        <div className="ah-view-offer-head">
-          <strong className="ah-view-offer-title">{view.title}</strong>
-          {visibility && (
-            <span className="ah-view-offer-controls">
-              {visibility.public && visibility.until && (
-                <DurationMenu visibility={visibility} />
-              )}
-              <Switch
-                className="ah-view-offer-switch"
-                data-testid="view-public"
-                isSelected={visibility.public}
-                isReadOnly={visibility.pending || visibility.unknown}
-                data-pending={visibility.pending || undefined}
-                data-unknown={visibility.unknown || undefined}
-                onChange={(on) => visibility.onPublic(on)}
-              >
-                <span
-                  title={
-                    visibility.unknown
-                      ? txt.unknownHint
-                      : visibility.public
-                        ? txt.publicHint
-                        : txt.privateHint
-                  }
-                >
-                  {txt.public}
-                </span>
-                <span className="ah-view-offer-track" aria-hidden="true" />
-              </Switch>
-            </span>
-          )}
-        </div>
-        <span className="ah-view-offer-actions">
-          <ControlButton
-            size="row"
-            variant="primary"
-            data-testid="view-open"
-            isDisabled={state === "opening"}
-            onPress={(event) =>
-              onOpen(event.target instanceof HTMLElement ? event.target : null)
-            }
-          >
-            {txt.open}
-          </ControlButton>
-          <ControlButton
-            size="row"
-            data-testid="view-open-tab"
-            onPress={onOpenTab}
-          >
-            {txt.openTab} <Icon name="external" />
-          </ControlButton>
-          {shown && visibility?.url && (
-            <CopyButton text={visibility.url} data-testid="view-copy-link" />
-          )}
-        </span>
-        {state === "failed" ? (
-          <span className="ah-view-offer-status" role="status">
-            {txt.failed}
+      aria-label={txt.label(view.title)}
+      kind="view"
+      title={view.title}
+      facts={viewFacts(view)}
+      until={shown ? visibility?.until : undefined}
+      open={open}
+      onToggle={onToggle}
+      hitRef={hitRef}
+      actions={
+        <OfferActions
+          label={view.title}
+          publish={visibility}
+          onTab={onOpenTab}
+          download={viewDownload(view)}
+        />
+      }
+      status={
+        state === "failed" || problem ? (
+          <span className="ah-offer-facts" role="status">
+            {state === "failed" ? txt.failed : problem}
           </span>
-        ) : null}
-        {problem ? (
-          <span className="ah-view-offer-status" role="status">
-            {problem}
-          </span>
-        ) : null}
-      </div>
-    </aside>
+        ) : null
+      }
+    />
   );
 }

@@ -107,6 +107,14 @@ export function zipURL(offerId: string): string {
   return `${base}/${offerId}/zip`;
 }
 
+/** The app page that shows one offer, or one file of it, in a tab of its
+ * own (`/offer?id=…`). */
+export function offerTabPath(offerId: string, path?: string): string {
+  const q = new URLSearchParams({ id: offerId });
+  if (path) q.set("path", path);
+  return `/offer?${q}`;
+}
+
 /** A zip's name from the offer's title, without separators. */
 export function zipName(offer: FileOfferSummary): string {
   const name = (offer.folder ?? offer.title)

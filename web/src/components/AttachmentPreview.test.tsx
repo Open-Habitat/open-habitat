@@ -13,7 +13,7 @@ import {
   xlsxFixture,
 } from "../app/documentFixtures";
 import { frameCSP } from "../app/documentPreview";
-import { AttachmentPreview } from "./AttachmentPreview";
+import { AttachmentPreview, usePreview } from "./AttachmentPreview";
 import { wordFrame } from "./DocumentPreview";
 
 afterEach(() => {
@@ -102,25 +102,27 @@ it("lays a Word document out as a self-contained page without active content", a
   expect(page).not.toMatch(/javascript:/i);
 });
 
-it("reads the file once while the dialog stays open, however often its caller renders", async () => {
+it("reads the file once while the preview stays open, however often its caller renders", async () => {
   const bytes = new TextEncoder().encode("a;b\n1;2\n");
   const read = vi.fn(async (_url: string, _signal: AbortSignal) => bytes);
-  const preview = () => (
-    <AttachmentPreview
-      attachment={{ image: false, name: "luvut.csv", url, source: "" }}
-      onClose={() => {}}
+  const attachment = { image: false, name: "luvut.csv", url, source: "" };
+  const offered = {
+    item: { path: "luvut.csv", bytes: bytes.length, kind: "csv" as const },
+    download: url,
+  };
+  function Preview() {
+    const { content, facts } = usePreview({
+      attachment,
       // A new function on every render, as a caller's inline closure is.
-      read={(u, signal) => read(u, signal)}
-      offered={{
-        item: { path: "luvut.csv", bytes: bytes.length, kind: "csv" },
-        download: url,
-      }}
-    />
-  );
-  const { rerender } = render(preview());
+      read: (u, signal) => read(u, signal),
+      offered,
+    });
+    return <>{content ?? facts}</>;
+  }
+  const { rerender } = render(<Preview />);
   await screen.findByTestId("attachment-preview-table");
-  rerender(preview());
-  rerender(preview());
+  rerender(<Preview />);
+  rerender(<Preview />);
   expect(screen.getByTestId("attachment-preview-table")).toBeTruthy();
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(read).toHaveBeenCalledTimes(1);

@@ -83,7 +83,7 @@ import {
   scrollToEnd,
   visibleEntryKeys,
 } from "./useReadingPosition";
-import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
+import { AssetsControl, NoticeEntry } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 const txt = liveText(historyViewText);
@@ -1672,7 +1672,6 @@ function HistoryViewContent({
         openMachines={openMachines}
         terminal={shell.toggle}
         editorControl={<EditorHeaderControls />}
-        filesControl={<FilesHeaderControl conversationId={agent.agent_id} />}
         title={agentTitle(agent.title)}
         titlePending={
           titlePending || agent.title.generation_state === "pending"
@@ -1902,7 +1901,10 @@ function HistoryViewContent({
           {txt.newConversation}
         </LinkRow>
       </div>
-      <BackgroundStrip ask={workerAsk} />
+      <BackgroundStrip
+        ask={workerAsk}
+        assets={<AssetsControl conversationId={agent.agent_id} />}
+      />
       {shell.panel}
     </ConversationFrame>
   );

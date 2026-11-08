@@ -14,7 +14,7 @@ const view = {
 const meta = {
   title: "Conversation/View offer",
   component: ViewOfferCard,
-  args: { view, onOpen: () => {}, onOpenTab: () => {} },
+  args: { view, onToggle: () => {}, onOpenTab: () => {} },
 } satisfies Meta<typeof ViewOfferCard>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,6 +30,7 @@ export const Prototype: Story = {
     },
   },
 };
+export const Open: Story = { args: { open: true, state: "open" } };
 export const Opening: Story = { args: { state: "opening" } };
 export const Failed: Story = { args: { state: "failed" } };
 export const Phone: Story = {

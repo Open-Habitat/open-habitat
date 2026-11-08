@@ -182,11 +182,7 @@ import {
   useReadingPositionLayout,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
-import {
-  FilesHeaderControl,
-  GuideHeaderControl,
-  NoticeEntry,
-} from "./ViewHost";
+import { AssetsControl, GuideHeaderControl, NoticeEntry } from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -2183,7 +2179,6 @@ function BrowserConversationContent({
             <AgentHeader
               terminal={shell.toggle}
               editorControl={<EditorHeaderControls />}
-              filesControl={<FilesHeaderControl conversationId={id} />}
               titleAction={{
                 label: txt.retitle,
                 availability: { state: "disabled", reason: txt.nothingToName },
@@ -2225,7 +2220,6 @@ function BrowserConversationContent({
               data-model={selectedModel}
               data-thinking={selectedThinking}
               editorControl={<EditorHeaderControls />}
-              filesControl={<FilesHeaderControl conversationId={id} />}
               guideControl={
                 <GuideHeaderControl
                   owner={guide}
@@ -3190,6 +3184,7 @@ function BrowserConversationContent({
                 }
                 piNotRunning={bridgeExpected}
                 ask={workerAsk}
+                assets={<AssetsControl conversationId={id} />}
               />
               {id ? (
                 <NextWaitingDock

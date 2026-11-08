@@ -1,0 +1,362 @@
+/* One offer card for every kind (proto-offer-cards-consistent r3, A Kulma),
+   its icon row, and the item opened beside the conversation. Marks keep
+   their production colours (ViewPanel.css, FileOffer.css). */
+.ah-offer {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(var(--ah-measure), 100%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: inherit;
+  transition: box-shadow 0.4s;
+}
+.ah-offer-icons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+/* The card's press is a layer beneath its own buttons; only those catch the
+   pointer, every other part of the card opens it. */
+.ah-offer > :not(.ah-offer-hit) {
+  position: relative;
+  pointer-events: none;
+}
+.ah-offer .ah-offer-icons,
+.ah-offer .ah-offer-icons * {
+  pointer-events: auto;
+}
+.ah-offer-hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+.ah-offer-hit:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: 2px;
+}
+.ah-offer:has(.ah-offer-hit):hover {
+  border-color: var(--ah-ink-2);
+  background: var(--ah-surface-hover, var(--ah-surface));
+}
+.ah-offer-body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  justify-items: start;
+}
+.ah-offer-title {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+}
+.ah-offer[data-inert] .ah-offer-title {
+  color: var(--ah-muted);
+}
+.ah-offer-facts {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  overflow-wrap: anywhere;
+}
+.ah-offer-seen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ah-muted);
+  vertical-align: -2px;
+  white-space: nowrap;
+}
+.ah-offer-seen svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.ah-offer-seen[data-public] {
+  color: var(--ah-accent-ink);
+}
+.ah-offer-mark-s {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ah-r-sm, 6px);
+  font-size: 10px;
+}
+.ah-offer-mark-s svg {
+  width: 14px;
+  height: 14px;
+}
+/* The list's way back to a card lights it up for a moment. */
+.ah-offer[data-located] {
+  box-shadow: 0 0 0 3px var(--ah-accent-line);
+}
+
+/* The chevron points at the panel; on the open card it turns accent, and
+   under the pointer it becomes ✕, because the same press closes. */
+.ah-offer-chev {
+  flex: none;
+  align-self: center;
+  display: grid;
+  width: 16px;
+  height: 16px;
+  color: var(--ah-muted);
+}
+.ah-offer-chev svg {
+  grid-area: 1 / 1;
+  width: 16px;
+  height: 16px;
+}
+.ah-offer-chev-x {
+  visibility: hidden;
+}
+.ah-offer[data-open] {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent-soft);
+  box-shadow: 0 0 0 1px var(--ah-accent);
+}
+.ah-offer[data-open]:hover {
+  background: var(--ah-accent-soft);
+}
+.ah-offer[data-open] .ah-offer-chev {
+  color: var(--ah-accent-ink);
+}
+.ah-offer[data-open]:hover .ah-offer-chev-go {
+  visibility: hidden;
+}
+.ah-offer[data-open]:hover .ah-offer-chev-x {
+  visibility: visible;
+}
+
+/* The icon row floats in the card's top-right corner under the pointer and
+   on keyboard focus; the chevron steps aside meanwhile. */
+.ah-offer-acts {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  padding: 1px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  opacity: 0;
+  visibility: hidden;
+}
+.ah-offer:hover > .ah-offer-acts,
+.ah-offer:focus-within > .ah-offer-acts {
+  opacity: 1;
+  visibility: visible;
+}
+.ah-offer:hover > .ah-offer-chev,
+.ah-offer:focus-within > .ah-offer-chev {
+  visibility: hidden;
+}
+/* On a touch screen the icons are always there, as the card's last row at
+   its right, so the title keeps the card's width. */
+@media (hover: none) {
+  .ah-offer-acts {
+    position: static;
+    order: 10;
+    flex-basis: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin: calc(-1 * var(--ah-s2)) calc(-1 * var(--ah-s2))
+      calc(-1 * var(--ah-s2)) 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+  }
+  .ah-offer-chev {
+    display: none;
+  }
+}
+.ah-offer-ib.ah-button {
+  width: 32px;
+  padding: 0;
+}
+.ah-offer-ib svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-offer-ib[data-public] {
+  color: var(--ah-accent-ink);
+  background: var(--ah-accent-soft);
+}
+.ah-offer-icons .ah-view-offer-until.ah-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: auto;
+  padding-inline: 4px;
+  font-size: var(--ah-size-meta);
+  white-space: nowrap;
+}
+.ah-offer-icons [data-testid="view-copy-link"].ah-button {
+  width: 32px;
+  padding: 0;
+}
+
+/* The item opened beside the conversation: the card's icon row in the top
+   bar beside the title. */
+.ah-offer-pane-head {
+  gap: var(--ah-s2);
+}
+.ah-offer-pane-head > .ah-view-offer-mark,
+.ah-offer-pane-head > .ah-file-offer-mark {
+  flex: none;
+}
+.ah-offer-pane-title {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.ah-offer-pane-title .ah-view-title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-offer-pane-title .ah-offer-facts {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-offer-pane-head .ah-editor-controls {
+  align-items: center;
+}
+.ah-offer-pane-back {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ah-s1);
+  min-height: 32px;
+  padding: 0 var(--ah-s3);
+  border: 0;
+  border-bottom: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-meta) var(--ah-font);
+  text-align: left;
+  cursor: pointer;
+}
+.ah-offer-pane-back:hover {
+  color: var(--ah-ink);
+}
+.ah-offer-pane-back svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-offer-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--ah-surface);
+}
+.ah-offer-file {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s3);
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: var(--ah-s4);
+}
+.ah-offer-file .ah-attachment-preview-image,
+.ah-offer-file .ah-attachment-preview-media {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  margin-inline: auto;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm, 6px);
+  background: var(--ah-content-canvas);
+}
+.ah-offer-file .ah-attachment-document {
+  max-height: none;
+}
+.ah-offer-folder {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: var(--ah-s2);
+  list-style: none;
+}
+.ah-offer-folder-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--ah-r-md);
+}
+.ah-offer-folder-row:hover {
+  background: var(--ah-surface-hover, var(--ah-surface-2));
+}
+.ah-offer-folder-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--ah-s3);
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: none;
+  color: var(--ah-ink);
+  font: var(--ah-size-body, 14px) var(--ah-font);
+  text-align: left;
+  cursor: pointer;
+}
+.ah-offer-folder-open:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: -2px;
+}
+.ah-offer-folder-thumb {
+  flex: none;
+  width: 56px;
+  height: 36px;
+  object-fit: cover;
+  border: 1px solid var(--ah-line);
+  border-radius: 4px;
+}
+.ah-offer-folder-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.ah-offer-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-offer-folder-row > .ah-offer-icons {
+  visibility: hidden;
+  padding-right: 4px;
+}
+.ah-offer-folder-row:is(:hover, :focus-within) > .ah-offer-icons {
+  visibility: visible;
+}
+@media (hover: none) {
+  .ah-offer-folder-row > .ah-offer-icons {
+    visibility: visible;
+  }
+}
+
+/* A file offer in a tab of its own: the panel, filling the tab. */
+.ah-offer-tab {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ah-surface);
+}

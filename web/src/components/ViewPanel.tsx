@@ -10,8 +10,7 @@ import { liveText } from "../i18n";
 import { viewPanelText } from "../text/viewPanel";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
-import { CopyButton } from "./ViewLink";
-import { formatUntil } from "./ViewOffer";
+import { type OfferKind, OfferMark } from "./OfferCard";
 
 const txt = liveText(viewPanelText);
 
@@ -36,32 +35,44 @@ export function ViewFrame({ src, title }: { src: string; title: string }) {
 }
 
 /** The panel's own controls, as in the editor's header (EditorHeader): they
- * stay reachable even while the conversation is hidden. */
+ * stay reachable even while the conversation is hidden. The item's own icons
+ * (publish, own tab, download) are the same row its card carries. */
 export function ViewHeader({
+  kind = "view",
   title,
+  facts,
   expanded,
   titleRef,
   onToggleExpanded,
-  onOpenTab,
-  link,
+  actions,
+  closeLabel = txt.close,
   onClose,
 }: {
+  kind?: OfferKind;
   title: string;
+  /** Kind, size and who sees it, under the title. */
+  facts?: ReactNode;
   expanded: boolean;
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
-  onOpenTab: () => void;
-  /** The view's stable address and the end of its publication, only while
-   * it is public: visibility itself is changed on the card. */
-  link?: { url: string; until: string };
+  actions?: ReactNode;
+  closeLabel?: string;
   onClose: () => void;
 }) {
   return (
-    <header className="ah-editor-header" data-testid="view-header">
-      <h2 ref={titleRef} tabIndex={-1} className="ah-view-title">
-        {title}
-      </h2>
+    <header
+      className="ah-editor-header ah-offer-pane-head"
+      data-testid="view-header"
+    >
+      <OfferMark kind={kind} size="s" />
+      <span className="ah-offer-pane-title">
+        <h2 ref={titleRef} tabIndex={-1} className="ah-view-title">
+          {title}
+        </h2>
+        {facts ? <span className="ah-offer-facts">{facts}</span> : null}
+      </span>
       <span className="ah-editor-controls">
+        {actions}
         <ControlButton
           data-testid="expand-view"
           size="row"
@@ -74,31 +85,11 @@ export function ViewHeader({
           <Icon name={expanded ? "forward" : "back"} />
         </ControlButton>
         <ControlButton
-          data-testid="view-panel-open-tab"
-          size="row"
-          variant="quiet"
-          aria-label={txt.openTab}
-          title={txt.openTabHint}
-          onPress={onOpenTab}
-        >
-          <Icon name="external" />
-        </ControlButton>
-        {link && (
-          <CopyButton
-            iconOnly
-            data-testid="view-panel-copy-link"
-            text={link.url}
-            label={txt.copyLink(formatUntil(link.until))}
-            copiedLabel={txt.copied}
-            blockedLabel={txt.copyBlocked}
-          />
-        )}
-        <ControlButton
           data-testid="close-view"
           size="row"
           variant="quiet"
-          aria-label={txt.close}
-          title={txt.close}
+          aria-label={closeLabel}
+          title={closeLabel}
           onPress={onClose}
         >
           <Icon name="cross" />
@@ -112,28 +103,28 @@ export function ViewHeader({
  * scripts but without same-origin rights; nothing here reads or reaches it. */
 export function ViewPanel({
   title,
+  facts,
   src,
   failed,
   expanded,
   titleRef,
   onToggleExpanded,
-  onOpenTab,
-  link,
+  actions,
   onClose,
 }: {
   title: string;
+  facts?: ReactNode;
   /** The one-time URL on the view's host; absent while it is being minted. */
   src?: string;
   failed?: boolean;
   expanded: boolean;
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
-  onOpenTab: () => void;
-  link?: { url: string; until: string };
+  actions?: ReactNode;
   onClose: () => void;
 }) {
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && !event.defaultPrevented) {
       event.preventDefault();
       onClose();
     }
@@ -148,11 +139,11 @@ export function ViewPanel({
     >
       <ViewHeader
         title={title}
+        facts={facts}
         expanded={expanded}
         titleRef={titleRef}
         onToggleExpanded={onToggleExpanded}
-        onOpenTab={onOpenTab}
-        link={link}
+        actions={actions}
         onClose={onClose}
       />
       <div className="ah-view-frame">

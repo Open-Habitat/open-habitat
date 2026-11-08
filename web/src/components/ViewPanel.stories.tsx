@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { ViewOfferCard } from "./ViewOffer";
+import { OfferActions } from "./OfferCard";
+import { ViewOfferCard, viewDownload } from "./ViewOffer";
 import { ViewPanel, ViewSplit } from "./ViewPanel";
 
 // Synthetic agent content; in the product it comes from the view's own host.
@@ -47,7 +48,13 @@ function PanelExample({
             failed={failed}
             expanded={expanded}
             onToggleExpanded={() => setExpanded(!expanded)}
-            onOpenTab={() => {}}
+            actions={
+              <OfferActions
+                label={view.title}
+                onTab={() => {}}
+                download={viewDownload(view)}
+              />
+            }
             onClose={() => setOpen(false)}
           />
         }
@@ -64,7 +71,8 @@ function PanelExample({
           <ViewOfferCard
             view={view}
             state={open ? "open" : "idle"}
-            onOpen={() => setOpen(true)}
+            open={open}
+            onToggle={() => setOpen(!open)}
             onOpenTab={() => {}}
           />
         </div>
@@ -80,7 +88,6 @@ const meta = {
     title: view.title,
     expanded: false,
     onToggleExpanded: () => {},
-    onOpenTab: () => {},
     onClose: () => {},
   },
   render: () => <PanelExample />,

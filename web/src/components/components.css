@@ -3714,9 +3714,6 @@ details[open] > summary:not([class])::before {
     display: inline-flex;
     flex: none;
   }
-  .ah-agent-topline[data-shorten~="4"] > .ah-files-toggle > span {
-    display: none;
-  }
   .ah-agent-topline[data-shorten~="5"] {
     gap: var(--ah-s1);
   }

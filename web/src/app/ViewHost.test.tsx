@@ -89,27 +89,45 @@ describe("agent HTML view offers", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
     const card = await page.findByTestId("view-offer");
-    // Agent text is data.
-    expect(card.querySelectorAll("b,script,a")).toHaveLength(0);
+    // Agent text is data: the card's only link is its own download.
+    expect(card.querySelectorAll("b,script")).toHaveLength(0);
+    expect(
+      [...card.querySelectorAll("a")].map((a) => a.dataset.testid),
+    ).toEqual(["offer-download"]);
 
-    fireEvent.click(page.getByTestId("view-open-tab"));
+    fireEvent.click(page.getByTestId("offer-open-tab"));
     expect(open).toHaveBeenCalledWith(
       `/view?id=${view.view_id}`,
       "_blank",
       expect.stringContaining("noopener"),
     );
 
-    const button = page.getByTestId("view-open");
+    // The whole card opens the view beside the conversation.
+    const button = page.getByTestId("offer-open");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
     button.focus();
     fireEvent.click(button);
     const frame = (await page.findByTestId("view-frame")) as HTMLIFrameElement;
     expect(frame.getAttribute("sandbox")).toBe("allow-scripts");
     expect(frame.src).toBe(handoff);
     expect(frame.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(card.dataset.open).toBe("true");
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    // Its zip downloads from the app's own route.
+    expect(page.getAllByTestId("offer-download")[0].getAttribute("href")).toBe(
+      `/api/v1/views/${view.view_id}/zip`,
+    );
 
     fireEvent.click(page.getByTestId("close-view"));
     expect(page.queryByTestId("view-panel")).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(button));
+
+    // Pressing the open card again closes the panel.
+    fireEvent.click(button);
+    await page.findByTestId("view-frame");
+    fireEvent.click(button);
+    await waitFor(() => expect(page.queryByTestId("view-panel")).toBeNull());
+    expect(card.dataset.open).toBeUndefined();
   });
 });
 
@@ -151,7 +169,7 @@ describe("shared view addresses", () => {
         ),
       );
       await act(async () => {});
-      expect(page.queryByRole("switch")).toBeNull();
+      expect(page.queryByTestId("view-public")).toBeNull();
       expect(page.queryByTestId("view-copy-link")).toBeNull();
       page.unmount();
     }
@@ -203,7 +221,7 @@ describe("shared view addresses", () => {
         {entry(true)}
       </ViewHost>,
     );
-    const switches = await page.findAllByRole("switch");
+    const switches = await page.findAllByTestId("view-public");
     expect(switches).toHaveLength(2);
     expect(page.queryByTestId("view-copy-link")).toBeNull();
     fireEvent.click(switches[0]);
@@ -218,12 +236,12 @@ describe("shared view addresses", () => {
         { address_id: shared.address_id, days: 30 },
       ],
     ]);
-    for (const s of page.getAllByRole("switch"))
-      expect((s as HTMLInputElement).checked).toBe(true);
+    for (const s of page.getAllByTestId("view-public"))
+      expect(s.getAttribute("aria-pressed")).toBe("true");
 
     // The host resolves the current address; the rendered one may have
     // been deleted in another tab while a refresh is still in flight.
-    fireEvent.click(page.getAllByTestId("view-open-tab")[1]);
+    fireEvent.click(page.getAllByTestId("offer-open-tab")[1]);
     expect(open).toHaveBeenLastCalledWith(
       `/view?id=${view.view_id}`,
       "_blank",
@@ -246,7 +264,7 @@ describe("shared view addresses", () => {
       { address_id: shared.address_id, days: 7 },
     ]);
 
-    fireEvent.click(page.getAllByRole("switch")[1]);
+    fireEvent.click(page.getAllByTestId("view-public")[1]);
     await waitFor(() =>
       expect(page.queryAllByTestId("view-copy-link")).toHaveLength(0),
     );
@@ -271,9 +289,11 @@ describe("shared view addresses", () => {
     );
     listed = [reserved];
     const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
-    fireEvent.click(await page.findByRole("switch"));
+    fireEvent.click(await page.findByTestId("view-public"));
     await waitFor(() =>
-      expect((page.getByRole("switch") as HTMLInputElement).checked).toBe(true),
+      expect(page.getByTestId("view-public").getAttribute("aria-pressed")).toBe(
+        "true",
+      ),
     );
     expect(writes.map(([url]) => url)).toEqual([
       "/api/v1/view-addresses/publish",

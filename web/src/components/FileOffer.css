@@ -1,16 +1,5 @@
-/* Agent file offers: the card in the conversation (Kortti, Tunniste), the
-   compact package card and the conversation's file panel (Hylly). The panel
-   shares the view panel's pane, header and split (ViewPanel.css). */
-.ah-file-offer {
-  max-width: min(var(--ah-measure), 100%);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ah-s3);
-  padding: var(--ah-s4);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface-2);
-}
+/* Agent file offers: the marks, an image's thumbnail and a folder's strip
+   on the one offer card (OfferCard.css), and an offered file's content. */
 .ah-file-offer-mark {
   --ah-kind: var(--ah-ink-2);
   flex: none;
@@ -41,41 +30,6 @@
   width: 18px;
   height: 18px;
 }
-.ah-file-offer-body {
-  display: grid;
-  flex: 1;
-  min-width: 0;
-  gap: var(--ah-s1);
-  justify-items: start;
-}
-.ah-file-offer-label,
-.ah-file-offer-meta {
-  color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-  overflow-wrap: anywhere;
-}
-.ah-file-offer-title,
-.ah-file-offer-name {
-  font-family: var(--ah-mono);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.ah-file-offer[data-kind="package"] .ah-file-offer-title {
-  font-family: inherit;
-}
-.ah-file-offer-folder {
-  color: var(--ah-muted);
-  font-family: var(--ah-mono);
-  font-weight: 400;
-}
-.ah-file-offer[data-state="removed"] .ah-file-offer-title {
-  color: var(--ah-muted);
-}
-.ah-file-offer-count {
-  color: var(--ah-muted);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
 /* An image the agent offered shows in the card at a size that fits; the
    button opens it large. */
 .ah-file-offer-image {
@@ -86,7 +40,6 @@
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-content-canvas);
-  cursor: zoom-in;
   overflow: hidden;
 }
 .ah-file-offer-image img {
@@ -94,28 +47,6 @@
   max-width: 100%;
   max-height: 320px;
   object-fit: contain;
-}
-.ah-file-offer-image:focus-visible,
-.ah-file-offer-strip button:focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-accent);
-  outline-offset: 2px;
-}
-.ah-file-shelf-row:focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-accent);
-  outline-offset: -2px;
-}
-.ah-file-offer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ah-s2);
-  margin-top: var(--ah-s2);
-}
-.ah-file-offer-actions > a,
-.ah-file-shelf-offer h3 > a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
-  text-decoration: none;
 }
 /* The package card's strip of images and its folders. */
 .ah-file-offer-strip {
@@ -129,7 +60,7 @@
   border-radius: var(--ah-r-md);
   background: var(--ah-surface);
 }
-.ah-file-offer-strip button {
+.ah-file-offer-strip > span {
   aspect-ratio: 4 / 3;
   padding: 0;
   border: 0;
@@ -150,26 +81,6 @@
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
 }
-.ah-file-offer-folders {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ah-s1) var(--ah-s3);
-  color: var(--ah-ink-2);
-  font: var(--ah-size-meta) var(--ah-mono);
-}
-.ah-file-offer-folders > span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.ah-file-offer-folders svg {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  color: var(--ah-muted);
-}
 .ah-file-offer-ext {
   display: grid;
   place-items: center;
@@ -180,190 +91,7 @@
   font: 600 11px var(--ah-mono);
 }
 
-/* The conversation's file panel. */
-.ah-file-shelf .ah-view-title {
-  font-weight: 600;
-}
-.ah-file-shelf-scroll {
-  display: grid;
-  align-content: start;
-  gap: var(--ah-s4);
-  flex: 1;
-  min-height: 0;
-  padding: var(--ah-s4);
-  overflow: auto;
-}
-.ah-file-shelf-search {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s2);
-  padding: var(--ah-s2) var(--ah-s3);
-  border: 1px solid var(--ah-control-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-muted);
-}
-.ah-file-shelf-search:focus-within {
-  outline: var(--ah-focus-width) solid var(--ah-accent);
-  outline-offset: 1px;
-}
-.ah-file-shelf-search svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-.ah-file-shelf-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ah-ink);
-  font: inherit;
-  outline: none;
-}
-.ah-file-shelf-offer {
-  display: grid;
-  gap: var(--ah-s2);
-}
-.ah-file-shelf-offer h3 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ah-s2);
-  margin: 0;
-  font-size: var(--ah-size-meta);
-  font-weight: 600;
-}
-.ah-file-shelf-offer h3 > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.ah-file-shelf-group {
-  display: grid;
-  gap: var(--ah-s1);
-}
-.ah-file-shelf-folder {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s2);
-  color: var(--ah-ink-2);
-  font: var(--ah-size-meta) var(--ah-mono);
-  overflow-wrap: anywhere;
-}
-.ah-file-shelf-folder svg {
-  flex: none;
-  width: 14px;
-  height: 14px;
-}
-.ah-file-shelf-folder .ah-file-offer-count {
-  margin-left: auto;
-}
-.ah-file-shelf-group ul {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ah-file-shelf-folder + ul {
-  padding-left: var(--ah-s3);
-}
-/* A row opens its file's preview. Its own preview and download buttons take
-   the size's place while the pointer or the keyboard focus is on the row;
-   a click leaves no selection behind, so focus alone draws no background. */
-.ah-file-shelf-item {
-  position: relative;
-  border-radius: var(--ah-r-md);
-}
-.ah-file-shelf-item:hover {
-  background: var(--ah-surface-hover);
-}
-.ah-file-shelf-row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--ah-s3);
-  width: 100%;
-  min-height: 40px;
-  padding: var(--ah-s1) calc(var(--ah-control-row) * 2 + var(--ah-s3))
-    var(--ah-s1) var(--ah-s2);
-  border: 0;
-  border-radius: var(--ah-r-md);
-  background: transparent;
-  color: var(--ah-ink);
-  font: inherit;
-  text-align: left;
-  cursor: zoom-in;
-}
-.ah-file-shelf-thumb {
-  width: 40px;
-  height: 30px;
-  border-radius: var(--ah-r-sm);
-  object-fit: cover;
-}
-.ah-file-shelf-text {
-  display: grid;
-  min-width: 0;
-}
-.ah-file-shelf-name {
-  min-width: 0;
-  overflow: hidden;
-  font-family: var(--ah-mono);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ah-file-shelf-size {
-  position: absolute;
-  top: 50%;
-  right: var(--ah-s3);
-  transform: translateY(-50%);
-  color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-}
-.ah-file-shelf-actions {
-  position: absolute;
-  top: 50%;
-  right: var(--ah-s1);
-  display: flex;
-  align-items: center;
-  transform: translateY(-50%);
-  opacity: 0;
-  pointer-events: none;
-}
-.ah-file-shelf-gap {
-  width: var(--ah-control-row);
-}
-.ah-file-shelf-item:hover .ah-file-shelf-actions,
-.ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-.ah-file-shelf-item:hover .ah-file-shelf-size,
-.ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-size {
-  opacity: 0;
-}
-/* Touch has no hover, and a phone has no room to wait for one: the buttons
-   are always there and the size moves under the name. */
-@media (hover: none), (max-width: 800px) {
-  .ah-file-shelf-row {
-    min-height: 48px;
-  }
-  .ah-file-shelf-actions {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .ah-file-shelf-size,
-  .ah-file-shelf-item:hover .ah-file-shelf-size,
-  .ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-size {
-    position: static;
-    transform: none;
-    opacity: 1;
-  }
-}
-
-/* The preview dialog's offered kinds. */
+/* An offered file's content, in the panel and in its own tab. */
 .ah-attachment-preview-media {
   display: block;
   width: 100%;
@@ -414,26 +142,4 @@
 .ah-offered-archive li > span:last-child {
   flex: none;
   color: var(--ah-muted);
-}
-.ah-file-offer-actions svg,
-.ah-file-shelf-offer h3 svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* The top bar's file panel toggle with the conversation's file count. A
-   count is not a word, so the primitive draws it as a square icon button;
-   the button grows with the count instead, so 11 or 111 stays inside its
-   hover and pressed surface. */
-.ah-files-toggle.ah-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
-  width: auto;
-  padding-inline: var(--ah-s2);
-  font-variant-numeric: tabular-nums;
-}
-.ah-files-toggle[aria-pressed="true"] {
-  background: var(--ah-surface-press);
-  color: var(--ah-ink);
 }

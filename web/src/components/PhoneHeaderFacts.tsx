@@ -45,29 +45,26 @@ export function usePhoneHeaderReadout(row: RefObject<HTMLElement | null>) {
         model: model?.dataset.menuSummary,
         compactModel:
           model?.querySelector(".ah-set-model")?.textContent ?? undefined,
-        actions: [
-          "toggle-editor",
-          "toggle-terminal",
-          "toggle-file-shelf",
-          "guide-toggle",
-        ].flatMap((id) => {
-          const selector = `[data-testid='${id}']`;
-          const control = root.querySelector<HTMLButtonElement>(selector);
-          return control
-            ? [
-                {
-                  id,
-                  selector,
-                  label:
-                    control.getAttribute("aria-label") ||
-                    control.title ||
-                    control.textContent ||
+        actions: ["toggle-editor", "toggle-terminal", "guide-toggle"].flatMap(
+          (id) => {
+            const selector = `[data-testid='${id}']`;
+            const control = root.querySelector<HTMLButtonElement>(selector);
+            return control
+              ? [
+                  {
                     id,
-                  disabled: control.disabled,
-                },
-              ]
-            : [];
-        }),
+                    selector,
+                    label:
+                      control.getAttribute("aria-label") ||
+                      control.title ||
+                      control.textContent ||
+                      id,
+                    disabled: control.disabled,
+                  },
+                ]
+              : [];
+          },
+        ),
       };
       setReadout((previous) =>
         JSON.stringify(previous) === JSON.stringify(next) ? previous : next,

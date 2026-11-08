@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -98,25 +105,18 @@ function OfferedText({
   );
 }
 
-/**
- * An attachment in Open Habitat's own dialog: an image at a size that fits,
- * a PDF, Markdown or Office document rendered from its bytes, another file by
- * its name, type and size. Opening the original is secondary.
- *
- * `read` is the host fetch; Storybook, which has no host, supplies bytes.
- */
-export function AttachmentPreview({
+/** What a preview shows of one file: its content where the browser can
+ * show it, its facts (type and size), and whether content fills the view.
+ * The dialog and the offer panel share it. */
+export function usePreview({
   attachment,
-  onClose,
   read = readAttachment,
   offered,
 }: {
   attachment: Attachment;
-  onClose: () => void;
   read?: (url: string, signal: AbortSignal) => Promise<Uint8Array>;
-  /** Set for a file an agent offered (agent file offers). */
   offered?: OfferedFile;
-}) {
+}): { content: ReactNode; facts: ReactNode; filled: boolean } {
   useLanguage();
   const [bytes, setBytes] = useState<Uint8Array | "unknown">();
   // The bytes are read once per file. A caller's `read` is usually a new
@@ -174,6 +174,92 @@ export function AttachmentPreview({
       </dd>
     </dl>
   );
+  const content = attachment.image ? (
+    <img
+      className="ah-attachment-preview-image"
+      src={attachment.url}
+      alt={attachment.name}
+    />
+  ) : offeredKind === "video" ? (
+    // biome-ignore lint/a11y/useMediaCaption: An agent's file has no captions to offer.
+    <video
+      className="ah-attachment-preview-media"
+      data-testid="attachment-preview-video"
+      src={attachment.url}
+      controls
+      preload="metadata"
+    />
+  ) : offeredKind === "audio" ? (
+    // biome-ignore lint/a11y/useMediaCaption: An agent's file has no captions to offer.
+    <audio
+      className="ah-attachment-preview-audio"
+      data-testid="attachment-preview-audio"
+      src={attachment.url}
+      controls
+      preload="metadata"
+    />
+  ) : archive ? (
+    <section
+      className="ah-attachment-document ah-offered-archive"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the region scrolls.
+      tabIndex={0}
+      data-testid="attachment-preview-archive"
+      aria-label={attachment.name}
+    >
+      <ul>
+        {archive.names.map((entry) => (
+          <li key={entry.path}>
+            <span>{entry.path}</span>
+            <span>{sizeLabel(entry.bytes)}</span>
+          </li>
+        ))}
+      </ul>
+      {archive.entries > archive.names.length ? (
+        <p className="ah-attachment-preview-note">
+          {txt.moreInArchive(archive.entries - archive.names.length)}
+        </p>
+      ) : (
+        <p className="ah-attachment-preview-note">{txt.notFromArchive}</p>
+      )}
+    </section>
+  ) : textKind && loaded ? (
+    <OfferedText kind={textKind} name={attachment.name} bytes={loaded} />
+  ) : kind && loaded ? (
+    <Suspense
+      fallback={
+        <p className="ah-attachment-preview-note" role="status">
+          {txt.opening}
+        </p>
+      }
+    >
+      <DocumentPreview kind={kind} bytes={loaded} name={attachment.name} />
+    </Suspense>
+  ) : null;
+  return {
+    content,
+    facts,
+    filled: filled || !!attachment.image || offeredKind === "audio",
+  };
+}
+
+/**
+ * An attachment in Open Habitat's own dialog: an image at a size that fits,
+ * a PDF, Markdown or Office document rendered from its bytes, another file by
+ * its name, type and size. Opening the original is secondary.
+ *
+ * `read` is the host fetch; Storybook, which has no host, supplies bytes.
+ */
+export function AttachmentPreview({
+  attachment,
+  onClose,
+  read = readAttachment,
+}: {
+  attachment: Attachment;
+  onClose: () => void;
+  read?: (url: string, signal: AbortSignal) => Promise<Uint8Array>;
+}) {
+  const { content, facts } = usePreview({ attachment, read });
+  const filled = !!content && !attachment.image;
   return (
     <ModalOverlay
       className="ah-overlay"
@@ -207,112 +293,23 @@ export function AttachmentPreview({
               <Icon name="cross" />
             </ControlButton>
           </div>
-          {attachment.image ? (
-            <img
-              className="ah-attachment-preview-image"
-              src={attachment.url}
-              alt={attachment.name}
-            />
-          ) : offeredKind === "video" ? (
-            // biome-ignore lint/a11y/useMediaCaption: An agent's file has no captions to offer.
-            <video
-              className="ah-attachment-preview-media"
-              data-testid="attachment-preview-video"
-              src={attachment.url}
-              controls
-              preload="metadata"
-            />
-          ) : offeredKind === "audio" ? (
-            // biome-ignore lint/a11y/useMediaCaption: An agent's file has no captions to offer.
-            <audio
-              className="ah-attachment-preview-audio"
-              data-testid="attachment-preview-audio"
-              src={attachment.url}
-              controls
-              preload="metadata"
-            />
-          ) : archive ? (
-            <section
-              className="ah-attachment-document ah-offered-archive"
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: the region scrolls.
-              tabIndex={0}
-              data-testid="attachment-preview-archive"
-              aria-label={attachment.name}
-            >
-              <ul>
-                {archive.names.map((entry) => (
-                  <li key={entry.path}>
-                    <span>{entry.path}</span>
-                    <span>{sizeLabel(entry.bytes)}</span>
-                  </li>
-                ))}
-              </ul>
-              {archive.entries > archive.names.length ? (
-                <p className="ah-attachment-preview-note">
-                  {txt.moreInArchive(archive.entries - archive.names.length)}
-                </p>
-              ) : (
-                <p className="ah-attachment-preview-note">
-                  {txt.notFromArchive}
-                </p>
-              )}
-            </section>
-          ) : textKind && loaded ? (
-            <OfferedText
-              kind={textKind}
-              name={attachment.name}
-              bytes={loaded}
-            />
-          ) : kind && loaded ? (
-            <Suspense
-              fallback={
-                <p className="ah-attachment-preview-note" role="status">
-                  {txt.opening}
-                </p>
-              }
-            >
-              <DocumentPreview
-                kind={kind}
-                bytes={loaded}
-                name={attachment.name}
-              />
-            </Suspense>
-          ) : (
-            facts
-          )}
+          {content ?? facts}
           <div className="ah-dialog-actions">
-            {filled || offeredKind === "audio" || (offered && attachment.image)
-              ? facts
-              : null}
-            {offered ? (
-              <a
-                data-testid="attachment-original"
-                className={controlClassName({
-                  variant: "primary",
-                  size: "row",
-                  text: true,
-                })}
-                href={offered.download}
-                download={attachment.name}
-              >
-                <Icon name="download" /> {txt.download}
-              </a>
-            ) : (
-              <a
-                data-testid="attachment-original"
-                className={controlClassName({
-                  variant: "secondary",
-                  size: "row",
-                  text: true,
-                })}
-                href={attachment.url}
-                download={attachment.image ? undefined : attachment.name}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {attachment.image ? txt.openOriginal : txt.download}
-              </a>
-            )}
+            {filled ? facts : null}
+            <a
+              data-testid="attachment-original"
+              className={controlClassName({
+                variant: "secondary",
+                size: "row",
+                text: true,
+              })}
+              href={attachment.url}
+              download={attachment.image ? undefined : attachment.name}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {attachment.image ? txt.openOriginal : txt.download}
+            </a>
           </div>
         </AriaDialog>
       </Modal>

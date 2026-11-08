@@ -72,3 +72,8 @@ export async function mintViewURL(
 export function viewTabPath(viewId: string): string {
   return `/view?id=${encodeURIComponent(viewId)}`;
 }
+
+/** The view's frozen files as one zip, for the person's own session. */
+export function viewZipURL(viewId: string): string {
+  return `/api/v1/views/${encodeURIComponent(viewId)}/zip`;
+}

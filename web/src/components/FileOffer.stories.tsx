@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { FileOfferItem, FileOfferSummary } from "../app/fileOffers";
-import { FileOfferCard, FileShelf } from "./FileOffer";
+import { FileOfferCard } from "./FileOffer";
+import { OfferPanel } from "./OfferPanel";
 
 // Storybook has no host: images and downloads point at routes that are not
-// there, so the stories show the cards' text, marks and actions.
+// there, so the stories show the cards' text, marks and icons.
 const offer: FileOfferSummary = {
   offer_id: "fabcdefghijklmnopqrstuvwxyz",
   title: "q3-raportti.pdf",
@@ -23,7 +24,8 @@ const meta = {
   args: {
     offer,
     state: ready([{ path: "q3-raportti.pdf", bytes: 1_258_291, kind: "pdf" }]),
-    onShowFiles: () => {},
+    onToggle: () => {},
+    onTab: () => {},
   },
 } satisfies Meta<typeof FileOfferCard>;
 export default meta;
@@ -88,19 +90,18 @@ export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
 };
 
-export const Shelf: StoryObj<typeof FileShelf> = {
+export const Open: Story = { args: { open: true } };
+
+export const Panel: StoryObj<typeof OfferPanel> = {
   render: () => (
     <div style={{ display: "flex", height: 640, width: 420 }}>
-      <FileShelf
-        offers={[
-          { offer: pack, state: ready(packItems, pack) },
-          {
-            offer,
-            state: ready([
-              { path: "q3-raportti.pdf", bytes: 1_258_291, kind: "pdf" },
-            ]),
-          },
-        ]}
+      <OfferPanel
+        offer={pack}
+        state={ready(packItems, pack)}
+        expanded={false}
+        onToggleExpanded={() => {}}
+        onSub={() => {}}
+        onTab={() => {}}
         onClose={() => {}}
       />
     </div>
