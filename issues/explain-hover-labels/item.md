@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Hover labels still appear in Explain mode
@@ -21,5 +22,5 @@ are the explanation. Fixing agreed behaviour; no prototype.
 
 ## Acceptance Criteria
 
-- [ ] With Explain mode on, no hover/focus tooltip or label opens anywhere (sidebar, strips, composer, settings); off, they work as before.
-- [ ] Test covering it; touched specs green.
+- [x] With Explain mode on, no hover/focus tooltip or label opens anywhere (sidebar, strips, composer, settings); off, they work as before.
+- [x] Test covering it; touched specs green.

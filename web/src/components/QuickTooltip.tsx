@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useState,
 } from "react";
 import {
   Focusable,
@@ -15,6 +16,7 @@ import {
   useContextProps,
 } from "react-aria-components";
 import { flushSync } from "react-dom";
+import { useExplainState } from "./explainModeState";
 import styles from "./QuickTooltip.module.css";
 
 /** Where quick help opens. Below by default; beside the control, toward the
@@ -127,8 +129,19 @@ export function QuickTooltip({
   children: ReactNode;
   label: string;
 }) {
+  const { on } = useExplainState();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (on) setOpen(false);
+  }, [on]);
   return (
-    <TooltipTrigger delay={250} closeDelay={100}>
+    <TooltipTrigger
+      delay={250}
+      closeDelay={100}
+      isDisabled={on}
+      isOpen={!on && open}
+      onOpenChange={setOpen}
+    >
       {children}
       <TooltipContent label={label} />
     </TooltipTrigger>

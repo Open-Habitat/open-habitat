@@ -1,4 +1,6 @@
+import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
+import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
@@ -8,6 +10,7 @@ import { expect, test } from "./lab-host";
 // wording.
 test.use({
   baseURL: labOrigin,
+  deviceScaleFactor: 2,
   ignoreHTTPSErrors: true,
   reducedMotion: "reduce",
 });
@@ -57,6 +60,48 @@ async function answered(page: Page) {
     timeout: 20000,
   });
 }
+
+test("@lab explain mode suppresses hover and focus help and restores it on exit", async ({
+  page,
+}) => {
+  await signIn(page);
+  await newConversation(page);
+  await page.clock.install();
+  const editor = page.getByTestId("toggle-editor");
+  const tips = page.getByRole("tooltip");
+  await editor.hover();
+  await expect(tips).toBeVisible();
+  // Keyboard activation leaves the pointer on an already open tooltip.
+  await page.getByTestId("explain-toggle").focus();
+  await page.keyboard.press("Enter");
+  await expect(bar(page)).toBeVisible();
+  await expect(tips).toHaveCount(0);
+  await editor.hover();
+  await editor.focus();
+  await page.clock.fastForward(1000);
+  await expect(editor).toHaveAccessibleName(/.+/);
+  await expect(
+    page.locator('[role="tooltip"]:visible, .ah-header-tip:visible'),
+  ).toHaveCount(0);
+  await expect(page.locator('[title]:not([title=""])')).toHaveCount(0);
+  // The rail uses the same tooltip mechanism, with right-opening placement.
+  const railButton = page.getByTestId("workspace-create");
+  await railButton.hover();
+  await railButton.focus();
+  await page.clock.fastForward(1000);
+  await expect(tips).toHaveCount(0);
+  if (process.env.OH_VISUAL_CAPTURE === "1")
+    await snapshot(
+      page,
+      resolve("../issues/explain-hover-labels/explain-hover"),
+      { labOrigin: new URL(page.url()).origin },
+    );
+  await page.getByTestId("explain-stop").click();
+  await expect(bar(page)).toHaveCount(0);
+  await editor.hover();
+  await expect(tips).toBeVisible();
+  await expect(page.locator('[title]:not([title=""])').first()).toBeAttached();
+});
 
 const card = (page: Page) => page.getByTestId("explain-card");
 const bar = (page: Page) => page.getByTestId("explain-bar");

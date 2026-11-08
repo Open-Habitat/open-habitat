@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import { useExperimentalFeature } from "../app/accountPreferences";
@@ -16,6 +15,15 @@ import { ControlButton } from "./ControlElements";
 import { type CardId, hoverOnly, parts, waiting } from "./explainParts";
 import { Icon } from "./Icon";
 import "./ExplainMode.css";
+import {
+  hideState,
+  showState,
+  start,
+  stop,
+  toggle,
+  useExplainState,
+} from "./explainModeState";
+import { suppressNativeTitles } from "./suppressNativeTitles";
 import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
 
 /* The explain mode (proto-explain-mode-r6, rounds 6–9): the screen dims and
@@ -142,28 +150,10 @@ type Mode = {
   showState: () => void;
 };
 
-// Whether the mode is on and the state card asked for. It is this tab's
-// view state only; the mode never outlives the page.
-let current = { on: false, stateShown: false };
-const listeners = new Set<() => void>();
-function set(next: Partial<typeof current>) {
-  current = { ...current, ...next };
-  for (const listener of listeners) listener();
-}
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-// The mode opens at the state card wherever there is one.
-const start = () => set({ on: true, stateShown: true });
-const stop = () => set({ on: false });
-const showState = () => set({ stateShown: true });
-const hideState = () => set({ stateShown: false });
-
 /** The mode for an entry point: undefined while the feature is off. */
 export function useExplainMode(): Mode | undefined {
   const available = useExperimentalFeature("explain-mode");
-  const state = useSyncExternalStore(subscribe, () => current);
+  const state = useExplainState();
   return useMemo(
     () =>
       available
@@ -171,7 +161,7 @@ export function useExplainMode(): Mode | undefined {
             on: state.on,
             start,
             stop,
-            toggle: () => (current.on ? stop() : start()),
+            toggle,
             stateShown: state.on && state.stateShown,
             showState,
           }
@@ -190,8 +180,17 @@ export function ExplainMode() {
   const [situation, setSituation] = useState<Situation | null>(null);
   useEffect(() => {
     // Turning the feature off ends the mode.
-    if (!mode && current.on) stop();
+    if (!mode) stop();
   }, [mode]);
+  useLayoutEffect(() => {
+    if (!on) return;
+    document.documentElement.setAttribute("data-explain-mode", "");
+    const restoreTitles = suppressNativeTitles(document.body);
+    return () => {
+      document.documentElement.removeAttribute("data-explain-mode");
+      restoreTitles();
+    };
+  }, [on]);
   // The bar names the situation and follows it while the mode is on.
   useEffect(() => {
     if (!on) return;

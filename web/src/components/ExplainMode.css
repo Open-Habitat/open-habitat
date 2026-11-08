@@ -1,6 +1,12 @@
 /* The explain mode (ExplainMode.tsx). Tokens only; no edge stripes. The
    layer never takes the pointer, so production's own hover and presses act
    through it. */
+/* Suppress CSS-only help and portals, not labels or hover-revealed controls. */
+html[data-explain-mode] :is([role="tooltip"], .ah-header-tip) {
+  /* biome-ignore lint/complexity/noImportantStyles: mode-wide suppression overrides each tooltip's hover/focus rules. */
+  display: none !important;
+}
+
 .ah-explain-bar {
   position: sticky;
   top: 0;
