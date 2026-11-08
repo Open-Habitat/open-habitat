@@ -5,8 +5,10 @@ type: improvement
 reporter: jari
 status: open
 priority: normal
-lane: unlaned
+lane: explain-cards
 preparation: ready
+lane_seq: 2
+blocked_by: ['@explain-card-skill']
 ---
 
 # Move the helpers panel's rule text into Explain mode
