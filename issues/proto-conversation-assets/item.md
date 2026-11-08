@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-versions
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: list of a conversation's views and files
@@ -33,4 +33,4 @@ conversation), 1440 and 390, light and dark.
 kirjoituskentän luona, siellä missä Workerit-siru ja muut taustatyön sirut
 ovat. Kierros 2: siru alhaalla -riffit. Tarjouskorttien avautumispaikka
 (`proto-offer-cards-consistent` kierros 2) sovitetaan tähän.
-- [ ] round 2: riffs on the chip in the bottom strip beside Workers, view offer and questions for Jari
+- [x] round 2: riffs on the chip in the bottom strip beside Workers, view offer and questions for Jari
