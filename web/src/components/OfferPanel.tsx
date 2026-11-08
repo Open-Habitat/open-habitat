@@ -26,6 +26,7 @@ import {
 } from "./FileOffer";
 import { Icon } from "./Icon";
 import { OfferActions, OfferSeen } from "./OfferCard";
+import type { ViewVisibility } from "./ViewOffer";
 import { ViewHeader } from "./ViewPanel";
 
 // A file offer opened beside the conversation, in the same right-hand panel
@@ -131,9 +132,16 @@ export function OfferPanel({
   onSub,
   onTab,
   onClose,
+  visibility,
+  problem,
 }: {
   offer: FileOfferSummary;
   state: OfferState;
+  /** Absent where the site shares nothing publicly. The whole offer is
+   * published, so a folder's file shows its state but no switch. */
+  visibility?: ViewVisibility;
+  /** Why the last change of visibility did not go through. */
+  problem?: string;
   /** The file of a folder offer shown now; absent: the folder's list. */
   path?: string;
   expanded: boolean;
@@ -150,6 +158,7 @@ export function OfferPanel({
     : (one ?? undefined);
   const inFolder = !!path && !one;
   const title = inFolder && item ? baseName(item.path) : offer.title;
+  const shown = !!visibility?.public && !visibility.unknown;
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape" && !event.defaultPrevented) {
       event.preventDefault();
@@ -205,7 +214,13 @@ export function OfferPanel({
           <>
             {(item ? fileFacts(item) : offerFacts(offer, state)).join(" · ")}
             {" · "}
-            <OfferSeen words />
+            <OfferSeen words until={shown ? visibility?.until : undefined} />
+            {problem ? (
+              <span role="status">
+                {" · "}
+                {problem}
+              </span>
+            ) : null}
           </>
         }
         expanded={expanded}
@@ -215,6 +230,7 @@ export function OfferPanel({
           manifest ? (
             <OfferActions
               label={title}
+              publish={inFolder ? undefined : visibility}
               onTab={() => onTab(inFolder ? path : undefined)}
               download={offerDownload(offer, item)}
             />

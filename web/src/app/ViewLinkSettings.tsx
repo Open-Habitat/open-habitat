@@ -11,6 +11,7 @@ import { liveText } from "../i18n";
 import { viewLinksText } from "../text/viewLinks";
 import {
   type AdminViewPublication,
+  addressItem,
   adminDeleteViewAddress,
   adminViewPublications,
   deleteViewAddressForGood,
@@ -26,7 +27,8 @@ import {
 
 const txt = liveText(viewLinksText);
 
-/** Tili › Näkymien osoitteet: every address the person's views have, private,
+/** Tili › Näkymien ja tiedostojen osoitteet: every address the person's
+ * views and file offers have, private,
  * public or past their publication, also those whose view card is in a
  * conversation long gone or whose export no longer exists (ADR 0035). Here
  * the person opens or copies one, makes it private, and deletes it for
@@ -157,7 +159,7 @@ function AddressRow({
   onStop: () => void;
   onRemove: () => void;
 }) {
-  const mark = useViewAddressMark(address.view_id);
+  const mark = useViewAddressMark(addressItem(address));
   const busy = mark === "busy";
   const unsure = unknown || mark === "uncertain";
   const shown = isPublic(address);

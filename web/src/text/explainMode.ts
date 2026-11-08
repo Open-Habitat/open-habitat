@@ -663,7 +663,7 @@ const fi = {
     V14: {
       name: "Tarjottu kohde",
       lead: "Agentin tarjoama näkymä tai tiedosto. Kortti avaa sen keskustelun viereen, ja uusi painallus sulkee.",
-      know: "Kulman kuvakkeet julkaisevat näkymän, avaavat kohteen omalle välilehdelle ja lataavat sen.",
+      know: "Kulman kuvakkeet julkaisevat kohteen, avaavat sen omalle välilehdelle ja lataavat sen. Julkisen kohteen voi avata kuka tahansa linkin saanut kirjautumatta; kansio jaetaan kokonaan.",
     },
     L01: {
       name: "Hae komentoa tai taitoa",
@@ -1678,7 +1678,7 @@ export const explainModeText = catalog(fi, {
     V14: {
       name: "Offered item",
       lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
-      know: "The corner icons publish a view, open the item in a new tab and download it.",
+      know: "The corner icons publish the item, open it in a new tab and download it. Anyone who receives a public item's link can open it without signing in; a folder is shared whole.",
     },
     L01: {
       name: "Search commands and skills",

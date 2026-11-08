@@ -22,13 +22,15 @@ The packages divide the work as follows.
   `proxy_linux.go` the forwarding, `terminal_linux.go` the browser shell's
   WebSocket relay, `editor_linux.go` the workspace editor's origin, its
   hand-off and relay, `views_linux.go` agent HTML views on per-view hosts.
-  `view_links_linux.go` (view addresses, one per person and frozen view) is
-  the one place where the gateway reads a daemon for a request with no
-  authenticated person, and its reach must stay exactly that: one published
-  frozen export through the fixed export-read route, the token compared in
+  `view_links_linux.go` (addresses, one per person and frozen view or file
+  offer, with `offer_links_linux.go` for an offer's page) is the one place
+  where the gateway reads a daemon for a request with no authenticated
+  person, and its reach must stay exactly that: one published frozen export
+  through the fixed export-read route, or one published offer through its
+  fixed per-offer routes with the reserved ID, the token compared in
   constant time and publication, expiry, the site's switch and the owner's
   denial checked on every read, no cookie set or read on a content host, no
-  listing, no content copy. An address is never moved to another view or
+  listing beyond an offer page's own files, no content copy. An address is never moved to another view or
   given a new secret; it is only made public, private or deleted. Only the
   person's app session reserves, publishes, changes or deletes one; the
   agent listener never gains an address operation or learns an address.

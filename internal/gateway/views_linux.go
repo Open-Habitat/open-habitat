@@ -251,7 +251,7 @@ func (a *Auth) viewZip(w http.ResponseWriter, r *http.Request) {
 		safe(w, 404, "view_not_found")
 		return
 	}
-	a.fileRelay(w, r, s, id, "", "view-zip")
+	a.fileRelay(w, r, s.identity, id, "", "view-zip", nil)
 }
 
 // viewHeaders are set before anything else on a view host, so an error from
@@ -298,11 +298,9 @@ var (
 )
 
 func viewFailure(w http.ResponseWriter, r *http.Request, status int, text viewText) {
-	lang, body := "en", text.en
-	first, _, _ := strings.Cut(r.Header.Get("Accept-Language"), ",")
-	first, _, _ = strings.Cut(first, ";")
-	if tag := strings.ToLower(strings.TrimSpace(first)); tag == "fi" || strings.HasPrefix(tag, "fi-") {
-		lang, body = "fi", text.fi
+	lang, body := viewLanguage(r), text.en
+	if lang == "fi" {
+		body = text.fi
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Language", lang)

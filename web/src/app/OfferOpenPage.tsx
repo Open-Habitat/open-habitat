@@ -14,6 +14,7 @@ import { useText } from "../i18n";
 import { offerPanelText } from "../text/offerPanel";
 import { fileOfferIdPattern, offerTabPath, useFileOffer } from "./fileOffers";
 import { accountSession } from "./pi";
+import { ensureViewAddress } from "./viewLinks";
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
@@ -21,7 +22,11 @@ const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
  * (`/offer?id=…&path=…`): the same content the panel beside the conversation
  * shows, read with the person's own session from the offer's routes. It is
  * an app page and opens no access the panel does not have; another person's
- * offer, a removed and an unknown one read alike. */
+ * offer, a removed and an unknown one read alike. Like a view's tab, the
+ * offer's own tab reserves the offer's one stable address and replaces
+ * itself with it (`/n/<entry>`, public-file-offers), where ViewOpenPage
+ * shows the same content; a folder's file keeps this address, since only
+ * the whole offer has one. */
 export function OfferOpenPage() {
   const t = useText(offerPanelText);
   const params = new URLSearchParams(window.location.search);
@@ -34,9 +39,22 @@ export function OfferOpenPage() {
   useEffect(() => {
     if (!valid) return;
     let alive = true;
+    const sub = new URLSearchParams(window.location.search).has("path");
     void accountSession().then(
-      (s) => {
-        if (alive) setSession(s === "login" ? "login" : "ready");
+      async (s) => {
+        if (!alive) return;
+        if (s === "login" || sub) {
+          setSession(s === "login" ? "login" : "ready");
+          return;
+        }
+        // Without an address (none on this installation, at the cap, or
+        // the store unavailable) the offer still opens here.
+        const address = await ensureViewAddress(s.csrf, offerId).catch(
+          () => undefined,
+        );
+        if (!alive) return;
+        if (address) window.location.replace(address.url);
+        else setSession("ready");
       },
       () => {
         if (alive) setSession("failed");
@@ -45,7 +63,7 @@ export function OfferOpenPage() {
     return () => {
       alive = false;
     };
-  }, [valid]);
+  }, [valid, offerId]);
   useEffect(() => {
     const back = () =>
       setPath(
@@ -74,6 +92,30 @@ export function OfferOpenPage() {
         <p role="status">{session === "checking" ? t.opening : t.failed}</p>
       </main>
     );
+  return (
+    <OfferTab
+      offerId={offerId}
+      path={path}
+      onPath={(next) => {
+        window.history.pushState(null, "", offerTabPath(offerId, next));
+        setPath(next);
+      }}
+    />
+  );
+}
+
+/** A signed-in owner's offer at its stable address: the folder's list, and
+ * its files at the offer tab's own address with a way back. */
+export function OfferAtAddress({ offerId }: { offerId: string }) {
+  const [path, setPath] = useState<string>();
+  useEffect(() => {
+    const back = () =>
+      setPath(
+        new URLSearchParams(window.location.search).get("path") ?? undefined,
+      );
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   return (
     <OfferTab
       offerId={offerId}

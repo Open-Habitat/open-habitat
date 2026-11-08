@@ -176,6 +176,7 @@ checks = {
     "view-addresses.json": "view-address.schema.json",
     "view-address.json": "view-address.schema.json",
     "view-address-ensure.json": "view-address.schema.json",
+    "view-address-ensure-offer.json": "view-address.schema.json",
     "view-address-publish.json": "view-address.schema.json",
     "view-address-delete.json": "view-address.schema.json",
     "view-address-open.json": "view-address.schema.json",
@@ -333,6 +334,8 @@ must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.
 # path under /n/, its content URL only a host and the token, and the
 # administrator's list never carries either.
 must_reject("view-address.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz", "days": 30})
+must_reject("view-address.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz", "offer_id": "fabcdefghijklmnopqrstuvwxyz"})
+must_reject("view-address.schema.json", {"offer_id": "vabcdefghijklmnopqrstuvwxyz"})
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "view_id": "vabcdefghijklmnopqrstuvwxyz"})
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "new_address": True})
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "days": 366})
@@ -348,6 +351,8 @@ must_reject("view-address.schema.json", {**address_reply, "address": {**address,
 must_reject("view-address.schema.json", {**address_reply, "address": {k: v for k, v in address.items() if k != "public_until"}})
 must_reject("view-address.schema.json", {**address_reply, "address": {**address, "state": "private"}})
 must_reject("view-address.schema.json", {**address_reply, "address": {**address, "state": "revoked"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "offer_id": "fabcdefghijklmnopqrstuvwxyz"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {k: v for k, v in address.items() if k != "view_id"}})
 admin_publications = json.loads((BASE / "examples" / "server-view-publications.json").read_text())
 for field in ["url", "content_url", "token"]:
     must_reject("view-address.schema.json", {**admin_publications, "publications": [{**admin_publications["publications"][0], field: address.get(field, "A" * 43)}]})

@@ -156,3 +156,47 @@ describe("a view at its stable address", () => {
     );
   });
 });
+
+describe("a file offer at its stable address", () => {
+  const offerId = "fabcdefghijklmnopqrstuvwxyz";
+  const offer = {
+    offer_id: offerId,
+    title: "Kuvat",
+    folder: "kuvat",
+    files: 2,
+    bytes: 6,
+    created_at: "2026-11-08T10:30:00Z",
+    conversation_id: "pi:11111111-1111-4111-8111-111111111111",
+  };
+  const manifest = {
+    schema_version: 1,
+    offer,
+    items: [
+      { path: "kuvat/a.txt", bytes: 3, kind: "text", lines: 1 },
+      { path: "kuvat/b.txt", bytes: 3, kind: "text", lines: 1 },
+    ],
+  };
+
+  it("shows the owner's offer, not a view frame", async () => {
+    at(`/n/${secret}`);
+    const { view_id: _, ...rest } = address();
+    const fetch = vi.fn(async (url: string) => {
+      if (url === "/auth/session") return json(session);
+      if (url === "/api/v1/view-addresses/open")
+        return json({
+          schema_version: 1,
+          address: { ...rest, offer_id: offerId, title: offer.title },
+        });
+      if (url === `/api/v1/file-offers/${offerId}`) return json(manifest);
+      return new Response(null, { status: 500 });
+    });
+    vi.stubGlobal("fetch", fetch);
+    render(<ViewOpenPage />);
+    const page = await screen.findByTestId("offer-open-page");
+    await waitFor(() =>
+      expect(page.getAttribute("data-offer-id")).toBe(offerId),
+    );
+    expect(screen.queryByTestId("view-frame")).toBeNull();
+    expect(fetch.mock.calls.map(([url]) => url)).not.toContain("/auth/view");
+  });
+});

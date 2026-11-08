@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: offer-cards-proto
 lane_seq: 3
 blocked_by: ['@offer-cards-and-assets-list']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Make file, table, image and folder offers public like views

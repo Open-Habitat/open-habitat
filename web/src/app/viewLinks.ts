@@ -1,9 +1,11 @@
-// Stable view addresses (ADR 0035): one address per view, reserved when the
-// browser first needs it, private until the person publishes it. Only this
+// Stable view addresses (ADR 0035): one address per view or file offer
+// (public-file-offers), reserved when the browser first needs it, private
+// until the person publishes it. Only this
 // app, on the person's own press, reserves, publishes, changes and deletes;
 // the agent has no part in it. The person's addresses are one small store
-// here, so the view card, the panel and Settings show the same state, and a
-// write updates it from the gateway's reply.
+// here, so the offer cards, the panel and Settings show the same state, and
+// a write updates it from the gateway's reply. An item is a view or an
+// offer by its ID (`v…` or `f…`); the two never collide.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
@@ -24,7 +26,9 @@ const validAdminList = ajv.getSchema(`${addressSchema.$id}#/$defs/adminList`);
 
 export type ViewAddress = {
   address_id: string;
-  view_id: string;
+  /** Exactly one of view_id and offer_id names the frozen copy. */
+  view_id?: string;
+  offer_id?: string;
   title: string;
   /** The stable entry address on this app's origin. */
   url: string;
@@ -43,6 +47,11 @@ export type AdminViewPublication = {
   created_at: string;
   public_until: string;
 };
+
+/** The view or offer an address reads. */
+export function addressItem(address: ViewAddress): string {
+  return address.view_id ?? address.offer_id ?? "";
+}
 
 /** "off": the installation offers no views; undefined: not read yet.
  * maxDays 0: the site shares nothing publicly now. */
@@ -314,15 +323,15 @@ async function addressChange(
   }
 }
 
-/** The view's one address, reserved private on first need. */
+/** The view's or offer's one address, reserved private on first need. */
 export async function ensureViewAddress(
   csrf: string,
-  viewId: string,
+  itemId: string,
 ): Promise<ViewAddress> {
   const at = epoch;
   const address = await addressWrite(
     "/api/v1/view-addresses",
-    { view_id: viewId },
+    itemId.startsWith("f") ? { offer_id: itemId } : { view_id: itemId },
     csrf,
   );
   if (!address) throw new Error(linkFailure(undefined));
@@ -441,13 +450,13 @@ async function pressed(viewId: string, write: () => Promise<unknown>) {
   }
 }
 
-/** The view's address in any state, when it has one. */
+/** The view's or offer's address in any state, when it has one. */
 export function addressOf(
   links: ViewLinkState,
-  viewId: string,
+  itemId: string,
 ): ViewAddress | undefined {
   if (!links || typeof links === "string") return undefined;
-  return links.addresses.find((a) => a.view_id === viewId);
+  return links.addresses.find((a) => addressItem(a) === itemId);
 }
 
 /** The card's switch. On publishes the view's address (reserving it first
@@ -486,7 +495,7 @@ export function stopViewSharing(
   csrf: string,
   address: ViewAddress,
 ): Promise<void> {
-  return pressed(address.view_id, () =>
+  return pressed(addressItem(address), () =>
     makeViewAddressPrivate(csrf, address.address_id),
   );
 }
@@ -496,7 +505,7 @@ export function deleteViewAddressForGood(
   csrf: string,
   address: ViewAddress,
 ): Promise<void> {
-  return pressed(address.view_id, () =>
+  return pressed(addressItem(address), () =>
     deleteViewAddress(csrf, address.address_id),
   );
 }
@@ -581,7 +590,7 @@ export function publicAddress(
   viewId: string,
 ): ViewAddress | undefined {
   if (!links || typeof links === "string") return undefined;
-  return links.addresses.find((a) => a.view_id === viewId && isPublic(a));
+  return links.addresses.find((a) => addressItem(a) === viewId && isPublic(a));
 }
 
 /** The administrator's list: current publications' metadata, never an

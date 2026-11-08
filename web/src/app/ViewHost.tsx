@@ -88,9 +88,10 @@ type OfferControls = {
   /** The site's longest publication; absent where it shares nothing
    * publicly or the person's addresses are not known. */
   maxDays?: number;
-  setPublic: (view: ViewSummary, on: boolean) => void;
-  setDuration: (view: ViewSummary, days: number) => void;
-  /** Why the last visibility change of a view did not go through. */
+  /** Publish or make private a view or a file offer, by its ID. */
+  setPublic: (id: string, on: boolean) => void;
+  setDuration: (id: string, days: number) => void;
+  /** Why the last visibility change of an item did not go through. */
   problem: (id: string) => string | undefined;
   /** A card shows a view: the conversation's list knows it from now on. */
   noteView: (view: ViewSummary) => void;
@@ -142,18 +143,19 @@ function panelBounds(total: number) {
   return { min: minPanel, max: Math.max(minPanel, total - minConversation) };
 }
 
-/** Whether anyone with a view's address may open it, as the person's
- * address store knows; absent where the site shares nothing publicly. */
-function useViewVisibility(
-  view: ViewSummary,
-  controls: OfferControls,
+/** Whether anyone with a view's or file offer's address may open it, as
+ * the person's address store knows; absent where the site shares nothing
+ * publicly. */
+function useItemVisibility(
+  id: string,
+  controls: OfferControls | null,
 ): ViewVisibility | undefined {
   const links = useViewLinks();
   const unknownList = useViewLinksUnknown();
-  const mark = useViewAddressMark(view.view_id);
-  const address = addressOf(links, view.view_id);
+  const mark = useViewAddressMark(id);
+  const address = addressOf(links, id);
   const shown = !!address && isPublic(address);
-  return controls.maxDays
+  return controls?.maxDays
     ? {
         public: shown,
         until: shown ? address?.public_until : undefined,
@@ -161,8 +163,8 @@ function useViewVisibility(
         maxDays: controls.maxDays,
         pending: mark === "busy",
         unknown: mark === "uncertain" || unknownList,
-        onPublic: (on) => controls.setPublic(view, on),
-        onDuration: (days) => controls.setDuration(view, days),
+        onPublic: (on) => controls.setPublic(id, on),
+        onDuration: (days) => controls.setDuration(id, days),
       }
     : undefined;
 }
@@ -410,9 +412,8 @@ export function ViewHost({
   const linkList = typeof links === "object" ? links : undefined;
   const maxDays = linkList && linkList.maxDays > 0 ? linkList.maxDays : 0;
   const change = useCallback(
-    (view: ViewSummary, write: (csrf: string) => Promise<void>) => {
+    (id: string, write: (csrf: string) => Promise<void>) => {
       if (!csrf) return;
-      const id = view.view_id;
       const at = person.current;
       setProblems(({ [id]: _, ...rest }) => rest);
       void write(csrf).catch((error: Error) => {
@@ -423,15 +424,13 @@ export function ViewHost({
     [csrf],
   );
   const setPublic = useCallback(
-    (view: ViewSummary, on: boolean) =>
-      change(view, (csrf) =>
-        setViewPublic(csrf, view.view_id, on, defaultExpiry(maxDays)),
-      ),
+    (id: string, on: boolean) =>
+      change(id, (csrf) => setViewPublic(csrf, id, on, defaultExpiry(maxDays))),
     [change, maxDays],
   );
   const setDuration = useCallback(
-    (view: ViewSummary, days: number) =>
-      change(view, (csrf) => setViewDuration(csrf, view.view_id, days)),
+    (id: string, days: number) =>
+      change(id, (csrf) => setViewDuration(csrf, id, days)),
     [change],
   );
   const noteView = useCallback((view: ViewSummary) => {
@@ -554,13 +553,43 @@ function ViewActions({
   controls: OfferControls;
   label?: string;
 }) {
-  const visibility = useViewVisibility(view, controls);
+  const visibility = useItemVisibility(view.view_id, controls);
   return (
     <OfferActions
       label={label}
       publish={visibility}
       onTab={() => controls.openTab({ kind: "view", view })}
       download={viewDownload(view)}
+    />
+  );
+}
+
+/** A file offer's own icons in the list: publish, its own tab and its
+ * download. */
+function FileActions({
+  item,
+  controls,
+  label,
+}: {
+  item: Extract<AssetItem, { kind: "file" }>;
+  controls: OfferControls;
+  label: string;
+}) {
+  const visibility = useItemVisibility(
+    item.offer.offer_id,
+    controls.views ? controls : null,
+  );
+  return (
+    <OfferActions
+      label={label}
+      publish={item.state.state === "ready" ? visibility : undefined}
+      onTab={() => controls.openTab(item)}
+      download={offerDownload(
+        item.offer,
+        singleItem(
+          item.state.state === "ready" ? item.state.manifest : undefined,
+        ),
+      )}
     />
   );
 }
@@ -580,7 +609,7 @@ function OpenedViewPanel({
   onToggleExpanded: () => void;
   onClose: () => void;
 }) {
-  const visibility = useViewVisibility(opened.view, controls);
+  const visibility = useItemVisibility(opened.view.view_id, controls);
   const shown = visibility?.public && !visibility.unknown;
   return (
     <ViewPanel
@@ -621,10 +650,13 @@ function OpenedFilePanel({
   onClose: () => void;
 }) {
   const state = useFileOffer(opened.offer.offer_id);
+  const visibility = useItemVisibility(opened.offer.offer_id, controls);
   return (
     <OfferPanel
       offer={opened.offer}
       state={state}
+      visibility={visibility}
+      problem={controls.problem(opened.offer.offer_id)}
       path={opened.path}
       expanded={expanded}
       titleRef={titleRef}
@@ -661,7 +693,7 @@ function ViewOfferEntry({
   view: ViewSummary;
   controls: OfferControls;
 }) {
-  const visibility = useViewVisibility(view, controls);
+  const visibility = useItemVisibility(view.view_id, controls);
   const noteView = controls.noteView;
   useEffect(() => {
     noteView(view);
@@ -689,6 +721,12 @@ function FileOfferEntry({
   controls: OfferControls | null;
 }) {
   const state = useFileOffer(offer.offer_id);
+  // An offer publishes only where views can: its public page is served on
+  // the view namespace.
+  const visibility = useItemVisibility(
+    offer.offer_id,
+    controls?.views ? controls : null,
+  );
   useEffect(() => {
     noteOffer(offer);
   }, [offer]);
@@ -696,6 +734,8 @@ function FileOfferEntry({
     <FileOfferCard
       offer={offer}
       state={state}
+      visibility={visibility}
+      problem={controls?.problem(offer.offer_id)}
       open={controls?.openedId === offer.offer_id}
       onToggle={
         controls
@@ -735,8 +775,8 @@ export function useAssetsControl(conversationId?: string): ReactNode {
         ? viewTabPath(item.view.view_id)
         : offerTabPath(item.offer.offer_id),
     until: (item) => {
-      if (item.kind !== "view" || !controls.maxDays) return undefined;
-      const address = addressOf(links, item.view.view_id);
+      if (!controls.maxDays || !controls.views) return undefined;
+      const address = addressOf(links, assetId(item));
       return address && isPublic(address)
         ? (address.public_until ?? undefined)
         : undefined;
@@ -745,16 +785,7 @@ export function useAssetsControl(conversationId?: string): ReactNode {
       item.kind === "view" ? (
         <ViewActions view={item.view} controls={controls} label={label} />
       ) : (
-        <OfferActions
-          label={label}
-          onTab={() => controls.openTab(item)}
-          download={offerDownload(
-            item.offer,
-            singleItem(
-              item.state.state === "ready" ? item.state.manifest : undefined,
-            ),
-          )}
-        />
+        <FileActions item={item} controls={controls} label={label} />
       ),
   };
   return (

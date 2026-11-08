@@ -3,6 +3,7 @@ import { Button } from "../components/Primitives";
 import { ViewFrame } from "../components/ViewPanel";
 import { useText } from "../i18n";
 import { viewOpenPageText } from "../text/viewOpenPage";
+import { OfferAtAddress } from "./OfferOpenPage";
 import { accountSession } from "./pi";
 import { ensureViewAddress, openViewEntry } from "./viewLinks";
 import { listViews, mintViewURL, viewIdPattern } from "./views";
@@ -19,7 +20,8 @@ type Shown =
   | { kind: "failed" }
   | { kind: "login" }
   | { kind: "unavailable" }
-  | { kind: "view"; src: string };
+  | { kind: "view"; src: string }
+  | { kind: "offer"; offerId: string };
 
 /** Mints the view's one-time URL with the session's CSRF and names the tab
  * after the view. The title is only the tab's label: it never holds back the
@@ -95,7 +97,12 @@ export function ViewOpenPage() {
         const address = await openViewEntry(session.csrf, entry);
         if (!live()) return;
         if (address === "not_found") show({ kind: "unavailable" });
-        else frameView(session.csrf, address.view_id, live, show, setTitle);
+        else if (address.offer_id)
+          // A file offer's address shows the offer as its own tab does.
+          show({ kind: "offer", offerId: address.offer_id });
+        else if (address.view_id)
+          frameView(session.csrf, address.view_id, live, show, setTitle);
+        else show({ kind: "failed" });
       })
       .catch(() => {
         if (live()) show({ kind: "failed" });
@@ -104,6 +111,7 @@ export function ViewOpenPage() {
       alive = false;
     };
   }, []);
+  if (shown.kind === "offer") return <OfferAtAddress offerId={shown.offerId} />;
   if (shown.kind === "view")
     return (
       <main className="ah-view-frame ah-view-tab" data-testid="view-open-page">

@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -90,7 +91,7 @@ func (a *Auth) fileOffers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sub == "zip" {
-		a.fileRelay(w, r, s, id, "", "zip")
+		a.fileRelay(w, r, s.identity, id, "", "zip", nil)
 		return
 	}
 	mode, rel, _ := strings.Cut(sub, "/")
@@ -98,7 +99,7 @@ func (a *Auth) fileOffers(w http.ResponseWriter, r *http.Request) {
 		safe(w, 404, "file_not_found")
 		return
 	}
-	a.fileRelay(w, r, s, id, rel, mode)
+	a.fileRelay(w, r, s.identity, id, rel, mode, nil)
 }
 
 // validOfferPath is a path inside an offer as the daemon writes them:
@@ -141,10 +142,30 @@ func attachmentDisposition(name string) string {
 	return `attachment; filename="` + fallback + `"; filename*=UTF-8''` + exact.String()
 }
 
-func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, rel, mode string) {
-	target := s.identity
+// publicRead is how a public address's read differs from the owner's own:
+// its bytes come out of the address's budgets, its failures are the content
+// host's short pages, and a zip is named after the offer.
+type publicRead struct {
+	charge func(int64) bool
+	// zipBytes is charged for a zip, whose length is not known in advance.
+	zipBytes int64
+	zipName  string
+	fail     func(status int)
+}
+
+// fileRelay reads one offered file, an offer's zip or a view's zip from
+// target's daemon. The owner's session passes pub nil; a public address
+// passes its budgets.
+func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, target Identity, id, rel, mode string, pub *publicRead) {
+	fail := func(status int, code string) {
+		if pub != nil {
+			pub.fail(status)
+		} else {
+			safe(w, status, code)
+		}
+	}
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable")
 		return
 	}
 	transport := &http.Transport{
@@ -166,11 +187,17 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 		out.Path = fileOffersPath + "/" + id + "/files/" + rel
 	}
 	// A large file to a slow phone takes long; each write is bounded below.
-	ctx, cancel := context.WithTimeout(r.Context(), time.Hour)
+	// A public read holds one of the address's few relay slots, so it ends
+	// sooner.
+	limit := time.Hour
+	if pub != nil {
+		limit = 30 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), limit)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, r.Method, out.String(), http.NoBody)
 	if err != nil {
-		safe(w, 404, "file_not_found")
+		fail(404, "file_not_found")
 		return
 	}
 	// Only one byte range crosses, for media seeking and resumed downloads:
@@ -186,27 +213,54 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 		if a.log != nil && r.Context().Err() == nil {
 			a.log.Warn("file_relay", "outcome", "failed", "reason", "daemon_exchange_failed", "user", target.Username)
 		}
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable")
 		return
 	}
 	defer res.Body.Close()
 	switch res.StatusCode {
 	case 200, 206, 416:
 	case 404:
-		safe(w, 404, "file_not_found")
+		fail(404, "file_not_found")
 		return
 	default:
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable")
 		return
+	}
+	length := res.Header.Get("Content-Length")
+	if !digitsPattern.MatchString(length) {
+		length = ""
+	}
+	if pub != nil && r.Method == http.MethodGet && res.StatusCode != 416 {
+		size, err := strconv.ParseInt(length, 10, 64)
+		if mode == "zip" {
+			size, err = pub.zipBytes, nil
+		}
+		if err != nil || !pub.charge(size) {
+			if a.log != nil && err == nil {
+				a.log.Warn("file_relay", "outcome", "rejected", "reason", "daily_budget")
+			}
+			pub.fail(429)
+			return
+		}
 	}
 	h := w.Header()
 	h.Set("Content-Security-Policy", fileOfferCSP)
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "no-store")
 	h.Set("Referrer-Policy", "no-referrer")
-	h.Set("Cross-Origin-Resource-Policy", "same-origin")
+	// The owner's bytes are read only by the app's own pages. A public
+	// offer's page is a sandbox with an opaque origin, from which every
+	// request is cross-origin; its bytes are anyone's while public anyway.
+	if pub == nil {
+		h.Set("Cross-Origin-Resource-Policy", "same-origin")
+	}
 	kind, inline := fileInlineTypes[strings.ToLower(path.Ext(rel))]
 	switch {
+	case mode == "zip" && pub != nil:
+		h.Set("Content-Type", "application/zip")
+		// A public page has an opaque origin, so no download attribute
+		// names the archive: the response does.
+		h.Set("Content-Disposition", attachmentDisposition(pub.zipName))
 	case mode == "zip" || mode == "view-zip":
 		h.Set("Content-Type", "application/zip")
 		// No file name: the page's download attribute names the archive.
@@ -221,8 +275,8 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 		h.Set("Content-Type", "application/octet-stream")
 		h.Set("Content-Disposition", attachmentDisposition(path.Base(rel)))
 	}
-	if v := res.Header.Get("Content-Length"); digitsPattern.MatchString(v) {
-		h.Set("Content-Length", v)
+	if length != "" {
+		h.Set("Content-Length", length)
 	}
 	if v := res.Header.Get("Content-Range"); contentRangePattern.MatchString(v) {
 		h.Set("Content-Range", v)
@@ -236,9 +290,15 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, s session, id, 
 	}
 	controller := http.NewResponseController(w)
 	buf := make([]byte, 64<<10)
+	var sent int64
 	for {
 		n, readErr := res.Body.Read(buf)
 		if n > 0 {
+			// A public zip was charged before its length was known: it
+			// never sends more than that.
+			if sent += int64(n); pub != nil && mode == "zip" && sent > pub.zipBytes {
+				panic(http.ErrAbortHandler)
+			}
 			if err := controller.SetWriteDeadline(time.Now().Add(30 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
 				return
 			}

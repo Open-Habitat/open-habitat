@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  addressItem,
   ensureViewAddress,
   publicAddress,
   publishViewAddress,
@@ -81,10 +82,12 @@ describe("view address store", () => {
     );
     await refreshViewLinks();
     const reserved = await ensureViewAddress("csrf", address("b").view_id);
-    expect(publicAddress(await seen(), reserved.view_id)).toBeUndefined();
+    expect(publicAddress(await seen(), addressItem(reserved))).toBeUndefined();
     const published = await publishViewAddress("csrf", reserved.address_id, 7);
     expect(published.url).toBe(reserved.url);
-    expect(publicAddress(await seen(), reserved.view_id)?.state).toBe("public");
+    expect(publicAddress(await seen(), addressItem(reserved))?.state).toBe(
+      "public",
+    );
   });
 
   it("refuses an entry address on another host or content on this one", async () => {

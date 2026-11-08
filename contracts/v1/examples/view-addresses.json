@@ -13,6 +13,16 @@
       "public_until": "2026-11-28T12:00:00Z"
     },
     {
+      "address_id": "acbcdefghijklmnopqrstuvwxyz",
+      "offer_id": "fabcdefghijklmnopqrstuvwxyz",
+      "title": "Kuvat",
+      "url": "https://app.example.invalid/n/GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+      "content_url": "https://oh-view-cccccccccccccccccccccccccccccccccccccccccccccccccccc.example.invalid/CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC/",
+      "state": "expired",
+      "created_at": "2026-10-28T13:00:00Z",
+      "public_until": "2026-10-29T13:00:00Z"
+    },
+    {
       "address_id": "abbcdefghijklmnopqrstuvwxyz",
       "view_id": "vbbcdefghijklmnopqrstuvwxyz",
       "title": "Luonnos",

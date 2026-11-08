@@ -28,7 +28,8 @@ import (
 )
 
 // View addresses (ADR 0035, extending ADR 0033's shared links) are one
-// gateway-private reservation per owner and frozen view: a stable entry
+// gateway-private reservation per owner and frozen view or file offer (the
+// same frozen-copy promise, public-file-offers): a stable entry
 // secret for the app origin and a content secret for the reservation's own
 // host in the view namespace. A reservation starts private and stays until
 // its owner, an administrator or the person's revocation deletes it;
@@ -37,7 +38,8 @@ import (
 // address is the one place where the gateway reads a person's daemon for a
 // request with no authenticated person: anyone holding the content URL reads
 // that one frozen export through the owner's daemon and its fixed export-read
-// route while the publication is valid. No cookie is set or read on the
+// route, or that one offer through its fixed offer routes, while the
+// publication is valid. No cookie is set or read on the
 // content host. Only the person's app session reserves, publishes, changes
 // and deletes; the agent listener has no route here and never learns an
 // address.
@@ -83,16 +85,24 @@ var viewAddressIDPattern = regexp.MustCompile(`^a[a-z2-7]{26}$`)
 var errViewAddressStore = errors.New("view address store unavailable")
 
 type viewAddress struct {
-	ID      string    `json:"id"`
-	Entry   string    `json:"entry"`
-	Token   string    `json:"token"`
-	Owner   Identity  `json:"owner"`
-	ViewID  string    `json:"view_id"`
+	ID    string   `json:"id"`
+	Entry string   `json:"entry"`
+	Token string   `json:"token"`
+	Owner Identity `json:"owner"`
+	// Exactly one of ViewID and OfferID names the frozen copy the address
+	// reads, for good.
+	ViewID  string    `json:"view_id,omitempty"`
+	OfferID string    `json:"offer_id,omitempty"`
 	Title   string    `json:"title"`
 	Created time.Time `json:"created"`
 	// PublicUntil is zero while private. Past, the publication has expired:
 	// the address stays and anonymous reads end.
 	PublicUntil time.Time `json:"public_until,omitzero"`
+}
+
+// item is the frozen view or offer the address reads.
+func (v viewAddress) item() string {
+	return v.ViewID + v.OfferID
 }
 
 func (v viewAddress) public(now time.Time) bool {
@@ -125,11 +135,16 @@ func validViewTitle(title string) bool {
 }
 
 func validViewAddress(v viewAddress) bool {
-	if !viewAddressIDPattern.MatchString(v.ID) || !validViewLinkToken(v.Entry) || !validViewLinkToken(v.Token) || v.Entry == v.Token || !viewIDPattern.MatchString(v.ViewID) || !validViewTitle(v.Title) || v.Created.IsZero() || !v.PublicUntil.IsZero() && !v.PublicUntil.After(v.Created) {
+	if !viewAddressIDPattern.MatchString(v.ID) || !validViewLinkToken(v.Entry) || !validViewLinkToken(v.Token) || v.Entry == v.Token || !validAddressItem(v.ViewID, v.OfferID) || !validViewTitle(v.Title) || v.Created.IsZero() || !v.PublicUntil.IsZero() && !v.PublicUntil.After(v.Created) {
 		return false
 	}
 	route, ok := brokerIdentity(v.Owner.Subject, BrokerReply{Route: &BrokerRoute{UID: uint32(v.Owner.UID), Username: v.Owner.Username, Socket: v.Owner.Socket}, Epoch: 1, Generation: 1})
 	return ok && v.Owner.Provider == "github" && v.Owner.UID > 0 && route == v.Owner && canonicalSubject(v.Owner.Subject)
+}
+
+// validAddressItem: an address reads exactly one view or one file offer.
+func validAddressItem(viewID, offerID string) bool {
+	return viewIDPattern.MatchString(viewID) && offerID == "" || viewID == "" && fileOfferIDPattern.MatchString(offerID)
 }
 
 // viewAddressesEnabled: reservations need the view namespace for their
@@ -309,7 +324,7 @@ func decodeViewAddressStore(data []byte) ([]viewAddress, string) {
 	}
 	ids, entries, tokens, views := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, v := range state.Addresses {
-		key := v.Owner.Provider + "\x00" + v.Owner.Subject + "\x00" + v.ViewID
+		key := v.Owner.Provider + "\x00" + v.Owner.Subject + "\x00" + v.item()
 		if !validViewAddress(v) || ids[v.ID] || entries[v.Entry] || tokens[v.Token] || views[key] {
 			return nil, "invalid_view_address_store"
 		}
@@ -502,9 +517,10 @@ func (a *Auth) newViewAddressID() (string, error) {
 	return "a" + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b))[:26], nil
 }
 
-// readViewSummary asks the owner's daemon for one export's summary. It
-// answers the view's title, or 404 when the view is gone and 503 otherwise.
-func (a *Auth) readViewSummary(ctx context.Context, target Identity, viewID string) (string, int) {
+// readViewSummary asks the owner's daemon for one export's or offer's
+// summary. It answers the title, or 404 when the item is gone and 503
+// otherwise.
+func (a *Auth) readViewSummary(ctx context.Context, target Identity, item string) (string, int) {
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
 		return "", 503
 	}
@@ -518,7 +534,10 @@ func (a *Auth) readViewSummary(ctx context.Context, target Identity, viewID stri
 	defer transport.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	out := &url.URL{Scheme: "http", Host: "unix", Path: "/view-export/" + viewID + "/"}
+	out := &url.URL{Scheme: "http", Host: "unix", Path: "/view-export/" + item + "/"}
+	if fileOfferIDPattern.MatchString(item) {
+		out.Path = fileOffersPath + "/" + item
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, out.String(), http.NoBody)
 	if err != nil {
 		return "", 503
@@ -535,16 +554,28 @@ func (a *Auth) readViewSummary(ctx context.Context, target Identity, viewID stri
 		View struct {
 			Title string `json:"title"`
 		} `json:"view"`
+		Offer struct {
+			Title string `json:"title"`
+		} `json:"offer"`
 	}
-	if res.StatusCode != 200 || json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&body) != nil || !validViewTitle(body.View.Title) {
+	// An offer's facts carry its file list, up to the manifest's bound.
+	if res.StatusCode != 200 || json.NewDecoder(io.LimitReader(res.Body, offerFactsBytes)).Decode(&body) != nil {
 		return "", 503
 	}
-	return body.View.Title, 200
+	title := body.View.Title
+	if fileOfferIDPattern.MatchString(item) {
+		title = body.Offer.Title
+	}
+	if !validViewTitle(title) {
+		return "", 503
+	}
+	return title, 200
 }
 
 type viewAddressReply struct {
 	AddressID   string `json:"address_id"`
-	ViewID      string `json:"view_id"`
+	ViewID      string `json:"view_id,omitempty"`
+	OfferID     string `json:"offer_id,omitempty"`
 	Title       string `json:"title"`
 	URL         string `json:"url"`
 	ContentURL  string `json:"content_url"`
@@ -554,7 +585,7 @@ type viewAddressReply struct {
 }
 
 func (a *Auth) viewAddressReply(v viewAddress) viewAddressReply {
-	reply := viewAddressReply{AddressID: v.ID, ViewID: v.ViewID, Title: v.Title, URL: a.viewEntryURL(v), ContentURL: a.viewContentURL(v), State: "private", CreatedAt: v.Created.UTC().Format(time.RFC3339)}
+	reply := viewAddressReply{AddressID: v.ID, ViewID: v.ViewID, OfferID: v.OfferID, Title: v.Title, URL: a.viewEntryURL(v), ContentURL: a.viewContentURL(v), State: "private", CreatedAt: v.Created.UTC().Format(time.RFC3339)}
 	if !v.PublicUntil.IsZero() {
 		reply.State, reply.PublicUntil = "expired", v.PublicUntil.UTC().Format(time.RFC3339)
 		if v.public(a.now()) {
@@ -639,13 +670,14 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if path == viewAddressesPath {
 		var body struct {
-			ViewID string `json:"view_id"`
+			ViewID  string `json:"view_id"`
+			OfferID string `json:"offer_id"`
 		}
-		if !jsonBody(w, r, &body) || !viewIDPattern.MatchString(body.ViewID) {
+		if !jsonBody(w, r, &body) || !validAddressItem(body.ViewID, body.OfferID) {
 			safe(w, 400, "invalid_request")
 			return
 		}
-		a.ensureViewAddress(w, r, s, body.ViewID)
+		a.ensureViewAddress(w, r, s, body.ViewID, body.OfferID)
 		return
 	}
 	if path == viewAddressOpenPath {
@@ -719,21 +751,22 @@ func (a *Auth) openViewEntry(w http.ResponseWriter, s session, entry string) {
 	writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(v)})
 }
 
-func (a *Auth) ownedAddressLocked(s session, viewID string) (viewAddress, bool) {
+func (a *Auth) ownedAddressLocked(s session, item string) (viewAddress, bool) {
 	for _, v := range a.viewAddresses {
-		if sameOwner(v, s.identity) && v.ViewID == viewID {
+		if sameOwner(v, s.identity) && v.item() == item {
 			return v, true
 		}
 	}
 	return viewAddress{}, false
 }
 
-// ensureViewAddress answers the view's one reservation, creating it private
-// on first need. Concurrent first needs agree on one address.
-func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s session, viewID string) {
+// ensureViewAddress answers the view's or offer's one reservation, creating
+// it private on first need. Concurrent first needs agree on one address.
+func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s session, viewID, offerID string) {
+	item := viewID + offerID
 	a.mu.Lock()
 	usable := a.viewAddressStoreUsable()
-	existing, found := a.ownedAddressLocked(s, viewID)
+	existing, found := a.ownedAddressLocked(s, item)
 	a.mu.Unlock()
 	if !usable {
 		safe(w, 503, "view_addresses_unavailable")
@@ -743,7 +776,7 @@ func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s sessi
 		writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(existing)})
 		return
 	}
-	title, status := a.readViewSummary(r.Context(), s.identity, viewID)
+	title, status := a.readViewSummary(r.Context(), s.identity, item)
 	if status == 404 {
 		safe(w, 404, "view_not_found")
 		return
@@ -759,7 +792,7 @@ func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s sessi
 		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
-	v := viewAddress{ID: id, Entry: entry, Token: token, Owner: s.identity, ViewID: viewID, Title: title, Created: a.now()}
+	v := viewAddress{ID: id, Entry: entry, Token: token, Owner: s.identity, ViewID: viewID, OfferID: offerID, Title: title, Created: a.now()}
 	a.mu.Lock()
 	// The person may have been revoked while the daemon answered.
 	if _, ok := a.authenticatedLocked(s); !ok {
@@ -772,7 +805,7 @@ func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s sessi
 		mine := 0
 		for _, o := range next {
 			if sameOwner(o, s.identity) {
-				if o.ViewID == viewID {
+				if o.item() == item {
 					v = o
 					return false
 				}
@@ -837,7 +870,7 @@ func (a *Auth) publishViewAddress(w http.ResponseWriter, r *http.Request, s sess
 		return
 	}
 	// A missing export is never published, nor replaced by another.
-	if _, status := a.readViewSummary(r.Context(), s.identity, v.ViewID); status == 404 {
+	if _, status := a.readViewSummary(r.Context(), s.identity, v.item()); status == 404 {
 		safe(w, 404, "view_not_found")
 		return
 	} else if status != 200 {
@@ -1076,6 +1109,10 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 		return
 	}
 	defer release()
+	if l.OfferID != "" {
+		a.offerLinkServe(w, r, l, "/"+token)
+		return
+	}
 	a.viewRelay(w, r, l.Owner, l.ViewID, "/"+token, func(n int64) bool { return a.chargeViewLink(id, n) }, "link", id)
 }
 
@@ -1103,6 +1140,9 @@ func (a *Auth) acquireViewLinkRelay(id string) (func(), bool) {
 
 // chargeViewLink takes n bytes from today's budgets, or refuses.
 func (a *Auth) chargeViewLink(id string, n int64) bool {
+	if n < 0 {
+		return false
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	t := &a.viewLinkTraffic

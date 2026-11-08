@@ -91,6 +91,26 @@ export const Phone: Story = {
 };
 
 export const Open: Story = { args: { open: true } };
+const visibility = {
+  public: false,
+  maxDays: 90,
+  onPublic: () => {},
+  onDuration: () => {},
+};
+/** Shareable like a view (public-file-offers): the corner's globe. */
+export const Private: Story = { args: { visibility } };
+export const Public: Story = {
+  args: {
+    offer: pack,
+    state: ready(packItems, pack),
+    visibility: {
+      ...visibility,
+      public: true,
+      until: "2026-11-28T12:00:00Z",
+      url: `https://app.example.org/n/${"G".repeat(43)}`,
+    },
+  },
+};
 
 export const Panel: StoryObj<typeof OfferPanel> = {
   render: () => (

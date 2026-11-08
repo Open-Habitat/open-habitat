@@ -322,3 +322,133 @@ test("the stable address frames the view for its owner and redirects while publi
   expect(leaks).toEqual([]);
   await visitor.close();
 });
+
+async function offerFiles(page: Page, target: string, set: string) {
+  const res = await page.request.get(
+    `/fixture/files?target=${encodeURIComponent(target)}&set=${set}`,
+  );
+  expect(res.status()).toBe(200);
+  return (await res.json()).offer_ids as string[];
+}
+
+test("a file offer and a folder are public at their own addresses like a view", async ({
+  page,
+  context,
+  browser,
+}, info) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const id = await conversation(page);
+  const [csv] = (await offerFiles(page, id, "types")).filter((_, i) => i === 3);
+  const [folder] = await offerFiles(page, id, "folder");
+  const fileCard = (offerId: string) =>
+    page.locator(`[data-testid="file-offer"][data-offer-id="${offerId}"]`);
+  const table = fileCard(csv);
+  const pack = fileCard(folder);
+  await expect(table).toHaveAttribute("data-public", "false");
+  await table.hover();
+  await table.getByTestId("view-public").click();
+  await expect(table).toHaveAttribute("data-public", "true");
+  const tableEntry = await copied(page, table);
+  expect(tableEntry).toMatch(
+    new RegExp(`^${app.replace(/[.]/g, "\\.")}/n/[A-Za-z0-9_-]{43}$`),
+  );
+  await pack.hover();
+  await pack.getByTestId("view-public").click();
+  await expect(pack).toHaveAttribute("data-public", "true");
+  const packEntry = await copied(page, pack);
+  expect(packEntry).not.toBe(tableEntry);
+
+  // A recipient without any session: the host's own page of the offer on
+  // the address's content host, scripts off, the table's beginning shown.
+  const recipient = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    viewport: { width: 1280, height: 800 },
+    acceptDownloads: true,
+  });
+  const reader = await recipient.newPage();
+  const sent: string[] = [];
+  reader.on("request", async (request) => {
+    sent.push((await request.allHeaders()).cookie ?? "");
+  });
+  await reader.goto(tableEntry);
+  await expect(reader).toHaveURL(
+    /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/[A-Za-z0-9_-]{43}\/$/,
+  );
+  const tableContent = reader.url();
+  const response = await reader.goto(tableContent);
+  expect(response?.headers()["content-security-policy"]).toMatch(
+    /^sandbox allow-downloads;/,
+  );
+  expect(response?.headers()["x-robots-tag"]).toBe(
+    "noindex, nofollow, noarchive",
+  );
+  await expect(reader.locator("h1")).toHaveText("ilmoittautuneet.csv");
+  await expect(reader.locator("td", { hasText: "Nauvo" })).toBeVisible();
+  const download = reader.waitForEvent("download");
+  await reader.getByRole("link", { name: "Lataa", exact: true }).click();
+  expect((await download).suggestedFilename()).toBe("ilmoittautuneet.csv");
+  await reader.screenshot({ path: info.outputPath("public-table.png") });
+
+  // The folder: every file listed, images shown, the whole offer as one
+  // zip, and nothing the offer left out.
+  await reader.goto(packEntry);
+  await expect(reader.locator("li")).toHaveCount(5);
+  await expect(reader.locator("body")).not.toContainText(".salainen");
+  const image = reader.locator("img").first();
+  await expect
+    .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  const zip = reader.waitForEvent("download");
+  await reader.getByRole("link", { name: "Lataa kaikki (.zip)" }).click();
+  expect((await zip).suggestedFilename()).toBe("paketti.zip");
+  const packContent = reader.url();
+  expect(
+    (await reader.goto(`${packContent}f/paketti/.salainen`))?.status(),
+  ).toBe(404);
+  await reader.goto(packContent);
+  await reader.screenshot({ path: info.outputPath("public-folder.png") });
+  expect(await recipient.cookies()).toEqual([]);
+  expect(sent.every((c) => c === "")).toBe(true);
+
+  // Private again ends anonymous reads; Settings lists both with views.
+  await table.hover();
+  await table.getByTestId("view-public").click();
+  await expect(table).toHaveAttribute("data-public", "false");
+  expect((await reader.goto(tableContent))?.status()).toBe(404);
+  await page.goto("/settings/account");
+  await expect(page.getByTestId("view-address-row")).toHaveCount(2);
+  await expect(
+    page.locator('[data-testid="view-address-row"][data-public="true"]'),
+  ).toHaveCount(1);
+  // Deleted for good, the folder's address is gone too.
+  await page
+    .locator('[data-testid="view-address-row"][data-public="true"]')
+    .getByTestId("view-address-remove")
+    .click();
+  await page.getByTestId("view-address-remove-confirm").click();
+  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
+  expect((await reader.goto(packContent))?.status()).toBe(404);
+  await recipient.close();
+});
+
+test("a file offer's own tab opens at its stable address", async ({
+  page,
+  context,
+}) => {
+  const id = await conversation(page);
+  const [folder] = await offerFiles(page, id, "folder");
+  const pack = page.locator(
+    `[data-testid="file-offer"][data-offer-id="${folder}"]`,
+  );
+  await expect(pack).toHaveAttribute("data-state", "ready");
+  const opened = context.waitForEvent("page");
+  await pack.hover();
+  await pack.getByTestId("offer-open-tab").click();
+  const tab = await opened;
+  await expect(tab).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
+  await expect(tab.getByTestId("offer-open-page")).toHaveAttribute(
+    "data-offer-id",
+    folder,
+  );
+  await tab.close();
+});

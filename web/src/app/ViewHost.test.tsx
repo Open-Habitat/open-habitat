@@ -306,3 +306,129 @@ describe("shared view addresses", () => {
     expect(page.getByTestId("view-copy-link")).toBeTruthy();
   });
 });
+
+describe("shared file offer addresses", () => {
+  const offer = {
+    offer_id: "fabcdefghijklmnopqrstuvwxyz",
+    title: "Taulukko",
+    files: 1,
+    bytes: 40,
+    created_at: "2026-11-08T10:30:00Z",
+    conversation_id: view.conversation_id,
+  };
+  const manifest = {
+    schema_version: 1,
+    offer,
+    items: [{ path: "taulu.csv", bytes: 40, kind: "csv", lines: 3 }],
+  };
+  const reserved = {
+    address_id: "acbcdefghijklmnopqrstuvwxyz",
+    offer_id: offer.offer_id,
+    title: offer.title,
+    url: `https://${window.location.host}/n/${"G".repeat(43)}`,
+    content_url: `https://oh-view-${"c".repeat(52)}.example.invalid/${"C".repeat(43)}/`,
+    state: "private",
+    created_at: "2026-11-08T12:00:00Z",
+  };
+  const shared = {
+    ...reserved,
+    state: "public",
+    public_until: "2999-12-08T12:00:00Z",
+  };
+  afterEach(() => resetViewLinks());
+
+  function offerEntry() {
+    return (
+      <Entry
+        entry={{
+          entry_key: "file-offer",
+          kind: "unknown",
+          content: {
+            media_type: "text/plain",
+            text: offer.title,
+            complete: true,
+          },
+          notice: {
+            ...notice,
+            notice_id: "44444444-4444-4444-8444-444444444444",
+            text: offer.title,
+            file_offer: offer,
+          },
+        }}
+      />
+    );
+  }
+
+  function host(maxDays: number, views: boolean) {
+    const writes: [string, unknown][] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === "/api/v1/views")
+          return views
+            ? json({ schema_version: 1, views: [] })
+            : new Response(null, { status: 204 });
+        if (url === `/api/v1/file-offers/${offer.offer_id}`)
+          return json(manifest);
+        if (url === "/api/v1/view-addresses" && !init?.method)
+          return json({ schema_version: 1, max_days: maxDays, addresses: [] });
+        const body = JSON.parse(String(init?.body));
+        writes.push([url, body]);
+        if (url === "/api/v1/view-addresses")
+          return json({ schema_version: 1, address: reserved });
+        if (url === "/api/v1/view-addresses/publish")
+          return json({ schema_version: 1, address: shared });
+        if (url === "/api/v1/view-addresses/private")
+          return json({ schema_version: 1, address: reserved });
+        throw new Error(`unexpected ${url}`);
+      }),
+    );
+    return writes;
+  }
+
+  it("publishes the offer in one press at its own address, and back", async () => {
+    const writes = host(90, true);
+    const page = render(<ViewHost csrf="csrf">{offerEntry()}</ViewHost>);
+    const card = await page.findByTestId("file-offer");
+    await waitFor(() => expect(card.getAttribute("data-public")).toBe("false"));
+    expect(page.queryByTestId("view-copy-link")).toBeNull();
+    fireEvent.click(page.getByTestId("view-public"));
+    await waitFor(() =>
+      expect(page.getByTestId("view-copy-link")).toBeTruthy(),
+    );
+    expect(card.getAttribute("data-public")).toBe("true");
+    expect(writes).toEqual([
+      ["/api/v1/view-addresses", { offer_id: offer.offer_id }],
+      [
+        "/api/v1/view-addresses/publish",
+        { address_id: shared.address_id, days: 30 },
+      ],
+    ]);
+    fireEvent.click(page.getByTestId("view-public"));
+    await waitFor(() =>
+      expect(page.queryByTestId("view-copy-link")).toBeNull(),
+    );
+    expect(writes[2]).toEqual([
+      "/api/v1/view-addresses/private",
+      { address_id: shared.address_id },
+    ]);
+  });
+
+  it("offers no globe where the site shares nothing or has no views", async () => {
+    for (const [maxDays, views] of [
+      [0, true],
+      [90, false],
+    ] as const) {
+      resetViewLinks();
+      host(maxDays, views);
+      const page = render(<ViewHost csrf="csrf">{offerEntry()}</ViewHost>);
+      const card = await page.findByTestId("file-offer");
+      await waitFor(() =>
+        expect(card.getAttribute("data-state")).toBe("ready"),
+      );
+      await act(async () => {});
+      expect(page.queryByTestId("view-public")).toBeNull();
+      page.unmount();
+    }
+  });
+});

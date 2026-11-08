@@ -21,6 +21,7 @@ import {
   type OfferDownload,
   type OfferKind,
 } from "./OfferCard";
+import type { ViewVisibility } from "./ViewOffer";
 
 // Agent file offers on the one offer card (proto-offer-cards-consistent):
 // a file, a table, an image, a document or a folder opens beside the
@@ -138,13 +139,17 @@ export function OfferThumb({
   );
 }
 
-/** One file offer in the conversation, on the one offer card. */
+/** One file offer in the conversation, on the one offer card. It is made
+ * public like a view (public-file-offers): the whole offer, a folder
+ * included, at one address. */
 export function FileOfferCard({
   offer,
   state,
   open,
   onToggle,
   onTab,
+  visibility,
+  problem,
   hitRef,
 }: {
   offer: FileOfferSummary;
@@ -152,6 +157,10 @@ export function FileOfferCard({
   open?: boolean;
   onToggle?: (opener: HTMLElement | null) => void;
   onTab?: () => void;
+  /** Absent where the site shares nothing publicly. */
+  visibility?: ViewVisibility;
+  /** Why the last change of visibility did not go through. */
+  problem?: string;
   hitRef?: Ref<HTMLButtonElement>;
 }) {
   const manifest = state.state === "ready" ? state.manifest : undefined;
@@ -177,6 +186,7 @@ export function FileOfferCard({
         ) : null}
       </span>
     ) : null;
+  const shown = !!visibility?.public && !visibility.unknown;
   const status = removed ? (
     <span className="ah-offer-facts" data-testid="file-offer-removed">
       {cardTxt.removed}
@@ -184,6 +194,10 @@ export function FileOfferCard({
   ) : state.state === "unavailable" ? (
     <span className="ah-offer-facts" role="status">
       {cardTxt.unavailable}
+    </span>
+  ) : problem ? (
+    <span className="ah-offer-facts" role="status">
+      {problem}
     </span>
   ) : one?.kind === "file" ? (
     <span className="ah-offer-facts">
@@ -196,10 +210,12 @@ export function FileOfferCard({
       data-offer-id={offer.offer_id}
       data-state={state.state}
       data-kind={one ? one.kind : manifest ? "package" : undefined}
+      data-public={visibility ? String(shown) : undefined}
       aria-label={txt.label(offer.title)}
       kind={offerKind(offer, state)}
       title={offer.title}
       facts={removed ? [] : offerFacts(offer, state)}
+      until={shown ? visibility?.until : undefined}
       open={open}
       inert={removed}
       onToggle={manifest ? onToggle : undefined}
@@ -210,6 +226,7 @@ export function FileOfferCard({
         manifest ? (
           <OfferActions
             label={offer.title}
+            publish={visibility}
             onTab={onTab}
             download={offerDownload(offer, one)}
           />
