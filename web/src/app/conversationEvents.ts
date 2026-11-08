@@ -288,6 +288,42 @@ export function applyTurnEvent(
   }
   return { turn: next };
 }
+// What native history saves of a model turn: its streamed message and the
+// tool calls it ran. Signals, extension status and a `!` command's output
+// are not saved there and stay live.
+const savedKinds = new Set([
+  "assistant.delta",
+  "assistant.thinking.delta",
+  "assistant.toolcall.delta",
+  "assistant.toolcall.end",
+  "tool.started",
+  "tool.updated",
+  "tool.finished",
+]);
+/** Retires the streamed content of the model turns that had ended when a
+ * native history read began. Pi writes each message as it ends, before its
+ * turn ends, but the daemon publishes a run's entries only once the whole
+ * run settles. A run goes on past a reply when Pi takes a queued message, so
+ * a read made meanwhile already shows the reply and the person's next
+ * message, and the reply's streamed copy would be drawn again after them. */
+export function retireEndedTurns(
+  turn: LiveTurn,
+  read: { instance: string; sequence: number },
+): LiveTurn {
+  if (turn.truncated || read.instance !== turn.instance) return turn;
+  const ended = turn.fragments.findLastIndex(
+    (event) =>
+      event.sequence <= read.sequence &&
+      event.kind === "pi.lifecycle" &&
+      (event.payload.signal === "turn_end" ||
+        event.payload.signal === "agent_end"),
+  );
+  if (ended < 0) return turn;
+  const before = turn.fragments.slice(0, ended);
+  const kept = before.filter((event) => !savedKinds.has(event.kind));
+  if (kept.length === before.length) return turn;
+  return { ...turn, fragments: [...kept, ...turn.fragments.slice(ended)] };
+}
 export function provisionalItems(turn: LiveTurn) {
   if (turn.truncated) return [];
   const items: {

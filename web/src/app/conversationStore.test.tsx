@@ -895,6 +895,90 @@ describe("recent conversation windows", () => {
       ],
     });
   });
+  it("retires a reply Pi saved before taking a queued message, once a read begun after its turn joins", async () => {
+    // Pi's own order: the reply's message ends (and is written), its turn
+    // ends, and the run goes on with the follow-up without agent_end. The
+    // daemon publishes the run's entries only when it settles.
+    const { store, finish } = setup();
+    store.view(id(1));
+    finish(page(id(1), ["a"]));
+    await flush();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    const frame = (
+      sequence: number,
+      kind: string,
+      payload: Record<string, unknown>,
+    ) =>
+      ({
+        resource: { agent_id: id(1) },
+        kind,
+        payload,
+        cursor: `ev1:${instance}:${sequence}`,
+        server_instance_id: instance,
+        sequence,
+        event_id: `frame-${sequence}`,
+      }) as never;
+    store.setLive(id(1), {
+      cursor: `ev1:${instance}:0`,
+      instance,
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const pager = (store as unknown as { pager: ConversationPager }).pager;
+    const reads: ((value: unknown) => void)[] = [];
+    vi.mocked(pager.reconnect).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          reads.push(resolve);
+        }) as never,
+    );
+    store.routeEvent(
+      frame(1, "assistant.delta", { text: "Vastaus", content_index: 0 }),
+    );
+    // A read begun before the turn ended may predate the saved reply.
+    store.routeEvent(frame(2, "process.notification", {}));
+    store.routeEvent(frame(3, "pi.lifecycle", { signal: "turn_end" }));
+    store.routeEvent(frame(4, "pi.lifecycle", { signal: "turn_start" }));
+    reads[0]({ pages: [page(id(1), ["a", "note"])], met: true });
+    await flush();
+    expect(store.read(id(1))?.live?.fragments.map((f) => f.kind)).toEqual([
+      "assistant.delta",
+      "pi.lifecycle",
+      "pi.lifecycle",
+    ]);
+    // A read begun after it shows the reply and the follow-up; the next
+    // reply streamed meanwhile stays live.
+    store.routeEvent(frame(5, "process.notification", {}));
+    store.routeEvent(
+      frame(6, "assistant.delta", { text: "Toinen", content_index: 0 }),
+    );
+    const user: HistoryEntry = {
+      entry_key: "followup",
+      kind: "user",
+      content: { media_type: "text/plain", text: "jatko", complete: true },
+    };
+    const saved = page(id(1), ["a", "note", "reply"]);
+    reads[1]({
+      pages: [{ ...saved, entries: [...saved.entries, user] }],
+      met: true,
+    });
+    await flush();
+    expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
+      "a",
+      "note",
+      "reply",
+      "followup",
+    ]);
+    expect(store.read(id(1))?.live).toMatchObject({
+      sequence: 6,
+      fragments: [
+        { payload: { signal: "turn_end" } },
+        { payload: { signal: "turn_start" } },
+        { kind: "assistant.delta", payload: { text: "Toinen" } },
+      ],
+    });
+  });
   it.each(["tail", "older", "reconnect", "failure"] as const)(
     "keeps streamed entries and later deltas when a %s read races them",
     async (mode) => {

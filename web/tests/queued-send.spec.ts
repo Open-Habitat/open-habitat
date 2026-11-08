@@ -603,7 +603,11 @@ async function stoppedQuietly(page: Page, id: string, text: string) {
 test("@queued-send a queued follow-up never duplicates the preceding reply at turn end", async ({
   page,
 }) => {
-  test.setTimeout(60000);
+  test.setTimeout(120000);
+  // Streamed replies: Pi saves the finished reply and takes the follow-up
+  // while the run goes on, and a re-read of native history shows both
+  // before the run settles, with the reply's streamed text still live.
+  await scenario(page, "pi-deltas");
   const id = await workingTurn(page);
   await page.evaluate(() => {
     const samples: string[][] = [];
@@ -635,7 +639,7 @@ test("@queued-send a queued follow-up never duplicates the preceding reply at tu
     page.getByTestId("composer-queue").getByRole("listitem"),
   ).toHaveCount(1);
   await expect
-    .poll(async () => (await status(page, id)).state, { timeout: 30000 })
+    .poll(async () => (await status(page, id)).state, { timeout: 80000 })
     .toBe("idle");
   await expect(stopAgent(page)).toHaveCount(0);
   await expectNativeContent(

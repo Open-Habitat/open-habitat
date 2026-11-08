@@ -1,55 +1,56 @@
-# Investigation — incomplete
+# Result — reproduced and fixed
 
-No production fix; issue remains open. The required browser reproduction did
-not fail against base `13a31034056cc89e25d268a7f5d66ceeda053d7d`.
+## Cause
+
+Pi keeps one run going past a reply when it takes a queued message: the
+reply's `message_end` (Pi writes the message to its JSONL right after
+emitting it), `turn_end`, then `turn_start` and the follow-up's user message,
+with no `agent_end` in between (`pi-agent-core` `agent-loop.js`, the
+follow-up branch). The daemon publishes a run's `history.entry` events only
+when the run settles, so the reply's streamed fragments stay live for the
+whole follow-up. Meanwhile each native write raises a global
+`snapshot.invalidated`, and the browser quietly re-reads history: that page
+already has the reply and the queued message. The timeline then drew saved
+reply, saved queued message, and the reply's live copy below them, until
+settlement's `history.entry` retired the fragments. Tool-call messages were
+already covered by the saved-call filter in `BrowserConversation.tsx`; a
+plain-text reply had no identity to match.
+
+The earlier probe could not see this because the default fake Pi does not
+stream reply text; with `pi-deltas` it fails at once (the first reply twice
+in several consecutive DOM samples).
+
+## Fix
+
+`retireEndedTurns` (`web/src/app/conversationEvents.ts`), applied in
+`ConversationStore.applyPage` to the newest page of a tail or reconnect read:
+the store records how far the stream had come when the read began, and the
+page retires the streamed message and tool content of every model turn that
+had ended (`turn_end`, or `agent_end` in the fake's shape) before that point.
+Pi wrote those messages before the turn ended, so a read begun later shows
+them. Lifecycle signals (the turn clock), extension status and `!` command
+output stay. No text matching.
 
 ## Evidence
 
-Added a probe in `web/tests/queued-send.spec.ts`: start a slow fake-Pi turn,
-queue a follow-up with Alt+Enter, observe transcript mutations through both
-answers, and reject any observation containing the first answer twice.
-This checks intermediate DOM states, not only the settled transcript.
+- `web/tests/queued-send.spec.ts` "a queued follow-up never duplicates the
+  preceding reply at turn end", now on `pi-deltas`: failed before the fix
+  (duplicate in many samples), passes after. Whole spec 14/14 passed.
+- `conversationStore.test.tsx`: Pi's real order (no `agent_end`), a read
+  begun before `turn_end` keeps the reply live, one begun after retires it
+  and keeps the next reply's deltas; fails without the fix.
+- Also passed: `lab-live-turn`, `lab-conversation-scroll`,
+  `lab-reply-selection`, `lab-composer-live-focus`; `test-focused --area web`.
 
-- `./scripts/test-focused.sh --area browser --spec queued-send.spec.ts`:
-  14 passed (1.3 minutes), with `OH_BROWSER_WORKERS=2`,
-  `OH_PORT_BASE=15700`, private disk-backed TMPDIR and umask 077.
-- `./scripts/test-focused.sh --area web`: static checks and 188 test files /
-  1408 tests passed.
-- `python3 scripts/validate-project-view.py` and `git diff --check`: passed.
-- Earlier exploratory runs also passed for steering and for a follow-up with
-  EventSource callbacks delayed by 750 ms. A later 2500 ms experiment tried
-  to trigger a history read through `/fixture/notice`, but supplied the wrong
-  ID shape and did not check the HTTP response. Inspection established that
-  this endpoint only publishes a non-persisted notice anyway: that experiment
-  is **not evidence** of history/stream overtaking. Removed those test seams.
-
-These are host-backed synthetic tests, not real Pi/provider or live-host
-reproduction. No clean gate, full browser suite, or live screenshots taken.
-Focused self-review only: the retained changes are test and investigation
-material, not session-state or production changes.
-
-## Source observations and next investigation
-
-`conversationEvents.ts` retires assistant fragments when `history.entry`
-arrives. `conversationStore.ts:applyPage` instead clears fragments only when
-a current status supplies a settled native key contained in the incoming page.
-`BrowserConversation.tsx` filters saved tool-call fragments, but a plain-text
-reply has no comparable call identity. It then places the outstanding own
-message between saved timeline rows and the remaining live row. A history
-read overtaking journal delivery is therefore a concrete ordering candidate,
-**not a confirmed cause** from this run.
-
-The next worker should control that exact ordering (a history page containing
-the first completed answer arrives while its unkeyed live fragments remain,
-with the follow-up already accepted), first in the store's controlled-transport
-tests and then in a browser spec. Do not deduplicate by answer text: separate
-turns can legitimately contain identical answers. The current browser probe
-passes before any fix, so it alone cannot validate a correction.
+Synthetic host only; not yet seen on the test server.
 
 ## Decisions for later review
 
-Preserve the passing probe and leave the bug open, rather than change the
-history/live merge based on an unconfirmed hypothesis. Alternatives were a
-text-matching suppression or clearing fragments at a guessed boundary; both
-risk hiding legitimate content. No product, security or authority decision
-was made.
+- Fixed in the browser store rather than making the daemon publish each
+  model turn's entries at `turn_end`. The daemon route would also be correct
+  but reads the native file once per model turn (long tool runs have
+  hundreds) and changes the event contract's timing; the browser already
+  re-reads at those points.
+- The fake Pi still emits `agent_end`/`agent_start` between follow-up turns,
+  unlike real Pi. Left as is: other specs depend on its shape, and the fix
+  treats both boundaries alike; the unit test carries the real order.

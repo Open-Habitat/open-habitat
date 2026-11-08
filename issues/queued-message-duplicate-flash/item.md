@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Queued message briefly shows the agent's reply twice at turn end
@@ -22,3 +23,7 @@ order without a duplicated agent message. Likely in how the live tail and the
 queued message's optimistic row merge with history at turn end
 (`web/src/app/ConversationStore*`, the queue in the composer). Reproduce in a
 browser spec first.
+
+## Acceptance Criteria
+
+- [x] A browser spec reproduces the duplicated reply before the fix and passes after it (`queued-send.spec.ts`, streamed replies).

@@ -9,6 +9,7 @@ import {
   initialTurn,
   type LiveTurn,
   parseConversationEvent,
+  retireEndedTurns,
 } from "./conversationEvents";
 import { ConversationPager } from "./conversationPager";
 import { status as readStatus, type Status } from "./conversations";
@@ -44,7 +45,11 @@ type WindowRecord = {
   // The newest read begun before this window's events were missed. Only a
   // later read can show the native entries the missed events carried.
   missedBefore?: number;
+  // How far the stream had come when the current newest-page read began.
+  readFrom?: { instance: string; sequence: number };
 };
+const streamPosition = (live?: LiveTurn) =>
+  live && { instance: live.instance, sequence: live.sequence };
 // Status proved the native history unwritten and nothing has arrived since.
 const confirmedEmpty = (record: WindowRecord) =>
   record.value.state === "empty" && !record.value.entries.length;
@@ -405,6 +410,7 @@ export class ConversationStore {
         record.loading = false;
         record.readEntries.clear();
         record.readAgain = false;
+        record.readFrom = undefined;
       }
     }
     for (const [id, record] of this.windows) {
@@ -644,6 +650,7 @@ export class ConversationStore {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
     record.loading = ++this.readSeq;
+    record.readFrom = streamPosition(record.value.live);
     const read = record.loading;
     const epoch = this.epoch;
     try {
@@ -731,6 +738,7 @@ export class ConversationStore {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
     record.loading = ++this.readSeq;
+    record.readFrom = streamPosition(record.value.live);
     const read = record.loading;
     const epoch = this.epoch;
     try {
@@ -883,6 +891,11 @@ export class ConversationStore {
             truncated: false,
           }
         : old.live;
+    // Native history has every message of the model turns that had ended
+    // when this read began: the newest ones on this page, any older ones
+    // on the pages before it.
+    if (live && newest && mode !== "older" && record.readFrom)
+      live = retireEndedTurns(live, record.readFrom);
     // A read begun after events were missed has joined what they carried.
     if (
       live?.missed &&
@@ -917,6 +930,7 @@ export class ConversationStore {
   }
   private finishRead(id: string, record: WindowRecord) {
     record.loading = false;
+    record.readFrom = undefined;
     record.readEntries.clear();
     if (record.readAgain) {
       record.readAgain = false;
@@ -1259,6 +1273,7 @@ export class ConversationStore {
       record.readEntries.clear();
       record.readAgain = false;
       record.loading = false;
+      record.readFrom = undefined;
       try {
         const agent = snapshot.agents.find((a) => a.agent_id === id);
         const live = initialTurn(
