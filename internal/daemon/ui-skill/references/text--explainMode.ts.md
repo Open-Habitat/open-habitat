@@ -670,6 +670,116 @@ const fi = {
       lead: "Agentin tarjoama näkymä tai tiedosto. Kortti avaa sen keskustelun viereen, ja uusi painallus sulkee.",
       know: "Kulman kuvakkeet julkaisevat näkymän, avaavat kohteen omalle välilehdelle ja lataavat sen.",
     },
+    V15: {
+      name: "Avustajat",
+      lead: "Robottikuvake avaa avustajat. Sen vieressä on kunkin avustajan tilamerkki.",
+      know: "Avustajat jäävät odottamaan kierroksen jälkeen. Viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta.",
+      try: "Avaa avustajat",
+    },
+    V16: {
+      name: "Avustaja",
+      lead: "Avaa avustajan keskustelun luettavaksi. Rivillä näkyvät tehtävä, kierrokset ja viimeisin raportti.",
+      know: "Kirjoita avustajalle pääagentin kautta. Raportin avaaminen kuittaa sen nähdyksi, ei yhdistä työtä.",
+    },
+    V17: {
+      name: "Avaa kohde",
+      lead: "Avaa näkymän tai tiedoston keskustelun viereen. Uusi painallus sulkee sen.",
+      know: "Listan kuvake kertoo kohteen lajin, kellonaika milloin se tarjottiin. Julkisen kohteen kohdalla näkyy voimassaoloaika.",
+    },
+    V18: {
+      name: "Versiot",
+      lead: "Näyttää tai piilottaa saman näkymän aiemmat versiot.",
+      know: "Luku kertoo versioiden kokonaismäärän. Ylin rivi avaa uusimman version.",
+    },
+    V19: {
+      name: "Näytä keskustelussa",
+      lead: "Puhekupla vie viestiin, jossa agentti tarjosi kohteen.",
+    },
+    V20: {
+      name: "Julkinen",
+      lead: "Maapallo julkaisee kohteen linkillä tai poistaa sen julkisuuden.",
+      know: "Julkisen linkin saanut voi avata kohteen kirjautumatta. Voimassaoloajan voi vaihtaa päivämäärästä.",
+      grey: "Julkaisutietoa tarkistetaan tai muutos on vielä kesken.",
+    },
+    V21: {
+      name: "Voimassaoloaika",
+      lead: "Avaa vaihtoehdot sille, kuinka kauan julkinen linkki toimii.",
+      know: "Pelkkä valikon avaaminen ei muuta voimassaoloaikaa.",
+    },
+    V22: {
+      name: "Vaihda voimassaoloaika",
+      lead: "Asettaa julkisen linkin uuden päättymisajan.",
+    },
+    V23: {
+      name: "Kopioi linkki",
+      lead: "Kopioi julkisen osoitteen leikepöydälle jaettavaksi.",
+      try: "Kopioi linkki",
+    },
+    V24: {
+      name: "Avaa omalle välilehdelle",
+      lead: "Vinonuoli avaa kohteen omaan selaimen välilehteen.",
+      know: "Avaaminen ei julkaise kohdetta.",
+    },
+    V25: {
+      name: "Lataa",
+      lead: "Alanuoli lataa kohteen omalle laitteellesi.",
+      know: "Palvelimella oleva kohde säilyy ennallaan.",
+      try: "Lataa kohde",
+    },
+    V26: {
+      name: "Sulje lista",
+      lead: "Sulkee näkymien ja tiedostojen listan poistamatta mitään.",
+      try: "Sulje lista",
+    },
+    B01: {
+      name: "Selain",
+      lead: "Avaa palvelimella olevan selaimesi ikkunat; käynnistää selaimen, jos se on pysähtynyt.",
+      know: "Tilamerkki ja teksti kertovat, käyttääkö selainta agentti vai sinä tai odottaako agentti apuasi.",
+    },
+    B02: {
+      name: "Selaimen ikkunat",
+      lead: "Näyttää ikkunoiden esikatselut ja agentin mahdollisen avunpyynnön.",
+      know: "Esikatselun avaaminen ei ota ohjausta. Ota ohjaus erikseen, kun haluat toimia itse.",
+    },
+    B03: {
+      name: "Katso isona",
+      lead: "Avaa selaimen ikkunan suurempana katseltavaksi, ilman ohjausta.",
+    },
+    B04: {
+      name: "Ota ohjaus",
+      lead: "Siirtää selaimen ohjauksen sinulle. Agentti odottaa sillä aikaa.",
+      know: "Palauta ohjaus agentille, kun olet valmis.",
+      grey: "Ohjauksen vaihto on vielä kesken tai selain ei ole käytettävissä.",
+    },
+    B05: {
+      name: "Anna takaisin agentille",
+      lead: "Luovuttaa selaimen ohjauksen takaisin agentille.",
+    },
+    B06: {
+      name: "Sulje selain",
+      lead: "Sulkee palvelimella olevan selaimen ja sen ikkunat.",
+      know: "Voit käynnistää selaimen uudelleen Selain-painikkeesta.",
+    },
+    B07: {
+      name: "Oma selain",
+      lead: "Avaa palvelimella olevan selaimesi näkymän.",
+      know: "Rivi näyttää selaimen tilan ja ikkunoiden määrän.",
+    },
+    B08: {
+      name: "Sulje näkymä",
+      lead: "Sulkee selaimen suuren näkymän. Selain jää käyntiin palvelimelle.",
+      try: "Sulje näkymä",
+    },
+    H01: {
+      name: "Keskustelun avustaja",
+      lead: "Näyttää avustajan kierroksen tilan ja onko työ yhdistetty.",
+      know: "Haaramerkki kertoo keskeneräisestä tai varmistamattomasta työstä; valintamerkki yhdistetystä. Arkistointi ei lopeta avustajaa eikä yhdistä työtä.",
+    },
+    H02: {
+      name: "Näytä haara",
+      lead: "Avaa avustajan työn haaratiedot tarkasteltavaksi.",
+      know: "Tietojen katsominen ei yhdistä eikä poista työtä.",
+    },
     L01: {
       name: "Hae komentoa tai taitoa",
       lead: "Rajaa listan kirjoittamasi mukaan; Enter lisää ylimmän viestin alkuun.",
@@ -1684,6 +1794,116 @@ export const explainModeText = catalog(fi, {
       name: "Offered item",
       lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
       know: "The corner icons publish a view, open the item in a new tab and download it.",
+    },
+    V15: {
+      name: "Helpers",
+      lead: "The robot icon opens your helpers. Each has a state mark beside it.",
+      know: "Helpers wait after each round. Messages, landing rounds and stopping go through the main agent.",
+      try: "Open helpers",
+    },
+    V16: {
+      name: "Helper",
+      lead: "Opens the helper's conversation to read. The row shows its task, rounds and latest report.",
+      know: "Write to helpers through the main agent. Opening a report marks it as seen, without landing the work.",
+    },
+    V17: {
+      name: "Open item",
+      lead: "Opens the view or file beside the conversation. Press again to close it.",
+      know: "The list icon shows the kind of item; the time says when it was offered. Public items show their expiry.",
+    },
+    V18: {
+      name: "Versions",
+      lead: "Shows or hides earlier versions of the same view.",
+      know: "The number counts all versions. The top row opens the latest one.",
+    },
+    V19: {
+      name: "Show in the conversation",
+      lead: "The speech bubble takes you to the message where the agent offered the item.",
+    },
+    V20: {
+      name: "Public",
+      lead: "The globe publishes the item by link or makes it private again.",
+      know: "Anyone with a public link can open the item without signing in. Change its expiry from the date.",
+      grey: "Publication details are being checked or a change is still in progress.",
+    },
+    V21: {
+      name: "Expiry",
+      lead: "Opens choices for how long the public link works.",
+      know: "Opening the menu does not change the expiry.",
+    },
+    V22: {
+      name: "Change expiry",
+      lead: "Sets a new expiry for the public link.",
+    },
+    V23: {
+      name: "Copy link",
+      lead: "Copies the public address to your clipboard to share.",
+      try: "Copy link",
+    },
+    V24: {
+      name: "Open in a new tab",
+      lead: "The diagonal arrow opens the item in its own browser tab.",
+      know: "Opening it does not publish it.",
+    },
+    V25: {
+      name: "Download",
+      lead: "The downward arrow downloads the item to your device.",
+      know: "The item on the server stays unchanged.",
+      try: "Download item",
+    },
+    V26: {
+      name: "Close list",
+      lead: "Closes the views and files list without removing anything.",
+      try: "Close list",
+    },
+    B01: {
+      name: "Browser",
+      lead: "Opens your server browser's windows; starts the browser if it is stopped.",
+      know: "The mark and text show whether the agent or you are using it, or whether the agent needs your help.",
+    },
+    B02: {
+      name: "Browser windows",
+      lead: "Shows window previews and any request for help from the agent.",
+      know: "Opening a preview does not take control. Take control separately when you want to act yourself.",
+    },
+    B03: {
+      name: "View large",
+      lead: "Opens a larger view of the browser window, without taking control.",
+    },
+    B04: {
+      name: "Take control",
+      lead: "Hands browser control to you. The agent waits meanwhile.",
+      know: "Give control back to the agent when you are done.",
+      grey: "Control is still changing or the browser is unavailable.",
+    },
+    B05: {
+      name: "Give back to the agent",
+      lead: "Hands browser control back to the agent.",
+    },
+    B06: {
+      name: "Close browser",
+      lead: "Closes the browser on the server and its windows.",
+      know: "You can start it again from the Browser button.",
+    },
+    B07: {
+      name: "Your browser",
+      lead: "Opens the view of your browser on the server.",
+      know: "The row shows the browser's state and window count.",
+    },
+    B08: {
+      name: "Close view",
+      lead: "Closes the large browser view. The browser keeps running on the server.",
+      try: "Close view",
+    },
+    H01: {
+      name: "Conversation's helper",
+      lead: "Shows the helper's round state and whether its work has been landed.",
+      know: "A branch marks unfinished or unconfirmed work; a check marks landed work. Archiving neither stops the helper nor lands its work.",
+    },
+    H02: {
+      name: "Show branch",
+      lead: "Opens the helper's branch details for inspection.",
+      know: "Looking neither lands nor removes the work.",
     },
     L01: {
       name: "Search commands and skills",

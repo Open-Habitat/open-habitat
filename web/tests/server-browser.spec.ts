@@ -74,7 +74,21 @@ test("@server-browser opens from the rail; looking sends no input, control does"
   page,
 }, testInfo) => {
   test.setTimeout(90000);
-  await signIn(page, true);
+  const csrf = await signIn(page, true);
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": csrf,
+        },
+        data: { experimental: { "explain-mode": true } },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  await page.reload();
+  await page.getByTestId("account-menu-trigger").click();
+  await page.getByTestId("menu-explain").click();
   const row = button(page, "browser-rail-row");
   await expect(row).toHaveAttribute("data-state", "stopped");
   await row.click();
@@ -99,6 +113,16 @@ test("@server-browser opens from the rail; looking sends no input, control does"
         .analyze()
     ).violations,
   ).toEqual([]);
+
+  // Explain mode lets the look open, but holds control changes.
+  await button(page, "browser-take-control").click();
+  await expect(page.getByTestId("explain-card")).toHaveAttribute("data-card", "B04");
+  await expect(page.locator(".ah-explain-toast")).toBeVisible();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await row.click();
+  await expect(viewer).toHaveAttribute("data-phase", "connected");
 
   // A look is view-only: moving and pressing over the screen reaches
   // nothing in the browser.

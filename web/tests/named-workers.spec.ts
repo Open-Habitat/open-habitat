@@ -205,9 +205,7 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
   // The person writes to a helper only through the main agent: no request,
   // no stop and no composer of its own on the row.
   await expect(panel.getByTestId("ask-agent")).toHaveCount(0);
-  await expect(panel.getByTestId("helpers-note")).toContainText(
-    "pääagentin kautta",
-  );
+  await expect(panel.getByTestId("helpers-note")).toHaveCount(0);
   const axe = await new AxeBuilder({ page })
     .include('[data-testid="background-work"]')
     .analyze();
@@ -219,6 +217,28 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
     await page.emulateMedia({ colorScheme: "light" });
   }
 
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: await session(page),
+        data: { experimental: { "explain-mode": true } },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  await page.reload();
+  await chip.click();
+  await page.getByTestId("explain-toggle").click();
+  await chip.hover();
+  await expect(page.getByTestId("explain-card")).toHaveAttribute(
+    "data-card",
+    "V15",
+  );
+  await proto.hover();
+  await expect(page.getByTestId("explain-card")).toHaveAttribute(
+    "data-card",
+    "V16",
+  );
+
   // Its own read-only view says where its rounds stand; opening it shows
   // the report, so the chip's new-report mark clears.
   await proto.click();
@@ -229,6 +249,7 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
   await expect(
     page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.goBack();
   await expect(chip).toHaveAttribute("data-unseen", "0");
   await expect(

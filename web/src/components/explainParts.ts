@@ -206,6 +206,56 @@ export const parts: Record<CardId, Part> = {
     kind: "panel",
     sel: '[data-testid="view-offer"], [data-testid="file-offer"]',
   },
+  V15: {
+    kind: "panel",
+    sel: '[data-testid="background-helpers"]',
+    workerLegend: true,
+  },
+  V16: {
+    kind: "nav",
+    sel: '.ah-bg-row[data-kind="help"] .ah-bg-main',
+    workerLegend: true,
+    opens: true,
+  },
+  V17: {
+    kind: "panel",
+    sel: '[data-testid="asset-open"], [data-testid="asset-open-older"], [data-testid="offer-open"]',
+    opens: true,
+  },
+  V18: { kind: "list", sel: '[data-testid="asset-versions"]', opens: true },
+  V19: { kind: "nav", sel: '[data-testid="asset-locate"]', opens: true },
+  V20: { kind: "once", sel: '[data-testid="view-public"]' },
+  V21: { kind: "menu", sel: '[data-testid="view-public-until"]', opens: true },
+  V22: { kind: "once", sel: '[data-testid^="view-duration-"]' },
+  V23: { kind: "once", sel: '[data-testid="view-copy-link"]' },
+  V24: { kind: "nav", sel: '[data-testid="offer-open-tab"]', opens: true },
+  V25: { kind: "once", sel: '[data-testid="offer-download"]' },
+  V26: { kind: "once", sel: '[data-testid="assets-close"]' },
+  B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
+  B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
+  B03: {
+    kind: "panel",
+    sel: '[data-testid="browser-window"] button, [data-testid="browser-look"], [data-testid="browser-look-first"]',
+    opens: true,
+  },
+  B04: {
+    kind: "once",
+    sel: '[data-testid="browser-take-request"], [data-testid="browser-take-control"]',
+  },
+  B05: { kind: "once", sel: '[data-testid="browser-give-back"]' },
+  B06: { kind: "once", sel: '[data-testid="browser-stop"]' },
+  B07: { kind: "nav", sel: '[data-testid="browser-rail-row"]', opens: true },
+  B08: { kind: "once", sel: '[data-testid="browser-sheet-close"]' },
+  H01: {
+    kind: "info",
+    sel: '[data-testid="helper-archive-row"]',
+    workerLegend: true,
+  },
+  H02: {
+    kind: "panel",
+    sel: '[data-testid="helper-archive-branch"]',
+    opens: true,
+  },
   L01: { kind: "input", sel: '[data-testid="command-search"]' },
   L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
   L03: {
@@ -345,6 +395,11 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "V07",
   "R03",
   "D03",
+  "V20",
+  "V22",
+  "B04",
+  "B05",
+  "B06",
 ]);
 
 /** Controls that production shows only under the pointer. */

@@ -30,6 +30,19 @@ async function conversation(page: Page): Promise<string> {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const session = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { experimental: { "explain-mode": true } },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  await page.reload();
   await page
     .getByRole("navigation")
     .getByTestId(
@@ -68,6 +81,19 @@ test("anyone with the link opens the view without a session while it is public",
   const card = page.locator(
     `[data-testid="view-offer"][data-view-id="${first}"]`,
   );
+  await page.getByTestId("explain-toggle").click();
+  await page.getByTestId("account-menu-trigger").hover();
+  await expect(page.getByTestId("explain-state-card")).toHaveCount(0);
+  await card.hover();
+  await card.getByTestId("view-public").click();
+  await expect(page.getByTestId("explain-card")).toHaveAttribute(
+    "data-card",
+    "V20",
+  );
+  await expect(page.locator(".ah-explain-toast")).toBeVisible();
+  await expect(card).toHaveAttribute("data-public", "false");
+  await page.keyboard.press("Escape");
+
   // One press makes it public; only then is there a link to copy.
   await expect(card.getByTestId("view-copy-link")).toHaveCount(0);
   await card.hover();

@@ -894,10 +894,6 @@ export function BackgroundStrip({
           helpRow({ run, live: false, waited: false, attention: false }, true),
         )}
       </div>
-      <p className="ah-bg-note" data-testid="helpers-note">
-        <Icon name="info" />
-        <span>{txt.help.note}</span>
-      </p>
     </>
   );
   const procRow = (p: ProcessRecord) => {
