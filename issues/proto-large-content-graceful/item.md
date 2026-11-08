@@ -8,7 +8,7 @@ priority: normal
 lane: large-content-proto
 lane_seq: 1
 blocked_by: ['@recheck-button-unexplained']
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: graceful handling of very large conversation content
@@ -40,5 +40,5 @@ Two steps:
 
 ## Acceptance Criteria
 
-- [ ] Investigation table in result.md (path, limit, failure today, early detection).
-- [ ] Prototype round 1 with view offer and questions for Jari.
+- [x] Investigation table in result.md (path, limit, failure today, early detection).
+- [x] Prototype round 1 with view offer and questions for Jari.
