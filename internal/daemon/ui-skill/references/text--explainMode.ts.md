@@ -659,6 +659,17 @@ const fi = {
       lead: "Sama merkki kertoo workerin tilan sirussa, listassa ja sivupalkissa.",
       know: "Kehä kertoo, että agentti odottaa. Kehän puuttuminen ei todista, ettei agentti odota: odotuksen kohdetta ei aina tunnisteta.",
     },
+    V13: {
+      name: "Näkymät ja tiedostot",
+      lead: "Kaikki, mitä agentti on tässä keskustelussa tarjonnut: näkymät ja tiedostot, uusin ylimpänä.",
+      know: "Saman raportin versiot ovat yhdellä rivillä. Rivi avaa kohteen keskustelun viereen, ja sama rivi sulkee sen.",
+      try: "Avaa lista",
+    },
+    V14: {
+      name: "Tarjottu kohde",
+      lead: "Agentin tarjoama näkymä tai tiedosto. Kortti avaa sen keskustelun viereen, ja uusi painallus sulkee.",
+      know: "Kulman kuvakkeet julkaisevat näkymän, avaavat kohteen omalle välilehdelle ja lataavat sen.",
+    },
     L01: {
       name: "Hae komentoa tai taitoa",
       lead: "Rajaa listan kirjoittamasi mukaan; Enter lisää ylimmän viestin alkuun.",
@@ -1667,6 +1678,17 @@ export const explainModeText = catalog(fi, {
       name: "Worker marks",
       lead: "The same mark shows a worker’s state in the chip, list and sidebar.",
       know: "The outer ring means the agent is waiting. No ring does not prove it is not waiting: the worker being waited for is not always known.",
+    },
+    V13: {
+      name: "Views and files",
+      lead: "Everything the agent has offered in this conversation: views and files, newest first.",
+      know: "Versions of one report share a row. A row opens the item beside the conversation, and the same row closes it.",
+      try: "Open the list",
+    },
+    V14: {
+      name: "Offered item",
+      lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
+      know: "The corner icons publish a view, open the item in a new tab and download it.",
     },
     L01: {
       name: "Search commands and skills",

@@ -201,6 +201,11 @@ export const parts: Record<CardId, Part> = {
     sel: '.ah-bg-group:has(.ah-bg-row[data-kind="spin"])',
     workerLegend: true,
   },
+  V13: { kind: "panel", sel: '[data-testid="assets-chip"]' },
+  V14: {
+    kind: "panel",
+    sel: '[data-testid="view-offer"], [data-testid="file-offer"]',
+  },
   L01: { kind: "input", sel: '[data-testid="command-search"]' },
   L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
   L03: {

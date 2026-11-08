@@ -632,7 +632,9 @@ esac
 		mux.Handle(daemon.FileOffersPath, fileOffers)
 		mux.Handle(daemon.FileOffersPath+"/", fileOffers)
 		if viewsMode {
-			mux.Handle(daemon.ViewsPath, daemon.ViewsHandler(fixtureWorkspaceCfg, trusted))
+			views := daemon.ViewsHandler(fixtureWorkspaceCfg, trusted)
+			mux.Handle(daemon.ViewsPath, views)
+			mux.Handle(daemon.ViewsPath+"/", views)
 			mux.Handle(daemon.ViewExportPrefix, daemon.ViewExportHandler(fixtureWorkspaceCfg, trusted))
 		}
 		// The person's server browser: a stand-in host (browser.go), or the

@@ -1,25 +1,38 @@
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { openHeaderPanel } from "./conversation-view";
 import { expect, type Page, test } from "./worker-host";
 
 // Agent file offers against the real gateway and daemon handlers: the
 // fixture freezes synthetic files through the real plan and export and
-// publishes the conversation's notice; the card, the preview dialog, the
-// downloads and the file panel read them through the gateway's routes.
-// Same-UID synthetic evidence; it says nothing about separate Unix users.
+// publishes the conversation's notice; the one offer card, the panel beside
+// the conversation, the own tab, the downloads and the conversation's list
+// read them through the gateway's routes. Same-UID synthetic evidence; it
+// says nothing about separate Unix users.
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
-  viewport: { width: 1366, height: 860 },
+  viewport: { width: 1440, height: 900 },
   // Screenshots for review are taken at device scale factor 2.
   deviceScaleFactor: 2,
 });
 
-const evidence = "../issues/agent-file-offer/evidence";
-const shelfEvidence = "../issues/folder-offer-file-rows/evidence";
+const evidence = "../issues/offer-cards-and-assets-list/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
+
+/** Screenshots for review in both themes; the theme settles before each. */
+async function shoot(page: Page, name: string) {
+  if (!capture) return;
+  const width = page.viewportSize()?.width ?? 0;
+  for (const theme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: theme });
+    await page.waitForTimeout(400);
+    await page.screenshot({
+      path: `${evidence}/${name}-${width}-${theme}.png`,
+    });
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+}
 
 async function conversation(page: Page): Promise<string> {
   await page.request.get("/fixture/scenario?value=ready");
@@ -46,7 +59,7 @@ async function offer(page: Page, target: string, set: string) {
 const card = (page: Page, id: string) =>
   page.locator(`[data-testid="file-offer"][data-offer-id="${id}"]`);
 
-test("each kind's card previews in the dialog and downloads under its own name", async ({
+test("each kind's card opens beside, closes on a second press and downloads under its own name", async ({
   page,
 }) => {
   const id = await conversation(page);
@@ -60,71 +73,88 @@ test("each kind's card previews in the dialog and downloads under its own name",
     .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBe(320);
 
-  // Lataa downloads the frozen bytes under the file's own name.
+  // The card's own icons sit in its corner under the pointer; its download
+  // keeps the frozen bytes under the file's own name.
+  const icons = card(page, csv).locator(".ah-offer-acts");
+  await page.mouse.move(0, 0);
+  await expect(icons).toHaveCSS("visibility", "hidden");
+  await card(page, csv).hover();
+  await expect(icons).toHaveCSS("visibility", "visible");
   const download = page.waitForEvent("download");
-  await card(page, csv).getByTestId("file-offer-download").click();
+  await card(page, csv).getByTestId("offer-download").click();
   const csvFile = await download;
   expect(csvFile.suggestedFilename()).toBe("ilmoittautuneet.csv");
   expect(readFileSync((await csvFile.path()) ?? "", "utf8")).toBe(
     "nimi,kaupunki,etappi\nA,Turku,1\nB,Nauvo,2\n",
   );
 
-  // Text kinds open in the dialog from their bytes, shown unchanged.
+  // The whole card opens the table beside the conversation, read once.
   let reads = 0;
   page.on("request", (request) => {
     if (request.url().includes(`/${csv}/download/`)) reads++;
   });
-  await card(page, csv).getByTestId("file-offer-preview").click();
-  const dialog = page.getByTestId("attachment-preview");
+  const open = card(page, csv).getByTestId("offer-open");
+  await open.click();
+  const panel = page.getByTestId("offer-panel");
+  await expect(panel).toHaveAttribute("data-offer-id", csv);
   await expect(
-    dialog.getByTestId("attachment-preview-table").getByRole("cell", {
+    panel.getByTestId("attachment-preview-table").getByRole("cell", {
       name: "Nauvo",
     }),
   ).toBeVisible();
+  await expect(card(page, csv)).toHaveAttribute("data-open", "true");
+  await expect(open).toHaveAttribute("aria-expanded", "true");
+  await expect(panel.getByRole("heading")).toBeFocused();
+  // The panel's top bar carries the card's icons.
+  await expect(panel.getByTestId("offer-download")).toBeVisible();
+  await expect(panel.getByTestId("offer-open-tab")).toBeVisible();
   const axe = await new AxeBuilder({ page })
-    .include('[data-testid="attachment-preview"]')
+    .include('[data-testid="offer-panel"]')
     .analyze();
   expect(axe.violations).toEqual([]);
-  // The conversation behind the dialog goes on: the dialog keeps the bytes
-  // it read. Reading again on every render emptied and refilled it, so its
-  // height kept changing.
+  // The conversation goes on beside it; the panel keeps the bytes it read.
   const [later] = await offer(page, id, "single");
   await expect(card(page, later)).toHaveAttribute("data-state", "ready");
-  await expect(dialog.getByTestId("attachment-preview-table")).toBeVisible();
+  await expect(panel.getByTestId("attachment-preview-table")).toBeVisible();
   expect(reads).toBe(1);
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await expect(card(page, csv).getByTestId("file-offer-preview")).toBeFocused();
+  await shoot(page, "kortti-taulukko");
+  // Pressing the same card again closes the panel.
+  await open.click();
+  await expect(panel).toHaveCount(0);
+  await expect(card(page, csv)).not.toHaveAttribute("data-open", "true");
 
-  await card(page, md).getByTestId("file-offer-preview").click();
-  await expect(dialog.getByTestId("attachment-document")).toBeVisible();
-  await page.keyboard.press("Escape");
-
-  // A zip is listed from its facts, never extracted.
-  await card(page, zip).getByTestId("file-offer-preview").click();
+  // Another kind takes the same place; Escape closes and returns focus.
+  await card(page, md).getByTestId("offer-open").click();
+  await expect(panel.getByTestId("attachment-document")).toBeVisible();
+  await card(page, zip).getByTestId("offer-open").click();
   await expect(
-    dialog
+    panel
       .getByTestId("attachment-preview-archive")
       .getByText("reitti/etappi-2.gpx"),
   ).toBeVisible();
+  await expect(card(page, md)).not.toHaveAttribute("data-open", "true");
   await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(card(page, zip).getByTestId("offer-open")).toBeFocused();
 
-  // A kind the browser cannot show offers only the download.
-  await expect(
-    card(page, parquet).getByTestId("file-offer-download"),
-  ).toBeVisible();
-  await expect(
-    card(page, parquet).getByTestId("file-offer-preview"),
-  ).toHaveCount(0);
+  // A kind the browser cannot show opens to its facts and its download.
+  await card(page, parquet).getByTestId("offer-open").click();
+  await expect(panel.getByTestId("attachment-size")).toBeVisible();
+  await expect(panel.getByTestId("offer-download")).toHaveAttribute(
+    "download",
+    "osallistujat.parquet",
+  );
+  await panel.getByTestId("close-view").click();
 
+  // File offers carry no globe until the host can publish them.
+  await expect(card(page, csv).getByTestId("view-public")).toHaveCount(0);
   const axeCards = await new AxeBuilder({ page })
     .include('[data-testid="file-offer"]')
     .analyze();
   expect(axeCards.violations).toEqual([]);
-  if (capture) {
-    await card(page, png).scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `${evidence}/tunniste-desktop-light.png` });
-  }
+  await card(page, png).scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await shoot(page, "kortit");
 });
 
 test("five large offered images transfer thumbnails only until opened", async ({
@@ -199,18 +229,21 @@ test("an offered file opened directly runs nothing on the app's origin", async (
   await direct.close();
 });
 
-test("a package card downloads one zip and opens the conversation's file panel", async ({
+test("a folder opens its files beside and in a tab of its own, and the conversation's list holds every offer", async ({
   page,
+  context,
 }) => {
   const id = await conversation(page);
   const [single] = await offer(page, id, "single");
   const [folder] = await offer(page, id, "folder");
-  const packageCard = card(page, folder);
-  await expect(packageCard).toHaveAttribute("data-kind", "package");
-  await expect(packageCard.getByTestId("file-offer-thumb")).toHaveCount(4);
+  const folderCard = card(page, folder);
+  await expect(folderCard).toHaveAttribute("data-kind", "package");
+  await expect(folderCard.getByTestId("file-offer-thumb")).toHaveCount(4);
 
+  // The folder's download is one zip of the frozen files.
+  await folderCard.hover();
   const download = page.waitForEvent("download");
-  await packageCard.getByTestId("file-offer-zip").click();
+  await folderCard.getByTestId("offer-download").click();
   const zip = await download;
   expect(zip.suggestedFilename()).toBe("paketti.zip");
   // A stored zip names its entries in plain bytes; the hidden file is not one.
@@ -220,125 +253,95 @@ test("a package card downloads one zip and opens the conversation's file panel",
     expect(bytes.includes(Buffer.from(name))).toBe(true);
   expect(bytes.includes(Buffer.from(".salainen"))).toBe(false);
 
-  // The header counts the conversation's files and opens the panel.
-  const toggle = page.getByTestId("toggle-file-shelf");
-  await expect(toggle).toContainText("6");
-  await packageCard.getByTestId("file-offer-show-files").click();
-  const shelf = page.getByTestId("file-shelf");
-  await expect(shelf).toBeVisible();
-  await expect(shelf.getByTestId("file-shelf-offer")).toHaveCount(2);
-  await expect(shelf.getByTestId("file-shelf-row")).toHaveCount(6);
-  // No file is chosen for the person: the panel is the list.
-  await expect(shelf.getByTestId("file-shelf-detail")).toHaveCount(0);
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  // The card opens the folder's files; a file opens in the same panel and
+  // the way back returns to the list.
+  await folderCard.getByTestId("offer-open").click();
+  const panel = page.getByTestId("offer-panel");
+  const rows = panel.getByTestId("offer-folder-row");
+  await expect(rows).toHaveCount(5);
+  await shoot(page, "kortti-kansio");
+  await panel
+    .locator('[data-testid="offer-folder-row"][data-path="etappi-1/a.png"]')
+    .click();
+  await expect(panel.getByRole("heading")).toHaveText("a.png");
+  await expect(panel.locator("img.ah-attachment-preview-image")).toBeVisible();
+  // Its own tab is the app's page for that file, with no opener.
+  const opened = context.waitForEvent("page");
+  await panel.getByTestId("offer-open-tab").click();
+  const tab = await opened;
+  await expect(tab).toHaveURL(
+    /\/offer\?id=f[a-z2-7]{26}&path=etappi-1%2Fa\.png$/,
+  );
+  await expect(tab.getByTestId("offer-open-page")).toBeVisible();
+  await expect(tab.locator("img.ah-attachment-preview-image")).toBeVisible();
+  await expect(tab).toHaveTitle("a.png");
+  expect(await tab.evaluate(() => window.opener)).toBeNull();
+  // Up from the file, the tab lists the folder like the panel.
+  await tab.getByTestId("offer-panel-back").click();
+  await expect(tab.getByTestId("offer-folder-row")).toHaveCount(5);
+  await tab.close();
+  await panel.getByTestId("offer-panel-back").click();
+  await expect(rows).toHaveCount(5);
+  await panel.getByTestId("close-view").click();
 
-  // A row's own buttons take the size's place under the pointer.
-  const singleRow = shelf
-    .locator(`[data-testid="file-shelf-offer"][data-offer-id="${single}"]`)
-    .locator("li");
-  const actions = singleRow.locator(".ah-file-shelf-actions");
-  await page.mouse.move(0, 0);
-  await expect(actions).toHaveCSS("opacity", "0");
+  // The chip beside the workers counts the conversation's offers and opens
+  // their list; the top bar has no file button of its own any more.
+  await expect(page.getByTestId("toggle-file-shelf")).toHaveCount(0);
+  const chip = page.getByTestId("assets-chip");
+  await expect(chip).toHaveAttribute("data-files", "2");
+  await chip.click();
+  const list = page.getByTestId("assets-list");
+  await expect(list.getByTestId("asset-entry")).toHaveCount(2);
+  // A row opens its item beside, the list stays open, the same row closes.
+  const singleRow = list.locator(
+    `[data-testid="asset-entry"][data-id="${single}"]`,
+  );
+  await singleRow.getByTestId("asset-open").click();
+  await expect(panel).toHaveAttribute("data-offer-id", single);
+  await expect(list).toBeVisible();
+  await expect(singleRow.getByTestId("asset-open")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await expect(card(page, single)).toHaveAttribute("data-open", "true");
+  // The row's icons cover its time under the pointer.
   await singleRow.hover();
-  await expect(actions).toHaveCSS("opacity", "1");
-  await expect(
-    singleRow.getByRole("button", { name: "Näytä isona: kaavio.png" }),
-  ).toBeVisible();
-  await expect(
-    singleRow.getByRole("link", { name: "Lataa: kaavio.png" }),
-  ).toBeVisible();
-
-  // One search covers every offer of the conversation; the row's download
-  // keeps the file's own name.
-  await shelf.getByTestId("file-shelf-search").fill("ä");
-  await expect(shelf.getByTestId("file-shelf-row")).toHaveCount(1);
-  await shelf.getByTestId("file-shelf-row").hover();
-  const named = page.waitForEvent("download");
-  await shelf.getByTestId("file-shelf-download").click();
-  expect((await named).suggestedFilename()).toBe("LUE MINUT ä.txt");
-  await shelf.getByTestId("file-shelf-search").fill("");
-
-  // Pressing a row opens its preview; closing it leaves no selection behind.
-  await singleRow.getByTestId("file-shelf-row").click();
-  const dialog = page.getByTestId("attachment-preview");
-  await expect(dialog.locator("img")).toBeVisible();
-  if (capture)
-    await page.screenshot({
-      path: `${shelfEvidence}/leijuva-desktop-light-esikatselu.png`,
-    });
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await expect(singleRow.getByTestId("file-shelf-row")).toBeFocused();
-  await page.mouse.move(0, 0);
-  await expect(singleRow).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(singleRow.getByTestId("file-shelf-row")).toHaveCSS(
-    "background-color",
-    "rgba(0, 0, 0, 0)",
+  await expect(singleRow.locator(".ah-asset-acts")).toHaveCSS(
+    "visibility",
+    "visible",
   );
-
-  // From the keyboard, Tab goes from the row to its own buttons, which
-  // show while the focus is on the row.
-  const folderRow = shelf
-    .locator(`[data-testid="file-shelf-offer"][data-offer-id="${folder}"]`)
-    .locator("li")
-    .first();
-  await folderRow.getByTestId("file-shelf-row").focus();
-  await page.keyboard.press("Tab");
-  await expect(folderRow.getByTestId("file-shelf-preview")).toBeFocused();
-  await expect(folderRow.locator(".ah-file-shelf-actions")).toHaveCSS(
-    "opacity",
-    "1",
+  await expect(singleRow.getByTestId("offer-download")).toHaveAttribute(
+    "download",
+    "kaavio.png",
   );
-  await page.keyboard.press("Enter");
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  // The dialog hands focus back after it unmounts; Tab starts from there.
-  await expect(folderRow.getByTestId("file-shelf-preview")).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(folderRow.getByTestId("file-shelf-download")).toBeFocused();
-
+  await shoot(page, "lista");
+  await singleRow.getByTestId("asset-open").click();
+  await expect(panel).toHaveCount(0);
+  // Näytä keskustelussa brings the card into view and closes the list.
+  await singleRow.hover();
+  await singleRow.getByTestId("asset-locate").click();
+  await expect(list).toHaveCount(0);
+  await expect(card(page, single)).toBeInViewport();
   const axe = await new AxeBuilder({ page })
-    .include('[data-testid="file-shelf"]')
+    .include('[data-testid="background-work"]')
     .analyze();
   expect(axe.violations).toEqual([]);
-  if (capture) {
-    // At rest: no keyboard focus left on a row's buttons.
-    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
-    await singleRow.hover();
-    await page.screenshot({
-      path: `${shelfEvidence}/leijuva-desktop-light-osoitin.png`,
-    });
-    await page.mouse.move(0, 0);
-    await page.screenshot({
-      path: `${shelfEvidence}/leijuva-desktop-light.png`,
-    });
-    await page.emulateMedia({ colorScheme: "dark" });
-    // Let the theme transition settle before the capture.
-    await page.waitForTimeout(500);
-    await singleRow.hover();
-    await page.screenshot({
-      path: `${shelfEvidence}/leijuva-desktop-dark.png`,
-    });
-    await page.emulateMedia({ colorScheme: "light" });
-  }
 
-  // Escape closes the panel and returns focus to where it was opened.
-  await shelf.getByTestId("file-shelf-search").focus();
+  // From the keyboard, Tab goes from the card to its own icons, which show
+  // while the focus is in the card.
+  await folderCard.getByTestId("offer-open").focus();
+  await page.keyboard.press("Tab");
+  await expect(folderCard.getByTestId("offer-open-tab")).toBeFocused();
+  await expect(folderCard.locator(".ah-offer-acts")).toHaveCSS(
+    "visibility",
+    "visible",
+  );
+  // Escape closes the list and returns focus to its chip.
+  await chip.click();
+  await list.getByTestId("asset-open").first().focus();
   await page.keyboard.press("Escape");
-  await expect(shelf).toHaveCount(0);
-  await expect(packageCard.getByTestId("file-offer-show-files")).toBeFocused();
-
-  // A two-digit count stays inside the toggle's surface.
-  await offer(page, id, "folder");
-  await expect(toggle).toContainText("11");
-  const button = await toggle.boundingBox();
-  const count = await toggle.locator("span").boundingBox();
-  expect(count && button).toBeTruthy();
-  if (count && button) {
-    expect(count.x).toBeGreaterThanOrEqual(button.x);
-    expect(count.x + count.width).toBeLessThanOrEqual(button.x + button.width);
-  }
+  await expect(list).toHaveCount(0);
+  await expect(chip).toBeFocused();
 });
 
 test("a removed offer stays as an inert card", async ({ page }) => {
@@ -347,21 +350,20 @@ test("a removed offer stays as an inert card", async ({ page }) => {
   await expect(card(page, removed)).toHaveAttribute("data-state", "removed");
   await expect(card(page, removed).getByRole("link")).toHaveCount(0);
   await expect(card(page, removed).getByRole("button")).toHaveCount(0);
-  await expect(page.getByTestId("toggle-file-shelf")).toHaveCount(0);
 
-  // An offer removed while the page is open turns inert when the file panel
-  // reads the conversation's offers again.
+  // An offer removed while the page is open turns inert when the
+  // conversation's list reads its offers again.
   const [later] = await offer(page, id, "single");
   await expect(card(page, later)).toHaveAttribute("data-state", "ready");
   const res = await page.request.get(`/fixture/files-remove?id=${later}`);
   expect(res.status()).toBe(204);
-  await page.getByTestId("toggle-file-shelf").click();
+  await page.getByTestId("assets-chip").click();
   await expect(card(page, later)).toHaveAttribute("data-state", "removed");
   await expect(card(page, later).getByRole("link")).toHaveCount(0);
 });
 
 test.describe("phone", () => {
-  test("the card fits and the file panel covers the conversation", async ({
+  test("the card fits, and what it opens covers the conversation", async ({
     page,
   }) => {
     // The conversation starts from the desktop navigation, then the
@@ -371,72 +373,39 @@ test.describe("phone", () => {
     const [folder] = await offer(page, id, "folder");
     const [png] = await offer(page, id, "single");
     await expect(card(page, png)).toHaveAttribute("data-state", "ready");
+    await expect(card(page, folder)).toHaveAttribute("data-state", "ready");
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    if (capture)
-      await page.screenshot({ path: `${evidence}/kortti-phone-light.png` });
-    await openHeaderPanel(page, "toggle-file-shelf");
-    const shelf = page.getByTestId("file-shelf");
-    await expect(shelf).toBeVisible();
-    const box = await shelf.boundingBox();
+    await page.mouse.move(0, 0);
+    await shoot(page, "kortit");
+    await card(page, png).getByTestId("offer-open").click();
+    const panel = page.getByTestId("offer-panel");
+    await expect(panel).toBeVisible();
+    const box = await panel.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(388);
     await expect(page.getByTestId("message-input")).not.toBeVisible();
-    // Without hover the row's own buttons are always there, and the size
-    // sits under the name.
-    const row = shelf
-      .locator(`[data-testid="file-shelf-offer"][data-offer-id="${folder}"]`)
-      .locator("li")
-      .first();
-    await expect(row.locator(".ah-file-shelf-actions")).toHaveCSS(
-      "opacity",
-      "1",
-    );
-    const name = await row.locator(".ah-file-shelf-name").boundingBox();
-    const size = await row.locator(".ah-file-shelf-size").boundingBox();
-    expect(name && size && size.y > name.y).toBe(true);
-    const rowOverflow = await shelf.evaluate(
-      (el) => el.scrollWidth - el.clientWidth,
-    );
-    expect(rowOverflow).toBeLessThanOrEqual(0);
-    if (capture) {
-      await page.screenshot({
-        path: `${shelfEvidence}/leijuva-phone-light.png`,
-      });
-      await page.emulateMedia({ colorScheme: "dark" });
-      await page.waitForTimeout(500);
-      await page.screenshot({
-        path: `${shelfEvidence}/leijuva-phone-dark.png`,
-      });
-      await page.emulateMedia({ colorScheme: "light" });
-    }
-    await row.getByTestId("file-shelf-row").click();
-    await expect(page.getByTestId("attachment-preview")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId("attachment-preview")).toHaveCount(0);
-    await page.getByTestId("close-file-shelf").click();
-    await expect(shelf).toHaveCount(0);
-
-    // On its side a phone is wider than the phone layout and keeps the
-    // navigation; the split beside it is too narrow to share, so the panel
-    // still covers the conversation.
-    await page.setViewportSize({ width: 844, height: 390 });
-    await page.getByTestId("toggle-file-shelf").click();
-    await expect(shelf).toBeVisible();
-    await expect(page.getByTestId("message-input")).not.toBeVisible();
-    await expect(page.getByTestId("resize-view")).not.toBeVisible();
-    await page.getByTestId("close-file-shelf").click();
+    await shoot(page, "kortti-kuva");
+    await panel.getByTestId("close-view").click();
     await expect(page.getByTestId("message-input")).toBeVisible();
 
-    // Opened from an older offer's card, the panel scrolls to that offer.
-    await offer(page, id, "folder");
-    await expect(page.getByTestId("toggle-file-shelf")).toContainText("11");
-    await card(page, folder).getByTestId("file-offer-show-files").click();
-    await expect(
-      shelf.locator(
-        `[data-testid="file-shelf-offer"][data-offer-id="${folder}"] h3`,
-      ),
-    ).toBeInViewport();
+    // The list opens above the field; opening a row covers the
+    // conversation, so the list closes behind it.
+    await page.getByTestId("assets-chip").click();
+    const list = page.getByTestId("assets-list");
+    await expect(list.getByTestId("asset-entry")).toHaveCount(2);
+    const listOverflow = await list.evaluate(
+      (el) => el.scrollWidth - el.clientWidth,
+    );
+    expect(listOverflow).toBeLessThanOrEqual(0);
+    await shoot(page, "lista");
+    await list
+      .locator(`[data-testid="asset-entry"][data-id="${folder}"]`)
+      .getByTestId("asset-open")
+      .click();
+    await expect(panel.getByTestId("offer-folder-row")).toHaveCount(5);
+    await expect(list).toHaveCount(0);
+    await panel.getByTestId("close-view").click();
   });
 });

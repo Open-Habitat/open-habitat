@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Page } from "./worker-host";
@@ -60,7 +61,7 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
       });
   });
 
-  const open = card.getByTestId("view-open");
+  const open = card.getByTestId("offer-open");
   await open.click();
   const panel = page.getByTestId("view-panel");
   await expect(panel).toBeVisible();
@@ -131,6 +132,48 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   await expect(open).toBeFocused();
 });
 
+test("a view downloads as one zip and is listed with the conversation's files", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  const viewId = await offer(page, id);
+  const card = page.getByTestId("view-offer");
+  await expect(card).toHaveAttribute("data-view-id", viewId);
+
+  // The zip holds the export's files, read through the app's own route.
+  const res = await page.request.get(`/api/v1/views/${viewId}/zip`);
+  expect(res.status(), await res.text()).toBe(200);
+  await card.hover();
+  const download = page.waitForEvent("download");
+  await card.getByTestId("offer-download").click();
+  const zip = await download;
+  expect(zip.suggestedFilename()).toMatch(/\.zip$/);
+  const bytes = readFileSync((await zip.path()) ?? "");
+  expect(bytes.subarray(0, 4).toString("latin1")).toBe("PK\x03\x04");
+  expect(bytes.includes(Buffer.from("index.html"))).toBe(true);
+  expect(res.headers()["content-disposition"]).toBe("attachment");
+  expect(res.headers()["content-security-policy"]).toMatch(/^sandbox;/);
+  expect(
+    (
+      await page.request.get("/api/v1/views/vzzzzzzzzzzzzzzzzzzzzzzzzzz/zip")
+    ).status(),
+  ).toBe(404);
+
+  // The conversation's chip lists the view; its row opens it beside and
+  // closes it again.
+  const chip = page.getByTestId("assets-chip");
+  await expect(chip).toHaveAttribute("data-views", "1");
+  await chip.click();
+  const row = page
+    .getByTestId("assets-list")
+    .locator(`[data-testid="asset-entry"][data-id="${viewId}"]`);
+  await row.getByTestId("asset-open").click();
+  await expect(page.getByTestId("view-panel")).toBeVisible();
+  await expect(card).toHaveAttribute("data-open", "true");
+  await row.getByTestId("asset-open").click();
+  await expect(page.getByTestId("view-panel")).toHaveCount(0);
+});
+
 test("a view cannot navigate its frame to a foreign origin", async ({
   page,
 }) => {
@@ -142,7 +185,7 @@ test("a view cannot navigate its frame to a foreign origin", async ({
     foreign.push(route.request().url());
     return route.fulfill({ contentType: "text/html", body: "<p>foreign</p>" });
   });
-  await page.getByTestId("view-offer").getByTestId("view-open").click();
+  await page.getByTestId("view-offer").getByTestId("offer-open").click();
   const body = page.frameLocator('[data-testid="view-frame"]').locator("body");
   await expect(body).toHaveAttribute("data-script", "yes");
   await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
@@ -177,7 +220,8 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   await expect(card).toBeVisible();
 
   const opened = context.waitForEvent("page");
-  await card.getByTestId("view-open-tab").click();
+  await card.hover();
+  await card.getByTestId("offer-open-tab").click();
   const tab = await opened;
   // The tab's top-level page stays the app's: a sandboxed view as the
   // top-level document loses its view cookie in browsers that block

@@ -52,6 +52,7 @@ async function offer(page: Page, target: string): Promise<string> {
 }
 
 async function copied(page: Page, card: Locator): Promise<string> {
+  await card.hover();
   await card.getByTestId("view-copy-link").click();
   return page.evaluate(() => navigator.clipboard.readText());
 }
@@ -69,6 +70,7 @@ test("anyone with the link opens the view without a session while it is public",
   );
   // One press makes it public; only then is there a link to copy.
   await expect(card.getByTestId("view-copy-link")).toHaveCount(0);
+  await card.hover();
   await card.getByTestId("view-public").click();
   await expect(card).toHaveAttribute("data-public", "true");
   const entry = await copied(page, card);
@@ -76,6 +78,7 @@ test("anyone with the link opens the view without a session while it is public",
     new RegExp(`^${app.replace(/[.]/g, "\\.")}/n/[A-Za-z0-9_-]{43}$`),
   );
   // The date opens the lengths; a choice applies at once.
+  await card.hover();
   await card.getByTestId("view-public-until").click();
   await expect(
     page.getByRole("menuitemradio", { checked: true }),
@@ -92,6 +95,7 @@ test("anyone with the link opens the view without a session while it is public",
       { labOrigin: app },
     );
   await page.getByTestId("view-duration-7").click();
+  await card.hover();
   await card.getByTestId("view-public-until").click();
   await expect(page.getByTestId("view-duration-7")).toHaveAttribute(
     "aria-checked",
@@ -102,12 +106,14 @@ test("anyone with the link opens the view without a session while it is public",
   // today. Show that exact current date rather than an empty selection.
   const now = Date.now();
   await page.clock.setFixedTime(now + 2 * 24 * 60 * 60 * 1000);
+  await card.hover();
   await card.getByTestId("view-public-until").click();
   await expect(
     page.getByRole("menuitemradio", { checked: true }),
   ).toHaveAttribute("data-testid", "view-duration-current");
   await page.getByTestId("view-duration-current").click();
   await page.clock.setFixedTime(now);
+  await card.hover();
   await card.getByTestId("view-public-until").click();
   await expect(
     page.getByRole("menuitemradio", { checked: true }),
@@ -158,6 +164,7 @@ test("anyone with the link opens the view without a session while it is public",
   // Private again ends anonymous reads, also of the content address; public
   // again revives the same link. A newer export of the view is a view of its
   // own, never moved in.
+  await card.hover();
   await card.getByTestId("view-public").click();
   await expect(card).toHaveAttribute("data-public", "false");
   await expect(card.getByTestId("view-copy-link")).toHaveCount(0);
@@ -167,6 +174,7 @@ test("anyone with the link opens the view without a session while it is public",
     `[data-testid="view-offer"][data-view-id="${second}"]`,
   );
   await expect(card2).toHaveAttribute("data-public", "false");
+  await card.hover();
   await card.getByTestId("view-public").click();
   await expect(card).toHaveAttribute("data-public", "true");
   expect(await copied(page, card)).toBe(entry);
@@ -208,7 +216,8 @@ test("the stable address frames the view for its owner and redirects while publi
   );
   // The own tab reserves the address and opens at it.
   const opened = context.waitForEvent("page");
-  await card.getByTestId("view-open-tab").click();
+  await card.hover();
+  await card.getByTestId("offer-open-tab").click();
   const tab = await opened;
   await expect(tab).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
   const entry = tab.url();
@@ -244,10 +253,12 @@ test("the stable address frames the view for its owner and redirects while publi
 
   // Published, the same address takes anyone to the content host, and the
   // card's own tab opens it too.
+  await card.hover();
   await card.getByTestId("view-public").click();
   await expect(card).toHaveAttribute("data-public", "true");
   const again = context.waitForEvent("page");
-  await card.getByTestId("view-open-tab").click();
+  await card.hover();
+  await card.getByTestId("offer-open-tab").click();
   const publicTab = await again;
   await expect(publicTab).toHaveURL(/^https:\/\/oh-view-/);
   await publicTab.close();
@@ -260,6 +271,7 @@ test("the stable address frames the view for its owner and redirects while publi
 
   // Private again, the address is the sign-in page once more; signing in
   // as the owner returns to the address and frames the view.
+  await card.hover();
   await card.getByTestId("view-public").click();
   await expect(card).toHaveAttribute("data-public", "false");
   // Another person signing in learns only that it is not available.
@@ -302,7 +314,8 @@ test("the stable address frames the view for its owner and redirects while publi
   await page.bringToFront();
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   const fresh = context.waitForEvent("page");
-  await card.getByTestId("view-open-tab").click();
+  await card.hover();
+  await card.getByTestId("offer-open-tab").click();
   const next = await fresh;
   await expect(next).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
   expect(next.url()).not.toBe(entry);

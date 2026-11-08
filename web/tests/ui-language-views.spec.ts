@@ -43,9 +43,12 @@ test("@ui-language-conversation a view offer and its panel read in English", asy
     "aria-label",
     /^View offered by the agent: /,
   );
-  await expect(card.getByTestId("view-open")).toHaveText("Open");
+  await expect(card.getByTestId("offer-open")).toHaveAttribute(
+    "aria-label",
+    /^Open beside: /,
+  );
   if (capture) await page.screenshot({ path: `${evidence}/view-offer.png` });
-  await card.getByTestId("view-open").click();
+  await card.getByTestId("offer-open").click();
   const panel = page.getByTestId("view-panel");
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("The content is kept apart");

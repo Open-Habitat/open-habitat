@@ -43,11 +43,7 @@ export async function dropFiles(
   );
 }
 
-type HeaderPanel =
-  | "toggle-editor"
-  | "toggle-terminal"
-  | "toggle-file-shelf"
-  | "guide-toggle";
+type HeaderPanel = "toggle-editor" | "toggle-terminal" | "guide-toggle";
 
 /** Opens a conversation header panel. On a phone the panels leave the top bar
  * for its ⋯ menu (Alarivi, Jari 6.11.2026), so there the menu's row opens it;

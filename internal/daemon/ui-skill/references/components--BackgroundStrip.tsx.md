@@ -244,7 +244,11 @@ export function BackgroundStrip({
   agentIdle,
   piNotRunning,
   ask,
+  assets,
 }: {
+  /** The conversation's views and files chip, beside the workers; the strip
+   * stays for it when nothing runs in the background. */
+  assets?: ReactNode;
   agentIdle?: boolean;
   /** No Pi runs yet for this conversation (stopped, starting or failed). */
   piNotRunning?: boolean;
@@ -423,7 +427,26 @@ export function BackgroundStrip({
     if (panel === "spin" && facts.spin.attention)
       setEndedOpen((o) => (o.spin ? o : { ...o, spin: true }));
   }, [panel, facts.spin.attention]);
-  if (!view || !kinds.length) return null;
+  if (!view || !kinds.length)
+    return assets ? (
+      <section
+        data-testid="background-work"
+        className="ah-bg-strip"
+        aria-label={txt.background}
+      >
+        <div className="ah-bg-wrap">
+          {/* biome-ignore lint/a11y/useSemanticElements: A labelled group of disclosure pills, not a form fieldset. */}
+          <div
+            data-testid="background-badges"
+            className="ah-bg-badges"
+            role="group"
+            aria-label={txt.background}
+          >
+            {assets}
+          </div>
+        </div>
+      </section>
+    ) : null;
   const reason = inventory?.unavailable_reason;
   const unavailable =
     view.failed || !reason || reason === "error"
@@ -1170,6 +1193,7 @@ export function BackgroundStrip({
               </ControlButton>
             );
           })}
+          {assets}
           {kinds.includes("spin") && free.length
             ? askButton(
                 free.map((i) => i.run),
