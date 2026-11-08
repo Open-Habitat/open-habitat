@@ -261,6 +261,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 			ID        string          `json:"id"`
 			Name      string          `json:"name"`
 			Arguments json.RawMessage `json:"arguments"`
+			Data      base64Size      `json:"data"`
 		}
 		if json.Unmarshal(raw, &b) != nil {
 			out.Blocks = append(out.Blocks, historyBlock{Type: "unknown"})
@@ -293,6 +294,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 			if len(b.MimeType) <= 100 {
 				block.MimeType = b.MimeType
 			}
+			block.Bytes = int64(b.Data)
 		case "toolCall":
 			block.Type = "toolCall"
 			block.Readable = len(b.Arguments) > 0 && json.Valid(b.Arguments)
@@ -309,6 +311,35 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(out.full, 16384), Readable: len(out.full) > 16384}}
 	}
 	return
+}
+
+// base64Size is the decoded size of a base64 string, read from its length
+// without copying or decoding it: an image record carries megabytes of it,
+// and the browser needs only how much there is (a message of twenty
+// pictures shows collapsed). Anything that is not a plain base64 string
+// counts as nothing.
+type base64Size int64
+
+func (n *base64Size) UnmarshalJSON(b []byte) error {
+	*n = 0
+	if len(b) < 2 || b[0] != '"' || b[len(b)-1] != '"' {
+		return nil
+	}
+	s := b[1 : len(b)-1]
+	if len(s)%4 != 0 {
+		return nil
+	}
+	pad := 0
+	for pad < 2 && len(s) > pad && s[len(s)-1-pad] == '=' {
+		pad++
+	}
+	for _, c := range s[:len(s)-pad] {
+		if !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '+' || c == '/') {
+			return nil
+		}
+	}
+	*n = base64Size(len(s)/4*3 - pad)
+	return nil
 }
 
 // piContextTokens counts an assistant reply's context as Pi's

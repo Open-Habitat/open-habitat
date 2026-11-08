@@ -106,14 +106,16 @@ const fi = {
     "Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy.",
   recheck: "Tarkista keskustelun tila",
   // A send whose outcome was lost, e.g. across a server restart: one warning
-  // with the check as its action. It goes away once history shows the message.
+  // with the check as its action. It goes away once history shows the message,
+  // or once it proves undelivered and is sent again (once) or the
+  // conversation has moved on.
   sendUncertain: "Ei tiedossa, saiko agentti viestin",
   sendUncertainDetail:
-    "Viestiä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
+    "Teksti on kirjoituskentässä. Jos varmistuu, ettei agentti saanut viestiä, se lähetetään itsestään kerran uudelleen; muuten sitä ei lähetetä. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
   sendUncertainFailed:
-    "Yhteys katkesi lähetettäessä. Tila tarkistetaan, kun yhteys palaa; viestiä ei lähetetä uudelleen automaattisesti.",
+    "Yhteys katkesi lähetettäessä. Tila tarkistetaan, kun yhteys palaa; viesti lähetetään uudelleen vain, jos varmistuu, ettei agentti saanut sitä.",
   sendStillUnknown:
-    "Tarkistettu: viesti ei näy keskustelussa. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
+    "Tarkistettu: viesti ei näy keskustelussa, mutta ei myöskään varmistunut, ettei agentti saanut sitä. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
   rechecking: "Tarkistetaan",
   historyUnavailable: "Historiaa ei saada",
   historyUnavailableDetail:
@@ -226,11 +228,11 @@ export const browserConversationText = catalog(fi, {
   recheck: "Check the conversation's status",
   sendUncertain: "It is not known whether the agent got the message",
   sendUncertainDetail:
-    "The message is not resent automatically, and its text is in the field. This notice goes away once the message shows in the conversation.",
+    "Its text is in the field. If it turns out the agent did not get the message, it is sent again once by itself; otherwise it is not resent. This notice goes away once the message shows in the conversation.",
   sendUncertainFailed:
-    "The connection broke while sending. The status is checked when the connection is back; the message is not resent automatically.",
+    "The connection broke while sending. The status is checked when the connection is back; the message is sent again only if it turns out the agent did not get it.",
   sendStillUnknown:
-    "Checked: the message does not show in the conversation. It is not resent automatically, and its text is in the field.",
+    "Checked: the message does not show in the conversation, but it could not be confirmed that the agent did not get it. It is not resent automatically, and its text is in the field.",
   rechecking: "Checking",
   historyUnavailable: "The history is not available",
   historyUnavailableDetail:

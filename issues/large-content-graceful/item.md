@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: large-content-proto
 lane_seq: 2
 blocked_by: ['@session-over-512mib-stuck']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Implement graceful large content: exact message at the limit, pre-send size check, history from the tail
@@ -34,5 +35,5 @@ Builds on `session-over-512mib-stuck` (tail reads in the daemon).
 
 ## Acceptance Criteria
 
-- [ ] Each of the prototype's four moments works as in direction C (+ pre-send check), fi and en, 1440 and 390.
-- [ ] Explain-mode cards for the new controls; touched specs green; KOKEILTAVAA line.
+- [x] Each of the prototype's four moments works as in direction C (+ pre-send check), fi and en, 1440 and 390.
+- [x] Explain-mode cards for the new controls; touched specs green; KOKEILTAVAA line.

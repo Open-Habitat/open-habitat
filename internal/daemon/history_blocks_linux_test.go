@@ -134,3 +134,21 @@ func TestAssistantContextTokensFollowPi(t *testing.T) {
 		t.Fatalf("user message carries usage: %+v", user)
 	}
 }
+
+// An image's size reaches the browser without its payload, so a message of
+// many large pictures can show collapsed; a malformed payload counts as none.
+func TestNativeImageBlockSize(t *testing.T) {
+	e := nativeEntry{ID: "entry_1", Type: "message", Message: json.RawMessage(`{"role":"user","content":[{"type":"image","mimeType":"image/png","data":"QUJDRA=="},{"type":"image","mimeType":"image/png","data":"QUJD"},{"type":"image","mimeType":"image/png","data":"QU$D"},{"type":"image","mimeType":"image/png","data":7}]}`)}
+	result := nativeBlocks(e)
+	got := []int64{}
+	for _, b := range result.Blocks {
+		got = append(got, b.Bytes)
+	}
+	if len(got) != 4 || got[0] != 4 || got[1] != 3 || got[2] != 0 || got[3] != 0 {
+		t.Fatalf("image sizes %v", got)
+	}
+	wire, _ := json.Marshal(nativeEntryPayload(result))
+	if strings.Contains(string(wire), "QUJD") || !strings.Contains(string(wire), `"bytes":4`) {
+		t.Fatalf("image payload or size on the wire: %s", wire)
+	}
+}

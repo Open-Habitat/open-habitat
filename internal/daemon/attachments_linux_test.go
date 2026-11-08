@@ -95,8 +95,8 @@ func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	if request(h, "GET", thumbPath, nil).Code != 404 {
 		t.Fatal("thumbnail followed symlink")
 	}
-	if _, _, err := promptAttachments(home, AttachmentsPath+"/"+reply.ID, true); err == nil {
-		t.Fatal("symlink passed to Pi")
+	if _, _, err := promptAttachments(home, AttachmentsPath+"/"+reply.ID, true); err == nil || promptAttachmentRefusal(err) != "invalid_attachments" {
+		t.Fatalf("symlink passed to Pi: %v", err)
 	}
 }
 
@@ -122,8 +122,8 @@ func TestPromptAttachmentCountLimit(t *testing.T) {
 		if err != nil || strings.Count(got, "Attachment path: ") != 30 {
 			t.Fatalf("30 distinct attachments: %v", err)
 		}
-		if _, _, err := promptAttachments(home, strings.Join(refs, "\n"), images); err == nil {
-			t.Fatal("31 distinct attachments accepted")
+		if _, _, err := promptAttachments(home, strings.Join(refs, "\n"), images); err == nil || promptAttachmentRefusal(err) != "attachments_too_many" {
+			t.Fatalf("31 distinct attachments: %v", err)
 		}
 	}
 }
@@ -222,8 +222,8 @@ func TestPromptAttachmentCombinedSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, includeImages := range []bool{false, true} {
-		if _, _, err := promptAttachments(home, message, includeImages); err == nil {
-			t.Fatal("101 MiB accepted")
+		if _, _, err := promptAttachments(home, message, includeImages); err == nil || promptAttachmentRefusal(err) != "attachments_too_large" {
+			t.Fatalf("101 MiB: %v", err)
 		}
 	}
 }

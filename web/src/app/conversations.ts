@@ -16,6 +16,7 @@ import { LazyAjv } from "./lazyAjv";
 import {
   jsonWrite,
   type MutationCommand,
+  messageContentRefused,
   mutationFetch,
   WriteRefused,
   writeOutcome,
@@ -208,7 +209,7 @@ async function json(response: Response): Promise<unknown> {
     throw new NotAdmitted(await refusalCode(response));
   if (response.status === 400) {
     const code = await refusalCode(response);
-    if (code === "invalid_attachments") throw new NotAdmitted(code);
+    if (messageContentRefused(code)) throw new NotAdmitted(code);
     throw new Error("unavailable");
   }
   if (

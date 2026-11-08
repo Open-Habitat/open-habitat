@@ -3,7 +3,11 @@ import { catalog } from "../i18n";
 // Uploading and reading attachments (app/attachments.ts): the errors the
 // composer and the attachment preview show, and an unnamed file's name.
 const fi = {
-  size: "Valitse 1 tavun – 20 MiB:n tiedosto.",
+  empty: (name: string) => `${name} on tyhjä, joten sitä ei liitetty.`,
+  overLimit: (name: string, size: string) =>
+    `${name} on ${size}, ja yksi liite voi olla enintään 20 Mt. Sitä ei liitetty.`,
+  quota:
+    "Liitettä ei tallennettu: liitteillesi varattu 1 Gt on täynnä. Pyydä agenttia poistamaan vanhoja liitteitä, joita et enää tarvitse.",
   refused: "Liitettä ei tallennettu. Tarkista koko ja vapaa tila.",
   uncertain:
     "Liitteen tallennusta ei voitu vahvistaa. Älä lähetä viestiä ennen tarkistusta.",
@@ -15,7 +19,11 @@ const fi = {
 };
 
 export const attachmentsText = catalog(fi, {
-  size: "Choose a file between 1 byte and 20 MiB.",
+  empty: (name) => `${name} is empty, so it was not attached.`,
+  overLimit: (name, size) =>
+    `${name} is ${size}, and one attachment can be at most 20 MB. It was not attached.`,
+  quota:
+    "The attachment was not saved: the 1 GB set aside for your attachments is full. Ask the agent to remove old attachments you no longer need.",
   refused: "The attachment was not saved. Check its size and the free space.",
   uncertain:
     "Saving the attachment could not be confirmed. Do not send the message before you have checked.",

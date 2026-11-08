@@ -1,10 +1,13 @@
 import schema from "../../../contracts/v1/attachments.schema.json";
 import { liveText } from "../i18n";
 import { attachmentsText } from "../text/attachments";
+import { largeContentText } from "../text/largeContent";
+import { attachmentBytesLimit, rememberAttachmentSize } from "./largeContent";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 const txt = liveText(attachmentsText);
+const sizes = liveText(largeContentText);
 
 type UploadedAttachment = {
   schema_version: 1;
@@ -17,7 +20,7 @@ const ajv = new LazyAjv({ strict: false, addFormats: true });
 const valid = ajv.compile<UploadedAttachment>(schema);
 
 /** The host's upload cap, which also bounds what a preview reads. */
-const attachmentLimit = 20 * 1024 * 1024;
+const attachmentLimit = attachmentBytesLimit;
 
 export const attachmentURL =
   /^\/api\/v1\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -27,7 +30,11 @@ export async function uploadAttachment(
   csrf: string,
   signal: AbortSignal,
 ) {
-  if (!file.size || file.size > attachmentLimit) throw new Error(txt.size);
+  if (!file.size) throw new Error(txt.empty(file.name || txt.unnamed));
+  if (file.size > attachmentLimit)
+    throw new Error(
+      txt.overLimit(file.name || txt.unnamed, sizes.size(file.size)),
+    );
   const response = await mutationFetch(
     "attachment.upload",
     "/api/v1/attachments",
@@ -45,7 +52,15 @@ export async function uploadAttachment(
   );
   const outcome = await writeOutcome(response);
   if (outcome.kind !== "ok")
-    throw new Error(outcome.kind === "refused" ? txt.refused : txt.uncertain);
+    throw new Error(
+      outcome.kind !== "refused"
+        ? txt.uncertain
+        : outcome.code === "attachment_quota_exceeded"
+          ? txt.quota
+          : outcome.code === "attachment_too_large"
+            ? txt.overLimit(file.name || txt.unnamed, sizes.size(file.size))
+            : txt.refused,
+    );
   if (
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )
@@ -84,6 +99,7 @@ export async function uploadAttachment(
   )
     throw new Error(txt.badReply);
   const name = file.name.replace(/[[\]\\\r\n]/g, "_") || txt.unnamed;
+  rememberAttachmentSize(`/api/v1/attachments/${data.id}`, data.size);
   const image = ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
     data.content_type,
   );

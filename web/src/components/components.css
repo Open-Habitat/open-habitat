@@ -2553,6 +2553,33 @@ details[open] > summary:not([class])::before {
   border-radius: 8px;
   padding: 10px 12px;
 }
+/* Many large pictures in one entry wait folded until the person opens them
+   (proto-large-content-graceful, direction C). */
+.ah-collapsed-pictures {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-collapsed-pictures > svg {
+  flex: none;
+  color: var(--ah-muted);
+}
+.ah-collapsed-pictures-text {
+  min-width: 0;
+  flex: 1;
+}
+.ah-collapsed-pictures-detail {
+  display: block;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
 /* A loaded image keeps its aspect within the same bound as a text block. */
 .ah-history-image {
   display: block;

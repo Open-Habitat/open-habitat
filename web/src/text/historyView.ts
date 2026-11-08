@@ -17,6 +17,11 @@ const fi = {
   image: (type: string) => `Kuva · ${type}`,
   unknownFormat: "tuntematon muoto",
   imageAlt: "Agentin viestin kuva",
+  picturesCollapsed: (count: number, size: string) =>
+    `${count} kuvaa, yhteensä ${size}`,
+  picturesCollapsedDetail:
+    "Ne latautuvat vasta, kun avaat ne, ja silloinkin kuva kerrallaan.",
+  openPictures: "Avaa kuvat",
   tool: "Työkalu",
   toolArguments: (tool: string) => `${tool} · argumentit`,
   unknownBlock: "Tuntematon sisältölohko (sisältöä ei näytetä)",
@@ -94,6 +99,10 @@ export const historyViewText = catalog(fi, {
   image: (type) => `Image · ${type}`,
   unknownFormat: "unknown format",
   imageAlt: "Image in the agent's message",
+  picturesCollapsed: (count, size) => `${count} pictures, ${size} in total`,
+  picturesCollapsedDetail:
+    "They load only when you open them, and then one picture at a time.",
+  openPictures: "Open pictures",
   tool: "Tool",
   toolArguments: (tool) => `${tool} · arguments`,
   unknownBlock: "Unknown content block (content not shown)",

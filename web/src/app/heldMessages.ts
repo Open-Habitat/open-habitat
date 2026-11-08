@@ -17,7 +17,7 @@ import {
   sendReceipt,
 } from "./conversations";
 import type { HistoryEntry } from "./history";
-import { refusalReason } from "./mutations";
+import { messageContentRefused, refusalReason } from "./mutations";
 
 /** A message this tab sent while Pi was not running. The daemon owns it once
  * posted; the browser keeps the text only to draw it and to recover it. */
@@ -220,7 +220,7 @@ export function useHeldMessages({
             if (forKey === latest.current.key) {
               giveBack([next.text]);
               setNotice(
-                error.code === "invalid_attachments"
+                messageContentRefused(error.code)
                   ? refusalReason(error.code, 400)
                   : txt.notSent,
               );

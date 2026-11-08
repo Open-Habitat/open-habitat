@@ -230,6 +230,25 @@ func writtenTexts(home string, texts []string) []string {
 	return out
 }
 
+// The two per-message limits each have their own refusal, so the person
+// reads which one the message crossed; any other failure is an attachment
+// that is no longer there or changed after it was saved.
+var (
+	errTooManyAttachments  = errors.New("too many attachments")
+	errAttachmentsTooLarge = errors.New("attachments too large")
+)
+
+// promptAttachmentRefusal is the code of a refused message's attachments.
+func promptAttachmentRefusal(err error) string {
+	switch {
+	case errors.Is(err, errTooManyAttachments):
+		return "attachments_too_many"
+	case errors.Is(err, errAttachmentsTooLarge):
+		return "attachments_too_large"
+	}
+	return "invalid_attachments"
+}
+
 func promptAttachments(home, message string, includeImages bool) (string, []piAttachmentImage, error) {
 	matches := attachmentRef.FindAllStringSubmatch(message, -1)
 	refs := make([]string, 0, len(matches))
@@ -244,7 +263,7 @@ func promptAttachments(home, message string, includeImages bool) (string, []piAt
 		return message, nil, nil
 	}
 	if len(refs) > 30 {
-		return "", nil, errors.New("too many attachments")
+		return "", nil, errTooManyAttachments
 	}
 	root, err := attachmentRoot(home)
 	if err != nil {
@@ -266,7 +285,7 @@ func promptAttachments(home, message string, includeImages bool) (string, []piAt
 		total += st.Size()
 		if total > promptAttachmentLimit {
 			f.Close()
-			return "", nil, errors.New("attachments too large")
+			return "", nil, errAttachmentsTooLarge
 		}
 		if includeImages {
 			data, err := io.ReadAll(io.LimitReader(f, attachmentLimit+1))

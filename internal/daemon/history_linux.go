@@ -53,6 +53,9 @@ type nativeSession struct {
 	// entry to it, so it is when the conversation last changed. Only
 	// discovery's header read sets it.
 	changedAt string
+	// bytes is the session file's size from the same read: the browser warns
+	// once as a conversation grows heavy and offers a new one past it.
+	bytes int64
 	// stamp is the file's identity, size and times when a whole-file read
 	// proved it stable; a later equal stamp means the bytes stood still.
 	stamp                        fileStamp
@@ -110,6 +113,8 @@ type historyBlock struct {
 	ToolCallID   string        `json:"tool_call_id,omitempty"`
 	ToolName     string        `json:"tool_name,omitempty"`
 	Readable     bool          `json:"readable,omitempty"`
+	// Bytes is an image's decoded size.
+	Bytes int64 `json:"bytes,omitempty"`
 }
 type historyContent struct {
 	MediaType string `json:"media_type"`
@@ -224,7 +229,7 @@ func readNativeHeader(path string, uid int) nativeSession {
 	if json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || !sessionIDPattern.MatchString(h.ID) || !filepath.IsAbs(h.Cwd) {
 		return nativeSession{}
 	}
-	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: "readable", startedAt: nativeTimestamp(h.Timestamp), changedAt: info.ModTime().UTC().Format(time.RFC3339Nano), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
+	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: "readable", startedAt: nativeTimestamp(h.Timestamp), changedAt: info.ModTime().UTC().Format(time.RFC3339Nano), bytes: info.Size(), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
 }
 
 // A concurrent append can change size/mtime during one read. Retry once;
@@ -592,6 +597,9 @@ const historyPageEntries = 1000
 const historyPageBudget = 2<<20 - 128<<10
 const historyBlockBudget = 1 << 20
 
+// historyReadWait is how long one history read may take before its reply.
+const historyReadWait = 60 * time.Second
+
 func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error)) http.Handler {
 	return historyHandlerWithBudget(cfg, trusted, sessionsReader, historyPageBudget, historyBlockBudget)
 }
@@ -603,6 +611,13 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		// A page reads back from the tail and a block read finds its record,
+		// both in time that grows with the conversation: past a few hundred
+		// MiB of pictures one read takes longer than the socket's five-second
+		// write deadline, and the conversation read as unavailable
+		// (8.11.2026, 530 MiB). The read is still bounded by the record bound
+		// and the page budget; only its wait is not.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(historyReadWait))
 		processProjectionCtx, stopProjection := context.WithTimeout(r.Context(), 500*time.Millisecond)
 		defer stopProjection()
 		path := r.URL.EscapedPath()
@@ -1047,6 +1062,9 @@ func sessionFactTitled(s nativeSession, wsid, prompt, name string) map[string]an
 	}
 	if s.changedAt != "" {
 		fact["changed_at"] = s.changedAt
+	}
+	if s.bytes > 0 {
+		fact["native_bytes"] = s.bytes
 	}
 	return fact
 }

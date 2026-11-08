@@ -25,6 +25,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { Icon } from "../components/Icon";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
@@ -40,6 +41,7 @@ import { SkillInvocation } from "../components/SkillInvocation";
 import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
+import { largeContentText } from "../text/largeContent";
 import { agentTitle } from "./agentTitle";
 import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
@@ -60,6 +62,7 @@ import {
   type HistoryEntry,
   readHistory,
 } from "./history";
+import { collapsedImageBytes, collapsedImageCount } from "./largeContent";
 import { startProblemReason } from "./mutations";
 import {
   nameRefused,
@@ -87,6 +90,7 @@ import { NoticeEntry, useAssetsControl } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 const txt = liveText(historyViewText);
+const sizes = liveText(largeContentText);
 
 // A tab-local preference changes presentation only, never the native block.
 const resultEdge = new Map<string, "head" | "tail">();
@@ -617,6 +621,19 @@ function OrderedBlocks({
   onLogin?: () => void;
 }) {
   const [commands, setCommands] = useState<Record<string, string>>({});
+  // Many large pictures in one entry show as one folded row until opened, so
+  // the rest of the history reads past them (twenty screenshots are tens of
+  // megabytes). A person's own attachments show as thumbnails instead.
+  const [picturesOpen, setPicturesOpen] = useState(false);
+  const pictures = attachedImages
+    ? []
+    : blocks.filter((block) => block.type === "image");
+  const pictureBytes = pictures.reduce((sum, b) => sum + (b.bytes ?? 0), 0);
+  const firstPicture = blocks.findIndex((block) => block.type === "image");
+  const folded =
+    !picturesOpen &&
+    pictures.length >= collapsedImageCount &&
+    pictureBytes >= collapsedImageBytes;
   const onCommand = useCallback(
     (id: string, text: string) =>
       setCommands((previous) =>
@@ -629,6 +646,33 @@ function OrderedBlocks({
       {blocks.map((block, position) => {
         const index = firstIndex + position;
         if (attachedImages && block.type === "image") return null;
+        if (folded && block.type === "image")
+          return position === firstPicture ? (
+            <div
+              key={`${entryKey}:${revision}:pictures`}
+              data-testid="history-pictures-folded"
+              className="ah-collapsed-pictures"
+            >
+              <Icon name="image" width={16} height={16} aria-hidden="true" />
+              <span className="ah-collapsed-pictures-text">
+                {txt.picturesCollapsed(
+                  pictures.length,
+                  sizes.size(pictureBytes),
+                )}
+                <span className="ah-collapsed-pictures-detail">
+                  {txt.picturesCollapsedDetail}
+                </span>
+              </span>
+              <ControlButton
+                data-testid="history-pictures-open"
+                size="row"
+                variant="quiet"
+                onPress={() => setPicturesOpen(true)}
+              >
+                {txt.openPictures}
+              </ControlButton>
+            </div>
+          ) : null;
         return block.type === "toolCall" &&
           block.tool_call_id &&
           ["read", "write", "edit"].includes(block.tool_name ?? "") ? (

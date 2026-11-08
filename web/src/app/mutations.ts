@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from "react";
 import { liveText } from "../i18n";
+import { largeContentText } from "../text/largeContent";
 import { refusalsText } from "../text/refusals";
 
 const txt = liveText(refusalsText);
+const largeText = liveText(largeContentText);
 // The browser's one mutation layer (ADR 0023). Every write names its command
 // here and goes through `mutationFetch`, so its class, its client command id
 // and the reading of its outcome are decided in one place. `MutationLayer`
@@ -239,11 +241,29 @@ export function startProblemReason(code: string | undefined): string {
   }
 }
 
+/** The host's refusals of a message's content (its attachments or its
+ * length together with the queue): nothing was written, and the person can
+ * change the draft and send it again. */
+const messageContentRefusals = new Set([
+  "attachments_too_many",
+  "attachments_too_large",
+  "invalid_attachments",
+  "message_too_long",
+]);
+export const messageContentRefused = (code: string | undefined) =>
+  !!code && messageContentRefusals.has(code);
+
 /** Why the host said no, in words the person can act on. */
 export function refusalReason(code: string, status = 409): string {
   switch (code) {
+    case "attachments_too_many":
+      return largeText.hostTooMany;
+    case "attachments_too_large":
+      return largeText.hostTooLarge;
     case "invalid_attachments":
-      return txt.attachments;
+      return largeText.hostMissing;
+    case "message_too_long":
+      return largeText.hostTooLong;
     case "capacity_exceeded":
       return capacityReason();
     case "workspace_clone_running":

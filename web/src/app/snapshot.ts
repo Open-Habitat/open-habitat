@@ -136,6 +136,8 @@ export interface Agent {
   started_at?: string;
   /** When the conversation last changed: its Pi session file's mtime. */
   changed_at?: string;
+  /** The size of its Pi session file, read with changed_at. */
+  native_bytes?: number;
   archive?: "active" | "archived" | "unknown";
   observation_token?: string;
   history: "readable" | "missing" | "corrupt" | "unavailable";

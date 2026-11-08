@@ -1042,6 +1042,14 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/heavy":
+				mib, _ := strconv.Atoi(r.URL.Query().Get("mib"))
+				if e := appendHeavyHistory(filepath.Join(tmp, "alice"), r.URL.Query().Get("id"), mib); e != nil {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {
 					http.Error(w, "fixture failed", 400)

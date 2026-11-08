@@ -42,7 +42,8 @@ const fi = {
   matches: "Osumat",
   changed: "Muutetut",
   idlePlaceholder: "Kirjoita agentille…",
-  tooManyFiles: "Viestiin voi liittää enintään 30 tiedostoa.",
+  tooManyFiles: (count: number) =>
+    `Liitteitä olisi ${count}, ja yhteen viestiin mahtuu 30 tiedostoa. Valittuja ei liitetty: valitse vähemmän tai lähetä osa toisessa viestissä.`,
   uploadFailed: "Liitteen tallennus epäonnistui.",
   previousRunning: "Edellinen komento on vielä käynnissä. Pysäytä se ensin.",
   terminalOnly: (name: string) =>
@@ -146,7 +147,8 @@ export const composerText = catalog(fi, {
   matches: "Matches",
   changed: "Changed",
   idlePlaceholder: "Write to the agent…",
-  tooManyFiles: "A message can have at most 30 attachments.",
+  tooManyFiles: (count) =>
+    `That would make ${count} attachments, and one message holds 30 files. The chosen files were not attached: choose fewer or send some in another message.`,
   uploadFailed: "The attachment could not be saved.",
   previousRunning: "The previous command is still running. Stop it first.",
   terminalOnly: (name) =>

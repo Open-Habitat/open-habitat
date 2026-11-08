@@ -1376,3 +1376,39 @@ describe("composer lists inside the field", () => {
     expect(document.activeElement).toBe(field(view));
   });
 });
+
+describe("attachments that do not fit one message", () => {
+  const ref = (i: number) =>
+    `[f${i}.png](/api/v1/attachments/${String(i).padStart(8, "0")}-4444-4444-8444-444444444444)`;
+  function Draft({ count, send }: { count: number; send: () => void }) {
+    const [value, setValue] = useState(
+      [
+        "Toisesta ajosta.",
+        ...Array.from({ length: count }, (_, i) => ref(i)),
+      ].join("\n"),
+    );
+    return (
+      <Composer {...base} value={value} onChange={setValue} onSendNow={send} />
+    );
+  }
+  it("refuses at Send with the numbers, keeps the draft and clears once they fit", () => {
+    const send = vi.fn();
+    const view = render(<Draft count={32} send={send} />);
+    // No meter before anything stops.
+    expect(view.queryByTestId("attachment-overflow")).toBeNull();
+    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+    expect(send).not.toHaveBeenCalled();
+    const warning = view.getByTestId("attachment-overflow");
+    expect(warning.textContent).toContain("Viestiä ei lähetetty");
+    expect(warning.textContent).toContain("Liitteitä on 32");
+    expect(field(view).value).toBe("Toisesta ajosta.");
+    fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
+    expect(view.getByTestId("attachment-overflow").textContent).toContain(
+      "Liitteitä on 31",
+    );
+    fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
+    expect(view.queryByTestId("attachment-overflow")).toBeNull();
+    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});

@@ -199,6 +199,10 @@ export const parts: Record<CardId, Part> = {
   K17: { kind: "info", sel: '[data-testid="turn-progress"]' },
   K18: { kind: "once", sel: '[data-testid="turn-work-toggle"]' },
   K19: { kind: "once", sel: '[data-testid="conversation-recheck"]' },
+  K26: { kind: "info", sel: '[data-testid="conversation-weight"]' },
+  K27: { kind: "nav", sel: '[data-testid="conversation-weight-new"]' },
+  K28: { kind: "once", sel: '[data-testid="conversation-weight-dismiss"]' },
+  K29: { kind: "once", sel: '[data-testid="history-pictures-open"]' },
   K20: { kind: "once", sel: '[data-testid="markdown-preview-toggle"]' },
   K21: { kind: "once", sel: '[data-testid="markdown-preview-expand"]' },
   K22: {
@@ -256,6 +260,7 @@ export const parts: Record<CardId, Part> = {
   V25: { kind: "once", sel: '[data-testid="offer-download"]' },
   V26: { kind: "once", sel: '[data-testid="assets-close"]' },
   V27: { kind: "once", sel: '[data-testid="stop-wait"]' },
+  V28: { kind: "info", sel: '[data-testid="attachment-overflow"]' },
   B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
   B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
   B03: {

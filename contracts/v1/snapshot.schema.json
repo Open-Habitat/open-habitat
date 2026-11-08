@@ -697,6 +697,11 @@
           "description": "When the conversation last changed: the modification time of its Pi session file, to which Pi appends every entry. Absent when the conversation has no session file yet.",
           "$ref": "common.schema.json#/$defs/timestamp"
         },
+        "native_bytes": {
+          "description": "The size of the conversation's Pi session file in bytes, read with changed_at. Pi only appends to it, so it grows with every picture the conversation carries; the browser warns once as it nears the size where a new conversation is advised and offers one past it. Absent when the conversation has no session file yet.",
+          "type": "integer",
+          "minimum": 1
+        },
         "run_active": {
           "type": "boolean"
         },

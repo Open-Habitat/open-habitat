@@ -903,7 +903,11 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	texts = append(texts, body.Message)
 	if expanded, _, err := promptAttachments(c.home, strings.Join(texts, "\n\n"), false); err != nil || len(expanded) > 65536 {
 		c.mu.Unlock()
-		snapshotError(w, 400, "invalid_attachments")
+		code := "message_too_long"
+		if err != nil {
+			code = promptAttachmentRefusal(err)
+		}
+		snapshotError(w, 400, code)
 		return
 	}
 	// A turn that ended after the page last looked would refuse the message

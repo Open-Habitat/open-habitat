@@ -18,8 +18,6 @@ const fi = {
   startFailed: "Pi pysähtyi käynnistyessään.",
   startUnknown:
     "Habitat ei voinut varmistaa, ettei keskustelua kirjoiteta muualla.",
-  attachments:
-    "Liitteitä ei voitu lukea. Viestiin voi liittää enintään 30 tiedostoa, yhteensä 100 MiB.",
   cloneRunning:
     "GitHub-repositorion tuonti tai sen valmistelu on kesken. Odota sen valmistumista ja yritä uudelleen.",
   checkoutCheck:
@@ -75,8 +73,6 @@ export const refusalsText = catalog(fi, {
   startFailed: "Pi stopped while starting.",
   startUnknown:
     "Habitat could not make sure the conversation is not being written elsewhere.",
-  attachments:
-    "The attachments could not be read. A message can have at most 30 files, 100 MiB in total.",
   cloneRunning:
     "Importing a GitHub repository, or preparing it, is under way. Wait for it to finish and try again.",
   checkoutCheck:

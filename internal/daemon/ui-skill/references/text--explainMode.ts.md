@@ -647,6 +647,29 @@ const fi = {
       lead: "Kysyy palvelimelta keskustelun tilan uudelleen, kun se näyttää jääneen jumiin.",
       know: "Tarkistus ei itse lähetä mitään. Jos se osoittaa, ettei agentti saanut viestiäsi, Habitat lähettää viestin kerran uudelleen.",
     },
+    K26: {
+      name: "Keskustelun koko",
+      lead: "Kertoo, kun keskustelu on kasvanut niin suureksi, että se alkaa hidastua.",
+      know: "Kokoa kertyy lähinnä kuvista. Yli 512 Mt:n keskustelu aukeaa uusimmista viesteistä. Mitään ei katoa, ja voit yhä jatkaa sitä.",
+    },
+    K27: {
+      name: "Uusi keskustelu",
+      lead: "Vie työtilaan, josta aloitat uuden keskustelun puhtaalta pöydältä.",
+      know: "Tämä keskustelu jää ennalleen luettavaksi ja arkistoitavaksi.",
+      try: "Siirry työtilaan",
+    },
+    K28: {
+      name: "Selvä",
+      lead: "Piilottaa kokovaroituksen tästä keskustelusta.",
+      know: "Varoitus palaa, kun lataat sivun uudelleen, ja yli 512 Mt:n keskustelussa se näkyy aina.",
+      try: "Piilota varoitus",
+    },
+    K29: {
+      name: "Avaa kuvat",
+      lead: "Näyttää rivin kuvat; kukin latautuu sitten omasta painikkeestaan.",
+      know: "Monta suurta kuvaa on koottu yhdelle riville, jotta muu historia pysyy kevyenä lukea.",
+      try: "Avaa kuvat",
+    },
     V01: {
       name: "Viesti agentille",
       lead: "Kirjoita, mitä haluat agentin tekevän; Enter lähettää, Shift+Enter tekee uuden rivin.",
@@ -787,6 +810,11 @@ const fi = {
       name: "Lopeta odotus",
       lead: "Lopettaa pääagentin odotuksen. Avustaja tai workeri jatkaa työtään.",
       know: "Pääagentti ei herää tämän odotuksen kautta työn valmistuessa.",
+    },
+    V28: {
+      name: "Viestiä ei lähetetty",
+      lead: "Kertoo, että liitteet eivät mahdu yhteen viestiin, ja montako ja kuinka suuria niitä on.",
+      know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Kun poistat liitteitä niin, että ne mahtuvat, varoitus häviää.",
     },
     B01: {
       name: "Selain",
@@ -1829,6 +1857,29 @@ export const explainModeText = catalog(fi, {
       lead: "Asks the server for the conversation's state again when it seems stuck.",
       know: "The check itself sends nothing. If it shows that the agent never got your message, Habitat sends it once more.",
     },
+    K26: {
+      name: "Conversation size",
+      lead: "Tells you when the conversation has grown large enough to start slowing down.",
+      know: "Size comes mostly from pictures. Past 512 MB the conversation opens from the newest messages. Nothing is lost, and you can still continue it.",
+    },
+    K27: {
+      name: "New conversation",
+      lead: "Takes you to the workspace, where you start a fresh conversation.",
+      know: "This conversation stays as it is, readable and ready to archive.",
+      try: "Go to the workspace",
+    },
+    K28: {
+      name: "Got it",
+      lead: "Hides the size warning for this conversation.",
+      know: "The warning returns when you reload the page, and past 512 MB it always shows.",
+      try: "Hide the warning",
+    },
+    K29: {
+      name: "Open pictures",
+      lead: "Shows the row's pictures; each then loads from its own button.",
+      know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
+      try: "Open pictures",
+    },
     V01: {
       name: "Message to the agent",
       lead: "Write what you want the agent to do; Enter sends, Shift+Enter starts a new line.",
@@ -1969,6 +2020,11 @@ export const explainModeText = catalog(fi, {
       name: "Stop waiting",
       lead: "Stops the main agent's wait. The helper or worker keeps working.",
       know: "This wait will no longer wake the main agent when the work finishes.",
+    },
+    V28: {
+      name: "The message was not sent",
+      lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
+      know: "One message holds 30 files and 100 MB in total. Once you remove enough attachments, the warning goes away.",
     },
     B01: {
       name: "Browser",

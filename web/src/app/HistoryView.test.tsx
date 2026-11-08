@@ -1106,3 +1106,42 @@ it("says a refused sign-in in one short row, without the provider's words", () =
   );
   expect(view.container.textContent).not.toContain("OAuth session");
 });
+
+it("folds many large pictures into one row until the person opens them", () => {
+  const picture = {
+    type: "image" as const,
+    mime_type: "image/png",
+    readable: true,
+    bytes: 4 * 1024 * 1024,
+  };
+  const { rerender } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        entry_key: "pictures",
+        blocks: [{ type: "text", text: "Kuvat" }, ...Array(20).fill(picture)],
+      }}
+    />,
+  );
+  const row = screen.getByTestId("history-pictures-folded");
+  expect(row.textContent).toContain("20 kuvaa, yhteensä 80 Mt");
+  expect(screen.queryAllByTestId("history-block-load")).toHaveLength(0);
+  fireEvent.click(screen.getByTestId("history-pictures-open"));
+  expect(screen.queryByTestId("history-pictures-folded")).toBeNull();
+  expect(screen.getAllByTestId("history-block-load")).toHaveLength(20);
+  // A few pictures, or small ones, show as before.
+  rerender(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        entry_key: "few",
+        blocks: [{ type: "text", text: "Kuvat" }, picture, picture],
+      }}
+    />,
+  );
+  expect(screen.queryByTestId("history-pictures-folded")).toBeNull();
+});

@@ -366,8 +366,21 @@ func TestSnapshotChangedAtFollowsSessionFile(t *testing.T) {
 	if err := os.Chtimes(path, later, later); err != nil {
 		t.Fatal(err)
 	}
-	if got := agentChanged(f.snapshot(), id); got != "2026-10-16T10:05:01Z" {
+	doc := f.snapshot()
+	if got := agentChanged(doc, id); got != "2026-10-16T10:05:01Z" {
 		t.Fatalf("changed_at after append %q", got)
+	}
+	// The size comes from the same read and follows the file too.
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range doc["agents"].([]any) {
+		if a := raw.(map[string]any); a["agent_id"] == "pi:"+id {
+			if got, _ := a["native_bytes"].(float64); int64(got) != info.Size() {
+				t.Fatalf("native_bytes %v, file %d", a["native_bytes"], info.Size())
+			}
+		}
 	}
 }
 

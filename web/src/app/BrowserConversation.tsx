@@ -38,6 +38,7 @@ import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
 import { ContextView } from "../components/ContextView";
 import { ControlButton, controlClassName } from "../components/ControlElements";
+import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
@@ -3053,6 +3054,15 @@ function BrowserConversationContent({
                 <div className="ah-actionable-notices">
                   {github}
                   {aiNotice}
+                  {id && archive?.archive !== "archived" ? (
+                    <ConversationWeight
+                      agentId={id}
+                      bytes={archive?.native_bytes}
+                      onNewConversation={() =>
+                        navigate(`/workspaces/${workspace.workspace_id}`)
+                      }
+                    />
+                  ) : null}
                   {!statusStale &&
                   current?.auth_error === "pi_model_unsupported" ? (
                     <WarningBanner

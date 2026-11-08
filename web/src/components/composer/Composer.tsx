@@ -17,10 +17,15 @@ import type {
   TreeFolder,
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
+import {
+  attachmentOverflow,
+  messageAttachmentCount,
+} from "../../app/largeContent";
 import { blockAutomaticReload } from "../../app/reloadSafety";
 import { useText } from "../../i18n";
 import { composerText } from "../../text/composer";
 import { fieldListText } from "../../text/fieldList";
+import { largeContentText } from "../../text/largeContent";
 import {
   AttachmentChips,
   attachmentsIn,
@@ -32,6 +37,7 @@ import { Icon } from "../Icon";
 import { TooltipButton } from "../QuickTooltip";
 import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
+import { WarningBanner } from "../WarningBanner";
 import { AttachmentMenu } from "./AttachmentMenu";
 import {
   type Choice,
@@ -617,6 +623,14 @@ export function Composer({
     draft.current = { value: draftValue, onChange: onDraftChange, goals };
   }, [draftValue, onDraftChange, goals]);
   const { text: whole, attachments } = splitAttachments(draftValue);
+  const sizes = useText(largeContentText);
+  // The pre-send check's refusal stays while the attachments still do not
+  // fit, with their current numbers, and goes once they do.
+  const [overflowShown, setOverflowShown] = useState(false);
+  const overflow = overflowShown
+    ? attachmentOverflow(attachmentsIn(draftValue).map((a) => a.url))
+    : undefined;
+  if (overflowShown && !overflow) setOverflowShown(false);
   const { goal, text: value } = splitGoal(whole, goals);
   // The field's text with the draft's goal chip and attachments kept.
   const setText = useCallback((text: string, keepGoal = true) => {
@@ -673,16 +687,12 @@ export function Composer({
   const addFiles = useCallback(
     async (files: File[], focus: boolean) => {
       if (!csrf || uploadController.current || !attachable) return;
-      if (
-        files.length > 30 ||
-        new Set(
-          draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
-            [],
-        ).size +
-          files.length >
-          30
-      ) {
-        setUploadError(t.tooManyFiles);
+      const attached = new Set(
+        draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
+          [],
+      ).size;
+      if (attached + files.length > messageAttachmentCount) {
+        setUploadError(t.tooManyFiles(attached + files.length));
         return;
       }
       const controller = new AbortController();
@@ -1158,6 +1168,12 @@ export function Composer({
       // A send the view cannot take says why rather than doing nothing.
       if (!resolving && !uploading && availability.state !== "enabled")
         setNotice(t.notSent(unavailableReason(availability) ?? ""));
+      return;
+    }
+    // Attachments that cannot go in one message are refused here, before
+    // anything is sent, with the numbers that did not fit.
+    if (attachmentOverflow(attachmentsIn(content).map((a) => a.url))) {
+      setOverflowShown(true);
       return;
     }
     const parts = splitAttachments(content);
@@ -1751,6 +1767,18 @@ export function Composer({
         />
       ) : null}
       <DictationCeiling view={dictation.view} />
+      {overflow ? (
+        <WarningBanner
+          data-testid="attachment-overflow"
+          data-reason={overflow.reason}
+          tone="danger"
+          title={sizes.notSent}
+        >
+          {overflow.reason === "count"
+            ? sizes.overCount(overflow.count)
+            : sizes.overBytes(overflow.count, sizes.size(overflow.bytes))}
+        </WarningBanner>
+      ) : null}
       <AttachmentChips
         attachments={attachments}
         onRemove={fieldDisabled ? undefined : removeAttachment}

@@ -39,6 +39,8 @@ export interface HistoryBlock {
   text?: string;
   redacted?: boolean;
   mime_type?: string;
+  /** An image's decoded size. */
+  bytes?: number;
   tool_call_id?: string;
   tool_name?: string;
   readable?: boolean;

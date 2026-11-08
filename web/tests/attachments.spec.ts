@@ -75,16 +75,31 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   ).toHaveCount(30);
   await expect(chips).toHaveCount(0);
 
-  // A valid file count does not bypass the aggregate byte budget. Refusal
-  // preserves all attachments and the draft, rather than silently truncating.
+  // A valid file count does not bypass the aggregate byte budget. The browser
+  // refuses at Send, before anything is sent, with the numbers that did not
+  // fit; the attachments and the draft stay rather than being truncated.
   await pickBatch(11);
   await expect(chips).toHaveCount(30);
   await page.getByTestId("message-input").fill("Too large together");
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-  await expect(page.getByTestId("send-receipt")).toBeVisible();
+  const send = page.getByTestId("send").and(page.locator('[data-mode="send"]'));
+  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
+  await send.click();
+  const overflow = composer.getByTestId("attachment-overflow");
+  await expect(overflow).toContainText("Viestiä ei lähetetty");
+  await expect(overflow).toContainText("30 liitettä ovat yhteensä 101 Mt");
+  await expect(page.getByTestId("send-receipt")).toHaveCount(0);
+  await expect(chips).toHaveCount(30);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Too large together",
+  );
+  // A draft from an earlier page load has sizes this tab never saw: the
+  // host refuses it, and says which limit.
+  await page.reload();
+  await expect(chips).toHaveCount(30);
+  await send.click();
+  await expect(page.getByTestId("send-receipt")).toContainText(
+    "liitteet ovat yhteensä yli 100 Mt",
+  );
   await expect(chips).toHaveCount(30);
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Too large together",
