@@ -24,7 +24,7 @@ export async function recordStopStates(page: Page) {
       samples.push({
         banner: [
           "send-receipt",
-          "send-error",
+          "send-uncertain",
           "conversation-problem",
           "conversation-stale",
           "event-gap",

@@ -14,7 +14,11 @@ import {
   sendReceipt,
   status,
 } from "./conversations";
-import { ownWrites, type SendObservationValue } from "./sentMessages";
+import {
+  lostSendArrived,
+  ownWrites,
+  type SendObservationValue,
+} from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useConversationDraft } from "./useConversationDraft";
 import { useReadingPosition } from "./useReadingPosition";
@@ -149,6 +153,10 @@ export function useConversation({
   const answeredKey = storage("answered");
   const continuationKey = storage("continue");
   const uncertainKey = storage("uncertain");
+  // The newest native user message when the last command was sent
+  // (lastUserKey), so that history can show it arrived after its outcome
+  // was lost.
+  const sentAfterKey = storage("sent-after");
   const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
   const generation = useRef(0);
@@ -309,9 +317,32 @@ export function useConversation({
       sessionStorage.removeItem(uncertainKey);
       sessionStorage.removeItem(submittedKey);
       sessionStorage.removeItem(answeredKey);
+      sessionStorage.removeItem(sentAfterKey);
     },
-    [sendKey, uncertainKey, submittedKey, answeredKey],
+    [sendKey, uncertainKey, submittedKey, answeredKey, sentAfterKey],
   );
+  // A send whose outcome was lost (its request failed, or a host restart
+  // forgot its acknowledgement) has arrived once Pi's own history shows it:
+  // that is a stronger record than the acknowledgement, and the only one a
+  // restart keeps.
+  useEffect(() => {
+    if (!localReady || sendObservation?.state !== "uncertain") return;
+    const command = sessionStorage.getItem(sendKey);
+    const after = sessionStorage.getItem(sentAfterKey);
+    if (
+      command &&
+      command === sendObservation.command &&
+      lostSendArrived(entries, sendObservation.text, after)
+    )
+      settleCommand(command, "accepted");
+  }, [
+    entries,
+    sendObservation,
+    localReady,
+    sendKey,
+    sentAfterKey,
+    settleCommand,
+  ]);
   useEffect(() => {
     const command = sessionStorage.getItem(sendKey);
     if (!localReady || !command || current?.command_id !== command) return;
@@ -603,6 +634,7 @@ export function useConversation({
     continuationKey,
     uncertainKey,
     answeredKey,
+    sentAfterKey,
     changeDraft,
     refresh,
     setBusy,

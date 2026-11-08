@@ -60,6 +60,32 @@ export function sendArrived(
   return !!last && !before.includes(last.entry_key);
 }
 
+/** The newest native user message when a message is sent, kept with the
+ * send so that a reload or a host restart can still tell whether it
+ * arrived; "" when there was none. */
+export function lastUserKey(entries: readonly HistoryEntry[]) {
+  return entries.findLast((e) => e.kind === "user")?.entry_key ?? "";
+}
+
+/** Whether native history shows a message whose outcome was lost (a host
+ * restart forgets its acknowledgement, not Pi's record of it): a native
+ * user message newer than `after` (`lastUserKey` at sending) that carries
+ * its text. History that no longer reaches `after`, or a send kept without
+ * it (`markSent`), proves nothing. */
+export function lostSendArrived(
+  entries: readonly HistoryEntry[],
+  text: string,
+  after: string | null,
+) {
+  const wanted = text.trim();
+  if (!wanted || after === null) return false;
+  const start = after ? entries.findIndex((e) => e.entry_key === after) : -1;
+  if (after && start < 0) return false;
+  return entries
+    .slice(start + 1)
+    .some((e) => e.kind === "user" && (e.content?.text ?? "").includes(wanted));
+}
+
 /** A steering or follow-up message this tab sent while Pi works. */
 export type QueuedSend = {
   command: string;

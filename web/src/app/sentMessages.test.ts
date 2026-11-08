@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./history";
 import {
   DELIVERY_GRACE_MS,
+  lastUserKey,
+  lostSendArrived,
   type QueuedSend,
   reconcileQueued,
   sendArrived,
@@ -32,6 +34,35 @@ describe("sendArrived", () => {
   it("is not shown by an older page", () => {
     const older = [entry("u0", "user", "hei"), ...before];
     expect(sendArrived(older, userKeys(before))).toBe(false);
+  });
+});
+
+describe("lostSendArrived", () => {
+  const before = [
+    entry("u1", "user", "Päällä ovat."),
+    entry("a1", "assistant", "ok"),
+  ];
+  const after = lastUserKey(before);
+  it("is shown by a newer native message carrying its text", () => {
+    const later = [...before, entry("u2", "user", "Päällä ovat.")];
+    expect(lostSendArrived(later, "Päällä ovat. ", after)).toBe(true);
+  });
+  it("is not shown by an equal earlier message or another newer one", () => {
+    expect(lostSendArrived(before, "Päällä ovat.", after)).toBe(false);
+    const other = [...before, entry("u2", "user", "jotain muuta")];
+    expect(lostSendArrived(other, "Päällä ovat.", after)).toBe(false);
+  });
+  it("proves nothing from history that no longer reaches the mark", () => {
+    const rewound = [entry("u2", "user", "Päällä ovat.")];
+    expect(lostSendArrived(rewound, "Päällä ovat.", after)).toBe(false);
+  });
+  it("is never shown for a send kept without a mark", () => {
+    const later = [...before, entry("u2", "user", "Päällä ovat.")];
+    expect(lostSendArrived(later, "Päällä ovat.", null)).toBe(false);
+  });
+  it("counts every message of a conversation empty at sending", () => {
+    expect(lastUserKey([])).toBe("");
+    expect(lostSendArrived([entry("u1", "user", "eka")], "eka", "")).toBe(true);
   });
 });
 

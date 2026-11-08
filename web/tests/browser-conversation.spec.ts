@@ -557,9 +557,21 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     // this case is about the opened conversation's own send.
     await readyConversation(page);
     let lookups = 0;
+    // Pi's history showing the message would prove it arrived, so the
+    // uncertain message never reaches the host; its status names it.
+    let held = "";
+    if (outcome === "uncertain")
+      await page.route("**/api/v1/conversations/*/send", (route) => {
+        held = (route.request().postDataJSON() as { command_id: string })
+          .command_id;
+        return route.fulfill({
+          json: { schema_version: 1, command_id: held, state: "pending" },
+        });
+      });
     await page.route("**/api/v1/conversations/*/status", async (route) => {
       const response = await route.fetch();
       const body = await response.json();
+      if (held) body.command_id = held;
       if (body.command_id) body.send_receipt = outcome;
       await route.fulfill({ response, json: body });
     });
@@ -594,15 +606,21 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     const observation =
       outcome === "pending"
         ? page.locator('[data-testid="message"][data-delivery="pending"]')
-        : page.locator(`.ah-send-${outcome}`);
+        : outcome === "uncertain"
+          ? page.getByTestId("send-uncertain")
+          : page.locator(`.ah-send-${outcome}`);
     await expect(observation).toBeVisible();
     await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
+      // One warning with one action; the text is back in the field.
       await expect(
-        page
-          .getByTestId(/^(send-uncertain|uncertain-command)$/)
-          .getByTestId("message-copy"),
+        observation.getByTestId("conversation-recheck"),
       ).toBeVisible();
+      await expect(page.getByTestId("conversation-recheck")).toHaveCount(1);
+      await expect(page.getByTestId("send-receipt")).toHaveCount(0);
+      await expect(page.getByTestId("message-input")).toHaveValue(
+        "Synteettinen uncertain",
+      );
       await expect(
         page.getByTestId("send").and(page.locator('[data-mode="send"]')),
       ).toBeDisabled();
@@ -785,7 +803,7 @@ test("@browser-conversation in-flight send remains pending through missing recei
   await expect(page.getByTestId("message-input")).toHaveValue("");
   await refreshConversation(page);
   await missingReceipt;
-  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
   release();
   await expect(page.getByTestId("message-input")).toHaveValue("");
   await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
@@ -982,16 +1000,14 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
+  await expect(page.getByTestId("send-uncertain")).toBeVisible();
+  // One warning, its check the only action.
   await expect(
-    page.getByTestId(/^(send-uncertain|uncertain-command)$/),
+    page.getByTestId("send-uncertain").getByTestId("conversation-recheck"),
   ).toBeVisible();
-  await expect(page.getByTestId("conversation-recheck")).toHaveClass(
-    /ah-button-quiet/,
-  );
+  await expect(page.getByTestId("send-error")).toHaveCount(0);
   await page.reload();
-  await expect(
-    page.getByTestId(/^(send-uncertain|uncertain-command)$/),
-  ).toBeVisible();
+  await expect(page.getByTestId("send-uncertain")).toBeVisible();
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Älä lähetä toistamiseen",
   );
@@ -999,9 +1015,7 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   expect(attempts).toBe(1);
-  await page
-    .getByTestId(/^(send-uncertain|uncertain-command)$/)
-    .scrollIntoViewIfNeeded();
+  await page.getByTestId("send-uncertain").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",
   });
@@ -1483,9 +1497,7 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
       },
     );
     await expect(editor).toHaveValue("");
-    await expect(
-      page.getByTestId(/^(send-uncertain|uncertain-command)$/),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
   } finally {
     release();
   }
@@ -2620,7 +2632,7 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
+  await expect(page.getByTestId("send-uncertain")).toBeVisible();
   await page.unroute("**/api/v1/conversations/*/status");
   await page.reload();
   await expect(editor).toBeVisible();
@@ -2839,8 +2851,10 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
-  await expect(page.getByTestId("send-error")).toBeVisible();
+  await expect(page.getByTestId("send-uncertain")).toHaveAttribute(
+    "data-reason",
+    "failed",
+  );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
     page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
@@ -2852,7 +2866,7 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   await page.unroute("**/api/v1/conversations/*/status");
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
-  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
   await expect(editor).toHaveValue("");
   // The recovered message is Pi's running turn, and on a loaded host it may
   // still run when the snapshot is read. Only events and the unfrozen clock
@@ -2900,7 +2914,7 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
+  await expect(page.getByTestId("send-uncertain")).toBeVisible();
   await expect.poll(() => lookups).toBeGreaterThan(0);
   await page.getByTestId("snapshot-refresh").click();
   await expect.poll(() => lookups).toBeGreaterThan(1);
@@ -2911,6 +2925,124 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
   await expect(editor).toHaveValue("unknown message");
   expect(sends).toBe(1);
 });
+
+// Jari 8.11.2026 (pilot.648): a message sent while the test server restarted
+// reached Pi, which answered it, yet the page drew it again as uncertain under
+// Pi's own message, with three notices saying so. A restarted daemon has no
+// record of the command; Pi's history does, and it decides.
+// Jari 19:33: a reload did not clear it either; the tab keeps the send's
+// record, and that record is reconciled with history after a reload too.
+// settled: a status had already said Pi accepted it when the reply was lost.
+for (const mode of ["live", "reload", "settled"] as const)
+  test(`@browser-conversation a send whose acknowledgement a daemon restart lost resolves from history (${mode})`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await open(page);
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    const editor = page.getByTestId("message-input");
+    // Sent from the creation view the message would be held instead.
+    await readyConversation(page);
+    const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+    let sends = 0;
+    // Until the restart is over the page hears nothing from the host, so no
+    // status settles the command; before a reload no history shows it either.
+    const reload = mode === "reload";
+    const silent =
+      mode === "settled"
+        ? []
+        : [
+            "**/api/v1/events*",
+            "**/api/v1/snapshot*",
+            "**/api/v1/conversations/*/status*",
+          ];
+    const history = "**/api/v1/agents/*/history*";
+    for (const url of [...silent, ...(reload ? [history] : [])])
+      await page.route(url, (route) => route.abort());
+    let restarted!: () => void;
+    const restart = new Promise<void>((resolve) => {
+      restarted = resolve;
+    });
+    const sendSettled = () =>
+      expect.poll(
+        () =>
+          page.evaluate(() =>
+            Object.keys(sessionStorage).some((key) =>
+              key.includes(":last-send:"),
+            ),
+          ),
+        { timeout: 20000 },
+      );
+    const lookedUp =
+      mode === "settled"
+        ? undefined
+        : page.waitForResponse(
+            (response) =>
+              response.url().includes("/receipt?command_id=") &&
+              response.status() === 404,
+          );
+    await page.route("**/api/v1/conversations/*/send", async (route) => {
+      sends++;
+      const reply = await route.fetch();
+      expect(reply.status()).toBe(200);
+      // Pi has written the message before the daemon restarts...
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(
+              `/api/v1/agents/${id}/history`,
+            );
+            if (!response.ok()) return false;
+            const entries = (await response.json()).entries as {
+              kind: string;
+              content?: { text?: string };
+            }[];
+            return entries.some(
+              (e) => e.kind === "user" && e.content?.text === "Päällä ovat.",
+            );
+          },
+          { timeout: 20000, intervals: [100] },
+        )
+        .toBe(true);
+      if (mode === "settled") await sendSettled().toBe(false);
+      expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+        204,
+      );
+      // ...and the page never hears the acknowledgement.
+      await route.abort("failed");
+      restarted();
+    });
+    await editor.fill("Päällä ovat.");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await restart;
+    for (const url of silent) await page.unroute(url);
+    // The restarted daemon does not know the command.
+    await lookedUp;
+    if (reload) {
+      await page.unroute(history);
+      await page.reload();
+    }
+    const timeline = page.getByTestId("conversation-timeline");
+    await expect(
+      timeline.getByTestId("user-content").filter({ hasText: "Päällä ovat." }),
+    ).toHaveCount(1, { timeout: 20000 });
+    // The page settles the send from Pi's history, not from a receipt.
+    await sendSettled().toBe(false);
+    await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
+    await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
+    await expect(page.getByTestId("send-receipt")).toHaveCount(0);
+    await expect(editor).toHaveValue("");
+    // Settled, the next message can go; the first one was never repeated.
+    await page.unroute("**/api/v1/conversations/*/send");
+    await editor.fill("seuraava");
+    await expect(
+      page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+    ).toBeEnabled({ timeout: 30000 });
+    expect(sends).toBe(1);
+  });
 
 test("@browser-conversation daemon restart loses controller without declaring the send rejected", async ({
   page,
@@ -2988,7 +3120,7 @@ test("@browser-conversation queued command with pending ack stays pending withou
       .getByRole("listitem")
       .filter({ hasText: "jonoon vain kerran" }),
   ).toBeVisible();
-  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
   await expect(editor).toHaveValue("");
   expect(queues).toBe(1);
 });

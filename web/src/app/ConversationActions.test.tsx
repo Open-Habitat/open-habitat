@@ -53,6 +53,7 @@ it("fences the previous view before handing off and cannot clear the new view's 
       sendKey: "send",
       uncertainKey: "create",
       answeredKey: "answered",
+      sentAfterKey: "sent-after",
       setBusy,
       setReceipt: vi.fn(),
       setSendObservation: vi.fn(),
@@ -71,4 +72,77 @@ it("fences the previous view before handing off and cannot clear the new view's 
   expect(navigate).toHaveBeenCalledOnce();
   expect(close).toHaveBeenCalledWith("pi:previous", "synthetic-csrf");
   expect(setBusy.mock.calls).toEqual([[true], [false]]);
+});
+
+it("keeps a send's history mark only when nothing else could carry its text", async () => {
+  const lost = vi
+    .spyOn(conversations, "queueMessage")
+    .mockRejectedValue(new Error("network"));
+  const run = async (steering: string[]) => {
+    sessionStorage.clear();
+    const { result } = renderHook(() =>
+      useConversationActions({
+        workspace: {
+          workspace_id: "ws_test",
+          name: "synthetic",
+          kind: "directory",
+          visibility: "visible",
+          mutation_state: "allowed",
+          presence: "present",
+          facts: [],
+        },
+        id: "pi:a",
+        csrf: "synthetic-csrf",
+        ambiguous: null,
+        busy: false,
+        current: {
+          agent_id: "pi:a",
+          workspace_id: "ws_test",
+          state: "accepted",
+          run_active: true,
+          queue: { revision: 1, steering, follow_up: [] },
+        } as never,
+        entries: [
+          {
+            entry_key: "u1",
+            kind: "user",
+            content: {
+              media_type: "text/plain",
+              text: "jatka",
+              complete: true,
+            },
+          },
+        ],
+        draft: "",
+        receipt: "",
+        problem: "",
+        serverUnavailable: false,
+        alive: { current: true },
+        generation: { current: 1 },
+        submittedKey: "submitted",
+        sendKey: "send",
+        uncertainKey: "uncertain",
+        answeredKey: "answered",
+        sentAfterKey: "sent-after",
+        setBusy: vi.fn(),
+        setReceipt: vi.fn(),
+        setSendObservation: vi.fn(),
+        setConfirmStop: vi.fn(),
+        changeDraft: vi.fn(),
+        onSent: vi.fn(),
+        onQueued: vi.fn(),
+        refresh: vi.fn(),
+        onLogin: vi.fn(),
+        onSessionCreated: vi.fn(),
+        navigate: vi.fn(),
+      }),
+    );
+    await act(() => result.current.submitQueue("steer", "jatka"));
+    return sessionStorage.getItem("sent-after");
+  };
+  expect(await run([])).toBe("u1");
+  // An earlier "jatka" still in Pi's queue could be the newer message.
+  expect(await run(["jatka"])).toBeNull();
+  expect(lost).toHaveBeenCalledTimes(2);
+  expect(sessionStorage.getItem("uncertain")).not.toBeNull();
 });

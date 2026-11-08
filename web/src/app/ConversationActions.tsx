@@ -25,6 +25,7 @@ import {
 import type { HistoryEntry } from "./history";
 import { refusalReason, WriteRefused } from "./mutations";
 import {
+  lastUserKey,
   type SendObservationValue as Observation,
   type OwnSend,
   ownWrites,
@@ -94,6 +95,7 @@ export function useConversationActions({
   sendKey,
   uncertainKey,
   answeredKey,
+  sentAfterKey,
   setBusy,
   setReceipt,
   setSendObservation,
@@ -101,6 +103,7 @@ export function useConversationActions({
   changeDraft,
   onSent,
   onQueued,
+  queued = [],
   onSendOutcome,
   refresh,
   onLogin,
@@ -127,6 +130,7 @@ export function useConversationActions({
   sendKey: string;
   uncertainKey: string;
   answeredKey: string;
+  sentAfterKey: string;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -136,6 +140,8 @@ export function useConversationActions({
   onSent: (message: OwnSend) => void;
   /** Draws a steering or follow-up message, or with `clear` drops them all. */
   onQueued: (message: QueuedSend | "clear") => void;
+  /** This tab's queued messages Pi has not shown in history yet. */
+  queued?: readonly QueuedSend[];
   /** This visit's send window; never inferred from restored receipts. */
   onSendOutcome?: (event: import("./nextWaiting").SendWindowEvent) => void;
   refresh: (proof?: boolean, history?: boolean) => Promise<void>;
@@ -214,6 +220,17 @@ export function useConversationActions({
     if (sessionStorage.getItem(sendKey) === command)
       sessionStorage.setItem(answeredKey, command);
   };
+  // History can later show that a send whose outcome was lost arrived, but
+  // only if nothing else could be the newer message carrying its text: no
+  // message in Pi's queue (another tab's included) and none of this tab's
+  // delivered but not yet in history. Otherwise the send keeps no mark and
+  // only its receipt or a status can settle it.
+  const markSent = () => {
+    const queue = current?.queue;
+    if (queued.length || queue?.steering.length || queue?.follow_up.length)
+      sessionStorage.removeItem(sentAfterKey);
+    else sessionStorage.setItem(sentAfterKey, lastUserKey(entries));
+  };
   // The text leaves the field at once and is drawn where it is going; a
   // refused or unknown outcome gives it back (see sentMessages.ts). A message
   // not typed in the field (the editor's note) keeps the draft.
@@ -246,6 +263,7 @@ export function useConversationActions({
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
+      markSent();
       ownWrites.begin(command);
       setSendObservation({ text, state: "pending", command, kind: "send" });
       onSent({ command, text, before: userKeys(entries) });
@@ -268,7 +286,10 @@ export function useConversationActions({
         setSendObservation({ text, state: "rejected", command });
         setReceipt(messageRefusal(error.code, "send"));
         void refresh();
-      } else if (alive.current) {
+      } else if (alive.current && sessionStorage.getItem(sendKey) === command) {
+        // A status read while the reply was on its way may have settled the
+        // command already; a reply lost after that (a host restart) does not
+        // make a known outcome unknown again.
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain", command });
         setReceipt(txt.sendError);
@@ -303,6 +324,7 @@ export function useConversationActions({
       if (!alive.current) return;
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
+      markSent();
       ownWrites.begin(command);
       setSendObservation({ text, state: "pending", command, kind: "queue" });
       sessionStorage.setItem(submittedKey, text);
@@ -336,7 +358,8 @@ export function useConversationActions({
         }
       } else if (
         alive.current &&
-        (error as Error).message !== "identity_lost"
+        (error as Error).message !== "identity_lost" &&
+        sessionStorage.getItem(sendKey) === command
       ) {
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain", command });
@@ -505,16 +528,6 @@ export function useConversationActions({
           tone="danger"
         />
       ) : null}
-      {ambiguous && sendObservation?.state === "uncertain" ? (
-        <InlineNotice
-          data-testid="send-error"
-          title={sendFailed ? txt.sendErrorTitle : txt.earlierUncertainTitle}
-          description={
-            sendFailed ? txt.sendErrorDetail : txt.earlierUncertainDetail
-          }
-          tone="warning"
-        />
-      ) : null}
     </>
   );
   return {
@@ -527,5 +540,13 @@ export function useConversationActions({
     clearStopAttempt,
     restoredQueue,
     notices,
+    // One warning, drawn with its check by the view, says that a send's
+    // outcome is unknown; `failed` when this tab's own request just failed.
+    sendUncertain:
+      ambiguous && sendObservation?.state === "uncertain"
+        ? sendFailed
+          ? ("failed" as const)
+          : ("unknown" as const)
+        : undefined,
   };
 }

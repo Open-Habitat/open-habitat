@@ -27,12 +27,6 @@ const fi = {
   clearUncertain:
     "Jonon tyhjennyksen tulos epävarma. Tarkista tila; viestejä ei palautettu ilman kuittausta.",
   sessionUnconfirmed: "Istuntoa ei voitu vahvistaa.",
-  sendErrorTitle: "Lähetysvirhe · tulos epävarma",
-  earlierUncertainTitle: "Aiemman pyynnön tulos epävarma",
-  sendErrorDetail:
-    "Alkuperäisen viestin kuittaus tarkistetaan yhteyden palattua. Viestiä ei lähetetä uudelleen.",
-  earlierUncertainDetail:
-    "Alkuperäisen viestin kuittaus ei vahvista tulosta. Viestiä ei lähetetä uudelleen.",
 };
 
 export const conversationActionsText = catalog(fi, {
@@ -59,10 +53,4 @@ export const conversationActionsText = catalog(fi, {
   clearUncertain:
     "It is unclear whether the queue was cleared. Check the status; the messages were not returned without an acknowledgement.",
   sessionUnconfirmed: "Your session could not be confirmed.",
-  sendErrorTitle: "Sending failed · outcome unclear",
-  earlierUncertainTitle: "The outcome of an earlier request is unclear",
-  sendErrorDetail:
-    "Whether the original message was acknowledged is checked once the connection is back. The message is not sent again.",
-  earlierUncertainDetail:
-    "The original message's acknowledgement does not confirm the outcome. The message is not sent again.",
 });
