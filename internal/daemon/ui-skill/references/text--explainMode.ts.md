@@ -213,6 +213,21 @@ const fi = {
       know: "Kun jokin odottaa sinua, se näkyy merkkinä tässä painikkeessa.",
       try: "Avaa sivupalkki",
     },
+    Y17: {
+      name: "Keskustelun tiedot",
+      lead: "Kokoaa puhelimella yhteen työtilan, Git-tilan, kontekstin ja mallin.",
+      know: "Rivi avaa saman kuin leveällä näytöllä otsikkorivin vastaava painike.",
+    },
+    Y18: {
+      name: "Ilmoitus",
+      lead: "Kertoo, mitä juuri tapahtui, esimerkiksi mikä arkistoitiin tai mikä kuvake otettiin käyttöön.",
+      know: "× sulkee ilmoituksen; se ei peru tehtyä.",
+    },
+    Y19: {
+      name: "Palauta",
+      lead: "Peruu juuri tehdyn muutoksen: palauttaa arkistoidun tai edellisen kuvakkeen.",
+      know: "Kuvakkeen ilmoituksessa painikkeen nimi on Kumoa.",
+    },
     S01: {
       name: "Palvelimen nimi",
       lead: "Tämän Habitatin nimi; napsautus vie etusivulle.",
@@ -362,6 +377,25 @@ const fi = {
       name: "Valmis",
       lead: "Sulkee rajauksen; valintasi on jo tallessa.",
     },
+    S30: {
+      name: "Työtilan kuvake",
+      lead: "Avaa kortin, jossa on työtilan koko nimi ja mistä sen kuvake tulee.",
+      know: "Kortista pääset työtilan sivulle tai aloitat siinä uuden keskustelun.",
+    },
+    S31: {
+      name: "Nosta Sinun vuoroosi",
+      lead: "Siirtää hiljaisen keskustelun Sinun vuorosi -listaan muistutukseksi tailspin.",
+      know: "Agentin tila ei muutu. Laske-painike vie sen takaisin Hiljaisiin.",
+    },
+    S32: {
+      name: "Laske Hiljaisiin",
+      lead: "Palauttaa itse nostamasi keskustelun Hiljaisiin.",
+    },
+    S33: {
+      name: "Ei nyt",
+      lead: "Siirtää vastausta odottavan keskustelun Hiljaisiin, kun et ehdi siihen nyt.",
+      know: "Keskustelu säilyy ennallaan. Nosta tuo sen takaisin Sinun vuoroosi.",
+    },
     E01: {
       name: "Työtilat",
       lead: "Etusivu kokoaa kaikki työtilasi ja niiden avoimen työn yhdelle sivulle.",
@@ -510,6 +544,92 @@ const fi = {
       name: "Siivoa kaikki yhdistetyt",
       lead: "Poistaa kerralla työkopiot, joiden työ on yhdistetty ja joita kukaan ei pidä.",
       know: "Ensin näet listan. Commitoitua työtä ei häviä. Työtilan sivulla painike näkyy vain, kun siivottavaa on.",
+    },
+    T24: {
+      name: "Vaihda kuvake",
+      lead: "Avaa työtilan kuvakkeen valinnan: automaattinen, omat kirjaimet tai emoji.",
+      know: "Kuvake näkyy sivupalkissa ja etusivulla.",
+    },
+    T25: {
+      name: "Kuvakkeen valinta",
+      lead: "Ottaa tämän kuvakkeen työtilan käyttöön heti.",
+      know: "Valinta tallentuu työtilaan, ja Git-repossa Habitat commitoi sen; ilmoitus kertoo, miten kävi. Kumoa palauttaa edellisen.",
+    },
+    T26: {
+      name: "Kirjaimet",
+      lead: "Kirjoita 1–3 kirjainta; Enter ottaa ne kuvakkeeksi heti.",
+    },
+    T27: {
+      name: "Ehdotuksia mallilta…",
+      lead: "Pyytää mallia ehdottamaan kuvakkeita työtilan nimen ja esittelyn perusteella.",
+      know: "Ehdotukset tulevat työtilan sivulle; mitään ei vaihdu ennen kuin valitset.",
+    },
+    T28: {
+      name: "Kuvake-ehdotus",
+      lead: "Mallin ehdottamat kuvakkeet perusteluineen tälle työtilalle.",
+      know: "Toive tai pikatoive pyytää uudet ehdotukset; nuolet selaavat aiempia kierroksia. Jos mallia ei saada, tilalla on vaihtoehtoja ilman mallia.",
+    },
+    T29: {
+      name: "Ehdotus",
+      lead: "Ottaa tämän ehdotuksen työtilan kuvakkeeksi.",
+      know: "Valinta tallentuu työtilaan, ja Git-repossa Habitat commitoi sen. Ilmoituksen Kumoa palauttaa edellisen.",
+    },
+    T30: {
+      name: "Toive mallille",
+      lead: "Kerro, millaista kuvaketta haluat, esimerkiksi kettu, sininen tai kirjaimet.",
+      know: "Voit liittää kuvan tai tekstin esimerkiksi.",
+    },
+    T31: {
+      name: "Lähetä",
+      lead: "Lähettää toiveesi mallille, joka vastaa uusilla kuvake-ehdotuksilla.",
+      grey: "Harmaa, kun kentässä ei ole tekstiä tai malli vielä miettii.",
+    },
+    T32: {
+      name: "Pikatoive",
+      lead: "Pyytää uudet ehdotukset valmiilla toiveella, esimerkiksi leikkisämpiä.",
+    },
+    T33: {
+      name: "Ei nyt",
+      lead: "Piilottaa ehdotukset. Kuvake ei muutu.",
+      know: "Ehdotukset saa takaisin kuvakkeen valinnasta: Ehdotuksia mallilta….",
+    },
+    T34: {
+      name: "Valmiit",
+      lead: "Työtilan keskustelut, joiden agentti on suljettu eikä mitään ole lukematta.",
+      know: "Ne eivät ole arkistossa. Rivi avaa keskustelun.",
+      try: "Avaa lista",
+    },
+    T35: {
+      name: "Muuta näyttönimeä",
+      lead: "Kirjoita nimi, joka näkyy työtilalle Habitatissa; Tallenna ottaa sen käyttöön.",
+      know: "Kansion nimi ei muutu.",
+    },
+    T36: {
+      name: "Poista työtila",
+      lead: "Tarkistaa ennen poistoa, käyttääkö jokin työtilaa ja mikä on vain tällä koneella.",
+      know: "Keskustelut säilyvät agentin historiassa. Tarkista uudelleen lukee tilanteen, kun olet poistanut esteen.",
+    },
+    T37: {
+      name: "Siirrä roskakoriin",
+      lead: "Siirtää työtilan kansion roskakoriin ja poistaa sen listoilta.",
+      know: "Roskakorista sen saa takaisin: Asetukset › Tallennustila.",
+    },
+    T39: {
+      name: "Kuvakkeen lähde",
+      lead: "Kertoo, mistä työtilan kuvake tulee: nimestä johdettu tunnus, repon logo tai oma valinta.",
+    },
+    T40: {
+      name: "Oma emoji",
+      lead: "Kirjoita yksi emoji; Käytä ottaa sen kuvakkeeksi.",
+    },
+    T41: {
+      name: "Yritä uudelleen",
+      lead: "Pyytää mallilta ehdotuksia uudelleen, kun edellinen pyyntö epäonnistui.",
+    },
+    T38: {
+      name: "Poista pysyvästi",
+      lead: "Poistaa työtilan kansion lopullisesti, ohi roskakorin.",
+      know: "Kansiota ei saa takaisin. Etärepossa oleva työ säilyy, ja sen voi kloonata uudelleen.",
     },
     A01: {
       name: "Työtilan esittely",
@@ -816,6 +936,20 @@ const fi = {
       lead: "Kertoo, että liitteet eivät mahdu yhteen viestiin, ja montako ja kuinka suuria niitä on.",
       know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Kun poistat liitteitä niin, että ne mahtuvat, varoitus häviää.",
     },
+    V29: {
+      name: "Käsittele",
+      lead: "Pyytää agenttia tarkistamaan päättyneiden workerien worktreet ja suosittelemaan, mitä niille tehdään.",
+      know: "Pyyntö lähtee agentille viestinä, ja agentti vastaa keskustelussa. Mitään ei poisteta ennen kuin päätät.",
+    },
+    V30: {
+      name: "Päättyneet",
+      lead: "Avaa tai taittaa päättyneiden rivit.",
+    },
+    V31: {
+      name: "Kerro agentille",
+      lead: "Pyytää agenttia tarkistamaan tämän workerin worktreen ja suosittelemaan, mitä sille tehdään.",
+      know: "Pyyntö lähtee agentille viestinä. Mitään ei poisteta ennen kuin päätät.",
+    },
     B01: {
       name: "Selain",
       lead: "Avaa palvelimella olevan selaimesi ikkunat; käynnistää selaimen, jos se on pysähtynyt.",
@@ -914,6 +1048,10 @@ const fi = {
       name: "Valitse",
       lead: "Ottaa valitun mallin ja tason käyttöön tälle keskustelulle.",
     },
+    L12: {
+      name: "Tekoäly-asetukset",
+      lead: "Avaa asetukset, joissa kirjaudut mallipalveluun tai lisäät avaimen.",
+    },
     P01: {
       name: "Git-tila",
       lead: "Työtilan haara verrattuna etärepoon ja pohjahaaraan, sekä muuttuneet tiedostot.",
@@ -986,6 +1124,20 @@ const fi = {
       name: "Workerin rivi",
       lead: "Yksi worker: sen tehtävä, kesto ja odottaako agentti sitä. Painallus avaa sen näkymän.",
       try: "Avaa worker",
+    },
+    P16: {
+      name: "Sulje",
+      lead: "Sulkee paneelin, valikon tai ilmoituksen. Mitään ei muutu.",
+    },
+    P17: {
+      name: "Takaisin keskusteluun",
+      lead: "Palaa keskusteluun, josta avasit kontekstin erittelyn.",
+      try: "Takaisin",
+    },
+    P18: {
+      name: "Kontekstin erittely",
+      lead: "Näyttää, mistä agentin muisti tässä keskustelussa koostuu ja milloin se seuraavaksi tiivistyy.",
+      know: "Vuorot-taulukossa näkyy, miten konteksti kasvoi vuoro vuorolta. Sivun katsominen ei muuta keskustelua.",
     },
     R01: {
       name: "Pääte",
@@ -1186,6 +1338,86 @@ const fi = {
       name: "Versio",
       lead: "Palvelimen Habitat-versio ja onko tämä välilehti ajan tasalla sen kanssa.",
       know: "Jos ei ole, sivun lataaminen uudelleen tuo uuden version.",
+    },
+    M26: {
+      name: "Keskustelut",
+      lead: "Raja sille, montako keskustelua saa työskennellä yhtä aikaa, kaikille ja henkilöittäin.",
+    },
+    M27: {
+      name: "Asetukset",
+      lead: "Palaa puhelimella asetusten luetteloon tai hakutuloksiin.",
+    },
+    M28: {
+      name: "Omat asetukset",
+      lead: "Palaa ylläpidosta omiin asetuksiisi.",
+    },
+    N01: {
+      name: "Työtilan lähde",
+      lead: "Valitse, kloonataanko työtila valmiista reposta vai luodaanko uusi tyhjä hakemisto.",
+    },
+    N02: {
+      name: "Hae repoa",
+      lead: "Rajaa listaa nimellä. Kirjoita omistaja/repo, niin muukin repo haetaan.",
+    },
+    N03: {
+      name: "Päivitetty",
+      lead: "Näyttää vain repot, joihin on tullut muutoksia valitulla aikavälillä.",
+    },
+    N04: {
+      name: "Repo",
+      lead: "Valitsee repon ja näyttää sen tiedot. Mitään ei vielä kloonata.",
+      know: "Rivillä ovat viimeisin muutos ja koko; lukko tarkoittaa yksityistä repoa.",
+    },
+    N05: {
+      name: "Omistaja",
+      lead: "Repot ryhmiteltyinä omistajan mukaan: omat, ryhmiesi ja yhteistyörepot.",
+    },
+    N06: {
+      name: "Näytä kaikki",
+      lead: "Näyttää ryhmän kaikki repot; Näytä vähemmän lyhentää listan taas.",
+    },
+    N07: {
+      name: "Repon tiedot",
+      lead: "Valitun repon tiedot ennen kloonausta: koko, oletushaara ja minne se tulee.",
+      know: "Jos repo on jo työtilana, tästä pääset avaamaan sen.",
+    },
+    N08: {
+      name: "Kloonaus",
+      lead: "Valitse koko historia tai kevyt klooni, joka hakee vanhat tiedostoversiot vasta tarvittaessa.",
+      know: "Kevyt klooni on nopeampi ja pienempi, mutta osa historian katselusta vaatii yhteyden.",
+    },
+    N09: {
+      name: "Kloonaa työtilaksi",
+      lead: "Aloittaa kloonauksen. Valmis repo näkyy työtilana.",
+      know: "Kloonaus jatkuu palvelimella, vaikka poistut sivulta.",
+    },
+    N10: {
+      name: "Kloonaukset",
+      lead: "Käynnissä, jonossa ja äskettäin päättyneet kloonaukset.",
+      know: "Sivupalkin rivi näkyy kloonauksen ajan ja vie tälle sivulle.",
+    },
+    N11: {
+      name: "Keskeytä tai poista",
+      lead: "Keskeyttää kloonauksen, poistaa sen jonosta tai poistaa keskeneräisen hakemiston.",
+      know: "Habitat poistaa keskeneräisen hakemiston, kun se onnistuu turvallisesti; ilmoitus kertoo, jäikö jotain levylle.",
+    },
+    N12: {
+      name: "Nimi",
+      lead: "Uuden työtilan kansion nimi: pienet kirjaimet, numerot sekä . _ -.",
+    },
+    N14: {
+      name: "Keskeytä",
+      lead: "Kysyy ensin, keskeytetäänkö kloonaus, ja kertoo, mitä siitä poistetaan.",
+    },
+    N15: {
+      name: "Yritä uudelleen",
+      lead: "Aloittaa kloonauksen uudelleen, kun se epäonnistui tai ei alkanut.",
+      know: "Keskeytyneessä kloonauksessa sama painike on Aloita alusta.",
+    },
+    N13: {
+      name: "Luo työtila",
+      lead: "Luo tyhjän kansion, alustaa sen Git-repoksi ja lisää sen työtiloihin.",
+      grey: "Harmaa, kun nimi puuttuu tai työtiloja ei voi juuri nyt luoda.",
     },
   },
   states: {
@@ -1429,6 +1661,21 @@ export const explainModeText = catalog(fi, {
       know: "When something waits for you, a mark shows on this button.",
       try: "Open the sidebar",
     },
+    Y17: {
+      name: "Conversation details",
+      lead: "Gathers the workspace, Git state, context and model in one place on a phone.",
+      know: "Each row opens what the matching header button opens on a wide screen.",
+    },
+    Y18: {
+      name: "Notice",
+      lead: "Tells you what just happened, such as what was archived or which icon is now in use.",
+      know: "× closes the notice; it does not undo anything.",
+    },
+    Y19: {
+      name: "Restore",
+      lead: "Takes back the change you just made: brings back what was archived or the previous icon.",
+      know: "In the icon notice the button is called Undo.",
+    },
     S01: {
       name: "Server name",
       lead: "This Habitat's name; a click takes you home.",
@@ -1578,6 +1825,25 @@ export const explainModeText = catalog(fi, {
       name: "Done",
       lead: "Closes the filter; your choice is already saved.",
     },
+    S30: {
+      name: "Workspace icon",
+      lead: "Opens a card with the workspace's full name and where its icon comes from.",
+      know: "From the card you can go to the workspace's page or start a new conversation there.",
+    },
+    S31: {
+      name: "Raise to Your turn",
+      lead: "Moves a quiet conversation to Your turn as a reminder to yourself.",
+      know: "The agent's state does not change. Lower moves it back to Quiet.",
+    },
+    S32: {
+      name: "Lower to Quiet",
+      lead: "Moves a conversation you raised back to Quiet.",
+    },
+    S33: {
+      name: "Not now",
+      lead: "Moves a conversation waiting for your reply to Quiet when you cannot get to it now.",
+      know: "The conversation stays as it is. Raise brings it back to Your turn.",
+    },
     E01: {
       name: "Workspaces",
       lead: "Home gathers all your workspaces and their open work on one page.",
@@ -1723,6 +1989,92 @@ export const explainModeText = catalog(fi, {
       name: "Clean up all merged",
       lead: "Deletes at once the working copies whose work is merged and that nobody keeps.",
       know: "First you see the list. No committed work is lost. On a workspace page the button shows only when there is something to clean up.",
+    },
+    T24: {
+      name: "Change icon",
+      lead: "Opens the choice of the workspace's icon: automatic, your own letters or an emoji.",
+      know: "The icon shows in the sidebar and on the home page.",
+    },
+    T25: {
+      name: "Icon choice",
+      lead: "Puts this icon to use for the workspace right away.",
+      know: "The choice is saved in the workspace, and in a Git repository Habitat commits it; the notice says how it went. Undo restores the previous one.",
+    },
+    T26: {
+      name: "Letters",
+      lead: "Type 1–3 letters; Enter makes them the icon right away.",
+    },
+    T27: {
+      name: "Suggestions from a model…",
+      lead: "Asks a model to suggest icons from the workspace's name and introduction.",
+      know: "The suggestions appear on the workspace page; nothing changes until you choose one.",
+    },
+    T28: {
+      name: "Icon suggestion",
+      lead: "Icons a model suggests for this workspace, each with its reason.",
+      know: "A wish or a quick wish asks for new suggestions; the arrows go through earlier rounds. If no model can be reached, choices without a model show instead.",
+    },
+    T29: {
+      name: "Suggestion",
+      lead: "Makes this suggestion the workspace's icon.",
+      know: "The choice is saved in the workspace, and in a Git repository Habitat commits it. Undo in the notice restores the previous one.",
+    },
+    T30: {
+      name: "Wish for the model",
+      lead: "Say what kind of icon you would like, such as a fox, blue or letters.",
+      know: "You can attach an image or text as an example.",
+    },
+    T31: {
+      name: "Send",
+      lead: "Sends your wish to the model, which answers with new icon suggestions.",
+      grey: "Grey while the field is empty or the model is still thinking.",
+    },
+    T32: {
+      name: "Quick wish",
+      lead: "Asks for new suggestions with a ready-made wish, such as more playful.",
+    },
+    T33: {
+      name: "Not now",
+      lead: "Hides the suggestions. The icon stays as it is.",
+      know: "Bring the suggestions back from the icon choice: Suggestions from a model….",
+    },
+    T34: {
+      name: "Done",
+      lead: "The workspace's conversations whose agent has closed and that have nothing unread.",
+      know: "They are not archived. A row opens the conversation.",
+      try: "Open the list",
+    },
+    T35: {
+      name: "Change display name",
+      lead: "Type the name Habitat shows for the workspace; Save puts it to use.",
+      know: "The folder keeps its name.",
+    },
+    T36: {
+      name: "Delete workspace",
+      lead: "Checks before deleting whether anything is using the workspace and what exists only on this machine.",
+      know: "Conversations stay in the agent's history. Check again reads the situation once you have removed what is in the way.",
+    },
+    T37: {
+      name: "Move to Trash",
+      lead: "Moves the workspace's folder to the trash and takes it off the lists.",
+      know: "You can restore it from the trash: Settings › Storage.",
+    },
+    T39: {
+      name: "Icon source",
+      lead: "Says where the workspace's icon comes from: letters from the name, the repository's logo or your own choice.",
+    },
+    T40: {
+      name: "Your own emoji",
+      lead: "Type a single emoji; Use makes it the icon.",
+    },
+    T41: {
+      name: "Try again",
+      lead: "Asks the model for suggestions again after the last request failed.",
+    },
+    T38: {
+      name: "Delete permanently",
+      lead: "Deletes the workspace's folder for good, skipping the trash.",
+      know: "The folder cannot be restored. Work that is on the remote stays there and can be cloned again.",
     },
     A01: {
       name: "Workspace introduction",
@@ -2026,6 +2378,20 @@ export const explainModeText = catalog(fi, {
       lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
       know: "One message holds 30 files and 100 MB in total. Once you remove enough attachments, the warning goes away.",
     },
+    V29: {
+      name: "Handle",
+      lead: "Asks the agent to check the ended workers' worktrees and recommend what to do with them.",
+      know: "The request goes to the agent as a message, and it answers in the conversation. Nothing is removed until you decide.",
+    },
+    V30: {
+      name: "Ended",
+      lead: "Opens or folds the rows that have ended.",
+    },
+    V31: {
+      name: "Tell the agent",
+      lead: "Asks the agent to check this worker's worktree and recommend what to do with it.",
+      know: "The request goes to the agent as a message. Nothing is removed until you decide.",
+    },
     B01: {
       name: "Browser",
       lead: "Opens your server browser's windows; starts the browser if it is stopped.",
@@ -2124,6 +2490,10 @@ export const explainModeText = catalog(fi, {
       name: "Choose",
       lead: "Uses the chosen model and level for this conversation.",
     },
+    L12: {
+      name: "AI settings",
+      lead: "Opens the settings where you sign in to a model service or add a key.",
+    },
     P01: {
       name: "Git state",
       lead: "The workspace's branch compared with the remote and the base branch, and the changed files.",
@@ -2196,6 +2566,20 @@ export const explainModeText = catalog(fi, {
       name: "Worker row",
       lead: "One worker: its task, how long it has run, and whether the agent waits for it. A press opens its view.",
       try: "Open the worker",
+    },
+    P16: {
+      name: "Close",
+      lead: "Closes the panel, menu or notice. Nothing changes.",
+    },
+    P17: {
+      name: "Back to the conversation",
+      lead: "Returns to the conversation you opened the context breakdown from.",
+      try: "Go back",
+    },
+    P18: {
+      name: "Context breakdown",
+      lead: "Shows what the agent's memory in this conversation is made of and when it is compacted next.",
+      know: "The Turns table shows how the context grew turn by turn. Looking changes nothing in the conversation.",
     },
     R01: {
       name: "Terminal",
@@ -2393,6 +2777,86 @@ export const explainModeText = catalog(fi, {
       name: "Version",
       lead: "The server's Habitat version, and whether this tab is up to date with it.",
       know: "If not, reloading the page brings the new version.",
+    },
+    M26: {
+      name: "Conversations",
+      lead: "How many conversations may work at once, for everyone and per person.",
+    },
+    M27: {
+      name: "Settings",
+      lead: "On a phone, returns to the list of settings or to the search results.",
+    },
+    M28: {
+      name: "Your settings",
+      lead: "Returns from administration to your own settings.",
+    },
+    N01: {
+      name: "Workspace source",
+      lead: "Choose whether to clone the workspace from an existing repository or create a new empty folder.",
+    },
+    N02: {
+      name: "Search repositories",
+      lead: "Narrows the list by name. Type owner/repo to look up any other repository.",
+    },
+    N03: {
+      name: "Updated",
+      lead: "Shows only the repositories that changed in the chosen period.",
+    },
+    N04: {
+      name: "Repository",
+      lead: "Selects the repository and shows its details. Nothing is cloned yet.",
+      know: "The row shows the latest change and the size; a lock means a private repository.",
+    },
+    N05: {
+      name: "Owner",
+      lead: "Repositories grouped by owner: your own, your groups' and those you collaborate on.",
+    },
+    N06: {
+      name: "Show all",
+      lead: "Shows every repository in the group; Show less shortens the list again.",
+    },
+    N07: {
+      name: "Repository details",
+      lead: "The selected repository before cloning: its size, default branch and where it will go.",
+      know: "If the repository is already a workspace, you can open it from here.",
+    },
+    N08: {
+      name: "Cloning",
+      lead: "Choose the full history or a light clone that fetches old file versions only when needed.",
+      know: "A light clone is faster and smaller, but some ways of looking at history need a connection.",
+    },
+    N09: {
+      name: "Clone as a workspace",
+      lead: "Starts cloning. The finished repository shows up as a workspace.",
+      know: "Cloning goes on on the server even if you leave the page.",
+    },
+    N10: {
+      name: "Clones",
+      lead: "Clones under way, queued and recently ended.",
+      know: "The sidebar row shows while a clone runs and leads to this page.",
+    },
+    N11: {
+      name: "Cancel or remove",
+      lead: "Cancels a clone, takes it off the queue or removes an unfinished folder.",
+      know: "Habitat removes the unfinished folder when it can do so safely; the notice says whether anything was left on disk.",
+    },
+    N12: {
+      name: "Name",
+      lead: "The new workspace's folder name: lowercase letters, numbers and . _ -.",
+    },
+    N14: {
+      name: "Cancel",
+      lead: "Asks first whether to cancel the clone and says what of it is removed.",
+    },
+    N15: {
+      name: "Try again",
+      lead: "Starts the clone again when it failed or did not start.",
+      know: "For an interrupted clone the same button is Start over.",
+    },
+    N13: {
+      name: "Create workspace",
+      lead: "Creates an empty folder, sets it up as a Git repository and adds it to your workspaces.",
+      grey: "Grey while the name is missing or workspaces cannot be created right now.",
     },
   },
   states: {

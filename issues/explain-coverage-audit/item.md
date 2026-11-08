@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: explain-cards
 lane_seq: 3
 blocked_by: ['@helpers-panel-explainer-text']
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Audit and complete Explain-mode coverage across the whole interface
@@ -36,6 +37,6 @@ explanation.
 
 ## Acceptance Criteria
 
-- [ ] Inventory table in result.md covering every view.
-- [ ] Every chip, component and control has a card or a recorded reason for none; fi and en.
-- [ ] Regression check in place; touched specs green; screenshots of the mode on the workspace front page at 1440 and 390.
+- [x] Inventory table in result.md covering every view.
+- [x] Every chip, component and control has a card or a recorded reason for none; fi and en.
+- [x] Regression check in place; touched specs green; screenshots of the mode on the workspace front page at 1440 and 390.

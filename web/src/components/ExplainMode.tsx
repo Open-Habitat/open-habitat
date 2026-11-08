@@ -365,6 +365,9 @@ type Rect = { x: number; y: number; w: number; h: number };
 type Target = { id: CardId; el: Element; rect: Rect };
 
 const OWN = "[data-explain-own], .ah-explain-ui";
+/** Fields where Enter does what a waiting button does. */
+const SUBMITS =
+  '[data-testid="message-input"], [data-testid="workspace-icon-wish"], [data-testid="workspace-icon-letters-input"], [data-testid="workspace-icon-own"], [data-testid="directory-name"]';
 // A control keeps its whole box, because a press anywhere on it acts.
 const CONTROL =
   'button, a, input, textarea, select, summary, label, [role="button"], [role="menuitem"], [role="option"], [role="tab"], [role="switch"]';
@@ -686,11 +689,10 @@ function ExplainLayer({
       }
       if (event.key !== "Enter" && event.key !== " ") return;
       if (!focused || focused.closest(OWN)) return;
-      // Enter in the message field sends, and sending waits.
+      // Enter in these fields sends or saves (a message, a wish to the
+      // model, a workspace icon, a new workspace), and those wait.
       const sends =
-        event.key === "Enter" &&
-        !event.shiftKey &&
-        focused.matches('[data-testid="message-input"]');
+        event.key === "Enter" && !event.shiftKey && focused.matches(SUBMITS);
       const id = isTyping(focused) && !sends ? undefined : cardOf(focused);
       if (sends || (id && waiting.has(id))) {
         block(event);

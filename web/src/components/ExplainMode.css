@@ -7,12 +7,15 @@ html[data-explain-mode] :is([role="tooltip"], .ah-header-tip) {
   display: none !important;
 }
 
+html[data-explain-mode] {
+  --ah-explain-bar: 40px;
+}
 .ah-explain-bar {
   position: sticky;
   top: 0;
   z-index: 60;
   flex: none;
-  height: 40px;
+  height: var(--ah-explain-bar);
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -378,5 +381,13 @@ html[data-explain-mode] :is([role="tooltip"], .ah-header-tip) {
   }
   .ah-explain-strip > div > .ah-explain-pointer {
     display: none;
+  }
+}
+
+/* The phone's navigation drawer is fixed to the viewport; in the mode it
+   starts below the bar, so its head and its close stay in reach. */
+@media (max-width: 800px) {
+  html[data-explain-mode] .ah-shell-body.ah-mobile-open > .ah-rail-slot {
+    top: var(--ah-explain-bar);
   }
 }

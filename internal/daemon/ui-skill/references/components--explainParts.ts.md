@@ -21,8 +21,12 @@ export type Part = {
   workerLegend?: true;
 };
 
-/** A settings section's entry in the settings navigation. */
-const page = (section: string) => `[data-testid="settings-${section}"]`;
+/** A settings section: its entry in the settings navigation and the page
+ * itself, whose rows describe themselves. */
+const page = (section: string) =>
+  `[data-testid="settings-${section}"], .s-main[data-settings-page="${section}"]`;
+/** The parts of the Git panel, by section. */
+const gs = (section: string) => `.ah-gs-sec[data-section="${section}"]`;
 const H = ".ah-agent-header";
 
 export const parts: Record<CardId, Part> = {
@@ -36,16 +40,28 @@ export const parts: Record<CardId, Part> = {
   },
   Y02: {
     kind: "nav",
-    sel: '[data-testid="conversation-workspace"], [data-testid="menu-workspace"]',
+    sel: '[data-testid="conversation-workspace"], [data-testid="menu-workspace"], [data-testid="menu-fact-workspace"], [data-testid="workspace-card-open"]',
   },
   Y03: { kind: "info", sel: '[data-testid="header-activity"]' },
-  Y04: { kind: "panel", sel: '[data-testid="git-chip"]' },
-  Y05: { kind: "panel", sel: '[data-testid="context-ring"]' },
-  Y06: { kind: "menu", sel: '[data-testid="conversation-model"]' },
-  Y07: { kind: "panel", sel: '[data-testid="toggle-editor"]' },
+  Y04: {
+    kind: "panel",
+    sel: '[data-testid="git-chip"], [data-testid="menu-fact-git"]',
+  },
+  Y05: {
+    kind: "panel",
+    sel: '[data-testid="context-ring"], [data-testid="menu-fact-context"]',
+  },
+  Y06: {
+    kind: "menu",
+    sel: '[data-testid="conversation-model"], [data-testid="menu-fact-model"]',
+  },
+  Y07: {
+    kind: "panel",
+    sel: '[data-testid="toggle-editor"], [data-testid="menu-toggle-editor"]',
+  },
   Y08: {
     kind: "panel",
-    sel: '[data-testid="toggle-terminal"]',
+    sel: '[data-testid="toggle-terminal"], [data-testid="menu-toggle-terminal"]',
     key: "Ctrl+Alt+T",
   },
   Y09: {
@@ -71,13 +87,19 @@ export const parts: Record<CardId, Part> = {
   Y14: { kind: "menu", sel: '[data-testid="conversation-menu"]' },
   Y15: { kind: "panel", sel: '[data-testid="guide-toggle"]' },
   Y16: { kind: "nav", sel: '[data-testid="navigation-open"]' },
+  Y17: { kind: "menu", sel: '[data-testid="phone-header-facts"]' },
+  Y18: { kind: "info", sel: '[data-testid="archive-notice"]' },
+  Y19: { kind: "once", sel: '[data-testid="restore-notice"]' },
   S01: { kind: "nav", sel: '[data-testid="server-home"]', opens: true },
   S02: {
     kind: "info",
     sel: 'strong + span[title] > [data-testid="status-mark"]',
   },
   S03: { kind: "nav", sel: '[data-testid="home-link"]' },
-  S04: { kind: "once", sel: '[data-testid="close-navigation"]' },
+  S04: {
+    kind: "once",
+    sel: '[data-testid="close-navigation"], .ah-mobile-scrim',
+  },
   S05: { kind: "list", sel: 'section[data-testid="rail-yours"]' },
   S06: { kind: "list", sel: 'section[data-testid="rail-running"]' },
   S07: { kind: "list", sel: '[data-testid="rail-quiet-fold"]' },
@@ -109,6 +131,14 @@ export const parts: Record<CardId, Part> = {
   S27: { kind: "menu", sel: '[data-testid="rail-quiet-sort"]' },
   S28: { kind: "menu", sel: '[data-testid^="rail-quiet-tile-"]' },
   S29: { kind: "once", sel: '[data-testid="rail-quiet-done"]' },
+  S30: {
+    kind: "panel",
+    sel: '[data-testid="workspace-icon-button"], [data-testid="workspace-card"]',
+    opens: true,
+  },
+  S31: { kind: "once", sel: '[data-testid="rail-raise-conversation"]' },
+  S32: { kind: "once", sel: '[data-testid="rail-lower-conversation"]' },
+  S33: { kind: "once", sel: '[data-testid="rail-not-now-conversation"]' },
   E01: { kind: "info", sel: '[data-testid="workspaces-title"]' },
   E02: { kind: "list", sel: ".ah-home-workspace-head" },
   E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },
@@ -118,7 +148,7 @@ export const parts: Record<CardId, Part> = {
   E07: { kind: "list", sel: '[data-testid="empty-workspaces"]' },
   T01: {
     kind: "info",
-    sel: '.ah-workspace-page-head [data-testid="workspace-title"]',
+    sel: '.ah-workspace-page-head [data-testid="workspace-title"], .ah-workspace-page-title > p:has(> code)',
   },
   T02: { kind: "once", sel: '[data-testid="copy-path"]' },
   T03: { kind: "nav", sel: '[data-testid="open-github"]' },
@@ -126,7 +156,10 @@ export const parts: Record<CardId, Part> = {
   T05: { kind: "once", sel: '[data-testid="workspace-archive"]' },
   T06: { kind: "once", sel: '[data-testid="delete-workspace"]' },
   T07: { kind: "once", sel: '[data-testid="new-worktree"]' },
-  T08: { kind: "once", sel: '[data-testid="conversation-start"]' },
+  T08: {
+    kind: "once",
+    sel: '[data-testid="conversation-start"], [data-testid="workspace-card-new"]',
+  },
   T09: { kind: "info", sel: '[data-testid="landing"]' },
   T10: { kind: "once", sel: '[data-testid="landing-more"]' },
   T11: {
@@ -135,7 +168,6 @@ export const parts: Record<CardId, Part> = {
   },
   T12: { kind: "panel", sel: '[data-testid="workspace-git"]' },
   T13: { kind: "list", sel: '[data-testid="open-conversations"]' },
-  T14: { kind: "list", sel: '[data-testid="workspace-archive-panel"]' },
   T15: { kind: "info", sel: '[data-testid="worktrees-heading"]' },
   T16: {
     kind: "info",
@@ -156,6 +188,53 @@ export const parts: Record<CardId, Part> = {
   },
   T22: { kind: "once", sel: '[data-testid="worktree-prune"]' },
   T23: { kind: "once", sel: '[data-testid="cleanup-worktrees"]', opens: true },
+  T14: {
+    kind: "list",
+    sel: '[data-testid="workspace-archive-panel"], .ah-workspace-archive > summary',
+  },
+  T24: {
+    kind: "panel",
+    sel: '[data-testid="workspace-icon-picker"]',
+    opens: true,
+  },
+  T25: {
+    kind: "once",
+    sel: '[data-testid="workspace-icon-auto"], [data-testid="workspace-icon-logo"], [data-testid="workspace-icon-letters"], [data-testid="workspace-icon-emoji"], [data-testid="workspace-icon-own-use"]',
+  },
+  T26: {
+    kind: "input",
+    sel: '[data-testid="workspace-icon-letters-input"]',
+  },
+  T27: { kind: "once", sel: '[data-testid="workspace-icon-ask-model"]' },
+  T28: { kind: "panel", sel: '[data-testid="workspace-icon-suggestions"]' },
+  T29: { kind: "once", sel: '[data-testid="workspace-icon-suggestion"]' },
+  T30: { kind: "input", sel: '[data-testid="workspace-icon-wish"]' },
+  T31: {
+    kind: "once",
+    sel: '.ah-wsis-wish [data-testid="send"]',
+    key: "Enter",
+  },
+  T32: { kind: "once", sel: '[data-testid="workspace-icon-quick"]' },
+  T33: {
+    kind: "once",
+    sel: '[data-testid="workspace-icon-suggestions-dismiss"]',
+  },
+  T34: { kind: "list", sel: ".ah-workspace-done" },
+  /* The shared dialog's test id is the same in every dialog; this one is
+   * the workspace rename by its field. */
+  T35: {
+    kind: "panel",
+    sel: '[data-testid="rename-dialog"]:has([data-testid="workspace-name"])',
+  },
+  T36: { kind: "panel", sel: '[data-testid="workspace-delete-dialog"]' },
+  T37: { kind: "once", sel: '[data-testid="trash-workspace"]' },
+  T38: { kind: "once", sel: '[data-testid="purge-workspace"]' },
+  T39: { kind: "info", sel: '[data-testid="workspace-icon-source"]' },
+  T40: { kind: "input", sel: '[data-testid="workspace-icon-own"]' },
+  T41: {
+    kind: "once",
+    sel: '[data-testid="workspace-icon-suggestions-retry"]',
+  },
   A01: {
     kind: "info",
     sel: '[data-testid="start-page-title"], [data-testid="start-page-body"]',
@@ -266,6 +345,12 @@ export const parts: Record<CardId, Part> = {
   V26: { kind: "once", sel: '[data-testid="assets-close"]' },
   V27: { kind: "once", sel: '[data-testid="stop-wait"]' },
   V28: { kind: "info", sel: '[data-testid="attachment-overflow"]' },
+  V29: {
+    kind: "once",
+    sel: '[data-testid="ask-all-pill"], [data-testid="ask-all"]',
+  },
+  V30: { kind: "once", sel: '[data-testid="ended-runs"]' },
+  V31: { kind: "once", sel: '[data-testid="ask-agent"]' },
   B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
   B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
   B03: {
@@ -318,29 +403,24 @@ export const parts: Record<CardId, Part> = {
     opens: true,
   },
   L11: { kind: "once", sel: '[data-testid="model-commit"]' },
-  P01: { kind: "panel", sel: '[data-testid="git-dialog"] .ah-gs-top' },
-  P02: { kind: "info", sel: ".ah-gs-top + .ah-gs-sec .ah-gs-cmp" },
+  L12: { kind: "nav", sel: '[data-testid="settings-claude"]' },
+  P01: {
+    kind: "panel",
+    sel: '[data-testid="git-dialog"] .ah-gs-top, [data-testid="workspace-git-dialog"] > h2',
+  },
+  P02: { kind: "info", sel: `${gs("upstream")} .ah-gs-cmp` },
   P03: {
     kind: "list",
-    sel: '.ah-gs-top + .ah-gs-sec [data-testid="git-commits-out"]',
+    sel: `${gs("upstream")} [data-testid="git-commits-out"]`,
   },
   P04: {
     kind: "list",
-    sel: '.ah-gs-top + .ah-gs-sec [data-testid="git-commits-in"]',
+    sel: `${gs("upstream")} [data-testid="git-commits-in"]`,
   },
-  P05: { kind: "info", sel: ".ah-gs-top + .ah-gs-sec + .ah-gs-sec .ah-gs-cmp" },
-  P06: {
-    kind: "list",
-    sel: '.ah-gs-top + .ah-gs-sec + .ah-gs-sec [data-testid="git-commits-out"]',
-  },
-  P07: {
-    kind: "list",
-    sel: '.ah-gs-top + .ah-gs-sec + .ah-gs-sec [data-testid="git-commits-in"]',
-  },
-  P08: {
-    kind: "list",
-    sel: ".ah-gs-top + .ah-gs-sec + .ah-gs-sec + .ah-gs-sec",
-  },
+  P05: { kind: "info", sel: `${gs("base")} .ah-gs-cmp` },
+  P06: { kind: "list", sel: `${gs("base")} [data-testid="git-commits-out"]` },
+  P07: { kind: "list", sel: `${gs("base")} [data-testid="git-commits-in"]` },
+  P08: { kind: "list", sel: gs("changes") },
   P09: { kind: "once", sel: '[data-testid="fetch-git"]' },
   P10: { kind: "panel", sel: '[data-testid="conversation-details"]' },
   P11: { kind: "panel", sel: '[data-testid="conversation-model-info"]' },
@@ -358,6 +438,12 @@ export const parts: Record<CardId, Part> = {
     sel: '.ah-bg-row[data-kind="spin"] .ah-bg-main',
     workerLegend: true,
   },
+  P16: {
+    kind: "once",
+    sel: '[role="dialog"] [data-testid="dialog-close"], [data-testid="menu-close"], [data-testid="notice-close"], .ah-bg-tabs > [data-testid="close"], [data-testid="workspace-icon-dialog"] .ah-wsip-top > button',
+  },
+  P17: { kind: "nav", sel: '[data-testid="context-back"]' },
+  P18: { kind: "panel", sel: '[data-testid="context-page"]' },
   R01: {
     kind: "panel",
     sel: '[data-testid="terminal-panel"] .xterm, [data-testid="terminal-panel"] [class*="screen"]',
@@ -410,6 +496,34 @@ export const parts: Record<CardId, Part> = {
   M22: { kind: "page", sel: page("kayttajat") },
   M23: { kind: "page", sel: page("levy") },
   M24: { kind: "once", sel: '[data-testid="git-identity-edit"]' },
+  M26: { kind: "page", sel: page("keskustelut") },
+  M27: { kind: "nav", sel: '[data-testid="settings-list-back"]' },
+  M28: { kind: "nav", sel: '[data-testid="settings-own-back"]' },
+  N01: {
+    kind: "menu",
+    sel: 'fieldset[data-testid="segmented-choice"]:has([data-testid="segment-directory"])',
+  },
+  N02: { kind: "input", sel: '[data-testid="repository-search"]' },
+  N03: { kind: "menu", sel: ".ah-clone-since" },
+  N04: { kind: "nav", sel: '[data-testid^="repository-option-"]' },
+  N05: { kind: "info", sel: '[data-testid^="repo-owner-"]' },
+  N06: { kind: "once", sel: '[data-testid="expand-repos"]' },
+  N07: { kind: "panel", sel: '[data-testid="repo-details"]' },
+  N08: { kind: "menu", sel: ".ah-clone-mode" },
+  N09: { kind: "once", sel: '[data-testid="repository-clone"]' },
+  N10: { kind: "list", sel: '[data-testid="clone-jobs"], .ah-clone-jobs' },
+  /* Keskeytä asks first; the question's own Keskeytä cancels. */
+  N11: {
+    kind: "once",
+    sel: '.ah-clone-confirm > [data-testid="cancel-clone"], [data-testid="unqueue-clone"], [data-testid="remove-clone"]',
+  },
+  N12: { kind: "input", sel: '[data-testid="directory-name"]' },
+  N13: { kind: "once", sel: '[data-testid="create-directory"]' },
+  N14: { kind: "once", sel: '[data-testid="cancel-clone"]' },
+  N15: {
+    kind: "once",
+    sel: '[data-testid="clone-job"] [data-testid="retry"], [data-testid="restart-clone"]',
+  },
   M25: {
     kind: "info",
     sel: '[data-testid="version-value"], [data-testid="bundle-state"]',
@@ -417,7 +531,9 @@ export const parts: Record<CardId, Part> = {
 };
 
 /** Presses whose effect lasts (archive, delete, sign out, close an empty
- * conversation, send, stop, close a terminal, save). In the mode they wait,
+ * conversation, send, stop, close a terminal, save, move a conversation
+ * between the rail's lists, commit a workspace icon, undo, clone or create a
+ * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "Y11",
@@ -438,6 +554,24 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "B04",
   "B05",
   "B06",
+  "V29",
+  "V31",
+  "S31",
+  "S32",
+  "S33",
+  "T25",
+  "T27",
+  "T29",
+  "T31",
+  "T32",
+  "T41",
+  "T37",
+  "T38",
+  "Y19",
+  "N09",
+  "N11",
+  "N13",
+  "N15",
 ]);
 
 /** Controls that production shows only under the pointer. */

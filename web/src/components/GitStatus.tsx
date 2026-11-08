@@ -474,7 +474,11 @@ export function GitStatusDetails({
         </div>
       )}
       {facts.upstream ? (
-        <section className="ah-gs-sec" aria-label={txt.upstreamLabel}>
+        <section
+          className="ah-gs-sec"
+          data-section="upstream"
+          aria-label={txt.upstreamLabel}
+        >
           <Comparison
             name={facts.upstream}
             sub={txt.upstreamSub}
@@ -503,7 +507,11 @@ export function GitStatusDetails({
         <p className="ah-gs-note">{txt.noUpstream}</p>
       )}
       {base ? (
-        <section className="ah-gs-sec" aria-label={txt.baseLabel}>
+        <section
+          className="ah-gs-sec"
+          data-section="base"
+          aria-label={txt.baseLabel}
+        >
           <Comparison
             name={base.name}
             sub={txt.baseSub(base.ref, base.source === "recorded")}
@@ -533,12 +541,20 @@ export function GitStatusDetails({
         </section>
       ) : null}
       {!facts.upstream && !base && detail?.commits.length ? (
-        <section className="ah-gs-sec" aria-label={txt.recentCommits}>
+        <section
+          className="ah-gs-sec"
+          data-section="recent"
+          aria-label={txt.recentCommits}
+        >
           <h4>{txt.recentCommits}</h4>
           <Commits list={detail.commits} kind="out" />
         </section>
       ) : null}
-      <section className="ah-gs-sec" aria-label={txt.changes}>
+      <section
+        className="ah-gs-sec"
+        data-section="changes"
+        aria-label={txt.changes}
+      >
         <h4>
           {txt.changes} <span className="ah-gs-count">{facts.dirty_count}</span>
         </h4>

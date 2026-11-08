@@ -765,7 +765,7 @@ export function AccountSettings({
           </>
         )}
       </nav>
-      <div className="s-main" ref={main}>
+      <div className="s-main" ref={main} data-settings-page={section}>
         {!inServerArea && (
           <ControlButton
             data-testid="settings-list-back"

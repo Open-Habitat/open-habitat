@@ -156,9 +156,12 @@ export function TrashModal({
   isOpen,
   onClose,
   dismissable = true,
+  testId,
   children,
 }: {
   label: string;
+  /** Names the dialog for the explain mode and tests. */
+  testId?: string;
   isOpen: boolean;
   onClose: () => void;
   dismissable?: boolean;
@@ -175,7 +178,11 @@ export function TrashModal({
       isKeyboardDismissDisabled={!dismissable}
     >
       <Modal className="ah-modal ah-trash-modal">
-        <AriaDialog className="ah-dialog" aria-label={label}>
+        <AriaDialog
+          className="ah-dialog"
+          aria-label={label}
+          data-testid={testId}
+        >
           {children}
         </AriaDialog>
       </Modal>
@@ -235,6 +242,7 @@ export function WorkspaceDeleteDialog({
       isOpen={isOpen}
       onClose={onClose}
       dismissable={!working}
+      testId="workspace-delete-dialog"
     >
       {view.state === "checking" ? (
         <p className="ah-trash-checking" role="status">
