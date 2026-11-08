@@ -186,6 +186,10 @@ export const parts: Record<CardId, Part> = {
   K19: { kind: "once", sel: '[data-testid="conversation-recheck"]' },
   K20: { kind: "once", sel: '[data-testid="markdown-preview-toggle"]' },
   K21: { kind: "once", sel: '[data-testid="markdown-preview-expand"]' },
+  K22: {
+    kind: "info",
+    sel: '[data-testid="compaction-marker"], [data-testid="compaction-notice"]',
+  },
   V01: { kind: "input", sel: '[data-testid="message-input"]' },
   V02: { kind: "once", sel: '[data-testid="attach-file"]' },
   V03: { kind: "list", sel: '[data-testid="command-palette"]', key: "/" },

@@ -21,5 +21,12 @@ export const Thinking: Story = {
   },
 };
 export const Compaction: Story = {
-  args: { marker: { key: "compact", compact: "Aiempi työ tiivistetty." } },
+  args: {
+    marker: {
+      key: "compact",
+      at: "2026-11-08T18:44:00Z",
+      compact:
+        "## Tavoite\nKorjata kirjautumisen virhe.\n\n## Tehty\n- Testit lisätty\n- Virhe paikannettu istunnon vanhenemiseen",
+    },
+  },
 };

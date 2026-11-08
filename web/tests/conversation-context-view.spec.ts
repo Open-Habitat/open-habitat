@@ -5,8 +5,9 @@ import { expect, type Page, test } from "./worker-host";
 // The context view (experimental) through the real gateway and daemon: the
 // list comes from Pi's own reading of the synthetic Pi's session (the
 // daemon's helper over the pinned Pi), and Tiivistä nyt goes through the
-// daemon's compact route to the synthetic Pi's RPC compact. The pinned Pi's
-// own compaction runs in the daemon's native test.
+// daemon's compact route to the synthetic Pi's RPC compact, its progress and
+// outcome showing in the conversation too. The pinned Pi's own compaction
+// runs in the daemon's native test.
 test.beforeEach(async ({ page }) => {
   expect((await page.request.get("/fixture/reset-clock")).status()).toBe(204);
   expect(
@@ -102,6 +103,25 @@ test("@context-view lists what fills the context, opens a file by its name and c
     page.getByTestId("browser-editor").locator(".ah-browser-filename"),
   ).toHaveText("cmd/main.go");
 
+  // A summary that fails: the page and the conversation both say so.
+  const ring = page.locator(".ah-agent-header").getByTestId("context-ring");
+  const notice = page.getByTestId("compaction-notice");
+  await page.getByTestId("compact-open").click();
+  await page
+    .getByTestId("compact-dialog")
+    .getByRole("textbox")
+    .fill("epäonnistu");
+  await page.getByTestId("compact-confirm").click();
+  await expect(page.getByTestId("compacting")).toBeVisible();
+  await expect(page.getByTestId("compact-outcome")).toContainText(
+    "Tiivistys ei onnistunut",
+    { timeout: 20000 },
+  );
+  await ring.click();
+  await expect(notice).toHaveAttribute("data-state", "failed");
+  await expect(notice).toContainText("Tiivistys ei onnistunut");
+  await ring.click();
+
   // The confirmation says by clock time what Pi summarizes and keeps.
   await page.getByTestId("compact-open").click();
   const dialog = page.getByTestId("compact-dialog");
@@ -115,6 +135,22 @@ test("@context-view lists what fills the context, opens a file by its name and c
   await page.screenshot({ path: testInfo.outputPath("dialog.png") });
   await dialog.getByTestId("compact-confirm").click();
   await expect(dialog).toHaveCount(0);
+  // Progress shows at once where it was pressed and in the conversation,
+  // and the conversation keeps Pi's compaction as its mark.
+  await expect(page.getByTestId("compacting")).toBeVisible();
+  await ring.click();
+  await expect(notice).toHaveAttribute("data-state", "running");
+  await expect(notice).toContainText("Agentti tiivistää keskustelua");
+  await page.screenshot({ path: testInfo.outputPath("compacting.png") });
+  const mark = page.getByTestId("compaction-marker");
+  await expect(mark).toContainText(/Keskustelu tiivistettiin klo \d/, {
+    timeout: 20000,
+  });
+  await expect(notice).toHaveCount(0);
+  await mark.getByText("Yhteenveto").click();
+  await expect(mark).toContainText("Säilytä lokin luvut");
+  await page.screenshot({ path: testInfo.outputPath("compacted.png") });
+  await ring.click();
   // Right after, Pi refuses another until the conversation goes on.
   await expect(page.getByTestId("compacted")).toContainText("Tiivistetty klo", {
     timeout: 20000,

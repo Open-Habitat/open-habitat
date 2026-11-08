@@ -7,6 +7,7 @@ import {
   commandOutput,
   cursorParts,
   initialTurn,
+  keptAfterAnswer,
   type LiveTurn,
   parseConversationEvent,
   retireEndedTurns,
@@ -925,7 +926,7 @@ export class ConversationStore {
       incoming.some((entry) => entry.entry_key === settledKey)
         ? {
             ...old.live,
-            fragments: commandOutput(old.live.fragments),
+            fragments: keptAfterAnswer(old.live.fragments),
             truncated: false,
           }
         : old.live;

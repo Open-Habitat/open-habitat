@@ -393,15 +393,20 @@ func (j *eventJournal) progress(agent, kind string, payload any) {
 // cannot resurrect its text: it finds an empty pending buffer under this lock.
 // keepCommandOutputLocked drops the turn's provisional frames but keeps a
 // running `!` command's output: the command is not part of Pi's turn, and
-// only its own history entry (kind bash) supersedes that output.
+// only its own history entry (kind bash) supersedes that output. Pi's
+// compaction markers stay too: Pi compacts after the answer it is saving,
+// and the conversation says from them how that compaction ended.
 func (t *turnTail) keepCommandOutputLocked() {
 	kept := t.frames[:0]
 	t.bytes = 0
 	for _, frame := range t.frames {
 		var event struct {
-			Kind string `json:"kind"`
+			Kind    string `json:"kind"`
+			Payload struct {
+				Marker string `json:"marker"`
+			} `json:"payload"`
 		}
-		if json.Unmarshal(frame, &event) == nil && event.Kind == "bash.output" {
+		if json.Unmarshal(frame, &event) == nil && (event.Kind == "bash.output" || event.Kind == "pi.marker" && strings.HasPrefix(event.Payload.Marker, "compaction_")) {
 			kept = append(kept, frame)
 			t.bytes += len(frame)
 		}

@@ -36,6 +36,7 @@ import {
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip, type WorkerAsk } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
+import { CompactionNotice } from "../components/CompactionNotice";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
@@ -87,6 +88,7 @@ import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
+import { compactionNotice } from "./compactionNotice";
 import { useCompaction } from "./compactionView";
 import {
   readCommands,
@@ -1876,6 +1878,8 @@ function BrowserConversationContent({
     onLogin,
     onSettled: () => setContextRead((n) => n + 1),
   });
+  // The conversation says when the agent compacts and why it did not.
+  const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
   const rewind = useRewind({
     id,
@@ -2934,6 +2938,9 @@ function BrowserConversationContent({
                   setUnseen(0);
                 }}
               />
+              {compactionState ? (
+                <CompactionNotice notice={compactionState} />
+              ) : null}
               {(!current?.pending_question || statusStale) &&
               questionOutcome ? (
                 <p className="ah-native-question" role="status">

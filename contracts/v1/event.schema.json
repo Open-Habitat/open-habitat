@@ -853,6 +853,16 @@
               "text": {
                 "type": "string",
                 "maxLength": 4096
+              },
+              "outcome": {
+                "description": "On compaction_end: how Pi's compaction ended, whoever asked for it. Pi's own error text is not carried.",
+                "enum": [
+                  "done",
+                  "already_compacted",
+                  "nothing_to_compact",
+                  "cancelled",
+                  "failed"
+                ]
               }
             }
           }

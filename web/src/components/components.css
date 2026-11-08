@@ -3947,6 +3947,42 @@ details[open] > summary:not([class])::before {
 .ah-session-settings code {
   color: var(--ah-ink);
 }
+/* A compaction's mark: the summary folds open under the row. */
+.ah-compaction-mark details {
+  flex-basis: 100%;
+}
+.ah-compaction-mark summary {
+  cursor: pointer;
+  color: var(--ah-ink-2);
+}
+.ah-compaction-summary {
+  margin: var(--ah-s2) 0 var(--ah-s1);
+  color: var(--ah-ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-compaction-notice {
+  margin: 0;
+}
+.ah-compaction-spin {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--ah-line-strong);
+  border-top-color: var(--ah-accent);
+  animation: ah-compaction-spin 0.9s linear infinite;
+}
+@keyframes ah-compaction-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-compaction-spin {
+    animation: none;
+  }
+}
 /* The details belong to the header and float over the reading column. */
 /* biome-ignore lint/style/noDescendingSpecificity: Positioning the header anchors its popover. */
 .ah-agent-header {

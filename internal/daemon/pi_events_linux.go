@@ -31,6 +31,8 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			ErrorMessage string `json:"errorMessage"`
 		} `json:"message"`
 		WillRetry     bool            `json:"willRetry"`
+		Aborted       bool            `json:"aborted"`
+		ErrorMessage  string          `json:"errorMessage"`
 		Reason        string          `json:"reason"`
 		Attempt       int             `json:"attempt"`
 		MaxAttempts   int             `json:"maxAttempts"`
@@ -77,6 +79,9 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		}
 		if e.Type == "compaction_start" || e.Type == "compaction_end" {
 			payload["text"] = liveText(e.Reason)
+		}
+		if e.Type == "compaction_end" {
+			payload["outcome"] = compactionEndOutcome(e.Result, e.Aborted, e.ErrorMessage)
 		}
 		c.journal.progress(agent, "pi.marker", payload)
 	case "auto_retry_start", "auto_retry_end", "summarization_retry_scheduled", "summarization_retry_attempt_start", "summarization_retry_finished":

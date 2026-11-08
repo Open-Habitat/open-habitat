@@ -66,6 +66,37 @@ describe("published conversation stream", () => {
       ),
     ).toEqual(["message_error", "auto_retry_start"]);
   });
+  it("keeps a compaction's markers when the answer before it is saved, and says them only as the compaction notice", () => {
+    let turn = initialTurn(cursor(0));
+    const frames: [string, Record<string, unknown>][] = [
+      ["assistant.delta", { text: "Vastaus", content_index: 0 }],
+      ["pi.marker", { marker: "compaction_start", text: "threshold" }],
+      [
+        "pi.marker",
+        { marker: "compaction_end", text: "threshold", outcome: "failed" },
+      ],
+      [
+        "history.entry",
+        {
+          entry_key: "native-1",
+          entry_kind: "assistant",
+          content: {
+            media_type: "text/plain",
+            text: "Vastaus",
+            complete: true,
+          },
+        },
+      ],
+    ];
+    frames.forEach(([kind, payload], index) => {
+      turn = applyTurnEvent(turn, parse(index + 1, kind, payload), agent).turn;
+    });
+    expect(turn.fragments.map((f) => f.payload.marker)).toEqual([
+      "compaction_start",
+      "compaction_end",
+    ]);
+    expect(provisionalItems(turn)).toEqual([]);
+  });
   it("retains the recorded invocation through event validation and entry replacement", () => {
     const result = applyTurnEvent(
       initialTurn(cursor(0)),

@@ -6,7 +6,9 @@ export type SessionMarker = {
   thinking?: string;
   oldModel?: string;
   oldThinking?: string;
+  /** A compaction: Pi's summary, and when Pi wrote it. */
   compact?: string;
+  at?: string;
 };
 export function sessionMarkers(
   entries: HistoryEntry[],
@@ -22,6 +24,7 @@ export function sessionMarkers(
       markers.set(entry.entry_key, {
         key: entry.entry_key,
         compact: entry.content.text,
+        at: entry.timestamp,
       });
       continue;
     }

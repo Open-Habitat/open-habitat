@@ -572,6 +572,11 @@ const fi = {
       name: "Esikatselun pituus",
       lead: "Avaa pitkän luonnoksen kokonaan tai rajaa sen taas lyhyemmäksi.",
     },
+    K22: {
+      name: "Tiivistys",
+      lead: "Kertoo, että agentti tiivistää tai tiivisti vanhimmat viestit yhteenvedoksi, tai miksi tiivistys jäi tekemättä.",
+      know: "Vanhat viestit jäävät luettaviksi; agentti näkee niistä enää yhteenvedon. Yhteenveto aukeaa rivin alta.",
+    },
     K15: {
       name: "Kopioi koodi",
       lead: "Kopioi laatikon koko sisällön leikepöydälle.",
@@ -593,7 +598,7 @@ const fi = {
     K19: {
       name: "Tarkista keskustelun tila",
       lead: "Kysyy palvelimelta keskustelun tilan uudelleen, kun se näyttää jääneen jumiin.",
-      know: "Mitään ei lähetetä uudelleen; vain näkyvä tila päivittyy.",
+      know: "Tarkistus ei itse lähetä mitään. Jos se osoittaa, ettei agentti saanut viestiäsi, Habitat lähettää viestin kerran uudelleen.",
     },
     V01: {
       name: "Viesti agentille",
@@ -1705,6 +1710,11 @@ export const explainModeText = catalog(fi, {
       name: "Preview length",
       lead: "Expands a long draft or limits its height again.",
     },
+    K22: {
+      name: "Compaction",
+      lead: "Shows that the agent is compacting or compacted the oldest messages into a summary, or why it did not.",
+      know: "The old messages stay readable; the agent now sees only their summary. The summary opens under the row.",
+    },
     K15: { name: "Copy code", lead: "Copies the whole box to the clipboard." },
     K16: {
       name: "Wrap long lines",
@@ -1723,7 +1733,7 @@ export const explainModeText = catalog(fi, {
     K19: {
       name: "Check the conversation's state",
       lead: "Asks the server for the conversation's state again when it seems stuck.",
-      know: "Nothing is sent again; only what you see is updated.",
+      know: "The check itself sends nothing. If it shows that the agent never got your message, Habitat sends it once more.",
     },
     V01: {
       name: "Message to the agent",

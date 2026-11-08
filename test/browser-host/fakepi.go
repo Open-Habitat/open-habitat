@@ -486,6 +486,10 @@ func (s *fakeSession) compact(instructions string, emit func(any)) (map[string]a
 		refuse = "Already compacted"
 	} else if users < 2 {
 		refuse = "Nothing to compact (session too small)"
+	} else if strings.Contains(instructions, "epäonnistu") {
+		// The summary request fails, as when the provider refuses it.
+		time.Sleep(1200 * time.Millisecond)
+		refuse = "Summarization failed: synthetic provider error"
 	}
 	if refuse != "" {
 		emit(map[string]any{"type": "compaction_end", "reason": "manual", "aborted": false, "willRetry": false, "errorMessage": "Compaction failed: " + refuse})

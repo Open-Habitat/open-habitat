@@ -31,6 +31,10 @@ export function useCompaction({
   live.current = { id, stopped, workspaceId };
   // biome-ignore lint/correctness/useExhaustiveDependencies: a different conversation forgets the last answer.
   useEffect(() => setOutcome(undefined), [id]);
+  // A new turn leaves the last answer behind, here and in the conversation.
+  useEffect(() => {
+    if (busy) setOutcome(undefined);
+  }, [busy]);
   return {
     offer: !enabled || !id || !csrf ? "none" : busy ? "busy" : "ready",
     running: !!id && running === id,

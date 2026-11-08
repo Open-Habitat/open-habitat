@@ -363,3 +363,43 @@ func TestLongRunFitsLiveTail(t *testing.T) {
 		t.Fatalf("long run tail: %d frames, overflow=%v", len(tail.frames), tail.overflow)
 	}
 }
+
+// The end of Pi's compaction says how it ended, whoever asked for it, so the
+// conversation can show a failure with its reason; Pi's error text stays out.
+func TestCompactionEndCarriesItsOutcome(t *testing.T) {
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	for raw, want := range map[string]string{
+		`{"type":"compaction_end","reason":"manual","result":{"summary":"private-summary"},"aborted":false}`:                        "done",
+		`{"type":"compaction_end","reason":"manual","aborted":false,"errorMessage":"Compaction failed: Already compacted"}`:         "already_compacted",
+		`{"type":"compaction_end","reason":"manual","aborted":false,"errorMessage":"Compaction failed: Nothing to compact (x)"}`:    "nothing_to_compact",
+		`{"type":"compaction_end","reason":"manual","aborted":true}`:                                                                "cancelled",
+		`{"type":"compaction_end","reason":"threshold","aborted":false,"errorMessage":"Compaction failed: private-provider-error"}`: "failed",
+		`{"type":"compaction_end","reason":"overflow","result":null,"aborted":false}`:                                               "failed",
+	} {
+		j := newEventJournal()
+		c := &ConversationController{journal: j}
+		c.publishDelta(agent, json.RawMessage(raw))
+		_, _, _, tails := j.turnView()
+		frames := tails[agent].frames
+		if len(frames) != 1 || !strings.Contains(string(frames[0]), `"outcome":"`+want+`"`) || strings.Contains(string(frames[0]), "private-") {
+			t.Fatalf("%s: %s", raw, frames)
+		}
+	}
+}
+
+// Pi compacts after the answer it is saving: the saved answer retires the
+// turn's provisional frames but leaves the compaction's markers.
+func TestSavedAnswerKeepsCompactionMarkers(t *testing.T) {
+	j := newEventJournal()
+	c := &ConversationController{journal: j}
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	j.delta(agent, "assistant.delta", "vastaus", 0)
+	c.publishDelta(agent, json.RawMessage(`{"type":"compaction_start","reason":"threshold"}`))
+	c.publishDelta(agent, json.RawMessage(`{"type":"compaction_end","reason":"threshold","aborted":false,"errorMessage":"Compaction failed: x"}`))
+	j.nativeEntry(agent, historyEntry{Key: "a1", Kind: "assistant"})
+	_, _, _, tails := j.turnView()
+	frames := joinTail(tails[agent].frames)
+	if strings.Contains(frames, "assistant.delta") || !strings.Contains(frames, `"marker":"compaction_start"`) || !strings.Contains(frames, `"outcome":"failed"`) {
+		t.Fatalf("tail after the saved answer: %s", frames)
+	}
+}

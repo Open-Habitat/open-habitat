@@ -100,13 +100,35 @@ func TestCompactThroughPinnedPi(t *testing.T) {
 	}
 	defer p.close()
 	settled := make(chan struct{}, 8)
+	// Pi's own compaction_end frames, as the journal publishes them: the
+	// conversation shows how each compaction ended from these.
+	ended := make(chan string, 8)
+	journal := newEventJournal()
+	published := &ConversationController{journal: journal}
 	go func() {
 		for event := range p.events {
 			if strings.Contains(string(event), `"type":"agent_settled"`) {
 				settled <- struct{}{}
 			}
+			if strings.Contains(string(event), `"type":"compaction_end"`) {
+				published.publishDelta("pi:"+id, event)
+				_, _, _, tails := journal.turnView()
+				frames := tails["pi:"+id].frames
+				ended <- string(frames[len(frames)-1])
+			}
 		}
 	}()
+	endedWith := func(outcome string) {
+		t.Helper()
+		select {
+		case frame := <-ended:
+			if !strings.Contains(frame, `"outcome":"`+outcome+`"`) || strings.Contains(frame, "Synthetic summary") {
+				t.Fatalf("compaction_end, want %s: %s", outcome, frame)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("Pi sent no compaction_end (want %s)", outcome)
+		}
+	}
 	turn := func(text string) {
 		t.Helper()
 		if accepted, err := p.request("prompt", text, 15*time.Second); !accepted || err != nil {
@@ -133,6 +155,7 @@ func TestCompactThroughPinnedPi(t *testing.T) {
 	if w := post(`{}`); w.Code != 409 || !strings.Contains(w.Body.String(), "nothing_to_compact") || s.compacting {
 		t.Fatalf("empty conversation: %d %s", w.Code, w.Body.String())
 	}
+	endedWith("nothing_to_compact")
 	turn("Ensimmäinen kysymys " + strings.Repeat("sana ", 300))
 	turn("Toinen kysymys " + strings.Repeat("sana ", 300))
 	turn("Kolmas kysymys")
@@ -160,6 +183,7 @@ func TestCompactThroughPinnedPi(t *testing.T) {
 		t.Fatalf("compaction: %d %s", w.Code, w.Body.String())
 	}
 	validateCompaction(t, w.Body.Bytes())
+	endedWith("done")
 	mu.Lock()
 	instructed := false
 	for _, text := range asked {
@@ -182,6 +206,7 @@ func TestCompactThroughPinnedPi(t *testing.T) {
 	if w := post(`{}`); w.Code != 409 || !strings.Contains(w.Body.String(), "already_compacted") {
 		t.Fatalf("again: %d %s", w.Code, w.Body.String())
 	}
+	endedWith("already_compacted")
 	// The channel stays usable for ordinary requests.
 	turn("Jatketaan " + strings.Repeat("sana ", 300))
 	turn("Ja vielä")

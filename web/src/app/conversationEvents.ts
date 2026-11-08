@@ -67,6 +67,22 @@ export function cursorParts(cursor: string): {
 export function commandOutput<T extends { kind: string }>(fragments: T[]): T[] {
   return fragments.filter((fragment) => fragment.kind === "bash.output");
 }
+/** Pi's compaction markers are no part of the answer: a saved answer leaves
+ * them, so the conversation still says how a compaction after it ended. */
+const compactionMarker = (fragment: {
+  kind: string;
+  payload?: Record<string, unknown>;
+}) =>
+  fragment.kind === "pi.marker" &&
+  (fragment.payload?.marker === "compaction_start" ||
+    fragment.payload?.marker === "compaction_end");
+export function keptAfterAnswer<
+  T extends { kind: string; payload?: Record<string, unknown> },
+>(fragments: T[]): T[] {
+  return fragments.filter(
+    (fragment) => fragment.kind === "bash.output" || compactionMarker(fragment),
+  );
+}
 export function parseConversationEvent(raw: string): ConversationEvent {
   // SSE is bounded by bytes, not UTF-16 code units. A non-ASCII frame can
   // exceed the transport cap while its JavaScript string length still fits.
@@ -206,9 +222,9 @@ export function applyTurnEvent(
           )
         : entry.kind === "assistant"
           ? ran < 0
-            ? commandOutput(turn.fragments)
+            ? keptAfterAnswer(turn.fragments)
             : [
-                ...commandOutput(turn.fragments.slice(0, ran)),
+                ...keptAfterAnswer(turn.fragments.slice(0, ran)),
                 ...turn.fragments.slice(ran),
               ]
           : entry.kind === "bash"
@@ -437,6 +453,9 @@ export function provisionalItems(turn: LiveTurn) {
           // temporary stage below the answer while history catches up.
           "session_info_changed",
           "thinking_level_changed",
+          // The conversation's compaction notice says these in words.
+          "compaction_start",
+          "compaction_end",
           // A stop is not a failure; the stopped turn's own mark says it.
           "message_aborted",
         ].includes(signal)

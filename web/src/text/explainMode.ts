@@ -567,6 +567,11 @@ const fi = {
       name: "Esikatselun pituus",
       lead: "Avaa pitkän luonnoksen kokonaan tai rajaa sen taas lyhyemmäksi.",
     },
+    K22: {
+      name: "Tiivistys",
+      lead: "Kertoo, että agentti tiivistää tai tiivisti vanhimmat viestit yhteenvedoksi, tai miksi tiivistys jäi tekemättä.",
+      know: "Vanhat viestit jäävät luettaviksi; agentti näkee niistä enää yhteenvedon. Yhteenveto aukeaa rivin alta.",
+    },
     K15: {
       name: "Kopioi koodi",
       lead: "Kopioi laatikon koko sisällön leikepöydälle.",
@@ -1699,6 +1704,11 @@ export const explainModeText = catalog(fi, {
     K21: {
       name: "Preview length",
       lead: "Expands a long draft or limits its height again.",
+    },
+    K22: {
+      name: "Compaction",
+      lead: "Shows that the agent is compacting or compacted the oldest messages into a summary, or why it did not.",
+      know: "The old messages stay readable; the agent now sees only their summary. The summary opens under the row.",
     },
     K15: { name: "Copy code", lead: "Copies the whole box to the clipboard." },
     K16: {

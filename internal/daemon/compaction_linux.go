@@ -130,6 +130,27 @@ func parseCompactReply(frame json.RawMessage) compactOutcome {
 	return compactOutcome{Outcome: "done", TokensBefore: tokens(response.Data.TokensBefore), TokensAfter: tokens(response.Data.EstimatedTokensAfter)}
 }
 
+// compactionEndOutcome is the kind of Pi's compaction_end, whoever asked for
+// the compaction: the conversation says it ended and how, also to a tab that
+// did not ask. Pi's error text stays out (it may quote the person's content).
+func compactionEndOutcome(result json.RawMessage, aborted bool, errorMessage string) string {
+	switch {
+	case aborted:
+		return "cancelled"
+	case len(result) > 0 && string(result) != "null":
+		return "done"
+	}
+	switch reason := strings.TrimPrefix(errorMessage, "Compaction failed: "); {
+	case reason == "Already compacted":
+		return "already_compacted"
+	case strings.HasPrefix(reason, "Nothing to compact"):
+		return "nothing_to_compact"
+	case reason == "Compaction cancelled":
+		return "cancelled"
+	}
+	return "failed"
+}
+
 func validCompactInstructions(text string) bool {
 	return utf8.ValidString(text) && utf8.RuneCountInString(text) <= maxCompactInstructions && !strings.ContainsRune(text, 0)
 }
