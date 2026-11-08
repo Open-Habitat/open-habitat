@@ -1,5 +1,7 @@
 # Result
 
+Used on 2026-11-08 in `helpers-panel-explainer-text`: wrote the Finnish/English cards, mapped controls, regenerated the reference, and inspected paired 1440/390 synthetic captures. The second acceptance item is now checked.
+
 Added `.pi/skills/explain-card/SKILL.md` and named it in `web/AGENTS.md`.
 The skill teaches the calm Finnish/English guide posture, points to the live
 card schema and mapping, explains conditional/action fields, and works through

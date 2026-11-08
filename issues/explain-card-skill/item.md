@@ -45,4 +45,4 @@ it with `/llm-skill-review`.
 ## Acceptance Criteria
 
 - [x] `.pi/skills/explain-card/SKILL.md` exists, reviewed; `web/AGENTS.md` names it.
-- [ ] Used once to write the missing cards of `helpers-panel-explainer-text` (or that issue's worker uses it).
+- [x] Used once to write the missing cards of `helpers-panel-explainer-text` (or that issue's worker uses it).
