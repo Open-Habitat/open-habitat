@@ -2,13 +2,15 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed by prototype worker in synthetic lab
 source_ref: taskfleet:01m6y7pa54ymerjamysezfphzn/observed:offer-acts-in-flow
 originating_run: 01m6y7pa54ymerjamysezfphzn
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Offer card's hidden corner icons stay in flow and squeeze the title
