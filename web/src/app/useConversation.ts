@@ -100,6 +100,9 @@ export function useConversation({
   const queuedRefresh = useRef(false);
   const queuedProof = useRef(false);
   const queuedHistory = useRef(false);
+  // A refresh asked for while one runs settles with the rerun it queued, so
+  // an explicit check ends when its own reads have, not when it was queued.
+  const queuedDone = useRef<(() => void)[]>([]);
   const latestRefresh = useRef<
     (proof?: boolean, history?: boolean) => Promise<void>
   >(async () => {});
@@ -331,7 +334,9 @@ export function useConversation({
         queuedRefresh.current = true;
         queuedProof.current ||= requestContinuation;
         queuedHistory.current ||= readHistory;
-        return;
+        return new Promise<void>((resolve) => {
+          queuedDone.current.push(resolve);
+        });
       }
       pending.current = true;
       const version = generation.current;
@@ -496,7 +501,13 @@ export function useConversation({
         queuedRefresh.current = false;
         queuedProof.current = false;
         queuedHistory.current = false;
-        if (rerun) void latestRefresh.current(proof, history);
+        const done = queuedDone.current;
+        queuedDone.current = [];
+        const settle = () => {
+          for (const resolve of done) resolve();
+        };
+        if (rerun) void latestRefresh.current(proof, history).finally(settle);
+        else settle();
       }
     },
     [

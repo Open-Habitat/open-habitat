@@ -21,7 +21,7 @@ import (
 
 const AttachmentsPath = "/api/v1/attachments"
 const attachmentLimit int64 = 20 << 20
-const promptAttachmentLimit int64 = 100 << 20
+const promptAttachmentLimit = 100 << 20
 const attachmentQuota int64 = 1 << 30
 
 // Browser and agent adapters share the same native quota recount/write fence.

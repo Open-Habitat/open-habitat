@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Lone 'Tarkista keskustelun tila' button above the composer explains nothing and does nothing
@@ -48,8 +49,8 @@ make *Historiaa ei saada* say why and what to do.
 
 ## Acceptance Criteria
 
-- [ ] A healthy working turn shows no recheck button.
-- [ ] When a recheck is offered, it comes with its reason and visible result.
-- [ ] The conversation's history loads again on the test server; the cause is in result.md.
-- [ ] A history read failure shows its reason.
-- [ ] Touched specs green.
+- [x] A healthy working turn shows no recheck button.
+- [x] When a recheck is offered, it comes with its reason and visible result.
+- [x] The conversation's history loads again on the test server; the cause is in result.md.
+- [x] A history read failure shows its reason.
+- [x] Touched specs green.

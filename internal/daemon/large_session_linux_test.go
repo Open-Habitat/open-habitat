@@ -23,6 +23,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // largeSessionSize is above the 32 MiB cap that once locked a pilot's main
@@ -350,5 +352,64 @@ func TestLargeSessionContinuesWithNativePi(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("the resumed turn left the pictures' branch")
+	}
+}
+
+// A person may attach promptAttachmentLimit of pictures to one message, and Pi
+// writes them all into that message's single record (8.11.2026: twenty 3 MiB
+// screenshots made an 80 MB record, and the conversation's history could no
+// longer be read). Every reader of the file must accept that record, as the
+// newest one and with an answer after it.
+func TestLargestAdmittedMessageRecordStaysReadable(t *testing.T) {
+	home := t.TempDir()
+	id := "11111111-1111-4111-8111-111111111111"
+	cwd := filepath.Join(home, "src", "fixture")
+	root := filepath.Join(home, historyRoot, "--fixture--")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	const images = 25
+	picture := base64.StdEncoding.EncodeToString(make([]byte, promptAttachmentLimit/images))
+	content := []any{map[string]any{"type": "text", "text": strings.Repeat("Attachment path: ~/.local/share/open-habitat/attachments/x\n", images)}}
+	for i := 0; i < images; i++ {
+		content = append(content, map[string]any{"type": "image", "mimeType": "image/png", "data": picture})
+	}
+	header, _ := json.Marshal(map[string]any{"type": "session", "version": 3, "id": id, "cwd": cwd})
+	user, _ := json.Marshal(map[string]any{"type": "message", "id": "u0000001", "parentId": nil, "message": map[string]any{"role": "user", "content": content}})
+	reply, _ := json.Marshal(map[string]any{"type": "message", "id": "a0000001", "parentId": "u0000001", "message": map[string]any{"role": "assistant", "stopReason": "stop", "content": []any{map[string]any{"type": "text", "text": "Näen kuvat."}}}})
+	if len(user) <= 64<<20 {
+		t.Fatalf("record only %d bytes", len(user))
+	}
+	path := filepath.Join(root, "native.jsonl")
+	cfg := transport.Config{Home: home, UID: os.Getuid()}
+	h := HistoryHandler(cfg, func(*http.Request) bool { return true })
+	for _, records := range [][][]byte{{header, user}, {header, user, reply}} {
+		last := "u0000001"
+		if len(records) == 3 {
+			last = "a0000001"
+		}
+		if err := os.WriteFile(path, append(bytes.Join(records, []byte{'\n'}), '\n'), 0600); err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+id+"/history?messages=20", nil))
+		var page largeHistoryPage
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &page) != nil || len(page.Entries) == 0 || page.Entries[len(page.Entries)-1].Key != last {
+			t.Fatalf("newest page ending %s: %d %.200s", last, w.Code, w.Body.String())
+		}
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+id+"/history?after=&limit=10", nil))
+		if w.Code != 200 {
+			t.Fatalf("forward page ending %s: %d %.200s", last, w.Code, w.Body.String())
+		}
+		if whole := readNativeSettled(path, cfg.UID); whole.state != "readable" || whole.revision != page.Revision {
+			t.Fatalf("whole-file read ending %s: %q", last, whole.state)
+		}
+		if proof := proveNativeSettled(path, cfg.UID); proof.state != "readable" {
+			t.Fatalf("proof ending %s: %q", last, proof.state)
+		}
+		if _, err := reconciledNativeHistory(path, cfg.UID, id, cwd); err != nil {
+			t.Fatalf("tail proof ending %s: %v", last, err)
+		}
 	}
 }

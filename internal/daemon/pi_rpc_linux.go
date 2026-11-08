@@ -264,7 +264,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 
 // Pi echoes the prompt's image payload in user message events before the
 // bounded notification reduction. Leave room for base64, text and framing.
-const piFrameLimit = int((promptAttachmentLimit+2)/3*4) + (4 << 20)
+const piFrameLimit = (promptAttachmentLimit+2)/3*4 + 4<<20
 const maxPiRequestTimeout = 2 * time.Minute
 
 func promptRequestTimeout(images []piAttachmentImage) time.Duration {

@@ -265,6 +265,68 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
   await expect(page.getByTestId("message-input")).toBeEnabled();
 });
 
+// pilot.643: a conversation's history read failed after a reload and the
+// only sign of it above the composer was a lone recheck button; the reason
+// was at the top of the timeline, out of view. The reason and the check sit
+// together, and the check shows that it ran.
+test("@browser-conversation failing history read says why and shows its check", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const id = new URL(page.url()).searchParams.get("conversation");
+  if (!id) throw new Error("missing conversation");
+  await page.getByTestId("message-input").fill("muista tämä historia");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+  let failing = true;
+  let held: Promise<void> | undefined;
+  await page.route("**/api/v1/agents/*/history*", async (route) => {
+    if (!failing) return route.continue();
+    await held;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        error: {
+          code: "native_source_unavailable",
+          message: "Request could not be completed",
+          retryable: false,
+          correlation_id: "req_00000000",
+        },
+      }),
+    });
+  });
+  await page.reload();
+  const banner = page.getByTestId("history-unavailable");
+  await expect(banner).toContainText("Historiaa ei saada");
+  await expect(banner).toContainText("kerro ylläpitäjälle");
+  await expect(page.getByTestId("history-read-error")).toContainText(
+    "Mitään ei ole kadonnut",
+  );
+  const check = banner.getByTestId("conversation-recheck");
+  await expect(check).toHaveText("Tarkista keskustelun tila");
+  let release = () => {};
+  held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await check.click();
+  await expect(check).toHaveText("Tarkistetaan…");
+  release();
+  await expect(banner).toHaveAttribute("data-state", "done");
+  await expect(banner).toContainText("historiaa ei vieläkään saada");
+  failing = false;
+  await check.click();
+  await expect(banner).toHaveCount(0);
+  await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
+  await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+});
+
 test("@browser-conversation own message shows every line it fits; a clipped one fades only its last", async ({
   page,
 }) => {

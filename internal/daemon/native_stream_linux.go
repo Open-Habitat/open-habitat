@@ -19,7 +19,12 @@ import (
 // archived). Whole-history readers therefore stream the file one record at a
 // time and never hold it whole. maxHistoryFile is the only bound on the file,
 // and maxNativeLine bounds the one record held at a time.
-const maxNativeLine = 64 << 20
+//
+// The largest record is a person's message: Pi writes every admitted
+// attachment into it as base64, the same payload it echoes on its RPC frame.
+// A bound below that admits a send whose conversation can then no longer be
+// read (8.11.2026: twenty screenshots, one 80 MB record over a 64 MiB bound).
+const maxNativeLine = piFrameLimit
 
 var errNativeLine = errors.New("native record over bound")
 
