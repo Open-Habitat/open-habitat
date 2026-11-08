@@ -5,6 +5,8 @@ type: improvement
 reporter: jari
 status: open
 priority: normal
+lane: unlaned
+preparation: ready
 ---
 
 # Helpers chip shows only its icon, not the word Avustajat

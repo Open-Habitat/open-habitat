@@ -4,7 +4,9 @@ updated: 2026-11-08
 type: bug
 reporter: jari
 status: open
-priority: normal
+priority: high
+lane: unlaned
+preparation: ready
 ---
 
 # Starting a helper is awkward for the agent, and helpers leak across conversations (archived leftovers, name collisions)
