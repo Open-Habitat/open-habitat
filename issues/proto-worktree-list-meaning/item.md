@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: worktree-list-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-08
 ---
 
 # Design and prototype: a workspace's worktree list a person can understand and act on

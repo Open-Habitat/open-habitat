@@ -117,3 +117,10 @@ painike. Itsestään hoituvat kertovat yhdellä rivillä, miksi ne ovat siellä.
 2 toistaa keskustelulistaa ja näyttää enemmän, kuin tarvitset. 3 on
 tiivein, mutta piilottaa rivit, joita vertaat terminaaliin. Joutoaika: pidä
 24 h ja näytä kellonaika.
+
+## Jarin päätös (8.11.2026)
+
+Suunta **1 Huomio**. Kysymyksiin 2–3 suosituksen mukaan (Jari: "mennään
+sillä"): avustajan työpuu vapautuu Taskfleetin 24 h joutoajalla ja lista
+näyttää kellonajan; *Siivoa* poistaa vain yhdistetyt kuten nyt. Prototyyppi
+on toteutuksen määrittely (`worktree-list-attention`).
