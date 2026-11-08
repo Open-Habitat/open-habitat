@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: offer-cards-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: one consistent card and opening place for views, files and folders
@@ -48,4 +48,15 @@ place should be the same one that list uses. 1440 and 390, light and dark.
 
 ## Acceptance Criteria
 
-- [ ] round 1: today, three directions, view offer and questions for Jari
+- [x] round 1: today, three directions, view offer and questions for Jari
+- [ ] round 2: riffs on Kortti (beside vs popup, own tab, making public), view offer and questions for Jari
+
+## Decision (Jari 2026-11-08, kierros 1)
+
+**1 Kortti** on paras. Riffataan sitä (kierros 2):
+
+- avautuuko kohde viereen (oikea paneeli) vai ponnahdusikkunaksi keskustelun
+  päälle;
+- miten kohteen saa auki omaan välilehteen;
+- miten kohteen voi asettaa julkiseksi: Jari ehdottaa samaa tapaa kuin
+  HTML-näkymissä nyt (*Julkinen*-kytkin ja jaettava osoite), kaikille lajeille.
