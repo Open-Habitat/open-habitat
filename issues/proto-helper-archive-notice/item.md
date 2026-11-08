@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: helper-archive-proto
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: how archiving a conversation with helpers is told to the person
@@ -31,4 +31,4 @@ archive with their state). 1440 and 390, light and dark.
 
 ## Acceptance Criteria
 
-- [ ] round 1: today, three directions, view offer and questions for Jari
+- [x] round 1: today, three directions, view offer and questions for Jari
