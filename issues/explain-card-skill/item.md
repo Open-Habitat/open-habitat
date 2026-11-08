@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: explain-cards
 lane_seq: 1
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Repository skill for writing Explain-mode cards with one consistent posture
@@ -43,5 +44,5 @@ it with `/llm-skill-review`.
 
 ## Acceptance Criteria
 
-- [ ] `.pi/skills/explain-card/SKILL.md` exists, reviewed; `web/AGENTS.md` names it.
+- [x] `.pi/skills/explain-card/SKILL.md` exists, reviewed; `web/AGENTS.md` names it.
 - [ ] Used once to write the missing cards of `helpers-panel-explainer-text` (or that issue's worker uses it).

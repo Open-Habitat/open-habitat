@@ -89,6 +89,8 @@ support direct Go development builds; refresh them with
 `python3 scripts/generate-ui-reference.py` when testing that guide locally.
 Edit the browser sources, not the generated copies.
 
+Use the repository skill `explain-card` (`.pi/skills/explain-card/SKILL.md`)
+when writing or revising these cards.
 The explain mode finds each part of the screen by the element's own test id
 or class, never by position: `src/components/explainParts.ts` names the
 element and `src/text/explainMode.ts` holds its card, which the agent
