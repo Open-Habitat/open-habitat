@@ -1,6 +1,7 @@
 // Synthetic lab only; run under timeout after scripts/lab.sh start.
 import { expect } from "@playwright/test";
 import { openLab, origin, snapshot } from "./session.mjs";
+
 const out = new URL(
   "../../issues/helpers-panel-explainer-text/evidence/",
   import.meta.url,
@@ -109,18 +110,16 @@ for (const language of ["fi", "en-US"]) {
       await page.keyboard.press("Escape");
       await page.getByTestId("background-helpers").click();
       const chip = page.getByTestId("assets-chip");
-      {
-        await chip.click();
-        await page.getByTestId("explain-toggle").click();
-        await show("V17", page.getByTestId("asset-open").first(), "asset-row");
-        await show(
-          "V25",
-          page.getByTestId("assets-list").getByTestId("offer-download").first(),
-          "download",
-        );
-        await page.keyboard.press("Escape");
-        await page.getByTestId("assets-close").click();
-      }
+      await chip.click();
+      await page.getByTestId("explain-toggle").click();
+      await show("V17", page.getByTestId("asset-open").first(), "asset-row");
+      await show(
+        "V25",
+        page.getByTestId("assets-list").getByTestId("offer-download").first(),
+        "download",
+      );
+      await page.keyboard.press("Escape");
+      await page.getByTestId("assets-close").click();
       await page.getByTestId("browser-chip").click();
       await page.getByTestId("explain-toggle").click();
       await show("B01", page.getByTestId("browser-chip"), "browser");

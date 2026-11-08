@@ -726,6 +726,11 @@ const fi = {
       lead: "Sulkee näkymien ja tiedostojen listan poistamatta mitään.",
       try: "Sulje lista",
     },
+    V27: {
+      name: "Lopeta odotus",
+      lead: "Lopettaa pääagentin odotuksen. Avustaja tai workeri jatkaa työtään.",
+      know: "Pääagentti ei herää tämän odotuksen kautta työn valmistuessa.",
+    },
     B01: {
       name: "Selain",
       lead: "Avaa palvelimella olevan selaimesi ikkunat; käynnistää selaimen, jos se on pysähtynyt.",
@@ -1850,6 +1855,11 @@ export const explainModeText = catalog(fi, {
       name: "Close list",
       lead: "Closes the views and files list without removing anything.",
       try: "Close list",
+    },
+    V27: {
+      name: "Stop waiting",
+      lead: "Stops the main agent's wait. The helper or worker keeps working.",
+      know: "This wait will no longer wake the main agent when the work finishes.",
     },
     B01: {
       name: "Browser",

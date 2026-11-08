@@ -116,11 +116,15 @@ test("@server-browser opens from the rail; looking sends no input, control does"
 
   // Explain mode lets the look open, but holds control changes.
   await button(page, "browser-take-control").click();
-  await expect(page.getByTestId("explain-card")).toHaveAttribute("data-card", "B04");
+  await expect(page.getByTestId("explain-card")).toHaveAttribute(
+    "data-card",
+    "B04",
+  );
   await expect(page.locator(".ah-explain-toast")).toBeVisible();
   await expect(sheet).toHaveAttribute("data-mode", "view");
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
+  await page.getByTestId("explain-stop").click();
   await row.click();
   await expect(viewer).toHaveAttribute("data-phase", "connected");
 

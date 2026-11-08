@@ -77,7 +77,7 @@ export const settingsSections = [
       },
       {
         id: "view-links",
-        label: "Näkymien osoitteet",
+        label: "Näkymien ja tiedostojen osoitteet",
         kw: [
           "linkki",
           "link",
@@ -90,8 +90,10 @@ export const settingsSections = [
           "poista",
           "näkymä",
           "view",
+          "tiedosto",
+          "file",
         ],
-        desc: "Näkymiesi osoitteet: avaa, kopioi, tee yksityiseksi tai poista pysyvästi.",
+        desc: "Näkymiesi ja tiedostojesi osoitteet: avaa, kopioi, tee yksityiseksi tai poista pysyvästi.",
         when: "the installation offers views",
       },
     ],

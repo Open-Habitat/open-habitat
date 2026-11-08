@@ -33,8 +33,8 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         desc: "The author of commits. Saved in the global ~/.gitconfig file.",
       },
       "view-links": {
-        label: "View addresses",
-        desc: "Your views' addresses: open, copy, make private or remove them for good.",
+        label: "View and file addresses",
+        desc: "Your views' and files' addresses: open, copy, make private or remove them for good.",
       },
     },
   },

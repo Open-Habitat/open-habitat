@@ -668,7 +668,7 @@ const fi = {
     V14: {
       name: "Tarjottu kohde",
       lead: "Agentin tarjoama näkymä tai tiedosto. Kortti avaa sen keskustelun viereen, ja uusi painallus sulkee.",
-      know: "Kulman kuvakkeet julkaisevat näkymän, avaavat kohteen omalle välilehdelle ja lataavat sen.",
+      know: "Kulman kuvakkeet julkaisevat kohteen, avaavat sen omalle välilehdelle ja lataavat sen. Julkisen kohteen voi avata kuka tahansa linkin saanut kirjautumatta; kansio jaetaan kokonaan.",
     },
     V15: {
       name: "Avustajat",
@@ -730,6 +730,11 @@ const fi = {
       name: "Sulje lista",
       lead: "Sulkee näkymien ja tiedostojen listan poistamatta mitään.",
       try: "Sulje lista",
+    },
+    V27: {
+      name: "Lopeta odotus",
+      lead: "Lopettaa pääagentin odotuksen. Avustaja tai workeri jatkaa työtään.",
+      know: "Pääagentti ei herää tämän odotuksen kautta työn valmistuessa.",
     },
     B01: {
       name: "Selain",
@@ -1793,7 +1798,7 @@ export const explainModeText = catalog(fi, {
     V14: {
       name: "Offered item",
       lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
-      know: "The corner icons publish a view, open the item in a new tab and download it.",
+      know: "The corner icons publish the item, open it in a new tab and download it. Anyone who receives a public item's link can open it without signing in; a folder is shared whole.",
     },
     V15: {
       name: "Helpers",
@@ -1855,6 +1860,11 @@ export const explainModeText = catalog(fi, {
       name: "Close list",
       lead: "Closes the views and files list without removing anything.",
       try: "Close list",
+    },
+    V27: {
+      name: "Stop waiting",
+      lead: "Stops the main agent's wait. The helper or worker keeps working.",
+      know: "This wait will no longer wake the main agent when the work finishes.",
     },
     B01: {
       name: "Browser",

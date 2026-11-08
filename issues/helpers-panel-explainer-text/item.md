@@ -3,12 +3,13 @@ created: 2026-11-08
 updated: 2026-11-08
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: explain-cards
 preparation: ready
 lane_seq: 2
 blocked_by: ['@explain-card-skill']
+closed: 2026-11-08
 ---
 
 # Move the helpers panel's rule text into Explain mode
@@ -32,6 +33,6 @@ browser chip and strip, the helper archive rows.
 
 ## Acceptance Criteria
 
-- [ ] Avustajat chip and the other new controls listed above have Explain-mode cards, fi and en.
-- [ ] Panel without the line; Explain mode card for helpers carries it, fi and en.
-- [ ] Touched specs green.
+- [x] Avustajat chip and the other new controls listed above have Explain-mode cards, fi and en.
+- [x] Panel without the line; Explain mode card for helpers carries it, fi and en.
+- [x] Touched specs green.
