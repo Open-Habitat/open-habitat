@@ -229,6 +229,8 @@ test("@account-settings partial, unknown and logout/user switch", async ({
     path: "test-results/evidence/account-unknown.png",
     fullPage: true,
   });
+  // Settings gives its panes the rail's space at this desktop width.
+  await page.getByTestId("settings-close").click();
   await page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"))
@@ -874,6 +876,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
   releaseServer();
   await expect(page.getByTestId("server-name-input")).toBeVisible();
   await page.unroute("**/api/v1/server");
+  await page.getByTestId("settings-close").click();
   await page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"))

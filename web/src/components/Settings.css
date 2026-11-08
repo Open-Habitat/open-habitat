@@ -245,9 +245,9 @@
 .s-nav-i:focus-visible {
   z-index: 1;
 }
-/* Fold before the two rails squeeze the section's controls. Keep in sync
-   with Account's search preview and section-preserving resize handler. */
-@media (max-width: 1400px) {
+/* The app rail yields first, keeping both settings panes at desktop widths.
+   Keep in sync with Account's search preview and resize handler. */
+@media (max-width: 1050px) {
   .ah-account-settings.s-page {
     flex-direction: column;
     gap: var(--ah-s5);
@@ -322,7 +322,7 @@
   position: sticky;
   top: 0;
 }
-@media (max-width: 1400px) {
+@media (max-width: 1050px) {
   .s-nav {
     position: static;
   }
@@ -350,7 +350,7 @@
 :where(.s-server-area .s-nav) > .s-desc {
   margin-bottom: var(--ah-s4);
 }
-@media (max-width: 1400px) {
+@media (max-width: 1050px) {
   .s-page.s-server-area.detail .s-nav > :not(h1) {
     display: flex;
   }
@@ -799,7 +799,7 @@
   flex: none;
   margin-left: calc(var(--ah-s2) - var(--ah-s8));
 }
-@media (max-width: 1400px) {
+@media (max-width: 1050px) {
   /* In the folded layout the X shares the list heading or section's back
      row, and scrolls away with it instead of floating over the text. */
   .s-close {
@@ -835,7 +835,7 @@
 /* Settings needs its content room before the ordinary phone breakpoint.
    The close control returns to the unchanged workspace navigation. Otherwise
    a row can stack beside the app rail and widen again when that rail hides. */
-@media (min-width: 801px) and (max-width: 1100px) {
+@media (min-width: 801px) and (max-width: 1400px) {
   .ah-shell-body:has(.s-page) {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -30,10 +30,11 @@ for (const collapsed of [false, true])
     // Resize the mounted page in both directions, including the formerly
     // squeezed width just above the app rail's own mobile breakpoint.
     for (const width of [
-      1600, 1401, 1400, 1101, 1100, 1060, 1051, 1050, 1040, 810, 390, 1600,
+      1600, 1401, 1400, 1366, 1280, 1101, 1100, 1060, 1051, 1050, 1040, 810,
+      390, 1600,
     ]) {
       await page.setViewportSize({ width, height: 900 });
-      const folded = width <= 1400;
+      const folded = width <= 1050;
       await expect(page.getByTestId("settings-tili")).toBeVisible({
         visible: !folded,
       });
@@ -49,11 +50,11 @@ for (const collapsed of [false, true])
       ).toBe(true);
       if (
         process.env.OH_VISUAL_CAPTURE === "1" &&
-        [1060, 1040, 390].includes(width)
+        [1280, 1060, 1040, 390].includes(width)
       )
         await snapshot(
           page,
-          `../issues/settings-breakpoint-jump/evidence/settings-${collapsed ? "closed" : "open"}-${width}`,
+          `../issues/main-suite-red-r68/evidence/settings-${collapsed ? "closed" : "open"}-${width}`,
           { labOrigin: hostOrigin },
         );
       if (folded) {

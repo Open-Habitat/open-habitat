@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Integrated main browser suite red after round 68
@@ -39,4 +40,4 @@ Most are settings specs, which suggests `settings-breakpoint-jump` (navigation f
 
 ## Acceptance Criteria
 
-- [ ] Every listed spec passes, run by name; root cause per group in result.md.
+- [x] Every listed spec passes, run by name; root cause per group in result.md.

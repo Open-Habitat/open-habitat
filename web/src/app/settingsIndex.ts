@@ -554,6 +554,12 @@ export const settingsSections = [
       "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
     rows: [
       {
+        id: "markdown-block-preview",
+        label: "Markdown-lohkon esikatselu",
+        kw: ["markdown", "esikatselu", "preview", "koodilohko", "code block"],
+        desc: "Näytä Markdown-lohko muotoiltuna tekstinä keskustelussa.",
+      },
+      {
         id: "raise-to-your-turn",
         label: "Nosta ja Ei nyt",
         kw: [

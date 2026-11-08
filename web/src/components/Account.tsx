@@ -323,7 +323,7 @@ export function AccountSettings({
   const detail = onNavigate ? routeSection != null : localDetail;
   const row = onNavigate ? routeRow : localRow;
   useEffect(() => {
-    const folded = window.matchMedia("(max-width: 1400px)");
+    const folded = window.matchMedia("(max-width: 1050px)");
     const preserveSection = (event: MediaQueryListEvent) => {
       // /settings shows Account beside the list on desktop. When that
       // visible section becomes a separate screen, give it its own route.
@@ -399,7 +399,7 @@ export function AccountSettings({
   // A chosen row that is already open lands again.
   const [landing, setLanding] = useState(0);
   // Match Settings.css: the folded layout shows list or section, not both.
-  const narrow = () => window.matchMedia("(max-width: 1400px)").matches;
+  const narrow = () => window.matchMedia("(max-width: 1050px)").matches;
   const preview = (hit: SettingsHit | undefined) => {
     if (!hit || narrow()) return;
     steering.current = true;

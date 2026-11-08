@@ -21,7 +21,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   // quiet for two and a half hours, without waiting or touching the
   // host's files. The rail's clock moves once a minute, so not exactly two.
   // A finished conversation is not in Käynnissä (rail-running-after-done);
-  // one whose worker waits at its own prompt is, as a done row, so chosen
+  // one whose worker waits at its own prompt is, as a your-turn row, so chosen
   // conversations get such a worker.
   const aged = new Set<string>();
   const parked = new Set<string>();
@@ -55,9 +55,9 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
     .and(page.locator('[data-mode="send"]'))
     .click();
   const row = running.getByTestId(`agent-item-${first}`);
-  // The reply was read here, so the turn is done; the session file was just
-  // written, so the time is now.
-  await expect(row).toHaveAttribute("data-ball", "done", { timeout: 25000 });
+  // The reply was read here, but the parked worker still needs the person;
+  // the session file was just written, so the time is now.
+  await expect(row).toHaveAttribute("data-ball", "you", { timeout: 25000 });
   await expect(row.locator("time")).toHaveText("nyt");
   // With workspace icons standard, the row's own icon names its workspace
   // instead of a group heading.

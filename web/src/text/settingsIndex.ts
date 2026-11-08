@@ -259,6 +259,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
+      "markdown-block-preview": {
+        label: "Markdown block preview",
+        desc: "Show a Markdown block as formatted text in the conversation.",
+      },
       "raise-to-your-turn": {
         label: "Raise and Not now",
         desc: "Keep a conversation in Your turn, move it to Quiet or raise it back.",
