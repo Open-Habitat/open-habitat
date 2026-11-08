@@ -2,13 +2,15 @@
 created: 2026-11-08
 updated: 2026-11-08
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: found by proto-large-content-graceful investigation
 source_ref: taskfleet:01m6y4rgvm21vzj44k9wgv3kvq/finding:session-over-512mib
 originating_run: 01m6y4rgvm21vzj44k9wgv3kvq
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Conversation over 512 MiB can no longer be read, archived or resumed
