@@ -122,6 +122,7 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
     | {
         controller: AbortController;
         answer?: (yes: boolean) => void;
+        trigger?: HTMLElement;
       }
     | undefined
   >(undefined);
@@ -134,8 +135,27 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
     incomplete: boolean;
   }>();
   const answer = (yes: boolean) => {
+    const trigger = active.current?.trigger;
     active.current?.answer?.(yes);
     setQuestion(undefined);
+    // A conversation can change rail section while the question is open (a
+    // turn ending), which remounts its row: the dialog's own focus return
+    // then finds the pressed button detached and leaves focus on the page.
+    // A cancel goes back to the same conversation's button.
+    if (!yes && trigger)
+      requestAnimationFrame(() => {
+        const now = document.activeElement;
+        if (now && now !== document.body) return;
+        const agent = trigger.dataset.archiveAgent;
+        const target = trigger.isConnected
+          ? trigger
+          : agent
+            ? document.querySelector<HTMLElement>(
+                `[data-archive-agent="${CSS.escape(agent)}"]`,
+              )
+            : null;
+        target?.focus();
+      });
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: A changed session must cancel the old person's pending choice.
   useEffect(
@@ -153,9 +173,14 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       onAccepted?: (runs: Spinoff[]) => void,
     ): Promise<boolean> => {
       if (active.current) return false;
+      const focused = document.activeElement;
       const operation = {
         controller: new AbortController(),
         answer: undefined as ((yes: boolean) => void) | undefined,
+        trigger:
+          focused instanceof HTMLElement && focused !== document.body
+            ? focused
+            : undefined,
       };
       active.current = operation;
       setReading(binding);

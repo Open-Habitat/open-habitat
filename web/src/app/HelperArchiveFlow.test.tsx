@@ -128,3 +128,31 @@ it("session replacement resolves a pending confirmation as cancelled", async () 
   rerender({ binding: "two" });
   expect(await request).toBe(false);
 });
+
+it("a cancel returns focus to the conversation's button after its row remounted", async () => {
+  vi.mocked(readSpinoffs).mockResolvedValue(reply("available", [helper]));
+  const pressed = document.createElement("button");
+  pressed.dataset.archiveAgent = "parent";
+  document.body.append(pressed);
+  pressed.focus();
+  const { result } = renderHook(() => useHelperArchiveConfirmation("session"));
+  let request!: Promise<boolean>;
+  act(() => {
+    request = result.current.confirm("parent");
+  });
+  const view = render(result.current.dialog);
+  await waitFor(() => {
+    view.rerender(result.current.dialog);
+    expect(screen.getByTestId("helper-archive-confirm")).toBeTruthy();
+  });
+  // The turn ends meanwhile and the row moves to another rail section.
+  pressed.remove();
+  const moved = document.createElement("button");
+  moved.dataset.archiveAgent = "parent";
+  document.body.append(moved);
+  fireEvent.click(screen.getByTestId("helper-archive-cancel"));
+  expect(await request).toBe(false);
+  view.rerender(result.current.dialog);
+  await waitFor(() => expect(document.activeElement).toBe(moved));
+  moved.remove();
+});

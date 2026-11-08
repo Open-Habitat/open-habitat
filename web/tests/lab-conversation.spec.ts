@@ -194,10 +194,11 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
         const cardBox = await view.locator(".ah-recap").boundingBox();
         const controlBox = await view.locator(surface).boundingBox();
         if (!cardBox || !controlBox) throw new Error("Missing footer geometry");
-        // Native process/spinoff surfaces sit above the controlled editor.
-        // They are content, not whitespace; preserve the same outer rhythm
-        // as the read-only footer around either inventory state.
-        let surfaceHeight = 0;
+        // Native process/spinoff surfaces may sit between the card and the
+        // controlled editor; each is a part of the composer stack with the
+        // same gap around it. The card's own outer gap, to whatever lies
+        // directly under it, is the read-only footer's.
+        let below = controlBox.y;
         for (const surface of await view.locator(".ah-bg-strip").all()) {
           const box = await surface.boundingBox();
           if (
@@ -205,9 +206,9 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
             box.y >= cardBox.y + cardBox.height &&
             box.y + box.height <= controlBox.y
           )
-            surfaceHeight += box.height;
+            below = Math.min(below, box.y);
         }
-        const gap = controlBox.y - (cardBox.y + cardBox.height) - surfaceHeight;
+        const gap = below - (cardBox.y + cardBox.height);
         expect(gap).toBeGreaterThan(0);
         gaps.push(gap);
       }

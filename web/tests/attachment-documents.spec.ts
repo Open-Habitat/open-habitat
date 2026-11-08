@@ -47,9 +47,15 @@ test("documents preview in the app's dialog without running anything they carry"
   });
   await dropInNewConversation(page, files);
   const chips = page.locator(".ah-composer").getByTestId("attachment-chip");
-  // Six files upload one after another, which on a loaded host takes longer
-  // than one ordinary wait.
-  await expect(chips).toHaveCount(files.length, { timeout: 30_000 });
+  // Six files upload one after another, which on a loaded host can outlast
+  // any fixed wait. The paperclip stays disabled until the last upload ends,
+  // so wait for that, then require every file: a slow host passes, a lost
+  // upload or one that failed still fails here.
+  await expect(page.getByTestId("attach-file")).toBeEnabled({
+    timeout: 90_000,
+  });
+  await expect(page.locator(".ah-composer [role=alert]")).toHaveCount(0);
+  await expect(chips).toHaveCount(files.length);
   const preview = page.getByTestId("attachment-preview");
   const document = preview.getByTestId("attachment-document");
   const openChip = async (index: number) => {

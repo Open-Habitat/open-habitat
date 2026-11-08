@@ -3883,6 +3883,11 @@ details[open] > summary:not([class])::before {
 .ah-conversation-frame > .ah-recap:has(+ .ah-composer) {
   margin-bottom: calc(var(--ah-composer-pad-block) - var(--ah-focus-room));
 }
+/* A read-only conversation's footer stands where the composer stack would,
+   so the card keeps the stack's one gap above it. */
+.ah-conversation-frame > .ah-recap:has(+ .ah-read-only-footer) {
+  margin-bottom: var(--ah-s3);
+}
 /* Over the strip's own bottom inset, which is empty and at least as tall. */
 .ah-conversation-frame > .ah-recap + .ah-bg-strip + .ah-composer {
   margin-top: calc(-1 * var(--ah-focus-room));

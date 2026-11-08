@@ -821,6 +821,7 @@ export function AgentNavItem({
                             ? "rail-close-conversation"
                             : "rail-archive-conversation"
                         }
+                        data-archive-agent={agentId}
                         variant="quiet"
                         size="inline"
                         aria-label={
