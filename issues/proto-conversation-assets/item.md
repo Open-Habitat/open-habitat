@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-08
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: view-versions
 lane_seq: 1
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Prototype: list of a conversation's views and files
@@ -50,4 +51,12 @@ Tarjouskortit valitsivat **A Kulman**. Sirun listan riveillä pitää olla
 samat hiiren alla näkyvät painikkeet. Kierros 4: riffit listan rivien
 hover-painikkeista Kulman mallilla.
 - [x] round 3: actions on list rows
-- [ ] round 4: hover buttons on the chip list rows matching the cards' Kulma, view offer and questions for Jari
+- [x] round 4: cancelled, Jari chose round 3 A
+
+## Decision (Jari 2026-11-08, kierros 3)
+
+**A Kuvakkeet**: listan riveillä hiiren alla kuvakkeet rivin oikeassa päässä
+(julkinen, oma välilehti, lataus, keskustelussa), kosketuksella aina
+näkyvissä, sama rivi paneelin yläpalkissa. Kierros 4 peruttiin tarpeettomana.
+Toteutus: `offer-cards-and-assets-list` (UI) ja `public-file-offers`
+(julkinen osoite muillekin kuin näkymille).
