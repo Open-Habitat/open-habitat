@@ -3,10 +3,11 @@ created: 2026-11-08
 updated: 2026-11-08
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-08
 ---
 
 # Offer card corner-icon tooltips render one character wide and very tall

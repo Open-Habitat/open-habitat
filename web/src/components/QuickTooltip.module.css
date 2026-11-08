@@ -9,6 +9,9 @@
 }
 
 .tooltip {
+  /* Portals may sit inside a positioned card; do not shrink to the space
+     remaining beside its corner icon. React Aria handles viewport collision. */
+  width: max-content;
   max-width: min(24rem, calc(100vw - 2rem));
   padding: var(--ah-s2) var(--ah-s3);
   border: 1px solid var(--ah-line-strong);

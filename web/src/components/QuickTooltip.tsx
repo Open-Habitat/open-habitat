@@ -106,9 +106,11 @@ function TooltipContent({ label }: { label: string }) {
     return () => window.removeEventListener("keydown", onEscape, true);
   }, [isOpen, state, props.triggerRef]);
   // Description linkage alone does not place a body-level portal in a landmark.
+  // An aside with an explicit non-landmark role (offer cards use note) is
+  // not a landmark and can be a narrow positioned containing block.
   const container =
     props.triggerRef?.current?.closest(
-      'main, aside, nav, [role="main"], [role="complementary"], [role="navigation"], [role="banner"], [role="contentinfo"]',
+      'main, aside:not([role]), nav, [role="main"], [role="complementary"], [role="navigation"], [role="banner"], [role="contentinfo"]',
     ) ?? props.triggerRef?.current?.closest("header, footer");
   return (
     <Tooltip
