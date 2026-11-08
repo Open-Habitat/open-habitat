@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: shares-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: an own place for shared views and files
