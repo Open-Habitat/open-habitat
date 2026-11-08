@@ -8,9 +8,9 @@ card schema and mapping, explains conditional/action fields, and works through
 existing Git-state card Y04. It covers catalog checks, UI-reference generation,
 and synthetic 1440/390 inspection. No production cards or runtime code changed.
 
-The first acceptance item is checked. The issue is `done` as requested; the
-second item deliberately remains unchecked for `helpers-panel-explainer-text`'s
-worker to use the skill on the Avustajat cards. That issue was not edited.
+The skill-authoring change checked the first acceptance item and closed the
+issue. The helpers-card worker has now checked the second item after using it;
+its implementation and visual evidence live in `helpers-panel-explainer-text`.
 
 ## Review
 
