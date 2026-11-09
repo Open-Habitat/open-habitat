@@ -288,7 +288,12 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
     .getByRole("link")
     .and(page.getByTestId("workspace-uncertain"))
     .click();
-  await expect(page.locator("main .ah-notice.ah-tone-warning")).toBeVisible();
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("status")
+      .and(page.getByTestId("catalog-partial")),
+  ).toBeVisible();
   await scenario(page, "malformed");
   await page.goto("/workspaces");
   await expect(page.getByTestId("workspaces-unavailable-title")).toBeVisible();

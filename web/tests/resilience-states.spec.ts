@@ -452,12 +452,14 @@ test("@resilience an incomplete catalog does not claim a deep-linked conversatio
     "data-state",
     "unknown",
   );
-  await expect(page.locator("main .ah-notice")).toBeVisible();
-  await expect(
-    page.getByRole("main").getByTestId("notice-action"),
-  ).toBeVisible();
+  const warning = page.getByRole("main").getByRole("status");
+  await expect(warning).toBeVisible();
+  const retry = warning
+    .getByRole("button")
+    .and(page.getByTestId("notice-action"));
+  await expect(retry).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
-  await page.getByRole("main").getByTestId("notice-action").click();
+  await retry.click();
   await expect(page.locator("main")).toContainText("Synteettinen viesti 0");
 });
 
