@@ -118,11 +118,18 @@ test("@recap an automatic recap a daemon restart cut off is made after the resta
 }) => {
   test.setTimeout(120000);
   try {
-    // The turn ends with no recap yet: the person's three-minute delay is
-    // still running when the daemon restarts.
-    const id = await answeredConversation(page, "ennen päivitystä");
-    expect((await nativeRecap(page, id)).recap).toBeNull();
+    // Interrupt an actual model call, not merely the idle timer before it.
     await scenario(page, "pi-recap");
+    expect((await page.request.get("/fixture/recap-hold?arm=1")).status()).toBe(
+      204,
+    );
+    const id = await answeredConversation(page, "ennen päivitystä");
+    await expect
+      .poll(async () =>
+        (await page.request.get("/fixture/recap-hold")).status(),
+      )
+      .toBe(204);
+    expect((await nativeRecap(page, id)).recap).toBeNull();
     expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
       204,
     );
@@ -163,6 +170,70 @@ test("@recap an automatic recap a daemon restart cut off is made after the resta
         ).json()
       ).entries.filter((e: { kind: string }) => e.kind === "user"),
     ).toHaveLength(1);
+  } finally {
+    await scenario(page, "ready");
+  }
+});
+
+test("@recap interrupted generation leaves a card when restart recovery has no room", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  try {
+    await scenario(page, "pi-recap");
+    expect((await page.request.get("/fixture/recap-hold?arm=1")).status()).toBe(
+      204,
+    );
+    const id = await answeredConversation(page, "kesken jäänyt katsaus");
+    await expect
+      .poll(async () =>
+        (await page.request.get("/fixture/recap-hold")).status(),
+      )
+      .toBe(204);
+    const { csrf } = await (await page.request.get("/auth/session")).json();
+    expect(
+      (
+        await page.request.put("/api/v1/server/conversations", {
+          headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": csrf },
+          data: { limit: 1 },
+        })
+      ).ok(),
+    ).toBe(true);
+    expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+      204,
+    );
+    await page.reload();
+    await expect(page.getByTestId("recap-failure")).toBeVisible();
+    expect((await nativeRecap(page, id)).recap).toBeNull();
+    expect((await status(page, id)).recap_failure).toMatchObject({
+      reason: "not_written",
+      trigger: "automatic",
+    });
+    expect((await status(page, id)).state).toBe("stopped");
+    // Another restart derives the obligation again, not a saved failure.
+    expect(
+      (
+        await page.request.put("/api/v1/server/conversations", {
+          headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": csrf },
+          data: { limit: 32 },
+        })
+      ).ok(),
+    ).toBe(true);
+    expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+      204,
+    );
+    await page.reload();
+    await expect
+      .poll(
+        async () => {
+          const native = await nativeRecap(page, id);
+          return native.recap?.through === native.latest_message;
+        },
+        { timeout: 30000 },
+      )
+      .toBe(true);
+    await expect(page.getByTestId("recap-failure")).not.toBeVisible();
+    await expect(card(page)).toHaveAttribute("data-trigger", "automatic");
   } finally {
     await scenario(page, "ready");
   }

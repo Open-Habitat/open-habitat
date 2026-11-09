@@ -1201,6 +1201,21 @@ esac
 				fixtureProvider.missingEmail.Store(true)
 				w.WriteHeader(204)
 				return
+			case "/fixture/recap-hold":
+				// Hold exactly one fake model call across a daemon restart.
+				if r.URL.Query().Get("arm") == "1" {
+					_ = os.Remove(filepath.Join(tmp, "fakepi-recap-started"))
+					if err := os.WriteFile(filepath.Join(tmp, "fakepi-recap-hold"), nil, 0600); err != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+					w.WriteHeader(204)
+				} else if _, err := os.Stat(filepath.Join(tmp, "fakepi-recap-started")); err == nil {
+					w.WriteHeader(204)
+				} else {
+					w.WriteHeader(404)
+				}
+				return
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {

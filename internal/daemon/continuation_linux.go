@@ -333,6 +333,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	if kind != startHeldSend {
 		s.lazy = false
 	}
+	delete(c.recapRecoveryFailures, id)
 	s.recapOnly = kind == startRecap
 	s.autoWake = kind == startAutoWake
 	c.sessions[id] = s

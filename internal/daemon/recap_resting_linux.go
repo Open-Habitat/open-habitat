@@ -28,8 +28,8 @@ const (
 )
 
 type owedRecap struct {
-	id  string
-	due time.Time
+	id, through string
+	due         time.Time
 }
 
 // owedRecaps lists the browser's own active conversations whose latest
@@ -66,7 +66,7 @@ func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration, 
 		if err != nil || now.Sub(at) > restingRecapHorizon {
 			continue
 		}
-		owed = append(owed, owedRecap{id: n.id, due: at.Add(delay)})
+		owed = append(owed, owedRecap{id: n.id, through: scan.latest.ID, due: at.Add(delay)})
 	}
 	sort.Slice(owed, func(i, j int) bool { return owed[i].due.After(owed[j].due) })
 	if len(owed) > maxRestingRecaps {
@@ -74,6 +74,36 @@ func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration, 
 	}
 	sort.Slice(owed, func(i, j int) bool { return owed[i].due.Before(owed[j].due) })
 	return owed
+}
+
+// A recovery refused before Pi starts has no handle on which runRecap could
+// record its outcome. Keep only that attempt's failure in memory. The native
+// candidate supplies through; the browser compares it with current history,
+// just as it does for a model failure. A restart derives candidates afresh.
+func (c *ConversationController) recordRecapRecoveryFailure(owed owedRecap, s *conversation) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || c.sessions[owed.id] != s {
+		return
+	}
+	failure := &recapFailure{Reason: "not_written", Through: owed.through, Trigger: "automatic"}
+	if s != nil {
+		s.recapFailure = failure
+	} else {
+		if c.recapRecoveryFailures == nil {
+			c.recapRecoveryFailures = make(map[string]*recapFailure)
+		}
+		c.recapRecoveryFailures[owed.id] = failure
+	}
+}
+
+func (c *ConversationController) recapRecoveryFailure(id string) map[string]string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if f := c.recapRecoveryFailures[id]; f != nil {
+		return map[string]string{"reason": f.Reason, "through": f.Through, "trigger": f.Trigger}
+	}
+	return nil
 }
 
 // recapRestingConversations makes the recaps owed from before this daemon
@@ -98,7 +128,7 @@ func (c *ConversationController) recapRestingConversations(ctx context.Context) 
 		if ctx.Err() != nil {
 			return
 		}
-		c.recapResting(ctx, owed.id, nil)
+		c.recapResting(ctx, owed, nil)
 	}
 }
 
@@ -137,8 +167,8 @@ func (c *ConversationController) recapAfterIdleStop(ctx context.Context, s *conv
 		case <-timer.C:
 		}
 	}
-	if len(c.owedRecaps(time.Now(), delay, s.id)) > 0 {
-		c.recapResting(ctx, s.id, s)
+	for _, owed := range c.owedRecaps(time.Now(), delay, s.id) {
+		c.recapResting(ctx, owed, s)
 	}
 }
 
@@ -149,10 +179,16 @@ func (c *ConversationController) recapAfterIdleStop(ctx context.Context, s *conv
 // its own schedule, nobody's Pi is stopped to make room, and a Pi the person
 // wakes, writes to or runs a command in meanwhile stays theirs. old is the
 // stopped handle this daemon left, or nil after a restart.
-func (c *ConversationController) recapResting(ctx context.Context, id string, old *conversation) {
+func (c *ConversationController) recapResting(ctx context.Context, owed owedRecap, old *conversation) {
+	id := owed.id
 	// Recheck after waiting: the person may have disabled recaps meanwhile.
 	if !automaticRecapsEnabled(c.home) {
 		return
+	}
+	// A refused start has no handle or model outcome to invalidate status.
+	// Publish completion anyway so an open page reads the native-derived card.
+	if c.journal != nil {
+		defer c.journal.appendInvalidation("pi:" + id)
 	}
 	log := diagnostic.New(os.Stderr, "daemon")
 	c.mu.Lock()
@@ -167,11 +203,17 @@ func (c *ConversationController) recapResting(ctx context.Context, id string, ol
 	}
 	c.mu.Unlock()
 	if skip != "" {
+		if skip == "capacity" && ctx.Err() == nil {
+			c.recordRecapRecoveryFailure(owed, old)
+		}
 		log.Info("conversation_recap", "outcome", "skipped", "reason", skip, "trigger", "resting", "agent_id", "pi:"+id)
 		return
 	}
 	release, ok := c.proofPermit(ctx)
 	if !ok {
+		if ctx.Err() == nil {
+			c.recordRecapRecoveryFailure(owed, old)
+		}
 		log.Info("conversation_recap", "outcome", "skipped", "reason", "source_unavailable", "trigger", "resting", "agent_id", "pi:"+id)
 		return
 	}
@@ -185,6 +227,9 @@ func (c *ConversationController) recapResting(ctx context.Context, id string, ol
 	s, problem := c.resume(id, old, startRecap)
 	release()
 	if problem != "" {
+		if ctx.Err() == nil && problem != "controlled" {
+			c.recordRecapRecoveryFailure(owed, old)
+		}
 		log.Info("conversation_recap", "outcome", "skipped", "reason", problem, "trigger", "resting", "agent_id", "pi:"+id)
 		return
 	}
@@ -203,10 +248,14 @@ func (c *ConversationController) recapResting(ctx context.Context, id string, ol
 	c.mu.Lock()
 	ready := !c.closed && c.sessions[id] == s && s.recapOnly && recapIdle(s) && !s.dead && !s.recapping && !s.compacting && !s.rpc.overflow.Load()
 	epoch := s.recapActivity
+	failedStart := c.sessions[id] == s && s.recapOnly && !s.startupCancelled && s.dead && (s.stopCause == "" || s.stopCause == "crash")
 	if ready {
 		s.recapping = true
 	}
 	c.mu.Unlock()
+	if failedStart && ctx.Err() == nil {
+		c.recordRecapRecoveryFailure(owed, s)
+	}
 	if ready {
 		c.runRecap(s, "automatic", epoch)
 		c.mu.Lock()

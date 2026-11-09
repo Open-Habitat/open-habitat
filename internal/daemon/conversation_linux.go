@@ -81,6 +81,9 @@ type ConversationController struct {
 	// maxLive overrides the live-child limit; zero uses the default
 	// (liveLimit). Protected by mu.
 	maxLive int
+	// Startup recovery selects at most maxRestingRecaps. Refusals before a
+	// handle exists live only for this daemon, like conversation.recapFailure.
+	recapRecoveryFailures map[string]*recapFailure
 	// fixtureLimits stands in for root's live-limits file in the synthetic
 	// browser host only. Protected by mu.
 	fixtureLimits func() ([]byte, error)

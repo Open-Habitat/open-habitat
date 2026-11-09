@@ -3,7 +3,10 @@
 package daemon
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -94,6 +97,90 @@ func TestOwedRecapsComeFromNativeHistory(t *testing.T) {
 	}
 	if got := c.owedRecaps(now, 3*time.Minute, ""); len(got) != 1 || got[0].id != stale {
 		t.Fatalf("with two turns first: %+v", got)
+	}
+}
+
+// Interrupt generation, discard the controller as a restart does, and make
+// recovery unable to start Pi. Native history must still explain the missing
+// recap to the browser, rather than losing the old pending/failure card.
+func TestRecapInterruptedByRestartReportsUnwrittenWhenRecoveryCannotStart(t *testing.T) {
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "work")
+	if err := os.MkdirAll(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "11111111-1111-4111-8111-111111111111"
+	at := time.Now().Add(-time.Hour)
+	writeSession(t, home, id, cwd, restingMessage("u1", "", "user", at), restingMessage("a1", "u1", "assistant", at))
+	owner, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.markBrowser("ws_example123", cwd); err != nil {
+		t.Fatal(err)
+	}
+	owner.release()
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	s := &conversation{id: id}
+	before := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{id: s}}
+	started, interrupted, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	before.recapGenerator = func(*conversation, string, uint64) recapOutcome {
+		close(started)
+		<-interrupted
+		return recapOutcome{Reason: "controller_unavailable", Through: "a1"}
+	}
+	go func() { before.runRecap(s, "automatic", 0); close(finished) }()
+	<-started
+	before.mu.Lock()
+	before.closed = true
+	before.mu.Unlock()
+	close(interrupted)
+	<-finished
+	// No state from before is handed to the new controller.
+	after := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{}}
+	// An overdue candidate that recovery has not reached is not a failure.
+	if got := after.recapRecoveryFailure(id); got != nil {
+		t.Fatalf("unattempted recap failed: %v", got)
+	}
+	// Capacity refusal exercises the production recovery's silent skip path.
+	after.maxLive = 1
+	after.recapRestingConversations(context.Background())
+	w := httptest.NewRecorder()
+	after.stoppedStatus(w, id, "")
+	var reply struct {
+		Failure *struct{ Reason, Through, Trigger string } `json:"recap_failure"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != 200 || reply.Failure == nil || reply.Failure.Reason != "not_written" || reply.Failure.Through != "a1" || reply.Failure.Trigger != "automatic" {
+		t.Fatalf("restarted status silently lost recap: %d %s", w.Code, w.Body.String())
+	}
+	// A manually stopped handle must not inherit a failure merely because
+	// native history owes a recap. The same holds while an idle recap waits.
+	exited := make(chan struct{})
+	close(exited)
+	stopped := &conversation{id: id, cwd: cwd, state: "stopped", dead: true, rpc: &piRPC{exited: exited}, stopCause: "person"}
+	after.sessions[id] = stopped
+	w = httptest.NewRecorder()
+	after.observe(w, httptest.NewRequest("GET", "/status", nil), id)
+	reply.Failure = nil
+	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+	if reply.Failure != nil {
+		t.Fatalf("unattempted stopped recap failed: %s", w.Body.String())
+	}
+	// A real recovery refusal with a stopped handle uses its existing outcome.
+	after.recapResting(context.Background(), owedRecap{id: id, through: "a1"}, stopped)
+	w = httptest.NewRecorder()
+	after.observe(w, httptest.NewRequest("GET", "/status", nil), id)
+	reply.Failure = nil
+	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != 200 || reply.Failure == nil || reply.Failure.Through != "a1" {
+		t.Fatalf("dead handle lost recap: %d %s", w.Code, w.Body.String())
 	}
 }
 

@@ -277,6 +277,11 @@ func runFakePi(args []string) {
 				continue
 			}
 			if req.Message == "/oh-conversation-recap" || req.Message == "/oh-conversation-recap automatic" {
+				if os.Remove(filepath.Join(filepath.Dir(home), "fakepi-recap-hold")) == nil {
+					_ = os.WriteFile(filepath.Join(filepath.Dir(home), "fakepi-recap-started"), nil, 0600)
+					// The daemon restart kills this child before it writes a recap.
+					time.Sleep(time.Hour)
+				}
 				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 				if strings.TrimSpace(string(mode)) == "pi-recap-failing" {
 					// As the recap extension reports a model whose quota is spent.

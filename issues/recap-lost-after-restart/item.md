@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Recap bar disappears after a host update or restart
@@ -29,23 +30,31 @@ automatic recap attempt replaces the shown recap with a failure/empty state.
 
 ## Acceptance Criteria
 
-- [ ] Cause found and recorded here (reproduced on a disposable host or explained from the journal).
-- [ ] A conversation that had a recap shows the same recap after daemon/gateway restart and browser reload, without new activity.
-- [ ] A regression test that restarts (or re-creates) the daemon side with a recap in native history and asserts it is served and rendered.
+- [x] Cause found and recorded here (reproduced on a disposable host or explained from the journal).
+- [x] A conversation that had a recap shows the same recap after daemon/gateway restart and browser reload, without new activity.
+- [x] A regression test that restarts (or re-creates) the daemon side with a recap in native history and asserts it is served and rendered.
 
 ## Cause
 
-Not established. Investigation on 2026-11-09 at
-`52ea19c4e49e0dff6b9b40e1cfa89937492df2ff` did not reproduce a lost persisted
-recap. No product change is justified yet; preparation is pending.
+The clarified report concerns an in-flight recap, not persisted native data.
+A restart destroys the browser's pending request and the daemon's attempt/failure
+state. Startup already reconstructs owed automatic recaps from native history
+(latest assistant message not covered by a recap, completed-turn threshold,
+active browser origin and configured delay). An interrupted generation normally
+re-runs successfully through that path.
 
-The recap GET uses native session discovery and `latestNativeRecap`, not the
-controller's in-memory conversation ownership. A changed-file scan fails with
-503, not a successful empty recap. The browser preserves an already-read recap
-on a failed read, but a fresh page has no previous value. This leaves a transient
-read failure as a possibility, not a demonstrated cause. Failure cards are
-in-memory and differ from persisted recap entries; the report does not yet
-identify which kind of card disappeared.
+The reproduced gap is a refused recovery: `recapResting` returned after capacity,
+ownership/proof or launch refusal with only a journal line. There was no handle
+on which `recordRecapOutcome` could put a failure, and `stoppedStatus` returned no
+recap outcome. A startup child that failed readiness similarly rested without a
+card. Thus the pending card disappeared and no recap or explanation replaced it.
+
+A regression first failed with a fresh controller, native unrecapped history and
+a one-Pi capacity limit: recovery logged `capacity`, but status had no
+`recap_failure`. Browser tests now interrupt an actual fake-model call and cover
+both successful recovery and that refusal. This establishes a real failure path,
+not proof that capacity was the exact refusal in Jari's original test-server
+incident; its earlier journal did not establish that.
 
 ## Investigation evidence
 
@@ -83,19 +92,18 @@ identify which kind of card disappeared.
   `journal.txt`, `browser.log`, `browser-both.log`, `recap-go.log` and
   `go-short.log`. No live journal contents are committed.
 
-## Next evidence needed
+## Implementation Notes
 
-Identify one affected conversation and installation, and whether the missing
-card contained an actual summary or an error/pending message. On the next
-occurrence, capture the recap GET's HTTP status and the presence/currentness of
-`recap.through` versus `latest_message`, before sending or typing anything.
-That distinguishes missing native data, an unavailable read, a stale recap and
-browser-only hiding without guessing a change to visible behaviour.
+Recovery refusals now produce the existing `not_written` card, tied to the
+candidate's native `through`, and invalidate browser status. Outcomes with an
+existing handle use its existing failure field; pre-launch startup refusals use
+bounded daemon-lifetime failure memory (at most the eight selected startup
+candidates), retired when a handle takes ownership. Nothing is persisted and no
+new retry scheduler, history cache or read-triggered Pi start is introduced.
 
-Review choice: source inspection and existing regressions only; no LLM diff
-review or assessment was needed because no product/contract/history-reader
-change is being delivered. The issue remains open and its acceptance criteria
-are not marked complete.
+Disabled recaps, archive, cancellation and takeover are not failures. Successful
+recovery, completed recaps and configured eligibility remain unchanged. See
+[result.md](result.md) for checks, review and evidence limits.
 
 ## Jari 9.11.2026 (answer to the investigation)
 
