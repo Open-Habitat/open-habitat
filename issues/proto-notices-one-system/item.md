@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: notices-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: one consistent system for warnings and notices

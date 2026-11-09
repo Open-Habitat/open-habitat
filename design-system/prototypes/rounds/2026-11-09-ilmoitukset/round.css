@@ -1,0 +1,55 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar label { display: inline-flex; align-items: center; gap: 4px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-bar select { font: inherit; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+.proto-picker-item { white-space: nowrap; }
+.nt-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.nt-main .ah-conversation-frame { position: relative; flex: 1 1 auto; min-height: 0; }
+
+/* The system's own pieces: everything else is the production warning. */
+.nt-page { display: flex; flex-direction: column; flex: none; }
+.nt-stack { gap: var(--ah-s2); }
+.nt-more {
+  align-self: flex-start; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--ah-ink-2); font: inherit; font-size: var(--ah-size-meta);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.nt-count {
+  min-width: 22px; padding: 1px 6px; border-radius: var(--ah-r-pill);
+  background: var(--ah-surface); color: var(--ah-ink-2); font-size: var(--ah-size-meta); text-align: center;
+}
+/* B: the notice belongs to the message above it. */
+.nt-beside { margin-top: calc(-1 * var(--ah-s2)); }
+
+/* Library proposals, as a round override (also found in the
+   2026-11-08-liitteen-torjunta round): at phone width a lone close control
+   stays on the title row instead of taking a full-width row, and a one-line
+   notice keeps its action beside the text. */
+@media (max-width: 800px) {
+  .ah-warning:has(.ah-warning-actions > [data-testid=fix-dismiss]:only-child) .ah-warning-body,
+  .ah-warning-line .ah-warning-body { flex-basis: 0; }
+  .ah-warning:not(.ah-warning-line) .ah-warning-actions:has(> [data-testid=fix-dismiss]:only-child) {
+    flex-basis: auto; margin-inline-start: auto;
+  }
+  .ah-warning-actions > [data-testid=fix-dismiss] { flex: none !important; }
+}
