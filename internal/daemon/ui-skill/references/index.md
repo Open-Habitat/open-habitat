@@ -184,6 +184,7 @@ A label alone does not establish that a control is available to this person.
 - [text/sessionSettingsRow.ts](text--sessionSettingsRow.ts.md)
 - [text/settingsIndex.ts](text--settingsIndex.ts.md)
 - [text/settingsSearch.ts](text--settingsSearch.ts.md)
+- [text/shares.ts](text--shares.ts.md)
 - [text/signIn.ts](text--signIn.ts.md)
 - [text/siteKey.ts](text--siteKey.ts.md)
 - [text/skillInvocation.ts](text--skillInvocation.ts.md)

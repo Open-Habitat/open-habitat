@@ -149,11 +149,13 @@ export function WorkspaceRailView({
   icons,
   quietChoice,
   resources,
+  shares,
   browser,
 }: {
   /** Agentin käytössä's row under Etusivu (agent-resources-view,
    * experimental). */
   resources?: boolean;
+  shares?: ReactNode;
   /** The person's server browser's row (remote-browser, experimental). */
   browser?: ReactNode;
   /** The rows' raise and lower (raise-to-your-turn). */
@@ -244,8 +246,9 @@ export function WorkspaceRailView({
       }
       homeCurrent={pathname === "/workspaces"}
       pages={
-        resources || browser ? (
+        resources || browser || shares ? (
           <>
+            {shares}
             {browser}
             {resources ? (
               <div className="ah-rail-home-row">

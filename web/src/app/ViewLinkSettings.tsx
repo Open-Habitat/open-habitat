@@ -9,6 +9,7 @@ import { ControlButton } from "../components/ControlElements";
 import { CopyButton } from "../components/ViewLink";
 import { liveText } from "../i18n";
 import { viewLinksText } from "../text/viewLinks";
+import { useExperimentalFeature } from "./accountPreferences";
 import {
   type AdminViewPublication,
   addressItem,
@@ -35,6 +36,7 @@ const txt = liveText(viewLinksText);
  * good, also while the site shares nothing publicly: an address is never
  * evicted, so this is the way out of the reservation cap. */
 export function ViewLinkSettings({ csrf }: { csrf?: string }) {
+  const sharesOn = useExperimentalFeature("shares-page");
   const links = useViewLinks();
   const unknown = useViewLinksUnknown();
   const [error, setError] = useState("");
@@ -44,7 +46,7 @@ export function ViewLinkSettings({ csrf }: { csrf?: string }) {
     void refreshViewLinks(abort.signal).catch(() => {});
     return () => abort.abort();
   }, []);
-  if (links === undefined || links === "off") return null;
+  if (sharesOn || links === undefined || links === "off") return null;
   const sharing = typeof links === "object" && links.maxDays > 0;
   const rows =
     typeof links === "object"

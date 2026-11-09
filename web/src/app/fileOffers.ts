@@ -203,7 +203,7 @@ export function useFileOffer(id: string): OfferState {
 }
 
 /** The facts of several offers (the file panel's), read once and shared. */
-export function useFileOffers(ids: string[]): OfferState[] {
+export function useFileOffers(ids: string[], retry = 0): OfferState[] {
   // Re-render on any change; the states are looked up below.
   useSyncExternalStore(subscribe, () => version);
   const current = useEpoch();
@@ -218,7 +218,7 @@ export function useFileOffers(ids: string[]): OfferState[] {
       )
         void fetchOffer(id);
     }
-  }, [key, current]);
+  }, [key, current, retry]);
   return ids.map((id) => offers.get(id) ?? loading);
 }
 

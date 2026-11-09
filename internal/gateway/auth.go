@@ -513,7 +513,7 @@ func settingsUIRoute(path string) bool {
 // A view's entry address (/n/<secret>) returns to it: the pending flow keeps
 // it server-side, so the provider never sees it.
 func uiReturn(path string) bool {
-	if path == "/" || path == "/workspaces" || settingsUIRoute(path) || path == "/administration" || path == "/resources" {
+	if path == "/" || path == "/workspaces" || settingsUIRoute(path) || path == "/administration" || path == "/resources" || path == "/shares" {
 		return true
 	}
 	if entry, ok := strings.CutPrefix(path, viewEntryPrefix); ok {

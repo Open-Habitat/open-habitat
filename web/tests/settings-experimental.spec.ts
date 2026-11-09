@@ -19,6 +19,7 @@ const features = [
   "rewind-conversation",
   "explain-mode",
   "agent-resources-view",
+  "shares-page",
   "conversation-context-view",
   "named-workers",
   "remote-browser",

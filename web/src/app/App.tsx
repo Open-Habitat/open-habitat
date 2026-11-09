@@ -39,6 +39,7 @@ import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
 import { appText } from "../text/app";
 import { navigationText } from "../text/navigation";
+import { sharesText } from "../text/shares";
 import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { AgentResourcesPage } from "./AgentResourcesPage";
@@ -145,6 +146,7 @@ import {
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
 import { ServerBrowserRail, ServerBrowserSheetHost } from "./ServerBrowser";
+import { SharesPage, SharesRail } from "./SharesPage";
 import { ownWrites } from "./sentMessages";
 import {
   isSettingsRoute,
@@ -209,6 +211,7 @@ function safeRoute(path: string) {
     settingsSection(path) !== undefined ||
     path === "/administration" ||
     path === "/resources" ||
+    path === "/shares" ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
@@ -1416,6 +1419,7 @@ export function App() {
                   )
                 ? "filtered-empty"
                 : "ready";
+  const sharesOn = useExperimentalFeature("shares-page", { identity, csrf });
   const resourcesOn = useExperimentalFeature("agent-resources-view", {
     identity,
     csrf,
@@ -2638,6 +2642,11 @@ export function App() {
           {t.app.allWorkspaces}
         </LinkRow>
       </>
+    ) : location.pathname === "/shares" &&
+      sharesOn &&
+      snapshot &&
+      (phase === "authenticated" || phase === "stale") ? (
+      <SharesPage key={identity} snapshot={snapshot} csrf={csrf} />
     ) : location.pathname === "/resources" &&
       resourcesOn &&
       (phase === "authenticated" || phase === "stale") ? (
@@ -3208,11 +3217,13 @@ export function App() {
                   : undefined) ??
                 (isSettingsRoute(location.pathname)
                   ? t.app.settings
-                  : location.pathname === "/resources" && resourcesOn
-                    ? resourcesTitle.title
-                    : location.pathname === "/workspaces/new"
-                      ? t.app.newWorkspace
-                      : t.app.home)
+                  : location.pathname === "/shares" && sharesOn
+                    ? sharesText[language].title
+                    : location.pathname === "/resources" && resourcesOn
+                      ? resourcesTitle.title
+                      : location.pathname === "/workspaces/new"
+                        ? t.app.newWorkspace
+                        : t.app.home)
               }
               fallbackAccount={
                 profile &&
@@ -3279,6 +3290,14 @@ export function App() {
                 conversationStore &&
                 !landing.show ? (
                   <WorkspaceRailView
+                    shares={
+                      sharesOn ? (
+                        <SharesRail
+                          current={location.pathname === "/shares"}
+                          collapsed={railCompact && !mobileLayout}
+                        />
+                      ) : undefined
+                    }
                     resources={resourcesOn}
                     browser={
                       railCompact && !mobileLayout ? undefined : (

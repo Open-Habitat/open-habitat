@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Locator, type Page } from "./worker-host";
@@ -455,6 +456,168 @@ test("a file offer and a folder are public at their own addresses like a view", 
   await expect(page.getByTestId("view-address-row")).toHaveCount(1);
   expect((await reader.goto(packContent))?.status()).toBe(404);
   await recipient.close();
+});
+
+test("shares experiment orders by conversation activity and copies the shown address", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(process.env.OH_VISUAL_CAPTURE === "1" ? 90000 : 45000);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const first = await conversation(page);
+  const firstRoute = page.url();
+  const workspaceRoute = new URL(firstRoute).pathname;
+  const view = await offer(page, first);
+  const firstCard = page.locator(
+    `[data-testid="view-offer"][data-view-id="${view}"]`,
+  );
+  await firstCard.hover();
+  await firstCard.getByTestId("view-public").click();
+  await expect(firstCard).toHaveAttribute("data-public", "true");
+  await expect(page.getByTestId("rail-shares")).toHaveCount(0);
+  await page.goto(workspaceRoute);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const second = new URL(page.url()).searchParams.get("conversation") ?? "";
+  const newerView = await offer(page, second);
+  const secondCard = page.locator(
+    `[data-testid="view-offer"][data-view-id="${newerView}"]`,
+  );
+  await secondCard.hover();
+  await secondCard.getByTestId("view-public").click();
+  await expect(secondCard).toHaveAttribute("data-public", "true");
+  // Activity in the first conversation must outrank the newer share.
+  await page.goto(firstRoute);
+  await page
+    .getByTestId("message-input")
+    .fill("Synthetic activity after the second share");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("message-input")).toHaveValue("");
+  await page.goto("/settings/experimental");
+  await page
+    .getByTestId("experimental-shares-page-choice")
+    .getByTestId("segment-on")
+    .click();
+  await expect(
+    page
+      .getByTestId("experimental-shares-page-choice")
+      .getByTestId("segment-on"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/workspaces");
+  await expect(page.getByTestId("rail-shares")).toBeVisible();
+  await page.getByTestId("rail-shares").click();
+  await expect(page.getByTestId("shares-conversation").first()).toHaveAttribute(
+    "data-conversation-id",
+    first,
+  );
+  await expect(page.getByTestId("shares-row")).toHaveCount(2);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="shares-page"]')
+        // The exported document is agent content, not Habitat's interface.
+        .exclude('[data-testid="view-frame"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  const url = await page
+    .getByTestId("shares-address")
+    .locator("input")
+    .inputValue();
+  await page.getByTestId("shares-copy").click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(url);
+  if (process.env.OH_VISUAL_CAPTURE === "1") {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate((theme) => {
+          document.documentElement.setAttribute("data-theme", theme);
+        }, theme);
+        await snapshot(
+          page,
+          `../issues/shares-page-implement/evidence/shares-${width}-${theme}`,
+          { labOrigin: app },
+        );
+        if (width === 390) {
+          await page.getByTestId("shares-row").first().click();
+          await expect(
+            page
+              .frameLocator('[data-testid="view-frame"]')
+              .getByRole("heading")
+              .first(),
+          ).toBeVisible();
+          await snapshot(
+            page,
+            `../issues/shares-page-implement/evidence/share-${width}-${theme}`,
+            { labOrigin: app },
+          );
+          await page.getByTestId("shares-back").click();
+        }
+      }
+    }
+    const session = await (await page.request.get("/auth/session")).json();
+    for (const language of ["en-US", "fi"]) {
+      await page.request.put("/api/v1/account/preferences", {
+        headers: { Origin: app, "X-Agent-Host-CSRF": session.csrf },
+        data: { language },
+      });
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.reload();
+      await page.getByTestId("account-menu-trigger").click();
+      await page.getByTestId("menu-explain").click();
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.getByTestId("shares-conversation-heading").first().hover();
+        await expect(page.getByTestId("explain-card")).toHaveAttribute(
+          "data-card",
+          "J03",
+        );
+        await snapshot(
+          page,
+          `../issues/shares-page-implement/evidence/explain-${language}-${width}`,
+          { labOrigin: app },
+        );
+      }
+      await page.keyboard.press("Escape");
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+  await page.getByTestId("view-public-until").click();
+  await page.getByTestId("view-duration-7").click();
+  await page.getByTestId("account-menu-trigger").click();
+  await page.getByTestId("menu-explain").click();
+  await page.getByTestId("shares-remove").click();
+  await expect(page.getByTestId("view-address-remove-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("explain-card")).toHaveAttribute(
+    "data-card",
+    "J08",
+  );
+  await page.keyboard.press("Escape");
+  await page.getByTestId("shares-remove").click();
+  await page.getByTestId("view-address-remove-confirm").click();
+  await expect(page.getByTestId("shares-row")).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/shares");
+  await expect(page.getByTestId("shares-row")).toBeVisible();
+  await expect(page.getByTestId("shares-copy")).toHaveCount(0);
+  await page.getByTestId("shares-row").click();
+  await expect(page.getByTestId("shares-copy")).toBeVisible();
+  await page.getByTestId("shares-back").click();
+  await expect(page.getByTestId("shares-row")).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/settings/experimental");
+  await page
+    .getByTestId("experimental-shares-page-choice")
+    .getByTestId("segment-off")
+    .click();
+  await expect(page.getByTestId("rail-shares")).toHaveCount(0);
+  await page.goto("/settings/account");
+  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
 });
 
 test("a file offer's own tab opens at its stable address", async ({

@@ -5,6 +5,16 @@ import { catalog } from "../i18n";
 // each feature's card by its id, the pictures' sample texts and the frame.
 const fi = {
   features: {
+    "shares-page": {
+      name: "Jaetut",
+      desc: "Näkymien ja tiedostojen osoitteet omalla sivulla keskusteluittain.",
+      where:
+        "Sivupalkissa Etusivun alla. Osoitteet siirtyvät pois Tili-sivulta.",
+      shows:
+        "Keskustelut uusimman toiminnan mukaan, niiden jaot ja valitun jaon sisältö. Voit kopioida osoitteen, vaihtaa julkisuuden kestoa tai poistaa osoitteen.",
+      needs: "Ei muuta. Nykyiset jaot säilyvät.",
+      caption: "Jaetut",
+    },
     "agent-resources-view": {
       name: "Agentin käytössä",
       desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
@@ -136,6 +146,16 @@ const fi = {
 
 export const experimentalFeaturesText = catalog(fi, {
   features: {
+    "shares-page": {
+      name: "Shares",
+      desc: "View and file addresses on their own page, grouped by conversation.",
+      where:
+        "In the sidebar below Home. Addresses move out of the Account page.",
+      shows:
+        "Conversations by latest activity, their shares and the selected item's content. Copy an address, change its publication duration or delete its address.",
+      needs: "Nothing else. Existing shares stay as they are.",
+      caption: "Shares",
+    },
     "agent-resources-view": {
       name: "Agent resources",
       desc: "One view of everything your agents use: files, mail, calendar, contacts, code and machines. Each source tells what is included, what is not and what the agent may do.",

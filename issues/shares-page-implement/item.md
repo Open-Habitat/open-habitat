@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: shares
 lane_seq: 1
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Shares page (Jaetut): conversations by latest activity with their shares
@@ -30,6 +31,6 @@ controls.
 
 ## Acceptance Criteria
 
-- [ ] Page matches round 4 at 1440 and 390, light and dark, when the experimental feature is on; unchanged app when off.
-- [ ] Conversations ordered by latest activity, newest first; shares under them; copy link copies the field's address; duration and remove work as in the prototype.
-- [ ] Browser specs for ordering, copy and the experimental toggle; touched specs and fast web checks green.
+- [x] Page matches round 4 at 1440 and 390, light and dark, when the experimental feature is on; unchanged app when off.
+- [x] Conversations ordered by latest activity, newest first; shares under them; copy link copies the field's address; duration and remove work as in the prototype.
+- [x] Browser specs for ordering, copy and the experimental toggle; touched specs and fast web checks green.

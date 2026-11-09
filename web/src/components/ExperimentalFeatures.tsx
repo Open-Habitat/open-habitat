@@ -24,6 +24,7 @@ const featureIds = [
   { id: "rewind-conversation", landed: true },
   { id: "explain-mode", landed: true },
   { id: "agent-resources-view", landed: true },
+  { id: "shares-page", landed: true },
   { id: "conversation-context-view", landed: true },
   { id: "named-workers", landed: true },
   { id: "remote-browser", landed: true },
@@ -49,6 +50,7 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "rewind-conversation" ||
     id === "explain-mode" ||
     id === "agent-resources-view" ||
+    id === "shares-page" ||
     id === "conversation-context-view" ||
     id === "named-workers"
   )

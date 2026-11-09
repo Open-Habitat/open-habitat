@@ -86,6 +86,55 @@ const fi = {
     page: "Asetussivu",
   },
   cards: {
+    J01: {
+      name: "Jaetut",
+      lead: "Avaa näkymien ja tiedostojen osoitteet keskusteluittain.",
+      know: "Sivupalkin luku kertoo julkisten osoitteiden määrän.",
+      try: "Avaa Jaetut",
+    },
+    J02: {
+      name: "Jaetut",
+      lead: "Näyttää jaot, niiden julkisuuden ja valitun kohteen sisällön.",
+      know: "Keskustelut ovat uusimman toiminnan mukaisessa järjestyksessä. Puhelimella avaat ensin jaon listasta.",
+    },
+    J03: {
+      name: "Keskustelu",
+      lead: "Avaa keskustelun, josta nämä jaot ovat peräisin.",
+      know: "Päivä kertoo keskustelun viimeisimmän toiminnan, ei jaon päivää.",
+      try: "Avaa keskustelu",
+    },
+    J04: {
+      name: "Jakojen suodatin",
+      lead: "Rajaa listan julkisiin, yksityisiin tai päättyneisiin jakoihin.",
+      know: "Päättyneissä ovat myös osoitteet, joiden kohde on poistettu.",
+    },
+    J05: {
+      name: "Jako",
+      lead: "Avaa jaon sisällön, osoitteen ja julkisuuden ohjaimet.",
+      know: "Jaettu-päivä kertoo osoitteen luomisen. Uudelleenjulkaisu ei muuta sitä.",
+      try: "Avaa jako",
+    },
+    J06: {
+      name: "Jaon tila",
+      lead: "Kertoo, kuka voi avata osoitteen ja mihin asti.",
+      know: "Vain sinä tarkoittaa omaa kirjautumistasi. Poistettu kohde ei enää aukea.",
+    },
+    J07: {
+      name: "Jaon osoite",
+      lead: "Kopioi kentässä näkyvän osoitteen leikepöydälle kuvakkeesta.",
+      know: "Anna osoite sille, jolle haluat näyttää julkisen kohteen.",
+      try: "Kopioi linkki",
+    },
+    J09: {
+      name: "Tee yksityiseksi",
+      lead: "Lopettaa julkisuuden, mutta säilyttää osoitteen.",
+      know: "Voit julkaista saman osoitteen uudelleen, kun palvelin sallii jakamisen.",
+    },
+    J08: {
+      name: "Poista osoite",
+      lead: "Poistaa osoitteen pysyvästi vahvistuksen jälkeen.",
+      know: "Vanha linkki lakkaa toimimasta. Kohteen tiedostot jäävät, mutta osoitetta ei voi palauttaa.",
+    },
     X01: {
       name: "Selitä nämä mulle",
       lead: "Avaa selitystilan, jossa näet, mitä mikä tahansa kohta näytöllä tekee.",
@@ -1580,6 +1629,55 @@ export const explainModeText = catalog(fi, {
     page: "Settings page",
   },
   cards: {
+    J01: {
+      name: "Shares",
+      lead: "Opens view and file addresses grouped by conversation.",
+      know: "The sidebar count shows how many addresses are public.",
+      try: "Open Shares",
+    },
+    J02: {
+      name: "Shares",
+      lead: "Shows shares, their visibility and the selected item's content.",
+      know: "Conversations follow latest activity. On a phone, open a share from the list first.",
+    },
+    J03: {
+      name: "Conversation",
+      lead: "Opens the conversation these shares came from.",
+      know: "The date is the conversation's latest activity, not when it was shared.",
+      try: "Open conversation",
+    },
+    J04: {
+      name: "Share filter",
+      lead: "Narrows the list to public, private or expired shares.",
+      know: "Expired also includes addresses whose item has been removed.",
+    },
+    J05: {
+      name: "Share",
+      lead: "Opens the share's content, address and publication controls.",
+      know: "The shared date records address creation. Publishing again does not change it.",
+      try: "Open share",
+    },
+    J06: {
+      name: "Share status",
+      lead: "Shows who can open the address and until when.",
+      know: "Only you requires your own sign-in. A removed item no longer opens.",
+    },
+    J07: {
+      name: "Share address",
+      lead: "Use the icon to copy the field's address to the clipboard.",
+      know: "Give the address to anyone you want to show the public item to.",
+      try: "Copy link",
+    },
+    J09: {
+      name: "Make private",
+      lead: "Ends publication while keeping the address.",
+      know: "You can publish the same address again when the server allows sharing.",
+    },
+    J08: {
+      name: "Delete address",
+      lead: "Permanently deletes the address after confirmation.",
+      know: "The old link stops working. The item's files stay, but its address cannot be restored.",
+    },
     X01: {
       name: "Explain these to me",
       lead: "Opens the explain mode, which shows what any part of the screen does.",

@@ -30,6 +30,29 @@ const gs = (section: string) => `.ah-gs-sec[data-section="${section}"]`;
 const H = ".ah-agent-header";
 
 export const parts: Record<CardId, Part> = {
+  J01: {
+    kind: "nav",
+    sel: '[data-testid="rail-shares"], [data-testid="shares-back"]',
+    opens: true,
+  },
+  J02: { kind: "panel", sel: '[data-testid="shares-page"]' },
+  J03: {
+    kind: "nav",
+    sel: '[data-testid="shares-conversation-heading"]',
+    opens: true,
+  },
+  J04: { kind: "list", sel: '[data-testid="shares-filter"]', opens: true },
+  J05: { kind: "nav", sel: '[data-testid="shares-row"]', opens: true },
+  J06: { kind: "info", sel: '[data-testid="shares-state"]' },
+  J07: {
+    kind: "once",
+    sel: '[data-testid="shares-address"], [data-testid="shares-copy"]',
+  },
+  J09: { kind: "once", sel: '[data-testid="view-address-private"]' },
+  J08: {
+    kind: "once",
+    sel: '[data-testid="shares-remove"], [data-testid="view-address-remove-confirm"]',
+  },
   X01: { kind: "once", sel: '[data-testid="explain-strip"]' },
   X02: { kind: "info", sel: '[data-testid="explain-bar"]' },
   X03: { kind: "once", sel: '[data-testid="menu-explain"]' },
@@ -549,6 +572,8 @@ export const parts: Record<CardId, Part> = {
  * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "J08",
+  "J09",
   "Y11",
   "S13",
   "T05",

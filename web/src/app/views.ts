@@ -62,10 +62,10 @@ function fresh(seen: Set<string>, cursor: string | undefined) {
   return true;
 }
 
-/** Every view of one conversation, newest first, read page by page; null
- * where the installation offers no views. */
+/** Every view of one conversation (or all conversations when absent),
+ * newest first, read page by page; null where views are not offered. */
 export async function conversationViews(
-  conversationId: string,
+  conversationId: string | undefined,
   signal?: AbortSignal,
 ): Promise<ViewSummary[] | null> {
   const views: ViewSummary[] = [];

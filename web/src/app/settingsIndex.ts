@@ -576,6 +576,12 @@ export const settingsSections = [
         desc: "Palaa aiempaan viestiisi samassa keskustelussa ja palauta halutessasi agentin muuttamat tiedostot.",
       },
       {
+        id: "shares-page",
+        label: "Jaetut",
+        kw: ["jaetut", "shares", "osoitteet", "addresses", "links"],
+        desc: "Näkymien ja tiedostojen osoitteet omalla sivulla keskusteluittain.",
+      },
+      {
         id: "agent-resources-view",
         label: "Agentin käytössä",
         kw: [
