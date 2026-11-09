@@ -57,6 +57,7 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
     }, fours);
   await pickBatch(10);
   await expect(chips).toHaveCount(30);
+  await expect(composer.getByRole("alert")).toHaveCount(0);
   await input.setInputFiles(files.slice(30));
   await expect(composer.getByRole("alert")).toBeVisible();
   await expect(chips).toHaveCount(30);
@@ -74,6 +75,7 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
       .getByTestId("attachment-chip"),
   ).toHaveCount(30);
   await expect(chips).toHaveCount(0);
+  await expect(composer.getByRole("alert")).toHaveCount(0);
 
   // A valid file count does not bypass the aggregate byte budget. The browser
   // refuses at Send, before anything is sent, with the numbers that did not
@@ -92,6 +94,11 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Too large together",
   );
+  await overflow.getByTestId("attachment-refusal-dismiss").click();
+  await expect(overflow).toHaveCount(0);
+  await expect(chips).toHaveCount(30);
+  await send.click();
+  await expect(overflow).toBeVisible();
   // A draft from an earlier page load has sizes this tab never saw: the
   // host refuses it, and says which limit.
   await page.reload();
@@ -368,6 +375,8 @@ test("large draft image chips download only thumbnails, including after reloadin
   await expect(chips).toHaveCount(0);
   expect(originals).toEqual([]);
   expect(thumbnails).toEqual([]);
+  await composer.getByTestId("attachment-refusal-dismiss").click();
+  await expect(composer.getByRole("alert")).toHaveCount(0);
   // Keep large encoded files inside the browser, without copying 95 MiB
   // through Playwright. PNG permits trailing bytes; pixels stay synthetic.
   await composer

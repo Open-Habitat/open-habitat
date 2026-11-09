@@ -826,6 +826,11 @@ const fi = {
       know: "Monta suurta kuvaa on koottu yhdelle riville, jotta muu historia pysyy kevyenä lukea.",
       try: "Avaa kuvat",
     },
+    V32: {
+      name: "Piilota liiteilmoitus",
+      lead: "Piilottaa ilmoituksen muuttamatta viestiä tai sen liitteitä.",
+      know: "Jos liitteet eivät mahdu viestiin, lähettäminen näyttää varoituksen uudelleen.",
+    },
     V01: {
       name: "Viesti agentille",
       lead: "Kirjoita, mitä haluat agentin tekevän; Enter lähettää, Shift+Enter tekee uuden rivin.",
@@ -2303,6 +2308,11 @@ export const explainModeText = catalog(fi, {
       lead: "Shows the row's pictures; each then loads from its own button.",
       know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
       try: "Open pictures",
+    },
+    V32: {
+      name: "Dismiss attachment notice",
+      lead: "Hides the notice without changing your message or its attachments.",
+      know: "If the attachments do not fit in one message, sending shows the warning again.",
     },
     V01: {
       name: "Message to the agent",

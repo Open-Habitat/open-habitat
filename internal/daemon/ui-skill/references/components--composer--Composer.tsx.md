@@ -38,6 +38,7 @@ import {
   messageText,
   splitAttachments,
 } from "../AttachmentChips";
+import { controlClassName } from "../ControlElements";
 import { Icon } from "../Icon";
 import { TooltipButton } from "../QuickTooltip";
 import { InlineNotice } from "../Status";
@@ -181,6 +182,9 @@ const rowKey = (c: Choice | undefined) =>
       : `${c.type}:${c.path}`;
 /** The in-field list lets the rows pick where the selection rests. */
 const AUTO = -2;
+
+const attachmentKey = (text: string) =>
+  JSON.stringify(attachmentsIn(text).map((a) => a.source));
 
 type Open =
   | ({ place: "caret"; sel: number } & CaretToken & InField)
@@ -678,7 +682,12 @@ export function Composer({
     ],
   );
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
+  const [uploadError, setUploadError] = useState<{
+    text: string;
+    attachments: string;
+  }>();
+  if (uploadError && uploadError.attachments !== attachmentKey(draftValue))
+    setUploadError(undefined);
   const uploadController = useRef<AbortController | null>(null);
   useEffect(() => blockAutomaticReload(() => !!uploadController.current), []);
   const picker = useRef<HTMLInputElement>(null);
@@ -694,19 +703,23 @@ export function Composer({
   const attachable = availability.state === "enabled" || sendWhenReady;
   const addFiles = useCallback(
     async (files: File[], focus: boolean) => {
-      if (!csrf || uploadController.current || !attachable) return;
+      if (!files.length || !csrf || uploadController.current || !attachable)
+        return;
       const attached = new Set(
         draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
           [],
       ).size;
       if (attached + files.length > messageAttachmentCount) {
-        setUploadError(t.tooManyFiles(attached + files.length));
+        setUploadError({
+          text: t.tooManyFiles(attached + files.length),
+          attachments: attachmentKey(draft.current.value),
+        });
         return;
       }
       const controller = new AbortController();
       uploadController.current = controller;
       setUploading(true);
-      setUploadError("");
+      setUploadError(undefined);
       try {
         for (const file of files) {
           const uploaded = await uploadAttachment(
@@ -723,9 +736,10 @@ export function Composer({
         }
       } catch (error) {
         if (!controller.signal.aborted)
-          setUploadError(
-            error instanceof Error ? error.message : t.uploadFailed,
-          );
+          setUploadError({
+            text: error instanceof Error ? error.message : t.uploadFailed,
+            attachments: attachmentKey(draft.current.value),
+          });
       } finally {
         if (uploadController.current === controller) {
           uploadController.current = null;
@@ -1178,6 +1192,7 @@ export function Composer({
         setNotice(t.notSent(unavailableReason(availability) ?? ""));
       return;
     }
+    setUploadError(undefined);
     // Attachments that cannot go in one message are refused here, before
     // anything is sent, with the numbers that did not fit.
     if (attachmentOverflow(attachmentsIn(content).map((a) => a.url))) {
@@ -1781,6 +1796,21 @@ export function Composer({
           data-reason={overflow.reason}
           tone="danger"
           title={sizes.notSent}
+          actions={
+            <TooltipButton
+              className={controlClassName({
+                size: "inline",
+                presentation: "icon",
+                variant: "quiet",
+              })}
+              data-testid="attachment-refusal-dismiss"
+              aria-label={t.dismissAttachmentRefusal}
+              title={t.dismissAttachmentRefusal}
+              onClick={() => setOverflowShown(false)}
+            >
+              <Icon name="cross" />
+            </TooltipButton>
+          }
         >
           {overflow.reason === "count"
             ? sizes.overCount(overflow.count)
@@ -1807,7 +1837,24 @@ export function Composer({
             }}
           />
           {uploading ? <p role="status">{t.savingAttachment}</p> : null}
-          {uploadError ? <p role="alert">{uploadError}</p> : null}
+          {uploadError ? (
+            <p role="alert" data-testid="attachment-refusal">
+              {uploadError.text}{" "}
+              <TooltipButton
+                className={controlClassName({
+                  size: "inline",
+                  presentation: "icon",
+                  variant: "quiet",
+                })}
+                data-testid="attachment-refusal-dismiss"
+                aria-label={t.dismissAttachmentRefusal}
+                title={t.dismissAttachmentRefusal}
+                onClick={() => setUploadError(undefined)}
+              >
+                <Icon name="cross" />
+              </TooltipButton>
+            </p>
+          ) : null}
         </>
       ) : null}
       {beforeField}

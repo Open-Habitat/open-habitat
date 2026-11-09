@@ -969,6 +969,87 @@ describe("composer speech input", () => {
   });
 });
 
+describe("attachment refusal lifetime", () => {
+  const reference =
+    "[notes.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)";
+  const file = new File(["synthetic"], "notes.txt");
+  const pick = (view: ReturnType<typeof render>, files = [file]) =>
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      {
+        target: { files },
+      },
+    );
+
+  it.each(["remove", "replace", "send", "dismiss", "accept", "switch"])(
+    "clears an obsolete refusal on %s, but not on ordinary typing",
+    async (action) => {
+      const sent = vi.fn();
+      function Draft({ conversation }: { conversation: string }) {
+        const [value, setValue] = useState(`Draft\n${reference}`);
+        return (
+          <Composer
+            key={conversation}
+            {...base}
+            csrf="csrf"
+            value={value}
+            onChange={setValue}
+            onSendNow={sent}
+          />
+        );
+      }
+      vi.mocked(uploadAttachment).mockRejectedValue(
+        new Error("Synthetic refusal"),
+      );
+      const view = render(<Draft conversation="one" />);
+      pick(view);
+      await waitFor(() => expect(view.getByRole("alert")).toBeTruthy());
+      fireEvent.change(field(view), { target: { value: "Still writing" } });
+      expect(view.getByRole("alert")).toBeTruthy();
+      if (action === "remove")
+        fireEvent.click(view.getByTestId("attachment-remove"));
+      if (action === "replace")
+        fireEvent.change(field(view), {
+          target: {
+            value: `Changed\n${reference.replace("notes.txt", "renamed.txt")}`,
+          },
+        });
+      if (action === "send") fireEvent.click(view.getByTestId("send"));
+      if (action === "dismiss")
+        fireEvent.click(view.getByTestId("attachment-refusal-dismiss"));
+      if (action === "switch") view.rerender(<Draft conversation="two" />);
+      if (action === "accept") {
+        vi.mocked(uploadAttachment).mockResolvedValue({ reference } as Awaited<
+          ReturnType<typeof uploadAttachment>
+        >);
+        pick(view);
+      }
+      await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
+      if (action === "send") expect(sent).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps a batch's refusal after an earlier file in that batch succeeds", async () => {
+    function Draft() {
+      const [value, setValue] = useState("Draft");
+      return (
+        <Composer {...base} csrf="csrf" value={value} onChange={setValue} />
+      );
+    }
+    vi.mocked(uploadAttachment)
+      .mockResolvedValueOnce({ reference } as Awaited<
+        ReturnType<typeof uploadAttachment>
+      >)
+      .mockRejectedValueOnce(new Error("Synthetic refusal"));
+    const view = render(<Draft />);
+    pick(view, [file, file]);
+    await waitFor(() =>
+      expect(view.getByTestId("attachment-refusal")).toBeTruthy(),
+    );
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+  });
+});
+
 describe("focus after an attachment", () => {
   const reference =
     "[notes.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)";

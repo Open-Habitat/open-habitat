@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Attachment refusal message never goes away
@@ -23,5 +24,5 @@ switching conversations. Fix the lifetime now; its look is
 
 ## Acceptance Criteria
 
-- [ ] The refusal clears on a later accepted attachment, on send, on dismiss, and on switching conversation; it stays while still relevant.
-- [ ] Test reproducing the stuck message; touched specs green.
+- [x] The refusal clears on a later accepted attachment, on send, on dismiss, and on switching conversation; it stays while still relevant.
+- [x] Test reproducing the stuck message; touched specs green.

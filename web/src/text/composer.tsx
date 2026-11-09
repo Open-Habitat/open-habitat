@@ -45,6 +45,7 @@ const fi = {
   tooManyFiles: (count: number) =>
     `Liitteitä olisi ${count}, ja yhteen viestiin mahtuu 30 tiedostoa. Valittuja ei liitetty: valitse vähemmän tai lähetä osa toisessa viestissä.`,
   uploadFailed: "Liitteen tallennus epäonnistui.",
+  dismissAttachmentRefusal: "Piilota liiteilmoitus",
   previousRunning: "Edellinen komento on vielä käynnissä. Pysäytä se ensin.",
   terminalOnly: (name: string) =>
     `/${name} käyttää agentin päätteen valikkoja, joten sitä ei voi ajaa selaimesta.`,
@@ -150,6 +151,7 @@ export const composerText = catalog(fi, {
   tooManyFiles: (count) =>
     `That would make ${count} attachments, and one message holds 30 files. The chosen files were not attached: choose fewer or send some in another message.`,
   uploadFailed: "The attachment could not be saved.",
+  dismissAttachmentRefusal: "Dismiss attachment notice",
   previousRunning: "The previous command is still running. Stop it first.",
   terminalOnly: (name) =>
     `/${name} uses the agent's terminal menus, so it cannot run from the browser.`,
