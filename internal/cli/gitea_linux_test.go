@@ -10,14 +10,17 @@ import (
 	"testing"
 
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
 )
 
 // TestMain lets Git run this test binary as the installed helper: with
-// OH_TEST_CLI_MAIN set it is the open-habitat entry point.
+// OH_TEST_CLI_MAIN set it is the open-habitat entry point. Otherwise it first
+// drops the caller's repository-bound Git variables (internal/testgitenv).
 func TestMain(m *testing.M) {
 	if os.Getenv("OH_TEST_CLI_MAIN") == "1" {
 		os.Exit(Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
+	testgitenv.Scrub()
 	os.Exit(m.Run())
 }
 

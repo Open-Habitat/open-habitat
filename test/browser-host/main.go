@@ -37,6 +37,7 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -162,6 +163,10 @@ func main() {
 	if len(os.Args) >= 2 && (os.Args[1] == "gitea" || os.Args[1] == "gitlab") {
 		os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
+	// Playwright may run under `git bisect run` or a hook, which exports
+	// GIT_DIR for the checkout; the fixtures' `git init` would then rewrite
+	// that repository (marking it bare from a linked worktree).
+	testgitenv.Scrub()
 	// The daemon runs this binary as the fixture runtime's node; the icon
 	// suggestion helper gets a synthetic model, other helpers none.
 	if len(os.Args) >= 4 && os.Args[1] == "--input-type=module" && os.Args[2] == "-e" && strings.HasPrefix(os.Args[3], "// open-habitat icon suggestions") {

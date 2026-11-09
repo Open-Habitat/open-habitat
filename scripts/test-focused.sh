@@ -3,6 +3,9 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo"
+# `git bisect run` and hooks export GIT_DIR; a fixture's `git init` inheriting
+# it rewrites this repository (bare, from a linked worktree), not its scratch.
+unset $(git rev-parse --local-env-vars)
 area='' tag='' package=''
 browser_args=()
 usage(){ echo 'usage: scripts/test-focused.sh --area web|browser|go|contracts [--spec <spec>]... [--tag <grep>] [--lab] [--go-package ./internal/<name>]' >&2; exit 2; }

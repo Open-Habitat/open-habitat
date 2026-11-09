@@ -6,6 +6,26 @@ while (($#));do case "$1" in
 --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
 umask 077
+# `git bisect run` and hooks export GIT_DIR; a fixture's `git init` inheriting
+# it rewrites this repository (bare, from a linked worktree), not its scratch.
+unset $(git rev-parse --local-env-vars)
+# Every checkout and worker shares the common config; a test that rewrites its
+# core section breaks all of them, so the gate fails on any change. Branch and
+# worktree entries are left out: parallel workers add them legitimately.
+shared_config="$(git rev-parse --path-format=absolute --git-common-dir)/config"
+shared_core(){ git config --file "$shared_config" --get-regexp '^core\.' || true; }
+shared_core_before=$(shared_core)
+shared_core_reported=false
+shared_core_unchanged(){
+  local now
+  now=$(shared_core)
+  [[ $now == "$shared_core_before" ]] && return 0
+  if ! $shared_core_reported;then
+    printf 'error: the gate changed the shared repository config %s\nbefore:\n%s\nafter:\n%s\n' "$shared_config" "$shared_core_before" "$now" >&2
+    shared_core_reported=true
+  fi
+  return 1
+}
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
@@ -55,6 +75,7 @@ cleanup(){
   fi
   chmod -R u+w "$tmp" 2>/dev/null || true
   rm -rf "$tmp"
+  shared_core_unchanged || exit 1
 }
 trap cleanup EXIT
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
@@ -249,6 +270,7 @@ issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
 if $heavy_failed;then echo 'error: gate failed; no receipt written' >&2;exit 1;fi
+shared_core_unchanged || exit 1
 if $clean;then
   receipt_args=()
   if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi

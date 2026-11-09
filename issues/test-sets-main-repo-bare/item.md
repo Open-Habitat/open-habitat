@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Something set core.bare=true on the main checkout, blocking every worker's merge
@@ -35,5 +36,5 @@ scratch dirs).
 
 ## Acceptance Criteria
 
-- [ ] The writer is identified and reproduced; fixed so no test or script can change the shared repository's config.
-- [ ] A guard (for example a gate check that `core.bare` is false before and after) catches a recurrence.
+- [x] The writer is identified and reproduced; fixed so no test or script can change the shared repository's config.
+- [x] A guard (for example a gate check that `core.bare` is false before and after) catches a recurrence.

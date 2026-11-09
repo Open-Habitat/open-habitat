@@ -6,6 +6,8 @@ while (($#));do case "$1" in --output)output=$2;shift 2;;*)echo "error: unknown 
 [[ $verb == create ]]||{ echo 'error: expected create --output PATH' >&2;exit 1;}
 [[ -n $output && $output != / && $output != "$HOME" ]]||{ echo 'error: --output must be a safe explicit path' >&2;exit 1;}
 [[ ! -e $output ]]||{ echo "error: output already exists: $output" >&2;exit 1;}
+# An inherited GIT_DIR (bisect run, hooks) would make the init below rewrite the caller's repository.
+unset $(git rev-parse --local-env-vars)
 mkdir -p "$output/src/non-git" "$output/home/.pi/agent/sessions";printf 'synthetic\n'>"$output/src/non-git/NOTICE"
 git init -q "$output/src/repository";git -C "$output/src/repository" config user.name 'Fixture User';git -C "$output/src/repository" config user.email fixture@invalid;echo fixture>"$output/src/repository/file.txt";git -C "$output/src/repository" add .;git -C "$output/src/repository" commit -qm fixture
 git -C "$output/src/repository" worktree add -q -b fixture-linked "$output/linked-manual"

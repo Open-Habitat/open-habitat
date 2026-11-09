@@ -20,11 +20,13 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
 )
 
 // TestMain lets Git run this test binary as the registered Gitea helper:
 // invoked as `<binary> gitea git-credential <op>` it answers as the product
-// helper does.
+// helper does. As a test binary it first drops the caller's repository-bound
+// Git variables, so no fixture's git reaches the checkout it was run from.
 func TestMain(m *testing.M) {
 	if len(os.Args) == 4 && os.Args[1] == "gitea" && os.Args[2] == "git-credential" {
 		os.Exit(giteaHelperForTest(os.Args[3]))
@@ -32,6 +34,7 @@ func TestMain(m *testing.M) {
 	if len(os.Args) == 4 && os.Args[1] == "gitlab" && os.Args[2] == "git-credential" {
 		os.Exit(gitlabHelperForTest(os.Args[3]))
 	}
+	testgitenv.Scrub()
 	os.Exit(m.Run())
 }
 

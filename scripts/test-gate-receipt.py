@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline tree-keyed gate receipt regression tests."""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -8,6 +9,12 @@ import tempfile
 import unittest
 
 SCRIPT = Path(__file__).with_name('gate-receipt.py')
+
+# `git bisect run` and hooks export GIT_DIR; a scratch `git init` inheriting it
+# rewrites the caller's repository (bare, from a linked worktree) instead.
+for _name in subprocess.run(['git', 'rev-parse', '--local-env-vars'],
+                            capture_output=True, text=True, check=True).stdout.split():
+    os.environ.pop(_name, None)
 
 
 class ReceiptTests(unittest.TestCase):

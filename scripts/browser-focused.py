@@ -24,6 +24,11 @@ def main():
     if args.tag is not None and (not args.tag or args.tag.startswith('-')):
         parser.error('invalid tag')
     os.environ['TMPDIR'] = '/var/tmp'
+    # `git bisect run` and hooks export GIT_DIR; the host fixtures' `git init`
+    # inheriting it would rewrite this repository instead of a scratch one.
+    for name in subprocess.run(['git', 'rev-parse', '--local-env-vars'], capture_output=True,
+                               text=True, check=True).stdout.split():
+        os.environ.pop(name, None)
     os.umask(0o077)
     # DEFAULT-ON SWITCH: change 0 to 60 once the product ordering fixes land.
     if args.spec or args.tag:

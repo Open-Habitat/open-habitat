@@ -22,6 +22,15 @@ Tests use ordinary commands (`npm`, `go`, `npx playwright test`) and run
 natively by default. On Alder, Fleetrepo may place the browser suite on Cedar;
 placement belongs to Fleetrepo, not these scripts.
 
+Every checkout and worker shares one repository config, so no test may reach
+it. `git bisect run`, hooks and `git rebase --exec` export `GIT_DIR`, and a
+scratch `git init <dir>` that inherits it reinitialises the caller's
+repository instead, from a linked worktree as bare. Entry scripts and Python
+tests drop `git rev-parse --local-env-vars`; Go test packages that run git and
+the browser host call `internal/testgitenv.Scrub` (TestMain, `main`); a new git
+fixture outside them gives git an explicit environment. `ci-local.sh` fails if
+the shared config's `core` section changed during the run.
+
 ## Release archives
 
 `package-release.sh` builds the `linux-amd64` or cross-built `linux-arm64`
