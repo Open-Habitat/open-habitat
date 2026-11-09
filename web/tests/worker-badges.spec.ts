@@ -42,7 +42,8 @@ test("worker balls keep state and wait independent, with an explain legend", asy
     const body = await response.json();
     let n = 0;
     for (const agent of body.agents) {
-      if (n >= 3) continue;
+      // Archived conversations are in the snapshot but not on the rail.
+      if (n >= 3 || agent.archive === "archived") continue;
       if (n < 2) agent.spinoffs_working = 1;
       else delete agent.spinoffs_working;
       if (n === 2) agent.spinoffs_idle = 1;

@@ -76,8 +76,12 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
     const snapshot = await response.json();
-    targetId = snapshot.agents[0].agent_id;
-    snapshot.agents[0].title.display = title;
+    // Archived conversations are in the snapshot but not on the home page.
+    const target = snapshot.agents.find(
+      (agent: { archive?: string }) => agent.archive !== "archived",
+    );
+    targetId = target.agent_id;
+    target.title.display = title;
     await route.fulfill({ response, json: snapshot });
   });
   await page.goto("/workspaces");
