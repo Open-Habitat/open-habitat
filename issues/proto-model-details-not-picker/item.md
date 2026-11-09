@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: model-details-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: the top bar's model details look like a picker but are not
