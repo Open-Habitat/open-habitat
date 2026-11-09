@@ -54,7 +54,9 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     await expect(frame.getByTestId("creation-progress")).toHaveCount(0);
     await expect(page.getByTestId("message-input")).toBeEnabled();
     const headerBefore = await frame.locator(".ah-agent-header").boundingBox();
-    const composerBefore = await frame.locator(".ah-composer").boundingBox();
+    // The field itself must not move. Conversation controls such as the
+    // background strip join the composer above the field once it opens.
+    const fieldBefore = await frame.locator(".ah-cbox").boundingBox();
     expect(create.posts()).toBe(1);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     create.release();
@@ -73,11 +75,11 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
       return boxes[0];
     };
     const headerAfter = await settledBox(".ah-agent-header");
-    const composerAfter = await settledBox(".ah-composer");
-    if (!headerBefore || !headerAfter || !composerBefore || !composerAfter)
+    const fieldAfter = await settledBox(".ah-cbox");
+    if (!headerBefore || !headerAfter || !fieldBefore || !fieldAfter)
       throw new Error("Missing conversation layout");
     expect(Math.abs(headerBefore.y - headerAfter.y)).toBeLessThan(1);
-    expect(Math.abs(composerBefore.y - composerAfter.y)).toBeLessThan(1);
+    expect(Math.abs(fieldBefore.y - fieldAfter.y)).toBeLessThan(1);
     expect(create.posts()).toBe(1);
   } finally {
     create.release();
