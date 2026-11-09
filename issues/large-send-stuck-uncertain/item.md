@@ -41,6 +41,27 @@ the empty field losing the draft and attachments, and the underlying
 timeout/sleep handling for large sends. Reproduce with the synthetic host:
 a ~90 MB send, a slow upload, the tab suspended mid-send, a daemon restart.
 
+Further facts (Jari 9.11. ~09:52), conversation
+`pi:8566f3ca-6a82-41d6-810e-d2c75b8d8a59` on the test server (workspace
+`ws_9aVGVKUBudoprTcn3hHCt04R`), screenshots `evidence/jari-3-*`, `jari-4-*`:
+
+- typing a new message *ping* and sending is refused, with a grey line
+  **below** the field that disappears after a moment: *Viestiä ei lähetetty:
+  Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.*
+  The conversation cannot be continued.
+- moments later it changed state again by itself: the dashed bubble now
+  reads *? Toimitus epävarma*, the six images are back in the attachment row,
+  the field holds the old text **and** *ping* concatenated, and the notice now
+  says *Teksti on kirjoituskentässä. Jos varmistuu, ettei agentti saanut
+  viestiä, se lähetetään itsestään kerran uudelleen …*
+
+The test server's journals are readable as root on the guest from Alder
+(Fleetrepo `infra/open-habitat-test/ADMIN.md` "Diagnostic journals"; the
+pinned ssh options are in that directory's scripts, key
+`~/.ssh/open-habitat-test-hetzner` on Alder only). Read the gateway and the
+person's daemon journal around 06:40–07:00Z for this conversation
+(read-only; never copy the key off Alder).
+
 ## Acceptance Criteria
 
 - [ ] A large send either arrives and settles normally, or fails with a true message and the draft and attachments back in the field; never a false claim.
