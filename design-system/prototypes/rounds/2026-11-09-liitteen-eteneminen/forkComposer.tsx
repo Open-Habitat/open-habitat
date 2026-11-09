@@ -88,6 +88,16 @@ import {
   unwrapGoal,
 } from "../../../../web/src/components/composer/GoalChip";
 import "../../../../web/src/components/composer/composer.css";
+import {
+  BarChips,
+  BarLine,
+  BatchLine,
+  type Failure,
+  FailedBanner,
+  RingChips,
+  SendWaits,
+} from "./progress";
+import { type Presentation, type Upload, UploadFailed, uploadWithProgress } from "./upload";
 
 const isMac =
   typeof navigator !== "undefined" &&
@@ -534,6 +544,7 @@ export function Composer({
   selectedWorkingMode,
   sendState,
   sendWhenReady = false,
+  progress = "ring",
   suppressAvailabilityReason = false,
   queue,
   queueKnown = true,
@@ -575,6 +586,8 @@ export function Composer({
    * until it can. The send goes to it although `availability` is not
    * enabled; without this, a blocked send is refused with its reason. */
   sendWhenReady?: boolean;
+  /** The round's direction: how the files on the way show. */
+  progress?: Presentation;
   suppressAvailabilityReason?: boolean;
   /** Pi's queue while it works: shown as a card above the field. */
   queue?: { steering: string[]; followUp: string[] };
@@ -693,6 +706,25 @@ export function Composer({
   if (uploadError && uploadError.attachments !== attachmentKey(draftValue))
     setUploadError(undefined);
   const uploadController = useRef<AbortController | null>(null);
+  // What the file on the way has sent, and what the batch has saved so far.
+  const [onTheWay, setOnTheWay] = useState<{
+    id: string;
+    phase: "sending" | "saving";
+    sent: number;
+    started?: number;
+    samples: [number, number][];
+  }>();
+  const inFlight = useRef<string | null>(null);
+  const [batchDone, setBatchDone] = useState<{ files: number; bytes: number; started?: number; last?: number }>({
+    files: 0,
+    bytes: 0,
+  });
+  const [failure, setFailure] = useState<Failure | null>(null);
+  // Lähetä pressed while files are on the way: the message waits for them,
+  // with the working mode it was pressed in.
+  const [sendWaits, setSendWaits] = useState<boolean | null>(null);
+  const sendWaitsRef = useRef(sendWaits);
+  sendWaitsRef.current = sendWaits;
   useEffect(
     () =>
       blockAutomaticReload(
@@ -749,11 +781,32 @@ export function Composer({
     setUploading(true);
     void (async () => {
       try {
-        const uploaded = await uploadAttachment(
-          item.file,
-          csrf,
-          controller.signal,
-        );
+        inFlight.current = item.id;
+        setOnTheWay({ id: item.id, phase: "sending", sent: 0, samples: [] });
+        // Production's local refusals (empty, over 20 MiB) stay in
+        // uploadAttachment and never reach the network.
+        const uploaded =
+          !item.file.size || item.file.size > attachmentBytesLimit
+            ? await uploadAttachment(item.file, csrf, controller.signal)
+            : await uploadWithProgress(
+                item.file,
+                csrf,
+                controller.signal,
+                (sent, at) => {
+                  setOnTheWay((u) =>
+                    u?.id === item.id
+                      ? {
+                          ...u,
+                          sent,
+                          started: u.started ?? at,
+                          samples: [...u.samples.filter(([t]) => at - t <= 3000), [at, sent]],
+                        }
+                      : u,
+                  );
+                  setBatchDone((d) => ({ ...d, started: d.started ?? at, last: at }));
+                },
+                () => setOnTheWay((u) => (u?.id === item.id ? { ...u, phase: "saving" } : u)),
+              );
         if (controller.signal.aborted) return;
         // A removed local chip must never reappear when its upload answers.
         if (pending.current.some((entry) => entry.id === item.id)) {
@@ -764,8 +817,21 @@ export function Composer({
           current.onChange(next);
         }
         updatePending(pending.current.filter((entry) => entry.id !== item.id));
+        setBatchDone((d) => ({ ...d, files: d.files + 1, bytes: d.bytes + item.file.size }));
       } catch (error) {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && error instanceof UploadFailed) {
+          // A broken save stops the batch: the files after it would most
+          // likely break the same way. They wait for one retry.
+          setFailure({
+            file: item.file,
+            sent: error.sent,
+            reason: error.reason,
+            rest: pending.current.slice(1).map((entry) => entry.file),
+            sendCancelled: sendWaitsRef.current !== null,
+          });
+          setSendWaits(null);
+          updatePending([]);
+        } else if (!controller.signal.aborted) {
           updatePending([]);
           setUploadError({
             text: error instanceof Error ? error.message : t.uploadFailed,
@@ -773,6 +839,10 @@ export function Composer({
           });
         }
       } finally {
+        if (inFlight.current === item.id) {
+          inFlight.current = null;
+          setOnTheWay(undefined);
+        }
         if (uploadController.current === controller) {
           uploadController.current = null;
           if (!controller.signal.aborted) setUploading(false);
@@ -789,6 +859,41 @@ export function Composer({
       pending.current = [];
     };
   }, [csrf, updatePending]);
+  // A new batch counts from zero.
+  useEffect(() => {
+    if (!pendingFiles.length) setBatchDone({ files: 0, bytes: 0 });
+  }, [pendingFiles.length]);
+  /** Stops the file on the way; the queue goes on with the next. */
+  const stopOnTheWay = () => {
+    const controller = uploadController.current;
+    uploadController.current = null;
+    inFlight.current = null;
+    setOnTheWay(undefined);
+    setUploading(false);
+    controller?.abort();
+  };
+  /** Cancels one file: the one on the way stops, a waiting one leaves the
+   * queue. Files already saved stay in the draft. */
+  const cancelUpload = (id: string) => {
+    updatePending(pending.current.filter((entry) => entry.id !== id));
+    if (inFlight.current === id) stopOnTheWay();
+  };
+  /** Cancels the rest of the batch, and a send waiting for it. Files over
+   * the message's limit stay, as production keeps them. */
+  const cancelAllUploads = () => {
+    updatePending(pendingFiles.filter((_, index) => selection.blocked[index]));
+    setSendWaits(null);
+    stopOnTheWay();
+  };
+  // The files waiting or on the way in the direction's form; files over the
+  // message's limit stay production's blocked chips.
+  const moving = pendingFiles.filter((_, index) => !selection.blocked[index]);
+  const blockedFiles = pendingFiles.filter((_, index) => selection.blocked[index]);
+  const uploads: Upload[] = moving.map((item) =>
+    onTheWay?.id === item.id
+      ? { key: item.id, file: item.file, phase: onTheWay.phase, sent: onTheWay.sent, started: onTheWay.started, samples: onTheWay.samples }
+      : { key: item.id, file: item.file, phase: "queued", sent: 0, samples: [] },
+  );
   useEffect(() => {
     if (!csrf) return;
     const drag = (event: DragEvent) => {
@@ -879,8 +984,6 @@ export function Composer({
     Boolean(fieldReason) && fieldAvailability.state !== "read_only";
   const sendBlocked =
     resolving ||
-    uploading ||
-    pendingFiles.length > 0 ||
     !!overflow ||
     (!sendWhenReady &&
       (sendState === "pending" || availability.state !== "enabled"));
@@ -1221,6 +1324,11 @@ export function Composer({
       return;
     }
     if (!content.trim() || resolution.current) return;
+    // Files still on the way: the message goes once they are saved.
+    if (moving.length) {
+      setSendWaits(otherWay);
+      return;
+    }
     if (overflow) setDismissedOverflow(undefined);
     if (sendBlocked) {
       // A send the view cannot take says why rather than doing nothing.
@@ -1685,7 +1793,7 @@ export function Composer({
           }}
         >
           <AttachmentMenu
-            disabled={uploading || !attachable || dictating}
+            disabled={!attachable || dictating}
             onAttach={() => picker.current?.click()}
           />
         </span>
@@ -1772,6 +1880,47 @@ export function Composer({
       )}
     </TooltipButton>
   ) : null;
+  const chips = (
+    <AttachmentChips
+      attachments={[
+        ...attachments,
+        ...blockedFiles.map((item) => ({
+          image: false,
+          name: item.file.name,
+          url: item.id,
+          source: "",
+          pending: true,
+          blocked: true,
+        })),
+      ]}
+      onRemove={
+        fieldDisabled
+          ? undefined
+          : (index) => {
+              if (index < attachments.length) removeAttachment(index);
+              else cancelUpload(blockedFiles[index - attachments.length].id);
+            }
+      }
+    />
+  );
+  const progressProps = {
+    uploads,
+    done: batchDone.files,
+    doneBytes: batchDone.bytes,
+    batchStarted: batchDone.started,
+    batchLast: batchDone.last,
+    onCancel: cancelUpload,
+    onCancelAll: cancelAllUploads,
+  };
+  // The waiting send goes once the last file is saved. A cancelled batch has
+  // already dropped it, and a broken save drops it with its warning.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sendDraft is this render's, with the files saved.
+  useEffect(() => {
+    if (moving.length || sendWaits === null) return;
+    const otherWay = sendWaits;
+    setSendWaits(null);
+    void sendDraft(otherWay, draft.current.value);
+  }, [moving.length, sendWaits]);
   const rowSend = (
     <TooltipButton
       data-mode={shellOn ? "shell" : working ? selectedWorkingMode : "send"}
@@ -1781,7 +1930,8 @@ export function Composer({
       aria-label={sendLabel}
       title={sendTip}
       aria-disabled={!sendReady || undefined}
-      aria-busy={resolving || sendState === "pending" || undefined}
+      aria-busy={resolving || sendState === "pending" || sendWaits !== null || undefined}
+      data-waiting={sendWaits !== null || undefined}
       onClick={() => {
         // A press on a blocked send hears why (sendDraft).
         if (sendReady || (shellOn && running) || (!shellOn && value.trim()))
@@ -1852,32 +2002,32 @@ export function Composer({
             : sizes.overBytes(overflow.count, sizes.size(overflow.bytes))}
         </WarningBanner>
       ) : null}
-      <AttachmentChips
-        attachments={[
-          ...attachments,
-          ...pendingFiles.map((item, index) => ({
-            image: false,
-            name: item.file.name,
-            url: item.id,
-            source: "",
-            pending: true,
-            blocked: selection.blocked[index],
-          })),
-        ]}
-        onRemove={
-          fieldDisabled
-            ? undefined
-            : (index) => {
-                if (index < attachments.length) removeAttachment(index);
-                else
-                  updatePending(
-                    pending.current.filter(
-                      (_, i) => i !== index - attachments.length,
-                    ),
-                  );
-              }
-        }
-      />
+      {failure ? (
+        <FailedBanner
+          failure={failure}
+          onDismiss={() => setFailure(null)}
+          onRetry={() => {
+            const files = [failure.file, ...failure.rest];
+            setFailure(null);
+            void addFiles(files, false);
+          }}
+        />
+      ) : null}
+      {progress === "batch" ? (
+        <>
+          {chips}
+          <BatchLine {...progressProps} />
+        </>
+      ) : (
+        <>
+          <div className="ue-chiprow">
+            {chips}
+            {progress === "ring" ? <RingChips {...progressProps} /> : <BarChips {...progressProps} />}
+          </div>
+          {progress === "bar" ? <BarLine {...progressProps} /> : null}
+        </>
+      )}
+      {sendWaits !== null ? <SendWaits onCancel={() => setSendWaits(null)} /> : null}
       {csrf ? (
         <>
           <input
@@ -1893,7 +2043,6 @@ export function Composer({
               event.target.value = "";
             }}
           />
-          {uploading ? <p role="status">{t.savingAttachment}</p> : null}
           {uploadError ? (
             <p role="alert" data-testid="attachment-refusal">
               {uploadError.text}{" "}

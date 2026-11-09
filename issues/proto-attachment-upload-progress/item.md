@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: upload-progress-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: upload progress for large attachments
