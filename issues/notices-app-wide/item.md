@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: notices
-lane_seq: 2
+lane_seq: 3
 blocked_by: ['@notices-composer-stack']
 preparation: ready
 ---
