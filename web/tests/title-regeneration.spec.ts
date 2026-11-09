@@ -111,9 +111,7 @@ test("pending live title animates arrow and dots; failures use the conversation 
   } finally {
     release();
   }
-  const notice = page
-    .locator(".ah-conversation-notices")
-    .getByTestId("title-error");
+  const notice = page.getByTestId("notice-stack").getByTestId("title-error");
   await expect(notice).toBeVisible();
   await expect(
     page.locator(".ah-agent-header").getByTestId("title-error"),
@@ -132,7 +130,7 @@ test("pending live title animates arrow and dots; failures use the conversation 
       .evaluate((el) => el.getAnimations().length),
   ).toBe(0);
   const a11y = await new AxeBuilder({ page })
-    .include(".ah-conversation-notices")
+    .include('[data-testid="notice-stack"]')
     .analyze();
   expect(a11y.violations).toEqual([]);
   await page.unroute("**/regenerate_title");

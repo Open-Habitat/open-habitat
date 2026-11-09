@@ -87,8 +87,9 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   await field.press("Escape");
   await expect(
     page
+      .getByTestId("notice-stack")
       .getByTestId("composer-notice")
-      .and(page.locator('[data-stopping="pending"]')),
+      .and(page.locator('[data-state="pending"]')),
   ).toBeVisible();
   await expect(stop).toBeDisabled();
   await field.press("Escape");

@@ -604,7 +604,9 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
     process_token: "pt_wait",
     force: false,
   });
-  await expect(strip.getByRole("status")).toBeVisible();
+  await expect(
+    page.getByTestId("notice-stack").getByTestId("background-notice"),
+  ).toBeVisible();
   await panel
     .getByRole("button")
     .and(page.getByTestId("spinoff-ui-test-fail"))

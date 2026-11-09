@@ -247,7 +247,9 @@ test("@ended-worker @a11y Käsittele kaikki queues one request in the busy paren
     timeout: 10000,
   });
   await expect(kept).toHaveCount(0, { timeout: 10000 });
-  await expect(strip(page).getByTestId("background-notice")).toBeVisible();
+  await expect(
+    page.getByTestId("notice-stack").getByTestId("background-notice"),
+  ).toBeVisible();
   await expect(pill(page)).toHaveAttribute("data-unfinished", "1");
   // The rows fit the phone without sideways scrolling.
   await page.setViewportSize({ width: 390, height: 844 });

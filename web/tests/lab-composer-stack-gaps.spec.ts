@@ -66,7 +66,7 @@ for (const width of [1440, 1024, 800, 390]) {
       const measure = async (name: string) => {
         const selectors = [
           ".ah-turn-working",
-          ".ah-conversation-notices > *",
+          '[data-testid="notice-stack"] > :not([hidden])',
           '[data-testid="composer-queue"]',
           ".ah-composer > .ah-attachment-chips",
           ".ah-bg-badges",

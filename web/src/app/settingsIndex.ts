@@ -387,6 +387,7 @@ export const settingsSections = [
         label: "Atlassian",
         kw: ["jira", "confluence"],
         desc: "Jira ja Confluence. Ota kokeellinen ominaisuus ensin käyttöön.",
+        when: "the atlassian-connect experimental feature is enabled",
       },
       {
         id: "microsoft",
@@ -632,6 +633,12 @@ export const settingsSections = [
           "tokens",
         ],
         desc: "Katso, mihin keskustelun konteksti kuluu, ja tiivistä keskustelu omalla ohjeella.",
+      },
+      {
+        id: "atlassian-connect",
+        label: "Atlassian-yhteys",
+        kw: ["jira", "confluence", "atlassian"],
+        desc: "Yhdistä Jira ja Confluence agenttien käyttöön.",
       },
       {
         id: "named-workers",

@@ -23,6 +23,7 @@ const features = [
   "conversation-context-view",
   "named-workers",
   "remote-browser",
+  "atlassian-connect",
 ];
 
 async function signIn(page: Page) {

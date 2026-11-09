@@ -110,7 +110,7 @@ async function signIn(page: Page) {
 async function alignedWithComposer(page: Page) {
   const [warning, field] = await page.evaluate(() =>
     [
-      ".ah-actionable-notices > .ah-warning",
+      ".ah-notice-stack .ah-warning",
       ".ah-conversation-frame .ah-composer-stack > .ah-composer .ah-cbox",
     ].map((selector) => {
       const box = document.querySelector(selector)?.getBoundingClientRect();
@@ -172,18 +172,18 @@ test("@github-connection an expired login is said above the composer and app-wid
   const conversation = new URL(page.url()).searchParams.get("conversation");
   // In the conversation the same warning is above the composer, once.
   const notice = page
-    .locator(".ah-actionable-notices")
+    .getByTestId("notice-stack")
     .getByTestId("github-connection-warning");
   await expect(notice).toHaveAttribute("data-state", "expired");
   await expect(page.getByTestId("github-connection-warning")).toHaveCount(1);
   await alignedWithComposer(page);
-  await evidence(page, "conversation", ".ah-actionable-notices");
+  await evidence(page, "conversation", ".ah-notice-stack");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(notice).toBeVisible();
   // The composer stays on screen under the warning.
   await expect(page.getByTestId("message-input")).toBeInViewport();
   await alignedWithComposer(page);
-  await evidence(page, "conversation-phone", ".ah-actionable-notices");
+  await evidence(page, "conversation-phone", ".ah-notice-stack");
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // The repair is the gateway's explicit reconnect, back to this page.
@@ -201,12 +201,12 @@ test("@github-connection an expired login is said above the composer and app-wid
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(conversation);
   const ok = page
-    .locator(".ah-actionable-notices")
+    .getByTestId("notice-stack")
     .getByTestId("github-connection-ok");
   await expect(ok).toHaveAttribute("data-state", "reconnected");
   await expect(ok).toContainText("alice-gh");
   await expect(page.getByTestId("github-connection-warning")).toHaveCount(0);
-  await evidence(page, "reconnected", ".ah-actionable-notices");
+  await evidence(page, "reconnected", ".ah-notice-stack");
 });
 
 test("@github-connection Uusi työtila says why the list is missing, without a second strip", async ({
@@ -312,13 +312,13 @@ test("@github-connection an outage is the host's own retry, then a warning with 
   await expect(bell(page)).toHaveCount(0);
   await openConversation(page);
   // In the conversation the same line is above the composer, once.
-  const notices = page.locator(".ah-actionable-notices");
+  const notices = page.getByTestId("notice-stack");
   await expect(
     notices.getByTestId("github-connection-progress"),
   ).toHaveAttribute("data-state", "retrying");
   await expect(page.getByTestId("github-connection-progress")).toHaveCount(1);
   await alignedWithComposer(page);
-  await evidence(page, "outage-retrying", ".ah-actionable-notices");
+  await evidence(page, "outage-retrying", ".ah-notice-stack");
 
   // The retry is over: a warning, with no repair, because the host does it.
   await nativeGitHub(page, "unreachable", undefined, retry(4));
@@ -333,7 +333,7 @@ test("@github-connection an outage is the host's own retry, then a warning with 
   await expect(bellGitHub(page).getByRole("button")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await alignedWithComposer(page);
-  await evidence(page, "outage-warning", ".ah-actionable-notices");
+  await evidence(page, "outage-warning", ".ah-notice-stack");
 
   // A first rejection is being verified: a line, not yet a repair.
   await nativeGitHub(page, "verifying");
@@ -359,7 +359,7 @@ test("@github-connection an organisation's restriction is said in its own reposi
   await expect(bell(page)).toHaveCount(0);
   await openConversation(page);
   const warning = page
-    .locator(".ah-actionable-notices")
+    .getByTestId("notice-stack")
     .getByTestId("github-connection-warning");
   await expect(warning).toHaveAttribute("data-state", "org_oauth_app");
   // The approval is asked on GitHub, in a new tab, without a referrer.
@@ -368,7 +368,7 @@ test("@github-connection an organisation's restriction is said in its own reposi
   await expect(fix).toHaveAttribute("target", "_blank");
   await expect(fix).toHaveAttribute("rel", /noopener/);
   await alignedWithComposer(page);
-  await evidence(page, "org-restricted", ".ah-actionable-notices");
+  await evidence(page, "org-restricted", ".ah-notice-stack");
 
   // A SAML organisation is lifted by its sign-on and a reconnect.
   await nativeGitHub(
