@@ -169,3 +169,70 @@ Pohjaksi **B Lista**, mutta listan pitäisi olla aikajanamainen (C:n
 ajallinen jäsennys listan muodossa). Riffataan vielä yksi kierros siitä,
 miltä aikajanamainen lista näyttää (kierros 3, avustaja `shares-page`).
 Kysymykset Kopioi linkki -painikkeesta ja koko osoitteesta jäivät auki.
+
+# Kierros 3: aikajanamainen lista
+
+Kierros: `design-system/prototypes/rounds/2026-11-09-jaetut-aikalista/`
+(`NOTES.md`). Pohja on kierroksen 2 B Lista: tiivis lista vasemmalla ja
+valittu jako isona oikealla, osoite ja päättymispäivä näkyvissä ilman
+hoveria. Akseli on se, miten lista jäsentyy ajassa. Mukana kulkee toinen
+akseli, koska Jari jätti sen auki: miten valitun jaon osoite näytetään.
+
+- **A Päivät**: lista päiväotsikoittain uusin ensin, rivillä keskustelu ja kellonaika. Valitussa jaossa koko osoite kentässä ja erillinen Kopioi linkki -painike.
+- **B Keskustelut**: keskustelut pystyviivalla viimeisimmän jaon mukaan ja jaot niiden alla. Valitussa jaossa koko osoite kentässä ja linkkikuvake kentän päässä.
+- **C Agenda**: päivämäärä omassa sarakkeessaan ja päivän keskustelut sen vieressä. Valitussa jaossa pelkkä Kopioi linkki -painike, osoitetta ei näytetä.
+
+Kuvat: `evidence/r3-<suunta>-0-oletus-{1440,390}-{light,dark}.avif`,
+kansio valittuna `r3-*-1-auki-{1440,390}-light`, keston valikko
+`r3-*-2-kesto-1440-light`, kopioitu linkki `r3-*-3-kopioi-{1440,390}-light`
+ja tyhjä sivu `r3-*-4-tyhja-1440-light`.
+
+## Mitä suunnat tekevät samoin
+
+- Rivin tilarivillä lukee aina *Julkinen 7.12.2026 asti*, *Vain sinä*,
+  *Julkisuus päättyi …* tai *Kohde poistettu*, joten julkiset erottuvat
+  listasta ilman valintaa.
+- Työpöydällä uusin jako näkyy oikealla heti, ja puhelimessa lista tulee
+  ensin ja jako aukeaa omaksi näkymäkseen.
+- Suodatin (Kaikki, Julkiset, Vain sinä, Päättyneet) karsii rivejä, ja
+  aikajäsennys säilyy.
+- Uutta host-tietoa ei tarvita: aika on osoitteen `created_at`, ja
+  keskustelu tulee kohteen `conversation_id`:stä.
+
+## Decisions for later review
+
+- **Aikajärjestys on jaon luomisaika, ei kohteen tai keskustelun aika.**
+  Host tietää vain jaon `created_at`:n. Uudelleenjulkaisu ei siirrä jakoa
+  listan kärkeen, koska hostilla ei ole julkaisun aikaleimaa.
+- **B:ssä keskustelun paikka on sen viimeisin jako,** joten saman
+  keskustelun jaot pysyvät yhdessä, vaikka ne olisi tehty eri päivinä.
+  Siksi rivi näyttää viikonpäivän vain, kun se poikkeaa otsikon päivästä.
+- **C ryhmittelee päivän sisällä keskustelun mukaan.** Saman keskustelun
+  eri päivien jaot ovat eri päivien alla (Raportti /var/tmp:stä näkyy
+  6.11. ja 31.10.).
+- **Puhelimessa osoite tulee ennen kuvakkeita.** Päivämäärän
+  työkaluvihje jäi kosketusnäytöllä päälle ja peitti alla olevan
+  kopiointipainikkeen. Nyt vihje osuu ohjetekstin päälle.
+- Toteutus tarvitsee Explain-kortit molemmilla kielillä sivulle, rivin
+  tilariville, suodattimelle ja osoitekentälle tai Kopioi linkki -painikkeelle.
+
+## Kysymykset Jarille
+
+1. Mikä jäsennys: **A Päivät** (päiväotsikot, keskustelu rivillä),
+   **B Keskustelut** (keskustelut aikajanalla, jaot niiden alla) vai
+   **C Agenda** (päivä sarakkeessa, päivän keskustelut vieressä)?
+2. Kopiointi: **erillinen Kopioi linkki -painike** (A, C) vai
+   **linkkikuvake kentän päässä** (B)?
+3. Osoite: näytetäänkö **koko osoite kentässä** (A, B) vai riittääkö
+   **pelkkä painike** (C)?
+
+**Suositus:** A Päivät, kenttä ja erillinen painike. Päiväotsikot ovat
+tutuin aikajana (kuten viestit tai tiedostohistoria), ja ne vievät
+listassa vähiten tilaa, joten rivit pysyvät B:n tiiviinä. Keskustelu
+näkyy rivillä, joten B:n ryhmittely ei ole tarpeen sen löytämiseksi.
+B:n sidos keskusteluun on vahvempi, mutta saman keskustelun eri päivien
+jaot rikkovat sen aikajärjestyksen. C:n sarake vie listasta leveyttä
+eikä anna päiväotsikkoa enempää. Koko osoite kannattaa näyttää, koska
+siitä näkee, mitä on antamassa eteenpäin. Erillinen painike on
+kosketusnäytöllä isompi kohde kuin kentän päässä oleva kuvake, ja
+kopiointi on tämän sivun yleisin toimi.
