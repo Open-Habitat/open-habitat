@@ -75,3 +75,10 @@ valitsee. Se ei vaadi hostilta mitään uutta. A on luonteva seuraava askel,
 jos kesken keskustelun vaihtamiselle tulee oikea tarve. Pi tukee sitä jo,
 ja rivi "Malli vaihtui" on valmiina. B:n muiden mallien luettelo on tietoa,
 jota käyttäjä ei voi tässä käyttää.
+
+## Jarin päätös (9.11.2026)
+
+Suunta **B Tietona** (sanelussa "Hietala", tulkittu "tietona"): ei valitsinta,
+rauhallinen tieto. Lisäksi Kaisan toive: jokaisella mallilla lyhyt
+kuvaus (pelkkä "Opus" ei kerro mitään) ja ajattelutasolle selitys, mitä se
+tarkoittaa. Toteutus `model-details-described`.

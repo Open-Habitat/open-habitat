@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: model-details-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-09
 ---
 
 # Design and prototype: the top bar's model details look like a picker but are not
