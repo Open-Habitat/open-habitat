@@ -283,10 +283,10 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
     rows.findIndex((row) => row.textContent?.startsWith("single-42")),
   );
   expect(rowIndex).toBeGreaterThanOrEqual(0);
-  const row = outputRows.nth(rowIndex);
-  const box = await row.boundingBox();
-  if (!box) throw new Error("no output row");
+  const row = outputRows.filter({ hasText: /^single-42/ }).first();
   const select = async () => {
+    const box = await row.boundingBox();
+    if (!box) throw new Error("no output row");
     await page.keyboard.down("Shift");
     await page.mouse.move(box.x + 2, box.y + box.height / 2);
     await page.mouse.down();
@@ -306,6 +306,19 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     "single-42",
   );
+  // Clipboard failures must remain visible even when the dock hides the
+  // conversation (and its composer notice stack).
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new Error("denied"));
+  });
+  await page.getByTestId("maximize-terminal").click();
+  await select();
+  await page.getByTestId("copy-selection").click();
+  await expect(
+    page.getByTestId("terminal-panel").getByTestId("terminal-event-notice"),
+  ).toBeVisible();
+  await page.getByTestId("terminal-notice-close").click();
+  await page.getByTestId("maximize-terminal").click();
   await select();
   await page
     .getByRole("button")
@@ -427,7 +440,12 @@ test("@browser-shell a remembered open dock cannot restore an empty panel", asyn
 test("@browser-shell a startup refusal belongs in a notice, not an empty dock", async ({
   page,
 }) => {
+  let refuse = true;
   await page.routeWebSocket(/\/api\/v1\/workspaces\/terminal\?/, (ws) => {
+    if (!refuse) {
+      ws.connectToServer();
+      return;
+    }
     ws.onMessage(
       () => void ws.close({ code: 4500, reason: "terminal_unavailable" }),
     );
@@ -437,12 +455,23 @@ test("@browser-shell a startup refusal belongs in a notice, not an empty dock", 
     .getByRole("button")
     .and(page.getByTestId("toggle-terminal"))
     .click();
-  await expect(
-    page.getByRole("status").and(page.getByTestId("toast")),
-  ).toBeVisible();
+  const notice = page.getByTestId("terminal-event-notice");
+  await expect(notice).toBeVisible();
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await page.clock.install();
+  await page.clock.runFor(60_000);
+  await expect(notice).toBeVisible();
   await expect(
     page.getByRole("region").and(page.getByTestId("terminal-panel")),
   ).toBeHidden();
+  await page.getByTestId("terminal-notice-close").click();
+  await expect(notice).toHaveCount(0);
+  await page.getByTestId("toggle-terminal").click();
+  await expect(notice).toBeVisible();
+  refuse = false;
+  await page.getByTestId("toggle-terminal").click();
+  await expect(page.getByTestId("terminal-panel")).toBeVisible();
+  await expect(notice).toHaveCount(0);
 });
 
 test("@browser-shell latest action stays above the dock through resize and is hidden when conversation is covered", async ({

@@ -90,7 +90,7 @@ test("@idle-pi-slots idle conversations neither fill the limit nor block deletio
     .getByRole("button")
     .and(page.getByTestId("trash-workspace"))
     .click();
-  await expect(page.locator(".ah-archive-notice")).toBeVisible();
+  await expect(page.getByTestId("archive-notice")).toBeVisible();
 });
 
 test("@idle-pi-slots running turns hold the limit and block deletion by name", async ({
@@ -166,7 +166,7 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
       .getByRole("button")
       .and(page.getByTestId("trash-workspace"))
       .click();
-    await expect(page.locator(".ah-archive-notice")).toBeVisible();
+    await expect(page.getByTestId("archive-notice")).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
     await setLiveLimit(page, null);

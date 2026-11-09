@@ -110,18 +110,13 @@ describe("NoticeArea", () => {
     expect(rows()).toHaveLength(0);
   });
 
-  it("gives a late definite refusal a full reading interval", () => {
+  it("keeps a late definite refusal until dismissed, without a timer", () => {
     vi.useFakeTimers();
     const close = vi.fn();
     const notice = (problem?: string) => (
       <NoticeAreaProvider>
         <NoticeSlot />
-        <ArchiveNotice
-          busy={false}
-          expireProblem
-          problem={problem}
-          onClose={close}
-        />
+        <ArchiveNotice busy={false} problem={problem} onClose={close} />
       </NoticeAreaProvider>
     );
     const { rerender } = render(notice());
@@ -129,7 +124,9 @@ describe("NoticeArea", () => {
     rerender(notice("refused"));
     act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS - 100));
     expect(close).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(101));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("notice-close"));
     expect(close).toHaveBeenCalledOnce();
   });
 

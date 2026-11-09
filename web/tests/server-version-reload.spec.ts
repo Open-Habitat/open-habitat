@@ -143,7 +143,9 @@ for (const reload of [
       route.fulfill({ status: 503 }),
     );
     await page.request.get("/fixture/daemon-restart?transport_only=1");
-    await expect(page.locator(".ah-connection")).toBeVisible();
+    await expect(
+      page.locator('[data-testid^="connection-"][data-state]'),
+    ).toBeVisible();
     await readsFinished();
     // Returning to the tab is what a person does after leaving it open.
     await upgrade(page, 1);
@@ -296,7 +298,9 @@ test("@version a tab whose bundle cannot read the upgraded host offers reload, n
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Luonnos versionvaihdon yli",
   );
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
   await expect(page.locator('[data-testid="status-bell"]:visible')).toHaveCount(
     0,
   );

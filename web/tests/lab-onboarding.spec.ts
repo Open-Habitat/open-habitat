@@ -17,7 +17,9 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await expect(
     page.getByRole("heading").and(page.getByTestId("workspaces-title")),
   ).toBeVisible();
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
   await expect(page.locator("main .ah-workspace-card")).toHaveCount(0);
   // The return view keeps all observed rows instead of dropping everything
   // beyond an arbitrary three-item cutoff.

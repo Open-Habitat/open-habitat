@@ -57,7 +57,6 @@ export function EditorSaveNotice({
       restoreLabel={txt.undo}
       busy={busy}
       problem={problem || undefined}
-      expireProblem={false}
       onRestore={undone || problem ? undefined : () => void undo()}
       onClose={onClose}
     />

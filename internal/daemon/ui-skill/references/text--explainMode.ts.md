@@ -270,7 +270,7 @@ const fi = {
     Y18: {
       name: "Ilmoitus",
       lead: "Kertoo, mitä juuri tapahtui, esimerkiksi mikä arkistoitiin tai mikä kuvake otettiin käyttöön.",
-      know: "× sulkee ilmoituksen; se ei peru tehtyä.",
+      know: "Virhe jää näkyviin, kunnes suljet sen tai yrität uudelleen. × sulkee ilmoituksen; se ei peru tehtyä.",
     },
     Y19: {
       name: "Palauta",
@@ -286,6 +286,26 @@ const fi = {
       name: "Palauta",
       lead: "Palauttaa keskustelun arkistosta, jotta voit jatkaa sitä.",
       know: "Viestikenttä palaa ja avustajat tulevat mukana käynnistämättä. Keskustelun voi arkistoida uudelleen.",
+    },
+    Y22: {
+      name: "Yhteysilmoitus",
+      lead: "Kertoo yhteyden katkeamisesta, kirjautumisen tarpeesta tai uudesta versiosta.",
+      know: "Pyörivä merkki tarkoittaa, että Habitat yrittää itse. Ilmoitus pysyy, kunnes tilanne muuttuu.",
+    },
+    Y23: {
+      name: "Yritä yhteyttä uudelleen",
+      lead: "Tarkistaa yhteyden ja hakee ajantasaisen tilanteen. Ei lähetä viestejäsi uudelleen.",
+      try: "Tarkista yhteys",
+    },
+    Y24: {
+      name: "Lataa uusi versio",
+      lead: "Lataa sivun uudelleen, jotta saat palvelimella olevan version käyttöösi.",
+      know: "Keskeneräinen viestiluonnos säilyy tässä välilehdessä.",
+    },
+    Y25: {
+      name: "Päätteen ilmoitus",
+      lead: "Kertoo päätteen tapahtumasta tai toiminnosta, joka ei onnistunut. Epävarma tulos ei tarkoita, että toiminto jäi tekemättä.",
+      know: "Ilmoitus ei katoa ajastimella. × sulkee sen muuttamatta päätteen tilaa.",
     },
     S01: {
       name: "Palvelimen nimi",
@@ -1869,7 +1889,7 @@ export const explainModeText = catalog(fi, {
     Y18: {
       name: "Notice",
       lead: "Tells you what just happened, such as what was archived or which icon is now in use.",
-      know: "× closes the notice; it does not undo anything.",
+      know: "An error stays until you dismiss it or try again. × closes the notice; it does not undo anything.",
     },
     Y19: {
       name: "Restore",
@@ -1885,6 +1905,26 @@ export const explainModeText = catalog(fi, {
       name: "Restore",
       lead: "Brings the conversation back from the archive so you can continue it.",
       know: "The message field returns and its helpers come back without starting. You can archive the conversation again.",
+    },
+    Y22: {
+      name: "Connection notice",
+      lead: "Reports a lost connection, a required sign-in or a new version.",
+      know: "A spinning mark means Habitat is trying by itself. The notice stays until the situation changes.",
+    },
+    Y23: {
+      name: "Try connecting again",
+      lead: "Checks the connection and reads the current state. Does not send your messages again.",
+      try: "Check connection",
+    },
+    Y24: {
+      name: "Load new version",
+      lead: "Reloads the page so you can use the version on the server.",
+      know: "Your unfinished message draft stays in this tab.",
+    },
+    Y25: {
+      name: "Terminal notice",
+      lead: "Reports a terminal event or an action that did not succeed. An uncertain result does not mean nothing happened.",
+      know: "The notice does not expire on a timer. × dismisses it without changing the terminal's state.",
     },
     S01: {
       name: "Server name",

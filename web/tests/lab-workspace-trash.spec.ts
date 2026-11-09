@@ -72,7 +72,7 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
     .getByRole("button")
     .and(page.getByTestId("trash-workspace"))
     .click();
-  const notice = page.locator(".ah-archive-notice");
+  const notice = page.getByTestId("archive-notice");
   await expect(notice).toBeVisible();
   await expect(page).toHaveURL(/\/workspaces$/);
   await notice

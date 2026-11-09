@@ -47,7 +47,9 @@ async function follows(page: Page, trace: Record<string, unknown>[]) {
       { timeout: 30000 },
     )
     .toBe(true);
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
 }
 
 test("@reconnect the event stream is reopened when the machine wakes from sleep", async ({

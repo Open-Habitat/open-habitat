@@ -26,6 +26,7 @@ import {
   TerminalToggle,
 } from "../components/TerminalPanel";
 import { isTerminalShortcut } from "../components/terminalShortcut";
+import { WarningBanner, WarningBannerView } from "../components/WarningBanner";
 import { liveText, useLanguage } from "../i18n";
 import { browserShellText } from "../text/browserShell";
 import { WriteRefused } from "./mutations";
@@ -174,6 +175,10 @@ export function useBrowserShell({
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
+  const [shellNotice, setShellNotice] = useState<{
+    text: string;
+    tone: "danger" | "neutral";
+  }>();
   useLanguage();
   const terminal = useRef<TerminalHandle>(null);
   const focusOnOpen = useRef(false);
@@ -312,7 +317,11 @@ export function useBrowserShell({
             );
             if (target.kind === "taskfleet") {
               setAttached((a) => a.filter((t) => t !== target.token));
-              if (!last) setToast(txt.taskfleetWindowClosed);
+              if (!last)
+                setShellNotice({
+                  text: txt.taskfleetWindowClosed,
+                  tone: "neutral",
+                });
             } else {
               setList((current) =>
                 current
@@ -324,7 +333,8 @@ export function useBrowserShell({
                     }
                   : current,
               );
-              if (!last) setToast(txt.shellEnded);
+              if (!last)
+                setShellNotice({ text: txt.shellEnded, tone: "neutral" });
             }
             if (last) {
               setOpen(false);
@@ -338,7 +348,10 @@ export function useBrowserShell({
             if (code >= 4000 && code < 5000) {
               connection.current = undefined;
               setPending(undefined);
-              setToast(terminalRefusal(code, reason));
+              setShellNotice({
+                text: terminalRefusal(code, reason),
+                tone: "danger",
+              });
               setOpen(false);
               setMaximized(false);
               if (reason === "shell_ended" || key === "new") {
@@ -353,7 +366,7 @@ export function useBrowserShell({
               connection.current = undefined;
               setPending(undefined);
               setActive(undefined);
-              setToast(txt.lostBeforeOpen);
+              setShellNotice({ text: txt.lostBeforeOpen, tone: "neutral" });
               setOpen(false);
               setMaximized(false);
               void refresh();
@@ -425,6 +438,7 @@ export function useBrowserShell({
   );
 
   const startNew = () => {
+    setShellNotice(undefined);
     setOpen(true);
     setPending({ key: "new", name: "bash" });
     setActive("new");
@@ -432,6 +446,7 @@ export function useBrowserShell({
   };
 
   const closeTab = async (tab: TerminalTab) => {
+    setShellNotice(undefined);
     if (tab.readOnly) {
       if (connection.current?.key === tab.key) {
         connection.current.socket.close();
@@ -476,7 +491,7 @@ export function useBrowserShell({
       if (error instanceof TerminalLogin) onLogin?.();
       else if (error instanceof WriteRefused && error.code === "shell_ended")
         closed();
-      else setToast(txt.stopUncertain);
+      else setShellNotice({ text: txt.stopUncertain, tone: "neutral" });
       // A refused or uncertain close must not leave a live tab disconnected.
       setNonce((n) => n + 1);
     }
@@ -508,6 +523,7 @@ export function useBrowserShell({
   // An explicit open reuses an existing shell or starts one, never both.
   // Read at the time of the gesture: the mount-time count may be stale.
   const openPanel = useCallback(async () => {
+    setShellNotice(undefined);
     const request = ++openRequest.current;
     try {
       const fresh = await listTerminals(workspaceId);
@@ -525,7 +541,7 @@ export function useBrowserShell({
     } catch (error) {
       if (request !== openRequest.current) return;
       if (error instanceof TerminalLogin) onLogin?.();
-      else setToast(txt.listFailed);
+      else setShellNotice({ text: txt.listFailed, tone: "neutral" });
     }
   }, [workspaceId, attached, setOpen, focusTerminal, onLogin]);
 
@@ -577,6 +593,30 @@ export function useBrowserShell({
       <p>{phase.text}</p>
     ) : undefined;
 
+  // An open (including maximized) dock must show its own failures. When
+  // closed, use the conversation's notice stack rather than a timed toast.
+  const EventNotice = open ? WarningBannerView : WarningBanner;
+  const eventNotice = shellNotice ? (
+    <EventNotice
+      data-testid="terminal-event-notice"
+      tone={shellNotice.tone}
+      lifetime="event"
+      actions={
+        <ControlButton
+          data-testid="terminal-notice-close"
+          size="row"
+          variant="quiet"
+          aria-label={txt.dismissNotice}
+          onPress={() => setShellNotice(undefined)}
+        >
+          ×
+        </ControlButton>
+      }
+    >
+      {shellNotice.text}
+    </EventNotice>
+  ) : null;
+
   const panel = open ? (
     <>
       <TerminalPanel
@@ -591,6 +631,7 @@ export function useBrowserShell({
         volatile={list?.survives_restart === false}
         offline={phase.kind === "offline"}
         notice={notice}
+        feedback={eventNotice}
         paste={paste}
         selection={selection}
         sticky={sticky}
@@ -632,10 +673,13 @@ export function useBrowserShell({
           focusTerminal();
         }}
         onClipboardPaste={() => {
+          setShellNotice(undefined);
           navigator.clipboard
             ?.readText()
             .then(askPaste)
-            .catch(() => setToast(txt.noClipboard));
+            .catch(() =>
+              setShellNotice({ text: txt.noClipboard, tone: "danger" }),
+            );
         }}
         onPasteAnswer={(ok) => {
           const lines = paste;
@@ -644,6 +688,7 @@ export function useBrowserShell({
           focusTerminal();
         }}
         onCopySelection={() => {
+          setShellNotice(undefined);
           const text = selection?.text;
           setSelection(undefined);
           terminal.current?.clearSelection();
@@ -651,7 +696,9 @@ export function useBrowserShell({
           navigator.clipboard
             ?.writeText(text)
             .then(() => setToast(txt.copied))
-            .catch(() => setToast(txt.copyRefused));
+            .catch(() =>
+              setShellNotice({ text: txt.copyRefused, tone: "danger" }),
+            );
           focusTerminal();
         }}
         onSendSelection={
@@ -780,6 +827,7 @@ export function useBrowserShell({
     panel: (
       <>
         {panel}
+        {!open ? eventNotice : null}
         {toast ? <ToastRegion message={toast} /> : null}
       </>
     ),

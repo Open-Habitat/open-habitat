@@ -152,7 +152,7 @@ test("@workspace-count two workspaces keep the list, and the rail follows the co
     .getByRole("button")
     .and(page.getByTestId("trash-workspace"))
     .click();
-  const notice = page.locator(".ah-archive-notice");
+  const notice = page.getByTestId("archive-notice");
   await expect(notice).toHaveCount(1);
   await expect(only(page)).toBeVisible();
   await expect(list(page)).toHaveCount(0);

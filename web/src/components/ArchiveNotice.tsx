@@ -3,8 +3,9 @@ import { createPortal } from "react-dom";
 import { useText } from "../i18n";
 import { archiveNoticeText } from "../text/archiveNotice";
 import { ControlButton } from "./ControlElements";
-import { Icon, type IconName } from "./Icon";
+import type { IconName } from "./Icon";
 import { type NoticeKind, returnFocusToWork, useNotice } from "./NoticeArea";
+import { WarningBanner } from "./WarningBanner";
 
 /** How long an untouched notice stays: long enough to read the title and
  * reach the undo, short enough not to linger (Jari found 20 s too long).
@@ -19,8 +20,8 @@ const icons: Record<NoticeKind, IconName> = {
   "editor-save": "check",
 };
 
-/** Transient undo offer; the archive itself remains native host state. A
- * quiet row in the page's top bar (NoticeArea). It never takes focus; Esc
+/** Undo offer; failures persist until dismissed. The archive itself remains
+ * native host state. In the page's top bar (NoticeArea), it never takes focus; Esc
  * closes it only from inside it, because a writer's Esc belongs to the
  * composer. */
 export function ArchiveNotice({
@@ -34,12 +35,8 @@ export function ArchiveNotice({
   detail,
   restoreLabel,
   link,
-  wrap = false,
-  expireProblem = false,
 }: {
   kind?: NoticeKind;
-  /** Long text wraps instead of being cut: a notice that must be read. */
-  wrap?: boolean;
   /** Bold after the message; absent when the message says it all. */
   title?: string;
   message?: string;
@@ -49,8 +46,6 @@ export function ArchiveNotice({
   busy: boolean;
   /** Something did not go as asked: the notice stays until closed. */
   problem?: string;
-  /** A definite refusal has no unresolved action to keep on screen. */
-  expireProblem?: boolean;
   /** Absent when there is nothing to undo. */
   onRestore?: () => void;
   onClose: () => void;
@@ -64,10 +59,8 @@ export function ArchiveNotice({
   useEffect(() => {
     if (problem) remaining.current = NOTICE_LIFETIME_MS;
   }, [problem]);
-  const held =
-    notice.paused || notice.folded || busy || (!!problem && !expireProblem);
+  const held = notice.paused || notice.folded || busy || !!problem;
   useEffect(() => {
-    // A new refusal resets the budget above even when held stays false.
     void problem;
     if (held) return;
     const start = Date.now();
@@ -90,20 +83,65 @@ export function ArchiveNotice({
   };
   const more = notice.index === 0 && notice.count > 1 ? notice.count - 1 : 0;
   const content = (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc from one of the row's own buttons closes it; the actions remain native buttons.
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: Esc bubbles from the row's native buttons; the container is not an interactive control.
     <section
       ref={row}
       data-testid="archive-notice"
       data-kind={kind}
-      className={`ah-archive-notice${wrap ? " ah-archive-notice-wrap" : ""}${problem ? " ah-archive-notice-problem" : ""}`}
-      role="status"
+      className="ah-archive-notice-container"
       hidden={notice.folded}
       onKeyDown={onKeyDown}
     >
-      <span className="ah-archive-notice-icon" aria-hidden="true">
-        <Icon name={problem ? "warning" : icons[kind]} />
-      </span>
-      <span className="ah-archive-notice-text">
+      <WarningBanner
+        tone={problem ? "danger" : busy ? "progress" : "success"}
+        icon={problem ? undefined : icons[kind]}
+        actions={
+          <>
+            {more && notice.setOpen ? (
+              <ControlButton
+                data-testid="notice-more"
+                size="inline"
+                variant="quiet"
+                aria-expanded={notice.open}
+                aria-label={notice.open ? t.hideOthers : t.showOthers(more)}
+                onPress={() => notice.setOpen?.(!notice.open)}
+              >
+                {notice.open ? t.hide : `+${more}`}
+              </ControlButton>
+            ) : null}
+            {link ? (
+              <ControlButton
+                data-testid="notice-link"
+                size="row"
+                variant="quiet"
+                onPress={link.onPress}
+              >
+                {link.label}
+              </ControlButton>
+            ) : null}
+            {onRestore ? (
+              <ControlButton
+                data-testid="restore-notice"
+                size="row"
+                variant="quiet"
+                isDisabled={busy}
+                onPress={onRestore}
+              >
+                {restoreLabel ?? t.restore}
+              </ControlButton>
+            ) : null}
+            <ControlButton
+              data-testid="notice-close"
+              size="row"
+              variant="quiet"
+              aria-label={t.close}
+              onPress={dismiss}
+            >
+              ×
+            </ControlButton>
+          </>
+        }
+      >
         {message ?? t.archived}
         {title ? (
           <>
@@ -114,57 +152,8 @@ export function ArchiveNotice({
         {detail ? (
           <span data-testid="archive-notice-detail"> · {detail}</span>
         ) : null}
-        {problem ? (
-          <span data-testid="archive-error" className="ah-archive-notice-error">
-            {" "}
-            · {problem}
-          </span>
-        ) : null}
-      </span>
-      {more && notice.setOpen ? (
-        <ControlButton
-          data-testid="notice-more"
-          size="inline"
-          variant="quiet"
-          className="ah-archive-notice-more"
-          aria-expanded={notice.open}
-          aria-label={notice.open ? t.hideOthers : t.showOthers(more)}
-          onPress={() => notice.setOpen?.(!notice.open)}
-        >
-          {notice.open ? t.hide : `+${more}`}
-        </ControlButton>
-      ) : null}
-      {link ? (
-        <ControlButton
-          data-testid="notice-link"
-          size="row"
-          variant="quiet"
-          onPress={link.onPress}
-        >
-          {link.label}
-        </ControlButton>
-      ) : null}
-      {onRestore ? (
-        <ControlButton
-          data-testid="restore-notice"
-          size="row"
-          variant="quiet"
-          isDisabled={busy}
-          onPress={onRestore}
-        >
-          {restoreLabel ?? t.restore}
-        </ControlButton>
-      ) : null}
-      <ControlButton
-        data-testid="notice-close"
-        size="row"
-        variant="quiet"
-        className="ah-archive-notice-close"
-        aria-label={t.close}
-        onPress={dismiss}
-      >
-        ×
-      </ControlButton>
+        {problem ? <span data-testid="archive-error"> · {problem}</span> : null}
+      </WarningBanner>
     </section>
   );
   return notice.element ? createPortal(content, notice.element) : content;

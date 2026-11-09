@@ -86,7 +86,6 @@ function IconWrittenNotice({
   return (
     <ArchiveNotice
       kind="workspace-icon"
-      wrap
       message={written.undo ? txt.iconRestored : txt.icon}
       title={name}
       detail={detail ? txt.suggestionsBack(detail) : undefined}

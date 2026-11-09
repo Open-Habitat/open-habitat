@@ -37,6 +37,7 @@ const fi = {
   ),
   hideInstead:
     "Jos haluat vain pois näkyvistä, piilota paneeli: päätteet jatkavat.",
+  dismissNotice: "Sulje ilmoitus",
   cancel: "Peruuta",
   stop: "Lopeta pääte",
 };
@@ -76,6 +77,7 @@ export const browserShellText = catalog(fi, {
   ),
   hideInstead:
     "If you only want it out of sight, hide the panel: the terminals keep running.",
+  dismissNotice: "Dismiss notice",
   cancel: "Cancel",
   stop: "Stop terminal",
 });

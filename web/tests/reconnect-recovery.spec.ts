@@ -150,8 +150,11 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   // distinguish a manual retry from the automatic one.
   await page.clock.resume();
   expect(
-    (await new AxeBuilder({ page }).include(".ah-connection").analyze())
-      .violations,
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid^="connection-"][data-state]')
+        .analyze()
+    ).violations,
   ).toEqual([]);
   await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
   release();
@@ -163,7 +166,9 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   );
   await page.getByTestId("connection-retry").click();
   await stream;
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
   await expect(page.getByTestId("conversation-start")).toBeEnabled();
 });
 
@@ -211,7 +216,9 @@ test("@reconnect an invalid frame does not trap recovery at an unchanged native 
         .then((value) => value.event_cursor),
     )
     .toBe(before.event_cursor);
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
   expect(injected).toBe(true);
   expect(diagnostics).toContainEqual(
     expect.objectContaining({
@@ -461,6 +468,8 @@ test("@reconnect an idle stream opens before the watchdog behind an edge that ho
   await open(page);
   await expect.poll(() => opened.includes("open")).toBe(true);
   await page.clock.fastForward(9000);
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
   expect(opened).not.toContain("timeout");
 });

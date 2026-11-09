@@ -952,7 +952,7 @@ test("@browser-conversation missing daemon control opens surviving native histor
   await page.reload();
   await expect(page).toHaveURL(`/agents/${id}`);
   await expect(
-    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
+    page.locator('[data-testid^="connection-"][data-state]'),
   ).toHaveCount(0);
   await expect(page.getByTestId("message-input")).toHaveCount(0);
 });
@@ -2506,14 +2506,14 @@ test("@browser-conversation snapshot transport failure leaves editor mounted and
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
+    page.locator('[data-testid^="connection-"][data-state]'),
   ).toBeVisible();
   await expect(editor).toHaveValue("säilyvä luonnos");
   await page.unroute("**/api/v1/events*");
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
+    page.locator('[data-testid^="connection-"][data-state]'),
   ).toHaveCount(0);
   await expect(editor).toHaveValue("säilyvä luonnos");
 });
@@ -2837,7 +2837,9 @@ test("@browser-conversation cursor 409 resnapshots before reopening at the curre
   await reopened;
   expect(streams).toBe(3); // First EventSource and probe refused; replay now resumes.
   expect(snapshotsAtReconnect).toBeGreaterThan(1);
-  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toHaveCount(0);
 });
 
 test("@browser-conversation lost accepted reply recovers on HTTP snapshot without an event", async ({
@@ -2874,7 +2876,7 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
+    page.locator('[data-testid^="connection-"][data-state]'),
   ).toBeVisible();
   await expect(
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
@@ -3803,7 +3805,7 @@ test("@conversation-details archive undo returns to conversation; offer pauses a
       .getByTestId("archive-conversation")
       .and(page.locator(':not([data-archive-state="archived"])')),
   );
-  const notice = page.locator(".ah-archive-notice");
+  const notice = page.getByTestId("archive-notice");
   await expect(notice).toBeVisible();
   await expect(page.locator("main h1")).toBeFocused();
   await expect(notice.getByTestId("restore-notice")).toBeEnabled();
@@ -3832,7 +3834,7 @@ test("@conversation-details archive offer rides in the next header and expires u
       .getByTestId("archive-conversation")
       .and(page.locator(':not([data-archive-state="archived"])')),
   );
-  const notice = page.locator(".ah-archive-notice");
+  const notice = page.getByTestId("archive-notice");
   await expect(notice).toBeVisible();
   await expect(notice.getByTestId("restore-notice")).toBeEnabled();
   const workspace = page.url();
@@ -3840,7 +3842,7 @@ test("@conversation-details archive offer rides in the next header and expires u
   // the thread rather than over the composer.
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(
-    page.locator(".ah-agent-header .ah-archive-notice"),
+    page.locator(".ah-agent-header").getByTestId("archive-notice"),
   ).toBeVisible();
   // The row may now lie under the pointer that pressed the button, which
   // rightly pauses it.

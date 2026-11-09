@@ -4,6 +4,7 @@ import { statusText } from "../text/status";
 import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Action, ProblemView, Tone } from "./types";
+import { WarningBanner, type WarningTone } from "./WarningBanner";
 
 const txt = liveText(statusText);
 
@@ -188,23 +189,23 @@ export function ConnectionBanner({
   const visibleState = state;
   const copy: Record<
     Exclude<ConnectionState, "online">,
-    { title: string; detail: string; tone: Tone }
+    { title: string; detail: string; tone: WarningTone }
   > = {
-    loading: { ...txt.connection.loading, tone: "neutral" },
-    connecting: { ...txt.connection.connecting, tone: "neutral" },
-    reconnecting: { ...txt.connection.reconnecting, tone: "warning" },
+    loading: { ...txt.connection.loading, tone: "progress" },
+    connecting: { ...txt.connection.connecting, tone: "progress" },
+    reconnecting: { ...txt.connection.reconnecting, tone: "progress" },
     stale: {
       title: txt.connection.stale.title,
       detail: txt.staleDetail(lastConfirmedAt || undefined),
-      tone: "warning",
+      tone: "neutral",
     },
     "resnapshot-required": {
       ...txt.connection["resnapshot-required"],
-      tone: "warning",
+      tone: "neutral",
     },
     "version-changed": {
       ...txt.connection["version-changed"],
-      tone: "warning",
+      tone: "neutral",
     },
     "authentication-required": {
       ...txt.connection["authentication-required"],
@@ -212,62 +213,57 @@ export function ConnectionBanner({
     },
     "daemon-unavailable": {
       ...txt.connection["daemon-unavailable"],
-      tone: "danger",
+      tone: "neutral",
     },
-    "host-read-only": { ...txt.connection["host-read-only"], tone: "warning" },
+    "host-read-only": { ...txt.connection["host-read-only"], tone: "neutral" },
   };
   const value = copy[visibleState as Exclude<ConnectionState, "online">];
-  const urgent =
-    visibleState === "authentication-required" ||
-    visibleState === "daemon-unavailable";
   return (
-    <div
+    <WarningBanner
       data-testid={`connection-${visibleState}`}
       data-state={state}
-      className={`ah-connection ah-tone-${value.tone}`}
-      role={urgent ? "alert" : "status"}
-    >
-      <strong>{value.title}</strong>
-      <span>
-        {connectionDetail ? `${connectionDetail} ` : ""}
-        {value.detail}
-        {hostWriteState === "read_only" &&
-        visibleState !== "host-read-only" &&
-        visibleState !== "stale"
-          ? txt.alsoReadOnly
-          : ""}
-      </span>
-      {visibleState === "stale" ? (
-        <span className="ah-connection-mobile-detail">{txt.lastConfirmed}</span>
-      ) : null}
-      <Problem problem={problem} />
-      {visibleState === "version-changed" ? (
-        onReload ? (
+      tone={value.tone}
+      placement="page"
+      title={value.title}
+      short={visibleState === "stale" ? txt.lastConfirmed : undefined}
+      actions={
+        visibleState === "version-changed" ? (
+          onReload ? (
+            <Button
+              data-testid="connection-reload"
+              label={txt.reload}
+              variant="secondary"
+              size="row"
+              onPress={onReload}
+            />
+          ) : null
+        ) : onRetry ? (
           <Button
-            data-testid="connection-reload"
-            label={txt.reload}
+            data-testid="connection-retry"
+            label={
+              state === "stale" ||
+              state === "reconnecting" ||
+              state === "connecting"
+                ? txt.connect
+                : txt.retry
+            }
             variant="secondary"
             size="row"
-            onPress={onReload}
+            pending={state === "connecting"}
+            onPress={onRetry}
           />
         ) : null
-      ) : onRetry ? (
-        <Button
-          data-testid="connection-retry"
-          label={
-            state === "stale" ||
-            state === "reconnecting" ||
-            state === "connecting"
-              ? txt.connect
-              : txt.retry
-          }
-          variant="secondary"
-          size="row"
-          pending={state === "connecting"}
-          onPress={onRetry}
-        />
-      ) : null}
-    </div>
+      }
+    >
+      {connectionDetail ? `${connectionDetail} ` : ""}
+      {value.detail}
+      {hostWriteState === "read_only" &&
+      visibleState !== "host-read-only" &&
+      visibleState !== "stale"
+        ? txt.alsoReadOnly
+        : ""}
+      <Problem problem={problem} />
+    </WarningBanner>
   );
 }
 export function ToastRegion({ message }: { message?: ReactNode }) {

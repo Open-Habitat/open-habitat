@@ -127,6 +127,7 @@ export function TerminalPanel({
   volatile = false,
   offline = false,
   notice,
+  feedback,
   paste,
   selection,
   sticky = { ctrl: false, alt: false },
@@ -158,6 +159,8 @@ export function TerminalPanel({
   offline?: boolean;
   /** A line over the terminal: connecting, detached, a refusal. */
   notice?: ReactNode;
+  /** Persistent feedback from a terminal action, outside the terminal surface. */
+  feedback?: ReactNode;
   /** A multi-line paste waiting for a yes. */
   paste?: string[];
   selection?: TerminalSelection;
@@ -405,6 +408,7 @@ export function TerminalPanel({
           </IconButton>
         </div>
       </div>
+      {feedback}
       <div
         className="ah-terminal-host"
         id={hostId}

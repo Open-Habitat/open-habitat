@@ -110,6 +110,10 @@ export const parts: Record<CardId, Part> = {
   Y19: { kind: "once", sel: '[data-testid="restore-notice"]' },
   Y20: { kind: "info", sel: '[data-testid="archived-foot"]' },
   Y21: { kind: "once", sel: '[data-testid="archived-foot-restore"]' },
+  Y22: { kind: "info", sel: '.ah-warning-page[data-testid^="connection-"]' },
+  Y23: { kind: "once", sel: '[data-testid="connection-retry"]' },
+  Y24: { kind: "once", sel: '[data-testid="connection-reload"]' },
+  Y25: { kind: "info", sel: '[data-testid="terminal-event-notice"]' },
   S01: { kind: "nav", sel: '[data-testid="server-home"]', opens: true },
   S02: {
     kind: "info",
@@ -483,7 +487,7 @@ export const parts: Record<CardId, Part> = {
   },
   P16: {
     kind: "once",
-    sel: '[role="dialog"] [data-testid="dialog-close"], [data-testid="menu-close"], [data-testid="notice-close"], .ah-bg-tabs > [data-testid="close"], [data-testid="workspace-icon-dialog"] .ah-wsip-top > button',
+    sel: '[role="dialog"] [data-testid="dialog-close"], [data-testid="menu-close"], [data-testid="notice-close"], [data-testid="terminal-notice-close"], .ah-bg-tabs > [data-testid="close"], [data-testid="workspace-icon-dialog"] .ah-wsip-top > button',
   },
   P17: { kind: "nav", sel: '[data-testid="context-back"]' },
   P18: { kind: "panel", sel: '[data-testid="context-page"]' },
@@ -639,6 +643,7 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "T37",
   "T38",
   "Y19",
+  "Y24",
   "N09",
   "N11",
   "N13",

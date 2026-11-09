@@ -23,7 +23,6 @@ import {
   AccountSettings,
   AppShell,
   ConnectionBanner,
-  InlineNotice,
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
@@ -33,6 +32,7 @@ import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
+import { PageNotice } from "../components/PageNotice";
 import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
@@ -2506,11 +2506,11 @@ export function App() {
               />
             )}
             {logoutError && (
-              <InlineNotice
+              <PageNotice
                 data-testid="logout-uncertain"
                 title={t.signIn.logoutUncertainTitle}
                 description={t.signIn.logoutUncertainDetail}
-                tone="danger"
+                tone="neutral"
                 actions={[
                   {
                     label: t.signIn.logoutRetry,
@@ -2589,7 +2589,7 @@ export function App() {
       <>
         {/* An open archive notice carries the problem itself. */}
         {archiveProblem && !archiveNotice && (
-          <InlineNotice
+          <PageNotice
             data-testid="archive-error"
             title={
               closeRefusal(archiveProblem)
@@ -2597,7 +2597,7 @@ export function App() {
                 : t.app.archiveChangeFailed
             }
             description={archiveProblem}
-            tone="warning"
+            tone="danger"
           />
         )}
         <HistoryView
@@ -2628,14 +2628,14 @@ export function App() {
         >
           {uncertain ? t.app.conversationUncertain : t.app.conversationMissing}
         </h1>
-        <InlineNotice
+        <PageNotice
           title={uncertain ? t.app.checkAgain : t.app.chooseAnother}
           description={
             uncertain
               ? t.app.conversationUncertainDetail
               : t.app.conversationMissingDetail
           }
-          tone="warning"
+          tone="neutral"
           actions={[{ label: t.app.retry, onPress: refresh }]}
         />
         <LinkRow href="/workspaces" kind="inline">
@@ -2704,7 +2704,7 @@ export function App() {
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem &&
           !archiveNotice && (
-            <InlineNotice
+            <PageNotice
               data-testid="archive-error"
               title={
                 closeRefusal(archiveProblem)
@@ -2712,7 +2712,7 @@ export function App() {
                   : t.app.archiveChangeFailed
               }
               description={archiveProblem}
-              tone="warning"
+              tone="danger"
             />
           )}
         {new URLSearchParams(location.search).has("conversation") &&
@@ -2860,10 +2860,10 @@ export function App() {
                       />
                     ) : null
                   ) : closeProblem && closeProblem[0] === closeKey(route) ? (
-                    <InlineNotice
+                    <PageNotice
                       title={t.app.closeFailed}
                       description={closeProblem[1]}
-                      tone="warning"
+                      tone="danger"
                       actions={[
                         {
                           label: t.app.dismissNotice,
@@ -2943,7 +2943,7 @@ export function App() {
           <>
             {/* An open archive notice carries the problem itself. */}
             {archiveProblem && !archiveNotice && (
-              <InlineNotice
+              <PageNotice
                 data-testid="archive-error"
                 title={
                   closeRefusal(archiveProblem)
@@ -2951,7 +2951,7 @@ export function App() {
                     : t.app.archiveChangeFailed
                 }
                 description={archiveProblem}
-                tone="warning"
+                tone="danger"
               />
             )}
             <details
@@ -3026,11 +3026,11 @@ export function App() {
           </>
         ) : null}
         {source !== "confirmed" ? (
-          <InlineNotice
+          <PageNotice
             data-testid="catalog-partial"
             title={t.app.catalogPartialTitle}
             description={t.app.catalogPartialDetail}
-            tone="warning"
+            tone="neutral"
           />
         ) : null}
       </>
@@ -3045,7 +3045,7 @@ export function App() {
         <p>
           {uncertain ? t.app.targetUncertainDetail : t.app.targetMissingDetail}
         </p>
-        <InlineNotice
+        <PageNotice
           title={t.app.whatNow}
           actions={[{ label: t.app.retry, onPress: refresh }]}
         />
@@ -3068,7 +3068,7 @@ export function App() {
               snapshot?.sources.find((f) => f.source === "annotation")?.state
             }
           >
-            <InlineNotice
+            <PageNotice
               data-testid="archive-incomplete"
               title={t.app.archiveIncompleteTitle}
               description={[
@@ -3084,7 +3084,7 @@ export function App() {
               ]
                 .filter(Boolean)
                 .join(" ")}
-              tone="warning"
+              tone="neutral"
             />
           </div>
         )}
@@ -3116,23 +3116,23 @@ export function App() {
           }
         />
         {source === "absent" ? (
-          <InlineNotice
+          <PageNotice
             data-testid="catalog-missing"
             title={t.app.catalogMissingTitle}
             description={t.app.catalogMissingDetail}
             actions={[{ label: t.app.retry, onPress: refresh }]}
-            tone="warning"
+            tone="neutral"
           />
         ) : source !== "confirmed" ? (
-          <InlineNotice
+          <PageNotice
             data-testid="workspaces-partial"
             title={t.app.workspacesPartialTitle}
             description={t.app.workspacesPartialDetail}
             actions={[{ label: t.app.retry, onPress: refresh }]}
-            tone="warning"
+            tone="neutral"
           />
         ) : visible.length === 0 ? (
-          <InlineNotice
+          <PageNotice
             data-testid="workspaces-empty"
             title={t.app.workspacesEmptyTitle}
             description={t.app.workspacesEmptyDetail}
@@ -3398,11 +3398,9 @@ export function App() {
                           ? t.app.archiveChangeFailed
                           : undefined
                       }
-                      expireProblem
                       detail={
                         archiveNotice.problem ? undefined : archiveNotice.detail
                       }
-                      wrap={!!archiveNotice.detail}
                       busy={
                         !archiveNotice.problem &&
                         snapshot?.agents.find(
@@ -3478,11 +3476,11 @@ export function App() {
                           data-under-settings={settingsLayer || undefined}
                         >
                           {railStartError ? (
-                            <InlineNotice
+                            <PageNotice
                               data-testid="rail-creation-problem"
                               title={t.app.railCreateUncertain}
                               description={railStartError}
-                              tone="warning"
+                              tone="neutral"
                             />
                           ) : null}
                           <ViewHost

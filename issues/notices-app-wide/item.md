@@ -3,12 +3,13 @@ created: 2026-11-09
 updated: 2026-11-09
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: notices
 lane_seq: 3
 blocked_by: ['@notices-composer-stack']
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Notices as one system: the rest of the app (connection, archive, page boxes, timers) on the shared warning
@@ -26,5 +27,5 @@ acknowledgements (*Kopioitu*). Settings form field errors are out of scope
 
 ## Acceptance Criteria
 
-- [ ] Each listed surface uses the shared warning with one of the four kinds; no error expires on a timer.
-- [ ] Touched specs and fast web checks green; screenshots of each surface before/after in the issue.
+- [x] Each listed surface uses the shared warning with one of the four kinds; no error expires on a timer.
+- [x] Touched specs and fast web checks green; screenshots of each surface before/after in the issue.

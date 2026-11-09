@@ -94,7 +94,7 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await expect(row).toBeVisible();
   expect(page.url()).toBe(here);
 
-  // A definite refusal is one transient notice, not a permanent banner plus
+  // A definite refusal is one persistent notice, not a duplicate banner plus
   // an undo offer for an archive that never happened. Keep a conversation
   // open to exercise the former duplicate banner path too.
   await row.getByTestId("agent-link").click();
@@ -114,7 +114,9 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await expect(notice.getByTestId("restore-notice")).toHaveCount(0);
   await expect(row).toBeVisible();
   await page.mouse.move(0, 0);
-  await page.clock.runFor(8_100);
+  await page.clock.runFor(60_000);
+  await expect(notice.getByTestId("archive-error")).toBeVisible();
+  await notice.getByTestId("notice-close").click();
   await expect(notice).toHaveCount(0);
   await expect(page.getByTestId("archive-error")).toHaveCount(0);
 
