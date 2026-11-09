@@ -76,24 +76,24 @@ test("@a11y model metadata names and capability order agree with the header at d
   await page.keyboard.press("Enter");
   const menu = page.getByTestId("conversation-model-info");
   await expect(menu).toBeVisible();
-  const rows = menu.getByTestId("model-options").locator("li");
-  await expect(rows).toHaveText([
-    "Fable 5.1",
-    /Opus 5.5/,
-    "Sonnet 5",
-    "Haiku 4.5",
-  ]);
+  // The card is facts, not a picker: the conversation's model first, the
+  // same sign-in's other models after it in capability order, each known
+  // model with its description.
+  await expect(menu.locator("button, input, select")).toHaveCount(0);
+  await expect(menu.getByTestId("model-current")).toHaveAttribute(
+    "data-model",
+    "claude-opus-5-5",
+  );
   await expect(
-    menu.locator('[data-model][aria-current="true"]'),
-  ).toHaveAttribute("data-model", "claude-opus-5-5");
-  expect(
-    await menu
-      .getByTestId("thinking-options")
-      .locator("li")
-      .evaluateAll((nodes) =>
-        nodes.map((n) => n.getAttribute("data-thinking")),
-      ),
-  ).toEqual(["off", "low", "medium", "high"]);
+    menu.getByTestId("model-current").getByTestId("model-description"),
+  ).toHaveCount(1);
+  const rows = menu.getByTestId("model-options").locator("li");
+  await expect(rows).toHaveText([/^Fable 5\.1/, /^Sonnet 5/, /^Haiku 4\.5/]);
+  await expect(rows.getByTestId("model-description")).toHaveCount(3);
+  await expect(menu.getByTestId("thinking-options")).toHaveAttribute(
+    "data-levels",
+    "off low medium high",
+  );
   const check = async (width: number) => {
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ["light", "dark"]) {

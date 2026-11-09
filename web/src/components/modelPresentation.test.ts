@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 import type { ModelChoice } from "./ModelPicker";
-import { modelCapabilityRank, modelDisplayName } from "./modelPresentation";
+import {
+  modelCapabilityRank,
+  modelDescription,
+  modelDisplayName,
+} from "./modelPresentation";
 
 it("ranks capabilities independently of input order and keeps unranked entries stable", () => {
   const ids = [
@@ -43,4 +47,19 @@ it("uses the matching provider's metadata rather than guessing from the id", () 
   );
   expect(modelDisplayName("claude-bridge/claude-fable-5-1")).toBe("Fable 5.1");
   expect(modelDisplayName("custom/unknown-id")).not.toContain("unknown-id");
+});
+it("ranks OpenAI families by capability and describes only known families", () => {
+  const ids = ["gpt-6-luna", "gpt-6.1-terra", "gpt-6-astra", "gpt-6.1-sol"];
+  expect(
+    ids
+      .map((id) => ({ id, name: id }))
+      .sort((a, b) => modelCapabilityRank(a) - modelCapabilityRank(b))
+      .map((m) => m.id),
+  ).toEqual(["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"]);
+  expect(modelDescription("claude-bridge/claude-opus-5-5")).toMatch(/\S/);
+  expect(modelDescription("gpt-6-luna-preview")).toBe(
+    modelDescription("gpt-6-luna"),
+  );
+  expect(modelDescription("gpt-5.5")).toBeUndefined();
+  expect(modelDescription("custom-model")).toBeUndefined();
 });

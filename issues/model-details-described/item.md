@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: model-details-proto
 lane_seq: 2
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Model details as information, with a short description of each model and of the thinking level

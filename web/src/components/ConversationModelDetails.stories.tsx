@@ -21,3 +21,26 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Ranked: Story = {};
 export const MissingCatalog: Story = { args: { models: [] } };
+export const OpenAI: Story = {
+  args: {
+    model: "openai-codex/gpt-6.1-sol",
+    thinking: "high",
+    models: ["gpt-6-luna", "gpt-6-astra", "gpt-6.1-terra", "gpt-6.1-sol"].map(
+      (id) => ({
+        id,
+        name: id.replace(/^gpt-/, "GPT-"),
+        provider: "openai-codex",
+        thinking_levels: ["low", "medium", "high", "xhigh"],
+      }),
+    ),
+  },
+};
+/** A model the host does not know is named, never described by a guess. */
+export const UnknownFamily: Story = {
+  args: {
+    model: "openai-codex/house-model",
+    models: [
+      { id: "house-model", name: "House model", provider: "openai-codex" },
+    ],
+  },
+};

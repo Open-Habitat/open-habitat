@@ -3,7 +3,11 @@ import { useId } from "react";
 import { liveText } from "../i18n";
 import { modelsText } from "../text/models";
 import { Segmented } from "./ControlElements";
-import { modelCapabilityRank, modelDisplayName } from "./modelPresentation";
+import {
+  modelCapabilityRank,
+  modelDescription,
+  modelDisplayName,
+} from "./modelPresentation";
 
 const txt = liveText(modelsText);
 /** Pi's provider ids: the subscriptions, the API keys and the Claude bridge. */
@@ -67,26 +71,37 @@ export function ModelPicker({
   const older = models.filter((m) => m.older);
   const reason = (m: ModelChoice) =>
     refused(m) ? txt.unavailable : unavailable?.(m);
-  const row = (m: ModelChoice) => (
-    <label
-      key={m.id}
-      className="md-row"
-      title={refused(m) ? txt.refusedTitle : undefined}
-    >
-      <input
-        type="radio"
-        data-testid={`model-${m.id}`}
-        name={group}
-        checked={!auto?.selected && selected === m.id}
-        disabled={busy || !!reason(m)}
-        onChange={() => onSelect(m.id)}
-      />
-      <span className="md-t">
-        {modelDisplayName(`${m.provider ?? "openai-codex"}/${m.id}`, models)}
-      </span>
-      {reason(m) ? <span className="md-note">{reason(m)}</span> : null}
-    </label>
-  );
+  const row = (m: ModelChoice) => {
+    const description = modelDescription(m.id);
+    // The description describes the radio rather than lengthening its name.
+    const describedBy = description ? `${group}-${m.id}` : undefined;
+    return (
+      <label
+        key={m.id}
+        className="md-row"
+        title={refused(m) ? txt.refusedTitle : undefined}
+      >
+        <input
+          type="radio"
+          data-testid={`model-${m.id}`}
+          name={group}
+          checked={!auto?.selected && selected === m.id}
+          disabled={busy || !!reason(m)}
+          aria-describedby={describedBy}
+          onChange={() => onSelect(m.id)}
+        />
+        <span className="md-t">
+          {modelDisplayName(`${m.provider ?? "openai-codex"}/${m.id}`, models)}
+          {description ? (
+            <span className="md-desc" id={describedBy} aria-hidden="true">
+              {description}
+            </span>
+          ) : null}
+        </span>
+        {reason(m) ? <span className="md-note">{reason(m)}</span> : null}
+      </label>
+    );
+  };
   return (
     <div className="md-pick">
       {auto ? (
@@ -160,6 +175,7 @@ export function ModelPicker({
             value={thinking}
             onChange={onThinking}
           />
+          <p className="md-note md-think-about">{txt.thinkingShort}</p>
         </div>
       ) : null}
     </div>

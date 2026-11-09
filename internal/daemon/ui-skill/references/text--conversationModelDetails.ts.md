@@ -10,23 +10,26 @@ import { catalog } from "../i18n";
 const fi = {
   label: "Keskustelun malli ja ajattelutaso",
   model: "Malli",
-  options: "Malli ja vaihtoehdot",
-  current: " (käytössä)",
-  unknownModel: "Mallia ei tiedetä.",
-  thinking: "Ajattelutaso",
-  thinkingLevels: "Ajattelutasot",
+  signIn: "Kirjautuminen",
+  others: "Samalla kirjautumisella myös",
   unknown: "Ei tiedossa",
+  thinking: "Ajattelutaso",
+  levels: (model: string, levels: string) =>
+    `${model} osaa ajattelutasot ${levels}.`,
+  chosenBefore:
+    "Selaimessa malli ja ajattelutaso valitaan ennen keskustelun ensimmäistä viestiä.",
 };
 
 export const conversationModelDetailsText = catalog(fi, {
   label: "The conversation's model and thinking level",
   model: "Model",
-  options: "Model and alternatives",
-  current: " (in use)",
-  unknownModel: "The model is not known.",
-  thinking: "Thinking level",
-  thinkingLevels: "Thinking levels",
+  signIn: "Sign-in",
+  others: "Also with the same sign-in",
   unknown: "Not known",
+  thinking: "Thinking level",
+  levels: (model, levels) => `${model} supports the thinking levels ${levels}.`,
+  chosenBefore:
+    "In the browser the model and thinking level are chosen before the conversation's first message.",
 });
 
 ```

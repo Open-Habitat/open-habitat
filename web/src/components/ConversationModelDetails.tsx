@@ -1,16 +1,21 @@
 import type { ModelChoice } from "./ModelPicker";
 import {
   modelCapabilityRank,
+  modelDescription,
   modelDisplayName,
   thinkingDisplayName,
 } from "./modelPresentation";
 import "./ModelPicker.css";
-import { liveText } from "../i18n";
+import { liveText, localeOf, useLanguage } from "../i18n";
 import { conversationModelDetailsText } from "../text/conversationModelDetails";
+import { modelsText } from "../text/models";
 
 const txt = liveText(conversationModelDetailsText);
+const modelTxt = liveText(modelsText);
 
-/** Presentation of native settings; alternatives are not controls. */
+/** Presentation of native settings as plain facts (proto-model-details round
+ * 1, direction B): nothing here looks pressable, because nothing here
+ * changes the conversation. */
 export function ConversationModelDetails({
   model,
   thinking,
@@ -20,82 +25,102 @@ export function ConversationModelDetails({
   thinking?: string;
   models?: ModelChoice[];
 }) {
+  const language = useLanguage();
   const id = model?.replace(/^[^/]+\//, "");
   const provider = model?.includes("/") ? model.split("/")[0] : undefined;
   const current = models.find(
     (m) =>
       m.id === id && (!provider || (m.provider ?? "openai-codex") === provider),
   );
-  const candidates = current
-    ? models.filter(
-        (m) =>
-          (m.provider ?? "openai-codex") ===
-            (current.provider ?? "openai-codex") &&
-          (!m.older || m.id === id),
-      )
+  const route = current ? (current.provider ?? "openai-codex") : provider;
+  const others = current
+    ? models
+        .filter(
+          (m) =>
+            (m.provider ?? "openai-codex") ===
+              (current.provider ?? "openai-codex") &&
+            !m.older &&
+            m.id !== id,
+        )
+        .sort((a, b) => modelCapabilityRank(a) - modelCapabilityRank(b))
     : [];
-  const options = [...candidates].sort(
-    (a, b) => modelCapabilityRank(a) - modelCapabilityRank(b),
-  );
-  const levels = [
-    ...new Set([
-      ...(current?.thinking_levels ?? []),
-      ...(thinking ? [thinking] : []),
-    ]),
-  ];
+  const name = (m: ModelChoice) =>
+    modelDisplayName(`${m.provider ?? "openai-codex"}/${m.id}`, models);
+  const levels = current?.thinking_levels ?? [];
+  const description = modelDescription(id);
+  const routeName =
+    route && Object.hasOwn(modelTxt.routes, route)
+      ? modelTxt.routes[route as keyof typeof modelTxt.routes]
+      : undefined;
   return (
-    <section data-testid="conversation-model-info" aria-label={txt.label}>
-      <h2>{txt.model}</h2>
-      <ul
-        data-testid="model-options"
-        className="md-info-ribbon md-info-models"
-        aria-label={txt.options}
-      >
-        {!current ? (
-          <li data-model={id} aria-current="true">
-            {modelDisplayName(model, models)}
-          </li>
-        ) : null}
-        {options.map((m) => (
-          <li
-            data-model={m.id}
-            key={m.id}
-            aria-current={m.id === id ? "true" : undefined}
-          >
-            {modelDisplayName(
-              `${m.provider ?? "openai-codex"}/${m.id}`,
-              models,
-            )}
-            {m.id === id ? (
-              <span className="ah-visually-hidden">{txt.current}</span>
+    <section
+      data-testid="conversation-model-info"
+      className="md-info"
+      aria-label={txt.label}
+    >
+      <dl className="md-facts">
+        <div>
+          <dt>{txt.model}</dt>
+          <dd data-testid="model-current" data-model={id}>
+            <strong>{modelDisplayName(model, models)}</strong>
+            {id ? <code>{id}</code> : null}
+            {description ? (
+              <span className="md-desc" data-testid="model-description">
+                {description}
+              </span>
             ) : null}
-          </li>
-        ))}
-      </ul>
-      <p className="md-note">{model ?? txt.unknownModel}</p>
-      <h2>{txt.thinking}</h2>
-      <ul
-        data-testid="thinking-options"
-        className="md-info-ribbon"
-        aria-label={txt.thinkingLevels}
-      >
-        {levels.length ? (
-          levels.map((level) => (
-            <li
-              data-thinking={level}
-              key={level}
-              aria-current={level === thinking ? "true" : undefined}
-            >
-              {thinkingDisplayName(level)}
-              {level === thinking ? (
-                <span className="ah-visually-hidden">{txt.current}</span>
-              ) : null}
-            </li>
-          ))
-        ) : (
-          <li>{txt.unknown}</li>
-        )}
-      </ul>
+          </dd>
+        </div>
+        <div>
+          <dt>{txt.thinking}</dt>
+          <dd data-testid="thinking-current" data-thinking={thinking}>
+            <strong>
+              {thinking ? thinkingDisplayName(thinking) : txt.unknown}
+            </strong>
+            <span className="md-desc" data-testid="thinking-description">
+              {modelTxt.thinkingAbout}
+            </span>
+          </dd>
+        </div>
+        {routeName ? (
+          <div>
+            <dt>{txt.signIn}</dt>
+            <dd>{routeName}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {others.length ? (
+        <div className="md-others">
+          <p className="md-others-h">{txt.others}</p>
+          <ul data-testid="model-options">
+            {others.map((m) => (
+              <li data-model={m.id} key={m.id}>
+                <span className="md-t">{name(m)}</span>
+                {modelDescription(m.id) ? (
+                  <span className="md-desc" data-testid="model-description">
+                    {modelDescription(m.id)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {current && levels.length ? (
+        <p
+          className="md-note"
+          data-testid="thinking-options"
+          data-levels={levels.join(" ")}
+        >
+          {txt.levels(
+            name(current),
+            new Intl.ListFormat(localeOf(language), {
+              type: "conjunction",
+            }).format(levels.map(thinkingDisplayName)),
+          )}
+        </p>
+      ) : null}
+      <p className="md-note">{txt.chosenBefore}</p>
     </section>
   );
 }

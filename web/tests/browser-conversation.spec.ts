@@ -3552,13 +3552,14 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   await expect(
     pop.getByTestId("model-options").locator('[data-model="gpt-6-astra"]'),
   ).toHaveCount(1);
-  await expect(pop.locator('[aria-current="true"]').first()).toHaveAttribute(
+  await expect(pop.getByTestId("model-current")).toHaveAttribute(
     "data-model",
     /(?:^|\/)gpt-6-nova$/,
   );
-  await expect(
-    pop.getByTestId("thinking-options").locator('[aria-current="true"]'),
-  ).toHaveAttribute("data-thinking", "high");
+  await expect(pop.getByTestId("thinking-current")).toHaveAttribute(
+    "data-thinking",
+    "high",
+  );
   await expect(pop.locator("button, input, select")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.locator(".md-chip-picker > summary")).toBeFocused();

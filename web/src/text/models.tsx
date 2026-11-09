@@ -79,6 +79,25 @@ const fi = {
   defaultBroken: (name: string, route: string, signIn: boolean) =>
     `${name} (${route}) ei vastannut viimeksi. Valitse toinen oletus tai korjaa ${signIn ? "kirjautuminen" : "avain"} alla.`,
   thinkingLevelHidden: "· ajattelutaso",
+  // What each family is good for compared with the same provider's others,
+  // for a person who does not follow models (modelPresentation.ts). Ordered
+  // by capability; an unknown family has no entry and shows nothing. "Kallis"
+  // means the usage limit on a subscription and the bill on an API key.
+  families: {
+    fable: "Kyvykkäin vaikeimpiin töihin; hitain ja kallein.",
+    opus: "Taitava vaativaan työhön; melko kallis.",
+    sonnet: "Yleismalli arkeen; Opusta nopeampi ja edullisempi.",
+    haiku: "Nopein ja edullisin: lyhyet, yksinkertaiset työt.",
+    astra: "Kyvykkäin vaikeimpiin töihin; hitain ja kallein.",
+    sol: "Yleismalli arkeen; Astraa nopeampi ja edullisempi.",
+    terra: "Solia kevyempi, kun nopeus painaa enemmän.",
+    luna: "Nopein ja edullisin: lyhyet, yksinkertaiset työt.",
+  },
+  thinkingAbout:
+    "Kuinka paljon malli miettii ennen vastausta. Korkeampi taso auttaa vaikeissa töissä, mutta on hitaampi ja kalliimpi.",
+  // The same in one line under the level control, where the picker must fit
+  // a laptop screen without scrolling.
+  thinkingShort: "Korkeampi: perusteellisempi, hitaampi ja kalliimpi.",
 };
 
 export const modelsText = catalog(fi, {
@@ -148,4 +167,17 @@ export const modelsText = catalog(fi, {
   defaultBroken: (name, route, signIn) =>
     `${name} (${route}) did not answer last time. Choose another default or fix the ${signIn ? "sign-in" : "key"} below.`,
   thinkingLevelHidden: "· thinking level",
+  families: {
+    fable: "Most capable, for the hardest work; slowest and costliest.",
+    opus: "Skilled at demanding work; fairly costly.",
+    sonnet: "An everyday all-rounder; faster and cheaper than Opus.",
+    haiku: "The fastest and cheapest, for short, simple tasks.",
+    astra: "Most capable, for the hardest work; slowest and costliest.",
+    sol: "An everyday all-rounder; faster and cheaper than Astra.",
+    terra: "Lighter than Sol, for when speed matters more.",
+    luna: "The fastest and cheapest, for short, simple tasks.",
+  },
+  thinkingAbout:
+    "How much the model thinks before answering. A higher level helps with hard work but is slower and costlier.",
+  thinkingShort: "Higher: more thorough, slower and costlier.",
 });

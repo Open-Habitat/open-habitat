@@ -141,8 +141,8 @@ const fi = {
     Y06: {
       name: "Malli",
       lead: "Malli ja ajattelutaso, joilla agentti vastaa tässä keskustelussa.",
-      know: "Valikosta voit vaihtaa ne tälle keskustelulle; uusien keskustelujen oletus on Asetuksissa.",
-      try: "Avaa mallit",
+      know: "Painallus kertoo, mihin malli sopii. Malli valitaan ennen ensimmäistä viestiä; uusien keskustelujen oletus on Asetuksissa.",
+      try: "Näytä mallin tiedot",
     },
     Y07: {
       name: "Editori",
@@ -1060,7 +1060,7 @@ const fi = {
     },
     L07: {
       name: "Malli",
-      lead: "Malli, jolla agentti vastaa; ylimpänä tuoreimmat.",
+      lead: "Malli, jolla agentti vastaa; ylimpänä kyvykkäin, ja kuvaus kertoo, mihin kukin sopii.",
     },
     L08: {
       name: "Vanhemmat mallit",
@@ -1135,8 +1135,8 @@ const fi = {
     },
     P11: {
       name: "Keskustelun malli",
-      lead: "Vaihtaa tämän keskustelun mallin tai ajattelutason; seuraava vastaus käyttää uutta.",
-      know: "Aiempaa viestiä ei toisteta, ja luonnoksesi säilyy.",
+      lead: "Kertoo keskustelun mallin ja ajattelutason ja mihin ne sopivat.",
+      know: "Tässä ei voi vaihtaa mitään. Selaimessa malli valitaan ennen ensimmäistä viestiä viestikentän vasemmasta reunasta.",
     },
     P12: {
       name: "Opas",
@@ -1625,8 +1625,8 @@ export const explainModeText = catalog(fi, {
     Y06: {
       name: "Model",
       lead: "The model and thinking level the agent answers with in this conversation.",
-      know: "The menu changes them for this conversation; the default for new ones is in Settings.",
-      try: "Open the models",
+      know: "A press tells what the model is good for. The model is chosen before the first message; the default for new ones is in Settings.",
+      try: "Show the model details",
     },
     Y07: {
       name: "Editor",
@@ -2538,7 +2538,7 @@ export const explainModeText = catalog(fi, {
     },
     L07: {
       name: "Model",
-      lead: "A model the agent can answer with; the newest are at the top.",
+      lead: "A model the agent answers with; the most capable first, and its description tells what each is good for.",
     },
     L08: {
       name: "Older models",
@@ -2613,8 +2613,8 @@ export const explainModeText = catalog(fi, {
     },
     P11: {
       name: "Conversation's model",
-      lead: "Changes this conversation's model or thinking level; the next reply uses the new one.",
-      know: "No earlier message is repeated, and your draft stays.",
+      lead: "Tells the conversation's model and thinking level and what they are good for.",
+      know: "Nothing can be changed here. In the browser the model is chosen before the first message, at the left edge of the message box.",
     },
     P12: {
       name: "Guide",

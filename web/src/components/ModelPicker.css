@@ -48,6 +48,29 @@
 .md-t {
   font-weight: 500;
 }
+.md-think:has(.md-think-about) {
+  row-gap: 6px;
+}
+.md-think-about {
+  flex-basis: 100%;
+}
+/* A model's or level's plain description, under its name. */
+.md-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+  line-height: 1.45;
+}
+/* A described row stays compact: four models and the level fit a laptop. */
+.md-row:has(.md-desc) {
+  padding-block: 4px;
+}
+.md-row .md-desc {
+  margin-top: 0;
+  line-height: 1.35;
+}
 .md-more summary {
   padding: 4px 0;
   font-size: var(--ah-size-meta);
@@ -130,6 +153,9 @@
   bottom: calc(100% + 8px);
   left: 0;
   right: auto;
+  /* Rising from the composer, the picker may use the conversation's height:
+     described models and the level still fit a 768 px laptop unscrolled. */
+  max-height: min(80vh, calc(100dvh - 120px));
 }
 @media (max-width: 760px) {
   .md-pop.md-pop-up {
@@ -155,23 +181,63 @@
   margin-bottom: 12px;
 }
 
-.md-info-ribbon {
+/* The conversation's model as facts (proto-model-details round 1, B): a
+   definition list and quiet text, nothing bordered or pressable-looking. */
+.md-info {
   display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  padding: 0;
-  gap: var(--ah-s1);
+  flex-direction: column;
+  gap: var(--ah-s3);
+  min-width: 0;
 }
-.md-info-ribbon > li {
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  padding: var(--ah-s1) var(--ah-s2);
+.md-facts {
+  display: grid;
+  gap: var(--ah-s3);
+  margin: 0;
 }
-.md-info-ribbon > li[aria-current="true"] {
-  background: var(--ah-accent-soft);
-  color: var(--ah-accent-ink);
+.md-facts > div {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: var(--ah-s2);
+  align-items: baseline;
+}
+.md-facts dt {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.md-facts dd {
+  margin: 0;
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+}
+.md-facts strong {
   font-weight: 600;
-  border-color: currentColor;
+}
+.md-facts code {
+  margin-left: 6px;
+  color: var(--ah-muted);
+  font: 12px var(--ah-mono);
+}
+.md-others-h {
+  margin: 0 0 var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+}
+.md-others ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ah-ink);
+  font-size: var(--ah-size-ui);
+}
+@media (max-width: 440px) {
+  .md-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
 }
 .ah-set-chip > svg {
   width: 13px;
@@ -184,10 +250,6 @@
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-}
-
-.md-info-models {
-  flex-direction: column;
 }
 
 .md-picker-actions {
