@@ -258,6 +258,20 @@ class BuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'go_buildinfo_unreadable'):
             go_notices.is_go(bytes(sectionless))
 
+    def test_pi_wrapper_uses_locked_cli_not_library(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / 'package-lock.json'
+            def write(entry):
+                lock.write_text(json.dumps({'packages': {'node_modules/@earendil-works/pi-coding-agent': {'main': 'dist/index.js', 'bin': {'pi': entry}}}}))
+            write('dist/bundle/cli.js')
+            wrapper = integrations_build.pi_wrapper(lock).decode()
+            self.assertIn('/dist/bundle/cli.js" "$@"', wrapper)
+            self.assertNotIn('dist/index.js', wrapper)
+            for entry in ('/cli.js', '../cli.js', 'dist/../../cli.js', '$(bad)', 'a"b', ''):
+                write(entry)
+                with self.assertRaisesRegex(ValueError, 'invalid Pi CLI entry'):
+                    integrations_build.pi_wrapper(lock)
+
     def test_raw_go_tool_is_digest_and_notice_checked(self):
         deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]
         binary = go_binary(deps)

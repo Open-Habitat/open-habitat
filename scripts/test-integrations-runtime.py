@@ -12,6 +12,9 @@ import tarfile
 import tempfile
 
 out = Path(sys.argv[1]).resolve()
+# A built or installed core runtime, used read-only; no ambient Pi or Node.
+core_runtime = Path(sys.argv[2]).resolve()
+pi_meta = json.loads((core_runtime / 'node_modules/@earendil-works/pi-coding-agent/package.json').read_text())
 artifact = json.loads((out / 'artifact.json').read_text())
 archive = out / artifact['archive']
 assert artifact['profile'] == 'integrations' and artifact['requires'] == []
@@ -20,7 +23,7 @@ assert hashlib.sha256(archive.read_bytes()).hexdigest() == artifact['sha256']
 records = {f['path']: f for f in artifact['closure']['files']}
 components = {c['name']: c for c in artifact['closure']['components']}
 assert len(records) == artifact['entries']
-with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as directory:
+with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TMPDIR', '/var/tmp')) as directory:
     root = Path(directory)
     with tarfile.open(archive) as tar:
         seen = set()
@@ -79,13 +82,27 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
     (runtime).rename(gen / 'payloads/integrations/runtime')
     runtime = gen / 'payloads/integrations/runtime'
     core = gen / 'payloads/core/runtime'
-    (core / 'bin').mkdir(parents=True)
-    (core / 'bin/node').write_text('#!/bin/sh\necho "$@"\n')
-    (core / 'bin/node').chmod(0o755)
+    core.parent.mkdir(parents=True)
+    core.symlink_to(core_runtime, target_is_directory=True)
     (root / 'profiles').mkdir()
     (root / 'profiles/integrations').symlink_to(runtime)
-    out = subprocess.check_output([root / 'profiles/integrations/bin/pi', 'mcp', 'list'], env=tool_env, text=True, timeout=30)
-    assert out.split() == [str(core.resolve() / 'node_modules/@earendil-works/pi-coding-agent/dist/index.js'), 'mcp', 'list'], out
+    pi = root / 'profiles/integrations/bin/pi'
+    out = subprocess.check_output([pi, '--version'], env=tool_env, text=True, timeout=30)
+    assert out.strip() == pi_meta['version'], out
+    # Microsoft and tenant setup use add/remove; exit 0 without changing the
+    # native file (the former library entry) must not count as success.
+    subprocess.run([pi, 'mcp', 'add', 'fixture', '--env', 'FIXTURE=value with spaces', '--', '/bin/false', '--fixture'], env=tool_env, check=True, capture_output=True, timeout=30)
+    config = root / 'home/.pi/agent/mcp.json'
+    server = json.loads(config.read_text())['mcpServers']['fixture']
+    assert server['command'] == '/bin/false' and server['args'] == ['--fixture']
+    assert server['env'] == {'FIXTURE': 'value with spaces'}
+    subprocess.run([pi, 'mcp', 'remove', 'fixture'], env=tool_env, check=True, capture_output=True, timeout=30)
+    assert 'fixture' not in json.loads(config.read_text())['mcpServers']
+    subprocess.run([pi, 'mcp', 'add', 'fixture', '--url', 'http://127.0.0.1:1/mcp'], env=tool_env, check=True, capture_output=True, timeout=30)
+    auth = config.with_name('mcp-auth.json')
+    auth.write_text(json.dumps({'mcp__fixture|http://127.0.0.1:1/mcp': {'tokens': {'access_token': 'synthetic'}}}))
+    subprocess.run([pi, 'mcp', 'logout', 'fixture'], env=tool_env, check=True, capture_output=True, timeout=30)
+    assert 'mcp__fixture|http://127.0.0.1:1/mcp' not in json.loads(auth.read_text())
     env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'MS365_MCP_USE_KEYTAR': 'false', 'MS365_MCP_TOKEN_CACHE_PATH': str(root / 'home/cache'), 'MS365_MCP_SELECTED_ACCOUNT_PATH': str(root / 'home/selected')}
     assert subprocess.check_output([runtime / 'bin/node', '--version'], env=env, text=True).strip() == 'v22.21.1'
     result = subprocess.run([runtime / 'bin/microsoft-native'], input='{}', text=True, env=env, capture_output=True, timeout=30)

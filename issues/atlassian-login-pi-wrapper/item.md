@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Atlassian sign-in fails at once: the integrations profile's pi wrapper runs Pi's library entry, not its CLI
@@ -45,7 +46,7 @@ sign-in; if not, that is part of this fix.
 
 ## Acceptance Criteria
 
-- [ ] The wrapper runs Pi's CLI (`dist/bundle/cli.js` or the package's `bin.pi`, resolved rather than hard-coded if practical); the runtime test asserts it and runs `--version` on the built profile.
-- [ ] A test against the real built integrations profile (not a fake Pi) starts the RPC login child and sees Pi's `/mcp` response.
-- [ ] The agent's own Pi session can call the Atlassian MCP tools after sign-in (verified with the real runtime, fixture server acceptable for the remote).
+- [x] The wrapper runs Pi's CLI (`dist/bundle/cli.js` or the package's `bin.pi`, resolved rather than hard-coded if practical); the runtime test asserts it and runs `--version` on the built profile.
+- [x] A test against the real built integrations profile (not a fake Pi) starts the RPC login child and sees Pi's `/mcp` response.
+- [x] The agent's own Pi session can call the Atlassian MCP tools after sign-in (verified with the real runtime, fixture server acceptable for the remote).
 - [ ] Integrations runtime profile rebuilt for both architectures for the next release.

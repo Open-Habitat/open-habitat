@@ -28,11 +28,18 @@ spec.loader.exec_module(go_notices)
 # release verifier requires every one of them (internal/host/integrations_linux.go).
 PI_WRAPPER = (
     '#!/bin/sh\n'
-    '# Pi for native "pi mcp add/remove". Core is always in the same generation;\n'
+    '# Pi CLI for native MCP commands and RPC login. Core shares this generation;\n'
     '# -P resolves the stable profile link before walking up to it.\n'
     'core=$(CDPATH= cd -P -- "$(dirname -- "$0")/../../../core/runtime" && pwd -P)\n'
-    'exec "$core/bin/node" "$core/node_modules/@earendil-works/pi-coding-agent/dist/index.js" "$@"\n'
+    'exec "$core/bin/node" "$core/node_modules/@earendil-works/pi-coding-agent/{entry}" "$@"\n'
 )
+
+
+def pi_wrapper(core_lock):
+    entry = json.loads(core_lock.read_text())['packages']['node_modules/@earendil-works/pi-coding-agent']['bin']['pi']
+    if not isinstance(entry, str) or not re.fullmatch(r'[a-zA-Z0-9_./-]+', entry) or entry.startswith('/') or '..' in entry.split('/'):
+        raise ValueError('invalid Pi CLI entry')
+    return PI_WRAPPER.format(entry=entry).encode()
 
 
 def add_tools(lock, inputs, put_bytes, components, target):
@@ -161,7 +168,8 @@ def build(inputs, installed, node_archive, out, target):
         target.write_text('#!/bin/sh\nhere=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$here/node" "$here/../' + entry + '" "$@"\n')
         target.chmod(0o755)
         owners[dest] = 'microsoft-native'
-    put_bytes(PI_WRAPPER.encode(), 'runtime/bin/pi', 'microsoft-native', True)
+    core_lock = Path(__file__).resolve().parent.parent / 'runtime/core/package-lock.json'
+    put_bytes(pi_wrapper(core_lock), 'runtime/bin/pi', 'microsoft-native', True)
     components.append(dict(name='microsoft-native', version='1.0.0', kind='native', license_files=['runtime/NOTICE']))
     profiles.seal(root, out, 'integrations', owners, components, packages)
     shutil.rmtree(extracted)
