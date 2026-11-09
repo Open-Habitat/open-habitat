@@ -540,6 +540,22 @@ func ensureWorkspaceExclude(fd int) error {
 	return nil
 }
 
+// archivedAt is when the person archived the conversation, read only for
+// one that archiveFact calls archived.
+func archivedAt(state workspaceVisibility, id string) string {
+	var fields struct {
+		ArchivedAt string `json:"archived_at"`
+	}
+	if json.Unmarshal(state.Conversations[id], &fields) != nil {
+		return ""
+	}
+	at, err := time.Parse(time.RFC3339Nano, fields.ArchivedAt)
+	if err != nil {
+		return ""
+	}
+	return at.UTC().Format(time.RFC3339Nano)
+}
+
 // archiveFact never treats an unreadable annotation as an empty archive.
 func archiveFact(state workspaceVisibility, readErr error, id string) string {
 	if readErr != nil {

@@ -138,7 +138,22 @@ test("helpers confirm before archive, stay discoverable, and return without star
   await page.getByRole("navigation").getByTestId(workspaceTestId).click();
   await page.locator(".ah-workspace-archive > summary").click();
   const archived = page.getByTestId("workspace-archive-panel");
-  await expect(archived.getByTestId("helper-archive-row")).toHaveCount(1);
+  // The row names the helper in two words; its own row, with the branch,
+  // is where the conversation is read.
+  const row = archived
+    .getByTestId("archive-row")
+    .filter({ has: page.getByTestId("archive-traces") });
+  await expect(row.getByTestId("archive-traces")).toContainText(
+    "avustaja reviewer",
+  );
+  await expect(row.locator("time")).toHaveCount(1);
+  await expect(archived.getByTestId("helper-archive-row")).toHaveCount(0);
+  await row.getByTestId("archive-row-open").click();
+  const foot = page.getByTestId("archived-foot");
+  await expect(foot.getByTestId("helper-archive-row")).toHaveCount(1);
+  await expect(page.getByTestId("message-input")).toHaveCount(0);
+  await page.goBack();
+  await expect(row).toBeVisible();
   if (process.env.OH_VISUAL_CAPTURE)
     await snapshot(page, "../issues/helper-archive-flow/evidence/archive", {
       labOrigin: new URL(page.url()).origin,
@@ -155,7 +170,10 @@ test("helpers confirm before archive, stay discoverable, and return without star
       report: "Review completed",
     },
   }));
-  await archived.getByTestId("restore-conversation").click();
+  await row.getByTestId("restore-conversation").click();
+  await expect(archived.getByTestId("archive-restored")).toContainText(
+    "avustajat palasivat",
+  );
   await expect(rail).toBeVisible();
   await rail.getByTestId("agent-link").click();
   const note = page.getByTestId("helper-restore-note");

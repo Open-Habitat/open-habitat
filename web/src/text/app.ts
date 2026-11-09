@@ -100,7 +100,6 @@ const fi = {
   archiveMaybeIncomplete:
     "Arkisto voi olla puutteellinen: keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
   historyUnreadable: "Historia ei ole luettavissa.",
-  restoreVisible: "Palauta näkyviin",
   historyUnconfirmed: "Historiaa ei voitu vahvistaa",
   restoreNeedsConnection: "Päivitä yhteys ennen palautusta",
   loadingCatalog: "Ladataan katalogia",
@@ -210,7 +209,6 @@ export const appText = catalog(fi, {
   archiveMaybeIncomplete:
     "The archive may be incomplete: some of the conversations' agent history is missing or could not be read. Some conversations may be missing from it. Refresh.",
   historyUnreadable: "History is not readable.",
-  restoreVisible: "Restore",
   historyUnconfirmed: "The history could not be confirmed",
   restoreNeedsConnection: "Refresh the connection before restoring",
   loadingCatalog: "Loading the catalog",

@@ -134,6 +134,8 @@ export interface Agent {
   /** The conversation runs in this worktree place of the workspace. */
   worktree_id?: string;
   started_at?: string;
+  /** When the person archived it; only while archive is archived. */
+  archived_at?: string;
   /** When the conversation last changed: its Pi session file's mtime. */
   changed_at?: string;
   /** The size of its Pi session file, read with changed_at. */

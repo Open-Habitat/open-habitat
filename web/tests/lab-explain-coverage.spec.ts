@@ -237,6 +237,15 @@ for (const width of [1440, 390]) {
         .all())
         await fold.click();
       await survey(page, "workspace-folds");
+      // An archived conversation opens to read, its foot in the composer's place.
+      await page
+        .getByTestId("workspace-archive-panel")
+        .getByTestId("archive-row-open")
+        .first()
+        .click();
+      await expect(page.getByTestId("archived-foot")).toBeVisible();
+      await survey(page, "archived-conversation");
+      await page.goBack();
       if (!phone) {
         // In the mode Enter in the wish field waits like its send button:
         // nothing goes to the model.

@@ -219,7 +219,7 @@ func seedLab(home string) error {
 		}
 		_ = os.Chtimes(path, at, at)
 	}
-	return nil
+	return seedLabArchive(home)
 }
 
 // labStageTurns writes turns whose interim replies close stages of work: two

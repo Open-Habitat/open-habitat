@@ -1,0 +1,198 @@
+/* The workspace page's archive: a dated list, grouped by when each
+   conversation was archived (proto-conversation-archive, direction 1). */
+.ah-archive {
+  margin-top: var(--ah-s3);
+}
+.ah-archive-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ah-s2) var(--ah-s4);
+  margin-bottom: var(--ah-s2);
+}
+.ah-archive-head h2 {
+  margin: 0;
+}
+.ah-archive-head h2 span {
+  color: var(--ah-muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+.ah-archive-filter {
+  width: min(320px, 100%);
+}
+.ah-archive-filter .ah-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+}
+.ah-archive-filter .ah-field label {
+  flex: none;
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-archive-filter .ah-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding-block: 4px;
+}
+.ah-archive-empty {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  margin: var(--ah-s2) 0;
+}
+.ah-archive-group h3 {
+  margin: var(--ah-s4) 0 var(--ah-s1);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ah-muted);
+  letter-spacing: 0.02em;
+}
+.ah-archive-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ah-line);
+}
+.ah-archive-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: 2px 0 2px var(--ah-s1);
+  border-bottom: 1px solid var(--ah-line);
+}
+.ah-archive-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--ah-s3);
+  min-width: 0;
+  padding: 7px 0;
+}
+.ah-archive-row .ah-archive-row-open {
+  color: var(--ah-ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.ah-archive-row .ah-archive-row-open:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ah-archive-row-note {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-archive-row-date {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ah-archive-row-restore {
+  color: var(--ah-ink-2);
+}
+.ah-archive-row-restore svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 760px) {
+  .ah-archive-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "main restore" "date restore";
+    row-gap: 0;
+    padding: 4px 0 6px var(--ah-s1);
+  }
+  .ah-archive-row-main {
+    grid-area: main;
+    padding: 4px 0 0;
+  }
+  .ah-archive-row-date {
+    grid-area: date;
+  }
+  .ah-archive-row-restore {
+    grid-area: restore;
+  }
+}
+
+/* What a conversation left behind: a mark and two words, attention in ink */
+.ah-archive-traces {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-width: 0;
+}
+.ah-archive-trace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  white-space: nowrap;
+}
+.ah-archive-trace[data-attention] {
+  color: var(--ah-ink-2);
+}
+.ah-archive-trace .ah-worker-mark {
+  flex: none;
+}
+
+/* An archived conversation's foot, in the composer's place */
+.ah-archived-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ah-s2) var(--ah-s4);
+  align-items: start;
+  width: min(var(--ah-measure, 760px), calc(100% - 32px));
+  box-sizing: border-box;
+  margin: 0 auto var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg, 12px);
+  background: var(--ah-surface-2);
+}
+.ah-archived-foot > p {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  color: var(--ah-ink-2);
+  grid-column: 1;
+}
+.ah-archived-foot > p svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 3px;
+}
+.ah-archived-foot > .ah-button,
+.ah-archived-foot > button {
+  grid-column: 2;
+  grid-row: 1;
+}
+.ah-archived-foot-traces {
+  grid-column: 1 / -1;
+  font-size: var(--ah-size-meta);
+}
+.ah-archived-foot-traces aside {
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .ah-archived-foot {
+    width: calc(100% - 16px);
+    padding: var(--ah-s3);
+  }
+}
+.ah-archive-status {
+  margin: 0 0 var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}

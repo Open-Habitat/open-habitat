@@ -455,6 +455,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		for _, raw := range agents {
 			agent := raw.(map[string]any)
 			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
+			if agent["archive"] == "archived" {
+				if at := archivedAt(visibility, agent["agent_id"].(string)); at != "" {
+					agent["archived_at"] = at
+				}
+			}
 			if mark, ok := marks.Marks[agent["agent_id"].(string)]; ok {
 				agent["turn_mark"] = mark
 			}
@@ -495,6 +500,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					}
 					agent["history"] = "missing"
 					agent["archive"] = archiveFact(visibility, visibilityErr, id)
+					if agent["archive"] == "archived" {
+						if at := archivedAt(visibility, id); at != "" {
+							agent["archived_at"] = at
+						}
+					}
 					if mark, ok := marks.Marks[id]; ok {
 						agent["turn_mark"] = mark
 					}

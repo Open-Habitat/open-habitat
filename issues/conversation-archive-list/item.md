@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: archive-proto
 lane_seq: 2
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Implement the conversation archive as a dated, searchable list
@@ -25,5 +26,5 @@ permanent delete. Ships directly: it replaces a broken view Jari reported.
 
 ## Acceptance Criteria
 
-- [ ] The section matches direction 1 for Jari's rows and the prototype's cases, fi and en, 1440 and 390, light and dark; no overlapping buttons.
-- [ ] Explain-mode cards for its parts; the coverage check stays green; touched specs green; KOKEILTAVAA line.
+- [x] The section matches direction 1 for Jari's rows and the prototype's cases, fi and en, 1440 and 390, light and dark; no overlapping buttons.
+- [x] Explain-mode cards for its parts; the coverage check stays green; touched specs green; KOKEILTAVAA line.

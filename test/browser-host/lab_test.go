@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,5 +46,24 @@ func TestLabEditorTargetBelongsToGitBaseline(t *testing.T) {
 	copied, err := os.ReadFile(filepath.Join(worktree, "cmd", "main.go"))
 	if err != nil || string(copied) != committed {
 		t.Fatalf("editor link target missing or changed in new worktree: %v", err)
+	}
+}
+
+func TestLabArchiveMarksAreReadable(t *testing.T) {
+	home := t.TempDir()
+	if err := seedLab(home); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(home, ".local", "state", "open-habitat", "user-state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var state struct {
+		Conversations map[string]struct {
+			ArchivedAt string `json:"archived_at"`
+		} `json:"conversations"`
+	}
+	if err := json.Unmarshal(b, &state); err != nil || len(state.Conversations) != len(labArchivedConversations) {
+		t.Fatalf("archive marks: %v %d", err, len(state.Conversations))
 	}
 }

@@ -19,10 +19,12 @@ import {
   UserMessage,
 } from "../components";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
+import { archiveAction } from "../components/ArchiveControls";
 import { attachmentsIn, messageText } from "../components/AttachmentChips";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
+import { ArchivedFoot } from "../components/ConversationArchive";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { Icon } from "../components/Icon";
@@ -42,6 +44,7 @@ import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { largeContentText } from "../text/largeContent";
+import { useExperimentalFeature } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
 import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
@@ -55,7 +58,7 @@ import {
   retitleHistory,
   TitleGenerationFailed,
 } from "./conversations";
-import { HelperRestoreNote } from "./HelperArchiveFlow";
+import { ArchivedHelpers, HelperRestoreNote } from "./HelperArchiveFlow";
 import {
   type BlockChunk,
   type HistoryBlock,
@@ -1503,6 +1506,7 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const openMachines = useOpenMachines();
+  const helpersOn = useExperimentalFeature("named-workers");
   const window = useWindow(store, agent.agent_id);
   const storagePressure = useStoragePressure();
   useEffect(() => {
@@ -1923,29 +1927,50 @@ function HistoryViewContent({
           onDismiss={() => setRecapDismissed(true)}
         />
       ) : null}
-      <div className="ah-read-only-footer">
-        <div>
-          <strong data-testid="read-only-indicator">{txt.readOnly}</strong>
-          <p>
-            {eligibility?.continuation === "writer_present"
-              ? txt.writerBlocks
-              : eligibility?.continuation === "history_damaged"
-                ? startProblemReason("history_damaged")
-                : eligibility?.continuation === "unproven"
-                  ? txt.unproven
-                  : txt.notFromBrowser}
-          </p>
-        </div>
-        {/* A browser conversation is never continued from here: once it is
-            visible again it opens with its composer, and Pi starts on send. */}
-        <LinkRow
-          data-testid="new-conversation-link"
-          href={`/workspaces/${workspaceId}`}
-          kind="inline"
+      {agent.archive === "archived" ? (
+        <ArchivedFoot
+          archivedAt={agent.archived_at}
+          restoreReason={
+            archiveAction({
+              state: "archived",
+              eligible: restoreAvailable,
+              busy: archiveBusy,
+              blockedReason: restoreAvailable
+                ? undefined
+                : txt.restoreUnavailable,
+              onArchive: () => {},
+              onRestore: () => {},
+            }).reason || undefined
+          }
+          onRestore={() => onRestore?.()}
         >
-          {txt.newConversation}
-        </LinkRow>
-      </div>
+          {helpersOn ? <ArchivedHelpers agent={agent.agent_id} /> : null}
+        </ArchivedFoot>
+      ) : (
+        <div className="ah-read-only-footer">
+          <div>
+            <strong data-testid="read-only-indicator">{txt.readOnly}</strong>
+            <p>
+              {eligibility?.continuation === "writer_present"
+                ? txt.writerBlocks
+                : eligibility?.continuation === "history_damaged"
+                  ? startProblemReason("history_damaged")
+                  : eligibility?.continuation === "unproven"
+                    ? txt.unproven
+                    : txt.notFromBrowser}
+            </p>
+          </div>
+          {/* A browser conversation is never continued from here: once it is
+              visible again it opens with its composer, and Pi starts on send. */}
+          <LinkRow
+            data-testid="new-conversation-link"
+            href={`/workspaces/${workspaceId}`}
+            kind="inline"
+          >
+            {txt.newConversation}
+          </LinkRow>
+        </div>
+      )}
       <BackgroundStrip ask={workerAsk} assets={assets} />
       {shell.panel}
     </ConversationFrame>

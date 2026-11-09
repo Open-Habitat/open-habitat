@@ -223,6 +223,16 @@ const fi = {
       lead: "Peruu juuri tehdyn muutoksen: palauttaa arkistoidun tai edellisen kuvakkeen.",
       know: "Kuvakkeen ilmoituksessa painikkeen nimi on Kumoa.",
     },
+    Y20: {
+      name: "Arkistoitu",
+      lead: "Kertoo, milloin keskustelu arkistoitiin, ja näyttää sen avustajat.",
+      know: "Keskustelua voi lukea, mutta siihen ei voi kirjoittaa ennen kuin palautat sen.",
+    },
+    Y21: {
+      name: "Palauta",
+      lead: "Palauttaa keskustelun arkistosta, jotta voit jatkaa sitä.",
+      know: "Viestikenttä palaa ja avustajat tulevat mukana käynnistämättä. Keskustelun voi arkistoida uudelleen.",
+    },
     S01: {
       name: "Palvelimen nimi",
       lead: "Tämän Habitatin nimi; napsautus vie etusivulle.",
@@ -425,6 +435,10 @@ const fi = {
       lead: "Työtilat, joissa ei ole nyt avoimia keskusteluja.",
       know: "Aloita uusi keskustelu rivin +:sta.",
     },
+    E08: {
+      name: "Sulje katsaus",
+      lead: "Piilottaa tilannekatsauksen näkyvistä; keskusteluun se ei vaikuta.",
+    },
     T01: {
       name: "Työtilan nimi",
       lead: "Työtilan nimi; kansion nimi, ellei sille ole annettu näyttönimeä.",
@@ -491,7 +505,8 @@ const fi = {
     },
     T14: {
       name: "Työtilan arkisto",
-      lead: "Tämän työtilan arkistoidut keskustelut. Täältä saat ne palautettua.",
+      lead: "Tämän työtilan arkistoidut keskustelut, uusin arkistoitu ensin ja päivittäin ryhmiteltyinä.",
+      know: "Mitään ei ole poistettu: avaa keskustelu luettavaksi tai palauta se avoimiin.",
     },
     T15: {
       name: "Worktreet",
@@ -620,6 +635,27 @@ const fi = {
     T41: {
       name: "Yritä uudelleen",
       lead: "Pyytää mallilta ehdotuksia uudelleen, kun edellinen pyyntö epäonnistui.",
+    },
+    T42: {
+      name: "Etsi otsikosta",
+      lead: "Rajaa arkiston keskustelut otsikon perusteella.",
+      know: "Haku katsoo vain otsikoita, ei sitä, mitä keskusteluissa sanottiin.",
+    },
+    T43: {
+      name: "Arkistoitu keskustelu",
+      lead: "Avaa keskustelun luettavaksi sellaisena kuin se jäi.",
+      know: "Arkistoituun keskusteluun ei voi kirjoittaa; palauta se jatkaaksesi. Rivin päivä kertoo, milloin se arkistoitiin.",
+      try: "Avaa keskustelu",
+    },
+    T44: {
+      name: "Palauta",
+      lead: "Palauttaa keskustelun arkistosta avoimiin keskusteluihin.",
+      know: "Sen avustajat palaavat mukana käynnistämättä. Keskustelun voi arkistoida uudelleen.",
+    },
+    T45: {
+      name: "Jäljet",
+      lead: "Kertoo, mitä keskustelusta jäi: avustaja nimeltä tai workerien työ ja sen tila.",
+      know: "Tumma teksti on työtä, joka odottaa yhä jotakuta. Tarkan tilan ja haaran näet, kun avaat keskustelun.",
     },
     T38: {
       name: "Poista pysyvästi",
@@ -1671,6 +1707,16 @@ export const explainModeText = catalog(fi, {
       lead: "Takes back the change you just made: brings back what was archived or the previous icon.",
       know: "In the icon notice the button is called Undo.",
     },
+    Y20: {
+      name: "Archived",
+      lead: "Says when the conversation was archived and shows its helpers.",
+      know: "You can read the conversation but not write in it until you restore it.",
+    },
+    Y21: {
+      name: "Restore",
+      lead: "Brings the conversation back from the archive so you can continue it.",
+      know: "The message field returns and its helpers come back without starting. You can archive the conversation again.",
+    },
     S01: {
       name: "Server name",
       lead: "This Habitat's name; a click takes you home.",
@@ -1870,6 +1916,10 @@ export const explainModeText = catalog(fi, {
       lead: "Workspaces with no open conversations right now.",
       know: "Start a new conversation with the row's +.",
     },
+    E08: {
+      name: "Close recap",
+      lead: "Hides the recap from view; the conversation is not affected.",
+    },
     T01: {
       name: "Workspace name",
       lead: "The workspace's name; the folder's name unless it has been given a display name.",
@@ -1936,7 +1986,8 @@ export const explainModeText = catalog(fi, {
     },
     T14: {
       name: "Workspace archive",
-      lead: "This workspace's archived conversations. Restore them from here.",
+      lead: "This workspace's archived conversations, newest archived first and grouped by day.",
+      know: "Nothing is deleted: open a conversation to read it, or restore it to the open ones.",
     },
     T15: {
       name: "Worktrees",
@@ -2065,6 +2116,27 @@ export const explainModeText = catalog(fi, {
     T41: {
       name: "Try again",
       lead: "Asks the model for suggestions again after the last request failed.",
+    },
+    T42: {
+      name: "Find by title",
+      lead: "Narrows the archived conversations by their titles.",
+      know: "It looks at titles only, not at what was said in the conversations.",
+    },
+    T43: {
+      name: "Archived conversation",
+      lead: "Opens the conversation to read, as it was left.",
+      know: "You cannot write in an archived conversation; restore it to continue. The row's date says when it was archived.",
+      try: "Open conversation",
+    },
+    T44: {
+      name: "Restore",
+      lead: "Brings the conversation back from the archive to the open conversations.",
+      know: "Its helpers come back with it without starting. You can archive the conversation again.",
+    },
+    T45: {
+      name: "Traces",
+      lead: "Says what the conversation left behind: a helper by name, or its workers' work and its state.",
+      know: "Darker text is work that still waits for someone. Open the conversation to see the exact state and branch.",
     },
     T38: {
       name: "Delete permanently",

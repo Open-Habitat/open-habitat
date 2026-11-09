@@ -90,6 +90,8 @@ export const parts: Record<CardId, Part> = {
   Y17: { kind: "menu", sel: '[data-testid="phone-header-facts"]' },
   Y18: { kind: "info", sel: '[data-testid="archive-notice"]' },
   Y19: { kind: "once", sel: '[data-testid="restore-notice"]' },
+  Y20: { kind: "info", sel: '[data-testid="archived-foot"]' },
+  Y21: { kind: "once", sel: '[data-testid="archived-foot-restore"]' },
   S01: { kind: "nav", sel: '[data-testid="server-home"]', opens: true },
   S02: {
     kind: "info",
@@ -144,6 +146,7 @@ export const parts: Record<CardId, Part> = {
   E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },
   E04: { kind: "info", sel: '[data-testid="card-read-only"]' },
   E05: { kind: "info", sel: '[data-testid="recap-age"]' },
+  E08: { kind: "once", sel: '[data-testid="recap-dismiss"]' },
   E06: { kind: "nav", sel: '[data-testid="open-conversation"]' },
   E07: { kind: "list", sel: '[data-testid="empty-workspaces"]' },
   T01: {
@@ -191,6 +194,14 @@ export const parts: Record<CardId, Part> = {
   T14: {
     kind: "list",
     sel: '[data-testid="workspace-archive-panel"], .ah-workspace-archive > summary',
+  },
+  T42: { kind: "input", sel: '[data-testid="archive-filter"]' },
+  T43: { kind: "nav", sel: '[data-testid="archive-row-open"]' },
+  T44: { kind: "once", sel: ".ah-archive-row-restore" },
+  T45: {
+    kind: "info",
+    sel: '[data-testid="archive-traces"]',
+    workerLegend: true,
   },
   T24: {
     kind: "panel",
@@ -541,6 +552,8 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "T05",
   "T06",
   "T19",
+  "T44",
+  "Y21",
   "T22",
   "S26",
   "Y12",

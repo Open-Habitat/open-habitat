@@ -22,7 +22,6 @@ import {
   AccountLogoutDialog,
   AccountSettings,
   AppShell,
-  Button,
   ConnectionBanner,
   InlineNotice,
 } from "../components";
@@ -56,6 +55,7 @@ import { agentTitle } from "./agentTitle";
 import { BrowserConversation } from "./BrowserConversation";
 import type { LeaveSave } from "./BrowserDocument";
 import { checkBundle, reloadForNewBundle, watchBundle } from "./bundleRelease";
+import { WorkspaceArchive } from "./ConversationArchiveFlow";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
@@ -98,7 +98,6 @@ import {
   setGuide,
 } from "./goalGuide";
 import {
-  ArchivedHelpers,
   HelperRestoreContext,
   useHelperArchiveConfirmation,
 } from "./HelperArchiveFlow";
@@ -1252,6 +1251,12 @@ export function App() {
   const selected = workspaces.find(
     (w) => w.workspace_id === selectedId && w.presence === "present",
   );
+  const archivedHere = selected
+    ? (snapshot?.agents.filter(
+        (a) =>
+          a.workspace_id === selected.workspace_id && a.archive === "archived",
+      ) ?? [])
+    : [];
   // A conversation in a worktree runs in its place, not in the workspace's
   // main checkout (ADR 0025): its top bar reads the worktree's Git status.
   const conversationRoute = new URLSearchParams(location.search).get(
@@ -1660,6 +1665,8 @@ export function App() {
     agent: Agent,
     archived: boolean,
     origin: "conversation" | "home" | "rail" = "conversation",
+    // Called once the host confirms the change, not on a lost reply.
+    onConfirmed?: () => void,
   ) => {
     // Repeated presses share one preflight/write; the inverse (Undo) must
     // still enter MutationLayer's queue while the first write is pending.
@@ -1667,7 +1674,7 @@ export function App() {
     if (archiveInFlight.current.has(key)) return false;
     archiveInFlight.current.add(key);
     try {
-      return await performArchive(agent, archived, origin);
+      return await performArchive(agent, archived, origin, onConfirmed);
     } finally {
       archiveInFlight.current.delete(key);
     }
@@ -1677,6 +1684,7 @@ export function App() {
     archived: boolean,
     // The rail archives in place unless the conversation is the open one.
     origin: "conversation" | "home" | "rail" = "conversation",
+    onConfirmed?: () => void,
   ) => {
     const token = agent.observation_token;
     if (
@@ -1741,6 +1749,7 @@ export function App() {
       read: (response, commandId) =>
         readArchiveResult(response, agent.agent_id, archived, commandId),
       confirmed: (reply) => {
+        onConfirmed?.();
         if (!archived)
           setArchiveNotice((notice) =>
             notice?.id === agent.agent_id ? undefined : notice,
@@ -2950,80 +2959,60 @@ export function App() {
                 snapshot?.sources.find((f) => f.source === "pi_history")
                   ?.state !== "confirmed"
                   ? "?"
-                  : snapshot.agents.filter(
-                      (a) =>
-                        a.workspace_id === selected.workspace_id &&
-                        a.archive === "archived",
-                    ).length}
+                  : archivedHere.length}
               </summary>
-              <section
-                data-testid="workspace-archive-panel"
-                aria-label={t.app.workspaceArchive}
-              >
-                <h2 data-testid="archive-title">{t.app.archive}</h2>
-                {snapshot?.sources.find((f) => f.source === "annotation")
-                  ?.state !== "confirmed" ? (
+              {snapshot?.sources.find((f) => f.source === "annotation")
+                ?.state !== "confirmed" ? (
+                <section
+                  data-testid="workspace-archive-panel"
+                  aria-label={t.app.workspaceArchive}
+                >
+                  <h2 data-testid="archive-title">{t.app.archive}</h2>
                   <p data-testid="archive-metadata-unavailable">
                     {t.app.archiveMarksUnreadRefresh}
                   </p>
-                ) : (
-                  <>
-                    {snapshot.sources.find((f) => f.source === "pi_history")
-                      ?.state !== "confirmed" && (
-                      <p role="status">{t.app.archiveMaybeIncomplete}</p>
-                    )}
-                    {snapshot.agents
-                      .filter(
-                        (a) =>
-                          a.workspace_id === selected.workspace_id &&
-                          a.archive === "archived",
-                      )
-                      .map((a) => (
-                        <div key={a.agent_id}>
-                          <LinkRow
-                            href={
-                              browserOwned(a, daemonSessions)
-                                ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                                : `/agents/${a.agent_id}`
-                            }
-                            kind="inline"
-                          >
-                            {agentTitle(a.title)}
-                          </LinkRow>{" "}
-                          {a.history !== "readable" && (
-                            <span>{t.app.historyUnreadable} </span>
-                          )}
-                          <Button
-                            data-testid="restore-conversation"
-                            size="row"
-                            label={t.app.restoreVisible}
-                            variant="quiet"
-                            onPress={() => void changeArchive(a, false)}
-                            availability={
-                              !csrf ||
-                              phase !== "authenticated" ||
-                              a.history !== "readable"
-                                ? {
-                                    state: "unknown",
-                                    reason:
-                                      a.history !== "readable"
-                                        ? t.app.historyUnconfirmed
-                                        : t.app.restoreNeedsConnection,
-                                  }
-                                : { state: "enabled" }
-                            }
-                          />
-                          {helpersOn && helperArchiveOpen ? (
-                            <ArchivedHelpers
-                              key={`${csrf}:${a.agent_id}`}
-                              agent={a.agent_id}
-                            />
-                          ) : null}
-                        </div>
-                      ))}
-                  </>
-                )}
-              </section>
+                </section>
+              ) : (
+                <WorkspaceArchive
+                  binding={csrf}
+                  open={helperArchiveOpen}
+                  helpers={helpersOn}
+                  count={
+                    snapshot.sources.find((f) => f.source === "pi_history")
+                      ?.state !== "confirmed"
+                      ? "?"
+                      : archivedHere.length
+                  }
+                  entries={archivedHere.map((a) => ({
+                    id: a.agent_id,
+                    title: agentTitle(a.title),
+                    href: browserOwned(a, daemonSessions)
+                      ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                      : `/agents/${a.agent_id}`,
+                    archivedAt: a.archived_at,
+                    note:
+                      a.history !== "readable"
+                        ? t.app.historyUnreadable
+                        : undefined,
+                    restoreReason:
+                      a.history !== "readable"
+                        ? t.app.historyUnconfirmed
+                        : !csrf || phase !== "authenticated"
+                          ? t.app.restoreNeedsConnection
+                          : undefined,
+                  }))}
+                  onRestore={(agentId, confirmed) => {
+                    const a = archivedHere.find((x) => x.agent_id === agentId);
+                    if (a)
+                      void changeArchive(a, false, "conversation", confirmed);
+                  }}
+                >
+                  {snapshot.sources.find((f) => f.source === "pi_history")
+                    ?.state !== "confirmed" && (
+                    <p role="status">{t.app.archiveMaybeIncomplete}</p>
+                  )}
+                </WorkspaceArchive>
+              )}
             </details>
           </>
         ) : null}

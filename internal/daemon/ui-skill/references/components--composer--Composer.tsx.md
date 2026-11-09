@@ -549,6 +549,7 @@ export function Composer({
   onRestoreQueue,
   restoreAvailability = enabled,
   modelPicker,
+  beforeField,
   shell,
   sources,
   onActivity,
@@ -563,6 +564,8 @@ export function Composer({
   value: string;
   csrf?: string;
   modelPicker?: ReactNode;
+  /** Conversation controls below the queue and draft accessories. */
+  beforeField?: ReactNode;
   availability?: Availability;
   editorAvailability?: Availability;
   activity: "idle" | "working" | "settling";
@@ -1807,6 +1810,7 @@ export function Composer({
           {uploadError ? <p role="alert">{uploadError}</p> : null}
         </>
       ) : null}
+      {beforeField}
       <div
         ref={box}
         className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}${fieldList ? " ah-cbox-listing" : ""}`}

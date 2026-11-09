@@ -332,8 +332,9 @@ func TestSnapshotArchiveCompletenessAcrossWorkspaceTrashAndRestore(t *testing.T)
 		var view struct {
 			Sources []struct{ Source, State string }
 			Agents  []struct {
-				ID      string `json:"agent_id"`
-				Archive string
+				ID         string `json:"agent_id"`
+				Archive    string
+				ArchivedAt string `json:"archived_at"`
 			}
 		}
 		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
@@ -348,6 +349,10 @@ func TestSnapshotArchiveCompletenessAcrossWorkspaceTrashAndRestore(t *testing.T)
 		for _, a := range view.Agents {
 			if a.ID == "pi:"+id && a.Archive == "archived" {
 				archived = true
+				// The archive list orders and dates rows by the mark's own time.
+				if a.ArchivedAt != "2026-10-06T12:00:00Z" {
+					t.Fatalf("archived_at = %q", a.ArchivedAt)
+				}
 			}
 		}
 		if state != wantState || archived != wantArchived {

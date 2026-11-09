@@ -34,6 +34,10 @@ import {
   ThinkingRow,
   type TurnStep,
 } from "../components/AgentTurn";
+import {
+  type ArchiveControlsProps,
+  archiveAction,
+} from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip, type WorkerAsk } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
@@ -43,6 +47,7 @@ import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
 import { ContextView } from "../components/ContextView";
 import { ControlButton, controlClassName } from "../components/ControlElements";
+import { ArchivedFoot } from "../components/ConversationArchive";
 import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
@@ -137,7 +142,7 @@ import {
   useGuide,
   usePreparedField,
 } from "./goalGuide";
-import { HelperRestoreNote } from "./HelperArchiveFlow";
+import { ArchivedHelpers, HelperRestoreNote } from "./HelperArchiveFlow";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
@@ -1887,6 +1892,7 @@ function BrowserConversationContent({
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
+  const helpersOn = useExperimentalFeature("named-workers");
   const rewind = useRewind({
     id,
     csrf,
@@ -2136,6 +2142,55 @@ function BrowserConversationContent({
   // what the person is typing, its focus and caret, an open list or a
   // dictation carry on while the conversation becomes ready.
   const view = id ? (opened ? "opened" : "loading") : creating && "creation";
+  const headerArchive: ArchiveControlsProps = {
+    state: archive?.archive ?? "unknown",
+    empty:
+      entries.length === 0 &&
+      !historyError &&
+      !next &&
+      !!current &&
+      current.native_history !== "unavailable",
+    blockedReason: archiveAwaitingSnapshot
+      ? txt.awaitingArchive
+      : archive
+        ? undefined
+        : txt.loadingArchive,
+    eligible:
+      !busy &&
+      !statusStale &&
+      !serverUnavailable &&
+      (current?.state === "idle" ||
+        (current?.state === "stopped" && !held.waiting.length) ||
+        current?.continuation === "eligible"),
+    busy: !!archiveBusy || !!closeBusy,
+    onArchive: () => {
+      if (archive) void onArchive?.(archive, true);
+    },
+    onClose:
+      archive &&
+      controlled &&
+      csrf &&
+      !serverUnavailable &&
+      !statusStale &&
+      // A Pi stopped for idleness before the first message leaves
+      // nothing to archive; the daemon closes that one too.
+      (current?.state === "idle" ||
+        (current?.state === "stopped" && !held.waiting.length)) &&
+      !busy
+        ? () => {
+            // Close removes this view immediately. Fence in-flight
+            // status reads before they can turn its expected 404
+            // into a late navigation back to deleted history.
+            alive.current = false;
+            ++generation.current;
+            void onClose?.(archive);
+          }
+        : undefined,
+    onRestore: () => {
+      if (archive) void onArchive?.(archive, false);
+    },
+  };
+
   return (
     <section ref={section} className="ah-reading-view">
       {!view ? (
@@ -2252,54 +2307,7 @@ function BrowserConversationContent({
                   page={page && !("state" in page) ? page.title : undefined}
                 />
               }
-              archive={{
-                state: archive?.archive ?? "unknown",
-                empty:
-                  entries.length === 0 &&
-                  !historyError &&
-                  !next &&
-                  !!current &&
-                  current.native_history !== "unavailable",
-                blockedReason: archiveAwaitingSnapshot
-                  ? txt.awaitingArchive
-                  : archive
-                    ? undefined
-                    : txt.loadingArchive,
-                eligible:
-                  !busy &&
-                  !statusStale &&
-                  !serverUnavailable &&
-                  (current?.state === "idle" ||
-                    (current?.state === "stopped" && !held.waiting.length) ||
-                    current?.continuation === "eligible"),
-                busy: !!archiveBusy || !!closeBusy,
-                onArchive: () => {
-                  if (archive) void onArchive?.(archive, true);
-                },
-                onClose:
-                  archive &&
-                  controlled &&
-                  csrf &&
-                  !serverUnavailable &&
-                  !statusStale &&
-                  // A Pi stopped for idleness before the first message leaves
-                  // nothing to archive; the daemon closes that one too.
-                  (current?.state === "idle" ||
-                    (current?.state === "stopped" && !held.waiting.length)) &&
-                  !busy
-                    ? () => {
-                        // Close removes this view immediately. Fence in-flight
-                        // status reads before they can turn its expected 404
-                        // into a late navigation back to deleted history.
-                        alive.current = false;
-                        ++generation.current;
-                        void onClose?.(archive);
-                      }
-                    : undefined,
-                onRestore: () => {
-                  if (archive) void onArchive?.(archive, false);
-                },
-              }}
+              archive={headerArchive}
               title={title ?? txt.newConversation}
               titlePending={archive?.title.generation_state === "pending"}
               recapAction={
@@ -3047,13 +3055,6 @@ function BrowserConversationContent({
             />
           )}
           <div className="ah-composer-stack">
-            {view === "opened" && controlled && id ? (
-              <NextWaitingDock
-                next={nextWaiting}
-                agentId={id}
-                open={waitingWindow.open && draft.length === 0}
-              />
-            ) : null}
             {view === "opened" ? (
               <>
                 <div className="ah-actionable-notices">
@@ -3258,26 +3259,44 @@ function BrowserConversationContent({
             ) : (
               <CreationNotice notice={creationView.notice} />
             )}
-            {view === "opened" && controlled ? (
-              <>
-                {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
-                  the strip marks only which work is waited on. */}
-                <BackgroundStrip
-                  agentIdle={
-                    presentation.activity === "waiting_background" ||
-                    presentation.activity === "waiting"
-                  }
-                  piNotRunning={bridgeExpected}
-                  ask={workerAsk}
-                  assets={assets}
-                />
-              </>
-            ) : null}
             {view === "opened" ? rewind.sheet : null}
-            {view !== "opened" || controlled ? (
+            {view === "opened" && archive?.archive === "archived" ? (
+              // Archived: read-only, and the composer's place says so.
+              <ArchivedFoot
+                archivedAt={archive.archived_at}
+                restoreReason={archiveAction(headerArchive).reason || undefined}
+                onRestore={headerArchive.onRestore}
+              >
+                {helpersOn && id ? <ArchivedHelpers agent={id} /> : null}
+              </ArchivedFoot>
+            ) : view !== "opened" || controlled ? (
               <>
                 <ServerBrowserDock identity={identity} csrf={csrf} />
-                <Composer {...composer} />
+                <Composer
+                  {...composer}
+                  beforeField={
+                    view === "opened" && controlled ? (
+                      <>
+                        <BackgroundStrip
+                          agentIdle={
+                            presentation.activity === "waiting_background" ||
+                            presentation.activity === "waiting"
+                          }
+                          piNotRunning={bridgeExpected}
+                          ask={workerAsk}
+                          assets={assets}
+                        />
+                        {id ? (
+                          <NextWaitingDock
+                            next={nextWaiting}
+                            agentId={id}
+                            open={waitingWindow.open && draft.length === 0}
+                          />
+                        ) : null}
+                      </>
+                    ) : null
+                  }
+                />
               </>
             ) : null}
           </div>
