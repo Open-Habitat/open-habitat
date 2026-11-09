@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Recap bar disappears after a host update or restart
@@ -96,3 +96,12 @@ Review choice: source inspection and existing regressions only; no LLM diff
 review or assessment was needed because no product/contract/history-reader
 change is being delivered. The issue remains open and its acceptance criteria
 are not marked complete.
+
+## Jari 9.11.2026 (answer to the investigation)
+
+Test server. What disappeared was not the recap itself but the waiting card
+(*odotuskortti*), i.e. the pending/in-progress state shown while a recap was
+being made, at the moment the host updated. So the question is what happens
+to a recap that was in progress (or its failure card) when the daemon
+restarts: the in-memory state is forgotten, the card vanishes and, unless
+something retries, the recap never arrives.

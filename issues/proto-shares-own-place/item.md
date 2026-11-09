@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: shares-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-09
 ---
 
 # Design and prototype: an own place for shared views and files
@@ -36,3 +37,9 @@ file, image and folder offers now that `public-file-offers` landed).
 ## Acceptance Criteria
 
 - [ ] Prototype round 1 with view offer, directions and questions for Jari.
+
+## Resolution
+
+### 2026-11-09T08:31:55Z · @issuectl
+
+Jari 9.11.: round 4 accepted; implementation shares-page-implement.

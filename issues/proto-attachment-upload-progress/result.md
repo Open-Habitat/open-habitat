@@ -154,3 +154,11 @@ paikassa, johon tiedosto jää. Jokaisen tiedoston voi perua erikseen, ja se
 vie vähiten tilaa. Palkin ja Erän megatavut ja aika ovat hyödyllisiä
 hitaalla yhteydellä. Ne voi lisätä Renkaaseen vain pitkille lähetyksille,
 jos Jari haluaa (kysymys 1).
+
+## Jarin päätös (9.11.2026)
+
+**Rengas.** Viesti ei lähde itsestään, kun liitteet valmistuvat: se lähtee
+vasta, kun käyttäjä painaa Lähetä, ja Lähetä on pois käytöstä, kunnes
+liitteet ovat perillä (automaattinen lähtö tuntui oudolta). Muut
+huomatut asiat korjataan: hitaan latauksen aikarajat
+(`attachment-upload-timeouts`). Toteutus: `attachment-upload-progress`.

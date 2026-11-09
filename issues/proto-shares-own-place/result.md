@@ -328,3 +328,8 @@ vertailu `r4-kierros3-b-0-oletus-1440-light`, kansio valittuna
 
 Ei avoimia kysymyksiä. Kierros on määrittely: seuraava askel on toteutus,
 ellei Jari halua muuttaa jotain kuvista.
+
+## Jarin päätös kierrokseen 4 (9.11.2026)
+
+Viimeistely hyväksytty: toteutetaan kierroksen 4 määrittelyn mukaan
+(`shares-page-implement`).

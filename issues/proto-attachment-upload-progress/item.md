@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: upload-progress-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-09
 ---
 
 # Design and prototype: upload progress for large attachments
@@ -33,3 +34,9 @@ anything.
 ## Acceptance Criteria
 
 - [ ] Prototype round 1 with view offer, directions and questions for Jari.
+
+## Resolution
+
+### 2026-11-09T08:31:55Z · @issuectl
+
+Jari 9.11.: Rengas, no auto-send; implementation attachment-upload-progress.
