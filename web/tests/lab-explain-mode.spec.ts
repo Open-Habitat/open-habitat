@@ -106,6 +106,80 @@ test("@lab explain mode suppresses hover and focus help and restores it on exit"
 const card = (page: Page) => page.getByTestId("explain-card");
 const bar = (page: Page) => page.getByTestId("explain-bar");
 
+for (const width of [1440, 390]) {
+  for (const locale of ["fi-FI", "en-US"]) {
+    test.describe(`workspace header ${width} ${locale}`, () => {
+      test.use({
+        viewport: { width, height: 900 },
+        hasTouch: width === 390,
+        isMobile: width === 390,
+        locale,
+      });
+      test("@lab workspace name and folder have distinct explain cards", async ({
+        page,
+      }) => {
+        await signIn(page);
+        const state = await (await page.request.get("/api/v1/snapshot")).json();
+        const ws = state.workspaces.find(
+          (w: { name: string }) => w.name === "aurinkokello",
+        ).workspace_id;
+        await page.goto(`/workspaces/${ws}`);
+        await page.getByTestId("workspace-path").waitFor();
+        if (width === 390) {
+          await page.getByTestId("navigation-open").tap();
+          await page.getByTestId("account-menu-trigger").tap();
+          await page.getByTestId("menu-explain").tap();
+          await page.locator('[data-testid="close-navigation"]:visible').tap();
+          await page.locator('[data-testid="close-navigation"]:visible').tap();
+          await expect(
+            page.locator('[data-testid="close-navigation"]:visible'),
+          ).toHaveCount(0);
+          await expect(card(page)).toHaveCount(0);
+        } else {
+          await page.getByTestId("account-menu-trigger").click();
+          await page.getByTestId("menu-explain").click();
+        }
+        for (const [target, id] of [
+          ["workspace-title", "T01"],
+          ["workspace-path", "T46"],
+          ["copy-path", "T02"],
+          ["open-github", "T03"],
+          ["rename-workspace", "T04"],
+          ["workspace-archive", "T05"],
+          ["delete-workspace", "T06"],
+          ["new-worktree", "T07"],
+          ["conversation-start", "T08"],
+        ]) {
+          if (width === 390) {
+            const el = page.getByTestId(target).first();
+            const box = await el.boundingBox();
+            if (!box) throw new Error(`${target} has no box`);
+            await page.touchscreen.tap(
+              box.x + Math.min(24, box.width / 2),
+              box.y + box.height / 2,
+            );
+          } else await pointAt(page, target);
+          await expect(card(page)).toHaveAttribute("data-card", id);
+          if (
+            process.env.OH_VISUAL_CAPTURE === "1" &&
+            (id === "T01" || id === "T46")
+          )
+            await snapshot(
+              page,
+              resolve(
+                `../issues/explain-dir-shows-name-card/${locale}-${width}-${id}`,
+              ),
+              {
+                labOrigin: new URL(page.url()).origin,
+              },
+            );
+          if (width === 390) await page.getByTestId("explain-close").tap();
+        }
+      });
+    });
+  }
+}
+
 async function pointAt(page: Page, testId: string) {
   const box = await page.getByTestId(testId).last().boundingBox();
   if (!box) throw new Error(`${testId} has no box`);

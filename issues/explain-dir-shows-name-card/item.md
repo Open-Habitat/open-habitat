@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Explain mode, repository home: the directory element shows the name's card
@@ -21,5 +22,5 @@ the directory card is missing and falls back). Defect; fix directly.
 
 ## Acceptance Criteria
 
-- [ ] In Explain mode on the repository home, the directory element shows its own card (fi/en), the name keeps its own.
-- [ ] Explain mapping check/spec covers the two elements; touched specs green.
+- [x] In Explain mode on the repository home, the directory element shows its own card (fi/en), the name keeps its own.
+- [x] Explain mapping check/spec covers the two elements; touched specs green.

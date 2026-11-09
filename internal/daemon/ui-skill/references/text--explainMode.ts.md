@@ -448,6 +448,11 @@ const fi = {
       name: "Työtilan nimi",
       lead: "Työtilan nimi; kansion nimi, ellei sille ole annettu näyttönimeä.",
     },
+    T46: {
+      name: "Työtilan kansio",
+      lead: "Näyttää työtilan kansion sijainnin palvelimella.",
+      know: "Kopioi polku -painikkeella saat koko polun leikepöydälle.",
+    },
     T02: {
       name: "Kopioi polku",
       lead: "Kopioi työtilan kansion sijainnin leikepöydälle, esimerkiksi päätteeseen liitettäväksi.",
@@ -1933,6 +1938,11 @@ export const explainModeText = catalog(fi, {
     T01: {
       name: "Workspace name",
       lead: "The workspace's name; the folder's name unless it has been given a display name.",
+    },
+    T46: {
+      name: "Workspace folder",
+      lead: "Shows where the workspace's folder is on the server.",
+      know: "Use Copy path to copy the full path to the clipboard.",
     },
     T02: {
       name: "Copy path",

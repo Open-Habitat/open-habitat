@@ -151,8 +151,9 @@ export const parts: Record<CardId, Part> = {
   E07: { kind: "list", sel: '[data-testid="empty-workspaces"]' },
   T01: {
     kind: "info",
-    sel: '.ah-workspace-page-head [data-testid="workspace-title"], .ah-workspace-page-title > p:has(> code)',
+    sel: '.ah-workspace-page-head [data-testid="workspace-title"]',
   },
+  T46: { kind: "info", sel: '[data-testid="workspace-path"]' },
   T02: { kind: "once", sel: '[data-testid="copy-path"]' },
   T03: { kind: "nav", sel: '[data-testid="open-github"]' },
   T04: { kind: "once", sel: '[data-testid="rename-workspace"]' },

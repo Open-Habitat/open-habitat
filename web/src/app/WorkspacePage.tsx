@@ -345,7 +345,7 @@ export function WorkspacePage({
           <h1 data-testid="workspace-title" tabIndex={-1}>
             {workspace.display_name ?? workspace.name}
           </h1>
-          <p>
+          <p data-testid="workspace-path">
             <code title={workspace.path}>{displayPath}</code>
           </p>
           {icon ? (
