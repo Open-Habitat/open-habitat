@@ -55,3 +55,6 @@ groups:
       - slug: decisions/adr-0035-view-stable-address
         title: ADR 0035 — Stable view addresses
         desc: Proposed — one stable entry address per frozen view; publication revives old copies; implementation awaits Jari's approval.
+      - slug: decisions/adr-0036-private-development-sidecar
+        title: ADR 0036 — Private development sidecar
+        desc: Proposed — public product development and private planning, without paired repository merges.
