@@ -37,16 +37,17 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   }));
   await page.getByTestId("message-input").fill("Read these files");
   await input.setInputFiles(files);
-  await expect(composer.getByTestId("attachment-overflow")).toHaveAttribute(
-    "data-reason",
-    "count",
+  await expect(page.getByTestId("attachment-refusal")).toContainText(
+    "file-30.txt",
   );
-  await expect(chips).toHaveCount(31);
-  await expect(chips.and(page.locator('[data-blocked="true"]'))).toHaveCount(1);
+  await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
+    30,
+  );
+  await expect(chips.and(page.locator('[data-blocked="true"]'))).toHaveCount(0);
   // Remove the selected batch before testing the exact byte boundary.
   while (await chips.count())
     await chips.last().getByTestId("attachment-remove").click();
-  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
+  await expect(page.getByTestId("attachment-refusal")).toBeVisible();
   // Construct bytes in the browser rather than base64-copying 100 MiB
   // through the Playwright transport. Ten 4 MiB + twenty 3 MiB files.
   const pickBatch = (fours: number) =>
@@ -69,16 +70,13 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   );
   await expect(composer.getByRole("alert")).toHaveCount(0);
   await input.setInputFiles(files.slice(30));
-  await expect(composer.getByTestId("attachment-overflow")).toHaveAttribute(
-    "data-reason",
-    "count",
+  await expect(page.getByTestId("attachment-refusal")).toContainText(
+    "file-30.txt",
   );
-  await expect(chips).toHaveCount(31);
+  await expect(chips).toHaveCount(30);
   await expect(
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
-  ).toBeDisabled();
-  await chips.last().getByTestId("attachment-remove").click();
-  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
+  ).toBeEnabled();
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Read these files",
   );
@@ -105,35 +103,25 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
       uploads++;
   });
   await pickBatch(11);
-  await expect(chips).toHaveCount(30);
+  await expect(chips).toHaveCount(29);
   await page.getByTestId("message-input").fill("Too large together");
   const send = page.getByTestId("send").and(page.locator('[data-mode="send"]'));
-  const overflow = composer.getByTestId("attachment-overflow");
-  await expect(overflow).toHaveAttribute("data-reason", "bytes");
-  await expect(send).toBeDisabled();
+  const overflow = page.getByTestId("attachment-refusal");
+  await expect(overflow).toContainText("file-29.bin");
   await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
     29,
   );
   expect(uploads).toBe(29);
   await expect(page.getByTestId("send-receipt")).toHaveCount(0);
-  await expect(chips).toHaveCount(30);
+  await expect(chips).toHaveCount(29);
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Too large together",
   );
   await overflow.getByTestId("attachment-refusal-dismiss").click();
   await expect(overflow).toHaveCount(0);
-  await expect(chips).toHaveCount(30);
-  await expect(send).toBeDisabled();
-  await page.getByTestId("message-input").press("Enter");
-  await expect(overflow).toBeVisible();
-  // Making room resumes the remaining upload, without asking to pick again.
-  await chips.first().getByTestId("attachment-remove").click();
-  await expect(overflow).toHaveCount(0);
-  await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
-    29,
-  );
+  await expect(chips).toHaveCount(29);
   await expect(send).toBeEnabled();
-  expect(uploads).toBe(30);
+  expect(uploads).toBe(29);
   await send.click();
   await expect(page.locator('.ah-feed > li[data-kind="user"]')).toHaveCount(2);
 });
@@ -395,12 +383,12 @@ test("large draft image chips download only thumbnails, including after reloadin
       element.files = data.files;
       element.dispatchEvent(new Event("change", { bubbles: true }));
     });
-  await expect(composer.getByRole("alert")).toBeVisible();
+  await expect(page.getByTestId("attachment-refusal")).toBeVisible();
   await expect(chips).toHaveCount(0);
   expect(originals).toEqual([]);
   expect(thumbnails).toEqual([]);
-  await composer.getByTestId("attachment-refusal-dismiss").click();
-  await expect(composer.getByRole("alert")).toHaveCount(0);
+  await page.getByTestId("attachment-refusal-dismiss").click();
+  await expect(page.getByTestId("attachment-refusal")).toHaveCount(0);
   // Keep large encoded files inside the browser, without copying 95 MiB
   // through Playwright. PNG permits trailing bytes; pixels stay synthetic.
   await composer

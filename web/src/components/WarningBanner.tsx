@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./Icon";
+import { type NoticeLifetime, NoticePlacement } from "./NoticeStack";
 import "./WarningBanner.css";
 
 /** The common warning (Jari 28.10.2026, proto-github-connection-warning
@@ -30,7 +31,32 @@ export function WarningBanner({
   actions,
   icon,
   placement = "inline",
-}: {
+  subject,
+  lifetime,
+}: WarningBannerProps) {
+  const banner = {
+    "data-testid": testId,
+    "data-state": state,
+    "data-reason": reason,
+    tone,
+    title,
+    children,
+    short,
+    actions,
+    icon,
+    placement,
+  };
+  return (
+    <NoticePlacement
+      subject={subject ?? testId}
+      kind={tone}
+      lifetime={lifetime}
+      banner={banner}
+    />
+  );
+}
+
+export type WarningBannerProps = {
   "data-testid"?: string;
   "data-state"?: string;
   "data-reason"?: string;
@@ -46,7 +72,22 @@ export function WarningBanner({
   /** inline: a card in a column, such as above the composer; page: the
    * full-width strip under the app's top bar. */
   placement?: "inline" | "page";
-}) {
+  subject?: string;
+  lifetime?: NoticeLifetime;
+};
+
+export function WarningBannerView({
+  "data-testid": testId,
+  "data-state": state,
+  "data-reason": reason,
+  tone,
+  title,
+  children,
+  short,
+  actions,
+  icon,
+  placement = "inline",
+}: WarningBannerProps) {
   return (
     <div
       data-testid={testId}

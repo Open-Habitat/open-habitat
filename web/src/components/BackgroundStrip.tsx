@@ -20,6 +20,7 @@ import {
   useProcessView,
 } from "./ProcessTray";
 import { SpinoffContext } from "./Spinoffs";
+import { WarningBanner } from "./WarningBanner";
 import { WorkerMark } from "./WorkerMark";
 import "./BackgroundStrip.css";
 
@@ -353,6 +354,8 @@ export function BackgroundStrip({
     );
     return () => window.clearTimeout(timer);
   }, [leaving]);
+
+  // Only these acknowledgements expire; request failures have separate owners.
   useEffect(() => {
     if (!askNotice) return;
     const timer = window.setTimeout(() => setAskNotice(""), 6000);
@@ -1197,14 +1200,28 @@ export function BackgroundStrip({
             : null}
         </div>
       </div>
+      {spinoffs?.data?.availability === "available" &&
+      !spinoffs.stale &&
+      spinoffs.data.runs.some((r) => r.awaiting_input) ? (
+        <WarningBanner
+          data-testid="worker-waiting-notice"
+          tone="neutral"
+          subject="workers"
+        >
+          {txt.waitingNotice}
+        </WarningBanner>
+      ) : null}
       {view.notice || ask?.problem || askNotice ? (
-        <p
-          className="ah-bg-notice"
-          role="status"
+        <WarningBanner
           data-testid="background-notice"
+          subject="worker-request"
+          tone={ask?.problem ? "danger" : "neutral"}
+          lifetime={
+            view.notice || ask?.problem ? "condition" : "acknowledgement"
+          }
         >
           {view.notice || ask?.problem || askNotice}
-        </p>
+        </WarningBanner>
       ) : null}
     </section>
   );

@@ -3,12 +3,13 @@ created: 2026-11-09
 updated: 2026-11-09
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: notices
 lane_seq: 1
 blocked_by: ['@large-send-stuck-uncertain']
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Notices as one system: the conversation's notices above the composer (direction A), attachment refusals included
@@ -48,6 +49,6 @@ experimental flag. Explain cards for changed controls in both languages.
 
 ## Acceptance Criteria
 
-- [ ] Every conversation/draft case of the round's inventory renders as direction A; the uncertain send shows one notice; no timer-dismissed errors remain in the conversation view.
-- [ ] Attachment refusals use the Varoitus wording (fi/en) and the shared warning.
-- [ ] Browser specs for the stack (two visible + more), the uncertain-send merge and an attachment refusal, at 1440 and 390; touched specs and fast web checks green.
+- [x] Every conversation/draft case of the round's inventory renders as direction A; the uncertain send shows one notice; no timer-dismissed errors remain in the conversation view.
+- [x] Attachment refusals use the Varoitus wording (fi/en) and the shared warning.
+- [x] Browser specs for the stack (two visible + more), the uncertain-send merge and an attachment refusal, at 1440 and 390; touched specs and fast web checks green.

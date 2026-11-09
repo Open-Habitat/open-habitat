@@ -7,7 +7,9 @@ import {
   useState,
 } from "react";
 import type { NavigateFunction } from "react-router";
-import { InlineNotice } from "../components";
+import { ControlButton } from "../components/ControlElements";
+import { Icon } from "../components/Icon";
+import { WarningBanner } from "../components/WarningBanner";
 import { type Language, liveText } from "../i18n";
 import { conversationActionsText } from "../text/conversationActions";
 import { useConversationText } from "../text/useConversation";
@@ -565,22 +567,47 @@ export function useConversationActions({
       {receipt &&
       sendObservation?.state !== "uncertain" &&
       !quietReceipt(receipt) ? (
-        <InlineNotice
+        <WarningBanner
           data-testid="send-receipt"
-          title={receipt}
-          tone="warning"
-        />
+          subject="send"
+          lifetime="event"
+          tone="danger"
+          actions={
+            <ControlButton
+              data-testid="notice-close"
+              size="inline"
+              variant="quiet"
+              presentation="icon"
+              aria-label={txt.dismissNotice}
+              onPress={(event) => {
+                event.target
+                  .closest(".ah-conversation-frame")
+                  ?.querySelector<HTMLTextAreaElement>(
+                    '[data-testid="message-input"]',
+                  )
+                  ?.focus();
+                setReceipt("");
+              }}
+            >
+              <Icon name="cross" />
+            </ControlButton>
+          }
+        >
+          {receipt}
+        </WarningBanner>
       ) : null}
       {problem &&
       (!serverUnavailable ||
         !inEitherLanguage(problem, (l) => [
           useConversationText[l].disconnected,
         ])) ? (
-        <InlineNotice
+        <WarningBanner
           data-testid="conversation-problem"
-          title={problem}
+          lifetime="event"
           tone="danger"
-        />
+        >
+          {problem}
+        </WarningBanner>
       ) : null}
     </>
   );

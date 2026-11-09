@@ -44,14 +44,25 @@ export function attachmentSelection(
   };
 }
 
+export class UploadRefused extends Error {
+  constructor(
+    public reason: "empty" | "large" | "quota" | "disk" | "failed",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export async function uploadAttachment(
   file: File,
   csrf: string,
   signal: AbortSignal,
 ) {
-  if (!file.size) throw new Error(txt.empty(file.name || txt.unnamed));
+  if (!file.size)
+    throw new UploadRefused("empty", txt.empty(file.name || txt.unnamed));
   if (file.size > attachmentLimit)
-    throw new Error(
+    throw new UploadRefused(
+      "large",
       txt.overLimit(file.name || txt.unnamed, sizes.size(file.size)),
     );
   const response = await mutationFetch(
@@ -69,9 +80,15 @@ export async function uploadAttachment(
       body: file,
     },
   );
+  if (response.status === 507) throw new UploadRefused("disk", txt.refused);
   const outcome = await writeOutcome(response);
   if (outcome.kind !== "ok")
-    throw new Error(
+    throw new UploadRefused(
+      outcome.kind === "refused" && outcome.code === "attachment_quota_exceeded"
+        ? "quota"
+        : outcome.kind === "refused" && outcome.code === "attachment_too_large"
+          ? "large"
+          : "failed",
       outcome.kind !== "refused"
         ? txt.uncertain
         : outcome.code === "attachment_quota_exceeded"

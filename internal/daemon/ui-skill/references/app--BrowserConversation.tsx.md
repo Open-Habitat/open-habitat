@@ -52,7 +52,9 @@ import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { Icon } from "../components/Icon";
 import { ModelChip, modelSummary } from "../components/ModelChip";
+import { NoticeStack, NoticeStackProvider } from "../components/NoticeStack";
 import {
   ProcessAwareToolUse,
   ProcessProvider,
@@ -274,10 +276,12 @@ export function BrowserConversation(
         onStatusEvent={props.onStatusEvent}
       >
         <OwnMachineUseProvider key={view}>
-          <BrowserConversationContent
-            {...props}
-            onNativeHistory={setNativeHistory}
-          />
+          <NoticeStackProvider>
+            <BrowserConversationContent
+              {...props}
+              onNativeHistory={setNativeHistory}
+            />
+          </NoticeStackProvider>
         </OwnMachineUseProvider>
       </ProcessProvider>
     </SpinoffProvider>
@@ -390,6 +394,8 @@ function BrowserConversationContent({
     sentAfterKey,
     resentKey,
     lostSend,
+    endUnknown,
+    releaseUnknown,
     changeDraft,
     refresh,
     setBusy,
@@ -431,9 +437,16 @@ function BrowserConversationContent({
   const [recheck, setRecheck] = useState<{
     key: string;
     state: "running" | "done";
+    /** When it was done: a press that finds the same shows a new time. */
+    at?: number;
   }>();
   const recheckKey = `${identity}/${id ?? ""}`;
   const recheckState = recheck?.key === recheckKey ? recheck.state : undefined;
+  const checkedAt = formatDate(recheck?.at ?? Date.now(), {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
   const runRecheck = () => {
     if (
       continuation &&
@@ -446,7 +459,7 @@ function BrowserConversationContent({
     void refresh(true, true).finally(() =>
       setRecheck((r) =>
         r?.key === recheckKey && r.state === "running"
-          ? { key: recheckKey, state: "done" }
+          ? { key: recheckKey, state: "done", at: Date.now() }
           : r,
       ),
     );
@@ -900,8 +913,8 @@ function BrowserConversationContent({
   );
   const {
     start,
-    submit,
-    submitQueue,
+    submit: submitDirect,
+    submitQueue: submitQueueDirect,
     clearNativeQueue,
     stopNow,
     stopAttempt,
@@ -959,6 +972,43 @@ function BrowserConversationContent({
     onLogin,
     onSendOutcome: waitingWindow.outcome,
   });
+  // A message that carries the text of one whose outcome is unknown is that
+  // message sent again by the person (Jari 9.11.2026): its record ends, so
+  // no warning claims the text is still in the field and nothing gives it
+  // back or sends it a second time.
+  const submit = async (
+    text = draft,
+    keepDraft = false,
+    commandId?: string,
+  ) => {
+    held.setNotice("");
+    const sent = await submitDirect(text, keepDraft, commandId);
+    // A held message's lasting outcome notice is over once another send goes.
+    if (sent) {
+      held.release(text);
+      held.setNotice("");
+    }
+    return sent;
+  };
+  const submitQueue: typeof submitQueueDirect = (kind, text, keepDraft) => {
+    held.setNotice("");
+    return submitQueueDirect(kind, text, keepDraft);
+  };
+  const sendHeld: typeof held.submit = (text, ...rest) => {
+    releaseUnknown(text);
+    // A notice about an earlier send's outcome is over once a new one goes,
+    // as a direct send's progress replaces it.
+    setReceipt("");
+    held.submit(text, ...rest);
+  };
+  // One warning says that a message's outcome is unknown: this tab's direct
+  // send, or messages it sent while the agent was not running. It says the
+  // text is in the field only while the field holds it.
+  const unknownSend =
+    sendUncertain ?? (held.uncertain.length ? ("held" as const) : undefined);
+  const unknownInField = (
+    sendUncertain && sendObservation ? [sendObservation.text] : held.uncertain
+  ).every((text) => draft.includes(text.trim()));
   const creationView = useCreation(
     creating ? creation : undefined,
     held.takeBack,
@@ -1003,11 +1053,6 @@ function BrowserConversationContent({
   const startFailed =
     current?.state === "start_failed" &&
     held.waiting.some((w) => w.state === "failed");
-  useEffect(() => {
-    if (!held.notice) return;
-    const timer = window.setTimeout(() => held.setNotice(""), 6000);
-    return () => window.clearTimeout(timer);
-  }, [held.notice, held.setNotice]);
   const canSend =
     controlled &&
     archive?.archive !== "archived" &&
@@ -1089,7 +1134,7 @@ function BrowserConversationContent({
     dismissRecapOnSend();
     rest.onSend();
     if (notStarted)
-      held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+      sendHeld(text, canChooseFirstModel ? modelChoice : undefined, true);
     else if (tellWorking) void submitQueue(workingMode, text, true);
     else void submit(text, true);
   };
@@ -1231,11 +1276,33 @@ function BrowserConversationContent({
     void sendCommand(id, waiting, text).then(async (command) => {
       if (viewId.current !== id || draftNow() !== text) return;
       if (notStarted) {
-        held.submit(text, undefined, false, command);
+        sendHeld(text, undefined, false, command);
         done();
       } else if (await submit(text, false, command)) done();
     });
   }, [resendNow, draft]);
+  // A lost send proven never to have reached a stopped Pi goes again by
+  // itself, once, under its own command ID, held as the composer would send
+  // it now: the held message owns it from then on (one bubble, its own
+  // receipt), and the direct record ends. The daemon answers an ID it has
+  // already taken as that same message, so a duplicated tab cannot double it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when it becomes possible, as the field holds it then.
+  useEffect(() => {
+    if (
+      !lostSend ||
+      !current ||
+      !piNotRunning(current.state) ||
+      !csrf ||
+      serverUnavailable ||
+      held.busy ||
+      sessionStorage.getItem(sendKey) !== lostSend.command
+    )
+      return;
+    const { command, text } = lostSend;
+    held.submit(text, undefined, true, command);
+    endUnknown(command);
+    if (draftNow() === text) changeDraft("");
+  }, [lostSend, current, csrf, serverUnavailable, held.busy]);
   const aiNotice =
     !statusStale && refusedHere ? (
       <AISignInWarning
@@ -1344,7 +1411,7 @@ function BrowserConversationContent({
       dismissRecapOnSend();
       rest.onSend();
       if (notStarted)
-        held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+        sendHeld(text, canChooseFirstModel ? modelChoice : undefined, true);
       else if (tellWorking) void submitQueue("follow_up", text);
       else void submit(text);
     },
@@ -1983,7 +2050,7 @@ function BrowserConversationContent({
           onSendNow: (text = draft) => {
             if (!text.trim() || creationBlock(creation)) return;
             const first = !held.waiting.length;
-            held.submit(text);
+            sendHeld(text);
             creationView.setNotice("");
             if (first) creation.worktree?.onFirstMessage?.(text);
           },
@@ -2068,6 +2135,7 @@ function BrowserConversationContent({
               : "idle",
           // The outage/status notice already explains the block and its remedy.
           // Keep the control's reason accessible, but do not show a second warning.
+          refusalSubject: unknownSend ? "send" : undefined,
           suppressAvailabilityReason:
             archive?.archive !== "archived" &&
             archive?.archive !== "unknown" &&
@@ -2107,10 +2175,7 @@ function BrowserConversationContent({
               // A new conversation's first message carries the model
               // chosen in its field, as a direct first send does.
               if (canSend)
-                held.submit(
-                  text,
-                  canChooseFirstModel ? modelChoice : undefined,
-                );
+                sendHeld(text, canChooseFirstModel ? modelChoice : undefined);
             } else void submit(text);
           },
           onSteer: (text = draft) => {
@@ -2196,6 +2261,7 @@ function BrowserConversationContent({
       {!view ? (
         <>
           <h2>{txt.conversations}</h2>
+          <NoticeStack />
           <details className="md-new">
             <summary
               className={`md-new-toggle ${controlClassName({ size: "row", text: true })}`}
@@ -2261,7 +2327,10 @@ function BrowserConversationContent({
               editorControl={<EditorHeaderControls />}
               titleAction={{
                 label: txt.retitle,
-                availability: { state: "disabled", reason: txt.nothingToName },
+                availability: {
+                  state: "disabled",
+                  reason: txt.nothingToName,
+                },
                 onPress: () => {},
               }}
               archive={
@@ -2433,7 +2502,12 @@ function BrowserConversationContent({
                             : txt.titleUncertain);
                       setTitleActionState((previous) =>
                         previous?.key === key
-                          ? { key, version, pending: false, error: description }
+                          ? {
+                              key,
+                              version,
+                              pending: false,
+                              error: description,
+                            }
                           : previous,
                       );
                     });
@@ -2687,21 +2761,26 @@ function BrowserConversationContent({
                 />
               )}
               {cutOff && (
-                <InlineNotice
+                <WarningBanner
                   data-testid="history-cut-off"
-                  tone="warning"
+                  tone="neutral"
                   title={txt.cutOff}
-                  description={txt.cutOffDetail}
-                  actions={[
-                    {
-                      label: txt.newConversation,
-                      onPress: () =>
-                        navigate(`/workspaces/${workspace.workspace_id}`),
-                    },
-                  ]}
-                />
+                  actions={
+                    <Button
+                      size="row"
+                      variant="secondary"
+                      label={txt.newConversation}
+                      onPress={() =>
+                        navigate(`/workspaces/${workspace.workspace_id}`)
+                      }
+                    />
+                  }
+                >
+                  {txt.cutOffDetail}
+                </WarningBanner>
               )}
               <ConversationTimeline
+                suppressProblem
                 problem={{
                   title: txt.historyUnavailable,
                   description: txt.historyUnavailableDetail,
@@ -2747,7 +2826,7 @@ function BrowserConversationContent({
                   ) : undefined
                 }
                 state={
-                  visibleHistoryError && !storagePressure.full
+                  visibleHistoryError
                     ? entries.length
                       ? "stale"
                       : "error"
@@ -2765,7 +2844,13 @@ function BrowserConversationContent({
                 items={[
                   ...timeline,
                   ...(restCard
-                    ? [{ id: "rest-card", kind: "receipt", content: restCard }]
+                    ? [
+                        {
+                          id: "rest-card",
+                          kind: "receipt",
+                          content: restCard,
+                        },
+                      ]
                     : []),
                   ...(ownMessage
                     ? [
@@ -2957,11 +3042,11 @@ function BrowserConversationContent({
               ) : null}
               {(!current?.pending_question || statusStale) &&
               questionOutcome ? (
-                <p className="ah-native-question" role="status">
+                <WarningBanner subject="question" tone="neutral">
                   {questionOutcome === "stale"
                     ? txt.questionStale
                     : txt.questionUncertain}
-                </p>
+                </WarningBanner>
               ) : null}
               {/* Normal progress belongs to the turn header, not a second row
                 that mounts/unmounts beneath streaming content. */}
@@ -2973,16 +3058,17 @@ function BrowserConversationContent({
                 !held.waiting.length ? (
                 <WorkingProgress state="uncertain" events={events} />
               ) : null}
-              {!storagePressure.full && statusStale && !serverUnavailable ? (
-                <InlineNotice
+              {statusStale && !serverUnavailable ? (
+                <WarningBanner
                   data-testid="conversation-stale"
                   title={txt.stale}
-                  description={txt.staleDetail}
-                  tone="warning"
-                  actions={[
-                    {
-                      label: txt.check,
-                      onPress: () => {
+                  tone="neutral"
+                  actions={
+                    <Button
+                      size="row"
+                      variant="secondary"
+                      label={txt.check}
+                      onPress={() => {
                         if (
                           continuation &&
                           continuation !== "uncertain" &&
@@ -2990,30 +3076,32 @@ function BrowserConversationContent({
                         )
                           setContinuation(undefined);
                         void refresh(true, true);
-                      },
-                    },
-                  ]}
-                />
+                      }}
+                    />
+                  }
+                >
+                  {txt.staleDetail}
+                </WarningBanner>
               ) : null}
-              {!storagePressure.full &&
-              journalOffline &&
-              !statusStale &&
-              !serverUnavailable ? (
-                <InlineNotice
+              {journalOffline && !statusStale && !serverUnavailable ? (
+                <WarningBanner
+                  subject="connection"
                   title={txt.journalLost}
-                  description={txt.journalLostDetail}
-                  tone="warning"
-                />
+                  tone="neutral"
+                >
+                  {txt.journalLostDetail}
+                </WarningBanner>
               ) : null}
               {!statusStale &&
               !serverUnavailable &&
               showMissedEvents(!!live?.missed, current) ? (
-                <InlineNotice
+                <WarningBanner
                   data-testid="event-gap"
                   title={txt.missed}
-                  description={txt.missedDetail}
-                  tone="warning"
-                />
+                  tone="neutral"
+                >
+                  {txt.missedDetail}
+                </WarningBanner>
               ) : null}
               {events.length && current?.native_history !== "present" ? (
                 <p role="status">{txt.eventsBeforeHistory}</p>
@@ -3055,6 +3143,16 @@ function BrowserConversationContent({
             />
           )}
           <div className="ah-composer-stack">
+            <NoticeStack />
+            {storagePressure.full ? (
+              <WarningBanner
+                data-testid="storage-full-notice"
+                tone="danger"
+                title={txt.storageFull}
+              >
+                {txt.storageFullDetail}
+              </WarningBanner>
+            ) : null}
             {view === "opened" ? (
               <>
                 <div className="ah-actionable-notices">
@@ -3105,14 +3203,13 @@ function BrowserConversationContent({
                     />
                   ) : null}
                 </div>
-                {!storagePressure.full &&
-                !statusStale &&
-                visibleHistoryError ? (
+                {!statusStale && visibleHistoryError ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="history-unavailable"
+                      subject="send"
                       data-state={recheckState}
-                      tone="danger"
+                      tone="neutral"
                       title={txt.historyUnavailable}
                       actions={
                         <Button
@@ -3134,14 +3231,17 @@ function BrowserConversationContent({
                       {recheckState === "done"
                         ? txt.historyStillUnavailable
                         : txt.historyUnavailableDetail}
-                      {sendUncertain ? ` ${txt.historyUnavailableSend}` : null}
+                      {unknownSend
+                        ? ` ${txt.historyUnavailableSend(unknownInField)}`
+                        : null}
                     </WarningBanner>
                   </div>
-                ) : !storagePressure.full && !statusStale && sendUncertain ? (
+                ) : !statusStale && unknownSend ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="send-uncertain"
-                      data-reason={sendUncertain}
+                      subject="send"
+                      data-reason={unknownSend}
                       data-state={recheckState}
                       tone="neutral"
                       title={txt.sendUncertain}
@@ -3161,10 +3261,12 @@ function BrowserConversationContent({
                       }
                     >
                       {recheckState === "done"
-                        ? txt.sendStillUnknown
-                        : sendUncertain === "failed"
+                        ? txt.sendStillUnknown(checkedAt, unknownInField)
+                        : unknownSend === "failed"
                           ? txt.sendUncertainFailed
-                          : txt.sendUncertainDetail}
+                          : unknownSend === "held"
+                            ? txt.sendUncertainHeld(unknownInField)
+                            : txt.sendUncertainDetail(unknownInField)}
                     </WarningBanner>
                   </div>
                 ) : !storagePressure.full &&
@@ -3187,22 +3289,43 @@ function BrowserConversationContent({
                 ) : null}
                 <div className="ah-conversation-notices">
                   {titleError ? (
-                    <InlineNotice
+                    <WarningBanner
                       data-testid="title-error"
-                      title={txt.titleFailed}
-                      description={titleError || undefined}
                       tone="danger"
-                    />
+                      title={txt.titleFailed}
+                      lifetime="event"
+                    >
+                      {titleError}
+                    </WarningBanner>
                   ) : null}
-                  {statusStale || storagePressure.full ? null : notices}
+                  {statusStale ? null : notices}
                   {held.notice ? (
-                    <p
+                    <WarningBanner
                       data-testid="held-message-notice"
-                      className="ah-held-notice"
-                      role="status"
+                      tone={held.noticeLasts ? "danger" : "neutral"}
+                      lifetime="event"
+                      actions={
+                        <ControlButton
+                          data-testid="notice-close"
+                          size="inline"
+                          variant="quiet"
+                          presentation="icon"
+                          aria-label={txt.dismissNotice}
+                          onPress={() => {
+                            section.current
+                              ?.querySelector<HTMLTextAreaElement>(
+                                '[data-testid="message-input"]',
+                              )
+                              ?.focus();
+                            held.setNotice("");
+                          }}
+                        >
+                          <Icon name="cross" />
+                        </ControlButton>
+                      }
                     >
                       {held.notice}
-                    </p>
+                    </WarningBanner>
                   ) : null}
                 </div>
                 {(recapFailed

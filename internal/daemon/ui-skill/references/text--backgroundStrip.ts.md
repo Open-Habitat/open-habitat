@@ -10,6 +10,8 @@ import { catalog } from "../i18n";
 // and the requests ended workers send their conversation. Titles, process
 // names and commands come in as arguments.
 const fi = {
+  waitingNotice:
+    "Worker odottaa vastaustasi. Avaa Workerit ja katso, mitä se tarvitsee.",
   ended: (n: number) => `${n} ${n === 1 ? "päättynyt" : "päättynyttä"}`,
   leftOne: (title: string) =>
     `${title} poistui Workerit-listasta: haaraa ja worktreetä ei enää ole.`,
@@ -125,6 +127,8 @@ const fi = {
 };
 
 export const backgroundStripText = catalog(fi, {
+  waitingNotice:
+    "A worker is waiting for your answer. Open Workers to see what it needs.",
   ended: (n) => `${n} ended`,
   leftOne: (title) =>
     `${title} left the Workers list: its branch and worktree are gone.`,

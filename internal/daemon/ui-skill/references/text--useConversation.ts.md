@@ -11,6 +11,11 @@ const fi = {
   loadFailed: "Keskustelua ei voitu ladata. Yritä uudelleen.",
   rejected:
     "Agentti ei ottanut viestiä vastaan. Teksti on kentässä: lähetä se uudelleen.",
+  // Pi never received the message whole: handing it over was cut off,
+  // usually because a very large image batch outlasted its budget, but also
+  // when Pi ended meanwhile. Nothing of it ran.
+  undelivered:
+    "Agentti ei saanut viestiä: sen siirtäminen agentille keskeytyi. Teksti ja liitteet ovat taas kentässä. Isojen liitteiden siirto voi kestää liian kauan; lähetä silloin vähemmän kerrallaan.",
   pending: "Viesti odottaa kuittausta. Tarkistetaan uudelleen.",
   uncertain:
     "Lähetyksen tulos on yhä epävarma. Viesti lähetetään uudelleen vain, jos varmistuu, ettei agentti saanut sitä.",
@@ -29,6 +34,8 @@ export const useConversationText = catalog(fi, {
   loadFailed: "The conversation could not be loaded. Try again.",
   rejected:
     "The agent did not accept the message. The text is back in the field: send it again.",
+  undelivered:
+    "The agent did not get the message: handing it over was cut off. The text and attachments are back in the field. Large attachments can take too long to hand over; if so, send fewer at a time.",
   pending: "The message is waiting to be acknowledged. Checking again.",
   uncertain:
     "It is still unclear whether the message was sent. It is sent again only if it turns out the agent did not get it.",

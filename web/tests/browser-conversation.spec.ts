@@ -309,9 +309,8 @@ test("@browser-conversation failing history read says why and shows its check", 
   const banner = page.getByTestId("history-unavailable");
   await expect(banner).toContainText("Historiaa ei saada");
   await expect(banner).toContainText("kerro ylläpitäjälle");
-  await expect(page.getByTestId("history-read-error")).toContainText(
-    "Mitään ei ole kadonnut",
-  );
+  await expect(page.getByTestId("history-read-error")).toHaveCount(0);
+  await expect(banner).toHaveAttribute("data-tone", "neutral");
   const check = banner.getByTestId("conversation-recheck");
   await expect(check).toHaveText("Tarkista keskustelun tila");
   let release = () => {};
@@ -1018,6 +1017,21 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   expect(attempts).toBe(1);
+  const beforeRefusal = await page.getByTestId("send-uncertain").textContent();
+  await page.getByTestId("message-input").fill("ping");
+  await page.getByTestId("message-input").press("Enter");
+  await expect(page.getByTestId("send-uncertain")).not.toHaveText(
+    beforeRefusal ?? "",
+  );
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(
+      page.getByTestId("notice-stack").locator(".ah-warning"),
+    ).toHaveCount(1);
+    await expect(page.getByTestId("composer-notice")).toHaveCount(0);
+    await expect(page.getByTestId("message-input")).toHaveValue("ping");
+    expect(attempts).toBe(1);
+  }
   await page.getByTestId("send-uncertain").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",
@@ -1424,14 +1438,14 @@ test("@browser-conversation a refused or unknown stop says so once and Stop work
   // Pi refuses this abort: the daemon reports the refusal as the abort's
   // acknowledgement, and the turn goes on.
   await stop.click();
-  await expect(notice).toHaveAttribute("data-stopping", "rejected");
+  await expect(notice).toHaveAttribute("data-state", "rejected");
   await expect(stop).toBeEnabled();
   // The reply to the next abort is lost: its outcome is unknown.
   await page.route("**/api/v1/conversations/*/abort", (route) =>
     route.abort("failed"),
   );
   await stop.click();
-  await expect(notice).toHaveAttribute("data-stopping", "uncertain");
+  await expect(notice).toHaveAttribute("data-state", "uncertain");
   // Each outcome is said once, in the composer, not again as a banner.
   await expect(page.getByTestId("send-receipt")).toHaveCount(0);
   await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);

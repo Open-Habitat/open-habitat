@@ -875,6 +875,22 @@ const fi = {
       know: "Monta suurta kuvaa on koottu yhdelle riville, jotta muu historia pysyy kevyenä lukea.",
       try: "Avaa kuvat",
     },
+    V33: {
+      name: "Muut ilmoitukset",
+      lead: "Näyttää myös keskustelun ja luonnoksen muut ilmoitukset.",
+      know: "Tavallisesti näkyy kaksi ilmoitusta, esteet ensin. Uusi painallus supistaa pinon.",
+      try: "Näytä tai piilota muut ilmoitukset",
+    },
+    V34: {
+      name: "Yritä uudelleen",
+      lead: "Yrittää tallentaa uudelleen liitteet, joiden tallennus katkesi.",
+      know: "Onnistuneet liitteet tulevat luonnokseen. Viestiä ei lähetetä.",
+    },
+    V35: {
+      name: "Keskustelun ilmoitus",
+      lead: "Kertoo, mikä estää työn, on epävarmaa, käynnissä tai korjautui.",
+      know: "Tila näkyy, kunnes se muuttuu. Torjunta jää seuraavaan yritykseen tai sulkemiseen asti.",
+    },
     V32: {
       name: "Piilota liiteilmoitus",
       lead: "Piilottaa ilmoituksen muuttamatta viestiä tai sen liitteitä.",
@@ -1024,7 +1040,7 @@ const fi = {
     V28: {
       name: "Viestiä ei lähetetty",
       lead: "Kertoo, että liitteet eivät mahdu yhteen viestiin, ja montako ja kuinka suuria niitä on.",
-      know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Liikaa olevissa liitteissä lukee ‘Ei mahdu viestiin’. Poista liitteitä: kun loput mahtuvat, tallennus jatkuu ja varoitus häviää.",
+      know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Poista liitteitä: kun loput mahtuvat, voit lähettää viestin.",
     },
     V29: {
       name: "Käsittele",
@@ -2412,6 +2428,22 @@ export const explainModeText = catalog(fi, {
       know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
       try: "Open pictures",
     },
+    V33: {
+      name: "More notices",
+      lead: "Shows the other notices for this conversation and draft.",
+      know: "Normally two notices show, blockers first. Press again to collapse the stack.",
+      try: "Show or hide other notices",
+    },
+    V34: {
+      name: "Try again",
+      lead: "Tries saving attachments again after an interrupted upload.",
+      know: "Saved attachments appear in the draft. This does not send the message.",
+    },
+    V35: {
+      name: "Conversation notice",
+      lead: "Shows what blocks work, is uncertain, is underway or has recovered.",
+      know: "Conditions stay until they change. Refusals stay until the next attempt or dismissal.",
+    },
     V32: {
       name: "Dismiss attachment notice",
       lead: "Hides the notice without changing your message or its attachments.",
@@ -2561,7 +2593,7 @@ export const explainModeText = catalog(fi, {
     V28: {
       name: "The message was not sent",
       lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
-      know: "One message holds 30 files and 100 MB in total. Excess attachments say ‘Does not fit this message’. Remove attachments: once the rest fit, saving continues and the warning goes away.",
+      know: "One message holds 30 files and 100 MB in total. Remove attachments: once the rest fit, you can send the message.",
     },
     V29: {
       name: "Handle",

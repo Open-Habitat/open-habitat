@@ -31,6 +31,7 @@ export function ConversationTimeline({
   latestDuration,
   historyMode,
   emptyLabel = txt.start,
+  suppressProblem = false,
   problem,
   onJumpToLatest,
   onHistoryModeChange,
@@ -43,6 +44,7 @@ export function ConversationTimeline({
   latestDuration?: string;
   historyMode: "virtualized" | "pagedAccessible";
   emptyLabel?: ReactNode;
+  suppressProblem?: boolean;
   problem?: ProblemView;
   onJumpToLatest: () => void;
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
@@ -77,7 +79,7 @@ export function ConversationTimeline({
       {state === "empty" ? (
         <div data-testid="conversation-empty">{emptyLabel}</div>
       ) : null}
-      {state === "error" || state === "unavailable" ? (
+      {!suppressProblem && (state === "error" || state === "unavailable") ? (
         <InlineNotice
           data-testid="history-read-error"
           title={problem?.title ?? txt.historyUnavailable}
@@ -85,7 +87,7 @@ export function ConversationTimeline({
           tone="danger"
         />
       ) : null}
-      {state === "stale" ? (
+      {!suppressProblem && state === "stale" ? (
         <InlineNotice
           data-testid="history-stale"
           title={txt.stale}

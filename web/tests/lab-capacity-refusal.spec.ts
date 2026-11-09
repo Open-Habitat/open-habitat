@@ -57,11 +57,15 @@ for (const width of [1440, 390]) {
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(composer.y);
       const start = page.getByTestId("start-here");
       await expect(start).toBeAttached();
-      const startBounds = await start.boundingBox();
-      if (!startBounds) throw new Error("Missing start page");
-      expect(startBounds.y + startBounds.height).toBeLessThanOrEqual(bounds.y);
-      // The start page remains reachable by scrolling, not deleted or overlaid.
+      // The notice is now outside the transcript scroll, in the shared stack.
+      // The start page may be taller than that scroll's clipped viewport.
       const stream = page.getByTestId("conversation-stream");
+      const streamBounds = await stream.boundingBox();
+      if (!streamBounds) throw new Error("Missing conversation stream");
+      expect(streamBounds.y + streamBounds.height).toBeLessThanOrEqual(
+        bounds.y,
+      );
+      // The start page remains reachable by scrolling, not deleted or overlaid.
       await stream.evaluate((el) => {
         el.scrollTop = 0;
       });

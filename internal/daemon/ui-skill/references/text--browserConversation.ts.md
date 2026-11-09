@@ -9,6 +9,10 @@ import { catalog } from "../i18n";
 // new-conversation start, the header and its details, live progress, the
 // recovery banners and why sending or a recap is not available now.
 const fi = {
+  dismissNotice: "Sulje",
+  storageFull: "Tallennustila on täynnä",
+  storageFullDetail:
+    "Vapauta tilaa ennen työn jatkamista. Pyydä tarvittaessa palvelimen ylläpitäjältä apua.",
   modelUnknown: "Malli ei tiedossa",
   attention: (title: string) => `Agentti tarvitsee huomiota · ${title}`,
   resting: "Agentti lepää. Kirjoittaminen herättää sen.",
@@ -110,20 +114,35 @@ const fi = {
   // or once it proves undelivered and is sent again (once) or the
   // conversation has moved on.
   sendUncertain: "Ei tiedossa, saiko agentti viestin",
-  sendUncertainDetail:
-    "Teksti on kirjoituskentässä. Jos varmistuu, ettei agentti saanut viestiä, se lähetetään itsestään kerran uudelleen; muuten sitä ei lähetetä. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
+  // It says the text is in the field only while it is: the person may have
+  // edited it away or sent it again (Jari 9.11.2026).
+  sendUncertainDetail: (inField: boolean): string =>
+    inField
+      ? "Teksti on kirjoituskentässä. Jos varmistuu, ettei agentti saanut viestiä, se lähetetään itsestään kerran uudelleen; muuten sitä ei lähetetä. Ilmoitus poistuu, kun viesti näkyy keskustelussa."
+      : "Jos varmistuu, ettei agentti saanut viestiä, se lähetetään itsestään kerran uudelleen; muuten sitä ei lähetetä. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
+  // A message sent while the agent was not running, whose outcome a lost
+  // reply or a server restart made unknown: never sent again by itself.
+  sendUncertainHeld: (inField: boolean): string =>
+    inField
+      ? "Teksti on kirjoituskentässä. Sitä ei lähetetä uudelleen automaattisesti. Ilmoitus poistuu, kun viesti näkyy keskustelussa."
+      : "Sitä ei lähetetä uudelleen automaattisesti. Ilmoitus poistuu, kun viesti näkyy keskustelussa.",
   sendUncertainFailed:
     "Yhteys katkesi lähetettäessä. Tila tarkistetaan, kun yhteys palaa; viesti lähetetään uudelleen vain, jos varmistuu, ettei agentti saanut sitä.",
-  sendStillUnknown:
-    "Tarkistettu: viesti ei näy keskustelussa, mutta ei myöskään varmistunut, ettei agentti saanut sitä. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
+  // The time shows that each press of the check ran again.
+  sendStillUnknown: (time: string, inField: boolean): string =>
+    inField
+      ? `Tarkistettu klo ${time}: viesti ei näy keskustelussa, eikä ole varmistunut, ettei agentti saanut sitä. Teksti on kirjoituskentässä.`
+      : `Tarkistettu klo ${time}: viesti ei näy keskustelussa, eikä ole varmistunut, ettei agentti saanut sitä.`,
   rechecking: "Tarkistetaan",
   historyUnavailable: "Historiaa ei saada",
   historyUnavailableDetail:
     "Palvelin ei pystynyt lukemaan tämän keskustelun tallennettua historiaa. Mitään ei ole kadonnut. Tarkista tila uudelleen; jos sama toistuu, kerro ylläpitäjälle.",
   historyStillUnavailable:
     "Tarkistettu: historiaa ei vieläkään saada. Mitään ei ole kadonnut; kerro ylläpitäjälle.",
-  historyUnavailableSend:
-    "Siksi ei myöskään tiedetä, saiko agentti viimeisen viestisi. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä.",
+  historyUnavailableSend: (inField: boolean): string =>
+    inField
+      ? "Siksi ei myöskään tiedetä, saiko agentti viimeisen viestisi. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä."
+      : "Siksi ei myöskään tiedetä, saiko agentti viimeisen viestisi. Sitä ei lähetetä uudelleen automaattisesti.",
   titleFailed: "Otsikkoa ei voitu luoda",
   wakePlaceholder: "Kirjoita, niin agentti herää…",
   keptNotSent: (reason: string) =>
@@ -131,6 +150,10 @@ const fi = {
 };
 
 export const browserConversationText = catalog(fi, {
+  dismissNotice: "Close",
+  storageFull: "Storage is full",
+  storageFullDetail:
+    "Free up space before continuing. Ask the server's administrator for help if needed.",
   modelUnknown: "Model unknown",
   attention: (title) => `Agent needs attention · ${title}`,
   resting: "The agent is resting. Typing wakes it.",
@@ -227,20 +250,30 @@ export const browserConversationText = catalog(fi, {
     "The agent reported that the chosen model is not supported on this ChatGPT account. Choose another model and start a new conversation. The message is not repeated; your draft is kept.",
   recheck: "Check the conversation's status",
   sendUncertain: "It is not known whether the agent got the message",
-  sendUncertainDetail:
-    "Its text is in the field. If it turns out the agent did not get the message, it is sent again once by itself; otherwise it is not resent. This notice goes away once the message shows in the conversation.",
+  sendUncertainDetail: (inField) =>
+    inField
+      ? "Its text is in the field. If it turns out the agent did not get the message, it is sent again once by itself; otherwise it is not resent. This notice goes away once the message shows in the conversation."
+      : "If it turns out the agent did not get the message, it is sent again once by itself; otherwise it is not resent. This notice goes away once the message shows in the conversation.",
+  sendUncertainHeld: (inField) =>
+    inField
+      ? "Its text is in the field. It is not resent automatically. This notice goes away once the message shows in the conversation."
+      : "It is not resent automatically. This notice goes away once the message shows in the conversation.",
   sendUncertainFailed:
     "The connection broke while sending. The status is checked when the connection is back; the message is sent again only if it turns out the agent did not get it.",
-  sendStillUnknown:
-    "Checked: the message does not show in the conversation, but it could not be confirmed that the agent did not get it. It is not resent automatically, and its text is in the field.",
+  sendStillUnknown: (time, inField) =>
+    inField
+      ? `Checked at ${time}: the message does not show in the conversation, and it has not been confirmed that the agent did not get it. Its text is in the field.`
+      : `Checked at ${time}: the message does not show in the conversation, and it has not been confirmed that the agent did not get it.`,
   rechecking: "Checking",
   historyUnavailable: "The history is not available",
   historyUnavailableDetail:
     "The server could not read this conversation's saved history. Nothing has been lost. Check the status again; if it keeps happening, tell your administrator.",
   historyStillUnavailable:
     "Checked: the history is still not available. Nothing has been lost; tell your administrator.",
-  historyUnavailableSend:
-    "So it is also not known whether the agent got your last message. It is not resent automatically, and its text is in the field.",
+  historyUnavailableSend: (inField) =>
+    inField
+      ? "So it is also not known whether the agent got your last message. It is not resent automatically, and its text is in the field."
+      : "So it is also not known whether the agent got your last message. It is not resent automatically.",
   titleFailed: "The title could not be made",
   wakePlaceholder: "Type to wake the agent…",
   keptNotSent: (reason) =>

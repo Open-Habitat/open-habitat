@@ -2,18 +2,17 @@ import {
   type ComponentProps,
   type RefObject,
   useEffect,
-  useLayoutEffect,
-  useRef,
   useState,
 } from "react";
 import {
   type AgentHeader,
+  Button,
   ConversationStream,
   ConversationTimeline,
-  InlineNotice,
   WaitingMessage,
 } from "../components";
 import { Icon } from "../components/Icon";
+import { WarningBanner } from "../components/WarningBanner";
 import { liveText } from "../i18n";
 import { pendingConversationText } from "../text/pendingConversation";
 import { CapacityCard } from "./CapacityCard";
@@ -104,16 +103,24 @@ export function LoadingStream({
         />
       ))}
       {problem ? (
-        <InlineNotice
+        <WarningBanner
           data-state="uncertain"
           data-testid="creation-problem"
           title={txt.stateUnconfirmed}
-          description={problem}
-          tone="warning"
+          tone="neutral"
           actions={
-            onRetry ? [{ label: txt.retry, onPress: onRetry }] : undefined
+            onRetry ? (
+              <Button
+                size="row"
+                variant="secondary"
+                label={txt.retry}
+                onPress={onRetry}
+              />
+            ) : undefined
           }
-        />
+        >
+          {problem}
+        </WarningBanner>
       ) : (
         <p data-testid="conversation-loading" role="status">
           {txt.loading}
@@ -188,23 +195,8 @@ export function CreationStream({
   onGiveBack: () => void;
 }) {
   const { problem, refused, worktree, onCreateAgain, onRetry } = creation;
-  const stream = useRef<HTMLElement>(null);
-  const notice = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!problem || !notice.current) return;
-    // The refusal follows the start page in the same scroll, rather than
-    // covering it. Capacity details can arrive after the initial refusal.
-    const reveal = () => {
-      if (stream.current)
-        stream.current.scrollTop = stream.current.scrollHeight;
-    };
-    reveal();
-    const observer = new ResizeObserver(reveal);
-    observer.observe(notice.current);
-    return () => observer.disconnect();
-  }, [problem]);
   return (
-    <ConversationStream streamRef={stream}>
+    <ConversationStream>
       {worktree && !waiting.length ? (
         <WorktreeIntro workspace={workspace} {...worktree} />
       ) : null}
@@ -244,7 +236,7 @@ export function CreationStream({
           ),
         }))}
       />
-      <div ref={notice} className="ah-creation-notices">
+      <div className="ah-creation-notices">
         {problem && refused && creation.capacity ? (
           // At the limit there is nothing to edit: the text is already back
           // in the field (Jari 6.11.2026, Muokkaa pois).
@@ -255,57 +247,66 @@ export function CreationStream({
             tries={creation.capacity.tries}
             onRetry={onCreateAgain}
             fallback={
-              <InlineNotice
+              <WarningBanner
                 data-testid="creation-problem"
                 data-state="refused"
                 title={txt.conversationNotCreated}
-                description={problem}
-                tone="warning"
+                tone="danger"
                 actions={
-                  onCreateAgain
-                    ? [
-                        {
-                          testId: "retry",
-                          label: txt.retry,
-                          onPress: onCreateAgain,
-                        },
-                      ]
-                    : []
+                  onCreateAgain ? (
+                    <Button
+                      data-testid="retry"
+                      size="row"
+                      variant="secondary"
+                      label={txt.retry}
+                      onPress={onCreateAgain}
+                    />
+                  ) : undefined
                 }
-              />
+              >
+                {problem}
+              </WarningBanner>
             }
           />
         ) : problem ? (
-          <InlineNotice
+          <WarningBanner
             data-testid="creation-problem"
             data-state={refused ? "refused" : "uncertain"}
             title={refused ? txt.conversationNotCreated : txt.stateUnconfirmed}
-            description={problem}
-            tone="warning"
-            actions={[
-              ...(onCreateAgain
-                ? [
-                    {
-                      testId: "retry",
-                      label: txt.retry,
-                      onPress: onCreateAgain,
-                    },
-                  ]
-                : []),
-              ...(onRetry
-                ? [
-                    {
-                      testId: "creation-recheck",
-                      label: creation.retryLabel ?? txt.retry,
-                      onPress: onRetry,
-                    },
-                  ]
-                : []),
-              ...(waiting.length
-                ? [{ label: txt.edit, onPress: onGiveBack }]
-                : []),
-            ]}
-          />
+            tone={refused ? "danger" : "neutral"}
+            actions={
+              <>
+                {onCreateAgain ? (
+                  <Button
+                    data-testid="retry"
+                    size="row"
+                    variant="secondary"
+                    label={txt.retry}
+                    onPress={onCreateAgain}
+                  />
+                ) : null}
+                {onRetry ? (
+                  <Button
+                    data-testid="creation-recheck"
+                    size="row"
+                    variant="secondary"
+                    label={creation.retryLabel ?? txt.retry}
+                    onPress={onRetry}
+                  />
+                ) : null}
+                {waiting.length ? (
+                  <Button
+                    size="row"
+                    variant="secondary"
+                    label={txt.edit}
+                    onPress={onGiveBack}
+                  />
+                ) : null}
+              </>
+            }
+          >
+            {problem}
+          </WarningBanner>
         ) : null}
       </div>
     </ConversationStream>
@@ -315,13 +316,13 @@ export function CreationStream({
 export function CreationNotice({ notice }: { notice: string }) {
   return notice ? (
     <div className="ah-conversation-notices">
-      <p
+      <WarningBanner
         data-testid="creation-uncertain"
-        className="ah-held-notice"
-        role="status"
+        tone="neutral"
+        lifetime="event"
       >
         {notice}
-      </p>
+      </WarningBanner>
     </div>
   ) : null;
 }

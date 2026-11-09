@@ -22,6 +22,9 @@
 .ah-composer-stack > .ah-composer > .ah-bg-strip > * {
   width: 100%;
 }
+.ah-composer-stack > .ah-notice-stack {
+  margin-inline: var(--ah-column-pad-inline);
+}
 .ah-composer-stack > .ah-status-check,
 .ah-composer-stack > .ah-recap,
 .ah-composer-stack > .ah-creation-notices,
@@ -35,6 +38,7 @@
   flex-direction: column;
   gap: var(--ah-s3);
 }
+.ah-composer-stack > .ah-status-check:empty,
 .ah-composer-stack > .ah-conversation-notices:empty,
 .ah-composer-stack > .ah-actionable-notices:empty {
   display: none;

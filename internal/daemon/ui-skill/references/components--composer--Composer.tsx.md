@@ -13,7 +13,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { attachmentSelection, uploadAttachment } from "../../app/attachments";
+import {
+  attachmentSelection,
+  UploadRefused,
+  uploadAttachment,
+} from "../../app/attachments";
 import type {
   CommandList,
   FileList,
@@ -45,6 +49,7 @@ import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
 import { WarningBanner } from "../WarningBanner";
 import { AttachmentMenu } from "./AttachmentMenu";
+import { AttachmentRefusal, type RefusedAttachment } from "./AttachmentRefusal";
 import {
   type Choice,
   type ChoiceGroup,
@@ -182,9 +187,6 @@ const rowKey = (c: Choice | undefined) =>
       : `${c.type}:${c.path}`;
 /** The in-field list lets the rows pick where the selection rests. */
 const AUTO = -2;
-
-const attachmentKey = (text: string) =>
-  JSON.stringify(attachmentsIn(text).map((a) => a.source));
 
 type Open =
   | ({ place: "caret"; sel: number } & CaretToken & InField)
@@ -540,6 +542,7 @@ export function Composer({
   sendState,
   sendWhenReady = false,
   suppressAvailabilityReason = false,
+  refusalSubject,
   queue,
   queueKnown = true,
   onChange: onDraftChange,
@@ -581,6 +584,7 @@ export function Composer({
    * enabled; without this, a blocked send is refused with its reason. */
   sendWhenReady?: boolean;
   suppressAvailabilityReason?: boolean;
+  refusalSubject?: string;
   /** Pi's queue while it works: shown as a card above the field. */
   queue?: { steering: string[]; followUp: string[] };
   queueKnown?: boolean;
@@ -691,12 +695,7 @@ export function Composer({
     ],
   );
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<{
-    text: string;
-    attachments: string;
-  }>();
-  if (uploadError && uploadError.attachments !== attachmentKey(draftValue))
-    setUploadError(undefined);
+  const [refusedFiles, setRefusedFiles] = useState<RefusedAttachment[]>([]);
   const uploadController = useRef<AbortController | null>(null);
   useEffect(
     () =>
@@ -717,19 +716,38 @@ export function Composer({
   // the focus of a person using it.
   const attachable = availability.state === "enabled" || sendWhenReady;
   const addFiles = useCallback(
-    async (files: File[], focus: boolean) => {
+    async (files: File[], focus: boolean, keep: RefusedAttachment[] = []) => {
       if (!files.length || !csrf || !attachable) return;
-      const next = [
-        ...pending.current,
-        ...files.map((file) => ({
-          id: crypto.randomUUID(),
-          file,
-          focus,
-        })),
-      ];
+      const next = [...pending.current];
+      const refused: RefusedAttachment[] = [];
+      const urls = attachmentsIn(draft.current.value).map((a) => a.url);
+      for (const file of files) {
+        const overflow = attachmentOverflow(urls, [
+          ...next.map((item) => item.file.size),
+          file.size,
+        ]);
+        const reason = !file.size
+          ? "empty"
+          : file.size > attachmentBytesLimit
+            ? "large"
+            : overflow?.reason === "count"
+              ? "count"
+              : overflow
+                ? "total"
+                : undefined;
+        const id = crypto.randomUUID();
+        if (reason)
+          refused.push({
+            id,
+            file,
+            reason,
+            used: overflow ? overflow.bytes - file.size : undefined,
+          });
+        else next.push({ id, file, focus });
+      }
       pending.current = next;
       setPendingFiles(next);
-      setUploadError(undefined);
+      setRefusedFiles([...keep, ...refused]);
       setDismissedOverflow(undefined);
     },
     [csrf, attachable],
@@ -770,12 +788,21 @@ export function Composer({
         }
         updatePending(pending.current.filter((entry) => entry.id !== item.id));
       } catch (error) {
-        if (!controller.signal.aborted) {
-          updatePending([]);
-          setUploadError({
-            text: error instanceof Error ? error.message : t.uploadFailed,
-            attachments: attachmentKey(draft.current.value),
-          });
+        if (
+          !controller.signal.aborted &&
+          pending.current.some((entry) => entry.id === item.id)
+        ) {
+          updatePending(
+            pending.current.filter((entry) => entry.id !== item.id),
+          );
+          setRefusedFiles((old) => [
+            ...old,
+            {
+              id: item.id,
+              file: item.file,
+              reason: error instanceof UploadRefused ? error.reason : "failed",
+            },
+          ]);
         }
       } finally {
         if (uploadController.current === controller) {
@@ -784,7 +811,7 @@ export function Composer({
         }
       }
     })();
-  }, [csrf, attachable, pendingFiles, draftValue, uploading, t, updatePending]);
+  }, [csrf, attachable, pendingFiles, draftValue, uploading, updatePending]);
   useEffect(() => {
     if (csrf) setUploading(false);
     updatePending([]);
@@ -818,7 +845,19 @@ export function Composer({
   const listId = useId().replace(/:/g, "");
   const shellLabelId = `${listId}-shell`;
   const [open, setOpen] = useState<Open | null>(null);
-  const [notice, setNotice] = useState("");
+  const [noticeEvent, setNoticeEvent] = useState<{
+    text: string;
+    subject?: string;
+  }>({ text: "" });
+  const notice = noticeEvent.text;
+  const setNotice = (text: string, subject?: string) =>
+    setNoticeEvent({ text, subject });
+  // Only a refused follow-up ends with its cause, not unrelated shell events.
+  useEffect(() => {
+    setNoticeEvent((event) =>
+      event.subject && event.subject !== refusalSubject ? { text: "" } : event,
+    );
+  }, [refusalSubject]);
   const lastCaret = useRef<[number, number] | null>(null);
   const { commands, files, tree, readFolders } = useSources(sources, open);
   const working = activity === "working";
@@ -831,11 +870,6 @@ export function Composer({
   // the fraction of a second a stop takes moves the whole composer twice.
   const agentStopping = stopping === "pending" && working && !!onInterrupt;
   const commandNotice = shellOn && running ? t.previousRunning : "";
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 6000);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
 
   const groups = useMemo<ChoiceGroup[]>(() => {
     if (!open) return [];
@@ -1230,10 +1264,14 @@ export function Composer({
     if (sendBlocked) {
       // A send the view cannot take says why rather than doing nothing.
       if (!resolving && !uploading && availability.state !== "enabled")
-        setNotice(t.notSent(unavailableReason(availability) ?? ""));
+        setNotice(
+          t.notSent(unavailableReason(availability) ?? ""),
+          refusalSubject,
+        );
       return;
     }
-    setUploadError(undefined);
+    setRefusedFiles([]);
+    setNotice("");
     // Attachments that cannot go in one message are refused here, before
     // anything is sent, with the numbers that did not fit.
     if (attachmentOverflow(attachmentsIn(content).map((a) => a.url))) {
@@ -1899,24 +1937,21 @@ export function Composer({
             }}
           />
           {uploading ? <p role="status">{t.savingAttachment}</p> : null}
-          {uploadError ? (
-            <p role="alert" data-testid="attachment-refusal">
-              {uploadError.text}{" "}
-              <TooltipButton
-                className={controlClassName({
-                  size: "inline",
-                  presentation: "icon",
-                  variant: "quiet",
-                })}
-                data-testid="attachment-refusal-dismiss"
-                aria-label={t.dismissAttachmentRefusal}
-                title={t.dismissAttachmentRefusal}
-                onClick={() => setUploadError(undefined)}
-              >
-                <Icon name="cross" />
-              </TooltipButton>
-            </p>
-          ) : null}
+          <AttachmentRefusal
+            refused={refusedFiles}
+            onDismiss={() => {
+              field.current?.focus();
+              setRefusedFiles([]);
+            }}
+            onRetry={(files) => {
+              field.current?.focus();
+              void addFiles(
+                files,
+                false,
+                refusedFiles.filter((r) => r.reason !== "failed"),
+              );
+            }}
+          />
         </>
       ) : null}
       {beforeField}
@@ -2029,14 +2064,12 @@ export function Composer({
         </div>
       </div>
       {fieldReason && !suppressAvailabilityReason ? (
-        <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
+        <WarningBanner subject="availability" tone="neutral">
+          {fieldReason}
+        </WarningBanner>
       ) : null}
       {waiting && draftValue.trim() ? (
-        <p
-          className="ah-composer-waiting"
-          data-testid="composer-waiting"
-          role="status"
-        >
+        <WarningBanner data-testid="composer-waiting" tone="progress">
           <Icon
             name="clock"
             width={13}
@@ -2045,7 +2078,7 @@ export function Composer({
             aria-hidden="true"
           />
           {waiting}
-        </p>
+        </WarningBanner>
       ) : null}
       {agentStopping ? (
         <p
@@ -2057,11 +2090,46 @@ export function Composer({
           {t.stopping}
         </p>
       ) : stopping || commandNotice || notice ? (
-        <p
+        <WarningBanner
           data-testid="composer-notice"
-          data-stopping={stopping}
-          className="ah-composer-notice"
-          role="status"
+          data-state={stopping}
+          subject={
+            stopping
+              ? "stop"
+              : commandNotice
+                ? "shell"
+                : (noticeEvent.subject ?? "composer")
+          }
+          lifetime={stopping || commandNotice ? "condition" : "event"}
+          actions={
+            !stopping && !commandNotice ? (
+              <TooltipButton
+                data-testid="notice-close"
+                className={controlClassName({
+                  size: "inline",
+                  presentation: "icon",
+                  variant: "quiet",
+                })}
+                aria-label={t.dismissNotice}
+                title={t.dismissNotice}
+                onClick={() => {
+                  field.current?.focus();
+                  setNotice("");
+                }}
+              >
+                <Icon name="cross" />
+              </TooltipButton>
+            ) : undefined
+          }
+          tone={
+            stopping === "pending"
+              ? "progress"
+              : (!stopping && noticeEvent.subject) ||
+                  commandNotice ||
+                  stopping === "uncertain"
+                ? "neutral"
+                : "danger"
+          }
         >
           {stopping === "pending" ? (
             <>
@@ -2075,7 +2143,7 @@ export function Composer({
           ) : (
             commandNotice || notice
           )}
-        </p>
+        </WarningBanner>
       ) : null}
       {speech ? (
         <DictationNoticeView

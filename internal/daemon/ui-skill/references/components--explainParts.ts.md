@@ -387,6 +387,13 @@ export const parts: Record<CardId, Part> = {
   V30: { kind: "once", sel: '[data-testid="ended-runs"]' },
   V31: { kind: "once", sel: '[data-testid="ask-agent"]' },
   V32: { kind: "once", sel: '[data-testid="attachment-refusal-dismiss"]' },
+  V33: {
+    kind: "panel",
+    sel: '[data-testid="notice-stack-toggle"]',
+    opens: true,
+  },
+  V34: { kind: "once", sel: '[data-testid="attachment-refusal-retry"]' },
+  V35: { kind: "info", sel: ".ah-notice-stack .ah-warning" },
   B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
   B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
   B03: {
@@ -597,6 +604,7 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "V29",
   "V31",
   "V32",
+  "V34",
   "S31",
   "S32",
   "S33",

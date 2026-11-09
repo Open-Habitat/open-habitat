@@ -47,7 +47,9 @@ import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { Icon } from "../components/Icon";
 import { ModelChip, modelSummary } from "../components/ModelChip";
+import { NoticeStack, NoticeStackProvider } from "../components/NoticeStack";
 import {
   ProcessAwareToolUse,
   ProcessProvider,
@@ -269,10 +271,12 @@ export function BrowserConversation(
         onStatusEvent={props.onStatusEvent}
       >
         <OwnMachineUseProvider key={view}>
-          <BrowserConversationContent
-            {...props}
-            onNativeHistory={setNativeHistory}
-          />
+          <NoticeStackProvider>
+            <BrowserConversationContent
+              {...props}
+              onNativeHistory={setNativeHistory}
+            />
+          </NoticeStackProvider>
         </OwnMachineUseProvider>
       </ProcessProvider>
     </SpinoffProvider>
@@ -972,6 +976,7 @@ function BrowserConversationContent({
     keepDraft = false,
     commandId?: string,
   ) => {
+    held.setNotice("");
     const sent = await submitDirect(text, keepDraft, commandId);
     // A held message's lasting outcome notice is over once another send goes.
     if (sent) {
@@ -1043,11 +1048,6 @@ function BrowserConversationContent({
   const startFailed =
     current?.state === "start_failed" &&
     held.waiting.some((w) => w.state === "failed");
-  useEffect(() => {
-    if (!held.notice || held.noticeLasts) return;
-    const timer = window.setTimeout(() => held.setNotice(""), 6000);
-    return () => window.clearTimeout(timer);
-  }, [held.notice, held.noticeLasts, held.setNotice]);
   const canSend =
     controlled &&
     archive?.archive !== "archived" &&
@@ -2130,6 +2130,7 @@ function BrowserConversationContent({
               : "idle",
           // The outage/status notice already explains the block and its remedy.
           // Keep the control's reason accessible, but do not show a second warning.
+          refusalSubject: unknownSend ? "send" : undefined,
           suppressAvailabilityReason:
             archive?.archive !== "archived" &&
             archive?.archive !== "unknown" &&
@@ -2255,6 +2256,7 @@ function BrowserConversationContent({
       {!view ? (
         <>
           <h2>{txt.conversations}</h2>
+          <NoticeStack />
           <details className="md-new">
             <summary
               className={`md-new-toggle ${controlClassName({ size: "row", text: true })}`}
@@ -2320,7 +2322,10 @@ function BrowserConversationContent({
               editorControl={<EditorHeaderControls />}
               titleAction={{
                 label: txt.retitle,
-                availability: { state: "disabled", reason: txt.nothingToName },
+                availability: {
+                  state: "disabled",
+                  reason: txt.nothingToName,
+                },
                 onPress: () => {},
               }}
               archive={
@@ -2492,7 +2497,12 @@ function BrowserConversationContent({
                             : txt.titleUncertain);
                       setTitleActionState((previous) =>
                         previous?.key === key
-                          ? { key, version, pending: false, error: description }
+                          ? {
+                              key,
+                              version,
+                              pending: false,
+                              error: description,
+                            }
                           : previous,
                       );
                     });
@@ -2746,21 +2756,26 @@ function BrowserConversationContent({
                 />
               )}
               {cutOff && (
-                <InlineNotice
+                <WarningBanner
                   data-testid="history-cut-off"
-                  tone="warning"
+                  tone="neutral"
                   title={txt.cutOff}
-                  description={txt.cutOffDetail}
-                  actions={[
-                    {
-                      label: txt.newConversation,
-                      onPress: () =>
-                        navigate(`/workspaces/${workspace.workspace_id}`),
-                    },
-                  ]}
-                />
+                  actions={
+                    <Button
+                      size="row"
+                      variant="secondary"
+                      label={txt.newConversation}
+                      onPress={() =>
+                        navigate(`/workspaces/${workspace.workspace_id}`)
+                      }
+                    />
+                  }
+                >
+                  {txt.cutOffDetail}
+                </WarningBanner>
               )}
               <ConversationTimeline
+                suppressProblem
                 problem={{
                   title: txt.historyUnavailable,
                   description: txt.historyUnavailableDetail,
@@ -2806,7 +2821,7 @@ function BrowserConversationContent({
                   ) : undefined
                 }
                 state={
-                  visibleHistoryError && !storagePressure.full
+                  visibleHistoryError
                     ? entries.length
                       ? "stale"
                       : "error"
@@ -2824,7 +2839,13 @@ function BrowserConversationContent({
                 items={[
                   ...timeline,
                   ...(restCard
-                    ? [{ id: "rest-card", kind: "receipt", content: restCard }]
+                    ? [
+                        {
+                          id: "rest-card",
+                          kind: "receipt",
+                          content: restCard,
+                        },
+                      ]
                     : []),
                   ...(ownMessage
                     ? [
@@ -3016,11 +3037,11 @@ function BrowserConversationContent({
               ) : null}
               {(!current?.pending_question || statusStale) &&
               questionOutcome ? (
-                <p className="ah-native-question" role="status">
+                <WarningBanner subject="question" tone="neutral">
                   {questionOutcome === "stale"
                     ? txt.questionStale
                     : txt.questionUncertain}
-                </p>
+                </WarningBanner>
               ) : null}
               {/* Normal progress belongs to the turn header, not a second row
                 that mounts/unmounts beneath streaming content. */}
@@ -3032,16 +3053,17 @@ function BrowserConversationContent({
                 !held.waiting.length ? (
                 <WorkingProgress state="uncertain" events={events} />
               ) : null}
-              {!storagePressure.full && statusStale && !serverUnavailable ? (
-                <InlineNotice
+              {statusStale && !serverUnavailable ? (
+                <WarningBanner
                   data-testid="conversation-stale"
                   title={txt.stale}
-                  description={txt.staleDetail}
-                  tone="warning"
-                  actions={[
-                    {
-                      label: txt.check,
-                      onPress: () => {
+                  tone="neutral"
+                  actions={
+                    <Button
+                      size="row"
+                      variant="secondary"
+                      label={txt.check}
+                      onPress={() => {
                         if (
                           continuation &&
                           continuation !== "uncertain" &&
@@ -3049,30 +3071,32 @@ function BrowserConversationContent({
                         )
                           setContinuation(undefined);
                         void refresh(true, true);
-                      },
-                    },
-                  ]}
-                />
+                      }}
+                    />
+                  }
+                >
+                  {txt.staleDetail}
+                </WarningBanner>
               ) : null}
-              {!storagePressure.full &&
-              journalOffline &&
-              !statusStale &&
-              !serverUnavailable ? (
-                <InlineNotice
+              {journalOffline && !statusStale && !serverUnavailable ? (
+                <WarningBanner
+                  subject="connection"
                   title={txt.journalLost}
-                  description={txt.journalLostDetail}
-                  tone="warning"
-                />
+                  tone="neutral"
+                >
+                  {txt.journalLostDetail}
+                </WarningBanner>
               ) : null}
               {!statusStale &&
               !serverUnavailable &&
               showMissedEvents(!!live?.missed, current) ? (
-                <InlineNotice
+                <WarningBanner
                   data-testid="event-gap"
                   title={txt.missed}
-                  description={txt.missedDetail}
-                  tone="warning"
-                />
+                  tone="neutral"
+                >
+                  {txt.missedDetail}
+                </WarningBanner>
               ) : null}
               {events.length && current?.native_history !== "present" ? (
                 <p role="status">{txt.eventsBeforeHistory}</p>
@@ -3114,6 +3138,16 @@ function BrowserConversationContent({
             />
           )}
           <div className="ah-composer-stack">
+            <NoticeStack />
+            {storagePressure.full ? (
+              <WarningBanner
+                data-testid="storage-full-notice"
+                tone="danger"
+                title={txt.storageFull}
+              >
+                {txt.storageFullDetail}
+              </WarningBanner>
+            ) : null}
             {view === "opened" ? (
               <>
                 <div className="ah-actionable-notices">
@@ -3164,14 +3198,13 @@ function BrowserConversationContent({
                     />
                   ) : null}
                 </div>
-                {!storagePressure.full &&
-                !statusStale &&
-                visibleHistoryError ? (
+                {!statusStale && visibleHistoryError ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="history-unavailable"
+                      subject="send"
                       data-state={recheckState}
-                      tone="danger"
+                      tone="neutral"
                       title={txt.historyUnavailable}
                       actions={
                         <Button
@@ -3198,10 +3231,11 @@ function BrowserConversationContent({
                         : null}
                     </WarningBanner>
                   </div>
-                ) : !storagePressure.full && !statusStale && unknownSend ? (
+                ) : !statusStale && unknownSend ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="send-uncertain"
+                      subject="send"
                       data-reason={unknownSend}
                       data-state={recheckState}
                       tone="neutral"
@@ -3250,22 +3284,43 @@ function BrowserConversationContent({
                 ) : null}
                 <div className="ah-conversation-notices">
                   {titleError ? (
-                    <InlineNotice
+                    <WarningBanner
                       data-testid="title-error"
-                      title={txt.titleFailed}
-                      description={titleError || undefined}
                       tone="danger"
-                    />
+                      title={txt.titleFailed}
+                      lifetime="event"
+                    >
+                      {titleError}
+                    </WarningBanner>
                   ) : null}
-                  {statusStale || storagePressure.full ? null : notices}
+                  {statusStale ? null : notices}
                   {held.notice ? (
-                    <p
+                    <WarningBanner
                       data-testid="held-message-notice"
-                      className="ah-held-notice"
-                      role="status"
+                      tone={held.noticeLasts ? "danger" : "neutral"}
+                      lifetime="event"
+                      actions={
+                        <ControlButton
+                          data-testid="notice-close"
+                          size="inline"
+                          variant="quiet"
+                          presentation="icon"
+                          aria-label={txt.dismissNotice}
+                          onPress={() => {
+                            section.current
+                              ?.querySelector<HTMLTextAreaElement>(
+                                '[data-testid="message-input"]',
+                              )
+                              ?.focus();
+                            held.setNotice("");
+                          }}
+                        >
+                          <Icon name="cross" />
+                        </ControlButton>
+                      }
                     >
                       {held.notice}
-                    </p>
+                    </WarningBanner>
                   ) : null}
                 </div>
                 {(recapFailed

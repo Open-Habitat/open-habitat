@@ -970,6 +970,48 @@ describe("composer speech input", () => {
 });
 
 describe("attachment refusal lifetime", () => {
+  it("retry keeps unrelated refusals and does not expose transport error text", async () => {
+    function Draft() {
+      const [value, setValue] = useState("Draft");
+      return (
+        <Composer {...base} csrf="csrf" value={value} onChange={setValue} />
+      );
+    }
+    const large = new File(["x"], "large.mov");
+    Object.defineProperty(large, "size", { value: 34 * 1024 * 1024 });
+    const small = new File(["x"], "small.txt");
+    vi.mocked(uploadAttachment).mockRejectedValueOnce(
+      new Error("Failed to fetch"),
+    );
+    const view = render(<Draft />);
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [large, small] } },
+    );
+    await waitFor(() =>
+      expect(view.getByTestId("attachment-refusal-retry")).toBeTruthy(),
+    );
+    expect(view.getByTestId("attachment-refusal").textContent).not.toContain(
+      "Failed to fetch",
+    );
+    vi.mocked(uploadAttachment).mockResolvedValueOnce({
+      reference:
+        "[small.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)",
+    } as Awaited<ReturnType<typeof uploadAttachment>>);
+    fireEvent.click(view.getByTestId("attachment-refusal-retry"));
+    await waitFor(() =>
+      expect(view.getAllByTestId("attachment-chip")).toHaveLength(1),
+    );
+    expect(view.getByTestId("attachment-refusal").textContent).toContain(
+      "large.mov",
+    );
+    expect(view.getByTestId("attachment-refusal").textContent).not.toContain(
+      "small.txt",
+    );
+    view.getByTestId("attachment-refusal-dismiss").focus();
+    fireEvent.click(view.getByTestId("attachment-refusal-dismiss"));
+    expect(document.activeElement).toBe(field(view));
+  });
   const reference =
     "[notes.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)";
   const file = new File(["synthetic"], "notes.txt");
@@ -982,7 +1024,7 @@ describe("attachment refusal lifetime", () => {
     );
 
   it.each(["remove", "replace", "send", "dismiss", "accept", "switch"])(
-    "clears an obsolete refusal on %s, but not on ordinary typing",
+    "keeps a refusal until another attempt or dismissal: %s",
     async (action) => {
       const sent = vi.fn();
       function Draft({ conversation }: { conversation: string }) {
@@ -1024,12 +1066,14 @@ describe("attachment refusal lifetime", () => {
         >);
         pick(view);
       }
-      await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
+      if (action === "remove" || action === "replace") {
+        expect(view.getByTestId("attachment-refusal")).toBeTruthy();
+      } else await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
       if (action === "send") expect(sent).toHaveBeenCalledOnce();
     },
   );
 
-  it("keeps a batch's refusal after an earlier file in that batch succeeds", async () => {
+  it("keeps a batch's refusal while earlier and later files succeed", async () => {
     function Draft() {
       const [value, setValue] = useState("Draft");
       return (
@@ -1040,13 +1084,21 @@ describe("attachment refusal lifetime", () => {
       .mockResolvedValueOnce({ reference } as Awaited<
         ReturnType<typeof uploadAttachment>
       >)
-      .mockRejectedValueOnce(new Error("Synthetic refusal"));
+      .mockRejectedValueOnce(new Error("Synthetic refusal"))
+      .mockResolvedValueOnce({
+        reference: reference.replaceAll("33333333", "44444444"),
+      } as Awaited<ReturnType<typeof uploadAttachment>>);
     const view = render(<Draft />);
-    pick(view, [file, file]);
+    pick(view, [file, file, file]);
     await waitFor(() =>
       expect(view.getByTestId("attachment-refusal")).toBeTruthy(),
     );
-    expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+    await waitFor(() =>
+      expect(view.getAllByTestId("attachment-chip")).toHaveLength(2),
+    );
+    expect(view.getByTestId("attachment-refusal").textContent).toContain(
+      "notes.txt",
+    );
   });
 });
 
@@ -1496,7 +1548,7 @@ describe("attachments that do not fit one message", () => {
     expect(change).not.toHaveBeenCalled();
     expect(view.queryByTestId("attachment-chip")).toBeNull();
   });
-  it("does not upload the crossing file, blocks send, and resumes after removal", async () => {
+  it("refuses the crossing file by name and lets the accepted files send", async () => {
     const send = vi.fn();
     const { rememberAttachmentSize } = await import("../../app/largeContent");
     let number = 100;
@@ -1532,9 +1584,9 @@ describe("attachments that do not fit one message", () => {
         target: { files },
       },
     );
-    expect(
-      view.getByTestId("attachment-overflow").getAttribute("data-reason"),
-    ).toBe("bytes");
+    expect(view.getByTestId("attachment-refusal").textContent).toContain(
+      "5.bin",
+    );
     await waitFor(() => expect(uploadAttachment).toHaveBeenCalledTimes(5));
     await waitFor(() =>
       expect(
@@ -1543,14 +1595,8 @@ describe("attachments that do not fit one message", () => {
     );
     expect(
       view.container.querySelectorAll('[data-blocked="true"]'),
-    ).toHaveLength(1);
-    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
-    expect(send).not.toHaveBeenCalled();
-    fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
-    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledTimes(6));
-    await waitFor(() =>
-      expect(view.queryByTestId("attachment-overflow")).toBeNull(),
-    );
+    ).toHaveLength(0);
+    expect(uploadAttachment).toHaveBeenCalledTimes(5);
     expect(field(view).value).toBe("Keep this text");
     fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
     expect(send).toHaveBeenCalledTimes(1);

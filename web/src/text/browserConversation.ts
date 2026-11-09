@@ -4,6 +4,10 @@ import { catalog } from "../i18n";
 // new-conversation start, the header and its details, live progress, the
 // recovery banners and why sending or a recap is not available now.
 const fi = {
+  dismissNotice: "Sulje",
+  storageFull: "Tallennustila on täynnä",
+  storageFullDetail:
+    "Vapauta tilaa ennen työn jatkamista. Pyydä tarvittaessa palvelimen ylläpitäjältä apua.",
   modelUnknown: "Malli ei tiedossa",
   attention: (title: string) => `Agentti tarvitsee huomiota · ${title}`,
   resting: "Agentti lepää. Kirjoittaminen herättää sen.",
@@ -141,6 +145,10 @@ const fi = {
 };
 
 export const browserConversationText = catalog(fi, {
+  dismissNotice: "Close",
+  storageFull: "Storage is full",
+  storageFullDetail:
+    "Free up space before continuing. Ask the server's administrator for help if needed.",
   modelUnknown: "Model unknown",
   attention: (title) => `Agent needs attention · ${title}`,
   resting: "The agent is resting. Typing wakes it.",

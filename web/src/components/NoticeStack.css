@@ -1,0 +1,33 @@
+.ah-notice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-notice-stack:empty {
+  display: none;
+}
+.ah-notice-stack .ah-warning {
+  overflow-wrap: anywhere;
+}
+.ah-refused-files {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--ah-s2);
+}
+.ah-refused-files li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  justify-content: space-between;
+}
+.ah-refused-files li > :last-child {
+  color: var(--ah-muted);
+}
+.ah-notice-stack
+  .ah-warning.ah-warning-inline
+  .ah-warning-actions
+  > [data-testid="attachment-refusal-dismiss"] {
+  flex: none;
+  margin-inline-start: auto;
+}

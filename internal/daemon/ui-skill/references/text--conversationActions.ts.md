@@ -8,6 +8,7 @@ import { catalog } from "../i18n";
 // Creating a conversation, sending, queueing and clearing the queue
 // (app/ConversationActions.tsx): receipts and refusals.
 const fi = {
+  dismissNotice: "Sulje ilmoitus",
   // Why the host refused a message and what the person can do. A refusal
   // means nothing was written: the text is back in the field.
   readOnlyRefusal:
@@ -35,6 +36,7 @@ const fi = {
 };
 
 export const conversationActionsText = catalog(fi, {
+  dismissNotice: "Dismiss notice",
   readOnlyRefusal:
     "The message was not sent because this conversation can only be read now. The text is back in the field: continue the conversation or start a new one.",
   sendRefusal:
