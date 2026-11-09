@@ -15,7 +15,8 @@ const validList = ajv.getSchema(`${viewSchema.$id}#/$defs/list`);
 const validHandoff = ajv.getSchema(`${viewSchema.$id}#/$defs/handoff`);
 
 export const viewIdPattern = /^v[a-z2-7]{26}$/;
-const limit = 256 << 10;
+// A page holds at most 100 views, each with its title, entry and source.
+const limit = 1 << 20;
 
 async function boundedJSON(response: Response, max: number): Promise<unknown> {
   if (
@@ -27,12 +28,20 @@ async function boundedJSON(response: Response, max: number): Promise<unknown> {
   return JSON.parse(text);
 }
 
-/** The person's views, newest first; null when the installation has no view
- * origin (an empty 204), which means views are not offered at all. */
+export type ViewPage = { views: ViewSummary[]; next?: string };
+
+/** One page of the person's views, or of one conversation's, newest first;
+ * null when the installation has no view origin (an empty 204), which means
+ * views are not offered at all. */
 export async function listViews(
   signal?: AbortSignal,
-): Promise<ViewSummary[] | null> {
-  const response = await fetch("/api/v1/views", {
+  query: { conversationId?: string; cursor?: string } = {},
+): Promise<ViewPage | null> {
+  const params = new URLSearchParams();
+  if (query.conversationId) params.set("conversation_id", query.conversationId);
+  if (query.cursor) params.set("cursor", query.cursor);
+  const search = params.toString() ? `?${params}` : "";
+  const response = await fetch(`/api/v1/views${search}`, {
     credentials: "same-origin",
     cache: "no-store",
     signal,
@@ -41,7 +50,50 @@ export async function listViews(
   if (!response.ok) throw new Error("views unavailable");
   const value = await boundedJSON(response, limit);
   if (!validList(value)) throw new Error("unexpected view reply");
-  return (value as { views: ViewSummary[] }).views;
+  const page = value as { views: ViewSummary[]; next_cursor?: string };
+  return { views: page.views, next: page.next_cursor };
+}
+
+// A read follows the pages to the end. A cursor seen before would start
+// the same pages again, so it ends the read instead of looping.
+function fresh(seen: Set<string>, cursor: string | undefined) {
+  if (!cursor || seen.has(cursor)) return false;
+  seen.add(cursor);
+  return true;
+}
+
+/** Every view of one conversation, newest first, read page by page; null
+ * where the installation offers no views. */
+export async function conversationViews(
+  conversationId: string,
+  signal?: AbortSignal,
+): Promise<ViewSummary[] | null> {
+  const views: ViewSummary[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const page = await listViews(signal, { conversationId, cursor });
+    if (!page) return null;
+    views.push(...page.views);
+    cursor = page.next;
+  } while (fresh(seen, cursor));
+  return views;
+}
+
+/** One of the person's views, looked up page by page. */
+export async function findView(
+  viewId: string,
+  signal?: AbortSignal,
+): Promise<ViewSummary | undefined> {
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const page = await listViews(signal, { cursor });
+    const found = page?.views.find((v) => v.view_id === viewId);
+    if (found || !page) return found;
+    cursor = page.next;
+  } while (fresh(seen, cursor));
+  return undefined;
 }
 
 /** A one-minute, single-use URL that opens the view on its own host. */

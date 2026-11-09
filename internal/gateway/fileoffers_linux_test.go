@@ -211,3 +211,33 @@ func TestViewZipIsAnAttachmentForTheOwner(t *testing.T) {
 		t.Fatalf("daemon reads: %d", got)
 	}
 }
+
+func TestViewListForwardsOnlyItsPageAndConversation(t *testing.T) {
+	seen := make(chan *http.Request, 16)
+	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Clone(context.Background())
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"schema_version":1,"views":[]}`)
+	})
+	d := newEditorDesk(t, daemon)
+	d.a.cfg.ViewOrigin = "https://oh-view-*.test"
+	const conversation = "conversation_id=pi:11111111-1111-4111-8111-111111111111"
+	const cursor = "cursor=2026-11-09T10:00:00Z_vaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	for _, query := range []string{"", "?" + conversation, "?" + cursor, "?" + conversation + "&" + cursor} {
+		if res := d.do("GET", "host.test", "/api/v1/views"+query, "", appCookie); res.StatusCode != 200 {
+			t.Fatalf("%q: %d", query, res.StatusCode)
+		}
+		if r := <-seen; r.URL.RequestURI() != "/api/v1/views"+query {
+			t.Fatalf("%q reached the daemon as %q", query, r.URL.RequestURI())
+		}
+	}
+	// Anything else is refused before the daemon is asked.
+	for _, query := range []string{"?x=1", "?" + conversation + "&x=1", "?" + cursor + "&" + cursor, "?cursor="} {
+		if res := d.do("GET", "host.test", "/api/v1/views"+query, "", appCookie); res.StatusCode != 400 {
+			t.Fatalf("%q: %d", query, res.StatusCode)
+		}
+	}
+	if len(seen) != 0 {
+		t.Fatalf("a refused list reached the daemon")
+	}
+}

@@ -2,7 +2,7 @@
 created: 2026-11-09
 updated: 2026-11-09
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: found while fixing assets-chip-misses-views
@@ -11,6 +11,7 @@ originating_run: 01m6z8dg4bwy3ezdbqtmqwv069
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Assets chip loses an older conversation's views once the person has over 200 views
@@ -41,6 +42,6 @@ path (contract), not title + entry name.
 
 ## Acceptance Criteria
 
-- [ ] Chip reads its conversation's views per conversation, with no person-wide cap.
-- [ ] Person-wide view list pages instead of capping at 200.
-- [ ] A re-offered file or folder from the same source shows as a newer version of the same row; different sources with the same name stay apart.
+- [x] Chip reads its conversation's views per conversation, with no person-wide cap.
+- [x] Person-wide view list pages instead of capping at 200.
+- [x] A re-offered file or folder from the same source shows as a newer version of the same row; different sources with the same name stay apart.

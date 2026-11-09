@@ -852,7 +852,7 @@ const fi = {
     V13: {
       name: "Näkymät ja tiedostot",
       lead: "Kaikki, mitä agentti on tässä keskustelussa tarjonnut: näkymät ja tiedostot, uusin ylimpänä.",
-      know: "Saman raportin versiot ovat yhdellä rivillä. Rivi avaa kohteen keskustelun viereen, ja sama rivi sulkee sen.",
+      know: "Kun agentti tarjoaa saman tiedoston tai kansion uudelleen, uusi versio tulee samalle riville; samanniminen raportti muualta saa oman rivinsä. Rivi avaa kohteen keskustelun viereen, ja sama rivi sulkee sen.",
       try: "Avaa lista",
     },
     V14: {
@@ -2294,7 +2294,7 @@ export const explainModeText = catalog(fi, {
     V13: {
       name: "Views and files",
       lead: "Everything the agent has offered in this conversation: views and files, newest first.",
-      know: "Versions of one report share a row. A row opens the item beside the conversation, and the same row closes it.",
+      know: "When the agent offers the same file or folder again, the new version joins its row; a report of the same name from elsewhere gets its own. A row opens the item beside the conversation, and the same row closes it.",
       try: "Open the list",
     },
     V14: {

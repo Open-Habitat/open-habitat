@@ -45,7 +45,13 @@ const (
 	maxViewDepth = 16
 	maxViewTitle = 200
 	maxViewPath  = 1024
-	maxViewList  = 200
+	// The agent's lists and a conversation's file offers stop here.
+	maxViewList = 200
+	// One page of the browser's view list; a person keeps far more.
+	maxViewPage = 100
+	// A source is an absolute path on the host, which may be longer than a
+	// path inside an export.
+	maxViewSource = 4096
 )
 
 var viewsDirParts = []string{".local", "state", "open-habitat", "views"}
@@ -60,6 +66,12 @@ type viewSummary struct {
 	Bytes          int64  `json:"bytes"`
 	CreatedAt      string `json:"created_at"`
 	ConversationID string `json:"conversation_id,omitempty"`
+	// Source is the absolute path the agent offered from, resolved when it
+	// offered: the browser shows a re-offer of the same file or folder as a
+	// newer version of one report. It is the owner's fact; the export-read
+	// route the view origin uses leaves it out. Views offered before it was
+	// recorded have none.
+	Source string `json:"source,omitempty"`
 }
 
 type viewManifest struct {
@@ -145,7 +157,39 @@ func validViewSummary(v viewSummary) bool {
 	t, err := time.Parse(time.RFC3339Nano, v.CreatedAt)
 	return viewIDPattern.MatchString(v.ID) && validViewTitle(v.Title) && validViewPath(v.Entry) && viewEntryHTML(v.Entry) &&
 		v.Files >= 1 && v.Files <= maxViewFiles && v.Bytes >= 0 && v.Bytes <= maxViewBytes && err == nil && !t.IsZero() &&
-		(v.ConversationID == "" || viewConversationPattern.MatchString(v.ConversationID))
+		(v.ConversationID == "" || viewConversationPattern.MatchString(v.ConversationID)) && (v.Source == "" || validOfferedSource(v.Source))
+}
+
+// validOfferedSource is a recorded source: absolute, clean, without control
+// characters.
+func validOfferedSource(p string) bool {
+	if len(p) > maxViewSource || !utf8.ValidString(p) || !path.IsAbs(p) || path.Clean(p) != p {
+		return false
+	}
+	for _, r := range p {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// offeredSource is the absolute path an offer names: an absolute source as
+// it is, a relative one below the opened workspace root as the kernel names
+// that directory now. Empty when it cannot be told, and the view then folds
+// as views without a source do.
+func offeredSource(root int, source string) string {
+	if path.IsAbs(source) {
+		return source
+	}
+	dir, err := os.Readlink("/proc/self/fd/" + strconv.Itoa(root))
+	if err != nil || !path.IsAbs(dir) {
+		return ""
+	}
+	if p := path.Join(dir, source); validOfferedSource(p) {
+		return p
+	}
+	return ""
 }
 
 func newViewID() (string, error) {
@@ -548,11 +592,15 @@ func removeView(home, id string) error {
 
 // ViewsHandler is the browser's read of the person's views:
 //
-//	GET /api/v1/views            the person's views, newest first
+//	GET /api/v1/views[?conversation_id=pi:UUID][&cursor=…]
+//	                             the views (one conversation's), newest first,
+//	                             one page at a time
 //	GET /api/v1/views/<id>/zip   one view's frozen files as one stored zip
 //
-// The zip is a download for the owner's own session; the view's content is
-// only ever presented on its own view host.
+// A page that is not the last names the cursor of the next; the cursor is
+// the last view's place in the order, so a view removed meanwhile does not
+// move the pages after it. The zip is a download for the owner's own
+// session; the view's content is only ever presented on its own view host.
 func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -563,7 +611,13 @@ func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.H
 			serveViewZipRoute(w, r, cfg.Home)
 			return
 		}
-		if r.Method != http.MethodGet || r.URL.EscapedPath() != ViewsPath || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		q, err := url.ParseQuery(r.URL.RawQuery)
+		if r.Method != http.MethodGet || r.URL.EscapedPath() != ViewsPath || err != nil || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		conversation, after, ok := viewListQuery(q)
+		if !ok {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -572,15 +626,64 @@ func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.H
 			snapshotError(w, 503, "view_store_unavailable")
 			return
 		}
-		views := make([]viewSummary, 0, len(list))
+		views := make([]viewSummary, 0, maxViewPage)
+		next := ""
 		for _, m := range list {
-			if len(views) == maxViewList {
+			if conversation != "" && m.ConversationID != conversation || after != nil && !viewAfter(m.viewSummary, *after) {
+				continue
+			}
+			if len(views) == maxViewPage {
+				next = viewCursor(views[len(views)-1])
 				break
 			}
 			views = append(views, m.viewSummary)
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "views": views})
+		body := map[string]any{"schema_version": 1, "views": views}
+		if next != "" {
+			body["next_cursor"] = next
+		}
+		historyJSON(w, body)
 	})
+}
+
+// viewListQuery reads the list's optional conversation and cursor; any other
+// key, a repeated one or a malformed value refuses the read.
+func viewListQuery(q url.Values) (conversation string, after *viewSummary, ok bool) {
+	for key, values := range q {
+		if len(values) != 1 {
+			return "", nil, false
+		}
+		switch key {
+		case "conversation_id":
+			if conversation = values[0]; !viewConversationPattern.MatchString(conversation) {
+				return "", nil, false
+			}
+		case "cursor":
+			at, id, found := strings.Cut(values[0], "_")
+			t, err := time.Parse(time.RFC3339Nano, at)
+			if !found || err != nil || t.IsZero() || !viewIDPattern.MatchString(id) {
+				return "", nil, false
+			}
+			after = &viewSummary{ID: id, CreatedAt: at}
+		default:
+			return "", nil, false
+		}
+	}
+	return conversation, after, true
+}
+
+// viewCursor names a view's place in the list's order (newest first, then
+// by ID), which is what the next page starts after.
+func viewCursor(v viewSummary) string { return v.CreatedAt + "_" + v.ID }
+
+// viewAfter says whether v comes after the cursor's view in the list's order.
+// The manifests' times are written in one UTC format, so they compare as
+// text, as listViews sorts them.
+func viewAfter(v, cursor viewSummary) bool {
+	if v.CreatedAt != cursor.CreatedAt {
+		return v.CreatedAt < cursor.CreatedAt
+	}
+	return v.ID > cursor.ID
 }
 
 func serveViewZipRoute(w http.ResponseWriter, r *http.Request, home string) {
@@ -775,7 +878,10 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 			return
 		}
 		if rel == "" {
-			historyJSON(w, map[string]any{"schema_version": 1, "view": m.viewSummary})
+			// The view origin needs the entry, never where it was offered from.
+			summary := m.viewSummary
+			summary.Source = ""
+			historyJSON(w, map[string]any{"schema_version": 1, "view": summary})
 			return
 		}
 		fd, err := open(unix.Openat2, int(views.Fd()), id+"/files/"+rel, unix.O_RDONLY|unix.O_NONBLOCK, true)
@@ -937,7 +1043,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 				title = title[:len(title)-size]
 			}
 		}
-		summary = viewSummary{Title: title, Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: q.id}
+		summary = viewSummary{Title: title, Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: q.id, Source: offeredSource(root, req.Path)}
 		skipped = plan.skipped
 		if req.DryRun {
 			historyJSON(w, map[string]any{"schema_version": 1, "dry_run": true, "plan": map[string]any{"title": summary.Title, "entry": summary.Entry, "files": summary.Files, "bytes": summary.Bytes, "skipped_hidden": skipped, "conversation_id": q.id}})
@@ -1033,7 +1139,7 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: target}
+	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: target, Source: offeredSource(root, req.Path)}
 	if summary.ID, err = newViewID(); err != nil || exportView(home, root, req, plan, summary) != nil {
 		return "", false
 	}

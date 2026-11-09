@@ -290,12 +290,106 @@ func TestViewExportReadsOnlyFilesOfThatExport(t *testing.T) {
 	if w := readExport(untrusted, ViewExportPath(a.View.ID, "index.html")); w.Code != 403 {
 		t.Fatalf("untrusted peer: %d", w.Code)
 	}
-	// The browser list carries summaries only, never workspace paths or keys.
+	// The browser list carries summaries only, never the offer's workspace,
+	// request path or key; the source it names is the owner's own fact.
 	lw := httptest.NewRecorder()
 	ViewsHandler(h.cfg, func(*http.Request) bool { return true }).ServeHTTP(lw, httptest.NewRequest("GET", "http://unix"+ViewsPath, nil))
 	body, _ := io.ReadAll(lw.Body)
-	if lw.Code != 200 || !strings.Contains(string(body), a.View.ID) || strings.Contains(string(body), "idempotency_key") || strings.Contains(string(body), `"path"`) || strings.Contains(string(body), ws) {
+	if lw.Code != 200 || !strings.Contains(string(body), a.View.ID) || strings.Contains(string(body), "idempotency_key") || strings.Contains(string(body), `"path"`) || strings.Contains(string(body), ws) || !strings.Contains(string(body), `"source":"`+filepath.Join(h.root, "src", "project", "site")+`"`) {
 		t.Fatalf("browser list: %d %s", lw.Code, body)
+	}
+	// The view origin's summary names the entry, never where it came from.
+	if w := readExport(export, ViewExportPrefix+a.View.ID+"/"); strings.Contains(w.Body.String(), "source") || strings.Contains(w.Body.String(), h.root) {
+		t.Fatalf("export summary names its source: %s", w.Body.String())
+	}
+}
+
+// The browser reads the views one page at a time, the person's or one
+// conversation's, and a re-offer of the same file records the same source.
+func TestViewListPagesByConversation(t *testing.T) {
+	h := viewFixture(t)
+	c, ws := h.c, h.ws
+	conversation := strings.TrimPrefix(h.q, "id=")
+	_, first := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000041", "workspace_id": ws, "path": "report.html"})
+	_, again := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000042", "workspace_id": ws, "path": "report.html", "title": "Toinen nimi"})
+	_, site := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000043", "workspace_id": ws, "path": "site", "entry": "index.html"})
+	report := filepath.Join(h.root, "src", "project", "report.html")
+	if first.View.Source != report || again.View.Source != report || site.View.Source != filepath.Join(h.root, "src", "project", "site") || first.View.ID == again.View.ID {
+		t.Fatalf("sources: %q %q %q", first.View.Source, again.View.Source, site.View.Source)
+	}
+	// Other conversations' views, and enough of them to need pages. They are
+	// written as the store holds them; the list reads nothing else.
+	store := filepath.Join(append([]string{h.root}, viewsDirParts...)...)
+	other := "pi:22222222-2222-4222-8222-222222222222"
+	for i := 0; i < 2*maxViewPage+5; i++ {
+		id, _ := newViewID()
+		m := viewManifest{SchemaVersion: 1, viewSummary: viewSummary{ID: id, Title: "Muu", Entry: "index.html", Files: 1, Bytes: 1, CreatedAt: fmt.Sprintf("2026-01-01T00:00:%02dZ", i%60), ConversationID: other}, IdempotencyKey: fmt.Sprintf("00000000-0000-4000-8000-%012d", i), WorkspaceID: ws, Path: "x.html"}
+		b, _ := json.Marshal(m)
+		if err := os.MkdirAll(filepath.Join(store, id), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(store, id, "manifest.json"), b, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler := ViewsHandler(h.cfg, func(*http.Request) bool { return true })
+	type page struct {
+		Views []viewSummary `json:"views"`
+		Next  string        `json:"next_cursor"`
+	}
+	read := func(query string) (int, page) {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest("GET", "http://unix"+ViewsPath+query, nil))
+		var p page
+		_ = json.Unmarshal(w.Body.Bytes(), &p)
+		return w.Code, p
+	}
+	code, mine := read("?conversation_id=" + conversation)
+	if code != 200 || len(mine.Views) != 3 || mine.Next != "" || mine.Views[0].ID != site.View.ID {
+		t.Fatalf("conversation's views: %d %+v", code, mine)
+	}
+	seen := map[string]bool{}
+	query := ""
+	for pages := 0; ; pages++ {
+		code, p := read(query)
+		if code != 200 || len(p.Views) > maxViewPage || pages > 3 {
+			t.Fatalf("page %d: %d %d", pages, code, len(p.Views))
+		}
+		for _, v := range p.Views {
+			if seen[v.ID] {
+				t.Fatalf("view %s on two pages", v.ID)
+			}
+			seen[v.ID] = true
+		}
+		if p.Next == "" {
+			break
+		}
+		query = "?cursor=" + p.Next
+	}
+	if len(seen) != 2*maxViewPage+8 {
+		t.Fatalf("pages held %d views", len(seen))
+	}
+	// A cursor whose view is gone still continues where it was.
+	code, p1 := read("?conversation_id=" + other)
+	if code != 200 || len(p1.Views) != maxViewPage || p1.Next == "" {
+		t.Fatalf("first page: %d %d %q", code, len(p1.Views), p1.Next)
+	}
+	if err := removeView(h.root, p1.Views[len(p1.Views)-1].ID); err != nil {
+		t.Fatal(err)
+	}
+	code, p2 := read("?conversation_id=" + other + "&cursor=" + p1.Next)
+	if code != 200 || len(p2.Views) != maxViewPage {
+		t.Fatalf("after a removal: %d %d", code, len(p2.Views))
+	}
+	for _, v := range p1.Views {
+		if v.ID == p2.Views[0].ID {
+			t.Fatalf("view %s repeated after a removal", v.ID)
+		}
+	}
+	for _, q := range []string{"?x=1", "?conversation_id=pi:x", "?cursor=nope", "?cursor=2026-01-01T00:00:00Z_vx", "?conversation_id=" + conversation + "&conversation_id=" + conversation, "?cursor=_" + site.View.ID} {
+		if code, _ := read(q); code != 400 {
+			t.Errorf("%s: %d", q, code)
+		}
 	}
 }
 

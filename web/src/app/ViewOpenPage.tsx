@@ -6,7 +6,7 @@ import { viewOpenPageText } from "../text/viewOpenPage";
 import { OfferAtAddress } from "./OfferOpenPage";
 import { accountSession } from "./pi";
 import { ensureViewAddress, openViewEntry } from "./viewLinks";
-import { listViews, mintViewURL, viewIdPattern } from "./views";
+import { findView, mintViewURL, viewIdPattern } from "./views";
 
 const entryPattern = /^\/n\/([A-Za-z0-9_-]{43})$/;
 
@@ -33,9 +33,9 @@ function frameView(
   show: (shown: Shown) => void,
   setTitle: (title: string) => void,
 ) {
-  void listViews().then(
-    (views) => {
-      const title = views?.find((v) => v.view_id === viewId)?.title;
+  void findView(viewId).then(
+    (view) => {
+      const title = view?.title;
       if (!live() || !title) return;
       document.title = title;
       setTitle(title);

@@ -8,7 +8,8 @@
       "files": 3,
       "bytes": 24576,
       "created_at": "2026-10-25T12:00:00Z",
-      "conversation_id": "pi:11111111-1111-4111-8111-111111111111"
+      "conversation_id": "pi:11111111-1111-4111-8111-111111111111",
+      "source": "/home/example/src/example/reports/sales"
     },
     {
       "view_id": "vbcdefghijklmnopqrstuvwxyza",
@@ -18,5 +19,6 @@
       "bytes": 24576,
       "created_at": "2026-10-25T12:00:00Z"
     }
-  ]
+  ],
+  "next_cursor": "2026-10-25T12:00:00Z_vbcdefghijklmnopqrstuvwxyza"
 }

@@ -20,6 +20,9 @@ export type ViewSummary = {
   bytes: number;
   created_at: string;
   conversation_id?: string;
+  /** Where the agent offered it from, for telling a report's versions
+   * apart; never shown. */
+  source?: string;
 };
 
 /** What the person's last press on this card did. A tab is only requested:

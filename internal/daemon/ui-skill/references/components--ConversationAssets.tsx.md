@@ -38,8 +38,8 @@ export type AssetItem =
 export const assetId = (item: AssetItem) =>
   item.kind === "view" ? item.view.view_id : item.offer.offer_id;
 
-/** One row of the list: a view with its earlier versions (same entry file),
- * or one file offer. */
+/** One row of the list: a view with its earlier versions (offered again
+ * from the same source), or one file offer. */
 export type AssetEntry =
   | { kind: "view"; key: string; at: string; versions: ViewSummary[] }
   | {
@@ -51,19 +51,28 @@ export type AssetEntry =
     };
 
 /** The list's rows from a conversation's views and offers, newest first.
- * Views of the same entry file are one report's versions. */
+ * Views offered again from the same file or folder (and entry) are one
+ * report's versions, whatever the agent titled them; the same name offered
+ * from elsewhere is another report. A view offered before its source was
+ * recorded folds with views of the same title and entry file: the entry
+ * alone does not tell reports apart, since a single-file export is often
+ * `index.html` or `offline.html`. */
 export function assetEntries(
   views: ViewSummary[],
   offers: { offer: FileOfferSummary; state: OfferState }[],
 ): AssetEntry[] {
-  const byEntry = new Map<string, ViewSummary[]>();
+  const byReport = new Map<string, ViewSummary[]>();
   const newestFirst = [...views].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
   );
-  for (const v of newestFirst)
-    byEntry.set(v.entry, [...(byEntry.get(v.entry) ?? []), v]);
+  for (const v of newestFirst) {
+    const report = JSON.stringify(
+      v.source ? ["source", v.source, v.entry] : ["title", v.title, v.entry],
+    );
+    byReport.set(report, [...(byReport.get(report) ?? []), v]);
+  }
   return [
-    ...[...byEntry.values()].map((versions) => ({
+    ...[...byReport.values()].map((versions) => ({
       kind: "view" as const,
       key: versions[0].view_id,
       at: versions[0].created_at,

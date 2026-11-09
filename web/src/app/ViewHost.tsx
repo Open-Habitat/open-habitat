@@ -62,7 +62,12 @@ import {
   useViewLinksFreshness,
   useViewLinksUnknown,
 } from "./viewLinks";
-import { listViews, mintViewURL, viewTabPath } from "./views";
+import {
+  conversationViews,
+  listViews,
+  mintViewURL,
+  viewTabPath,
+} from "./views";
 
 // What an agent offers in a conversation, views (ADR 0032) and files, on one
 // card that opens its item in the one right-hand panel beside the
@@ -95,10 +100,10 @@ type OfferControls = {
   problem: (id: string) => string | undefined;
   /** A card shows a view: the conversation's list knows it from now on. */
   noteView: (view: ViewSummary) => void;
-  /** The person's views of one conversation, newest first. */
+  /** The views of one conversation that are known, newest first. */
   viewsOf: (conversationId: string) => ViewSummary[];
-  /** Read the person's views again (the list opened). */
-  refreshViews: () => void;
+  /** Read one conversation's views (its chip is shown, or its list opened). */
+  readViewsOf: (conversationId: string) => void;
 };
 
 const OfferContext = createContext<OfferControls | null>(null);
@@ -183,7 +188,14 @@ export function ViewHost({
   // Views exist only where the installation configures a view origin; until
   // the list answers, no view offer is shown.
   const [enabled, setEnabled] = useState(false);
-  const [views, setViews] = useState<ViewSummary[]>([]);
+  // Each conversation's views as its own read last answered, and the views
+  // its cards have shown since that read began, which it may not have
+  // reached; a later read answers for those noted before it began, so a
+  // removed view leaves the list.
+  const [lists, setLists] = useState<Record<string, ViewSummary[]>>({});
+  const [noted, setNoted] = useState<{ view: ViewSummary; at: number }[]>([]);
+  const noteSeq = useRef(0);
+  const listSeq = useRef<Record<string, number>>({});
   const [states, setStates] = useState<Record<string, ViewOfferState>>({});
   const [opened, setOpened] = useState<Opened>();
   const [expanded, setExpanded] = useState(false);
@@ -216,7 +228,9 @@ export function ViewHost({
     viewSeq.current++;
     person.current++;
     setEnabled(false);
-    setViews([]);
+    setLists({});
+    setNoted([]);
+    listSeq.current = {};
     setStates({});
     setOpened(undefined);
     setExpanded(false);
@@ -232,12 +246,13 @@ export function ViewHost({
     resetFileOffers();
   }, [identity]);
 
+  // The first page of the person's views says whether the installation
+  // offers views at all; a conversation's chip reads its own views.
   const readViews = useCallback((signal?: AbortSignal) => {
     const seq = ++viewSeq.current;
     return listViews(signal).then((list) => {
       if (signal?.aborted || seq !== viewSeq.current) return list;
       setEnabled(list !== null);
-      if (list) setViews(list);
       return list;
     });
   }, []);
@@ -434,17 +449,60 @@ export function ViewHost({
     [change],
   );
   const noteView = useCallback((view: ViewSummary) => {
-    setViews((before) =>
-      before.some((v) => v.view_id === view.view_id)
+    const at = ++noteSeq.current;
+    setNoted((before) =>
+      before.some((n) => n.view.view_id === view.view_id)
         ? before
-        : [view, ...before],
+        : [{ view, at }, ...before],
     );
   }, []);
-  const refreshViews = useCallback(() => {
-    void readViews().catch(() => {
-      // The list keeps the views it knows.
-    });
-  }, [readViews]);
+  const readViewsOf = useCallback(
+    (conversationId: string) => {
+      if (!enabled) return;
+      const seq = (listSeq.current[conversationId] ?? 0) + 1;
+      listSeq.current[conversationId] = seq;
+      const at = person.current;
+      const notedBefore = noteSeq.current;
+      void conversationViews(conversationId).then(
+        (list) => {
+          if (
+            at !== person.current ||
+            listSeq.current[conversationId] !== seq ||
+            !list
+          )
+            return;
+          setLists((before) => ({ ...before, [conversationId]: list }));
+          setNoted((before) =>
+            before.filter(
+              (n) =>
+                n.view.conversation_id !== conversationId || n.at > notedBefore,
+            ),
+          );
+        },
+        () => {
+          // The list keeps the views it knows.
+        },
+      );
+    },
+    [enabled],
+  );
+  const viewsOf = useCallback(
+    (conversationId: string) => {
+      if (!enabled) return [];
+      const read = lists[conversationId] ?? [];
+      const known = new Set(read.map((v) => v.view_id));
+      return [
+        ...read,
+        ...noted
+          .map((n) => n.view)
+          .filter(
+            (v) =>
+              v.conversation_id === conversationId && !known.has(v.view_id),
+          ),
+      ];
+    },
+    [enabled, lists, noted],
+  );
   const controls = useMemo<OfferControls>(
     () => ({
       views: enabled,
@@ -457,11 +515,8 @@ export function ViewHost({
       setDuration,
       problem: (id) => problems[id],
       noteView,
-      viewsOf: (conversationId) =>
-        enabled
-          ? views.filter((v) => v.conversation_id === conversationId)
-          : [],
-      refreshViews,
+      viewsOf,
+      readViewsOf,
     }),
     [
       enabled,
@@ -474,8 +529,8 @@ export function ViewHost({
       setDuration,
       problems,
       noteView,
-      views,
-      refreshViews,
+      viewsOf,
+      readViewsOf,
     ],
   );
   const bounds = panelBounds(total);
@@ -760,6 +815,10 @@ export function useAssetsControl(conversationId?: string): ReactNode {
   const offers = Array.isArray(list) ? list : [];
   const states = useFileOffers(offers.map((o) => o.offer_id));
   const links = useViewLinks();
+  const readViewsOf = controls?.readViewsOf;
+  useEffect(() => {
+    if (readViewsOf && conversationId) readViewsOf(conversationId);
+  }, [readViewsOf, conversationId]);
   if (!controls || !conversationId) return null;
   const views = controls.viewsOf(conversationId);
   const entries = assetEntries(
@@ -795,7 +854,7 @@ export function useAssetsControl(conversationId?: string): ReactNode {
       controls={assetControls}
       onOpen={() => {
         refreshOffers(conversationId);
-        controls.refreshViews();
+        controls.readViewsOf(conversationId);
       }}
     />
   );

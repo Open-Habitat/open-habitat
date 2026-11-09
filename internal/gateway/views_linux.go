@@ -211,11 +211,13 @@ func (a *Auth) mintViewHandoff(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"schema_version": 1, "url": a.viewOrigin(s.identity, body.ViewID) + viewHandoffRoute + "?token=" + token})
 }
 
-// viewList is the app origin's list of the person's views. Where no view
-// origin is configured it is an empty 204, so the browser offers nothing
-// (and an ordinary page load logs no failed request).
+// viewList is the app origin's list of the person's views, one page at a
+// time and optionally one conversation's; the daemon checks the values.
+// Where no view origin is configured it is an empty 204, so the browser
+// offers nothing (and an ordinary page load logs no failed request).
 func (a *Auth) viewList(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || !a.exact(r, viewsPath) || r.ContentLength > 0 {
+	exact := a.exact(r, viewsPath) || a.exact(r, viewsPath, "conversation_id") || a.exact(r, viewsPath, "cursor") || a.exact(r, viewsPath, "conversation_id", "cursor")
+	if r.Method != http.MethodGet || !exact || r.ContentLength > 0 {
 		safe(w, 400, "invalid_request")
 		return
 	}

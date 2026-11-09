@@ -189,6 +189,43 @@ test("a view downloads as one zip and is listed with the conversation's files", 
   }
 });
 
+test("a view offered again from the same folder is a newer version of one row", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  const first = await offer(page, id);
+  const chip = page.getByTestId("assets-chip");
+  await expect(chip).toHaveAttribute("data-views", "1");
+  const second = await offer(page, id);
+  await expect(
+    page.locator(`[data-testid="view-offer"][data-view-id="${second}"]`),
+  ).toBeVisible();
+
+  // The conversation's own read names where each was offered from; the
+  // view host's summary never does.
+  const res = await page.request.get(
+    `/api/v1/views?conversation_id=${encodeURIComponent(id)}`,
+  );
+  expect(res.status(), await res.text()).toBe(200);
+  const listed = (await res.json()).views as {
+    view_id: string;
+    source?: string;
+  }[];
+  expect(listed.map((v) => v.view_id)).toEqual([second, first]);
+  expect(listed[0].source).toMatch(/^\/.*\/view-fixture\/site$/);
+  expect(listed[1].source).toBe(listed[0].source);
+  expect(
+    (await page.request.get("/api/v1/views?conversation_id=x")).status(),
+  ).toBe(400);
+
+  await chip.click();
+  await expect(chip).toHaveAttribute("data-views", "1");
+  const row = page
+    .getByTestId("assets-list")
+    .locator(`[data-testid="asset-entry"][data-id="${second}"]`);
+  await expect(row.getByTestId("asset-versions")).toBeVisible();
+});
+
 test("a view cannot navigate its frame to a foreign origin", async ({
   page,
 }) => {

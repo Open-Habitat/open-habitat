@@ -103,6 +103,27 @@ it("keeps different reports with the same entry file apart", () => {
   ]);
 });
 
+it("folds a re-offer of the same source and keeps the same name from elsewhere apart", () => {
+  const from = (
+    v: ReturnType<typeof view>,
+    source: string,
+  ): ReturnType<typeof view> & { source: string } => ({ ...v, source });
+  const entries = assetEntries(
+    [
+      from(view(2, "index.html", "2026-11-09T08:00:00Z", "Luonnos"), "/h/a"),
+      from(view(3, "index.html", "2026-11-09T09:00:00Z", "Raportti"), "/h/a"),
+      from(view(4, "index.html", "2026-11-09T10:00:00Z", "Raportti"), "/h/b"),
+      // Offered before sources were recorded: folds by title and entry.
+      view(5, "index.html", "2026-11-08T08:00:00Z", "Raportti"),
+      view(6, "index.html", "2026-11-08T09:00:00Z", "Raportti"),
+    ],
+    [],
+  );
+  expect(
+    entries.map((e) => e.kind === "view" && e.versions.map((v) => v.title)),
+  ).toEqual([["Raportti"], ["Raportti", "Luonnos"], ["Raportti", "Raportti"]]);
+});
+
 it("opens a row beside, closes it with the same row and leaves a modified click to the browser", () => {
   const toggle = vi.fn();
   const controls: AssetControls = {

@@ -327,6 +327,11 @@ view = json.loads((BASE / "examples" / "views.json").read_text())["views"][1]
 for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.html", "a//b.html", "report.js", "a\\b.html"]:
     must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "entry": entry}]})
 must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
+# A recorded source is an absolute path; a page names its next cursor only.
+for source in ["reports/sales", "", "/home/x/a\nb"]:
+    must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "source": source}]})
+must_reject("view.schema.json", {"schema_version": 1, "views": [view] * 101})
+must_reject("view.schema.json", {"schema_version": 1, "views": [], "next_cursor": "vbcdefghijklmnopqrstuvwxyza"})
 must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
 must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
 # An address is reserved for a view, changed by its ID alone, and never

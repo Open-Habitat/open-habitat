@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Entry } from "./HistoryView";
-import { ViewHost } from "./ViewHost";
+import { useAssetsControl, ViewHost } from "./ViewHost";
 import { resetViewLinks } from "./viewLinks";
 
 const view = {
@@ -430,5 +430,86 @@ describe("shared file offer addresses", () => {
       expect(page.queryByTestId("view-public")).toBeNull();
       page.unmount();
     }
+  });
+});
+
+describe("the conversation's assets chip", () => {
+  function Chip({ id }: { id: string }) {
+    return <>{useAssetsControl(id)}</>;
+  }
+  const at = (n: number) => `2026-11-0${n}T12:00:00Z`;
+  const viewOf = (n: number, source: string) => ({
+    ...view,
+    view_id: `v${String.fromCharCode(97 + n).repeat(26)}`,
+    title: `Raportti ${n}`,
+    created_at: at(n),
+    source,
+  });
+
+  it("reads its own conversation's views page by page, beyond the person's first page", async () => {
+    const convo = view.conversation_id;
+    const query = `conversation_id=${encodeURIComponent(convo)}`;
+    const cursor = `${at(3)}_${viewOf(3, "").view_id}`;
+    const fetch = vi.fn(async (url: string) => {
+      // The person's newest views belong to other conversations.
+      if (url === "/api/v1/views")
+        return json({ schema_version: 1, views: [], next_cursor: cursor });
+      if (url === `/api/v1/views?${query}`)
+        return json({
+          schema_version: 1,
+          views: [viewOf(5, "/h/a"), viewOf(4, "/h/b")],
+          next_cursor: cursor,
+        });
+      if (url === `/api/v1/views?${query}&cursor=${encodeURIComponent(cursor)}`)
+        return json({ schema_version: 1, views: [viewOf(3, "/h/a")] });
+      if (url.startsWith("/api/v1/file-offers?"))
+        return json({ schema_version: 1, offers: [] });
+      if (url === "/api/v1/view-addresses")
+        return new Response(null, { status: 204 });
+      throw new Error(`unexpected ${url}`);
+    });
+    vi.stubGlobal("fetch", fetch);
+    const page = render(
+      <ViewHost csrf="csrf">
+        <Chip id={convo} />
+      </ViewHost>,
+    );
+    // Two reports: the source offered twice is one row with two versions.
+    const chip = await page.findByTestId("assets-chip");
+    await waitFor(() => expect(chip.dataset.views).toBe("2"));
+    fireEvent.click(chip);
+    const rows = page.getAllByTestId("asset-open");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Raportti 5"),
+      expect.stringContaining("Raportti 4"),
+    ]);
+  });
+  it("drops a view its card showed once a later read no longer lists it", async () => {
+    const convo = view.conversation_id;
+    let listed = [view];
+    const fetch = vi.fn(async (url: string) => {
+      if (url === "/api/v1/views")
+        return json({ schema_version: 1, views: [] });
+      if (url.startsWith("/api/v1/views?"))
+        return json({ schema_version: 1, views: listed });
+      if (url.startsWith("/api/v1/file-offers?"))
+        return json({ schema_version: 1, offers: [] });
+      if (url === "/api/v1/view-addresses")
+        return new Response(null, { status: 204 });
+      throw new Error(`unexpected ${url}`);
+    });
+    vi.stubGlobal("fetch", fetch);
+    const page = render(
+      <ViewHost csrf="csrf">
+        {entry(true)}
+        <Chip id={convo} />
+      </ViewHost>,
+    );
+    const chip = await page.findByTestId("assets-chip");
+    expect(chip.dataset.views).toBe("1");
+    // The agent removed it; opening the list reads the conversation again.
+    listed = [];
+    fireEvent.click(chip);
+    await waitFor(() => expect(page.queryByTestId("assets-chip")).toBeNull());
   });
 });
