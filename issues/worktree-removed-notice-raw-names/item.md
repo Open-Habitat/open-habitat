@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Worktree removal notice speaks in raw directory and branch names

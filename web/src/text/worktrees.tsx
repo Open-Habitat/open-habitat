@@ -34,31 +34,18 @@ const fi = {
     `Tallennetaanko muutokset ja poistetaan ${name}?`,
   titleForce: (name: string) => `Poistetaanko ${name} pakolla?`,
   titleRemove: (name: string) => `Poistetaanko ${name}?`,
-  headingCommit: "Tallennetaanko muutokset ja poistetaan ",
-  headingRemove: "Poistetaanko ",
-  headingForce: " pakolla",
-  leadCommit: (branch: ReactNode) => (
-    <>
-      Kaikki muutokset ja uudet tiedostot commitoidaan haaraan {branch}, ja
-      worktreen hakemisto poistetaan. Haara säilyy, joten työn saa takaisin
-      komennolla <code>git worktree add</code>.
-    </>
-  ),
+  leftover: (name: string) => `Jäänne · ${name}`,
+  leadCommit:
+    "Muutokset ja uudet tiedostot tallennetaan ennen työkopion poistamista. Tallennettu työ säilyy. Voit pyytää työtilan agenttia palauttamaan sen.",
   leadForce:
     "Hakemisto poistetaan, ja nämä häviävät lopullisesti. Tätä ei voi perua.",
-  forceBranchKept: (branch: ReactNode) => (
-    <>Haara {branch} ja sen commitit säilyvät.</>
-  ),
-  leadMerged: (branch: ReactNode, base: ReactNode) => (
-    <>
-      Haara {branch} on yhdistetty haaraan {base}, joten worktreen hakemisto ja
-      haara poistetaan. Mitään commitoitua ei häviä.
-    </>
-  ),
-  leadRemove: "Worktreen hakemisto poistetaan.",
-  branchKept: (branch: ReactNode) => (
-    <>Haara {branch} säilyy, joten sen commitit eivät häviä.</>
-  ),
+  forceBranchKept:
+    "Aiemmin tallennettu työ säilyy. Voit pyytää työtilan agenttia palauttamaan sen.",
+  leadMerged:
+    "Työkopio poistetaan. Tallennettu työ on jo yhdistetty työtilaan ja säilyy siellä.",
+  leadRemove: "Työkopio poistetaan.",
+  branchKept:
+    "Tallennettu työ säilyy. Voit pyytää työtilan agenttia palauttamaan sen.",
   typeName: (name: ReactNode) => <>Kirjoita {name} vahvistukseksi</>,
   inUse: "Ei poistettu, koska nämä käyttävät worktreetä:",
   cancel: "Peruuta",
@@ -120,12 +107,12 @@ const fi = {
   blocked: (name: string, why: string) => `${name} ei poistettu: ${why}`,
   partial: (name: string, n: number) =>
     `${name}: osa jäi poistamatta (${n}). Se näkyy listassa, ja sen voi poistaa uudelleen.`,
-  committed: (sha: string) =>
-    ` Muutokset tallennettiin haaraan commitiksi ${sha}.`,
-  branchDeleted: (branch: string) => ` Haara ${branch} poistettiin.`,
-  branchStays: (branch: string) => ` Haara ${branch} säilyy.`,
-  branchStayed: (branch: string, moved: boolean) =>
-    ` Haara ${branch} säilyi, koska ${moved ? "se oli muuttunut" : "se on käytössä toisessa checkoutissa"}.`,
+  committed: " Muutokset tallennettiin ennen poistoa.",
+  branchDeleted: " Tallennettu työ säilyy työtilaan yhdistettynä.",
+  branchStays:
+    " Tallennettu työ säilyy. Voit pyytää työtilan agenttia palauttamaan sen.",
+  branchStayed: (moved: boolean) =>
+    ` Tallennettu työ säilyy erillään, koska ${moved ? "se muuttui poiston aikana" : "sitä käytetään toisessa työkopiossa"}. Voit pyytää työtilan agenttia palauttamaan sen.`,
   removed: (name: string) => `${name} poistettu.`,
 };
 
@@ -157,29 +144,18 @@ export const worktreesText = catalog(fi, {
   titleCommit: (name) => `Save the changes and delete ${name}?`,
   titleForce: (name) => `Force delete ${name}?`,
   titleRemove: (name) => `Delete ${name}?`,
-  headingCommit: "Save the changes and delete ",
-  headingRemove: "Delete ",
-  headingForce: " by force",
-  leadCommit: (branch) => (
-    <>
-      All changes and new files are committed to the branch {branch}, and the
-      worktree's directory is deleted. The branch stays, so the work can be
-      brought back with <code>git worktree add</code>.
-    </>
-  ),
+  leftover: (name) => `Leftover · ${name}`,
+  leadCommit:
+    "Changes and new files are saved before the working copy is deleted. Saved work is kept. You can ask the workspace's agent to restore it.",
   leadForce:
     "The directory is deleted, and these are lost for good. This cannot be undone.",
-  forceBranchKept: (branch) => <>The branch {branch} and its commits stay.</>,
-  leadMerged: (branch, base) => (
-    <>
-      The branch {branch} is merged into {base}, so the worktree's directory and
-      the branch are deleted. Nothing committed is lost.
-    </>
-  ),
-  leadRemove: "The worktree's directory is deleted.",
-  branchKept: (branch) => (
-    <>The branch {branch} stays, so its commits are not lost.</>
-  ),
+  forceBranchKept:
+    "Previously saved work is kept. You can ask the workspace's agent to restore it.",
+  leadMerged:
+    "The working copy is deleted. Saved work has already been merged into the workspace and stays there.",
+  leadRemove: "The working copy is deleted.",
+  branchKept:
+    "Saved work is kept. You can ask the workspace's agent to restore it.",
   typeName: (name) => <>Type {name} to confirm</>,
   inUse: "Not deleted, because these are using the worktree:",
   cancel: "Cancel",
@@ -237,10 +213,11 @@ export const worktreesText = catalog(fi, {
   blocked: (name, why) => `${name} was not deleted: ${why}`,
   partial: (name, n) =>
     `${name}: some was left undeleted (${n}). It shows in the list and can be deleted again.`,
-  committed: (sha) => ` The changes were saved to the branch as commit ${sha}.`,
-  branchDeleted: (branch) => ` The branch ${branch} was deleted.`,
-  branchStays: (branch) => ` The branch ${branch} stays.`,
-  branchStayed: (branch, moved) =>
-    ` The branch ${branch} was kept because ${moved ? "it had changed" : "it is in use in another checkout"}.`,
+  committed: " Changes were saved before deletion.",
+  branchDeleted: " Saved work is kept, merged into the workspace.",
+  branchStays:
+    " Saved work is kept. You can ask the workspace's agent to restore it.",
+  branchStayed: (moved) =>
+    ` Saved work is kept separately because ${moved ? "it changed during deletion" : "it is used in another working copy"}. You can ask the workspace's agent to restore it.`,
   removed: (name) => `${name} deleted.`,
 });

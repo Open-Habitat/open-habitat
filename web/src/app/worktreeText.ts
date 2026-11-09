@@ -105,19 +105,28 @@ export function worktreeRefusalText(code: string): string {
   return txt.refusals[code] ?? refusalText(code);
 }
 
+/** The same person-facing name in rows, confirmations and outcomes. */
+export function worktreeName(w: Worktree): string {
+  const ownerName = w.owner?.role === "helper" ? w.owner.name : w.owner?.title;
+  if (ownerName) return ownerName;
+  const short = w.name.replace(/^wt-[a-z0-9]+-/, "").replace(/-/g, " ");
+  return /^wt-[a-z0-9]+-/.test(w.name) ? txt.leftover(short) : w.name;
+}
+
 /** What happened, for the status line after a removal. */
 export function removedText(w: Worktree, r: WorktreeRemoveResult): string {
-  if (r.state === "pruned") return txt.pruned(w.name);
+  const name = worktreeName(w);
+  if (r.state === "pruned") return txt.pruned(name);
   if (r.state === "blocked")
-    return txt.blocked(w.name, (r.blockers ?? []).map(plainBlocker).join(" "));
-  if (r.state === "partial") return txt.partial(w.name, r.remaining ?? 1);
-  const saved = r.committed ? txt.committed(r.committed.slice(0, 7)) : "";
+    return txt.blocked(name, (r.blockers ?? []).map(plainBlocker).join(" "));
+  if (r.state === "partial") return txt.partial(name, r.remaining ?? 1);
+  const saved = r.committed ? txt.committed : "";
   const branch = !r.branch
     ? ""
     : r.branch_deleted
-      ? txt.branchDeleted(r.branch)
+      ? txt.branchDeleted
       : r.branch_kept === "not_merged"
-        ? txt.branchStays(r.branch)
-        : txt.branchStayed(r.branch, r.branch_kept === "moved");
-  return `${txt.removed(w.name)}${saved}${branch}`;
+        ? txt.branchStays
+        : txt.branchStayed(r.branch_kept === "moved");
+  return `${txt.removed(name)}${saved}${branch}`;
 }

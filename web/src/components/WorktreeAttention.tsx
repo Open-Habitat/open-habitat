@@ -5,7 +5,7 @@ import type {
   WorktreeDisposal,
   WorktreeOwner,
 } from "../app/workspaceWorktrees";
-import { plainBlocker } from "../app/worktreeText";
+import { plainBlocker, worktreeName } from "../app/worktreeText";
 import {
   currentLanguage,
   formatDate,
@@ -61,11 +61,11 @@ function rowOf(
     return {
       ...base,
       need: "you",
-      label: w.name,
+      label: worktreeName(w),
       mark: w.state === "merged" ? "merged" : "unmerged",
       kind: "none",
     };
-  const label = (owner.role === "helper" ? owner.name : owner.title) || w.name;
+  const label = worktreeName(w);
   const kind = owner.role;
   switch (owner.state) {
     case "ended":

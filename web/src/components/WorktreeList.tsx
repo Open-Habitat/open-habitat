@@ -11,6 +11,7 @@ import {
   stateLabel,
   worktreeBlockerText,
   worktreeFacts,
+  worktreeName,
 } from "../app/worktreeText";
 import { liveText } from "../i18n";
 import { worktreesText } from "../text/worktrees";
@@ -76,7 +77,7 @@ export function WorktreeList({
               <Icon name="branch" />
             </span>
             <div className="ah-trash-main">
-              <code className="ah-trash-name">{w.name}</code>
+              <span className="ah-trash-name">{worktreeName(w)}</span>
               {w.path ? (
                 <span className="ah-trash-meta">
                   <code title={w.path}>{w.path}</code>
@@ -121,7 +122,7 @@ export function WorktreeList({
                   size="row"
                   isDisabled={!!busy}
                   isPending={busy === key}
-                  aria-label={`${txt.action[a].replace("…", "")} ${w.name}${a === "prune" ? "" : "…"}`}
+                  aria-label={`${txt.action[a].replace("…", "")} ${worktreeName(w)}${a === "prune" ? "" : "…"}`}
                   onPress={() => onAction(w, a)}
                 >
                   {txt.action[a]}
@@ -180,12 +181,11 @@ export function WorktreeRemoveDialog({
 }) {
   const [typed, setTyped] = useState("");
   const w = worktree;
-  const name = w?.name ?? "";
+  const name = w ? worktreeName(w) : "";
   const close = () => {
     setTyped("");
     onClose();
   };
-  const branch = w?.branch ? <code>{w.branch}</code> : null;
   const title =
     disposal === "commit"
       ? txt.titleCommit(name)
@@ -195,7 +195,7 @@ export function WorktreeRemoveDialog({
   const lead =
     !w || !disposal ? null : disposal === "commit" ? (
       <>
-        <p>{txt.leadCommit(branch)}</p>
+        <p>{txt.leadCommit}</p>
         <Facts tone="warn" items={worktreeFacts(w)} />
       </>
     ) : disposal === "force" ? (
@@ -203,14 +203,14 @@ export function WorktreeRemoveDialog({
         <p>{txt.leadForce}</p>
         <Facts tone="warn" items={worktreeFacts(w)} />
         {w.branch ? (
-          <p className="ah-trash-sub">{txt.forceBranchKept(branch)}</p>
+          <p className="ah-trash-sub">{txt.forceBranchKept}</p>
         ) : null}
       </>
     ) : w.state === "merged" ? (
-      <p>{txt.leadMerged(branch, <code>{w.base}</code>)}</p>
+      <p>{txt.leadMerged}</p>
     ) : (
       <p>
-        {txt.leadRemove} {w.branch ? txt.branchKept(branch) : null}
+        {txt.leadRemove} {w.branch ? txt.branchKept : null}
       </p>
     );
   return (
@@ -220,11 +220,7 @@ export function WorktreeRemoveDialog({
       onClose={close}
       dismissable={!busy}
     >
-      <Heading slot="title">
-        {disposal === "commit" ? txt.headingCommit : txt.headingRemove}
-        <code>{name}</code>
-        {disposal === "force" ? txt.headingForce : ""}?
-      </Heading>
+      <Heading slot="title">{title}</Heading>
       {lead}
       {w ? <IgnoredNote worktree={w} /> : null}
       {w?.conversations ? (
@@ -238,7 +234,7 @@ export function WorktreeRemoveDialog({
           e.preventDefault();
           if (busy) return;
           if (disposal !== "force") onConfirm();
-          else if (typed === name) onConfirm(typed);
+          else if (typed === name) onConfirm(w?.name);
         }}
       >
         {disposal === "force" ? (
@@ -303,7 +299,7 @@ export function WorktreeCleanDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
-  const ignored = merged.filter((w) => w.ignored).map((w) => w.name);
+  const ignored = merged.filter((w) => w.ignored).map(worktreeName);
   return (
     <TrashModal
       label={txt.cleanTitle}
@@ -319,10 +315,7 @@ export function WorktreeCleanDialog({
         {merged.map((w) => (
           <li key={worktreeKey(w)} className="ok">
             <Icon name="check" />
-            <span>
-              <code>{w.name}</code>
-              {w.branch && w.base ? ` · ${w.branch} → ${w.base}` : ""}
-            </span>
+            <span>{worktreeName(w)}</span>
           </li>
         ))}
       </ul>
