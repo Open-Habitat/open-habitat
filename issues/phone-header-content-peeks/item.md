@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Phone: scrolled content peeks above the sticky top bar in the repository view
@@ -24,5 +25,5 @@ behaviour; fix directly, no prototype.
 
 ## Acceptance Criteria
 
-- [ ] At 390 wide, scrolling the repository view shows no scrolled content above the top bar (light and dark, with and without a safe-area inset).
-- [ ] A browser check that scrolls the view and asserts nothing of the content is painted above the bar; touched specs green.
+- [x] At 390 wide, scrolling the repository view shows no scrolled content above the top bar (light and dark, with and without a safe-area inset).
+- [x] A browser check that scrolls the view and asserts nothing of the content is painted above the bar; touched specs green.

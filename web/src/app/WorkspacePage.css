@@ -235,6 +235,17 @@
 .ah-shell-body > main:has(.ah-workspace-page) {
   padding-top: var(--ah-s5);
 }
+@media (max-width: 800px) {
+  /* Sticky positioning stops at main's padding edge, but scrolled content can
+     paint in that padding. Cover it without moving the toolbar's controls. */
+  .ah-shell-body > main:has(.ah-workspace-page) > .ah-mobile-toolbar::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: calc(-1 * var(--ah-s5)) calc(-1 * var(--ah-s6)) -1px;
+    background: var(--ah-bg);
+  }
+}
 .ah-workspace-icon-row .ah-workspace-plus {
   --i-fg: var(--ah-on-accent);
 }
