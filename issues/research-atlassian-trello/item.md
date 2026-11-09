@@ -1,13 +1,14 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: atlassian
 lane_seq: 1
 preparation: pending
+closed: 2026-11-09
 ---
 
 # Research: Jira, Confluence and Trello integration for Contoso
@@ -53,3 +54,9 @@ organisation steps, and at most five questions for Jari.
 The five questions were forwarded to Contoso. Decisions on the UI are in
 `proto-atlassian-trello-connect`: per-person read/write choice, Trello's own
 MCP tried first.
+
+## Resolution
+
+### 2026-11-09T08:39:36Z · @issuectl
+
+Report delivered; questions answered by Jari 9.11. (in proto-atlassian-trello-connect).
