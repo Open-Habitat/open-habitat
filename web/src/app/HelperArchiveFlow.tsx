@@ -114,6 +114,57 @@ export function HelperRestoreNote({ agent }: { agent: string }) {
   ) : null;
 }
 
+/** Focuses the conversation's archive button once it can take focus, and
+ * returns a function that gives up. The remounted button can still be
+ * disabled while the turn settles, and focusing a disabled button does
+ * nothing, so this keeps watching for a while. It acts only while focus is
+ * on the page, and a person who clicks or types meanwhile owns focus. */
+function returnFocus(trigger: HTMLElement, patience = 10000) {
+  const agent = trigger.dataset.archiveAgent;
+  let observer: MutationObserver | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const frame = requestAnimationFrame(() => {
+    if (attempt()) return;
+    observer = new MutationObserver(() => attempt());
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["disabled"],
+    });
+    timer = setTimeout(stop, patience);
+  });
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    observer?.disconnect();
+    clearTimeout(timer);
+    document.removeEventListener("pointerdown", stop, true);
+    document.removeEventListener("keydown", stop, true);
+  };
+  const attempt = () => {
+    const now = document.activeElement;
+    if (now && now !== document.body) {
+      stop();
+      return true;
+    }
+    const target = trigger.isConnected
+      ? trigger
+      : agent
+        ? document.querySelector<HTMLElement>(
+            `[data-archive-agent="${CSS.escape(agent)}"]`,
+          )
+        : null;
+    if (!target || target.matches(":disabled")) return false;
+    target.focus();
+    if (document.activeElement !== target) return false;
+    stop();
+    return true;
+  };
+  document.addEventListener("pointerdown", stop, true);
+  document.addEventListener("keydown", stop, true);
+  return stop;
+}
+
 /** Only one archive question may own focus. A session change cancels both
  * the read and a pending answer; a timeout instead asks with uncertainty. */
 export function useHelperArchiveConfirmation(binding: string | undefined) {
@@ -126,6 +177,7 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       }
     | undefined
   >(undefined);
+  const returning = useRef<() => void>(undefined);
   const [reading, setReading] = useState<string>();
   const [question, setQuestion] = useState<{
     agent: string;
@@ -142,24 +194,15 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
     // turn ending), which remounts its row: the dialog's own focus return
     // then finds the pressed button detached and leaves focus on the page.
     // A cancel goes back to the same conversation's button.
-    if (!yes && trigger)
-      requestAnimationFrame(() => {
-        const now = document.activeElement;
-        if (now && now !== document.body) return;
-        const agent = trigger.dataset.archiveAgent;
-        const target = trigger.isConnected
-          ? trigger
-          : agent
-            ? document.querySelector<HTMLElement>(
-                `[data-archive-agent="${CSS.escape(agent)}"]`,
-              )
-            : null;
-        target?.focus();
-      });
+    if (!yes && trigger) {
+      returning.current?.();
+      returning.current = returnFocus(trigger);
+    }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: A changed session must cancel the old person's pending choice.
   useEffect(
     () => () => {
+      returning.current?.();
       active.current?.controller.abort();
       active.current?.answer?.(false);
       active.current = undefined;

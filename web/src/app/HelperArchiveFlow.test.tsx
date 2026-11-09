@@ -156,3 +156,68 @@ it("a cancel returns focus to the conversation's button after its row remounted"
   await waitFor(() => expect(document.activeElement).toBe(moved));
   moved.remove();
 });
+
+it("a cancel waits for the remounted button to become enabled before focusing it", async () => {
+  vi.mocked(readSpinoffs).mockResolvedValue(reply("available", [helper]));
+  const pressed = document.createElement("button");
+  pressed.dataset.archiveAgent = "parent";
+  document.body.append(pressed);
+  pressed.focus();
+  const { result } = renderHook(() => useHelperArchiveConfirmation("session"));
+  let request!: Promise<boolean>;
+  act(() => {
+    request = result.current.confirm("parent");
+  });
+  const view = render(result.current.dialog);
+  await waitFor(() => {
+    view.rerender(result.current.dialog);
+    expect(screen.getByTestId("helper-archive-confirm")).toBeTruthy();
+  });
+  // The row remounts while the turn is still settling, so its button is
+  // disabled for a moment after the cancel.
+  pressed.remove();
+  const moved = document.createElement("button");
+  moved.dataset.archiveAgent = "parent";
+  moved.disabled = true;
+  document.body.append(moved);
+  fireEvent.click(screen.getByTestId("helper-archive-cancel"));
+  expect(await request).toBe(false);
+  view.rerender(result.current.dialog);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(document.activeElement).not.toBe(moved);
+  moved.disabled = false;
+  await waitFor(() => expect(document.activeElement).toBe(moved));
+  moved.remove();
+});
+
+it("a person who moves on keeps focus where they put it", async () => {
+  vi.mocked(readSpinoffs).mockResolvedValue(reply("available", [helper]));
+  const pressed = document.createElement("button");
+  pressed.dataset.archiveAgent = "parent";
+  document.body.append(pressed);
+  pressed.focus();
+  const { result } = renderHook(() => useHelperArchiveConfirmation("session"));
+  let request!: Promise<boolean>;
+  act(() => {
+    request = result.current.confirm("parent");
+  });
+  const view = render(result.current.dialog);
+  await waitFor(() => {
+    view.rerender(result.current.dialog);
+    expect(screen.getByTestId("helper-archive-confirm")).toBeTruthy();
+  });
+  pressed.remove();
+  const moved = document.createElement("button");
+  moved.dataset.archiveAgent = "parent";
+  moved.disabled = true;
+  document.body.append(moved);
+  fireEvent.click(screen.getByTestId("helper-archive-cancel"));
+  expect(await request).toBe(false);
+  view.rerender(result.current.dialog);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  fireEvent.pointerDown(document.body);
+  moved.disabled = false;
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(document.activeElement).not.toBe(moved);
+  moved.remove();
+});
