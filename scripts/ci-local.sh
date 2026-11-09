@@ -117,6 +117,7 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py
     "$PYTHON" scripts/test-browser-hosts.py
+    "$PYTHON" scripts/test-test-focused.py
     "$PYTHON" scripts/test-cloud-qualify.py
     "$PYTHON" scripts/test-profile-runtime-build.py
     "$PYTHON" scripts/test-release-upload-plan.py

@@ -75,9 +75,16 @@ While editing, choose checks from the behavior and boundaries touched, not from 
 ```sh
 ./scripts/test-focused.sh --area web
 ./scripts/test-focused.sh --area browser --spec github-first-onboarding.spec.ts --tag @github-first
+./scripts/test-focused.sh --area browser --spec github-first-onboarding.spec.ts --spec host-lifetime.spec.ts
 ./scripts/test-focused.sh --area go --go-package ./internal/gateway
 ./scripts/test-focused.sh --area contracts
 ```
+
+Repeat `--spec` to select several files; every name is validated before any run.
+Ordinary and lab specs use separate configurations when combined; a failure in
+one group does not skip the other. `--tag` filters all selected files.
+`python3 scripts/test-test-focused.py` checks selection, validation and exit
+status through the shell entrypoint with a fake `npx`, without launching browsers.
 
 `test-web-fast.sh` checks pure client logic and rendering on an installed checkout. It does **not** run a browser, build production assets or check Go, generated contracts or packaging. For browser-facing changes, run the relevant Playwright specs or grep tags as well (and a11y for affected interactions); use `npm run test:browser --prefix web` when behavior crosses journeys or the affected specs are not clear. For Go changes, run the affected package tests and callers at the boundary; use the full gate when ownership/contract or release coverage is uncertain. The daemon's Pi credential, device, model and startup tests drive the pinned Pi SDK, so in a fresh worktree run `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts` (as the gate does) before `go test ./internal/daemon`; without it they fail with "native Pi credentials unavailable" rather than skip.
 
