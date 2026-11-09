@@ -1,13 +1,14 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: archive-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-09
 ---
 
 # Design and prototype: the workspace's conversation archive from scratch

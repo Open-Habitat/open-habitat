@@ -109,3 +109,9 @@ päällekkäisiä painikkeita eikä tilalohkoja välissä. 13 keskustelua mahtuu
 yhdelle sivulle. 2 sopii, jos arkisto kasvaa satoihin; sen voi lisätä
 myöhemmin listan päälle. 3 ahtaa sivupalkkia, joka on jo täynnä
 työtiloja. Poistoa en tekisi nyt. Järjestys arkistointihetken mukaan.
+
+## Jarin päätös (9.11.2026)
+
+Suosituksen mukaan: **1 Lista** työtilan sivulla, haku otsikoista,
+järjestys arkistointihetken mukaan, ei pysyvää poistoa. Prototyyppi on
+toteutuksen määrittely (`conversation-archive-list`).
