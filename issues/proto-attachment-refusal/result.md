@@ -77,3 +77,10 @@ luonnoksen liitteet hylkää yhä host lähetyksessä.
 3. Liitetäänkö yli 30 tiedoston pudotuksesta ensimmäiset 30 ja nimetään
    loput (`r1-d1-varoitus-count-1440-light`), vai hylätäänkö koko pudotus
    kuten nyt (`r1-d0-nyt-count-1440-light`)?
+
+## Jarin päätös (9.11.2026)
+
+Esitys **1 Varoitus**. Sanamuoto ja yli 30 tiedoston käsittely
+suosituksen mukaan (pitkä sanamuoto; ensimmäiset 30 liitetään ja loput
+nimetään). Toteutus sovitetaan `proto-notices-one-system`in järjestelmään,
+kun se on valittu.

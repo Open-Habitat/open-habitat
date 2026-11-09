@@ -1,9 +1,9 @@
 ---
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@setup-console-path-too-small', '@ms-permissions-copy-one-by-one']
 preparation: pending
@@ -11,6 +11,7 @@ provenance: chat
 source_ref: chat:2026-11-06/proto-m365-setup-flow
 lane: m365-setup-proto
 lane_seq: 1
+closed: 2026-11-09
 ---
 
 # Prototype: the Microsoft 365 integration setup flow

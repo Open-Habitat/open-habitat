@@ -1,13 +1,13 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 type: task
 reporter: jari
 status: open
 priority: normal
 lane: attachment-refusal-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: attachment refusal message, look and wording

@@ -162,3 +162,10 @@ käytössä* -sivulla, joten sen oppii kerran. A on kaunein mutta
 näkymien `</>`-ruudut ovat tyhjän näköisiä, kun oikeaa kuvaa ei ole. C on
 lähinnä kierroksen 1 valintaa, mutta julkisuuden toiminnot jäävät
 kortissa hoverin taakse.
+
+## Jarin vastaus kierrokseen 2 (9.11.2026)
+
+Pohjaksi **B Lista**, mutta listan pitäisi olla aikajanamainen (C:n
+ajallinen jäsennys listan muodossa). Riffataan vielä yksi kierros siitä,
+miltä aikajanamainen lista näyttää (kierros 3, avustaja `shares-page`).
+Kysymykset Kopioi linkki -painikkeesta ja koko osoitteesta jäivät auki.
