@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Assets chip does not list every view offered in the conversation
@@ -40,5 +41,5 @@ rule, not size.
 
 ## Acceptance Criteria
 
-- [ ] Every offer of a conversation appears in the chip, including large ones, older ones beyond the loaded history, and across a daemon restart.
-- [ ] Test reproducing the missing case; touched specs green.
+- [x] Every offer of a conversation appears in the chip, including large ones, older ones beyond the loaded history, and across a daemon restart.
+- [x] Test reproducing the missing case; touched specs green.

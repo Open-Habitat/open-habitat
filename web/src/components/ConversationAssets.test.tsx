@@ -9,9 +9,14 @@ import {
 } from "./ConversationAssets";
 
 const convo = "pi:11111111-1111-4111-8111-111111111111";
-const view = (n: number, entry: string, at: string) => ({
+const view = (
+  n: number,
+  entry: string,
+  at: string,
+  title = `Raportti ${n}`,
+) => ({
   view_id: `v${String(n).repeat(26)}`.slice(0, 27),
-  title: `Raportti ${n}`,
+  title,
   entry,
   files: 1,
   bytes: 2048,
@@ -34,8 +39,8 @@ const ready: OfferState = {
   },
 };
 const views = [
-  view(2, "reports/q3.html", "2026-11-08T10:00:00Z"),
-  view(3, "reports/q3.html", "2026-11-08T11:00:00Z"),
+  view(2, "reports/q3.html", "2026-11-08T10:00:00Z", "Q3"),
+  view(3, "reports/q3.html", "2026-11-08T11:00:00Z", "Q3"),
   view(4, "reports/muu.html", "2026-11-08T09:00:00Z"),
 ];
 
@@ -50,6 +55,52 @@ it("folds a report's versions under its newest and lists newest first", () => {
   expect(first.kind === "view" && first.versions.map((v) => v.view_id)).toEqual(
     [views[1].view_id, views[0].view_id],
   );
+});
+
+it("keeps different reports with the same entry file apart", () => {
+  // A conductor conversation's prototypes (pilot.22): three reports export
+  // offline.html, one of them twice; the same report is offered again later.
+  const round = [
+    view(2, "index.html", "2026-11-08T18:07:57Z", "Valtava sisältö"),
+    view(3, "offline.html", "2026-11-08T18:39:55Z", "Worktree-lista"),
+    view(4, "offline.html", "2026-11-08T18:40:02Z", "Worktree-lista"),
+    view(5, "offline.html", "2026-11-08T19:04:56Z", "Keskusteluarkisto"),
+    view(6, "offline.html", "2026-11-08T19:09:54Z", "Jaot omaan paikkaan"),
+    view(7, "offline.html", "2026-11-09T04:17:44Z", "Keskusteluarkisto"),
+  ];
+  const entries = assetEntries(round, []);
+  expect(
+    entries.map((e) => e.kind === "view" && e.versions.map((v) => v.title)),
+  ).toEqual([
+    ["Keskusteluarkisto", "Keskusteluarkisto"],
+    ["Jaot omaan paikkaan"],
+    ["Worktree-lista", "Worktree-lista"],
+    ["Valtava sisältö"],
+  ]);
+  const page = render(
+    <ConversationAssets
+      entries={entries}
+      controls={{
+        toggle: () => {},
+        href: () => "",
+        until: () => undefined,
+        actions: () => null,
+      }}
+    />,
+  );
+  const chip = page.getByTestId("assets-chip");
+  expect(chip.dataset.views).toBe("4");
+  fireEvent.click(chip);
+  expect(
+    within(page.getByTestId("assets-list"))
+      .getAllByTestId("asset-open")
+      .map((row) => row.textContent),
+  ).toEqual([
+    expect.stringContaining("Keskusteluarkisto"),
+    expect.stringContaining("Jaot omaan paikkaan"),
+    expect.stringContaining("Worktree-lista"),
+    expect.stringContaining("Valtava sisältö"),
+  ]);
 });
 
 it("opens a row beside, closes it with the same row and leaves a modified click to the browser", () => {
