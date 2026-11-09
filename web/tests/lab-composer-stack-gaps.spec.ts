@@ -39,8 +39,11 @@ async function send(page: Page, text: string) {
   await page.getByTestId("send").click();
 }
 
-for (const width of [1440, 390]) {
-  test(`composer stack gaps at ${width}`, async ({ page, browser }) => {
+for (const width of [1440, 1024, 800, 390]) {
+  test(`composer stack gaps and edges at ${width}`, async ({
+    page,
+    browser,
+  }) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -52,7 +55,11 @@ for (const width of [1440, 390]) {
     try {
       await signIn(writer);
       await create(writer);
-      await send(writer, "A reply on the other machine");
+      // A title longer than the column: the waiting strip must truncate it.
+      await send(
+        writer,
+        "A reply on the other machine that names a long piece of work, so the waiting strip has more title than room at every width",
+      );
       await expect(
         page.getByTestId("rail-yours").getByTestId("agent-link"),
       ).toHaveCount(1, { timeout: 25000 });
@@ -79,13 +86,47 @@ for (const width of [1440, 390]) {
               gap: part.box.top - boxes[i].box.bottom,
             }));
           }, selectors);
-        if (process.env.OH_STACK_CAPTURE) {
-          const { snapshot } = await import("../lab/session.mjs");
-          await snapshot(
-            page,
-            `../issues/composer-stack-gaps-uneven/evidence/${process.env.OH_STACK_CAPTURE}-${width}-${name}`,
-            { labOrigin },
-          );
+        // Every visible part shares the field's edges, inside the viewport.
+        const edges = () =>
+          page.evaluate((selectors) => {
+            const field = document.querySelector(".ah-cbox");
+            if (!field) throw new Error("missing composer field");
+            const { left, right } = field.getBoundingClientRect();
+            return selectors.slice(1).flatMap((selector) =>
+              Array.from(document.querySelectorAll(selector))
+                .filter((e) => e.getClientRects().length > 0)
+                .map((e) => e.getBoundingClientRect())
+                .filter(
+                  (box) =>
+                    Math.abs(box.left - left) > 0.5 ||
+                    Math.abs(box.right - right) > 0.5 ||
+                    box.left < 0 ||
+                    box.right > window.innerWidth,
+                )
+                .map((box) => ({
+                  selector,
+                  left: box.left,
+                  right: box.right,
+                  field: [left, right],
+                  viewport: window.innerWidth,
+                })),
+            );
+          }, selectors);
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate((value) => {
+            document.documentElement.dataset.theme = value;
+          }, theme);
+          const capture = process.env.OH_STACK_CAPTURE;
+          if (capture && ["waiting", "queued"].includes(name)) {
+            const { snapshot } = await import("../lab/session.mjs");
+            await snapshot(
+              page,
+              `${process.env.OH_STACK_CAPTURE_DIR}/${capture}-${width}-${name}-${theme}`,
+              { html: false, labOrigin },
+            );
+          }
+          if (capture !== "before")
+            expect(await edges(), `${name} ${theme}`).toEqual([]);
         }
         if (process.env.OH_STACK_CAPTURE !== "before") {
           const token = await page

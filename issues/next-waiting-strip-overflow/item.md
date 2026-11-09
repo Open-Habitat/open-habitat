@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Next-waiting strip overflows past the window's right edge
@@ -23,5 +24,5 @@ composer column exactly like the field and the queued box, at every width.
 
 ## Acceptance Criteria
 
-- [ ] The strip's left and right edges equal the composer field's at 1440, 1024, 800 and 390, light and dark; never past the viewport.
-- [ ] A browser check asserting that (and the same for every composer-stack part); touched specs green.
+- [x] The strip's left and right edges equal the composer field's at 1440, 1024, 800 and 390, light and dark; never past the viewport.
+- [x] A browser check asserting that (and the same for every composer-stack part); touched specs green.

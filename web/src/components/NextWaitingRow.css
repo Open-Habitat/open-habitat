@@ -2,6 +2,10 @@
 .ah-next-waiting {
   flex: none;
   display: grid;
+  /* An auto track would grow to the unwrapped titles and push the strip past
+     the column; this one keeps it to the composer's width so the titles
+     truncate. */
+  grid-template-columns: minmax(0, 1fr);
   padding: 0 var(--ah-column-pad-inline) 6px;
 }
 .ah-next-waiting > * {
