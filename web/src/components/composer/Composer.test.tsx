@@ -1459,6 +1459,102 @@ describe("composer lists inside the field", () => {
 });
 
 describe("attachments that do not fit one message", () => {
+  it("does not carry queued files across a changed session binding", async () => {
+    vi.mocked(uploadAttachment).mockReset();
+    let finish: (value: Awaited<ReturnType<typeof uploadAttachment>>) => void =
+      () => {};
+    vi.mocked(uploadAttachment).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const change = vi.fn();
+    const view = render(
+      <Composer {...base} csrf="old" value="Draft" onChange={change} />,
+    );
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      {
+        target: {
+          files: [new File(["x"], "first.txt"), new File(["y"], "second.txt")],
+        },
+      },
+    );
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(uploadAttachment).mock.calls[0][2];
+    view.rerender(
+      <Composer {...base} csrf="new" value="Draft" onChange={change} />,
+    );
+    expect(signal.aborted).toBe(true);
+    await act(async () =>
+      finish({ reference: "ignored" } as Awaited<
+        ReturnType<typeof uploadAttachment>
+      >),
+    );
+    expect(uploadAttachment).toHaveBeenCalledTimes(1);
+    expect(change).not.toHaveBeenCalled();
+    expect(view.queryByTestId("attachment-chip")).toBeNull();
+  });
+  it("does not upload the crossing file, blocks send, and resumes after removal", async () => {
+    const send = vi.fn();
+    const { rememberAttachmentSize } = await import("../../app/largeContent");
+    let number = 100;
+    vi.mocked(uploadAttachment).mockReset();
+    vi.mocked(uploadAttachment).mockImplementation(async (file) => {
+      const url = `/api/v1/attachments/${String(number++).padStart(8, "0")}-5555-4555-8555-555555555555`;
+      rememberAttachmentSize(url, file.size);
+      return { reference: `[${file.name}](${url})` } as Awaited<
+        ReturnType<typeof uploadAttachment>
+      >;
+    });
+    function Selection() {
+      const [value, setValue] = useState("Keep this text");
+      return (
+        <Composer
+          {...base}
+          csrf="csrf"
+          value={value}
+          onChange={setValue}
+          onSendNow={send}
+        />
+      );
+    }
+    const view = render(<Selection />);
+    const files = Array.from({ length: 6 }, (_, i) => {
+      const file = new File(["x"], `${i}.bin`);
+      Object.defineProperty(file, "size", { value: 20 * 1024 * 1024 });
+      return file;
+    });
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      {
+        target: { files },
+      },
+    );
+    expect(
+      view.getByTestId("attachment-overflow").getAttribute("data-reason"),
+    ).toBe("bytes");
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledTimes(5));
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll("[data-attachment-url]"),
+      ).toHaveLength(5),
+    );
+    expect(
+      view.container.querySelectorAll('[data-blocked="true"]'),
+    ).toHaveLength(1);
+    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+    expect(send).not.toHaveBeenCalled();
+    fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledTimes(6));
+    await waitFor(() =>
+      expect(view.queryByTestId("attachment-overflow")).toBeNull(),
+    );
+    expect(field(view).value).toBe("Keep this text");
+    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   const ref = (i: number) =>
     `[f${i}.png](/api/v1/attachments/${String(i).padStart(8, "0")}-4444-4444-8444-444444444444)`;
   function Draft({ count, send }: { count: number; send: () => void }) {
@@ -1472,21 +1568,18 @@ describe("attachments that do not fit one message", () => {
       <Composer {...base} value={value} onChange={setValue} onSendNow={send} />
     );
   }
-  it("refuses at Send with the numbers, keeps the draft and clears once they fit", () => {
+  it("warns immediately for an oversized restored draft and clears once it fits", () => {
     const send = vi.fn();
     const view = render(<Draft count={32} send={send} />);
-    // No meter before anything stops.
-    expect(view.queryByTestId("attachment-overflow")).toBeNull();
+    expect(
+      view.getByTestId("attachment-overflow").getAttribute("data-reason"),
+    ).toBe("count");
     fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
     expect(send).not.toHaveBeenCalled();
-    const warning = view.getByTestId("attachment-overflow");
-    expect(warning.textContent).toContain("Viestiä ei lähetetty");
-    expect(warning.textContent).toContain("Liitteitä on 32");
+    expect(view.getByTestId("attachment-overflow")).toBeTruthy();
     expect(field(view).value).toBe("Toisesta ajosta.");
     fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
-    expect(view.getByTestId("attachment-overflow").textContent).toContain(
-      "Liitteitä on 31",
-    );
+    expect(view.getByTestId("attachment-overflow")).toBeTruthy();
     fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
     expect(view.queryByTestId("attachment-overflow")).toBeNull();
     fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });

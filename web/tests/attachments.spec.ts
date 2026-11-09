@@ -37,8 +37,16 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   }));
   await page.getByTestId("message-input").fill("Read these files");
   await input.setInputFiles(files);
-  await expect(composer.getByRole("alert")).toBeVisible();
-  await expect(chips).toHaveCount(0);
+  await expect(composer.getByTestId("attachment-overflow")).toHaveAttribute(
+    "data-reason",
+    "count",
+  );
+  await expect(chips).toHaveCount(31);
+  await expect(chips.and(page.locator('[data-blocked="true"]'))).toHaveCount(1);
+  // Remove the selected batch before testing the exact byte boundary.
+  while (await chips.count())
+    await chips.last().getByTestId("attachment-remove").click();
+  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
   // Construct bytes in the browser rather than base64-copying 100 MiB
   // through the Playwright transport. Ten 4 MiB + twenty 3 MiB files.
   const pickBatch = (fours: number) =>
@@ -56,11 +64,21 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
       element.dispatchEvent(new Event("change", { bubbles: true }));
     }, fours);
   await pickBatch(10);
-  await expect(chips).toHaveCount(30);
+  await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
+    30,
+  );
   await expect(composer.getByRole("alert")).toHaveCount(0);
   await input.setInputFiles(files.slice(30));
-  await expect(composer.getByRole("alert")).toBeVisible();
-  await expect(chips).toHaveCount(30);
+  await expect(composer.getByTestId("attachment-overflow")).toHaveAttribute(
+    "data-reason",
+    "count",
+  );
+  await expect(chips).toHaveCount(31);
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeDisabled();
+  await chips.last().getByTestId("attachment-remove").click();
+  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Read these files",
   );
@@ -77,18 +95,26 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   await expect(chips).toHaveCount(0);
   await expect(composer.getByRole("alert")).toHaveCount(0);
 
-  // A valid file count does not bypass the aggregate byte budget. The browser
-  // refuses at Send, before anything is sent, with the numbers that did not
-  // fit; the attachments and the draft stay rather than being truncated.
+  // Warn at selection time and never upload the file crossing the budget.
+  let uploads = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      request.url().endsWith("/api/v1/attachments")
+    )
+      uploads++;
+  });
   await pickBatch(11);
   await expect(chips).toHaveCount(30);
   await page.getByTestId("message-input").fill("Too large together");
   const send = page.getByTestId("send").and(page.locator('[data-mode="send"]'));
-  await expect(composer.getByTestId("attachment-overflow")).toHaveCount(0);
-  await send.click();
   const overflow = composer.getByTestId("attachment-overflow");
-  await expect(overflow).toContainText("Viestiä ei lähetetty");
-  await expect(overflow).toContainText("30 liitettä ovat yhteensä 101 Mt");
+  await expect(overflow).toHaveAttribute("data-reason", "bytes");
+  await expect(send).toBeDisabled();
+  await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
+    29,
+  );
+  expect(uploads).toBe(29);
   await expect(page.getByTestId("send-receipt")).toHaveCount(0);
   await expect(chips).toHaveCount(30);
   await expect(page.getByTestId("message-input")).toHaveValue(
@@ -97,21 +123,19 @@ test("thirty attachments totaling 100 MiB send, while an extra file is refused w
   await overflow.getByTestId("attachment-refusal-dismiss").click();
   await expect(overflow).toHaveCount(0);
   await expect(chips).toHaveCount(30);
-  await send.click();
+  await expect(send).toBeDisabled();
+  await page.getByTestId("message-input").press("Enter");
   await expect(overflow).toBeVisible();
-  // A draft from an earlier page load has sizes this tab never saw: the
-  // host refuses it, and says which limit.
-  await page.reload();
-  await expect(chips).toHaveCount(30);
+  // Making room resumes the remaining upload, without asking to pick again.
+  await chips.first().getByTestId("attachment-remove").click();
+  await expect(overflow).toHaveCount(0);
+  await expect(chips.and(page.locator("[data-attachment-url]"))).toHaveCount(
+    29,
+  );
+  await expect(send).toBeEnabled();
+  expect(uploads).toBe(30);
   await send.click();
-  await expect(page.getByTestId("send-receipt")).toContainText(
-    "liitteet ovat yhteensä yli 100 Mt",
-  );
-  await expect(chips).toHaveCount(30);
-  await expect(page.getByTestId("message-input")).toHaveValue(
-    "Too large together",
-  );
-  await expect(page.locator('.ah-feed > li[data-kind="user"]')).toHaveCount(1);
+  await expect(page.locator('.ah-feed > li[data-kind="user"]')).toHaveCount(2);
 });
 
 test("picker, image paste and conversation drop persist authenticated attachments", async ({

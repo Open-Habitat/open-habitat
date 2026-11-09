@@ -16,6 +16,8 @@ export type Attachment = {
   url: string;
   /** The reference text exactly as it stands in the message. */
   source: string;
+  pending?: boolean;
+  blocked?: boolean;
 };
 
 const attachment = (match: RegExpMatchArray): Attachment => ({
@@ -114,7 +116,8 @@ export function AttachmentChips({
             // biome-ignore lint/suspicious/noArrayIndexKey: the same file may be attached twice.
             key={`${item.url}:${index}`}
             data-testid="attachment-chip"
-            data-attachment-url={item.url}
+            data-attachment-url={item.pending ? undefined : item.url}
+            data-blocked={item.blocked || undefined}
             data-attachment-kind={item.image ? "image" : "file"}
             className={`ah-attachment-chip${item.image && !draft ? " ah-attachment-thumb" : ""}`}
           >
@@ -124,6 +127,7 @@ export function AttachmentChips({
               variant="quiet"
               size="inline"
               aria-label={t.open(item.name)}
+              isDisabled={item.pending}
               onPress={() => setOpen(item)}
             >
               {item.image ? (
@@ -135,6 +139,9 @@ export function AttachmentChips({
                 <span className="ah-attachment-name">{item.name}</span>
               )}
             </ControlButton>
+            {item.pending ? (
+              <span>{item.blocked ? t.overLimit : t.waiting}</span>
+            ) : null}
             {onRemove ? (
               <ControlButton
                 data-testid="attachment-remove"

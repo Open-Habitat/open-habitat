@@ -1,5 +1,23 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { uploadAttachment } from "./attachments";
+import { attachmentSelection, uploadAttachment } from "./attachments";
+import { rememberAttachmentSize } from "./largeContent";
+
+it("counts pending bytes and files, deduplicating only stored references", () => {
+  const url = "/api/v1/attachments/aaaaaaaa-1111-4111-8111-111111111111";
+  rememberAttachmentSize(url, 80 * 1024 * 1024);
+  const twenty = { size: 20 * 1024 * 1024 } as File;
+  const extra = { size: 1 } as File;
+  expect(attachmentSelection([url, url], [twenty]).overflow).toBeUndefined();
+  expect(attachmentSelection([url, url], [twenty, extra])).toEqual({
+    overflow: { count: 3, bytes: 100 * 1024 * 1024 + 1, reason: "bytes" },
+    blocked: [false, true],
+  });
+  const thirty = Array.from({ length: 30 }, () => extra);
+  expect(attachmentSelection([], thirty).overflow).toBeUndefined();
+  expect(attachmentSelection([], [...thirty, extra]).overflow?.reason).toBe(
+    "count",
+  );
+});
 
 const id = "11111111-1111-4111-8111-111111111111";
 const file = new File(["hello"], "<notes>.png", { type: "image/png" });

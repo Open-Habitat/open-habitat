@@ -2,7 +2,11 @@ import schema from "../../../contracts/v1/attachments.schema.json";
 import { liveText } from "../i18n";
 import { attachmentsText } from "../text/attachments";
 import { largeContentText } from "../text/largeContent";
-import { attachmentBytesLimit, rememberAttachmentSize } from "./largeContent";
+import {
+  attachmentBytesLimit,
+  attachmentOverflow,
+  rememberAttachmentSize,
+} from "./largeContent";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
@@ -24,6 +28,21 @@ const attachmentLimit = attachmentBytesLimit;
 
 export const attachmentURL =
   /^\/api\/v1\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Check the whole selection before starting any network work. Pending files
+ * count too, so a slow upload cannot admit another batch past the budget. */
+export function attachmentSelection(
+  urls: readonly string[],
+  files: readonly File[],
+) {
+  const sizes = files.map((file) => file.size);
+  return {
+    overflow: attachmentOverflow(urls, sizes),
+    blocked: files.map(
+      (_, index) => !!attachmentOverflow(urls, sizes.slice(0, index + 1)),
+    ),
+  };
+}
 
 export async function uploadAttachment(
   file: File,

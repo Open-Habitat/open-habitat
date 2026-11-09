@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Combined attachment size is checked only at send, after every file uploaded
@@ -26,5 +27,5 @@ progress is `proto-attachment-upload-progress`'s.
 
 ## Acceptance Criteria
 
-- [ ] Crossing 100 MB or 30 files while attaching shows the warning at once; Lähetä waits until it fits; removing files clears it.
-- [ ] Test covering it; attachment specs green.
+- [x] Crossing 100 MB or 30 files while attaching shows the warning at once; Lähetä waits until it fits; removing files clears it.
+- [x] Test covering it; attachment specs green.

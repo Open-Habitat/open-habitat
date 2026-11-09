@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { uploadAttachment } from "../../app/attachments";
+import { attachmentSelection, uploadAttachment } from "../../app/attachments";
 import type {
   CommandList,
   FileList,
@@ -23,8 +23,8 @@ import type {
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
 import {
+  attachmentBytesLimit,
   attachmentOverflow,
-  messageAttachmentCount,
 } from "../../app/largeContent";
 import { blockAutomaticReload } from "../../app/reloadSafety";
 import { useText } from "../../i18n";
@@ -636,13 +636,22 @@ export function Composer({
   }, [draftValue, onDraftChange, goals]);
   const { text: whole, attachments } = splitAttachments(draftValue);
   const sizes = useText(largeContentText);
-  // The pre-send check's refusal stays while the attachments still do not
-  // fit, with their current numbers, and goes once they do.
-  const [overflowShown, setOverflowShown] = useState(false);
-  const overflow = overflowShown
-    ? attachmentOverflow(attachmentsIn(draftValue).map((a) => a.url))
-    : undefined;
-  if (overflowShown && !overflow) setOverflowShown(false);
+  const [pendingFiles, setPendingFiles] = useState<
+    { id: string; file: File; focus: boolean }[]
+  >([]);
+  const pending = useRef(pendingFiles);
+  const updatePending = useCallback((next: typeof pendingFiles) => {
+    pending.current = next;
+    setPendingFiles(next);
+  }, []);
+  const selection = attachmentSelection(
+    attachmentsIn(draftValue).map((a) => a.url),
+    pendingFiles.map((item) => item.file),
+  );
+  const overflow = selection.overflow;
+  const [dismissedOverflow, setDismissedOverflow] = useState<string>();
+  const overflowKey = JSON.stringify(overflow);
+  if (!overflow && dismissedOverflow) setDismissedOverflow(undefined);
   const { goal, text: value } = splitGoal(whole, goals);
   // The field's text with the draft's goal chip and attachments kept.
   const setText = useCallback((text: string, keepGoal = true) => {
@@ -689,7 +698,13 @@ export function Composer({
   if (uploadError && uploadError.attachments !== attachmentKey(draftValue))
     setUploadError(undefined);
   const uploadController = useRef<AbortController | null>(null);
-  useEffect(() => blockAutomaticReload(() => !!uploadController.current), []);
+  useEffect(
+    () =>
+      blockAutomaticReload(
+        () => !!uploadController.current || pending.current.length > 0,
+      ),
+    [],
+  );
   const picker = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   // The reference of the attachment whose chip takes the focus to the field
@@ -703,59 +718,82 @@ export function Composer({
   const attachable = availability.state === "enabled" || sendWhenReady;
   const addFiles = useCallback(
     async (files: File[], focus: boolean) => {
-      if (!files.length || !csrf || uploadController.current || !attachable)
-        return;
-      const attached = new Set(
-        draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
-          [],
-      ).size;
-      if (attached + files.length > messageAttachmentCount) {
-        setUploadError({
-          text: t.tooManyFiles(attached + files.length),
-          attachments: attachmentKey(draft.current.value),
-        });
-        return;
-      }
-      const controller = new AbortController();
-      uploadController.current = controller;
-      setUploading(true);
+      if (!files.length || !csrf || !attachable) return;
+      const next = [
+        ...pending.current,
+        ...files.map((file) => ({
+          id: crypto.randomUUID(),
+          file,
+          focus,
+        })),
+      ];
+      pending.current = next;
+      setPendingFiles(next);
       setUploadError(undefined);
+      setDismissedOverflow(undefined);
+    },
+    [csrf, attachable],
+  );
+  useEffect(() => {
+    if (!csrf || !attachable || uploading || uploadController.current) return;
+    const item = pendingFiles[0];
+    // Oversized single files reach uploadAttachment's local validation, not
+    // the network, so their specific refusal wins over the combined limit.
+    if (
+      !item ||
+      pending.current[0] !== item ||
+      (item.file.size <= attachmentBytesLimit &&
+        attachmentSelection(
+          attachmentsIn(draftValue).map((a) => a.url),
+          [item.file],
+        ).overflow)
+    )
+      return;
+    const controller = new AbortController();
+    uploadController.current = controller;
+    setUploading(true);
+    void (async () => {
       try {
-        for (const file of files) {
-          const uploaded = await uploadAttachment(
-            file,
-            csrf,
-            controller.signal,
-          );
-          if (controller.signal.aborted) return;
+        const uploaded = await uploadAttachment(
+          item.file,
+          csrf,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        // A removed local chip must never reappear when its upload answers.
+        if (pending.current.some((entry) => entry.id === item.id)) {
           const current = draft.current;
           const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
           draft.current = { ...current, value: next };
-          if (focus) attachFocus.current = uploaded.reference;
+          if (item.focus) attachFocus.current = uploaded.reference;
           current.onChange(next);
         }
+        updatePending(pending.current.filter((entry) => entry.id !== item.id));
       } catch (error) {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          updatePending([]);
           setUploadError({
             text: error instanceof Error ? error.message : t.uploadFailed,
             attachments: attachmentKey(draft.current.value),
           });
+        }
       } finally {
         if (uploadController.current === controller) {
           uploadController.current = null;
           if (!controller.signal.aborted) setUploading(false);
         }
       }
-    },
-    [csrf, attachable, t],
-  );
+    })();
+  }, [csrf, attachable, pendingFiles, draftValue, uploading, t, updatePending]);
   useEffect(() => {
     if (csrf) setUploading(false);
+    updatePending([]);
     return () => {
       uploadController.current?.abort();
       uploadController.current = null;
+      pending.current = [];
     };
-  }, [csrf]);
+  }, [csrf, updatePending]);
   useEffect(() => {
     if (!csrf) return;
     const drag = (event: DragEvent) => {
@@ -847,6 +885,8 @@ export function Composer({
   const sendBlocked =
     resolving ||
     uploading ||
+    pendingFiles.length > 0 ||
+    !!overflow ||
     (!sendWhenReady &&
       (sendState === "pending" || availability.state !== "enabled"));
   const shellText = shellOn ? shellCommand(value) : "";
@@ -1186,6 +1226,7 @@ export function Composer({
       return;
     }
     if (!content.trim() || resolution.current) return;
+    if (overflow) setDismissedOverflow(undefined);
     if (sendBlocked) {
       // A send the view cannot take says why rather than doing nothing.
       if (!resolving && !uploading && availability.state !== "enabled")
@@ -1196,7 +1237,6 @@ export function Composer({
     // Attachments that cannot go in one message are refused here, before
     // anything is sent, with the numbers that did not fit.
     if (attachmentOverflow(attachmentsIn(content).map((a) => a.url))) {
-      setOverflowShown(true);
       return;
     }
     const parts = splitAttachments(content);
@@ -1790,7 +1830,7 @@ export function Composer({
         />
       ) : null}
       <DictationCeiling view={dictation.view} />
-      {overflow ? (
+      {overflow && dismissedOverflow !== overflowKey ? (
         <WarningBanner
           data-testid="attachment-overflow"
           data-reason={overflow.reason}
@@ -1806,7 +1846,7 @@ export function Composer({
               data-testid="attachment-refusal-dismiss"
               aria-label={t.dismissAttachmentRefusal}
               title={t.dismissAttachmentRefusal}
-              onClick={() => setOverflowShown(false)}
+              onClick={() => setDismissedOverflow(overflowKey)}
             >
               <Icon name="cross" />
             </TooltipButton>
@@ -1818,8 +1858,30 @@ export function Composer({
         </WarningBanner>
       ) : null}
       <AttachmentChips
-        attachments={attachments}
-        onRemove={fieldDisabled ? undefined : removeAttachment}
+        attachments={[
+          ...attachments,
+          ...pendingFiles.map((item, index) => ({
+            image: false,
+            name: item.file.name,
+            url: item.id,
+            source: "",
+            pending: true,
+            blocked: selection.blocked[index],
+          })),
+        ]}
+        onRemove={
+          fieldDisabled
+            ? undefined
+            : (index) => {
+                if (index < attachments.length) removeAttachment(index);
+                else
+                  updatePending(
+                    pending.current.filter(
+                      (_, i) => i !== index - attachments.length,
+                    ),
+                  );
+              }
+        }
       />
       {csrf ? (
         <>

@@ -975,7 +975,7 @@ const fi = {
     V28: {
       name: "Viestiä ei lähetetty",
       lead: "Kertoo, että liitteet eivät mahdu yhteen viestiin, ja montako ja kuinka suuria niitä on.",
-      know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Kun poistat liitteitä niin, että ne mahtuvat, varoitus häviää.",
+      know: "Yhteen viestiin mahtuu 30 tiedostoa ja yhteensä 100 Mt. Liikaa olevissa liitteissä lukee ‘Ei mahdu viestiin’. Poista liitteitä: kun loput mahtuvat, tallennus jatkuu ja varoitus häviää.",
     },
     V29: {
       name: "Käsittele",
@@ -2458,7 +2458,7 @@ export const explainModeText = catalog(fi, {
     V28: {
       name: "The message was not sent",
       lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
-      know: "One message holds 30 files and 100 MB in total. Once you remove enough attachments, the warning goes away.",
+      know: "One message holds 30 files and 100 MB in total. Excess attachments say ‘Does not fit this message’. Remove attachments: once the rest fit, saving continues and the warning goes away.",
     },
     V29: {
       name: "Handle",

@@ -52,12 +52,14 @@ export type AttachmentOverflow = {
  * a file attached twice counts once. */
 export function attachmentOverflow(
   urls: readonly string[],
+  pendingSizes: readonly number[] = [],
 ): AttachmentOverflow | undefined {
   const distinct = [...new Set(urls)];
-  const bytes = distinct.reduce((sum, url) => sum + (sizes.get(url) ?? 0), 0);
-  if (distinct.length > messageAttachmentCount)
-    return { count: distinct.length, bytes, reason: "count" };
-  if (bytes > messageAttachmentBytes)
-    return { count: distinct.length, bytes, reason: "bytes" };
+  const bytes =
+    distinct.reduce((sum, url) => sum + (sizes.get(url) ?? 0), 0) +
+    pendingSizes.reduce((sum, size) => sum + size, 0);
+  const count = distinct.length + pendingSizes.length;
+  if (count > messageAttachmentCount) return { count, bytes, reason: "count" };
+  if (bytes > messageAttachmentBytes) return { count, bytes, reason: "bytes" };
   return;
 }
