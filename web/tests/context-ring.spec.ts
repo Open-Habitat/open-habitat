@@ -1,6 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test } from "./worker-host";
+import { createHostTest, expect } from "./worker-host";
+
+const capture = process.env.OH_VISUAL_CAPTURE === "1";
+const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
 
 test.beforeEach(async ({ page }) => {
   expect((await page.request.get("/fixture/reset-clock")).status()).toBe(204);
@@ -35,7 +38,7 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByTestId("workspace-ordinary-dir")
+    .getByTestId(capture ? "workspace-aurinkokello" : "workspace-ordinary-dir")
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const ring = page.locator(".ah-agent-header").getByTestId("context-ring");
@@ -92,6 +95,48 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
 
   await send(page, "tiivistä konteksti 250000");
   await expect(ring).toHaveAttribute("data-level", "compacting");
+  // Hold the browser's running observation while measuring both layouts;
+  // Pi may finish meanwhile, but cannot replace the row until reconnect.
+  await page.context().setOffline(true);
+  const holdUpdates = (route: import("@playwright/test").Route) =>
+    /\/(events|snapshot|history|status)([/?]|$)/.test(route.request().url())
+      ? route.abort()
+      : route.continue();
+  await page.route("**/api/**", holdUpdates);
+  await page.context().setOffline(false);
+  try {
+    const notice = page.getByTestId("compaction-notice");
+    await expect(notice).toHaveAttribute("data-state", "running");
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await notice.scrollIntoViewIfNeeded();
+      const neighbour = page
+        .locator('.ah-feed > li[data-kind="assistant"]')
+        .last();
+      await expect(async () => {
+        const row = await notice.boundingBox();
+        const box = await neighbour.boundingBox();
+        if (!row || !box) throw new Error("Missing conversation box");
+        expect(Math.abs(row.x - box.x)).toBeLessThan(1);
+        expect(Math.abs(row.width - box.width)).toBeLessThan(1);
+        expect(row.x).toBeGreaterThan(0);
+        expect(row.x + row.width).toBeLessThan(width);
+      }).toPass({ timeout: 5000 });
+      if (capture) {
+        const { snapshot } = await import("../lab/session.mjs");
+        await snapshot(
+          page,
+          `../issues/compaction-row-misaligned/evidence/running-${width}`,
+          {
+            labOrigin: new URL(page.url()).origin,
+          },
+        );
+      }
+    }
+  } finally {
+    await page.unroute("**/api/**", holdUpdates);
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
   // After the compaction Pi's size is unknown until its next reply.
   await expect(ring).toHaveAttribute("data-level", "after");
   await page.reload();

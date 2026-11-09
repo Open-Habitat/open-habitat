@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Compaction progress row sits against the sidebar, not in the conversation column
@@ -22,5 +23,5 @@ the stream's horizontal margins. Fixing agreed behaviour; no prototype.
 
 ## Acceptance Criteria
 
-- [ ] The compaction progress row aligns with the column's other boxes at 1440 and 390.
-- [ ] A browser check of its left edge against a neighbouring box; touched specs green.
+- [x] The compaction progress row aligns with the column's other boxes at 1440 and 390.
+- [x] A browser check of its left edge against a neighbouring box; touched specs green.
