@@ -98,3 +98,67 @@ Suunta **3 Oma sivu** (Jaetut-sivu Etusivun alla, kortit keskusteluittain,
 esikatselu paneelissa). Kysymyksiin 2–3 suosituksen mukaan: näkymälle
 `</>`-merkki, poistoista ei jälkeä. Jari haluaa riffata sivun ulkoasua
 seuraavilla kierroksilla ennen toteutusta.
+
+# Kierros 2: Jaetut-sivun ulkoasu
+
+Kierros: `design-system/prototypes/rounds/2026-11-09-jaetut-sivu/`
+(`NOTES.md`). Paikka on päätetty (oma sivu Etusivun alla); akseli on se,
+miltä sivu näyttää. Rivit ja host-tiedot ovat samat kuin kierroksella 1.
+
+- **A Galleria**: isot esikatselukuvat ruudukossa, ryhmät Julkiset nyt, Vain sinä ja Päättyneet. Julkisen ruudun alla päättymispäivä ja Kopioi linkki.
+- **B Lista**: tiivis lista uusin ensin, ja valittu jako isona oikealla osoitteen, päättymispäivän ja Kopioi linkki -painikkeen kanssa, kuten Agentin käytössä -sivu.
+- **C Aikajana**: keskustelut aikajanalla viimeisimmän jaon mukaan ja niiden alla samat kortit kuin keskustelussa; kortti avaa esikatselun oikealle.
+
+Kuvat: `evidence/r2-<suunta>-0-oletus-{1440,390}-{light,dark}.avif`,
+kansio avattuna `r2-*-1-auki-{1440,390}-light`, julkisen jaon keston
+valikko `r2-*-2-kesto-1440-light`, kopioitu linkki
+`r2-*-3-kopioi-390-light` ja tyhjä sivu `r2-*-4-tyhja-1440-light` ja
+`-390-dark`.
+
+## Mitä suunnat tekevät samoin
+
+- Sivupalkissa *Jaetut 2* (julkisten määrä) Etusivun ja *Agentin
+  käytössä* -rivin vieressä. Tyhjällä sivulla luku puuttuu.
+- Julkinen jako näyttää päättymispäivän valikkona (sama kuin kortissa) ja
+  kopioinnin. Kopiointi vie `/n/`-osoitteen leikepöydälle.
+- Tyhjä sivu kertoo, mistä jako syntyy: kortin maapallosta keskustelussa.
+- Poistettu kohde näkyy yliviivattuna, ja sillä on vain roskakori.
+
+## Decisions for later review
+
+- **A ja B lisäävät julkiselle jaolle tekstipainikkeen Kopioi linkki**
+  kortin linkkikuvakkeen tilalle. Kopiointi on sivun yleisin toimi, kun
+  jako on jo julkinen.
+- **A:n ruudussa tila on lyhyesti *Julkinen*,** ja päivämäärä on
+  sen vieressä valikkona. Pitkä *Julkinen 7.12.2026 asti* ei mahtunut
+  ruutuun paneelin ollessa auki.
+- **B näyttää uusimman jaon heti työpöydällä** (kierroksen 1 periaate *ei
+  mitään auki oletuksena* koski paneelia). Puhelimessa lista tulee ensin,
+  ja jako aukeaa omaksi näkymäkseen.
+- **B:n suodattimessa on luvut vain työpöydällä.** Puhelimessa neljä
+  lukua rivittivät suodattimen kahdelle riville, ja luvut ovat jo
+  yläotsikossa.
+- **C:n aikajanan päivä on keskustelun viimeisin jako,** ei keskustelun
+  oma ajankohta. Host tietää jaon `created_at`:n, ja se on se, mitä
+  muistetaan.
+- Toteutus tarvitsee Explain-kortit molemmilla kielillä sivulle, sen
+  rivin tai ruudun ohjaimille ja (B) suodattimelle.
+
+## Kysymykset Jarille
+
+1. Mikä ulkoasu: **A Galleria** (kuvat edellä, ryhmät tilan mukaan),
+   **B Lista** (tiivis lista ja yksi jako isona, kuten Agentin käytössä)
+   vai **C Aikajana** (keskusteluittain, samat kortit kuin keskustelussa)?
+2. Riittääkö A:ssa ja B:ssä erillinen Kopioi linkki -painike, vai
+   pidetäänkö vain kortin linkkikuvake kuten C:ssä?
+3. Näytetäänkö B:ssä jaon koko osoite kentässä, vai riittääkö painike?
+   Kentästä näkee, mikä osoite lähtee eteenpäin.
+
+**Suositus:** B Lista. Jaetut-sivu on hallintasivu: siellä katsotaan,
+mikä on maailmalla ja kuinka kauan, ja kopioidaan tai suljetaan linkki.
+B näyttää sen yhdellä silmäyksellä, osoite ja päättymispäivä ovat isoina
+eikä hoverin takana, ja rakenne on sama kuin viereisellä *Agentin
+käytössä* -sivulla, joten sen oppii kerran. A on kaunein mutta
+näkymien `</>`-ruudut ovat tyhjän näköisiä, kun oikeaa kuvaa ei ole. C on
+lähinnä kierroksen 1 valintaa, mutta julkisuuden toiminnot jäävät
+kortissa hoverin taakse.
