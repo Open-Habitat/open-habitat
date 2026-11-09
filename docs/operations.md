@@ -643,7 +643,7 @@ each person's native stores. No install or login step downloads Pi or shares a
 provider key. An unmet Ubuntu minimum or non-Ubuntu archive mismatch is a typed qualification failure, not
 permission to downgrade a customer security update or install apt holds.
 
-Every installation's core runtime also carries **Taskfleet 0.18.0**, the
+Every installation's core runtime also carries **Taskfleet 0.20.0**, the
 **workmux 0.1.278** it creates worktrees with, Taskfleet's bundled Pi skills
 and a `pi` launcher, in `/opt/open-habitat/core/agent-bin` and
 `/opt/open-habitat/core/taskfleet/skills`. Install and upgrade bring them like

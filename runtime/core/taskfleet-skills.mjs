@@ -6,6 +6,8 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The builder fills this directory with `skill install` from the locked
+// Taskfleet binary, so a runtime pin bump also updates the offered skills.
 const skills = join(dirname(fileURLToPath(import.meta.url)), 'skills');
 
 export default function (pi) {

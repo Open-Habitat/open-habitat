@@ -16,11 +16,10 @@ taskfleet run create --kind spinoff --resident --name reviewer --headless --titl
 ```
 
 Names are lowercase (`[a-z][a-z0-9-]*`, at most 48 bytes, no doubled or
-trailing hyphen) and shared by every conversation in the repository. If create fails with `resident_name_in_use`, the helper of
-that name belongs to another conversation, possibly an archived one: leave it
-alone (do not inspect, message or stop it) and create yours at once as
-`<name>-2`, or `-3` if that is taken too (shorten the name first if the
-suffix would pass 48 bytes).
+trailing hyphen) and scoped to the creating conversation in the repository.
+Another conversation can use the same name without a collision. If create
+reports `resident_name_in_use`, inspect your existing helper rather than
+creating a duplicate under a new name.
 
 Use the returned run id rather than the name from here on. Start
 `taskfleet run wait <run-id> --output json` with the process tool and turn
@@ -33,6 +32,15 @@ the helper), tell the person what the round did, and for the next round send
 the work is done, `taskfleet run merge <run-id>` lands the last round and
 ends the helper; `taskfleet run cancel <run-id>` ends one with nothing left
 to land. Nothing in the browser lands, messages or stops a helper for you.
+
+When the person asks to stop a helper's current work, or you need to redirect
+an ongoing round, interrupt the turn rather than cancel the helper. From its
+repository, use `taskfleet run interrupt <name> --output json` (the returned
+run id works too). This keeps its worktree, uncommitted changes and session;
+`run wait` settles with `round_interrupted: true`, not a completed round.
+Check the interrupt reply for the worker's exit before sending new work. Send
+the revised task with `taskfleet run message <run-id> --body-file message.md`
+to resume the same helper. An interruption is not a round report to land.
 
 This conversation's own helpers are those it created, in any repository:
 

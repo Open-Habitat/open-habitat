@@ -184,7 +184,7 @@ func validCoreRuntime(a ReleaseArtifact) bool {
 // it creates worktrees with, and the launcher that runs the release's Pi for
 // Taskfleet's Pi workers. The daemon appends runtime/agent-bin to agents'
 // PATH, so that directory holds exactly these and nothing else.
-var CoreAgentTools = map[string]string{"taskfleet": "0.18.0", "workmux": "0.1.278", "pi": ""}
+var CoreAgentTools = map[string]string{"taskfleet": "0.20.0", "workmux": "0.1.278", "pi": ""}
 
 // coreAgentToolOwner is the closure component that owns each command.
 func coreAgentToolOwner(name string) string {

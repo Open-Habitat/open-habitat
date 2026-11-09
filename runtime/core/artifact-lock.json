@@ -19,31 +19,31 @@
   "tools": [
     {
       "name": "taskfleet",
-      "version": "0.18.0",
+      "version": "0.20.0",
       "repository": "jarimustonen/taskfleet",
-      "commit": "ab9251e0a16510cfad690f087b952273f5724311",
+      "commit": "6ad8d7ca22246804c6c79f038e57bba4c45acee5",
       "targets": {
         "linux-amd64": {
-          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.18.0/taskfleet-x86_64-unknown-linux-gnu.tar.xz",
-          "sha256": "6f2a8ffe6a7fb112d411ef960b3b2b36318d504bdde0a1b2d6ba7cb71282be37",
+          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.20.0/taskfleet-x86_64-unknown-linux-gnu.tar.xz",
+          "sha256": "52303a3d4b7e71364340264db003b2340de8ce8aaae4f032dd9aabd8c5180e56",
           "member": "taskfleet-x86_64-unknown-linux-gnu/taskfleet"
         },
         "linux-arm64": {
-          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.18.0/taskfleet-aarch64-unknown-linux-gnu.tar.xz",
-          "sha256": "2e29e0750f5d950e9862d4815c604a60bb6db119c4f86b03059f291b5a9fa6ac",
+          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.20.0/taskfleet-aarch64-unknown-linux-gnu.tar.xz",
+          "sha256": "804fc81a48ed52829f4e11896e402a684a7824f01925f83391464a7d7d1c900e",
           "member": "taskfleet-aarch64-unknown-linux-gnu/taskfleet"
         }
       },
       "files": [
         {
           "filename": "LICENSE",
-          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/ab9251e0a16510cfad690f087b952273f5724311/LICENSE",
+          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/6ad8d7ca22246804c6c79f038e57bba4c45acee5/LICENSE",
           "sha256": "4b3e68f175af4696e2617c7273e508abc9e97aa0a34c9c4fb427868536734032"
         },
         {
           "filename": "Cargo.lock",
-          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/ab9251e0a16510cfad690f087b952273f5724311/Cargo.lock",
-          "sha256": "813e1ee65b10d92a3baecf195c14b91978233a90b71292e845200853d7a153dc"
+          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/6ad8d7ca22246804c6c79f038e57bba4c45acee5/Cargo.lock",
+          "sha256": "95d1d77aeb6d25f1413a8bead45f855d7b9d97f07096b59e3e75b95408999503"
         }
       ],
       "crates": [

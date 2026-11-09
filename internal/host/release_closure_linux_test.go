@@ -142,7 +142,7 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 // recomputed from the files, so a mutation is judged on its meaning alone.
 func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]string)) ReleaseArtifact {
 	files := map[string]RuntimeFile{"runtime/bin/node": {Component: "node", Mode: 0755}}
-	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.18.0", "workmux": "0.1.278", "agent-launcher": "1"}
+	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.20.0", "workmux": "0.1.278", "agent-launcher": "1"}
 	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
 		files["runtime/node_modules/"+name+"/package.json"] = RuntimeFile{Component: "npm:node_modules/" + name, Mode: 0644}
 		versions["npm:node_modules/"+name] = version
@@ -193,7 +193,7 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		"taskfleet missing":        func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/taskfleet") },
 		"workmux missing":          func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/workmux") },
 		"launcher missing":         func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/pi") },
-		"taskfleet unpinned":       func(_ map[string]RuntimeFile, v map[string]string) { v["taskfleet"] = "0.17.3" },
+		"taskfleet unpinned":       func(_ map[string]RuntimeFile, v map[string]string) { v["taskfleet"] = "0.18.0" },
 		"workmux unpinned":         func(_ map[string]RuntimeFile, v map[string]string) { v["workmux"] = "0.1.276" },
 		"skills extension missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/taskfleet/extension.mjs") },
 		"skills missing": func(f map[string]RuntimeFile, _ map[string]string) {
