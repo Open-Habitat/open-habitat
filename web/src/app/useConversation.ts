@@ -311,8 +311,10 @@ export function useConversation({
   // The person's command ends where the record of its command_id says so:
   // its receipt, or any status naming it, whichever reader applied that
   // status. A newer command is never settled by an older one's record.
+  // undelivered: Pi never received it whole, so nothing of it ran; the
+  // refusal says why.
   const settleCommand = useCallback(
-    (command: string, outcome: "accepted" | "rejected") => {
+    (command: string, outcome: "accepted" | "rejected" | "undelivered") => {
       const text = sessionStorage.getItem(submittedKey);
       if (sessionStorage.getItem(sendKey) !== command || text === null) return;
       // What the send itself recorded (its kind) stays with its outcome.
@@ -320,9 +322,15 @@ export function useConversation({
         ...(old?.command === command && old.text === text ? old : undefined),
         text,
         command,
-        state: outcome,
+        state: outcome === "accepted" ? "accepted" : "rejected",
       }));
-      setReceipt(outcome === "rejected" ? txt.rejected : "");
+      setReceipt(
+        outcome === "rejected"
+          ? txt.rejected
+          : outcome === "undelivered"
+            ? txt.undelivered
+            : "",
+      );
       sessionStorage.removeItem(sendKey);
       sessionStorage.removeItem(uncertainKey);
       sessionStorage.removeItem(submittedKey);
@@ -332,6 +340,45 @@ export function useConversation({
       setForgotten(undefined);
     },
     [sendKey, uncertainKey, submittedKey, answeredKey, sentAfterKey, resentKey],
+  );
+  // The record of this tab's send whose outcome is unknown ends without an
+  // outcome: the person sent its text again, or it went again held.
+  const endUnknown = useCallback(
+    (command: string) => {
+      if (sessionStorage.getItem(sendKey) !== command) return;
+      for (const key of [
+        sendKey,
+        uncertainKey,
+        submittedKey,
+        answeredKey,
+        sentAfterKey,
+        resentKey,
+      ])
+        sessionStorage.removeItem(key);
+      setForgotten(undefined);
+      setSendObservation(undefined);
+      setReceipt("");
+    },
+    [sendKey, uncertainKey, submittedKey, answeredKey, sentAfterKey, resentKey],
+  );
+  // A message the person sends that carries the unknown send's text is that
+  // send made again by them (Jari 9.11.2026): its record ends, so no warning
+  // claims the text is still in the field, nothing sends it again, and a
+  // later view does not give it back a second time.
+  const releaseUnknown = useCallback(
+    (text: string) => {
+      const command = sessionStorage.getItem(uncertainKey);
+      const lost = sessionStorage.getItem(submittedKey)?.trim();
+      if (
+        command &&
+        lost &&
+        text.includes(lost) &&
+        sendObservation?.state === "uncertain" &&
+        sendObservation.command === command
+      )
+        endUnknown(command);
+    },
+    [uncertainKey, submittedKey, sendObservation, endUnknown],
   );
   // A send whose outcome was lost (its request failed, or a host restart
   // forgot its acknowledgement) has arrived once Pi's own history shows it:
@@ -359,7 +406,11 @@ export function useConversation({
     const command = sessionStorage.getItem(sendKey);
     if (!localReady || !command || current?.command_id !== command) return;
     const outcome = current.send_receipt || current.ack;
-    if (outcome === "accepted" || outcome === "rejected")
+    if (
+      outcome === "accepted" ||
+      outcome === "rejected" ||
+      outcome === "undelivered"
+    )
       settleCommand(command, outcome);
   }, [current, localReady, sendKey, settleCommand]);
   // A lost send the host does not know either: proven undelivered it is sent
@@ -551,7 +602,11 @@ export function useConversation({
             // command's later outcomes.
             const same = (old?: SendObservationValue) =>
               old?.command === command && old.text === text ? old : undefined;
-            if (outcome === "accepted" || outcome === "rejected")
+            if (
+              outcome === "accepted" ||
+              outcome === "rejected" ||
+              outcome === "undelivered"
+            )
               settleCommand(command, outcome);
             else {
               sessionStorage.setItem(uncertainKey, command);
@@ -746,6 +801,8 @@ export function useConversation({
     sentAfterKey,
     resentKey,
     lostSend: lostSend?.verdict === "resend" ? lostSend : undefined,
+    endUnknown,
+    releaseUnknown,
     changeDraft,
     refresh,
     setBusy,

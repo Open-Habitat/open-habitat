@@ -94,7 +94,15 @@ export type Status = Session & {
   bash?: BashStatus | null;
   /** Why the newest recap attempt failed, for the message it was about. */
   recap_failure?: RecapFailure | null;
-  send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
+  /** undelivered: Pi never received it whole (handing it over was cut
+   * off); its text goes back to the person. */
+  send_receipt?:
+    | ""
+    | "pending"
+    | "accepted"
+    | "rejected"
+    | "uncertain"
+    | "undelivered";
   turn_settled?: {
     state: "settled" | "unknown";
     observed_at: string;
@@ -733,9 +741,14 @@ export function parseStatus(v: unknown, id: string): Status {
       (typeof v.start_problem !== "string" ||
         !/^(|[a-z][a-z0-9_]{2,63})$/.test(v.start_problem))) ||
     (v.send_receipt !== undefined &&
-      !["", "pending", "accepted", "rejected", "uncertain"].includes(
-        String(v.send_receipt),
-      )) ||
+      ![
+        "",
+        "pending",
+        "accepted",
+        "rejected",
+        "uncertain",
+        "undelivered",
+      ].includes(String(v.send_receipt))) ||
     (v.turn_settled != null &&
       (!object(v.turn_settled) ||
         !["settled", "unknown"].includes(String(v.turn_settled.state)) ||
@@ -771,15 +784,18 @@ const receipts = [
   "uncertain",
   "held",
   "cancelled",
+  "undelivered",
 ];
-/** held: the daemon keeps it until Pi runs. cancelled: taken back before Pi ran. */
+/** held: the daemon keeps it until Pi runs. cancelled: taken back before Pi
+ * ran. undelivered: Pi never received it whole; nothing of it ran. */
 export type Receipt =
   | "pending"
   | "accepted"
   | "rejected"
   | "uncertain"
   | "held"
-  | "cancelled";
+  | "cancelled"
+  | "undelivered";
 // A 404 is absence of evidence, not rejection. Never re-issue the send.
 export async function sendReceipt(
   id: string,

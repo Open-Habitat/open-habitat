@@ -453,19 +453,6 @@ export const PiStartFailed: Story = {
     </main>
   ),
 };
-export const UncertainDelivery: Story = {
-  render: () => (
-    <ol className="ah-feed">
-      <li data-kind="user">
-        <WaitingMessage
-          text="Viesti, jonka toimitusta daemonin uudelleenkäynnistys ei kertonut."
-          state="uncertain"
-          onCopy={noop}
-        />
-      </li>
-    </ol>
-  ),
-};
 // The floating jump-to-latest chip in its three forms: idle, a new reply,
 // and an agent still working with its duration and unread count.
 const jumpForms = [

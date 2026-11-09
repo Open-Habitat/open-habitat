@@ -22,6 +22,7 @@ import {
   type Status,
   send,
 } from "./conversations";
+import { piNotRunning } from "./heldMessages";
 import type { HistoryEntry } from "./history";
 import {
   messageContentRefused,
@@ -286,7 +287,8 @@ export function useConversationActions({
     }
   };
   // A lost send proven never to have reached Pi goes again by itself, once
-  // (Jari 8.11.2026), under its own command ID: within one daemon life the
+  // (Jari 8.11.2026), under its own command ID; to a stopped Pi it goes held
+  // instead, as the composer would send it then (BrowserConversation). Within one daemon life the
   // daemon answers an ID it already took as that same message and never
   // runs it twice, so another tab holding the same record (a duplicated tab)
   // or a late original request cannot double it. (Its record does not
@@ -298,6 +300,7 @@ export function useConversationActions({
       !lostSend ||
       busy ||
       !current ||
+      piNotRunning(current.state) ||
       !csrf ||
       serverUnavailable ||
       sessionStorage.getItem(sendKey) !== lostSend.command ||

@@ -1056,3 +1056,81 @@ func TestConversationStatusCarriesItsJournalPosition(t *testing.T) {
 		t.Fatalf("status after the receipt's event: %v", after)
 	}
 }
+
+// Jari 9.11.2026: a large image batch outlasted the time to hand it to Pi,
+// and the cut-off write left the message uncertain in the page for good.
+// A frame cut off before its end never reached Pi: the send is undelivered,
+// a definite outcome, also when the ending child's watcher came first.
+func TestPromptCutOffIsUndelivered(t *testing.T) {
+	// A steer comes during a turn the ending child may have cut off: its
+	// interruption stands.
+	for _, tc := range []struct {
+		watcherFirst bool
+		kind         string
+	}{{false, "send"}, {true, "send"}, {true, "steer"}} {
+		watcherFirst, kind := tc.watcherFirst, tc.kind
+		home := t.TempDir()
+		script := filepath.Join(home, "pi")
+		// Pi takes nothing in, as a reader far too slow for the frame.
+		if err := os.WriteFile(script, []byte("#!/bin/sh\nsleep 10\n"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := ownershipTestID
+		s := &conversation{id: id, rpc: p, state: "idle", settled: true, commands: map[string]bool{id: true}, events: []json.RawMessage{}}
+		c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: newEventJournal(), promptTimeout: 50 * time.Millisecond}
+		c.mu.Lock()
+		c.beginPrompt(s, kind, []string{id})
+		if watcherFirst {
+			// The child ends as soon as its input is closed; its watcher
+			// takes the lock before finishPrompt does.
+			done := make(chan struct{})
+			go func() {
+				c.finishPrompt(s, kind, []string{id}, strings.Repeat("\n", 60000), nil, "idle", true, nil)
+				close(done)
+			}()
+			deadline := time.Now().Add(5 * time.Second)
+			for p.inputEndCause() == "" && time.Now().Before(deadline) {
+				time.Sleep(time.Millisecond)
+			}
+			s.state, s.ack, s.interrupted = "stopped", "uncertain", true
+			c.uncertainPrompt(s)
+			c.mu.Unlock()
+			<-done
+		} else {
+			c.mu.Unlock()
+			c.finishPrompt(s, kind, []string{id}, strings.Repeat("\n", 60000), nil, "idle", true, nil)
+		}
+		c.mu.Lock()
+		if kind == "steer" {
+			if s.ack != "rejected" || !s.interrupted {
+				t.Errorf("steer: ack %q interrupted %v", s.ack, s.interrupted)
+			}
+			c.mu.Unlock()
+			_ = p.close()
+			continue
+		}
+		if s.receipts[id] != "undelivered" || s.ack != "rejected" || s.interrupted || s.told {
+			t.Errorf("watcher first %v: receipt %q ack %q interrupted %v told %v", watcherFirst, s.receipts[id], s.ack, s.interrupted, s.told)
+		}
+		if !watcherFirst && (s.state != "rejected" || !s.settled) {
+			t.Errorf("state %q settled %v", s.state, s.settled)
+		}
+		c.mu.Unlock()
+		c.journal.mu.Lock()
+		found := false
+		for _, raw := range c.journal.frames {
+			if strings.Contains(string(raw), `"error_code":"not_delivered"`) && strings.Contains(string(raw), `"acceptance":"rejected"`) {
+				found = true
+			}
+		}
+		c.journal.mu.Unlock()
+		if !found {
+			t.Error("journal does not say the message was not delivered")
+		}
+		_ = p.close()
+	}
+}

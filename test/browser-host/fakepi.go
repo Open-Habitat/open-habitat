@@ -44,6 +44,20 @@ func rejected(message string) bool {
 // file in its working directory and "yhdistä" merges its branch into the
 // recorded base the way an agent asked to merge would. The lab's pi-deltas
 // scenario adds a delayed native RPC text/tool stream without a model.
+// slowIntake is fake Pi's stdin. pi-slow-intake takes it in at about
+// 800 KB/s, as Pi's own reader takes in a frame of a hundred megabytes, so a
+// prompt with a few megabytes of images outlasts a shortened budget for
+// handing it over (FixtureSetPromptTimeout).
+type slowIntake struct{ home string }
+
+func (r slowIntake) Read(p []byte) (int, error) {
+	if mode, _ := os.ReadFile(filepath.Join(filepath.Dir(r.home), "fakepi-scenario")); strings.TrimSpace(string(mode)) == "pi-slow-intake" {
+		time.Sleep(20 * time.Millisecond)
+		p = p[:min(len(p), 16<<10)]
+	}
+	return os.Stdin.Read(p)
+}
+
 func runFakePi(args []string) {
 	id, existing := "", ""
 	for i := 0; i+1 < len(args); i++ {
@@ -143,15 +157,19 @@ func runFakePi(args []string) {
 	steering, followUp := []string{}, []string{}
 	var mu sync.Mutex
 	queueUpdate := func() { emit(map[string]any{"type": "queue_update", "steering": steering, "followUp": followUp}) }
-	in := bufio.NewScanner(os.Stdin)
-	in.Buffer(make([]byte, 4096), 1<<20)
-	for in.Scan() {
+	// A frame carries a prompt's images, as large as Pi's own frames.
+	in := bufio.NewReaderSize(slowIntake{home}, 64<<10)
+	for {
+		line, err := in.ReadBytes('\n')
+		if err != nil {
+			break
+		}
 		var req struct {
 			ID, Type, Message, Name, Provider, ModelId, Level, Command string
 			CustomInstructions                                         string
 			ExcludeFromContext                                         bool
 		}
-		if json.Unmarshal(in.Bytes(), &req) != nil {
+		if json.Unmarshal(line, &req) != nil {
 			continue
 		}
 		switch req.Type {

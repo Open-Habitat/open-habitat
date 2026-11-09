@@ -41,7 +41,6 @@ const fi = {
   },
   interim: "Välivastaus",
   notSent: "Ei lähtenyt",
-  deliveryUncertain: "Toimitus epävarma",
   waitingAgent: "Odottaa agenttia",
   heldFailed: (reason: string | undefined, count: number) =>
     `Agentti ei käynnistynyt. ${reason ? `${reason} ` : ""}${count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.`,
@@ -160,7 +159,6 @@ export const conversationText = catalog(
     },
     interim: "Interim reply",
     notSent: "Not sent",
-    deliveryUncertain: "Delivery uncertain",
     waitingAgent: "Waiting for the agent",
     heldFailed: (reason, count) =>
       `The agent did not start. ${reason ? `${reason} ` : ""}${count > 1 ? "Your messages are" : "Your message is"} safe.`,

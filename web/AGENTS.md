@@ -184,7 +184,9 @@ The `pi-slow-start` scenario delays fake Pi's initial state response beyond
 five seconds rather than delaying a browser route; creation does not wait for
 it, so tests exercise messages the daemon holds while Pi starts. The
 `pi-start-fail` scenario makes fake Pi exit before it is ready, for failed-start
-retries. Both the default browser suite and lab mode run the real daemon conversation
+retries. The `pi-slow-intake` scenario makes fake Pi take its input in slowly
+and shortens the daemon's budget for handing over a prompt to two seconds, so
+a few megabytes of pictures miss it as a hundred megabytes miss the real one. Both the default browser suite and lab mode run the real daemon conversation
 controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is

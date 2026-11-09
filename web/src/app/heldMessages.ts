@@ -42,7 +42,7 @@ export type LocalHeld = {
 export type WaitingView = {
   command_id: string;
   text: string;
-  state: "waiting" | "failed" | "uncertain";
+  state: "waiting" | "failed";
 };
 
 /** States in which Pi is not running and a send is held by the daemon. */
@@ -83,7 +83,9 @@ export function restoreToDraft(returned: string[], draft: string) {
 /** The waiting bubbles: the daemon's held list first (it is authoritative and
  * includes other tabs), then this tab's messages it has not reported yet. A
  * message Pi accepted stays until native history shows it (or the delivery
- * grace ends): the native message replaces the bubble, with no gap between. */
+ * grace ends): the native message replaces the bubble, with no gap between.
+ * A message whose outcome is unknown is not drawn: its text is back in the
+ * field, and one warning says so (Jari 9.11.2026). */
 export function waitingMessages(
   local: LocalHeld[],
   held: HeldMessage[] | undefined,
@@ -99,15 +101,11 @@ export function waitingMessages(
       state: failed ? ("failed" as const) : ("waiting" as const),
     })),
     ...local
-      .filter((l) => !known.has(l.command_id))
+      .filter((l) => !known.has(l.command_id) && !l.uncertain)
       .map((l) => ({
         command_id: l.command_id,
         text: l.text,
-        state: l.uncertain
-          ? ("uncertain" as const)
-          : failed && l.posted
-            ? ("failed" as const)
-            : ("waiting" as const),
+        state: failed && l.posted ? ("failed" as const) : ("waiting" as const),
       })),
   ];
 }
@@ -146,7 +144,13 @@ export function useHeldMessages({
     ? `nah:${identity}:held:${id}`
     : creationKeys(identity, workspaceId).held;
   const [local, setLocalState] = useState<LocalHeld[]>(() => readHeld(key));
-  const [notice, setNotice] = useState("");
+  // An outcome the person must not miss (undelivered) stays until the next
+  // send; other notices pass (BrowserConversation).
+  const [notice, setNoticeState] = useState({ text: "", lasting: false });
+  const setNotice = useCallback(
+    (text: string, lasting = false) => setNoticeState({ text, lasting }),
+    [],
+  );
   const [busy, setBusy] = useState(false);
   const chain = useRef<Promise<void>>(Promise.resolve());
   const ownSends = useRef(
@@ -172,7 +176,7 @@ export function useHeldMessages({
     setLocalState(readHeld(key));
     setNotice("");
     chain.current = Promise.resolve();
-  }, [key]);
+  }, [key, setNotice]);
   const update = useCallback(
     (forKey: string, change: (old: LocalHeld[]) => LocalHeld[]) => {
       const next = change(readHeld(forKey));
@@ -186,6 +190,18 @@ export function useHeldMessages({
     const { draft: field, changeDraft: set } = latest.current;
     set(restoreToDraft(texts, field));
   }, []);
+  /** A message carrying the text of one whose outcome is unknown is that one
+   * sent again by the person: its record ends, so no warning claims its text
+   * is still in the field. */
+  const release = useCallback(
+    (text: string) => {
+      const sent = (l: LocalHeld) =>
+        l.uncertain && !!l.text.trim() && text.includes(l.text.trim());
+      if (readHeld(key).some(sent))
+        update(key, (old) => old.filter((l) => !sent(l)));
+    },
+    [key, update],
+  );
   // Post every not-yet-posted message for this conversation, in order.
   const flush = useCallback(() => {
     const forKey = latest.current.key;
@@ -234,7 +250,7 @@ export function useHeldMessages({
     });
     void chain.current.then(() => latest.current.refresh());
     return chain.current;
-  }, [update, giveBack, onLogin]);
+  }, [update, giveBack, onLogin, setNotice]);
   const submit = useCallback(
     // A message not typed in the field (the editor's note) keeps the draft.
     (
@@ -257,12 +273,13 @@ export function useHeldMessages({
         onSendOutcome("pending");
         ownSends.current.set(entry.command_id, onSendOutcome);
       }
+      release(text);
       update(key, (old) => [...old, entry]);
       if (!keepDraft) changeDraft("");
       setNotice("");
       void flush();
     },
-    [key, update, changeDraft, flush, onSendOutcome],
+    [key, update, changeDraft, flush, onSendOutcome, release, setNotice],
   );
   /** Before anything was posted, taking the messages back is local and
    * exact: they go back into the field. Returns how many went back. */
@@ -315,7 +332,11 @@ export function useHeldMessages({
                 : l,
             ),
           );
-        else if (outcome === "rejected" || outcome === "cancelled") {
+        else if (
+          outcome === "rejected" ||
+          outcome === "cancelled" ||
+          outcome === "undelivered"
+        ) {
           ownSends.current.get(entry.command_id)?.("failed");
           // Never delivered: the text goes back to the field. A cancel whose
           // reply was lost is only learnt here, so this is its one restore.
@@ -323,13 +344,24 @@ export function useHeldMessages({
             old.filter((l) => l.command_id !== entry.command_id),
           );
           giveBack([entry.text]);
-          setNotice(outcome === "rejected" ? txt.rejected : txt.notDelivered);
-        } else
+          if (outcome === "undelivered") setNotice(txt.undelivered, true);
+          else
+            setNotice(outcome === "rejected" ? txt.rejected : txt.notDelivered);
+        } else {
+          // Unknown (a lost write, a restarted daemon): as for a direct send,
+          // the text goes back to the field and one warning says the outcome
+          // is unknown; native history showing it ends that.
           update(key, (old) =>
             old.map((l) =>
               l.command_id === entry.command_id ? { ...l, uncertain: true } : l,
             ),
           );
+          if (
+            key === latest.current.key &&
+            !latest.current.draft.includes(entry.text.trim())
+          )
+            giveBack([entry.text]);
+        }
         ownSends.current.delete(entry.command_id);
       }
     })();
@@ -359,6 +391,10 @@ export function useHeldMessages({
       update(key, (old) =>
         old.filter((l) => !gone.some((g) => g.command_id === l.command_id)),
       );
+    // An unknown message that arrived after all leaves the field again,
+    // unless the person has changed what it gave back.
+    const { draft: field, changeDraft: set } = latest.current;
+    if (gone.some((l) => l.uncertain && shown(l) && field === l.text)) set("");
     // The grace ends at an absolute deadline: re-renders do not extend it.
     const due = Math.min(
       ...settled
@@ -410,7 +446,7 @@ export function useHeldMessages({
       setBusy(false);
       void refresh();
     }
-  }, [id, csrf, busy, key, update, giveBack, onLogin, refresh]);
+  }, [id, csrf, busy, key, update, giveBack, onLogin, refresh, setNotice]);
   /** Start Pi again after a failed start; the held messages go with it. */
   const retry = useCallback(async () => {
     if (!id || !csrf || busy) return;
@@ -425,11 +461,15 @@ export function useHeldMessages({
       setBusy(false);
       void refresh();
     }
-  }, [id, csrf, busy, workspaceId, onLogin, refresh]);
+  }, [id, csrf, busy, workspaceId, onLogin, refresh, setNotice]);
   return {
     waiting: waitingMessages(local, current?.held, current?.state),
+    /** Texts of this tab's messages whose outcome is unknown. */
+    uncertain: local.filter((l) => l.uncertain).map((l) => l.text),
+    release,
     local,
-    notice,
+    notice: notice.text,
+    noticeLasts: notice.lasting,
     setNotice,
     busy,
     submit,

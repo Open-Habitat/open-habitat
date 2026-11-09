@@ -93,7 +93,9 @@ export function lostSendArrived(
  * received the message, that reason is gone:
  * - `resend`: native history, read after the host was found not to know the
  *   command, holds no user message newer than `after`, Pi's queue and the
- *   daemon's held messages are empty and the agent is idle. Pi never got it.
+ *   daemon's held messages are empty and the agent is idle, or stopped: no
+ *   Pi runs that could still take it (a daemon restart stops every child
+ *   with it). Pi never got it.
  * - `moved-on`: a newer user message (any tab's) that does not carry the
  *   text, or a rewind: sending it now would land out of context.
  * - `read-history`: the shown history may predate that finding or the status
@@ -130,7 +132,9 @@ export function lostSendVerdict({
   const queue = status.queue;
   const idle =
     status.run_active !== true &&
-    (status.state === "idle" || status.state === "rejected") &&
+    (status.state === "idle" ||
+      status.state === "rejected" ||
+      status.state === "stopped") &&
     !queue?.steering.length &&
     !queue?.follow_up.length &&
     !status.held?.length;

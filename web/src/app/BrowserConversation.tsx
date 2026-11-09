@@ -385,6 +385,8 @@ function BrowserConversationContent({
     sentAfterKey,
     resentKey,
     lostSend,
+    endUnknown,
+    releaseUnknown,
     changeDraft,
     refresh,
     setBusy,
@@ -426,9 +428,16 @@ function BrowserConversationContent({
   const [recheck, setRecheck] = useState<{
     key: string;
     state: "running" | "done";
+    /** When it was done: a press that finds the same shows a new time. */
+    at?: number;
   }>();
   const recheckKey = `${identity}/${id ?? ""}`;
   const recheckState = recheck?.key === recheckKey ? recheck.state : undefined;
+  const checkedAt = formatDate(recheck?.at ?? Date.now(), {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
   const runRecheck = () => {
     if (
       continuation &&
@@ -441,7 +450,7 @@ function BrowserConversationContent({
     void refresh(true, true).finally(() =>
       setRecheck((r) =>
         r?.key === recheckKey && r.state === "running"
-          ? { key: recheckKey, state: "done" }
+          ? { key: recheckKey, state: "done", at: Date.now() }
           : r,
       ),
     );
@@ -895,8 +904,8 @@ function BrowserConversationContent({
   );
   const {
     start,
-    submit,
-    submitQueue,
+    submit: submitDirect,
+    submitQueue: submitQueueDirect,
     clearNativeQueue,
     stopNow,
     stopAttempt,
@@ -954,6 +963,42 @@ function BrowserConversationContent({
     onLogin,
     onSendOutcome: waitingWindow.outcome,
   });
+  // A message that carries the text of one whose outcome is unknown is that
+  // message sent again by the person (Jari 9.11.2026): its record ends, so
+  // no warning claims the text is still in the field and nothing gives it
+  // back or sends it a second time.
+  const submit = async (
+    text = draft,
+    keepDraft = false,
+    commandId?: string,
+  ) => {
+    const sent = await submitDirect(text, keepDraft, commandId);
+    // A held message's lasting outcome notice is over once another send goes.
+    if (sent) {
+      held.release(text);
+      held.setNotice("");
+    }
+    return sent;
+  };
+  const submitQueue: typeof submitQueueDirect = (kind, text, keepDraft) => {
+    held.setNotice("");
+    return submitQueueDirect(kind, text, keepDraft);
+  };
+  const sendHeld: typeof held.submit = (text, ...rest) => {
+    releaseUnknown(text);
+    // A notice about an earlier send's outcome is over once a new one goes,
+    // as a direct send's progress replaces it.
+    setReceipt("");
+    held.submit(text, ...rest);
+  };
+  // One warning says that a message's outcome is unknown: this tab's direct
+  // send, or messages it sent while the agent was not running. It says the
+  // text is in the field only while the field holds it.
+  const unknownSend =
+    sendUncertain ?? (held.uncertain.length ? ("held" as const) : undefined);
+  const unknownInField = (
+    sendUncertain && sendObservation ? [sendObservation.text] : held.uncertain
+  ).every((text) => draft.includes(text.trim()));
   const creationView = useCreation(
     creating ? creation : undefined,
     held.takeBack,
@@ -999,10 +1044,10 @@ function BrowserConversationContent({
     current?.state === "start_failed" &&
     held.waiting.some((w) => w.state === "failed");
   useEffect(() => {
-    if (!held.notice) return;
+    if (!held.notice || held.noticeLasts) return;
     const timer = window.setTimeout(() => held.setNotice(""), 6000);
     return () => window.clearTimeout(timer);
-  }, [held.notice, held.setNotice]);
+  }, [held.notice, held.noticeLasts, held.setNotice]);
   const canSend =
     controlled &&
     archive?.archive !== "archived" &&
@@ -1084,7 +1129,7 @@ function BrowserConversationContent({
     dismissRecapOnSend();
     rest.onSend();
     if (notStarted)
-      held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+      sendHeld(text, canChooseFirstModel ? modelChoice : undefined, true);
     else if (tellWorking) void submitQueue(workingMode, text, true);
     else void submit(text, true);
   };
@@ -1226,11 +1271,33 @@ function BrowserConversationContent({
     void sendCommand(id, waiting, text).then(async (command) => {
       if (viewId.current !== id || draftNow() !== text) return;
       if (notStarted) {
-        held.submit(text, undefined, false, command);
+        sendHeld(text, undefined, false, command);
         done();
       } else if (await submit(text, false, command)) done();
     });
   }, [resendNow, draft]);
+  // A lost send proven never to have reached a stopped Pi goes again by
+  // itself, once, under its own command ID, held as the composer would send
+  // it now: the held message owns it from then on (one bubble, its own
+  // receipt), and the direct record ends. The daemon answers an ID it has
+  // already taken as that same message, so a duplicated tab cannot double it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when it becomes possible, as the field holds it then.
+  useEffect(() => {
+    if (
+      !lostSend ||
+      !current ||
+      !piNotRunning(current.state) ||
+      !csrf ||
+      serverUnavailable ||
+      held.busy ||
+      sessionStorage.getItem(sendKey) !== lostSend.command
+    )
+      return;
+    const { command, text } = lostSend;
+    held.submit(text, undefined, true, command);
+    endUnknown(command);
+    if (draftNow() === text) changeDraft("");
+  }, [lostSend, current, csrf, serverUnavailable, held.busy]);
   const aiNotice =
     !statusStale && refusedHere ? (
       <AISignInWarning
@@ -1339,7 +1406,7 @@ function BrowserConversationContent({
       dismissRecapOnSend();
       rest.onSend();
       if (notStarted)
-        held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+        sendHeld(text, canChooseFirstModel ? modelChoice : undefined, true);
       else if (tellWorking) void submitQueue("follow_up", text);
       else void submit(text);
     },
@@ -1978,7 +2045,7 @@ function BrowserConversationContent({
           onSendNow: (text = draft) => {
             if (!text.trim() || creationBlock(creation)) return;
             const first = !held.waiting.length;
-            held.submit(text);
+            sendHeld(text);
             creationView.setNotice("");
             if (first) creation.worktree?.onFirstMessage?.(text);
           },
@@ -2102,10 +2169,7 @@ function BrowserConversationContent({
               // A new conversation's first message carries the model
               // chosen in its field, as a direct first send does.
               if (canSend)
-                held.submit(
-                  text,
-                  canChooseFirstModel ? modelChoice : undefined,
-                );
+                sendHeld(text, canChooseFirstModel ? modelChoice : undefined);
             } else void submit(text);
           },
           onSteer: (text = draft) => {
@@ -3129,14 +3193,16 @@ function BrowserConversationContent({
                       {recheckState === "done"
                         ? txt.historyStillUnavailable
                         : txt.historyUnavailableDetail}
-                      {sendUncertain ? ` ${txt.historyUnavailableSend}` : null}
+                      {unknownSend
+                        ? ` ${txt.historyUnavailableSend(unknownInField)}`
+                        : null}
                     </WarningBanner>
                   </div>
-                ) : !storagePressure.full && !statusStale && sendUncertain ? (
+                ) : !storagePressure.full && !statusStale && unknownSend ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="send-uncertain"
-                      data-reason={sendUncertain}
+                      data-reason={unknownSend}
                       data-state={recheckState}
                       tone="neutral"
                       title={txt.sendUncertain}
@@ -3156,10 +3222,12 @@ function BrowserConversationContent({
                       }
                     >
                       {recheckState === "done"
-                        ? txt.sendStillUnknown
-                        : sendUncertain === "failed"
+                        ? txt.sendStillUnknown(checkedAt, unknownInField)
+                        : unknownSend === "failed"
                           ? txt.sendUncertainFailed
-                          : txt.sendUncertainDetail}
+                          : unknownSend === "held"
+                            ? txt.sendUncertainHeld(unknownInField)
+                            : txt.sendUncertainDetail(unknownInField)}
                     </WarningBanner>
                   </div>
                 ) : !storagePressure.full &&

@@ -368,23 +368,18 @@ export function InterimMessage({
   );
 }
 /** A message the daemon holds until Pi runs: dashed and muted until Pi takes
- * it (Kupla odottaa, Jari 16.10.2026). A failed start keeps it; a message
- * whose delivery no host evidence can settle stays visible as uncertain. */
+ * it (Kupla odottaa, Jari 16.10.2026). A failed start keeps it. One whose
+ * outcome is unknown is not drawn: its text is back in the field. */
 export function WaitingMessage({
   text,
   state,
   onCopy,
 }: {
   text: string;
-  state: "waiting" | "failed" | "uncertain";
+  state: "waiting" | "failed";
   onCopy: () => void;
 }) {
-  const label =
-    state === "failed"
-      ? txt.notSent
-      : state === "uncertain"
-        ? txt.deliveryUncertain
-        : txt.waitingAgent;
+  const label = state === "failed" ? txt.notSent : txt.waitingAgent;
   return (
     <article
       data-testid="waiting-message"
@@ -405,21 +400,9 @@ export function WaitingMessage({
         />
         <StatusMark
           label={label}
-          tone={
-            state === "failed"
-              ? "danger"
-              : state === "uncertain"
-                ? "warning"
-                : "neutral"
-          }
+          tone={state === "failed" ? "danger" : "neutral"}
           animated={state === "waiting" ? "running" : false}
-          kind={
-            state === "failed"
-              ? "error"
-              : state === "uncertain"
-                ? "unknown"
-                : "neutral"
-          }
+          kind={state === "failed" ? "error" : "neutral"}
         />
       </header>
       <div className="ah-prose">

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -284,7 +285,8 @@ func TestPiRPCNonReading(t *testing.T) {
 	}
 	start := time.Now()
 	_, err = p.request("prompt", strings.Repeat("\\n", 32768), 25*time.Millisecond)
-	if err == nil || !strings.Contains(err.Error(), "uncertain") {
+	// Cut off before its end, the frame never reached Pi.
+	if !errors.Is(err, errPiNotReceived) {
 		t.Fatalf("write outcome: %v", err)
 	}
 	if time.Since(start) > time.Second {
@@ -507,5 +509,24 @@ func TestUnaskedPiEndRecordsItsCause(t *testing.T) {
 	_ = failed.Run()
 	if got := crashDetail("", failed.ProcessState); got != "Pi exited with status 3; Habitat had not closed its input" {
 		t.Fatal(got)
+	}
+}
+
+// The budget for handing a prompt to Pi follows Pi's reader, whose cost grows
+// with the square of the frame: small prompts keep 15 s, the largest admitted
+// image batch gets minutes, never more than the RPC layer's ceiling.
+func TestPromptRequestTimeoutFollowsFrameSize(t *testing.T) {
+	batch := func(raw int) []piAttachmentImage {
+		return []piAttachmentImage{{"image", strings.Repeat("A", (raw+2)/3*4), "image/png"}}
+	}
+	if got := promptRequestTimeout(nil); got != 15*time.Second {
+		t.Fatalf("plain prompt: %s", got)
+	}
+	if got := promptRequestTimeout(batch(1 << 20)); got < 15*time.Second || got > 16*time.Second {
+		t.Fatalf("1 MiB: %s", got)
+	}
+	half, full := promptRequestTimeout(batch(50<<20)), promptRequestTimeout(batch(promptAttachmentLimit))
+	if half < 90*time.Second || full < 5*time.Minute || full > maxPiRequestTimeout || full < 3*half {
+		t.Fatalf("50 MiB %s, 100 MiB %s", half, full)
 	}
 }

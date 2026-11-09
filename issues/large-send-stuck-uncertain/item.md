@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Send with large attachments ends uncertain: field empty though the notice says the text is there, Tarkista does nothing

@@ -3049,9 +3049,12 @@ for (const mode of ["live", "reload", "settled"] as const)
 
 // Jari 8.11.2026 (resend-proven-undelivered): a send the daemon restart
 // swallowed before Pi took it kept the tab's composer shut. Once it is proven
-// that Pi never got it (readable history without it, empty queue, an idle
-// agent, and a daemon without the command) it goes again by itself, once;
-// if the conversation moved on meanwhile its text stays in the field instead.
+// that Pi never got it (readable history without it, empty queue, an idle or
+// stopped agent, and a daemon without the command) it goes again by itself,
+// once; if the conversation moved on meanwhile its text stays in the field
+// instead. Jari 9.11.2026 (large-send-stuck-uncertain): the restarted Pi
+// rests, and nothing runs that could still take the message, so a stopped
+// agent proves it too: the message goes held, as the composer would send it.
 // reload: the tab is reloaded while the outcome is unknown.
 for (const mode of ["live", "reload", "moved-on"] as const)
   test(`@browser-conversation a send a daemon restart lost before Pi took it is resolved (${mode})`, async ({
@@ -3084,15 +3087,15 @@ for (const mode of ["live", "reload", "moved-on"] as const)
         .filter((e) => e.kind === "user")
         .map((e) => e.content?.text ?? "");
     };
-    const statusOf = async () =>
-      (
-        await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)
-      ).json();
     let posts = 0;
     let lost!: () => void;
     const restarted = new Promise<void>((resolve) => {
       lost = resolve;
     });
+    // Moved on: the page reads no history until another tab has written.
+    const history = "**/api/v1/agents/*/history*";
+    if (mode === "moved-on")
+      await page.route(history, (route) => route.abort());
     await page.route("**/api/v1/conversations/*/send", async (route) => {
       posts++;
       if (posts > 1) return route.continue();
@@ -3106,61 +3109,54 @@ for (const mode of ["live", "reload", "moved-on"] as const)
     await editor.fill("Tee toinen.");
     await sendButton.click();
     await restarted;
-    // A restarted Pi rests: its stopped state proves nothing yet.
-    await expect(page.getByTestId("send-uncertain")).toBeVisible();
-    await expect(editor).toHaveValue("Tee toinen.");
     if (mode === "reload") await page.reload();
-    const { csrf } = await (await page.request.get("/auth/session")).json();
-    const headers = { "X-Agent-Host-CSRF": csrf, Origin: host };
+    const timeline = page.getByTestId("conversation-timeline");
     if (mode === "moved-on") {
-      // Another tab writes meanwhile; that message starts Pi.
-      const other = await page.request.post(
-        `/api/v1/conversations/${id.slice(3)}/send`,
-        {
-          headers,
-          data: { message: "toisesta välilehdestä", command_id: randomUUID() },
-        },
-      );
-      expect(other.ok()).toBe(true);
-    } else {
-      // Pi wakes without a message (as typing wakes it). Just after the
-      // restart the native file may still be settling; a wake is idempotent.
+      const { csrf } = await (await page.request.get("/auth/session")).json();
+      // Another tab writes meanwhile; that message starts Pi. Just after the
+      // restart the native file may still be settling.
       await expect
         .poll(
           async () =>
             (
               await page.request.post(
-                `/api/v1/conversations/${id.slice(3)}/continue`,
-                { headers },
+                `/api/v1/conversations/${id.slice(3)}/send`,
+                {
+                  headers: { "X-Agent-Host-CSRF": csrf, Origin: host },
+                  data: {
+                    message: "toisesta välilehdestä",
+                    command_id: randomUUID(),
+                  },
+                },
               )
             ).ok(),
           { timeout: 20000, intervals: [500] },
         )
         .toBe(true);
-    }
-    await expect
-      .poll(async () => (await statusOf()).state, { timeout: 30000 })
-      .toBe("idle");
-    const timeline = page.getByTestId("conversation-timeline");
-    if (mode === "moved-on") {
+      await expect
+        .poll(nativeUserTexts, { timeout: 30000 })
+        .toContain("toisesta välilehdestä");
+      await page.unroute(history);
       // Not sent: the text waits in the field, with one notice saying why.
       await expect(page.getByTestId("send-receipt")).toBeVisible({
         timeout: 30000,
       });
       await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
       await expect(editor).toHaveValue("Tee toinen.");
-      await expect(sendButton).toBeEnabled();
+      await expect(sendButton).toBeEnabled({ timeout: 30000 });
       expect(posts).toBe(1);
       expect(await nativeUserTexts()).not.toContain("Tee toinen.");
       return;
     }
-    // Sent again once, and shown as an ordinary sent message.
+    // Sent again once, held for the stopped agent, and shown as an ordinary
+    // message once Pi has it.
     await expectNativeContent(page, 'Selvä. Kysyit: "Tee toinen.".', {
       timeout: 30000,
     });
     await expect(
       timeline.getByTestId("user-content").filter({ hasText: "Tee toinen." }),
     ).toHaveCount(1);
+    await expect(page.getByTestId("waiting-message")).toHaveCount(0);
     await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
     await expect(page.getByTestId("send-receipt")).toHaveCount(0);
     await expect(editor).toHaveValue("");

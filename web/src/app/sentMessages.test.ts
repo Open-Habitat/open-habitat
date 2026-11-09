@@ -98,6 +98,15 @@ describe("lostSendVerdict", () => {
     expect(verdict()).toBe("resend");
     expect(verdict({ status: { ...idle, state: "rejected" } })).toBe("resend");
   });
+  // Jari 9.11.2026: after a server restart the agent rests, and nothing
+  // runs that could still take the message.
+  it("sends again what a stopped agent never got", () => {
+    expect(verdict({ status: { ...idle, state: "stopped" } })).toBe("resend");
+    expect(
+      verdict({ status: { ...idle, state: "stopped" }, historyCurrent: false }),
+    ).toBe("read-history");
+    expect(verdict({ status: { ...idle, state: "starting" } })).toBeUndefined();
+  });
   it("reads history first when the shown history may predate the finding", () => {
     expect(verdict({ historyCurrent: false })).toBe("read-history");
   });
@@ -112,7 +121,6 @@ describe("lostSendVerdict", () => {
   it("proves nothing while anything else could still be the message", () => {
     expect(verdict({ status: { ...idle, state: "accepted" } })).toBeUndefined();
     expect(verdict({ status: { ...idle, run_active: true } })).toBeUndefined();
-    expect(verdict({ status: { ...idle, state: "stopped" } })).toBeUndefined();
     expect(
       verdict({
         status: {

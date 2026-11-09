@@ -285,19 +285,23 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 // Pi echoes the prompt's image payload in user message events before the
 // bounded notification reduction. Leave room for base64, text and framing.
 const piFrameLimit = (promptAttachmentLimit+2)/3*4 + 4<<20
-const maxPiRequestTimeout = 2 * time.Minute
+const maxPiRequestTimeout = 7 * time.Minute
 
+// promptRequestTimeout bounds one prompt's write and acknowledgement. Pi's
+// pinned stdin reader (modes/rpc/jsonl.js) appends each 64 KiB chunk to one
+// string and searches the whole of it for the newline again, so taking in a
+// frame costs time that grows with the square of its size: a 100 MiB image
+// batch (a 140 MB frame) took 27 s on Birch and more than two minutes on the
+// smaller test server, whose two-minute deadline cut every such send off
+// (Jari 9.11.2026). The budget grows the same way, to about six minutes for
+// the largest admitted batch; Pi still answers small prompts within 15 s.
 func promptRequestTimeout(images []piAttachmentImage) time.Duration {
-	// Pi buffers the base64 frame before parsing. A 100 MiB image batch
-	// measured ~29s on Birch; the ordinary 15s deadline poisons that send.
 	var imageBytes int
 	for _, image := range images {
 		imageBytes += len(image.Data)
 	}
-	if imageBytes > 20<<20 {
-		return maxPiRequestTimeout
-	}
-	return 15 * time.Second
+	scale := float64(imageBytes) / float64(7<<20)
+	return min(15*time.Second+time.Duration(scale*scale*float64(time.Second)), maxPiRequestTimeout)
 }
 
 // read never waits for inherited stdout EOF to reap Pi. Closing the read FD
@@ -613,6 +617,12 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 	if err != nil || n != len(b) || p.closing.Load() {
 		p.poisoned = true
 		p.endInput("a failed write of " + kind + " to Pi")
+		// The frame is one JSON object followed by its newline, so every
+		// shorter prefix than the object itself is invalid JSON: Pi can
+		// neither frame nor parse it, even as the last line at end of input.
+		if n < len(b)-1 {
+			return piReply{}, errPiNotReceived
+		}
 		return piReply{}, errors.New("Pi acceptance uncertain: incomplete write")
 	}
 	timer := time.NewTimer(time.Until(deadline))
@@ -736,6 +746,10 @@ func (p *piRPC) close() error {
 }
 
 // request preserves the original prompt/get_state caller interface.
+// errPiNotReceived is a request that never reached Pi whole: Pi did not
+// receive it, and the child is ending.
+var errPiNotReceived = errors.New("Pi did not receive the request: incomplete write")
+
 func (p *piRPC) request(kind, message string, timeout time.Duration, images ...piAttachmentImage) (bool, error) {
 	reply, err := p.requestQueue(kind, message, timeout, images...)
 	return reply.Accepted, err

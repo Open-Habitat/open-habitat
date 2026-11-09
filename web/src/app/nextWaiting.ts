@@ -82,7 +82,8 @@ export function useNextWaitingWindow(
       !!status?.interrupted ||
       (status !== window.baseline &&
         (status?.state === "rejected" ||
-          status?.send_receipt === "rejected")) ||
+          status?.send_receipt === "rejected" ||
+          status?.send_receipt === "undelivered")) ||
       (window.worked && !working) ||
       (!!status?.turn_settled?.native_key &&
         status.turn_settled.native_key !== window.settled));

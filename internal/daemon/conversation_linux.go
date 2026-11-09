@@ -60,6 +60,7 @@ type ConversationController struct {
 	proofGate      chan struct{}
 	recapPath      string
 	recapIdleDelay time.Duration                                    // test seam; zero uses the person's recap setting
+	promptTimeout  time.Duration                                    // test seam; zero sizes it to the prompt (promptRequestTimeout)
 	recapGenerator func(*conversation, string, uint64) recapOutcome // synthetic test seam
 	// started tells a process cut off by this daemon's restart from one cut
 	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.
@@ -250,6 +251,17 @@ func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
 	defer c.mu.Unlock()
 	if c.fixture {
 		c.recapIdleDelay = delay
+	}
+}
+
+// FixtureSetPromptTimeout shortens the synthetic host's budget for handing
+// a prompt to Pi, so a browser test can let a slow Pi miss it; zero restores
+// the budget sized to the prompt.
+func (c *ConversationController) FixtureSetPromptTimeout(timeout time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fixture {
+		c.promptTimeout = timeout
 	}
 }
 
@@ -794,6 +806,8 @@ func (c *ConversationController) receipt(s *conversation, id, outcome string) {
 			payload["acceptance"], payload["execution"] = "pending", "not_started"
 		case "cancelled": // removed before Pi ran; its text went back to the person
 			payload["acceptance"], payload["execution"], payload["error_code"] = "rejected", "not_started", "cancelled_before_start"
+		case "undelivered": // its frame was cut off on the way: Pi received nothing
+			payload["acceptance"], payload["execution"], payload["error_code"] = "rejected", "not_started", "not_delivered"
 		}
 		c.journal.appendEvent("command.changed", "pi:"+s.id, payload)
 	}
@@ -931,7 +945,9 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		c.holdLocked(w, s, body.Message, body.CommandID, body.FirstChoice)
 		return
 	}
-	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || len(s.commands) >= maxConversationCommands {
+	// A child whose input this daemon has closed (a cut-off write) is ending:
+	// a message now would reach no Pi.
+	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.rpc.inputEndCause() != "" || len(s.commands) >= maxConversationCommands {
 		state := s.state
 		c.mu.Unlock()
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_refused", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "state", state, "archive", archiveState, "request_id", diagnostic.RequestID(r.Context()))
@@ -1023,8 +1039,20 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 			err = c.applyFirstChoice(s, choice)
 		}
 		if err == nil {
-			accepted, err = s.rpc.request(rpcKind, expanded, promptRequestTimeout(images), images...)
+			timeout := promptRequestTimeout(images)
+			c.mu.Lock()
+			if c.promptTimeout > 0 {
+				timeout = c.promptTimeout
+			}
+			c.mu.Unlock()
+			accepted, err = s.rpc.request(rpcKind, expanded, timeout, images...)
 		}
+	}
+	// A frame cut off before its end never reached Pi: a definite outcome,
+	// told to the person as such, never an uncertain write.
+	undelivered := errors.Is(err, errPiNotReceived)
+	if undelivered {
+		err = nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -1040,6 +1068,20 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 				c.journal.appendInvalidation("pi:" + s.id)
 			}
 		}()
+	}
+	if undelivered && s.state != "pending" && s.command == ids[len(ids)-1] {
+		// The ending child's watcher came first and made the prompt
+		// uncertain; that Pi never received it is known here. A send started
+		// no turn, but a steer or follow-up came during one that the ending
+		// child may have cut off.
+		s.ack = "rejected"
+		if kind == "send" {
+			s.interrupted = false
+			for _, id := range ids {
+				c.receipt(s, id, "undelivered")
+			}
+		}
+		return
 	}
 	if s.state != "pending" {
 		return
@@ -1070,8 +1112,12 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		}
 	}
 	if kind == "send" {
+		outcome := s.ack
+		if undelivered {
+			outcome = "undelivered"
+		}
 		for _, id := range ids {
-			c.receipt(s, id, s.ack)
+			c.receipt(s, id, outcome)
 		}
 		if s.ack == "accepted" {
 			s.acceptedMessages++
