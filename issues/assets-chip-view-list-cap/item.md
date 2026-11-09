@@ -2,13 +2,15 @@
 created: 2026-11-09
 updated: 2026-11-09
 type: bug
-status: untriaged
-priority: normal
+status: open
+priority: high
 provenance: other
 provenance_detail: found while fixing assets-chip-misses-views
 source_ref: taskfleet:01m6z8dg4bwy3ezdbqtmqwv069/view-list-cap
 originating_run: 01m6z8dg4bwy3ezdbqtmqwv069
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Assets chip loses an older conversation's views once the person has over 200 views
@@ -31,3 +33,14 @@ chip reading it).
 
 Found while fixing `assets-chip-misses-views`, whose actual cause was
 folding different reports with the same entry file name.
+
+
+Jari 9.11.2026: 200 is far too tight; page the person-wide list. Fold a
+re-offered report as a new version of the same row by its offered source
+path (contract), not title + entry name.
+
+## Acceptance Criteria
+
+- [ ] Chip reads its conversation's views per conversation, with no person-wide cap.
+- [ ] Person-wide view list pages instead of capping at 200.
+- [ ] A re-offered file or folder from the same source shows as a newer version of the same row; different sources with the same name stay apart.
