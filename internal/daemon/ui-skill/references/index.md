@@ -14,6 +14,7 @@ A label alone does not establish that a control is available to this person.
 
 - [app/BrowserConversation.tsx](app--BrowserConversation.tsx.md)
 - [app/BrowserShell.tsx](app--BrowserShell.tsx.md)
+- [app/HelperArchiveFlow.tsx](app--HelperArchiveFlow.tsx.md)
 - [app/HistoryView.tsx](app--HistoryView.tsx.md)
 - [app/NextWaitingDock.tsx](app--NextWaitingDock.tsx.md)
 - [app/WorkspaceEditor.tsx](app--WorkspaceEditor.tsx.md)

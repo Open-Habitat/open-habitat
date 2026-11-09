@@ -137,14 +137,68 @@ test("worker balls keep state and wait independent, with an explain legend", asy
   await page.getByTestId("conversation-start").first().click();
   const rail = page.getByRole("navigation");
   await expect(
-    rail.locator('.ah-worker-mark[data-kind="working"][data-waited]'),
+    rail.locator('.ah-worker-branch[data-kind="working"][data-waited]'),
   ).toHaveCount(1);
   await expect(
-    rail.locator('.ah-worker-mark[data-kind="working"]:not([data-waited])'),
+    rail.locator('.ah-worker-branch[data-kind="working"]:not([data-waited])'),
   ).toHaveCount(1);
-  await expect(rail.locator('.ah-worker-mark[data-kind="idle"]')).toHaveCount(
+  await expect(rail.locator('.ah-worker-branch[data-kind="idle"]')).toHaveCount(
     1,
   );
+  // The state ball is the branch's own end node: it pulses only while the
+  // worker works, and the whole mark stays inside the row.
+  const railBall = (kind: string) =>
+    rail
+      .locator(`.ah-worker-branch[data-kind="${kind}"] .ah-worker-branch-ball`)
+      .first();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect(
+    await railBall("working").evaluate(
+      (el) => getComputedStyle(el).animationName,
+    ),
+  ).toBe("ah-pulse");
+  expect(
+    await railBall("idle").evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("none");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await railBall("working").evaluate(
+      (el) => getComputedStyle(el).animationName,
+    ),
+  ).toBe("none");
+  const railRows = rail.locator(".ah-waiting-spinoff");
+  const railCapture = process.env.OH_RAIL_BALL_CAPTURE;
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1100 });
+    if (width === 390) await page.getByTestId("navigation-open").click();
+    await expect(railRows).toHaveCount(3);
+    for (const item of await railRows.all()) {
+      const edge = await item.locator(".ah-now-row").boundingBox();
+      const mark = await item.locator(".ah-worker-branch").boundingBox();
+      if (!edge || !mark) throw new Error("rail row not laid out");
+      expect(mark.x + mark.width).toBeLessThanOrEqual(edge.x + edge.width - 4);
+    }
+    for (const theme of railCapture ? (["light", "dark"] as const) : []) {
+      await page.emulateMedia({ colorScheme: theme });
+      const first = await railRows.first().boundingBox();
+      const last = await railRows.last().boundingBox();
+      if (!first || !last) throw new Error("rail rows not laid out");
+      await page.screenshot({
+        path: resolve(
+          `../issues/rail-worker-ball-in-branch-icon/evidence/${railCapture}-${width}-${theme}.png`,
+        ),
+        clip: {
+          x: 0,
+          y: first.y - 8,
+          width: first.x + first.width + 24,
+          height: last.y + last.height - first.y + 16,
+        },
+      });
+    }
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.reload();
   const chip = page.getByTestId("background-spinoffs");
   await expect(chip).toHaveAttribute("data-waited", "3");
   await expect(

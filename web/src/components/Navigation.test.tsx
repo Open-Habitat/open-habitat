@@ -249,18 +249,15 @@ describe("rail activity marks", () => {
     expect(ball(view)).toContain("ah-ball-work");
     expect(view.container.querySelector('[data-waiting="true"]')).toBeTruthy();
   });
-  it("shows the shared working ball beside the worker branch", () => {
+  it("carries the working state in the worker branch's own ball", () => {
     const view = row(
       { process: "daemon_managed_live", runActive: false },
       true,
     );
-    const mark = view.container.querySelector("svg.ah-nav-spinoff");
-    expect(mark).not.toBeNull();
-    expect(
-      view.container
-        .querySelector(".ah-worker-rail .ah-worker-mark")
-        ?.getAttribute("data-kind"),
-    ).toBe("working");
+    const marks = view.container.querySelectorAll(".ah-worker-rail > *");
+    expect(marks).toHaveLength(1);
+    expect(marks[0].getAttribute("class")).toBe("ah-worker-branch");
+    expect(marks[0].getAttribute("data-kind")).toBe("working");
   });
 });
 

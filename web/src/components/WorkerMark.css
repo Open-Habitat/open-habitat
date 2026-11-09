@@ -65,10 +65,45 @@
   outline-offset: 2px;
   margin: 0 3px;
 }
+/* The row's trailing slot has no end padding of its own: keep the mark off
+   the row's rounded edge and the open row's ring. */
 .ah-worker-rail {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  margin-inline-end: 6px;
+}
+/* The branch is quiet; its end node is the worker's ball and carries the
+   state in the same colours as the other worker marks. */
+.ah-worker-branch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.ah-worker-branch-stem {
+  fill: none;
+  stroke: var(--ah-muted);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+.ah-worker-branch-ball {
+  fill: var(--ah-faint);
+}
+.ah-worker-branch[data-kind="working"] .ah-worker-branch-ball {
+  fill: var(--ah-accent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.ah-worker-branch[data-kind="idle"] .ah-worker-branch-ball {
+  fill: var(--ah-turn);
+}
+.ah-worker-branch[data-kind="unknown"] .ah-worker-branch-ball {
+  fill: none;
+  stroke: var(--ah-faint);
+  stroke-width: 2;
+}
+.ah-worker-branch-ring {
+  fill: none;
+  stroke: var(--ah-accent);
+  stroke-width: 1.5;
 }
 .ah-worker-legend {
   width: 100%;
@@ -96,7 +131,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ah-worker-mark[data-kind] {
+  .ah-worker-mark[data-kind],
+  .ah-worker-branch-ball {
     animation: none;
   }
 }

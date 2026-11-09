@@ -302,16 +302,3 @@
     display: inline;
   }
 }
-
-/* A sub-agent of this conversation is at work: the branch mark sits in the
-   sidebar only (proto-spinoff-agents), and only its branch and end dot pulse
-   (rail-mark-pulse, Jari 17.10.2026); the trunk stays steady. */
-.ah-nav-spinoff {
-  flex-shrink: 0;
-  width: 13px;
-  height: 13px;
-  color: var(--ah-accent);
-}
-.ah-nav-spinoff-branch {
-  animation: ah-pulse var(--ah-pulse);
-}

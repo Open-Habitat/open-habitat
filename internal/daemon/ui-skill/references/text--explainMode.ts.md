@@ -292,8 +292,8 @@ const fi = {
     },
     S11: {
       name: "Workerin merkki",
-      lead: "Keskustelu on antanut työn workerille, joka tekee sitä omassa worktreessään.",
-      know: "Workerin näet keskustelun yllä Workerit-merkistä.",
+      lead: "Keskustelu on antanut työtä workerille. Haaran päässä oleva pallo kertoo workerin tilan.",
+      know: "Useasta workerista näkyy keltainen, jos joku odottaa sinua. Kehä pallon ympärillä: agentti odottaa workeria. Workerit avautuvat keskustelun Workerit-sirusta.",
     },
     S12: {
       name: "Nimeä uudelleen",
@@ -1776,8 +1776,8 @@ export const explainModeText = catalog(fi, {
     },
     S11: {
       name: "Worker mark",
-      lead: "The conversation has handed work to a worker, which does it in its own worktree.",
-      know: "Find the worker in the Workers badge above the message field.",
+      lead: "The conversation has handed work to a worker. The ball at the branch's end shows its state.",
+      know: "With several workers, yellow shows if any of them waits for you. A ring around the ball: the agent waits for the worker. Open them from the conversation's Workers badge.",
     },
     S12: {
       name: "Rename",

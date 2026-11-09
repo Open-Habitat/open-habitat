@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Rail row's worker ball pulses inside the branch icon, not as a dot past the row edge
@@ -31,5 +32,5 @@ in different states: say how the icon shows them (decide; record it).
 
 ## Acceptance Criteria
 
-- [ ] The rail row shows one branch icon whose ball carries the worker state and pulses while working; nothing passes the row edge at 1440 and 390, light and dark.
-- [ ] Explain-mode card updated; worker-badge and rail specs green; before/after screenshots.
+- [x] The rail row shows one branch icon whose ball carries the worker state and pulses while working; nothing passes the row edge at 1440 and 390, light and dark.
+- [x] Explain-mode card updated; worker-badge and rail specs green; before/after screenshots.

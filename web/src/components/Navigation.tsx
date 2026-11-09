@@ -29,7 +29,7 @@ import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
-import { WorkerMark } from "./WorkerMark";
+import { WorkerBranchMark } from "./WorkerMark";
 import {
   type WorkspaceCardActions,
   WorkspaceIcon,
@@ -748,13 +748,14 @@ export function AgentNavItem({
             <>
               {spinoffWorking || spinoffIdle || spinoffWaited ? (
                 <span className="ah-worker-rail">
-                  <SpinoffWorkingMark />
-                  <WorkerMark
+                  <WorkerBranchMark
                     kind={
-                      spinoffWorking
-                        ? "working"
-                        : spinoffIdle
-                          ? "idle"
+                      // A worker waiting for the person outranks one at work:
+                      // the conversation's own ball already says work goes on.
+                      spinoffIdle
+                        ? "idle"
+                        : spinoffWorking
+                          ? "working"
                           : "unknown"
                     }
                     waited={spinoffWaited}
@@ -935,27 +936,6 @@ export function AgentNavItem({
         )}
       </ListRow>
     </li>
-  );
-}
-/** The branch identifies background workers; the adjacent ball carries state. */
-function SpinoffWorkingMark() {
-  return (
-    <svg
-      className="ah-nav-spinoff"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="7" cy="6" r="2" />
-      <path d="M7 8v10" />
-      <g>
-        <path d="M7 12c0 3 3 4 7 4" />
-        <circle cx="17" cy="16" r="2" />
-      </g>
-    </svg>
   );
 }
 /** The strongest state among a workspace's agents, as one hint on its row. */

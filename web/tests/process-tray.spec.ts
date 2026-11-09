@@ -319,19 +319,15 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(waitingRow).toHaveCount(1);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   // The wait is independent of state: this snapshot has no worker activity.
-  await expect(waitingRow.locator(".ah-worker-mark")).toHaveAttribute(
-    "data-waited",
-    "true",
-  );
-  const mark = waitingRow.locator("svg.ah-nav-spinoff");
+  const mark = waitingRow.locator(".ah-worker-branch");
+  await expect(mark).toHaveAttribute("data-waited", "true");
   await expect(mark).toBeVisible();
-  await expect(waitingRow.locator(".ah-worker-mark")).toHaveAttribute(
-    "data-kind",
-    "unknown",
-  );
-  expect(await mark.evaluate((el) => getComputedStyle(el).animationName)).toBe(
-    "none",
-  );
+  await expect(mark).toHaveAttribute("data-kind", "unknown");
+  expect(
+    await mark
+      .locator(".ah-worker-branch-ball")
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("none");
   await page.emulateMedia({ reducedMotion: "reduce" });
   const agentUrl = page.url();
   const agentId = new URL(agentUrl).searchParams.get("conversation");

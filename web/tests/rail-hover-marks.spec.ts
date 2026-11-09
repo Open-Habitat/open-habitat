@@ -65,6 +65,41 @@ for (const touch of [false, true]) {
       if (touch) {
         // Touch actions occupy their own space, rather than overlaying marks.
         await expect(actions).toHaveCSS("position", "static");
+        // There the mark itself is reachable: a first tap in Explain mode
+        // explains its ball and ring.
+        const session = await (await page.request.get("/auth/session")).json();
+        expect(
+          (
+            await page.request.put("/api/v1/account/preferences", {
+              headers: {
+                Origin: new URL(page.url()).origin,
+                "X-Agent-Host-CSRF": session.csrf,
+              },
+              data: { experimental: { "explain-mode": true } },
+            })
+          ).ok(),
+        ).toBe(true);
+        await page.reload();
+        await page.getByTestId("navigation-open").tap();
+        await page.getByTestId("account-menu-trigger").tap();
+        await page.getByTestId("menu-explain").tap();
+        await expect(page.getByTestId("explain-bar")).toBeVisible();
+        const card = page.getByTestId("explain-card");
+        if (!(await mark.isVisible())) {
+          // The first tap explains the menu button, the second opens it.
+          await page.getByTestId("navigation-open").tap();
+          await expect(card).toBeVisible();
+          await page.getByTestId("navigation-open").tap();
+        }
+        await mark.tap();
+        await expect(card).toHaveAttribute("data-card", "S11");
+        await expect(card.getByTestId("worker-legend")).toBeVisible();
+        if (process.env.OH_RAIL_BALL_CAPTURE)
+          await card.screenshot({
+            path: resolve(
+              `../issues/rail-worker-ball-in-branch-icon/evidence/${process.env.OH_RAIL_BALL_CAPTURE}-card-390.png`,
+            ),
+          });
         return;
       }
       await row.hover();
