@@ -1,13 +1,13 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 type: task
 reporter: jari
 status: open
 priority: normal
 lane: shares-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Design and prototype: an own place for shared views and files

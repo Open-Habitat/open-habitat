@@ -91,3 +91,10 @@ esikatselun myös näkymille ilman uutta hostin kuvanottoa. 1 on halvin ja
 hyvä hallintaan, mutta jättää jaetut asetusten sekaan. 2 kilpailee
 etusivun keskustelujen kanssa ja jää alas. Näkymän kuvaksi riittää
 `</>`-merkki, eikä poistoista kannata pitää kirjaa.
+
+## Jarin päätös (9.11.2026)
+
+Suunta **3 Oma sivu** (Jaetut-sivu Etusivun alla, kortit keskusteluittain,
+esikatselu paneelissa). Kysymyksiin 2–3 suosituksen mukaan: näkymälle
+`</>`-merkki, poistoista ei jälkeä. Jari haluaa riffata sivun ulkoasua
+seuraavilla kierroksilla ennen toteutusta.
