@@ -32,6 +32,12 @@ from a history window that no longer reaches them, the restart, the
 dedupe of same-titled offers) and fix it so the chip lists every offer of
 the conversation, newest first.
 
+Jari 9.11. 06:25, after the conductor re-offered the archive view
+(`vptwztuj5uajl6y3ga7peejkqbr`): the chip still reads **2**, the archive now
+shows and *Jaot omaan paikkaan* disappeared. So the chip shows only two
+views and a newer offer pushes an older one out — a slot/count or dedupe
+rule, not size.
+
 ## Acceptance Criteria
 
 - [ ] Every offer of a conversation appears in the chip, including large ones, older ones beyond the loaded history, and across a daemon restart.
