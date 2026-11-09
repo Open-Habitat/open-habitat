@@ -1,6 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { attachmentSelection, uploadAttachment } from "./attachments";
 import { rememberAttachmentSize } from "./largeContent";
+import { mutationUpload } from "./mutations";
+
+vi.mock("./mutations", async (original) => ({
+  ...(await original<typeof import("./mutations")>()),
+  mutationUpload: vi.fn(),
+}));
 
 it("counts pending bytes and files, deduplicating only stored references", () => {
   const url = "/api/v1/attachments/aaaaaaaa-1111-4111-8111-111111111111";
@@ -36,7 +42,7 @@ it("uses sniffed type instead of the claimed type, preserves the path for non-co
       headers: { "Content-Type": "application/json" },
     }),
   );
-  vi.stubGlobal("fetch", fetch);
+  vi.mocked(mutationUpload).mockImplementation(fetch);
   const uploaded = await uploadAttachment(
     file,
     "csrf",
@@ -44,12 +50,11 @@ it("uses sniffed type instead of the claimed type, preserves the path for non-co
   );
   expect(uploaded.path).toBe(reply.path);
   expect(uploaded.reference).toBe(`[<notes>.png](/api/v1/attachments/${id})`);
-  expect(fetch.mock.calls[0][1].headers["X-Agent-Host-CSRF"]).toBe("csrf");
+  expect(fetch.mock.calls[0][3]).toBe("csrf");
 });
 
 it("rejects unknown contract fields and oversized streaming replies without Content-Length", async () => {
-  vi.stubGlobal(
-    "fetch",
+  vi.mocked(mutationUpload).mockImplementation(
     vi
       .fn()
       .mockResolvedValueOnce(

@@ -17,6 +17,8 @@ export type Attachment = {
   /** The reference text exactly as it stands in the message. */
   source: string;
   pending?: boolean;
+  progress?: number;
+  failed?: boolean;
   blocked?: boolean;
 };
 
@@ -130,7 +132,31 @@ export function AttachmentChips({
               isDisabled={item.pending}
               onPress={() => setOpen(item)}
             >
-              {item.image ? (
+              {item.pending && !item.blocked ? (
+                <svg
+                  className="ah-upload-ring"
+                  data-testid="attachment-progress-ring"
+                  data-saving={
+                    (item.progress === 1 && !item.failed) || undefined
+                  }
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    className="ah-upload-ring-track"
+                  />
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    pathLength="100"
+                    strokeDasharray={`${item.progress === 1 && !item.failed ? 75 : Math.floor((item.progress ?? 0) * 100)} 100`}
+                  />
+                </svg>
+              ) : item.image ? (
                 <ImageThumbnail src={`${item.url}/thumbnail`} />
               ) : (
                 <Icon name="file" />
@@ -140,16 +166,42 @@ export function AttachmentChips({
               )}
             </ControlButton>
             {item.pending ? (
-              <span>{item.blocked ? t.overLimit : t.waiting}</span>
+              <span
+                data-testid="attachment-progress"
+                role="progressbar"
+                aria-label={item.name}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.floor((item.progress ?? 0) * 100)}
+                aria-valuetext={
+                  item.failed
+                    ? t.failed
+                    : item.progress === 1
+                      ? t.saving
+                      : undefined
+                }
+              >
+                {item.blocked
+                  ? t.overLimit
+                  : item.failed
+                    ? t.failed
+                    : item.progress === 1
+                      ? t.saving
+                      : `${Math.floor((item.progress ?? 0) * 100)} %`}
+              </span>
             ) : null}
             {onRemove ? (
               <ControlButton
-                data-testid="attachment-remove"
+                data-testid={
+                  item.pending ? "attachment-cancel" : "attachment-remove"
+                }
                 className="ah-attachment-remove"
                 variant="quiet"
                 size="inline"
                 presentation="icon"
-                aria-label={t.remove(item.name)}
+                aria-label={
+                  item.pending ? t.cancel(item.name) : t.remove(item.name)
+                }
                 onPress={() => onRemove(index)}
               >
                 <Icon name="cross" />

@@ -116,6 +116,69 @@ export function mutationFetch(
   return fetch(url, init);
 }
 
+/** File bodies need XHR for upload progress; keep writes in this layer. */
+export function mutationUpload(
+  command: MutationCommand,
+  url: string,
+  file: File,
+  csrf: string,
+  signal: AbortSignal,
+  progress?: (loaded: number) => void,
+): Promise<Response> {
+  if (!(command in mutationClasses)) throw new Error("unknown command");
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const cleanup = () => signal.removeEventListener("abort", abort);
+    const fail = () => {
+      cleanup();
+      reject(new Error("upload failed"));
+    };
+    const abort = () => {
+      xhr.abort();
+      fail();
+    };
+    if (signal.aborted) {
+      fail();
+      return;
+    }
+    xhr.open("POST", url);
+    xhr.responseType = "arraybuffer";
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    xhr.setRequestHeader("X-Agent-Host-CSRF", csrf);
+    xhr.upload.onprogress = (event) =>
+      progress?.(Math.min(file.size, event.loaded));
+    xhr.upload.onload = () => progress?.(file.size);
+    // Bound the reply before buffering it, including replies without a length.
+    xhr.onprogress = (event) => {
+      if (event.loaded > 4096) abort();
+    };
+    xhr.onerror = fail;
+    xhr.onabort = fail;
+    xhr.ontimeout = fail;
+    xhr.onload = () => {
+      cleanup();
+      try {
+        if (xhr.status === 0 || xhr.response.byteLength > 4096) {
+          fail();
+          return;
+        }
+        resolve(
+          new Response(xhr.status === 204 ? null : xhr.response, {
+            status: xhr.status,
+            headers: {
+              "Content-Type": xhr.getResponseHeader("Content-Type") ?? "",
+            },
+          }),
+        );
+      } catch {
+        fail();
+      }
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    xhr.send(file);
+  });
+}
+
 /** For a helper that reads and writes one resource with the same code: a GET
  * is an ordinary read, anything else is this command's write. */
 export function hostRequest(

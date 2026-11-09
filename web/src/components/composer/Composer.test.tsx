@@ -1,5 +1,5 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { uploadAttachment } from "../../app/attachments";
 import type { CommandList, FileList, FileTree } from "../../app/composerReads";
@@ -1023,7 +1023,7 @@ describe("attachment refusal lifetime", () => {
       },
     );
 
-  it.each(["remove", "replace", "send", "dismiss", "accept", "switch"])(
+  it.each(["remove", "replace", "send", "cancel", "retry", "switch"])(
     "keeps a refusal until another attempt or dismissal: %s",
     async (action) => {
       const sent = vi.fn();
@@ -1057,23 +1057,23 @@ describe("attachment refusal lifetime", () => {
           },
         });
       if (action === "send") fireEvent.click(view.getByTestId("send"));
-      if (action === "dismiss")
-        fireEvent.click(view.getByTestId("attachment-refusal-dismiss"));
+      if (action === "cancel")
+        fireEvent.click(view.getByTestId("attachment-cancel"));
       if (action === "switch") view.rerender(<Draft conversation="two" />);
-      if (action === "accept") {
+      if (action === "retry") {
         vi.mocked(uploadAttachment).mockResolvedValue({ reference } as Awaited<
           ReturnType<typeof uploadAttachment>
         >);
-        pick(view);
+        fireEvent.click(view.getByTestId("attachment-refusal-retry"));
       }
-      if (action === "remove" || action === "replace") {
+      if (action === "remove" || action === "replace" || action === "send") {
         expect(view.getByTestId("attachment-refusal")).toBeTruthy();
       } else await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
-      if (action === "send") expect(sent).toHaveBeenCalledOnce();
+      if (action === "send") expect(sent).not.toHaveBeenCalled();
     },
   );
 
-  it("keeps a batch's refusal while earlier and later files succeed", async () => {
+  it("pauses the batch on failure and resumes only after retry", async () => {
     function Draft() {
       const [value, setValue] = useState("Draft");
       return (
@@ -1085,7 +1085,7 @@ describe("attachment refusal lifetime", () => {
         ReturnType<typeof uploadAttachment>
       >)
       .mockRejectedValueOnce(new Error("Synthetic refusal"))
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         reference: reference.replaceAll("33333333", "44444444"),
       } as Awaited<ReturnType<typeof uploadAttachment>>);
     const view = render(<Draft />);
@@ -1093,12 +1093,14 @@ describe("attachment refusal lifetime", () => {
     await waitFor(() =>
       expect(view.getByTestId("attachment-refusal")).toBeTruthy(),
     );
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(3);
+    expect(view.getAllByTestId("attachment-progress")).toHaveLength(2);
+    expect(view.getByTestId("send").getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(view.getByTestId("attachment-refusal-retry"));
     await waitFor(() =>
-      expect(view.getAllByTestId("attachment-chip")).toHaveLength(2),
+      expect(view.queryByTestId("attachment-progress")).toBeNull(),
     );
-    expect(view.getByTestId("attachment-refusal").textContent).toContain(
-      "notes.txt",
-    );
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(3);
   });
 });
 
@@ -1511,6 +1513,64 @@ describe("composer lists inside the field", () => {
 });
 
 describe("attachments that do not fit one message", () => {
+  it("keeps Send focusable but refuses both click and Enter while files wait", async () => {
+    vi.mocked(uploadAttachment).mockReset();
+    vi.mocked(uploadAttachment).mockImplementation(() => new Promise(() => {}));
+    const send = vi.fn();
+    const view = render(
+      <Composer {...base} csrf="csrf" value="Draft" onSendNow={send} />,
+    );
+    const button = view.getByTestId("send");
+    button.focus();
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      {
+        target: { files: [new File(["x"], "pending.txt")] },
+      },
+    );
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledOnce());
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(button);
+    fireEvent.click(button);
+    fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("invalidates the old upload before the changed binding's layout callbacks", async () => {
+    vi.mocked(uploadAttachment).mockReset();
+    let finish: (value: Awaited<ReturnType<typeof uploadAttachment>>) => void =
+      () => {};
+    vi.mocked(uploadAttachment).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    let abortedAtCommit = false;
+    const change = vi.fn();
+    function Bound({ csrf }: { csrf: string }) {
+      useLayoutEffect(() => {
+        if (csrf !== "new") return;
+        abortedAtCommit = vi.mocked(uploadAttachment).mock.calls[0][2].aborted;
+        finish({ reference: "old attachment" } as Awaited<
+          ReturnType<typeof uploadAttachment>
+        >);
+      }, [csrf]);
+      return <Composer {...base} csrf={csrf} value="Draft" onChange={change} />;
+    }
+    const view = render(<Bound csrf="old" />);
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      {
+        target: { files: [new File(["x"], "old.txt")] },
+      },
+    );
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledOnce());
+    view.rerender(<Bound csrf="new" />);
+    expect(abortedAtCommit).toBe(true);
+    await act(async () => {});
+    expect(change).not.toHaveBeenCalled();
+    expect(view.queryByTestId("attachment-chip")).toBeNull();
+  });
   it("does not carry queued files across a changed session binding", async () => {
     vi.mocked(uploadAttachment).mockReset();
     let finish: (value: Awaited<ReturnType<typeof uploadAttachment>>) => void =

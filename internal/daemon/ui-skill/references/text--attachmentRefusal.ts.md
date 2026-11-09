@@ -3,7 +3,7 @@
 Generated from web/src/text/attachmentRefusal.ts; do not edit.
 
 ```tsx
-import { catalog, formatNumber } from "../i18n";
+import { catalog, formatNumber, plural } from "../i18n";
 
 const fi = {
   size: (bytes: number) =>
@@ -47,6 +47,8 @@ const fi = {
     disk: "levy täynnä",
     failed: "ei tallentunut",
   },
+  progress: (sent: string, total: string, waiting: number) =>
+    `${sent} / ${total} lähti. ${formatNumber(waiting)} ${plural("fi", waiting, { one: "tiedosto", other: "tiedostoa" })} odottaa. Viestiä ei lähetetty.`,
   retry: "Yritä uudelleen",
   dismiss: "Sulje",
 };
@@ -92,6 +94,8 @@ export const attachmentRefusalText = catalog(fi, {
     disk: "disk full",
     failed: "not saved",
   },
+  progress: (sent: string, total: string, waiting: number) =>
+    `${sent} / ${total} sent. ${formatNumber(waiting)} ${plural("en-US", waiting, { one: "file", other: "files" })} waiting. The message was not sent.`,
   retry: "Try again",
   dismiss: "Close",
 });

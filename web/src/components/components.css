@@ -1,3 +1,21 @@
+.ah-upload-ring {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  transform: rotate(-90deg);
+}
+.ah-upload-ring circle {
+  fill: none;
+  stroke: var(--ah-accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.ah-upload-ring .ah-upload-ring-track {
+  stroke: var(--ah-line-strong);
+}
+.ah-upload-ring[data-saving] {
+  animation: var(--ah-title-spin);
+}
 .ah-button-stack {
   display: inline-flex;
   flex-direction: column;

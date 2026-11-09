@@ -695,6 +695,11 @@ export function Composer({
     ],
   );
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    id: string;
+    loaded: number;
+  }>();
+  const [uploadFailure, setUploadFailure] = useState<RefusedAttachment>();
   const [refusedFiles, setRefusedFiles] = useState<RefusedAttachment[]>([]);
   const uploadController = useRef<AbortController | null>(null);
   useEffect(
@@ -753,7 +758,14 @@ export function Composer({
     [csrf, attachable],
   );
   useEffect(() => {
-    if (!csrf || !attachable || uploading || uploadController.current) return;
+    if (
+      !csrf ||
+      !attachable ||
+      uploading ||
+      uploadController.current ||
+      uploadFailure
+    )
+      return;
     const item = pendingFiles[0];
     // Oversized single files reach uploadAttachment's local validation, not
     // the network, so their specific refusal wins over the combined limit.
@@ -770,12 +782,19 @@ export function Composer({
     const controller = new AbortController();
     uploadController.current = controller;
     setUploading(true);
+    setUploadProgress({ id: item.id, loaded: 0 });
+    let sentBytes = 0;
     void (async () => {
       try {
         const uploaded = await uploadAttachment(
           item.file,
           csrf,
           controller.signal,
+          (loaded) => {
+            sentBytes = loaded;
+            if (!controller.signal.aborted)
+              setUploadProgress({ id: item.id, loaded });
+          },
         );
         if (controller.signal.aborted) return;
         // A removed local chip must never reappear when its upload answers.
@@ -792,6 +811,15 @@ export function Composer({
           !controller.signal.aborted &&
           pending.current.some((entry) => entry.id === item.id)
         ) {
+          if (!(error instanceof UploadRefused) || error.reason === "failed") {
+            setUploadFailure({
+              id: item.id,
+              file: item.file,
+              reason: "failed",
+              loaded: sentBytes,
+            });
+            return;
+          }
           updatePending(
             pending.current.filter((entry) => entry.id !== item.id),
           );
@@ -800,20 +828,31 @@ export function Composer({
             {
               id: item.id,
               file: item.file,
-              reason: error instanceof UploadRefused ? error.reason : "failed",
+              reason: error.reason,
             },
           ]);
         }
       } finally {
         if (uploadController.current === controller) {
           uploadController.current = null;
-          if (!controller.signal.aborted) setUploading(false);
+          setUploading(false);
         }
       }
     })();
-  }, [csrf, attachable, pendingFiles, draftValue, uploading, updatePending]);
-  useEffect(() => {
+  }, [
+    csrf,
+    attachable,
+    pendingFiles,
+    draftValue,
+    uploading,
+    uploadFailure,
+    updatePending,
+  ]);
+  // Invalidate before the new binding's layout callbacks can observe a reply.
+  useLayoutEffect(() => {
     if (csrf) setUploading(false);
+    setUploadFailure(undefined);
+    setUploadProgress(undefined);
     updatePending([]);
     return () => {
       uploadController.current?.abort();
@@ -1728,7 +1767,7 @@ export function Composer({
           }}
         >
           <AttachmentMenu
-            disabled={uploading || !attachable || dictating}
+            disabled={!attachable || dictating}
             onAttach={() => picker.current?.click()}
           />
         </span>
@@ -1904,6 +1943,11 @@ export function Composer({
             url: item.id,
             source: "",
             pending: true,
+            progress:
+              uploadProgress?.id === item.id
+                ? uploadProgress.loaded / item.file.size
+                : 0,
+            failed: uploadFailure?.id === item.id,
             blocked: selection.blocked[index],
           })),
         ]}
@@ -1912,12 +1956,16 @@ export function Composer({
             ? undefined
             : (index) => {
                 if (index < attachments.length) removeAttachment(index);
-                else
+                else {
+                  const item = pending.current[index - attachments.length];
+                  if (uploadProgress?.id === item?.id)
+                    uploadController.current?.abort();
+                  if (uploadFailure?.id === item?.id)
+                    setUploadFailure(undefined);
                   updatePending(
-                    pending.current.filter(
-                      (_, i) => i !== index - attachments.length,
-                    ),
+                    pending.current.filter((entry) => entry.id !== item?.id),
                   );
+                }
               }
         }
       />
@@ -1936,20 +1984,26 @@ export function Composer({
               event.target.value = "";
             }}
           />
-          {uploading ? <p role="status">{t.savingAttachment}</p> : null}
           <AttachmentRefusal
-            refused={refusedFiles}
-            onDismiss={() => {
+            refused={
+              uploadFailure
+                ? [
+                    ...refusedFiles,
+                    { ...uploadFailure, waiting: pendingFiles.length - 1 },
+                  ]
+                : refusedFiles
+            }
+            onDismiss={
+              uploadFailure
+                ? undefined
+                : () => {
+                    field.current?.focus();
+                    setRefusedFiles([]);
+                  }
+            }
+            onRetry={() => {
               field.current?.focus();
-              setRefusedFiles([]);
-            }}
-            onRetry={(files) => {
-              field.current?.focus();
-              void addFiles(
-                files,
-                false,
-                refusedFiles.filter((r) => r.reason !== "failed"),
-              );
+              setUploadFailure(undefined);
             }}
           />
         </>

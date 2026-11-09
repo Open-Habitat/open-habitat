@@ -17,6 +17,8 @@ export type RefusedAttachment = {
   file: File;
   reason: AttachmentRefusalReason;
   used?: number;
+  loaded?: number;
+  waiting?: number;
 };
 export function AttachmentRefusal({
   refused,
@@ -24,7 +26,7 @@ export function AttachmentRefusal({
   onRetry,
 }: {
   refused: RefusedAttachment[];
-  onDismiss: () => void;
+  onDismiss?: () => void;
   onRetry: (files: File[]) => void;
 }) {
   const t = useText(attachmentRefusalText);
@@ -56,19 +58,32 @@ export function AttachmentRefusal({
               {t.retry}
             </ControlButton>
           ) : null}
-          <ControlButton
-            data-testid="attachment-refusal-dismiss"
-            size="inline"
-            variant="quiet"
-            presentation="icon"
-            aria-label={t.dismiss}
-            onPress={onDismiss}
-          >
-            <Icon name="cross" />
-          </ControlButton>
+          {onDismiss ? (
+            <ControlButton
+              data-testid="attachment-refusal-dismiss"
+              size="inline"
+              variant="quiet"
+              presentation="icon"
+              aria-label={t.dismiss}
+              onPress={onDismiss}
+            >
+              <Icon name="cross" />
+            </ControlButton>
+          ) : null}
         </>
       }
     >
+      {failed.map((item) =>
+        item.loaded !== undefined ? (
+          <p key={item.id}>
+            {t.progress(
+              t.size(item.loaded),
+              t.size(item.file.size),
+              item.waiting ?? 0,
+            )}
+          </p>
+        ) : null,
+      )}
       {one ? (
         <>
           {detail(one)} {t.todo[one.reason]}

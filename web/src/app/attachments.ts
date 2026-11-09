@@ -8,7 +8,7 @@ import {
   rememberAttachmentSize,
 } from "./largeContent";
 import { LazyAjv } from "./lazyAjv";
-import { mutationFetch, writeOutcome } from "./mutations";
+import { mutationUpload, writeOutcome } from "./mutations";
 
 const txt = liveText(attachmentsText);
 const sizes = liveText(largeContentText);
@@ -57,6 +57,7 @@ export async function uploadAttachment(
   file: File,
   csrf: string,
   signal: AbortSignal,
+  progress?: (loaded: number) => void,
 ) {
   if (!file.size)
     throw new UploadRefused("empty", txt.empty(file.name || txt.unnamed));
@@ -65,20 +66,13 @@ export async function uploadAttachment(
       "large",
       txt.overLimit(file.name || txt.unnamed, sizes.size(file.size)),
     );
-  const response = await mutationFetch(
+  const response = await mutationUpload(
     "attachment.upload",
     "/api/v1/attachments",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "X-Agent-Host-CSRF": csrf,
-      },
-      body: file,
-    },
+    file,
+    csrf,
+    signal,
+    progress,
   );
   if (response.status === 507) throw new UploadRefused("disk", txt.refused);
   const outcome = await writeOutcome(response);

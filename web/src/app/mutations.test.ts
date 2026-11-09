@@ -75,6 +75,13 @@ describe("the mutation layer guard", () => {
     }
     expect(offenders).toEqual([]);
   });
+  it("keeps XMLHttpRequest uploads in the mutation layer", () => {
+    expect(
+      files(root).filter((path) =>
+        /new\s+XMLHttpRequest\s*\(/.test(readFileSync(path, "utf8")),
+      ),
+    ).toEqual([]);
+  });
   it("classifies every command", () => {
     for (const value of Object.values(mutationClasses))
       expect(["optimistic", "pending", "confirmed"]).toContain(value);

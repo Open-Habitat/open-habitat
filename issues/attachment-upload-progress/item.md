@@ -3,12 +3,13 @@ created: 2026-11-09
 updated: 2026-11-09
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: notices
 lane_seq: 2
 blocked_by: ['@notices-composer-stack']
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Attachment upload progress: ring and percentage on the chip, Send waits for the files
@@ -32,5 +33,5 @@ in `design-system/prototypes/rounds/2026-11-09-liitteen-eteneminen/`.
 
 ## Acceptance Criteria
 
-- [ ] Chip shows ring + percentage during upload, cancel removes that file only; Send disabled until all are saved, enabled after, nothing sent automatically.
-- [ ] Browser spec with a throttled/simulated slow upload at 1440 and 390; touched specs and fast web checks green.
+- [x] Chip shows ring + percentage during upload, cancel removes that file only; Send disabled until all are saved, enabled after, nothing sent automatically.
+- [x] Browser spec with a throttled/simulated slow upload at 1440 and 390; touched specs and fast web checks green.

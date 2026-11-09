@@ -891,6 +891,16 @@ const fi = {
       lead: "Yrittää tallentaa uudelleen liitteet, joiden tallennus katkesi.",
       know: "Onnistuneet liitteet tulevat luonnokseen. Viestiä ei lähetetä.",
     },
+    V36: {
+      name: "Liitteen eteneminen",
+      lead: "Rengas ja prosentti näyttävät, kuinka paljon tiedostosta on lähtenyt. Tallennetaan tarkoittaa, että se odottaa vielä vahvistusta.",
+      know: "Lähetä odottaa kaikkia liitteitä. Viesti lähtee vasta, kun painat sitä itse.",
+    },
+    V37: {
+      name: "Peru tiedoston liittäminen",
+      lead: "× lopettaa tämän tiedoston lähettämisen ja poistaa sen luonnoksesta.",
+      know: "Jo tallennetut liitteet jäävät viestiin, ja jonossa olevat jatkavat.",
+    },
     V35: {
       name: "Keskustelun ilmoitus",
       lead: "Kertoo, mikä estää työn, on epävarmaa, käynnissä tai korjautui.",
@@ -2473,6 +2483,16 @@ export const explainModeText = catalog(fi, {
       name: "Try again",
       lead: "Tries saving attachments again after an interrupted upload.",
       know: "Saved attachments appear in the draft. This does not send the message.",
+    },
+    V36: {
+      name: "Attachment progress",
+      lead: "The ring and percentage show how much of the file has left your device. Saving means it still awaits confirmation.",
+      know: "Send waits for every attachment. The message leaves only when you press Send yourself.",
+    },
+    V37: {
+      name: "Cancel attaching a file",
+      lead: "× stops uploading this file and removes it from the draft.",
+      know: "Saved attachments stay in the message, and queued files continue.",
     },
     V35: {
       name: "Conversation notice",
