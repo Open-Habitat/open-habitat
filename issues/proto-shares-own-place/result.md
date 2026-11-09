@@ -236,3 +236,12 @@ eikä anna päiväotsikkoa enempää. Koko osoite kannattaa näyttää, koska
 siitä näkee, mitä on antamassa eteenpäin. Erillinen painike on
 kosketusnäytöllä isompi kohde kuin kentän päässä oleva kuvake, ja
 kopiointi on tämän sivun yleisin toimi.
+
+## Jarin vastaus kierrokseen 3 (9.11.2026)
+
+**B Keskustelut.** Rivillä pitää näkyä keskustelu, johon jako liittyy: sen
+kautta käyttäjä tunnistaa jaon. Keskustelun päivämäärä voi olla sen alku-
+tai loppupäivä, kumpi on mielekkäämpi; kapellimestari valitsi
+loppupäivän (keskustelun viimeisin toiminta), jotta järjestys vastaa
+sivupalkin *Viimeisimmät*-listaa eikä yhä jatkuva vanha keskustelu
+hautaudu. Painike vai kuvake ja koko osoite jäivät kommentoimatta.
