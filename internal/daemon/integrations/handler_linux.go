@@ -263,7 +263,7 @@ type removed struct {
 
 func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 	var in accountRequest
-	if (r.Method != http.MethodPost && r.Method != http.MethodDelete) || decode(r, &in, 8192) != nil || !ValidAddress(in.Address) {
+	if (r.Method != http.MethodPost && r.Method != http.MethodDelete) || decode(r, &in, 8192) != nil || !validCatalogAddress(in.Provider, in.Address) {
 		fail(w, 400, "invalid_request")
 		return
 	}
@@ -455,7 +455,7 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 	switch {
 	case r.Method == http.MethodPost && in.Action == "start" && in.AttemptID == "" && in.RedirectURL == "" && in.Folders == nil:
 		e, ok := c.entry(in.Provider).(LoginEntry)
-		if !ok || (in.Address != "" && !ValidAddress(in.Address)) {
+		if !ok || (in.Address != "" && !validCatalogAddress(in.Provider, in.Address)) {
 			fail(w, 400, "invalid_request")
 			return
 		}

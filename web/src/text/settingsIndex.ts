@@ -177,6 +177,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro: "Email, calendars, contacts and files your agents may use.",
     rows: {
       google: { label: "Google", desc: "Gmail, Calendar, Contacts and Drive." },
+      atlassian: {
+        label: "Atlassian",
+        desc: "Jira and Confluence. Enable the experimental feature first.",
+      },
       microsoft: {
         label: "Microsoft 365",
         desc: "Outlook, calendar, contacts, OneDrive and SharePoint.",

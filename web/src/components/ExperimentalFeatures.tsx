@@ -28,6 +28,7 @@ const featureIds = [
   { id: "conversation-context-view", landed: true },
   { id: "named-workers", landed: true },
   { id: "remote-browser", landed: true },
+  { id: "atlassian-connect", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;

@@ -15,6 +15,15 @@ const fi = {
       needs: "Ei muuta. Nykyiset jaot säilyvät.",
       caption: "Jaetut",
     },
+    "atlassian-connect": {
+      name: "Jira ja Confluence",
+      desc: "Yhdistä oma Atlassian-tilisi agenttien käyttöön. Valitse pyydettävät luku- tai muokkausoikeudet ja tarkista myönnetty lupa kirjautumisen jälkeen.",
+      where: "Asetukset › Integraatiot.",
+      shows: "Jira ja Confluence sekä Pi:n tallentamat myönnetyt oikeudet.",
+      needs:
+        "Atlassian-tili ja tarvittaessa organisaation ylläpitäjän hyväksyntä. Habitat ei lähetä hyväksyntäpyyntöä.",
+      caption: "Atlassian",
+    },
     "agent-resources-view": {
       name: "Agentin käytössä",
       desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
@@ -155,6 +164,15 @@ export const experimentalFeaturesText = catalog(fi, {
         "Conversations by latest activity, their shares and the selected item's content. Copy an address, change its publication duration or delete its address.",
       needs: "Nothing else. Existing shares stay as they are.",
       caption: "Shares",
+    },
+    "atlassian-connect": {
+      name: "Jira and Confluence",
+      desc: "Connect your Atlassian account for agents. Choose requested read or write permissions and check the actual grant after sign-in.",
+      where: "Settings › Integrations.",
+      shows: "Jira and Confluence and the granted scopes stored by Pi.",
+      needs:
+        "An Atlassian account and, where required, administrator approval. Habitat sends no approval request.",
+      caption: "Atlassian",
     },
     "agent-resources-view": {
       name: "Agent resources",

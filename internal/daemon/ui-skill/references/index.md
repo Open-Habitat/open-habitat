@@ -69,6 +69,7 @@ A label alone does not establish that a control is available to this person.
 - [text/apple.tsx](text--apple.tsx.md)
 - [text/archiveControls.ts](text--archiveControls.ts.md)
 - [text/archiveNotice.ts](text--archiveNotice.ts.md)
+- [text/atlassian.ts](text--atlassian.ts.md)
 - [text/attachmentChips.ts](text--attachmentChips.ts.md)
 - [text/attachmentMenu.ts](text--attachmentMenu.ts.md)
 - [text/attachmentPreview.ts](text--attachmentPreview.ts.md)

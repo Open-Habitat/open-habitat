@@ -1,0 +1,51 @@
+#!/usr/bin/python3
+"""Synthetic Pi MCP OAuth, only for the browser host's disposable homes."""
+import json
+import os
+import pathlib
+import sys
+import urllib.parse
+
+home = pathlib.Path(os.environ["HOME"])
+agent = home / ".pi/agent"
+name = "open_habitat_atlassian"
+key = "mcp__" + name + "|https://mcp.atlassian.com/v2/mcp"
+if sys.argv[1:3] == ["mcp", "logout"]:
+    path = agent / "mcp-auth.json"
+    if path.exists():
+        data = json.loads(path.read_text())
+        data.pop(key, None)
+        path.write_text(json.dumps(data))
+    sys.exit(0)
+if sys.argv[1:3] == ["mcp", "remove"]:
+    path = agent / "mcp.json"
+    data = json.loads(path.read_text())
+    data["mcpServers"].pop(name, None)
+    path.write_text(json.dumps(data))
+    sys.exit(0)
+assert "--no-session" in sys.argv and "builtin:mcp" in sys.argv
+assert json.loads(input())["message"] == "/mcp"
+print(json.dumps({"type": "response", "command": "prompt", "success": True}), flush=True)
+assert json.loads(input())["message"] == "/mcp login " + name
+scope = json.loads((agent / "mcp.json").read_text())["mcpServers"][name]["oauth"]["scope"]
+url = "https://auth.atlassian.com/authorize?" + urllib.parse.urlencode({
+    "redirect_uri": "http://127.0.0.1:45678/callback", "state": "fixture-state", "scope": scope,
+})
+print(json.dumps({"type": "extension_ui_request", "method": "notify", "message": "Sign in:\n" + url}), flush=True)
+print(json.dumps({"type": "extension_ui_request", "method": "input", "id": "fixture-input"}), flush=True)
+reply = json.loads(input())
+assert reply["type"] == "extension_ui_response" and reply["id"] == "fixture-input"
+query = urllib.parse.parse_qs(urllib.parse.urlparse(reply["value"]).query)
+assert query["state"] == ["fixture-state"]
+if query.get("error") == ["access_denied"]:
+    print(json.dumps({"type": "extension_ui_request", "method": "notify", "notifyType": "error", "message": "synthetic refusal"}), flush=True)
+else:
+    assert query["code"] == ["fixture-code"]
+    path = agent / "mcp-auth.json"
+    data = json.loads(path.read_text()) if path.exists() else {}
+    data[key] = {"tokens": {"access_token": "synthetic-never-real", "scope": scope}, "tokensExpireAt": 9999999999999}
+    path.write_text(json.dumps(data))
+    path.chmod(0o600)
+    print(json.dumps({"type": "extension_ui_request", "method": "notify", "message": 'Signed in to MCP server "' + name + '".'}), flush=True)
+for _ in sys.stdin:
+    pass

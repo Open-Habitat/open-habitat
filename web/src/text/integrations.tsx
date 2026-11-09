@@ -6,6 +6,12 @@ import { catalog } from "../i18n";
 // are; Finnish also needs a provider's genitive and illative.
 const fi = {
   providers: {
+    atlassian: {
+      name: "Atlassian",
+      site: "Atlassian",
+      gen: "Atlassianin",
+      ill: "Atlassianiin",
+    },
     google: { name: "Google", site: "Google", gen: "Googlen", ill: "Googleen" },
     microsoft: {
       name: "Microsoft 365",
@@ -52,6 +58,7 @@ const fi = {
     },
   },
   services: {
+    atlassian: { jira: "Jira-tehtävät", confluence: "Confluence-sivut" },
     google: {
       mail: "Gmail",
       calendar: "Google-kalenteri",
@@ -91,6 +98,16 @@ const fi = {
   readCalendar: "Vain luku. Ei voi luoda tapahtumia eikä lähettää kutsuja.",
   readOnly: "Vain luku.",
   levels: {
+    atlassian: {
+      read: {
+        name: "Vain luku",
+        sum: "Pyydä luku- ja hakuoikeuksia. Tarkista myönnetyt oikeudet kirjautumisen jälkeen: Atlassian voi pyytää laajempaa lupaa.",
+      },
+      full: {
+        name: "Luku ja muokkaus",
+        sum: "Pyydä Jira-tehtävien ja Confluence-sivujen luku- ja muokkausoikeuksia. Organisaation ja kohteen oikeudet rajoittavat käyttöä edelleen.",
+      },
+    },
     microsoft: {
       full: {
         name: "Täysi",
@@ -583,6 +600,12 @@ export const integrationsText = catalog(
   fi,
   {
     providers: {
+      atlassian: {
+        name: "Atlassian",
+        site: "Atlassian",
+        gen: "Atlassian",
+        ill: "Atlassian",
+      },
       google: { name: "Google", site: "Google", gen: "Google", ill: "Google" },
       microsoft: {
         name: "Microsoft 365",
@@ -624,6 +647,7 @@ export const integrationsText = catalog(
       gitlab: { name: "GitLab", site: "GitLab", gen: "GitLab", ill: "GitLab" },
     },
     services: {
+      atlassian: { jira: "Jira issues", confluence: "Confluence pages" },
       google: {
         mail: "Gmail",
         calendar: "Google Calendar",
@@ -663,6 +687,16 @@ export const integrationsText = catalog(
     readCalendar: "Read only. Cannot create events or send invitations.",
     readOnly: "Read only.",
     levels: {
+      atlassian: {
+        read: {
+          name: "Read only",
+          sum: "Request read and search permissions. Check the granted scopes after sign-in: Atlassian may ask for broader consent.",
+        },
+        full: {
+          name: "Read and write",
+          sum: "Request permission to read and edit Jira issues and Confluence pages. Your account and resource permissions still apply.",
+        },
+      },
       microsoft: {
         full: {
           name: "Full",

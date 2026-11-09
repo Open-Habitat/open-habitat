@@ -1462,6 +1462,36 @@ const fi = {
       name: "Omat asetukset",
       lead: "Palaa ylläpidosta omiin asetuksiisi.",
     },
+    M70: {
+      name: "Atlassian",
+      lead: "Yhdistä Jira ja Confluence omalla tililläsi.",
+      know: "Valitse pyydettävät oikeudet. Yhteys näyttää myönnetyn luvan, joka voi olla pyyntöä laajempi.",
+    },
+    M71: {
+      name: "Pyyntö ylläpitäjälle",
+      lead: "Kopioi koko pyyntö ja toimita se ylläpitäjällesi.",
+      know: "Habitat ei lähetä mitään. Odottaminen ei yksin tarkoita, että ylläpitäjä käsittelee pyyntöä.",
+    },
+    M72: {
+      name: "Jira ja Confluence",
+      lead: "Näyttää Atlassian-yhteyden kokeellisena ominaisuutena asetuksissa.",
+      know: "Valinta ei yhdistä tiliä eikä katkaise jo tehtyä yhteyttä.",
+    },
+    M73: {
+      name: "Kirjautuminen Atlassianiin",
+      lead: "Aloittaa kirjautumisen tai viimeistelee sen liittämälläsi paluuosoitteella.",
+      know: "Tason vaihtaminen poistaa vanhan kirjautumisen ennen uuden luvan pyytämistä.",
+    },
+    M74: {
+      name: "Pyydettävät oikeudet",
+      lead: "Valitse luku tai luku ja muokkaus ennen kirjautumista.",
+      know: "Valinta ei vielä muuta yhteyttä. Tarkista myönnetyt oikeudet kirjautumisen jälkeen.",
+    },
+    M75: {
+      name: "Poista Atlassian-yhteys",
+      lead: "Poistaa tämän yhteyden kirjautumisen agenttien käytöstä.",
+      know: "Jira-tehtäviä ja Confluence-sivuja ei poisteta. Voit yhdistää tilin uudelleen.",
+    },
     N01: {
       name: "Työtilan lähde",
       lead: "Valitse, kloonataanko työtila valmiista reposta vai luodaanko uusi tyhjä hakemisto.",
@@ -3011,6 +3041,36 @@ export const explainModeText = catalog(fi, {
     M28: {
       name: "Your settings",
       lead: "Returns from administration to your own settings.",
+    },
+    M70: {
+      name: "Atlassian",
+      lead: "Connect Jira and Confluence with your own account.",
+      know: "Choose requested permissions. The connection shows the actual grant, which may be broader than requested.",
+    },
+    M71: {
+      name: "Request for your administrator",
+      lead: "Copy the full request and give it to your administrator.",
+      know: "Habitat sends nothing. Waiting alone does not mean an administrator is reviewing the request.",
+    },
+    M72: {
+      name: "Jira and Confluence",
+      lead: "Shows the experimental Atlassian connection in settings.",
+      know: "This choice neither connects an account nor disconnects an existing one.",
+    },
+    M73: {
+      name: "Atlassian sign-in",
+      lead: "Starts sign-in or completes it with the return URL you pasted.",
+      know: "Changing the level removes the previous sign-in before requesting a new grant.",
+    },
+    M74: {
+      name: "Requested permissions",
+      lead: "Choose read or read and write before signing in.",
+      know: "The choice does not change the connection yet. Check granted permissions after sign-in.",
+    },
+    M75: {
+      name: "Remove Atlassian connection",
+      lead: "Removes this connection's sign-in from agents' use.",
+      know: "Jira issues and Confluence pages are not deleted. You can connect the account again.",
     },
     N01: {
       name: "Workspace source",

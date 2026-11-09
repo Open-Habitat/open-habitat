@@ -29,7 +29,8 @@ export type ProviderId =
   | "dropbox"
   | "apple"
   | "gitea"
-  | "gitlab";
+  | "gitlab"
+  | "atlassian";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -38,7 +39,9 @@ export type ServiceId =
   | "onedrive"
   | "sharepoint"
   | "dropbox"
-  | "git";
+  | "git"
+  | "jira"
+  | "confluence";
 export type ServiceState =
   | "ok"
   | "syncing"
@@ -169,6 +172,7 @@ export type Folder = {
 };
 export type LoginFailure =
   | "expired"
+  | "permission_refused"
   | "redirect_rejected"
   | "consent_required"
   | "device_code_blocked"

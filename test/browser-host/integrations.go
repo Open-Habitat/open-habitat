@@ -81,7 +81,7 @@ func (c *integrationControl) set(q url.Values) bool {
 }
 
 func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server, gitlab *gitlabfake.Server) (*integrations.Catalog, daemon.Forges) {
-	tools := map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}
+	tools := map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl"), "pi": filepath.Join(repoRoot, "test/fixtures/integrations/pi-atlassian")}
 	rclone := filepath.Join(repoRoot, "test/fixtures/integrations/rclone")
 	env := integrations.Env{Home: home, FixtureTools: true,
 		// The production Dropbox entry observes the broker's file on demand,

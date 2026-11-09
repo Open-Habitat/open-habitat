@@ -139,7 +139,7 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	}
 	relogin := a.relogin
 	v := LoginView{SchemaVersion: 1, State: a.state, AttemptID: a.id, Provider: a.provider, Relogin: &relogin}
-	if a.address != "" && ValidAddress(a.address) && (a.state != "completing" || a.syncing) {
+	if a.address != "" && validCatalogAddress(a.provider, a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = a.address
 	}
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
@@ -195,7 +195,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected:
+		case Expired, PermissionRefused, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected:
 			return string(f)
 		}
 	}
@@ -219,12 +219,15 @@ func validPrompt(kind LoginKind, p Prompt) bool {
 	if p.ExpiresAt.IsZero() {
 		return false
 	}
+	if p.Completed {
+		return kind == PastedRedirect
+	}
 	switch kind {
 	case DeviceCode:
 		return https(p.VerificationURI, 2048) && p.UserCode != "" && len(p.UserCode) <= 16 && strings.Trim(p.UserCode, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-") == ""
 	case PastedRedirect:
 		u, err := url.Parse(p.RedirectPrefix)
-		return https(p.AuthorizationURL, 4096) && err == nil && u.Scheme == "http" && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost") && (u.Path == "" || u.Path == "/") && u.RawQuery == "" && u.User == nil
+		return https(p.AuthorizationURL, 4096) && err == nil && u.Scheme == "http" && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost") && (u.Path == "" || u.Path == "/" || validPiOAuthPrompt(p)) && u.RawQuery == "" && u.User == nil
 	}
 	return false
 }
@@ -433,6 +436,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	if e.Login() == PastedRedirect {
 		state = "open_url"
 	}
+	if prompt.Completed {
+		state = "completing"
+	}
 	c.setAttempt(a, func() { a.state, a.prompt = state, prompt })
 	// The tool's code or consent page expires; give the exchange that
 	// follows a paste a moment beyond that.
@@ -464,7 +470,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		c.setAttempt(a, func() { a.unavailableSites = append([]string(nil), ms.unavailableSites...) })
 	}
-	if err == nil && !ValidAddress(address) {
+	if err == nil && !validCatalogAddress(e.Provider(), address) {
 		err = ToolFailed
 	}
 	if err == nil && ctx.Err() != nil {
@@ -477,7 +483,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		err = AccountMismatch
 	}
 	if err != nil {
-		if address != "" && ValidAddress(address) && !a.existing[address] {
+		if address != "" && validCatalogAddress(e.Provider(), address) && !a.existing[address] {
 			c.discardNew(e, address)
 		}
 		c.failAttempt(a, err)

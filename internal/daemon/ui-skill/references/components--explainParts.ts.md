@@ -542,6 +542,24 @@ export const parts: Record<CardId, Part> = {
   M26: { kind: "page", sel: page("keskustelut") },
   M27: { kind: "nav", sel: '[data-testid="settings-list-back"]' },
   M28: { kind: "nav", sel: '[data-testid="settings-own-back"]' },
+  M70: {
+    kind: "panel",
+    sel: '[data-testid="integration-tile-atlassian"], [data-testid="integration-account-atlassian"]',
+  },
+  M71: { kind: "panel", sel: '[data-testid="atlassian-approval-request"]' },
+  M72: {
+    kind: "menu",
+    sel: '[data-testid="experimental-atlassian-connect-choice"]',
+  },
+  M73: {
+    kind: "once",
+    sel: '[data-provider="atlassian"] [data-testid="integration-continue"], [data-provider="atlassian"] [data-testid="integration-connect"]',
+  },
+  M74: { kind: "menu", sel: '[data-provider="atlassian"] [role="radiogroup"]' },
+  M75: {
+    kind: "once",
+    sel: '[data-provider="atlassian"] [data-testid="integration-remove-confirm"]',
+  },
   N01: {
     kind: "menu",
     sel: 'fieldset[data-testid="segmented-choice"]:has([data-testid="segment-directory"])',
@@ -581,6 +599,9 @@ export const parts: Record<CardId, Part> = {
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "J08",
   "J09",
+  "M72",
+  "M73",
+  "M75",
   "Y11",
   "S13",
   "T05",

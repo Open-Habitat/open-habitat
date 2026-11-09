@@ -41,6 +41,7 @@ import {
   syncedTime,
 } from "../app/integrations";
 import { liveText } from "../i18n";
+import { atlassianText } from "../text/atlassian";
 import { integrationsText } from "../text/integrations";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
@@ -78,6 +79,7 @@ const providerMarks: Record<ProviderId, Pick<Copy, "mark" | "tone">> = {
   apple: { mark: "iC", tone: 3 },
   gitea: { mark: "Gt", tone: 3 },
   gitlab: { mark: "GL", tone: 2 },
+  atlassian: { mark: "A", tone: 2 },
 };
 
 /** Each provider's names in the current language, with its letter tile. */
@@ -95,6 +97,8 @@ const serviceIcons: Record<ServiceId, IconName> = {
   sharepoint: "folder",
   dropbox: "folder",
   git: "branch",
+  jira: "branch",
+  confluence: "folder",
 };
 
 const fileServices: ServiceId[] = [
@@ -1374,6 +1378,20 @@ function DeviceCodeStep({
   );
 }
 
+function AtlassianApprovalRequest() {
+  const text = liveText(atlassianText);
+  return (
+    <section data-testid="atlassian-approval-request">
+      <p className="ig-h">{text.waiting}</p>
+      <p className="ig-p">{text.help}</p>
+      <p className="ig-p" data-testid="atlassian-approval-text">
+        {text.request}
+      </p>
+      <CopyButton value={text.request} label={text.copy} />
+    </section>
+  );
+}
+
 function PasteStep({
   view,
   error,
@@ -1400,6 +1418,7 @@ function PasteStep({
       <>
         <p className="ig-h">{txt.signInAt(copy.site)}</p>
         <p className="ig-p">{txt.siteAsks(copy.site)}</p>
+        {view.provider === "atlassian" && <AtlassianApprovalRequest />}
         <RedirectExpected site={copy.site} prefix={prefix} />
         <div className="ig-row start">
           <ExternalButton href={href} onOpen={() => setOpened(true)}>
@@ -1437,6 +1456,7 @@ function PasteStep({
       }}
     >
       <p className="ig-h">{txt.pasteWhere(copy.site)}</p>
+      {view.provider === "atlassian" && <AtlassianApprovalRequest />}
       <RedirectExpected site={copy.site} prefix={prefix} />
       <ol className="ig-how">
         <li>{txt.approveTab}</li>
@@ -1819,6 +1839,12 @@ function FailedStep({
           <p className="ig-p">{txt.checkFiles}</p>
           {restart}
         </>
+      );
+    case "permission_refused":
+      return (
+        <p className="ig-err" role="alert">
+          {liveText(atlassianText).refused}
+        </p>
       );
     case "already_connected":
       return (
@@ -2255,11 +2281,13 @@ function LevelChange({
     ["external", txt.signInAgainAt(copy.gen)],
     [
       "lock",
-      provider.id === "dropbox"
-        ? txt.dropboxRevokes
-        : provider.id === "google"
-          ? txt.googleRevokes
-          : txt.oldRemoved(copy.site, copy.gen),
+      provider.id === "atlassian"
+        ? liveText(atlassianText).reauthorize
+        : provider.id === "dropbox"
+          ? txt.dropboxRevokes
+          : provider.id === "google"
+            ? txt.googleRevokes
+            : txt.oldRemoved(copy.site, copy.gen),
     ],
   ];
   if (file) {
@@ -2312,6 +2340,16 @@ function LevelWarning({
   provider: Provider;
   level: Level;
 }) {
+  if (provider.id === "atlassian")
+    return (
+      <div
+        className="ig-warn"
+        role="note"
+        data-testid="integration-level-warning"
+      >
+        {levelCopy.atlassian?.[level]?.sum}
+      </div>
+    );
   const can: string[] = [];
   const services = provider.services;
   if (services.includes("mail") && levelAccess(level, "mail") === "full")
@@ -2401,7 +2439,11 @@ function Intro({
   if (provider.levels)
     return (
       <>
-        {account || provider.id === "google" ? null : <CloudFolderHint />}
+        {account ||
+        provider.id === "google" ||
+        provider.id === "atlassian" ? null : (
+          <CloudFolderHint />
+        )}
         <p className="ig-lead">{txt.whatMay}</p>
         <LevelChoice provider={provider} level={level} onChange={setLevel} />
         {account && level ? (
@@ -2412,6 +2454,7 @@ function Intro({
           </p>
         )}
         {level ? <LevelWarning provider={provider} level={level} /> : null}
+        {provider.id === "atlassian" && <AtlassianApprovalRequest />}
         {buttons}
       </>
     );
@@ -2735,6 +2778,7 @@ export function ConnectDialog({
       <Modal className="ah-modal ig-dlg">
         <AriaDialog
           data-testid="integration-dialog"
+          data-provider={provider.id}
           data-stage={stage.stage}
           className="ah-dialog"
           aria-label={title}
@@ -2808,6 +2852,7 @@ export function RemoveDialog({
         <AriaDialog
           className="ah-dialog"
           role="alertdialog"
+          data-provider={account.provider}
           aria-label={txt.removeQuestion(account.address)}
         >
           <Heading slot="title">

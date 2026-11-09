@@ -388,6 +388,12 @@ export const settingsSections = [
         desc: "Gmail, Kalenteri, Yhteystiedot ja Drive.",
       },
       {
+        id: "atlassian",
+        label: "Atlassian",
+        kw: ["jira", "confluence"],
+        desc: "Jira ja Confluence. Ota kokeellinen ominaisuus ensin käyttöön.",
+      },
+      {
         id: "microsoft",
         label: "Microsoft 365",
         kw: [

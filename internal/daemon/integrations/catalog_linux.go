@@ -42,7 +42,7 @@ const (
 )
 
 // providerOrder is the order of the page's provider tiles and accounts.
-var providerOrder = []Provider{Google, Microsoft, IMAP, CalDAV, CardDAV, Dropbox}
+var providerOrder = []Provider{Google, Microsoft, Atlassian, IMAP, CalDAV, CardDAV, Dropbox}
 
 type LoginKind string
 
@@ -247,6 +247,9 @@ type Login interface {
 // Prompt is what the person needs from the tool: a device code and its page,
 // or the provider's authorization address and the loopback prefix it ends on.
 type Prompt struct {
+	// Completed is a native login that finished without browser interaction
+	// (for example, Pi renewed the existing grant). No URL is invented.
+	Completed                        bool
 	Flow                             string // Microsoft device grant: files or outlook.
 	VerificationURI, UserCode        string
 	AuthorizationURL, RedirectPrefix string
@@ -320,6 +323,7 @@ const (
 	AccountExists       Failure = "account_exists"
 	AccountMissing      Failure = "account_missing"
 	Expired             Failure = "expired"
+	PermissionRefused   Failure = "permission_refused"
 	RedirectRejected    Failure = "redirect_rejected"
 	DeviceCodeBlocked   Failure = "device_code_blocked"
 	AccountMismatch     Failure = "account_mismatch"
@@ -546,7 +550,7 @@ func (env Env) Tool(name string) (string, bool) {
 
 // Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}, &dav{CalDAV}, &dav{CardDAV}, &dropbox{}, &google{}, &microsoft{}}
+	return []Entry{&himalaya{}, &dav{CalDAV}, &dav{CardDAV}, &dropbox{}, &google{}, &microsoft{}, &atlassian{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,
@@ -704,7 +708,7 @@ func (c *Catalog) accounts() (out []listed, unread map[Provider]bool) {
 		}
 		sort.Strings(addresses)
 		for _, a := range addresses {
-			if ValidAddress(a) {
+			if validCatalogAddress(e.Provider(), a) {
 				out = append(out, listed{e, a})
 			}
 		}

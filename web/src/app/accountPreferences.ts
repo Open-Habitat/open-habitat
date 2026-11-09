@@ -28,6 +28,7 @@ export const experimentalFeatureIds = [
   "conversation-context-view",
   "named-workers",
   "remote-browser",
+  "atlassian-connect",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

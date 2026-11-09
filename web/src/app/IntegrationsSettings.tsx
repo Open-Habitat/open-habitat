@@ -22,6 +22,7 @@ import {
 } from "../components/Integrations";
 import { liveText } from "../i18n";
 import { integrationsSettingsText } from "../text/integrationsSettings";
+import { useExperimentalFeature } from "./accountPreferences";
 import {
   connectGitea,
   type GiteaCheck,
@@ -135,6 +136,7 @@ export function IntegrationsSettings({
   /** Opens Uusi työtila, offered once a code host is connected. */
   onNewWorkspace?: () => void;
 }) {
+  const atlassianEnabled = useExperimentalFeature("atlassian-connect");
   const [list, setList] = useState<IntegrationList | undefined>(initial);
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState<Set<string> | "all">(
@@ -293,7 +295,8 @@ export function IntegrationsSettings({
         // A page resumes only the sign-in of a provider it shows.
         if (
           view.provider &&
-          ((only && !only.includes(view.provider)) ||
+          ((view.provider === "atlassian" && !atlassianEnabled) ||
+            (only && !only.includes(view.provider)) ||
             except?.includes(view.provider))
         )
           return;
@@ -304,7 +307,7 @@ export function IntegrationsSettings({
         });
       })
       .catch(() => {});
-  }, [load, only, except]);
+  }, [load, only, except, atlassianEnabled]);
 
   // While the tool waits, ask the daemon how far it got.
   // A failed read schedules the next one: a lost poll must not strand the
@@ -843,7 +846,9 @@ export function IntegrationsSettings({
   };
 
   const shows = (id: ProviderId) =>
-    (!only || only.includes(id)) && !except?.includes(id);
+    (id !== "atlassian" || atlassianEnabled) &&
+    (!only || only.includes(id)) &&
+    !except?.includes(id);
   if (!list)
     return failed ? (
       <p role="alert">{txt.listFailed}</p>
@@ -864,7 +869,7 @@ export function IntegrationsSettings({
       <IntegrationsOverview
         compact={compact}
         list={
-          only || except
+          only || except || !atlassianEnabled
             ? {
                 ...list,
                 providers: list.providers.filter((p) => shows(p.id)),
