@@ -10,11 +10,17 @@
 .ah-conversation-frame:has(> .ah-composer-stack) > .ah-conversation-stream {
   padding-bottom: var(--ah-s3);
 }
-.ah-composer-stack > .ah-next-waiting,
-.ah-composer-stack > .ah-bg-strip,
 .ah-conversation-frame .ah-composer-stack > .ah-composer {
   padding-block: 0;
   margin-block: 0;
+}
+.ah-composer-stack > .ah-composer > .ah-next-waiting,
+.ah-composer-stack > .ah-composer > .ah-bg-strip {
+  padding: 0;
+}
+.ah-composer-stack > .ah-composer > .ah-next-waiting > *,
+.ah-composer-stack > .ah-composer > .ah-bg-strip > * {
+  width: 100%;
 }
 .ah-composer-stack > .ah-status-check,
 .ah-composer-stack > .ah-recap,

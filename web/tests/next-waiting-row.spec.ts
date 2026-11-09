@@ -117,8 +117,7 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
     await input.fill("");
     await expect(line(page)).toHaveAttribute("data-waiting", "2");
   }
-  // Other conversations stay furthest from the field; this conversation's
-  // work and queued message remain together beside the draft.
+  // Queued messages precede the chips; next-waiting is closest to the field.
   await send(page, "Keep the change focused");
   const queue = page.getByTestId("composer-queue");
   await expect(queue).toBeVisible();
@@ -130,9 +129,13 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
     const inputBox = await input.boundingBox();
     if (!nextBox || !workBox || !queueBox || !inputBox)
       throw new Error("Composer stack must be visible");
-    expect(nextBox.y + nextBox.height).toBeLessThanOrEqual(workBox.y);
-    expect(workBox.y + workBox.height).toBeLessThanOrEqual(queueBox.y);
-    expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(inputBox.y);
+    expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(workBox.y);
+    expect(workBox.y + workBox.height).toBeLessThanOrEqual(nextBox.y);
+    expect(nextBox.y + nextBox.height).toBeLessThanOrEqual(inputBox.y);
+    expect(workBox.y - queueBox.y - queueBox.height).toBeCloseTo(9, 0);
+    expect(nextBox.y - workBox.y - workBox.height).toBeCloseTo(9, 0);
+    expect(nextBox.x).toBeCloseTo(queueBox.x, 0);
+    expect(nextBox.width).toBeCloseTo(queueBox.width, 0);
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   await archiveOther(page, hrefs[0]);

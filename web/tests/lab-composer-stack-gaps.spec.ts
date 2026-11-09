@@ -66,11 +66,11 @@ for (const width of [1440, 1024, 800, 390]) {
       const measure = async (name: string) => {
         const selectors = [
           ".ah-turn-working",
-          ".ah-next-open",
           ".ah-conversation-notices > *",
-          ".ah-bg-badges",
           '[data-testid="composer-queue"]',
           ".ah-composer > .ah-attachment-chips",
+          ".ah-bg-badges",
+          ".ah-next-open",
           ".ah-cbox",
         ];
         const gaps = () =>

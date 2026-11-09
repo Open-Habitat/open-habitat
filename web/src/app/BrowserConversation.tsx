@@ -3042,13 +3042,6 @@ function BrowserConversationContent({
             />
           )}
           <div className="ah-composer-stack">
-            {view === "opened" && controlled && id ? (
-              <NextWaitingDock
-                next={nextWaiting}
-                agentId={id}
-                open={waitingWindow.open && draft.length === 0}
-              />
-            ) : null}
             {view === "opened" ? (
               <>
                 <div className="ah-actionable-notices">
@@ -3253,26 +3246,35 @@ function BrowserConversationContent({
             ) : (
               <CreationNotice notice={creationView.notice} />
             )}
-            {view === "opened" && controlled ? (
-              <>
-                {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
-                  the strip marks only which work is waited on. */}
-                <BackgroundStrip
-                  agentIdle={
-                    presentation.activity === "waiting_background" ||
-                    presentation.activity === "waiting"
-                  }
-                  piNotRunning={bridgeExpected}
-                  ask={workerAsk}
-                  assets={assets}
-                />
-              </>
-            ) : null}
             {view === "opened" ? rewind.sheet : null}
             {view !== "opened" || controlled ? (
               <>
                 <ServerBrowserDock identity={identity} csrf={csrf} />
-                <Composer {...composer} />
+                <Composer
+                  {...composer}
+                  beforeField={
+                    view === "opened" && controlled ? (
+                      <>
+                        <BackgroundStrip
+                          agentIdle={
+                            presentation.activity === "waiting_background" ||
+                            presentation.activity === "waiting"
+                          }
+                          piNotRunning={bridgeExpected}
+                          ask={workerAsk}
+                          assets={assets}
+                        />
+                        {id ? (
+                          <NextWaitingDock
+                            next={nextWaiting}
+                            agentId={id}
+                            open={waitingWindow.open && draft.length === 0}
+                          />
+                        ) : null}
+                      </>
+                    ) : null
+                  }
+                />
               </>
             ) : null}
           </div>

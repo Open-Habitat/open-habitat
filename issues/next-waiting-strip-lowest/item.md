@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Next-waiting strip sits directly above the field, queued steer above it
@@ -23,5 +24,5 @@ other strips, queued messages, chips row, next-waiting strip, field. Jari's exac
 
 ## Acceptance Criteria
 
-- [ ] With a queued steer and a waiting conversation: queued box, chips row, the strip, then the field; 1440 and 390; the 9 px rhythm and edge alignment kept.
-- [ ] The order spec updated; touched specs green.
+- [x] With a queued steer and a waiting conversation: queued box, chips row, the strip, then the field; 1440 and 390; the 9 px rhythm and edge alignment kept.
+- [x] The order spec updated; touched specs green.
