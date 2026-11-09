@@ -2,7 +2,7 @@
 created: 2026-11-09
 updated: 2026-11-09
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: found by prototype worker reading the upload path
@@ -11,6 +11,7 @@ originating_run: 01m6zm3zxt2hkcjcr7tyqazf62
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Slow attachment uploads hit the gateway's 60 s ceiling and the daemon's 5 s read timeout

@@ -68,6 +68,10 @@ func attachmentImage(typ string) bool {
 	return typ == "image/png" || typ == "image/jpeg" || typ == "image/gif" || typ == "image/webp"
 }
 
+// An absolute body deadline permits slow uplinks without letting a stalled
+// upload hold the socket and upload lock indefinitely.
+var attachmentUploadTimeout = 5 * time.Minute
+
 func AttachmentsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return attachmentsHandlerAt(cfg, trusted, AttachmentsPath)
 }
@@ -86,8 +90,13 @@ func attachmentsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(60 * time.Second))
-		_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(60 * time.Second))
+		readTimeout, writeTimeout := time.Minute, time.Minute
+		if upload {
+			readTimeout = attachmentUploadTimeout
+			writeTimeout = readTimeout + 30*time.Second
+		}
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(writeTimeout))
+		_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(readTimeout))
 		root, err := attachmentRoot(cfg.Home)
 		if err != nil {
 			snapshotError(w, 503, "attachments_unavailable")

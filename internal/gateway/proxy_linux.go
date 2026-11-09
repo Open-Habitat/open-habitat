@@ -146,6 +146,14 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	if !stream {
 		var cancel context.CancelFunc
 		ceiling := 60 * time.Second
+		// Allow the daemon's five-minute attachment body budget plus saving
+		// and response time. All other finite routes retain their own limits.
+		if r.URL.Path == "/api/v1/attachments" && r.Method == http.MethodPost {
+			ceiling = 6 * time.Minute
+			// Context cancellation alone cannot interrupt a blocked read of
+			// the browser body by the transport's request writer.
+			_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(ceiling))
+		}
 		if r.URL.Path == "/api/v1/workspaces/github/publish" && r.Method == http.MethodPost {
 			ceiling = 46 * time.Minute
 		}

@@ -3,12 +3,14 @@
 package daemon
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,6 +23,53 @@ import (
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
+
+func TestStalledAttachmentDeadline(t *testing.T) {
+	old := attachmentUploadTimeout
+	attachmentUploadTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { attachmentUploadTimeout = old })
+	home := t.TempDir()
+	h := AttachmentsHandler(transport.Config{Home: home}, func(*http.Request) bool { return true })
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+	_, err = fmt.Fprintf(conn, "POST %s HTTP/1.1\r\nHost: unix\r\nContent-Length: 10\r\n\r\nx", AttachmentsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("stalled upload did not return a bounded refusal: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Fatalf("stalled upload: %d", resp.StatusCode)
+	}
+	entries, err := os.ReadDir(filepath.Join(home, "attachments"))
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("partial upload left behind: %v, %v", entries, err)
+	}
+	// The timed-out upload must also release the serialization lock.
+	client := &http.Client{Timeout: 3 * time.Second}
+	next, err := http.NewRequest(http.MethodPost, srv.URL+AttachmentsPath, strings.NewReader("complete"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	next.Host = "unix"
+	got, err := client.Do(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer got.Body.Close()
+	if got.StatusCode != 200 {
+		t.Fatalf("next upload: %d", got.StatusCode)
+	}
+}
 
 func TestAttachmentsRoundTripAndIsolation(t *testing.T) {
 	home := t.TempDir()
