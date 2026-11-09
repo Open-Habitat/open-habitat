@@ -6,6 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
+preparation: ready
 ---
 
 # Phone: scrolled content peeks above the sticky top bar in the repository view
