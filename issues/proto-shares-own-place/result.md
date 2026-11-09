@@ -245,3 +245,86 @@ tai loppupäivä, kumpi on mielekkäämpi; kapellimestari valitsi
 loppupäivän (keskustelun viimeisin toiminta), jotta järjestys vastaa
 sivupalkin *Viimeisimmät*-listaa eikä yhä jatkuva vanha keskustelu
 hautaudu. Painike vai kuvake ja koko osoite jäivät kommentoimatta.
+
+# Kierros 4: B Keskustelut viimeisteltynä (toteutuksen määrittely)
+
+Kierros: `design-system/prototypes/rounds/2026-11-09-jaetut-keskustelut/`
+(`NOTES.md`). Kierroksen 3 B on mukana vain vertailukohtana.
+
+- **Kierros 3 B**: vertailukohta. Keskustelut viimeisimmän jaon mukaan, päivä keskustelun nimen edessä.
+- **4 Viimeistely**: keskustelut viimeisimmän toiminnan mukaan kuten sivupalkissa, uusin ensin. Keskustelun nimi johtaa, päivä oikealla, jaot alla; osoite kentässä ja linkkikuvake sen päässä.
+
+Kuvat: `evidence/r4-viimeistely-0-oletus-{1440,390}-{light,dark}.avif`,
+vertailu `r4-kierros3-b-0-oletus-1440-light`, kansio valittuna
+`r4-viimeistely-1-auki-1440-light` ja `-390-dark`, keston valikko
+`-2-kesto-{1440,390}-light`, kopioitu linkki `-3-kopioi-1440-dark` ja
+`-390-light`, tyhjä sivu `-4-tyhja-1440-light` ja `-390-dark`.
+
+## Määrittely
+
+- **Sivu**: oma sivu *Jaetut* sivupalkissa Etusivun alla, rivillä
+  julkisten määrä (*Jaetut 2*; ei lukua, kun mitään ei ole julkisena).
+  Otsikon alla yhteenveto (*2 julkista, 5 vain sinulle, 3 päättynyttä tai
+  poistettua*) ja suodatin Kaikki / Julkiset / Vain sinä / Päättyneet
+  (luvut vain työpöydällä).
+- **Lista**: keskustelut pystyviivalla, uusin viimeisin toiminta ensin.
+  Keskustelun otsikkorivillä nimi linkkinä keskusteluun ja oikealla
+  viimeisimmän toiminnan päivä (*ma 9.11.*, vihjeenä päivä ja kellonaika);
+  alla työtila, *arkistoitu* ja jakojen määrä. Pisteen väri kertoo, onko
+  keskustelussa jotain julkisena. Jaot keskustelun alla uusin ensin:
+  pikkukuva tai merkki, otsikko, *jaettu la 7.11. klo 18.41 · Näkymä* ja
+  tilarivi (*Julkinen 7.12.2026 asti*, *Vain sinä*, *Julkisuus päättyi …*,
+  *Kohde poistettu*).
+- **Valittu jako**: työpöydällä oikealla, oletuksena ensimmäisen
+  keskustelun uusin jako. Yläpuolella *Keskustelusta <nimi>* linkkinä,
+  sitten otsikko, laji, koko ja jakopäivä. Tilalaatikossa tila sanoin ja
+  kortin kuvakkeet (maapallo, päättymispäivän valikko, oma välilehti,
+  roskakori), julkisella jaolla koko osoite kentässä ja linkkikuvake
+  kentän päässä, ja lyhyt ohje. Alla kohde itse kuten paneelissa.
+- **Puhelin**: lista ensin, jako omaksi näkymäkseen ja takaisin
+  *Jaetut*-painikkeella. Osoite ennen kuvakkeita, linkkikuvake 44 px.
+- **Tyhjä sivu**: *Et ole jakanut vielä mitään* ja se, mistä jako syntyy
+  (kortin maapallo keskustelussa).
+- **Host-tiedot**: kaikki on jo olemassa. Osoitteet
+  (`GET /api/v1/view-addresses`) liitetään selaimessa näkymiin ja
+  tarjouksiin (`conversation_id`) ja snapshotin keskusteluihin (otsikko,
+  työtila, `archive`, `changed_at`). Keskustelun viimeisin toiminta on
+  `changed_at`, Pi-istuntotiedoston muokkausaika, jolla sivupalkki jo
+  järjestää hiljaiset keskustelut; snapshot kertoo sen myös
+  arkistoiduista.
+
+## Decisions for later review
+
+- **Koko osoite näkyy kentässä, ja kopiointi on linkkikuvake kentän
+  päässä** (vaihtoehdot: erillinen *Kopioi linkki* -painike, tai pelkkä
+  painike ilman osoitetta; kierros 3 A ja C). Jari ei kommentoinut, joten
+  kierroksen 3 B:n ratkaisu jäi. Kentästä näkee, mitä antaa eteenpäin, ja
+  kenttä ja kuvake ovat yksi ohjain. Puhelimessa kuvake on 44 px leveä,
+  joten erilliselle painikkeelle ei ollut syytä.
+- **Puhelimessa osoite tulee ennen kuvakkeita** (kierroksen 3 löydös).
+  Kosketusnäytöllä päivämäärävalikon työkaluvihje jää näkyviin
+  napautuksen jälkeen ja peitti alla olevan kopiointipainikkeen. Nyt se
+  osuu ohjetekstin päälle. Tuotannon `QuickTooltip`-käytös kosketuksella on
+  itsessään kyseenalainen; tämä järjestys kiertää sen tällä sivulla.
+- **Keskustelun päivä on viimeisin toiminta (`changed_at`), ei
+  viimeisin jako** (Jari: alku- tai loppupäivä, kumpi mielekkäämpi;
+  kapellimestari valitsi loppupäivän). Jatkuva keskustelu pysyy kärjessä
+  kuten sivupalkissa, vaikka jaot olisivat vanhoja.
+- **Keskustelu, jolla ei ole istuntotiedostoa (`changed_at` puuttuu), saa
+  päiväkseen uusimman jakonsa ajan.** Muuten sen paikka olisi
+  arvaus.
+- **Osoite, jonka kohde on poistettu, on viimeisenä omana ryhmänään
+  *Kohde poistettu***, ja sen päivä on jaon päivä. Kohde ei kerro enää
+  keskusteluaan.
+- **Jaon oma aika näkyy rivillä (*jaettu …*),** koska keskustelun päivä
+  ei enää kerro, milloin jako tehtiin.
+- Toteutus tarvitsee Explain-kortit molemmilla kielillä sivulle,
+  keskustelun otsikkoriville (päivän merkitys), tilariville,
+  suodattimelle ja osoitekentälle ja sen linkkikuvakkeelle.
+- Toteutus kannattaa tuoda kokeellisena ominaisuutena
+  (`AGENTS-WORKFLOW.md`), koska se siirtää osoitteet pois Tili-sivulta.
+
+## Kysymykset Jarille
+
+Ei avoimia kysymyksiä. Kierros on määrittely: seuraava askel on toteutus,
+ellei Jari halua muuttaa jotain kuvista.
