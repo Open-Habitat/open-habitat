@@ -3,11 +3,12 @@ created: 2026-11-09
 updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: notices-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
+closed: 2026-11-09
 ---
 
 # Design and prototype: one consistent system for warnings and notices
@@ -44,3 +45,9 @@ system; reconcile with it.
 ## Acceptance Criteria
 
 - [ ] Inventory table; system proposal; prototype round 1 with view offer and questions for Jari.
+
+## Resolution
+
+### 2026-11-09T08:25:29Z · @issuectl
+
+Jari 9.11.: direction A, all per recommendation; implementation in notices-composer-stack and notices-app-wide.

@@ -165,3 +165,12 @@ osan, minkä vuoksi näkyvissä on enintään kaksi.
 3. Saako vanhentunut kirjautuminen olla kellon lisäksi sivun levyinen palkki ylhäällä (`r1-d1-kentan-ylla-kirjautuminen-1440-light`), vai riittääkö kello ja ilmoitus kentän yllä?
 4. Onko worker, joka odottaa sinua, ilmoituksen arvoinen (`r1-d1-kentan-ylla-worker-1440-light`), vai riittääkö rengas taustatyön rivillä?
 5. Onko kaksi näkyvää ilmoitusta ja *Näytä 1 muu ilmoitus* oikea raja (`r1-d1-kentan-ylla-kaikki-auki-1440-light`)?
+
+## Jarin päätös (9.11.2026)
+
+Kaikki viisi suositusten mukaan: **A Kentän yllä**; neljä lajia (Este,
+Tieto, Käynnissä, Korjautui) ja historia, jota ei saada, harmaana Tietona;
+vanhentunut kirjautuminen kellossa ja ilmoituksena kentän yllä ilman sivun
+levyistä palkkia; worker, joka odottaa sinua, on Tieto-ilmoitus; enintään
+kaksi näkyvää ilmoitusta ja *Näytä N muu(ta)*. Toteutus:
+`notices-composer-stack`, sitten `notices-app-wide`.

@@ -3,11 +3,12 @@ created: 2026-11-08
 updated: 2026-11-09
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: attachment-refusal-proto
 lane_seq: 1
 preparation: ready
+closed: 2026-11-09
 ---
 
 # Prototype: attachment refusal message, look and wording
@@ -36,3 +37,9 @@ what the person can do. 1440 and 390, light and dark. Catalog source:
 ## Acceptance Criteria
 
 - [ ] round 1: today, three directions, view offer and questions for Jari
+
+## Resolution
+
+### 2026-11-09T08:25:29Z · @issuectl
+
+Jari 9.11.: 1 Varoitus; implemented as part of notices-composer-stack.
