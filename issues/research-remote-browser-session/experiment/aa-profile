@@ -1,5 +1,0 @@
-abi <abi/4.0>,
-include <tunables/global>
-profile rbs-exp-chrome /opt/esimerkki/chrome-linux-arm64/chrome flags=(unconfined) {
-  userns,
-}

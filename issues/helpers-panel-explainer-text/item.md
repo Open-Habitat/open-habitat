@@ -1,6 +1,6 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 type: improvement
 reporter: jari
 status: done
@@ -8,7 +8,6 @@ priority: normal
 lane: explain-cards
 preparation: ready
 lane_seq: 2
-blocked_by: ['@explain-card-skill']
 closed: 2026-11-08
 ---
 
