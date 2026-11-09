@@ -3,10 +3,11 @@ created: 2026-11-09
 updated: 2026-11-09
 type: bug
 reporter: jari
-status: untriaged
+status: duplicate
 priority: normal
 provenance: chat
 source_ref: habitat-chat:tailspin-contoso/2026-11-09-explain-path
+closed: 2026-11-09
 ---
 
 # Selitystila: työtilan etusivun hakemistorivillä näkyy nimen selitys
@@ -26,3 +27,9 @@ Valitsimen jälkimmäinen osa osuu `WorkspacePage.tsx`:n polkuriviin (`<p><code 
 ## Ehdotettu korjaus
 
 Oma kortti polkuriville (seuraava vapaa T-tunniste, fi + en tekstit `text/explainMode.ts`), esim. "Kansio" / "Folder": työtilan kansion sijainti kotihakemistossa; koko polku näkyy vietäessä hiiri päälle, Kopioi polku -painike kopioi sen. T01:n valitsin vain otsikkoon. Päivitä explain-coverage / lab-explain-mode -testit niin, että sama kortti ei kata kahta eri ohjainta samassa näkymässä. Tarkista samalla `workspace-icon-source`-rivi (kuvakkeen lähde), ettei sillä ole samaa ongelmaa.
+
+## Resolution
+
+### 2026-11-09T13:34:00Z · @issuectl
+
+Same defect as explain-dir-shows-name-card, fixed 9.11. (c0e6910b0; path now has its own card T46).
