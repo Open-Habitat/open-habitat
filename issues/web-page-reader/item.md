@@ -3,12 +3,20 @@ created: 2026-11-10
 updated: 2026-11-10
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@pi-web-search-capability']
 preparation: ready
 lane: web-search
 lane_seq: 3
+closed: 2026-11-10
+commits:
+- hash: 2d1d8a213
+  summary: page reader and headless shell in the core runtime
+- hash: 33f2aa55d
+  summary: per-read egress proxy after review
+- hash: cffd70747
+  summary: proxy refusal wording
 ---
 
 # Headless browser page reading for every agent

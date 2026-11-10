@@ -703,9 +703,11 @@ profile `/etc/apparmor.d/open-habitat-headless-shell`, which grants user
 namespaces to the shell in release generations, as Ubuntu's own profile does
 for Google Chrome. Apply and upgrade install and load it. Without it, the tool
 answers that the browser cannot start its sandbox, and nothing is read. The
-shell and the libraries it needs (listed in the core's `ubuntu-packages.json`)
-add about 130 MB to the core runtime download and about 335 MB on disk on
-amd64, and about 110 MB and 335 MB on arm64.
+shell adds about 110 MB to the core runtime download and about 285 MB on
+disk on amd64; the figures for arm64 are 115 MB and 360 MB, because that
+build is not stripped. Chromium's Ubuntu libraries (in the core's
+`ubuntu-packages.json`) add up to 64 MB of packages and 262 MB on disk on a
+minimal system; a server that already has some of them needs less.
 
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,
