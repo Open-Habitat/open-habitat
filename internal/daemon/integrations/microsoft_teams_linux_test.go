@@ -266,3 +266,52 @@ func TestMicrosoftTeamsLeftOutReachesLoginView(t *testing.T) {
 		t.Fatal(string(data))
 	}
 }
+
+// A team whose library list Graph pages is left out and said; the account's
+// own roots and the other teams still connect.
+func TestMicrosoftPagedTeamLibrariesLeaveTheTeamOut(t *testing.T) {
+	m, _ := syntheticTeams(t, map[string]func() (int, string){
+		"/v1.0/sites/" + testTeamSite + "/drives": func() (int, string) {
+			return 200, `{"value":[{"id":"team-drive","name":"Asiakirjat","driveType":"documentLibrary"}],"@odata.nextLink":"https://graph.microsoft.com/v1.0/next"}`
+		},
+	})
+	l := &microsoftLogin{entry: m, address: "person@example.test"}
+	if err := l.discover(context.Background(), "access-secret", testTeamsScopes); err != nil {
+		t.Fatal(err)
+	}
+	if l.teamsLeftOut != teamsTooMany || strings.Contains(string(l.config), "team-drive") || strings.Contains(string(l.config), "private-drive") {
+		t.Fatalf("%q\n%s", l.teamsLeftOut, l.config)
+	}
+	if !strings.Contains(string(l.config), "drive_id = library-drive") {
+		t.Fatal("own roots lost")
+	}
+}
+
+// Labels are only names: an inventory that fits without them still
+// connects when they would not fit.
+func TestMicrosoftLabelsGiveWayToTheAccountsOwnRoots(t *testing.T) {
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	probe := &microsoftLogin{entry: m, address: "person@example.test"}
+	if err := probe.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
+		t.Fatal(err)
+	}
+	// Two sections with labels; choose a token that fits only without them.
+	labels := strings.Count(string(probe.config), microsoftLabelKey+" = ")
+	if labels != 2 {
+		t.Fatal(labels)
+	}
+	labelBytes := 0
+	for _, line := range strings.Split(string(probe.config), "\n") {
+		if strings.HasPrefix(line, microsoftLabelKey+" = ") {
+			labelBytes += len(line) + 1
+		}
+	}
+	bare := len(probe.config) - labelBytes
+	l := &microsoftLogin{entry: m, address: "person@example.test", token: []byte(strings.Repeat("t", (maxMicrosoftConfig-bare)/2))}
+	if err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(l.config), microsoftLabelKey) || len(l.config) > maxMicrosoftConfig || len(l.config)+labelBytes <= maxMicrosoftConfig {
+		t.Fatal(len(l.config), labelBytes)
+	}
+}

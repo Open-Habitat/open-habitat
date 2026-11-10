@@ -185,3 +185,33 @@ func TestMicrosoftRecoveryOutagePreservesConfigAndRetries(t *testing.T) {
 		t.Fatal("repeated healthy first pass")
 	}
 }
+
+// The legacy repair restores followed sites' libraries only. A grant that
+// also lists teams never makes it discover or select the person's teams
+// (syntheticMicrosoft fails the test on any Teams request).
+func TestMicrosoftRecoveryNeverSelectsTeams(t *testing.T) {
+	env, m := recoveryAccount(t, false)
+	config := filepath.Join(env.Home, microsoftDir, "person@example.test.conf")
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = []byte(strings.ReplaceAll(string(data), grantKey+" = ", grantKey+" = Team.ReadBasic.All Channel.ReadBasic.All "))
+	if err := os.WriteFile(config, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{OK: true, Free: 1 << 30} }), WithResumeTiming(time.Millisecond, time.Millisecond, 10*time.Millisecond))
+	ctx, cancel := context.WithCancel(context.Background())
+	c.Start(ctx)
+	defer stopRecovery(c, cancel)
+	deadline := time.Now().Add(5 * time.Second)
+	for microsoftRecoveryNeeded(env, "person@example.test") || recoveryAttempt(c) {
+		if time.Now().After(deadline) {
+			t.Fatal("startup did not recover")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if roots, err := microsoftRemotes(env, "person@example.test"); err != nil || len(roots) != 2 {
+		t.Fatal(roots, err)
+	}
+}

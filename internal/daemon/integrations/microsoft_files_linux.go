@@ -132,6 +132,10 @@ func microsoftLabel(parts ...string) string {
 
 const maxMicrosoftRemotes, maxMicrosoftConfig = 64, 64 << 10
 
+// errMicrosoftTruncated is a library list Graph paged: the inventory would
+// be partial. A followed site fails discovery; a team is left out.
+var errMicrosoftTruncated = errors.New("microsoft library list truncated")
+
 type microsoftDrive struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -214,12 +218,24 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, granted ma
 	}
 	for _, s := range sites.Value {
 		found, err := d.libraries(s, "SharePoint", microsoftDisplayName(s.Name, "SharePoint"))
+		if errors.Is(err, errMicrosoftTruncated) {
+			return ToolFailed
+		}
 		if err != nil {
 			return err
 		}
 		remotes = append(remotes, found...)
 	}
-	if fits, err := d.add(remotes); err != nil || !fits {
+	fits, err := d.add(remotes)
+	if err == nil && !fits {
+		// Labels are only names: an inventory that fit before them still
+		// connects, under its directories' names.
+		for i := range remotes {
+			remotes[i].Label = ""
+		}
+		fits, err = d.add(remotes)
+	}
+	if err != nil || !fits {
 		if err == nil {
 			err = ToolFailed
 		}
@@ -278,7 +294,7 @@ func (d *microsoftDiscovery) libraries(s microsoftSite, label ...string) ([]micr
 	d.reachable[host] = true
 	d.step = "site_drives_limit"
 	if list.Next != "" {
-		return nil, ToolFailed
+		return nil, errMicrosoftTruncated
 	}
 	d.step = "site_url"
 	u, err := url.Parse(s.WebURL)
@@ -314,7 +330,11 @@ func (d *microsoftDiscovery) add(group []microsoftRemote) (bool, error) {
 			return false, ToolFailed
 		}
 		// The label is provider text: encoded, it never becomes config syntax.
-		s := fmt.Sprintf("[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\n%s = %s\ntoken = %s\n%s\n", r.Name, d.app.ClientID, d.app.TenantID, r.DriveID, r.DriveType, r.Directory, microsoftLabelKey, base64.RawURLEncoding.EncodeToString([]byte(r.Label)), d.token, grantLine(d.granted))
+		label := ""
+		if r.Label != "" {
+			label = microsoftLabelKey + " = " + base64.RawURLEncoding.EncodeToString([]byte(r.Label)) + "\n"
+		}
+		s := fmt.Sprintf("[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\n%stoken = %s\n%s\n", r.Name, d.app.ClientID, d.app.TenantID, r.DriveID, r.DriveType, r.Directory, label, d.token, grantLine(d.granted))
 		more, n = append(more, s), n+len(s)
 	}
 	d.step = "remote_limit"
@@ -380,6 +400,11 @@ func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 			}
 		} else if !d.sites[strings.ToLower(root.ID)] {
 			found, err := d.libraries(root, "Teams", team)
+			if errors.Is(err, errMicrosoftTruncated) {
+				// A team too large to list whole is left out, and said.
+				d.teamsLeftOut = teamsTooMany
+				continue
+			}
 			if err != nil {
 				return err
 			}

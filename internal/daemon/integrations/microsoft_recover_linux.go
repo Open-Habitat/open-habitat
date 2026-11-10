@@ -126,6 +126,11 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 			granted = strings.Fields(microsoftScopes)
 		}
 		scopes := microsoftGranted(granted)
+		// This repair restores followed sites' libraries; the person's teams
+		// are offered at their next sign-in, never selected here.
+		for _, s := range append(microsoftTeamScopes, microsoftChannelScopes...) {
+			delete(scopes, s)
+		}
 		l := &microsoftLogin{entry: m, env: env, app: app, address: address, token: []byte(n.token), granted: granted}
 		if err := l.discover(ctx, token.Access, scopes); err != nil {
 			return err
