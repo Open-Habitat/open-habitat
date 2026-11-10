@@ -3,11 +3,14 @@ created: 2026-11-10
 updated: 2026-11-10
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, observed in a research worker
 source_ref: conversation:jari-2026-11-10/web-search
+lane: web-search
+lane_seq: 1
+preparation: ready
 ---
 
 # Agents on Pi have no web search; offer a search capability in the runtime
@@ -48,3 +51,9 @@ server-provided key chosen by the administrator, like the existing
 server-provided AI key. Reading JavaScript pages is a separate need (a
 headless browser tool; the runtime already ships a headless Playwright
 profile).
+
+## Decisions
+
+### 2026-11-10T07:15:41Z · @jari
+
+Jari 10.11.: start the research step: how Habitat brings web search (and reading JavaScript pages) to the person's agents. Material for a design discussion, not an implementation plan.

@@ -2,16 +2,19 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed during live view-address verification
 source_ref: taskfleet:01m71zxwc5x5wq5mg4cwzv029x/observation:withdrawal-sockets-jit-gate
 originating_run: 01m71zxwc5x5wq5mg4cwzv029x
 originating_run_kind: spinoff
+lane: withdrawal-stops-daemon
+lane_seq: 1
+preparation: ready
 ---
 
-# Withdrawing a person leaves their sockets active and the test guest's JIT gate then refuses every socket start
+# Withdrawal stops the person's daemon and sockets through the broker
 
 ## Description
 
@@ -24,3 +27,9 @@ Fleetrepo's test-guest JIT gate (`jit_policy.py verify --phase activation`) then
 Impact: one browser withdrawal on the test server blocks new accounts and daemon restarts for everyone until an operator stops the withdrawn person's sockets by hand.
 
 Decision needed (product vs. installation): either withdrawal should also stop the person's listeners through the broker (the person keeps their account but loses the gateway route anyway), or Fleetrepo's gate should accept an active but unrouted withdrawn sibling. Recovery used: `systemctl stop open-habitat-daemon@<user>.service open-habitat-daemon@<user>.socket open-habitat-agent@<user>.socket`, then `systemctl reset-failed` and start the refused sockets.
+
+## Decisions
+
+### 2026-11-10T07:15:41Z · @jari
+
+Jari 10.11.: withdrawal stops the person's Open Habitat daemon and its sockets through the broker (the counterpart of the broker restoring them on an admitted sign-in). The account, home, credentials and the person's own user-manager processes (terminal tmux, Taskfleet workers) and SSH stay; restore and the next sign-in bring the sockets back. Fleetrepo's JIT gate stays strict. Replaces the rule 'withdrawal ends web access, not ... processes' in internal/AGENTS.md for the daemon's processes.
