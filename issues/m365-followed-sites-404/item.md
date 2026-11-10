@@ -2,12 +2,14 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 related: ['@microsoft-first-sync-over-quota-and-channel-site-skip', '@m365-teams-files-and-messages']
 preparation: ready
 lane: m365-followed-sites
 lane_seq: 1
+closed: 2026-11-10
+closed_by: claude
 ---
 
 # Microsoft 365: every followed SharePoint site fails discovery with 404 itemNotFound
@@ -33,3 +35,9 @@ files. Read-only check on the server:
 Teams libraries arrive in pilot.26 (`m365-teams-files-and-messages`), but
 only after the tenant consents to the two new permissions, and they do not
 cover sites a person follows outside a team.
+
+## Resolution
+
+### 2026-11-10T13:11:37Z · @claude
+
+Fallback on 404 to /sites/{hostname}:/{path} from the followed site's webUrl; see result.md for cause, live check and decisions.
