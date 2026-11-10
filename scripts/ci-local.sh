@@ -135,6 +135,11 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/test-ui-reference.py
     "$PYTHON" scripts/validate-contracts.py
     "$PYTHON" scripts/validate-project-view.py
+    "$PYTHON" scripts/test-project-scripts.py
+    # Transitional private checks disappear with the private snapshot material.
+    if [[ -f private-dev/validate-project-view.py ]]; then
+      "$PYTHON" private-dev/validate-project-view.py --narrative-root "$PWD"
+    fi
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py
     "$PYTHON" scripts/test-browser-hosts.py

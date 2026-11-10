@@ -216,6 +216,11 @@ and recovery instructions.
 Documentation-, issue- and evidence-only changes need relevant validators and
 `git diff --check`; run `issuectl doctor --json` when issue metadata changes.
 This includes `python3 scripts/validate-project-view.py` for project documentation.
+During migration, also run `python3 private-dev/validate-project-view.py
+--narrative-root "$PWD"` for the private hosted navigation (the gate runs both
+while the private helper exists). `python3 scripts/test-project-scripts.py`
+checks standalone public validation, explicit pruning references and archive
+lookup in disposable repositories, without building the product.
 Say which checks ran.
 
 ## Run the gate and browser tests
@@ -347,7 +352,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | A person's Tailscale node (the pinned `tailscaled` with the daemon's own command line and locked config) is unreachable for another kernel UID through its LocalAPI (status, `nc` dial, prefs) and keeps shields up against its owner's `tailscale set` | `./scripts/test-tailscale-uids.sh` (networkless disposable container; no systemd, real tailnet or peer: the unit's 0700 RuntimeDirectory is made by hand there, and a live peer's inbound probe is not exercised) |
 | A broker-written app credential (production integrations file and host lock) makes the provider available to another person's daemon catalog run as that person, who can read but not write the file | `./scripts/test-integration-apps-uids.sh` (networkless disposable container; no gateway, systemd or provider) |
 | Broker boot start of syncing people's daemons by their own signal only, and linger targets under distinct UIDs (loginctl mocked) | `./scripts/test-broker-boot-uids.sh` |
-| Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
+| Real pinned Pi controller under mapped UIDs | `OH_PI_ARTIFACT_DIR=<archive-directory> ./scripts/test-real-pi-controller.sh` (cached image/archives required; Go from `.tools/` or PATH) |
 | Real Pi executes the supplied notice recipe in one tool call through the production CLI and own-UID agent listener | `./scripts/test-native-pi-notice.sh` (installed Pi SDK fixture and cached VM-tools container image required) |
 
 The native notice fixture runs in a networkless rootless container. Container

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate project documentation and navigation without external dependencies.
 
-Checks the Glasspad page set under docs/, its navigation and ADR registration,
+Checks ADR registration under docs/
 and that every local Markdown link in the repository's living documents
 resolves: tracked Markdown outside issues/, plus the files of open issues. A
 reference into git history is written as a plain path, not a link, and
@@ -15,12 +15,10 @@ import re
 import subprocess
 import sys
 from urllib.parse import unquote
-from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
-REQUIRED = {"index", "product", "operations", "decisions/index"}
 CLOSED = {"done", "fixed", "obsolete", "wontfix", "duplicate", "cannot-reproduce"}
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)?$")
 LINK = re.compile(r"!?(?<!\\)\[[^\]]*\]\(([^)]+)\)")
@@ -29,18 +27,6 @@ ADR_FILE = re.compile(r"^adr-(\d{4})-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.md$")
 
 def fail(errors: list[str], message: str) -> None:
     errors.append(message)
-
-
-def manifest_slugs(text: str) -> list[str]:
-    """Read slug values from this deliberately small, structure-only YAML subset."""
-    result: list[str] = []
-    for line_no, line in enumerate(text.splitlines(), 1):
-        match = re.match(r"^\s*-\s+slug:\s*([a-zA-Z0-9_./-]+)\s*$", line)
-        if match:
-            result.append(match.group(1))
-        elif "slug:" in line:
-            raise ValueError(f"unsupported slug syntax at glasspad.yaml:{line_no}")
-    return result
 
 
 def check_link(errors: list[str], page: Path, raw_target: str, page_slugs: set[str]) -> None:
@@ -79,6 +65,8 @@ def living_markdown() -> list[Path]:
         if not name or not path.is_file() or path.is_symlink() or "node_modules" in path.parts:
             continue
         parts = Path(name).parts
+        if parts[0] == "private-dev":
+            continue
         if parts[0] == "issues" and len(parts) > 2:
             if parts[1] not in open_issue:
                 item = ROOT / "issues" / parts[1] / "item.md"
@@ -117,13 +105,6 @@ def main() -> int:
         print("ERROR: docs is missing", file=sys.stderr)
         return 1
 
-    config = SITE / ".glasspad.yaml"
-    # Published Glasspad space identity predates the product rename; changing it
-    # would create a second space rather than updating the existing one.
-    expected_config = "space_key: native-agent-host\n"
-    if not config.is_file() or config.read_text(encoding="utf-8") != expected_config:
-        fail(errors, "docs/.glasspad.yaml must contain only 'space_key: native-agent-host'")
-
     pages = sorted(
         page for page in list(SITE.glob("*.md")) + list(SITE.glob("*/*.md"))
         if page.name not in {"AGENTS.md", "CLAUDE.md"}
@@ -132,36 +113,9 @@ def main() -> int:
     )
     slug_of = {page: page.relative_to(SITE).with_suffix("").as_posix() for page in pages}
     stems = set(slug_of.values())
-    missing_required = sorted(REQUIRED - stems)
-    if missing_required:
-        fail(errors, f"missing required pages: {', '.join(missing_required)}")
     for page in pages:
         if not SLUG.fullmatch(slug_of[page]):
             fail(errors, f"invalid page slug: {slug_of[page]}")
-
-    manifest = SITE / "glasspad.yaml"
-    if not manifest.is_file():
-        fail(errors, "docs/glasspad.yaml is missing")
-        nav_slugs: list[str] = []
-    else:
-        try:
-            nav_slugs = manifest_slugs(manifest.read_text(encoding="utf-8"))
-        except ValueError as exc:
-            fail(errors, str(exc))
-            nav_slugs = []
-    counts = Counter(nav_slugs)
-    duplicates = sorted(slug for slug, count in counts.items() if count > 1)
-    if duplicates:
-        fail(errors, f"duplicate manifest slugs: {', '.join(duplicates)}")
-    missing_nav = sorted(stems - set(nav_slugs))
-    unknown_nav = sorted(set(nav_slugs) - stems)
-    if missing_nav:
-        fail(errors, f"pages missing from manifest: {', '.join(missing_nav)}")
-    if unknown_nav:
-        fail(errors, f"manifest slugs without pages: {', '.join(unknown_nav)}")
-    for slug in nav_slugs:
-        if not SLUG.fullmatch(slug):
-            fail(errors, f"invalid manifest slug: {slug}")
 
     for page in pages:
         text = page.read_text(encoding="utf-8")
@@ -223,7 +177,7 @@ def main() -> int:
             print(f"ERROR: {message}", file=sys.stderr)
         print(f"Project View validation failed with {len(errors)} error(s).", file=sys.stderr)
         return 1
-    print(f"Project View valid: {len(pages)} pages, {len(nav_slugs)} navigation entries.")
+    print(f"Project View valid: {len(pages)} pages.")
     return 0
 
 

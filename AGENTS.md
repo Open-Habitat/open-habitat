@@ -99,7 +99,8 @@ the result. The intent then lives in git history, reached from the code: a
 commit's `Refs-Issue`/`Fixes-Issue` trailer names its issue, and a comment
 or document may name a removed file by its repository path (`ADR 0019` means
 `docs/decisions/adr-0019-*.md`). `scripts/from-history.sh <path>` prints such
-a file as it was last committed; `git log --all -- <path>` lists its history.
+a file as it was last committed in the current repository (use `--archive PATH`
+for a separate archive; fresh public history cannot retrieve archive files); `git log --all -- <path>` lists its history.
 A Markdown link always points at a file that exists; a reference into history
 is a plain path or name.
 
@@ -114,7 +115,9 @@ removed after that. Instructions (`AGENTS.md` files, `TESTING.md`,
 closed: an instruction states the rule itself, and work in progress is
 `TODO.md`'s story. `validate-project-view.py` rejects an `issues/<slug>` path
 in them. `scripts/prune-closed.py`
-lists the removable issues and removes them with `--apply`; the session
+lists the removable issues and removes them with `--apply`. During migration,
+the hand-off passes `--reference-file TODO.md --reference-file KOKEILTAVAA.md`
+explicitly to retain narrative references; public runs have no narrative input. The session
 hand-off runs it, and a later reader finds the issue through its slug in
 history. An ADR is removed when the issue that implements
 it lands, after the rules the code cannot show have moved into the nearest

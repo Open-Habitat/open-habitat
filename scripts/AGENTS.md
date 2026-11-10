@@ -147,7 +147,12 @@ copies each worker's possibly private brief there; `validate-contracts.py` is th
 (`contracts/AGENTS.md`). `prune-closed.py` and `from-history.sh` carry out
 the root `AGENTS.md` rule that finished working material lives in history:
 the first lists or removes closed issues nothing living names, the second
-prints a removed file. `screenshots-to-avif.py` turns PNG screenshots under
+prints a removed file from this repository, or an explicitly named `--archive`
+checkout. Fresh public history contains no private archive objects. Pruning reads
+additional living references only through repeatable `--reference-file` inputs.
+The transitional gate also runs the dev-destined Glasspad validator while it is
+present; the public validator does not require a hosted space or narrative files.
+`screenshots-to-avif.py` turns PNG screenshots under
 `issues/` or `design-system/` into the AVIF that `issuectl doctor` expects;
 it removes a PNG only after its own AVIF decodes at the same size, so workers
 never need an `rm` on a variable path for this. `native-fixture.sh` builds the synthetic native

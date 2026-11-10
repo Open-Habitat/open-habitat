@@ -2,7 +2,7 @@
 # Disposable, networkless rootless Linux proof; never mounts a real home.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-art=/var/tmp/oh-pi-release.3aWTlikb
+art=${OH_PI_ARTIFACT_DIR:?set OH_PI_ARTIFACT_DIR to the directory containing the pinned Node and Pi archives}
 [[ $(id -u) != 0 ]] || { echo 'rootless invocation required' >&2; exit 1; }
 command -v podman >/dev/null
 [[ $(podman info --format '{{.Host.Security.Rootless}}') == true ]]
@@ -11,8 +11,8 @@ for spec in '680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88 no
   [[ $(sha256sum "$art/$name" | cut -d' ' -f1) == "$digest" ]] || { echo 'pinned artifact missing or changed' >&2; exit 1; }
 done
 podman image exists localhost/open-habitat-vm-tools:prereq || { echo 'offline prerequisite image unavailable' >&2; exit 1; }
-[[ -x $repo/.tools/go/bin/go ]] && go=$repo/.tools/go/bin/go || go=/home/maintainer/Sources/open-habitat/.tools/go/bin/go
-[[ -x $go ]] || { echo 'pinned Go unavailable' >&2; exit 1; }
+[[ -x $repo/.tools/go/bin/go ]] && go=$repo/.tools/go/bin/go || go=$(command -v go || true)
+[[ -x $go ]] || { echo 'Go unavailable; run scripts/bootstrap-tools.sh or provide Go on PATH' >&2; exit 1; }
 export TMPDIR=/var/tmp
 mkdir -p "$repo/.cache"
 "$go" build -o "$repo/.cache/real-pi-controller" ./cmd/open-habitat

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """List, or with --apply remove, closed issues that nothing living names.
 
-A closed issue's directory stays while an open issue, TODO.md or KOKEILTAVAA.md
-names its slug; otherwise its content belongs to git history (root AGENTS.md,
+A closed issue's directory stays while an open issue or an explicitly supplied
+--reference-file names its slug; otherwise it belongs to git history (root AGENTS.md,
 "Code is the record"). --apply removes the directories with `git rm -r`, so the
 removal is staged for the next commit, drops `related`/`blocked_by` edges that
 now point nowhere, and removes the one-off `web/lab/` capture scripts whose
@@ -12,6 +12,7 @@ every `issues/<slug>` output directory is gone. --json prints
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -21,7 +22,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ISSUES = ROOT / "issues"
 CLOSED = {"done", "fixed", "obsolete", "wontfix", "duplicate", "cannot-reproduce"}
-NARRATIVE = ("TODO.md", "KOKEILTAVAA.md")
 TEXT = {".md", ".txt", ".yaml", ".yml", ".json", ".jsonl", ".log"}
 
 
@@ -68,10 +68,15 @@ def one_off_lab_scripts() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    unknown = [a for a in argv if a not in {"--apply", "--json", "-h", "--help"}]
-    if unknown or "-h" in argv or "--help" in argv:
-        print(__doc__.strip(), file=sys.stderr if unknown else sys.stdout)
-        return 2 if unknown else 0
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--json', action='store_true')
+    parser.add_argument('--reference-file', action='append', type=Path, default=[],
+                        help='additional living reference file (repeatable; no implicit narrative root)')
+    args = parser.parse_args(argv)
+    for path in args.reference_file:
+        if not path.is_file():
+            parser.error(f'reference file does not exist: {path}')
     statuses = {
         d.name: status(d / "item.md")
         for d in sorted(ISSUES.iterdir())
@@ -87,10 +92,8 @@ def main(argv: list[str]) -> int:
             for f in (ISSUES / slug).rglob("*")
             if f.is_file() and f.suffix in TEXT
         )
-    for name in NARRATIVE:
-        path = ROOT / name
-        if path.is_file():
-            referrers[name] = path.read_text(encoding="utf-8")
+    for path in args.reference_file:
+        referrers[str(path)] = path.read_text(encoding="utf-8")
     kept: dict[str, list[str]] = {}
     removable: list[str] = []
     for slug in closed:
@@ -100,7 +103,7 @@ def main(argv: list[str]) -> int:
             kept[slug] = by
         else:
             removable.append(slug)
-    if "--apply" in argv and removable:
+    if args.apply and removable:
         subprocess.run(
             ["git", "rm", "-r", "-q", "--", *(f"issues/{s}" for s in removable)],
             cwd=ROOT,
@@ -108,12 +111,12 @@ def main(argv: list[str]) -> int:
         )
         drop_dangling_refs()
     lab = one_off_lab_scripts()
-    if "--apply" in argv and lab:
+    if args.apply and lab:
         subprocess.run(["git", "rm", "-q", "--", *lab], cwd=ROOT, check=True)
-    if "--json" in argv:
-        print(json.dumps({"removable": removable, "kept": kept, "lab_scripts": lab, "applied": "--apply" in argv}))
+    if args.json:
+        print(json.dumps({"removable": removable, "kept": kept, "lab_scripts": lab, "applied": args.apply}))
     else:
-        verb = "removed" if "--apply" in argv else "removable"
+        verb = "removed" if args.apply else "removable"
         print(f"{len(removable)} closed issues {verb}, {len(kept)} kept by a living reference.")
         if lab:
             print(f"{len(lab)} one-off lab scripts {verb}: {', '.join(lab)}")
