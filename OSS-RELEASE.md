@@ -27,19 +27,19 @@ docs_site: none
 > person as their own Unix user." Review each field, set `status: approved`, then
 > run `/shipshape-readiness` or `/shipshape-release`.
 
-## Decisions waiting for Jari
+## Decisions
 
-These are recommendations, not inferences. The contract stays a draft until
-each one is settled.
+Items 1 and 2 were settled by Jari on 9.11.2026; 3 and 4 remain
+recommendations. The contract stays a draft until Jari approves it as a whole.
 
-1. **Copyright holder.** The MIT licence text names one in its copyright
-   line: Jari Mustonen personally, or a company. Not inferred from git
-   authorship. The `LICENSE` file is written once this is settled and the
+1. **Copyright holder: Jari Mustonen personally.** Copyright and decision
+   comments carry his own name. The `LICENSE` file is written once the
    contract is approved; `licenses/DEPENDENCIES.md` changes with it.
-2. **Maturity: `mvp`.** Real multi-person pilot installations run named
-   releases, but every release is still `v0.1.0-pilot.N`, the installation
-   path for a stranger is not finished, and formats change without
-   compatibility code. `spike` would undersell it, `production` is not true.
+2. **Maturity: `mvp`.** Real multi-person installations run named
+   releases, but every release is still a `v0.1.0` pre-release, the
+   installation path for a stranger is not finished, and formats change
+   without compatibility code. `spike` would undersell it, `production` is
+   not true.
 3. **Distribution: immutable GitHub Releases, no registry.** Each release
    carries a product package and a runtime release per architecture
    (`linux-amd64`, `linux-arm64`) for Ubuntu 24.04. Nothing goes to
@@ -55,7 +55,7 @@ each one is settled.
 
 - **license: MIT** — Jari's decision (2026-10-31), chosen over Apache-2.0.
 - **maturity: mvp** — `shipshape facts` infers `mvp`: SemVer pre-release tags
-  (`v0.1.0-pilot.1` … `.16`), no `>=1.0` release, no hosted CI
+  (`v0.1.0-*`), no `>=1.0` release, no hosted CI
   (`has_ci: false`; the gate is `scripts/ci-local.sh` on the maintainer's
   host), committers counted as two identities of one person.
 - **ecosystems: [go]** — `go.mod` (`github.com/Open-Habitat/open-habitat`); the
@@ -87,10 +87,12 @@ each one is settled.
   not exist; no registry badge without a registry.
 - **docs_site: none** — documentation lives in the repository.
 
-Context, not proposals: documents for agents and the public product page in
-`docs/product.md` are English; Jari's project hub `docs/index.md` is Finnish. Before the
-repository goes public its history and working notes need a review for
-customer names and infrastructure references (launch research, item 9).
+Context, not proposals: documents for agents, the documentation index
+`docs/index.md` and the public product page `docs/product.md` are English.
+The public repository starts from a fresh history; its candidate tree and
+curated issues are reviewed for personal names and installation details
+before it goes public. Public reports arrive through GitHub Issues and
+Discussions, and security reports through private vulnerability reporting.
 
 ## Release notes
 

@@ -7,7 +7,7 @@ description: Write or revise Open Habitat Explain-mode (? view) cards in Finnish
 
 Be a calm, plain-spoken guide beside the person using Habitat. Explain what
 they see, what they can do and what happens next, not how we built it. Write
-short Finnish in Jari's direct style, with equally natural English counterparts.
+short, direct Finnish, with equally natural English counterparts.
 A good card makes the person confident about the next press without making
 them read a manual.
 

@@ -4,9 +4,8 @@ Work in this repository is tracked as issues under `issues/<slug>/` and
 managed with `issuectl`. This file carries what an agent touching the tracker
 could not learn from the tool itself: why the tracker is shaped the way it is
 here and what the repository has decided about it. The `/issue` skill and
-`issuectl <command> --help --json` describe the commands, and
-`AGENTS-WORKFLOW.md` says how the DAG drives a work session; neither is
-repeated here. The block between the sentinels at the bottom is generated
+`issuectl <command> --help --json` describe the commands, and the session
+skills say how the DAG drives a work session; neither is repeated here. The block between the sentinels at the bottom is generated
 from `issues/.schema.yaml` and `.issuectl/transitions.yaml` by
 `issuectl doctor --fix`, so a change to the rules belongs in those two files
 and the block follows.
@@ -53,7 +52,7 @@ records the same commit on the issue side immediately. An issue is done when
 its result is real and landed and its `result.md` says what was verified and
 what was not. Plans, experiments and evidence live in the issue directory
 beside `item.md` while the issue is in use. A closed issue's directory goes
-to git history once no open issue, `TODO.md` or `KOKEILTAVAA.md` names it
+to git history once no open issue or other living document names it
 (`scripts/prune-closed.py`, root `AGENTS.md`); the trailer is what still
 leads from the code to it there.
 

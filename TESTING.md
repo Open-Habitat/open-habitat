@@ -112,9 +112,9 @@ Do not reuse an earlier result after changing runnable code, fixtures, dependenc
 
 A whole browser suite runs one at a time per host. Each one starts its own
 Chromes and synthetic hosts and is mostly Chromium CPU: the ordinary and lab
-suites side by side take about 5½ minutes on an idle 8-core Birch and leave
-about a fifth of it idle (2026-11-02), so a second whole run would saturate
-it, slow every other worker and the live product, and make timing-sensitive
+suites side by side take about 5½ minutes on an idle 8-core machine and leave
+about a fifth of it idle, so a second whole run would saturate it, slow every
+other worker and anything else the machine serves, and make timing-sensitive
 cases fail. `scripts/test-focused.sh --area browser` and `browser-focused.py`
 without `--spec` or `--tag` (including `npm run test:browser` and
 `test:browser:lab`), and the gate's browser phase, therefore run under
@@ -139,8 +139,8 @@ once per work round on `main` so its health is known. It is:
 ```
 
 Tests use ordinary commands (`npm`, `go`, `npx playwright test`) and run
-natively by default. On Alder, Fleetrepo may place the browser suite on Cedar;
-placement belongs to Fleetrepo, not these scripts.
+natively by default. These scripts never choose another machine for them;
+placing a suite elsewhere is the business of the machine's own tooling.
 
 Run it from its own worktree, not the main checkout others merge into: it
 formats Go sources in place, and leftover formatting edits in the main
@@ -153,8 +153,8 @@ tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. A release uses the receipt rather than rerunning the
-gate: `scripts/release-cut.py` refuses a receipt that does not cover exactly
-the commit's tree, and the packaging step checks it again. Go/contracts
+gate: `scripts/prepare-release.sh --gate clean-gate` refuses a receipt that
+does not cover exactly the commit's tree, before and again after the build. Go/contracts
 and Storybook overlap the web checks/build; browser runs after the fresh web
 build. The ordinary and lab suites run side by side under one hold of the
 suite lock, with `OH_BROWSER_WORKERS` (default 6) and `OH_LAB_WORKERS`
@@ -166,9 +166,9 @@ spec with `--trace on`. Go and web checks default to four workers. Both
 browser configurations run to the end even when one fails, and failed heavy
 checks never write a passing receipt. Packaging and the native fixture run in
 the background beside the browser and Go phase; `go fmt`, `go generate` and the
-generated-contract check run before anything reads the tree beside them. On
-Birch the gate took 22½ minutes on 2026-11-02 morning and 6½–7 after these
-changes, almost all of it the six-minute browser, Go and packaging phase.
+generated-contract check run before anything reads the tree beside them. On an
+idle 8-core machine the gate takes about 6½–7 minutes, almost all of it the
+six-minute browser, Go and packaging phase.
 A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
@@ -176,53 +176,21 @@ gate before a gated release. Receipts are local evidence, not signed attestation
 keep them on the machine where the gate ran. The gate prints its JSON envelope
 on the final stdout line and the receipt path on stderr.
 
-For the disposable test server, the normal Fleetrepo operator invocation is
-`release_test.py --ungated --version <v> --output <new-dir>`. It requires a
-clean, committed, pushed product tree but does not require the clean gate.
-The output receipt and product `release-gate.json` say `gate: "ungated"` and
-record the source tree. Omit `--ungated` when clean-gate evidence is needed:
-the default refuses a missing or different-tree gate receipt and records
-`gate: "clean-gate"` with the tree. A production release still requires the
-clean gate; a test release does not, and neither does landing on `main`.
-
-`python3 private-dev/release/test-release-cut.py` tests the cut's decisions offline: which
-receipt, commit, predecessor, version and tag it accepts, the runtime-input
-paths that stop a product-only cut, and the comparison of GitHub's stated
-digests with the verified bytes. It runs no build and reaches no network.
-`python3 private-dev/release/test-release-scratch.py` tests the cut's private-input cleanup
-on success, failure and cancellation, and `private-dev/release/test-release-upload-plan.py` the
-upload membership. The gate skips these explicitly when the private directory is
-absent. `scripts/test-prepare-release.py` always checks the public preparer;
-`private-dev/release/test-prepare-test-release.py` checks the transitional
-Fleetrepo entry. Neither preparer has a dry-run mode; these tests use synthetic
-Git origins and build commands, not a live build. When to cut is in `AGENTS-WORKFLOW.md`.
-
-The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
-checks the receipt in gated mode, installs web dependencies from the
-committed lockfile, prepares fresh web assets and binary,
-verifies the package, then transfers and switches the test guest. Its dry run
-stops before any guest transfer. It reports step/total timings and rejects a
-live run above 100 seconds. Do not hand-edit prose receipts between steps.
-
-On Alder, the opt-in `open-habitat-test-watch@N.service` watches clean, pushed
-product `main` and serially deploys the newest commit as ungated pilot `N`,
-then advances the pilot number. Start it only after the current guest release
-has been verified and the Fleetrepo fleet unit `user/alder-open-habitat-watch`
-is applied. **Stop it with** `systemctl --user stop
-open-habitat-test-watch@N.service` (replace `N` with the number used to start
-it). The watcher records a separate receipt for each superseded commit and
-stops rather than retrying an ambiguous guest failure. It uses the full
-release path even for web-only commits: the successor requires the binary's
-embedded source to agree with the selected release. Fleetrepo's
-`infra/open-habitat-test/RELEASE-UPGRADE.md` owns the full start, inspection
-and recovery instructions.
+`scripts/prepare-release.sh` prepares a release package from a clean,
+committed tree that is pushed to the explicitly named remote branch. With
+`--gate ungated` it does not require the clean gate; the package's
+`release-gate.json` says `gate: "ungated"` and records the source tree. With
+`--gate clean-gate` it refuses a missing or different-tree gate receipt and
+records `gate: "clean-gate"` with the tree. A production release requires the
+clean gate; a disposable test release does not, and neither does landing on
+`main`. `python3 scripts/test-prepare-release.py` checks the preparer with
+synthetic Git origins and build commands, not a live build; the preparer has
+no dry-run mode.
 
 Documentation-, issue- and evidence-only changes need relevant validators and
 `git diff --check`; run `issuectl doctor --json` when issue metadata changes.
 This includes `python3 scripts/validate-project-view.py` for project documentation.
-During migration, also run `python3 private-dev/validate-project-view.py
---narrative-root "$PWD"` for the private hosted navigation (the gate runs both
-while the private helper exists). `python3 scripts/test-project-scripts.py`
+`python3 scripts/test-project-scripts.py`
 checks standalone public validation, explicit pruning references and archive
 lookup in disposable repositories, without building the product.
 Say which checks ran.
@@ -370,8 +338,8 @@ or installed systemd lifecycle.
 Guest scenarios need rootless Podman and a cached or downloadable image.
 A change to a scenario states its claim and limits in the result of the
 issue that makes it. These synthetic runs do not establish real
-provider behavior or live-server isolation. Fleetrepo's deployment preflight
-and receipts record the live-host evidence.
+provider behavior or live-server isolation. An installation's own deployment
+preflight and receipts record the live-host evidence.
 
 Record commands, tested revision/tree, outcomes and unverified behavior in the
 issue's result. A missing prerequisite means not run; an infrastructure problem
@@ -478,9 +446,7 @@ locked bytes in a disposable Ubuntu 24.04 container, ignores npm install scripts
 and retains notices plus complete component/file records. It builds the
 multi-architecture builder image (`runtime/builder/Containerfile`) on first use,
 not a host package installation. Builds take `--target linux-amd64|linux-arm64`
-(default: the host's); core and integrations need a host of that architecture,
-which for arm64 is birch (`ssh birch`, Fleetrepo `infra/birch/AGENTS.md`), not
-Alder. `TestRelease{PlatformPackages,ExecutableArchitecture,NPMLockCPU}` and
+(default: the host's); core and integrations need a host of that architecture. `TestRelease{PlatformPackages,ExecutableArchitecture,NPMLockCPU}` and
 `TestHostReleasePlatform` cover target selection in the verifier and operator;
 `scripts/test-profile-runtime-build.py` covers the builders' target selection
 and that both targets of every lock pin the same upstream versions. `go build ./cmd/runtime-release`
@@ -586,7 +552,7 @@ dpkg; Ubuntu planning tests check union, newer versions, candidate and solver
 refusals, and non-mutating simulation. `bash scripts/test-ubuntu-requirements.sh`
 runs the actual native host apt adapter as root only inside a disposable rootless
 Ubuntu 24.04 container, installing all declared requirements and checking their
-minimums. It is not systemd, per-user workflow or pilot acceptance evidence.
+minimums. It is not systemd, per-user workflow or installation acceptance evidence.
 `runtime-release manifest --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
 
@@ -608,14 +574,13 @@ customer installation found (site validation, OS package drift, the proc group
 ID, the provider's apt mirror, configuration-parent mode, port 443), and they
 loaded the shared development servers.
 
-Run it before a release goes to a new customer. An upgrade of an existing
-installation is qualified on Birch instead, which serves as the staging
-installation: Birch is upgraded first, and the pilot and other production
-installations follow once Birch's upgrade has passed its host checks and live
-use (Jari, 2026-10-25).
+Run it before a release goes to a new installation. An upgrade of existing
+installations is qualified on a staging installation instead: it is upgraded
+first, and the others follow once its upgrade has passed its host checks and
+live use.
 
 ```sh
-python3 private-dev/release/cloud-qualify.py --product-root "$PWD" run \
+python3 scripts/cloud-qualify.py run --operator OPERATOR --expect-apt-mirror MIRROR \
   --predecessor RELEASE_DIR --successor NEXT_RELEASE_DIR --json
 ```
 
@@ -634,7 +599,8 @@ a product-only test release is: package it, then write a manifest that reuses
 the predecessor's archives and names it as the predecessor.
 
 ```sh
-./scripts/prepare-test-release.sh --ungated --version NEXT --output PKG_DIR
+./scripts/prepare-release.sh --gate ungated --version NEXT --output PKG_DIR \
+  --target linux-amd64 --remote origin --branch main
 mkdir NEXT_RELEASE_DIR DESCRIPTORS
 for a in $(jq -r '.artifacts[].archive' RELEASE_DIR/release.json); do ln RELEASE_DIR/"$a" NEXT_RELEASE_DIR/; done
 cp PKG_DIR/open-habitat-NEXT-linux-amd64.tar.gz NEXT_RELEASE_DIR/
@@ -645,37 +611,36 @@ runtime-release manifest --directory NEXT_RELEASE_DIR --version NEXT --commit "$
   --artifacts-file DESCRIPTORS/artifacts.json --upgrade-file DESCRIPTORS/upgrade.json
 ```
 
-`runtime-release` is built as in `docs/operations.md`. When the operator's default location has no capacity for the
-server type, Hetzner answers `resource_unavailable`; pass `--location fsn1` or
-`hel1`. A run takes about 45 minutes, most of it the first upload of the
-release over the qualification host's uplink; the successor's unchanged
-archives are not sent again.
+`runtime-release` is built as in `docs/operations.md`. Most of a run's time
+is the first upload of the release from the qualification host; the
+successor's unchanged archives are not sent again. `--server-type` and
+`--location` choose among what the operator allows when its defaults have no
+capacity.
 
-The private `run` entry holds no cloud credentials. It selects Fleetrepo's
-`open-habitat-qualification-vm` operator, which creates a labelled short-lived
-server and blank volume in the test project, opens SSH and 443 only to the
-qualification host, pins the server's SSH host key and destroys everything when
-the run ends; an expiry label and Fleetrepo's reaper remove the VM of a run that
-died. Without the operator, `run` fails with `qualification_vm_operator_missing`.
-The public `scripts/cloud-qualify.py run` requires explicit `--operator` and
-`--expect-apt-mirror`; it never discovers a fleet operator. Its
-`target --target FILE` runs the same qualification on any freshly booted stock
-VM provisioned some other way (host, port, user, key, pinned `known_hosts`
-line, blank volume device).
+The harness holds no cloud credentials. `run` requires an explicit
+`--operator`, an executable implementing the qualification VM create/destroy
+contract, and the `--expect-apt-mirror` the stock image must use; it never
+discovers a fleet operator from the machine. The operator creates a labelled
+short-lived server and blank volume, opens SSH and 443 only to the
+qualification host, pins the server's SSH host key and destroys everything
+when the run ends; its expiry label (`--ttl-minutes`) lets a reaper remove the
+VM of a run that died. `target --target FILE` runs the same qualification on
+any freshly booted stock VM provisioned some other way (host, port, user, key,
+pinned `known_hosts` line, blank volume device).
 
-The Fleetrepo operator offers only amd64 server types. An arm64 release is
-qualified with `target` against a stock arm64 cloud image booted under QEMU
-(TCG, no KVM) in a disposable rootless container on birch; the harness runs in
-the same container and reaches the guest's SSH and 443 through its loopback
-forwards. The release directories stay on birch, since uploading them from
-Alder is slow. A run takes hours under emulation. `prepare-test-release.sh
---target linux-arm64` cross-builds the product; `verify-release.sh` then warns
+When no operator offers arm64 server types, an arm64 release is qualified with
+`target` against a stock arm64 cloud image booted under QEMU (TCG, no KVM) in
+a disposable rootless container; the harness runs in the same container and
+reaches the guest's SSH and 443 through its loopback forwards. Keep the release
+directories on that machine, since the upload dominates otherwise. A run takes
+hours under emulation. `prepare-release.sh --target linux-arm64` cross-builds
+the product; `verify-release.sh` then warns
 `embedded_identity_unverified` because it cannot execute the binary, and the
 preparer instead checks that the approved commit and version are embedded.
 
 The VM is installed only through the delivered `bin/open-habitat host` operator
-and the upgrade owner it stages; nothing from this checkout or from Fleetrepo is
-placed on it. The harness itself performs only what a customer owns: OS updates
+and the upgrade owner it stages; nothing from this checkout or from the
+qualification host's own tooling is placed on it. The harness itself performs only what a customer owns: OS updates
 (and the reboot they require), the volume's filesystem and fstab entry, the
 protected site and secret files, TLS from a per-run CA whose key never
 leaves the qualification host, and, before the upgrade, a placeholder Dropbox

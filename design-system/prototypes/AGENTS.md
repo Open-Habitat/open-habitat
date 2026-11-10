@@ -20,7 +20,7 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   `withLive`), `output.js` piirtää tuloste- ja komentolaatikot, `pieces.js`,
   `icons.js` ja `markdown.js` ovat yhteisiä palasia ja `stage.js` näyttämön
   vieritys, teema, puhelinkehys ja klikkausten välitys. `picker.css` ja
-  `picker.js` ovat `~/.claude/skills/prototype/PICKER.md` sanatarkasti; vain
+  `picker.js` ovat `/prototype`-taidon `PICKER.md` sanatarkasti; vain
   `stage`-muuttujan määrittely on jätetty pois, koska `stage.js` antaa sen.
   `replay.js` on yhden suunnan sivun johdotus ilman valitsinta.
   `app.js` ja `app.css` ovat sovelluskehys näyttämön ympärillä: sivupalkki,
@@ -90,8 +90,8 @@ valitsin, kun suuntia on useampi kuin yksi. Myös tuotantokomponenteista omalla
 `build.mjs`:llä rakennetut kierrokset käyttävät `lib/picker.css`:ää ja
 `lib/picker.js`:n käyttäytymistä; oma rakennus ei ohita valitsinta eikä
 `picker-check.mjs`:n tarkistusta. Yhden suunnan vedos ei ole vertailukierros. `dist/` ei ole versionhallinnassa.
-Sivu avataan Jarille `tw browser-open`illa, ja `glasspad publish` antaa saman
-linkkinä; hosted-sivun CSP estää upotetut fontit. Ennen näyttämistä sivu
+Sivu avautuu suoraan selaimessa; sivustopalvelun tiukka CSP voi estää
+upotetut fontit. Ennen näyttämistä sivu
 tarkistetaan headless-Chromiumilla työpöytä- ja puhelinleveydessä
 (`PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright`, Playwright
 `web/node_modules`ista), vuorovaikutukset klikattuna ja konsoli puhtaana.
@@ -121,8 +121,8 @@ jotta hylätyt suunnat voi yhä avata niin kauan kuin kierros on puussa.
 
 Uusista ominaisuuksista tehdään prototyyppi ennen toteutusta, ja Jarin
 hyväksymä toimiva prototyyppi on ominaisuuden speksi (Jari 15.10.2026).
-Kierrokset tehdään omissa worktreeissään, jotta kapellimestarin konteksti
-säästyy; Jari arvioi ne. Workerin kierros:
+Kierrokset tehdään omissa worktreeissään, jotta työtä koordinoivan istunnon
+konteksti säästyy; Jari arvioi ne. Workerin kierros:
 
 - Lue nykytila ennen suuntia: tuotannon näkymä labissa (`web/AGENTS.md`,
   `scripts/lab.sh`, `web/lab/session.mjs`; oma `OH_PORT_BASE`), sen

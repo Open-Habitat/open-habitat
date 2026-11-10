@@ -3,9 +3,10 @@
 Everything in this directory checks or packages the repository without changing
 the machine it runs on. Tools are fetched into disposable homes, caches and
 `.tools/`, guests are thrown away, and nothing here installs, enables or
-activates a service. That is deliberate: Jari's machines are converged by
-Fleetrepo, so a script that left a binary or a package behind would create drift
-nobody declared. Keep new scripts on the same side of that line.
+activates a service. That is deliberate: development machines are often
+converged from a declared configuration, and a script that left a binary or a
+package behind would create drift nobody declared. Keep new scripts on the
+same side of that line.
 
 Testing policy, gate invocation and evidence limits live in the root
 `TESTING.md`; this file records the packaging and fixture constraints behind
@@ -19,8 +20,7 @@ such a dependency is a decision to raise, not a check to relax.
 ## Test execution
 
 Tests use ordinary commands (`npm`, `go`, `npx playwright test`) and run
-natively by default. On Alder, Fleetrepo may place the browser suite on Cedar;
-placement belongs to Fleetrepo, not these scripts.
+natively by default. No script here places a suite on another machine.
 
 Every checkout and worker shares one repository config, so no test may reach
 it. `git bisect run`, hooks and `git rebase --exec` export `GIT_DIR`, and a
@@ -35,9 +35,8 @@ the shared config's `core` section changed during the run.
 
 `package-release.sh` builds the `linux-amd64` or cross-built `linux-arm64`
 archive and `verify-release.sh`
-checks it. The archive is what a root operator unpacks onto the test server
-through Fleetrepo's `RELEASE-UPGRADE.md`, so the systemd templates it carries are
-the effective unit files there. That is why the verifier is exact rather than
+checks it. The archive is what a root operator unpacks onto an installation,
+so the systemd templates it carries are the effective unit files there. That is why the verifier is exact rather than
 lenient: it accepts only the reviewed set of directives in the broker units and
 exactly one `DirectoryMode=0710` in the daemon socket, rejects duplicates and
 whitespace variants that systemd itself would accept, rejects source maps and
@@ -47,32 +46,25 @@ repackaging deliberately unsafe archives and proving they still fail. Changing a
 broker unit, or the daemon socket's `DirectoryMode`, therefore means changing
 the verifier's expectations, and usually a negative case, in the same commit.
 
-`release-cut.py` is a transitional entry into `private-dev/release/`, excluded
-from the public snapshot together with `prepare-test-release.sh`. Keep these
-entries until their external operators cut over. The public `prepare-release.sh`
-requires explicit source remote/branch, architecture and gate mode; it selects
-no installation or release policy. The private cut creates a GitHub
-release and starts Fleetrepo's installation on Alder, so everything that can
-refuse runs before the first write, and each later stop says what it left.
-It builds with the gated commit's own tools from a disposable worktree,
-because those are the bytes the gate covered; the caller's checkout only
-decides. It refuses a runtime change rather than rebuilding, since runtime
-archives are built natively per architecture and that is not a routine step.
-Its one verification after the upload is GitHub's stated digest of every
-asset against the bytes it verified locally. That digest is what installers
-trust, so downloading the draft again would check nothing more.
+`prepare-release.sh` requires an explicit source remote and branch,
+architecture and gate mode; it selects no installation or release policy, so
+a maintainer's own release operator supplies those. It refuses an unpushed or
+dirty tree, and in clean-gate mode a gate receipt for any other tree, because
+the published bytes must be the ones the gate and the remote both saw.
+`release-cut.py` and `prepare-test-release.sh` are transitional private
+entries that are not part of the public tree; leave them in place.
 
 A verified archive says nothing about a host. The daemon socket template's
 `DirectoryMode=0710` only removes world traversal; the real isolation is a
-root-owned directory and named ACL that Fleetrepo prepares and checks on the
-host before any socket is activated, and that no script here can see. Do not
-present package verification, or a passing guest, as evidence of host
-isolation. Fleetrepo's `SOCKETS.md` and its activation preflight own that side.
+root-owned directory and named ACL that the host operator and the
+installation's activation preflight prepare and check before any socket is
+activated, and that no script here can see. Do not present package
+verification, or a passing guest, as evidence of host isolation.
 
 ## Disposable guests
 
 `vm-test.sh` boots disposable QEMU guests inside rootless Podman. `test/AGENTS.md`
-describes the fixture material, the image cache, the Fleetrepo pinning and the
+describes the fixture material, the image cache, the private-source pinning and the
 fixture-token scanning; this file records what each scenario is for.
 
 - `self-test` checks the recipe offline and boots nothing. It is the only
@@ -102,10 +94,9 @@ covers is the kind of evidence this project refuses to produce.
 
 `cloud-qualify.py` changes only a disposable remote VM. It holds no cloud
 credentials: provisioning, firewall, host-key pinning and guaranteed expiry
-belong to the explicitly supplied operator. The private entry in
-`private-dev/release/` selects the fleet operator and mirror; the public harness
-must not discover these from the machine. A crashed harness must never be the
-only thing standing between a test server and its bill. Its `run` command
+belong to the explicitly supplied operator and mirror, which the harness must
+not discover from the machine. A crashed harness must never be the only thing
+standing between a disposable cloud server and its bill. Its `run` command
 treats a failed teardown as a failed qualification for the same reason.
 
 What the harness may do on the target is bounded by what a customer would do
@@ -155,8 +146,9 @@ the first lists or removes closed issues nothing living names, the second
 prints a removed file from this repository, or an explicitly named `--archive`
 checkout. Fresh public history contains no private archive objects. Pruning reads
 additional living references only through repeatable `--reference-file` inputs.
-The transitional gate also runs the dev-destined Glasspad validator while it is
-present; the public validator does not require a hosted space or narrative files.
+The public validator requires no hosted space, private repository or narrative
+files; while a private validator is present in the checkout, the gate runs it
+as well.
 `screenshots-to-avif.py` turns PNG screenshots under
 `issues/` or `design-system/` into the AVIF that `issuectl doctor` expects;
 it removes a PNG only after its own AVIF decodes at the same size, so workers

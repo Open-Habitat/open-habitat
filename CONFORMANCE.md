@@ -143,7 +143,7 @@ rows preserved**, not a declaration that every mandate passes:
   clock seam, repository-wide public-artifact audit). This batch does not fix or
   rename those gaps. §20–21 remain n/a; §22 passes the native controller/parser
   split; §24 is source-checked: the final login/question adapters are implemented below;
-  no permission/dependency/Fleetrepo blocker is inherited.
+  no permission/dependency/installation-tooling blocker is inherited.
 
 Security boundary evidence: the expanded `test-agent-uids.sh` probes each new
 resource family and process/receipt routes under distinct root/other/gateway
@@ -179,8 +179,8 @@ error diagnostics (§§4,8 redaction), rather than echoing a rejected secret.
 No identity/config override, host record store or bootstrap is added (§§8,20–21).
 URLs/device codes for human consent are intentionally returned, never passwords
 or native tokens. §§23–24: new examples/stores are neutral/synthetic, there is
-no asserted missing Fleetrepo/dependency blocker and live proof is explicitly
-conductor-owned.
+no asserted missing installation-tooling/dependency blocker and live proof is
+explicitly maintainer-owned.
 
 The **eight inherited partial sections remain §8,11,12,15,17,18,19,23**, report-only
 under the canon's aspirational-mandate policy. §11: these writes explicitly reject
@@ -530,7 +530,7 @@ All eight inherited partial sections **8,11,12,15,17,18,19,23** remain partial.
   continuous monitoring of already active services following root changes.
 - §§19–21: no clock, new persistent readiness store, editable record format or
   bootstrap authority is introduced. §§23–24: neutral fixture names/paths, no
-  Fleetrepo code or live service mutation, and honest partial acceptance.
+  installation-tooling code or live service mutation, and honest partial acceptance.
 
 Rebuilt-binary read-only probes in a disposable networkless Ubuntu container,
 with a fictional native user and no real home/credentials mounted, completed

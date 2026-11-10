@@ -567,8 +567,8 @@ look redundant and are not.
 Almost everything here is `//go:build linux`; `nativegh/`, `transport/` and
 `udssecure/` have no portable files at all, and `cli/`, `core/` and `gateway/`
 do not build without them, so on a Mac `go vet ./...` and `go test ./...` fail
-outright rather than run. Sessions normally run on `alder`, which is Linux, so
-this bites when checking elsewhere. Several tests also skip when the runner is
+outright rather than run. Development hosts are normally Linux, so this bites
+when checking on a Mac. Several tests also skip when the runner is
 not root, the filesystem lacks POSIX ACLs, or no nonroot mapped UID exists;
 their `t.Skip` messages say which. The disposable QEMU guests in
 `scripts/vm-test.sh` are where those paths are actually proven, so a green
