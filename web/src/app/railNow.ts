@@ -107,7 +107,9 @@ export function railNow({
     )
       continue;
     const facts = {
-      runActive: status?.run_active ?? a.run_active,
+      // An event can invalidate the tab's status before its replacement
+      // arrives. Do not let that cached turn hide actions on a settled row.
+      runActive: (fresh ? status?.run_active : undefined) ?? a.run_active,
       waitingOn: a.waiting_on,
       process: managed ? "daemon_managed_live" : a.process,
       control: managed ? "writable" : a.control,

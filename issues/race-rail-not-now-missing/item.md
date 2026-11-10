@@ -2,7 +2,7 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m71zxxabyvwy0h1y2tec6n4g/observed:rail-archive-handover-action
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: gate-load-flakes
 lane_seq: 6
 preparation: ready
+closed: 2026-11-10
 ---
 
 # Rail archive detector races handover and sometimes lacks Ei nyt on a finished reply
@@ -29,3 +30,9 @@ A temporary probe (reverted, no assertion relaxation committed) used `openedConv
 Investigate the second observation before making the spec green by omitting the keyboard assertion. In `web/src/app/railNow.ts`, runActive prefers the tab's status over the snapshot, and Ei nyt is suppressed when `live` is true. A status read just before leaving may remain active after the background turn settles while the attention record already says new reply. This is a source-grounded lead, not a confirmed root cause. A person would lack Ei nyt on a finished reply if that stale state persists. The final trace is under `web/test-results/rail-archive-a-rail-conver-89e14--comes-back-from-the-notice-chromium/trace.zip` in the sweep worktree (disposable).
 
 Follow-up from load-race-sweep: finish the spec's handover readiness correction together with determining whether the absent settled-row action is a product defect or a transient precondition the test must await. Keep the held-background-turn and keyboard-order oracles. This is separate from the original sweep's tooltip overlap (the tooltip geometry/reachability checks passed).
+
+## Resolution
+
+### 2026-11-10T06:59:38Z · @issuectl
+
+Fixed stale-status suppression of Ei nyt and spec handover readiness. Controlled-order regression and three six-repeat browser batches pass; see result.md.

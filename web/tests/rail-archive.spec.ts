@@ -1,4 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
+import { openedConversation } from "./conversation-view";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -17,13 +18,24 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  await openedConversation(page);
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
   await page.getByTestId("message-input").fill("something to archive");
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.getByTestId("message-input")).toBeEnabled();
+  // Enabled also holds while input is still tab-kept. Leave only after Pi
+  // owns it; the held turn cannot finish until we release the fixture below.
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `/api/v1/conversations/${encodeURIComponent(id.replace(/^pi:/, ""))}/status`,
+      );
+      const status = await response.json();
+      return status.run_active && status.native_history === "present";
+    })
+    .toBe(true);
   // Away from the conversation: archiving from the rail leaves this page be.
   await page
     .getByRole("navigation")

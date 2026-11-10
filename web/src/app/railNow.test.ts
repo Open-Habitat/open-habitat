@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ConversationMetadata } from "./conversationStore";
-import type { Session } from "./conversations";
+import { ConversationPager } from "./conversationPager";
+import {
+  type ConversationMetadata,
+  ConversationStore,
+} from "./conversationStore";
+import type { Session, Status } from "./conversations";
 import { railNow } from "./railNow";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 
@@ -67,6 +71,81 @@ function run(
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
 
 describe("rail Nyt groups", () => {
+  for (const replyFirst of [false, true]) {
+    it(`keeps Ei nyt on a settled background reply (status first: ${replyFirst})`, async () => {
+      const id = "pi:11111111-1111-4111-8111-111111111111";
+      const life = "22222222-2222-4222-8222-222222222222";
+      let finish!: (value: Status) => void;
+      const store = new ConversationStore(
+        "person",
+        new ConversationPager(),
+        50,
+        () =>
+          new Promise<Status>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const status = (active: boolean, sequence: number) =>
+        ({
+          agent_id: id,
+          run_active: active,
+          state: active ? "accepted" : "idle",
+          journal_cursor: `ev1:${life}:${sequence}`,
+        }) as Status;
+      const row = agent(id, {
+        run_active: true,
+        process: "daemon_managed_live",
+      });
+      const snapshot = {
+        agents: [row],
+        workspaces: visible,
+        identity: { web_identity_id: "person" },
+        event_cursor: `ev1:${life}:4`,
+      } as Snapshot;
+      const render = () =>
+        railNow({
+          agents: snapshot.agents,
+          snapshot,
+          workspaces: visible,
+          metadata: store.readMetadata(),
+          daemonSessions: [],
+          phase: "authenticated",
+        });
+      store.applySnapshot(snapshot);
+      store.applyStatus(id, status(true, 4));
+      expect(render().running[0].turnAction).toBeUndefined();
+      if (replyFirst) store.applyStatus(id, status(false, 8));
+      store.routeEvent({
+        resource: { agent_id: id },
+        kind: "turn.settled",
+        payload: { state: "settled", native_key: "reply" },
+        cursor: `ev1:${life}:8`,
+        server_instance_id: life,
+        sequence: 8,
+        event_id: "settled",
+      } as never);
+      snapshot.agents = [
+        {
+          ...row,
+          run_active: false,
+          last_reply: { id: "reply", at: "2026-11-10T00:00:00Z" },
+        },
+      ];
+      snapshot.event_cursor = `ev1:${life}:8`;
+      store.applySnapshot(snapshot);
+      // Hold the replacement read: a known-stale active status must not
+      // suppress the action already justified by the settled snapshot.
+      expect(store.statusStale(id)).toBe(true);
+      expect(render().yours[0].turnAction).toBe("not_now");
+      finish(status(false, 8));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(render().yours[0].turnAction).toBe("not_now");
+      store.applyStatus(id, status(true, 9));
+      expect(render().yours[0].turnAction).toBeUndefined();
+      store.dispose();
+    });
+  }
   it("lists every other conversation in Hiljaiset, newest first, across process stops", () => {
     const finished = Array.from({ length: 7 }, (_, n) =>
       agent(`quiet-${n}`, {
