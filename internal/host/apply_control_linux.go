@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 	"github.com/open-habitat/open-habitat/internal/provision"
 	"io"
 	"net"
@@ -46,7 +48,7 @@ func control(ctx context.Context, request any, reply any) error {
 		return ErrNativeApply
 	}
 	defer c.Close()
-	c.SetDeadline(time.Now().Add(5 * time.Second))
+	c.SetDeadline(time.Now().Add(gateway.AdminControlDeadline(b) + time.Second))
 	if _, e = c.Write(append(append([]byte("ADMIN "), b...), '\n')); e != nil {
 		return ErrNativeApply
 	}
@@ -158,6 +160,9 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	if e != nil || state.Epoch != state.ObservedEpoch {
 		return ErrNativeApply
 	}
+	if e = stopRevoked(ctx, control); e != nil {
+		return e
+	}
 	if e = liftOperatorDenies(ctx, control); e != nil {
 		return e
 	}
@@ -179,6 +184,28 @@ func (n *nativeApply) converge(ctx context.Context) error {
 		return e
 	}
 	return n.verifySettings(ctx)
+}
+
+// ErrRevokedListeners is a revocation whose stop did not finish: the broker
+// already denies the person and their sessions are gone, but their daemon
+// or a socket may still run.
+var ErrRevokedListeners = errors.New("revoked_listeners_running: a person site.json no longer admits still has a running Open Habitat daemon or socket")
+
+// stopRevoked asks the broker, through the gateway, to stop the daemon and
+// both sockets of everyone no admission source admits any more, as a
+// withdrawal does (Jari, 2026-11-10). It runs on every converge, after the
+// broker has observed the published admission, so continuing the same
+// approved input repeats only the stop; the broker also repeats it when it
+// starts. The broker picks the people from its committed state; apply names
+// nobody.
+func stopRevoked(ctx context.Context, exchange func(context.Context, any, any) error) error {
+	var ack struct {
+		OK bool `json:"ok"`
+	}
+	if e := exchange(ctx, map[string]any{"operation": "access_stop_revoked"}, &ack); e != nil || !ack.OK {
+		return ErrRevokedListeners
+	}
+	return nil
 }
 
 // administrationCheck says how much of the gateway's administration must

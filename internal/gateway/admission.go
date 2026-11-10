@@ -47,6 +47,14 @@ type AccessBroker interface {
 	Withdraw(ctx context.Context, id, actor string) (AccessRow, error)
 }
 
+// RevocationStopper is the broker's stop of every revoked person's daemon
+// and sockets. Root's host apply asks for it, through the control socket,
+// once a site.json that no longer admits someone is published and observed.
+// It names nobody: the broker picks the people from its committed state.
+type RevocationStopper interface {
+	StopRevoked(context.Context) error
+}
+
 // Definite broker refusals; nothing changed. ErrAccessUncertain means the
 // change may or may not have been committed.
 var (
@@ -720,6 +728,23 @@ func (a *Auth) accessControl(ctx context.Context, payload []byte) ([]byte, error
 			return nil, err
 		}
 		return json.Marshal(entryFor(ctx, row, a))
+	case "access_stop_revoked":
+		if r.Subject != "" || r.Login != "" {
+			break
+		}
+		broker, ok := a.broker.(RevocationStopper)
+		if !ok {
+			return nil, errBrokerRead
+		}
+		// A failed stop leaves the revocation as it is: the broker
+		// already denies the person and host apply removed their
+		// sessions. Asking again repeats only the stop.
+		if err := broker.StopRevoked(ctx); err != nil {
+			a.log.Warn("revocation_stop", "outcome", "rejected", "reason", "units_running", "actor", "root_peer")
+			return nil, ErrAccessUncertain
+		}
+		a.log.Info("revocation_stop", "outcome", "stopped", "actor", "root_peer")
+		return []byte(`{"ok":true}`), nil
 	}
 	return nil, errors.New("invalid control request")
 }

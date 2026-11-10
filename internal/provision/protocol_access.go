@@ -105,11 +105,15 @@ const (
 	OpTeamRemove = "team_remove"
 	OpTeamSignIn = "team_sign_in"
 	OpForget     = "forget"
+	// OpStopRevoked stops the listeners of every committed binding no
+	// source admits any more, after host apply's revocation; it names
+	// nobody.
+	OpStopRevoked = "stop_revoked"
 )
 
 func accessOperation(op string) bool {
 	switch op {
-	case "admit", "withdraw", "access_list", "access_read", OpTeamList, OpTeamAdd, OpTeamRemove, OpTeamSignIn, OpForget:
+	case "admit", "withdraw", "access_list", "access_read", OpTeamList, OpTeamAdd, OpTeamRemove, OpTeamSignIn, OpForget, OpStopRevoked:
 		return true
 	}
 	return false
@@ -159,7 +163,7 @@ func parseAccessRequest(raw map[string]json.RawMessage, r Request) (Request, err
 		if !numericID(r.ID) || present("candidate") || present("login_hint") || present("actor") {
 			return Request{}, ErrInvalid
 		}
-	case OpTeamList:
+	case OpTeamList, OpStopRevoked:
 		if r.ID != "0" || present("candidate") || present("login_hint") || present("actor") {
 			return Request{}, ErrInvalid
 		}

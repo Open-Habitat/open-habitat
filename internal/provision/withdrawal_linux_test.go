@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 )
 
 func stops(h *fakeHost) []hostCall {
@@ -121,7 +123,7 @@ func TestWithdrawalStopTargetsOnlyWithdrawnBindings(t *testing.T) {
 	}
 	ctx := context.Background()
 	for _, id := range []string{"50", "42", "99", ""} {
-		if err := w.stopWithdrawn(ctx, id, nil); err != nil || len(stops(h)) != 0 {
+		if _, err := w.stopRevoked(ctx, id, nil); err != nil || len(stops(h)) != 0 {
 			t.Fatal("stopped a non-withdrawn subject", id, err, stops(h))
 		}
 	}
@@ -132,7 +134,7 @@ func TestWithdrawalStopTargetsOnlyWithdrawnBindings(t *testing.T) {
 	h.stopCalls = nil
 	h.mu.Unlock()
 	reported := map[string]error{}
-	if err := w.stopWithdrawn(ctx, "", func(user string, err error) { reported[user] = err }); err != nil {
+	if _, err := w.stopRevoked(ctx, "", func(user string, err error) { reported[user] = err }); err != nil {
 		t.Fatal(err)
 	}
 	if got := stops(h); len(got) != 1 || got[0].id != "50" || len(reported) != 1 || reported[got[0].username] != nil {
@@ -140,13 +142,13 @@ func TestWithdrawalStopTargetsOnlyWithdrawnBindings(t *testing.T) {
 	}
 	// Under admission "any" nobody is withdrawn.
 	w.AdmitAny = true
-	if err := w.stopWithdrawn(ctx, "", nil); err != nil || len(stops(h)) != 1 {
+	if _, err := w.stopRevoked(ctx, "", nil); err != nil || len(stops(h)) != 1 {
 		t.Fatal("stopped under admission any", err, stops(h))
 	}
 	w.AdmitAny = false
 	// A rolled-back admission file is refused, not acted on.
 	put(t, w.Dir, "head.json", `{"version":1,"epoch":99,"generation":9}`)
-	if err := w.stopWithdrawn(ctx, "50", nil); err == nil || len(stops(h)) != 1 {
+	if _, err := w.stopRevoked(ctx, "50", nil); err == nil || len(stops(h)) != 1 {
 		t.Fatal("acted on rolled-back state", err, stops(h))
 	}
 }
@@ -163,7 +165,7 @@ func TestWithdrawalStopHoldsActivationSlot(t *testing.T) {
 	w.activation.slot <- struct{}{}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	if err := w.stopWithdrawn(ctx, "50", nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := w.stopRevoked(ctx, "50", nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("stop did not wait for the activation slot", err)
 	}
 	<-w.activation.slot
@@ -283,6 +285,145 @@ func TestWithdrawUsesTheLongExchange(t *testing.T) {
 	for op, long := range map[string]bool{"ensure": true, "admit": true, "withdraw": true, "authorize": false, "access_read": false} {
 		if longExchange(op) != long {
 			t.Error(op)
+		}
+	}
+}
+
+// Root's revocation: once a published site.json no longer admits a bound
+// operator id, stop_revoked stops that person's listeners and only theirs.
+// A person still admitted through a runtime entry or a listed team keeps
+// running, and so does one whose team record no longer admits: that is the
+// team source's change, not root's. A failed stop is unavailable with the
+// revocation in force; asking again repeats only the stop, and restoring
+// the id in site.json lets the next sign-in bring the sockets back.
+func TestRevocationStopsUnadmittedOperatorListeners(t *testing.T) {
+	w, h := runtimeWriter(t, true)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"},{"id":"44"},{"id":"45"}],"runtime_admission":true}`)
+	routes := map[string]*Route{}
+	for _, u := range []struct{ id, name string }{{"43", "dave"}, {"44", "erin"}, {"45", "hilda"}} {
+		r := handle(w, "ensure", u.id, u.name)
+		if r.Route == nil {
+			t.Fatal("ensure", u.id, r)
+		}
+		routes[u.id] = r.Route
+	}
+	// 43 is also runtime-admitted, 44 a listed team's member, 45 has a
+	// team record that no longer admits.
+	accessRow(t, admit(w, "43", "dave", "42"))
+	members := `"teams":[{"org_id":"7","org":"acme","slug":"crew","team_id":"70","actor":"42","at":"2026-10-24T09:00:00Z"}],"members":[{"id":"44","login_hint":"erin","teams":["70"],"state":"member","at":"2026-10-24T09:00:00Z"},{"id":"45","login_hint":"hilda","teams":["70"],"state":"left","at":"2026-10-24T09:00:00Z"}]`
+	runtime := `"runtime":[{"id":"43","state":"admitted","login_hint":"dave","actor":"42","at":"2026-10-24T09:30:00Z"}]`
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"42"},{"id":"43"},{"id":"44"},{"id":"45"}],"runtime_admission":true,`+runtime+`,`+members+`}`)
+	if r := stopRevokedRequest(w); r.Failure != "" || len(stops(h)) != 0 {
+		t.Fatal("stopped while everyone is admitted", r, stops(h))
+	}
+	// Host apply publishes a site.json admitting only 42.
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":6,"ids":[{"id":"42"}],"runtime_admission":true,`+runtime+`,`+members+`}`)
+	r := stopRevokedRequest(w)
+	if r.Failure != "" || r.Access == nil || len(r.Access.Rows) != 0 || r.Epoch != 6 {
+		t.Fatal(r)
+	}
+	if _, err := EncodeReply(r); err != nil {
+		t.Fatal("reply does not encode", err)
+	}
+	if got := stops(h); len(got) != 0 {
+		t.Fatal("stopped someone still admitted or with a team record", got)
+	}
+	// Without the team record 45 is revoked by root alone.
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":7,"ids":[{"id":"42"}],"runtime_admission":true,`+runtime+`,"teams":[{"org_id":"7","org":"acme","slug":"crew","team_id":"70","actor":"42","at":"2026-10-24T09:00:00Z"}],"members":[{"id":"44","login_hint":"erin","teams":["70"],"state":"member","at":"2026-10-24T09:00:00Z"}]}`)
+	h.stopErr = true
+	if r := stopRevokedRequest(w); r.Failure != StateUnavailable {
+		t.Fatal("failed stop reported as done", r)
+	}
+	if r := handle(w, "authorize", "45", ""); r.Failure != Denied {
+		t.Fatal("revocation not in force after a failed stop", r)
+	}
+	h.stopErr = false
+	want := hostCall{"stop-listeners", "github", "45", routes["45"].Username, routes["45"].UID}
+	if r := stopRevokedRequest(w); r.Failure != "" || !reflect.DeepEqual(stops(h), []hostCall{want, want}) {
+		t.Fatal("revoked person not stopped", r, stops(h))
+	}
+	if r := stopRevokedRequest(w); r.Failure != "" || !reflect.DeepEqual(stops(h), []hostCall{want, want, want}) {
+		t.Fatal("repeat did not stop again", r, stops(h))
+	}
+	// Restored in site.json: nothing stops it and the next ensure routes
+	// to the same account.
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":8,"ids":[{"id":"42"},{"id":"45"}],"runtime_admission":true,`+runtime+`,"teams":[{"org_id":"7","org":"acme","slug":"crew","team_id":"70","actor":"42","at":"2026-10-24T09:00:00Z"}],"members":[{"id":"44","login_hint":"erin","teams":["70"],"state":"member","at":"2026-10-24T09:00:00Z"}]}`)
+	if r := stopRevokedRequest(w); r.Failure != "" || len(stops(h)) != 3 {
+		t.Fatal("stopped a restored person", r, stops(h))
+	}
+	if again := handle(w, "ensure", "45", "hilda"); again.Route == nil || again.Route.UID != routes["45"].UID {
+		t.Fatal("restore after revocation", again)
+	}
+}
+
+func stopRevokedRequest(w Writer) Reply {
+	return w.Handle(context.Background(), Request{Version: 1, Operation: OpStopRevoked, Provider: "github", ID: "0"})
+}
+
+// stop_revoked names nobody and carries nothing else.
+func TestStopRevokedRequestNamesNobody(t *testing.T) {
+	if _, err := ParseRequest([]byte(`{"version":1,"operation":"stop_revoked","provider":"github","id":"0"}`)); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{
+		`{"version":1,"operation":"stop_revoked","provider":"github","id":"45"}`,
+		`{"version":1,"operation":"stop_revoked","provider":"github","id":"0","candidate":"frank"}`,
+		`{"version":1,"operation":"stop_revoked","provider":"github","id":"0","actor":"42"}`,
+		`{"version":1,"operation":"stop_revoked","provider":"github","id":"0","login_hint":"frank"}`,
+		`{"version":1,"operation":"stop_revoked","provider":"github","id":"0","slug":"crew"}`,
+	} {
+		if _, err := ParseRequest([]byte(bad)); err == nil {
+			t.Error("accepted", bad)
+		}
+	}
+	if !longExchange(OpStopRevoked) {
+		t.Error("stop_revoked must share ensure's budget")
+	}
+}
+
+// TestRevocationStopAsRoot runs root's revocation stop through the writer
+// and the native executor as the container's root, with systemctl recorded:
+// with a person dropped from the operator source and another still
+// admitted, the broker names only the dropped person's three units.
+func TestRevocationStopAsRoot(t *testing.T) {
+	if os.Getenv("PROVISION_UID_CONTAINER") != "1" {
+		t.Skip("requires the disposable root container")
+	}
+	if os.Geteuid() != 0 {
+		t.Fatal("the container proof runs as the container's root, like the broker")
+	}
+	d := fixture(t)
+	put(t, d, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"43"}],"runtime_admission":false}`)
+	put(t, d, "bindings.json", `{"version":1,"generation":7,"bindings":[{"id":"43","uid":2100,"username":"dave"},{"id":"45","uid":2101,"username":"hilda"}]}`)
+	put(t, d, "head.json", `{"version":1,"epoch":4,"generation":7}`)
+	var ran []string
+	e := NewLinuxHostExecutor(1001, 1002)
+	e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+		if path != systemctl {
+			t.Fatalf("ran %s", path)
+		}
+		ran = append(ran, strings.Join(args, " "))
+		if args[0] == "show" {
+			return []byte("ActiveState=inactive\n"), nil
+		}
+		return nil, nil
+	}
+	w := NewWriter(d, 2100, 2102, e)
+	w.Quota = &fakeQuota{}
+	w.QuotaEnabled = func() error { return nil }
+	w.Capacity = func() (storagequota.Filesystem, error) {
+		return storagequota.Filesystem{Capacity: 2 << 30, Free: 1 << 30}, nil
+	}
+	if r := stopRevokedRequest(w); r.Failure != "" || r.Access == nil {
+		t.Fatal(r)
+	}
+	units := listenerUnits("hilda")
+	if len(ran) != 5 || ran[0] != "stop "+strings.Join(units, " ") || ran[1] != "reset-failed "+strings.Join(units, " ") {
+		t.Fatalf("commands: %q", ran)
+	}
+	for _, c := range ran {
+		if strings.Contains(c, "dave") || strings.HasPrefix(c, "start") {
+			t.Fatalf("unexpected command %q", c)
 		}
 	}
 }

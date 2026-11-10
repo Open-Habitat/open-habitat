@@ -747,6 +747,16 @@ func (b gatewayBroker) Withdraw(ctx context.Context, id, actor string) (gateway.
 	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "withdraw", Provider: "github", ID: id, Actor: actor}))
 }
 
+// StopRevoked asks the broker to stop every revoked person's listeners.
+// Any failure, including a missing reply, means some may still run.
+func (b gatewayBroker) StopRevoked(ctx context.Context) error {
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpStopRevoked, Provider: "github", ID: "0"})
+	if err != nil || r.Failure != "" || r.Access == nil || len(r.Access.Rows) != 0 {
+		return gateway.ErrAccessUncertain
+	}
+	return nil
+}
+
 // Team source operations. As with admission, only the broker's fixed
 // refusals are definite; a missing reply or state_unavailable is uncertain.
 func (b gatewayBroker) Teams(ctx context.Context) ([]gateway.TeamSource, error) {

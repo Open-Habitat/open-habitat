@@ -27,7 +27,7 @@ const ensureTimeout = 90 * time.Second
 const ensureClientTimeout = ensureTimeout + exchangeTimeout + 3*time.Second
 
 func longExchange(operation string) bool {
-	return operation == "ensure" || operation == "admit" || operation == "withdraw"
+	return operation == "ensure" || operation == "admit" || operation == "withdraw" || operation == OpStopRevoked
 }
 
 const maxActiveEnsures = 2 // includes lock waiters; the writer itself serializes mutations
@@ -203,8 +203,8 @@ func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, 
 		return
 	}
 	// Admit may rebuild a restored binding's runtime directory with the same
-	// bounded host commands, and withdraw stops the person's listeners, so
-	// both share ensure's mutation budget and slots.
+	// bounded host commands, and withdraw and stop_revoked stop people's
+	// listeners, so they share ensure's mutation budget and slots.
 	if longExchange(r.Operation) {
 		// Never allow slow framing to buy a long-lived worker or FD. Reject
 		// excess valid ensures instead of queueing behind a stalled mutation.

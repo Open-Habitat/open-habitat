@@ -713,7 +713,7 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 // AdminControlDeadline is how long root's control exchange for payload may
 // take. Giving the site key waits for native Pi in the person's daemon, a
 // new key replaces every recorded copy, four people at a time, and a
-// withdrawal waits for the person's daemon to stop.
+// withdrawal or root's revocation waits for daemons to stop.
 func AdminControlDeadline(payload []byte) time.Duration {
 	var op struct {
 		Operation string `json:"operation"`
@@ -724,9 +724,10 @@ func AdminControlDeadline(payload []byte) time.Duration {
 		return siteKeyDaemonDeadline + 15*time.Second
 	case "ai_key_set":
 		return 5 * time.Minute
-	case "access_remove":
-		// The broker stops the withdrawn person's daemon, which may take
-		// its own stop budget; this covers the broker's exchange budget.
+	case "access_remove", "access_stop_revoked":
+		// The broker stops the withdrawn or revoked people's daemons,
+		// which may take its own stop budget; this covers the broker's
+		// exchange budget.
 		return 100 * time.Second
 	}
 	return 5 * time.Second

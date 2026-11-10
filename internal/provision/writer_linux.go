@@ -135,7 +135,7 @@ type Writer struct {
 	// IntegrationEvent reports a committed integration write: the operation,
 	// provider and actor, never a field value.
 	IntegrationEvent func(operation, provider, actor string)
-	// StopEvent reports each withdrawn binding's listener stop: the
+	// StopEvent reports each revoked binding's listener stop: the
 	// committed username and whether all its units are inactive.
 	StopEvent  func(string, bool)
 	owner      uint32
@@ -363,6 +363,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// Authorize remains a read-only, short-deadline check. Ensure may start
 	// a socket, but only after the durable publish and release of the ledger
 	// lock (the native pre-start gate itself takes that lock).
+	if r.Operation == OpStopRevoked {
+		return w.handleStopRevoked(ctx)
+	}
 	if accessOperation(r.Operation) {
 		reply := w.handleAccess(ctx, r)
 		// A committed or repeated withdrawal of a bound person then stops
@@ -371,7 +374,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		// uncertain and keeps its deny; repeating the withdrawal, or the
 		// broker's next start, repeats only the stop.
 		if r.Operation == "withdraw" && r.ID != "" && reply.Failure == "" && reply.Access != nil && len(reply.Access.Rows) == 1 && reply.Access.Rows[0].State == StateWithdrawn {
-			if w.stopWithdrawn(ctx, r.ID, w.stopReport) != nil {
+			if _, err := w.stopRevoked(ctx, r.ID, w.stopReport); err != nil {
 				return failure(StateUnavailable)
 			}
 		}

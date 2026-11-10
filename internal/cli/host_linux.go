@@ -177,6 +177,8 @@ func hostErrorBase(e error) *cliError {
 		return &cliError{code: "runtime_package_solve_failed", message: "host apt simulation failed; inspect package conflicts, holds, pins and candidate minimum versions; removals and downgrades remain forbidden", exit: 2}
 	case errors.Is(e, host.ErrRuntimePackages):
 		return &cliError{code: "runtime_package_transition_failed", message: "host apt requirement transition failed; inspect dpkg state, apt logs, capacity and operation deadline before continuing the same approved input", exit: 2}
+	case errors.Is(e, host.ErrRevokedListeners):
+		return &cliError{code: "revoked_listeners_running", message: "site.json's revocation is in force and the person's sessions are gone, but the broker could not stop a revoked person's Open Habitat daemon or socket; entries stay closed; read the broker journal's broker_withdrawal_stop and continue the same approved input to repeat only the stop", exit: 2}
 	case errors.Is(e, host.ErrNativeApply):
 		return &cliError{code: "host_action_failed", message: "native installation action failed; inspect operation, entry_closure and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):

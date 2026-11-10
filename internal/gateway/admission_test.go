@@ -30,6 +30,20 @@ type accessFake struct {
 	// stopFails makes that many withdrawals commit and then report the
 	// listener stop as failed, as the broker's state_unavailable does.
 	stopFails int
+	// stopRevoked counts root's revocation stops; revokedStopFails makes
+	// that many fail.
+	stopRevoked, revokedStopFails int
+}
+
+func (b *accessFake) StopRevoked(context.Context) error {
+	b.amu.Lock()
+	defer b.amu.Unlock()
+	b.stopRevoked++
+	if b.revokedStopFails > 0 {
+		b.revokedStopFails--
+		return ErrAccessUncertain
+	}
+	return nil
 }
 
 func newAccessFake() *accessFake {
@@ -326,9 +340,33 @@ func TestWithdrawalFailedStopKeepsDeny(t *testing.T) {
 	}
 }
 
+// Root's revocation stop names nobody, is relayed to the broker as is, and
+// a failed stop is uncertain so host apply reports it and can ask again.
+func TestRevocationStopControl(t *testing.T) {
+	x := newAccessHarness(t)
+	b, err := x.auth.AdminControl(context.Background(), []byte(`{"operation":"access_stop_revoked"}`))
+	if err != nil || string(b) != `{"ok":true}` || x.broker.stopRevoked != 1 {
+		t.Fatal(string(b), err, x.broker.stopRevoked)
+	}
+	x.broker.revokedStopFails = 1
+	if _, err = x.auth.AdminControl(context.Background(), []byte(`{"operation":"access_stop_revoked"}`)); AdminControlError(err) != "outcome_uncertain" || x.broker.stopRevoked != 2 {
+		t.Fatal(err, x.broker.stopRevoked)
+	}
+	for _, bad := range []string{`{"operation":"access_stop_revoked","subject":"43"}`, `{"operation":"access_stop_revoked","login":"bob"}`, `{"operation":"access_stop_revoked","unit":"x"}`} {
+		if _, err = x.auth.AdminControl(context.Background(), []byte(bad)); err == nil {
+			t.Error("accepted", bad)
+		}
+	}
+	if x.broker.stopRevoked != 2 {
+		t.Fatal("a refused request reached the broker")
+	}
+}
+
 func TestAccessRemoveControlDeadlineCoversTheStop(t *testing.T) {
-	if AdminControlDeadline([]byte(`{"operation":"access_remove","subject":"43"}`)) < 95*time.Second {
-		t.Fatal("root's withdrawal gives up before the broker's stop budget")
+	for _, op := range []string{`{"operation":"access_remove","subject":"43"}`, `{"operation":"access_stop_revoked"}`} {
+		if AdminControlDeadline([]byte(op)) < 95*time.Second {
+			t.Fatal("root's control gives up before the broker's stop budget", op)
+		}
 	}
 	if AdminControlDeadline([]byte(`{"operation":"access_list"}`)) != 5*time.Second {
 		t.Fatal("other operations keep the short deadline")

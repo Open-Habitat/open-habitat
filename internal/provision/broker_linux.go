@@ -142,11 +142,11 @@ func ServeBroker(ctx context.Context) error {
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
 	}
-	// A withdrawal whose stop failed or outlasted its budget is stopped
-	// before startup verifies bindings: a daemon still deactivating from an
-	// earlier stop would otherwise fail that verification and keep the
-	// broker, and so this retry, from starting at all.
-	_ = writer.stopWithdrawn(withStartupProbes(ctx), "", writer.stopReport)
+	// A withdrawal or revocation whose stop failed or outlasted its budget
+	// is stopped before startup verifies bindings: a daemon still
+	// deactivating from an earlier stop would otherwise fail that
+	// verification and keep the broker, and so this retry, from starting.
+	_, _ = writer.stopRevoked(withStartupProbes(ctx), "", writer.stopReport)
 	bindings, err := writer.startupBindings(ctx)
 	if err != nil {
 		return ErrBrokerStartup

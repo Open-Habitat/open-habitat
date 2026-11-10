@@ -1188,9 +1188,22 @@ lingering and SSH stay. If the stop fails or outlasts its budget, access is
 already withdrawn and stays so, but the reply is `outcome_uncertain` and the
 journal says `units_running`; run `admin access remove` again, which repeats
 only the stop (the broker also retries it each time it starts, before it serves). Restore, and
-then the person's next sign-in, bring the sockets back. An installation gate
-that refuses socket starts while a revoked person's socket is active therefore
-needs no manual cleanup after a withdrawal.
+then the person's next sign-in, bring the sockets back.
+
+Removing a person from `site.json`'s `identities.admission` and running
+`host apply` stops the same units in the same way, once the broker has
+observed the reduced admission, unless a browser admission or a listed team
+still admits the person (someone with a team member record, even one that no
+longer admits, also keeps running). Apply then asks the broker to stop every
+person no source admits, on every run. If a stop fails, the revocation is
+already in force and the person's sessions are gone, but apply fails with
+`revoked_listeners_running` and keeps entries closed; read the broker
+journal's `broker_withdrawal_stop` and continue the same approved input,
+which repeats only the stop (the broker also retries it each time it starts).
+Adding the person back to `site.json`, applying, and then their next sign-in
+bring the sockets back. An installation gate that refuses socket starts while
+a revoked person's socket is active therefore needs no manual cleanup after a
+withdrawal or a revocation.
 
 ## Start and prove first use
 

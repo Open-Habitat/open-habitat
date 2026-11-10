@@ -3,7 +3,8 @@
 # the broker's boot restore starts only the daemon of a committed person whose
 # integrations boot signal is their own, enables linger only for committed
 # NSS-verified accounts, and reads nothing inside any home; a withdrawal's
-# stop, run as root, names only the committed person's three units.
+# or root revocation's stop, run as root, names only the revoked person's
+# three units.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$repo/.cache"
@@ -16,5 +17,5 @@ podman run --rm --network none \
     cp /opt/broker-boot-uid.test /var/tmp/broker-boot-uid.test
     chmod 755 /var/tmp/broker-boot-uid.test
     cd /var/tmp
-    PROVISION_UID_CONTAINER=1 /var/tmp/broker-boot-uid.test -test.run "^(TestBootSyncDistinctUIDs|TestWithdrawalStopListenersAsRoot)$" -test.v
+    PROVISION_UID_CONTAINER=1 /var/tmp/broker-boot-uid.test -test.run "^(TestBootSyncDistinctUIDs|TestWithdrawalStopListenersAsRoot|TestRevocationStopAsRoot)$" -test.v
   '

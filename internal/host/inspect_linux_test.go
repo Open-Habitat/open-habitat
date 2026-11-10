@@ -359,6 +359,32 @@ func TestApplyLiftsGatewayDenyOnlyForOperatorIDs(t *testing.T) {
 	}
 }
 
+// Apply's revocation stop names nobody, and a stop the broker could not
+// finish is its own failure, so the operator knows the revocation is in
+// force and that continuing the apply repeats the stop.
+func TestApplyStopsRevokedListeners(t *testing.T) {
+	var calls []string
+	ok := true
+	exchange := func(_ context.Context, request any, reply any) error {
+		b, _ := json.Marshal(request)
+		calls = append(calls, string(b))
+		if !ok {
+			return ErrNativeApply
+		}
+		return json.Unmarshal([]byte(`{"ok":true}`), reply)
+	}
+	if e := stopRevoked(context.Background(), exchange); e != nil {
+		t.Fatal(e)
+	}
+	if !slices.Equal(calls, []string{`{"operation":"access_stop_revoked"}`}) {
+		t.Fatal(calls)
+	}
+	ok = false
+	if e := stopRevoked(context.Background(), exchange); !errors.Is(e, ErrRevokedListeners) || errors.Is(e, ErrNativeApply) {
+		t.Fatal(e)
+	}
+}
+
 func TestApplyDeclaresUnboundAdministratorsForSignIn(t *testing.T) {
 	var calls []string
 	exchange := func(_ context.Context, request any, reply any) error {
