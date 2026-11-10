@@ -186,6 +186,7 @@ test('a public page cannot reach a service on this host', async () => {
   assert.equal(r.content[1]?.mimeType, 'image/jpeg');
   const d = await read('/redirect');
   assert.doesNotMatch(text(d), /LOCAL-SECRET/);
+  assert.doesNotMatch(text(d), /the site answered/, 'the proxy refusal must not read as the site\'s answer');
   assert.ok(d.details.refused >= 1);
   const n = await read('/navigate');
   assert.doesNotMatch(text(n), /LOCAL-SECRET/);

@@ -337,7 +337,10 @@ export function format({ target, finalUrl, status, type, extracted, partial, ove
 	lines.push(`Status: ${status || 'unknown'}${type ? `, ${clip(type, 100)}` : ''}`);
 	if (extracted.byline) lines.push(`By: ${clip(extracted.byline)}`);
 	if (refused.length > 0) lines.push(`Note: the page tried to reach addresses on this host or a private network, which were refused: ${refused.slice(0, 5).map(h => clip(h, 100)).join(', ')}${refused.length > 5 ? ', …' : ''}.`);
-	if (status >= 400) lines.push(`Note: the site answered ${status}; the text below is its error page.`);
+	let landed = '';
+	try { landed = new URL(finalUrl).hostname; } catch {}
+	if (refused.includes(landed)) lines.push('Note: the page sent the browser to a refused address; nothing was read from it.');
+	else if (status >= 400) lines.push(`Note: the site answered ${status}; the text below is its error page.`);
 	if (partial) lines.push(`Note: the page did not finish loading within ${seconds} s; the text is what had rendered by then.`);
 	if (oversize) lines.push(`Note: the page passed ${limits.maxBytes / 1024 / 1024} MB of transfers and loading was stopped; the text is what had arrived.`);
 	if (!extracted.html && /^image\//.test(type)) lines.push(`Note: this URL is an image${screenshot ? '; see the screenshot' : '; ask for a screenshot to see it'}.`);
