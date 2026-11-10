@@ -18,6 +18,9 @@ spec.loader.exec_module(profiles)
 spec = importlib.util.spec_from_file_location('rust_tools', Path(__file__).with_name('rust-tools-runtime.py'))
 rust_tools = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rust_tools)
+spec = importlib.util.spec_from_file_location('browser_builder', Path(__file__).with_name('browser-runtime-build.py'))
+browser_builder = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(browser_builder)
 
 
 def digest(p):
@@ -114,6 +117,13 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     put(inputs / 'agent-bin/pi', 'runtime/agent-bin/pi', 'agent-launcher')
     put(inputs / 'taskfleet-skills.mjs', 'runtime/taskfleet/extension.mjs', 'agent-launcher')
     put(inputs / 'web-search.mjs', 'runtime/web-search/extension.mjs', 'agent-launcher')
+    # The agents' page reader and the headless shell it renders with, which
+    # every installation gets (Jari, 2026-11-10); the browser profile's QA
+    # Playwright uses the same shell.
+    put(inputs / 'page-reader.mjs', 'runtime/page-reader/extension.mjs', 'agent-launcher')
+    browser_builder.add_headless_shell(inputs / 'browser-lock.json', work / 'browser',
+                                       lambda data, path, owner, mode: put_bytes(data, path, owner, mode == 0o755),
+                                       components, digest, release_target)
     put(inputs / 'agent-bin/NOTICE', 'licenses/agent-launcher/NOTICE', 'agent-launcher')
     components.append(dict(name='agent-launcher', version='1', kind='native', license_files=['licenses/agent-launcher/NOTICE']))
     deb_lock_path = inputs / 'ubuntu-packages.json'

@@ -43,3 +43,6 @@ var GatewayService string
 
 //go:embed systemd/open-habitat-revoke.socket
 var RevokeSocket string
+
+//go:embed apparmor.d/open-habitat-headless-shell
+var HeadlessShellAppArmor string

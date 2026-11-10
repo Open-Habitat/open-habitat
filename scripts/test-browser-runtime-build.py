@@ -44,13 +44,29 @@ class BrowserBuild(unittest.TestCase):
         p['sha256'] = digest(self.inputs / p['filename'])
 
     def build(self, target='linux-amd64'):
+        """The core runtime's shell from its lock, then the profile's wheels."""
+        wheels = [p for p in self.records if p['kind'] == 'wheel']
+        shell = [p for p in self.records if p['kind'] != 'wheel']
         lock = self.inputs / 'artifact-lock.json'
-        lock.write_text(json.dumps(dict(inputs=self.records, common_license_sha256={'MIT': hashlib.sha256(b'notice').hexdigest()})))
+        lock.write_text(json.dumps(dict(inputs=wheels, common_license_sha256={'MIT': hashlib.sha256(b'notice').hexdigest()})))
+        core_lock = self.inputs / 'browser-lock.json'
+        core_lock.write_text(json.dumps(dict(inputs=shell)))
         root = self.base / 'payload'
         (root / 'licenses/common').mkdir(parents=True)
         (root / 'licenses/common/MIT').write_bytes(self.common_notice)
         owners, components = {'licenses/common/MIT': 'common-licenses'}, []
-        browser.add_browser(lock, self.inputs, root, owners, components, digest, target)
+        core = self.base / 'core'
+        core_owners, core_components = {}, []
+
+        def put(data, path, owner, mode):
+            self.assertNotIn(path, core_owners)
+            (core / path).parent.mkdir(parents=True, exist_ok=True)
+            (core / path).write_bytes(data)
+            (core / path).chmod(mode)
+            core_owners[path] = owner
+        browser.add_headless_shell(core_lock, self.inputs, put, core_components, digest, target)
+        browser.add_browser(lock, self.inputs, root, owners, components, digest, target, core_lock)
+        self.core = (core, core_owners, core_components)
         return root, owners, components
 
     def test_complete_notice_inventory_and_modes(self):
@@ -59,11 +75,16 @@ class BrowserBuild(unittest.TestCase):
             root, owners, components = self.build()
         finally:
             os.umask(old)
-        self.assertEqual(len(components), 5)
-        self.assertIn('runtime/browsers/chromium_headless_shell-123/shell/ABOUT', components[-1]['license_files'])
-        self.assertEqual((root / 'runtime/browsers/chromium_headless_shell-123/shell/chrome-headless-shell').stat().st_mode & 0o777, 0o755)
+        self.assertEqual(len(components), 4)
+        core, core_owners, core_components = self.core
+        self.assertIn('runtime/browsers/chromium_headless_shell-123/shell/ABOUT', core_components[0]['license_files'])
+        self.assertEqual((core / 'runtime/browsers/chromium_headless_shell-123/shell/chrome-headless-shell').stat().st_mode & 0o777, 0o755)
         self.assertTrue(all((root / f).is_file() for c in components for f in c['license_files']))
+        self.assertTrue(all((core / f).is_file() for c in core_components for f in c['license_files']))
         self.assertEqual(set(owners), {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()})
+        self.assertEqual(set(core_owners), {p.relative_to(core).as_posix() for p in core.rglob('*') if p.is_file()})
+        # The profile carries no browser of its own; it uses the core's.
+        self.assertFalse(any(p.startswith('runtime/browsers/') for p in owners))
 
     def test_builder_notice_drift(self):
         self.common_notice = b'different builder OS'
@@ -109,11 +130,12 @@ class BrowserBuild(unittest.TestCase):
 
     def test_arm64_selects_its_own_inputs_and_notice(self):
         self.arm64_records()
-        root, owners, components = self.build('linux-arm64')
+        self.build('linux-arm64')
+        core, owners, components = self.core
         shell = 'runtime/browsers/chromium_headless_shell-123/chrome-linux/'
-        self.assertEqual((root / shell / 'headless_shell').stat().st_mode & 0o777, 0o755)
-        self.assertEqual((root / shell / 'LICENSE.headless_shell').read_bytes(), b'chromium notice')
-        self.assertIn(shell + 'LICENSE.headless_shell', components[-1]['license_files'])
+        self.assertEqual((core / shell / 'headless_shell').stat().st_mode & 0o777, 0o755)
+        self.assertEqual((core / shell / 'LICENSE.headless_shell').read_bytes(), b'chromium notice')
+        self.assertIn(shell + 'LICENSE.headless_shell', components[0]['license_files'])
         # Nothing of the amd64 shell reaches the arm64 payload.
         self.assertFalse(any('/shell/' in p for p in owners))
 

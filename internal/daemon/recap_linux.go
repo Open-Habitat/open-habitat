@@ -36,6 +36,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if info, err := os.Stat(search); err == nil && info.Mode().IsRegular() {
 		args = append(args, "--extension", search)
 	}
+	// The agents' page reader, with the headless shell beside it.
+	reader := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "page-reader/extension.mjs")
+	if info, err := os.Stat(reader); err == nil && info.Mode().IsRegular() {
+		args = append(args, "--extension", reader)
+	}
 	// Product tolerates either guest runtime during rollout. Only load the core
 	// native owner, not terminal UI extensions. Never rewrite user settings.
 	processes := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/@aliou/pi-processes/extensions/processes/index.ts")

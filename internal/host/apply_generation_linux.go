@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	policy "github.com/open-habitat/open-habitat"
 )
 
 var ErrRuntimeStage = errors.New("runtime_archive_staging_failed")
@@ -406,7 +408,30 @@ func finishGeneration(s Site) error {
 			return e
 		}
 	}
-	return nil
+	return publishHeadlessShellSandbox()
+}
+
+// headlessShellAppArmor lets the core runtime's headless Chromium start its
+// sandbox, which Ubuntu 24.04 otherwise denies; the page reader refuses to run
+// Chromium without it. The profile is loaded now as well as at boot. A kernel
+// without AppArmor has no such restriction, so there is nothing to load; a host
+// whose AppArmor tools were removed gets no page reading, not a failed apply.
+var headlessShellAppArmor = policyFile{"/etc/apparmor.d/open-habitat-headless-shell", policy.HeadlessShellAppArmor}
+
+const apparmorParser = "/usr/sbin/apparmor_parser"
+
+func publishHeadlessShellSandbox() error {
+	if e := installPolicy("/", headlessShellAppArmor, 0); e != nil {
+		return e
+	}
+	if _, e := os.Stat("/sys/kernel/security/apparmor/profiles"); e != nil {
+		return nil
+	}
+	if _, e := os.Stat(apparmorParser); e != nil {
+		return nil
+	}
+	_, e := nativeCommand(context.Background(), apparmorParser, "--replace", "--write-cache", headlessShellAppArmor.Path)
+	return e
 }
 
 // The profile's authenticated user unit is made available, not started as root

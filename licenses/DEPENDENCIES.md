@@ -26,6 +26,18 @@ provider path gives Claude Code the WebSearch and WebFetch tools
 (`BRIDGE_PATCH` in `scripts/core-runtime-build.py`). The package keeps its
 LICENSE in the closure.
 
+The core runtime's page reader (`runtime/core/page-reader.mjs`) is original
+code. Its extraction follows `pi-web-access` 0.47.0 (Nico Bailon, MIT): Mozilla
+Readability, then Turndown. No code is copied from it, and it is not
+installed. The core runtime installs `playwright-core` 1.58.0 (Microsoft,
+Apache-2.0), `@mozilla/readability` 0.6.0 (Apache-2.0) and `turndown` 7.2.0
+(Dom Christie, MIT), with Turndown's Node DOM `@mixmark-io/domino` 2.2.0
+(BSD-2-Clause), which the reader does not load. All of them keep their licence
+files in the closure. The headless shell is Chromium 145.0.7632.6 from
+`runtime/core/browser-lock.json`, carrying its `LICENSE.headless_shell`. For the
+arm64 build, which ships no notice of its own, that notice comes from the same
+version's Chrome for Testing archive.
+
 The daemon's Palaa tähän extension (`internal/daemon/rewind-extension.mjs`,
 embedded in the Go binary) adapts the checkpoint capture, tracked-path rules
 and restore of better-pi-rewind (raine, MIT, commit e42fa9c). Nothing is

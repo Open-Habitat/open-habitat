@@ -53,38 +53,6 @@
       "url": "https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl",
       "sha256": "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548",
       "kind": "wheel"
-    },
-    {
-      "target": "linux-amd64",
-      "name": "chromium-headless-shell",
-      "version": "145.0.7632.6",
-      "filename": "headless.zip",
-      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
-      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
-      "kind": "browser",
-      "prefix": "chrome-headless-shell-linux64",
-      "revision": "1208"
-    },
-    {
-      "target": "linux-arm64",
-      "name": "chromium-headless-shell",
-      "version": "145.0.7632.6",
-      "filename": "headless.zip",
-      "url": "https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1208/chromium-headless-shell-linux-arm64.zip",
-      "sha256": "6bdb4349429ec33e7c0267e0eaa039c2131fa0b3b2997dec0ec96b0d40f579fd",
-      "kind": "browser",
-      "prefix": "chrome-linux",
-      "revision": "1208"
-    },
-    {
-      "target": "linux-arm64",
-      "name": "chromium-headless-shell-notice",
-      "version": "145.0.7632.6",
-      "filename": "headless-notice.zip",
-      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
-      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
-      "kind": "notice",
-      "member": "chrome-headless-shell-linux64/LICENSE.headless_shell"
     }
   ],
   "common_license_sha256": {

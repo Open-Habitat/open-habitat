@@ -142,8 +142,8 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 // recomputed from the files, so a mutation is judged on its meaning alone.
 func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]string)) ReleaseArtifact {
 	files := map[string]RuntimeFile{"runtime/bin/node": {Component: "node", Mode: 0755}}
-	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.20.0", "workmux": "0.1.278", "agent-launcher": "1"}
-	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
+	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.20.0", "workmux": "0.1.278", "agent-launcher": "1", "chromium-headless-shell": "145.0.7632.6"}
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
 		files["runtime/node_modules/"+name+"/package.json"] = RuntimeFile{Component: "npm:node_modules/" + name, Mode: 0644}
 		versions["npm:node_modules/"+name] = version
 	}
@@ -153,6 +153,9 @@ func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]s
 	files["runtime/taskfleet/skills/worktree-merge/SKILL.md"] = RuntimeFile{Component: "taskfleet", Mode: 0644}
 	files["runtime/taskfleet/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
 	files["runtime/web-search/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+	files["runtime/page-reader/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+	files["runtime/browsers/chromium_headless_shell-1208/chrome-linux/headless_shell"] = RuntimeFile{Component: "chromium-headless-shell", Mode: 0755}
+	files["runtime/browsers/chromium_headless_shell-1208/chrome-linux/LICENSE.headless_shell"] = RuntimeFile{Component: "chromium-headless-shell", Mode: 0644}
 	if mutate != nil {
 		mutate(files, versions)
 	}
@@ -198,6 +201,18 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		"workmux unpinned":         func(_ map[string]RuntimeFile, v map[string]string) { v["workmux"] = "0.1.276" },
 		"skills extension missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/taskfleet/extension.mjs") },
 		"web search missing":       func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/web-search/extension.mjs") },
+		"page reader missing":      func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/page-reader/extension.mjs") },
+		"playwright unpinned":      func(_ map[string]RuntimeFile, v map[string]string) { v["npm:node_modules/playwright-core"] = "1.59.0" },
+		"headless shell missing": func(f map[string]RuntimeFile, _ map[string]string) {
+			delete(f, "runtime/browsers/chromium_headless_shell-1208/chrome-linux/headless_shell")
+		},
+		"headless shell not executable": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/browsers/chromium_headless_shell-1208/chrome-linux/headless_shell"] = RuntimeFile{Component: "chromium-headless-shell", Mode: 0644}
+		},
+		"headless shell of another revision": func(_ map[string]RuntimeFile, v map[string]string) { v["chromium-headless-shell"] = "146.0.0.0" },
+		"file of another part in the shell": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/browsers/chromium_headless_shell-1208/chrome-linux/libEGL.so"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
+		},
 		"skills missing": func(f map[string]RuntimeFile, _ map[string]string) {
 			delete(f, "runtime/taskfleet/skills/worktree-merge/SKILL.md")
 		},

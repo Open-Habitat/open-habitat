@@ -316,6 +316,9 @@ class BuilderTests(unittest.TestCase):
                 # Integrations inputs are named by upstream file; count them.
                 versions = {t: sorted((r.get('name', ''), r.get('version', '')) for r in profiles.for_target(lock.get(key, []), t) if r.get('kind') != 'notice') for t in profiles.TARGETS}
                 self.assertEqual(versions['linux-amd64'], versions['linux-arm64'], profile + ' ' + key)
+        browser = json.loads((runtime / 'core/browser-lock.json').read_text())
+        versions = {t: [(r['name'], r['version']) for r in profiles.for_target(browser['inputs'], t) if r['kind'] != 'notice'] for t in profiles.TARGETS}
+        self.assertEqual(versions['linux-amd64'], versions['linux-arm64'], 'core browser')
         for profile in ('editor', 'uv'):
             lock = json.loads((runtime / 'profiles' / profile / 'artifact-lock.json').read_text())
             for target in profiles.TARGETS:

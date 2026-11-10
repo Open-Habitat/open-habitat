@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "profile": "core",
+  "inputs": [
+    {
+      "target": "linux-amd64",
+      "name": "chromium-headless-shell",
+      "version": "145.0.7632.6",
+      "filename": "headless.zip",
+      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
+      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
+      "kind": "browser",
+      "prefix": "chrome-headless-shell-linux64",
+      "revision": "1208"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "chromium-headless-shell",
+      "version": "145.0.7632.6",
+      "filename": "headless.zip",
+      "url": "https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1208/chromium-headless-shell-linux-arm64.zip",
+      "sha256": "6bdb4349429ec33e7c0267e0eaa039c2131fa0b3b2997dec0ec96b0d40f579fd",
+      "kind": "browser",
+      "prefix": "chrome-linux",
+      "revision": "1208"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "chromium-headless-shell-notice",
+      "version": "145.0.7632.6",
+      "filename": "headless-notice.zip",
+      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
+      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
+      "kind": "notice",
+      "member": "chrome-headless-shell-linux64/LICENSE.headless_shell"
+    }
+  ]
+}

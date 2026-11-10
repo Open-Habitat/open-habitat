@@ -30,6 +30,8 @@ tarfile.open("node.tar.xz").extractall(filter="data")
 print(pin["prefix"])
 PY
 )
+mkdir browser
+python3 /scripts/download-profile-inputs.py /inputs/browser-lock.json /var/tmp/core/browser "$1"
 export PATH=/var/tmp/core/$prefix/bin:/usr/bin:/bin
 mkdir npm
 cp /inputs/package*.json npm/

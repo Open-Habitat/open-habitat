@@ -608,12 +608,13 @@ new product's host plan/apply checks and the customer's real acceptance.
 
 ### Headless QA browser assets
 
-When selecting the `browser` archive, also select its authenticated Python/uv/
-native-build dependency profiles. Publish its `runtime/` as the root-owned,
-non-user-writable `/opt/open-habitat/profiles/browser/` tree, and retain the
-qualification wheelhouse separately from customer dependencies. Set
-`PLAYWRIGHT_BROWSERS_PATH=/opt/open-habitat/profiles/browser/browsers` for QA
-processes. Project-local Playwright must match the archive's locked version;
+The headless shell is part of the core runtime, which installs it at
+`/opt/open-habitat/core/browsers/` (see "Reading web pages" below). The
+`browser` archive adds Python Playwright's qualification wheelhouse for QA
+processes. When selecting it, also select its authenticated Python/uv/
+native-build dependency profiles, and retain the wheelhouse separately from
+customer dependencies. Set
+`PLAYWRIGHT_BROWSERS_PATH=/opt/open-habitat/core/browsers` for QA processes. Project-local Playwright must match the archive's locked version;
 use the project's frozen uv lock, not a global Playwright install. An ordinary
 `uv run playwright install` without a browser argument also requests unavailable
 browsers; do not silently download or advertise them. The selected headless shell
@@ -677,6 +678,31 @@ to their key as the provider prices them, and the queries go to that provider.
 Where an organisation has turned web search off for its API key, the first
 request of a conversation fails with the provider's error and the conversation
 continues without search. Other providers get no search this way.
+
+#### Reading web pages
+
+Every agent also has a `read_page` tool. It opens a URL in the core runtime's
+headless Chromium (`/opt/open-habitat/core/browsers/`) as the person and
+returns the rendered page's readable text, its links and, on request, a
+screenshot. It is loaded by the launcher and by browser conversations, like
+the search extension. Each read starts logged out and keeps nothing. Pages go
+only to the site, never to a rendering service. A read is bounded:
+
+- 60 seconds at most (30 by default);
+- 25 MB of transfers;
+- two reads at a time per agent process.
+
+A public page's requests to loopback and private addresses are refused by
+Chromium's own Local Network Access check.
+
+Chromium runs only with its sandbox. On Ubuntu 24.04 that needs the AppArmor
+profile `/etc/apparmor.d/open-habitat-headless-shell`, which grants user
+namespaces to the shell in release generations, as Ubuntu's own profile does
+for Google Chrome. Apply and upgrade install and load it. Without it, the tool
+answers that the browser cannot start its sandbox, and nothing is read. The
+shell and the libraries it needs (listed in the core's `ubuntu-packages.json`)
+add about 130 MB to the core runtime download and about 335 MB on disk on
+amd64, and about 110 MB and 335 MB on arm64.
 
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,

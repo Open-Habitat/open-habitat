@@ -1,0 +1,12 @@
+# The core runtime's headless Chromium, which renders pages for people's
+# agents, starts its sandbox in user namespaces. Ubuntu 24.04 denies those to
+# unconfined programs (kernel.apparmor_restrict_unprivileged_userns), and its
+# own profile for Google Chrome lifts that for Chrome alone; this does the same
+# for the shell in release generations, which only root can write. Chromium
+# never runs without its sandbox here.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile open-habitat-headless-shell /opt/open-habitat/generations/*/payloads/core/runtime/browsers/chromium_headless_shell-*/*/{chrome-headless-shell,headless_shell} flags=(unconfined) {
+  userns,
+}

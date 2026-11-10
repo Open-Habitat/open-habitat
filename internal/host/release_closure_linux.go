@@ -164,7 +164,7 @@ func validCoreRuntime(a ReleaseArtifact) bool {
 	if components["node"].Version != "22.21.1" || files["runtime/bin/node"].Component != "node" {
 		return false
 	}
-	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4"} {
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
 		// npm may nest the overridden parser below its consumer.
 		found := false
 		for id, p := range components {
@@ -176,7 +176,31 @@ func validCoreRuntime(a ReleaseArtifact) bool {
 			return false
 		}
 	}
-	return validCoreAgentTools(files, components)
+	return validCoreAgentTools(files, components) && validHeadlessShell(files, components)
+}
+
+// HeadlessShell is the Chromium the core runtime's page reader renders with
+// and the browser profile's QA Playwright uses, at the pinned revision.
+var HeadlessShell = struct{ Version, Dir string }{"145.0.7632.6", "runtime/browsers/chromium_headless_shell-1208/"}
+
+func validHeadlessShell(files map[string]RuntimeFile, components map[string]RuntimeComponent) bool {
+	if c := components["chromium-headless-shell"]; c.Kind != "native" || c.Version != HeadlessShell.Version {
+		return false
+	}
+	executable := false
+	for path, f := range files {
+		rest, ok := strings.CutPrefix(path, HeadlessShell.Dir)
+		if !ok {
+			continue
+		}
+		if f.Component != "chromium-headless-shell" {
+			return false
+		}
+		if _, name, _ := strings.Cut(rest, "/"); (name == "chrome-headless-shell" || name == "headless_shell") && f.Mode == 0755 {
+			executable = true
+		}
+	}
+	return executable
 }
 
 // CoreAgentTools are the commands every installation's core runtime puts on
@@ -212,8 +236,8 @@ func validCoreAgentTools(files map[string]RuntimeFile, components map[string]Run
 		}
 	}
 	// The Pi extensions the launcher and the daemon load: the one that offers
-	// the skills, and the provider's own web search.
-	for _, path := range []string{"runtime/taskfleet/extension.mjs", "runtime/web-search/extension.mjs"} {
+	// the skills, the provider's own web search and the page reader.
+	for _, path := range []string{"runtime/taskfleet/extension.mjs", "runtime/web-search/extension.mjs", "runtime/page-reader/extension.mjs"} {
 		if files[path].Component != "agent-launcher" {
 			return false
 		}

@@ -20,7 +20,11 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 	if err := os.Mkdir(root, 0755); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(root); os.Remove("/usr/lib/systemd/user/open-habitat-containers.service") })
+	t.Cleanup(func() {
+		os.RemoveAll(root)
+		os.Remove("/usr/lib/systemd/user/open-habitat-containers.service")
+		os.Remove(headlessShellAppArmor.Path)
+	})
 	s := Site{Profiles: []string{"core", "integrations", "native-build", "python", "containers"}, Release: Release{"1", strings.Repeat("a", 64)}}
 	prepare := func(site Site, unit string) {
 		for _, p := range []string{"core/runtime", "integrations/runtime/bin", "python/runtime/bin", "containers/runtime/systemd/user"} {
@@ -65,6 +69,9 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		want, e := os.ReadFile(filepath.Join(generationPath(site), "payloads/containers/runtime/systemd/user/open-habitat-containers.service"))
 		if err != nil || e != nil || string(have) != string(want) {
 			t.Fatal("user unit was not published", err, e)
+		}
+		if !policiesMatch("/", []policyFile{headlessShellAppArmor}, 0) {
+			t.Fatal("headless shell sandbox profile was not published")
 		}
 	}
 	if err := finishGeneration(s); err != nil {
