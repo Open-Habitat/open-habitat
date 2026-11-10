@@ -6,7 +6,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nativeSearchTools } from '../../../runtime/core/web-search.mjs';
+import { nativeSearchTools, withSources } from '../../../runtime/core/web-search.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const cli = resolve(here, 'node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js');
@@ -15,7 +15,7 @@ const extension = resolve(here, '../../../runtime/core/web-search.mjs');
 const sse = events => events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
 
 // What the provider streams back after searching: the search items Pi skips,
-// then the answer it keeps.
+// then the answer it keeps, citing a source only in structured form.
 const responsesAnswer = sse([
   { type: 'response.created', response: { id: 'resp_1', status: 'in_progress', output: [] } },
   { type: 'response.output_item.added', output_index: 0, item: { type: 'web_search_call', id: 'ws_1', status: 'in_progress' } },
@@ -35,6 +35,7 @@ const anthropicAnswer = sse([
   { type: 'content_block_start', index: 1, content_block: { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: [{ type: 'web_search_result', url: 'https://example.com/', title: 'Example', encrypted_content: 'opaque' }] } },
   { type: 'content_block_stop', index: 1 },
   { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } },
+  { type: 'content_block_delta', index: 2, delta: { type: 'citations_delta', citation: { type: 'web_search_result_location', url: 'https://example.org/cited', title: 'Cited', cited_text: 'x', encrypted_index: 'opaque' } } },
   { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'SEARCHED-ANSWER' } },
   { type: 'content_block_stop', index: 2 },
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
@@ -81,10 +82,14 @@ async function converse(provider, model, prompts, reply) {
 const added = body => body.tools.filter(t => !(t.type === 'function' || (t.input_schema && !t.type)));
 
 test('an OpenAI key conversation searches natively and keeps the answer', async () => {
-  const { bodies, out } = await converse('openai', 'gpt-5.5', ['first'], () => [200, responsesAnswer]);
-  assert.equal(bodies.length, 1, out);
+  const { bodies, out } = await converse('openai', 'gpt-5.5', ['first', 'second'], () => [200, responsesAnswer]);
+  assert.equal(bodies.length, 2, out);
   assert.deepEqual(added(bodies[0]), [{ type: 'web_search' }]);
   assert.match(out, /SEARCHED-ANSWER/);
+  assert.match(out, /\(https:\/\/example\.com\/\)/, 'the cited source must reach the answer');
+  // The listed sources stay in the history the next request replays.
+  const replayed = bodies[1].input.filter(i => i.type === 'message' && i.role === 'assistant').flatMap(i => i.content.map(c => c.text));
+  assert.ok(replayed.some(t => t.includes('(https://example.com/)')), JSON.stringify(bodies[1].input));
 });
 
 test('an Anthropic key conversation gets server-side search and fetch and keeps the answer', async () => {
@@ -92,6 +97,7 @@ test('an Anthropic key conversation gets server-side search and fetch and keeps 
   assert.equal(bodies.length, 1, out);
   assert.deepEqual(added(bodies[0]).map(t => t.type), ['web_search_20250305', 'web_fetch_20250910']);
   assert.match(out, /SEARCHED-ANSWER/);
+  assert.match(out, /\(https:\/\/example\.org\/cited\)/, 'the cited source must reach the answer');
 });
 
 test('a provider that refuses web search fails once, then the conversation goes on without it', async () => {
@@ -122,4 +128,14 @@ test('search is added only to the conversation model of a covered provider, once
     { provider: 'deepseek', api: 'anthropic-messages', id: 'x' }]) {
     assert.deepEqual(nativeSearchTools(model, { model: 'x', tools: [] }), []);
   }
+});
+
+test('a source the answer already links is not listed again', () => {
+  const answer = { role: 'assistant', content: [{ type: 'text', text: 'See [it](https://example.com/a).' }] };
+  assert.equal(withSources(answer, new Map([['https://example.com/a', 'A']])), undefined);
+  const listed = withSources(answer, new Map([['https://example.com/a', 'A'], ['https://example.com/b (x)', '']]));
+  assert.equal(listed.content.length, 2);
+  assert.equal(listed.content[0], answer.content[0]);
+  assert.doesNotMatch(listed.content[1].text, /example\.com\/a\)/);
+  assert.match(listed.content[1].text, /\(https:\/\/example\.com\/b%20%28x%29\)/);
 });

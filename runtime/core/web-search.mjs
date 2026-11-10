@@ -4,7 +4,8 @@
 // provider's server-side tool to each model request through Pi's payload hook.
 // The provider runs the search inside the same request and Pi keeps the
 // answer's text; it skips the search items themselves, which none of these
-// providers needs back.
+// providers needs back, and the citations, so the sources the answer cites
+// are added to it here when its text does not already link them.
 //
 // Covered: the ChatGPT subscription (`openai-codex`) and OpenAI keys through
 // the Responses `web_search` tool, and Anthropic keys through the server-side
@@ -19,8 +20,11 @@
 const anthropicTools = [
 	// The basic versions: later ones default to calling search from code
 	// execution, which not every model supports and which is not ZDR-eligible.
-	{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 },
-	{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 8 },
+	// Together they stay under the ten server-side iterations after which
+	// Anthropic pauses a turn (`pause_turn`): Pi ends the turn there, and the
+	// answer would stop half-way.
+	{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+	{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 4 },
 ];
 
 // A tool of the person's own (a search extension, an MCP server) already
@@ -44,6 +48,39 @@ export function nativeSearchTools(model, payload) {
 	return [];
 }
 
+// The URL-bearing citations in one raw provider stream event: OpenAI's
+// `url_citation` annotations on a finished message, Anthropic's search result
+// locations on a text block.
+export function citations(data) {
+	const found = [];
+	const add = c => {
+		if (typeof c?.url === 'string' && /^https?:\/\//.test(c.url)) found.push({ url: c.url, title: typeof c.title === 'string' ? c.title : '' });
+	};
+	if (data?.type === 'response.output_item.done' && data.item?.type === 'message') {
+		for (const part of data.item.content ?? []) for (const a of part?.annotations ?? []) if (a?.type === 'url_citation') add(a);
+	}
+	if (data?.type === 'content_block_delta' && data.delta?.type === 'citations_delta') add(data.delta.citation);
+	if (data?.type === 'content_block_start' && data.content_block?.type === 'text') for (const c of data.content_block.citations ?? []) add(c);
+	return found;
+}
+
+// The answer with a list of the cited sources its text does not link yet, or
+// undefined when there is nothing to add.
+export function withSources(message, cited) {
+	const text = message.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+	const missing = [...cited].filter(([url]) => !text.includes(url));
+	if (missing.length === 0) return undefined;
+	const label = (url, title) => {
+		const clean = title.replace(/[[\]\n]/g, ' ').trim();
+		if (clean) return clean;
+		try { return new URL(url).host; } catch { return url; }
+	};
+	// Parentheses and spaces would end a Markdown link target early.
+	const target = url => url.replace(/[()\s]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+	const lines = missing.map(([url, title]) => `- [${label(url, title)}](${target(url)})`);
+	return { ...message, content: [...message.content, { type: 'text', text: `Sources:\n${lines.join('\n')}` }] };
+}
+
 export default function (pi) {
 	// A provider that refuses the tool (an organisation that has turned web
 	// search off, a model without it) fails the whole request. Pi shows that
@@ -55,10 +92,22 @@ export default function (pi) {
 		if (tools.length === 0) return undefined;
 		return { ...event.payload, tools: [...event.payload.tools, ...tools] };
 	});
+	// Citations collected over the requests of one prompt, added to its final
+	// answer rather than to a message that goes on to call a tool.
+	let cited = new Map();
+	pi.on('agent_start', () => { cited = new Map(); });
+	pi.on('provider_stream_event', (event) => {
+		for (const c of citations(event.data)) if (!cited.has(c.url)) cited.set(c.url, c.title);
+	});
 	pi.on('message_end', (event) => {
 		const m = event.message;
-		if (m?.role === 'assistant' && m.stopReason === 'error' && /web[ _-]?(search|fetch)/i.test(String(m.errorMessage ?? ''))) {
+		if (m?.role !== 'assistant') return undefined;
+		if (m.stopReason === 'error' && /web[ _-]?(search|fetch)/i.test(String(m.errorMessage ?? ''))) {
 			refused = true;
 		}
+		if ((m.stopReason !== 'stop' && m.stopReason !== 'length') || cited.size === 0 || !Array.isArray(m.content)) return undefined;
+		const answer = withSources(m, cited);
+		cited = new Map();
+		return answer ? { message: answer } : undefined;
 	});
 }
