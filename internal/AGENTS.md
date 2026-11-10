@@ -308,8 +308,20 @@ Identity and authority:
   login name; the gateway never reads site.json itself. Withdrawal first records a durable deny in
   the gateway and removes the subject's sessions, then asks the broker;
   restore removes leftover sessions, asks the broker, and lifts the deny only
-  on its confirmed reply. The deny only refuses. Withdrawal ends web access,
-  not the account, home, credentials or processes.
+  on its confirmed reply. The deny only refuses. Withdrawal ends web access
+  and what Habitat started for the web: after committing it the broker stops
+  the person's daemon service, which ends the Pi conversations in its
+  cgroup, and both sockets (Jari, 2026-11-10). A listener left running for
+  someone no source admits keeps processes alive that nothing routes to,
+  and an installation's activation gate rightly refuses socket starts while
+  one does. The account, home, credentials, the person's own user manager
+  and its processes (terminal tmux, Taskfleet workers, editor units),
+  lingering and SSH stay. The stop is the exact counterpart of the socket
+  restore: the broker picks the units from a withdrawn subject's committed
+  binding, never from a request, starts nothing and offers no general unit
+  operation. A failed stop is reported as unavailable, so the gateway's deny
+  stays; a repeated withdrawal and the broker's next start repeat only the
+  stop, and restore and the next admitted sign-in bring the sockets back.
 - The site onboarding configuration (default repositories, integration steps,
   AI offer) is gateway administration state, written only by a current
   administrator's browser session or root's control socket under one version,

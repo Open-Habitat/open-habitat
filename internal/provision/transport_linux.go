@@ -25,6 +25,11 @@ const exchangeTimeout = 2 * time.Second // admission, framing and authorize
 // never granted before a complete, validated frame from the permitted UID.
 const ensureTimeout = 90 * time.Second
 const ensureClientTimeout = ensureTimeout + exchangeTimeout + 3*time.Second
+
+func longExchange(operation string) bool {
+	return operation == "ensure" || operation == "admit" || operation == "withdraw"
+}
+
 const maxActiveEnsures = 2 // includes lock waiters; the writer itself serializes mutations
 
 // Hard cap applies even when the permitted gateway UID is compromised.
@@ -198,8 +203,9 @@ func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, 
 		return
 	}
 	// Admit may rebuild a restored binding's runtime directory with the same
-	// bounded host commands, so it shares ensure's mutation budget and slots.
-	if r.Operation == "ensure" || r.Operation == "admit" {
+	// bounded host commands, and withdraw stops the person's listeners, so
+	// both share ensure's mutation budget and slots.
+	if longExchange(r.Operation) {
 		// Never allow slow framing to buy a long-lived worker or FD. Reject
 		// excess valid ensures instead of queueing behind a stalled mutation.
 		select {
@@ -250,7 +256,7 @@ func (c Client) Exchange(ctx context.Context, r Request) (Reply, error) {
 		return Reply{}, ErrInvalid
 	}
 	budget := exchangeTimeout
-	if r.Operation == "ensure" || r.Operation == "admit" {
+	if longExchange(r.Operation) {
 		budget = ensureClientTimeout
 	}
 	deadline := time.Now().Add(budget)

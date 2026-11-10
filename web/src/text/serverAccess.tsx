@@ -128,7 +128,8 @@ const fi = {
   removeAccessQuestion: (who: string) => `Poista ${who} pääsy?`,
   removeQuestion: (who: string) => `Poista ${who}?`,
   cannotSignIn: "Ei voi enää kirjautua.",
-  sessionsEnd: " Avoimet istunnot päättyvät.",
+  sessionsEnd:
+    " Avoimet istunnot ja selaimesta käynnistetyt keskustelut päättyvät.",
   unixStays: (username: ReactNode): ReactNode => (
     <>
       Unix-tili{username} ja tiedostot jäävät. Tilin voi poistaa komentorivillä.
@@ -307,7 +308,7 @@ export const serverAccessText = catalog(
     removeAccessQuestion: (who) => `Remove ${who}'s access?`,
     removeQuestion: (who) => `Remove ${who}?`,
     cannotSignIn: "Can no longer sign in.",
-    sessionsEnd: " Open sessions end.",
+    sessionsEnd: " Open sessions and conversations started in the browser end.",
     unixStays: (username) => (
       <>
         The Unix account{username} and the files stay. The account can be

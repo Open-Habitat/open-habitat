@@ -122,6 +122,13 @@ func ServeBroker(ctx context.Context) error {
 		log.Info("binding_published", "outcome", "published", "operation", "ensure", "user", user)
 	}
 	writer.LingerEvent = lingerLogger(log)
+	writer.StopEvent = func(user string, stopped bool) {
+		if stopped {
+			log.Info("broker_withdrawal_stop", "outcome", "stopped", "user", user)
+		} else {
+			log.Warn("broker_withdrawal_stop", "outcome", "rejected", "reason", "units_running", "user", user)
+		}
+	}
 	// Replacing or removing an application every person's sign-in uses is
 	// logged with who asked; the values never are.
 	writer.IntegrationEvent = func(operation, provider, actor string) {
@@ -141,8 +148,21 @@ func ServeBroker(ctx context.Context) error {
 	}
 	// Activation is outside the ledger lock: the native binding gate takes
 	// that same lock before systemd starts each socket. A failure for one binding
-	// must not prevent the broker serving the others.
-	go writer.restoreSockets(ctx, bindings, func(user string, err error) {
+	// must not prevent the broker serving the others. A withdrawal whose
+	// stop failed before this start is stopped first.
+	go func() {
+		_ = writer.stopWithdrawn(withStartupProbes(ctx), "", writer.stopReport)
+		writer.restoreSockets(ctx, bindings, restored(log), synced(log))
+	}()
+	if ctx.Err() != nil {
+		return ErrBrokerStartup
+	}
+	log.Info("service_ready", "outcome", "ready")
+	return (Server{GatewayUID: cfg.GatewayUID, SocketPath: BrokerSocket, Handler: loggedBrokerHandler(writer.Handle, log)}).Serve(ctx, []*os.File{fd})
+}
+
+func restored(log *slog.Logger) func(string, error) {
+	return func(user string, err error) {
 		if err == nil {
 			log.Info("broker_socket_restore", "outcome", "ready", "user", user)
 		} else {
@@ -152,7 +172,11 @@ func ServeBroker(ctx context.Context) error {
 			}
 			log.Warn("broker_socket_restore", "outcome", "rejected", "reason", reason, "user", user)
 		}
-	}, func(user string, started bool, err error) {
+	}
+}
+
+func synced(log *slog.Logger) func(string, bool, error) {
+	return func(user string, started bool, err error) {
 		switch {
 		case started:
 			log.Info("broker_sync_start", "outcome", "started", "user", user)
@@ -163,12 +187,7 @@ func ServeBroker(ctx context.Context) error {
 		case err != nil:
 			log.Warn("broker_sync_start", "outcome", "rejected", "reason", "signal_unavailable", "user", user)
 		}
-	})
-	if ctx.Err() != nil {
-		return ErrBrokerStartup
 	}
-	log.Info("service_ready", "outcome", "ready")
-	return (Server{GatewayUID: cfg.GatewayUID, SocketPath: BrokerSocket, Handler: loggedBrokerHandler(writer.Handle, log)}).Serve(ctx, []*os.File{fd})
 }
 
 func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {

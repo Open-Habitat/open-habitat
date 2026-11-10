@@ -27,6 +27,9 @@ type accessFake struct {
 	refuse     error
 	onWithdraw func()
 	onAdmit    func()
+	// stopFails makes that many withdrawals commit and then report the
+	// listener stop as failed, as the broker's state_unavailable does.
+	stopFails int
 }
 
 func newAccessFake() *accessFake {
@@ -131,6 +134,10 @@ func (b *accessFake) Withdraw(_ context.Context, id, _ string) (AccessRow, error
 		return AccessRow{ID: id, Source: "site_admin", State: "removed"}, nil
 	}
 	b.runtime[id] = "withdrawn"
+	if b.stopFails > 0 {
+		b.stopFails--
+		return AccessRow{}, ErrAccessUncertain
+	}
 	return b.row(id)[0], nil
 }
 
@@ -284,6 +291,48 @@ func TestWithdrawalOrderAndRestore(t *testing.T) {
 		}
 	}
 	x.auth.mu.Unlock()
+}
+
+// A withdrawal the broker committed but whose daemon stop failed is
+// uncertain: the deny and session removal stand, a repeat finishes the stop
+// without lifting the deny, and restore still lifts it on the broker's reply.
+func TestWithdrawalFailedStopKeepsDeny(t *testing.T) {
+	x := newAccessHarness(t)
+	bob := x.login("43", "bob")
+	x.broker.stopFails = 1
+	if _, err := x.auth.withdrawAccess(context.Background(), "42", "43"); !errors.Is(err, ErrAccessUncertain) {
+		t.Fatal(err)
+	}
+	if !strings.Contains(x.file("administration.json"), `"denied":["43"]`) || x.live(bob) || x.login("43", "bob") != nil {
+		t.Fatal("a failed stop reopened access")
+	}
+	if status, code := accessReason(ErrAccessUncertain); status != 503 || code != "outcome_uncertain" {
+		t.Fatal(status, code)
+	}
+	row, err := x.auth.withdrawAccess(context.Background(), "42", "43")
+	if err != nil || row.State != "withdrawn" || !strings.Contains(x.file("administration.json"), `"denied":["43"]`) {
+		t.Fatal("repeat after a failed stop", row, err, x.file("administration.json"))
+	}
+	x.broker.stopFails = 1
+	if _, err := x.auth.withdrawAccess(context.Background(), "42", "43"); !errors.Is(err, ErrAccessUncertain) {
+		t.Fatal(err)
+	}
+	row, err = x.auth.admitAccess(context.Background(), "42", "43")
+	if err != nil || row.State != "joined" || strings.Contains(x.file("administration.json"), "denied") {
+		t.Fatal("restore after a failed stop", row, err)
+	}
+	if x.login("43", "bob") == nil {
+		t.Fatal("restore after a failed stop did not readmit")
+	}
+}
+
+func TestAccessRemoveControlDeadlineCoversTheStop(t *testing.T) {
+	if AdminControlDeadline([]byte(`{"operation":"access_remove","subject":"43"}`)) < 95*time.Second {
+		t.Fatal("root's withdrawal gives up before the broker's stop budget")
+	}
+	if AdminControlDeadline([]byte(`{"operation":"access_list"}`)) != 5*time.Second {
+		t.Fatal("other operations keep the short deadline")
+	}
 }
 
 // A lost broker reply leaves the subject refused by the gateway, through a

@@ -118,6 +118,9 @@ func (e *startupExecutor) EnableLinger(context.Context, ExecutorIdentity) error 
 func (e *startupExecutor) StartDaemon(context.Context, ExecutorIdentity) error {
 	panic("startup must not start daemons")
 }
+func (e *startupExecutor) StopListeners(context.Context, ExecutorIdentity) error {
+	panic("startup inspection must not stop listeners")
+}
 func (e *startupExecutor) Verify(ctx context.Context, _ ExecutorIdentity) error {
 	e.calls++
 	if e.fail || ctx.Err() != nil {

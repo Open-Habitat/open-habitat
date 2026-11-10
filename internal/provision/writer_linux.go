@@ -64,6 +64,11 @@ type HostExecutor interface {
 	// person's daemon service and nothing else.
 	SyncAtBoot(context.Context, ExecutorIdentity) (bool, error)
 	StartDaemon(context.Context, ExecutorIdentity) error
+	// StopListeners is called only for a committed binding whose admission
+	// was withdrawn, after the withdrawal is committed: it stops that
+	// person's daemon service and both sockets, starts nothing, and reports
+	// an error unless all three are inactive afterwards.
+	StopListeners(context.Context, ExecutorIdentity) error
 }
 
 var phases = []string{"account", "home", "config", "socket", "unit", "quota"}
@@ -130,8 +135,11 @@ type Writer struct {
 	// IntegrationEvent reports a committed integration write: the operation,
 	// provider and actor, never a field value.
 	IntegrationEvent func(operation, provider, actor string)
-	owner            uint32
-	activation       *activationState
+	// StopEvent reports each withdrawn binding's listener stop: the
+	// committed username and whether all its units are inactive.
+	StopEvent  func(string, bool)
+	owner      uint32
+	activation *activationState
 }
 
 // A single broker serializes activations, including login ensures. An
@@ -356,7 +364,18 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// a socket, but only after the durable publish and release of the ledger
 	// lock (the native pre-start gate itself takes that lock).
 	if accessOperation(r.Operation) {
-		return w.handleAccess(ctx, r)
+		reply := w.handleAccess(ctx, r)
+		// A committed or repeated withdrawal of a bound person then stops
+		// their listeners, after the ledger lock is released. Until that
+		// succeeds the reply is unavailable, which the gateway treats as
+		// uncertain and keeps its deny; repeating the withdrawal, or the
+		// broker's next start, repeats only the stop.
+		if r.Operation == "withdraw" && reply.Failure == "" && reply.Access != nil && len(reply.Access.Rows) == 1 && reply.Access.Rows[0].State == StateWithdrawn {
+			if w.stopWithdrawn(ctx, r.ID, w.stopReport) != nil {
+				return failure(StateUnavailable)
+			}
+		}
+		return reply
 	}
 	if integrationOperation(r.Operation) {
 		return w.handleIntegrations(ctx, r)

@@ -1157,6 +1157,21 @@ storage policy. Installing
 templates alone cannot establish a complete multi-user installation; test the
 effective gates and both native user managers on the customer host.
 
+Withdrawing a person (Settings › Käyttäjät ja pääsy › Poista pääsy, or
+`open-habitat admin access remove --github-id <id>`) also stops what Habitat
+started for the web: once the withdrawal is committed, the broker stops
+`open-habitat-daemon@<name>.service`, which ends the Pi conversations the
+browser started, and both sockets, and the broker journal logs
+`broker_withdrawal_stop`. The account, home, credentials, the person's user
+manager with their terminal tmux, Taskfleet workers and editor units,
+lingering and SSH stay. If the stop fails or outlasts its budget, access is
+already withdrawn and stays so, but the reply is `outcome_uncertain` and the
+journal says `units_running`; run `admin access remove` again, which repeats
+only the stop (the broker also retries it each time it starts). Restore, and
+then the person's next sign-in, bring the sockets back. An installation gate
+that refuses socket starts while a revoked person's socket is active therefore
+needs no manual cleanup after a withdrawal.
+
 ## Start and prove first use
 
 After successful apply, inspect the selected version and administrative readback:

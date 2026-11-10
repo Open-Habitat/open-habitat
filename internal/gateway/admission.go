@@ -133,9 +133,12 @@ func (a *Auth) clearDeny(subject string) error {
 	return a.setDenyLocked(subject, false)
 }
 
-// withdrawAccess ends a runtime-admitted person's web access. The Unix
-// account, home, credentials, SSH and processes stay. caller is the
-// administrator's subject, or empty for root's control socket.
+// withdrawAccess ends a runtime-admitted person's web access, and the broker
+// then stops their daemon and sockets. The Unix account, home, credentials,
+// SSH and their own user manager's processes stay. A stop that fails comes
+// back as uncertain: the deny stays and repeating the withdrawal repeats
+// only the stop. caller is the administrator's subject, or empty for root's
+// control socket.
 func (a *Auth) withdrawAccess(ctx context.Context, caller, subject string) (AccessRow, error) {
 	if !canonicalSubject(subject) {
 		return AccessRow{}, errors.New("invalid subject")

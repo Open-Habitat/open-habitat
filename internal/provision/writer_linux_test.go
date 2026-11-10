@@ -71,6 +71,18 @@ type fakeHost struct {
 	startErr    bool
 	syncCalls   []hostCall
 	startCalls  []hostCall
+	stopErr     bool
+	stopCalls   []hostCall
+}
+
+func (h *fakeHost) StopListeners(_ context.Context, i ExecutorIdentity) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.stopCalls = append(h.stopCalls, call("stop-listeners", i))
+	if h.stopErr {
+		return errors.New("stop failed")
+	}
+	return nil
 }
 
 func (h *fakeHost) SyncAtBoot(_ context.Context, i ExecutorIdentity) (bool, error) {

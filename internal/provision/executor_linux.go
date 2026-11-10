@@ -95,6 +95,12 @@ func commandBudget(ctx context.Context, path string, args ...string) time.Durati
 	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".service") {
 		budget = 15 * time.Second
 	}
+	// A withdrawal's stop waits for the daemon and its Pi children to end.
+	// It stays inside the withdraw exchange's budget; a stop that outlasts
+	// it continues in systemd and is checked again by the next attempt.
+	if path == systemctl && len(args) == 4 && args[0] == "stop" && strings.HasPrefix(args[1], "open-habitat-daemon@") {
+		budget = 60 * time.Second
+	}
 	if startup, _ := ctx.Value(startupProbes{}).(bool); startup && budget < startupProbeBudget {
 		budget = startupProbeBudget
 	}
@@ -686,13 +692,24 @@ func properties(output []byte, expected map[string]string) bool {
 func singleUnixListener(output []byte, path string) bool {
 	return string(output) == "Listen="+path+" (Stream)\n"
 }
+
+// unitShown accepts an installed template instance in a state that runs
+// nothing unexpected. A retry also accepts a socket a refused gate left
+// failed or activating, and a daemon that is failed: one a withdrawal's stop
+// had to kill after its timeout, or that crashed past its restart limit, is
+// not running and starts again through its socket like an inactive one.
+func unitShown(unit, b string, retry bool) bool {
+	failedSocket := retry && strings.HasSuffix(unit, ".socket") && (strings.Contains(b, "ActiveState=failed\n") || strings.Contains(b, "ActiveState=activating\n"))
+	failedService := retry && strings.HasSuffix(unit, ".service") && strings.Contains(b, "ActiveState=failed\n")
+	return strings.Contains(b, "LoadState=loaded\n") && (strings.Contains(b, "ActiveState=inactive\n") || strings.Contains(b, "ActiveState=active\n") || failedSocket || failedService) && strings.Contains(b, "FragmentPath=/")
+}
+
 func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry bool) error {
 	// No start or enable: merely ensure both templates are installed and
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
 	for _, unit := range []string{"open-habitat-agent@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".service"} {
 		b, err := e.command(ctx, systemctl, "show", unit, "--property=LoadState,ActiveState,FragmentPath", "--no-pager")
-		failedSocket := retry && strings.HasSuffix(unit, ".socket") && (strings.Contains(string(b), "ActiveState=failed\n") || strings.Contains(string(b), "ActiveState=activating\n"))
-		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n") && !failedSocket) || !strings.Contains(string(b), "FragmentPath=/") {
+		if err != nil || !unitShown(unit, string(b), retry) {
 			return ErrInvalid
 		}
 	}
