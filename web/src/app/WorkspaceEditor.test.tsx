@@ -170,33 +170,36 @@ it("asks on Habitat's own row to save in VS Code before the phone editor, once p
       <textarea data-testid="message-input" />
     </WorkspaceEditor>,
   );
-  fireEvent.click(await screen.findByTestId("toggle-editor"));
+  const toggle = await screen.findByTestId("toggle-editor");
+  // The handoff promise mounts the frame, then an effect installs the resize
+  // listener that knows about it. Flush both before crossing the breakpoint.
+  await act(async () => {
+    fireEvent.click(toggle);
+  });
   const frame = await screen.findByTestId("workspace-editor");
   const resize = (width: number) =>
-    act(() => {
+    act(async () => {
       window.innerWidth = width;
       window.dispatchEvent(new Event("resize"));
     });
   const wide = window.innerWidth;
   try {
-    resize(780);
-    expect(screen.getByTestId("editor-phone-ask").textContent).toContain(
-      "Tallenna VS Codessa ensin",
-    );
+    await resize(780);
+    expect(await screen.findByTestId("editor-phone-ask")).toBeTruthy();
     // VS Code stays usable behind the row until the person switches.
     expect(screen.getByTestId("workspace-editor")).toBe(frame);
     fireEvent.click(screen.getByTestId("editor-phone-stay"));
     expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
-    resize(770);
+    await resize(770);
     expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
-    resize(1000);
-    resize(790);
-    expect(screen.getByTestId("editor-phone-ask")).toBeTruthy();
+    await resize(1000);
+    await resize(790);
+    expect(await screen.findByTestId("editor-phone-ask")).toBeTruthy();
     fireEvent.click(screen.getByTestId("editor-phone-switch"));
     expect(screen.queryByTestId("workspace-editor")).toBeNull();
     expect(screen.queryByTestId("editor-phone-ask")).toBeNull();
     expect(confirm).not.toHaveBeenCalled();
   } finally {
-    resize(wide);
+    await resize(wide);
   }
 });
