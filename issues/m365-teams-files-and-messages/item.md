@@ -3,11 +3,15 @@ created: 2026-11-10
 updated: 2026-11-10
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, Contoso pilot
 source_ref: conversation:jari-2026-11-10/teams
+lane: m365-teams
+lane_seq: 1
+collision: [internal/daemon/integrations/microsoft_files_linux.go]
+preparation: ready
 ---
 
 # Microsoft 365: the agent cannot reach the person's Teams files and messages
@@ -46,3 +50,9 @@ Directions to design with Jari:
 Related: the same session showed one SharePoint site left out with Graph
 `itemNotFound` (analysed in the Contoso integration worker's issue); that
 site's name suggests a Teams channel site, so (1) may be the same cause.
+
+## Decisions
+
+### 2026-11-10T08:47:32Z · @jari
+
+Jari 10.11.: fix it so that Teams channels' files come along: direction 1 (joined teams' and their channels' file sites in the same folder chooser), built directly, not as a prototype or experimental feature. Messages (direction 2) stay for later design.
