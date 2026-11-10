@@ -192,7 +192,7 @@ func TestMicrosoftNarrowerGrantConnectsAndLimitsOutlook(t *testing.T) {
 	if got := accessOf(services); !maps(got, want) {
 		t.Fatalf("access %v", got)
 	}
-	if grant == nil || !slices.Equal(grant.NotGranted, []string{"Calendars.ReadWrite", "Files.ReadWrite.All", "Mail.Send", "Sites.ReadWrite.All"}) || slices.Contains(grant.Granted, "openid") {
+	if grant == nil || !slices.Equal(grant.NotGranted, []string{"Calendars.ReadWrite", "Channel.ReadBasic.All", "Files.ReadWrite.All", "Mail.Send", "Sites.ReadWrite.All", "Team.ReadBasic.All"}) || slices.Contains(grant.Granted, "openid") {
 		t.Fatalf("%+v", grant)
 	}
 

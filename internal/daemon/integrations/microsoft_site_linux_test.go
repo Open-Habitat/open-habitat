@@ -15,7 +15,7 @@ import (
 func TestMicrosoftCompositeSiteWirePath(t *testing.T) {
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	l := &microsoftLogin{entry: m, address: "person@example.test"}
-	if err := l.discover(context.Background(), "access-secret", true); err != nil {
+	if err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
 		t.Fatal(err)
 	}
 	if len(l.skippedSites) != 0 || !strings.Contains(string(l.config), "drive_id = library-drive") {
@@ -49,7 +49,7 @@ func TestMicrosoftSiteIDValidationBeforeRequest(t *testing.T) {
 				return base.RoundTrip(r)
 			})
 			l := &microsoftLogin{entry: m, address: "person@example.test"}
-			err := l.discover(context.Background(), "access-secret", true)
+			err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true})
 			var detail microsoftDiscoveryError
 			if !errors.As(err, &detail) || detail.step != "site_id" || len(l.config) != 0 {
 				t.Fatalf("invalid site not rejected before discovery: %v", err)

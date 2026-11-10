@@ -2629,6 +2629,23 @@ export function ConnectDialog({
           <span>{txt.sitesUnavailable(v.unavailable_sites.join(", "))}</span>
         </p>
       ) : null;
+      const teamsLeftOut = v.teams_left_out ? (
+        <p
+          className="ig-result bad"
+          role="status"
+          data-testid="integration-teams-left-out"
+        >
+          <Icon name="warning" />
+          <span>{txt.teamsLeftOut[v.teams_left_out]}</span>
+        </p>
+      ) : null;
+      const leftOut =
+        unavailableSites || teamsLeftOut ? (
+          <>
+            {unavailableSites}
+            {teamsLeftOut}
+          </>
+        ) : null;
       if (
         v.state === "starting" ||
         v.state === "completing" ||
@@ -2748,7 +2765,7 @@ export function ConnectDialog({
                   : txt.connectedTo(v.address ?? "")}
               </span>
             </p>
-            {unavailableSites}
+            {leftOut}
             {dir ? <p className="ig-p">{txt.foldersContinue}</p> : null}
             <div className="ig-row">
               <ControlButton
@@ -2763,11 +2780,11 @@ export function ConnectDialog({
           </>
         );
       }
-      if (v.unavailable_sites?.length && v.state !== "completed")
+      if (leftOut && v.state !== "completed")
         body = (
           <>
             {body}
-            {unavailableSites}
+            {leftOut}
           </>
         );
       break;

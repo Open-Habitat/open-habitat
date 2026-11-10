@@ -1120,7 +1120,7 @@ func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
 				return base.RoundTrip(r)
 			})
 			l := &microsoftLogin{entry: m, env: microsoftEnv(t), address: "person@example.test"}
-			err := l.discover(ctx, "access-secret", mode != "missing-scope")
+			err := l.discover(ctx, "access-secret", map[string]bool{"Sites.ReadWrite.All": mode != "missing-scope"})
 			if mode == "missing-scope" {
 				// Without the sites grant OneDrive alone is discovered.
 				if err != nil || !strings.Contains(string(l.config), "[onedrive]") || strings.Contains(string(l.config), "[sp-") {
@@ -1178,7 +1178,7 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 				return &http.Response{StatusCode: code, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 			})
 			l := &microsoftLogin{entry: m, env: microsoftEnv(t), address: "person@example.test"}
-			err := l.discover(context.Background(), "access-secret", true)
+			err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true})
 			if status != 403 && status != 404 {
 				if err == nil {
 					t.Fatal("account-wide failure ignored")

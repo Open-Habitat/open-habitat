@@ -42,7 +42,9 @@ type attempt struct {
 	// measuring are the folders whose size FolderSizer is still counting.
 	measuring        map[string]bool
 	unavailableSites []string
-	room             Room
+	// teamsLeftOut says why Teams files are missing from the folder step.
+	teamsLeftOut string
+	room         Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
 	// syncing distinguishes the first native pass from a redirect exchange.
@@ -80,6 +82,7 @@ type attempt struct {
 type LoginView struct {
 	LoginPhase       string        `json:"login_phase,omitempty"`
 	UnavailableSites []string      `json:"unavailable_sites,omitempty"`
+	TeamsLeftOut     string        `json:"teams_left_out,omitempty"`
 	SchemaVersion    int           `json:"schema_version"`
 	State            string        `json:"state"`
 	AttemptID        string        `json:"attempt_id,omitempty"`
@@ -145,7 +148,7 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
 		v.LoginPhase = a.prompt.Flow
 	}
-	v.UnavailableSites = a.unavailableSites
+	v.UnavailableSites, v.TeamsLeftOut = a.unavailableSites, a.teamsLeftOut
 	if a.syncing {
 		v.Progress = a.progress
 	}
@@ -472,7 +475,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			attrs := append([]any{"provider", Microsoft, "outcome", "skipped", "reason", "site_unavailable"}, skipped.diagnostic()...)
 			c.log.Warn("integration_discovery", attrs...)
 		}
-		c.setAttempt(a, func() { a.unavailableSites = append([]string(nil), ms.unavailableSites...) })
+		c.setAttempt(a, func() {
+			a.unavailableSites, a.teamsLeftOut = append([]string(nil), ms.unavailableSites...), ms.teamsLeftOut
+		})
 	}
 	if err == nil && !validCatalogAddress(e.Provider(), address) {
 		err = ToolFailed

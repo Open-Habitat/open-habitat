@@ -563,7 +563,17 @@ const fi = {
   ),
   done: "Valmis",
   sitesUnavailable: (sites: string) =>
-    `Seuraavia SharePoint-sivustoja ei voitu avata, joten ne jätettiin pois: ${sites}. Jos tarvitset niitä, pyydä käyttöoikeus organisaatiosi ylläpitäjältä.`,
+    `Seuraavia SharePoint-sivustoja tai Teams-kanavia ei voitu avata, joten ne jätettiin pois: ${sites}. Jos tarvitset niitä, pyydä käyttöoikeus organisaatiosi ylläpitäjältä.`,
+  teamsLeftOut: {
+    not_granted:
+      "Teams-tiimien tiedostoja ei voitu hakea, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä tiimiluetteloasi. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
+    refused:
+      "Microsoft ei antanut tiimiluetteloasi, joten Teams-tiimien tiedostoja ei ole valittavana. Jos tarvitset niitä, pyydä apua organisaatiosi ylläpitäjältä.",
+    channels_not_granted:
+      "Tiimien tiedostot ovat valittavana, mutta yksityisten ja jaettujen kanavien omia tiedostoja ei, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä kanavia. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
+    too_many:
+      "Kaikki Teams-tiimisi eivät mahtuneet valittavaksi, joten osa jätettiin pois.",
+  },
   initialSync:
     "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon.",
   filesDiscovery: "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…",
@@ -1140,7 +1150,17 @@ export const integrationsText = catalog(
     ),
     done: "Done",
     sitesUnavailable: (sites) =>
-      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
+      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
+    teamsLeftOut: {
+      not_granted:
+        "Teams files could not be fetched because your organization has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
+      refused:
+        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organization's administrator for help.",
+      channels_not_granted:
+        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organization has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
+      too_many:
+        "Not all of your teams fit in the choice, so some were left out.",
+    },
     initialSync:
       "The first synchronization is running. This can take long if there are many files.",
     filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",
@@ -1209,6 +1229,16 @@ export const integrationsText = catalog(
     howDevice: (gen) =>
       `You sign in on the ${gen} page with a short code. With a work account, the organisation's administrator may have to approve the app first.`,
     sitesUnavailable: (sites) =>
-      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
+      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
+    teamsLeftOut: {
+      not_granted:
+        "Teams files could not be fetched because your organisation has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
+      refused:
+        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organisation's administrator for help.",
+      channels_not_granted:
+        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organisation has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
+      too_many:
+        "Not all of your teams fit in the choice, so some were left out.",
+    },
   },
 );

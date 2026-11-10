@@ -127,7 +127,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		}
 		scopes := microsoftGranted(granted)
 		l := &microsoftLogin{entry: m, env: env, app: app, address: address, token: []byte(n.token), granted: granted}
-		if err := l.discover(ctx, token.Access, scopes["Sites.Read.All"] || scopes["Sites.ReadWrite.All"]); err != nil {
+		if err := l.discover(ctx, token.Access, scopes); err != nil {
 			return err
 		}
 		all := len(roots) > 0

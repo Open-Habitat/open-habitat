@@ -1006,7 +1006,12 @@ step. By hand, in the Entra admin center:
 3. *API permissions › Add a permission › Microsoft Graph › Delegated
    permissions*: `openid`, `profile`, `User.Read`, `offline_access`,
    `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`,
-   `Mail.Send`, `Calendars.ReadWrite` and `Contacts.ReadWrite`.
+   `Mail.Send`, `Calendars.ReadWrite`, `Contacts.ReadWrite`,
+   `Team.ReadBasic.All` and `Channel.ReadBasic.All`. The last two only list
+   the person's teams and channels by name so their files can be found;
+   Microsoft does not require administrator consent for them, but this app's
+   sign-in asks for what the tenant consented to, so an existing
+   registration must have them added and consented before Teams files appear.
 4. *Grant admin consent for <organisation>* (Cloud Application Administrator,
    Application Administrator or Privileged Role Administrator), so nobody is
    asked to consent and the tenant's user-consent policy cannot block a person.
@@ -1047,16 +1052,26 @@ If consent is still missing when a person connects, the page shows an
 administrator link plainly. It goes to the tenant's own administrator:
 
 ```text
-https://login.microsoftonline.com/<TENANT_ID>/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=openid%20profile%20User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
+https://login.microsoftonline.com/<TENANT_ID>/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=openid%20profile%20User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite%20Team.ReadBasic.All%20Channel.ReadBasic.All
 ```
 
 A Conditional Access policy blocking device code is a different failure; an
 administrator must decide whether that flow is allowed. Do not bypass policy.
 
 Folder choice selects whole OneDrive roots and whole document libraries from
-**followed SharePoint sites**, not every site in the tenant or individual
-subfolders. Follow the desired site in Microsoft first, then reconnect to
-rediscover libraries. Re-login offers folder choice again, with the current
+**followed SharePoint sites** and from the **Teams the person has joined**
+(each team's site, and the own site of each private or shared channel they
+belong to; a standard channel's files are a folder of its team's library),
+not every site in the tenant or individual subfolders. A site reached both
+ways is offered once, named as followed. To add another site, follow it in
+Microsoft first, then reconnect to rediscover libraries. Without
+`Team.ReadBasic.All` the folder step says that Teams files were left out and
+why; without `Channel.ReadBasic.All` it offers the teams' libraries and says
+that private and shared channels were left out. Each library repeats the
+sign-in's token in the account's rclone config, whose size is bounded, so a
+person in very many teams gets the teams that fit, whole, and is told the
+rest were left out. A shared channel the person belongs to without being a
+member of a team that hosts it is not discovered. Re-login offers folder choice again, with the current
 selection preselected; keeping a healthy pair does not reinitialize its bisync
 listings. Deselecting stops that pair without removing local files. Existing
 local roots stay stable when a cloud site/library is renamed. Discovery refuses truncated lists rather than silently
@@ -1092,6 +1107,11 @@ delegated permissions:
 | Kaikki paitsi postin lähetys (nosend) | `microsoft_nosend` | `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`, `Calendars.ReadWrite`, `Contacts.ReadWrite` |
 | Luonnokset, muu vain luku (drafts) | `microsoft_drafts` | `Files.Read.All`, `Sites.Read.All`, `Mail.ReadWrite`, `Calendars.Read`, `Contacts.Read` |
 | Vain luku (read) | `microsoft_read` | `Files.Read.All`, `Sites.Read.All`, `Mail.Read`, `Calendars.Read`, `Contacts.Read` |
+
+Every level's application also has `Team.ReadBasic.All` and
+`Channel.ReadBasic.All`, beside `openid`, `profile`, `offline_access` and
+`User.Read`: they read team and channel names only, and the files are read
+or synced through the level's own files and sites permissions.
 
 The nosend level is the full level without `Mail.Send`: mail is read,
 organised and drafted but never sent. Graph cannot change a calendar without

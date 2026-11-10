@@ -60,11 +60,13 @@ var microsoftLevels = []Level{LevelFull, LevelNoSend, LevelDrafts, LevelRead}
 // without Mail.Send, the one permission that sends mail. Drafts sends
 // nothing: mail is drafted, calendars and files only read, since an event
 // sends invitations and a file grant can create a public sharing link.
+// Every level lists the person's teams and channels by name, which only
+// finds their files and changes nothing.
 var microsoftLevelScopes = map[Level]string{
-	LevelFull:   microsoftScopes + " " + microsoftMCPScopes,
-	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite",
-	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read",
-	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read",
+	LevelFull:   microsoftScopes + " " + microsoftMCPScopes + " " + microsoftTeamsScopes,
+	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite " + microsoftTeamsScopes,
+	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read " + microsoftTeamsScopes,
+	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read " + microsoftTeamsScopes,
 }
 
 // microsoftAccountApp is the configured application an account's native
@@ -102,6 +104,11 @@ const microsoftDir = ".config/rclone/open-habitat-microsoft"
 const microsoftMCPDir = ".config/ms-365-mcp-server/open-habitat"
 const microsoftScopes = "openid profile User.Read offline_access Files.ReadWrite.All Sites.ReadWrite.All"
 const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
+
+// microsoftTeamsScopes find the libraries of the person's teams and
+// channels (microsoft_files_linux.go); their files are read through the
+// files and sites grants.
+const microsoftTeamsScopes = "Team.ReadBasic.All Channel.ReadBasic.All"
 
 // microsoftRequest is what a sign-in asks of the tenant. microsoftScopes and
 // microsoftMCPScopes are the full level the administrator consents to, but a
@@ -415,6 +422,8 @@ type microsoftLogin struct {
 	accepted         func(string) error
 	unavailableSites []string
 	skippedSites     []microsoftDiscoveryError
+	// teamsLeftOut says why Teams files are missing from the folder step.
+	teamsLeftOut     string
 	entry            *microsoft
 	env              Env
 	app              MicrosoftApp
@@ -602,7 +611,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	phase = "graph_discovery"
 	if scopes["Files.ReadWrite.All"] || scopes["Files.Read.All"] {
 		// A read files grant mirrors its roots one way (level_linux.go).
-		if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"] || scopes["Sites.Read.All"]); err != nil {
+		if err := l.discover(ctx, token.Access, scopes); err != nil {
 			return "", err
 		}
 	} else {

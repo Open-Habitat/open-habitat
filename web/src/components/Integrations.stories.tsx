@@ -657,6 +657,31 @@ export const UnavailableSharePointSite: Story = {
     },
   }),
 };
+export const TeamsFoldersAndLeftOut: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: {
+      ...folders,
+      provider: "microsoft",
+      unavailable_sites: ["Esimerkkitiimi · Kielletty"],
+      teams_left_out: "too_many",
+      directory: "~/cloud/onedrive/person@example.test",
+      folders: [
+        { id: "onedrive", name: "OneDrive", suggested: true },
+        {
+          id: "sp-000000000000000000000001",
+          name: "Teams · Esimerkkitiimi · Asiakirjat",
+          suggested: false,
+        },
+        {
+          id: "sp-000000000000000000000002",
+          name: "Teams · Esimerkkitiimi · Suunnittelu",
+          suggested: false,
+        },
+      ],
+    },
+  }),
+};
 export const InventoryExceedsQuota: Story = {
   render: dialog(google, {
     stage: "login",

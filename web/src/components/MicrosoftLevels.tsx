@@ -327,7 +327,10 @@ const perms: Record<MsLevel, string[]> = {
     "Contacts.Read",
   ],
 };
-const permsOf = (l: MsLevel) => [...identity, ...perms[l]];
+// Every level lists the person's teams and channels by name, so their files
+// can be found (microsoftTeamsScopes in the daemon).
+const teams = ["Team.ReadBasic.All", "Channel.ReadBasic.All"];
+const permsOf = (l: MsLevel) => [...identity, ...perms[l], ...teams];
 // Entra's own descriptions, as its permission list shows them on hover.
 const says: Record<string, string> = {
   openid: "Sign users in",
@@ -344,6 +347,8 @@ const says: Record<string, string> = {
   "Calendars.Read": "Read user calendars",
   "Contacts.ReadWrite": "Have full access to user contacts",
   "Contacts.Read": "Read user contacts",
+  "Team.ReadBasic.All": "Read the names and descriptions of teams",
+  "Channel.ReadBasic.All": "Read the names and descriptions of channels",
 };
 // The redirect the device-code sign-in names (microsoftConsent in the daemon).
 const redirect = "https://login.microsoftonline.com/common/oauth2/nativeclient";

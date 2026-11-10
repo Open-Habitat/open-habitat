@@ -346,7 +346,7 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 		os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), reply, 0600)
 		return m.CheckGrant(context.Background(), env, address)
 	}
-	services, grant := verify(microsoftReadGrant)
+	services, grant := verify(microsoftReadGrant + " " + microsoftTeamsScopes)
 	if m.Level(env, address, services) != LevelRead || grant == nil || len(grant.NotGranted) != 0 {
 		t.Fatal(services, grant)
 	}
@@ -418,7 +418,7 @@ func TestMicrosoftNoSendLevelIsItsApplicationAndNeverSends(t *testing.T) {
 	if m.Misaligned(env, address) {
 		t.Fatal("the no-send level's application read as another application")
 	}
-	reply, _ := json.Marshal(map[string]any{"state": "ok", "scopes": strings.Fields(microsoftNoSendGrant)})
+	reply, _ := json.Marshal(map[string]any{"state": "ok", "scopes": strings.Fields(microsoftNoSendGrant + " " + microsoftTeamsScopes)})
 	os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), reply, 0600)
 	services, grant := m.CheckGrant(context.Background(), env, address)
 	if m.Level(env, address, services) != LevelNoSend || grant == nil || len(grant.NotGranted) != 0 {

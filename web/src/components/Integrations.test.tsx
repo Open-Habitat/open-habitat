@@ -1142,3 +1142,83 @@ describe("account levels", () => {
     expect(onChangeLevel).toHaveBeenCalledWith(full);
   });
 });
+
+describe("Microsoft folder step", () => {
+  const microsoft: Provider = {
+    id: "microsoft",
+    available: true,
+    login: "device_code",
+    services: ["onedrive", "sharepoint", "mail", "calendar", "contacts"],
+  };
+  const choose = (extra: Partial<LoginView>) =>
+    render(
+      <ConnectDialog
+        provider={microsoft}
+        stage={{
+          stage: "login",
+          view: {
+            schema_version: 1,
+            state: "choose_folders",
+            attempt_id: "a1",
+            provider: "microsoft",
+            relogin: false,
+            address: "person@example.test",
+            directory: "~/cloud/onedrive/person@example.test",
+            free_bytes: 10 * 1024 ** 3,
+            folders: [
+              { id: "onedrive", name: "OneDrive", suggested: true },
+              {
+                id: "sp-000000000000000000000001",
+                name: "Teams · Esimerkkitiimi · Asiakirjat",
+                suggested: false,
+              },
+              {
+                id: "sp-000000000000000000000002",
+                name: "Teams · Esimerkkitiimi · Suunnittelu",
+                suggested: false,
+              },
+            ],
+            ...extra,
+          },
+        }}
+        onContinue={noop}
+        onPassword={noop}
+        onPaste={noop}
+        onFolders={noop}
+        onRestart={noop}
+        onClose={noop}
+      />,
+    );
+
+  it("offers team and channel libraries by the names people know", () => {
+    const view = choose({});
+    expect(
+      view.getByTestId("integration-folder-sp-000000000000000000000002")
+        .textContent,
+    ).toContain("Teams · Esimerkkitiimi · Suunnittelu");
+    expect(view.queryByTestId("integration-teams-left-out")).toBeNull();
+  });
+
+  it("says why Teams files are missing instead of leaving them out silently", () => {
+    const view = choose({
+      teams_left_out: "not_granted",
+      folders: [{ id: "onedrive", name: "OneDrive", suggested: true }],
+    });
+    expect(
+      view.getByTestId("integration-teams-left-out").textContent,
+    ).toContain("tiimiluettelo");
+  });
+
+  it("names unreachable channels beside a partial team list", () => {
+    const view = choose({
+      teams_left_out: "channels_not_granted",
+      unavailable_sites: ["Esimerkkitiimi · Kielletty"],
+    });
+    expect(
+      view.getByTestId("integration-unavailable-sites").textContent,
+    ).toContain("Esimerkkitiimi · Kielletty");
+    expect(
+      view.getByTestId("integration-teams-left-out").textContent,
+    ).toContain("kanavien");
+  });
+});

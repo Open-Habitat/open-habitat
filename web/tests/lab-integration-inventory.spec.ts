@@ -26,6 +26,7 @@ for (const width of [1280, 390]) {
         address: "person@example.test",
         relogin: false,
         unavailable_sites: ["Unavailable team"],
+        teams_left_out: "channels_not_granted",
         ...(phase === "choose_folders"
           ? {
               directory: "~/cloud/onedrive/person@example.test",
@@ -33,7 +34,11 @@ for (const width of [1280, 390]) {
               quota_bytes: 50 * 1024 ** 3,
               folders: [
                 { id: "onedrive", name: "OneDrive", suggested: true },
-                { id: "sp_1", name: "SharePoint · Team", suggested: false },
+                {
+                  id: "sp_1",
+                  name: "Teams · Esimerkkitiimi · Asiakirjat",
+                  suggested: false,
+                },
               ],
             }
           : phase === "completing"
@@ -122,6 +127,9 @@ for (const width of [1280, 390]) {
       await expect(
         dialog.getByTestId("integration-unavailable-sites"),
       ).toContainText("Unavailable team"); // native display name, not UI wording
+      await expect(
+        dialog.getByTestId("integration-teams-left-out"),
+      ).toBeVisible();
       const start = dialog.getByTestId("integration-sync-start");
       const own = dialog
         .getByTestId("integration-folder-onedrive")

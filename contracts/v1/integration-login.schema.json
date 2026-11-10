@@ -27,6 +27,7 @@
       "suggested": {"type": "boolean", "description": "Chosen in advance. A suggestion whose size is known not to fit the home's free room is not made."}
     }}},
     "unavailable_sites": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"}},
+    "teams_left_out": {"description": "Microsoft only: why the folder step offers no or only some Teams files. not_granted: the organisation has not granted the application the team list (Team.ReadBasic.All), so no team's files are offered; refused: Microsoft refused the team list; channels_not_granted: teams' libraries are offered but not private or shared channels' own sites (Channel.ReadBasic.All missing); too_many: the person's teams did not all fit, so some are left out.", "enum": ["not_granted", "refused", "channels_not_granted", "too_many"]},
     "directory": {"$ref": "integrations.schema.json#/$defs/home_directory"},
     "free_bytes": {"description": "Room left under the home quota (or on the filesystem when no quota applies) when the folders were listed.", "type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "quota_bytes": {"description": "The home quota, when one applies.", "type": "integer", "minimum": 1, "maximum": 9007199254740991},

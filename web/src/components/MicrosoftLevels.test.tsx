@@ -248,6 +248,9 @@ it("shows the permissions of each level, the no-send one without Mail.Send", () 
   expect(names).toContain("Mail.ReadWrite");
   expect(names).not.toContain("Mail.Send");
   expect(names).not.toContain("User.Read");
+  // Every level finds the person's Teams files.
+  expect(names).toContain("Team.ReadBasic.All");
+  expect(names).toContain("Channel.ReadBasic.All");
 });
 
 it("asks the tenant in the first application when nothing is set, and keeps a refusal's input", async () => {
