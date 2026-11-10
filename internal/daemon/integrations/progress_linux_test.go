@@ -422,6 +422,64 @@ func TestRemovalDuringFirstPassStopsIt(t *testing.T) {
 	}
 }
 
+// lingeringPassEntry's count outlives its cancellation until the test lets
+// it end, as a native process may between SIGTERM and its exit.
+type lingeringPassEntry struct {
+	syncScriptEntry
+	started, release chan struct{}
+}
+
+func (e lingeringPassEntry) MeasureFolders(context.Context, Env, string, []string) (uint64, error) {
+	close(e.started)
+	<-e.release
+	return 0, Cancelled
+}
+
+// A cancelled first pass reads as ended before its native work has. Removing
+// the account then still waits for that work, rather than deleting the
+// configuration and folder under it.
+func TestRemovalAfterCancelWaitsForThePass(t *testing.T) {
+	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true, folders: []Folder{{ID: "all", Name: "Root", Bytes: 1, Suggested: true}}}
+	e := lingeringPassEntry{syncScriptEntry{s}, make(chan struct{}), make(chan struct{})}
+	c := testCatalog(t, newHome(t), []Entry{e})
+	c.quota = func() Room { return Room{OK: true, Free: 1 << 40} }
+	h := c.Handler(allow)
+	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox"})
+	id := waitState(t, h, ownerA, "open_url")["attempt_id"]
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+	waitState(t, h, ownerA, "choose_folders")
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
+	<-e.started
+	if code, _, _ := call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id}); code != 200 {
+		t.Fatal("cancel", code)
+	}
+	removed := make(chan int, 1)
+	go func() {
+		code, _, _ := call(t, h, "DELETE", AccountsPath, ownerA, map[string]any{"action": "remove", "provider": "dropbox", "address": "new@example.test", "delete_directories": false})
+		removed <- code
+	}()
+	select {
+	case code := <-removed:
+		t.Fatal("removal did not wait for the pass", code)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if _, err := os.Stat(filepath.Join(s.dir(c.env), "new@example.test")); err != nil {
+		t.Fatal("login removed under the running pass", err)
+	}
+	close(e.release)
+	select {
+	case code := <-removed:
+		if code != 200 {
+			t.Fatal("removal after the pass", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("removal never finished")
+	}
+	if _, err := os.Stat(filepath.Join(s.dir(c.env), "new@example.test")); !os.IsNotExist(err) {
+		t.Fatal("removed login came back", err)
+	}
+}
+
 func TestUnknownFolderSizeWithoutMeasurerCannotCopy(t *testing.T) {
 	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true, folders: []Folder{{ID: "all", Name: "Root", UnknownSize: true, Suggested: true}}}
 	e := syncScriptEntry{s} // deliberately has no MeasureFolders implementation

@@ -409,29 +409,32 @@ func (c *Catalog) attemptID() string {
 // abandonFor ends a live attempt that is signing in provider's address, when
 // the person removes that account. The caller holds c.write, which the
 // attempt's final step also takes, so the attempt cannot complete after the
-// removal and bring the account back. A resumed first pass runs without
-// c.write; abandonFor returns once its native process has exited, or false
-// when it did not exit in time.
+// removal and bring the account back. A first pass, resumed or chosen, runs
+// without c.write; abandonFor returns once its native process has exited, or
+// false when it did not exit in time. That holds even when the attempt has
+// already ended, since a cancellation ends it before the process exits.
 func (c *Catalog) abandonFor(p Provider, address string) bool {
 	c.relay.mu.Lock()
 	a := c.relay.attempts[p]
 	// Before identity is known, any same-provider removal could be the grant
 	// the attempt is about to publish. Fence it rather than resurrect a login.
-	if a == nil || a.provider != p || (a.address != "" && a.address != address) || finished(a.state) {
+	if a == nil || a.provider != p || (a.address != "" && a.address != address) {
 		c.relay.mu.Unlock()
 		return true
 	}
-	a.state, a.failure, a.discard = "failed", Cancelled, true
-	pass := a.pass
+	ended := a.passEnded()
+	running := a.passRunning()
+	if finished(a.state) && !running {
+		c.relay.mu.Unlock()
+		return true
+	}
+	if !finished(a.state) {
+		a.state, a.failure = "failed", Cancelled
+	}
+	a.discard = true
 	c.relay.mu.Unlock()
 	a.stop()
-	// A chosen first pass that has started runs without c.write too; it
-	// closes pass without taking c.write once its native process has ended.
-	ended := pass
-	if a.resume {
-		ended = a.done
-	}
-	if ended == nil {
+	if !running {
 		return true
 	}
 	select {
@@ -439,6 +442,32 @@ func (c *Catalog) abandonFor(p Provider, address string) bool {
 		return true
 	case <-time.After(15 * time.Second):
 		return false
+	}
+}
+
+// passEnded is closed once the attempt's first pass, which runs without
+// c.write, has ended its native work: a chosen pass closes pass and a resumed
+// one done, neither taking c.write. Nil when no such pass has started.
+func (a *attempt) passEnded() chan struct{} {
+	if a.resume {
+		return a.done
+	}
+	return a.pass
+}
+
+// passRunning reports whether a first pass's native work may still run,
+// which can outlast the attempt's own end after a cancellation. The caller
+// holds relay.mu.
+func (a *attempt) passRunning() bool {
+	ended := a.passEnded()
+	if ended == nil {
+		return false
+	}
+	select {
+	case <-ended:
+		return false
+	default:
+		return true
 	}
 }
 

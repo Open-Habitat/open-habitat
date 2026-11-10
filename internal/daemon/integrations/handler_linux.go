@@ -380,7 +380,7 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 	// behind it.
 	c.relay.mu.Lock()
 	a := c.relay.attempts[e.Provider()]
-	sibling := a != nil && (a.resume || a.pass != nil) && !finished(a.state) && a.address != address
+	sibling := a != nil && a.passRunning() && a.address != address
 	c.relay.mu.Unlock()
 	if sibling {
 		fail(w, 503, "native_unavailable")
