@@ -1,13 +1,14 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-10
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: gate-load-flakes
 lane_seq: 3
 preparation: ready
+closed: 2026-11-10
 ---
 
 # Find every load-sensitive browser case in one sweep instead of one gate at a time
@@ -37,8 +38,8 @@ gate).
 
 ## Acceptance Criteria
 
-- [ ] One list of all load-sensitive cases with counts, grouped by mechanism, product vs spec, and a fix per group.
-- [ ] A recommendation for keeping the class caught; no product code changed in this unit.
+- [x] One list of all load-sensitive cases with counts, grouped by mechanism, product vs spec, and a fix per group.
+- [x] A recommendation for keeping the class caught; no product code changed in this unit.
 
 ## Jari 2.11.: why only under load, and find them all at once
 
@@ -463,3 +464,9 @@ OH_CPU_THROTTLE=6 OH_TIMEOUT_SCALE=4 OH_PORT_BASE=10900 OH_BROWSER_WORKERS=6 \
 The second needs host load beside it (eight `timeout 600 sh -c 'while :;
 do :; done'` loops). Raw logs, JSON reports and error contexts of every run
 are on Birch under `/var/tmp/oh-sweep/` (disposable).
+
+## Resolution
+
+### 2026-11-10T06:00:46Z · @issuectl
+
+Completion and evidence are in result.md: existing product/spec fixes verified against history, focused 60 ms jitter enabled, original focus cases exercised, and three newly observed unchanged-spec detector failures preserved as unlaned intakes. No all-green suite claim.
