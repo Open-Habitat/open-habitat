@@ -141,8 +141,9 @@ that runs it.
 `PATH` export to use, for machines whose Go is missing or too old.
 `check-generated.sh` fails when `internal/contracts/` and `web/src/contracts/`
 have drifted from `contracts/v1/`. `validate-project-view.py` checks the
-structure of `docs/` and that local Markdown links in living documents
-resolve; `validate-contracts.py` is the offline contract check
+structure of `docs/`, that local Markdown links in living documents
+resolve, and that `history/` stays ignored and untracked, because Taskfleet
+copies each worker's possibly private brief there; `validate-contracts.py` is the offline contract check
 (`contracts/AGENTS.md`). `prune-closed.py` and `from-history.sh` carry out
 the root `AGENTS.md` rule that finished working material lives in history:
 the first lists or removes closed issues nothing living names, the second

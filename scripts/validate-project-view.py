@@ -6,6 +6,7 @@ and that every local Markdown link in the repository's living documents
 resolves: tracked Markdown outside issues/, plus the files of open issues. A
 reference into git history is written as a plain path, not a link, and
 instruction files name no issue at all (root AGENTS.md, "Code is the record").
+history/ must stay ignored and untracked, because worker briefs land there.
 """
 
 from __future__ import annotations
@@ -176,6 +177,22 @@ def main() -> int:
     for page in instructions():
         for match in ISSUE_PATH.finditer(page.read_text(encoding="utf-8", errors="ignore")):
             fail(errors, f"{page.relative_to(ROOT)}: instructions name no issue: {match.group(0)}")
+
+    # Taskfleet copies each worker's brief, which may name private context, to
+    # history/.worktree/ inside the checkout. The ignore rule keeps it out of
+    # ordinary staging; a tracked history/ path means it was forced past that.
+    tracked_history = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "--cached", "-z", "--", "history"],
+        capture_output=True, check=True,
+    ).stdout.decode().split("\0")
+    for name in filter(None, tracked_history):
+        fail(errors, f"{name}: history/ is agent scratch and must stay untracked")
+    probe = subprocess.run(
+        ["git", "-C", str(ROOT), "check-ignore", "-q", "--no-index", "history/.worktree/probe.md"],
+        capture_output=True,
+    )
+    if probe.returncode != 0:
+        fail(errors, ".gitignore must ignore history/ (worker briefs land in history/.worktree/)")
 
     adr_ids: dict[str, str] = {}
     decisions_index = SITE / "decisions" / "index.md"
