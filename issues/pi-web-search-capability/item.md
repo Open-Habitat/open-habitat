@@ -3,7 +3,7 @@ created: 2026-11-10
 updated: 2026-11-10
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, observed in a research worker
@@ -11,6 +11,8 @@ source_ref: conversation:jari-2026-11-10/web-search
 lane: web-search
 lane_seq: 1
 preparation: pending
+closed: 2026-11-10
+closed_by: conductor
 ---
 
 # Agents on Pi have no web search; offer a search capability in the runtime
@@ -61,3 +63,13 @@ Jari 10.11.: start the research step: how Habitat brings web search (and reading
 ### 2026-11-10T13:04:46Z · @jari
 
 Jari 10.11.: the goal is web search in every Open Habitat installation (the product), not a Alder-specific setup.
+
+### 2026-11-10T13:11:59Z · @jari
+
+Jari 10.11. answers to research.md's questions: (1) yes, the gateway may give people an administrator's search key (ADR 0030 copy pattern), a personal key takes precedence; (2) Brave default, Staan as the EU option once its coverage is verified; (3) yes, the subscription's native search is the zero-setup default, and Claude must work too (he does not accept that it fails on the Claude subscription); (4) the headless browser for JavaScript pages for everyone (core runtime); (5) search must also work on Alder; (6) own small extension, built on existing community extensions as the base.
+
+## Resolution
+
+### 2026-11-10T13:11:59Z · @conductor
+
+Research done; Jari's decisions 10.11. carried by web-search-native, web-page-reader, proto-web-search-key, web-search-alder.
