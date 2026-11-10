@@ -66,7 +66,7 @@ for (const width of [1280, 390]) {
           },
         }),
       );
-      await page.route("**/api/v1/integrations/login", (route) => {
+      await page.route("**/api/v1/integrations/login*", (route) => {
         if (route.request().method() === "POST") started = true;
         return route.fulfill({
           json: started ? login() : { schema_version: 1, state: "none" },

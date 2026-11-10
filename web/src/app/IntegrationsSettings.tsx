@@ -323,7 +323,7 @@ export function IntegrationsSettings({
     if (!live(view) && !counting) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      void readLogin(controller.signal)
+      void readLogin(controller.signal, view?.provider)
         .then((next) => {
           if (controller.signal.aborted) return;
           setFlow((f) =>
@@ -663,7 +663,7 @@ export function IntegrationsSettings({
   const stopSync = async (account: Account) => {
     if (!csrf) return;
     try {
-      const current = await readLogin();
+      const current = await readLogin(undefined, account.provider);
       if (
         current.provider !== account.provider ||
         current.address !== account.address ||

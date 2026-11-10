@@ -104,7 +104,7 @@ for (const width of [1280, 390]) {
           },
         }),
       );
-      await page.route("**/api/v1/integrations/login", (route) => {
+      await page.route("**/api/v1/integrations/login*", (route) => {
         if (route.request().method() === "POST") active = true;
         if (route.request().method() === "PUT") {
           choices.push(route.request().postDataJSON().folders);

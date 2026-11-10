@@ -348,7 +348,7 @@ it("does not carry a refused paste into the daemon's later failure", async () =>
           skill: "current",
           accounts: [],
         });
-      if (url !== "/api/v1/integrations/login")
+      if (url.split("?")[0] !== "/api/v1/integrations/login")
         return new Response("", { status: 404 });
       if (init?.method === "PUT") {
         state = "failed";
@@ -406,4 +406,93 @@ it("does not carry a refused paste into the daemon's later failure", async () =>
     { timeout: 4000 },
   );
   expect(failed.textContent).toContain("Kirjautuminen ei onnistunut");
+});
+
+// Each provider has its own sign-in at the host. A dialog reads only its
+// own provider's attempt, so another provider's first sync, which is the
+// session's latest attempt, never stands in for it or stops its polling.
+it("polls only its own provider's sign-in while another first sync runs", async () => {
+  const attempt = "20261110T080000.000000002";
+  let pasted = false;
+  const reads: string[] = [];
+  const microsoft = {
+    schema_version: 1,
+    state: "completing",
+    provider: "microsoft",
+    attempt_id: "20261110T090000.000000001",
+    address: "person@work.example.test",
+    progress: { service: "onedrive", phase: "transferring" },
+  };
+  const dropbox = (state: string) => ({
+    schema_version: 1,
+    state,
+    provider: "dropbox",
+    attempt_id: attempt,
+    ...(state === "open_url"
+      ? {
+          authorization_url: "https://www.dropbox.com/oauth2/authorize",
+          redirect_prefix: "http://127.0.0.1:53682/",
+          expires_at: "2099-01-01T00:00:00Z",
+        }
+      : state === "completed"
+        ? { address: "person@example.test" }
+        : {}),
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations")
+        return json({
+          schema_version: 1,
+          providers: [
+            {
+              id: "dropbox",
+              available: true,
+              login: "pasted_redirect",
+              services: ["dropbox"],
+            },
+          ],
+          skill: "current",
+          accounts: [],
+        });
+      if (url.split("?")[0] !== "/api/v1/integrations/login")
+        return new Response("", { status: 404 });
+      if (init?.method === "POST") return json(dropbox("open_url"));
+      if (init?.method === "PUT") {
+        pasted = true;
+        return json(dropbox("completing"));
+      }
+      reads.push(url);
+      if (url.endsWith("?provider=dropbox"))
+        return json(dropbox(pasted ? "completed" : "open_url"));
+      return json(microsoft);
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  const tile = await screen.findByTestId("integration-tile-dropbox");
+  await userEvent.click(within(tile).getByTestId("integration-connect-open"));
+  const dialog = await screen.findByTestId("integration-dialog");
+  const go = within(dialog).queryByTestId("integration-continue");
+  if (go) await userEvent.click(go);
+  await userEvent.click(
+    await within(dialog).findByTestId("integration-provider-link"),
+  );
+  await userEvent.type(
+    within(dialog).getByTestId("integration-redirect-input"),
+    "http://127.0.0.1:53682/?code=x&state=y",
+  );
+  await userEvent.keyboard("{Enter}");
+  const done = await within(dialog).findByTestId(
+    "integration-connected",
+    {},
+    { timeout: 4000 },
+  );
+  expect(done.textContent).toContain("person@example.test");
+  // The page's one unscoped read resumes a sign-in after a reload; every
+  // poll of the open dialog names its provider.
+  expect(reads.slice(1).length).toBeGreaterThan(0);
+  expect(reads.slice(1).every((r) => r.endsWith("?provider=dropbox"))).toBe(
+    true,
+  );
 });

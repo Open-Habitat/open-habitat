@@ -295,8 +295,14 @@ export async function readIntegrations(
   return readReply(response, validList, 256 * 1024);
 }
 
-export async function readLogin(signal?: AbortSignal): Promise<LoginView> {
-  const response = await fetch("/api/v1/integrations/login", {
+/** The session's sign-in for provider, or its latest one without. Each
+ * provider has its own attempt, so a dialog reads only its own. */
+export async function readLogin(
+  signal?: AbortSignal,
+  provider?: ProviderId,
+): Promise<LoginView> {
+  const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+  const response = await fetch(`/api/v1/integrations/login${query}`, {
     credentials: "same-origin",
     cache: "no-store",
     signal,

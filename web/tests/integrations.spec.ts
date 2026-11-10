@@ -315,7 +315,7 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   await expect(dialog.getByTestId("integration-steps")).toHaveCount(0);
   // One lost poll does not strand the dialog.
   let polls = 0;
-  await page.route("**/api/v1/integrations/login", async (route) => {
+  await page.route("**/api/v1/integrations/login*", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     if (polls++ === 0) return route.fulfill({ status: 503 });
     const response = await route.fetch();
@@ -339,7 +339,7 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   expect(audit.violations).toEqual([]);
   await fixture(page, "action=approve");
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
-  await page.unroute("**/api/v1/integrations/login");
+  await page.unroute("**/api/v1/integrations/login*");
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
   const choice = await (
     await page.request.get("/api/v1/integrations/login")
@@ -362,7 +362,7 @@ test("a device code relays to the browser, folders fit the quota, and sync start
       total_files: 10,
     },
   };
-  await page.route("**/api/v1/integrations/login", async (route) => {
+  await page.route("**/api/v1/integrations/login*", async (route) => {
     if (route.request().method() === "PUT") await route.fetch();
     else if (route.request().method() !== "GET") return route.continue();
     return route.fulfill({ json: syncing });
@@ -389,7 +389,7 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   // Closing is now safe: the initial pass belongs to the daemon, not the dialog.
   await dialog.getByTestId("integration-sync-background").click();
   await expect(dialog).toHaveCount(0);
-  await page.unroute("**/api/v1/integrations/login");
+  await page.unroute("**/api/v1/integrations/login*");
   expect(cancellations).toEqual([]);
   const card = page
     .getByRole("article")
