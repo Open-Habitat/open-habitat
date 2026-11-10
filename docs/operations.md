@@ -692,8 +692,11 @@ only to the site, never to a rendering service. A read is bounded:
 - 25 MB of transfers;
 - two reads at a time per agent process.
 
-A public page's requests to loopback and private addresses are refused by
-Chromium's own Local Network Access check.
+Every connection of a read goes through a proxy of that read inside the
+agent's process. The proxy refuses loopback, private, link-local and CGNAT
+(tailnet) addresses unless the agent's own URL is such an address, and
+WebRTC is kept to the proxy. A page cannot reach services on the host or the
+person's network by redirect, script, worker or DNS rebinding.
 
 Chromium runs only with its sandbox. On Ubuntu 24.04 that needs the AppArmor
 profile `/etc/apparmor.d/open-habitat-headless-shell`, which grants user

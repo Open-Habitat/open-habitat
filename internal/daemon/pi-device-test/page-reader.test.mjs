@@ -1,13 +1,16 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import dgram from 'node:dgram';
+import net from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, rm, mkdir, copyFile, symlink, readFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { readPage, headlessShell } from '../../../runtime/core/page-reader.mjs';
+import { readPage, headlessShell, launchArgs, egress, socketOwner, localAddress } from '../../../runtime/core/page-reader.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const cli = resolve(here, 'node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js');
@@ -50,25 +53,49 @@ const pages = {
   // The page keeps downloading past the transfer bound.
   '/big': (req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<p>Big page</p><script>for (let i = 0; i < 8; i++) fetch("/blob?" + i);</script>'); },
   '/blob': (req, res) => { res.writeHead(200, { 'content-type': 'application/octet-stream' }); res.end(Buffer.alloc(5 * 1024 * 1024, 7)); },
-  // A public page that reaches for a service on loopback.
+  // A public page that reaches for a service on this host, in every way a
+  // page can: subresources, a redirect, a script navigation, a worker.
   '/public': (req, res) => {
     res.writeHead(200, { 'content-type': 'text/html' });
-    res.end(`<p id=x>waiting</p><img src="http://127.0.0.1:${localPort}/img"><script>fetch('http://127.0.0.1:${localPort}/f').then(() => x.textContent = 'reached', () => x.textContent = 'refused')</script>`);
+    res.end(`<p id=x>waiting</p><img src="${service}/img"><script>fetch('${service}/f').then(() => x.textContent = 'reached', () => x.textContent = 'refused')</script>`);
+  },
+  // WebRTC's ICE asks a STUN server on this host over UDP.
+  '/webrtc': (req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(`<p id=x>rtc</p><script>const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:127.0.0.2:${stunPort}' }] }); pc.createDataChannel('d'); pc.createOffer().then(o => pc.setLocalDescription(o));</script>`);
+  },
+  '/redirect': (req, res) => { res.writeHead(302, { location: `${service}/via-redirect` }); res.end(); },
+  '/navigate': (req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end(`<p>Leaving</p><script>location.href = '${service}/via-script'</script>`); },
+  '/worker': (req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(`<p>Worker page</p><script>new Worker(URL.createObjectURL(new Blob(["(async () => { await fetch('${service}/from-worker').catch(() => {}); for (let i = 0; i < 8; i++) await (await fetch('${base}/blob?' + i)).arrayBuffer(); })()"])));</script>`);
+  },
+  // Page-controlled metadata far beyond any sensible size.
+  '/huge-title': (req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(`<p>Small page</p><script>document.title = 'T'.repeat(300000); const a = document.createElement('a'); a.href = '/' + 'x'.repeat(300000); a.textContent = 'y'.repeat(300000); document.body.append(a);</script>`);
   },
 };
 const server = http.createServer((req, res) => (pages[new URL(req.url, 'http://x').pathname] ?? ((q, r) => { r.writeHead(404); r.end('missing'); }))(req, res));
-const local = http.createServer((req, res) => { localHits++; res.setHeader('access-control-allow-origin', '*'); res.end('secret'); });
+const local = http.createServer((req, res) => { localHits++; res.setHeader('access-control-allow-origin', '*'); res.writeHead(200, { 'content-type': 'text/html' }); res.end('<p>LOCAL-SECRET</p>'); });
 let base;
-let localPort;
+let service;
+let stunPort;
+let stunPackets = 0;
+const stun = dgram.createSocket('udp4').on('message', () => { stunPackets++; });
 let browser;
+// The test's sites all live on loopback; here only 127.0.0.2 counts as this
+// host, so the pages on 127.0.0.1 stand for public sites.
+const isLocal = ip => ip === '127.0.0.2';
 
 before(async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
-  await new Promise(r => local.listen(0, '127.0.0.1', r));
+  await new Promise(r => local.listen(0, '127.0.0.2', r));
+  await new Promise(r => stun.bind(0, '127.0.0.2', r));
+  stunPort = stun.address().port;
   base = `http://127.0.0.1:${server.address().port}`;
-  localPort = local.address().port;
-  // Only the test page's own port is public; the service stays on loopback.
-  browser = await chromium.launch({ executablePath: shell, args: [`--ip-address-space-overrides=127.0.0.1:${server.address().port}=public`] });
+  service = `http://127.0.0.2:${local.address().port}`;
+  browser = await chromium.launch({ executablePath: shell, args: launchArgs });
 });
 
 after(async () => {
@@ -76,9 +103,10 @@ after(async () => {
   await browser?.close();
   server.close();
   local.close();
+  stun.close();
 });
 
-const read = (path, params = {}) => readPage(browser, sources, { url: base + path, ...params });
+const read = (path, params = {}, signal) => readPage(browser, sources, { url: base + path, ...params }, signal, { isLocal });
 const text = r => r.content[0].text;
 
 test('a page that renders its article with JavaScript is read after it rendered', async () => {
@@ -126,6 +154,23 @@ test('loading stops once the page transfers more than the bound', async () => {
   const r = await read('/big', { timeout_seconds: 20 });
   assert.equal(r.details.oversize, true);
   assert.match(text(r), /Big page/);
+  // A worker's downloads count too.
+  const w = await read('/worker', { timeout_seconds: 20 });
+  assert.equal(w.details.oversize, true);
+});
+
+test('page-controlled titles and links stay bounded', async () => {
+  const r = await read('/huge-title', { max_chars: 1000 });
+  assert.ok(text(r).length < 10000, `returned ${text(r).length} characters`);
+  assert.ok(JSON.stringify(r.details).length < 5000);
+});
+
+test('a read cancelled before it starts contacts nothing', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const hits = localHits;
+  await assert.rejects(readPage(browser, sources, { url: service + '/x' }, controller.signal, { isLocal }), /Cancelled/);
+  assert.equal(localHits, hits);
 });
 
 test('only http and https are opened', async () => {
@@ -134,12 +179,46 @@ test('only http and https are opened', async () => {
   }
 });
 
-test('a public page cannot reach a service on loopback', async () => {
+test('a public page cannot reach a service on this host', async () => {
   const before = localHits;
   const r = await read('/public', { screenshot: true });
-  assert.equal(localHits, before, 'Chromium let a public page reach loopback');
   assert.match(text(r), /refused/);
   assert.equal(r.content[1]?.mimeType, 'image/jpeg');
+  const d = await read('/redirect');
+  assert.doesNotMatch(text(d), /LOCAL-SECRET/);
+  assert.ok(d.details.refused >= 1);
+  const n = await read('/navigate');
+  assert.doesNotMatch(text(n), /LOCAL-SECRET/);
+  await read('/worker', { timeout_seconds: 20 });
+  await read('/webrtc');
+  assert.equal(localHits, before, 'a public page reached the service');
+  assert.equal(stunPackets, 0, 'WebRTC sent UDP past the proxy');
+  assert.ok(r.details.refused >= 1);
+});
+
+test('the agent may read a service on this host itself', async () => {
+  const r = await readPage(browser, sources, { url: service + '/own' }, undefined, { isLocal });
+  assert.match(text(r), /LOCAL-SECRET/);
+});
+
+test('the proxy serves only this account and closes even with an idle connection open', async () => {
+  const out = await egress({ allowLocal: false, maxBytes: 1024 });
+  const port = Number(new URL(out.proxy.server).port);
+  const idle = net.connect(port, '127.0.0.1');
+  await new Promise(r => idle.on('connect', r));
+  assert.equal(socketOwner(idle.localPort, port), process.getuid());
+  assert.equal(socketOwner(1, port), -1);
+  const started = Date.now();
+  await out.close();
+  assert.ok(Date.now() - started < 2000, `close took ${Date.now() - started} ms`);
+  idle.destroy();
+});
+
+test("the host's own interface addresses count as this host", () => {
+  const own = Object.values(networkInterfaces()).flat().map(i => i.address).filter(a => !a.startsWith('127.') && a !== '::1');
+  for (const a of own) assert.equal(localAddress(a), true, a);
+  assert.equal(localAddress('8.8.8.8'), false);
+  assert.equal(localAddress('::ffff:10.1.2.3'), true);
 });
 
 // The real pinned Pi loads the extension from a core runtime layout and a

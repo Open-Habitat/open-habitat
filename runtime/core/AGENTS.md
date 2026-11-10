@@ -34,8 +34,14 @@ Chromium in `browser-lock.json`, which every installation gets (Jari,
 wheel must name the core lock's browser revision. Chromium never runs without
 its sandbox. Where the installation's AppArmor profile is missing, the tool
 refuses and says why: a renderer exploit outside the sandbox would run as the
-person, with their credentials. Pages are rendered on the host, never by a
-hosted renderer, which would see every URL a person's agents read.
+person, with their credentials. Every connection a read makes goes through
+that read's own proxy, which refuses addresses on the host and private
+networks unless the agent named one itself. A page must not be able to steer
+the person's browser at a service that trusts the network position (another
+account's dev server, a router, cloud metadata). Chromium's own Local Network
+Access check is not enough, because it leaves top-level navigation alone.
+Pages are rendered on the host, never by a hosted renderer, which would see
+every URL a person's agents read.
 
 Taskfleet and workmux are upstream release binaries, locked with their
 LICENSE, the Cargo.lock they were released from and every crate's SPDX
