@@ -1,10 +1,9 @@
 # Documentation
 
 `docs/` holds what the code cannot say, starting at `index.md` (root
-`AGENTS.md`, "Code is the record"). These Markdown files are also the source
-for the Glasspad site. `index.md` is Jari's Finnish project hub; the product
-page, the operator guide and the decision records are in English for agents and
-the public repository.
+`AGENTS.md`, "Code is the record"). `index.md` is a standalone public Markdown
+index. The product page, operator guide and decision records are in English;
+none requires a hosted documentation service or private repository to read.
 
 ## What each document owns
 
@@ -27,22 +26,17 @@ lands, after the rules the code cannot show have moved into the nearest
 numbering. The wording can be clarified while preserving the decision; a
 changed decision gets a new record.
 
-Status and scheduling live in `TODO.md` and the issues. Research, proposals,
+Status and scheduling live in the issue tracker. Research, proposals,
 reviews and investigation results belong with their issue. `brand/` holds the
 identity brief outside the published page set.
 
-## Validation and publishing
+## Validation
 
-Pages live directly under `docs/` or one subdirectory below it. Their paths
-without `.md` are the slugs in `glasspad.yaml`, which defines the navigation.
-`.glasspad.yaml` holds the stable `space_key: native-agent-host`, so publishing
-from another checkout updates the same hosted space.
+Pages live directly under `docs/` or one subdirectory below it. Navigation uses
+ordinary relative Markdown links. Keep operator examples installation-neutral,
+and explain decision context here rather than depending on archived research.
 
-From the repository root, `python3 scripts/validate-project-view.py` checks the
-page set, navigation and ADR registration here, and that every local Markdown
-link in the repository's living documents resolves. `git diff --check` catches
-whitespace; `TESTING.md` describes the checks for each kind of change.
-
-Publishing is separate from committing: `(cd docs && glasspad publish .)`
-creates or updates a shareable hosted site. Consider the contents being shared;
-links into repository issue directories may not be accessible to site readers.
+From the repository root, `python3 scripts/validate-project-view.py` checks ADR
+registration and local Markdown links in the repository's living documents.
+`git diff --check` catches whitespace; `TESTING.md` describes the checks for
+each kind of change.

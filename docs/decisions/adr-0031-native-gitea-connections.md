@@ -27,8 +27,8 @@ account and base path; even explicit `get --login` does not validate the request
 against that login. Its config writes are locked but truncate in place. Its API
 client does not provide the request policy needed here. These are concrete
 reasons for adaptation, not a reason to build a new credential service.
-[Primary-source evidence](../../issues/fleetrepo-gitea-habitat/native-auth-evidence.md)
-records exact files, pins, limits and competing native options.
+The inspected baseline is tea v0.16.0; the credential-owner alternatives
+and their limits are compared below.
 
 ## Accepted core decision
 
@@ -224,8 +224,7 @@ agent-access warning remains important. API readiness is never Git readiness.
 The **tea owner + bounded adapter + shared HTTPS PAT** architecture is approved.
 The stated network/CA boundary remains proposed, and implementation still needs
 separate authorization. No installed Gitea support or runtime qualification
-claim is made here. The Finnish
-[implementation plan](../../issues/fleetrepo-gitea-habitat/implementation-plan.md)
-orders a thin end-to-end connect/catalog/clone slice before generalization and
-lists synthetic, two-real-UID, release and live-provider proofs. No product code,
+claim is made here. Implementation should start with a thin end-to-end
+connect/catalog/clone slice before generalization, with synthetic, two-real-UID,
+release and live-provider proofs. No product code,
 provider traffic, credentials or server state were changed for this proposal.

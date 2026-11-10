@@ -1,20 +1,19 @@
 # ADR 0032: Agent HTML views are offers the person opens on an isolated origin
 
-**Status:** Accepted. **Date:** 2026-10-25. **Decider:** Jari, in three steps
-on the `agent-html-artifacts` research and its two prototype rounds (decisions
-of 2026-10-25 in that issue). This record states what he accepted, narrowed to
+**Status:** Accepted. **Date:** 2026-10-25. **Decider:** Jari, after research
+and two prototype rounds. This record states what he accepted, narrowed to
 the owner-only first implementation; sharing waits for its own decision.
 
 ## Context
 
-On Jari's own machines an agent shows HTML with `tw browser-open` or glasspad,
-and prototypes are opened as local files or dev servers. A Habitat agent has
-none of these: its only browser is the person's Habitat page, the agent runs
-as the person's Unix user on a shared host, and agent-written HTML carries
+On a personal workstation an agent can show HTML by opening local files or
+development servers in a browser. A Habitat agent's only browser is the
+person's Habitat page. The agent runs as the person's Unix user on a shared
+host, and agent-written HTML carries
 scripts. Habitat's app and editor sessions are cookies on sibling hosts, so
 agent HTML executed anywhere near them is an obvious way to steal a session.
 
-The research (`issues/agent-html-artifacts/research.md`, option C) recommended
+The research recommended
 that Habitat itself offer the content and show it on an isolated origin,
 instead of reusing code-server's port proxy (option A) or adding a separate
 publishing service (option B).

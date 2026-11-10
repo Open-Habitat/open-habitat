@@ -1,9 +1,7 @@
 # ADR 0024: A clone is a job of the user's daemon, recovered from the filesystem
 
 **Status:** Accepted by Jari on 2026-10-17 as the host side of the
-Kloonaussivulla direction
-(`issues/proto-repo-selection/result.md` (in history),
-implemented in repo-catalog-clone-jobs (`issues/repo-catalog-clone-jobs/item.md` in history)).
+clone-page design; implemented as daemon-owned repository clone jobs.
 It replaces the "Completion and interruption" part of
 ADR 0005; ADR 0005's progress parsing and
 verification from Git still hold.

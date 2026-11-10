@@ -12,9 +12,8 @@ two ways of requesting account removal whose scope and authority still need
 to be designed. Neither capability is scheduled for the current work.
 
 The original proposal arose from a one-time request to remove a test account.
-A full test-server rebuild superseded that operation, as recorded in the
-account-removal issue (`issues/deprovision-bound-user/item.md`). The old
-pilot.11 migration is no longer a prerequisite for meeting that test need.
+A full test-server rebuild superseded that operation, so the earlier migration
+proposal is no longer a prerequisite for meeting that test need.
 
 ## Why removal needs design
 

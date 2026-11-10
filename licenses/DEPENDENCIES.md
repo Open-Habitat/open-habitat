@@ -11,7 +11,7 @@ commit. The chosen public distribution license is MIT, but until the root
 licenses.
 
 The optional native Pi process owner is `@aliou/pi-processes` 0.10.9 (MIT),
-pinned and installed through Fleetrepo's guest runtime, not bundled JavaScript
+pinned and installed through the host's native runtime, not bundled JavaScript
 in the browser. Its parser is overridden to `@aliou/sh` 0.3.4 (MIT AND
 BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
 not shipped. The synthetic Pi integration-test lockfile mirrors that override.

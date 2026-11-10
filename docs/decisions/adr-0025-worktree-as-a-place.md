@@ -1,7 +1,7 @@
 # ADR 0025: A worktree is a place; agents settle it, the daemon cleans it up
 
-**Status:** Accepted by Jari on 18 October 2026 in
-`issues/proto-interactive-worktrees/result.md` (in history, "Jari's decision 2026-10-18").
+**Status:** Accepted by Jari on 18 October 2026 after reviewing the interactive
+worktree prototype.
 Amends ADR 0010, extends
 ADR 0019 and leaves
 ADR 0017 unchanged.
@@ -14,8 +14,7 @@ that Taskfleet would own such a worktree as a caller-owned run, with its
 settlement (merge, cancel, discard), while the daemon controlled Pi inside it.
 ADR 0017 deferred that and kept Taskfleet spinoffs observe-only.
 
-The host research (`issues/research-worktree-agents-host/report.md`)
-weighed three options again on 17 October 2026: (A) a Taskfleet caller-owned
+The host research weighed three options again on 17 October 2026: (A) a Taskfleet caller-owned
 run with a daemon-controlled Pi, (B) a plain `git worktree` made by the daemon
 without Taskfleet, and (C) Taskfleet's own interactive worker in tmux. It
 recommended A, because the browser controls then asked for (merge, discard,
@@ -164,10 +163,8 @@ The gateway and the provisioning broker gain nothing.
 - An agent may merge, rebase or delete branches the browser shows; the top bar
   follows because it reads Git again. The browser never claims more than Git
   says.
-- implement-worktree-agents (`issues/implement-worktree-agents/item.md` in history)
-  implements creation and the marks;
-  implement-worktree-cleanup (`issues/implement-worktree-cleanup/item.md` in history)
-  implements the list and removal.
+- Creation and worktree marks form one implementation unit; the list and
+  removal form another.
 
 ## Alternatives
 

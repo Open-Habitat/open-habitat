@@ -1,10 +1,10 @@
 # ADR 0029: One release-contained operator installs and maintains a declared site
 
-**Status:** Accepted 2026-10-22 (Jari). Decision history in `issues/decide-installation-baseline`. The commands named here are work to implement, not commands in today's release. Its release-signing part is superseded by ADR 0034 (`docs/decisions/adr-0034-release-digest-verification.md`, in history): releases are unsigned and verified by the SHA-256 GitHub states for them.
+**Status:** Accepted 2026-10-22 (Jari). The commands named here are work to implement, not commands in today's release. Its release-signing part was superseded: releases are unsigned and verified by the SHA-256 GitHub states for them.
 
 ## Problem
 
-Two customer pilots need the same installable product, and later it may run on many independent servers. Today a release contains the binary, the web assets and neutral systemd templates. Everything else that makes a host multi-user safe comes from the maintainer's own test deployment: broker initialization, quota setup, boot ordering, per-user socket ACLs and the native runtimes. An operator who only has the release cannot install the product, and an agent that guesses the missing pieces from source produces an unsafe host. The assessment in `issues/prepare-independent-installation` found exactly this gap.
+Two customer pilots need the same installable product, and later it may run on many independent servers. Today a release contains the binary, the web assets and neutral systemd templates. Everything else that makes a host multi-user safe comes from the maintainer's own test deployment: broker initialization, quota setup, boot ordering, per-user socket ACLs and the native runtimes. An operator who only has the release cannot install the product, and an agent that guesses the missing pieces from source produces an unsafe host. An independent-installation assessment found exactly this gap.
 
 ## Decision
 

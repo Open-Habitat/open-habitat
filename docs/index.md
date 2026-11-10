@@ -1,28 +1,16 @@
-# Open Habitat
+# Open Habitat documentation
 
-Open Habitat tuo selaimen käyttöliittymäksi Linux-palvelimen työtiloihin
-ja natiiveihin AI-agentteihin. Jokainen käyttäjä työskentelee omalla
-Unix-tunnuksellaan. Tiedostot, tunnukset ja keskusteluhistoriat pysyvät
-natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rinnalla.
+Open Habitat is a browser interface to native AI agents and workspaces on a
+Linux server. Each person works as a separate Unix user; native tools keep
+their files, credentials and conversation histories.
 
-## Mitä tuote tekee
+- [Goal and user journeys](product.md): what people should be able to do.
+- [Install and operate](operations.md): prerequisites, installation, upgrades
+  and recovery for your own server.
+- [Decision records](decisions/index.md): architectural choices awaiting
+  implementation or review.
+- [Interface design](../design-system/design.md): the agreed visual direction.
 
-[Tavoite ja käyttökulut](product.md) kertoo, mitä käyttäjä saa tuotteella
-aikaan ja miten hän käyttää sitä myös katkojen ja epävarmojen tulosten yhteydessä.
-[Design](../design-system/design.md) kuvaa ulkoasun. Nämä sivut kuvaavat
-sovittua tavoitetta, eivät toteutuksen tilaa.
-
-## Miten järjestelmä toimii
-
-Järjestelmän kuvaus on sen koodi. Oman Linux-palvelimen
-[asennus- ja ylläpito-opas](operations.md) kertoo käytännön vaiheet ja
-nykyisen jakelun rajoitukset.
-
-[Päätökset](decisions/index.md) kokoaa arkkitehtuuripäätökset, jotka odottavat
-vielä toteutusta tai Jarin jälkikatselmointia. Toteutuneiden päätösten
-perustelut ovat Git-historiassa.
-
-## Missä työ on
-
-Työn tilanne on [TODO.md](../TODO.md)-tiedostossa ja issueissa. Dokumentaatio
-ei seuraa etenemistä.
+The code is the record of implemented behavior. These pages describe product
+intent, operator responsibilities and decisions, rather than a second
+implementation reference.

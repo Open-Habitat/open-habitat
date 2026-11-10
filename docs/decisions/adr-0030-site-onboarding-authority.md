@@ -1,6 +1,6 @@
 # ADR 0030: Site onboarding, runtime admission and the site AI key
 
-**Status:** Accepted 2026-10-24 (Jari), with all six recommendations of the proposal; amended the same day for giving the site key to joined people and replacing copies on rotation. The reasoning, the option tables and the current-code constraints are in `issues/plan-site-onboarding-authority/plan.md` (git history once removed). The product design is the prototype `proto-admin-server-onboarding`, rounds 1–6. The commands and operations named here are work to implement.
+**Status:** Accepted 2026-10-24 (Jari), with all six recommendations of the proposal; amended the same day for giving the site key to joined people and replacing copies on rotation. The decision followed six prototype rounds of administrator-configured server onboarding, covering admission, AI credentials and initial repositories. The commands and operations named here are work to implement.
 
 ## Problem
 

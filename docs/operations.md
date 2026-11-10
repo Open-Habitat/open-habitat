@@ -46,7 +46,7 @@ The release trust is the SHA-256 that GitHub states for each asset
 also shown on the release page). The downloaded package and manifest must hash
 to those figures before anything is extracted or run as root; the package's own
 checksum inventory detects corruption, not a replacement. Extract the package into a root-owned, non-writable directory, retaining
-its `bin/` and `web/` layout. No source checkout, Fleetrepo, npm or Go is needed
+its `bin/` and `web/` layout. No source checkout, fleet-management tooling, npm or Go is needed
 on the installation host.
 
 Each architecture has its own product package (`open-habitat-VERSION-linux-amd64`

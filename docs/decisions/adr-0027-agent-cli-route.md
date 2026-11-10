@@ -1,10 +1,7 @@
 # ADR 0027: Agents reach their own daemon through a separate Unix listener
 
-**Status:** Accepted by Jari on 2026-10-21. His decisions of 2026-10-20 and
-2026-10-21, including the approval of A–F, are recorded in
-agent-cli (`issues/agent-cli/item.md` in history). Implementation notes
-that this record does not need are in
-the issue's notes (`issues/agent-cli/adr-0027-notes.md` in history).
+**Status:** Accepted by Jari on 2026-10-21, following decisions on
+2026-10-20 and 2026-10-21 approving sections A–F below.
 
 ## Context
 
@@ -15,8 +12,7 @@ browser. Jari decided that agents get a comprehensive personal CLI, callable
 from any process of the person's Unix user, covering everything the browser
 can do including other own conversations and global model defaults, carrying
 timestamped notices to the person, with no general list of browser-confirmed
-actions. The research (`issues/agent-cli/research.md` in history) inventories that
-surface.
+actions.
 
 The daemon's socket today admits only the gateway: the transport checks the
 kernel peer UID on accept and again in `TrustedPeer`, and the GitHub token

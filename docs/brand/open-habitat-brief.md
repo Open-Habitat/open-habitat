@@ -89,5 +89,6 @@ that would harm legibility or recognition.
 ## Project references
 
 [Product](../product.md), [current interface design](../../design-system/design.md),
-[color tokens](../../design-system/tokens/colors.css) and
-name decision (`issues/name-open-habitat/item.md`).
+[color tokens](../../design-system/tokens/colors.css). The chosen name is
+Open Habitat; the identity should express native agents working in their own
+environment.
