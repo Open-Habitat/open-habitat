@@ -87,8 +87,8 @@ each one is settled.
   not exist; no registry badge without a registry.
 - **docs_site: none** — documentation lives in the repository.
 
-Context, not proposals: documents for agents are English and the product goal
-in `docs/product.md` is Finnish; that split is deliberate. Before the
+Context, not proposals: documents for agents and the public product page in
+`docs/product.md` are English; Jari's project hub `docs/index.md` is Finnish. Before the
 repository goes public its history and working notes need a review for
 customer names and infrastructure references (launch research, item 9).
 

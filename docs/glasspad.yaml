@@ -8,8 +8,8 @@ groups:
         title: Aloita tästä
         desc: Projektin dokumentaatio ja lukupolut.
       - slug: product
-        title: Tavoite ja käyttökulut
-        desc: Tuotteen tavoite, toiminnot ja käyttäjän käyttökulut.
+        title: Goal and user journeys
+        desc: What the product is meant to do and how people use it.
 
   - label: Operations
     members:

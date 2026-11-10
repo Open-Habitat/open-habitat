@@ -2,13 +2,13 @@
 
 `docs/` holds what the code cannot say, starting at `index.md` (root
 `AGENTS.md`, "Code is the record"). These Markdown files are also the source
-for the Glasspad site. Product pages (`product.md`, `index.md`) are in Finnish
-for Jari; the operator guide and decision records are in English for agents
-and the future public repository.
+for the Glasspad site. `index.md` is Jari's Finnish project hub; the product
+page, the operator guide and the decision records are in English for agents and
+the public repository.
 
 ## What each document owns
 
-`product.md` is Jari's product goal and usage flows. It says what the product
+`product.md` is Jari's product goal and user journeys, written for an outside reader. It says what the product
 should do and why, not how far the implementation has come: a sentence about
 implementation status is a second description of the code and goes stale
 without anyone noticing. Visual design lives in `design-system/design.md`.
