@@ -143,6 +143,48 @@ function geometry(resizes: (() => void)[] = []) {
 }
 
 for (const gesture of ["pointerDown", "focusIn"] as const) {
+  it(`keeps following output expanded at latest after ${gesture}`, () => {
+    const resizes: (() => void)[] = [];
+    const restore = geometry(resizes);
+    try {
+      const store = new ConversationStore("reader");
+      const pages = Array.from({ length: 10 }, (_, i) => entry(`reply-${i}`));
+      const view = render(
+        <Reader id="controlled" entries={pages} store={store} />,
+      );
+      const viewport = view.container.querySelector<HTMLElement>(".viewport");
+      if (!viewport) throw new Error("missing viewport");
+      viewport.scrollTop = 700;
+      fireEvent[gesture](view.getAllByRole("button")[9]);
+      fireEvent.focusIn(view.getAllByRole("button")[9]);
+      // Nested expansion changes height without changing native history.
+      let height = 1400;
+      Object.defineProperty(viewport, "scrollHeight", { get: () => height });
+      for (const resize of resizes) resize();
+      if (gesture === "pointerDown") {
+        expect(viewport.scrollTop).toBe(700);
+        fireEvent.pointerUp(view.getAllByRole("button")[9]);
+        expect(viewport.scrollTop).toBe(700);
+        fireEvent.click(view.getAllByRole("button")[9]);
+      }
+      expect(viewport.scrollTop).toBe(1400);
+      expect(store.position("controlled")).toBeUndefined();
+      // A subsequent host render must still follow too.
+      viewport.scrollTop = 1100;
+      height = 1500;
+      view.rerender(
+        <Reader
+          id="controlled"
+          entries={[...pages, entry("new")]}
+          store={store}
+        />,
+      );
+      expect(viewport.scrollTop).toBe(1500);
+    } finally {
+      restore();
+    }
+  });
+
   it(`preserves a history control during host renders and resizes after ${gesture}`, () => {
     const resizes: (() => void)[] = [];
     const restore = geometry(resizes);
@@ -157,6 +199,10 @@ for (const gesture of ["pointerDown", "focusIn"] as const) {
       // Browser scroll-into-view need not be preceded by a wheel gesture.
       viewport.scrollTop = 47;
       fireEvent[gesture](view.getAllByRole("button")[1]);
+      expect(store.position("controlled")).toEqual({
+        key: "reply-0",
+        offset: -47,
+      });
       view.rerender(
         <Reader
           id="controlled"
@@ -177,8 +223,45 @@ for (const gesture of ["pointerDown", "focusIn"] as const) {
           : value;
       };
       fireEvent.focusIn(view.getAllByRole("button")[1]);
+      expect(viewport.scrollTop).toBe(29); // before pointer-up or ResizeObserver
       for (const resize of resizes) resize();
       expect(viewport.scrollTop).toBe(29);
+    } finally {
+      restore();
+    }
+  });
+}
+
+for (const ending of ["click", "pointerCancel", "outside"] as const) {
+  it(`resumes a following press after scroll-into-view and ${ending}`, () => {
+    const resizes: (() => void)[] = [];
+    const restore = geometry(resizes);
+    try {
+      const store = new ConversationStore("reader");
+      const pages = Array.from({ length: 10 }, (_, i) => entry(`reply-${i}`));
+      const view = render(
+        <Reader id="controlled" entries={pages} store={store} />,
+      );
+      const viewport = view.container.querySelector<HTMLElement>(".viewport");
+      if (!viewport) throw new Error("missing viewport");
+      // Scroll-into-view does not mean the reader chose to stop following.
+      viewport.scrollTop = 47;
+      const control = view.getAllByRole("button")[1];
+      fireEvent.pointerDown(control);
+      for (const resize of resizes) resize();
+      expect(viewport.scrollTop).toBe(47);
+      if (ending === "outside") fireEvent.pointerUp(document.body);
+      else fireEvent[ending](control);
+      expect(viewport.scrollTop).toBe(viewport.scrollHeight);
+      expect(store.position("controlled")).toBeUndefined();
+      // By contrast an already-reading view stays put through a full press.
+      viewport.scrollTop = 47;
+      fireEvent.scroll(viewport);
+      fireEvent.pointerDown(control);
+      fireEvent.pointerUp(control);
+      fireEvent.click(control);
+      for (const resize of resizes) resize();
+      expect(viewport.scrollTop).toBe(47);
     } finally {
       restore();
     }
@@ -196,6 +279,9 @@ it("does not tail-follow an authored introduction, and resumes for native histor
     const viewport = view.container.querySelector<HTMLElement>(".viewport");
     if (!viewport) throw new Error("missing viewport");
     viewport.scrollTop = 17;
+    fireEvent.pointerDown(view.getAllByRole("button")[0]);
+    fireEvent.click(view.getAllByRole("button")[0]);
+    expect(viewport.scrollTop).toBe(17);
     view.rerender(
       <Reader id="controlled" entries={[...pages]} store={store} intro />,
     );

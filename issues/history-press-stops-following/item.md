@@ -2,12 +2,13 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 related: ['@race-skill-block-load-lost']
 preparation: ready
 lane: history-press
 lane_seq: 1
+closed: 2026-11-10
 ---
 
 # Expanding output at the latest position stops following (regression from the history-press fix)
