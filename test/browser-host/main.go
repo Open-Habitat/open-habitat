@@ -31,14 +31,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/cli"
-	"github.com/Open-Habitat/open-habitat/internal/core"
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/cli"
+	"github.com/open-habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/testgitenv"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 type provider struct {

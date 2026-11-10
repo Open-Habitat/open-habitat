@@ -25,8 +25,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // The browser shell (implement-browser-shell, research-shell-editor). A shell

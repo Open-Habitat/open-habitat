@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // A transfer the daemon runs against a connected Gitea or GitLab (a clone

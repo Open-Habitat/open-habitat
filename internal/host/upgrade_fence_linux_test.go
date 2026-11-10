@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/bootguard"
-	"github.com/Open-Habitat/open-habitat/internal/entryfence"
+	"github.com/open-habitat/open-habitat/internal/bootguard"
+	"github.com/open-habitat/open-habitat/internal/entryfence"
 )
 
 // Fixed production paths are exercised only in the disposable root container.

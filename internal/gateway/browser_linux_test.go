@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 func dialBrowserView(t *testing.T, server *httptest.Server, origin, target string) *terminalBrowser {

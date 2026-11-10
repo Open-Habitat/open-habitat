@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/core"
 )
 
 // SiteOriginPath holds the site's public facts, published by host maintenance

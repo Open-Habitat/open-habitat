@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 var ErrUpgradeBlocked = errors.New("host_upgrade_blocked: successor qualification is incomplete")

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 // glabFixture runs the real glab the integrations profile ships, as a mapped

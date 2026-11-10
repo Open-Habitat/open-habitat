@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon"
 )
 
 var loginAttemptPattern = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}\.[0-9]{9}$`)

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {

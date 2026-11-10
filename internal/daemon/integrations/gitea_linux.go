@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
 )
 
 // Gitea connections (ADR 0031) are tea's native PAT logins. Unlike the other

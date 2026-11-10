@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // fakeTerminalDaemon accepts the gateway's upgrade and echoes every data

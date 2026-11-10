@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
-	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/testgitenv"
 )
 
 // TestMain lets Git run this test binary as the installed helper: with

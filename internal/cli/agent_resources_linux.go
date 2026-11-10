@@ -14,7 +14,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon"
 )
 
 var resourceEntry = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)

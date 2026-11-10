@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 )
 
 // The synthetic host's admission (ADR 0030): Alice (42) is site.json's

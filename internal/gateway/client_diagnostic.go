@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 const clientLoadFailurePath = "/api/v1/client/load-failure"

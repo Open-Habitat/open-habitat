@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // wsConn is the server side of one agent's DevTools WebSocket.

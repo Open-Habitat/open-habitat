@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // The coordinator, daemon and gateway probes are separate real kernel UIDs in

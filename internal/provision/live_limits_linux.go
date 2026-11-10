@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/livelimits"
+	"github.com/open-habitat/open-habitat/internal/livelimits"
 )
 
 // The broker's own staging name for the live-limits file.

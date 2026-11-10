@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // The browser host owns Chrome's one DevTools pipe and shares it between

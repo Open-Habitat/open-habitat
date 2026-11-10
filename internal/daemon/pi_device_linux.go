@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/core"
 )
 
 //go:embed pi_device_helper.mjs

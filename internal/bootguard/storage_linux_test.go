@@ -3,7 +3,7 @@
 package bootguard
 
 import (
-	policy "github.com/Open-Habitat/open-habitat"
+	policy "github.com/open-habitat/open-habitat"
 	"os"
 	"path/filepath"
 	"strings"

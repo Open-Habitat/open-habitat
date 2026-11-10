@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 //go:embed recap-extension.mjs

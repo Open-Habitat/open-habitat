@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const ownSpeechKey = "own0000000000000000000000000Ab12"

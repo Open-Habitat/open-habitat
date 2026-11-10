@@ -21,7 +21,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
 // Agent HTML views (ADR 0032) are agent-written HTML with scripts, so they are

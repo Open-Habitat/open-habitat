@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 	"os"
 	"path/filepath"
 	"strings"

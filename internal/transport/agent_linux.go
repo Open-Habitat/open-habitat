@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
 func AgentPath(c Config) string { return filepath.Join(filepath.Dir(c.Socket), "agent.sock") }

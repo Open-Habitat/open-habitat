@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/entryfence"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/entryfence"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // The container's PID 1 creates the real CLI's fixed-path socket, then passes

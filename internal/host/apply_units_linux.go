@@ -5,7 +5,7 @@ package host
 import (
 	"context"
 	"errors"
-	policy "github.com/Open-Habitat/open-habitat"
+	policy "github.com/open-habitat/open-habitat"
 	"net"
 	"os"
 	"path/filepath"

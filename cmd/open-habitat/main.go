@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Open-Habitat/open-habitat/internal/bootguard"
-	"github.com/Open-Habitat/open-habitat/internal/cli"
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/host"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
+	"github.com/open-habitat/open-habitat/internal/bootguard"
+	"github.com/open-habitat/open-habitat/internal/cli"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/host"
+	"github.com/open-habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 	"os"
 	"time"
 )

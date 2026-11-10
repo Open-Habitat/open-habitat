@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 func TestMapBrokerReply(t *testing.T) {

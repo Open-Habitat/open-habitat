@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/bootguard"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/bootguard"
+	"github.com/open-habitat/open-habitat/internal/provision"
 	"golang.org/x/sys/unix"
 )
 

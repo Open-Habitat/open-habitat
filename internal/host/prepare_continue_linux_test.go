@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	policy "github.com/Open-Habitat/open-habitat"
+	policy "github.com/open-habitat/open-habitat"
 )
 
 func interruptedSessionFixture(t *testing.T) (string, prepareSources, *int, Operation) {

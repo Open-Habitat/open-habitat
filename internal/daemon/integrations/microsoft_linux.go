@@ -22,7 +22,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 // MicrosoftApp is a public, single-tenant Entra client. TenantID is the

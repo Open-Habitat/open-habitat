@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // A real subprocess, but only a disposable synthetic gh fixture and credential.

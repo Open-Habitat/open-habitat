@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // Repository is the projection of one Gitea repository this adapter passes

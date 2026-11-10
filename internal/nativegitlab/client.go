@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // Account is the GitLab user a token authenticates. For a group or project

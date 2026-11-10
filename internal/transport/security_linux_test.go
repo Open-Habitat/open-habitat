@@ -5,7 +5,7 @@ package transport
 import (
 	"context"
 	"errors"
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 	"net"
 	"os"
 	"os/user"

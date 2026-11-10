@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 // The synthetic host's integration catalog is the product's IMAP entry run

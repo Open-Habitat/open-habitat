@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
-	"github.com/Open-Habitat/open-habitat/internal/daemon/tailnetfake"
+	"github.com/open-habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon/tailnetfake"
 )
 
 // ownMachinesHost stands in for one person's user manager, tailscaled and

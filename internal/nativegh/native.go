@@ -26,8 +26,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const timeout = 4 * time.Second

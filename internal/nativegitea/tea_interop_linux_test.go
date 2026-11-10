@@ -15,8 +15,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitea/giteafake"
 )
 
 // teaFixture runs the real tea the integrations profile ships, as a mapped

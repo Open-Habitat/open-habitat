@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 // The synthetic host's integrations file, as the broker keeps it: Google and

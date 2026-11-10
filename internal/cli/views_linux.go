@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon"
 )
 
 var viewIDArgPattern = regexp.MustCompile(`^v[a-z2-7]{26}$`)

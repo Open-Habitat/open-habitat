@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
 )
 
 // giteaCommand is Git's credential-helper protocol, not the canon's JSON

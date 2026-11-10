@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/testgitenv"
+	"github.com/open-habitat/open-habitat/internal/testgitenv"
 )
 
 // TestMain drops the caller's repository-bound Git variables, as main does,

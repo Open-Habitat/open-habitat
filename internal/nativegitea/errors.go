@@ -8,7 +8,7 @@
 // registration, the native file lifecycle) is nativeforge's.
 package nativegitea
 
-import "github.com/Open-Habitat/open-habitat/internal/nativeforge"
+import "github.com/open-habitat/open-habitat/internal/nativeforge"
 
 // The shared parts under the names this package has always used.
 type (

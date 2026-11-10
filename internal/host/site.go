@@ -19,7 +19,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 var ErrSite = errors.New("invalid_site")

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
 //go:embed operator/SKILL.md

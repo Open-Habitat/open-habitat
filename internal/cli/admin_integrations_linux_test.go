@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 const cliGoogleID = "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com"

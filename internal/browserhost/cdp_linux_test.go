@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // fakeChrome reads what the host writes to Chrome's pipe and lets a test

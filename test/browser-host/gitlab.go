@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 // The synthetic host's GitLab is a real HTTPS server on loopback with real

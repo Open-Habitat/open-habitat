@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 // Messages sent before Pi runs are held by the daemon, in order, under the

@@ -24,7 +24,7 @@ const IC = {
   off: SVG('<path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><path d="M12 19h.01"/><path d="m3 3 18 18"/>'),
 };
 const SRV = 'open-habitat-test', USER = 'jari', HOME = '/home/maintainer';
-const MOD = 'github.com/Open-Habitat/open-habitat';
+const MOD = 'github.com/open-habitat/open-habitat';
 const OH = '~/Sources/open-habitat';
 const k = (c, s) => `<span class="${c}">${esc(s)}</span>`;
 const hm = (d = new Date()) => `${d.getHours()}.${String(d.getMinutes()).padStart(2, '0')}`;

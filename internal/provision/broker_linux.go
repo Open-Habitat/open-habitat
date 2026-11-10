@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/storagebaseline"
 )
 
 // BrokerSocket is the only production listener. The installation transport owns its directory,

@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 type fixture struct {

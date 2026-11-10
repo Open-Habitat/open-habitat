@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // A Gitea or GitLab clone is an ordinary clone job (github_jobs_linux.go)

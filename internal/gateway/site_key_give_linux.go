@@ -16,7 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
 // Giving the site AI key to people who joined before it existed, and

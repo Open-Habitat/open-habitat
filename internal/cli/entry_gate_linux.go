@@ -3,7 +3,7 @@
 package cli
 
 import (
-	"github.com/Open-Habitat/open-habitat/internal/entryfence"
+	"github.com/open-habitat/open-habitat/internal/entryfence"
 	"golang.org/x/sys/unix"
 	"net/http"
 	"path/filepath"

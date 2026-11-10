@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const WorkspaceGitFetchPath = "/api/v1/workspaces/git/fetch"

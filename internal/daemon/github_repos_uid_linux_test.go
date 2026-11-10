@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // Run through scripts/test-repo-catalog-uids.sh: three real kernel UIDs in a

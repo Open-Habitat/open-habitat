@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/core"
 )
 
 // Exercises production piArgs and RPC launch with the shipped core, native

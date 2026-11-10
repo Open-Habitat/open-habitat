@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 var modelFamily = regexp.MustCompile(`^gpt-([0-9]+(?:\.[0-9]+)*)-([a-z]+)$`)

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // contextSession writes a synthetic Pi 1.3 session: a system message, then

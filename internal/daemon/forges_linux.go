@@ -3,8 +3,8 @@
 package daemon
 
 import (
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // Forges are the native code-host adapters the daemon's routes share: the

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegh"
+	"github.com/open-habitat/open-habitat/internal/nativegh"
 )
 
 func TestNativeDisconnectPeerAndFreshLogin(t *testing.T) {

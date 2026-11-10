@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // sonioxFake is a synthetic Soniox on the host's own TLS origin: the

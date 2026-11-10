@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 type controlIntegrationApp struct {

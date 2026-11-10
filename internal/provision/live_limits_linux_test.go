@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/livelimits"
+	"github.com/open-habitat/open-habitat/internal/livelimits"
 )
 
 func liveWriter(t *testing.T) Writer {

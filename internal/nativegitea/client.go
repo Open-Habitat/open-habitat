@@ -8,7 +8,7 @@ import (
 	"net/netip"
 	"regexp"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // Account is the Gitea identity a PAT authenticates.

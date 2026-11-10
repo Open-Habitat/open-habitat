@@ -18,7 +18,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
 // Agent file offers are agent-written bytes served on the app's own origin,

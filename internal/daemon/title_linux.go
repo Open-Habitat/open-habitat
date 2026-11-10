@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 //go:embed title-helper.mjs

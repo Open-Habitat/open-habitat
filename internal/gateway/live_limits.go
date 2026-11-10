@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/livelimits"
+	"github.com/open-habitat/open-habitat/internal/livelimits"
 )
 
 // Limits on conversations working at once (live-conversation-limit-admin).

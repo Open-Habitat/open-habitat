@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 	"golang.org/x/sys/unix"
 )
 

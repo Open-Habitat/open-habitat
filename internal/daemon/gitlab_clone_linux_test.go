@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 // gitlabHelperForTest makes the nativegitlab calls internal/cli's `gitlab

@@ -13,7 +13,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 // nameByHand gives a conversation the person's own name. Pi writes it as its

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 )
 
 func TestQuotaProtocolStrict(t *testing.T) {

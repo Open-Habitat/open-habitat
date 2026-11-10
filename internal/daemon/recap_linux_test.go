@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 func TestLegacyTUIRecapUsesNativeParent(t *testing.T) {

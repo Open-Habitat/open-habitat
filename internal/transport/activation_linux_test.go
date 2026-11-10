@@ -4,7 +4,7 @@ package transport
 
 import (
 	"context"
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 	"io"
 	"net"
 	"net/http"

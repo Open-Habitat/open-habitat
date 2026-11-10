@@ -5,7 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 )
 
 type adminTestBroker struct{ bound bool }

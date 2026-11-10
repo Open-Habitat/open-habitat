@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 // GoogleApp is the operator's installed/desktop OAuth client, not a user grant.

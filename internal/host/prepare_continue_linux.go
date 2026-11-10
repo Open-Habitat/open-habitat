@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	policy "github.com/Open-Habitat/open-habitat"
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
+	policy "github.com/open-habitat/open-habitat"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
 

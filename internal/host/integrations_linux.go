@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 // integrationsConfig is the daemon catalog's operator file

@@ -3,7 +3,7 @@ package nativegitea
 import (
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // repoUnder: path is exactly /owner/repository[.git] below b's base path.

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 	"go.yaml.in/yaml/v3"
 )
 

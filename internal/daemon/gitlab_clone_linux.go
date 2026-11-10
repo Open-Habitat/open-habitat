@@ -6,8 +6,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // resolveGitLab rereads the connection and the project at GitLab by its id

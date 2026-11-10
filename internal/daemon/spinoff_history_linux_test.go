@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const claudeWorkerSession = "61098600-bbc7-47b7-ace1-2ac8b043946e"

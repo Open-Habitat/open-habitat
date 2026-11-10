@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegh"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/nativegh"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 func TestEventJournalReplayAndErrors(t *testing.T) {

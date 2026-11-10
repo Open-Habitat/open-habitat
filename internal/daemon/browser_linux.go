@@ -21,9 +21,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/browserhost"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/browserhost"
+	"github.com/open-habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 	"golang.org/x/sys/unix"
 )
 

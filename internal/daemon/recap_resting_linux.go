@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 // An automatic recap falls due a quiet interval after a turn ends

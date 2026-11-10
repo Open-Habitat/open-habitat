@@ -36,7 +36,7 @@ go build ./cmd/open-habitat
 npm ci --prefix web && npm run build --prefix web
 \`\`\`
 `);
-put('go.mod', `module github.com/Open-Habitat/open-habitat
+put('go.mod', `module github.com/open-habitat/open-habitat
 
 go 1.27.1
 
@@ -48,7 +48,7 @@ import (
   "fmt"
   "os"
 
-  "github.com/Open-Habitat/open-habitat/internal/cli"
+  "github.com/open-habitat/open-habitat/internal/cli"
 )
 
 func main() {
@@ -407,11 +407,11 @@ Object.assign(LIVE, {
   test1: { name: 'bash', target: 'go test ./internal/daemon -run Quota -count=1 -v', args: { command: 'go test ./internal/daemon -run Quota -count=1 -v' }, lines: [
     '=== RUN   TestQuotaMessageUnderLimit', '--- PASS: TestQuotaMessageUnderLimit (0.00s)', '=== RUN   TestQuotaMessageFull',
     `    quota_linux_test.go:${failAt + 2}: got "${FULL_FI}", want "disk quota exceeded"`, '--- FAIL: TestQuotaMessageFull (0.00s)',
-    '=== RUN   TestQuotaOff', '--- PASS: TestQuotaOff (0.00s)', 'FAIL', 'FAIL\tgithub.com/Open-Habitat/open-habitat/internal/daemon\t0.231s', 'FAIL'] },
+    '=== RUN   TestQuotaOff', '--- PASS: TestQuotaOff (0.00s)', 'FAIL', 'FAIL\tgithub.com/open-habitat/open-habitat/internal/daemon\t0.231s', 'FAIL'] },
   edit: { name: 'bash', target: `sed -i 's/want := "disk quota exceeded"/want := "${FULL_FI}"/' ${QT}`, args: { command: `sed -i 's/want := "disk quota exceeded"/want := "${FULL_FI}"/' ${QT}\ngit diff --stat` }, lines: [
     ...[[QT, '2 +-'], [QG, '2 +-'], [QMT, '2 +-'], [QM, '6 +++---']].map(([p, s]) => ` ${p.padEnd(QMT.length + 1)}| ${s}`), ' 4 files changed, 6 insertions(+), 6 deletions(-)'] },
   test2: { name: 'bash', target: 'go test ./internal/daemon -run Quota -count=1 && npm --prefix web test -- QuotaMeter', args: { command: 'go test ./internal/daemon -run Quota -count=1 && npm --prefix web test -- QuotaMeter' }, lines: [
-    'ok  \tgithub.com/Open-Habitat/open-habitat/internal/daemon\t0.198s', '', ' ✓ src/components/QuotaMeter.test.tsx (2 tests) 41ms', '', ' Test Files  1 passed (1)', '      Tests  2 passed (2)'] },
+    'ok  \tgithub.com/open-habitat/open-habitat/internal/daemon\t0.198s', '', ' ✓ src/components/QuotaMeter.test.tsx (2 tests) 41ms', '', ' Test Files  1 passed (1)', '      Tests  2 passed (2)'] },
   reply: `Testit menevät läpi. \`${QT}:${failAt}\` odotti vielä vanhaa englanninkielistä tekstiä; vaihdoin sen.
 
 Muutokset ovat neljässä tiedostossa, ja \`git diff\` näyttää ne. Selaimen uudet tekstit ovat kohdassa \`${QM}:${at(QM, 'Levy on lähes')}-${qmEnd}\`.`,

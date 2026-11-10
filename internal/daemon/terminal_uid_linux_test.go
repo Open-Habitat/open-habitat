@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // The browser shell with actual kernel UIDs, in a disposable rootless

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // The common catalog keeps every source apart: two accounts of one Gitea

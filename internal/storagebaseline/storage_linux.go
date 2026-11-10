@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 	"io"
 	"os"

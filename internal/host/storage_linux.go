@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
+	"github.com/open-habitat/open-habitat/internal/storagebaseline"
 	"golang.org/x/sys/unix"
 )
 

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/open-habitat/open-habitat/internal/nativegitea"
 )
 
 func TestWorkspaceRemoteNativeObservation(t *testing.T) {

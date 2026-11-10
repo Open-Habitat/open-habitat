@@ -6,7 +6,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // Verifier reads what a token is for and proves it can list projects;

@@ -21,8 +21,8 @@ import (
 
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/uiroutes"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/uiroutes"
 )
 
 // Identity is a root-configured route. Its socket is never derived from a browser field.

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"slices"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 // Integration app registrations (server-integrations-admin). On the gateway's

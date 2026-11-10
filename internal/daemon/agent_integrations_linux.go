@@ -5,8 +5,8 @@ package daemon
 import (
 	"net/http"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const AgentIntegrationLoginPath = "/agent/v1/integrations/login"

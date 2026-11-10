@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/core"
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
+	"github.com/open-habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 type Provider string

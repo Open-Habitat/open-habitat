@@ -17,7 +17,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 var ErrRecovery = errors.New("recovery_required: inspect the durable operation; no automatic repair is safe")

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/browserhost"
+	"github.com/open-habitat/open-habitat/internal/browserhost"
 )
 
 // fakeBrowser stands in for one person's browser host: its control socket

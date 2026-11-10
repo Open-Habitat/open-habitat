@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/tailnetfake"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/daemon/tailnetfake"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 type machinesFixture struct {

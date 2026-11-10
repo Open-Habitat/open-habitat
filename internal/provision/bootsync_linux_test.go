@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
 )
 
 func TestBootSignalNameMatchesIntegrations(t *testing.T) {

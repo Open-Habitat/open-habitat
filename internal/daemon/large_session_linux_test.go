@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // largeSessionSize is above the 32 MiB cap that once locked a pilot's main

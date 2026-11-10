@@ -17,7 +17,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/Open-Habitat/open-habitat/internal/egress"
+	"github.com/open-habitat/open-habitat/internal/egress"
 )
 
 // A person knows their provider's DAV address (https://contacts.icloud.com),

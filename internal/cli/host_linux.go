@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/host"
+	"github.com/open-habitat/open-habitat/internal/host"
 )
 
 func hostCommand(args []string) (any, error) {

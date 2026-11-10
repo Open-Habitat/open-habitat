@@ -14,7 +14,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/Open-Habitat/open-habitat/internal/host"
+	"github.com/open-habitat/open-habitat/internal/host"
 	"io"
 	"os"
 	"path/filepath"

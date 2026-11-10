@@ -15,9 +15,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/browserhost"
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/browserhost"
+	"github.com/open-habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 // browserHostCommand runs the person's server browser. Their daemon starts

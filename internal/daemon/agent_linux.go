@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/entryfence"
-	"github.com/Open-Habitat/open-habitat/internal/storagequota"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/entryfence"
+	"github.com/open-habitat/open-habitat/internal/storagequota"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 type AgentListener struct {

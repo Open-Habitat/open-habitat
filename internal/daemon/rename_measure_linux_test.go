@@ -3,7 +3,7 @@
 package daemon
 
 import (
-	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/core"
 	"os"
 	"path/filepath"
 	"testing"

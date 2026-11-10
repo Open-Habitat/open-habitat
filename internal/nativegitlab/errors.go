@@ -10,7 +10,7 @@
 // nativeforge's.
 package nativegitlab
 
-import "github.com/Open-Habitat/open-habitat/internal/nativeforge"
+import "github.com/open-habitat/open-habitat/internal/nativeforge"
 
 type (
 	Base              = nativeforge.Base

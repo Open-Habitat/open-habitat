@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const turnTestID = "12345678-1234-4123-8123-123456789abc"

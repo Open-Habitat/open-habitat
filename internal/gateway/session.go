@@ -8,7 +8,7 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 )
 
 // authenticated resolves the cookie locally. The broker authorizes the binding at

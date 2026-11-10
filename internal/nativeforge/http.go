@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/egress"
+	"github.com/open-habitat/open-habitat/internal/egress"
 )
 
 const requestTimeout = 15 * time.Second

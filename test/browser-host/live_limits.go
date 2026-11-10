@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
-	"github.com/Open-Habitat/open-habitat/internal/livelimits"
+	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/livelimits"
 )
 
 // The synthetic host's live-limits file, as the broker keeps it. Every

@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"time"
 
-	policy "github.com/Open-Habitat/open-habitat"
-	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
+	policy "github.com/open-habitat/open-habitat"
+	"github.com/open-habitat/open-habitat/internal/storagebaseline"
 	"golang.org/x/sys/unix"
 )
 

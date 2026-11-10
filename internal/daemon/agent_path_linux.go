@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/core"
 )
 
 // agentPath is for native user work started by the mapped user's daemon. Home comes

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
+	"github.com/open-habitat/open-habitat/internal/storagebaseline"
 )
 
 func readPolicy(path string) ([]byte, error) { return storagebaseline.ReadPolicy(path) }

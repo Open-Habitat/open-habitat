@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/open-habitat/open-habitat/internal/nativegitea/giteafake"
 )
 
 func startFake(t *testing.T) (*giteafake.Server, Base) {

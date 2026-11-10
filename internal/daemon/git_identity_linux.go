@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const GitIdentityPath = "/api/v1/account/git-identity"

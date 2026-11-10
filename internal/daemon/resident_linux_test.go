@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // residentRun is a live Taskfleet resident run as `run list` / `run show`

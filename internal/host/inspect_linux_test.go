@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/provision"
 )
 
 func inspectionFixture(t *testing.T) (string, inspectSources, Site) {

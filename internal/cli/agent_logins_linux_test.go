@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon"
 )
 
 func TestAgentLoginProtectedInputs(t *testing.T) {

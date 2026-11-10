@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
 )
 
 // The agent's code-host commands are the browser's connection writes on the

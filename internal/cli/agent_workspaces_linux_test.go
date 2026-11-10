@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/open-habitat/open-habitat/internal/daemon"
 )
 
 func TestAgentWorkspaceRequests(t *testing.T) {

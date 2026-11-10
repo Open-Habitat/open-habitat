@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // PiStatusHandler discloses only the mapped daemon's native credential state.

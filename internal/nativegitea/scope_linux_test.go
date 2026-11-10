@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/open-habitat/open-habitat/internal/nativegitea/giteafake"
 )
 
 // A connection needs both scopes the connector reads with. Gitea shows a

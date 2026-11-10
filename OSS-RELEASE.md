@@ -58,7 +58,7 @@ recommendations. The contract stays a draft until Jari approves it as a whole.
   (`v0.1.0-*`), no `>=1.0` release, no hosted CI
   (`has_ci: false`; the gate is `scripts/ci-local.sh` on the maintainer's
   host), committers counted as two identities of one person.
-- **ecosystems: [go]** — `go.mod` (`github.com/Open-Habitat/open-habitat`); the
+- **ecosystems: [go]** — `go.mod` (`github.com/open-habitat/open-habitat`); the
   browser package in `web/` is built into the release, not published to npm.
 - **targets / distributions: manual gh-releases** — releases are built by
   `scripts/package-release.sh` and the runtime builders and uploaded by the

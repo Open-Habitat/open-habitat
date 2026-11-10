@@ -4,8 +4,8 @@ package daemon
 
 import (
 	"context"
-	"github.com/Open-Habitat/open-habitat/internal/core"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/transport"
 	"os"
 	"os/exec"
 	"path/filepath"

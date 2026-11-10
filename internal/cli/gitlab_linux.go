@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // gitlabCommand is Git's credential-helper protocol, not the canon's JSON

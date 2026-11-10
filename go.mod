@@ -1,4 +1,4 @@
-module github.com/Open-Habitat/open-habitat
+module github.com/open-habitat/open-habitat
 
 go 1.27.1
 

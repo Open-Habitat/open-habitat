@@ -15,9 +15,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
-	"github.com/Open-Habitat/open-habitat/internal/udssecure"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/udssecure"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // The browser shell's routes. The daemon runs the shell as the person; the

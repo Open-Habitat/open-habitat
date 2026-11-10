@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 // The composer's in-field file list browses the workspace as a folder tree.

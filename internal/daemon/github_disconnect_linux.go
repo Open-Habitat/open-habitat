@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativegh"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/nativegh"
+	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
 const RepoDisconnectPath = "/api/v1/account/github/disconnect"

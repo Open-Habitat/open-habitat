@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/gateway"
 )
 
 // viaGatewayWithKey is viaGateway with the site AI key file beside the state.

@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/browserhost"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"github.com/Open-Habitat/open-habitat/internal/wsframe"
+	"github.com/open-habitat/open-habitat/internal/browserhost"
+	"github.com/open-habitat/open-habitat/internal/transport"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // standInHost serves a browser host's control and VNC sockets in dir: the

@@ -3,7 +3,7 @@ package nativegitea
 import (
 	"strings"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
 )
 
 // MatchOrigin names the repository a clone's origin address points to on

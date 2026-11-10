@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
+	"github.com/open-habitat/open-habitat/internal/nativeforge"
+	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 )
 
 // GitLab connections are glab's native host logins (research

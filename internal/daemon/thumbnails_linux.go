@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/thumbnail"
+	"github.com/open-habitat/open-habitat/internal/thumbnail"
 	"golang.org/x/sys/unix"
 )
 

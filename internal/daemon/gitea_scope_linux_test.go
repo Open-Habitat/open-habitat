@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
 )
 
 // A PAT that lacks read:user or read:repository is no working connection:

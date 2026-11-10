@@ -24,7 +24,7 @@ mkdir -p "$build_repo/scripts" "$build_repo/web"
 cp "$repo/scripts/generate-ui-reference.py" "$build_repo/scripts/"
 ln -s "$repo/web/src" "$build_repo/web/src"
 python3 "$build_repo/scripts/generate-ui-reference.py"
-(cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" ./cmd/open-habitat)
+(cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/open-habitat/open-habitat/internal/cli.version=$version -X github.com/open-habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" ./cmd/open-habitat)
 (cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o "$root/bin/runtime-release" ./cmd/runtime-release)
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
@@ -37,7 +37,7 @@ cp -a "$repo"/systemd/. "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysuser
 cp "$repo/site/schema.json" "$repo/site/example.json" "$root/site/"
 # The skill text depends on the version, not the architecture; print it with
 # the same build for this host, so a cross-built package carries the same bytes.
-(cd "$build_repo" && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags "-X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$stage/skill-printer" ./cmd/open-habitat)
+(cd "$build_repo" && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags "-X github.com/open-habitat/open-habitat/internal/cli.version=$version -X github.com/open-habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$stage/skill-printer" ./cmd/open-habitat)
 "$stage/skill-printer" skill print operator > "$root/operator/SKILL.md"
 # Canonical public package modes must not inherit the build shell's umask.
 find "$root" -type d -exec chmod 0755 {} +
