@@ -119,7 +119,7 @@ func routeName(expr ast.Expr) string {
 // completion delivery; merely advertising worktrees leaves the cross-repo
 // workflow undiscoverable. Runtime tests exercise these native routes.
 func TestHostContextCrossWorkspaceGuidance(t *testing.T) {
-	for _, want := range []string{"List `~/src`", "../northwind/", "cd ~/src/northwind && taskfleet run create", "creator-session attribution", "taskfleet run wait <run-id> --output json", "turn", "wakes you"} {
+	for _, want := range []string{"List `~/src`", "../api/", "cd ~/src/api && taskfleet run create", "creator-session attribution", "taskfleet run wait <run-id> --output json", "turn", "wakes you"} {
 		if !strings.Contains(hostContext, want) {
 			t.Errorf("missing cross-workspace guidance: %s", want)
 		}
