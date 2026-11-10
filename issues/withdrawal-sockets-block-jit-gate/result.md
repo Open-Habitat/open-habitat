@@ -47,8 +47,7 @@ through the broker. This implements Jari's decision of 10.11.2026.
     systemctl recorded.
 - No systemd unit or socket template changed, so no Fleetrepo change is
   needed. Fleetrepo's JIT gate stays strict as decided.
-- Live check: not run by this worker. The conductor deploys after the
-  merge. The check is in `KOKEILTAVAA.md`.
+- Live check: passed on pilot.695; see the follow-up evidence below.
 
 ## Review
 
@@ -97,3 +96,82 @@ filed, because nothing passed the filing bar.
 6. **A stop that times out does not latch the activation fence.** Starting
    that person's socket again requires admission, which the binding gate
    checks anyway.
+
+## Live verification — 2026-11-10
+
+Passed on `open-habitat-test-nbg1`, `0.0.0-pilot.695`, commit
+`f9ccdd9093df8d15e2c93db01e33965b89eb6d4b`, at 07:45–07:48 UTC.
+Access was through Alder's pinned root SSH connection; no keys moved to
+Birch. Only synthetic Alice and Bob were restored and withdrawn. No gateway,
+broker, real person's daemon or user manager was restarted manually.
+
+[Command outputs and journals](live-check.log) and
+[final withdrawal/process readback](live-final.log) contain the evidence.
+For each state, `systemctl is-active` was run separately for
+`open-habitat-daemon@NAME.service`, `open-habitat-daemon@NAME.socket` and
+`open-habitat-agent@NAME.socket`, in that order:
+
+| Step | Service | Daemon socket | Agent socket |
+| --- | --- | --- | --- |
+| Alice: `admin access add --github-id 9100000001 --json` | inactive | inactive | inactive |
+| Alice: broker `ensure` | inactive | active | active |
+| Alice: own-UID `agent environment show --json` | active | active | active |
+| Alice: `admin access remove --github-id 9100000001 --json` | inactive | inactive | inactive |
+| Bob: restore, ensure, own-UID request while Alice withdrawn | active | active | active |
+| Alice: restore and ensure again | inactive | active | active |
+| Alice: next own-UID request | active | active | active |
+| Final withdrawal: Alice, Bob, Carol and Dave | inactive | inactive | inactive |
+
+The commands used `/opt/open-habitat/current/bin/open-habitat`.
+Bob's subject is `9100000002`. Broker requests ran as
+`open-habitat-gateway`, using the native length-prefixed Unix transport and
+`{version:1, operation:"ensure", provider:"github", id:ID, candidate:NAME}`.
+Each returned the existing UID/name/socket route, without a failure.
+Daemon requests ran through `runuser -u NAME -- ... agent environment show
+--json` and reported the same pilot.695 daemon commit.
+
+Alice's passwd row, home inode `6291457`, ownership `21035:21035` and mode
+`700` stayed unchanged. Her user manager stayed active with MainPID `1740729`,
+InvocationID `008838036a3547acb0b19468abe3151f` and `Linger=yes` before and
+after both withdrawals. This verifies account/home identity and user-manager
+continuity, not a byte-by-byte home or credential comparison.
+
+Journal evidence:
+
+- 07:47:02 gateway: `access_withdrawal`, `accepted`, `denied`, Alice;
+  07:47:03 broker: `broker_withdrawal_stop`, `stopped`, Alice; gateway then
+  reports `withdrawn`.
+- 07:47:04–05 Bob's Fleetrepo JIT gate: `status: verified`, `fixture: false`,
+  `phase: activation`; broker `ensure accepted`; daemon `service_ready`.
+  No manual listener stop or gate override was needed.
+- 07:47:07 Alice's JIT gate verifies again; at 07:47:08 the broker accepts
+  ensure and the next request starts the daemon.
+- Final withdrawals report `broker_withdrawal_stop stopped` for both.
+  `admin access list --state withdrawn --json` confirms all four synthetic
+  subjects withdrawn and denied.
+
+Two initial harness attempts were corrected, not product failures: an agent
+request immediately after admission found no socket because broker ensure had
+not yet run; the first handwritten ensure omitted required `candidate` and
+received no reply. The corrected full sequence exited 0. Restore alone changes
+admission; ensure (normally sign-in) restores sockets, then a request starts
+the daemon. Bob's final stop logged systemd's ignored `Failed to kill control
+group ... Invalid argument`; follow-up showed `Result=success`, `MainPID=0`,
+empty ControlGroup and `inactive/dead`, with only his user manager and sd-pam
+remaining. No surviving daemon or product failure was observed.
+
+### Scope, review and checks
+
+The chosen live path uses broker ensure and an existing synthetic account's
+cold daemon activation rather than real GitHub OAuth or first-account creation.
+That is the brief's daemon-restart alternative and exercises the strict JIT
+activation gate. Browser sign-in, model turns, existing tmux jobs and failure
+injection were not tested. No new product decision or intake issue was needed.
+
+Review: manual evidence-to-claim and diff review. This follow-up changes only
+evidence and the completed checklist, not session, daemon or authorization
+code; the implementation's independent critical review remains above.
+No Go/browser suite or independent LLM review was run for this evidence-only
+diff. Validation: `git diff --check`, `python3 scripts/validate-project-view.py`
+and the private narrative validator passed. The completed live-check line was
+removed from `KOKEILTAVAA.md`.
