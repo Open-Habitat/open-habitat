@@ -35,6 +35,13 @@ is not implicated, and no Atlassian *Live check* failed: none was reached.
   `integrations.spec.ts` + `atlassian-connect.spec.ts` with
   `OH_BROWSER_WORKERS=2`: passed.
 
+Review: one-finder `/llm-review` (claude-fable-5-1). Its one finding held:
+the settings poll kept a refused write's text across a daemon state change,
+which the new failure line would have shown over a genuine failure. Fixed
+(`IntegrationsSettings.tsx` poll) with a test that fails without it. Lock
+order, `errQuota` consumers, log privacy and skipped-site alignment checked
+clean. No verifier: the finding was settled by the reproducing test.
+
 ## For the pilot
 
 The person can start Jira and Confluence again now: the Microsoft attempt ended at
