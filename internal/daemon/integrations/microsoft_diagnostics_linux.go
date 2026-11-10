@@ -44,8 +44,20 @@ func (e microsoftResponseError) Unwrap() error { return e.err }
 // No endpoint is logged: a site/drive URL contains the person's identifiers.
 type microsoftDiscoveryError struct {
 	step, tenantKind string
-	err              error
+	// siteHost places a skipped site's host relative to the followed sites
+	// that did open, as a constant (siteHostSame, ...); empty elsewhere.
+	siteHost string
+	err      error
 }
+
+// A followed site whose host no reachable site shares is likely another
+// organisation's (a Teams shared channel hosted there): this sign-in's token
+// cannot open it. One on a shared host was deleted or is closed to the person.
+const (
+	siteHostSame    = "same_as_reachable_site"
+	siteHostOther   = "other_than_reachable_sites"
+	siteHostUnknown = "no_reachable_site"
+)
 
 func (e microsoftDiscoveryError) Error() string { return string(ToolFailed) }
 func (e microsoftDiscoveryError) Unwrap() error { return e.err }
@@ -55,5 +67,9 @@ func (e microsoftDiscoveryError) diagnostic() []any {
 	if errors.As(e.err, &response) {
 		status, code, message = response.status, response.code, response.message
 	}
-	return []any{"step", e.step, "tool", "direct_http", "exit_status", "not_applicable", "http_status", status, "graph_code", code, "graph_message", message, "tenant_kind", e.tenantKind}
+	attrs := []any{"step", e.step, "tool", "direct_http", "exit_status", "not_applicable", "http_status", status, "graph_code", code, "graph_message", message, "tenant_kind", e.tenantKind}
+	if e.siteHost != "" {
+		attrs = append(attrs, "site_host", e.siteHost)
+	}
+	return attrs
 }

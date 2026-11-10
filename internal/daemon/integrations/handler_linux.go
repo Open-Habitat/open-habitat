@@ -465,13 +465,13 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 			return
 		}
 		if !e.Available(c.env) {
-			fail(w, 409, "provider_unavailable")
+			c.refuseStart(w, in.Provider, "provider_unavailable")
 			return
 		}
 		if in.Level != "" && !levelAvailable(le.Levels(c.env), in.Level) {
 			// An unknown level is as unavailable as one the operator has not
 			// registered; neither starts a sign-in.
-			fail(w, 409, "level_unavailable")
+			c.refuseStart(w, in.Provider, "level_unavailable")
 			return
 		}
 		if in.Address != "" {
@@ -480,11 +480,15 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 				fail(w, 503, "native_unavailable")
 				return
 			case !exists:
-				fail(w, 409, string(AccountMissing))
+				c.refuseStart(w, in.Provider, string(AccountMissing))
 				return
 			}
 		}
 		err = c.startLogin(owner, e, in.Address, in.Level)
+		if errors.Is(err, errAttemptActive) {
+			c.refuseStart(w, in.Provider, "attempt_active")
+			return
+		}
 	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil && in.Level == "":
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 		err = c.redirect(owner, in.AttemptID, in.RedirectURL)
@@ -571,6 +575,23 @@ func reply(w http.ResponseWriter, body any) {
 
 // fail answers with the daemon's fixed error shape; native text never
 // reaches it.
+// refuseStart answers a sign-in start the daemon will not begin. No attempt
+// exists yet, so without this event a refused start leaves no trace beside
+// the gateway's bare 409. An attempt_active refusal names the provider whose
+// sign-in or first sync holds the daemon's single login slot.
+func (c *Catalog) refuseStart(w http.ResponseWriter, provider Provider, code string) {
+	attrs := []any{"provider", string(provider), "outcome", "refused", "phase", "start", "reason", code}
+	if code == "attempt_active" {
+		c.relay.mu.Lock()
+		if a := c.relay.a; a != nil {
+			attrs = append(attrs, "busy_provider", string(a.provider), "busy_state", a.state, "busy_syncing", a.syncing)
+		}
+		c.relay.mu.Unlock()
+	}
+	c.log.Warn("integration_login", attrs...)
+	fail(w, 409, code)
+}
+
 func fail(w http.ResponseWriter, status int, code string) {
 	b, _ := json.Marshal(map[string]any{"schema_version": 1, "error": map[string]any{"code": code, "message": "Request could not be completed", "retryable": false, "correlation_id": "req_00000000"}})
 	w.Header().Set("Cache-Control", "no-store")

@@ -362,6 +362,10 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 		if errors.As(err, &discovery) {
 			attrs = append(attrs, discovery.diagnostic()...)
 		}
+		var short quotaShortfall
+		if errors.As(err, &short) {
+			attrs = append(attrs, "needed_bytes", short.needed, "free_bytes", short.free)
+		}
 		c.log.Warn("integration_login", attrs...)
 	}
 }
@@ -685,7 +689,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				if !room.OK {
 					syncErr = errQuotaUnavailable
 				} else if bytes > room.Free {
-					syncErr = errQuota
+					syncErr = quotaShortfall{needed: bytes, free: room.Free}
 				}
 			}
 			if syncErr == nil {
@@ -811,6 +815,15 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 var errRedirectInvalid = errors.New("redirect_invalid")
 var errQuotaUnavailable = errors.New("quota_unavailable")
 var errQuota = errors.New("quota_insufficient")
+
+// quotaShortfall is errQuota with the counted size of a chosen first pass
+// and the room it did not fit, so the refusal's log tells how much space the
+// choice needed. Sizes are totals only; no file or folder name is kept.
+type quotaShortfall struct{ needed, free uint64 }
+
+func (quotaShortfall) Error() string        { return errQuota.Error() }
+func (quotaShortfall) Is(target error) bool { return target == errQuota }
+
 var errFolders = errors.New("invalid_request")
 
 // chooseFolders accepts the person's folder choice when it fits the room the

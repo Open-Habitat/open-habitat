@@ -3,10 +3,14 @@
 package integrations
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -246,6 +250,104 @@ func TestChoicePrecedesLargeInventoryAndFreshQuota(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// lockedLog collects the catalog's JSON events written from its workers.
+type lockedLog struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (l *lockedLog) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.Write(p)
+}
+
+func (l *lockedLog) events(t *testing.T, name string) []map[string]any {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(l.buf.String()), "\n") {
+		var e map[string]any
+		if line == "" {
+			continue
+		}
+		if err := json.Unmarshal([]byte(line), &e); err != nil {
+			t.Fatal(err)
+		}
+		if e["msg"] == name {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// A person who starts a second provider's sign-in while the first one's
+// initial pass counts its files is refused before any attempt exists. The
+// refusal leaves its own event naming the busy provider, and a pass that
+// then does not fit the home records how much it needed and how much room
+// there was, so neither outcome has to be reconstructed from a bare status.
+func TestRefusedStartAndQuotaShortfallAreLogged(t *testing.T) {
+	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true}
+	e := measuredScriptEntry{syncScriptEntry{s}}
+	other := &scriptEntry{provider: Atlassian, kind: PastedRedirect, signsIn: "site@example.test"}
+	c := testCatalog(t, newHome(t), []Entry{e, other})
+	logs := &lockedLog{}
+	c.log = slog.New(slog.NewJSONHandler(logs, nil))
+	var room atomic.Pointer[Room]
+	room.Store(&Room{})
+	c.quota = func() Room { return *room.Load() }
+	h := c.Handler(allow)
+	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox"})
+	id := waitState(t, h, ownerA, "open_url")["attempt_id"]
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+	waitState(t, h, ownerA, "choose_folders")
+	if code, _, _ := call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}}); code != 200 {
+		t.Fatal(code)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(c.env.Home, "inventory-started")); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("inventory did not start")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "atlassian"})
+	if code != 409 || errorCode(out) != "attempt_active" {
+		t.Fatal("start during a first pass", code, out)
+	}
+	refused := logs.events(t, "integration_login")
+	if len(refused) != 1 {
+		t.Fatal("refused start left no single event", refused)
+	}
+	for k, want := range map[string]any{"provider": "atlassian", "outcome": "refused", "phase": "start", "reason": "attempt_active", "busy_provider": "dropbox", "busy_state": "completing", "busy_syncing": true} {
+		if refused[0][k] != want {
+			t.Fatal(k, refused[0])
+		}
+	}
+	room.Store(&Room{OK: true, Free: 4000000000, Limit: 20000000000})
+	if err := os.WriteFile(filepath.Join(c.env.Home, "inventory-release"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if v := waitState(t, h, ownerA, "failed"); v["failure"] != "quota_insufficient" {
+		t.Fatal(v)
+	}
+	events := logs.events(t, "integration_login")
+	failed := events[len(events)-1]
+	for k, want := range map[string]any{"provider": "dropbox", "outcome": "failed", "reason": "quota_insufficient", "needed_bytes": float64(5000000000), "free_bytes": float64(4000000000)} {
+		if failed[k] != want {
+			t.Fatal(k, failed)
+		}
+	}
+	// The finished refusal frees the slot: the second provider now starts.
+	if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "atlassian"}); code != 200 {
+		t.Fatal("start after the refused pass", code, out)
 	}
 }
 

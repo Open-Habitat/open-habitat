@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1150,9 +1151,16 @@ func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
 
 // A followed site can survive deletion or loss of permission. That site must
 // not take the person's OneDrive and other followed libraries down with it.
+// A Teams shared channel hosted by another organisation is followed too but
+// lives on that organisation's host; the skip says which case it resembles.
 func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
-	for _, status := range []int{403, 404, 401, 429, 500} {
-		t.Run(fmt.Sprint(status), func(t *testing.T) {
+	const partnerSite = "fabrikam.sharepoint.com,7B1D5A3C-0000-4000-8000-000000000002,7B1D5A3C-0000-4000-8000-000000000003"
+	for _, tc := range []struct {
+		status     int
+		site, host string
+	}{{403, testMicrosoftMissingSite, siteHostSame}, {404, testMicrosoftMissingSite, siteHostSame}, {404, partnerSite, siteHostOther}, {401, testMicrosoftMissingSite, ""}, {429, testMicrosoftMissingSite, ""}, {500, testMicrosoftMissingSite, ""}} {
+		status, missing := tc.status, tc.site
+		t.Run(fmt.Sprint(status, "-", tc.host), func(t *testing.T) {
 			m := syntheticMicrosoft(t, "person@example.test", "")
 			base := m.client.Transport
 			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
@@ -1160,8 +1168,8 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 				code := 200
 				switch r.URL.Path {
 				case "/v1.0/me/followedSites":
-					body = fmt.Sprintf(`{"value":[{"id":%q,"displayName":"Unavailable team","webUrl":"https://example.test/site"},{"id":%q,"displayName":"Team","webUrl":"https://contoso.sharepoint.com/sites/team"}]}`, testMicrosoftMissingSite, testMicrosoftSite)
-				case "/v1.0/sites/" + testMicrosoftMissingSite + "/drives":
+					body = fmt.Sprintf(`{"value":[{"id":%q,"displayName":"Unavailable team","webUrl":"https://example.test/site"},{"id":%q,"displayName":"Team","webUrl":"https://contoso.sharepoint.com/sites/team"}]}`, missing, testMicrosoftSite)
+				case "/v1.0/sites/" + missing + "/drives":
 					code = status
 					body = `{"error":{"code":"itemNotFound","message":"private@example.test access-secret"}}`
 				default:
@@ -1190,7 +1198,10 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 			if !strings.Contains(string(log), fmt.Sprint(status)) || !strings.Contains(string(log), `"site_drives"`) {
 				t.Fatal("missing status", string(log))
 			}
-			for _, secret := range []string{"private@example.test", "access-secret", testMicrosoftMissingSite, "Unavailable team"} {
+			if !strings.Contains(string(log), `"site_host",`+strconv.Quote(tc.host)) {
+				t.Fatal("missing site host placement", string(log))
+			}
+			for _, secret := range []string{"private@example.test", "access-secret", missing, "Unavailable team", "fabrikam", "contoso"} {
 				if strings.Contains(string(log), secret) {
 					t.Fatal("unsafe skip diagnostic")
 				}

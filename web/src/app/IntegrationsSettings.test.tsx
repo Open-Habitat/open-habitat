@@ -269,3 +269,57 @@ it("the person's own write waits for the automatic check in flight", async () =>
     ]),
   );
 });
+
+// A start the host refuses before any attempt exists (here: another
+// provider's first synchronization holds the single sign-in slot) says why,
+// not only that the sign-in did not succeed.
+it("shows why the host refused to start a sign-in", async () => {
+  const starts: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations")
+        return json({
+          schema_version: 1,
+          providers: [
+            {
+              id: "dropbox",
+              available: true,
+              login: "pasted_redirect",
+              services: ["dropbox"],
+            },
+          ],
+          skill: "current",
+          accounts: [],
+        });
+      if (url === "/api/v1/integrations/login" && init?.method === "POST") {
+        starts.push(JSON.parse(String(init.body)));
+        return json(
+          {
+            schema_version: 1,
+            error: {
+              code: "attempt_active",
+              message: "Request could not be completed",
+              retryable: false,
+              correlation_id: "req_00000000",
+            },
+          },
+          409,
+        );
+      }
+      if (url === "/api/v1/integrations/login")
+        return json({ schema_version: 1, state: "none" });
+      return new Response("", { status: 404 });
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  const tile = await screen.findByTestId("integration-tile-dropbox");
+  await userEvent.click(within(tile).getByTestId("integration-connect-open"));
+  const dialog = await screen.findByTestId("integration-dialog");
+  const go = within(dialog).queryByTestId("integration-continue");
+  if (go) await userEvent.click(go);
+  const failed = await within(dialog).findByTestId("integration-login-failed");
+  expect(starts).toEqual([{ action: "start", provider: "dropbox" }]);
+  expect(failed.textContent).toContain("ensimmäinen synkronointi on kesken");
+});

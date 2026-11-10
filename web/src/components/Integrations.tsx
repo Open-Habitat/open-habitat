@@ -1730,11 +1730,14 @@ function FolderStep({
 
 function FailedStep({
   view,
+  error,
   others,
   onRestart,
   onClose,
 }: {
   view: LoginView;
+  /** Why the host refused to start the sign-in; replaces the generic text. */
+  error?: string;
   /** The login also serves other services than files. */
   others: boolean;
   onRestart: () => void;
@@ -1938,9 +1941,13 @@ function FailedStep({
     default:
       return (
         <>
-          <p className="ig-result bad" role="alert">
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-login-failed"
+          >
             <Icon name="warning" />
-            <span>{txt.failed}</span>
+            <span>{error ?? txt.failed}</span>
           </p>
           {restart}
         </>
@@ -2717,6 +2724,7 @@ export function ConnectDialog({
         body = (
           <FailedStep
             view={v}
+            error={stage.error}
             others={provider.services.some((s) => !fileServices.includes(s))}
             onRestart={onRestart}
             onClose={onClose}

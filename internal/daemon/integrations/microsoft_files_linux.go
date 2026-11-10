@@ -126,6 +126,9 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			return ToolFailed
 		}
 	}
+	// Hosts of the followed sites that opened, and of those skipped, in order.
+	reachable := map[string]bool{}
+	var skippedHosts []string
 	for _, s := range sites.Value {
 		var libraries struct {
 			Value []drive `json:"value"`
@@ -142,6 +145,8 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			var status microsoftHTTPStatus
 			if ctx.Err() == nil && errors.As(err, &status) && (status == 403 || status == 404) {
 				l.skippedSites = append(l.skippedSites, microsoftDiscoveryError{step: step, tenantKind: tenantKind, err: err})
+				host, _, _ := strings.Cut(s.ID, ",")
+				skippedHosts = append(skippedHosts, strings.ToLower(host))
 				name := s.Name
 				if name == "" || len(name) > 256 || !utf8.ValidString(name) || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 					name = "SharePoint"
@@ -155,6 +160,8 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		if libraries.Next != "" {
 			return ToolFailed
 		}
+		host, _, _ := strings.Cut(s.ID, ",")
+		reachable[strings.ToLower(host)] = true
 		step = "site_url"
 		u, err := url.Parse(s.WebURL)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" {
@@ -167,6 +174,16 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			// same library never run competing sync clients against one local root.
 			dir := "cloud/sharepoint/" + microsoftSegment(u.Hostname()) + "--" + l.address + "/" + microsoftSegment(s.ID+"-"+s.Name) + "/" + microsoftSegment(d.ID+"-"+d.Name)
 			remotes = append(remotes, microsoftRemote{Name: name, Directory: dir, DriveID: d.ID, DriveType: d.Type})
+		}
+	}
+	for i, host := range skippedHosts {
+		switch {
+		case len(reachable) == 0:
+			l.skippedSites[i].siteHost = siteHostUnknown
+		case reachable[host]:
+			l.skippedSites[i].siteHost = siteHostSame
+		default:
+			l.skippedSites[i].siteHost = siteHostOther
 		}
 	}
 	step = "remote_limit"
