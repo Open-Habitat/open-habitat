@@ -43,7 +43,7 @@ export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$re
 export CI=1
 # Bound concurrent native phases; respect caller/backend budgets.
 # The browser suites run side by side, ordinary with OH_BROWSER_WORKERS and lab
-# with OH_LAB_WORKERS; 6 + 3 kept 8-core Birch just short of saturation, where
+# with OH_LAB_WORKERS; 6 + 3 kept an 8-core test host just short of saturation, where
 # timing-sensitive cases start to fail.
 export GOMAXPROCS="${GOMAXPROCS:-4}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-6}" OH_LAB_WORKERS="${OH_LAB_WORKERS:-3}" OH_WEB_WORKERS="${OH_WEB_WORKERS:-4}" tmp
 export NPM_CONFIG_CACHE="${npm_config_cache:-${NPM_CONFIG_CACHE:-$tmp/npm}}"
@@ -155,7 +155,7 @@ npm test --prefix web
 # Build once before Playwright: the same fresh production assets are served by
 # the synthetic host and later packaged. Standalone Playwright still builds.
 npm run build --prefix web
-if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets;then
+if grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon' web/dist/assets;then
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
 # Packaging reads only the built web assets and the committed Go sources, and
@@ -173,6 +173,7 @@ fi
   cmp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz dist/two/open-habitat-0.0.0-test-linux-amd64.tar.gz
   ./scripts/verify-release.sh --archive dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz --json
   bash scripts/test-package-socket.sh dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
+  bash scripts/test-package-fixture-guard.sh dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
   mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
   ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
   printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"

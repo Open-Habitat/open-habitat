@@ -8,7 +8,7 @@ while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "error: invalid --version '$version'" >&2;exit 1; }
 case $target in linux-amd64) goarch=amd64;; linux-arm64) goarch=arm64;; *) echo "error: unsupported --target '$target'; expected linux-amd64 or linux-arm64" >&2;exit 1;; esac
 [[ -f $web_dir/index.html ]] || { echo "error: --web-dir '$web_dir' is not a Vite build" >&2;exit 1; }
-if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' "$web_dir" >/dev/null;then echo "error: test fixture content found in --web-dir '$web_dir'" >&2;exit 1;fi
+if grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon' "$web_dir" >/dev/null;then echo "error: test fixture content found in --web-dir '$web_dir'" >&2;exit 1;fi
 mkdir -p "$output"; output=$(cd "$output"&&pwd)
 # Keep generated binary staging inside the ignored source output tree, so the
 # shared build runner can return it without arbitrary absolute-path writeback.
@@ -30,7 +30,7 @@ cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.
 find "$root/web" -type f -name '*.map' -delete
-if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null; then
+if grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null; then
   echo "error: test fixture content or control found in packaged web assets" >&2; exit 1
 fi
 cp -a "$repo"/systemd/. "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysusers.d/"; cp "$repo"/tmpfiles.d/* "$root/tmpfiles.d/"; cp "$repo/licenses/DEPENDENCIES.md" "$root/licenses/"
