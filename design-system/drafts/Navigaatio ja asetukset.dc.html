@@ -697,10 +697,10 @@ function surf(cur) {
   return cur ? { bg: 'var(--current)', line: 'var(--current-line)', weight: 600, hoverBg: 'var(--current)' } : { bg: 'transparent', line: 'transparent', weight: 400, hoverBg: 'var(--hover)' };
 }
 const PROFILES = {
-  full: { full: 'Alice Mäkinen', first: 'Alice', email: 'alice.makinen@example.fi', initials: 'AM' },
+  full: { full: 'Alice Mäkinen', first: 'Alice', email: 'alice.makinen@example.com', initials: 'AM' },
   noemail: { full: 'Alice Mäkinen', first: 'Alice', email: null, initials: 'AM' },
   noname: { full: 'alice-m', first: null, email: null, initials: 'A' },
-  long: { full: 'Alexandra-Magdalena Väisänen-Kärkkäinen', first: 'Alexandra-Magdalena', email: 'alexandra-magdalena.vaisanen-karkkainen@tutkimus.example.fi', initials: 'AV' },
+  long: { full: 'Alexandra-Magdalena Väisänen-Kärkkäinen', first: 'Alexandra-Magdalena', email: 'alexandra-magdalena.vaisanen-karkkainen@tutkimus.example.com', initials: 'AV' },
 };
 function account(p) {
   const pr = PROFILES[p];

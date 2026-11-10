@@ -16,21 +16,21 @@ const ICON_BRANCH = SVG('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="
 
 // Lisää työtiloja, jotta skaalautuminen näkyy, ja tiedot korteille.
 const EXTRA = [
-  { id: 'reitti', path: '~/src/reitti', open: false, convs: [{ id: 'r1', title: 'Pysäkkihaun sumea vertailu', st: 'done' }, { id: 'r2', title: 'HSL-rajapinnan virheviestit', st: 'done' }] },
-  { id: 'kuitit', path: '~/src/kuitit', open: false, convs: [{ id: 'k1', title: 'OCR-tuloksen päivämäärät', st: 'done' }] },
-  { id: 'wilma-cli', path: '~/src/wilma-cli', open: false, convs: [] },
-  { id: 'taskfleet', path: '~/src/taskfleet', open: false, convs: [{ id: 't1', title: 'run wait --any -tulosteen muoto', st: 'done' }, { id: 't2', title: 'Supervisorin uudelleenkäynnistys', st: 'done' }, { id: 't3', title: 'Profiilien dry-run', st: 'done' }] },
+  { id: 'pysakkihaku', path: '~/src/pysakkihaku', open: false, convs: [{ id: 'r1', title: 'Pysäkkihaun sumea vertailu', st: 'done' }, { id: 'r2', title: 'HSL-rajapinnan virheviestit', st: 'done' }] },
+  { id: 'kuittiarkisto', path: '~/src/kuittiarkisto', open: false, convs: [{ id: 'k1', title: 'OCR-tuloksen päivämäärät', st: 'done' }] },
+  { id: 'koulukalenteri', path: '~/src/koulukalenteri', open: false, convs: [] },
+  { id: 'tyojono', path: '~/src/tyojono', open: false, convs: [{ id: 't1', title: 'run wait --any -tulosteen muoto', st: 'done' }, { id: 't2', title: 'Supervisorin uudelleenkäynnistys', st: 'done' }, { id: 't3', title: 'Profiilien dry-run', st: 'done' }] },
 ];
 for (const w of EXTRA) if (!UI.ws.some(x => x.id === w.id)) UI.ws.push(w);
 const WS = {
-  aurinkokello: { branch: 'main', dirty: 2, gh: 'maintainer/aurinkokello', t: '1 min' },
-  issuectl: { branch: 'search-negation', dirty: 0, gh: 'jarimustonen/issuectl', t: '25 min' },
-  fleetrepo: { branch: 'main', dirty: 0, gh: 'maintainer/fleetrepo', t: 'ma' },
-  'open-habitat': { branch: 'main', dirty: 5, gh: 'Open-Habitat/open-habitat', t: 'nyt' },
-  reitti: { branch: 'main', dirty: 0, gh: 'maintainer/reitti', t: '9.10.' },
-  kuitit: { branch: 'main', dirty: 0, gh: 'maintainer/kuitit', t: '2.10.' },
-  'wilma-cli': { branch: 'main', dirty: 0, gh: null, t: 'luotu 1.10.' },
-  taskfleet: { branch: 'main', dirty: 0, gh: 'jarimustonen/taskfleet', t: 'eilen' },
+  aurinkokello: { branch: 'main', dirty: 2, gh: 'alice-m/aurinkokello', t: '1 min' },
+  tehtavat: { branch: 'search-negation', dirty: 0, gh: 'alice-m/tehtavat', t: '25 min' },
+  kotiverkko: { branch: 'main', dirty: 0, gh: 'alice-m/kotiverkko', t: 'ma' },
+  'open-habitat': { branch: 'main', dirty: 5, gh: 'alice-m/open-habitat', t: 'nyt' },
+  pysakkihaku: { branch: 'main', dirty: 0, gh: 'alice-m/pysakkihaku', t: '9.10.' },
+  kuittiarkisto: { branch: 'main', dirty: 0, gh: 'alice-m/kuittiarkisto', t: '2.10.' },
+  'koulukalenteri': { branch: 'main', dirty: 0, gh: null, t: 'luotu 1.10.' },
+  tyojono: { branch: 'main', dirty: 0, gh: 'alice-m/tyojono', t: 'eilen' },
 };
 const INFO = {
   c2: { t: '8 min', say: 'Pakkaus valmis: 214 kuvaa, 38 Mt → 11 Mt. Poistanko alkuperäiset, vai jätetäänkö ne <span class="mono">originals/</span>-hakemistoon?' },
@@ -39,8 +39,8 @@ const INFO = {
   c5: { t: 'nyt', doing: 'ajaa <span class="mono">npm test</span> · 2 min' },
   c4: { t: '3 t', say: 'Prosessin tilaa ei saatu luettua.' },
 };
-const GH = ['maintainer/reitti', 'maintainer/kuitit', 'maintainer/wilma-cli', 'jarimustonen/taskfleet'];
-let HOME = true, CUR = 'v1', MENU = null, NWS = 'gh', OPEN = { aurinkokello: true, issuectl: true, 'open-habitat': true };
+const GH = ['alice-m/pysakkihaku', 'alice-m/kuittiarkisto', 'alice-m/koulukalenteri', 'alice-m/tyojono'];
+let HOME = true, CUR = 'v1', MENU = null, NWS = 'gh', OPEN = { aurinkokello: true, tehtavat: true, 'open-habitat': true };
 const st = (c) => convState(c);
 const info = (c) => INFO[c.id] || {};
 const mark = (c) => { const [l, m] = STATES[st(c)] ?? ['Ei aloitettu', '<span class="st-none"></span>']; return `<span class="st" role="img" aria-label="${l}" title="${l}">${m}</span>`; };
@@ -83,7 +83,7 @@ function paintDlg() {
   dlg.innerHTML = `<form method="dialog"><h3>Uusi työtila</h3>
 <div class="seg" role="tablist"><button type="button" role="tab" aria-selected="${gh}" data-nws="gh">${ICON_GH}Kloonaa GitHubista</button><button type="button" role="tab" aria-selected="${!gh}" data-nws="dir">${ICON_FOLDER}Uusi hakemisto</button></div>
 ${gh ? `<label class="fld"><span>Repositorio</span><input name="v" class="mono" placeholder="omistaja/repo" autocomplete="off" required></label>
-<ul class="sugg">${GH.filter(r => !UI.ws.some(w => w.id === r.split('/')[1])).concat(['maintainer/dotfiles', 'maintainer/kirjasto']).map(r => `<li><button type="button" data-sugg="${r}" class="mono">${r}</button></li>`).join('')}</ul>
+<ul class="sugg">${GH.filter(r => !UI.ws.some(w => w.id === r.split('/')[1])).concat(['alice-m/dotfiles', 'alice-m/kirjasto']).map(r => `<li><button type="button" data-sugg="${r}" class="mono">${r}</button></li>`).join('')}</ul>
 <p class="hint">Kloonataan hakemistoon <span class="mono">~/src/&lt;repo&gt;</span> sinun GitHub-tunnuksillasi.</p>`
     : `<label class="fld"><span>Nimi</span><input name="v" class="mono" placeholder="uusi-projekti" autocomplete="off" required pattern="[a-z0-9._-]+"></label>
 <p class="hint">Luodaan <span class="mono">~/src/&lt;nimi&gt;</span> ja alustetaan Git-repoksi.</p>`}
@@ -140,7 +140,7 @@ const summary = () => { const n = needs().length, k = UI.ws.reduce((s, w) => s +
 
 // ---------- Katsaukset ----------
 // Juuri valmistunut keskustelu ilman katsausta (vain nimi).
-const hb = UI.ws.find(w => w.id === 'fleetrepo');
+const hb = UI.ws.find(w => w.id === 'kotiverkko');
 if (!hb.convs.some(c => c.id === 'c12')) hb.convs.unshift({ id: 'c12', title: 'Lokien kierrätys ja säilytysaika', st: 'attention' });
 const REC = {
   c2: { age: '8 min sitten', recap: 'Kuvat `assets/photos/` muunnettiin WebP-muotoon laadulla 82: 214 kuvaa, yhteensä 38 Mt → 11 Mt. `build.sh` käyttää nyt `.webp`-tiedostoja ja säilyttää JPEG-varakuvan vanhoille selaimille `<picture>`-elementissä. Alkuperäiset ovat yhä paikallaan.', next: 'Päätä, poistetaanko alkuperäiset vai siirretäänkö ne `originals/`-hakemistoon.' },

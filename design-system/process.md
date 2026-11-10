@@ -42,7 +42,7 @@ uudelleen luotavaa aineistoa; niitä ei commitoida, ja paketti kirjaa lähdecomm
 Paketti näyttää myös, mikä muuttui edellisen paketin commitista, ja yhdistää
 muutokset tiloihin ja tallenteisiin. Paketin `MANIFEST.md` kirjaa commitin,
 johon asti se on ajan tasalla; sama commit kirjataan kierroksen issueen ja
-[rounds.md](rounds.md)-tiedostoon, josta seuraava kokoaja aloittaa. Kun
+paketin kokoajan kierrosluetteloon, josta seuraava kokoaja aloittaa. Kun
 riviä ei vielä ole, paketti esittää koko inventaarion uutena ja aukkolistan
 muutoslistan sijaan. Git-historia antaa muutokset, inventaario
 niiden yhteyden käyttöliittymään. Designeriltä pyydetään kommentti jokaiseen
@@ -115,7 +115,7 @@ Kierros on valmis, kun vedokset ja design.md kuvaavat sovitun lopputuloksen
 ja toteutuksen vertailussa ei ole ratkaisemattomia eroja. Keskeneräisessä
 kierroksessa erot ja kattavuusaukot jäävät näkyviksi jatkotöiksi. Brief,
 handoff-arvio ja vertailun tulos muodostavat seuraavan kierroksen lähtökohdan. Muu työ etenee
-[työskentelyohjeen](../AGENTS-WORKFLOW.md) mukaan.
+[repositorion ohjeen](../AGENTS.md) mukaan.
 
 ## Työkalujen nykytila
 

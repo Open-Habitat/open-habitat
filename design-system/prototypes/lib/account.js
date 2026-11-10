@@ -21,17 +21,17 @@ const ICON_SUN = SVG('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.
 const ICON_MOON = SVG('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>');
 const ICON_AUTO = SVG('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>');
 
-const ME = { name: 'Jari', full: 'Jari Mustonen', email: 'jari@esimerkki.fi', admin: true };
+const ME = { name: 'Alice', full: 'Alice Mäkinen', email: 'alice.makinen@example.com', admin: true };
 const SRV = { name: 'open-habitat-test', ver: '0.0.0-pilot.61', users: 3 };
-const GHW = { aurinkokello: 'maintainer/aurinkokello', issuectl: 'jarimustonen/issuectl', fleetrepo: 'maintainer/fleetrepo', 'open-habitat': 'Open-Habitat/open-habitat' };
-const GH = ['maintainer/reitti', 'maintainer/kuitit', 'maintainer/wilma-cli', 'jarimustonen/taskfleet'];
+const GHW = { aurinkokello: 'alice-m/aurinkokello', tehtavat: 'alice-m/tehtavat', kotiverkko: 'alice-m/kotiverkko', 'open-habitat': 'alice-m/open-habitat' };
+const GH = ['alice-m/pysakkihaku', 'alice-m/kuittiarkisto', 'alice-m/koulukalenteri', 'alice-m/tyojono'];
 let CUR = 'v1', MENU = null, NWS = 'gh';
 
 // ---------- Menus ----------
 const item = (act, icon, label, extra = '') => `<button type="button" role="menuitem" data-p="${act}">${icon}<span>${label}</span>${extra}</button>`;
 const themeNow = () => document.getElementById('theme').value;
 const themeSeg = () => `<div class="p-theme" role="group" aria-label="Teema">${[['system', ICON_AUTO, 'Järjestelmä'], ['light', ICON_SUN, 'Vaalea'], ['dark', ICON_MOON, 'Tumma']].map(([v, i, l]) => `<button type="button" data-theme="${v}" aria-pressed="${themeNow() === v}" title="${l}" aria-label="${l}">${i}</button>`).join('')}</div>`;
-const who = () => `<div class="p-who"><span class="avatar lg">J</span><span><strong>${ME.full}</strong><small>${ME.email}</small></span></div>`;
+const who = () => `<div class="p-who"><span class="avatar lg">A</span><span><strong>${ME.full}</strong><small>${ME.email}</small></span></div>`;
 const srvInfo = () => `<div class="p-who"><span class="srv-ic">${ICON_SERVER}</span><span><strong class="mono">${SRV.name}</strong><small><span class="st-dot ok"></span> Yhdistetty · <span class="mono">${SRV.ver}</span></small></span></div>`;
 const adminItem = () => ME.admin ? item('admin', ICON_SERVER, 'Palvelimen ylläpito', '<span class="p-badge">ylläpitäjä</span>') : '';
 const MENUS = {
@@ -87,12 +87,12 @@ dlg.addEventListener('close', () => {
 const closeBtn = `<button class="icon-btn rail-close" type="button" data-ui="drawer" aria-label="Sulje valikko" title="Sulje valikko">${ICON_CLOSE}</button>`;
 const home = `<a class="home-row" href="#" data-ui="home">${ICON_HOME}<span>Etusivu</span></a>`;
 const filter = `<label class="rail-filter">${ICON_SEARCH}<input type="search" placeholder="Suodata työtiloja" aria-label="Suodata työtiloja"></label>`;
-const userBtn = (key, place) => `<button type="button" class="p-user" data-menu="${key}" data-place="${place}" aria-haspopup="menu" aria-expanded="false"><span class="avatar">J</span><span class="p-name">${ME.name}</span>${ICON_UPDOWN}</button>`;
+const userBtn = (key, place) => `<button type="button" class="p-user" data-menu="${key}" data-place="${place}" aria-haspopup="menu" aria-expanded="false"><span class="avatar">A</span><span class="p-name">${ME.name}</span>${ICON_UPDOWN}</button>`;
 const wsHead = (inline) => `<div class="p-section"><span>Työtilat</span>${inline ? '' : `<button type="button" class="icon-btn p-add" data-p="nws" aria-label="Uusi työtila" title="Uusi työtila">${ICON_FOLDER_PLUS}</button>`}</div>`;
 const SHELL = {
   v1: () => `<div class="rail-head"><span class="srv">${SRV.name}</span><span class="conn"><span class="st-dot ok"></span>Yhdistetty</span>${closeBtn}</div>${home}${filter}${wsHead(false)}<nav class="rail-list"></nav><div class="rail-foot p-foot">${userBtn('user1', 'up')}</div>`,
   v2: () => `<div class="rail-head p-srvhead"><button type="button" class="p-srvbtn" data-menu="srv2" data-place="down" aria-haspopup="menu" aria-expanded="false"><span class="srv-ic">${ICON_SERVER}</span><span class="srv-txt"><span class="srv mono">${SRV.name}</span><span class="conn"><span class="st-dot ok"></span>Yhdistetty</span></span>${ICON_DOWN}</button>${closeBtn}</div>${home}${filter}${wsHead(true)}<nav class="rail-list"></nav><button type="button" class="p-newws" data-p="nws">${ICON_FOLDER_PLUS}<span>Uusi työtila</span></button><div class="rail-foot p-foot">${userBtn('user2', 'up')}</div>`,
-  v3: () => `<div class="rail-head p-top"><button type="button" class="p-me" data-menu="user3" data-place="down" aria-haspopup="menu" aria-expanded="false" aria-label="Tili ja palvelin"><span class="avatar">J</span><span class="p-name">${ME.name}</span><span class="st-dot ok" title="Yhdistetty palvelimeen ${SRV.name}"></span>${ICON_DOWN}</button><span class="p-grow"></span><button type="button" class="icon-btn" data-p="search" aria-label="Hae" title="Hae">${ICON_SEARCH}</button><button type="button" class="icon-btn" data-p="nws" aria-label="Uusi työtila" title="Uusi työtila">${ICON_FOLDER_PLUS}</button>${closeBtn}</div>${home}<label class="rail-filter p-search" hidden>${ICON_SEARCH}<input type="search" placeholder="Suodata työtiloja" aria-label="Suodata työtiloja"></label><nav class="rail-list"></nav>`,
+  v3: () => `<div class="rail-head p-top"><button type="button" class="p-me" data-menu="user3" data-place="down" aria-haspopup="menu" aria-expanded="false" aria-label="Tili ja palvelin"><span class="avatar">A</span><span class="p-name">${ME.name}</span><span class="st-dot ok" title="Yhdistetty palvelimeen ${SRV.name}"></span>${ICON_DOWN}</button><span class="p-grow"></span><button type="button" class="icon-btn" data-p="search" aria-label="Hae" title="Hae">${ICON_SEARCH}</button><button type="button" class="icon-btn" data-p="nws" aria-label="Uusi työtila" title="Uusi työtila">${ICON_FOLDER_PLUS}</button>${closeBtn}</div>${home}<label class="rail-filter p-search" hidden>${ICON_SEARCH}<input type="search" placeholder="Suodata työtiloja" aria-label="Suodata työtiloja"></label><nav class="rail-list"></nav>`,
 };
 const libPaintRail = paintRail;
 window.paintRail = function () {

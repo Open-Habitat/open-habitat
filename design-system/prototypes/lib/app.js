@@ -26,12 +26,12 @@ const UI = {
       { id: 'c7', title: 'README:n esimerkkien päivitys', st: 'done' },
       { id: 'c8', title: 'Aikavyöhykkeen käsittely tulosteessa', st: 'done' },
     ] },
-    { id: 'issuectl', path: '~/src/issuectl', open: true, convs: [
+    { id: 'tehtavat', path: '~/src/tehtavat', open: true, convs: [
       { id: 'c4', title: 'Riippuvuusgraafin syklin tunnistus', st: 'unknown' },
       { id: 'c10', title: 'Hakusyntaksin negaatiot', st: 'waiting' },
       { id: 'c11', title: 'JSON-tulosteen skeema', st: 'done' },
     ] },
-    { id: 'fleetrepo', path: '~/src/fleetrepo', open: false, convs: [
+    { id: 'kotiverkko', path: '~/src/kotiverkko', open: false, convs: [
       { id: 'c6', title: 'Varmuuskopioiden ajastus', st: 'done' },
     ] },
     { id: 'open-habitat', path: '~/Sources/open-habitat', open: true, convs: [
@@ -68,7 +68,7 @@ uiRail.innerHTML = `<div class="rail-head"><span class="srv">open-habitat-test</
 <a class="home-row" href="#" data-ui="home">${ICON_HOME}<span>Etusivu</span></a>
 <label class="rail-filter">${ICON_SEARCH}<input type="search" placeholder="Suodata työtiloja" aria-label="Suodata työtiloja"></label>
 <nav class="rail-list"></nav>
-<div class="rail-foot"><span class="avatar">J</span><span>Jari</span></div>`;
+<div class="rail-foot"><span class="avatar">A</span><span>Alice</span></div>`;
 const uiScrim = document.createElement('div'); uiScrim.className = 'scrim'; uiScrim.dataset.ui = 'drawer';
 uiFrame.append(uiRail, uiMain, uiScrim);
 const uiPop = document.createElement('div'); uiPop.className = 'popover'; uiPop.hidden = true; uiMain.appendChild(uiPop);
