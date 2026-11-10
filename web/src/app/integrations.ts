@@ -53,7 +53,10 @@ export type ServiceState =
   | "quota_full"
   | "unknown";
 export type LoginKind =
-  "app_password" | "pasted_redirect" | "device_code" | "personal_token";
+  | "app_password"
+  | "pasted_redirect"
+  | "device_code"
+  | "personal_token";
 export type SkillState = "current" | "none" | "blocked" | "failed";
 
 export type Provider = {
@@ -206,7 +209,10 @@ export type LoginView = {
   folders?: Folder[];
   unavailable_sites?: string[];
   teams_left_out?:
-    "not_granted" | "refused" | "channels_not_granted" | "too_many";
+    | "not_granted"
+    | "refused"
+    | "channels_not_granted"
+    | "too_many";
   directory?: string;
   progress?: SyncProgress;
   free_bytes?: number;
