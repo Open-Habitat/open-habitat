@@ -2,12 +2,15 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m71zxxabyvwy0h1y2tec6n4g/observed:rail-archive-handover-action
 originating_run: 01m71zxxabyvwy0h1y2tec6n4g
 originating_run_kind: spinoff
+lane: gate-load-flakes
+lane_seq: 6
+preparation: ready
 ---
 
 # Rail archive detector races handover and sometimes lacks Ei nyt on a finished reply
