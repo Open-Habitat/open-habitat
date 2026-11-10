@@ -30,9 +30,10 @@ def main():
                                text=True, check=True).stdout.split():
         os.environ.pop(name, None)
     os.umask(0o077)
-    # DEFAULT-ON SWITCH: change 0 to 60 once the product ordering fixes land.
+    # Exercise request/event overtaking while developing; whole suites keep
+    # their own policy, and an explicit zero disables focused-run jitter.
     if args.spec or args.tag:
-        os.environ.setdefault('OH_REPLY_DELAY_MS', '0')
+        os.environ.setdefault('OH_REPLY_DELAY_MS', '60')
     # Different configs exclude each other's specs; never silently lose one
     # when a focused selection spans both suites.
     groups = {}

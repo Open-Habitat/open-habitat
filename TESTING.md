@@ -59,9 +59,12 @@ in both suites. `OH_PORT_BASE=11000` reserves ordinary ports, with lab at +100.
 `OH_REPLY_SEED` is printed and can be supplied to replay the delay schedule;
 it cannot reproduce OS scheduling or identical browser interleavings.
 
-Focused runs currently default to zero jitter; the marked one-line switch in
-`browser-focused.py` enables 60 ms once the product ordering fixes are ready.
-Opt in with `OH_REPLY_DELAY_MS=250 OH_REPLY_SEED=my-seed`. The synthetic host
+Focused runs with `--spec` or `--tag` default to 0–60 ms reply jitter.
+`OH_REPLY_DELAY_MS=0` disables it; use `OH_REPLY_DELAY_MS=250
+OH_REPLY_SEED=my-seed` for the stronger detector. Each failing case prints
+its seed. Verify changed specs with `--repeat-each 3` through Playwright
+and a small `OH_BROWSER_WORKERS`; whole suites do not inherit the focused
+runner's default. The synthetic host
 uses a seeded per-method/path sequence before API dispatch, matching the sweep;
 fixture controls and the event stream are not delayed. Independent request
 waits permit overtaking; controlled Vitest delivery covers exact event/reply

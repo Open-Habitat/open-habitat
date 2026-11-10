@@ -21,12 +21,17 @@ class FocusedTests(unittest.TestCase):
 import json, os, sys
 with open(os.environ['FOCUSED_CALLS'], 'a') as out:
     out.write(json.dumps(sys.argv[1:]) + '\\n')
+with open(os.environ['FOCUSED_ENV'], 'w') as out:
+    json.dump({key: os.environ.get(key) for key in ('OH_REPLY_DELAY_MS', 'OH_REPLY_SEED')}, out)
 sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
 ''')
         npx.chmod(0o700)
         self.env = {**os.environ, 'PATH': str(self.root) + os.pathsep + os.environ['PATH'],
                     'FOCUSED_CALLS': str(self.log),
+                    'FOCUSED_ENV': str(self.root / 'env.json'),
                     'OH_BROWSER_SUITE_LOCK': str(self.root / 'suite.lock')}
+        self.env.pop('OH_REPLY_DELAY_MS', None)
+        self.env.pop('OH_REPLY_SEED', None)
 
     def run_focused(self, *args, status=0):
         result = subprocess.run([str(REPO / 'scripts/test-focused.sh'), '--area', 'browser', *args],
@@ -68,8 +73,23 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
         self.assertEqual(self.run_focused('--tag', '@focused'),
                          [['playwright', 'test', '--grep', '@focused']])
 
+    def test_focused_jitter_default_and_overrides(self):
+        for selection in (('--spec', 'host-lifetime.spec.ts'), ('--tag', '@focused')):
+            for override in (None, '0', '250'):
+                with self.subTest(selection=selection, override=override):
+                    self.env.pop('OH_REPLY_DELAY_MS', None)
+                    if override is not None:
+                        self.env['OH_REPLY_DELAY_MS'] = override
+                    self.env['OH_REPLY_SEED'] = 'focused-replay'
+                    self.run_focused(*selection)
+                    observed = json.loads((self.root / 'env.json').read_text())
+                    self.assertEqual(observed, {'OH_REPLY_DELAY_MS': override or '60',
+                                                'OH_REPLY_SEED': 'focused-replay'})
+
     def test_whole_suite(self):
         self.assertEqual(self.run_focused(), [['playwright', 'test']])
+        observed = json.loads((self.root / 'env.json').read_text())
+        self.assertIsNone(observed['OH_REPLY_DELAY_MS'])
 
 
 if __name__ == '__main__':
