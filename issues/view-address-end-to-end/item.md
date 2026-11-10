@@ -1,8 +1,8 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-10
 type: task
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation proposal from ADR 0035 awaiting Jari review
@@ -13,6 +13,7 @@ preparation: ready
 blocked_by: ['@decide-view-stable-address', '@view-card-public-switch', '@view-address-access-exemption']
 lane: decide-view-stable-address
 lane_seq: 6
+closed: 2026-11-10
 ---
 
 # Verify stable view addresses through the real ingress
@@ -32,6 +33,6 @@ Implements proposed ADR 0035 (docs/decisions/adr-0035-view-stable-address.md). A
 
 ## Acceptance Criteria
 
-- [ ] Implement this unit under the approved ADR, including the checks named above.
-- [ ] Keep changed contracts, generated types and current callers coherent in each landed unit.
-- [ ] Record focused tests and remaining environment gaps in result.md.
+- [x] Implement this unit under the approved ADR, including the checks named above.
+- [x] Keep changed contracts, generated types and current callers coherent in each landed unit.
+- [x] Record focused tests and remaining environment gaps in result.md.
