@@ -1,0 +1,41 @@
+/* Round 2 on top of round 1's round.css: the collapsible Muutokset card. */
+.v2-changes { justify-self: stretch; }
+.v2-head { display: flex; align-items: stretch; min-width: 0; }
+.v2-changes[data-open] > .v2-head { border-bottom: 1px solid var(--ah-line-soft); }
+.v2-toggle {
+  flex: 1 1 auto; min-width: 0;
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; column-gap: var(--ah-s2); row-gap: 2px;
+  min-height: 36px; padding: 6px var(--ah-s3); border: 0; background: none; color: var(--ah-ink);
+  text-align: left; cursor: pointer; font: inherit;
+}
+.v2-toggle:hover, .v2-tl-button:hover { background: var(--ah-hover); }
+.v2-toggle:focus-visible, .v2-tl-button:focus-visible { outline: var(--ah-focus-width, 2px) solid var(--ah-focus); outline-offset: calc(-1 * var(--ah-focus-width, 2px)); }
+.v2-toggle > svg { width: 15px; height: 15px; color: var(--ah-ink-2); }
+.v2-toggle > .ah-disclosure-chevron { color: var(--ah-muted); }
+.v2-line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--ah-s2); min-width: 0; }
+.v2-title { font-size: var(--ah-size-ui); font-weight: 600; white-space: nowrap; }
+.v2-sofar { font-weight: 400; color: var(--ah-ink-2); }
+.v2-meta { display: inline-flex; align-items: baseline; gap: var(--ah-s2); min-width: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); white-space: nowrap; }
+.v2-meta .vm-path { min-width: 0; }
+/* Nimet: the names under the title, one line, cut at the card's edge. */
+.v2-names {
+  grid-column: 3; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: var(--ah-size-meta)/1.4 var(--ah-mono); color: var(--ah-ink-2);
+}
+.v2-name[data-change="created"] { color: var(--ah-ok); }
+.v2-name[data-change="deleted"] { color: var(--ah-err); text-decoration: line-through; }
+.v2-more { font-family: var(--ah-font); color: var(--ah-muted); }
+.v2-tl-button {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--ah-s3);
+  border: 0; border-left: 1px solid var(--ah-line-soft); background: none; color: var(--ah-ink-2);
+  font: 500 var(--ah-size-meta) var(--ah-font); cursor: pointer;
+}
+.v2-tl-button svg { width: 14px; height: 14px; }
+.v2-tl-button[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-ink); }
+.v2-body > .vm-tl-grid { padding-top: var(--ah-s2); }
+@media (max-width: 800px) {
+  /* A phone: the timeline button keeps only its icon. */
+  .v2-toggle { padding-inline: var(--ah-s2); }
+  .v2-tl-button { padding: 0 var(--ah-s2); }
+  .v2-tl-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

@@ -1,5 +1,118 @@
 # Mitä agentti muutti vuorossa
 
+## Kierros 2: Yhteenveto kiinni, aikajana painikkeen takana
+
+Kierros: `design-system/prototypes/rounds/2026-11-10-vuoron-muutokset-2/`
+(`NOTES.md` kertoo rakenteen ja tarkistuksen). Jari valitsi kierros 1:stä
+Yhteenvedon (1). Katselmoinnista (2) otetaan se, että muutokset ovat
+oletuksena kiinni, ja Aikajanan (3) tiedostokohtaiset janat ovat
+valinnaisen painikkeen takana. Vuorot, tapaukset ja säätimet ovat samat kuin
+kierros 1:ssä (*Vuoro*: monta, pieni, kesken; *Teema*, *Liike*, *Kieli*;
+1440 ja 390), ja diffit ovat edelleen tuotannon `FileToolCard`.
+
+Kaikissa muunnelmissa on sama kortti. Vastauksen alla on yksi kiinni oleva
+rivi *Muutokset · 8 tiedostoa +35 −27*. Rivi avaa kierros 1:n listan:
+jokainen tiedosto kerran merkintöineen, ja tiedostorivi avaa sen koko
+muutoksen ja *Avaa editorissa · rivi N*. Avatun kortin otsikossa on
+*Aikajana*-painike, joka vaihtaa listan tilalle kierros 1:n janat. Merkki
+avaa yksittäisen muokkauksen ja *Lopputulos* koko muutoksen. Uudelleen
+painettuna näkyy taas lista.
+
+Muunnelmat tehtiin vain avoimista kysymyksistä: mitä kiinni oleva rivi kertoo
+ja missä aikajanan painike on. Jokaisen ero näkyy heti avautuvassa
+näkymässä, ja sivun yläreunassa on jokaisesta yksi rivi.
+
+1. **Tiivis**: rivillä on vain tiedostojen määrä ja rivimäärät.
+   *Aikajana* tulee näkyviin, kun kortin avaa.
+2. **Nimet**: rivin alla on lisäksi ensimmäisten tiedostojen nimet vuoron
+   järjestyksessä (`korkeus.ts, haku.ts, haku.test.ts, Tasot.tsx +4 muuta`).
+   Uusi nimi on vihreä ja poistettu yliviivattu. Aikajana on kuten Tiiviissä.
+3. **Aikajana**: rivi on kuten Tiiviissä, mutta *Aikajana*-painike on jo
+   kiinni olevalla rivillä, ja se avaa kortin suoraan aikajanaksi.
+   Puhelimessa painikkeessa on vain kellon kuva (saavutettava nimi on mukana).
+
+**Suositus: Nimet.** Kiinni oleva rivi on se, minkä ihminen useimmiten
+näkee, ja nimet vastaavat kysymykseen "mitä agentti muutti" avaamatta mitään.
+Määrä ja rivimäärät kertovat vain, paljonko muuttui. Aikajana kuuluu avatun kortin
+sisään: se on harvoin tarvittu toinen näkymä, ja rivillä se toisi jokaisen
+vuoron alle painikkeen, jota useimmat eivät käytä. Puhelimessa nimirivi
+katkeaa noin kolmen nimen kohdalla, ja *+4 muuta* jää piiloon. Tuotannossa
+nimiä näytettäisiin niin monta kuin mahtuu.
+
+Kuvat ovat `evidence/`-kansiossa (`r2-v<n>-<muunnelma>-<tapaus>-<leveys>-<teema>`).
+`oletus` (kiinni) ja `auki` (lista auki) on otettu kaikilla leveyksillä ja
+teemoilla. Kun leveys 1440 on vaalea, mukana ovat myös `pieni`, `kesken`,
+`oletus-en` (kaikki muunnelmat), `binaari`, `editori`, `aikajana` ja `komento` (Tiivis)
+sekä `aikajana` ja `kesken-auki` (Aikajana). Puhelimen 390 vaalealta on
+`tiedosto` (Tiivis, avattu diffi) ja `aikajana` (Aikajana).
+
+### Host-tiedot kierros 2:lle
+
+Kierros 1:n kysymys lähteestä on yhä auki (kysymys 2 alla), ja suositus
+pysyy: daemon laskee vuoron muutoksen *Palaa tähän* -tarkistuspisteestä ja
+gitistä (b), ja toteutus voi alkaa työkalukutsuista (a) samalla
+esityksellä. Yhdistelmä tarvitsee lähteeltä seuraavat asiat:
+
+- **Kiinni oleva rivi** tarvitsee vain tiedostojen määrän, nimet ja
+  rivimäärät. Tämä on pieni yhteenveto, joka on luettava jokaisen vuoron
+  kohdalla, koska rivi näkyy aina. (a):lla rivimäärät ovat korttien summa, ja
+  komentojen poistamat ja tekemät tiedostot puuttuvat rivistä kokonaan.
+  Tämä näkyy kiinni olevassa rivissä heti: *6 tiedostoa* eikä *8*.
+- **Diffin teksti** tarvitaan vasta, kun tiedostorivi avataan. Koska kortti on
+  oletuksena kiinni, hostin lukupyyntö voi olla kaksivaiheinen: yhteenveto
+  vuorolle ja diffi tiedostolle pyydettäessä. Silloin pitkä historia ei hae
+  satojen diffien tekstiä. Kierros 1 ehdotti yhtä pyyntöä, jossa diffi on rajattu.
+- **Aikajana** tarvitsee työkalukutsujen hetket, ja ne ovat jo historiassa.
+  Komennon tekemän muutoksen hetken saa vain, jos git-tila luetaan jokaisen
+  komennon jälkeen eikä pelkästään vuoron alussa ja lopussa. Jos se luetaan
+  vain lopussa, neliö voidaan sijoittaa komennon kohdalle vain silloin, kun
+  komento nimeää tiedoston (`git rm`). Muuten se jää ilman hetkeä.
+  Prototyyppi olettaa, että hetki on tiedossa.
+
+### Päätökset myöhempää arviota varten (kierros 2)
+
+- **Kortti on kiinni myös vuoron ollessa kesken.** Rivillä lukee *tähän
+  mennessä*, ja määrä kasvaa. Vaihtoehto olisi auki kesken ja kiinni valmiina,
+  mutta liikkuva lista vastauksen alla vie huomion työstä.
+- **Avatun listan tiedostorivit alkavat kiinni.** Kierros 1 avasi kolmesti
+  muokatun tiedoston demon vuoksi. Kun koko kortti on kiinni, toinen taso
+  avoinna olisi ristiriitainen.
+- **Yhden tiedoston vuorossa rivi nimeää tiedoston** (*Muutokset ·
+  `README.md` +1 −1*) eikä sano *1 tiedosto*. Nimet-muunnelman nimirivi
+  jätetään silloin pois, koska nimi on jo rivillä.
+- **Nimet ovat vuoron järjestyksessä**, ja niitä on enintään neljä ja
+  sitten *+N muuta*. Ne näytetään perusniminä (`haku.ts`) ilman hakemistoa.
+  Koko polku on listassa.
+- **Aikajana korvaa listan** samassa kortissa (painike `aria-pressed`)
+  eikä avaudu listan rinnalle. Kaksi esitystä päällekkäin olisi pitkä, eikä
+  puhelimessa ole tilaa rinnakkain.
+- **Puhelimessa avattu lista on samassa paikassa keskustelussa** kuin
+  työpöydällä, eikä siitä tehty omaa näkymää. Oma näkymä olisi Katselmoinnin
+  paneeli, jota Jari ei valinnut. Tunnisteet rivittyvät polun alle, ja
+  diffi on koko leveydellä. Kierros 1:n tapaan muunnelmaa ei tehty, koska
+  avoin kysymys ei jäänyt.
+- **Avoinna oloa ei muisteta.** Kortti on kiinni aina, kun keskustelu
+  avataan. Tuotanto voisi muistaa sen selaimessa vuoron mukaan, mutta hostin
+  tilaa se ei tarvitse.
+- **Aikajanassa ei ole valmiiksi valittua merkkiä** (kierros 1 valitsi
+  demon vuoksi).
+
+### Kysymykset Jarille (kierros 2)
+
+1. Mikä muunnelma? Suositus on **Nimet**, ja Aikajana avatun kortin otsikossa.
+2. Mistä vuoron muutokset tulevat (kierros 1:n kysymys 2)? (a) Pelkistä
+   työkalukutsuista heti ilman hostin muutosta. Kiinni oleva rivi sanoo
+   silloin *6 tiedostoa* eikä näe komennon poistamaa tiedostoa tai tekemää
+   kuvaa. (b) Daemon laskee muutoksen tarkistuspisteestä ja gitistä.
+   Tämä tarvitsee uuden host-rajapinnan, tekee tarkistuspisteistä oletuksen
+   ja on arkkitehtuuripäätös. Suositus on (b) kaksivaiheisena (yhteenveto
+   vuorolle ja diffi pyydettäessä), ja toteutus voi alkaa (a):lla.
+3. Näkyykö kortti myös yhden tiedoston vuorossa (kierros 1:n kysymys 3)?
+   Prototyyppi näyttää sen, ja rivi nimeää tiedoston.
+4. Pitääkö aikajanan näyttää komennon muutoksen hetki? Jos pitää, daemonin on
+   luettava git-tila jokaisen komennon jälkeen. Muuten komennon muutos näkyy
+   aikajanalla ilman hetkeä.
+
 ## Kierros 1: nykytila ja kolme suuntaa
 
 Kierros: `design-system/prototypes/rounds/2026-11-10-vuoron-muutokset/`
@@ -136,7 +249,11 @@ Kuvat ovat `evidence/`-kansiossa (`r1-d<n>-<suunta>-<tapaus>-<leveys>-<teema>`):
 - **Kesken olevan vuoron aikajana** on mitoitettu kuluneeseen aikaan, johon
   on lisätty 15 % tilaa, koska vuoron loppua ei tiedetä.
 
-### Kysymykset Jarille
+### Kysymykset Jarille (kierros 1)
+
+Jari vastasi kysymykseen 1 10.11.2026 (ks. issuen Decisions). Kysymykset 2
+ja 3 jatkuvat kierroksessa 2.
+
 
 1. Mikä kolmesta? Suositus on **Yhteenveto**. Katselmointi voisi myöhemmin
    olla saman listan *Katso kaikki* -näkymä isolle muutokselle.
@@ -152,16 +269,20 @@ Kuvat ovat `evidence/`-kansiossa (`r1-d<n>-<suunta>-<tapaus>-<leveys>-<teema>`):
 
 ## Ympäristö ja näyttö
 
-Rakennettu tuotannon komponenteista tämän worktreen puusta (pohja
-`77618d656`), Playwright Chromium headless, 1440 × 900 ja 390 × 844
-(kosketus), DPR 2, vaalea ja tumma, vähennetty liike. `check.mjs`:
-192 tarkistusta, konsoli puhdas.
+Kierros 2 on rakennettu tuotannon komponenteista tämän worktreen puusta
+(pohja `81c60ba6d`): Playwright Chromium headless, 1440 × 900 ja 390 × 844
+(kosketus), DPR 2, vaalea ja tumma, vähennetty liike. `check.mjs` teki
+252 tarkistusta, ja konsoli oli puhdas. Kierros 1 oli rakennettu pohjasta `77618d656`, ja sen
+`check.mjs` teki 192 tarkistusta.
 
-Itsenäinen staattinen sivu (HTML, fontit ja koodi upotettuina, ei
-verkkoa) on `design-system/prototypes/dist/vuoron-muutokset/offline.html`.
-`dist/` ei ole versionhallinnassa, joten sivu rakennetaan näin:
+Itsenäiset staattiset sivut (HTML, fontit ja koodi upotettuina, ei verkkoa)
+ovat `design-system/prototypes/dist/vuoron-muutokset-2/offline.html` ja
+`design-system/prototypes/dist/vuoron-muutokset/offline.html`. `dist/` ei ole
+versionhallinnassa, joten sivut rakennetaan näin:
 
 ```
+node design-system/prototypes/rounds/2026-11-10-vuoron-muutokset-2/build.mjs
+open-habitat agent view offer --current --source design-system/prototypes/dist/vuoron-muutokset-2/offline.html --title "Vuoron muutokset · kierros 2" --idempotency-key 108bb851-9b4e-4952-a755-ef85fe3b238b --json
 node design-system/prototypes/rounds/2026-11-10-vuoron-muutokset/build.mjs
 open-habitat agent view offer --current --source design-system/prototypes/dist/vuoron-muutokset/offline.html --title "Vuoron muutokset · kierros 1" --idempotency-key b9f62088-9bd1-4178-8de7-2c37f269792e --json
 ```

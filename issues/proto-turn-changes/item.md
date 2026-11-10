@@ -8,7 +8,7 @@ priority: normal
 related: ['@extend-tool-views']
 lane: turn-changes-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: what the agent changed in a turn
@@ -42,7 +42,8 @@ the tool calls or from git.
 
 ## Acceptance Criteria
 
-- [ ] Prototype round 1 with directions, host facts and questions for Jari.
+- [x] Prototype round 1 with directions, host facts and questions for Jari.
+- [x] Prototype round 2 combining Jari's round-1 choices (collapsed Yhteenveto, timeline behind a button), with host facts and questions for Jari.
 
 ## Decisions
 
