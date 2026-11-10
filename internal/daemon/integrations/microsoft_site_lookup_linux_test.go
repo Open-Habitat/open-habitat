@@ -205,7 +205,7 @@ func TestMicrosoftSiteByURL(t *testing.T) {
 		"https://contoso.sharepoint.com:444/sites/team", "https://contoso.sharepoint.com/sites/../me",
 		"https://contoso.sharepoint.com/sites/%2E%2E/me", "https://contoso.sharepoint.com/sites/./team",
 		"https://contoso.sharepoint.com/sites//team", "https://contoso.sharepoint.com/sites/a:b",
-		"https://contoso.sharepoint.com/sites/a%2Fb", "https://contoso.sharepoint.com/sites/a%5Cb",
+		"https://contoso.sharepoint.com/sites/a%2Fb", "https://contoso.sharepoint.com/sites/a%2Fb c", "https://contoso.sharepoint.com/sites/a%5Cb",
 		"https://-contoso.sharepoint.com/sites/team", "https://contoso_x.sharepoint.com/sites/team",
 		"https://graph.microsoft.com@contoso.sharepoint.com/x", "contoso.sharepoint.com/sites/team",
 	} {

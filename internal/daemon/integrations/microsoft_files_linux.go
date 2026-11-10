@@ -70,7 +70,9 @@ func microsoftSiteByURL(webURL string) (string, bool) {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || len(u.Hostname()) > 253 || !microsoftSiteHost.MatchString(u.Hostname()) {
 		return "", false
 	}
-	if strings.Contains(strings.ToLower(u.EscapedPath()), "%2f") {
+	// The raw input: EscapedPath re-escapes the decoded path, slashes and all,
+	// whenever the input's own encoding is not canonical.
+	if strings.Contains(strings.ToLower(webURL), "%2f") {
 		return "", false
 	}
 	endpoint := "https://graph.microsoft.com/v1.0/sites/" + u.Hostname()
