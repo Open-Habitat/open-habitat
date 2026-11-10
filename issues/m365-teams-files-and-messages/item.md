@@ -3,7 +3,7 @@ created: 2026-11-10
 updated: 2026-11-10
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, Contoso pilot
@@ -12,6 +12,8 @@ lane: m365-teams
 lane_seq: 1
 collision: [internal/daemon/integrations/microsoft_files_linux.go]
 preparation: ready
+closed: 2026-11-10
+closed_by: claude
 ---
 
 # Microsoft 365: the agent cannot reach the person's Teams files and messages
@@ -56,3 +58,9 @@ site's name suggests a Teams channel site, so (1) may be the same cause.
 ### 2026-11-10T08:47:32Z · @jari
 
 Jari 10.11.: fix it so that Teams channels' files come along: direction 1 (joined teams' and their channels' file sites in the same folder chooser), built directly, not as a prototype or experimental feature. Messages (direction 2) stay for later design.
+
+## Resolution
+
+### 2026-11-10T09:33:30Z · @claude
+
+Direction 1 (Teams channel files) landed: joined teams' and private/shared channels' libraries in the Microsoft folder choice, with Team.ReadBasic.All and Channel.ReadBasic.All on every level and teams_left_out for what is missing. Direction 2 (chats and channel messages) is split into m365-teams-messages. Tenant app registrations still need the two permissions added (result.md).
