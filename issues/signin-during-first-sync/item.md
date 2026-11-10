@@ -3,12 +3,15 @@ created: 2026-11-10
 updated: 2026-11-10
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: high
 provenance: chat
 source_ref: taskfleet:01m72a2pjq8ppye66vxcrg3wtd/contoso-atlassian-409
 originating_run: 01m72a2pjq8ppye66vxcrg3wtd
 originating_run_kind: spinoff
+lane: signin-concurrency
+lane_seq: 1
+preparation: ready
 ---
 
 # Atlassian sign-in refused while another provider's first sync runs, and the dialog hides why
@@ -61,3 +64,9 @@ was attempted.
 - [ ] Design (not decided here): whether a sign-in that copies no files
   (Atlassian, mail) should wait behind another provider's first pass, which
   can last hours.
+
+## Decisions
+
+### 2026-11-10T13:04:46Z · @jari
+
+Jari 10.11.: yes, a sign-in that copies no files (Atlassian, mail, calendars) may start while another provider's first sync runs; there is no reason to refuse it. Needed before pilot.26 so Confluence works on Contoso.

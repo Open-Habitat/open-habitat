@@ -57,3 +57,7 @@ profile).
 ### 2026-11-10T07:15:41Z · @jari
 
 Jari 10.11.: start the research step: how Habitat brings web search (and reading JavaScript pages) to the person's agents. Material for a design discussion, not an implementation plan.
+
+### 2026-11-10T13:04:46Z · @jari
+
+Jari 10.11.: the goal is web search in every Open Habitat installation (the product), not a Alder-specific setup.

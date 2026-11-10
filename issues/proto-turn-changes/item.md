@@ -8,7 +8,7 @@ priority: normal
 related: ['@extend-tool-views']
 lane: turn-changes-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Design and prototype: what the agent changed in a turn
@@ -43,3 +43,9 @@ the tool calls or from git.
 ## Acceptance Criteria
 
 - [ ] Prototype round 1 with directions, host facts and questions for Jari.
+
+## Decisions
+
+### 2026-11-10T13:04:46Z · @jari
+
+Jari 10.11., round 1: Yhteenveto (1) is the best; take from Katselmointi (2) that it is collapsed by default; put Aikajana (3)'s timeline behind an optional button. Round 2 combines these.
