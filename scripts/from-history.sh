@@ -13,7 +13,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 || $1 == -h || $1 == --help ]]; then
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 if [[ $1 == --archive ]]; then
