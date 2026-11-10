@@ -1167,7 +1167,7 @@ manager with their terminal tmux, Taskfleet workers and editor units,
 lingering and SSH stay. If the stop fails or outlasts its budget, access is
 already withdrawn and stays so, but the reply is `outcome_uncertain` and the
 journal says `units_running`; run `admin access remove` again, which repeats
-only the stop (the broker also retries it each time it starts). Restore, and
+only the stop (the broker also retries it each time it starts, before it serves). Restore, and
 then the person's next sign-in, bring the sockets back. An installation gate
 that refuses socket starts while a revoked person's socket is active therefore
 needs no manual cleanup after a withdrawal.

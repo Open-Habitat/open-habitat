@@ -142,18 +142,19 @@ func ServeBroker(ctx context.Context) error {
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
 	}
+	// A withdrawal whose stop failed or outlasted its budget is stopped
+	// before startup verifies bindings: a daemon still deactivating from an
+	// earlier stop would otherwise fail that verification and keep the
+	// broker, and so this retry, from starting at all.
+	_ = writer.stopWithdrawn(withStartupProbes(ctx), "", writer.stopReport)
 	bindings, err := writer.startupBindings(ctx)
 	if err != nil {
 		return ErrBrokerStartup
 	}
 	// Activation is outside the ledger lock: the native binding gate takes
 	// that same lock before systemd starts each socket. A failure for one binding
-	// must not prevent the broker serving the others. A withdrawal whose
-	// stop failed before this start is stopped first.
-	go func() {
-		_ = writer.stopWithdrawn(withStartupProbes(ctx), "", writer.stopReport)
-		writer.restoreSockets(ctx, bindings, restored(log), synced(log))
-	}()
+	// must not prevent the broker serving the others.
+	go writer.restoreSockets(ctx, bindings, restored(log), synced(log))
 	if ctx.Err() != nil {
 		return ErrBrokerStartup
 	}
