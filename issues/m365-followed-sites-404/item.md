@@ -41,3 +41,10 @@ cover sites a person follows outside a team.
 ### 2026-11-10T13:11:37Z · @claude
 
 Fallback on 404 to /sites/{hostname}:/{path} from the followed site's webUrl; see result.md for cause, live check and decisions.
+
+## Acceptance Criteria
+
+- [x] A followed site whose composite id 404s on `/drives` but resolves via its webUrl gets its libraries offered (synthetic fixture).
+- [x] 403 still leaves a site out without a fallback; a genuinely missing site keeps the left-out notice.
+- [x] The journal says which lookup form decided (`site_lookup`), with no site name, id or host.
+- [ ] Live: Aino's re-sign-in on Contoso after the release logs `site_lookup_fallback` and offers his followed sites (see result.md).
