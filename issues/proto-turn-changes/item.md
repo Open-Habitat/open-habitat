@@ -8,7 +8,7 @@ priority: normal
 related: ['@extend-tool-views']
 lane: turn-changes-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design and prototype: what the agent changed in a turn
