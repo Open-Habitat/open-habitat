@@ -236,6 +236,33 @@ export function useReadingPosition(
       }
     }
   }, [id, store]);
+  // Choosing a history control is reading intent, even when no wheel/touch
+  // scroll preceded it (keyboard focus and browser scroll-into-view included).
+  // Claim the position at pointer-down, before a host render or resize can
+  // move the control away from pointer-up and silently cancel its press.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries binds when history mounts the stream.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const interact = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const control = target.closest(
+        "button, a, input, textarea, select, summary, [tabindex]",
+      );
+      if (!control || control === viewport || !viewport.contains(control))
+        return;
+      if (event.type === "focusin" && !wasAtBottom.current) return;
+      wasAtBottom.current = false;
+      captureAnchor();
+    };
+    viewport.addEventListener("pointerdown", interact, true);
+    viewport.addEventListener("focusin", interact);
+    return () => {
+      viewport.removeEventListener("pointerdown", interact, true);
+      viewport.removeEventListener("focusin", interact);
+    };
+  }, [id, entries, captureAnchor]);
   const restoreAnchor = useCallback(
     (
       anchor: { key: string; offset: number } | undefined,
@@ -258,6 +285,21 @@ export function useReadingPosition(
     },
     [],
   );
+  // Nested history content can finish rendering without changing the window's
+  // entries (for example a tool summary). Keep the chosen row in place for
+  // those resizes too, not only for host-driven parent renders.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries rebinds when history mounts the stream.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      if (!wasAtBottom.current)
+        restoreAnchor(readingAnchor.current, latest.current.entries);
+    });
+    observer.observe(viewport);
+    for (const child of viewport.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [id, entries, restoreAnchor]);
   return {
     feed,
     wasAtBottom,

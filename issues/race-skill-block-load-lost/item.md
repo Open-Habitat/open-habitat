@@ -2,7 +2,7 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m71zxxabyvwy0h1y2tec6n4g/observed:skill-block-load
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: gate-load-flakes
 lane_seq: 4
 preparation: ready
+closed: 2026-11-10
 ---
 
 # Full skill-message block sometimes stays at its preview after Load under reply jitter

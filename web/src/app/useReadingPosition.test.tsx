@@ -7,6 +7,7 @@ import { HistoryView } from "./HistoryView";
 import type { HistoryEntry } from "./history";
 import type { Agent } from "./snapshot";
 import {
+  useFollowLatest,
   useReadingPosition,
   useReadingPositionLayout,
 } from "./useReadingPosition";
@@ -29,6 +30,12 @@ function Reader({
   intro?: boolean;
 }) {
   const position = useReadingPosition(entries, undefined, id, store);
+  useFollowLatest({
+    ...position,
+    id,
+    opened: true,
+    rows: entries.length,
+  });
   useReadingPositionLayout({
     entries,
     live: undefined,
@@ -65,7 +72,7 @@ function Reader({
       <ul className="ah-feed">
         {entries.map((e) => (
           <li key={e.entry_key} data-key={e.entry_key}>
-            {e.entry_key}
+            <button type="button">{e.entry_key}</button>
           </li>
         ))}
       </ul>
@@ -74,10 +81,13 @@ function Reader({
 }
 
 // jsdom has no layout; each row occupies 100 px, relative to the scroll container.
-function geometry() {
+function geometry(resizes: (() => void)[] = []) {
   vi.stubGlobal(
     "ResizeObserver",
     class {
+      constructor(callback: () => void) {
+        resizes.push(callback);
+      }
       observe() {}
       disconnect() {}
     },
@@ -130,6 +140,49 @@ function geometry() {
       Object.defineProperty(HTMLElement.prototype, "clientHeight", client);
     else Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
   };
+}
+
+for (const gesture of ["pointerDown", "focusIn"] as const) {
+  it(`preserves a history control during host renders and resizes after ${gesture}`, () => {
+    const resizes: (() => void)[] = [];
+    const restore = geometry(resizes);
+    try {
+      const store = new ConversationStore("reader");
+      const pages = Array.from({ length: 10 }, (_, i) => entry(`reply-${i}`));
+      const view = render(
+        <Reader id="controlled" entries={pages} store={store} />,
+      );
+      const viewport = view.container.querySelector<HTMLElement>(".viewport");
+      if (!viewport) throw new Error("missing viewport");
+      // Browser scroll-into-view need not be preceded by a wheel gesture.
+      viewport.scrollTop = 47;
+      fireEvent[gesture](view.getAllByRole("button")[1]);
+      view.rerender(
+        <Reader
+          id="controlled"
+          entries={[...pages, entry("new")]}
+          store={store}
+        />,
+      );
+      expect(viewport.scrollTop).toBe(47);
+      for (const resize of resizes) resize();
+      expect(viewport.scrollTop).toBe(47);
+      // A nested summary shrinks above the pressed control before focusin;
+      // that focus event must not replace the pointer-down reading anchor.
+      const rect = HTMLElement.prototype.getBoundingClientRect;
+      HTMLElement.prototype.getBoundingClientRect = function () {
+        const value = rect.call(this);
+        return this.matches(".ah-feed > li")
+          ? { ...value, top: value.top - 18, bottom: value.bottom - 18 }
+          : value;
+      };
+      fireEvent.focusIn(view.getAllByRole("button")[1]);
+      for (const resize of resizes) resize();
+      expect(viewport.scrollTop).toBe(29);
+    } finally {
+      restore();
+    }
+  });
 }
 
 it("does not tail-follow an authored introduction, and resumes for native history", () => {
