@@ -1,6 +1,6 @@
 # Proposal ready for Jari
 
-ADR: [0035](../../docs/decisions/adr-0035-view-stable-address.md).
+ADR: `docs/decisions/adr-0035-view-stable-address.md` (removed once implemented; `scripts/from-history.sh` prints it).
 Independent review and local disposition: [review.md](review.md).
 No product code changed; the issue remains open with preparation pending.
 

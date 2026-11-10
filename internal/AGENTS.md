@@ -34,6 +34,25 @@ The packages divide the work as follows.
   given a new secret; it is only made public, private or deleted. Only the
   person's app session reserves, publishes, changes or deletes one; the
   agent listener never gains an address operation or learns an address.
+  The entry route `/n/<entry>` on the app origin answers only with product
+  UI or a redirect built from gateway state, never export bytes, and a
+  private, unknown, deleted or another person's address looks the same to
+  anyone but its owner. The URL never selects a session's Unix user, and an
+  owner's app session never authorizes a content-token request. A sign-in
+  started from an entry keeps the destination with the pending flow; the
+  identity provider never receives it. Owner unpublishing, expiry and the
+  site's switch only pause; administrator deletion, root revocation and
+  withdrawal delete the person's addresses for good, and restoring
+  admission republishes nothing. The administrator sees publication
+  metadata only, never an address, secret or private reservation. The
+  `oauth.access` exemption covers exactly GET/HEAD of currently public
+  entries and their content paths, dispatched directly and never through
+  the app mux or the owner's view handler. Caps refuse a new reservation
+  and never evict one, and an unusable store disables addresses without
+  being reset; only the upgrade's one-time reset rewrites the legacy
+  format. Secrets stay out of logs, are never derived from view IDs, and
+  every entry and content response is `no-store`, `no-referrer` and
+  `noindex` and sets no cookie.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
   translation, `continuation_linux.go` for the ownership proof before Pi

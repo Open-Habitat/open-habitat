@@ -49,12 +49,6 @@ groups:
       - slug: decisions/adr-0032-agent-html-views
         title: ADR 0032 — Agent HTML views
         desc: Accepted — agents offer HTML views the person opens in a side panel or own tab, on an isolated per-view origin from frozen exports; owner only first.
-      - slug: decisions/adr-0033-view-capability-links
-        title: ADR 0033 — View capability links
-        desc: Proposed — anyone with the link opens a shared view; the person creates links in the browser, the gateway serves the owner's frozen export on one operator-enabled public host inside a script-free frame page; the agent gets no link operation.
-      - slug: decisions/adr-0035-view-stable-address
-        title: ADR 0035 — Stable view addresses
-        desc: Proposed — one stable entry address per frozen view; publication revives old copies; implementation awaits Jari's approval.
       - slug: decisions/adr-0036-private-development-sidecar
         title: ADR 0036 — Private development sidecar
         desc: Proposed — public product development and private planning, without paired repository merges.
