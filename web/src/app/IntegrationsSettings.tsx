@@ -330,7 +330,15 @@ export function IntegrationsSettings({
             f &&
             f.stage.stage === "login" &&
             f.stage.view.attempt_id === next.attempt_id
-              ? { ...f, stage: { ...f.stage, view: next } }
+              ? {
+                  ...f,
+                  // A refusal describes the step it answered; once the
+                  // daemon moves on it would mislabel the new state.
+                  stage:
+                    next.state === f.stage.view.state
+                      ? { ...f.stage, view: next }
+                      : { stage: "login", view: next },
+                }
               : f,
           );
           if (next.state === "completed") void load();

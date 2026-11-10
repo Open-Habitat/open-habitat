@@ -323,3 +323,87 @@ it("shows why the host refused to start a sign-in", async () => {
   expect(starts).toEqual([{ action: "start", provider: "dropbox" }]);
   expect(failed.textContent).toContain("ensimmäinen synkronointi on kesken");
 });
+
+// A refused write's text belongs to the step it answered. When the daemon
+// then fails the attempt for its own reason, the failure is not relabelled
+// with the earlier refusal.
+it("does not carry a refused paste into the daemon's later failure", async () => {
+  const attempt = "20261110T080000.000000001";
+  let state: "open_url" | "failed" = "open_url";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations")
+        return json({
+          schema_version: 1,
+          providers: [
+            {
+              id: "dropbox",
+              available: true,
+              login: "pasted_redirect",
+              services: ["dropbox"],
+            },
+          ],
+          skill: "current",
+          accounts: [],
+        });
+      if (url !== "/api/v1/integrations/login")
+        return new Response("", { status: 404 });
+      if (init?.method === "PUT") {
+        state = "failed";
+        return json(
+          {
+            schema_version: 1,
+            error: {
+              code: "redirect_invalid",
+              message: "Request could not be completed",
+              retryable: false,
+              correlation_id: "req_00000000",
+            },
+          },
+          422,
+        );
+      }
+      return json(
+        state === "open_url"
+          ? {
+              schema_version: 1,
+              state,
+              provider: "dropbox",
+              attempt_id: attempt,
+              authorization_url: "https://www.dropbox.com/oauth2/authorize",
+              redirect_prefix: "http://127.0.0.1:53682/",
+              expires_at: "2099-01-01T00:00:00Z",
+            }
+          : {
+              schema_version: 1,
+              state,
+              provider: "dropbox",
+              attempt_id: attempt,
+              failure: "tool_failed",
+            },
+      );
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  const tile = await screen.findByTestId("integration-tile-dropbox");
+  await userEvent.click(within(tile).getByTestId("integration-connect-open"));
+  const dialog = await screen.findByTestId("integration-dialog");
+  const go = within(dialog).queryByTestId("integration-continue");
+  if (go) await userEvent.click(go);
+  await userEvent.click(
+    await within(dialog).findByTestId("integration-provider-link"),
+  );
+  await userEvent.type(
+    within(dialog).getByTestId("integration-redirect-input"),
+    "http://127.0.0.1:53682/?code=x&state=y",
+  );
+  await userEvent.keyboard("{Enter}");
+  const failed = await within(dialog).findByTestId(
+    "integration-login-failed",
+    {},
+    { timeout: 4000 },
+  );
+  expect(failed.textContent).toContain("Kirjautuminen ei onnistunut");
+});
