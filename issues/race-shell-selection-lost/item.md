@@ -5,8 +5,8 @@ type: bug
 status: open
 priority: normal
 preparation: ready
-lane: gate-load-flakes
-lane_seq: 7
+lane: shell-selection
+lane_seq: 1
 ---
 
 # Terminal selection lost under gate load (browser-shell multi-line paste)
