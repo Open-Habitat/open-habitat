@@ -1,13 +1,16 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-10
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6yavcna3rm33hh42pd7cgvr/test-failure:workspace-editor-phone-ask
 originating_run: 01m6yavcna3rm33hh42pd7cgvr
 originating_run_kind: spinoff
+lane: phone-editor-ask
+lane_seq: 1
+preparation: ready
 ---
 
 # Phone editor save-question unit test flakes under a loaded web run
