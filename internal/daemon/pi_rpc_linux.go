@@ -291,7 +291,7 @@ const maxPiRequestTimeout = 7 * time.Minute
 // pinned stdin reader (modes/rpc/jsonl.js) appends each 64 KiB chunk to one
 // string and searches the whole of it for the newline again, so taking in a
 // frame costs time that grows with the square of its size: a 100 MiB image
-// batch (a 140 MB frame) took 27 s on Birch and more than two minutes on the
+// batch (a 140 MB frame) took 27 s on the larger ARM host and more than two minutes on the
 // smaller test server, whose two-minute deadline cut every such send off
 // (Jari 9.11.2026). The budget grows the same way, to about six minutes for
 // the largest admitted batch; Pi still answers small prompts within 15 s.

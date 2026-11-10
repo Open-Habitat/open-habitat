@@ -28,7 +28,7 @@ func claudeRecord(t *testing.T, v map[string]any) string {
 }
 
 // claudeWorkerFile writes a Claude Code session shaped like the 2.x files
-// observed on Birch (2026-10-26): one record per assistant content block,
+// observed on the ARM host (2026-10-26): one record per assistant content block,
 // tool results as user records, sidechain and meta records interleaved.
 func claudeWorkerFile(t *testing.T, home, worktree, session, recordSession, cwd string) string {
 	t.Helper()

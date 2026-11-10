@@ -339,7 +339,7 @@ func TestStatusTimeoutAfterIdentity(t *testing.T) {
 }
 
 // slowRunner answers like the fake, each command after a delay: a host
-// whose whole check takes longer than the 1.5 s budget it once had (Birch
+// whose whole check takes longer than the 1.5 s budget it once had (the ARM host
 // takes 1.1-1.3 s idle, more after a reboot or while GitHub is slow).
 type slowRunner struct {
 	fake  *fake

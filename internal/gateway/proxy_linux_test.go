@@ -218,7 +218,7 @@ func TestProxyStreamCancellationClosesDaemonConnection(t *testing.T) {
 
 // On HTTP/2 a stream write deadline left armed resets the idle stream when it
 // passes, so a quiet daemon between heartbeats must not end the browser's
-// stream (Birch's browsers reconnected every few seconds).
+// stream (the test host's browsers reconnected every few seconds).
 func TestProxyStreamSurvivesQuietDaemonOverHTTP2(t *testing.T) {
 	old := streamWriteTimeout
 	streamWriteTimeout = 100 * time.Millisecond

@@ -27,12 +27,12 @@ func obs(state, teamID string) TeamObservation {
 	return TeamObservation{OrgID: "700", Slug: "habitat", TeamID: teamID, State: state}
 }
 
-// teamWriter lists one team, Contoso-Power/habitat, pinned to 900 unless
+// teamWriter lists one team, Example-Org/habitat, pinned to 900 unless
 // pinned is false.
 func teamWriter(t *testing.T, pinned bool) (Writer, *fakeHost) {
 	t.Helper()
 	w, h := runtimeWriter(t, true)
-	if r := teamOp(w, OpTeamAdd, "700", "Contoso-Power", "habitat", "42"); r.Failure != "" || len(r.Access.Teams) != 1 {
+	if r := teamOp(w, OpTeamAdd, "700", "Example-Org", "habitat", "42"); r.Failure != "" || len(r.Access.Teams) != 1 {
 		t.Fatal("team_add", r)
 	}
 	if pinned {
@@ -217,7 +217,7 @@ func TestTeamSwitchAndBounds(t *testing.T) {
 	if r := teamOp(w, OpTeamAdd, "800", "org", "full", "42"); r.Failure != RuntimeFull {
 		t.Fatal(r)
 	}
-	if r := teamOp(w, OpTeamAdd, "700", "Contoso-Power", "habitat", "42"); r.Failure != "" || len(r.Access.Teams) != MaxTeams {
+	if r := teamOp(w, OpTeamAdd, "700", "Example-Org", "habitat", "42"); r.Failure != "" || len(r.Access.Teams) != MaxTeams {
 		t.Fatal("repeat add not idempotent", r)
 	}
 	w.AdmitAny = true

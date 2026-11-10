@@ -84,7 +84,7 @@ function candidates(ctx, preferred) {
 // A model that is not the last candidate gets ATTEMPT_MS, so a stalled one
 // leaves the fallback time; the last gets everything left. The Claude bridge
 // starts a Claude Code process per call: Sonnet on a 16k-token excerpt took
-// 3 to 11 seconds on Birch (2026-10-29), so a fixed 12 s cut off its tail.
+// 3 to 11 seconds on the ARM host (2026-10-29), so a fixed 12 s cut off its tail.
 const BUDGET_MS = 25000, ATTEMPT_MS = 12000;
 async function ask(ctx, model, prompt, deadline, s, last) {
   const controller = new AbortController();

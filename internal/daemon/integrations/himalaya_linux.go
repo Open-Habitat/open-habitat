@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// himalaya is generic IMAP mail with an app password (any provider: iki.fi,
+// himalaya is generic IMAP mail with an app password (any provider: a university mailbox,
 // Nextcloud, Fastmail). Each account is its own configuration file under a
 // catalog-owned directory, so the person's own ~/.config/himalaya/config.toml
 // is never edited; the file holds the password, as himalaya's own store, and

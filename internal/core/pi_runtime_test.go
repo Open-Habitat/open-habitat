@@ -35,7 +35,9 @@ func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 	if err != nil || len(fields) < 2 || fields[1] == "0" {
 		t.Fatal("requires mapped container root")
 	}
-	if _, err := os.Stat("/home/maintainer"); !os.IsNotExist(err) {
+	if hostHome := os.Getenv("PI_SELECTOR_HOST_HOME"); hostHome == "" {
+		t.Fatal("PI_SELECTOR_HOST_HOME must name the invoking user's home")
+	} else if _, err := os.Stat(hostHome); !os.IsNotExist(err) {
 		t.Fatal("real home must not be mounted")
 	}
 	if err := os.MkdirAll(filepath.Dir(SharedPiRuntimePath), 0755); err != nil {

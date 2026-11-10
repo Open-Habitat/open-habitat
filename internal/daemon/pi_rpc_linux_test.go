@@ -200,7 +200,7 @@ read line
 }
 
 // The claude bridge releases a large tool call's argument deltas at once:
-// measured on Birch, 7408 toolcall_delta frames within one second for a
+// measured on the ARM host, 7408 toolcall_delta frames within one second for a
 // 50 KB write. The controller's drain is slower than the reader, so a queue
 // that refused to wait closed Pi's input after about 150 of them and ended
 // Pi mid-reply.

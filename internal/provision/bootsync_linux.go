@@ -106,7 +106,7 @@ func (e *LinuxHostExecutor) SyncAtBoot(ctx context.Context, i ExecutorIdentity) 
 
 // StartDaemon widens the broker's systemd authority by exactly one action:
 // starting the daemon service of a committed person whose verified socket is
-// already active. The socket went through Fleetrepo's activation gate; the
+// already active. The socket went through the installation's activation gate; the
 // service only accepts on it, exactly as a gateway connection would start
 // it. An inactive socket is refused rather than pulled in by the service's
 // dependency.

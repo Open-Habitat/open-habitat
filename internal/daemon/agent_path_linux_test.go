@@ -239,7 +239,7 @@ func TestAgentPathFindsSignInClaudeCode(t *testing.T) {
 }
 
 // An installation whose operator selects the core runtime outside the release
-// (pi-runtime.json naming another tree, as Fleetrepo's test server does) has no
+// (pi-runtime.json naming another tree, as an operator-managed test server can) has no
 // payloads in its release. The agent PATH then names the selected runtime's
 // Claude Code, the one its sign-in runs, and never a directory that is absent.
 // A host-applied generation's own payload wins, as it follows upgrades.

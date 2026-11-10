@@ -16,7 +16,7 @@ import (
 )
 
 // fencedStagingApply leaves the journal as an apply that failed in staging:
-// running, entry closed, nothing published (birch's EXDEV state).
+// running, entry closed, nothing published (the EXDEV state one host reached).
 func fencedStagingApply(t *testing.T, dir string, owner uint32, approval, binding string) Operation {
 	t.Helper()
 	l, e := openOperationLock(context.Background(), dir, owner, time.Now)

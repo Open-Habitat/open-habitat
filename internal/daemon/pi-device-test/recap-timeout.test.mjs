@@ -53,7 +53,7 @@ async function recap(latencies, conversation) {
 
 test("the only candidate may take the whole budget, not the per-model share", async () => {
   // An Opus conversation leaves Sonnet as the sole background model; the
-  // bridge's slow tail answered after 12 s on Birch (2026-10-29).
+  // bridge's slow tail answered after 12 s on the ARM host (2026-10-29).
   const {calls, note, appended} = await recap({'claude-sonnet-5-5': 18000, 'claude-opus-5-5': 1000}, 'claude-opus-5-5');
   assert.deepEqual(calls, ['claude-sonnet-5-5']);
   assert.equal(note.outcome, 'done');

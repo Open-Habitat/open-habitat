@@ -344,7 +344,7 @@ func (h *heldHarness) statusField(c *ConversationController, id, field string) a
 }
 
 // cutTurn appends what Pi leaves when it is killed mid-turn: a tool call and
-// its result, which the model never answered (the Birch upgrade of 31.10.).
+// its result, which the model never answered (a test-host upgrade of 31.10.).
 func (h *heldHarness) cutTurn(c *ConversationController, id string) {
 	h.t.Helper()
 	sessions, err := nativeSessions(c.nativeCfg())

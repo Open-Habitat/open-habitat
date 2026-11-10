@@ -406,16 +406,16 @@ func TestWorkingSpinoffsCountsOnlyTheParentsWorkingRuns(t *testing.T) {
 	}
 }
 
-// Birch pilot.12: the conductor created an interactive Claude run in another
+// Release pilot.12 on the test host: the conductor created an interactive Claude run in another
 // repository (~/Sources, outside ~/src). Taskfleet 0.17.1 read its live
 // supervisor as dead. The run still belongs to the conversation, also when a
 // restarted daemon holds no wait for it, and reads as unknown, not settled.
 func TestCrossRepositoryRunWithDoubtedSupervisorStaysTheConversations(t *testing.T) {
 	native := `{"run_id":"01m5w60pxynq08hyrxde3s1dyn","kind":"spinoff","lifecycle":"interactive","status":"pending",
-	"title":"release pilot.12","created_at":"2026-10-26T13:22:23.301499092Z","source_repo":"/home/fixture/Sources/fleetrepo",
-	"source_branch":"main","worktree_path":"/home/fixture/Sources/fleetrepo__worktrees/wt-release","harness":"claude",
+	"title":"release pilot.12","created_at":"2026-10-26T13:22:23.301499092Z","source_repo":"/home/fixture/Sources/infra",
+	"source_branch":"main","worktree_path":"/home/fixture/Sources/infra__worktrees/wt-release","harness":"claude",
 	"node_transcripts":[{"node_id":"n-0001","harness":"claude","attempt":null,"session_id":null,"original_cwd":null,
-	"worktree_path":"/home/fixture/Sources/fleetrepo__worktrees/wt-release","support":"unsupported",
+	"worktree_path":"/home/fixture/Sources/infra__worktrees/wt-release","support":"unsupported",
 	"live":{"anchor":"state-root","path":null,"availability":"unsupported"},"original":{"anchor":"run-root","path":null,"availability":"unsupported"}}],
 	"created_by_run_id":null,"created_by_session":{"harness":"pi","session_id":"` + spinoffParent + `"},
 	"supervisor":{"pid":1643413,"state":"dead","alive":false},"stalled":false,"attention_required":false}`

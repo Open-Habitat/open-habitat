@@ -363,7 +363,7 @@ func TestSpeechKeySaveChecksTheKeyWithSoniox(t *testing.T) {
 }
 
 // A key stored under the wrong region, as the old region picker allowed
-// (Jari's site copy on Birch), is tried once in the other region at the
+// (a site copy on the test host), is tried once in the other region at the
 // next dictation, which then starts, and its file says the right region.
 func TestSpeechMintHealsAWrongRegion(t *testing.T) {
 	home := t.TempDir()

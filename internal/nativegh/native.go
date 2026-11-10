@@ -434,7 +434,7 @@ const (
 )
 
 // statusBudget bounds one whole check: two GitHub requests and three local
-// commands. On Birch the check takes 1.1-1.3 s when idle, and the earlier
+// commands. On the ARM host the check takes 1.1-1.3 s when idle, and the earlier
 // 1.5 s budget turned an ordinary slow moment, such as the first check after
 // a reboot, into "unknown" for a working login. Each command still has its
 // own timeout.

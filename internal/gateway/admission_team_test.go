@@ -27,7 +27,7 @@ type teamFake struct {
 
 func newTeamFake() *teamFake {
 	b := &teamFake{accessFake: newAccessFake(), members: map[string]string{}}
-	b.teams = []TeamSource{{OrgID: "700", Org: "Contoso-Power", Slug: "habitat", TeamID: "900", Actor: "42", At: "2026-11-02T09:00:00Z"}}
+	b.teams = []TeamSource{{OrgID: "700", Org: "Example-Org", Slug: "habitat", TeamID: "900", Actor: "42", At: "2026-11-02T09:00:00Z"}}
 	b.fakeBroker.routes["61"] = BrokerRoute{UID: 1061, Username: "anna", Socket: "/run/open-habitat/users/anna/daemon.sock"}
 	if b.fakeBroker.unbound == nil {
 		b.fakeBroker.unbound = map[string]bool{}
@@ -143,8 +143,8 @@ func (p *teamProvider) answer(login, state string) {
 	p.answers[login] = state
 }
 func (p *teamProvider) LookupOrg(_ context.Context, org string) (GitHubOrg, error) {
-	if strings.EqualFold(org, "contoso-power") {
-		return GitHubOrg{ID: "700", Login: "Contoso-Power"}, nil
+	if strings.EqualFold(org, "example-org") {
+		return GitHubOrg{ID: "700", Login: "Example-Org"}, nil
 	}
 	if org == "down" {
 		return GitHubOrg{}, ErrGitHubLookup
@@ -282,27 +282,27 @@ func TestTeamAccessBrowserAPI(t *testing.T) {
 	csrf := extractCSRF(t, request(x.h, "GET", "/auth/session", alice).Body.String())
 	bob := x.login("43", "bob")
 	bobCSRF := extractCSRF(t, request(x.h, "GET", "/auth/session", bob).Body.String())
-	if w := accessPost(x.h, bob, bobCSRF, accessPath+"/teams/add", `{"team":"Contoso-Power/other"}`); w.Code != 403 {
+	if w := accessPost(x.h, bob, bobCSRF, accessPath+"/teams/add", `{"team":"Example-Org/other"}`); w.Code != 403 {
 		t.Fatal("non-administrator added a team", w.Code)
 	}
 	for body, want := range map[string]string{
-		`{"team":"no-slash"}`:               "invalid_team",
-		`{"team":"Contoso-Power/Two Words"}`: "invalid_team",
-		`{"team":"ghost/team"}`:             "github_org_not_found",
-		`{"team":"down/team"}`:              "github_lookup_unavailable",
+		`{"team":"no-slash"}`:              "invalid_team",
+		`{"team":"Example-Org/Two Words"}`: "invalid_team",
+		`{"team":"ghost/team"}`:            "github_org_not_found",
+		`{"team":"down/team"}`:             "github_lookup_unavailable",
 	} {
 		if w := accessPost(x.h, alice, csrf, accessPath+"/teams/add", body); !strings.Contains(w.Body.String(), want) {
 			t.Fatal(body, w.Code, w.Body.String())
 		}
 	}
-	if w := accessPost(x.h, alice, csrf, accessPath+"/teams/add", `{"team":"Contoso-Power/habitat","id":"1"}`); w.Code != 400 {
+	if w := accessPost(x.h, alice, csrf, accessPath+"/teams/add", `{"team":"Example-Org/habitat","id":"1"}`); w.Code != 400 {
 		t.Fatal("extra field accepted", w.Code)
 	}
-	w := accessPost(x.h, alice, csrf, accessPath+"/teams/add", `{"team":"https://github.com/orgs/contoso-power/teams/Ops"}`)
+	w := accessPost(x.h, alice, csrf, accessPath+"/teams/add", `{"team":"https://github.com/orgs/example-org/teams/Ops"}`)
 	var teams struct {
 		Teams []teamView `json:"teams"`
 	}
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &teams) != nil || len(teams.Teams) != 2 || teams.Teams[1].Org != "Contoso-Power" || teams.Teams[1].Slug != "ops" || teams.Teams[1].OrgID != "700" || teams.Teams[1].Pinned {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &teams) != nil || len(teams.Teams) != 2 || teams.Teams[1].Org != "Example-Org" || teams.Teams[1].Slug != "ops" || teams.Teams[1].OrgID != "700" || teams.Teams[1].Pinned {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	provider.answer("anna", "active")
@@ -317,7 +317,7 @@ func TestTeamAccessBrowserAPI(t *testing.T) {
 	found := false
 	for _, e := range list.Entries {
 		if e.ID == "61" {
-			found = e.Source == "team" && e.TeamState == "member" && len(e.Teams) == 1 && e.Teams[0] == "Contoso-Power/habitat"
+			found = e.Source == "team" && e.TeamState == "member" && len(e.Teams) == 1 && e.Teams[0] == "Example-Org/habitat"
 		}
 	}
 	if !found {
@@ -344,11 +344,11 @@ func TestGitHubCheckTeam(t *testing.T) {
 		status int
 		body   string
 	}
-	pinned := TeamSource{OrgID: "700", Org: "Contoso-Power", Slug: "habitat", TeamID: "900"}
-	unpinned := TeamSource{OrgID: "700", Org: "Contoso-Power", Slug: "habitat"}
+	pinned := TeamSource{OrgID: "700", Org: "Example-Org", Slug: "habitat", TeamID: "900"}
+	unpinned := TeamSource{OrgID: "700", Org: "Example-Org", Slug: "habitat"}
 	membership := "https://api.github.com/organizations/700/team/900/memberships/anna"
-	org := "https://api.github.com/user/memberships/orgs/Contoso-Power"
-	team := "https://api.github.com/orgs/Contoso-Power/teams/habitat"
+	org := "https://api.github.com/user/memberships/orgs/Example-Org"
+	team := "https://api.github.com/orgs/Example-Org/teams/habitat"
 	for _, tc := range []struct {
 		name    string
 		source  TeamSource
@@ -389,13 +389,13 @@ func TestGitHubCheckTeam(t *testing.T) {
 
 func TestParseTeam(t *testing.T) {
 	for raw, want := range map[string]string{
-		"Contoso-Power/habitat":                           "Contoso-Power/habitat",
-		" @Contoso-Power/Habitat ":                        "Contoso-Power/habitat",
-		"https://github.com/orgs/Contoso-Power/teams/ops": "Contoso-Power/ops",
-		"Contoso-Power":                                   "",
-		"Contoso-Power/two words":                         "",
-		"https://github.com/Contoso-Power/habitat":        "",
-		"a/b/c": "",
+		"Example-Org/habitat":                           "Example-Org/habitat",
+		" @Example-Org/Habitat ":                        "Example-Org/habitat",
+		"https://github.com/orgs/Example-Org/teams/ops": "Example-Org/ops",
+		"Example-Org":                                   "",
+		"Example-Org/two words":                         "",
+		"https://github.com/Example-Org/habitat":        "",
+		"a/b/c":                                         "",
 	} {
 		org, slug, ok := parseTeam(raw)
 		if got := org + "/" + slug; ok != (want != "") || ok && got != want {

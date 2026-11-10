@@ -10,6 +10,7 @@ mkdir -p "$repo/.cache"
 CGO_ENABLED=0 go test -c -o "$repo/.cache/shared-pi-selector.test" "$repo/internal/core"
 podman run --rm --pull=never --network none --cap-drop=ALL --cap-add=SETUID --cap-add=SETGID --cap-add=CHOWN --cap-add=FOWNER \
   -v "$repo/.cache/shared-pi-selector.test:/fixture/selector.test:ro" \
+  -e PI_SELECTOR_HOST_HOME="$HOME" \
   docker.io/library/ubuntu:24.04 /bin/sh -ec '
     cp /fixture/selector.test /tmp/selector.test
     chmod 755 /tmp/selector.test
