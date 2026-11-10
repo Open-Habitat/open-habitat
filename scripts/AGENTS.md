@@ -47,7 +47,11 @@ repackaging deliberately unsafe archives and proving they still fail. Changing a
 broker unit, or the daemon socket's `DirectoryMode`, therefore means changing
 the verifier's expectations, and usually a negative case, in the same commit.
 
-`release-cut.py` is the one script here that publishes: it creates a GitHub
+`release-cut.py` is a transitional entry into `private-dev/release/`, excluded
+from the public snapshot together with `prepare-test-release.sh`. Keep these
+entries until their external operators cut over. The public `prepare-release.sh`
+requires explicit source remote/branch, architecture and gate mode; it selects
+no installation or release policy. The private cut creates a GitHub
 release and starts Fleetrepo's installation on Alder, so everything that can
 refuse runs before the first write, and each later stop says what it left.
 It builds with the gated commit's own tools from a disposable worktree,
@@ -96,11 +100,12 @@ covers is the kind of evidence this project refuses to produce.
 
 ## Cloud VM release qualification
 
-`cloud-qualify.py` is the one script here that changes a machine, and only a
-disposable remote VM. It holds no cloud credentials: provisioning, the
-firewall, host-key pinning and guaranteed expiry belong to Fleetrepo's
-`open-habitat-qualification-vm` operator, so a crashed run here can never be
-the only thing standing between a test server and its bill. Its `run` command
+`cloud-qualify.py` changes only a disposable remote VM. It holds no cloud
+credentials: provisioning, firewall, host-key pinning and guaranteed expiry
+belong to the explicitly supplied operator. The private entry in
+`private-dev/release/` selects the fleet operator and mirror; the public harness
+must not discover these from the machine. A crashed harness must never be the
+only thing standing between a test server and its bill. Its `run` command
 treats a failed teardown as a failed qualification for the same reason.
 
 What the harness may do on the target is bounded by what a customer would do

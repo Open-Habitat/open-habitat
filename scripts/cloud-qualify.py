@@ -3,7 +3,7 @@
 
 `plan` validates published release directories offline. `target` drives an
 already booted stock VM over pinned SSH through the released `open-habitat host`
-operator only. `run` asks Fleetrepo's qualification-VM operator for a short-lived
+operator only. `run` asks an explicitly supplied qualification-VM operator for a short-lived
 cloud VM, runs `target` against it and always destroys it. This script holds no
 cloud credentials; provisioning, firewalling and expiry belong to that operator.
 """
@@ -28,7 +28,6 @@ import tempfile
 import time
 
 SCHEMA = 1
-OPERATOR = 'open-habitat-qualification-vm'
 TLS_NAME = 'qualification.invalid'
 # The editor profile needs its own wildcard origin; the per-run leaf covers it too.
 EDITOR_TEMPLATE = 'https://*.code.' + TLS_NAME
@@ -927,12 +926,11 @@ def operator_call(operator, *args, timeout=1800):
 
 
 def cmd_run(args, spec):
-    operator = args.operator or shutil.which(OPERATOR)
+    operator = args.operator
     if not operator or not os.access(operator, os.X_OK):
         raise Failure('qualification_vm_operator_missing',
-                      f'{OPERATOR} is not installed. It is the Fleetrepo operator that creates and destroys the short-lived '
-                      'Hetzner qualification VM; install it through the Fleetrepo fleet, pass --operator PATH, or provision '
-                      'a stock Ubuntu 24.04 VM yourself and use `cloud-qualify.py target --target FILE`.')
+                      'Pass --operator PATH to an executable implementing create/destroy with expiry and pinned SSH, '
+                      'or provision a stock Ubuntu 24.04 VM and use `cloud-qualify.py target --target FILE`.')
     run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dt%H%M%S') + '-' + secrets.token_hex(3)
     with tempfile.TemporaryDirectory(prefix='oh-qualify-key-', dir='/var/tmp') as keys:
         os.chmod(keys, 0o700)
@@ -988,7 +986,7 @@ def parser():
     sub = p.add_subparsers(dest='command', required=True, parser_class=Parser)
     for name, help_text in (('plan', 'validate release inputs offline and print the stage plan'),
                             ('target', 'qualify on an existing freshly booted stock VM'),
-                            ('run', 'provision a short-lived VM through Fleetrepo, qualify, destroy')):
+                            ('run', 'provision through an explicit VM operator, qualify, destroy')):
         s = sub.add_parser(name, help=help_text)
         s.add_argument('--predecessor', required=True, help='directory with one published release: product package, release.json, archives')
         s.add_argument('--successor', help='directory with the next release whose manifest names the predecessor; enables upgrade stages')
@@ -1000,12 +998,12 @@ def parser():
         if name == 'target':
             s.add_argument('--target', required=True, help='target JSON: host, port, user, identity_file, known_hosts, home_device[, expect_apt_mirror]')
         if name == 'run':
-            s.add_argument('--operator', help=f'path to the Fleetrepo operator (default: {OPERATOR} on PATH)')
+            s.add_argument('--operator', required=True, help='executable implementing the qualification VM create/destroy contract')
             s.add_argument('--server-type', help='operator-allowlisted server type (operator default when omitted)')
             s.add_argument('--location', help='operator-allowlisted location (operator default when omitted)')
             s.add_argument('--ttl-minutes', type=int, default=180, help='expiry after which the operator reaps the VM even if this process dies (default 180)')
             s.add_argument('--keep-on-failure', action='store_true', help='leave a failed VM for diagnosis until its TTL expires')
-            s.add_argument('--expect-apt-mirror', default='mirror.hetzner.com', help='apt host the stock image must use (default mirror.hetzner.com)')
+            s.add_argument('--expect-apt-mirror', required=True, help='apt host the supplied stock image must use')
     return p
 
 

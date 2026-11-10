@@ -18,6 +18,14 @@ for _name in subprocess.run(['git', 'rev-parse', '--local-env-vars'],
 
 
 class PrepareTests(unittest.TestCase):
+    def install(self, repo):
+        shutil.copy2(HERE / 'prepare-release.sh', repo / 'scripts')
+
+    def command(self, scripts, output, gate):
+        return [str(scripts / 'prepare-release.sh'), '--gate', gate,
+                '--remote', 'origin', '--branch', 'main', '--target', 'linux-amd64',
+                '--version', '0.0.0-pilot.99', '--output', str(output)]
+
     def test_ungated_succeeds_without_receipt_and_gated_refuses(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             root = Path(temp)
@@ -33,7 +41,7 @@ class PrepareTests(unittest.TestCase):
             git('remote', 'add', 'origin', str(origin))
             scripts = repo / 'scripts'
             scripts.mkdir()
-            shutil.copy2(HERE / 'prepare-test-release.sh', scripts)
+            self.install(repo)
             shutil.copy2(HERE / 'gate-receipt.py', scripts)
             (repo / 'web').mkdir()
             (repo / 'web/package.json').write_text('{}')
@@ -63,17 +71,29 @@ echo "$out/$name.tar.gz"
             output = root / 'output'
             output.mkdir()
             env = {**os.environ, 'PATH': str(fake) + ':' + os.environ['PATH']}
-            cmd = [str(scripts / 'prepare-test-release.sh'), '--version',
-                   '0.0.0-pilot.99', '--output', str(output)]
+            cmd = self.command(scripts, output, 'clean-gate')
             gated = subprocess.run(cmd, cwd=repo, env=env, capture_output=True, text=True)
             self.assertNotEqual(gated.returncode, 0)
             self.assertIn('receipt unavailable', gated.stderr)
-            ungated = subprocess.run([cmd[0], '--ungated', *cmd[1:]], cwd=repo,
+            ungated = subprocess.run(self.command(scripts, output, 'ungated'), cwd=repo,
                                     env=env, capture_output=True, text=True)
             self.assertEqual(ungated.returncode, 0, ungated.stderr)
             self.assertEqual(json.loads((output / 'release-gate.json').read_text()), {
                 'gate': 'ungated', 'source_commit': git('rev-parse', 'HEAD'),
                 'tree': git('rev-parse', 'HEAD^{tree}')})
+            # Both policy modes still require the exact committed, pushed source.
+            (repo / 'untracked').write_text('dirty')
+            dirty = subprocess.run(self.command(scripts, root / 'dirty-output', 'ungated'),
+                                   cwd=root, env=env, capture_output=True, text=True)
+            self.assertNotEqual(dirty.returncode, 0)
+            self.assertIn('checkout is not clean', dirty.stderr)
+            git('add', '.')
+            git('commit', '-qm', 'not pushed')
+            unpushed = subprocess.run(self.command(scripts, root / 'unpushed-output', 'ungated'),
+                                      cwd=root, env=env, capture_output=True, text=True)
+            self.assertNotEqual(unpushed.returncode, 0)
+            self.assertIn('source is not pushed', unpushed.stderr)
+            self.assertFalse((root / 'unpushed-output').exists())
 
 
 if __name__ == '__main__':

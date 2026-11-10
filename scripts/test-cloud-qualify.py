@@ -465,6 +465,8 @@ class Commands(unittest.TestCase):
         self.h.tearDown()
 
     def main(self, *argv, env=None):
+        if argv[0] == 'run':
+            argv = (*argv, '--expect-apt-mirror', 'mirror.example.invalid')
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), mock.patch.dict(os.environ, env or {}):
             code = cq.main(list(argv))
@@ -534,7 +536,7 @@ class Commands(unittest.TestCase):
         self.assertEqual(existing.read_text(), '{}')
 
     def test_run_without_operator_is_informative(self):
-        code, out, err = self.main('run', *self.h.args, '--json', env={'PATH': str(self.h.root)})
+        code, out, err = self.main('run', *self.h.args, '--operator', str(self.h.root / 'missing'), '--json', env={'PATH': str(self.h.root)})
         self.assertEqual(code, 1)
         error = json.loads(err)['error']
         self.assertEqual(error['code'], 'qualification_vm_operator_missing')
@@ -567,7 +569,7 @@ else:
         script, log = self.operator()
         def failing(spec, target, interrupt):
             self.assertEqual(target['home_device'], '/dev/disk/by-id/scsi-0HC_Volume_7')
-            self.assertEqual(target['expect_apt_mirror'], 'mirror.hetzner.com')
+            self.assertEqual(target['expect_apt_mirror'], 'mirror.example.invalid')
             q = cq.Qualification(spec, target, None, None, None)
             q.stages = [{'name': 'connect', 'status': 'failed', 'code': 'target_not_fresh'}]
             return q, cq.Failure('target_not_fresh', 'synthetic')

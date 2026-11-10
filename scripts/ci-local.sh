@@ -146,9 +146,16 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/test-test-focused.py
     "$PYTHON" scripts/test-cloud-qualify.py
     "$PYTHON" scripts/test-profile-runtime-build.py
-    "$PYTHON" scripts/test-release-upload-plan.py
-    "$PYTHON" scripts/test-release-scratch.py
-    "$PYTHON" scripts/test-release-cut.py
+    "$PYTHON" scripts/test-prepare-release.py
+    if [[ -d private-dev/release ]]; then
+      "$PYTHON" private-dev/release/test-release-upload-plan.py
+      "$PYTHON" private-dev/release/test-release-scratch.py
+      "$PYTHON" private-dev/release/test-release-cut.py
+      "$PYTHON" private-dev/release/test-prepare-test-release.py
+      "$PYTHON" private-dev/release/test-cloud-entry.py
+    else
+      echo 'ci-local: skip private release orchestration tests (dev tools absent)'
+    fi
     "$PYTHON" scripts/test-screenshots-to-avif.py
     ./scripts/vm-test.sh self-test --json
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!

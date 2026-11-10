@@ -185,13 +185,17 @@ the default refuses a missing or different-tree gate receipt and records
 `gate: "clean-gate"` with the tree. A production release still requires the
 clean gate; a test release does not, and neither does landing on `main`.
 
-`python3 scripts/test-release-cut.py` tests the cut's decisions offline: which
+`python3 private-dev/release/test-release-cut.py` tests the cut's decisions offline: which
 receipt, commit, predecessor, version and tag it accepts, the runtime-input
 paths that stop a product-only cut, and the comparison of GitHub's stated
 digests with the verified bytes. It runs no build and reaches no network.
-`python3 scripts/test-release-scratch.py` tests the cut's private-input cleanup
-on success, failure and cancellation, and `test-release-upload-plan.py` the
-upload membership. When to cut is in `AGENTS-WORKFLOW.md`.
+`python3 private-dev/release/test-release-scratch.py` tests the cut's private-input cleanup
+on success, failure and cancellation, and `private-dev/release/test-release-upload-plan.py` the
+upload membership. The gate skips these explicitly when the private directory is
+absent. `scripts/test-prepare-release.py` always checks the public preparer;
+`private-dev/release/test-prepare-test-release.py` checks the transitional
+Fleetrepo entry. Neither preparer has a dry-run mode; these tests use synthetic
+Git origins and build commands, not a live build. When to cut is in `AGENTS-WORKFLOW.md`.
 
 The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
 checks the receipt in gated mode, installs web dependencies from the
@@ -611,8 +615,8 @@ installations follow once Birch's upgrade has passed its host checks and live
 use (Jari, 2026-10-25).
 
 ```sh
-python3 scripts/cloud-qualify.py run --predecessor RELEASE_DIR \
-  --successor NEXT_RELEASE_DIR --json
+python3 private-dev/release/cloud-qualify.py --product-root "$PWD" run \
+  --predecessor RELEASE_DIR --successor NEXT_RELEASE_DIR --json
 ```
 
 Each release directory holds what a customer downloads for one release: exactly
@@ -647,12 +651,14 @@ server type, Hetzner answers `resource_unavailable`; pass `--location fsn1` or
 release over the qualification host's uplink; the successor's unchanged
 archives are not sent again.
 
-`run` holds no cloud credentials. It calls Fleetrepo's
+The private `run` entry holds no cloud credentials. It selects Fleetrepo's
 `open-habitat-qualification-vm` operator, which creates a labelled short-lived
 server and blank volume in the test project, opens SSH and 443 only to the
 qualification host, pins the server's SSH host key and destroys everything when
 the run ends; an expiry label and Fleetrepo's reaper remove the VM of a run that
 died. Without the operator, `run` fails with `qualification_vm_operator_missing`.
+The public `scripts/cloud-qualify.py run` requires explicit `--operator` and
+`--expect-apt-mirror`; it never discovers a fleet operator. Its
 `target --target FILE` runs the same qualification on any freshly booted stock
 VM provisioned some other way (host, port, user, key, pinned `known_hosts`
 line, blank volume device).
