@@ -47,7 +47,10 @@ func microsoftWritable(service string, granted map[string]bool) bool {
 
 const microsoftSiteGUID = `[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}`
 
-var microsoftSiteID = regexp.MustCompile(`^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?,` + microsoftSiteGUID + `,` + microsoftSiteGUID + `$`)
+const microsoftHostname = `([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?`
+
+var microsoftSiteID = regexp.MustCompile(`^` + microsoftHostname + `,` + microsoftSiteGUID + `,` + microsoftSiteGUID + `$`)
+var microsoftSiteHost = regexp.MustCompile(`^` + microsoftHostname + `$`)
 var microsoftDriveID = regexp.MustCompile(`^[A-Za-z0-9!_-]{1,256}$`)
 
 func validMicrosoftSiteID(id string) bool {
@@ -55,6 +58,33 @@ func validMicrosoftSiteID(id string) bool {
 	// server-relative site path. Bound the DNS name as well as its labels.
 	host, _, _ := strings.Cut(id, ",")
 	return len(host) <= 253 && microsoftSiteID.MatchString(id)
+}
+
+// microsoftSiteByURL is Graph's path-addressed request for the site at a
+// webUrl (/sites/{hostname}:/{server-relative-path}), or false when the URL
+// is not a plain https site address. Each segment is rebuilt escaped, and
+// one that could change what Graph addresses (a dot segment, a colon, an
+// encoded slash) refuses the lookup rather than reaching another resource.
+func microsoftSiteByURL(webURL string) (string, bool) {
+	u, err := url.Parse(webURL)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || len(u.Hostname()) > 253 || !microsoftSiteHost.MatchString(u.Hostname()) {
+		return "", false
+	}
+	if strings.Contains(strings.ToLower(u.EscapedPath()), "%2f") {
+		return "", false
+	}
+	endpoint := "https://graph.microsoft.com/v1.0/sites/" + u.Hostname()
+	if p := strings.Trim(u.Path, "/"); p != "" {
+		var segments []string
+		for _, seg := range strings.Split(p, "/") {
+			if seg == "" || seg == "." || seg == ".." || strings.ContainsAny(seg, ":\\") {
+				return "", false
+			}
+			segments = append(segments, url.PathEscape(seg))
+		}
+		endpoint += ":/" + strings.Join(segments, "/")
+	}
+	return endpoint + "?$select=id", true
 }
 
 var microsoftRemoteName = regexp.MustCompile(`^(onedrive|sp-[a-f0-9]{24})$`)
@@ -281,17 +311,19 @@ func (d *microsoftDiscovery) libraries(s microsoftSite, label ...string) ([]micr
 	}
 	d.sites[strings.ToLower(s.ID)] = true
 	host, _, _ := strings.Cut(strings.ToLower(s.ID), ",")
-	d.step = "site_drives"
-	// Preserve Graph's composite-ID delimiters, as in its site-get
-	// request examples. Validation above makes this a single safe segment.
-	if err := d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/sites/"+s.ID+"/drives?$select=id,name,driveType&$top=100", nil, d.bearer, &list); err != nil {
+	id, lookup, err := d.siteDrives(s, &list)
+	if err != nil {
 		if d.unavailable(err, label[len(label)-1], 403, 404) {
+			d.skippedSites[len(d.skippedSites)-1].siteLookup = lookup
 			d.hostOf[len(d.skippedSites)-1] = host
 			return nil, nil
 		}
 		return nil, err
 	}
 	d.reachable[host] = true
+	if lookup != siteLookupID {
+		d.siteLookups = append(d.siteLookups, lookup)
+	}
 	d.step = "site_drives_limit"
 	if list.Next != "" {
 		return nil, errMicrosoftTruncated
@@ -310,10 +342,50 @@ func (d *microsoftDiscovery) libraries(s microsoftSite, label ...string) ([]micr
 		h := sha256.Sum256([]byte(lib.ID))
 		// Include the account in the organisation component so two grants to the
 		// same library never run competing sync clients against one local root.
-		dir := "cloud/sharepoint/" + microsoftSegment(u.Hostname()) + "--" + d.address + "/" + microsoftSegment(s.ID+"-"+s.Name) + "/" + microsoftSegment(lib.ID+"-"+lib.Name)
+		dir := "cloud/sharepoint/" + microsoftSegment(u.Hostname()) + "--" + d.address + "/" + microsoftSegment(id+"-"+s.Name) + "/" + microsoftSegment(lib.ID+"-"+lib.Name)
 		out = append(out, microsoftRemote{Name: "sp-" + hex.EncodeToString(h[:12]), Directory: dir, DriveID: lib.ID, DriveType: lib.Type, Label: microsoftLabel(append(label, microsoftDisplayName(lib.Name, "Documents"))...)})
 	}
 	return out, nil
+}
+
+// siteDrives lists a site's libraries into list and returns the site ID that
+// opened and the lookup form (siteLookupID, ...) that decided the outcome.
+// Graph documents /me/followedSites as drifting from SharePoint following,
+// and its composite ID can 404 for a site the person opens in SharePoint, so
+// only on a 404 the site is looked up again by its webUrl. 403 stays "no
+// access" and any other failure fails discovery, as for the first request.
+func (d *microsoftDiscovery) siteDrives(s microsoftSite, list any) (string, string, error) {
+	drives := func(id string) error {
+		d.step = "site_drives"
+		// Preserve Graph's composite-ID delimiters, as in its site-get
+		// request examples. Validation makes this a single safe segment.
+		return d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/sites/"+id+"/drives?$select=id,name,driveType&$top=100", nil, d.bearer, list)
+	}
+	err := drives(s.ID)
+	var status microsoftHTTPStatus
+	if d.ctx.Err() != nil || !errors.As(err, &status) || status != 404 {
+		return s.ID, siteLookupID, err
+	}
+	endpoint, ok := microsoftSiteByURL(s.WebURL)
+	if !ok {
+		return s.ID, siteLookupID, err
+	}
+	d.step = "site_by_url"
+	var site microsoftSite
+	if err := d.entry.request(d.ctx, endpoint, nil, d.bearer, &site); err != nil {
+		return "", siteLookupWebURL, err
+	}
+	d.step = "site_id"
+	if !validMicrosoftSiteID(site.ID) {
+		return "", siteLookupWebURL, ToolFailed
+	}
+	if strings.EqualFold(site.ID, s.ID) {
+		// The site exists under the same ID; its libraries are what 404.
+		d.step = "site_drives"
+		return "", siteLookupSameID, err
+	}
+	d.sites[strings.ToLower(site.ID)] = true
+	return site.ID, siteLookupWebURL, drives(site.ID)
 }
 
 // add writes a group of roots into the config if all of them fit its

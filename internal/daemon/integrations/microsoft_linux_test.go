@@ -123,6 +123,9 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 					status = 404
 					body = `{"error":{"code":"itemNotFound"}}`
 				}
+			case "/v1.0/sites/contoso.sharepoint.com:/sites/team":
+				// The webUrl lookup tried after a 404 finds the same site.
+				body = fmt.Sprintf(`{"id":%q}`, testMicrosoftSite)
 			default:
 				t.Errorf("unexpected Graph %s", r.URL)
 			}
@@ -1172,6 +1175,8 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 				case "/v1.0/sites/" + missing + "/drives":
 					code = status
 					body = `{"error":{"code":"itemNotFound","message":"private@example.test access-secret"}}`
+				case "/v1.0/sites/example.test:/site":
+					body = fmt.Sprintf(`{"id":%q}`, missing)
 				default:
 					return base.RoundTrip(r)
 				}

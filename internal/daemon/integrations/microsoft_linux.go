@@ -422,6 +422,9 @@ type microsoftLogin struct {
 	accepted         func(string) error
 	unavailableSites []string
 	skippedSites     []microsoftDiscoveryError
+	// siteLookups are the lookup forms other than the composite ID that
+	// opened a site, one per site, for the journal.
+	siteLookups []string
 	// teamsLeftOut says why Teams files are missing from the folder step.
 	teamsLeftOut     string
 	entry            *microsoft

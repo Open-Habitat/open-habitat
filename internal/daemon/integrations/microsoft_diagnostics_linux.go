@@ -47,8 +47,20 @@ type microsoftDiscoveryError struct {
 	// siteHost places a skipped site's host relative to the followed sites
 	// that did open, as a constant (siteHostSame, ...); empty elsewhere.
 	siteHost string
-	err      error
+	// siteLookup is the lookup form that decided a skipped site
+	// (siteLookupID, ...); empty for a root that is not a site.
+	siteLookup string
+	err        error
 }
+
+// A site is first opened by its composite ID; when that 404s and its webUrl
+// is a plain site address, by the ID Graph resolves for the webUrl. The same
+// ID back means the site exists but its libraries 404.
+const (
+	siteLookupID     = "composite_id"
+	siteLookupWebURL = "web_url"
+	siteLookupSameID = "web_url_same_id"
+)
 
 // A followed site whose host no reachable site shares is likely another
 // organisation's (a Teams shared channel hosted there): this sign-in's token
@@ -70,6 +82,9 @@ func (e microsoftDiscoveryError) diagnostic() []any {
 	attrs := []any{"step", e.step, "tool", "direct_http", "exit_status", "not_applicable", "http_status", status, "graph_code", code, "graph_message", message, "tenant_kind", e.tenantKind}
 	if e.siteHost != "" {
 		attrs = append(attrs, "site_host", e.siteHost)
+	}
+	if e.siteLookup != "" {
+		attrs = append(attrs, "site_lookup", e.siteLookup)
 	}
 	return attrs
 }

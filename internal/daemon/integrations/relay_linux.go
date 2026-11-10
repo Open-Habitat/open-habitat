@@ -475,6 +475,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			attrs := append([]any{"provider", Microsoft, "outcome", "skipped", "reason", "site_unavailable"}, skipped.diagnostic()...)
 			c.log.Warn("integration_discovery", attrs...)
 		}
+		for _, lookup := range ms.siteLookups {
+			c.log.Info("integration_discovery", "provider", Microsoft, "outcome", "observed", "reason", "site_lookup_fallback", "site_lookup", lookup)
+		}
 		c.setAttempt(a, func() {
 			a.unavailableSites, a.teamsLeftOut = append([]string(nil), ms.unavailableSites...), ms.teamsLeftOut
 		})
