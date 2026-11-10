@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@pi-web-search-capability']
-preparation: ready
+preparation: pending
 lane: web-search-key
 lane_seq: 1
 ---
