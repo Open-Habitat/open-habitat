@@ -370,7 +370,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		// succeeds the reply is unavailable, which the gateway treats as
 		// uncertain and keeps its deny; repeating the withdrawal, or the
 		// broker's next start, repeats only the stop.
-		if r.Operation == "withdraw" && reply.Failure == "" && reply.Access != nil && len(reply.Access.Rows) == 1 && reply.Access.Rows[0].State == StateWithdrawn {
+		if r.Operation == "withdraw" && r.ID != "" && reply.Failure == "" && reply.Access != nil && len(reply.Access.Rows) == 1 && reply.Access.Rows[0].State == StateWithdrawn {
 			if w.stopWithdrawn(ctx, r.ID, w.stopReport) != nil {
 				return failure(StateUnavailable)
 			}
