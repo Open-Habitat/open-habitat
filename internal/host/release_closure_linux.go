@@ -211,9 +211,12 @@ func validCoreAgentTools(files map[string]RuntimeFile, components map[string]Run
 			skills = true
 		}
 	}
-	// The Pi extension that offers the skills, to the launcher and the daemon.
-	if files["runtime/taskfleet/extension.mjs"].Component != "agent-launcher" {
-		return false
+	// The Pi extensions the launcher and the daemon load: the one that offers
+	// the skills, and the provider's own web search.
+	for _, path := range []string{"runtime/taskfleet/extension.mjs", "runtime/web-search/extension.mjs"} {
+		if files[path].Component != "agent-launcher" {
+			return false
+		}
 	}
 	for name, version := range CoreAgentTools {
 		owner := coreAgentToolOwner(name)

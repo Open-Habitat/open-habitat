@@ -665,6 +665,19 @@ lingering keeps available. `host check` names it as `runtime.taskfleet`:
 `taskfleet_runtime_drift` when they are not. Git and tmux are Ubuntu
 requirements of the core runtime.
 
+Agents search the web through the AI provider the person already uses, with
+no search key or service to set up. A shipped extension
+(`/opt/open-habitat/core/web-search/extension.mjs`), loaded by the launcher and
+browser conversations like the skills extension, adds the provider's own
+search tool to each request: OpenAI's for the ChatGPT subscription and OpenAI
+keys, Anthropic's search and fetch for Anthropic keys. On the Claude
+subscription the core runtime's Claude bridge lets Claude Code run its own
+WebSearch and WebFetch. Searches count against the person's plan or are billed
+to their key as the provider prices them, and the queries go to that provider.
+Where an organisation has turned web search off for its API key, the first
+request of a conversation fails with the provider's error and the conversation
+continues without search. Other providers get no search this way.
+
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,
 users or a shared administrative group. Check the effective `/proc` mount and

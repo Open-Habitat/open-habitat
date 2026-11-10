@@ -152,6 +152,7 @@ func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]s
 	files["runtime/agent-bin/pi"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
 	files["runtime/taskfleet/skills/worktree-merge/SKILL.md"] = RuntimeFile{Component: "taskfleet", Mode: 0644}
 	files["runtime/taskfleet/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+	files["runtime/web-search/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
 	if mutate != nil {
 		mutate(files, versions)
 	}
@@ -196,6 +197,7 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		"taskfleet unpinned":       func(_ map[string]RuntimeFile, v map[string]string) { v["taskfleet"] = "0.18.0" },
 		"workmux unpinned":         func(_ map[string]RuntimeFile, v map[string]string) { v["workmux"] = "0.1.276" },
 		"skills extension missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/taskfleet/extension.mjs") },
+		"web search missing":       func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/web-search/extension.mjs") },
 		"skills missing": func(f map[string]RuntimeFile, _ map[string]string) {
 			delete(f, "runtime/taskfleet/skills/worktree-merge/SKILL.md")
 		},

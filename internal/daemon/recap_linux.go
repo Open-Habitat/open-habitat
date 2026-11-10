@@ -30,6 +30,12 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if info, err := os.Stat(bridge); err == nil && info.Mode().IsRegular() {
 		args = append(args, "--extension", bridge)
 	}
+	// The provider's own web search, from the same tree as the bridge whose
+	// Claude Code the runtime build gives WebSearch and WebFetch.
+	search := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "web-search/extension.mjs")
+	if info, err := os.Stat(search); err == nil && info.Mode().IsRegular() {
+		args = append(args, "--extension", search)
+	}
 	// Product tolerates either guest runtime during rollout. Only load the core
 	// native owner, not terminal UI extensions. Never rewrite user settings.
 	processes := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/@aliou/pi-processes/extensions/processes/index.ts")

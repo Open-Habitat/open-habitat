@@ -24,6 +24,28 @@ def digest(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+# pi-claude-bridge starts Claude Code with no built-in tools on its provider
+# path, so a Claude-subscription conversation had no web search while every
+# other provider's has (Jari, 2026-11-10). Claude Code's own WebSearch and
+# WebFetch run inside the bridge's query on the person's subscription; the
+# bridge already leaves tool calls it does not serve to Claude Code. Upstream
+# (0.11.0) has no option for it. The patch must apply exactly once, so a pin
+# bump that moves the code fails the build instead of shipping unpatched.
+BRIDGE_PATCH = (
+    'pi-claude-bridge/src/index.ts',
+    '\t\ttools: [],\n\t\tpermissionMode: "bypassPermissions",\n',
+    '\t\ttools: ["WebSearch", "WebFetch"],\n\t\tpermissionMode: "bypassPermissions",\n',
+)
+
+
+def patch_bridge(modules):
+    rel, old, new = BRIDGE_PATCH
+    path = modules / rel
+    text = path.read_text()
+    assert text.count(old) == 1, 'pi-claude-bridge web tools patch does not apply'
+    path.write_text(text.replace(old, new))
+
+
 def build(work, out, release_target, inputs=Path('/inputs')):
     artifact_lock = json.loads((inputs / 'artifact-lock.json').read_text())
     node_pin = profiles.target_pin(artifact_lock['node'], release_target)
@@ -51,6 +73,7 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     put(node / 'LICENSE', 'licenses/node.txt', 'node')
     components.append(dict(name='node', version='22.21.1', kind='node', license_files=['licenses/node.txt']))
     lock = json.loads((work / 'npm/package-lock.json').read_text())
+    patch_bridge(work / 'npm/node_modules')
     installed = {}
     for p in sorted((work / 'npm/node_modules').rglob('package.json')):
         # Only package roots named in npm's lock, not vendored example manifests.
@@ -90,6 +113,7 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     rust_tools.add_tools(artifact_lock, release_target, root, scratch, put_bytes, components)
     put(inputs / 'agent-bin/pi', 'runtime/agent-bin/pi', 'agent-launcher')
     put(inputs / 'taskfleet-skills.mjs', 'runtime/taskfleet/extension.mjs', 'agent-launcher')
+    put(inputs / 'web-search.mjs', 'runtime/web-search/extension.mjs', 'agent-launcher')
     put(inputs / 'agent-bin/NOTICE', 'licenses/agent-launcher/NOTICE', 'agent-launcher')
     components.append(dict(name='agent-launcher', version='1', kind='native', license_files=['licenses/agent-launcher/NOTICE']))
     deb_lock_path = inputs / 'ubuntu-packages.json'

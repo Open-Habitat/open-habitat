@@ -17,6 +17,15 @@ BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
 not shipped. The synthetic Pi integration-test lockfile mirrors that override.
 The product companion itself is original code embedded in the Go binary.
 
+The core runtime's web search extension (`runtime/core/web-search.mjs`) is
+original code. Its provider tool shapes follow `pi-web-search` 1.7.0 (ttttmr,
+MIT) and `pi-web-access` 0.47.0 (Nico Bailon, MIT), which it credits; no code is
+copied from either and neither is installed. The core runtime build changes one
+line of `pi-claude-bridge` 0.9.3 (Eli Dickinson, MIT), which MIT permits: its
+provider path gives Claude Code the WebSearch and WebFetch tools
+(`BRIDGE_PATCH` in `scripts/core-runtime-build.py`). The package keeps its
+LICENSE in the closure.
+
 The daemon's Palaa tähän extension (`internal/daemon/rewind-extension.mjs`,
 embedded in the Go binary) adapts the checkpoint capture, tracked-path rules
 and restore of better-pi-rewind (raine, MIT, commit e42fa9c). Nothing is

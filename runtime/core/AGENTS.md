@@ -19,6 +19,15 @@ the same name wins; `--skill` flags would outrank both. Taskfleet's skills are
 written by the pinned Taskfleet binary at build time, never copied from a
 machine's installed skills.
 
+Web search comes from the provider the person already uses (Jari,
+2026-11-10): `web-search.mjs` adds the provider's own search tool to Pi's
+requests, and the build lets the Claude bridge's Claude Code run its own
+WebSearch and WebFetch. A person's own search tool takes precedence, and no
+keyless third-party search is turned on by default: it would send queries to a
+company nobody chose, under one rate limit shared by the whole installation. The bridge change is
+a source patch that must apply exactly once, so a bridge pin bump either
+carries it forward or drops it on purpose once upstream offers the setting.
+
 Taskfleet and workmux are upstream release binaries, locked with their
 LICENSE, the Cargo.lock they were released from and every crate's SPDX
 licence; `scripts/rust-tool-lock.py` writes that record. Raising a pin means
