@@ -13,7 +13,7 @@
 // The default output directory is dist/check-<page>; it is emptied first.
 // Run from the repository root with PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright.
 import { checkPicker } from './picker-check.mjs';
-import { rmSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,7 +39,9 @@ for (const mode of modes) {
   await p.goto('file://' + file);
   const round = await p.evaluate(() => document.querySelector('meta[name="prototype-round"]')?.content) ?? basename(file, '.html');
   if (round !== 'agentin-vuoro' && !file.includes('/drafts/')) {
-    try { await checkPicker(p, round, readFileSync(join(here, '../../KOKEILTAVAA.md'), 'utf8')); }
+    // The trial list names superseded rounds still offered for review; a tree without it has none.
+    const trials = join(here, '../../KOKEILTAVAA.md');
+    try { await checkPicker(p, round, existsSync(trials) ? readFileSync(trials, 'utf8') : ''); }
     catch (e) { await browser.close(); throw e; }
   }
   // A tall frame shows the whole conversation; the recap card would cover the stage.
