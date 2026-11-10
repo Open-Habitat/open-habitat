@@ -36,6 +36,17 @@ if [[ $scenario == self-test ]]; then
   if $json; then printf '{"schema_version":1,"data":{"status":"fixture-valid","launched":false,"reason":"Explicit systemd-self-test required for boot proof","image_sha256":"%s"},"warnings":[]}\n' "$image_sha"; else echo 'VM fixture valid (image not launched)'; fi
   exit 0
 fi
+# These legacy proofs require private, digest-pinned policy blobs. Do not
+# download images or start a guest when the optional source is absent.
+if [[ $scenario == jit-* ]] && [[ -z ${FLEETREPO_JIT_SOURCE:-} || ! -d $FLEETREPO_JIT_SOURCE ]]; then
+  reason='Private JIT policy source absent; set FLEETREPO_JIT_SOURCE to run this proof'
+  if $json; then
+    printf '{"schema_version":1,"data":{"status":"skipped","launched":false,"reason":"%s"},"warnings":[]}\n' "$reason"
+  else
+    printf 'SKIP: %s\n' "$reason"
+  fi
+  exit 0
+fi
 command -v timeout >/dev/null || fail missing_timeout 'GNU timeout is required' 2
 command -v podman >/dev/null || fail missing_podman 'Rootless Podman is required for full VM run' 2
 [[ $(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null) == true ]] || fail podman_unavailable 'Rootless Podman is unavailable; check storage and user namespace' 2
@@ -127,7 +138,7 @@ if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $
     [[ $scenario == jit-concurrent ]] && jit_args=(concurrent)
     [[ $scenario == jit-broker-crash ]] && jit_args=(broker-crash)
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
-    PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/open-habitat" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
+    PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=$FLEETREPO_JIT_SOURCE python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/open-habitat" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
   elif [[ $scenario == host-boot-binding ]]; then
     python3 "$repo/test/vm/host-boot-binding-fixture.py" "$run" "$repo" || fail invalid_product_fixture 'Could not render binding/session guest' 2

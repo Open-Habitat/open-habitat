@@ -153,7 +153,9 @@ def port_ready(port):
 try:
     check(os.getuid()==0 and pathlib.Path('/proc/self/uid_map').read_text().splitlines()[0].split()[1] != '0', 'requires rootless mapped container root')
     check(not pathlib.Path('/dev/kvm').exists(), 'unexpected hardware guest')
-    check(not pathlib.Path('/home/maintainer').exists(), 'real home must not be mounted')
+    check(not any(row.split()[4] == '/home' or row.split()[4].startswith('/home/')
+                  for row in pathlib.Path('/proc/self/mountinfo').read_text().splitlines()),
+          'real home must not be mounted')
     for i, name in enumerate(NAMES):
         uid = UIDS[i]
         with open('/etc/passwd','a') as f: f.write(f'{name}:x:{uid}:{uid}::/home/{name}:/bin/sh\n')

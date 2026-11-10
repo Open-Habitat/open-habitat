@@ -63,8 +63,10 @@ log in `.cache/vm/` for diagnosis. The image URL is checked against a literal
 in `vm-test.sh` as well as the checksum in `image.env`, so repinning the image
 means changing both. The JIT scenarios read Fleetrepo's guest gate files with
 `git show` from the commit pinned in `jit-fixture.py`, using the checkout at
-`FLEETREPO_JIT_SOURCE`, defaulting to `/home/maintainer/Sources/fleetrepo`, only as the
-object store, and verify them against hashes in the same file; a newer version
+explicitly supplied in `FLEETREPO_JIT_SOURCE`, only as the object store, and
+verify them against hashes in the same file. With no source directory, the JIT
+scenarios and private-source offline proofs report a skip, not a guest pass;
+an existing source with missing or invalid pinned objects still fails. A newer version
 of those files in Fleetrepo is not exercised until the commit and hashes are
 repinned here. The guest-only fixture tokens are constructed at runtime. The
 scenarios that use them scan the serial log and the built binary for them, and

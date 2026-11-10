@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disposable JIT broker seed; only hash-verified public Fleetrepo gate bytes."""
+"""Disposable JIT broker seed; only hash-verified private Fleetrepo gate bytes."""
 import base64
 import hashlib
 import json

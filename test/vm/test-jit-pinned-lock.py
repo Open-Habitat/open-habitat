@@ -17,7 +17,10 @@ values = {n.targets[0].id: ast.literal_eval(n.value) for n in fixture.body
           and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ('head', 'receipts')}
 assert values['head'] == '3a165c4f3a455e76f29b04f97823b4ee5fcfa40d'
 assert len(values['receipts']) == 9
-source = os.environ.get('FLEETREPO_JIT_SOURCE', '/home/maintainer/Sources/fleetrepo')
+source = os.environ.get('FLEETREPO_JIT_SOURCE')
+if not source or not Path(source).is_dir():
+    print('SKIP: private JIT policy source absent; set FLEETREPO_JIT_SOURCE to run pinned lock proof')
+    raise SystemExit(0)
 blobs = {}
 for name, digest in values['receipts'].items():
     blob = subprocess.check_output(['git', '-C', source, 'show',

@@ -34,6 +34,18 @@ grep -q 'invalid_image_checksum' "$tmp/err"
 if run jit-concurrent --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
 cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
+# Missing optional private inputs must skip before Podman/image setup.
+for scenario in jit-provision jit-login jit-concurrent jit-broker-crash jit-reboot-diagnostic; do
+  for source in '' "$tmp/absent-source"; do
+    FLEETREPO_JIT_SOURCE="$source" run "$scenario" --json > "$tmp/out"
+    python3 - "$tmp/out" <<'SKIP_CHECK'
+import json,sys
+v=json.load(open(sys.argv[1]))['data']
+assert v['status']=='skipped' and v['launched'] is False
+assert 'FLEETREPO_JIT_SOURCE' in v['reason']
+SKIP_CHECK
+  done
+done
 sed -i 's|/home/agent-b/SYNTHETIC-IDENTITY|/home/agent-b/INVALID|' "$tmp/repo/test/vm/cloud-init.yaml"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_cloud_init' "$tmp/err"
@@ -70,9 +82,7 @@ chmod +x "$tmp/shim/git"
 if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
-if git -C /home/maintainer/Sources/fleetrepo cat-file -e 3a165c4f3a455e76f29b04f97823b4ee5fcfa40d^{commit} 2>/dev/null; then
-  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/test-jit-pinned-lock.py"
-fi
+python3 "$repo/test/vm/test-jit-pinned-lock.py"
 # The guest proof acceptance parser must never turn a failed JSON proof into a
 # success when a caller has PYTHONOPTIMIZE=1 (Python strips assert statements).
 validator=$(sed -n "/<<'JIT_CHECK'/,/^JIT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
@@ -205,8 +215,8 @@ printf 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764' > "$tmp/jit/serial.log"
 if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/open-habitat"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
 printf '' > "$tmp/jit/serial.log"
 # Optional positive seed render from read-only pinned committed blobs.
-if git -C /home/maintainer/Sources/fleetrepo cat-file -e 3a165c4f3a455e76f29b04f97823b4ee5fcfa40d^{commit} 2>/dev/null; then
-FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat"
+if [[ -n ${FLEETREPO_JIT_SOURCE:-} && -d $FLEETREPO_JIT_SOURCE ]]; then
+python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat"
 python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_FIXTURE'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1])
@@ -219,7 +229,7 @@ JIT_FIXTURE
   mkdir -p "$tmp/release-root/systemd"
   cp -R "$repo/systemd/". "$tmp/release-root/systemd/"
   printf '\n# package-root-origin\n' >> "$tmp/release-root/systemd/open-habitat-broker.socket"
-  PRODUCT_RELEASE_ROOT="$tmp/release-root" FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" concurrent
+  PRODUCT_RELEASE_ROOT="$tmp/release-root" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" concurrent
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_CONCURRENT'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]);files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
@@ -232,7 +242,7 @@ assert b"/run/fixture-c-first" in provider and b"time.sleep(3)" in provider
 assert b"reverse.write_text('1')" in files['/usr/local/sbin/jit-proof']
 assert b'pwd.getpwuid' in files['/usr/bin/git'] and b'mapped_home(os.getuid(),home)' in files['/usr/bin/git'] and b'21033' in files['/usr/bin/git'] and b'21034' in files['/usr/bin/git']
 JIT_CONCURRENT
-  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" login
+  python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" login
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
@@ -243,6 +253,8 @@ assert b'21032' in files['/usr/bin/gh'] and b'21033' in files['/usr/bin/gh']
 assert files['/var/lib/open-habitat/broker/bindings.json'].find(b'"bindings":[]')!=-1
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_LOGIN
+else
+  echo 'SKIP: private JIT policy source absent; set FLEETREPO_JIT_SOURCE to run positive seed render'
 fi
 # Validate product seed rendering offline with a known injection payload (no boot).
 mkdir -p "$tmp/product"

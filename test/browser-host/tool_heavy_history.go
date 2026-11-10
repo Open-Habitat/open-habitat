@@ -10,9 +10,9 @@ import (
 )
 
 // seedToolHeavyHistory writes a long conversation shaped like a conductor's
-// Pi session on Birch (2026-11): every prompt and reply is separated by five
+// tool-heavy Pi session: every prompt and reply is separated by five
 // thinking+tool steps with a few KiB of output, so 100 messages are about 600
-// entries and 0.9 MB, as measured there.
+// entries and 0.9 MB.
 func seedToolHeavyHistory(path, cwd string, turns int) error {
 	f, e := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if e != nil {
