@@ -100,6 +100,14 @@ test('an Anthropic key conversation gets server-side search and fetch and keeps 
   assert.match(out, /\(https:\/\/example\.org\/cited\)/, 'the cited source must reach the answer');
 });
 
+test('an Anthropic search turn that pauses says the answer is incomplete', async () => {
+  const paused = anthropicAnswer.replace('"stop_reason":"end_turn"', '"stop_reason":"pause_turn"');
+  assert.notEqual(paused, anthropicAnswer);
+  const { out } = await converse('anthropic', 'claude-sonnet-5', ['first'], () => [200, paused]);
+  const { out: complete } = await converse('anthropic', 'claude-sonnet-5', ['first'], () => [200, anthropicAnswer]);
+  assert.ok(out.length > complete.length && out.startsWith(complete.trimEnd()), out);
+});
+
 test('a provider that refuses web search fails once, then the conversation goes on without it', async () => {
   const refusal = JSON.stringify({ error: { type: 'invalid_request_error', message: "Tool 'web_search' is not supported with this model." } });
   const { bodies, out } = await converse('openai', 'gpt-5.5', ['first', 'second'],

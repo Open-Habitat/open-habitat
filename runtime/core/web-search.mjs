@@ -20,9 +20,9 @@
 const anthropicTools = [
 	// The basic versions: later ones default to calling search from code
 	// execution, which not every model supports and which is not ZDR-eligible.
-	// Together they stay under the ten server-side iterations after which
-	// Anthropic pauses a turn (`pause_turn`): Pi ends the turn there, and the
-	// answer would stop half-way.
+	// Together they stay under the server-side iteration limit after which
+	// Anthropic pauses a turn (`pause_turn`, ten when last documented); Pi
+	// cannot resume a paused turn.
 	{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
 	{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 4 },
 ];
@@ -105,9 +105,16 @@ export default function (pi) {
 		if (m.stopReason === 'error' && /web[ _-]?(search|fetch)/i.test(String(m.errorMessage ?? ''))) {
 			refused = true;
 		}
-		if ((m.stopReason !== 'stop' && m.stopReason !== 'length') || cited.size === 0 || !Array.isArray(m.content)) return undefined;
-		const answer = withSources(m, cited);
+		if ((m.stopReason !== 'stop' && m.stopReason !== 'length') || !Array.isArray(m.content)) return undefined;
+		let answer = withSources(m, cited);
 		cited = new Map();
+		// Anthropic pauses a long search turn and expects the paused message back
+		// as it was; Pi keeps neither the search blocks nor the pause, and ends the
+		// turn. Say so rather than pass a partial answer off as complete.
+		if (m.rawStopReason === 'pause_turn') {
+			const base = answer ?? m;
+			answer = { ...base, content: [...base.content, { type: 'text', text: 'The search was paused before the answer was complete. Ask to continue.' }] };
+		}
 		return answer ? { message: answer } : undefined;
 	});
 }
