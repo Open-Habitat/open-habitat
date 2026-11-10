@@ -80,7 +80,7 @@ await page.waitForTimeout(1500);
 await snapshot(page, `${out}e2e-1-sheet-view`);
 
 // 2. The agent connects to the same browser over cdp.sock and works in a
-// sign-in page that asks for a confirmation code (local HTML: Birch's
+// sign-in page that asks for a confirmation code (local HTML: the test host's
 // egress is limited, and no real service is used in evidence).
 const endpoint = `ws+unix://${dir}/cdp.sock:/devtools/browser`;
 const agent = await agentChromium.connectOverCDP(endpoint);

@@ -42,7 +42,7 @@ const quietId = (n: number) =>
 // Newest first is n = 8 down to 0; by name the order differs.
 const titles = [
   "Verbien taivutus",
-  "Aldern levytila",
+  "Palvelimen levytila",
   "Laskujen arkistointi",
   "B1-sanasto",
   "Lokakuun budjetti",

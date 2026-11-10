@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
-// Jari 27.10.2026 (Birch, 0.1.0-pilot.12): back at a conversation after about
+// Jari 27.10.2026 (0.1.0-pilot.12): back at a conversation after about
 // an hour, the field no longer took his message; switching conversations did
 // not help, only a reload did. These cases walk that pause as a laptop lives
 // it: an unsent draft, the network gone while the machine sleeps, an hour on

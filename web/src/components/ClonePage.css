@@ -1,5 +1,5 @@
-/* Uusi työtila as a page (Kloonaussivulla, Jari 17.10.2026; prototype
-   design-system/prototypes/rounds/2026-10-17-repon-valinta). */
+/* Workspace creation gets a full page so repository choices and clone
+   progress have room beside the navigation rail. */
 .ah-app-shell:has(.ah-rail) .ah-state:has(> .ah-clone-page) {
   max-width: 1000px;
 }

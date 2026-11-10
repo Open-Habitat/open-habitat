@@ -234,7 +234,7 @@ function NavigationFixture() {
   const rail = (
     <WorkspaceRail
       collapsed={false}
-      serverLabel="alder.example — Open Habitat"
+      serverLabel="server.example — Open Habitat"
       connectionLabel="Yhteys toimii"
       filterValue={filter}
       resultSummary="1"
@@ -461,7 +461,7 @@ export const UnhappyStates: Story = {
       <UncertainCommandCard
         commandLabel="Lähetä viesti"
         textPreview="Sama viesti voi toteutua kahdesti."
-        commandIdLabel="cmd_01JARIKORRELAATIO"
+        commandIdLabel="cmd_01EXAMPLECORRELATION"
         explanation="Palvelin ei pystynyt vahvistamaan hyväksyntää."
         availability={{ state: "enabled" }}
         onReconcile={noop}

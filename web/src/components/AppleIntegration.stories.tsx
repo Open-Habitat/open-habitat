@@ -24,7 +24,7 @@ const providers = [
   provider("carddav", ["contacts"]),
 ];
 const checked = "2026-10-24T09:41:00Z";
-const appleId = "aino.virtanen@icloud.com";
+const appleId = "person@icloud.com";
 const service = (
   p: "imap" | "caldav" | "carddav",
   state: "ok" | "credentials_rejected" = "ok",

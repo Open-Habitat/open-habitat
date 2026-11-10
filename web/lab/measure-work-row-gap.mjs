@@ -1,4 +1,4 @@
-// work-row-composer-gap-birch: the space between the live working row and
+// Measure the space between the live working row and
 // the composer at a turn's start, in a short conversation at DSF 2.
 // Synthetic lab only: node web/lab/measure-work-row-gap.mjs <lab-origin> <label> [workspace]
 import { mkdir, writeFile } from "node:fs/promises";
@@ -14,10 +14,7 @@ if (!/^https:\/\/127\.0\.0\.1:\d+$/.test(origin ?? ""))
   throw new Error(
     "usage: measure-work-row-gap.mjs https://127.0.0.1:<port> <label> [workspace]",
   );
-const out = new URL(
-  "../../issues/work-row-composer-gap-birch/evidence/",
-  import.meta.url,
-);
+const out = new URL("../../.cache/lab/work-row-gap/", import.meta.url);
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
@@ -39,8 +36,8 @@ await page
   .getByTestId(`workspace-${workspace}`)
   .click();
 await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-// Jari's state has no background-work strip; the lab's process service is
-// absent, so its "?" chip would stand where his view has nothing.
+// Measure without background work; the lab's absent process service would
+// otherwise add a "?" chip that is not part of this state.
 await page.addStyleTag({ content: ".ah-bg-strip { display: none }" });
 await page.getByTestId("message-input").fill(prompt);
 await page.getByTestId("send").and(page.locator('[data-mode="send"]')).click();

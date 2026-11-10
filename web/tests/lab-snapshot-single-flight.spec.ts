@@ -1,7 +1,7 @@
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-// Through the live route a snapshot read takes seconds (Birch's gateway,
+// Through the live route a snapshot read takes seconds (a remote gateway,
 // 2026-10-23..30: about 2.9 s), longer than a running turn's invalidations
 // are apart. Each refresh used to abort the read before it, so no read
 // finished during a turn: on 2026-10-16 the test server's tunnel logged

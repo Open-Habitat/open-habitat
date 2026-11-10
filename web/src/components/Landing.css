@@ -1,4 +1,4 @@
-/* Loading landing (Merkki, design-system/prototypes/rounds/2026-10-16-latausnakyma).
+/* The loading landing stays stable while the application starts.
    web/index.html carries the same markup with data-landing="static", so these
    rules style it from the first paint, before the bundle runs. */
 .ah-landing {

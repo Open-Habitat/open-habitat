@@ -109,7 +109,7 @@ describe("background strip facts", () => {
     expect(facts([], [wait]).spin.marks.map((i) => i.waited)).toEqual([true]);
   });
   it("marks a live run whose supervisor Taskfleet doubts, after the restart cut its wait", () => {
-    // Birch pilot.12: a conversation's cross-repository run, pending with
+    // A conversation's cross-repository run, pending with
     // a live worker, read as supervisor dead; the restart cut the wait.
     const f = facts([run({ state: "unknown" })], []);
     expect(f.spin.working).toBe(0);

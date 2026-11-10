@@ -98,7 +98,7 @@ function CatalogContents({
   const rail = (
     <WorkspaceRail
       collapsed={false}
-      serverLabel="alder.example"
+      serverLabel="server.example"
       connectionLabel={
         scenario === "unhappy" ? "Tieto vanhentunut" : "Yhteys toimii"
       }
@@ -258,7 +258,7 @@ function CatalogContents({
               <UncertainCommandCard
                 commandLabel="Lähetä viesti"
                 textPreview="Tämä teksti säilyy, eikä sitä lähetetä automaattisesti uudelleen."
-                commandIdLabel="cmd_01JARIKORRELAATIO"
+                commandIdLabel="cmd_01EXAMPLECORRELATION"
                 explanation="Hyväksyntää ei voitu vahvistaa yhteyskatkoksen jälkeen."
                 availability={{ state: "enabled" }}
                 onReconcile={noop}

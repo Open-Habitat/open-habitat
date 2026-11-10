@@ -28,7 +28,7 @@ function hash(s: string) {
 }
 
 /** Two letters: the first and last word's, skipping generic words such as
- * `monorepo` (northwind-monorepo → 3D, open-habitat → OH). */
+ * `monorepo` (3demo-monorepo → 3D, open-habitat → OH). */
 export function glyphLetters(name: string) {
   let parts = name.split(/[-_.\s]+/).filter(Boolean);
   if (parts.length > 1)

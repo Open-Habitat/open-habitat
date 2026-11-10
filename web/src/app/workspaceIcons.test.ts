@@ -20,10 +20,10 @@ const ws = (name: string, over: Partial<Workspace> = {}): Workspace => ({
 
 describe("workspace icons", () => {
   it("derives two letters, skipping generic words", () => {
-    expect(glyphLetters("northwind-monorepo")).toBe("3D");
+    expect(glyphLetters("3demo-monorepo")).toBe("3D");
     expect(glyphLetters("open-habitat")).toBe("OH");
     expect(glyphLetters("issuectl")).toBe("IS");
-    expect(glyphLetters("kunnollavauhtiin-monorepo")).toBe("KU");
+    expect(glyphLetters("kuutarha-monorepo")).toBe("KU");
     expect(glyphLetters("äänet")).toBe("ÄÄ");
   });
   it("follows the chain: the repository's icon, else its logo, else the glyph", () => {

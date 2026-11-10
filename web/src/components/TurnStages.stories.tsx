@@ -8,7 +8,7 @@ import { Markdown } from "./Markdown";
 import { PiToolUse } from "./PiBlocks";
 
 // Interim replies as stages (Vaiheet without the turn head, Jari 19.10.2026).
-// The content is the prototype round's invented fleetrepo session.
+// The content is an invented fleet-maintenance session.
 const noop = () => {};
 const meta = { title: "Production/Turn stages" } satisfies Meta;
 export default meta;
@@ -64,19 +64,19 @@ const sync: TurnStep[] = [
   ),
   bash("b3", "git pull --rebase", "Fast-forward\n 3 files changed"),
   think("t2", "Running the fleet doctor across machines"),
-  bash(
-    "b4",
-    "fleetrepo fleet doctor",
-    "alder ok\nbrunhild ok\nhauis unreachable",
-  ),
+  bash("b4", "fleetctl doctor", "server ok\nlaptop ok\ndesktop unreachable"),
   say(
     "s2",
-    "Pull meni läpi, kolme uutta committia. Doctorin mukaan `rowan` ei vastaa — katson vielä, onko kone vain unessa vai oikeasti rikki.",
+    "Pull meni läpi, kolme uutta committia. Doctorin mukaan `desktop` ei vastaa — katson vielä, onko kone vain unessa vai oikeasti rikki.",
   ),
-  bash("b5", "ping -c 2 -W 2 rowan.local", "2 packets transmitted, 0 received"),
+  bash(
+    "b5",
+    "ping -c 2 -W 2 desktop.example",
+    "2 packets transmitted, 0 received",
+  ),
   say(
     "f",
-    "Fleetrepo on ajan tasalla: `main` on nyt `b81d0e3`.\n\n- `alder`, `maple`, `cedar` ja `willow` ovat konvergoituneet.\n- `rowan` ei vastaa SSH:hon eikä pingiin. Kone on todennäköisesti unessa; sitä ei ole todennettu, joten en merkitse sitä rikkinäiseksi.\n\nKun kone herää, aja `fleetrepo fleet doctor rowan`.",
+    "Fleet on ajan tasalla: `main` on nyt `b81d0e3`.\n\n- `server`, `laptop`, `backup` ja `notebook` ovat konvergoituneet.\n- `desktop` ei vastaa SSH:hon eikä pingiin. Kone on todennäköisesti unessa; sitä ei ole todennettu, joten en merkitse sitä rikkinäiseksi.\n\nKun kone herää, aja `fleetctl doctor desktop`.",
   ),
 ];
 
@@ -94,7 +94,7 @@ const backup: TurnStep[] = [
   ),
   say(
     "s1",
-    "Ajo on tehty ja päättyi onnistuneesti, mutta lokissa on kaksi asiaa, jotka kannattaa tietää ennen kuin jatkan:\n\n1. **Lukko oli varattuna.** `maple` piti restic-repon lukkoa eilisillasta 22:14 asti, ja yön ajo joutui odottamaan 41 sekuntia. Todennäköisesti läppärin oma varmuuskopio jäi kesken, kun kansi suljettiin. Tämä ei rikkonut mitään, mutta jos lukko jää pysyväksi, seuraava ajo epäonnistuu.\n2. **Tilannevedos on pienempi kuin edellinen.** `7c1e0a94` on noin 180 Mt pienempi kuin perjantain vedos. Se voi olla siivottua LFS-sisältöä, mutta en oleta sitä.\n\nTarkistan seuraavaksi arkiston eheyden `restic check`illä ja vertaan vedoksia. Se kestää noin minuutin; en poista lukkoa enkä muuta mitään.",
+    "Ajo on tehty ja päättyi onnistuneesti, mutta lokissa on kaksi asiaa, jotka kannattaa tietää ennen kuin jatkan:\n\n1. **Lukko oli varattuna.** `laptop` piti restic-repon lukkoa eilisillasta 22:14 asti, ja yön ajo joutui odottamaan 41 sekuntia. Todennäköisesti läppärin oma varmuuskopio jäi kesken, kun kansi suljettiin. Tämä ei rikkonut mitään, mutta jos lukko jää pysyväksi, seuraava ajo epäonnistuu.\n2. **Tilannevedos on pienempi kuin edellinen.** `7c1e0a94` on noin 180 Mt pienempi kuin perjantain vedos. Se voi olla siivottua LFS-sisältöä, mutta en oleta sitä.\n\nTarkistan seuraavaksi arkiston eheyden `restic check`illä ja vertaan vedoksia. Se kestää noin minuutin; en poista lukkoa enkä muuta mitään.",
   ),
   bash(
     "b3",
@@ -113,7 +113,7 @@ const backup: TurnStep[] = [
   ),
   say(
     "f",
-    "Gitean varmuuskopio on kunnossa.\n\n- Yön ajo 03:00 onnistui, tilannevedos `7c1e0a94`.\n- `restic check` (5 % datasta luettu) ei löytänyt virheitä.\n- Pienempi koko johtuu perjantain LFS-siivouksesta, ei puuttuvasta datasta.\n\nYksi asia jää sinulle: `maple`in vanha lukko. Jos haluat sen pois ennen ensi yötä, aja läppärillä `restic unlock`. En tehnyt sitä täältä, koska lukko kuuluu toisen koneen prosessille.",
+    "Gitean varmuuskopio on kunnossa.\n\n- Yön ajo 03:00 onnistui, tilannevedos `7c1e0a94`.\n- `restic check` (5 % datasta luettu) ei löytänyt virheitä.\n- Pienempi koko johtuu perjantain LFS-siivouksesta, ei puuttuvasta datasta.\n\nYksi asia jää sinulle: `laptop`in vanha lukko. Jos haluat sen pois ennen ensi yötä, aja läppärillä `restic unlock`. En tehnyt sitä täältä, koska lukko kuuluu toisen koneen prosessille.",
   ),
 ];
 
@@ -136,7 +136,7 @@ export const SeveralInterimReplies: Story = {
   render: () => (
     <Thread>
       <UserMessage
-        sourceText="Synkkaa fleetrepo originin kanssa ja aja fleet doctor."
+        sourceText="Synkkaa fleet originin kanssa ja aja fleetctl doctor."
         onCopy={noop}
       />
       <AgentTurn startedAt={started} steps={timed(sync)} />

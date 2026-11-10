@@ -18,7 +18,7 @@ const meta = {
         },
         {
           run_id: "01m531x6y92ggdqcmb1exzmn01",
-          title: "Julkaise pilot.12 ja päivitä Birch",
+          title: "Julkaise pilot.12 ja päivitä testipalvelin",
           state: "stalled",
         },
       ],

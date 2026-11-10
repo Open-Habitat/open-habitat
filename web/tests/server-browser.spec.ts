@@ -7,7 +7,7 @@ import { expect, type Page, test } from "./worker-host";
 // host's stand-in (test/browser-host/browser.go): its control socket answers
 // from fixture state and its VNC socket is a tiny RFB server that counts the
 // input it receives, so a look and control can be told apart. The real host
-// with Xvnc and Chrome is proven in the Go tests and on Birch (result.md).
+// with Xvnc and Chrome is proven in the Go tests and by installed-host verification.
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,

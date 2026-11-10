@@ -27,7 +27,7 @@ async function openStagedHistory(page: Page) {
   // Turns are found by their native replies, which the fixture wrote.
   const sync = page
     .getByTestId("agent-turn")
-    .filter({ hasText: "Fleetrepo on ajan tasalla" });
+    .filter({ hasText: "Fleet on ajan tasalla" });
   const backup = page
     .getByTestId("agent-turn")
     .filter({ hasText: "en poista lukkoa enkä muuta mitään." });
@@ -106,7 +106,7 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   await expect(
     sync
       .getByTestId("tool-row")
-      .and(page.locator('[data-tool-target="fleetrepo fleet doctor"]'))
+      .and(page.locator('[data-tool-target="fleetctl doctor"]'))
       .getByTestId("history-tool-toggle"),
   ).toBeVisible();
   await expectNativeContent(
@@ -129,7 +129,7 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   await expect(
     sync
       .getByTestId("tool-row")
-      .and(page.locator('[data-tool-target="ping -c 2 -W 2 rowan.local"]'))
+      .and(page.locator('[data-tool-target="ping -c 2 -W 2 desktop.example"]'))
       .getByTestId("history-tool-toggle"),
   ).toHaveCount(0);
   await page.keyboard.press("Space");
@@ -137,7 +137,7 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   await expect(
     sync
       .getByTestId("tool-row")
-      .and(page.locator('[data-tool-target="fleetrepo fleet doctor"]'))
+      .and(page.locator('[data-tool-target="fleetctl doctor"]'))
       .getByTestId("history-tool-toggle"),
   ).toHaveCount(0);
 

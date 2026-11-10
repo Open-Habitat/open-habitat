@@ -61,41 +61,41 @@ const repo = (
   owner_type,
 });
 const catalog = [
-  repo("jari/old", 400),
-  repo("jari/fresh", 0.5),
-  repo("jari/taken", 0.2),
+  repo("alice/old", 400),
+  repo("alice/fresh", 0.5),
+  repo("alice/taken", 0.2),
   repo("org/tool", 1, "Organization"),
   repo("friend/shared", 2),
-  repo("jari/never", null),
+  repo("alice/never", null),
 ];
 
 it("lists the latest pushes without workspaces, then own, organisations and others", () => {
   const a = arrange(catalog, {
-    login: "Jari",
+    login: "Alice",
     query: "",
     since: "0",
     now,
-    taken: (r) => r.full_name === "jari/taken",
+    taken: (r) => r.full_name === "alice/taken",
   });
   if (a.kind !== "browse") throw new Error("browse expected");
   expect(a.recent.map((r) => r.full_name)).toEqual([
-    "jari/fresh",
+    "alice/fresh",
     "org/tool",
     "friend/shared",
   ]);
-  expect(a.sections.map((s) => s.owner)).toEqual(["jari", "org", "friend"]);
+  expect(a.sections.map((s) => s.owner)).toEqual(["alice", "org", "friend"]);
   // Newest push first; a repository never pushed comes last.
   expect(a.sections[0].fresh.map((r) => r.full_name)).toEqual([
-    "jari/taken",
-    "jari/fresh",
-    "jari/old",
-    "jari/never",
+    "alice/taken",
+    "alice/fresh",
+    "alice/old",
+    "alice/never",
   ]);
 });
 
 it("says how many repositories the chosen time hides, in sections and search", () => {
   const a = arrange(catalog, {
-    login: "jari",
+    login: "alice",
     query: "",
     since: "30",
     now,
@@ -104,7 +104,7 @@ it("says how many repositories the chosen time hides, in sections and search", (
   if (a.kind !== "browse") throw new Error("browse expected");
   expect(a.sections[0]).toMatchObject({ total: 4, hidden: 2 });
   const s = arrange(catalog, {
-    query: "JARI/",
+    query: "ALICE/",
     since: "90",
     now,
     taken: () => false,
@@ -135,15 +135,15 @@ it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
     provider: "gitea" as const,
     id: "gitea_b",
     label: "git.example.test",
-    login: "jari",
+    login: "alice",
   };
   const repos: CatalogRepo[] = [
-    repo("jari/notes", 1),
-    { ...repo("jari/notes", 2), source: giteaA, owned: true },
-    { ...repo("jari/notes", 3), source: giteaB, owned: false },
+    repo("alice/notes", 1),
+    { ...repo("alice/notes", 2), source: giteaA, owned: true },
+    { ...repo("alice/notes", 3), source: giteaB, owned: false },
   ];
   const a = arrange(repos, {
-    login: "jari",
+    login: "alice",
     query: "",
     since: "0",
     now,

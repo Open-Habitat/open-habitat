@@ -557,7 +557,7 @@ export function App() {
       ? new URLSearchParams(route.search).get("fixture")
       : null;
   // One snapshot read at a time. Through the live route a read takes seconds
-  // (Birch: about 3 s), longer than a running turn's invalidations are apart.
+  // (observed: about 3 s), longer than a running turn's invalidations are apart.
   // When every request aborted the read before it, no read finished during a
   // turn, so a page waiting for one (stale, or a recovering journal) waited
   // out the whole turn, and Yhdistä's own read was aborted the same way. A

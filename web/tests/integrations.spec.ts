@@ -71,22 +71,22 @@ test("an IMAP account connects with an app password, is the person's own, and is
     if (new URL(request.url()).pathname === "/api/v1/integrations/login")
       loginRequests.push(request.method());
   });
-  // The live Brave report exits after 'jar', independent of typing speed.
+  // The reported failure exits after three letters, independent of typing speed.
   // Exercise actual keyboard events, not only a single fill/input event.
   for (const delay of [0, 100, 300]) {
     await address.fill("");
-    await address.pressSequentially("jar", { delay });
-    await expect(address).toHaveValue("jar");
-    await address.pressSequentially("person@example.test", { delay });
-    await expect(address).toHaveValue("maintainer@example.org");
+    await address.pressSequentially("ali", { delay });
+    await expect(address).toHaveValue("ali");
+    await address.pressSequentially("ce@example.test", { delay });
+    await expect(address).toHaveValue("alice@example.test");
     await expect(dialog.getByTestId("integration-username")).toHaveValue(
-      "maintainer@example.org",
+      "alice@example.test",
     );
     await expect(dialog.getByTestId("integration-imap-host")).toHaveValue(
-      "imap.iki.fi",
+      "imap.example.test",
     );
   }
-  await address.fill("maintainer@example.org");
+  await address.fill("alice@example.test");
   await address.blur();
   await address.focus();
   expect(loginRequests).toEqual([]);

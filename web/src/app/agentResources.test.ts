@@ -16,7 +16,7 @@ const json = (body: unknown, status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
-const ms = "aino@contoso.example";
+const ms = "aino@company.example";
 const gmail = "aino@gmail.example";
 const checked = "2026-11-06T08:50:00Z";
 
@@ -99,13 +99,13 @@ const roots: FileRoot[] = [
     provider: "microsoft",
     address: ms,
     service: "sharepoint",
-    directory: `~/cloud/sharepoint/contoso--${ms}/a/b`,
+    directory: `~/cloud/sharepoint/company--${ms}/a/b`,
   },
   {
     provider: "microsoft",
     address: ms,
     service: "sharepoint",
-    directory: `~/cloud/sharepoint/contoso--${ms}/a/c`,
+    directory: `~/cloud/sharepoint/company--${ms}/a/c`,
   },
 ];
 

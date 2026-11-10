@@ -617,7 +617,7 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
   await expect(pill).toHaveAttribute("data-unfinished", "0");
 });
 
-// Birch pilot.12 (Jari 26.10.2026): a run the conversation created in another
+// Pilot.12 (Jari 26.10.2026): a run the conversation created in another
 // repository was live, but Taskfleet read its supervisor as dead and the
 // restart had cut the wait. The closed pill still shows the worker.
 test("@spinoffs a live run in another state keeps its mark on the closed pill", async ({

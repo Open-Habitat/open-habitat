@@ -28,8 +28,8 @@ const icons: Record<string, WorkspaceIconModel> = {
     source: "Repon logo",
     where: "public/favicon.svg",
   },
-  "northwind-monorepo": {
-    name: "northwind-monorepo",
+  "3demo-monorepo": {
+    name: "3demo-monorepo",
     glyph: { letters: "3D", hue: 4 },
     show: { kind: "glyph" },
     source: "Kirjaintunnus · johdettu nimestä",
@@ -82,7 +82,7 @@ function Example({
                 }),
               ]}
               running={[
-                row("r1", "northwind-monorepo", "Opettajan näkymän käännökset"),
+                row("r1", "3demo-monorepo", "Opettajan näkymän käännökset"),
                 row("r2", "kotisivu", "Etusivun mobiilinäkymä"),
                 row("r3", "open-habitat", "Rail-ikonit"),
                 row("r4", "open-habitat", "pilot.16 testipalvelimelle", {

@@ -292,6 +292,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Context view and compaction",
         desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
       },
+      "atlassian-connect": {
+        label: "Atlassian connection",
+        desc: "Connect Jira and Confluence for your agents to use.",
+      },
       "named-workers": {
         label: "Helpers",
         desc: "Named workers work in rounds and wait for the main agent's next message.",

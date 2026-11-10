@@ -8,8 +8,7 @@
 // one site). Usage: node probe-editor-engines.mjs <chromium|firefox|webkit> <port>
 // with DOMAIN set to the same domain. Prints what happened; writes nothing.
 const { chromium, firefox, webkit } = await import(
-  process.env.PW_MODULE ??
-    "/home/maintainer/Sources/open-habitat__worktrees/wt-nh38adtpf2-implement-workspace-editor/web/node_modules/playwright/index.mjs"
+  process.env.PW_MODULE ?? "playwright"
 );
 const which = process.argv[2] || "chromium";
 const port = process.argv[3] || "14894";

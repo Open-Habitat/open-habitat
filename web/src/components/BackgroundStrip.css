@@ -1,6 +1,5 @@
-/* Merkit (round 2026-10-16-taustatyo-riff, Jari 16.10.2026): two quiet pills
-   above the composer, a floating panel with the kinds as tabs. Library
-   version: design-system/prototypes/lib/strip.css. */
+/* Two quiet pills keep background work visible without taking space from
+   the conversation; details open in a floating panel with the kinds as tabs. */
 .ah-bg-strip {
   flex: none;
   padding: 0 var(--ah-column-pad-inline) 6px;
