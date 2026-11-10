@@ -285,7 +285,7 @@ func TestTeamRemove(t *testing.T) {
 func TestTeamSurvivesOperatorPublication(t *testing.T) {
 	w, _ := teamWriter(t, true)
 	signInTeams(w, "61", "anna", obs("active", "900"))
-	next := operatorPublication(allowState(t, w.Dir), []string{"42", "43"}, true)
+	next := operatorPublication(allowState(t, w.Dir), []string{"42", "43"}, true, nil)
 	if len(next.Teams) != 1 || len(next.Members) != 1 {
 		t.Fatalf("%+v", next)
 	}

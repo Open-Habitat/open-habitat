@@ -52,7 +52,11 @@ func completeAdmissionPublication(ctx context.Context, dir string, p Initializat
 	if e != nil || decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch != a.Epoch || h.Generation != l.Generation {
 		return ErrInvalid
 	}
-	next := operatorPublication(a, ids, runtimeAdmission)
+	bound := map[string]bool{}
+	for _, b := range l.Bindings {
+		bound[b.ID] = true
+	}
+	next := operatorPublication(a, ids, runtimeAdmission, bound)
 	staged, e := readAt(fd, "allowlist.json.next", owner)
 	if e != nil || !bytes.Equal(staged, marshal(next)) {
 		return ErrInvalid

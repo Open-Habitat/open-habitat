@@ -5,6 +5,8 @@ package provision
 import (
 	"context"
 	"os"
+	"slices"
+	"sort"
 
 	"golang.org/x/sys/unix"
 )
@@ -20,12 +22,43 @@ import (
 // socket start while one is.
 
 // revoked is a committed binding's subject that no admission source admits
-// any more: withdrawn, or dropped from root's site.json with nothing else
-// admitting them. A team member record, whether left, unconfirmed or of an
-// unlisted team, keeps the listeners: GitHub's silence at one sign-in is not
-// a revocation, and the team source's changes are not root's.
+// any more and whom a withdrawal or root's publication revoked. A person
+// whom only a removed or forgotten team admitted keeps the listeners: the
+// team source's changes leave open sessions as they are, and so does
+// GitHub's silence at one sign-in.
 func (a allowFile) revoked(id string) bool {
-	return !a.admits(id) && a.member(id) == nil
+	if a.admits(id) {
+		return false
+	}
+	for _, x := range a.Runtime {
+		if x.ID == id && x.State == "withdrawn" {
+			return true
+		}
+	}
+	return slices.Contains(a.Revoked, id)
+}
+
+// keepRevoked records root's revocation in next, the admission file about
+// to be committed: bound ids that current's operator source admitted, next's
+// does not and nothing else in next admits are added, and every id next
+// admits through any source is dropped.
+func keepRevoked(current allowFile, next *allowFile, bound map[string]bool) {
+	out := []string{}
+	for _, id := range current.Revoked {
+		if !next.admits(id) {
+			out = append(out, id)
+		}
+	}
+	for _, x := range current.IDs {
+		if bound[x.ID] && !next.admits(x.ID) && !slices.Contains(out, x.ID) {
+			out = append(out, x.ID)
+		}
+	}
+	sort.Strings(out)
+	next.Revoked = out
+	if len(out) == 0 {
+		next.Revoked = nil
+	}
 }
 
 // stopRevoked stops the listeners of id's committed binding, or of every

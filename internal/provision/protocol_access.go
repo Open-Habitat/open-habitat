@@ -105,9 +105,8 @@ const (
 	OpTeamRemove = "team_remove"
 	OpTeamSignIn = "team_sign_in"
 	OpForget     = "forget"
-	// OpStopRevoked stops the listeners of every committed binding no
-	// source admits any more, after host apply's revocation; it names
-	// nobody.
+	// OpStopRevoked stops the listeners of every revoked binding (see
+	// allowFile.revoked), after host apply's revocation; it names nobody.
 	OpStopRevoked = "stop_revoked"
 )
 

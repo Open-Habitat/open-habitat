@@ -1193,9 +1193,10 @@ then the person's next sign-in, bring the sockets back.
 Removing a person from `site.json`'s `identities.admission` and running
 `host apply` stops the same units in the same way, once the broker has
 observed the reduced admission, unless a browser admission or a listed team
-still admits the person (someone with a team member record, even one that no
-longer admits, also keeps running). Apply then asks the broker to stop every
-person no source admits, on every run. If a stop fails, the revocation is
+still admits the person. Apply asks the broker, on every run, to stop
+everyone root revoked this way or a withdrawal withdrew. Losing a team's
+admission (the person left, the team was removed or their record forgotten)
+stops nothing. If a stop fails, the revocation is
 already in force and the person's sessions are gone, but apply fails with
 `revoked_listeners_running` and keeps entries closed; read the broker
 journal's `broker_withdrawal_stop` and continue the same approved input,

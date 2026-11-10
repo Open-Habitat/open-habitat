@@ -284,13 +284,16 @@ func PublishAdmission(ctx context.Context, expectedToken string, ids []string, r
 // operatorPublication is the admission file host apply stages: the given
 // operator ids and switch, with the current site_admin entries, team source
 // and member records, and epoch+1.
-func operatorPublication(current allowFile, ids []string, runtimeAdmission bool) allowFile {
+// Bound ids it drops with nothing else admitting them are recorded as
+// revoked, so the broker stops their listeners (stopRevoked).
+func operatorPublication(current allowFile, ids []string, runtimeAdmission bool, bound map[string]bool) allowFile {
 	want := append([]string{}, ids...)
 	sort.Strings(want)
 	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime, Teams: current.Teams, Members: current.Members}
 	for _, id := range want {
 		next.IDs = append(next.IDs, allowed{ID: id})
 	}
+	keepRevoked(current, &next, bound)
 	return next
 }
 func publishAdmission(ctx context.Context, dir string, owner uint32, token string, ids []string, runtimeAdmission bool) (InstallationState, error) {
@@ -317,11 +320,15 @@ func publishAdmission(ctx context.Context, dir string, owner uint32, token strin
 	if s.Epoch == ^uint64(0) {
 		return InstallationState{}, ErrInvalid
 	}
-	current, _, _, _, e := stateAt(ctx, fd, owner)
+	current, ledger, _, _, e := stateAt(ctx, fd, owner)
 	if e != nil || current.Epoch != s.Epoch {
 		return InstallationState{}, ErrInvalid
 	}
-	a := operatorPublication(current, ids, runtimeAdmission)
+	bound := map[string]bool{}
+	for _, b := range ledger.Bindings {
+		bound[b.ID] = true
+	}
+	a := operatorPublication(current, ids, runtimeAdmission, bound)
 	if ctx.Err() != nil {
 		return InstallationState{}, ctx.Err()
 	}

@@ -320,9 +320,12 @@ Identity and authority:
   workers, editor units), lingering and SSH stay. The stop is the exact
   counterpart of the socket restore: the broker picks the units from the
   committed binding of a subject no source admits, never from a request,
-  starts nothing and offers no general unit operation. A person with a team
-  member record keeps running: the team source's changes, and GitHub's
-  silence at one sign-in, are not a revocation. A failed stop is reported
+  starts nothing and offers no general unit operation. Root's revocation is
+  recorded in the admission file by the publication that drops a bound
+  operator id nothing else admits, and ends when any source admits the
+  person again; losing a team's admission (leaving, removal of the team, a
+  forgotten record, GitHub's silence) is not a revocation and stops nothing,
+  because team changes leave open sessions as they are. A failed stop is reported
   as unavailable, so the gateway's deny stays, and host apply fails with
   entries closed after the revocation is already in force; a repeated
   withdrawal, continuing the apply and the broker's next start repeat only

@@ -192,7 +192,7 @@ func (n *nativeApply) converge(ctx context.Context) error {
 var ErrRevokedListeners = errors.New("revoked_listeners_running: a person site.json no longer admits still has a running Open Habitat daemon or socket")
 
 // stopRevoked asks the broker, through the gateway, to stop the daemon and
-// both sockets of everyone no admission source admits any more, as a
+// both sockets of everyone root's publication or a withdrawal revoked, as a
 // withdrawal does (Jari, 2026-11-10). It runs on every converge, after the
 // broker has observed the published admission, so continuing the same
 // approved input repeats only the stop; the broker also repeats it when it

@@ -310,6 +310,9 @@ func (w Writer) handleAccess(ctx context.Context, r Request) Reply {
 	}
 	sort.Slice(next.Runtime, func(i, j int) bool { return idLess(next.Runtime[i].ID, next.Runtime[j].ID) })
 	sort.Slice(next.Members, func(i, j int) bool { return idLess(next.Members[i].ID, next.Members[j].ID) })
+	// Root's revocation record ends when another source admits the
+	// person; these operations never add to it.
+	keepRevoked(allowFile{Revoked: a.Revoked}, &next, nil)
 	next.Epoch = a.Epoch + 1
 	if len(next.Runtime) == 0 {
 		next.Runtime = nil

@@ -39,6 +39,12 @@ type allowFile struct {
 	// like Runtime: host apply carries them over and never converges them.
 	Teams   []teamSource `json:"teams,omitempty"`
 	Members []teamMember `json:"members,omitempty"`
+	// Revoked are bound ids root's publication dropped from the operator
+	// source while no other source admitted them. It is the only record that
+	// root revoked someone: a person whom only a removed or forgotten team
+	// admitted is equally unadmitted, but team changes leave their daemon
+	// running. An id goes when any source admits it again.
+	Revoked []string `json:"revoked,omitempty"`
 }
 
 // teamSource is one GitHub team whose active members may sign in. The org id
@@ -148,7 +154,28 @@ func fileLimit(name string) int64 {
 }
 
 // allowFields are the admission file's keys, checked before any typed decode.
-var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime", "teams", "members"}
+var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime", "teams", "members", "revoked"}
+
+// validRevoked checks root's revocation record: canonical ids, no
+// duplicate, at most one per identity in the largest pool.
+func validRevoked(raw json.RawMessage) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	entries, err := checkArray(raw, "revoked")
+	if err != nil || len(entries) > 4096 {
+		return ErrInvalid
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		var id string
+		if json.Unmarshal(entry, &id) != nil || !numericID(id) || seen[id] {
+			return ErrInvalid
+		}
+		seen[id] = true
+	}
+	return nil
+}
 
 // validRuntime checks the site_admin source as strictly as the operator ids.
 func validRuntime(raw json.RawMessage) error {
@@ -326,6 +353,9 @@ func readState(dir string, owner uint32) (allowFile, ledgerFile, error) {
 		return a, l, err
 	}
 	if err = validTeams(ar["teams"], ar["members"]); err != nil {
+		return a, l, err
+	}
+	if err = validRevoked(ar["revoked"]); err != nil {
 		return a, l, err
 	}
 	lr, err := object(lb, "version", "generation", "bindings")
