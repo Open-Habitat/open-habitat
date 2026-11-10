@@ -52,12 +52,21 @@ through the broker. This implements Jari's decision of 10.11.2026.
 
 ## Review
 
-The authority change got a review with an independent second model. The
-finder was GPT-6 Astra; the verifier, asked to rule out boundary and
-liveness defects, was Claude Fable 5.1. Astra found one defect, which was
-confirmed and fixed: startup verification ran before the startup retry, so a
-daemon still deactivating from an earlier stop made the broker exit. The
-verifier's outcome and the `/assess-findings` table are recorded below.
+The level was critical, because this changes the root broker's authority.
+`/llm-review` used GPT-6 Astra as finder and Claude Fable 5.1 as verifier,
+two calls in all, and `/assess-findings` triaged the result.
+
+| Finding | Assessment | Outcome |
+|---|---|---|
+| F1 (Astra): startup verification ran before the startup retry, so a daemon still deactivating from a timed-out stop made the broker exit, with `Restart=no`, before it could retry | CONFIRMED, OCCASIONAL | FIX, applied: the retry now runs before startup verification |
+| F2 (Fable): a `site.json` admission landing between the locked read and `systemctl stop` would stop an operator's daemon once | COSMIC_RAY, heals at the next sign-in | DROP (rule 1b) |
+| F3 (Fable): a daemon that ignores SIGTERM for more than 60 s at startup keeps the broker down until systemd's 90 s kill | RARE, bounded | DROP (rule 1b) |
+
+Fable found no defect at the authorization boundary: the stop set comes only
+from committed state, as a withdrawn entry with a binding that no source
+admits. It found no liveness defect either. After the review, `Handle` also
+requires a non-empty ID before it stops anything. No intake issues were
+filed, because nothing passed the filing bar.
 
 ## Decisions for later review
 

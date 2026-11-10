@@ -2,7 +2,7 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed during live view-address verification
@@ -12,6 +12,8 @@ originating_run_kind: spinoff
 lane: withdrawal-stops-daemon
 lane_seq: 1
 preparation: ready
+closed: 2026-11-10
+closed_by: claude-worker
 ---
 
 # Withdrawal stops the person's daemon and sockets through the broker
@@ -33,3 +35,9 @@ Decision needed (product vs. installation): either withdrawal should also stop t
 ### 2026-11-10T07:15:41Z · @jari
 
 Jari 10.11.: withdrawal stops the person's Open Habitat daemon and its sockets through the broker (the counterpart of the broker restoring them on an admitted sign-in). The account, home, credentials and the person's own user-manager processes (terminal tmux, Taskfleet workers) and SSH stay; restore and the next sign-in bring the sockets back. Fleetrepo's JIT gate stays strict. Replaces the rule 'withdrawal ends web access, not ... processes' in internal/AGENTS.md for the daemon's processes.
+
+## Resolution
+
+### 2026-11-10T07:41:34Z · @claude-worker
+
+Broker stops the withdrawn person's daemon service and both sockets after the commit; failed stop is uncertain (deny holds) and retried by repeat and broker start. See result.md.
