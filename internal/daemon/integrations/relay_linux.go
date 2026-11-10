@@ -11,13 +11,20 @@ import (
 	"time"
 )
 
-// relay carries one tool login at a time between the person's browser and
-// the tool the daemon started. It keeps only the lease: who started it, what
-// the tool printed and how far it got. Tokens never pass through it; a pasted
-// redirect address is handed to the waiting tool and not kept.
+// relay carries tool logins between the person's browser and the tools the
+// daemon started. It keeps only the leases: who started each, what the tool
+// printed and how far it got. Tokens never pass through it; a pasted redirect
+// address is handed to the waiting tool and not kept.
+//
+// Each provider has at most one attempt, and of the providers whose sign-in
+// may copy files (FolderEntry) only one at a time: a first pass reserves the
+// home's room and writes the provider's native configuration, so two of them
+// would race for both. A sign-in that copies no files (Atlassian) runs beside
+// them. A finished attempt stays until its provider's next start, so its
+// outcome can still be read.
 type relay struct {
-	mu sync.Mutex
-	a  *attempt
+	mu       sync.Mutex
+	attempts map[Provider]*attempt
 	// resume marks accounts whose interrupted first pass the daemon queued
 	// or failed to resume since it started.
 	resume map[key]resumeNote
@@ -75,6 +82,9 @@ type attempt struct {
 	// done is closed when the attempt's worker has finished, cleanup
 	// included; a successor starts only after it.
 	done chan struct{}
+	// pass is set, under c.write, when a chosen first pass starts running
+	// without c.write, and closed when its native work has ended.
+	pass chan struct{}
 }
 
 // LoginView is the browser's view of the attempt; see
@@ -120,11 +130,36 @@ const loginLifetime = 20 * time.Minute
 
 func (r *relay) cancelAll() {
 	r.mu.Lock()
-	a := r.a
+	var all []*attempt
+	for _, a := range r.attempts {
+		all = append(all, a)
+	}
 	r.mu.Unlock()
-	if a != nil {
+	for _, a := range all {
 		a.stop()
 	}
+}
+
+// holds reports whether a is still its provider's attempt. The caller holds
+// r.mu.
+func (r *relay) holds(a *attempt) bool { return r.attempts[a.provider] == a }
+
+// put makes a its provider's attempt. The caller holds r.mu.
+func (r *relay) put(a *attempt) {
+	if r.attempts == nil {
+		r.attempts = map[Provider]*attempt{}
+	}
+	r.attempts[a.provider] = a
+}
+
+// owned finds owner's attempt by its id. The caller holds r.mu.
+func (r *relay) owned(owner, id string) *attempt {
+	for _, a := range r.attempts {
+		if a.owner == owner && a.id == id {
+			return a
+		}
+	}
+	return nil
 }
 
 func (a *attempt) stop() {
@@ -133,10 +168,22 @@ func (a *attempt) stop() {
 	}
 }
 
-func (r *relay) view(owner string, now time.Time) LoginView {
+// view is owner's attempt for provider, or with no provider owner's latest
+// attempt. Another session's attempt reads as none.
+func (r *relay) view(owner string, provider Provider) LoginView {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	a := r.a
+	var a *attempt
+	if provider != "" {
+		a = r.attempts[provider]
+	} else {
+		for _, x := range r.attempts {
+			// Ids are start times in a fixed-width form, so they sort.
+			if x.owner == owner && (a == nil || x.id > a.id) {
+				a = x
+			}
+		}
+	}
 	if a == nil || a.owner != owner {
 		return LoginView{SchemaVersion: 1, State: "none"}
 	}
@@ -253,47 +300,110 @@ func validRedirect(prefix, raw string) bool {
 var errAttemptActive = errors.New("attempt_active")
 var errAttemptMissing = errors.New("attempt_not_found")
 
-// start begins a login for owner. Another session's live attempt is not
-// replaced: the tool may be waiting on that person's provider tab.
+// copiesFiles reports whether p's sign-in may end in a first pass that copies
+// files into the home.
+func (c *Catalog) copiesFiles(p Provider) bool {
+	_, ok := c.entry(p).(FolderEntry)
+	return ok
+}
+
+// conflicting are the attempts a start for p must replace or wait for: p's
+// own, and every file-copying provider's when p copies files too. The caller
+// holds relay.mu.
+func (c *Catalog) conflicting(p Provider) []*attempt {
+	var out []*attempt
+	files := c.copiesFiles(p)
+	for q, a := range c.relay.attempts {
+		if q == p || (files && c.copiesFiles(q)) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// busy is the attempt that refuses a start for p, if any. The caller holds
+// relay.mu.
+func (c *Catalog) busy(owner string, p Provider) *attempt {
+	for _, a := range c.conflicting(p) {
+		if a.syncing && !finished(a.state) {
+			return a
+		}
+		if a.owner != owner && !finished(a.state) && c.now().Before(a.until) {
+			return a
+		}
+	}
+	return nil
+}
+
+// start begins a login for owner. A first pass is never replaced, nor is
+// another session's live attempt: the tool may be waiting on that person's
+// provider tab. Owner's own earlier attempt that conflicts is replaced.
 func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level Level) error {
 	r := &c.relay
+	p := e.Provider()
 	r.mu.Lock()
-	if a := r.a; a != nil && a.syncing && !finished(a.state) {
+	if c.busy(owner, p) != nil {
 		r.mu.Unlock()
 		return errAttemptActive
 	}
-	if a := r.a; a != nil && a.owner != owner && !finished(a.state) && c.now().Before(a.until) {
-		r.mu.Unlock()
-		return errAttemptActive
-	}
-	old := r.a
+	old := c.conflicting(p)
 	r.mu.Unlock()
-	// The previous attempt's worker may still be cleaning up an account it
+	// A previous attempt's worker may still be cleaning up an account it
 	// created; it must finish before a successor reads or writes the tool.
-	if old != nil {
-		old.stop()
+	wait := time.After(15 * time.Second)
+	for _, a := range old {
+		a.stop()
 		select {
-		case <-old.done:
-		case <-time.After(15 * time.Second):
+		case <-a.done:
+		case <-wait:
 			return errAttemptActive
 		}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	// A finished resume clears the slot itself rather than leaving its attempt.
-	if r.a != old && r.a != nil {
-		return errAttemptActive
+	// Another start or a resume may have taken the place meanwhile. A
+	// finished resume clears its place itself rather than leaving its attempt.
+	replaced := map[*attempt]bool{}
+	for _, a := range old {
+		replaced[a] = true
+	}
+	for _, a := range c.conflicting(p) {
+		if !replaced[a] {
+			return errAttemptActive
+		}
+	}
+	for _, a := range old {
+		if r.holds(a) {
+			delete(r.attempts, a.provider)
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", level: level, state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
+	a := &attempt{owner: owner, id: c.attemptID(), provider: p, address: address, relogin: address != "", level: level, state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
 	if list, err := e.Accounts(c.env); err == nil {
 		for _, x := range list {
 			a.existing[x] = true
 		}
 	}
-	r.a = a
+	r.put(a)
 	go c.driveLogin(ctx, e, a)
 	return nil
+}
+
+// attemptID is a new attempt's id: its start time, made unique among the
+// attempts the relay holds. The caller holds relay.mu.
+func (c *Catalog) attemptID() string {
+	t := c.now().UTC()
+	for {
+		id := t.Format("20060102T150405.000000000")
+		taken := false
+		for _, a := range c.relay.attempts {
+			taken = taken || a.id == id
+		}
+		if !taken {
+			return id
+		}
+		t = t.Add(time.Nanosecond)
+	}
 }
 
 // abandonFor ends a live attempt that is signing in provider's address, when
@@ -304,7 +414,7 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level L
 // when it did not exit in time.
 func (c *Catalog) abandonFor(p Provider, address string) bool {
 	c.relay.mu.Lock()
-	a := c.relay.a
+	a := c.relay.attempts[p]
 	// Before identity is known, any same-provider removal could be the grant
 	// the attempt is about to publish. Fence it rather than resurrect a login.
 	if a == nil || a.provider != p || (a.address != "" && a.address != address) || finished(a.state) {
@@ -312,13 +422,20 @@ func (c *Catalog) abandonFor(p Provider, address string) bool {
 		return true
 	}
 	a.state, a.failure, a.discard = "failed", Cancelled, true
+	pass := a.pass
 	c.relay.mu.Unlock()
 	a.stop()
-	if !a.resume {
+	// A chosen first pass that has started runs without c.write too; it
+	// closes pass without taking c.write once its native process has ended.
+	ended := pass
+	if a.resume {
+		ended = a.done
+	}
+	if ended == nil {
 		return true
 	}
 	select {
-	case <-a.done:
+	case <-ended:
 		return true
 	case <-time.After(15 * time.Second):
 		return false
@@ -329,7 +446,7 @@ func (c *Catalog) abandonFor(p Provider, address string) bool {
 func (c *Catalog) live(a *attempt) bool {
 	c.relay.mu.Lock()
 	defer c.relay.mu.Unlock()
-	return c.relay.a == a && !finished(a.state)
+	return c.relay.holds(a) && !finished(a.state)
 }
 
 func finished(state string) bool { return state == "completed" || state == "failed" }
@@ -337,7 +454,7 @@ func finished(state string) bool { return state == "completed" || state == "fail
 func (c *Catalog) setAttempt(a *attempt, f func()) bool {
 	c.relay.mu.Lock()
 	defer c.relay.mu.Unlock()
-	if c.relay.a != a || finished(a.state) {
+	if !c.relay.holds(a) || finished(a.state) {
 		return false
 	}
 	f()
@@ -654,9 +771,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			c.write.Unlock()
 			return
 		case chosen:
-			// The choice is applied under the write lock and only while the
-			// attempt still owns its outcome: a removal or a cancellation
-			// that won the race leaves nothing behind.
+			// The choice is applied only while the attempt still owns its
+			// outcome: a removal or a cancellation that won the race leaves
+			// nothing behind.
 			c.write.Lock()
 			if !c.live(a) {
 				c.dropStale(e, a, address)
@@ -665,44 +782,23 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			}
 			// The person's own choice replaces any earlier resume outcome.
 			c.markResume(key{e.Provider(), address}, 0)
-			syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
-				c.setAttempt(a, func() { a.progress = &p })
-			})
-			// No copy is allowed until a fresh count and a fresh quota
-			// observation admit it. A size counted while the person chose
-			// may be minutes old, so a native measurer counts again; without
-			// one, only sizes the entry itself listed are admitted.
-			var syncErr error
-			var bytes uint64
-			if measured, ok := fe.(interface {
-				MeasureFolders(context.Context, Env, string, []string) (uint64, error)
-			}); ok {
-				bytes, syncErr = measured.MeasureFolders(syncCtx, c.env, address, ids)
-			} else {
-				c.relay.mu.Lock()
-				for _, id := range ids {
-					for _, f := range a.folders {
-						if f.ID == id {
-							if f.UnknownSize || f.Estimated {
-								syncErr = ToolFailed
-							}
-							bytes += f.Bytes // chooseFolders already checked the sum's bound
-						}
-					}
-				}
-				c.relay.mu.Unlock()
+			// The count and the copy may take hours. Like a resumed pass they
+			// run without c.write, so the person's other sign-ins and
+			// connections are not held behind them: reconcile leaves this
+			// account's client alone while the attempt syncs, and a removal
+			// of the account waits for pass (abandonFor). pass is published
+			// under c.write, so a removal either sees it or finds the attempt
+			// gone before the pass starts.
+			pass := make(chan struct{})
+			if !c.setAttempt(a, func() { a.pass = pass }) {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
+				return
 			}
-			if syncErr == nil {
-				room := c.quota()
-				if !room.OK {
-					syncErr = errQuotaUnavailable
-				} else if bytes > room.Free {
-					syncErr = quotaShortfall{needed: bytes, free: room.Free}
-				}
-			}
-			if syncErr == nil {
-				syncErr = fe.ChooseFolders(syncCtx, c.env, address, ids)
-			}
+			c.write.Unlock()
+			syncErr := c.firstPass(ctx, fe, a, address, ids)
+			close(pass)
+			c.write.Lock()
 			if syncErr != nil {
 				// Keep the native login and partial files visible after failure.
 				// No automatic resync: another initial choice must be explicit.
@@ -753,6 +849,49 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	c.write.Unlock()
 }
 
+// firstPass counts the chosen folders afresh, checks them against the room
+// the home has now and copies them. No copy is allowed until a fresh count
+// and a fresh quota observation admit it: a size counted while the person
+// chose may be minutes old, so a native measurer counts again; without one,
+// only sizes the entry itself listed are admitted. It runs without c.write.
+func (c *Catalog) firstPass(ctx context.Context, fe FolderEntry, a *attempt, address string, ids []string) error {
+	syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
+		c.setAttempt(a, func() { a.progress = &p })
+	})
+	var bytes uint64
+	if measured, ok := fe.(interface {
+		MeasureFolders(context.Context, Env, string, []string) (uint64, error)
+	}); ok {
+		var err error
+		if bytes, err = measured.MeasureFolders(syncCtx, c.env, address, ids); err != nil {
+			return err
+		}
+	} else {
+		c.relay.mu.Lock()
+		unknown := false
+		for _, id := range ids {
+			for _, f := range a.folders {
+				if f.ID == id {
+					unknown = unknown || f.UnknownSize || f.Estimated
+					bytes += f.Bytes // chooseFolders already checked the sum's bound
+				}
+			}
+		}
+		c.relay.mu.Unlock()
+		if unknown {
+			return ToolFailed
+		}
+	}
+	room := c.quota()
+	if !room.OK {
+		return errQuotaUnavailable
+	}
+	if bytes > room.Free {
+		return quotaShortfall{needed: bytes, free: room.Free}
+	}
+	return fe.ChooseFolders(syncCtx, c.env, address, ids)
+}
+
 // dropStale removes an abandoned new login or an explicitly removed account.
 // Folder approval changes cancellation to a recoverable stop: keep the native
 // login and partial files instead of erasing them. The caller holds c.write.
@@ -784,8 +923,8 @@ func (c *Catalog) discardNew(e Entry, address string) {
 func (c *Catalog) redirect(owner, id, raw string) error {
 	r := &c.relay
 	r.mu.Lock()
-	a := r.a
-	if a == nil || a.owner != owner || a.id != id {
+	a := r.owned(owner, id)
+	if a == nil {
 		r.mu.Unlock()
 		return errAttemptMissing
 	}
@@ -804,7 +943,7 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 	time.AfterFunc(c.signInWait, func() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		if r.a == a && a.state == "completing" && !a.syncing && !a.committing && !a.skipped {
+		if r.holds(a) && a.state == "completing" && !a.syncing && !a.committing && !a.skipped {
 			a.state, a.failure = "failed", Expired
 			a.stop()
 			c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", "post_redirect", "reason", string(Expired))
@@ -841,8 +980,8 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 	r := &c.relay
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	a := r.a
-	if a == nil || a.owner != owner || a.id != id {
+	a := r.owned(owner, id)
+	if a == nil {
 		return errAttemptMissing
 	}
 	if a.state != "choose_folders" {
@@ -895,8 +1034,8 @@ func (c *Catalog) skipFolders(owner, id string) error {
 	r := &c.relay
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	a := r.a
-	if a == nil || a.owner != owner || a.id != id {
+	a := r.owned(owner, id)
+	if a == nil {
 		return errAttemptMissing
 	}
 	if a.state != "choose_folders" {
@@ -934,8 +1073,8 @@ func (c *Catalog) skipFolders(owner, id string) error {
 func (c *Catalog) cancelLogin(owner, id string) error {
 	r := &c.relay
 	r.mu.Lock()
-	a := r.a
-	if a == nil || a.owner != owner || a.id != id {
+	a := r.owned(owner, id)
+	if a == nil {
 		r.mu.Unlock()
 		return errAttemptMissing
 	}

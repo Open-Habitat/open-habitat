@@ -493,7 +493,7 @@ func TestStoppedFirstPassIsNotResumed(t *testing.T) {
 			}
 			waitState(t, h, ownerA, "failed")
 			c.relay.mu.Lock()
-			done := c.relay.a.done
+			done := c.relay.current().done
 			c.relay.mu.Unlock()
 			<-done
 			cancel()

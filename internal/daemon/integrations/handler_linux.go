@@ -30,9 +30,14 @@ var sessionOwner = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 // the verified gateway peer on the daemon's own socket.
 func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The folder read is the one route that takes a query.
+		// The folder read takes a query.
 		if r.URL.Path == FilesPath && r.URL.RawQuery != "" && r.RequestURI == r.URL.Path+"?"+r.URL.RawQuery && authorized(r) {
 			c.files(w, r)
+			return
+		}
+		// So does the login read, which may name one provider's attempt.
+		if r.URL.Path == LoginPath && r.URL.RawQuery != "" && r.RequestURI == r.URL.Path+"?"+r.URL.RawQuery && authorized(r) {
+			c.loginRequest(w, r)
 			return
 		}
 		if r.URL.RawQuery != "" || r.RequestURI != r.URL.Path || !authorized(r) {
@@ -102,7 +107,7 @@ func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, ac
 		case accountsPath:
 			c.accountsRequest(w, r)
 		case loginPath:
-			c.loginRequestOwned(w, r, "agent-own-uid")
+			c.loginRequestOwned(w, r, "agent-own-uid", "")
 		case giteaPath:
 			if c.gitea == nil {
 				fail(w, 409, "provider_unavailable")
@@ -370,10 +375,12 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 		fail(w, 409, string(AccountMissing))
 		return
 	}
-	// A resumed first pass runs without c.write but may hold the provider's
-	// native lock for hours; never queue a sibling's removal behind it.
+	// A first pass, resumed or chosen, runs without c.write but may hold the
+	// provider's native lock for hours; never queue a sibling's removal
+	// behind it.
 	c.relay.mu.Lock()
-	sibling := c.relay.a != nil && c.relay.a.resume && !finished(c.relay.a.state) && c.relay.a.provider == e.Provider() && c.relay.a.address != address
+	a := c.relay.attempts[e.Provider()]
+	sibling := a != nil && (a.resume || a.pass != nil) && !finished(a.state) && a.address != address
 	c.relay.mu.Unlock()
 	if sibling {
 		fail(w, 503, "native_unavailable")
@@ -433,25 +440,46 @@ func (c *Catalog) loginRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "cross_user_denied")
 		return
 	}
-	c.loginRequestOwned(w, r, owners[0])
+	var provider Provider
+	if r.URL.RawQuery != "" {
+		q := r.URL.Query()
+		p := Provider(q.Get("provider"))
+		if len(q) != 1 || len(q["provider"]) != 1 || c.entry(p) == nil || r.Method != http.MethodGet {
+			fail(w, 400, "invalid_request")
+			return
+		}
+		provider = p
+	}
+	c.loginRequestOwned(w, r, owners[0], provider)
 }
 
 // Ownership is selected by the authenticated adapter, never from request data.
-func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owner string) {
+// A read may name the provider whose attempt it asks for (provider is "" when
+// it does not); a write's reply is the attempt it addressed.
+func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owner string, provider Provider) {
 	if r.Method == http.MethodGet {
 		if r.ContentLength > 0 || len(r.TransferEncoding) > 0 {
 			fail(w, 400, "invalid_request")
 			return
 		}
-		reply(w, c.relay.view(owner, c.now()))
+		reply(w, c.relay.view(owner, provider))
 		return
 	}
 	var in loginRequest
-	if decode(r, &in, 8192) != nil {
+	if provider != "" || decode(r, &in, 8192) != nil {
 		fail(w, 400, "invalid_request")
 		return
 	}
 	var err error
+	// target is the provider whose attempt the reply shows.
+	target := in.Provider
+	if in.AttemptID != "" {
+		c.relay.mu.Lock()
+		if a := c.relay.owned(owner, in.AttemptID); a != nil {
+			target = a.provider
+		}
+		c.relay.mu.Unlock()
+	}
 	switch {
 	case r.Method == http.MethodPost && in.Action == "start" && in.AttemptID == "" && in.RedirectURL == "" && in.Folders == nil:
 		e, ok := c.entry(in.Provider).(LoginEntry)
@@ -465,13 +493,13 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 			return
 		}
 		if !e.Available(c.env) {
-			c.refuseStart(w, in.Provider, "provider_unavailable")
+			c.refuseStart(w, owner, in.Provider, "provider_unavailable")
 			return
 		}
 		if in.Level != "" && !levelAvailable(le.Levels(c.env), in.Level) {
 			// An unknown level is as unavailable as one the operator has not
 			// registered; neither starts a sign-in.
-			c.refuseStart(w, in.Provider, "level_unavailable")
+			c.refuseStart(w, owner, in.Provider, "level_unavailable")
 			return
 		}
 		if in.Address != "" {
@@ -480,13 +508,13 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 				fail(w, 503, "native_unavailable")
 				return
 			case !exists:
-				c.refuseStart(w, in.Provider, string(AccountMissing))
+				c.refuseStart(w, owner, in.Provider, string(AccountMissing))
 				return
 			}
 		}
 		err = c.startLogin(owner, e, in.Address, in.Level)
 		if errors.Is(err, errAttemptActive) {
-			c.refuseStart(w, in.Provider, "attempt_active")
+			c.refuseStart(w, owner, in.Provider, "attempt_active")
 			return
 		}
 	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil && in.Level == "":
@@ -517,9 +545,9 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 		// The tool may print its prompt a moment after starting; a short
 		// wait spares the browser one poll without holding the request.
 		if r.Method == http.MethodPost || r.Method == http.MethodPut {
-			c.settle(r.Context(), owner, 1500*time.Millisecond)
+			c.settle(r.Context(), owner, target, 1500*time.Millisecond)
 		}
-		reply(w, c.relay.view(owner, c.now()))
+		reply(w, c.relay.view(owner, target))
 	}
 }
 
@@ -538,10 +566,10 @@ func validFolders(ids []string) bool {
 }
 
 // settle waits briefly for the attempt to leave its transitional states.
-func (c *Catalog) settle(ctx context.Context, owner string, limit time.Duration) {
+func (c *Catalog) settle(ctx context.Context, owner string, provider Provider, limit time.Duration) {
 	deadline := time.Now().Add(limit)
 	for time.Now().Before(deadline) && ctx.Err() == nil {
-		if s := c.relay.view(owner, c.now()).State; s != "starting" && s != "completing" {
+		if s := c.relay.view(owner, provider).State; s != "starting" && s != "completing" {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -578,12 +606,12 @@ func reply(w http.ResponseWriter, body any) {
 // refuseStart answers a sign-in start the daemon will not begin. No attempt
 // exists yet, so without this event a refused start leaves no trace beside
 // the gateway's bare 409. An attempt_active refusal names the provider whose
-// sign-in or first sync holds the daemon's single login slot.
-func (c *Catalog) refuseStart(w http.ResponseWriter, provider Provider, code string) {
+// sign-in or first sync the start would have had to replace.
+func (c *Catalog) refuseStart(w http.ResponseWriter, owner string, provider Provider, code string) {
 	attrs := []any{"provider", string(provider), "outcome", "refused", "phase", "start", "reason", code}
 	if code == "attempt_active" {
 		c.relay.mu.Lock()
-		if a := c.relay.a; a != nil {
+		if a := c.busy(owner, provider); a != nil {
 			attrs = append(attrs, "busy_provider", string(a.provider), "busy_state", a.state, "busy_syncing", a.syncing)
 		}
 		c.relay.mu.Unlock()

@@ -538,11 +538,31 @@ func (l *scriptLogin) Wait(ctx context.Context) (string, error) {
 
 func (l *scriptLogin) Cancel() { l.tool.Stop() }
 
+// current is the relay's only attempt, for tests that run one at a time.
+// The caller holds r.mu when the attempt may change.
+func (r *relay) current() *attempt {
+	for _, a := range r.attempts {
+		return a
+	}
+	return nil
+}
+
 func waitState(t *testing.T, h http.Handler, owner string, want ...string) map[string]any {
 	t.Helper()
+	return waitAttempt(t, h, owner, "", want...)
+}
+
+// waitAttempt reads owner's attempt for provider, or owner's latest attempt
+// for "", until it reaches one of the wanted states.
+func waitAttempt(t *testing.T, h http.Handler, owner string, provider Provider, want ...string) map[string]any {
+	t.Helper()
+	path := LoginPath
+	if provider != "" {
+		path += "?provider=" + string(provider)
+	}
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		_, out, _ := call(t, h, "GET", LoginPath, owner, nil)
+		_, out, _ := call(t, h, "GET", path, owner, nil)
 		for _, w := range want {
 			if out["state"] == w {
 				return out
@@ -561,7 +581,7 @@ func waitState(t *testing.T, h http.Handler, owner string, want ...string) map[s
 func waitLoginWorker(t *testing.T, c *Catalog) {
 	t.Helper()
 	c.relay.mu.Lock()
-	a := c.relay.a
+	a := c.relay.current()
 	c.relay.mu.Unlock()
 	if a == nil {
 		t.Fatal("no login attempt")
@@ -590,8 +610,28 @@ func TestDeviceCodeRelayBelongsToItsSession(t *testing.T) {
 	id := out["attempt_id"].(string)
 	// Another browser session sees no attempt of its own and cannot take
 	// over or cancel this one.
-	if _, other, _ := call(t, h, "GET", LoginPath, ownerB, nil); other["state"] != "none" || len(other) != 2 {
-		t.Fatalf("other session saw: %v", other)
+	for _, path := range []string{LoginPath, LoginPath + "?provider=microsoft"} {
+		if _, other, _ := call(t, h, "GET", path, ownerB, nil); other["state"] != "none" || len(other) != 2 {
+			t.Fatalf("other session saw at %s: %v", path, other)
+		}
+	}
+	// A read names one known provider at most; a write names none.
+	for _, tc := range []struct{ method, path string }{
+		{"GET", LoginPath + "?provider=nowhere"},
+		{"GET", LoginPath + "?provider=microsoft&provider=microsoft"},
+		{"GET", LoginPath + "?provider=microsoft&attempt_id=" + id},
+		{"DELETE", LoginPath + "?provider=microsoft"},
+	} {
+		var body any
+		if tc.method != "GET" {
+			body = map[string]any{"action": "cancel", "attempt_id": id}
+		}
+		if code, _, _ := call(t, h, tc.method, tc.path, ownerA, body); code != 400 {
+			t.Fatalf("%s %s: %d", tc.method, tc.path, code)
+		}
+	}
+	if _, own, _ := call(t, h, "GET", LoginPath+"?provider=microsoft", ownerA, nil); own["attempt_id"] != id {
+		t.Fatalf("own provider read: %v", own)
 	}
 	if code, out, _ := call(t, h, "POST", LoginPath, ownerB, map[string]any{"action": "start", "provider": "microsoft"}); code != 409 || errorCode(out) != "attempt_active" {
 		t.Fatalf("other session start: %d %v", code, out)
@@ -1018,7 +1058,7 @@ func TestInitialSyncRejectsReplacementButExplicitStopKeepsNativeAccount(t *testi
 	}
 	close(e.release)
 	c.relay.mu.Lock()
-	done := c.relay.a.done
+	done := c.relay.current().done
 	c.relay.mu.Unlock()
 	select {
 	case <-done:
@@ -1137,7 +1177,7 @@ func TestCompletionWinsCancellationDuringReconciliation(t *testing.T) {
 			if err := c.cancelLogin(ownerA, id); err != nil {
 				t.Fatal(err)
 			}
-			state := c.relay.view(ownerA, time.Now()).State
+			state := c.relay.view(ownerA, "").State
 			close(e.release)
 			waitLoginWorker(t, c)
 			if state != "completed" {
@@ -1162,7 +1202,7 @@ func TestLoginFailureDiagnosticKeepsNativeTextPrivate(t *testing.T) {
 	c := testCatalog(t, newHome(t), nil)
 	c.log = slog.New(slog.NewJSONHandler(&logs, nil))
 	a := &attempt{provider: Microsoft, state: "device_code"}
-	c.relay.a = a
+	c.relay.put(a)
 	c.failAttempt(a, loginPhaseError{phase: "graph_discovery", err: fmt.Errorf("provider-token-secret: %w", ToolFailed)})
 	var event map[string]any
 	if err := json.Unmarshal(logs.Bytes(), &event); err != nil {
@@ -1179,12 +1219,13 @@ func TestLoginFailureDiagnosticKeepsNativeTextPrivate(t *testing.T) {
 // The address in a completing view is a first-sync observation, not merely
 // the identity known from the start of a renewal. This survives browser reloads.
 func TestRenewalExchangeDoesNotClaimInitialSync(t *testing.T) {
-	r := relay{a: &attempt{owner: ownerA, state: "completing", address: "person@example.test", relogin: true}}
-	if got := r.view(ownerA, time.Now()); got.Address != "" {
+	a := &attempt{owner: ownerA, provider: Microsoft, state: "completing", address: "person@example.test", relogin: true}
+	r := relay{attempts: map[Provider]*attempt{Microsoft: a}}
+	if got := r.view(ownerA, ""); got.Address != "" {
 		t.Fatal("renewal exchange reported initial sync", got)
 	}
-	r.a.syncing = true
-	if got := r.view(ownerA, time.Now()); got.Address != "person@example.test" {
+	a.syncing = true
+	if got := r.view(ownerA, ""); got.Address != "person@example.test" {
 		t.Fatal("renewal of uninitialized sync lost native phase", got)
 	}
 }

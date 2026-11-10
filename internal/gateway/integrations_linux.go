@@ -39,12 +39,16 @@ func (a *Auth) integrations(w http.ResponseWriter, r *http.Request) {
 		integrationGitLabTokens: {http.MethodGet: true},
 		integrationFiles:        {http.MethodGet: true},
 	}
-	// The folder read alone takes a query: no parameters for the roots, a
+	// The folder read takes a query: no parameters for the roots, a
 	// directory, or a directory and a folder in it. The daemon decides
-	// whether they name one of the person's own synced folders.
+	// whether they name one of the person's own synced folders. A login
+	// read may name the provider whose sign-in it asks for.
 	query := a.exact(r, r.URL.Path)
 	if r.URL.Path == integrationFiles {
 		query = query || a.exact(r, r.URL.Path, "directory") || a.exact(r, r.URL.Path, "directory", "folder")
+	}
+	if r.URL.Path == integrationLoginPath && r.Method == http.MethodGet {
+		query = query || a.exact(r, r.URL.Path, "provider")
 	}
 	if !allowed[r.URL.Path][r.Method] || !query {
 		safe(w, 400, "invalid_request")

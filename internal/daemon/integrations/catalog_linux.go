@@ -774,9 +774,16 @@ func (c *Catalog) align(ctx context.Context, e AlignEntry, address string) {
 // running then whatever the tool last recorded.
 func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	// A configuration left on an earlier application follows the current
-	// one first. A busy catalog leaves that to the next check.
+	// one first. A busy catalog, or a sign-in or first pass of the same
+	// provider that runs without c.write, leaves that to the next check.
 	if al, ok := e.(AlignEntry); ok && al.Misaligned(c.env, address) && c.write.TryLock() {
-		c.align(ctx, al, address)
+		c.relay.mu.Lock()
+		a := c.relay.attempts[e.Provider()]
+		busy := a != nil && !finished(a.state)
+		c.relay.mu.Unlock()
+		if !busy {
+			c.align(ctx, al, address)
+		}
 		c.write.Unlock()
 	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
@@ -784,7 +791,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	// A native initial pass may hold the provider's mutex for hours. Never
 	// queue status probes behind it or refresh its token concurrently.
 	c.relay.mu.Lock()
-	a := c.relay.a
+	a := c.relay.attempts[e.Provider()]
 	nativeBusy := a != nil && a.provider == e.Provider() && !finished(a.state) && a.state == "completing"
 	initial := a != nil && a.provider == e.Provider() && a.address == address && a.syncing && a.state != "completed"
 	var progress *SyncProgress
@@ -932,21 +939,22 @@ func (c *Catalog) reconcile() SkillState {
 		return SkillFailed
 	}
 	accounts, unread := c.accounts()
-	// A provider whose files cannot be read keeps the clients it has.
+	// A provider whose files cannot be read keeps the clients it has. An
+	// account in its first pass gets no client beside the pass.
 	c.relay.mu.Lock()
-	a := c.relay.a
-	blocked := a != nil && a.syncing && a.state != "completed"
-	var initialKey key
-	if blocked {
-		initialKey = key{a.provider, a.address}
+	blocked := map[key]bool{}
+	for _, a := range c.relay.attempts {
+		if a.syncing && a.state != "completed" {
+			blocked[key{a.provider, a.address}] = true
+		}
 	}
 	c.relay.mu.Unlock()
 	desired := c.sync.running(unread)
-	if blocked {
-		delete(desired, initialKey)
+	for k := range blocked {
+		delete(desired, k)
 	}
 	for _, a := range accounts {
-		if blocked && (key{a.entry.Provider(), a.address}) == initialKey {
+		if blocked[key{a.entry.Provider(), a.address}] {
 			continue
 		}
 		if s, ok := a.entry.(SyncEntry); ok && s.Available(c.env) {

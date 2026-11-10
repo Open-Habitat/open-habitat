@@ -62,7 +62,7 @@ func recoveryAccount(t *testing.T, narrow bool) (Env, *microsoft) {
 func recoveryAttempt(c *Catalog) bool {
 	c.relay.mu.Lock()
 	defer c.relay.mu.Unlock()
-	return c.relay.a != nil
+	return c.relay.current() != nil
 }
 
 // stopRecovery stops the started catalog the way its own shutdown does, but

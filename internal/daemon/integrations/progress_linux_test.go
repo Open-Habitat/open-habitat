@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,7 @@ func TestPostPasteListingIsBounded(t *testing.T) {
 		t.Fatal(v)
 	}
 	select {
-	case <-c.relay.a.done:
+	case <-c.relay.current().done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("expired listing worker did not finish")
 	}
@@ -133,7 +134,7 @@ func (e unreadyLibraryEntry) Directories(Env, string) []SyncDirectory {
 func TestNativeProgressBelongsToTheCurrentLibrary(t *testing.T) {
 	e := unreadyLibraryEntry{syncScriptEntry{&scriptEntry{provider: Microsoft}}}
 	c := New(Env{}, []Entry{e}, nil)
-	c.relay.a = &attempt{provider: Microsoft, address: "person@example.test", syncing: true, state: "completing", progress: &SyncProgress{Service: "sharepoint", Phase: "transferring", Bytes: 42}}
+	c.relay.put(&attempt{provider: Microsoft, address: "person@example.test", syncing: true, state: "completing", progress: &SyncProgress{Service: "sharepoint", Phase: "transferring", Bytes: 42}})
 	account := c.check(context.Background(), e, "person@example.test")
 	if account.Services[0].Progress != nil {
 		t.Fatal("SharePoint counters attributed to OneDrive", account)
@@ -220,7 +221,7 @@ func TestChoicePrecedesLargeInventoryAndFreshQuota(t *testing.T) {
 			}
 			v = waitState(t, h, ownerA, want)
 			select {
-			case <-c.relay.a.done:
+			case <-c.relay.current().done:
 			case <-time.After(3 * time.Second):
 				t.Fatal("background worker did not settle")
 			}
@@ -290,52 +291,90 @@ func (l *lockedLog) events(t *testing.T, name string) []map[string]any {
 // refusal leaves its own event naming the busy provider, and a pass that
 // then does not fit the home records how much it needed and how much room
 // there was, so neither outcome has to be reconstructed from a bare status.
-func TestRefusedStartAndQuotaShortfallAreLogged(t *testing.T) {
-	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true}
-	e := measuredScriptEntry{syncScriptEntry{s}}
-	other := &scriptEntry{provider: Atlassian, kind: PastedRedirect, signsIn: "site@example.test"}
-	c := testCatalog(t, newHome(t), []Entry{e, other})
-	logs := &lockedLog{}
-	c.log = slog.New(slog.NewJSONHandler(logs, nil))
-	var room atomic.Pointer[Room]
-	room.Store(&Room{})
-	c.quota = func() Room { return *room.Load() }
-	h := c.Handler(allow)
+// startFirstPass signs the synthetic Dropbox account in and chooses its
+// folder; the pass then waits in its inventory until the test releases it.
+func startFirstPass(t *testing.T, c *Catalog, h http.Handler) {
+	t.Helper()
 	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox"})
-	id := waitState(t, h, ownerA, "open_url")["attempt_id"]
+	id := waitAttempt(t, h, ownerA, Dropbox, "open_url")["attempt_id"]
 	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
-	waitState(t, h, ownerA, "choose_folders")
+	waitAttempt(t, h, ownerA, Dropbox, "choose_folders")
 	if code, _, _ := call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}}); code != 200 {
 		t.Fatal(code)
 	}
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		if _, err := os.Stat(filepath.Join(c.env.Home, "inventory-started")); err == nil {
-			break
+			return
 		}
 		if time.Now().After(deadline) {
 			t.Fatal("inventory did not start")
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// A sign-in that copies no files starts and finishes while another
+// provider's first pass runs; a second start of the same provider and a
+// start of another file-copying provider stay refused, and say why.
+func TestSignInWithoutFilesRunsBesideFirstPass(t *testing.T) {
+	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true}
+	e := measuredScriptEntry{syncScriptEntry{s}}
+	other := &scriptEntry{provider: Atlassian, kind: PastedRedirect, signsIn: atlassianServer}
+	files := syncScriptEntry{&scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "g@example.test", sync: true, folders: []Folder{{ID: "own", Name: "Own", Bytes: 1, Suggested: true}}}}
+	c := testCatalog(t, newHome(t), []Entry{e, other, files})
+	logs := &lockedLog{}
+	c.log = slog.New(slog.NewJSONHandler(logs, nil))
+	var room atomic.Pointer[Room]
+	room.Store(&Room{})
+	c.quota = func() Room { return *room.Load() }
+	h := c.Handler(allow)
+	startFirstPass(t, c, h)
+
 	code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "atlassian"})
-	if code != 409 || errorCode(out) != "attempt_active" {
+	if code != 200 || out["provider"] != "atlassian" {
 		t.Fatal("start during a first pass", code, out)
 	}
-	refused := logs.events(t, "integration_login")
-	if len(refused) != 1 {
-		t.Fatal("refused start left no single event", refused)
+	id := waitAttempt(t, h, ownerA, Atlassian, "open_url")["attempt_id"]
+	// The first pass keeps its own view while the other sign-in runs.
+	if v := waitAttempt(t, h, ownerA, Dropbox, "completing"); v["address"] != "new@example.test" {
+		t.Fatal("first pass view", v)
 	}
-	for k, want := range map[string]any{"provider": "atlassian", "outcome": "refused", "phase": "start", "reason": "attempt_active", "busy_provider": "dropbox", "busy_state": "completing", "busy_syncing": true} {
-		if refused[0][k] != want {
-			t.Fatal(k, refused[0])
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+	if v := waitAttempt(t, h, ownerA, Atlassian, "completed"); v["address"] != atlassianServer {
+		t.Fatal(v)
+	}
+	if _, err := os.Stat(filepath.Join(other.dir(c.env), atlassianServer)); err != nil {
+		t.Fatal("sign-in beside the pass kept nothing", err)
+	}
+	// A connection beside the pass can be removed again without waiting.
+	if code, out, _ := call(t, h, "DELETE", AccountsPath, ownerA, map[string]any{"action": "remove", "provider": "atlassian", "address": atlassianServer, "delete_directories": false}); code != 200 {
+		t.Fatal("removal beside the pass", code, out)
+	}
+
+	for _, p := range []string{"dropbox", "google"} {
+		code, out := 0, map[string]any{}
+		code, out, _ = call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": p})
+		if code != 409 || errorCode(out) != "attempt_active" {
+			t.Fatal("second file sign-in during a first pass", p, code, out)
+		}
+		refused := logs.events(t, "integration_login")
+		last := refused[len(refused)-1]
+		for k, want := range map[string]any{"provider": p, "outcome": "refused", "phase": "start", "reason": "attempt_active", "busy_provider": "dropbox", "busy_state": "completing", "busy_syncing": true} {
+			if last[k] != want {
+				t.Fatal(k, last)
+			}
 		}
 	}
+	if v := waitAttempt(t, h, ownerA, Dropbox, "completing"); v["address"] != "new@example.test" {
+		t.Fatal("refused start disturbed the pass", v)
+	}
+
 	room.Store(&Room{OK: true, Free: 4000000000, Limit: 20000000000})
 	if err := os.WriteFile(filepath.Join(c.env.Home, "inventory-release"), nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if v := waitState(t, h, ownerA, "failed"); v["failure"] != "quota_insufficient" {
+	if v := waitAttempt(t, h, ownerA, Dropbox, "failed"); v["failure"] != "quota_insufficient" {
 		t.Fatal(v)
 	}
 	events := logs.events(t, "integration_login")
@@ -345,9 +384,41 @@ func TestRefusedStartAndQuotaShortfallAreLogged(t *testing.T) {
 			t.Fatal(k, failed)
 		}
 	}
-	// The finished refusal frees the slot: the second provider now starts.
-	if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "atlassian"}); code != 200 {
+	// The finished pass no longer holds files back: another provider starts.
+	if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"}); code != 200 {
 		t.Fatal("start after the refused pass", code, out)
+	}
+}
+
+// The first pass runs without the catalog's write lock, so removing the very
+// account it copies stops the pass, waits for its native process and then
+// removes the login, rather than leaving the pass to bring it back.
+func TestRemovalDuringFirstPassStopsIt(t *testing.T) {
+	s := &scriptEntry{provider: Dropbox, kind: PastedRedirect, signsIn: "new@example.test", sync: true}
+	e := measuredScriptEntry{syncScriptEntry{s}}
+	c := testCatalog(t, newHome(t), []Entry{e})
+	c.quota = func() Room { return Room{OK: true, Free: 1 << 40} }
+	h := c.Handler(allow)
+	startFirstPass(t, c, h)
+	if code, out, _ := call(t, h, "DELETE", AccountsPath, ownerA, map[string]any{"action": "remove", "provider": "dropbox", "address": "new@example.test", "delete_directories": false}); code != 200 {
+		t.Fatal("removal during the pass", code, out)
+	}
+	c.relay.mu.Lock()
+	a := c.relay.current()
+	c.relay.mu.Unlock()
+	select {
+	case <-a.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("worker did not finish")
+	}
+	if v := waitAttempt(t, h, ownerA, Dropbox, "failed"); v["failure"] != "cancelled" {
+		t.Fatal(v)
+	}
+	if _, err := os.Stat(filepath.Join(s.dir(c.env), "new@example.test")); !os.IsNotExist(err) {
+		t.Fatal("removed login came back", err)
+	}
+	if len(s.chosen) != 0 {
+		t.Fatal("removed account copied")
 	}
 }
 
@@ -364,7 +435,7 @@ func TestUnknownFolderSizeWithoutMeasurerCannotCopy(t *testing.T) {
 	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
 	v = waitState(t, h, ownerA, "failed")
 	select {
-	case <-c.relay.a.done:
+	case <-c.relay.current().done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("worker did not finish")
 	}

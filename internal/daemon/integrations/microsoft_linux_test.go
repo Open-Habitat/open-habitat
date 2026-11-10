@@ -854,7 +854,7 @@ func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
 					t.Fatal("native refresher not stopped during replacement choice")
 				}
 				if action == "cancel" {
-					if err := c.cancelLogin(ownerA, c.relay.a.id); err != nil {
+					if err := c.cancelLogin(ownerA, c.relay.current().id); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -863,7 +863,7 @@ func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
 				}
 			}
 			c.relay.mu.Lock()
-			done := c.relay.a.done
+			done := c.relay.current().done
 			c.relay.mu.Unlock()
 			select {
 			case <-done:
@@ -1021,7 +1021,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 		t.Fatal(code, out)
 	}
 	c.relay.mu.Lock()
-	done := c.relay.a.done
+	done := c.relay.current().done
 	c.relay.mu.Unlock()
 	select {
 	case <-done:
@@ -1070,7 +1070,7 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 			c := testCatalog(t, env.Home, nil)
 			c.log = slog.New(slog.NewJSONHandler(&logs, nil))
 			a := &attempt{provider: Microsoft, owner: ownerA, state: "device_code"}
-			c.relay.a = a
+			c.relay.put(a)
 			c.failAttempt(a, err)
 			var event map[string]any
 			if err := json.Unmarshal(logs.Bytes(), &event); err != nil {
@@ -1090,7 +1090,7 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 					t.Errorf("diagnostic leaked %s", secret)
 				}
 			}
-			view, _ := json.Marshal(c.relay.view(ownerA, time.Now()))
+			view, _ := json.Marshal(c.relay.view(ownerA, ""))
 			if !strings.Contains(string(view), `"state":"failed"`) || strings.Contains(string(view), "graph_message") || strings.Contains(string(view), tc.body) || loginFailure(err) != "tool_failed" {
 				t.Fatal("provider diagnostic crossed browser contract")
 			}

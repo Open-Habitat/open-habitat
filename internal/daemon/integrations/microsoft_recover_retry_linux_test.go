@@ -76,15 +76,15 @@ func TestMicrosoftRecoveryYieldsToLoginAndQuota(t *testing.T) {
 	full := false
 	c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{Full: full, OK: true, Free: 1 << 30} }))
 	defer c.sync.stopAll()
-	busy := &attempt{state: "device_code", done: make(chan struct{})}
-	c.relay.a = busy
+	busy := &attempt{provider: Microsoft, state: "device_code", done: make(chan struct{})}
+	c.relay.put(busy)
 	if c.tryRecoverMicrosoft(context.Background(), m, "person@example.test") {
 		t.Fatal("busy login not deferred")
 	}
-	if c.relay.a != busy {
+	if c.relay.current() != busy {
 		t.Fatal("replaced live login")
 	}
-	c.relay.a = nil
+	c.relay.attempts = nil
 	full = true
 	if c.tryRecoverMicrosoft(context.Background(), m, "person@example.test") {
 		t.Fatal("full quota not deferred")

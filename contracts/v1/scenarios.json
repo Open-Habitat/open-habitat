@@ -696,6 +696,7 @@
       "native error text never crosses the contract; failures are fixed codes",
       "a pasted address is accepted only as a loopback redirect and handed only to the tool process this attempt started",
       "an attempt belongs to the browser session that started it; another session can read only that none is its own",
+      "each provider has at most one attempt, and only one provider whose sign-in may copy files has a live one; a sign-in that copies no files starts and finishes while another provider's first sync runs, and a read naming a provider shows only that provider's attempt",
       "removal keeps synced directories unless the person asks, and then moves them to the Trash",
       "a choice whose known or estimated size does not fit the home's free room is not made in advance; a drive is also offered folder by folder, or its files left out while the login serves the provider's other services",
       "another mapped UID cannot observe or control the first UID's accounts, attempts or skill"

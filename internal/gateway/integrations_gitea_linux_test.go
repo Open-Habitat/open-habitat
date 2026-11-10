@@ -173,8 +173,9 @@ func forgeRoutes(t *testing.T, integrationGiteaPath, integrationGiteaRepos, logN
 
 // The folder read is a GET with exactly no parameters, a directory, or a
 // directory and a folder; the gateway forwards those unread to the session's
-// own daemon, which alone decides whether they name the person's folder.
-func TestGatewayIntegrationFilesQueryShapes(t *testing.T) {
+// own daemon, which alone decides whether they name the person's folder. The
+// login read may name one provider; the daemon decides whether it is one.
+func TestGatewayIntegrationQueryShapes(t *testing.T) {
 	uid := os.Getuid()
 	now := time.Now()
 	alice := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
@@ -226,6 +227,10 @@ func TestGatewayIntegrationFilesQueryShapes(t *testing.T) {
 		{"GET", integrationFiles + "?" + dir + "&" + dir, "one", 400},
 		{"GET", integrationFiles + "?directory=", "one", 400},
 		{"GET", integrationFiles + "?" + dir + "&folder=", "one", 400},
+		{"GET", integrationLoginPath + "?provider=", "one", 400},
+		{"GET", integrationLoginPath + "?provider=atlassian&provider=dropbox", "one", 400},
+		{"GET", integrationLoginPath + "?attempt_id=1", "one", 400},
+		{"POST", integrationLoginPath + "?provider=atlassian", "one", 400},
 	} {
 		if code := send(c.method, c.target, c.cookie); code != c.code {
 			t.Fatalf("%s %s: %d want %d", c.method, c.target, code, c.code)
@@ -234,12 +239,12 @@ func TestGatewayIntegrationFilesQueryShapes(t *testing.T) {
 	if len(seen) != 0 {
 		t.Fatalf("refused requests reached the daemon: %q", seen)
 	}
-	for _, target := range []string{integrationFiles, integrationFiles + "?" + dir, integrationFiles + "?" + dir + "&folder=Raportit%2Fvko"} {
+	for _, target := range []string{integrationFiles, integrationFiles + "?" + dir, integrationFiles + "?" + dir + "&folder=Raportit%2Fvko", integrationLoginPath + "?provider=atlassian"} {
 		if code := send("GET", target, "one"); code != 200 {
 			t.Fatalf("GET %s: %d", target, code)
 		}
 	}
-	want := []string{"GET " + integrationFiles, "GET " + integrationFiles + "?" + dir, "GET " + integrationFiles + "?" + dir + "&folder=Raportit%2Fvko"}
+	want := []string{"GET " + integrationFiles, "GET " + integrationFiles + "?" + dir, "GET " + integrationFiles + "?" + dir + "&folder=Raportit%2Fvko", "GET " + integrationLoginPath + "?provider=atlassian"}
 	if strings.Join(seen, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("forwarded:\n%s", strings.Join(seen, "\n"))
 	}

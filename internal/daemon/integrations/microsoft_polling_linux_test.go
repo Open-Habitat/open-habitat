@@ -128,7 +128,7 @@ func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
 		cancel()
 		c.relay.cancelAll()
 		c.relay.mu.Lock()
-		a := c.relay.a
+		a := c.relay.current()
 		c.relay.mu.Unlock()
 		if a != nil {
 			// Cancellation only signals the worker; its native cleanup can
@@ -151,7 +151,7 @@ func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("discovery not reached")
 	}
-	view := c.relay.view(ownerA, time.Now())
+	view := c.relay.view(ownerA, "")
 	if view.State != "completing" || view.LoginPhase != "files_discovery" || view.UserCode != "" || view.VerificationURI != "" {
 		t.Fatalf("spent grant still advertised: state=%s phase=%s code_present=%t link_present=%t", view.State, view.LoginPhase, view.UserCode != "", view.VerificationURI != "")
 	}

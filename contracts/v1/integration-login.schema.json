@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/integration-login.schema.json",
   "title": "A tool's login relayed through the browser: device code or pasted redirect, then folder choice",
+  "description": "One attempt of this browser session. Each provider has at most one attempt, and of the providers whose sign-in may copy files (folder choice) only one has a live attempt at a time; a sign-in that copies no files runs beside another provider's first sync. GET /api/v1/integrations/login?provider=<id> reads that provider's attempt; without the parameter, the session's latest. A write answers with the attempt it started or addressed. state none: no such attempt of this session.",
   "type": "object", "additionalProperties": false,
   "required": ["schema_version", "state"],
   "properties": {

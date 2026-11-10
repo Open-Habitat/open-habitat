@@ -223,7 +223,7 @@ func TestSkipIsRefusedWhereFilesAlreadySync(t *testing.T) {
 	attemptAt := func() *attempt {
 		a := &attempt{owner: ownerA, id: "20261028T080000.000000001", provider: Google, address: address, state: "choose_folders", choose: make(chan []string, 1), done: make(chan struct{})}
 		c.relay.mu.Lock()
-		c.relay.a = a
+		c.relay.put(a)
 		c.relay.mu.Unlock()
 		return a
 	}

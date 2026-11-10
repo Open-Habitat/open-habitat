@@ -347,22 +347,24 @@ const (
 	resumeRetry               // the provider or the home could not take it yet
 )
 
-// slotFree reports whether the relay may take a new attempt: none is running
-// and the last one's worker has finished its cleanup. The caller holds
-// relay.mu.
-func (r *relay) slotFree() bool {
-	if r.a == nil {
-		return true
+// filesFree reports whether the relay may take a resumed first pass: no
+// sign-in of a provider that copies files is running, and the last one's
+// worker has finished its cleanup. The caller holds relay.mu.
+func (c *Catalog) filesFree() bool {
+	for p, a := range c.relay.attempts {
+		if !c.copiesFiles(p) {
+			continue
+		}
+		if !finished(a.state) {
+			return false
+		}
+		select {
+		case <-a.done:
+		default:
+			return false
+		}
 	}
-	if !finished(r.a.state) {
-		return false
-	}
-	select {
-	case <-r.a.done:
-		return true
-	default:
-		return false
-	}
+	return true
 }
 
 func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address string) resumeOutcome {
@@ -388,7 +390,7 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 		return resumeDone
 	}
 	c.relay.mu.Lock()
-	busy := !c.relay.slotFree()
+	busy := !c.filesFree()
 	c.relay.mu.Unlock()
 	if busy {
 		c.write.Unlock()
@@ -428,15 +430,15 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	a := &attempt{id: c.now().UTC().Format("20060102T150405.000000000"), provider: k.provider, address: address, relogin: true, resume: true, state: "completing", syncing: true, cancel: cancel, until: c.now().Add(100 * 365 * 24 * time.Hour), existing: map[string]bool{address: true}, done: make(chan struct{})}
-	// startLogin does not take c.write: claim the slot only if it is still free.
+	// startLogin does not take c.write: claim the place only if it is still free.
 	c.relay.mu.Lock()
-	if !c.relay.slotFree() {
+	if !c.filesFree() {
 		c.relay.mu.Unlock()
 		c.write.Unlock()
 		cancel()
 		return resumeWait
 	}
-	c.relay.a = a
+	c.relay.put(a)
 	c.relay.mu.Unlock()
 	// A library already syncing shares the account's native config; its
 	// client stops until the resumed pass ends, as for a chosen first pass.
@@ -492,8 +494,8 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 func (c *Catalog) finishResume(a *attempt, err error) bool {
 	c.relay.mu.Lock()
 	removed := a.discard
-	if c.relay.a == a {
-		c.relay.a = nil
+	if c.relay.holds(a) {
+		delete(c.relay.attempts, a.provider)
 	}
 	if !finished(a.state) {
 		a.state = "completed"

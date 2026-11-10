@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 )
 
 const (
@@ -259,8 +258,8 @@ func TestMicrosoftTeamsLeftOutReachesLoginView(t *testing.T) {
 	env := microsoftEnv(t)
 	c := testCatalog(t, env.Home, nil)
 	a := &attempt{provider: Microsoft, owner: ownerA, state: "choose_folders", teamsLeftOut: teamsNotGranted}
-	c.relay.a = a
-	v := c.relay.view(ownerA, time.Now())
+	c.relay.put(a)
+	v := c.relay.view(ownerA, "")
 	data, _ := json.Marshal(v)
 	if !strings.Contains(string(data), `"teams_left_out":"not_granted"`) {
 		t.Fatal(string(data))

@@ -232,14 +232,14 @@ func (c *Catalog) tryRecoverMicrosoft(ctx context.Context, m *microsoft, address
 		return false
 	}
 	c.relay.mu.Lock()
-	if !c.relay.slotFree() {
+	if !c.filesFree() {
 		c.relay.mu.Unlock()
 		c.write.Unlock()
 		return false
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	a := &attempt{id: c.now().UTC().Format("20060102T150405.000000000"), provider: Microsoft, address: address, relogin: true, resume: true, state: "completing", syncing: true, cancel: cancel, until: c.now().Add(100 * 365 * 24 * time.Hour), done: make(chan struct{}), existing: map[string]bool{address: true}}
-	c.relay.a = a
+	c.relay.put(a)
 	c.relay.mu.Unlock()
 	k := key{Microsoft, address}
 	c.sync.stop(k)
