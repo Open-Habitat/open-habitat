@@ -293,9 +293,16 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
     await page.mouse.move(box.x + 90, box.y + box.height / 2, { steps: 5 });
     await page.mouse.up();
     await page.keyboard.up("Shift");
-    // Regression: the selection and its actions must outlast background reads.
-    await page.waitForTimeout(2000);
-    await expect(page.locator(".xterm-selection div").first()).toBeVisible();
+    const highlight = page.locator(".xterm-selection div").first();
+    await expect(highlight).toBeVisible();
+    // Observe an actual background read, not a sleep shorter than the poll.
+    await page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/workspaces/terminals" &&
+        response.request().method() === "GET" &&
+        response.ok(),
+    );
+    await expect(highlight).toBeVisible();
   };
   await select();
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -311,14 +318,24 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await page.evaluate(() => {
     navigator.clipboard.writeText = () => Promise.reject(new Error("denied"));
   });
-  await page.getByTestId("maximize-terminal").click();
+  const toggleMaximize = async () => {
+    const rowsBefore = await outputRows.count();
+    await page.getByTestId("maximize-terminal").click();
+    // The panel changes size before ResizeObserver fits xterm. A vertical
+    // xterm resize clears its selection, so select only in the resized grid.
+    await expect(outputRows).not.toHaveCount(rowsBefore);
+  };
+  await toggleMaximize();
   await select();
   await page.getByTestId("copy-selection").click();
   await expect(
     page.getByTestId("terminal-panel").getByTestId("terminal-event-notice"),
   ).toBeVisible();
   await page.getByTestId("terminal-notice-close").click();
-  await page.getByTestId("maximize-terminal").click();
+  // Dismiss the close control's help before targeting the adjacent button.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await toggleMaximize();
   await select();
   await page
     .getByRole("button")

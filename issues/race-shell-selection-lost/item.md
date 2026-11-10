@@ -2,11 +2,12 @@
 created: 2026-11-10
 updated: 2026-11-10
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: shell-selection
 lane_seq: 1
+closed: 2026-11-10
 ---
 
 # Terminal selection lost under gate load (browser-shell multi-line paste)
