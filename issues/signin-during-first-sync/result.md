@@ -54,9 +54,97 @@ journal will name the reason.
   above a generic failure. Chosen because the generic line is false for a
   refusal (nothing was attempted), and the restart button still lets the
   person try again once the other pass ends.
-- **Not changed: one login slot per daemon held through a first pass.** A
-  sign-in that copies no files (Atlassian, mail) waits behind another
-  provider's first sync, which can take hours on a large drive. Allowing it
-  needs several concurrent attempts in the relay and in the login view
-  contract (`GET /api/v1/integrations/login` returns one view), so it is a
-  design decision, left as the open acceptance item.
+- **Not changed in the first round: one login slot per daemon.** Decided by
+  Jari 10.11. and implemented in the second round below.
+
+# Second round — sign-ins beside a first sync (2026-11-10)
+
+## What was really blocking
+
+Two things, not one. The relay's single slot refused the start, and even an
+admitted start could not have finished: a chosen first pass held the
+catalog write lock `c.write` through its count and copy (hours), and every
+sign-in's last step, and every IMAP/CalDAV/Apple connect and removal
+(`TryLock` → 503), needs that lock. On the pilot the Microsoft count alone
+held it 16 minutes.
+
+## Change
+
+- `relay_linux.go`: the relay holds one attempt per provider
+  (`attempts map[Provider]*attempt`). `startLogin` replaces or refuses only
+  *conflicting* attempts: the provider's own, and when the new provider
+  copies files (`FolderEntry`: Google, Microsoft, Dropbox), every other
+  file-copying provider's. A conflicting attempt that is in its first pass,
+  or another session's live unexpired attempt, refuses with 409
+  `attempt_active` as before; the session's own earlier one is replaced.
+- The chosen first pass (`firstPass`: fresh count, quota check, copy) runs
+  without `c.write`, as resumed passes already did. `a.pass` is published
+  under `c.write` and closed when the native work ends; `abandonFor` (removal)
+  waits on it even when a cancellation already marked the attempt failed,
+  and a sibling removal of the same provider is refused while it runs.
+  `reconcile` keeps every syncing account's client off; `check` does not
+  align a provider's configuration while its attempt is live.
+- Resume and Microsoft recovery claim a place only when no file-copying
+  attempt is live or cleaning up (`filesFree`).
+- Contract: `GET /api/v1/integrations/login?provider=<id>` reads that
+  provider's attempt of the session; unscoped reads the session's latest; a
+  write answers with the attempt it addressed. Schema description and a CT-037
+  scenario line; no shape change. The gateway admits exactly that query on
+  GET; the daemon refuses an unknown provider, extra parameters and a query on
+  a write.
+- Browser: dialog polls and the stop-sync check read their own provider's
+  attempt, so another provider's attempt neither overwrites the dialog nor
+  stalls its polling (the poll ignored a foreign `attempt_id` and never
+  re-armed).
+
+## Verification
+
+- `TestSignInWithoutFilesRunsBesideFirstPass`: Dropbox-style first pass
+  blocked in its count; Atlassian starts, completes (needs `c.write`) and is
+  removed during it; a second Dropbox start and a Google start are refused
+  with `busy_provider=dropbox busy_syncing=true`; after the pass ends Google
+  starts. `TestRemovalDuringFirstPassStopsIt`,
+  `TestRemovalAfterCancelWaitsForThePass` (fails without the review fix),
+  provider-query cases in `TestDeviceCodeRelayBelongsToItsSession`, gateway
+  `TestGatewayIntegrationQueryShapes`.
+- `go test` (and `-race`) `./internal/daemon/integrations`, `./internal/daemon`,
+  `./internal/gateway`; `test-focused.sh --area contracts`, `--area web`
+  (new `IntegrationsSettings.test.tsx` case fails with unscoped polls);
+  browser `integrations.spec.ts` + `atlassian-connect.spec.ts` with
+  `OH_BROWSER_WORKERS=2`: passed. The relay tests use Dropbox, not Microsoft,
+  as the first pass: the existing blocking-count fixture is Dropbox's; the
+  rule is per file-copying provider, so the case is the same.
+- No new browser spec for the concurrent case: the synthetic host's first
+  pass finishes at once, so it cannot hold one open; the Go tests drive the
+  real handler.
+
+Review: independent `/llm-review`, finder gpt-6-astra, verifier
+claude-fable-5-1 (high-risk: concurrency, removal, gateway query). One
+must-fix confirmed: a removal right after a cancel overtook the still
+running pass (Dropbox, Google; Microsoft is fenced by its native mutex).
+Fixed with a regression test. `/assess-findings`: 1 FIX, nothing else.
+
+## Decisions for later review
+
+- **Which sign-ins conflict.** Chosen: one attempt per provider, and one
+  live attempt among providers whose entry offers a folder choice, whatever
+  level or renewal is asked. Alternative: admit a Google or Microsoft
+  sign-in that would not reach a folder choice (a renewal of an account
+  whose files already sync), refusing only at the folder step. Not done:
+  whether an attempt will copy files is known only after the provider
+  answers, and a refusal in the middle of a consent flow is worse than one at
+  the start. Mail and calendar connections by password were never in the
+  relay; they were blocked by the write lock and now work.
+- **The provider query rather than a list of attempts.** Alternative: GET
+  returns every attempt of the session. Chosen the query because each
+  dialog wants exactly one attempt, the reply shape stays the same for the
+  browser, the agent route and existing fixtures, and the provider is
+  already the unit of exclusivity.
+- **Removal during a first pass now works.** It used to answer 503 because
+  the pass held the write lock; now it stops the pass, waits up to 15 s for
+  the native process and removes. Kept because removing a stuck import is
+  what a person wants; 503 remains when the process does not exit in time.
+- **Residual, not changed:** a level change's last two-way pass (Google's
+  `endLevel`, the Commit of a Dropbox/Microsoft level change) still holds
+  `c.write`, so a sign-in beside it completes only after it. Rare and short
+  compared with a first sync.
