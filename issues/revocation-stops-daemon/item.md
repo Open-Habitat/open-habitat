@@ -3,12 +3,18 @@ created: 2026-11-10
 updated: 2026-11-10
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@withdrawal-sockets-block-jit-gate']
 preparation: ready
 lane: revocation-stops-daemon
 lane_seq: 1
+closed: 2026-11-10
+commits:
+- hash: 9ab61c091
+  summary: root revocation stops daemon and sockets
+- hash: 0191c2bbb
+  summary: stop only people root or a withdrawal revoked
 ---
 
 # Root revocation stops the person's daemon and sockets like withdrawal
