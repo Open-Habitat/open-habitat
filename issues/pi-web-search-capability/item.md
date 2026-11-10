@@ -10,7 +10,7 @@ provenance_detail: Jari 10.11.2026, observed in a research worker
 source_ref: conversation:jari-2026-11-10/web-search
 lane: web-search
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Agents on Pi have no web search; offer a search capability in the runtime
