@@ -328,7 +328,7 @@ class Harness(unittest.TestCase):
         products = {fake.pred, fake.succ, OWNER}
         for argv in fake.calls + fake.streams:
             self.assertTrue(argv[0] in OS_TOOLS or argv[0] in products, argv)
-            self.assertFalse(any('fleetrepo' in str(x).lower() or str(HERE.parent) in str(x) for x in argv), argv)
+            self.assertFalse(any('private-dev' in str(x).lower() or str(HERE.parent) in str(x) for x in argv), argv)
         # Each approval is the plan ID the preceding dry run returned, and only
         # the matching explicit approval flags accompany it.
         live = [s for s in fake.streams if s[s.index('--approved-plan') + 1] != '0' * 64]
