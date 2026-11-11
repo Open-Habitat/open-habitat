@@ -2,11 +2,14 @@
 created: 2026-11-11
 updated: 2026-11-11
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: conductor gate run
 source_ref: gate:g14:ea674a66b
+lane: gate-load-flakes
+lane_seq: 6
+preparation: ready
 ---
 
 # Load-sensitive gate failures on ea674a66b and 32cd76a0a (sign-in composer, github-session cleanup, sign-in beside first pass, terminal selection)
