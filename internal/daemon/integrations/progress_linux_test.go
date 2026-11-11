@@ -347,6 +347,17 @@ func TestSignInWithoutFilesRunsBesideFirstPass(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(other.dir(c.env), atlassianServer)); err != nil {
 		t.Fatal("sign-in beside the pass kept nothing", err)
 	}
+	// Completion is published under c.write before its reconciliation;
+	// a removal is refused while that write still runs, so it waits for
+	// the sign-in's worker to end.
+	c.relay.mu.Lock()
+	signedIn := c.relay.attempts[Atlassian].done
+	c.relay.mu.Unlock()
+	select {
+	case <-signedIn:
+	case <-time.After(3 * time.Second):
+		t.Fatal("sign-in beside the pass did not settle")
+	}
 	// A connection beside the pass can be removed again without waiting.
 	if code, out, _ := call(t, h, "DELETE", AccountsPath, ownerA, map[string]any{"action": "remove", "provider": "atlassian", "address": atlassianServer, "delete_directories": false}); code != 200 {
 		t.Fatal("removal beside the pass", code, out)
