@@ -44,3 +44,7 @@ tree:
   Alone: failed 1 of 3, then passed 10 of 10.
 
 Raw output: `~/.local/state/oh-gate/pilot28-g1.json` on Birch.
+- Gate 2 on the same tree (~11.05) failed only in
+  `web/tests/pi-onboarding-slow.spec.ts:7` line 51: the `pi-code-copy` button
+  never appears within 18 s. Alone ×5: pass. Raw output:
+  `~/.local/state/oh-gate/pilot28-g2.json`.
