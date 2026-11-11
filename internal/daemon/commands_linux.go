@@ -15,10 +15,10 @@ import (
 )
 
 // The composer's `/` list is Pi's own `get_commands`: extension commands,
-// prompt templates and skills, already filtered by Pi's project trust. A
-// running Pi answers it. Without one, a short-lived list-only Pi
-// (`--no-session`) is started in the workspace as the person, asked once and
-// ended: it starts no conversation and writes no session, so reading still
+// prompt templates and skills, filtered by Pi's project trust exactly as the
+// conversation's own Pi would be (project_trust_linux.go). A running Pi
+// answers it. Without one, a short-lived list-only Pi (`--no-session`) is
+// started in the workspace as the person, asked once and ended: it starts no conversation and writes no session, so reading still
 // never starts a conversation's Pi (Jari, 2026-10-19). Nothing is cached.
 
 const WorkspaceCommandsPath = "/api/v1/workspaces/commands"
@@ -147,6 +147,7 @@ func (c *ConversationController) helperCommands(w http.ResponseWriter, r *http.R
 // to the null device; only the correlated reply is read.
 func listOnlyPi(ctx context.Context, node string, prefix []string, home string, workspace *os.File, env []string) ([]piCommand, bool) {
 	args := append(append([]string{}, prefix...), "--mode", "rpc", "--no-session")
+	args = append(args, projectTrustArgs(home, "", workspace)...)
 	cmd := exec.Command(node, args...)
 	cmd.ExtraFiles = []*os.File{workspace}
 	cmd.Dir = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), workspace.Fd())

@@ -37,6 +37,11 @@ You can read and edit sibling workspaces with ordinary file tools: for example,
 from `~/src/website`, read `../api/…`. Your working directory is not a sandbox.
 List `~/src` to discover the person's other repositories; check their project
 instructions before changing them. Stay within the work the person requested.
+Pi trusts browser conversations in workspaces under `~/src` for that run, so a
+repository's own skills, prompts, MCP servers and extensions (`.agents/skills`,
+`.pi/…`) load without a prompt; a new conversation picks up added ones. A
+`false` the person saved for a directory in `~/.pi/agent/trust.json` still
+keeps them off there.
 Install personal command-line tools in `~/.local/bin` (on your tool PATH), not
 system directories; you have no administrative authority.
 

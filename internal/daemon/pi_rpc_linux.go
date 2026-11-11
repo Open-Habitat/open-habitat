@@ -141,6 +141,10 @@ func launchPiRPCCommand(binary string, prefix []string, home, cwd string, env []
 // Only the reconciled continuation path supplies a native session file.
 func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File, sessionFile, launchWorkspace string) (*piRPC, error) {
 	args := append(append([]string{}, prefix...), "--mode", "rpc")
+	// A conversation's own launch, not an auxiliary title worker.
+	if launchWorkspace != "" {
+		args = append(args, projectTrustArgs(home, cwd, workspace)...)
+	}
 	if owner != nil {
 		if owner.file == nil || !sessionIDPattern.MatchString(owner.id) {
 			return nil, errors.New("Pi owner unavailable")

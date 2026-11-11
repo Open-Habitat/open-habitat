@@ -20,7 +20,8 @@ import (
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
-// heldFakePi records every launch (and the rest it was started from) and
+// heldFakePi records every launch (and the rest it was started from, and
+// whether it got Pi's project-trust --approve) and
 // prompt in the synthetic home so a test can count native writes. Files in HOME steer it: start-delay (seconds before
 // answering get_state), start-fail (exit before reading any request),
 // prompt-exit (exit on a prompt without answering it), prompt-hold (keep
@@ -35,6 +36,7 @@ for i,a in enumerate(args[:-1]):
     if a=="--session-id": sid=args[i+1]
     if a=="--session": existing=args[i+1]; sid=os.path.basename(existing)[:-6].split("_")[-1]
 COMMANDS=[dict(name="skill:git-commit",description="Commit the work",source="skill",sourceInfo=dict(path=home+"/.pi/agent/skills/git-commit/SKILL.md",source="auto",scope="user")),dict(name="fix-tests",description="Fix failing tests",source="prompt",sourceInfo=dict(path=os.getcwd()+"/.pi/prompts/fix-tests.md",source="auto",scope="project")),dict(name="mcp",description="Manage MCP servers",source="extension",sourceInfo=dict(path="builtin:mcp",source="builtin",scope="user")),dict(name="oh-conversation-recap",description="recap",source="extension",sourceInfo=dict(path="/x",source="cli",scope="temporary")),dict(name="../bad name",description="x",source="skill",sourceInfo=dict())]
+open(os.path.join(home,"trust.log"),"a").write(("approve " if "--approve" in args else "default ")+os.getcwd()+"\n")
 if "--no-session" in args:
     open(os.path.join(home,"launches.log"),"a").write("helper "+os.getcwd()+"\n")
     for line in sys.stdin:

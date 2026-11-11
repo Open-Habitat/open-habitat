@@ -666,6 +666,23 @@ lingering keeps available. `host check` names it as `runtime.taskfleet`:
 `taskfleet_runtime_drift` when they are not. Git and tmux are Ubuntu
 requirements of the core runtime.
 
+Browser conversations and the composer's `/` list load a workspace's own
+project resources: skills in `.agents/skills` or `.pi/skills`, prompt
+templates, `.pi/settings.json`, project MCP servers from `.pi/mcp.json` and
+project extensions, including packages those settings name, which Pi installs
+on first use. Pi guards these with its project trust, whose prompt RPC mode
+cannot show; without a decision it skips them silently. The daemon therefore
+starts Pi with its own one-run `--approve` when the working directory,
+symlinks resolved, lies below the person's `~/src`, which includes Habitat's
+and Taskfleet's worktrees in `~/src/<workspace>__worktrees`. Elsewhere Pi's
+default stands. Trust does not limit what the agent's tools can do, and the
+person's agent already runs code in these directories, so the prompt would
+protect little here. Nothing is written to `~/.pi/agent/trust.json`; a
+`false` the person saved there for the directory or its nearest ancestor is
+honoured by leaving the flag out. Taskfleet's Pi workers and `pi` in a Habitat
+terminal are interactive Pi and follow Pi's own trust prompt and saved
+decisions.
+
 Agents search the web through the AI provider the person already uses, with
 no search key or service to set up. A shipped extension
 (`/opt/open-habitat/core/web-search/extension.mjs`), loaded by the launcher and

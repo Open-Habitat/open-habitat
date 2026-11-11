@@ -112,6 +112,12 @@ func TestCommandListUsesListOnlyPiWhenNoneRuns(t *testing.T) {
 	if launches := h.lines("launches.log"); len(launches) != 2 || strings.HasPrefix(launches[1], "helper") {
 		t.Fatalf("a running Pi must answer without a helper: %q", launches)
 	}
+	// Both the helper and the conversation trust the workspace under ~/src,
+	// so the list is the one the conversation's Pi will have.
+	want := "approve " + filepath.Join(h.root, "src", "project")
+	if trust := h.lines("trust.log"); len(trust) != 2 || trust[0] != want || trust[1] != want {
+		t.Fatalf("project trust: %q", trust)
+	}
 }
 
 // `!` and `!!` reach Pi as RPC bash. The command's reply comes only when it
