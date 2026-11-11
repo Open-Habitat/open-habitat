@@ -24,6 +24,7 @@ const features = [
   "named-workers",
   "remote-browser",
   "atlassian-connect",
+  "trello-connect",
   "turn-changes",
 ];
 
