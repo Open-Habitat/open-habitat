@@ -119,24 +119,25 @@ async function readSteps(
   }));
 }
 
-/** Starts the reads once the turn comes near the view. */
+/** Starts the reads once the turn comes near the view. The place mounts
+ * only once the feature is known to be on, so it is a callback ref. */
 function useNear() {
-  const ref = useRef<HTMLSpanElement>(null);
+  const [place, setPlace] = useState<HTMLSpanElement | null>(null);
   const [near, setNear] = useState(
     () => typeof IntersectionObserver === "undefined",
   );
   useEffect(() => {
-    if (near || !ref.current) return;
+    if (near || !place) return;
     const observer = new IntersectionObserver(
       (seen) => {
         if (seen.some((e) => e.isIntersecting)) setNear(true);
       },
       { rootMargin: "800px 0px" },
     );
-    observer.observe(ref.current);
+    observer.observe(place);
     return () => observer.disconnect();
-  }, [near]);
-  return [near, ref] as const;
+  }, [near, place]);
+  return [near, setPlace] as const;
 }
 
 /**

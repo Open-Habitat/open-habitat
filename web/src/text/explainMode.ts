@@ -910,7 +910,7 @@ const fi = {
     K32: {
       name: "Avaa editorissa",
       lead: "Avaa tiedoston editoriin keskustelun viereen ensimmäisestä muuttuneesta rivistä.",
-      know: "Rivi tiedetään, kun vuoro luki tiedoston ennen muutosta. Puhelimessa painiketta ei ole.",
+      know: "Rivi tiedetään, kun vuoro luki tiedoston ennen muutosta. Muuten tiedosto avautuu alusta.",
       try: "Avaa editorissa",
     },
     V33: {
@@ -2576,7 +2576,7 @@ export const explainModeText = catalog(fi, {
     K32: {
       name: "Open in editor",
       lead: "Opens the file in the editor beside the conversation at its first changed line.",
-      know: "The line is known when the turn read the file before changing it. Phones have no button.",
+      know: "The line is known when the turn read the file before changing it. Otherwise the file opens at the top.",
       try: "Open in editor",
     },
     V33: {

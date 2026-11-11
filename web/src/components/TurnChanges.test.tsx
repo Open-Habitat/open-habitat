@@ -96,7 +96,7 @@ it("the timeline replaces the list and a mark opens that one change", () => {
   const detail = screen.getByTestId("turn-changes-detail");
   expect(detail.querySelectorAll(".ah-diff-add")).toHaveLength(1);
   expect(detail.querySelectorAll(".ah-diff-remove")).toHaveLength(0);
-  // Without an editor (a phone), no editor button anywhere.
+  // Where no editor is offered, no editor button anywhere.
   expect(screen.queryByTestId("turn-changes-open-editor")).toBeNull();
 
   fireEvent.click(screen.getByTestId("turn-changes-timeline-toggle"));
