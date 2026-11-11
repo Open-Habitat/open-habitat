@@ -2232,9 +2232,15 @@ export function App() {
         return t.app.writerRunning;
       return "";
     },
-    save: async (id: string, name: string) => {
+    // A conversation just started is open before a snapshot lists it, and
+    // its page knows where it runs: naming it then must not fail in the
+    // browser without asking the host (Jari 11.11.2026).
+    save: async (id: string, name: string, workspaceId?: string) => {
       const agent = snapshot?.agents.find((a) => a.agent_id === id);
-      if (!agent || !csrf || !mutations) throw new Error("unavailable");
+      const place = agent
+        ? (agent.worktree_id ?? agent.workspace_id)
+        : workspaceId;
+      if (!place || !csrf || !mutations) throw new Error("unavailable");
       const result = await mutations.run({
         command: "conversation.name",
         key: conversationNameKey(id),
@@ -2243,7 +2249,7 @@ export function App() {
           jsonWrite(
             "conversation.name",
             `/api/v1/conversations/${encodeURIComponent(id.replace(/^pi:/, ""))}/name`,
-            { workspace_id: agent.worktree_id ?? agent.workspace_id, name },
+            { workspace_id: place, name },
             csrf,
             { signal },
           ),

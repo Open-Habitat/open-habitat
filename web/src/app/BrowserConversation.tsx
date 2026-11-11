@@ -321,7 +321,7 @@ function BrowserConversationContent({
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
   onClose?: (agent: Agent) => Promise<unknown>;
-  onRename?: (id: string, name: string) => Promise<void>;
+  onRename?: (id: string, name: string, workspaceId: string) => Promise<void>;
   archiveBusy?: boolean;
   closeBusy?: boolean;
   archiveAwaitingSnapshot?: boolean;
@@ -2411,7 +2411,8 @@ function BrowserConversationContent({
                             }
                           : { state: "enabled" },
                       onSave: async (name) => {
-                        if (onRename) await onRename(id, name);
+                        if (onRename)
+                          await onRename(id, name, workspace.workspace_id);
                         else
                           await renameConversation(
                             id,

@@ -3,12 +3,14 @@ created: 2026-11-11
 updated: 2026-11-11
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-11/rename-error
 lane: unlaned
 preparation: ready
+closed: 2026-11-11
+closed_by: claude
 ---
 
 # Renaming a conversation shows an error
@@ -27,3 +29,9 @@ Mahdollinen yhteys: keskustelu juuri luodussa / uudelleennimetyssä työtilassa,
 tai nimeäminen kesken käynnissä olevan vuoron.
 
 Selvitettävä: toistuuko, mikä virheteksti selaimessa näkyy, ja korjaus.
+
+## Resolution
+
+### 2026-11-11T08:18:00Z · @claude
+
+Juuri aloitetun keskustelun nimeäminen ei enää vaadi snapshotin agenttia; ks. result.md.

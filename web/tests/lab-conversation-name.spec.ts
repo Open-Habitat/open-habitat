@@ -198,3 +198,46 @@ test("@lab a phone renames from the header menu", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("@lab a conversation just started is named before a snapshot lists it", async ({
+  page,
+}) => {
+  // Jari 11.11.2026: naming a new conversation failed in the browser, with
+  // no request to the host, while the snapshot that lists it was on its way.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-aurinkokello")
+    .click();
+  const start = page.getByTestId(/^(new-conversation|conversation-start)$/);
+  await expect(start).toBeVisible();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/snapshot", async (route) => {
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await start.click();
+  await expect(page).toHaveURL(/\?conversation=pi:/);
+  const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
+  const named = page.waitForResponse(
+    (r) => r.url().includes("/name") && r.request().method() === "POST",
+  );
+  await page.getByTestId("conversation-rename").click();
+  const field = page.getByTestId("conversation-name-field");
+  await field.fill("Pääluuppi");
+  await field.press("Enter");
+  expect((await named).ok()).toBe(true);
+  await expect(field).toHaveCount(0);
+  await expect(page.getByTestId("conversation-name-problem")).toHaveCount(0);
+  const title = page.getByTestId("workspace-title");
+  await expect(title).toHaveText("Pääluuppi");
+  release();
+  await page.unroute("**/api/v1/snapshot");
+  await page.reload();
+  expect(new URL(page.url()).searchParams.get("conversation")).toBe(agent);
+  await expect(title).toHaveText("Pääluuppi");
+});
