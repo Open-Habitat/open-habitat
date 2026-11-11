@@ -1,16 +1,19 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-11
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, Contoso pilot
 source_ref: conversation:jari-2026-11-10/project-trust
+lane: project-trust
+lane_seq: 1
+preparation: ready
 ---
 
-# Repository skills and Pi project resources are silently skipped in Habitat: no way to grant Pi's project trust
+# Workspaces under ~/src are trusted automatically by Pi
 
 ## Description
 
@@ -49,3 +52,9 @@ administrator) is trusted automatically; how the agent itself may grant it
 Workaround today: the person asks their agent to add the workspace path (or
 `~/src`) with value `true` to `~/.pi/agent/trust.json`, then starts a new
 conversation.
+
+## Decisions
+
+### 2026-11-11T05:33:25Z · @jari
+
+Jari 11.11.: workspaces the person has (under ~/src) are trusted automatically, with no browser control: their skills, prompts, project MCP servers and extensions load. Conductor's suggested mechanism: the daemon starts Pi (conversations and the list-only command helper) with Pi's own --approve for workspaces inside ~/src, writing nothing to trust.json; a path outside ~/src keeps Pi's default. Pi's trust does not limit what tools can do, and the person's agent already runs code in those directories, so the prompt protects little here.

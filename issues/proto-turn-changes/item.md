@@ -1,6 +1,6 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-11
 type: task
 reporter: jari
 status: open
@@ -50,3 +50,7 @@ the tool calls or from git.
 ### 2026-11-10T13:04:46Z · @jari
 
 Jari 10.11., round 1: Yhteenveto (1) is the best; take from Katselmointi (2) that it is collapsed by default; put Aikajana (3)'s timeline behind an optional button. Round 2 combines these.
+
+### 2026-11-11T05:33:25Z · @jari
+
+Jari 11.11., round 2: Tiivis (count and +/- only) with the Aikajana button on the collapsed line itself. The prototype opened the card under the composer; production must open it in place. Build it as an experimental feature. Source: start from the tool calls (conductor's choice; Jari did not object), exact checkpoint+git source later.
