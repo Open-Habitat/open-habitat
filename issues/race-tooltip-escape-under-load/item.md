@@ -2,12 +2,16 @@
 created: 2026-11-11
 updated: 2026-11-11
 type: bug
-status: open
+status: fixed
 priority: normal
 related: ['@tooltip-swallows-escape']
 preparation: ready
 lane: tooltip-escape
 lane_seq: 1
+closed: 2026-11-11
+commits:
+- hash: 7291f2ec0
+  summary: 'fix(web): keep closed hover help out of the tree so it cannot return'
 ---
 
 # Escape does not close the editor's Save tooltip under load (gate red on ea674a66b)
@@ -30,3 +34,8 @@ It blocks the gate, and with it the pilot.28 release, whenever Birch is
 loaded. Reproduce under the ordering detector and CPU throttle per TESTING.md
 and fix the cause (product: Escape always closes an open tooltip; spec:
 wait for the state it acts on). No relaxed assertions or timeouts.
+
+## Acceptance Criteria
+
+- [x] Escape closes the open tooltip under load; cause fixed in the product, no relaxed assertion or timeout.
+- [x] `workspace-editor.spec.ts` "local header" cases pass `--repeat-each 10` under the CPU throttle that reproduced the failure.
