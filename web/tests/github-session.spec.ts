@@ -33,6 +33,19 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
     await started;
     const other = await context.newPage();
     await other.goto("/workspaces");
+    // The route settles on the Git identity once the catalog and the
+    // identity read have answered; a press begun before its action appears
+    // ends on a moved button and is lost.
+    const identity = other.getByTestId("git-identity");
+    await expect(
+      identity
+        .getByRole("button")
+        .and(
+          other
+            .getByTestId("git-identity-confirm")
+            .or(other.getByTestId("git-identity-continue")),
+        ),
+    ).toBeVisible();
     await other
       .getByRole("button")
       .and(other.getByTestId("onboarding-abort"))
