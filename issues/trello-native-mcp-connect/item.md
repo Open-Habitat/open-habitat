@@ -1,13 +1,15 @@
 ---
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-11
 type: feature
-status: untriaged
+status: duplicate
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m6zrt6cgp2vbbxjx6d60j9h4/trello-followup
 originating_run: 01m6zrt6cgp2vbbxjx6d60j9h4
 originating_run_kind: spinoff
+closed: 2026-11-11
+closed_by: claude
 ---
 
 # Finish Trello native MCP connections after the Atlassian rollout slice
@@ -29,3 +31,9 @@ Reuse the per-person native Pi MCP login relay, keeping credentials only in Pi's
 - Native RPC pasted-callback, failure/cancellation/reconnect/disconnect and separate-connection fixtures, with no second credential store.
 - personal-data describes Trello cards, account and Workspace discovery; Explain cards in Finnish and English.
 - Record live checks for Workspace selection cardinality, actual granted scopes, read-only write denial, revocation and isolation; do not claim live qualification from fixtures.
+
+## Resolution
+
+### 2026-11-11T08:13:53Z · @claude
+
+Implemented as part of atlassian-trello-connect on 11 November; its live checks are listed in that issue's result.md.
