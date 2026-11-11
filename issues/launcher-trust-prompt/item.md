@@ -2,13 +2,16 @@
 created: 2026-11-11
 updated: 2026-11-11
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by worker while implementing pi-project-trust-in-browser
 source_ref: taskfleet:01m74hj95b5wh9kgr9h1r113pn/observation:launcher-trust-prompt
 originating_run: 01m74hj95b5wh9kgr9h1r113pn
 originating_run_kind: spinoff
+lane: project-trust
+lane_seq: 2
+preparation: ready
 ---
 
 # Taskfleet Pi workers in ~/src repositories with project skills stop at Pi's trust prompt
