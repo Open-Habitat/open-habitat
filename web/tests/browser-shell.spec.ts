@@ -246,6 +246,22 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
   });
+  // tmux answers each resize with a redraw that turns mouse reporting off
+  // and on again, and xterm clears its selection when reporting comes back.
+  // Count resizes sent and the redraws that answer them.
+  let resizes = 0;
+  let redrawn = 0;
+  page.on("websocket", (socket) => {
+    if (!socket.url().includes("/api/v1/workspaces/terminal?")) return;
+    socket.on("framesent", ({ payload }) => {
+      if (typeof payload === "string" && payload.includes('"type":"resize"'))
+        resizes++;
+    });
+    socket.on("framereceived", ({ payload }) => {
+      if (typeof payload !== "string" && payload.includes("\x1b[?1000h"))
+        redrawn = resizes;
+    });
+  });
   await conversation(page);
   await openFirstShell(page);
   const paste = (text: string) =>
@@ -320,10 +336,15 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   });
   const toggleMaximize = async () => {
     const rowsBefore = await outputRows.count();
+    const resizesBefore = resizes;
     await page.getByTestId("maximize-terminal").click();
     // The panel changes size before ResizeObserver fits xterm. A vertical
-    // xterm resize clears its selection, so select only in the resized grid.
+    // xterm resize clears its selection, so select only in the resized grid,
+    // once tmux's redraw for the latest size has arrived.
     await expect(outputRows).not.toHaveCount(rowsBefore);
+    await expect
+      .poll(() => resizes > resizesBefore && redrawn === resizes)
+      .toBe(true);
   };
   await toggleMaximize();
   await select();
