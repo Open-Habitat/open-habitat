@@ -137,6 +137,14 @@ export function IntegrationsSettings({
   onNewWorkspace?: () => void;
 }) {
   const atlassianEnabled = useExperimentalFeature("atlassian-connect");
+  const trelloEnabled = useExperimentalFeature("trello-connect");
+  // Experimental providers stay out of sight, sign-in included, until enabled.
+  const hidden = useCallback(
+    (id: ProviderId) =>
+      (id === "atlassian" && !atlassianEnabled) ||
+      (id === "trello" && !trelloEnabled),
+    [atlassianEnabled, trelloEnabled],
+  );
   const [list, setList] = useState<IntegrationList | undefined>(initial);
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState<Set<string> | "all">(
@@ -295,7 +303,7 @@ export function IntegrationsSettings({
         // A page resumes only the sign-in of a provider it shows.
         if (
           view.provider &&
-          ((view.provider === "atlassian" && !atlassianEnabled) ||
+          (hidden(view.provider) ||
             (only && !only.includes(view.provider)) ||
             except?.includes(view.provider))
         )
@@ -307,7 +315,7 @@ export function IntegrationsSettings({
         });
       })
       .catch(() => {});
-  }, [load, only, except, atlassianEnabled]);
+  }, [load, only, except, hidden]);
 
   // While the tool waits, ask the daemon how far it got.
   // A failed read schedules the next one: a lost poll must not strand the
@@ -854,9 +862,7 @@ export function IntegrationsSettings({
   };
 
   const shows = (id: ProviderId) =>
-    (id !== "atlassian" || atlassianEnabled) &&
-    (!only || only.includes(id)) &&
-    !except?.includes(id);
+    !hidden(id) && (!only || only.includes(id)) && !except?.includes(id);
   if (!list)
     return failed ? (
       <p role="alert">{txt.listFailed}</p>
@@ -877,7 +883,7 @@ export function IntegrationsSettings({
       <IntegrationsOverview
         compact={compact}
         list={
-          only || except || !atlassianEnabled
+          only || except || !atlassianEnabled || !trelloEnabled
             ? {
                 ...list,
                 providers: list.providers.filter((p) => shows(p.id)),

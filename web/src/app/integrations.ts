@@ -30,7 +30,8 @@ export type ProviderId =
   | "apple"
   | "gitea"
   | "gitlab"
-  | "atlassian";
+  | "atlassian"
+  | "trello";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -41,7 +42,8 @@ export type ServiceId =
   | "dropbox"
   | "git"
   | "jira"
-  | "confluence";
+  | "confluence"
+  | "trello";
 export type ServiceState =
   | "ok"
   | "syncing"

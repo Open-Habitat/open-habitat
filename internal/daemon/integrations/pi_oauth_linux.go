@@ -127,7 +127,8 @@ func (l *piOAuthLogin) read(ctx context.Context) {
 					return
 				}
 				// Pi's native message ends with the authorization URL. Only Atlassian's
-				// fixed authorization host is exposed, not arbitrary extension output.
+				// fixed authorization host, which Trello's MCP also uses, is exposed,
+				// not arbitrary extension output.
 				parts := strings.Split(e.Message, "\n")
 				candidate := parts[len(parts)-1]
 				u, err := url.Parse(candidate)

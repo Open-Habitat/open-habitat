@@ -604,6 +604,12 @@ must_reject("integrations.schema.json", bad_integrations)
 bad_grant = json.loads((BASE / "examples" / "integrations.json").read_text())
 bad_grant["accounts"][2]["grant"]["granted"].append("<img src=x>")
 must_reject("integrations.schema.json", bad_grant)
+# A native MCP connection is one of the host's own server names, never a
+# free-form Pi entry the person or another tool configured.
+for name in ("open_habitat_trello_1", "open_habitat_trello_10", "open_habitat_trello_02", "open_habitat_jira", "mcp__open_habitat_trello"):
+    bad_mcp = json.loads((BASE / "examples" / "integrations.json").read_text())
+    bad_mcp["accounts"][-1]["address"] = name
+    must_reject("integrations.schema.json", bad_mcp)
 must_reject("integration-login-control.schema.json", {"action":"redirect","attempt_id":"20261019T094000.000000002","redirect_url":"https://gateway.example.test/callback?code=x"})
 # A level is one of the provider's named levels, and only a start chooses it.
 must_reject("integration-login-control.schema.json", {"action":"start","provider":"microsoft","level":"admin"})

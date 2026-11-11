@@ -19,7 +19,7 @@ import (
 // Each provider has at most one attempt, and of the providers whose sign-in
 // may copy files (FolderEntry) only one at a time: a first pass reserves the
 // home's room and writes the provider's native configuration, so two of them
-// would race for both. A sign-in that copies no files (Atlassian) runs beside
+// would race for both. A sign-in that copies no files (Atlassian, Trello) runs beside
 // them. A finished attempt stays until its provider's next start, so its
 // outcome can still be read.
 type relay struct {

@@ -17,6 +17,7 @@ const fi = {
       gen: "Atlassianin",
       ill: "Atlassianiin",
     },
+    trello: { name: "Trello", site: "Trello", gen: "Trellon", ill: "Trelloon" },
     google: { name: "Google", site: "Google", gen: "Googlen", ill: "Googleen" },
     microsoft: {
       name: "Microsoft 365",
@@ -64,6 +65,7 @@ const fi = {
   },
   services: {
     atlassian: { jira: "Jira-tehtävät", confluence: "Confluence-sivut" },
+    trello: { trello: "Trello-taulut ja -kortit" },
     google: {
       mail: "Gmail",
       calendar: "Google-kalenteri",
@@ -111,6 +113,16 @@ const fi = {
       full: {
         name: "Luku ja muokkaus",
         sum: "Pyydä Jira-tehtävien ja Confluence-sivujen luku- ja muokkausoikeuksia. Organisaation ja kohteen oikeudet rajoittavat käyttöä edelleen.",
+      },
+    },
+    trello: {
+      read: {
+        name: "Vain luku",
+        sum: "Pyydä vain lukuoikeuksia. Pi pyytää lupaa, mutta ei voi rajata sitä: Trello voi myöntää enemmän. Kirjoitusta voi estää varmasti vain organisaation ylläpitäjä Atlassianin MCP-asetuksista. Yhteys näyttää myönnetyn luvan.",
+      },
+      full: {
+        name: "Luku ja muokkaus",
+        sum: "Pyydä taulujen, korttien, Inboxin ja Plannerin luku- ja muokkausoikeuksia, ei Workspacen hallintaa. Workspacen ja taulun oikeudet rajoittavat käyttöä edelleen.",
       },
     },
     microsoft: {
@@ -320,7 +332,9 @@ const fi = {
             ? "Gitea-tili"
             : provider === "gitlab"
               ? "GitLab-palvelin"
-              : `${name}-tili`
+              : provider === "trello"
+                ? "Trello-yhteys"
+                : `${name}-tili`
     }`,
   addAccount: "Lisää tili",
   otherServices: "Muut palvelut",
@@ -568,7 +582,17 @@ const fi = {
   ),
   done: "Valmis",
   sitesUnavailable: (sites: string) =>
-    `Seuraavia SharePoint-sivustoja ei voitu avata, joten ne jätettiin pois: ${sites}. Jos tarvitset niitä, pyydä käyttöoikeus organisaatiosi ylläpitäjältä.`,
+    `Seuraavia SharePoint-sivustoja tai Teams-kanavia ei voitu avata, joten ne jätettiin pois: ${sites}. Jos tarvitset niitä, pyydä käyttöoikeus organisaatiosi ylläpitäjältä.`,
+  teamsLeftOut: {
+    not_granted:
+      "Teams-tiimien tiedostoja ei voitu hakea, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä tiimiluetteloasi. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
+    refused:
+      "Microsoft ei antanut tiimiluetteloasi, joten Teams-tiimien tiedostoja ei ole valittavana. Jos tarvitset niitä, pyydä apua organisaatiosi ylläpitäjältä.",
+    channels_not_granted:
+      "Tiimien tiedostot ovat valittavana, mutta yksityisten ja jaettujen kanavien omia tiedostoja ei, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä kanavia. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
+    too_many:
+      "Kaikki Teams-tiimisi eivät mahtuneet valittavaksi, joten osa jätettiin pois.",
+  },
   initialSync:
     "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon.",
   filesDiscovery: "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…",
@@ -611,6 +635,7 @@ export const integrationsText = catalog(
         gen: "Atlassian",
         ill: "Atlassian",
       },
+      trello: { name: "Trello", site: "Trello", gen: "Trello", ill: "Trello" },
       google: { name: "Google", site: "Google", gen: "Google", ill: "Google" },
       microsoft: {
         name: "Microsoft 365",
@@ -653,6 +678,7 @@ export const integrationsText = catalog(
     },
     services: {
       atlassian: { jira: "Jira issues", confluence: "Confluence pages" },
+      trello: { trello: "Trello boards and cards" },
       google: {
         mail: "Gmail",
         calendar: "Google Calendar",
@@ -700,6 +726,16 @@ export const integrationsText = catalog(
         full: {
           name: "Read and write",
           sum: "Request permission to read and edit Jira issues and Confluence pages. Your account and resource permissions still apply.",
+        },
+      },
+      trello: {
+        read: {
+          name: "Read only",
+          sum: "Request read permissions only. Pi asks but cannot limit the grant: Trello may grant more. Only an administrator can reliably block writes, in Atlassian's MCP settings. The connection shows the actual grant.",
+        },
+        full: {
+          name: "Read and write",
+          sum: "Request permission to read and edit boards, cards, Inbox and Planner, but not to manage the Workspace. Workspace and board permissions still apply.",
         },
       },
       microsoft: {
@@ -904,7 +940,9 @@ export const integrationsText = catalog(
               ? "Gitea account"
               : provider === "gitlab"
                 ? "GitLab server"
-                : `${name} account`
+                : provider === "trello"
+                  ? "Trello connection"
+                  : `${name} account`
       }`,
     addAccount: "Add account",
     otherServices: "Other services",
@@ -1145,7 +1183,17 @@ export const integrationsText = catalog(
     ),
     done: "Done",
     sitesUnavailable: (sites) =>
-      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
+      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
+    teamsLeftOut: {
+      not_granted:
+        "Teams files could not be fetched because your organization has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
+      refused:
+        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organization's administrator for help.",
+      channels_not_granted:
+        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organization has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
+      too_many:
+        "Not all of your teams fit in the choice, so some were left out.",
+    },
     initialSync:
       "The first synchronization is running. This can take long if there are many files.",
     filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",
@@ -1214,7 +1262,17 @@ export const integrationsText = catalog(
     howDevice: (gen) =>
       `You sign in on the ${gen} page with a short code. With a work account, the organisation's administrator may have to approve the app first.`,
     sitesUnavailable: (sites) =>
-      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
+      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
+    teamsLeftOut: {
+      not_granted:
+        "Teams files could not be fetched because your organisation has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
+      refused:
+        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organisation's administrator for help.",
+      channels_not_granted:
+        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organisation has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
+      too_many:
+        "Not all of your teams fit in the choice, so some were left out.",
+    },
   },
 );
 

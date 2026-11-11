@@ -186,6 +186,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Atlassian",
         desc: "Jira and Confluence. Enable the experimental feature first.",
       },
+      trello: {
+        label: "Trello",
+        desc: "Trello boards and cards. Enable the experimental feature first.",
+      },
       microsoft: {
         label: "Microsoft 365",
         desc: "Outlook, calendar, contacts, OneDrive and SharePoint.",
@@ -295,6 +299,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "atlassian-connect": {
         label: "Atlassian connection",
         desc: "Connect Jira and Confluence for your agents to use.",
+      },
+      "trello-connect": {
+        label: "Trello connection",
+        desc: "Connect Trello for your agents to use.",
       },
       "named-workers": {
         label: "Helpers",

@@ -178,10 +178,12 @@ export function useReadingPosition(
   // A route opening always starts at latest. Anchors belong to the current
   // reading visit (paging/layout changes), not a later navigation back here.
   const readingAnchor = useRef<Anchor | undefined>(undefined);
+  const followingPress = useRef<Element | undefined>(undefined);
   const selected = useRef(id);
   useLayoutEffect(() => {
     if (selected.current === id) return;
     selected.current = id;
+    followingPress.current = undefined;
     readingAnchor.current = undefined;
     wasAtBottom.current = true;
     if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
@@ -263,6 +265,88 @@ export function useReadingPosition(
     },
     [],
   );
+  // Protect every pointer press from host renders/resizes until activation.
+  // A following view only lends its anchor until click: scroll-into-view may
+  // already have moved it from the bottom, but expanding output must still
+  // resume following. A reader's press keeps its lasting reading position.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries binds when history mounts the stream.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const interact = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const control = target.closest(
+        "button, a, input, textarea, select, summary, [tabindex]",
+      );
+      if (!control || control === viewport || !viewport.contains(control))
+        return;
+      if (event.type === "focusin" && !wasAtBottom.current) {
+        // Focus can synchronously finish lazy layout during pointer-down.
+        // Repair that shift now: ResizeObserver may arrive after pointer-up.
+        restoreAnchor(readingAnchor.current, latest.current.entries);
+        return;
+      }
+      if (
+        event.type === "focusin" &&
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 1
+      )
+        return;
+      if (event.type === "pointerdown")
+        followingPress.current = wasAtBottom.current ? control : undefined;
+      wasAtBottom.current = false;
+      captureAnchor();
+    };
+    const release = () => {
+      if (!followingPress.current) return;
+      followingPress.current = undefined;
+      readingAnchor.current = undefined;
+      wasAtBottom.current = true;
+      if (id) store.savePosition(id);
+      if (!isReadingIntro(viewport)) scrollToEnd(viewport);
+      setAwayFromLatest(false);
+      setUnseen(0);
+    };
+    const releasedOutside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !followingPress.current?.contains(event.target)
+      )
+        release();
+    };
+    viewport.addEventListener("pointerdown", interact, true);
+    viewport.addEventListener("focusin", interact);
+    // Click has its target and pointer-up has completed. Capture it because
+    // React Aria controls can stop click propagation.
+    // Cancellation and releasing elsewhere must not leave following paused.
+    document.addEventListener("click", release, true);
+    document.addEventListener("pointerup", releasedOutside);
+    document.addEventListener("pointercancel", release);
+    window.addEventListener("blur", release);
+    return () => {
+      viewport.removeEventListener("pointerdown", interact, true);
+      viewport.removeEventListener("focusin", interact);
+      document.removeEventListener("click", release, true);
+      document.removeEventListener("pointerup", releasedOutside);
+      document.removeEventListener("pointercancel", release);
+      window.removeEventListener("blur", release);
+    };
+  }, [id, entries, captureAnchor, restoreAnchor, setUnseen, store]);
+  // Nested history content can finish rendering without changing the window's
+  // entries (for example a tool summary). Keep the chosen row in place for
+  // those resizes too, not only for host-driven parent renders.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries rebinds when history mounts the stream.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      if (!wasAtBottom.current)
+        restoreAnchor(readingAnchor.current, latest.current.entries);
+    });
+    observer.observe(viewport);
+    for (const child of viewport.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [id, entries, restoreAnchor]);
   return {
     feed,
     wasAtBottom,

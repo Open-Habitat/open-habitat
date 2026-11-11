@@ -8,25 +8,34 @@ import urllib.parse
 
 home = pathlib.Path(os.environ["HOME"])
 agent = home / ".pi/agent"
-name = "open_habitat_atlassian"
-key = "mcp__" + name + "|https://mcp.atlassian.com/v2/mcp"
+
+
+def url_of(name):
+    if name.startswith("open_habitat_trello"):
+        return "https://mcp.trello.com/v1"
+    return "https://mcp.atlassian.com/v2/mcp"
+
+
 if sys.argv[1:3] == ["mcp", "logout"]:
     path = agent / "mcp-auth.json"
     if path.exists():
         data = json.loads(path.read_text())
-        data.pop(key, None)
+        data.pop("mcp__" + sys.argv[3] + "|" + url_of(sys.argv[3]), None)
         path.write_text(json.dumps(data))
     sys.exit(0)
 if sys.argv[1:3] == ["mcp", "remove"]:
     path = agent / "mcp.json"
     data = json.loads(path.read_text())
-    data["mcpServers"].pop(name, None)
+    data["mcpServers"].pop(sys.argv[3], None)
     path.write_text(json.dumps(data))
     sys.exit(0)
 assert "--no-session" in sys.argv and "builtin:mcp" in sys.argv
 assert json.loads(input())["message"] == "/mcp"
 print(json.dumps({"type": "response", "command": "prompt", "success": True}), flush=True)
-assert json.loads(input())["message"] == "/mcp login " + name
+message = json.loads(input())["message"]
+assert message.startswith("/mcp login ")
+name = message.split(" ", 2)[2]
+key = "mcp__" + name + "|" + url_of(name)
 scope = json.loads((agent / "mcp.json").read_text())["mcpServers"][name]["oauth"]["scope"]
 url = "https://auth.atlassian.com/authorize?" + urllib.parse.urlencode({
     "redirect_uri": "http://127.0.0.1:45678/callback", "state": "fixture-state", "scope": scope,

@@ -24,6 +24,15 @@ const fi = {
         "Atlassian-tili ja tarvittaessa organisaation ylläpitäjän hyväksyntä. Habitat ei lähetä hyväksyntäpyyntöä.",
       caption: "Atlassian",
     },
+    "trello-connect": {
+      name: "Trello",
+      desc: "Yhdistä Trello agenttien käyttöön Trellon omalla MCP-palvelimella. Voit lisätä useita yhteyksiä, esimerkiksi yhden Workspacea kohden. Kortti näyttää myönnetyn luvan.",
+      where: "Asetukset › Integraatiot.",
+      shows: "Trello-yhteydet ja Pi:n tallentamat myönnetyt oikeudet kustakin.",
+      needs:
+        "Atlassian-tili, jolla pääset Trelloon, ja tarvittaessa organisaation ylläpitäjän hyväksyntä. Habitat ei lähetä hyväksyntäpyyntöä.",
+      caption: "Trello",
+    },
     "agent-resources-view": {
       name: "Agentin käytössä",
       desc: "Yksi näkymä kaikesta, mitä agenttisi käyttävät: tiedostot, posti, kalenteri, yhteystiedot, koodi ja koneet. Jokainen lähde kertoo, mikä on mukana ja mikä ei ja mitä agentti saa tehdä.",
@@ -173,6 +182,16 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "An Atlassian account and, where required, administrator approval. Habitat sends no approval request.",
       caption: "Atlassian",
+    },
+    "trello-connect": {
+      name: "Trello",
+      desc: "Connect Trello for agents through Trello's own MCP server. You can add several connections, for example one per Workspace. The card shows the actual grant.",
+      where: "Settings › Integrations.",
+      shows:
+        "Your Trello connections and the granted scopes Pi stored for each.",
+      needs:
+        "An Atlassian account with Trello access and, where required, administrator approval. Habitat sends no approval request.",
+      caption: "Trello",
     },
     "agent-resources-view": {
       name: "Agent resources",

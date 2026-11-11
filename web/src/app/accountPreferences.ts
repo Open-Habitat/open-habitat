@@ -29,6 +29,7 @@ export const experimentalFeatureIds = [
   "named-workers",
   "remote-browser",
   "atlassian-connect",
+  "trello-connect",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

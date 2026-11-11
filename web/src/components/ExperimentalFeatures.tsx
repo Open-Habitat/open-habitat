@@ -29,6 +29,7 @@ const featureIds = [
   { id: "named-workers", landed: true },
   { id: "remote-browser", landed: true },
   { id: "atlassian-connect", landed: true },
+  { id: "trello-connect", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;

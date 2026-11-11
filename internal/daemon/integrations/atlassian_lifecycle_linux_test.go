@@ -181,7 +181,7 @@ func TestAtlassianNativeSettingsAndWriteShortfall(t *testing.T) {
 	if states["mcp__"+atlassianServer+"|"+atlassianURL] != nil {
 		t.Fatal("level change left old token available for refresh")
 	}
-	_, servers, err := atlassianConfig(env)
+	_, servers, err := atlassianMCP.config(env)
 	if err != nil {
 		t.Fatal(err)
 	}

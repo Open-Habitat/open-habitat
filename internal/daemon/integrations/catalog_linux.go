@@ -42,7 +42,7 @@ const (
 )
 
 // providerOrder is the order of the page's provider tiles and accounts.
-var providerOrder = []Provider{Google, Microsoft, Atlassian, IMAP, CalDAV, CardDAV, Dropbox}
+var providerOrder = []Provider{Google, Microsoft, Atlassian, Trello, IMAP, CalDAV, CardDAV, Dropbox}
 
 type LoginKind string
 
@@ -550,7 +550,7 @@ func (env Env) Tool(name string) (string, bool) {
 
 // Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}, &dav{CalDAV}, &dav{CardDAV}, &dropbox{}, &google{}, &microsoft{}, &atlassian{}}
+	return []Entry{&himalaya{}, &dav{CalDAV}, &dav{CardDAV}, &dropbox{}, &google{}, &microsoft{}, &atlassian{}, &trello{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,

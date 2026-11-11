@@ -12,6 +12,7 @@ const fi = {
       gen: "Atlassianin",
       ill: "Atlassianiin",
     },
+    trello: { name: "Trello", site: "Trello", gen: "Trellon", ill: "Trelloon" },
     google: { name: "Google", site: "Google", gen: "Googlen", ill: "Googleen" },
     microsoft: {
       name: "Microsoft 365",
@@ -59,6 +60,7 @@ const fi = {
   },
   services: {
     atlassian: { jira: "Jira-tehtävät", confluence: "Confluence-sivut" },
+    trello: { trello: "Trello-taulut ja -kortit" },
     google: {
       mail: "Gmail",
       calendar: "Google-kalenteri",
@@ -106,6 +108,16 @@ const fi = {
       full: {
         name: "Luku ja muokkaus",
         sum: "Pyydä Jira-tehtävien ja Confluence-sivujen luku- ja muokkausoikeuksia. Organisaation ja kohteen oikeudet rajoittavat käyttöä edelleen.",
+      },
+    },
+    trello: {
+      read: {
+        name: "Vain luku",
+        sum: "Pyydä vain lukuoikeuksia. Pi pyytää lupaa, mutta ei voi rajata sitä: Trello voi myöntää enemmän. Kirjoitusta voi estää varmasti vain organisaation ylläpitäjä Atlassianin MCP-asetuksista. Yhteys näyttää myönnetyn luvan.",
+      },
+      full: {
+        name: "Luku ja muokkaus",
+        sum: "Pyydä taulujen, korttien, Inboxin ja Plannerin luku- ja muokkausoikeuksia, ei Workspacen hallintaa. Workspacen ja taulun oikeudet rajoittavat käyttöä edelleen.",
       },
     },
     microsoft: {
@@ -315,7 +327,9 @@ const fi = {
             ? "Gitea-tili"
             : provider === "gitlab"
               ? "GitLab-palvelin"
-              : `${name}-tili`
+              : provider === "trello"
+                ? "Trello-yhteys"
+                : `${name}-tili`
     }`,
   addAccount: "Lisää tili",
   otherServices: "Muut palvelut",
@@ -616,6 +630,7 @@ export const integrationsText = catalog(
         gen: "Atlassian",
         ill: "Atlassian",
       },
+      trello: { name: "Trello", site: "Trello", gen: "Trello", ill: "Trello" },
       google: { name: "Google", site: "Google", gen: "Google", ill: "Google" },
       microsoft: {
         name: "Microsoft 365",
@@ -658,6 +673,7 @@ export const integrationsText = catalog(
     },
     services: {
       atlassian: { jira: "Jira issues", confluence: "Confluence pages" },
+      trello: { trello: "Trello boards and cards" },
       google: {
         mail: "Gmail",
         calendar: "Google Calendar",
@@ -705,6 +721,16 @@ export const integrationsText = catalog(
         full: {
           name: "Read and write",
           sum: "Request permission to read and edit Jira issues and Confluence pages. Your account and resource permissions still apply.",
+        },
+      },
+      trello: {
+        read: {
+          name: "Read only",
+          sum: "Request read permissions only. Pi asks but cannot limit the grant: Trello may grant more. Only an administrator can reliably block writes, in Atlassian's MCP settings. The connection shows the actual grant.",
+        },
+        full: {
+          name: "Read and write",
+          sum: "Request permission to read and edit boards, cards, Inbox and Planner, but not to manage the Workspace. Workspace and board permissions still apply.",
         },
       },
       microsoft: {
@@ -909,7 +935,9 @@ export const integrationsText = catalog(
               ? "Gitea account"
               : provider === "gitlab"
                 ? "GitLab server"
-                : `${name} account`
+                : provider === "trello"
+                  ? "Trello connection"
+                  : `${name} account`
       }`,
     addAccount: "Add account",
     otherServices: "Other services",

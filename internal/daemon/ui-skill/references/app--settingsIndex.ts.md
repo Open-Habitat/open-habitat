@@ -395,6 +395,13 @@ export const settingsSections = [
         when: "the atlassian-connect experimental feature is enabled",
       },
       {
+        id: "trello",
+        label: "Trello",
+        kw: ["trello", "kanban", "kortit", "cards"],
+        desc: "Trello-taulut ja -kortit. Ota kokeellinen ominaisuus ensin käyttöön.",
+        when: "the trello-connect experimental feature is enabled",
+      },
+      {
         id: "microsoft",
         label: "Microsoft 365",
         kw: [
@@ -644,6 +651,12 @@ export const settingsSections = [
         label: "Atlassian-yhteys",
         kw: ["jira", "confluence", "atlassian"],
         desc: "Yhdistä Jira ja Confluence agenttien käyttöön.",
+      },
+      {
+        id: "trello-connect",
+        label: "Trello-yhteys",
+        kw: ["trello", "kanban"],
+        desc: "Yhdistä Trello agenttien käyttöön.",
       },
       {
         id: "named-workers",

@@ -1522,6 +1522,41 @@ const fi = {
       lead: "Poistaa tämän yhteyden kirjautumisen agenttien käytöstä.",
       know: "Jira-tehtäviä ja Confluence-sivuja ei poisteta. Voit yhdistää tilin uudelleen.",
     },
+    M76: {
+      name: "Trello",
+      lead: "Yhdistä Trellon taulut ja kortit omalla tililläsi.",
+      know: "Jokainen yhteys on oma kirjautumisensa. Se näyttää myönnetyn luvan, joka voi olla pyyntöä laajempi.",
+    },
+    M77: {
+      name: "Lisää toinen Trello-yhteys",
+      lead: "Lisää uuden Trello-kirjautumisen esimerkiksi toista Workspacea varten.",
+      know: "Aiemmat yhteydet säilyvät ennallaan.",
+    },
+    M78: {
+      name: "Pyyntö ylläpitäjälle",
+      lead: "Kopioi koko pyyntö ja toimita se ylläpitäjällesi.",
+      know: "Habitat ei lähetä mitään. Vain ylläpitäjä voi rajata Trellon varmasti pelkkään lukuun.",
+    },
+    M79: {
+      name: "Trello",
+      lead: "Näyttää Trello-yhteyden kokeellisena ominaisuutena asetuksissa.",
+      know: "Valinta ei yhdistä tiliä eikä katkaise jo tehtyjä yhteyksiä.",
+    },
+    M80: {
+      name: "Kirjautuminen Trelloon",
+      lead: "Aloittaa kirjautumisen tai viimeistelee sen liittämälläsi paluuosoitteella.",
+      know: "Trello kysyy kirjautuessa, mihin Workspaceen yhteys pääsee.",
+    },
+    M81: {
+      name: "Pyydettävät oikeudet",
+      lead: "Valitse luku tai luku ja muokkaus ennen kirjautumista.",
+      know: "Trello voi myöntää pyydettyä enemmän. Tarkista myönnetty lupa kirjautumisen jälkeen.",
+    },
+    M82: {
+      name: "Poista Trello-yhteys",
+      lead: "Poistaa tämän yhteyden kirjautumisen agenttien käytöstä.",
+      know: "Tauluja ja kortteja ei poisteta. Muut Trello-yhteydet säilyvät.",
+    },
     N01: {
       name: "Työtilan lähde",
       lead: "Valitse, kloonataanko työtila valmiista reposta vai luodaanko uusi tyhjä hakemisto.",
@@ -3131,6 +3166,41 @@ export const explainModeText = catalog(fi, {
       name: "Remove Atlassian connection",
       lead: "Removes this connection's sign-in from agents' use.",
       know: "Jira issues and Confluence pages are not deleted. You can connect the account again.",
+    },
+    M76: {
+      name: "Trello",
+      lead: "Connect Trello boards and cards with your own account.",
+      know: "Each connection is its own sign-in. It shows the actual grant, which may be broader than requested.",
+    },
+    M77: {
+      name: "Add another Trello connection",
+      lead: "Adds a new Trello sign-in, for example for another Workspace.",
+      know: "Your existing connections stay as they are.",
+    },
+    M78: {
+      name: "Request for your administrator",
+      lead: "Copy the full request and give it to your administrator.",
+      know: "Habitat sends nothing. Only an administrator can reliably limit Trello to reading.",
+    },
+    M79: {
+      name: "Trello",
+      lead: "Shows the experimental Trello connection in settings.",
+      know: "This choice neither connects an account nor disconnects existing ones.",
+    },
+    M80: {
+      name: "Trello sign-in",
+      lead: "Starts sign-in or completes it with the return URL you pasted.",
+      know: "Trello asks at sign-in which Workspace the connection may reach.",
+    },
+    M81: {
+      name: "Requested permissions",
+      lead: "Choose read or read and write before signing in.",
+      know: "Trello may grant more than requested. Check the actual grant after sign-in.",
+    },
+    M82: {
+      name: "Remove Trello connection",
+      lead: "Removes this connection's sign-in from agents' use.",
+      know: "Boards and cards are not deleted. Your other Trello connections stay.",
     },
     N01: {
       name: "Workspace source",

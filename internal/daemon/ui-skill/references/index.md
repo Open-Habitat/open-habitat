@@ -202,6 +202,7 @@ A label alone does not establish that a control is available to this person.
 - [text/terminals.ts](text--terminals.ts.md)
 - [text/trash.tsx](text--trash.tsx.md)
 - [text/trashNotice.ts](text--trashNotice.ts.md)
+- [text/trello.ts](text--trello.ts.md)
 - [text/unsavedChangesDialog.ts](text--unsavedChangesDialog.ts.md)
 - [text/useConversation.ts](text--useConversation.ts.md)
 - [text/viewHost.ts](text--viewHost.ts.md)

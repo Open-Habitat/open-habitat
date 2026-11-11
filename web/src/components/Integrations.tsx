@@ -43,6 +43,7 @@ import {
 import { liveText } from "../i18n";
 import { atlassianText } from "../text/atlassian";
 import { integrationsText } from "../text/integrations";
+import { trelloText } from "../text/trello";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
 import { GitLabCard, type GitLabTokenView } from "./GitLabConnection";
@@ -80,6 +81,7 @@ const providerMarks: Record<ProviderId, Pick<Copy, "mark" | "tone">> = {
   gitea: { mark: "Gt", tone: 3 },
   gitlab: { mark: "GL", tone: 2 },
   atlassian: { mark: "A", tone: 2 },
+  trello: { mark: "T", tone: 1 },
 };
 
 /** Each provider's names in the current language, with its letter tile. */
@@ -99,6 +101,7 @@ const serviceIcons: Record<ServiceId, IconName> = {
   git: "branch",
   jira: "branch",
   confluence: "folder",
+  trello: "grid",
 };
 
 const fileServices: ServiceId[] = [
@@ -1378,13 +1381,20 @@ function DeviceCodeStep({
   );
 }
 
-function AtlassianApprovalRequest() {
-  const text = liveText(atlassianText);
+/** The providers Pi signs in through its own remote MCP OAuth. Their
+ * administrator request, refusal and re-consent copy is their own. */
+const mcpText = { atlassian: atlassianText, trello: trelloText } as const;
+type MCPProvider = keyof typeof mcpText;
+const isMCP = (p?: ProviderId): p is MCPProvider =>
+  p === "atlassian" || p === "trello";
+
+function ApprovalRequest({ provider }: { provider: MCPProvider }) {
+  const text = liveText(mcpText[provider]);
   return (
-    <section data-testid="atlassian-approval-request">
+    <section data-testid={`${provider}-approval-request`}>
       <p className="ig-h">{text.waiting}</p>
       <p className="ig-p">{text.help}</p>
-      <p className="ig-p" data-testid="atlassian-approval-text">
+      <p className="ig-p" data-testid={`${provider}-approval-text`}>
         {text.request}
       </p>
       <CopyButton value={text.request} label={text.copy} />
@@ -1418,7 +1428,7 @@ function PasteStep({
       <>
         <p className="ig-h">{txt.signInAt(copy.site)}</p>
         <p className="ig-p">{txt.siteAsks(copy.site)}</p>
-        {view.provider === "atlassian" && <AtlassianApprovalRequest />}
+        {isMCP(view.provider) && <ApprovalRequest provider={view.provider} />}
         <RedirectExpected site={copy.site} prefix={prefix} />
         <div className="ig-row start">
           <ExternalButton href={href} onOpen={() => setOpened(true)}>
@@ -1456,7 +1466,7 @@ function PasteStep({
       }}
     >
       <p className="ig-h">{txt.pasteWhere(copy.site)}</p>
-      {view.provider === "atlassian" && <AtlassianApprovalRequest />}
+      {isMCP(view.provider) && <ApprovalRequest provider={view.provider} />}
       <RedirectExpected site={copy.site} prefix={prefix} />
       <ol className="ig-how">
         <li>{txt.approveTab}</li>
@@ -1846,7 +1856,11 @@ function FailedStep({
     case "permission_refused":
       return (
         <p className="ig-err" role="alert">
-          {liveText(atlassianText).refused}
+          {
+            liveText(
+              mcpText[isMCP(view.provider) ? view.provider : "atlassian"],
+            ).refused
+          }
         </p>
       );
     case "already_connected":
@@ -2288,8 +2302,8 @@ function LevelChange({
     ["external", txt.signInAgainAt(copy.gen)],
     [
       "lock",
-      provider.id === "atlassian"
-        ? liveText(atlassianText).reauthorize
+      isMCP(provider.id)
+        ? liveText(mcpText[provider.id]).reauthorize
         : provider.id === "dropbox"
           ? txt.dropboxRevokes
           : provider.id === "google"
@@ -2347,14 +2361,14 @@ function LevelWarning({
   provider: Provider;
   level: Level;
 }) {
-  if (provider.id === "atlassian")
+  if (isMCP(provider.id))
     return (
       <div
         className="ig-warn"
         role="note"
         data-testid="integration-level-warning"
       >
-        {levelCopy.atlassian?.[level]?.sum}
+        {levelCopy[provider.id]?.[level]?.sum}
       </div>
     );
   const can: string[] = [];
@@ -2446,9 +2460,7 @@ function Intro({
   if (provider.levels)
     return (
       <>
-        {account ||
-        provider.id === "google" ||
-        provider.id === "atlassian" ? null : (
+        {account || provider.id === "google" || isMCP(provider.id) ? null : (
           <CloudFolderHint />
         )}
         <p className="ig-lead">{txt.whatMay}</p>
@@ -2457,11 +2469,20 @@ function Intro({
           <LevelChange provider={provider} account={account} level={level} />
         ) : (
           <p className="ig-p">
-            {how} {txt.levelAsked(copy.gen, copy.site)}
+            {how}
+            {/* Pi asks for the level but cannot hold the provider to it. */}
+            {isMCP(provider.id) ? null : (
+              <> {txt.levelAsked(copy.gen, copy.site)}</>
+            )}
           </p>
         )}
         {level ? <LevelWarning provider={provider} level={level} /> : null}
-        {provider.id === "atlassian" && <AtlassianApprovalRequest />}
+        {provider.id === "trello" && (
+          <p className="ig-p" data-testid="trello-workspaces">
+            {liveText(trelloText).workspaces}
+          </p>
+        )}
+        {isMCP(provider.id) && <ApprovalRequest provider={provider.id} />}
         {buttons}
       </>
     );
