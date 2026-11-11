@@ -3,12 +3,14 @@ created: 2026-11-11
 updated: 2026-11-11
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-turn-changes']
 preparation: ready
 lane: turn-changes
 lane_seq: 1
+closed: 2026-11-11
+closed_by: claude
 ---
 
 # What the agent changed in a turn (experimental)
@@ -31,3 +33,9 @@ on the collapsed line; the prototype is the specification:
   marked as such where known). The exact source from the rewind checkpoint
   and git is a later step.
 - Finnish and English, desktop and phone, light and dark, a11y.
+
+## Resolution
+
+### 2026-11-11T08:15:00Z · @claude
+
+Implemented behind the experimental feature turn-changes; result.md lists the evidence and Decisions for later review.
