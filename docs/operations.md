@@ -680,9 +680,17 @@ person's agent already runs code in these directories, so the prompt would
 protect little here. Nothing is written to `~/.pi/agent/trust.json`; a
 `false` the person saved there for the directory or its nearest ancestor is
 honoured by leaving the flag out, as is a store the daemon cannot read, so
-that Pi decides from its own read. Taskfleet's Pi workers and `pi` in a Habitat
-terminal are interactive Pi and follow Pi's own trust prompt and saved
-decisions.
+that Pi decides from its own read. The release's `pi` launcher
+(`/opt/open-habitat/core/agent-bin/pi`), which runs Taskfleet's Pi workers and
+`pi` in a Habitat terminal, applies the same rule to its working directory and
+the store Pi reads (`$PI_CODING_AGENT_DIR/trust.json` when that is set), so an
+unattended worker in a repository with its own skills does not stop at Pi's
+trust prompt. It leaves the flag out when the caller already chose
+(`--approve`, `--no-approve` and their short forms) and for `--session` and
+`--resume`, which can open a session whose directory is elsewhere. Once
+started, Pi applies a run's `--approve` to every directory it switches to, so
+a session resumed from inside interactive Pi is trusted as well. A person's
+own `pi` earlier on `PATH` is not affected.
 
 Agents search the web through the AI provider the person already uses, with
 no search key or service to set up. A shipped extension

@@ -3,7 +3,9 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,11 +52,14 @@ func writeTrustStore(t *testing.T, home, body string) {
 	}
 }
 
-// A workspace and a worktree below ~/src get Pi's --approve; ~/src itself,
-// a directory elsewhere in the home and a symlink in ~/src that leads out
-// of it keep Pi's default. A cwd that is not the held directory gets none.
-func TestProjectTrustBelowSourceOnly(t *testing.T) {
-	home := trustHome(t)
+type trustDirCase struct {
+	name, open, cwd string
+	approve         bool
+}
+
+// trustDirCases are the directories the daemon and the launcher judge alike.
+func trustDirCases(t *testing.T, home string) []trustDirCase {
+	t.Helper()
 	src := filepath.Join(home, "src")
 	if err := os.Symlink(filepath.Join(home, "elsewhere", "repo"), filepath.Join(src, "escape")); err != nil {
 		t.Fatal(err)
@@ -62,22 +67,26 @@ func TestProjectTrustBelowSourceOnly(t *testing.T) {
 	if err := os.Symlink(filepath.Join(src, "project"), filepath.Join(home, "alias")); err != nil {
 		t.Fatal(err)
 	}
-	approve := []string{"--approve"}
-	for _, tc := range []struct {
-		name, open, cwd string
-		want            []string
-	}{
-		{"workspace", filepath.Join(src, "project"), filepath.Join(src, "project"), approve},
-		{"helper without cwd", filepath.Join(src, "project"), "", approve},
-		{"worktree", filepath.Join(src, "project__worktrees", "feature"), filepath.Join(src, "project__worktrees", "feature"), approve},
-		{"symlink into src", filepath.Join(home, "alias"), filepath.Join(home, "alias"), approve},
-		{"source root", src, src, nil},
-		{"outside src", filepath.Join(home, "elsewhere", "repo"), filepath.Join(home, "elsewhere", "repo"), nil},
-		{"symlink escaping src", filepath.Join(src, "escape"), filepath.Join(src, "escape"), nil},
-		{"cwd elsewhere", filepath.Join(src, "project"), filepath.Join(home, "elsewhere", "repo"), nil},
-	} {
-		if got := trustFor(t, home, tc.open, tc.cwd); !slices.Equal(got, tc.want) {
-			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+	return []trustDirCase{
+		{"workspace", filepath.Join(src, "project"), filepath.Join(src, "project"), true},
+		{"helper without cwd", filepath.Join(src, "project"), "", true},
+		{"worktree", filepath.Join(src, "project__worktrees", "feature"), filepath.Join(src, "project__worktrees", "feature"), true},
+		{"symlink into src", filepath.Join(home, "alias"), filepath.Join(home, "alias"), true},
+		{"source root", src, src, false},
+		{"outside src", filepath.Join(home, "elsewhere", "repo"), filepath.Join(home, "elsewhere", "repo"), false},
+		{"symlink escaping src", filepath.Join(src, "escape"), filepath.Join(src, "escape"), false},
+		{"cwd elsewhere", filepath.Join(src, "project"), filepath.Join(home, "elsewhere", "repo"), false},
+	}
+}
+
+// A workspace and a worktree below ~/src get Pi's --approve; ~/src itself,
+// a directory elsewhere in the home and a symlink in ~/src that leads out
+// of it keep Pi's default. A cwd that is not the held directory gets none.
+func TestProjectTrustBelowSourceOnly(t *testing.T) {
+	home := trustHome(t)
+	for _, tc := range trustDirCases(t, home) {
+		if got := trustFor(t, home, tc.open, tc.cwd); (got != nil) != tc.approve || got != nil && !slices.Equal(got, []string{"--approve"}) {
+			t.Errorf("%s: %q, want approve=%v", tc.name, got, tc.approve)
 		}
 	}
 	if got := projectTrustArgs(home, "", nil); got != nil {
@@ -91,12 +100,26 @@ func TestProjectTrustBelowSourceOnly(t *testing.T) {
 func TestProjectTrustHonoursSavedDistrust(t *testing.T) {
 	home := trustHome(t)
 	ws := filepath.Join(home, "src", "project")
+	for _, tc := range trustStoreCases(home) {
+		setTrustStore(t, home, tc.store)
+		if got := trustFor(t, home, ws, ws) != nil; got != tc.approve {
+			t.Errorf("%s: approve=%v, want %v", tc.name, got, tc.approve)
+		}
+	}
+}
+
+type trustStoreCase struct {
+	name, store string
+	approve     bool
+}
+
+// trustStoreCases are the saved stores, judged for ~/src/project, that the
+// daemon and the launcher read alike.
+func trustStoreCases(home string) []trustStoreCase {
+	ws := filepath.Join(home, "src", "project")
 	wt := filepath.Join(home, "src", "project__worktrees", "feature")
-	for _, tc := range []struct {
-		name, store string
-		approve     bool
-	}{
-		{"no store", "", true},
+	return []trustStoreCase{
+		{"no store", noTrustStore, true},
 		{"saved false here", `{"` + ws + `": false}`, false},
 		{"saved false on src", `{"` + home + `/src": false}`, false},
 		{"closer true wins", `{"` + home + `/src": false, "` + ws + `": true}`, true},
@@ -112,16 +135,21 @@ func TestProjectTrustHonoursSavedDistrust(t *testing.T) {
 		{"partial write", ``, false},
 		{"null", `null`, false},
 		{"oversized", `{"` + ws + `": false, "x": "` + strings.Repeat("x", maxTrustStore) + `"}`, false},
-	} {
-		if tc.name == "no store" {
-			_ = os.Remove(filepath.Join(home, ".pi", "agent", "trust.json"))
-		} else {
-			writeTrustStore(t, home, tc.store)
-		}
-		if got := trustFor(t, home, ws, ws) != nil; got != tc.approve {
-			t.Errorf("%s: approve=%v, want %v", tc.name, got, tc.approve)
-		}
 	}
+}
+
+// noTrustStore stands for a home without Pi's trust store.
+const noTrustStore = "\x00none"
+
+func setTrustStore(t *testing.T, home, store string) {
+	t.Helper()
+	if store == noTrustStore {
+		if err := os.Remove(filepath.Join(home, ".pi", "agent", "trust.json")); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		return
+	}
+	writeTrustStore(t, home, store)
 }
 
 // The pinned Pi itself: a skill committed in a workspace's .agents/skills
@@ -181,6 +209,222 @@ func TestListOnlyPinnedPiLoadsTrustedWorkspaceSkills(t *testing.T) {
 	}
 	writeTrustStore(t, home, `{"`+filepath.Join(home, "src", "project")+`": false}`)
 	if list(filepath.Join(home, "src", "project")) {
+		t.Fatal("the person's saved distrust was overridden")
+	}
+}
+
+// launcherRuntime lays out a core runtime around this repository's `pi`
+// launcher, with the given Node and Pi modules.
+func launcherRuntime(t *testing.T, node, modules string) string {
+	t.Helper()
+	runtime, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join("..", "..", "runtime", "core", "agent-bin", "pi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{"agent-bin", "bin"} {
+		if err := os.MkdirAll(filepath.Join(runtime, d), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	launcher := filepath.Join(runtime, "agent-bin", "pi")
+	if err := os.WriteFile(launcher, src, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(node, filepath.Join(runtime, "bin", "node")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(modules, filepath.Join(runtime, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	return launcher
+}
+
+// launcherArgs runs the launcher in dir with a stand-in Pi that prints the
+// arguments it was given.
+func launcherArgs(t *testing.T, launcher, home, dir string, env []string, args ...string) []string {
+	t.Helper()
+	cmd := exec.Command(launcher, args...)
+	cmd.Dir = dir
+	cmd.Env = append([]string{"HOME=" + home, "PATH=/usr/bin:/bin"}, env...)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("launcher in %s: %v", dir, err)
+	}
+	var got []string
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("launcher output %q: %v", out, err)
+	}
+	return got
+}
+
+// The release's `pi` launcher, which Taskfleet's Pi workers and a Habitat
+// terminal run, applies the daemon's rule to its working directory and to
+// Pi's trust store, and leaves an explicit trust choice, a session that may
+// live elsewhere and Pi's subcommands alone.
+func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("the launcher's decision runs on node: %v", err)
+	}
+	modules := t.TempDir()
+	cli := filepath.Join(modules, "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js")
+	if err := os.MkdirAll(filepath.Dir(cli), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cli, []byte("console.log(JSON.stringify(process.argv.slice(2)))\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	launcher := launcherRuntime(t, node, modules)
+	home := trustHome(t)
+	approved := func(args []string) bool { return slices.Contains(args, "--approve") }
+	for _, tc := range trustDirCases(t, home) {
+		if tc.cwd != tc.open {
+			continue // the launcher has one directory, its own
+		}
+		if got := approved(launcherArgs(t, launcher, home, tc.open, nil)); got != tc.approve {
+			t.Errorf("directory %s: approve=%v, want %v", tc.name, got, tc.approve)
+		}
+	}
+	ws := filepath.Join(home, "src", "project")
+	for _, tc := range trustStoreCases(home) {
+		setTrustStore(t, home, tc.store)
+		if got := approved(launcherArgs(t, launcher, home, ws, nil)); got != tc.approve {
+			t.Errorf("store %s: approve=%v, want %v", tc.name, got, tc.approve)
+		}
+	}
+	setTrustStore(t, home, noTrustStore)
+
+	// Pi reads its store from PI_CODING_AGENT_DIR when that is set.
+	custom := filepath.Join(home, "custom-agent")
+	if err := os.MkdirAll(custom, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(custom, "trust.json"), []byte(`{"`+ws+`": false}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{custom, "~/custom-agent"} {
+		if approved(launcherArgs(t, launcher, home, ws, []string{"PI_CODING_AGENT_DIR=" + dir})) {
+			t.Errorf("saved false in PI_CODING_AGENT_DIR=%s was overridden", dir)
+		}
+	}
+
+	for _, tc := range []struct {
+		args, want []string
+	}{
+		{[]string{"-p", "hi"}, []string{"--approve", "-p", "hi"}},
+		{[]string{"--approve"}, []string{"--approve"}},
+		{[]string{"-a"}, []string{"-a"}},
+		{[]string{"--no-approve"}, []string{"--no-approve"}},
+		{[]string{"-na"}, []string{"-na"}},
+		{[]string{"--session", "other.jsonl"}, []string{"--session", "other.jsonl"}},
+		{[]string{"--resume"}, []string{"--resume"}},
+		{[]string{"-r"}, []string{"-r"}},
+		{[]string{"--", "-a"}, []string{"--approve", "--", "-a"}},
+		{[]string{"list"}, []string{"list"}},
+	} {
+		if got := launcherArgs(t, launcher, home, ws, nil, tc.args...); !slices.Equal(got, tc.want) {
+			t.Errorf("pi %q: Pi got %q, want %q", tc.args, got, tc.want)
+		}
+	}
+}
+
+// launcherCommands asks the launcher's Pi in dir for its commands over RPC.
+func launcherCommands(t *testing.T, launcher, home, dir string) []piCommand {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, launcher, "--mode", "rpc", "--no-session")
+	cmd.Dir = dir
+	cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin"}
+	cmd.WaitDelay = 2 * time.Second
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	if _, err := stdin.Write([]byte(`{"id":"oh-list","type":"get_commands"}` + "\n")); err != nil {
+		t.Fatal(err)
+	}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 4096), 1<<20)
+	for scanner.Scan() {
+		var response struct {
+			ID      string          `json:"id"`
+			Type    string          `json:"type"`
+			Success bool            `json:"success"`
+			Data    json.RawMessage `json:"data"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &response) != nil || response.Type != "response" || response.ID != "oh-list" {
+			continue
+		}
+		commands, ok := parsePiCommands(response.Data)
+		if !response.Success || !ok {
+			t.Fatalf("get_commands in %s failed", dir)
+		}
+		return commands
+	}
+	t.Fatalf("the launcher's Pi did not answer get_commands in %s", dir)
+	return nil
+}
+
+// The pinned Pi through the launcher: a workspace's own .agents/skills load
+// below ~/src without Pi's trust prompt, which would otherwise hold the
+// interactive worker, and stay out elsewhere and under a saved false.
+func TestLauncherPinnedPiTrustsWorkspaceSkills(t *testing.T) {
+	modules, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(modules, "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js")); err != nil {
+		t.Skip("pinned Pi test dependency not installed")
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node not installed")
+	}
+	launcher := launcherRuntime(t, node, modules)
+	home := trustHome(t)
+	ws := filepath.Join(home, "src", "project__worktrees", "feature")
+	elsewhere := filepath.Join(home, "elsewhere", "repo")
+	for _, d := range []string{ws, elsewhere} {
+		skill := filepath.Join(d, ".agents", "skills", "repo-skill")
+		if err := os.MkdirAll(skill, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(skill, "SKILL.md"), []byte("---\nname: repo-skill\ndescription: A synthetic skill committed in the repository.\n---\n\nDo nothing.\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	has := func(dir string) bool {
+		for _, c := range launcherCommands(t, launcher, home, dir) {
+			if c.Name == "skill:repo-skill" && c.Source == "skill" && c.Scope == "project" {
+				return true
+			}
+		}
+		return false
+	}
+	if !has(ws) {
+		t.Fatal("the worktree's own skill is missing below ~/src")
+	}
+	if has(elsewhere) {
+		t.Fatal("a directory outside ~/src was trusted")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "trust.json")); !os.IsNotExist(err) {
+		t.Fatalf("Pi's trust store was written: %v", err)
+	}
+	writeTrustStore(t, home, `{"`+ws+`": false}`)
+	if has(ws) {
 		t.Fatal("the person's saved distrust was overridden")
 	}
 }

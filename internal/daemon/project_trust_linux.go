@@ -26,6 +26,10 @@ import (
 // "do not trust" saved in ~/.pi/agent/trust.json for the directory or the
 // nearest ancestor is honoured by leaving the flag out: Pi then applies that
 // saved decision itself. So is a store this read cannot judge.
+//
+// The core runtime's `pi` launcher (runtime/core/agent-bin/pi), which runs
+// Taskfleet's Pi workers and terminal `pi`, applies the same rule to its own
+// working directory; TestLauncherAppliesDaemonTrustRule keeps the two alike.
 
 // maxTrustStore bounds the read of Pi's trust store.
 const maxTrustStore = 1 << 20

@@ -5,12 +5,67 @@
 # Taskfleet skills, as browser conversations do. A `pi` of the person's own
 # earlier on PATH takes precedence over this one; nothing here reads or writes
 # their settings.
+#
+# In a workspace below the person's ~/src it also applies the daemon's project
+# trust rule (internal/daemon/project_trust_linux.go, Jari 11.11.2026): Pi's
+# one-run `--approve`, unless the person saved "do not trust" for the
+# directory or its nearest ancestor in Pi's trust store, or the store cannot
+# be judged. Taskfleet's Pi workers run unattended in tmux, so Pi's trust
+# prompt would otherwise be their first screen. Nothing is written to Pi's
+# trust store.
 set -eu
 runtime=$(CDPATH= cd -P -- "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd -P)
+node="$runtime/bin/node"
 case ${1-} in
 # Pi 1.3.0's subcommands are its first argument and take no session flags.
 install|remove|uninstall|update|list|config|auth|mcp) ;;
 *)
+	# Pi's own trust choice on the command line stands. --session and
+	# --resume can open a session whose directory is elsewhere, and Pi
+	# applies --approve to that directory, so they keep Pi's default too.
+	# Words are matched exactly as Pi 1.3.0's parser does, up to `--`; a flag
+	# value that happens to equal one of them only leaves the flag out.
+	approve=yes
+	for arg in "$@"; do
+		case $arg in
+		--) break ;;
+		--approve|-a|--no-approve|-na|--session|--resume|-r) approve= ;;
+		esac
+	done
+	# Pi's process cwd is canonical, as Pi's trust keys are. The store is
+	# where Pi reads it: PI_CODING_AGENT_DIR (with Pi's ~ expansion) or
+	# ~/.pi/agent. Exit status 0 means the flag applies; any error leaves it out.
+	if [ -n "$approve" ] && "$node" -e '
+const fs = require("fs"), os = require("os"), path = require("path");
+try {
+	const home = os.homedir();
+	if (!path.isAbsolute(home)) process.exit(1);
+	const env = process.env.PI_CODING_AGENT_DIR;
+	const agent = !env ? path.join(home, ".pi", "agent") : env === "~" ? home : env.startsWith("~/") ? path.join(home, env.slice(2)) : env;
+	const src = fs.realpathSync(path.join(home, "src"));
+	const dir = process.cwd();
+	if (!dir.startsWith(src + "/")) process.exit(1);
+	let b;
+	try {
+		b = fs.readFileSync(path.resolve(agent, "trust.json"));
+	} catch (e) {
+		process.exit(e.code === "ENOENT" ? 0 : 1);
+	}
+	if (b.length > 1 << 20) process.exit(1);
+	if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) b = b.subarray(3);
+	const saved = JSON.parse(b.toString("utf8"));
+	if (saved === null || typeof saved !== "object" || Array.isArray(saved)) process.exit(1);
+	for (const v of Object.values(saved)) if (v !== true && v !== false && v !== null) process.exit(1);
+	for (let p = dir; ; p = path.dirname(p)) {
+		const v = Object.prototype.hasOwnProperty.call(saved, p) ? saved[p] : null;
+		if (v !== null) process.exit(v ? 0 : 1);
+		if (p === path.dirname(p)) process.exit(0);
+	}
+} catch {
+	process.exit(1);
+}' 2>/dev/null; then
+		set -- --approve "$@"
+	fi
 	for extension in "$runtime/taskfleet/extension.mjs" "$runtime/web-search/extension.mjs" "$runtime/page-reader/extension.mjs" "$runtime/node_modules/pi-claude-bridge/src/index.ts"; do
 		if [ -f "$extension" ]; then
 			set -- --extension "$extension" "$@"
@@ -18,4 +73,4 @@ install|remove|uninstall|update|list|config|auth|mcp) ;;
 	done
 	;;
 esac
-exec "$runtime/bin/node" "$runtime/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js" "$@"
+exec "$node" "$runtime/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js" "$@"
