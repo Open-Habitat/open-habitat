@@ -260,7 +260,10 @@ func main() {
 	fakeNode := filepath.Join(tmp, "fake-node")
 	piStateFile := filepath.Join(tmp, "pi-state")
 	_ = os.WriteFile(piStateFile, []byte("missing"), 0600)
-	deviceWait := "sleep 2"
+	// A spec that depends on seeing the code holds it with
+	// /fixture/pi-device-hold; otherwise the code lasts two seconds.
+	piDeviceHold := filepath.Join(tmp, "pi-device-hold")
+	deviceWait := "if [ -e " + piDeviceHold + " ]; then while [ -e " + piDeviceHold + " ] && kill -0 " + strconv.Itoa(os.Getpid()) + " 2>/dev/null; do sleep 0.1; done; else sleep 2; fi"
 	if os.Getenv("BROWSER_HOST_HOLD_PI_DEVICE") == "1" {
 		// Layout cases need a persistent native device-code state. The loop
 		// also ends when this host exits, even after forced test teardown.
@@ -1428,6 +1431,24 @@ esac
 				// Replace ephemeral leases as if each synthetic daemon restarted.
 				for i, attempt := range attempts {
 					attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i], clearAuth[i]))
+				}
+				w.WriteHeader(204)
+			case "/fixture/pi-device-hold":
+				var e error
+				switch r.URL.Query().Get("value") {
+				case "on":
+					e = os.WriteFile(piDeviceHold, nil, 0600)
+				case "off":
+					if e = os.Remove(piDeviceHold); errors.Is(e, os.ErrNotExist) {
+						e = nil
+					}
+				default:
+					http.Error(w, "unknown hold", 400)
+					return
+				}
+				if e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
 				}
 				w.WriteHeader(204)
 			case "/fixture/pi-state":

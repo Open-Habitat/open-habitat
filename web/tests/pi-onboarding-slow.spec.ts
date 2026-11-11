@@ -42,6 +42,9 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     await expect(
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible({ timeout: 18000 });
+    // The helper keeps its code until released: with each read delivered
+    // two seconds late, a code lasting two seconds can fall between reads.
+    await page.request.get("/fixture/pi-device-hold?value=on");
     await page
       .getByRole("button")
       .and(page.getByTestId("pi-attempt-start"))
@@ -57,8 +60,9 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     await expect(
       page.getByRole("button").and(page.getByTestId("onboarding-abort")),
     ).toBeVisible();
-    // The synthetic helper reports unknown after two seconds without provider
+    // Released, the synthetic helper reports unknown without provider
     // confirmation. That is a real native transition, not poll starvation.
+    await page.request.get("/fixture/pi-device-hold?value=off");
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-attempt-interrupted")),
     ).toBeVisible({ timeout: 12000 });
@@ -87,6 +91,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     expect(posts).toBe(1);
   } finally {
     await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.request.get("/fixture/pi-device-hold?value=off");
     await page.request.get("/fixture/pi-state?value=missing");
     await page.request.get("/fixture/scenario?value=ready");
   }
