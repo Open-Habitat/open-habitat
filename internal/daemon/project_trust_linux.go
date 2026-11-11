@@ -4,8 +4,10 @@ package daemon
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -23,7 +25,7 @@ import (
 // `--approve` outranks every saved decision, so a person's own explicit
 // "do not trust" saved in ~/.pi/agent/trust.json for the directory or the
 // nearest ancestor is honoured by leaving the flag out: Pi then applies that
-// saved decision itself.
+// saved decision itself. So is a store this read cannot judge.
 
 // maxTrustStore bounds the read of Pi's trust store.
 const maxTrustStore = 1 << 20
@@ -50,7 +52,7 @@ func projectTrustArgs(home, cwd string, held *os.File) []string {
 			return nil
 		}
 	}
-	if savedDistrust(home, dir) {
+	if leaveToPi(home, dir) {
 		return nil
 	}
 	return []string{"--approve"}
@@ -60,24 +62,28 @@ func belowDir(p, root string) bool {
 	return filepath.IsAbs(p) && filepath.Clean(p) == p && p != root && insidePath(p, root)
 }
 
-// savedDistrust reports whether the nearest decision Pi saved for dir or an
+// leaveToPi reports whether the nearest decision Pi saved for dir or an
 // ancestor is false, read the way Pi reads its store (canonical directory
-// keys, closest wins). An unreadable or malformed store is no decision: with
-// it, Pi's own read would fail, which `--approve` avoids.
-func savedDistrust(home, dir string) bool {
+// keys, closest wins), or whether the store exists but cannot be read here:
+// Pi rewrites it in place under its own lock, so a read can see a partial
+// file. Either way the flag stays out and Pi decides from its own read.
+func leaveToPi(home, dir string) bool {
 	f, err := os.Open(filepath.Join(home, ".pi", "agent", "trust.json"))
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) {
 		return false
+	}
+	if err != nil {
+		return true
 	}
 	defer f.Close()
 	b, err := io.ReadAll(io.LimitReader(f, maxTrustStore+1))
 	if err != nil || len(b) > maxTrustStore {
-		return false
+		return true
 	}
 	b = trimBOM(b)
 	var saved map[string]*bool
-	if json.Unmarshal(b, &saved) != nil {
-		return false
+	if json.Unmarshal(b, &saved) != nil || saved == nil {
+		return true
 	}
 	for p := dir; ; p = filepath.Dir(p) {
 		if v := saved[p]; v != nil {

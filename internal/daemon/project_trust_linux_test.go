@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -86,8 +87,7 @@ func TestProjectTrustBelowSourceOnly(t *testing.T) {
 
 // --approve outranks Pi's saved decisions, so the person's own saved false
 // for the directory or its nearest ancestor leaves the flag out and Pi
-// applies it. A closer true, a saved true, null and an unreadable store do
-// not.
+// applies it. A closer true, a saved true or a null entry do not.
 func TestProjectTrustHonoursSavedDistrust(t *testing.T) {
 	home := trustHome(t)
 	ws := filepath.Join(home, "src", "project")
@@ -105,10 +105,15 @@ func TestProjectTrustHonoursSavedDistrust(t *testing.T) {
 		{"saved true", `{"` + home + `": true}`, true},
 		{"other directory", `{"` + wt + `": false}`, true},
 		{"byte order mark", "\ufeff" + `{"` + ws + `": false}`, false},
-		{"malformed", `{"` + ws + `": "no"}`, true},
-		{"not an object", `[]`, true},
+		// A store that cannot be judged here, such as one Pi is rewriting,
+		// is left to Pi's own locked read.
+		{"malformed", `{"` + ws + `": "no"}`, false},
+		{"not an object", `[]`, false},
+		{"partial write", ``, false},
+		{"null", `null`, false},
+		{"oversized", `{"` + ws + `": false, "x": "` + strings.Repeat("x", maxTrustStore) + `"}`, false},
 	} {
-		if tc.store == "" {
+		if tc.name == "no store" {
 			_ = os.Remove(filepath.Join(home, ".pi", "agent", "trust.json"))
 		} else {
 			writeTrustStore(t, home, tc.store)

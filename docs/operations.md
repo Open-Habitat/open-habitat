@@ -679,7 +679,8 @@ default stands. Trust does not limit what the agent's tools can do, and the
 person's agent already runs code in these directories, so the prompt would
 protect little here. Nothing is written to `~/.pi/agent/trust.json`; a
 `false` the person saved there for the directory or its nearest ancestor is
-honoured by leaving the flag out. Taskfleet's Pi workers and `pi` in a Habitat
+honoured by leaving the flag out, as is a store the daemon cannot read, so
+that Pi decides from its own read. Taskfleet's Pi workers and `pi` in a Habitat
 terminal are interactive Pi and follow Pi's own trust prompt and saved
 decisions.
 
