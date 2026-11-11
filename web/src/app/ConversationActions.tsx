@@ -255,7 +255,13 @@ export function useConversationActions({
   ) => {
     try {
       ownWrites.begin(command);
-      setSendObservation({ text, state: "pending", command, kind: "send" });
+      setSendObservation({
+        text,
+        state: "pending",
+        command,
+        kind: "send",
+        supersedes: current?.command_id,
+      });
       onSent({ command, text, before: userKeys(entries) });
       setReceipt(txt.awaitingAck);
       await send(agent, text, command, token, choice);
@@ -280,7 +286,12 @@ export function useConversationActions({
         // command already; a reply lost after that (a host restart) does not
         // make a known outcome unknown again.
         sessionStorage.setItem(uncertainKey, command);
-        setSendObservation({ text, state: "uncertain", command });
+        setSendObservation({
+          text,
+          state: "uncertain",
+          command,
+          supersedes: current?.command_id,
+        });
         setReceipt(txt.sendError);
         void refresh();
       }

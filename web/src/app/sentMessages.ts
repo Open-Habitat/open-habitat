@@ -34,6 +34,9 @@ export type SendObservationValue = {
   state: "pending" | "accepted" | "rejected" | "uncertain";
   command?: string;
   kind?: "send" | "queue";
+  /** The command the status named when this direct send went: a status
+   * still naming it was read before the host took this send. */
+  supersedes?: string;
 };
 
 /** A direct send this tab made, drawn until Pi's own message replaces it. */

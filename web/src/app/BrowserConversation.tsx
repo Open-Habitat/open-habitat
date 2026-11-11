@@ -1153,12 +1153,13 @@ function BrowserConversationContent({
       };
     // The daemon's own classification, before or without a saved reply.
     if (current?.auth_error !== "pi_auth_failed") return undefined;
-    // A status read before this tab's newer send was taken still reports
-    // the turn before it; that send's own message is not the refused one.
+    // A status that still names the command this tab's newer send replaced
+    // was read before the host took that send; the send's own message is
+    // not the refused one. A refusal of any later command still counts.
     if (
-      sendObservation?.command &&
+      sendObservation?.supersedes &&
+      sendObservation.supersedes === current.command_id &&
       sendObservation.command !== current.command_id &&
-      sendObservation.kind !== "queue" &&
       sendObservation.state !== "rejected"
     )
       return undefined;
