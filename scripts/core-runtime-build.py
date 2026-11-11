@@ -32,7 +32,8 @@ def digest(p):
 # other provider's has (Jari, 2026-11-10). Claude Code's own WebSearch and
 # WebFetch run inside the bridge's query on the person's subscription; the
 # bridge already leaves tool calls it does not serve to Claude Code. Upstream
-# (0.11.0) has no option for it. The patch must apply exactly once, so a pin
+# (0.12.0) has no option for it; elidickinson/pi-claude-bridge#261 proposes
+# `provider.builtinTools`. The patch must apply exactly once, so a pin
 # bump that moves the code fails the build instead of shipping unpatched.
 BRIDGE_PATCH = (
     'pi-claude-bridge/src/index.ts',

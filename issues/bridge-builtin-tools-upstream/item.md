@@ -3,7 +3,7 @@ created: 2026-11-11
 updated: 2026-11-11
 type: task
 reporter: jari
-status: open
+status: testing
 priority: normal
 related: ['@web-search-native']
 preparation: ready

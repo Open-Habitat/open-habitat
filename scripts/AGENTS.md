@@ -131,6 +131,17 @@ not prove systemd lifecycle, Chromium interaction, real OAuth/provider, or a
 live host. The tested revision and limits belong in the result of the issue
 that runs it.
 
+## Carried patches
+
+`core-runtime-build.py` patches pi-claude-bridge at build time (`BRIDGE_PATCH`)
+so Claude Code may run its WebSearch and WebFetch on the provider path. Every
+bridge version bump re-applies it, and the build fails unless it applies
+exactly once, so a moved line stops the build instead of shipping without web
+search. Once upstream releases its `provider.builtinTools` setting, the patch
+gives way to that setting. The setting lives in the person's own
+`claude-bridge.json`, which the product does not write today, so that change
+also decides how the runtime supplies it.
+
 ## The rest
 
 `bootstrap-tools.sh` fetches a checksum-pinned Go into `.tools/` and prints the
