@@ -45,6 +45,38 @@ it("warms up briefly, transfers immediately, and dismisses with Escape", () => {
   tick(0);
   expect(screen.queryByRole("tooltip")).toBeNull();
 });
+it("does not bring back help that closed while the next one replaced it", () => {
+  vi.useFakeTimers();
+  render(
+    <>
+      <ControlButton size="row" aria-label="First" data-testid="first">
+        ×
+      </ControlButton>
+      <ControlButton size="row" aria-label="Second" data-testid="second">
+        +
+      </ControlButton>
+    </>,
+  );
+  const first = screen.getByTestId("first");
+  fireEvent.pointerMove(document.body, { pointerType: "mouse" });
+  fireEvent.pointerEnter(first, { pointerType: "mouse" });
+  tick(250);
+  expect(screen.getByRole("tooltip").textContent).toBe("First");
+  // A slow page renders the press that closes the first help and the
+  // warmed-up second help in one batch.
+  act(() => {
+    fireEvent.pointerDown(first, { pointerType: "mouse" });
+    fireEvent.pointerLeave(first, { pointerType: "mouse" });
+    fireEvent.pointerEnter(screen.getByTestId("second"), {
+      pointerType: "mouse",
+    });
+  });
+  expect(screen.getByRole("tooltip").textContent).toBe("Second");
+  first.focus();
+  fireEvent.keyDown(first, { key: "Escape" });
+  tick(0);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+});
 it("lets Escape in a focused field through while hover help is open", () => {
   vi.useFakeTimers();
   const stop = vi.fn();
