@@ -23,25 +23,26 @@ install|remove|uninstall|update|list|config|auth|mcp) ;;
 	# Pi's own trust choice on the command line stands. --session and
 	# --resume can open a session whose directory is elsewhere, and Pi
 	# applies --approve to that directory, so they keep Pi's default too.
-	# Words are matched exactly as Pi 1.3.0's parser does, up to `--`; a flag
-	# value that happens to equal one of them only leaves the flag out.
+	# Words are matched exactly as Pi 1.3.0's parser does, in every
+	# position: Pi takes a `--` after a value flag as that value, so it
+	# ends nothing here. A message or value that equals one of them only
+	# leaves the flag out.
 	approve=yes
 	for arg in "$@"; do
 		case $arg in
-		--) break ;;
 		--approve|-a|--no-approve|-na|--session|--resume|-r) approve= ;;
 		esac
 	done
 	# Pi's process cwd is canonical, as Pi's trust keys are. The store is
-	# where Pi reads it: PI_CODING_AGENT_DIR (with Pi's ~ expansion) or
+	# where Pi reads it: PI_CODING_AGENT_DIR (with Pi's ~ and file:// forms) or
 	# ~/.pi/agent. Exit status 0 means the flag applies; any error leaves it out.
 	if [ -n "$approve" ] && "$node" -e '
-const fs = require("fs"), os = require("os"), path = require("path");
+const fs = require("fs"), os = require("os"), path = require("path"), url = require("url");
 try {
 	const home = os.homedir();
 	if (!path.isAbsolute(home)) process.exit(1);
 	const env = process.env.PI_CODING_AGENT_DIR;
-	const agent = !env ? path.join(home, ".pi", "agent") : env === "~" ? home : env.startsWith("~/") ? path.join(home, env.slice(2)) : env;
+	const agent = !env ? path.join(home, ".pi", "agent") : env === "~" ? home : env.startsWith("~/") ? path.join(home, env.slice(2)) : /^file:\/\//.test(env) ? url.fileURLToPath(env) : env;
 	const src = fs.realpathSync(path.join(home, "src"));
 	const dir = process.cwd();
 	if (!dir.startsWith(src + "/")) process.exit(1);

@@ -306,7 +306,7 @@ func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(custom, "trust.json"), []byte(`{"`+ws+`": false}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, dir := range []string{custom, "~/custom-agent"} {
+	for _, dir := range []string{custom, "~/custom-agent", "file://" + custom} {
 		if approved(launcherArgs(t, launcher, home, ws, []string{"PI_CODING_AGENT_DIR=" + dir})) {
 			t.Errorf("saved false in PI_CODING_AGENT_DIR=%s was overridden", dir)
 		}
@@ -323,7 +323,9 @@ func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
 		{[]string{"--session", "other.jsonl"}, []string{"--session", "other.jsonl"}},
 		{[]string{"--resume"}, []string{"--resume"}},
 		{[]string{"-r"}, []string{"-r"}},
-		{[]string{"--", "-a"}, []string{"--approve", "--", "-a"}},
+		// Pi reads this `--` as the prompt and still opens the session.
+		{[]string{"--system-prompt", "--", "--session", "other.jsonl"}, []string{"--system-prompt", "--", "--session", "other.jsonl"}},
+		{[]string{"--", "hello"}, []string{"--approve", "--", "hello"}},
 		{[]string{"list"}, []string{"list"}},
 	} {
 		if got := launcherArgs(t, launcher, home, ws, nil, tc.args...); !slices.Equal(got, tc.want) {
