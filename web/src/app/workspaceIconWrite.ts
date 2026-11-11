@@ -3,14 +3,17 @@ import { liveText } from "../i18n";
 import { workspaceIconWriteText } from "../text/workspaceIconWrite";
 import { writeOutcome } from "./mutations";
 import type { Workspace } from "./snapshot";
+import type { HostChange } from "./store";
 import { iconSetting } from "./workspaceIcons";
 import { readWorkspaceResult, sendWorkspace } from "./workspaceWrites";
 
 // The workspace page's icon write (workspace-icons, experimental; Otsikko,
 // Jari 2026-10-30): a choice is written to the repository's
 // .open-habitat.yaml and committed at once, without asking. The page shows
-// the choice while the host works and until the next snapshot carries it,
-// then says what was written and committed, with an undo when there was an
+// the choice while the host works; the confirmed choice goes into the host
+// model at once, so the rail shows it too without waiting for a snapshot
+// (Jari 11.11.2026: the rail's icon came "really slowly"). The page then
+// says what was written and committed, with an undo when there was an
 // icon line to go back to (Jari 2026-10-31: a silent commit left him
 // wondering whether anything was saved). A refusal is told in the page.
 
@@ -36,6 +39,7 @@ export function useWorkspaceIconWrite({
   csrf,
   refresh,
   reread,
+  onChanged,
   onLogin,
 }: {
   workspace: Workspace;
@@ -43,6 +47,8 @@ export function useWorkspaceIconWrite({
   refresh: () => void;
   /** Reads the page's Git status again: the commit changed it. */
   reread: () => void;
+  /** Applies a confirmed choice to the host model. */
+  onChanged?: (change: HostChange) => void;
   onLogin?: () => void;
 }) {
   const [choice, setChoice] = useState<Choice>();
@@ -87,6 +93,12 @@ export function useWorkspaceIconWrite({
     if (outcome.kind === "ok") {
       try {
         const result = await readWorkspaceResult(outcome.response, commandId);
+        onChanged?.({
+          kind: "icon",
+          workspace_id: workspace.workspace_id,
+          icon: value,
+          cursor: result.event_cursor,
+        });
         setWritten({
           value,
           commit: result.icon_commit ?? "",

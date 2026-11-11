@@ -75,7 +75,7 @@
           "$ref": "#/$defs/workspaceChange"
         },
         "icon_commit": {
-          "description": "An icon write's outcome in Git: committed (a commit of .open-habitat.yaml alone, not pushed), unchanged (the config already said it), not_git (a plain directory: only the file), uncommitted (the config had other changes, so the written file is left for the person), commit_failed (Git refused; the file is written). The new icon comes in the next snapshot.",
+          "description": "An icon write's outcome in Git: committed (a commit of .open-habitat.yaml alone, not pushed), unchanged (the config already said it), not_git (a plain directory: only the file), uncommitted (the config had other changes, so the written file is left for the person), commit_failed (Git refused; the file is written). Snapshots read after event_cursor carry the new icon.",
           "enum": [
             "committed",
             "unchanged",
@@ -85,7 +85,7 @@
           ]
         },
         "event_cursor": {
-          "description": "The journal position of the workspace.changed event this write published. A snapshot whose event_cursor has passed it already contains the change.",
+          "description": "The journal position of the workspace.changed event this write published, or of the snapshot invalidation an icon write published. A snapshot whose event_cursor has passed it already contains the change.",
           "$ref": "common.schema.json#/$defs/cursor"
         }
       }

@@ -34,6 +34,7 @@ import type { PendingPhase } from "./mutations";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { settingsHref } from "./settingsRoute";
 import type { Workspace } from "./snapshot";
+import type { HostChange } from "./store";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { WorkspaceLanding } from "./WorkspaceLanding";
@@ -132,6 +133,7 @@ export function WorkspacePage({
   refresh,
   onDeleted,
   icon,
+  onIconChanged,
   onLogin,
   ownerConversation,
   onRestoreConversation,
@@ -169,6 +171,8 @@ export function WorkspacePage({
   /** The workspace's icon, while the experimental workspace icons are on:
    * the heading shows it and it opens the icon picker. */
   icon?: WorkspaceIconModel;
+  /** A confirmed icon choice, for the host model the rail reads. */
+  onIconChanged?: (change: HostChange) => void;
   onLogin?: () => void;
   /** The conversation that started a worktree's run, archived or not. */
   ownerConversation?: (id: string) => OwnerConversation | undefined;
@@ -218,6 +222,7 @@ export function WorkspacePage({
     csrf,
     refresh,
     reread: gitStatus.details.onReread,
+    onChanged: onIconChanged,
     onLogin,
   });
   const source = iconSourceLine(workspace);

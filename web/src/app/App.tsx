@@ -2365,6 +2365,7 @@ export function App() {
           return agent ? changeArchive(agent, false) : Promise.resolve(false);
         }}
         icon={icons?.get(ws.workspace_id)}
+        onIconChanged={(change) => dispatch(hostChanged(change))}
         onLogin={requireLogin}
         refresh={refresh}
         onDeleted={(outcome) => {

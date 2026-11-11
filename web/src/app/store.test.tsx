@@ -133,6 +133,61 @@ describe("host changes from replies and events (ADR 0023)", () => {
       "Before",
     );
   });
+  it("shows a confirmed icon choice as the daemon will read it, over an older snapshot", () => {
+    const logo = { path: "logo.svg", version: "v1" };
+    const resting = () => {
+      const s = snap(`ev1:${instance}:5`, "visible");
+      Object.assign(s.workspaces[0], {
+        icon: { kind: "emoji", source: "config", value: "🦊" },
+        icon_logo: logo,
+      });
+      return s;
+    };
+    const icon = () => store.getState().connection.snapshot?.workspaces[0];
+    const choose = (value: string, sequence: number) =>
+      store.dispatch(
+        hostChanged({
+          kind: "icon",
+          workspace_id: "ws_aaaaaaaaaa",
+          icon: value,
+          cursor: `ev1:${instance}:${sequence}`,
+        }),
+      );
+    store.dispatch(clearIdentity());
+    store.dispatch(authenticated(resting()));
+    choose("🚀", 7);
+    expect(icon()?.icon).toEqual({
+      kind: "emoji",
+      source: "config",
+      value: "🚀",
+    });
+    // A read that started before the write arrives late.
+    store.dispatch(authenticated(resting()));
+    expect(icon()?.icon).toMatchObject({ value: "🚀" });
+    // Letters are upper case in the daemon's reading.
+    choose("äk", 8);
+    expect(icon()?.icon).toEqual({
+      kind: "letters",
+      source: "config",
+      value: "ÄK",
+    });
+    // auto drops the config's link: the logo, as the chain finds it.
+    choose("auto", 9);
+    expect(icon()).toMatchObject({
+      icon_auto: true,
+      icon: { kind: "image", source: "logo", ...logo },
+    });
+    choose("logo.svg", 10);
+    expect(icon()?.icon_auto).toBeUndefined();
+    expect(icon()?.icon).toEqual({ kind: "image", source: "config", ...logo });
+    // Another image's version is unknown here: the snapshot shows it.
+    choose("docs/other.png", 11);
+    expect(icon()?.icon).toEqual({ kind: "image", source: "config", ...logo });
+    store.dispatch(
+      authenticated({ ...resting(), event_cursor: `ev1:${instance}:12` }),
+    );
+    expect(icon()?.icon).toMatchObject({ value: "🦊" });
+  });
   it("drops changes from a previous daemon instance and a previous person", () => {
     store.dispatch(clearIdentity());
     store.dispatch(authenticated(snap(`ev1:${instance}:5`, "visible")));

@@ -150,6 +150,11 @@ func TestWorkspaceIconWriteCommitsOnlyTheConfig(t *testing.T) {
 	if code != 200 || out["icon_commit"] != iconCommitted || controller.journal.seq == before {
 		t.Fatalf("set: %d %v", code, out)
 	}
+	// The reply names the invalidation, so the writing tab can hold the
+	// choice over a snapshot read before it.
+	if out["event_cursor"] != controller.journal.cursor(controller.journal.seq) {
+		t.Fatalf("cursor: %v, journal at %d", out["event_cursor"], controller.journal.seq)
+	}
 	if got := iconGitFixture(t, cfg.Home, repo, "show", "--name-only", "--format=%s", "HEAD"); got != "Työtilan kuvake: 🦔 (open-habitat)\n\n.open-habitat.yaml\n" {
 		t.Fatalf("commit: %q", got)
 	}
@@ -159,7 +164,7 @@ func TestWorkspaceIconWriteCommitsOnlyTheConfig(t *testing.T) {
 	if got := icon("repo"); got.Kind != "emoji" || got.Value != "🦔" || got.LogoPath != "design-system/favicon.svg" {
 		t.Fatalf("icon: %+v", got)
 	}
-	if code, out = set("repo", "🦔"); code != 200 || out["icon_commit"] != iconUnchanged {
+	if code, out = set("repo", "🦔"); code != 200 || out["icon_commit"] != iconUnchanged || out["event_cursor"] != nil {
 		t.Fatalf("same again: %d %v", code, out)
 	}
 	if code, out = set("repo", "auto"); code != 200 || out["icon_commit"] != iconCommitted {

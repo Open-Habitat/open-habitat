@@ -8,7 +8,7 @@ import { expect, test } from "./lab-host";
 // proto-workspace-icon-setting's Otsikko) through the real gateway, daemon
 // and lab repositories: the heading's icon opens the picker, a choice is
 // written to .open-habitat.yaml and committed alone and silently, and the
-// rail follows from the next snapshot. A directory without Git gets the file.
+// rail follows from the reply. A directory without Git gets the file.
 
 const capture = process.env.OH_WORKSPACE_ICONS_CAPTURE;
 async function shot(page: Page, name: string) {
@@ -84,7 +84,17 @@ test("@workspace-icons the heading's icon sets the workspace icon and commits on
   const before = await git(page, id);
   expect(before.files.length).toBeGreaterThan(0);
 
-  // An emoji from the grid: on the page at once, no announcement.
+  // An emoji from the grid: on the page at once, no announcement, and in
+  // the rail from the write's reply while no snapshot arrives (Jari
+  // 11.11.2026: through the live route the next snapshot took seconds).
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/snapshot", async (route) => {
+    await held;
+    await route.continue().catch(() => {});
+  });
   await picker.click();
   const dialog = page
     .getByRole("dialog")
@@ -104,6 +114,8 @@ test("@workspace-icons the heading's icon sets the workspace icon and commits on
   await expect(head).toHaveText(emoji);
   await expect(railIcon(page, "aurinkokello")).toHaveText(emoji);
   await expect(page.getByTestId("workspace-icon-note")).toHaveCount(0);
+  release();
+  await page.unroute("**/api/v1/snapshot");
   // One new commit holding only the config; the agent's work is untouched.
   await expect
     .poll(async () => (await git(page, id)).commits[0]?.hash)

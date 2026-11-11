@@ -439,9 +439,14 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		}
 		if commit != "" {
 			reply["icon_commit"] = commit
-			// Every tab, this one too, reads the new icon from the next snapshot.
+			// Other tabs read the new icon from the next snapshot. This one
+			// shows it at once and keeps it until a snapshot has passed the
+			// invalidation's cursor, so an older read still on its way does
+			// not put the previous icon back.
 			if controller != nil && controller.journal != nil && commit != iconUnchanged {
-				controller.journal.appendInvalidation("")
+				if cursor := controller.journal.appendInvalidation(""); cursor != "" {
+					reply["event_cursor"] = cursor
+				}
 			}
 		}
 		if changeKnown && (in.Action == "settings" || in.Action == "visibility") {

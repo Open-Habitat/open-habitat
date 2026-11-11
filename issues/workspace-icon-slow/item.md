@@ -3,12 +3,14 @@ created: 2026-11-11
 updated: 2026-11-11
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-11/icon-slow
 lane: unlaned
 preparation: ready
+closed: 2026-11-11
+closed_by: claude
 ---
 
 # Workspace icon appears slowly after choosing it
@@ -31,3 +33,9 @@ Selvitettävä: mikä osuus hitaudesta oli kuvake-ehdotusten mallikutsu (6 s, en
 kuin mitään näytetään?), mikä commitin/`.open-habitat.yaml`:n kirjoitus ja mikä se,
 että kiskon kuvake päivittyy vasta seuraavasta snapshotista/discoverysta.
 Odotettu: valittu kuvake näkyy kiskossa heti valinnan jälkeen.
+
+## Resolution
+
+### 2026-11-11T08:18:00Z · @claude
+
+Vahvistettu kuvakevalinta menee heti isäntämalliin journaalikohdan kanssa; ks. result.md.
