@@ -2,7 +2,7 @@
 created: 2026-11-11
 updated: 2026-11-11
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by worker while implementing pi-project-trust-in-browser
@@ -12,6 +12,12 @@ originating_run_kind: spinoff
 lane: project-trust
 lane_seq: 2
 preparation: ready
+closed: 2026-11-11
+commits:
+- hash: 85c2b814c
+  summary: launcher applies the daemon's ~/src trust rule
+- hash: 15d6a7386
+  summary: review fixes (-- scan, file:// agent dir)
 ---
 
 # Taskfleet Pi workers in ~/src repositories with project skills stop at Pi's trust prompt
