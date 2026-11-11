@@ -162,3 +162,44 @@ export async function readHistory(
   if (!validate(value)) throw new Error("invalid history");
   return value as HistoryPage | BlockChunk;
 }
+
+/** A native block's whole text, read in bounded chunks of one revision. */
+export async function fullTextBlock(
+  agentId: string,
+  revision: string,
+  entryKey: string,
+  index: number,
+  signal: AbortSignal,
+): Promise<string> {
+  let offset = 0,
+    text = "";
+  for (;;) {
+    const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
+    const value = await readHistory(
+      await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal,
+      }),
+    );
+    if (
+      !("chunk" in value) ||
+      value.agent_id !== agentId ||
+      value.native_revision !== revision ||
+      value.entry_key !== entryKey ||
+      value.block_index !== index ||
+      value.offset !== offset ||
+      value.chunk.media_type !== "text/plain"
+    )
+      throw new Error("invalid block");
+    text += value.chunk.text ?? "";
+    if (text.length > 64 * 1024 * 1024) throw new Error("oversize block");
+    if (value.chunk.complete) return text;
+    if (
+      value.chunk.next_offset === undefined ||
+      value.chunk.next_offset <= offset
+    )
+      throw new Error("invalid block");
+    offset = value.chunk.next_offset;
+  }
+}

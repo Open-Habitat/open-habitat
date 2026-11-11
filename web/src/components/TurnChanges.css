@@ -1,0 +1,440 @@
+/* Muutokset under a finished turn's reply (TurnChanges.tsx). */
+/* Where the card will be while its calls are read: no row, no gap. */
+.ah-tc-sentinel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.ah-turn-changes {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ah-tc-head {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.ah-turn-changes[data-open] > .ah-tc-head {
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-tc-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--ah-s2);
+  min-height: 36px;
+  padding: 6px var(--ah-s3);
+  border: 0;
+  background: none;
+  color: var(--ah-ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.ah-tc-toggle > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ah-ink-2);
+}
+.ah-tc-toggle > .ah-disclosure-chevron {
+  color: var(--ah-muted);
+}
+.ah-tc-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-tc-title {
+  font-size: var(--ah-size-ui);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ah-tc-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--ah-s2);
+  min-width: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  white-space: nowrap;
+}
+.ah-tc-timeline-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--ah-s3);
+  border: 0;
+  border-left: 1px solid var(--ah-line-soft);
+  background: none;
+  color: var(--ah-ink-2);
+  font: 500 var(--ah-size-meta) var(--ah-font);
+  cursor: pointer;
+}
+.ah-tc-timeline-button svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-tc-timeline-button[aria-pressed="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-ink);
+}
+:is(.ah-tc-toggle, .ah-tc-timeline-button, .ah-tc-file, .ah-tc-name):hover {
+  background: var(--ah-hover);
+}
+:is(
+  .ah-tc-toggle,
+  .ah-tc-timeline-button,
+  .ah-tc-file,
+  .ah-tc-name
+):focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: calc(-1 * var(--ah-focus-width));
+}
+
+/* Shared pieces */
+.ah-tc-counts {
+  display: inline-flex;
+  gap: 6px;
+  font: var(--ah-size-meta) / 1 var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ah-tc-add {
+  color: var(--ah-ok);
+}
+.ah-tc-del {
+  color: var(--ah-err);
+}
+.ah-tc-path {
+  display: inline-flex;
+  min-width: 0;
+  font: var(--ah-size-code) / 1.4 var(--ah-mono);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ah-tc-dir {
+  flex: 0 1 auto;
+  min-width: 2ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-muted);
+}
+.ah-tc-base {
+  flex: none;
+  color: var(--ah-ink);
+}
+.ah-tc-meta .ah-tc-path {
+  min-width: 0;
+}
+.ah-tc-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.ah-tc-tag {
+  padding: 0 6px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: 11px;
+  line-height: 17px;
+  white-space: nowrap;
+}
+.ah-tc-tag[data-tag="deleted"] {
+  border-color: color-mix(in srgb, var(--ah-err) 40%, var(--ah-line));
+  background: var(--ah-err-soft);
+  color: var(--ah-err);
+}
+.ah-tc-tag-plain {
+  font-size: 11px;
+  color: var(--ah-muted);
+  white-space: nowrap;
+}
+.ah-tc-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s2);
+  margin: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+}
+.ah-tc-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+}
+.ah-tc-note code {
+  font: var(--ah-size-meta) / 1.4 var(--ah-mono);
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+}
+.ah-tc-diff {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+  padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+}
+.ah-tc-diff :is(.ah-file-diff-box, .ah-output-box) {
+  max-height: 520px;
+  overflow: auto;
+}
+.ah-tc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ah-s2);
+}
+
+/* The list */
+.ah-tc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-tc-list > li + li {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-tc-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ah-s2);
+  width: 100%;
+  min-height: 36px;
+  padding: 4px var(--ah-s3);
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* The timeline */
+.ah-tc-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 38%) minmax(0, 1fr);
+  column-gap: var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.ah-tc-axis,
+.ah-tc-row {
+  display: contents;
+}
+.ah-tc-track {
+  position: relative;
+  min-height: 30px;
+}
+.ah-tc-row > .ah-tc-track {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-tc-row > .ah-tc-track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed var(--ah-line);
+}
+.ah-tc-scale {
+  min-height: 34px;
+  margin-inline: 8px;
+}
+.ah-tc-stage {
+  position: absolute;
+  top: 2px;
+  height: 16px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  overflow: hidden;
+  border-left: 1px solid var(--ah-line-strong);
+  color: var(--ah-ink-2);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ah-tc-tick {
+  position: absolute;
+  bottom: 0;
+  color: var(--ah-muted);
+  font: 11px / 14px var(--ah-mono);
+}
+.ah-tc-tick-end {
+  transform: translateX(-100%);
+}
+.ah-tc-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+  min-width: 0;
+  padding: 0 var(--ah-s1);
+  border: 0;
+  border-top: 1px solid var(--ah-line-soft);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.ah-tc-name[aria-pressed="true"] {
+  background: var(--ah-accent-soft);
+}
+.ah-tc-row > .ah-tc-track {
+  margin-inline: 8px;
+}
+.ah-tc-interim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--ah-line-strong);
+}
+.ah-tc-mark {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  padding: 0;
+  border: 2px solid var(--ah-accent);
+  border-radius: 50%;
+  background: var(--ah-surface);
+  cursor: pointer;
+}
+/* A command's effect is a square: no tool card shows its diff. */
+.ah-tc-mark[data-tool="bash"] {
+  border-radius: 3px;
+  border-color: var(--ah-ink-2);
+}
+.ah-tc-mark[data-change="deleted"] {
+  border-color: var(--ah-err);
+}
+.ah-tc-mark[aria-pressed="true"] {
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+.ah-tc-mark[data-tool="bash"][aria-pressed="true"] {
+  background: var(--ah-ink-2);
+}
+.ah-tc-mark:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 1px;
+}
+.ah-tc-detail {
+  grid-column: 1 / -1;
+  margin: 0 0 var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-bg);
+}
+.ah-tc-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3) 0;
+}
+.ah-tc-detail > :is(.ah-file-diff-box, .ah-output-box) {
+  margin: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+}
+.ah-tc-segment {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  overflow: hidden;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.ah-tc-segment button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 0;
+  border-right: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-meta) / 1.4 var(--ah-font);
+  cursor: pointer;
+}
+.ah-tc-segment button:last-child {
+  border-right: 0;
+}
+.ah-tc-segment button[aria-pressed="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ah-tc-segment button:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-tc-what {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+
+@media (max-width: 800px) {
+  /* A phone: the timeline button keeps only its icon, a row's tags go
+     under its path and a file's path above its track. */
+  .ah-tc-toggle {
+    padding-inline: var(--ah-s2);
+  }
+  .ah-tc-timeline-button {
+    padding: 0 var(--ah-s3);
+  }
+  .ah-tc-timeline-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ah-tc-file {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    row-gap: 2px;
+    padding-inline: var(--ah-s2);
+  }
+  .ah-tc-file .ah-tc-tags {
+    grid-column: 2 / 3;
+    grid-row: 2;
+  }
+  .ah-tc-file .ah-tc-counts {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .ah-tc-diff {
+    padding-inline: var(--ah-s2);
+  }
+  .ah-tc-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: var(--ah-s2);
+  }
+  .ah-tc-axis > span:first-child {
+    display: none;
+  }
+  .ah-tc-name {
+    min-height: 28px;
+  }
+  .ah-tc-row > .ah-tc-track {
+    border-top: 0;
+  }
+}

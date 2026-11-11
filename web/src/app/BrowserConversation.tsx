@@ -185,6 +185,7 @@ import { useSentMessages, shownQueue as withSentQueue } from "./sentMessages";
 import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
+import { TurnChangesRoot } from "./TurnChangesSource";
 import { useTurnIdentity } from "./turnIdentity";
 import { useConversation } from "./useConversation";
 import {
@@ -2774,264 +2775,266 @@ function BrowserConversationContent({
                   {txt.cutOffDetail}
                 </WarningBanner>
               )}
-              <ConversationTimeline
-                suppressProblem
-                problem={{
-                  title: txt.historyUnavailable,
-                  description: txt.historyUnavailableDetail,
-                }}
-                emptyLabel={
-                  controlled ? (
-                    <StartPageRead
-                      key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
-                      workspaceId={runWorkspace}
-                      agentId={current?.agent_id}
-                      store={store}
-                      draft={draft}
-                      onChange={changeDraft}
-                      onPage={(read) =>
-                        setStartPage({ key: pageKey, page: read })
-                      }
-                      onStarted={(started, title, prepared) => {
-                        // A goal names the conversation it starts, until the
-                        // person renames it.
-                        const name = goalConversationName(started);
-                        if (current?.agent_id && csrf && name)
-                          void renameConversation(
-                            current.agent_id,
-                            workspace.workspace_id,
-                            name,
-                            csrf,
-                          ).catch(() => {
-                            /* The automatic title then stands. */
+              <TurnChangesRoot.Provider value={workspace.path}>
+                <ConversationTimeline
+                  suppressProblem
+                  problem={{
+                    title: txt.historyUnavailable,
+                    description: txt.historyUnavailableDetail,
+                  }}
+                  emptyLabel={
+                    controlled ? (
+                      <StartPageRead
+                        key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
+                        workspaceId={runWorkspace}
+                        agentId={current?.agent_id}
+                        store={store}
+                        draft={draft}
+                        onChange={changeDraft}
+                        onPage={(read) =>
+                          setStartPage({ key: pageKey, page: read })
+                        }
+                        onStarted={(started, title, prepared) => {
+                          // A goal names the conversation it starts, until the
+                          // person renames it.
+                          const name = goalConversationName(started);
+                          if (current?.agent_id && csrf && name)
+                            void renameConversation(
+                              current.agent_id,
+                              workspace.workspace_id,
+                              name,
+                              csrf,
+                            ).catch(() => {
+                              /* The automatic title then stands. */
+                            });
+                          if (!guide) return;
+                          prepareField(guide, {
+                            text: prepared.text,
+                            start: prepared.selectionStart,
+                            end: prepared.selectionEnd,
                           });
-                        if (!guide) return;
-                        prepareField(guide, {
-                          text: prepared.text,
-                          start: prepared.selectionStart,
-                          end: prepared.selectionEnd,
-                        });
-                        setGuide(guide, {
-                          goal: started,
-                          page: title,
-                          open: guideOpensItself(),
-                        });
-                      }}
-                    />
-                  ) : undefined
-                }
-                state={
-                  visibleHistoryError
-                    ? entries.length
-                      ? "stale"
-                      : "error"
-                    : // A live turn ends the start page even before its
-                      // native history is read; otherwise the intro would stay
-                      // above it and keep the view from following the work.
-                      entries.length ||
-                        held.waiting.length ||
-                        keptItems.length ||
-                        liveRow ||
-                        ownMessage
-                      ? "ready"
-                      : "empty"
-                }
-                items={[
-                  ...timeline,
-                  ...(restCard
-                    ? [
-                        {
-                          id: "rest-card",
-                          kind: "receipt",
-                          content: restCard,
-                        },
-                      ]
-                    : []),
-                  ...(ownMessage
-                    ? [
-                        {
-                          id: `sent:${ownMessage.command}`,
-                          kind: "user",
-                          content: (
-                            <UserMessage
-                              delivery={
-                                ownMessage.pending ? "pending" : "accepted"
-                              }
-                              sourceText={ownMessage.text}
-                              deliveryState={
-                                ownMessage.pending ? txt.sending : undefined
-                              }
-                              onCopy={() =>
-                                void navigator.clipboard?.writeText(
-                                  ownMessage.text,
-                                )
-                              }
-                            />
-                          ),
-                        },
-                      ]
-                    : sendObservation &&
-                        // The bubble or the queue card shows a message on its
-                        // way; a reload knows only that one is. An unknown
-                        // outcome is the one warning above the composer, and
-                        // its text is back in the field.
-                        sendObservation.state !== "uncertain" &&
-                        !(
-                          sendObservation.kind &&
-                          sendObservation.state === "pending"
-                        )
+                          setGuide(guide, {
+                            goal: started,
+                            page: title,
+                            open: guideOpensItself(),
+                          });
+                        }}
+                      />
+                    ) : undefined
+                  }
+                  state={
+                    visibleHistoryError
+                      ? entries.length
+                        ? "stale"
+                        : "error"
+                      : // A live turn ends the start page even before its
+                        // native history is read; otherwise the intro would stay
+                        // above it and keep the view from following the work.
+                        entries.length ||
+                          held.waiting.length ||
+                          keptItems.length ||
+                          liveRow ||
+                          ownMessage
+                        ? "ready"
+                        : "empty"
+                  }
+                  items={[
+                    ...timeline,
+                    ...(restCard
                       ? [
                           {
-                            id: "send-observation",
+                            id: "rest-card",
                             kind: "receipt",
+                            content: restCard,
+                          },
+                        ]
+                      : []),
+                    ...(ownMessage
+                      ? [
+                          {
+                            id: `sent:${ownMessage.command}`,
+                            kind: "user",
                             content: (
-                              <SendObservation
-                                text={sendObservation.text}
-                                state={sendObservation.state}
-                                showText
+                              <UserMessage
+                                delivery={
+                                  ownMessage.pending ? "pending" : "accepted"
+                                }
+                                sourceText={ownMessage.text}
+                                deliveryState={
+                                  ownMessage.pending ? txt.sending : undefined
+                                }
                                 onCopy={() =>
                                   void navigator.clipboard?.writeText(
-                                    sendObservation.text,
+                                    ownMessage.text,
                                   )
                                 }
                               />
                             ),
                           },
                         ]
+                      : sendObservation &&
+                          // The bubble or the queue card shows a message on its
+                          // way; a reload knows only that one is. An unknown
+                          // outcome is the one warning above the composer, and
+                          // its text is back in the field.
+                          sendObservation.state !== "uncertain" &&
+                          !(
+                            sendObservation.kind &&
+                            sendObservation.state === "pending"
+                          )
+                        ? [
+                            {
+                              id: "send-observation",
+                              kind: "receipt",
+                              content: (
+                                <SendObservation
+                                  text={sendObservation.text}
+                                  state={sendObservation.state}
+                                  showText
+                                  onCopy={() =>
+                                    void navigator.clipboard?.writeText(
+                                      sendObservation.text,
+                                    )
+                                  }
+                                />
+                              ),
+                            },
+                          ]
+                        : []),
+                    ...held.waiting.map((w) => ({
+                      id: `held:${w.command_id}`,
+                      kind: "user",
+                      content: (
+                        <WaitingMessage
+                          text={w.text}
+                          state={w.state}
+                          onCopy={() =>
+                            void navigator.clipboard?.writeText(w.text)
+                          }
+                        />
+                      ),
+                    })),
+                    ...keptItems.map((k) => ({
+                      id: `kept:${k.id}`,
+                      kind: "user",
+                      content: (
+                        <WaitingMessage
+                          text={k.text}
+                          state="waiting"
+                          onCopy={() =>
+                            void navigator.clipboard?.writeText(k.text)
+                          }
+                        />
+                      ),
+                    })),
+                    ...(startFailed
+                      ? [
+                          {
+                            id: "held-start-failure",
+                            kind: "receipt",
+                            content: (
+                              <HeldStartFailure
+                                count={held.waiting.length}
+                                reason={startProblemReason(
+                                  current?.start_problem,
+                                )}
+                                onRetry={() => void held.retry()}
+                                onEdit={() => void held.cancel()}
+                              />
+                            ),
+                          },
+                        ]
                       : []),
-                  ...held.waiting.map((w) => ({
-                    id: `held:${w.command_id}`,
-                    kind: "user",
-                    content: (
-                      <WaitingMessage
-                        text={w.text}
-                        state={w.state}
-                        onCopy={() =>
-                          void navigator.clipboard?.writeText(w.text)
-                        }
-                      />
-                    ),
-                  })),
-                  ...keptItems.map((k) => ({
-                    id: `kept:${k.id}`,
-                    kind: "user",
-                    content: (
-                      <WaitingMessage
-                        text={k.text}
-                        state="waiting"
-                        onCopy={() =>
-                          void navigator.clipboard?.writeText(k.text)
-                        }
-                      />
-                    ),
-                  })),
-                  ...(startFailed
-                    ? [
-                        {
-                          id: "held-start-failure",
-                          kind: "receipt",
-                          content: (
-                            <HeldStartFailure
-                              count={held.waiting.length}
-                              reason={startProblemReason(
-                                current?.start_problem,
-                              )}
-                              onRetry={() => void held.retry()}
-                              onEdit={() => void held.cancel()}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                  ...(!statusStale && current?.pending_question
-                    ? [
-                        {
-                          id: `question:${current.pending_question.request_id}`,
-                          kind: "question",
-                          content: (
-                            <PiQuestion
-                              question={current.pending_question}
-                              agentId={current.agent_id}
-                              identity={identity}
-                              csrf={csrf}
-                              refresh={refresh}
-                              onLogin={onLogin}
-                              onOutcome={setQuestionOutcome}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                  ...(showRun && bash
-                    ? [
-                        {
-                          id: `bash:${bash.command_id}`,
-                          kind: "bash",
-                          content: (
-                            <CommandRun
-                              command={bash.command}
-                              excludeFromContext={bash.exclude_from_context}
-                              state={
-                                bashStopState === "uncertain"
-                                  ? "uncertain"
-                                  : bash.state
-                              }
-                              exitCode={bash.exit_code}
-                              startedAt={
-                                bash.started_at
-                                  ? Date.parse(bash.started_at)
-                                  : undefined
-                              }
-                              output={bashOutput}
-                              stopping={bashStopState === "pending"}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                  ...(liveTurn && settled.liveKey
-                    ? [
-                        {
-                          id: settled.liveKey,
-                          kind: "assistant",
-                          content: (
-                            <AgentTurn
-                              steps={liveTurn.steps}
-                              working={liveTurn.working}
-                              activity={liveTurn.activity}
-                              duration={liveTurn.duration}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                ]}
-                historyMode="pagedAccessible"
-                newContentCount={unseen}
-                latestWorking={
-                  current?.run_active ??
-                  (current?.state === "working" ||
-                    current?.state === "accepted")
-                }
-                latestDuration={duration}
-                showJumpToLatest={awayFromLatest}
-                onJumpToLatest={() => {
-                  wasAtBottom.current = true;
-                  readingAnchor.current = undefined;
-                  if (id) store.savePosition(id);
-                  setAwayFromLatest(false);
-                  feed.current?.scrollTo({
-                    top: feed.current.scrollHeight,
-                    behavior: window.matchMedia(
-                      "(prefers-reduced-motion: reduce)",
-                    ).matches
-                      ? "instant"
-                      : "smooth",
-                  });
-                  feed.current?.focus({ preventScroll: true });
-                  setUnseen(0);
-                }}
-              />
+                    ...(!statusStale && current?.pending_question
+                      ? [
+                          {
+                            id: `question:${current.pending_question.request_id}`,
+                            kind: "question",
+                            content: (
+                              <PiQuestion
+                                question={current.pending_question}
+                                agentId={current.agent_id}
+                                identity={identity}
+                                csrf={csrf}
+                                refresh={refresh}
+                                onLogin={onLogin}
+                                onOutcome={setQuestionOutcome}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                    ...(showRun && bash
+                      ? [
+                          {
+                            id: `bash:${bash.command_id}`,
+                            kind: "bash",
+                            content: (
+                              <CommandRun
+                                command={bash.command}
+                                excludeFromContext={bash.exclude_from_context}
+                                state={
+                                  bashStopState === "uncertain"
+                                    ? "uncertain"
+                                    : bash.state
+                                }
+                                exitCode={bash.exit_code}
+                                startedAt={
+                                  bash.started_at
+                                    ? Date.parse(bash.started_at)
+                                    : undefined
+                                }
+                                output={bashOutput}
+                                stopping={bashStopState === "pending"}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                    ...(liveTurn && settled.liveKey
+                      ? [
+                          {
+                            id: settled.liveKey,
+                            kind: "assistant",
+                            content: (
+                              <AgentTurn
+                                steps={liveTurn.steps}
+                                working={liveTurn.working}
+                                activity={liveTurn.activity}
+                                duration={liveTurn.duration}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                  ]}
+                  historyMode="pagedAccessible"
+                  newContentCount={unseen}
+                  latestWorking={
+                    current?.run_active ??
+                    (current?.state === "working" ||
+                      current?.state === "accepted")
+                  }
+                  latestDuration={duration}
+                  showJumpToLatest={awayFromLatest}
+                  onJumpToLatest={() => {
+                    wasAtBottom.current = true;
+                    readingAnchor.current = undefined;
+                    if (id) store.savePosition(id);
+                    setAwayFromLatest(false);
+                    feed.current?.scrollTo({
+                      top: feed.current.scrollHeight,
+                      behavior: window.matchMedia(
+                        "(prefers-reduced-motion: reduce)",
+                      ).matches
+                        ? "instant"
+                        : "smooth",
+                    });
+                    feed.current?.focus({ preventScroll: true });
+                    setUnseen(0);
+                  }}
+                />
+              </TurnChangesRoot.Provider>
               {compactionState ? (
                 <CompactionNotice notice={compactionState} />
               ) : null}

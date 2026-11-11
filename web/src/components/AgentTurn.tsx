@@ -334,6 +334,7 @@ export function AgentTurn({
   working = false,
   activity,
   duration,
+  changes,
 }: {
   steps: TurnStep[];
   /** When native history saved the message that started the turn. */
@@ -347,6 +348,8 @@ export function AgentTurn({
   working?: boolean;
   activity?: string;
   duration?: string;
+  /** What the turn changed, under its reply once it has finished. */
+  changes?: ReactNode;
 }) {
   const voice = useContext(ConversationVoice);
   const stages = turnStages(steps);
@@ -488,6 +491,7 @@ export function AgentTurn({
           </AssistantMessage>
         </div>
       ) : null}
+      {!working ? changes : null}
       {stopped && !working ? <StoppedRow at={stopped.at} /> : null}
     </section>
   );

@@ -8,7 +8,7 @@ import { SyntaxCode } from "./SyntaxCode";
 
 const txt = liveText(fileToolCardText);
 
-type Edit = { oldText: string; newText: string };
+export type Edit = { oldText: string; newText: string };
 type Args = { path?: string; content?: string; edits?: Edit[] };
 function isEdit(value: unknown): value is Edit {
   return (
@@ -19,7 +19,8 @@ function isEdit(value: unknown): value is Edit {
     typeof (value as Record<string, unknown>).newText === "string"
   );
 }
-function argsOf(raw: string): Args | null {
+/** A file tool's arguments as Pi recorded them; null when they do not parse. */
+export function argsOf(raw: string): Args | null {
   try {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object" || Array.isArray(value))
@@ -55,7 +56,7 @@ function argsOf(raw: string): Args | null {
   }
 }
 // Pi read's continuation note is not a line of the file.
-function readContent(output: string): { text: string; note?: string } {
+export function readContent(output: string): { text: string; note?: string } {
   const match =
     /\n\n(\[(?:Showing lines \d+-\d+ of \d+[^\n]*|\d+ more lines in file\. [^\n]*)\])$/.exec(
       output,

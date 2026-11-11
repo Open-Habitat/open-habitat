@@ -24,6 +24,7 @@ const features = [
   "named-workers",
   "remote-browser",
   "atlassian-connect",
+  "turn-changes",
 ];
 
 async function signIn(page: Page) {

@@ -30,6 +30,7 @@ const featureIds = [
   { id: "remote-browser", landed: true },
   { id: "atlassian-connect", landed: true },
   { id: "trello-connect", landed: true },
+  { id: "turn-changes", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -54,7 +55,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "agent-resources-view" ||
     id === "shares-page" ||
     id === "conversation-context-view" ||
-    id === "named-workers"
+    id === "named-workers" ||
+    id === "turn-changes"
   )
     body = (
       <>
