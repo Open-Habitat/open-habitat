@@ -38,6 +38,12 @@ type piMCP struct {
 	access   func(service string, granted map[string]bool) Access
 }
 
+// piMCPNative serializes every change this daemon makes to Pi's one
+// mcp.json, across Atlassian and Trello: a start rewrites the whole file, so
+// an unserialized start beside another's start or removal would drop or
+// resurrect that entry.
+var piMCPNative sync.Mutex
+
 func piMCPOf(p Provider) *piMCP {
 	switch p {
 	case Atlassian:
@@ -147,66 +153,9 @@ func (m *piMCP) startLogin(ctx context.Context, env Env, address string, level L
 	if address != "" && !m.owns(address) {
 		return nil, AccountMismatch
 	}
-	root, servers, err := m.config(env)
+	server, created, named, err := m.configure(ctx, env, address, level)
 	if err != nil {
-		return nil, ToolFailed
-	}
-	server := address
-	if server == "" {
-		if server, err = m.free(servers); err != nil {
-			return nil, err
-		}
-	}
-	named, legacy, err := m.credentialKeys(env, server)
-	if err != nil || legacy {
-		return nil, ToolFailed
-	}
-	scope := m.read
-	if level == LevelFull {
-		scope = m.write
-	} else if level != LevelRead && level != "" {
-		return nil, ToolFailed
-	}
-	if level == "" && servers[server] != nil {
-		var e struct {
-			OAuth struct {
-				Scope string `json:"scope"`
-			} `json:"oauth"`
-		}
-		_ = json.Unmarshal(servers[server], &e)
-		scope = e.OAuth.Scope
-	}
-	entry := map[string]json.RawMessage{}
-	oauth := map[string]json.RawMessage{}
-	if raw := servers[server]; raw != nil {
-		if json.Unmarshal(raw, &entry) != nil {
-			return nil, ToolFailed
-		}
-		if !piMCPOAuthEntry(entry) {
-			return nil, ToolFailed
-		}
-		if raw := entry["oauth"]; raw != nil && json.Unmarshal(raw, &oauth) != nil {
-			return nil, ToolFailed
-		}
-	}
-	if oauth == nil {
-		oauth = map[string]json.RawMessage{}
-	}
-	oauth["scope"], _ = json.Marshal(scope)
-	entry["url"], _ = json.Marshal(m.url)
-	entry["oauth"], _ = json.Marshal(oauth)
-	created := servers[server] == nil
-	servers[server], _ = json.Marshal(entry)
-	root["mcpServers"], _ = json.Marshal(servers)
-	data, _ := json.MarshalIndent(root, "", "  ")
-	fd, err := openHomeDir(env.Home, true, ".pi", "agent")
-	if err != nil {
-		return nil, ToolFailed
-	}
-	err = writeFileAt(fd, "mcp.json", append(data, '\n'), 0600)
-	unix.Close(fd)
-	if err != nil {
-		return nil, ToolFailed
+		return nil, err
 	}
 	cleanup := func() {
 		if created {
@@ -222,7 +171,10 @@ func (m *piMCP) startLogin(ctx context.Context, env Env, address string, level L
 			cleanup()
 			return nil, ToolFailed
 		}
-		if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "logout", server}}, nil); err != nil {
+		piMCPNative.Lock()
+		_, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "logout", server}}, nil)
+		piMCPNative.Unlock()
+		if err != nil {
 			cleanup()
 			return nil, ToolFailed
 		}
@@ -233,6 +185,80 @@ func (m *piMCP) startLogin(ctx context.Context, env Env, address string, level L
 		return nil, err
 	}
 	return &piMCPLogin{piOAuthLogin: native, m: m, env: env, created: created}, nil
+}
+
+// configure writes the connection's native entry with the level's scopes,
+// choosing a free name for a new one. It reports the name, whether the entry
+// is new, and whether Pi already holds a credential under it.
+func (m *piMCP) configure(ctx context.Context, env Env, address string, level Level) (string, bool, bool, error) {
+	piMCPNative.Lock()
+	defer piMCPNative.Unlock()
+	root, servers, err := m.config(env)
+	if err != nil {
+		return "", false, false, ToolFailed
+	}
+	server := address
+	if server == "" {
+		if server, err = m.free(servers); err != nil {
+			return "", false, false, err
+		}
+	}
+	named, legacy, err := m.credentialKeys(env, server)
+	if err != nil || legacy {
+		return "", false, false, ToolFailed
+	}
+	scope := m.read
+	if level == LevelFull {
+		scope = m.write
+	} else if level != LevelRead && level != "" {
+		return "", false, false, ToolFailed
+	}
+	if level == "" && servers[server] != nil {
+		var e struct {
+			OAuth struct {
+				Scope string `json:"scope"`
+			} `json:"oauth"`
+		}
+		_ = json.Unmarshal(servers[server], &e)
+		scope = e.OAuth.Scope
+	}
+	entry := map[string]json.RawMessage{}
+	oauth := map[string]json.RawMessage{}
+	if raw := servers[server]; raw != nil {
+		if json.Unmarshal(raw, &entry) != nil {
+			return "", false, false, ToolFailed
+		}
+		if !piMCPOAuthEntry(entry) {
+			return "", false, false, ToolFailed
+		}
+		if raw := entry["oauth"]; raw != nil && json.Unmarshal(raw, &oauth) != nil {
+			return "", false, false, ToolFailed
+		}
+	}
+	if oauth == nil {
+		oauth = map[string]json.RawMessage{}
+	}
+	oauth["scope"], _ = json.Marshal(scope)
+	entry["url"], _ = json.Marshal(m.url)
+	entry["oauth"], _ = json.Marshal(oauth)
+	created := servers[server] == nil
+	servers[server], _ = json.Marshal(entry)
+	root["mcpServers"], _ = json.Marshal(servers)
+	data, _ := json.MarshalIndent(root, "", "  ")
+	// A start cancelled while waiting here writes nothing.
+	if ctx.Err() != nil {
+		return "", false, false, ctx.Err()
+	}
+	fd, err := openHomeDir(env.Home, true, ".pi", "agent")
+	if err != nil {
+		return "", false, false, ToolFailed
+	}
+	err = writeFileAt(fd, "mcp.json", append(data, '\n'), 0600)
+	unix.Close(fd)
+	if err != nil {
+		return "", false, false, ToolFailed
+	}
+	return server, created, named, nil
 }
 
 // Alternative authentication cannot be represented by Pi's OAuth store.
@@ -257,6 +283,10 @@ type piMCPLogin struct {
 	accepted atomic.Bool
 	once     sync.Once
 }
+
+// Native is the connection's server name, known before consent: a removal
+// of another connection must not fence this sign-in.
+func (l *piMCPLogin) Native() string { return l.server }
 
 func (l *piMCPLogin) Wait(ctx context.Context) (string, error) {
 	address, err := l.piOAuthLogin.Wait(ctx)
@@ -284,6 +314,8 @@ func (m *piMCP) remove(ctx context.Context, env Env, address string) error {
 	if !m.owns(address) {
 		return AccountMismatch
 	}
+	piMCPNative.Lock()
+	defer piMCPNative.Unlock()
 	if _, _, err := m.config(env); err != nil {
 		return ToolFailed
 	}

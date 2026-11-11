@@ -20,7 +20,8 @@ import (
 // may copy files (FolderEntry) only one at a time: a first pass reserves the
 // home's room and writes the provider's native configuration, so two of them
 // would race for both. A sign-in that copies no files (Atlassian, Trello) runs beside
-// them. A finished attempt stays until its provider's next start, so its
+// them, though Pi's MCP sign-ins run one at a time: Pi keeps all their
+// credentials in one file. A finished attempt stays until its provider's next start, so its
 // outcome can still be read.
 type relay struct {
 	mu       sync.Mutex
@@ -37,6 +38,9 @@ type attempt struct {
 	// signed in once it finished.
 	address string
 	relogin bool
+	// native is a new connection's name when the entry knows it before
+	// consent (a Pi MCP server), so removing another connection spares it.
+	native string
 	// level is the account level the person chose, "" for the entry's own
 	// choice (LevelEntry.StartLevelLogin).
 	level Level
@@ -314,7 +318,9 @@ func (c *Catalog) conflicting(p Provider) []*attempt {
 	var out []*attempt
 	files := c.copiesFiles(p)
 	for q, a := range c.relay.attempts {
-		if q == p || (files && c.copiesFiles(q)) {
+		// Pi's MCP sign-ins share Pi's one mcp-auth.json, which Pi rewrites
+		// on completion; two at once could lose the other's token.
+		if q == p || (files && c.copiesFiles(q)) || (piMCPOf(p) != nil && piMCPOf(q) != nil) {
 			out = append(out, a)
 		}
 	}
@@ -418,7 +424,7 @@ func (c *Catalog) abandonFor(p Provider, address string) bool {
 	a := c.relay.attempts[p]
 	// Before identity is known, any same-provider removal could be the grant
 	// the attempt is about to publish. Fence it rather than resurrect a login.
-	if a == nil || a.provider != p || (a.address != "" && a.address != address) {
+	if a == nil || a.provider != p || (a.address != "" && a.address != address) || (a.native != "" && a.native != address) {
 		c.relay.mu.Unlock()
 		return true
 	}
@@ -574,7 +580,11 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			return nil
 		}
 	}
-	if !c.setAttempt(a, func() { a.login = login }) {
+	native := ""
+	if n, ok := login.(interface{ Native() string }); ok {
+		native = n.Native()
+	}
+	if !c.setAttempt(a, func() { a.login, a.native = login, native }) {
 		return
 	}
 	prompt, err := login.Prompt(phaseCtx)

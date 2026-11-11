@@ -268,7 +268,7 @@ func TestTrelloNamesAndForeignNativeEntries(t *testing.T) {
 // personal-data skill lists every connection.
 func TestTrelloCatalogAddsAnotherConnection(t *testing.T) {
 	env := trelloFixture(t)
-	c := testCatalog(t, env.Home, []Entry{&trello{}})
+	c := testCatalog(t, env.Home, []Entry{&trello{}, &atlassian{}})
 	c.env.Config.Tools["pi"] = env.Config.Tools["pi"]
 	h := c.Handler(allow)
 	connect := func(want, outcome string) {
@@ -298,7 +298,26 @@ func TestTrelloCatalogAddsAnotherConnection(t *testing.T) {
 	}
 	connect(trelloServer, "ok")
 	connect(trelloServer+"_2", "refused")
-	connect(trelloServer+"_2", "ok")
+	// While _2 waits for consent, removing the first connection does not
+	// fence it: its name is known before consent. Another session's Pi MCP
+	// sign-in, Atlassian included, waits: Pi keeps one credential file.
+	if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "trello", "level": "read"}); code != 200 {
+		t.Fatal(code, out)
+	}
+	pending := waitAttempt(t, h, ownerA, Trello, "open_url")
+	if code, out, _ := call(t, h, "POST", LoginPath, ownerB, map[string]any{"action": "start", "provider": "atlassian"}); code != 409 || errorCode(out) != "attempt_active" {
+		t.Fatal("concurrent Pi MCP sign-in", code, out)
+	}
+	if code, out, _ := call(t, h, "DELETE", AccountsPath, ownerA, map[string]any{"action": "remove", "provider": "trello", "address": trelloServer, "delete_directories": false}); code != 200 {
+		t.Fatal(code, out)
+	}
+	if code, out, _ := call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": pending["attempt_id"], "redirect_url": "http://127.0.0.1:45679/callback?state=state-" + trelloServer + "_2&code=c"}); code != 200 {
+		t.Fatal(code, out)
+	}
+	if v := waitAttempt(t, h, ownerA, Trello, "completed", "failed"); v["state"] != "completed" || v["address"] != trelloServer+"_2" {
+		t.Fatal("removal of another connection fenced this sign-in", v)
+	}
+	connect(trelloServer, "ok")
 	_, list, raw := call(t, h, "GET", ListPath, ownerA, nil)
 	accounts, _ := list["accounts"].([]any)
 	if len(accounts) != 2 || strings.Contains(raw, "secret-") {
