@@ -111,6 +111,23 @@ test("@ai-sign-in an expired Claude sign-in is repaired in the window and the wa
   await expect(waiting).toHaveCount(2);
   await expect(window.getByTestId("window-waiting")).toContainText("muokattu");
   await window.getByTestId("claude-code-input").fill("synthetic-code#state");
+  // Until a status read after the resend is answered, the status held
+  // still reports the refusal; under load history can show the resent
+  // message first. Held so, that message must not come back into the field.
+  let historyShowsResend!: () => void;
+  const resendInHistory = new Promise<void>((resolve) => {
+    historyShowsResend = resolve;
+  });
+  page.on("response", async (response) => {
+    if (!/\/api\/v1\/agents\/[^/]+\/history\b/.test(response.url())) return;
+    const body = await response.text().catch(() => "");
+    if (body.includes('"Kirjaa tunnit. Kiitos!"')) historyShowsResend();
+  });
+  await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    const response = await route.fetch();
+    await resendInHistory;
+    await route.fulfill({ response });
+  });
   await window.getByTestId("claude-code-confirm").click();
   await expect(window).toHaveCount(0);
 
