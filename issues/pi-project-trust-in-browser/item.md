@@ -3,7 +3,7 @@ created: 2026-11-10
 updated: 2026-11-11
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, Contoso pilot
@@ -11,6 +11,12 @@ source_ref: conversation:jari-2026-11-10/project-trust
 lane: project-trust
 lane_seq: 1
 preparation: ready
+closed: 2026-11-11
+commits:
+- hash: 4822cab42
+  summary: 'feat: Pi trusts browser conversations in workspaces under ~/src'
+- hash: de5624f1b
+  summary: 'fix: a trust store the daemon cannot judge leaves the decision to Pi'
 ---
 
 # Workspaces under ~/src are trusted automatically by Pi
