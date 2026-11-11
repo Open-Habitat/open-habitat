@@ -46,3 +46,10 @@ Direction to decide: apply the same rule in the launcher (pass `--approve` when
 Habitat terminal either the same or prompting), or have Taskfleet pass
 `--approve`/`--no-approve` for its unattended workers. Jari's 11.11. decision
 covered the daemon's launches only.
+
+## Decision (Jari 11.11.2026)
+
+The launcher applies the daemon's rule: pass `--approve` when `pwd -P` is
+inside `$HOME/src` (worktrees included) and no saved "do not trust" decision
+for the path applies. Terminal `pi` in Habitat and Taskfleet workers then trust
+the workspace without asking; elsewhere Pi's default prompt stays.
