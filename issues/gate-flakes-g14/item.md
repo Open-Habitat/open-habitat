@@ -52,3 +52,13 @@ Raw output: `~/.local/state/oh-gate/pilot28-g1.json` on Birch.
   `web/tests/ai-sign-in-window.spec.ts:61` line 122 again (third gate in four
   today, the same composer value). Alone ×5: pass. Raw output:
   `~/.local/state/oh-gate/pilot28-g3.json`.
+- Gate 4 on the same tree (~11.20) failed only in the lab suite,
+  `web/tests/lab-slow-creation.spec.ts:4` ("home +" case) line 51:
+  `reply.json()` raised "Response body is not available for a response that
+  was navigated away from" (the test reads the body after the click navigated).
+  Alone ×5 (all three cases): pass. Raw output:
+  `~/.local/state/oh-gate/pilot28-g4.json`.
+
+Four clean gates on `32cd76a0a` each failed in one different load-sensitive
+spec, so pilot.28 could not get a receipt; with about one flake per gate the
+gate cannot pass on Birch until these are fixed.
