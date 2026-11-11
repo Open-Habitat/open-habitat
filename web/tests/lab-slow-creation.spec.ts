@@ -38,23 +38,26 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
             .getByRole("button")
             .and(page.getByTestId("workspace-start-aurinkokello"));
     await expect(button).toBeEnabled();
-    // Read the body as soon as it arrives, before later navigation/reload can
-    // make Chromium discard this response's resource.
-    const response = page
-      .waitForResponse(
-        (r) =>
-          r.url().endsWith("/api/v1/conversations") &&
-          r.request().method() === "POST",
-      )
-      .then(async (reply) => ({
-        status: reply.status(),
-        session: await reply.json(),
-      }));
+    // Capture the reply on its way to the page. Chromium can drop a page
+    // response's body before Playwright asks for it, even when it is read
+    // as soon as it arrives and no document navigation follows.
+    let capture: (reply: { status: number; body: string }) => void = () => {};
+    const response = new Promise<{ status: number; body: string }>(
+      (resolve) => {
+        capture = resolve;
+      },
+    );
+    await page.route("**/api/v1/conversations", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const upstream = await route.fetch();
+      capture({ status: upstream.status(), body: await upstream.text() });
+      await route.fulfill({ response: upstream });
+    });
     const began = Date.now();
     await button.click();
     const created = await response;
     expect(created.status).toBe(200);
-    const session = created.session;
+    const session = JSON.parse(created.body);
     await expect(page).toHaveURL(/conversation=(new|pi:)/);
     // The field is usable at once (Jari 16.10.2026).
     await expect(
