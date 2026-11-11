@@ -48,3 +48,7 @@ Raw output: `~/.local/state/oh-gate/pilot28-g1.json` on Birch.
   `web/tests/pi-onboarding-slow.spec.ts:7` line 51: the `pi-code-copy` button
   never appears within 18 s. Alone ×5: pass. Raw output:
   `~/.local/state/oh-gate/pilot28-g2.json`.
+- Gate 3 on the same tree (~11.18) failed only in
+  `web/tests/ai-sign-in-window.spec.ts:61` line 122 again (third gate in four
+  today, the same composer value). Alone ×5: pass. Raw output:
+  `~/.local/state/oh-gate/pilot28-g3.json`.
