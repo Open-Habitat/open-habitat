@@ -1,6 +1,6 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-11
 type: task
 status: done
 priority: normal
@@ -10,7 +10,7 @@ source_ref: taskfleet:01m6btshefrtxw97thtw5qxjqx/implementation:view-address-pub
 originating_run: 01m6btshefrtxw97thtw5qxjqx
 originating_run_kind: technical-decision
 preparation: ready
-blocked_by: ['@decide-view-stable-address', '@view-address-reservations']
+blocked_by: ['@view-address-reservations']
 lane: decide-view-stable-address
 lane_seq: 2
 closed: 2026-11-01

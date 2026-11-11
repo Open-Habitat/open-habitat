@@ -1,13 +1,13 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-11
 type: feature
 reporter: jari
 status: done
 priority: normal
 lane: decide-view-stable-address
 lane_seq: 4
-blocked_by: ['@decide-view-stable-address', '@view-address-reservations', '@view-address-publication-lifecycle', '@view-address-entry-route']
+blocked_by: ['@view-address-reservations', '@view-address-publication-lifecycle', '@view-address-entry-route']
 preparation: ready
 closed: 2026-11-01
 ---
