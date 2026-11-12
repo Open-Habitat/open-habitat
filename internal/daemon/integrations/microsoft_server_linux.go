@@ -145,7 +145,8 @@ func microsoftPiServers(env Env) (map[string]json.RawMessage, map[string]json.Ra
 
 // microsoftServer is where the account's registration stands: the readable
 // name it has or would get, whether an entry is registered under it, and
-// the legacy name when an entry is still under that.
+// the legacy name when an entry is still under that. The name is empty when
+// both readable names belong to others.
 type microsoftServer struct {
 	name       string
 	registered bool
@@ -169,10 +170,9 @@ func microsoftServerOf(env Env, address string) (microsoftServer, map[string]jso
 	if err != nil {
 		return microsoftServer{}, nil, err
 	}
-	name, err := microsoftServerName(env, servers, address)
-	if err != nil {
-		return microsoftServer{}, nil, err
-	}
+	// With both names held by others the account has no readable name; its
+	// legacy entry can still be found and removed.
+	name, _ := microsoftServerName(env, servers, address)
 	s := microsoftServer{name: name, registered: microsoftOwnsServer(env, servers[name], address)}
 	if legacy := microsoftLegacyServerName(address); servers[legacy] != nil {
 		s.legacy = legacy

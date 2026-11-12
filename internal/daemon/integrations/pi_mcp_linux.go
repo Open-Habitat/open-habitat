@@ -44,9 +44,9 @@ type piMCP struct {
 }
 
 // piMCPNative serializes every change this daemon makes to Pi's one
-// mcp.json, across Atlassian and Trello: a start rewrites the whole file, so
-// an unserialized start beside another's start or removal would drop or
-// resurrect that entry.
+// mcp.json, across Atlassian, Trello and Microsoft: a start rewrites the
+// whole file, so an unserialized start beside another's start or removal
+// would drop or resurrect that entry.
 var piMCPNative sync.Mutex
 
 func piMCPOf(p Provider) *piMCP {

@@ -882,7 +882,9 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 						keepPartial = true
 					} else {
 						cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						piMCPNative.Lock()
 						_, err := l.env.run(cleanup, Command{Path: pi, Args: []string{"mcp", "remove", server.name}}, nil)
+						piMCPNative.Unlock()
 						cancel()
 						keepPartial = err != nil
 					}
@@ -975,7 +977,11 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 		if !ok {
 			return ToolFailed
 		}
-		if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", name}}, nil); err != nil {
+		// Serialized with Atlassian's and Trello's whole-file rewrites.
+		piMCPNative.Lock()
+		_, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", name}}, nil)
+		piMCPNative.Unlock()
+		if err != nil {
 			return ToolFailed
 		}
 	}
@@ -1202,7 +1208,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 	}
 	name, _ := microsoftServerNames(address)
-	if server, _, err := microsoftServerOf(env, address); err == nil {
+	if server, _, err := microsoftServerOf(env, address); err == nil && server.current() != "" {
 		name = server.current()
 	}
 	body := fmt.Sprintf(microsoftOutlookSkill, uses, name) + "\n\n" + files + search + "\n\n" + list +

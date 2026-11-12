@@ -388,9 +388,17 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	if !ok {
 		return ToolFailed
 	}
+	// Pi's mcp.json is one file: Atlassian and Trello rewrite it whole from
+	// what they read, so no Pi change may run beside theirs, and the name is
+	// chosen from the file as it is now.
+	piMCPNative.Lock()
+	defer piMCPNative.Unlock()
 	server, _, err := microsoftServerOf(env, address)
 	if err != nil {
 		return err
+	}
+	if server.name == "" {
+		return ToolFailed
 	}
 	args := []string{"mcp", "add", server.name}
 	for _, e := range mcp.Env {
