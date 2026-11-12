@@ -788,6 +788,10 @@
                   "taskfleet_wait"
                 ]
               },
+              "before_turn": {
+                "description": "The process started before the person began the conversation's latest turn: the agent has answered the person since and handed the turn back, so it left the process running rather than ending its turn to wait for it. Absent when the process started within that turn or the turn's start is unknown.",
+                "const": true
+              },
               "run_ids": {
                 "type": "array",
                 "maxItems": 200,

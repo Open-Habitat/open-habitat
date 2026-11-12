@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The person sees the catch-up's details, never its agent-facing English text
@@ -143,5 +144,38 @@ func validateHistoryPage(t *testing.T, page string) {
 	cmd.Stdin = bytes.NewReader([]byte(page))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("schema: %s: %v", out, err)
+	}
+}
+
+// The person begins a turn with a message after a finished one; a steer into
+// an open turn and an agent wake-up do not begin one.
+func TestBranchScanSeesWhenThePersonBeganTheTurn(t *testing.T) {
+	line := func(id, parent, at, message string) string {
+		p := "null"
+		if parent != "" {
+			p = `"` + parent + `"`
+		}
+		return `{"type":"message","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:` + at + `Z","message":` + message + `}`
+	}
+	ms := func(at string) int64 {
+		v, _ := time.Parse(time.RFC3339, "2030-01-01T00:"+at+"Z")
+		return v.UnixMilli()
+	}
+	prompt, call, result := `{"role":"user","content":"x"}`, `{"role":"assistant","stopReason":"toolUse"}`, `{"role":"toolResult","toolName":"process"}`
+	answer, wake := `{"role":"assistant","stopReason":"stop"}`, `{"role":"custom","customType":"ad-process:notification"}`
+	for _, tc := range []struct {
+		name  string
+		lines []string
+		want  int64
+	}{
+		{"none", []string{}, 0},
+		{"first prompt", []string{line("e1", "", "01:00", prompt), line("e2", "e1", "02:00", answer)}, ms("01:00")},
+		{"second prompt", []string{line("e1", "", "01:00", prompt), line("e2", "e1", "02:00", answer), line("e3", "e2", "03:00", prompt), line("e4", "e3", "04:00", answer)}, ms("03:00")},
+		{"steer into an open turn", []string{line("e1", "", "01:00", prompt), line("e2", "e1", "02:00", call), line("e3", "e2", "03:00", result), line("e4", "e3", "04:00", prompt), line("e5", "e4", "05:00", answer)}, ms("01:00")},
+		{"wake-up turn", []string{line("e1", "", "01:00", prompt), line("e2", "e1", "02:00", answer), line("e3", "e2", "03:00", wake), line("e4", "e3", "04:00", answer)}, ms("01:00")},
+	} {
+		if got := scanBranch([]byte(strings.Join(tc.lines, "\n"))).turnAt; got != tc.want {
+			t.Errorf("%s: turnAt %d, want %d", tc.name, got, tc.want)
+		}
 	}
 }

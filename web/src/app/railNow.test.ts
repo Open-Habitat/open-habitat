@@ -258,6 +258,87 @@ describe("rail Nyt groups", () => {
     expect(worker.running[0].activityLabel).toBe("Worker työskentelee");
   });
 
+  it("gives the person the turn over a service the agent left running", () => {
+    // rail-background-service-not-running (Jari 12.11.2026): a file server
+    // the agent started in an earlier turn, still running and waking it,
+    // does not hold a conversation that has handed the turn back.
+    const at = new Date(Date.UTC(2026, 10, 12, 10, 48)).toISOString();
+    const sessions: Session[] = [
+      { agent_id: "served", workspace_id: "ws_example00", state: "live" },
+    ];
+    const service = {
+      process_id: "proc_6b7c",
+      name: "hilla-dell-script-review",
+      kind: "process" as const,
+      run_ids: [],
+      before_turn: true as const,
+    };
+    const served = agent("served", {
+      process: "daemon_managed_live",
+      run_active: false,
+      last_reply: { id: "r1", at },
+      waiting_on: [service],
+    });
+    const read = run([served], { sessions, attention: [["served", "seen"]] });
+    expect(ids(read.yours)).toEqual(["served"]);
+    expect(ids(read.running)).toEqual([]);
+    expect(read.yours[0]).toMatchObject({
+      turnMark: "read",
+      turnAction: "not_now",
+      backgroundService: "hilla-dell-script-review",
+    });
+    expect(read.yours[0].detail).toContain(
+      "Taustalla käynnissä: hilla-dell-script-review",
+    );
+    expect(read.yours[0].detail).not.toContain("Odottaa taustatyötä");
+    expect(read.hints.get("ws_example00")).toMatchObject({ kind: "attention" });
+    // Unread, the same; Ei nyt moves it to Hiljaiset like any reply.
+    expect(
+      ids(run([served], { sessions, attention: [["served", "new"]] }).yours),
+    ).toEqual(["served"]);
+    const dismissed = run(
+      [{ ...served, turn_mark: { state: "not_now", reply_id: "r1", at } }],
+      { sessions, attention: [["served", "seen"]] },
+    );
+    expect(ids(dismissed.quiet)).toEqual(["served"]);
+
+    // While the agent's turn is open, the conversation works.
+    const open = run([{ ...served, run_active: true }], { sessions });
+    expect(ids(open.running)).toEqual(["served"]);
+    expect(open.running[0].activityLabel).toBe("Työskentelee");
+
+    // A process started within the latest turn is what the turn ended to
+    // wait for: the agent continues by itself.
+    const waiting = { ...service, before_turn: undefined };
+    const build = run([{ ...served, waiting_on: [waiting] }], {
+      sessions,
+      attention: [["served", "seen"]],
+    });
+    expect(ids(build.running)).toEqual(["served"]);
+    expect(build.running[0].activityLabel).toBe("Odottaa taustatyötä");
+    expect(build.running[0].backgroundService).toBeUndefined();
+    // So is a Taskfleet wait for a worker, whenever it was started.
+    const worker = run(
+      [
+        {
+          ...served,
+          waiting_on: [{ ...service, kind: "taskfleet_wait", run_ids: ["r"] }],
+        },
+      ],
+      { sessions, attention: [["served", "seen"]] },
+    );
+    expect(ids(worker.running)).toEqual(["served"]);
+    // A turn waiting for a build while an old service also runs still waits.
+    const both = run([{ ...served, waiting_on: [service, waiting] }], {
+      sessions,
+      attention: [["served", "seen"]],
+    });
+    expect(ids(both.running)).toEqual(["served"]);
+    expect(both.running[0]).toMatchObject({
+      backgroundService: "hilla-dell-script-review",
+    });
+  });
+
   it("keeps a worker waiting at its own prompt in sight without pulsing", () => {
     const now = run([
       agent("worker-idle", { process: "not_observed", spinoffs_idle: 1 }),

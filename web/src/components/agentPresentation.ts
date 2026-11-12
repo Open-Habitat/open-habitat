@@ -9,7 +9,21 @@ export interface WaitingOn {
   name: string;
   kind: "process" | "taskfleet_wait";
   run_ids: string[];
+  before_turn?: true;
 }
+/**
+ * Whether the conversation waits for this process. A Taskfleet wait always
+ * means the agent waits for its worker. A plain process the agent started
+ * before the person began the latest turn is something it left running (a
+ * file server, a watcher): the agent has answered the person since and handed
+ * the turn back, so it is a background service, not work the person waits
+ * for (rail-background-service-not-running, Jari 12.11.2026).
+ */
+export const waitedFor = (item: WaitingOn) =>
+  item.kind === "taskfleet_wait" || !item.before_turn;
+/** The processes left running behind an ended turn (see waitedFor). */
+export const backgroundServices = (waitingOn: WaitingOn[] | undefined) =>
+  (waitingOn ?? []).filter((item) => !waitedFor(item));
 export interface AgentFacts {
   runActive?: boolean;
   waitingOn?: WaitingOn[];
@@ -58,7 +72,7 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     !facts.pendingQuestion &&
     !facts.connectionLost &&
     facts.runActive !== true &&
-    !!facts.waitingOn?.length;
+    !!facts.waitingOn?.some(waitedFor);
   const backgroundLabel = txt.activity.background;
   const activity = facts.intentionallyClosed
     ? "closed"

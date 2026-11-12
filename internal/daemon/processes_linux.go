@@ -166,6 +166,26 @@ type waitingProcess struct {
 	Name    string           `json:"name"`
 	Kind    string           `json:"kind"`
 	RunIDs  []string         `json:"run_ids"`
+	// BeforeTurn says the process started before the person began the
+	// conversation's latest turn (see markWaitsBeforeTurn).
+	BeforeTurn bool `json:"before_turn,omitempty"`
+	start      int64
+}
+
+// markWaitsBeforeTurn marks the waits that started before the person began
+// the conversation's latest turn. The agent has answered the person since such
+// a process started and handed the turn back, so the process is something it
+// left running (a file server, a watcher), not what the conversation waits for.
+// The browser decides what that means for the rail; the fact stays a fact.
+func markWaitsBeforeTurn(waiting []waitingProcess, turnAt int64) {
+	if turnAt <= 0 {
+		return
+	}
+	for i := range waiting {
+		if waiting[i].start > 0 && waiting[i].start < turnAt {
+			waiting[i].BeforeTurn = true
+		}
+	}
 }
 
 func unavailableProcesses(reason string) processInventory {
@@ -263,7 +283,7 @@ func inventoryWaiting(inv processInventory) []waitingProcess {
 		if taskfleetPending(p.Spinoff) {
 			kind = "taskfleet_wait"
 		}
-		waiting = append(waiting, waitingProcess{p.Spinoff, p.ID, p.Name, kind, p.RunIDs})
+		waiting = append(waiting, waitingProcess{Spinoff: p.Spinoff, ID: p.ID, Name: p.Name, Kind: kind, RunIDs: p.RunIDs, start: p.Start})
 	}
 	return waiting
 }

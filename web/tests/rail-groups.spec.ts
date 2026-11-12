@@ -149,3 +149,68 @@ test("@rail-groups A turn that ended in an error is a failed row until the perso
     timeout: 25000,
   });
 });
+
+test("@rail-groups A service the agent left running does not keep the person's turn in Käynnissä", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  // Wire seam: the daemon's waiting_on, as for a live waking file server
+  // the agent started in an earlier turn (before_turn) or in this one.
+  let waits: Record<string, unknown>[] = [];
+  let id = "";
+  await page.route("**/api/v1/snapshot", async (route) => {
+    try {
+      const response = await route.fetch();
+      const body = await response.json();
+      for (const a of body.agents)
+        if (a.agent_id === id && waits.length && !a.run_active)
+          a.waiting_on = waits;
+      await route.fulfill({ response, json: body });
+    } catch {
+      await route.abort().catch(() => {});
+    }
+  });
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const nav = page.getByTestId("workspace-navigation");
+  id = await start(page);
+  await page.getByTestId("message-input").fill("Käynnistä palvelin");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send", {
+    timeout: 25000,
+  });
+  const service = {
+    process_id: "proc_6b7c",
+    name: "script-review",
+    kind: "process",
+    run_ids: [],
+  };
+  waits = [{ ...service, before_turn: true }];
+  await nav.getByTestId("snapshot-refresh").click();
+  const yours = nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`);
+  await expect(yours).toBeVisible({ timeout: 25000 });
+  await expect(yours).toHaveAttribute("data-ball", "you");
+  await expect(yours.getByTestId("rail-background-service")).toBeVisible();
+  await expect(yours).toHaveAttribute(
+    "title",
+    /Taustalla käynnissä: script-review/,
+  );
+  await expect(
+    nav.getByTestId("rail-running").getByTestId(`agent-item-${id}`),
+  ).toHaveCount(0);
+
+  // A process started within the turn is what the turn ended to wait for.
+  waits = [service];
+  await nav.getByTestId("snapshot-refresh").click();
+  const running = nav
+    .getByTestId("rail-running")
+    .getByTestId(`agent-item-${id}`);
+  await expect(running).toBeVisible({ timeout: 25000 });
+  await expect(running).toHaveAttribute("data-ball", "work");
+  await expect(running.getByTestId("rail-background-service")).toHaveCount(0);
+});

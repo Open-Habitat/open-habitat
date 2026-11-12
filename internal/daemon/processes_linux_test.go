@@ -450,3 +450,26 @@ func TestProcessInterruptedFromActiveBranch(t *testing.T) {
 		t.Fatalf("projection: %+v", got)
 	}
 }
+
+// A wait started before the person began the latest turn is marked; one the
+// agent started within that turn, or with the turn's start unknown, is not.
+func TestProcessWaitingMarksWaitsBeforeTheTurn(t *testing.T) {
+	yes := true
+	inv := processInventory{Availability: "available", Processes: []processRecord{
+		{ID: "service", Name: "serve", Status: "running", Wakes: &yes, Start: 1000, RunIDs: []string{}},
+		{ID: "build", Name: "build", Status: "running", Wakes: &yes, Start: 3000, RunIDs: []string{}},
+	}}
+	got := inventoryWaiting(inv)
+	markWaitsBeforeTurn(got, 0)
+	if got[0].BeforeTurn || got[1].BeforeTurn {
+		t.Fatal("marked without a known turn start", got)
+	}
+	markWaitsBeforeTurn(got, 2000)
+	if !got[0].BeforeTurn || got[1].BeforeTurn {
+		t.Fatal(got)
+	}
+	raw, _ := json.Marshal(got)
+	if !strings.Contains(string(raw), `"process_id":"service","name":"serve","kind":"process","run_ids":[],"before_turn":true`) || strings.Count(string(raw), "before_turn") != 1 || strings.Contains(string(raw), "start") {
+		t.Fatal(string(raw))
+	}
+}

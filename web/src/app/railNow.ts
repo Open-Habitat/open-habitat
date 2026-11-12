@@ -1,5 +1,7 @@
 import {
   agentPresentation,
+  backgroundServices,
+  waitedFor,
   waitingName,
   waitsOnWorker,
 } from "../components/agentPresentation";
@@ -235,8 +237,17 @@ export function railNow({
                               : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
-        ? a.waiting_on.map(waitingName).join(", ")
+        ? a.waiting_on.filter(waitedFor).map(waitingName).join(", ")
         : "";
+    // A process the agent left running behind an ended turn does not keep
+    // the conversation in Käynnissä; the row still says it runs.
+    const services =
+      phase === "stale" || !observed.running
+        ? []
+        : backgroundServices(a.waiting_on).map(waitingName);
+    const servicesClause = services.length
+      ? txt.rail.backgroundService(services.join(", "))
+      : "";
     const pendingLabel = closing.has(a.agent_id) ? txt.rail.closing : undefined;
     const changedAt = a.changed_at ? Date.parse(a.changed_at) : Number.NaN;
     const model: AgentNavModel = {
@@ -250,7 +261,7 @@ export function railNow({
       workspaceIcon: icons?.get(w.workspace_id),
       changedAt: Number.isFinite(changedAt) ? changedAt : undefined,
       failed: failed || undefined,
-      detail: [name, state, waits, presentation.operationLabel]
+      detail: [name, state, waits, servicesClause, presentation.operationLabel]
         .filter(Boolean)
         .join(" · "),
       pendingLabel,
@@ -293,6 +304,7 @@ export function railNow({
       // a daemon restart ends the wait, not the run.
       spinoffWorking: phase !== "stale" && (a.spinoffs_working ?? 0) > 0,
       spinoffIdle: phase !== "stale" && workerIdle,
+      backgroundService: services.length ? services.join(", ") : undefined,
       spinoffWaited:
         phase !== "stale" &&
         observed.activity === "waiting_background" &&

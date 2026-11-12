@@ -65,6 +65,11 @@ type branchScan struct {
 	// or unfinished work.
 	reply   string
 	replyAt int64
+	// turnAt is when the person began the branch's latest turn, Unix ms: the
+	// time of the newest person message that follows a finished turn (or
+	// opens the branch). A steer into an open turn does not begin one, and an
+	// agent wake-up is not the person's message. 0 when none.
+	turnAt int64
 	// refused and works say, per AI provider, when the branch last met a
 	// provider refusing the sign-in and when a reply last came from it,
 	// Unix ms. The snapshot weighs them against each other and against the
@@ -102,6 +107,7 @@ func scanBranchStream(r io.Reader) branchScan {
 		personStop   bool
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
+		person       bool // that message is the person's (role user)
 		failed       bool // that message is a reply the provider failed
 		answer       bool // that message is the model's finished answer
 		provider     string
@@ -149,6 +155,7 @@ func scanBranchStream(r io.Reader) branchScan {
 			switch e.Message.Role {
 			case "user", "toolResult":
 				f.message, f.open = true, true
+				f.person = e.Message.Role == "user"
 			case "assistant":
 				f.message, f.open = true, e.Message.StopReason == "toolUse"
 				// A stop while a tool runs is saved as an error; it is the
@@ -254,6 +261,9 @@ func scanBranchStream(r io.Reader) branchScan {
 			scan.works[f.provider] = max(scan.works[f.provider], f.at)
 		}
 		if f.message {
+			if f.person && !scan.turnCut {
+				scan.turnAt = f.at
+			}
 			scan.turnCut, scan.turnError = f.open, f.failed
 			scan.reply, scan.replyAt = "", 0
 			if f.answer {

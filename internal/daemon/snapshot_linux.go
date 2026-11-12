@@ -596,6 +596,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if ok && asleep && scan.turnCut {
 				agent["interrupted_turn"] = true
 			}
+			if waiting, has := agent["waiting_on"].([]waitingProcess); ok && has {
+				markWaitsBeforeTurn(waiting, scan.turnAt)
+			}
 			// The turn's answer, by which the browser knows a turn ended that
 			// the person may not have seen, however it missed the turn's event.
 			if ok && scan.reply != "" && scan.replyAt > 0 && agent["archive"] == "active" {

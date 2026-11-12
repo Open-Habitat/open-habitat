@@ -511,6 +511,9 @@ export interface AgentNavModel {
   spinoffWorking?: boolean;
   spinoffIdle?: boolean;
   spinoffWaited?: boolean;
+  /** Processes the agent left running behind an ended turn (a file server,
+   * a watcher): they run on, but the conversation does not wait for them. */
+  backgroundService?: string;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
@@ -655,6 +658,7 @@ export function AgentNavItem({
   spinoffWorking = false,
   spinoffIdle = false,
   spinoffWaited = false,
+  backgroundService,
   pendingLabel,
   worktree,
   question = false,
@@ -915,8 +919,19 @@ export function AgentNavItem({
             }
             end={
               (workspaceTag && workspaceName) ||
+              backgroundService ||
               (age !== undefined && changedAt !== undefined) ? (
                 <>
+                  {backgroundService ? (
+                    <span
+                      className="ah-nav-service"
+                      data-testid="rail-background-service"
+                      aria-hidden="true"
+                      title={textNow(statusText).rail.backgroundService(
+                        backgroundService,
+                      )}
+                    />
+                  ) : null}
                   {workspaceTag && workspaceName ? (
                     <span
                       className="ah-nav-workspace"

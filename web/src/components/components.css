@@ -4846,6 +4846,22 @@ h2.ah-rail-section-head {
 .ah-agent-item[data-ball="done"] .ah-nav-link {
   color: var(--ah-ink-2);
 }
+/* A process the agent left running behind an ended turn: a quiet, still
+   ring around a core in the muted ink, so it reads as "something runs" but
+   not as the accent of work the person waits for. */
+.ah-nav-service {
+  flex: none;
+  box-sizing: border-box;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--ah-muted);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    var(--ah-muted) 0 40%,
+    transparent 55%
+  );
+}
 .ah-nav-time {
   flex: none;
   color: var(--ah-muted);
