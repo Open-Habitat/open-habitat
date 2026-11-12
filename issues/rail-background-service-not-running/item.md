@@ -3,12 +3,18 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/rail-bg-process
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
+commits:
+- hash: 5c17ef50d
+  summary: Give the person the turn over a service the agent left running
+- hash: 3a96d6b3e
+  summary: Home card names only the waits the turn ended for
 ---
 
 # A conversation with a live background service shows under Käynnissä although it is the person's turn
