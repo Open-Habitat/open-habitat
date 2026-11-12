@@ -45,7 +45,7 @@ func connectedWithCommon(t *testing.T, env Env, client string) string {
 	if err := os.WriteFile(conf, []byte(old), 0600); err != nil {
 		t.Fatal(err)
 	}
-	registration := fmt.Sprintf(`{"mcpServers":{%q:{"command":"/x","env":{"MS365_MCP_CLIENT_ID":%q,"MS365_MCP_TENANT_ID":"common"}}}}`, microsoftServerName(address), client)
+	registration := fmt.Sprintf(`{"mcpServers":{%q:{"command":"/x","env":{"MS365_MCP_CLIENT_ID":%q,"MS365_MCP_TENANT_ID":"common"}}}}`, microsoftPlainServer(address), client)
 	if err := os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), []byte(registration), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
 		t.Fatal("rewrite broke the remotes", remotes, err)
 	}
 	pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-	if !strings.Contains(string(pi), "add\n"+microsoftServerName(address)+"\n") || !strings.Contains(string(pi), "MS365_MCP_TENANT_ID="+testTenant) {
+	if !strings.Contains(string(pi), "add\n"+microsoftPlainServer(address)+"\n") || !strings.Contains(string(pi), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("Pi registration not replaced with the tenant", string(pi))
 	}
 	if calls.Load() != 1 {
@@ -279,7 +279,7 @@ func TestMicrosoftMailOnlyAccountFollowsTheTenantByItsOutlookGrant(t *testing.T)
 				}
 			}
 			pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-			if registered := strings.Contains(string(pi), "add\n"+microsoftServerName(address)+"\n"); registered != tc.follows {
+			if registered := strings.Contains(string(pi), "add\n"+microsoftPlainServer(address)+"\n"); registered != tc.follows {
 				t.Fatal("registration followed", registered, string(pi))
 			}
 			// Only an outage leaves it to be asked again.

@@ -77,7 +77,7 @@ func writeMicrosoftRegistration(t *testing.T, env Env, address string, args []st
 
 func writeMicrosoftRegistrationAt(t *testing.T, env Env, address, tenant string, args []string) {
 	t.Helper()
-	server := map[string]any{"mcpServers": map[string]any{microsoftServerName(address): map[string]any{
+	server := map[string]any{"mcpServers": map[string]any{microsoftPlainServer(address): map[string]any{
 		"command": "/x", "args": args,
 		"env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": tenant},
 	}}}

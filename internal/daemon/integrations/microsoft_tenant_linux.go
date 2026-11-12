@@ -135,31 +135,17 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 		return n, err
 	}
 
-	pi, err := openHomeDir(env.Home, false, ".pi", "agent")
-	if errors.Is(err, os.ErrNotExist) {
-		return n, nil
-	}
+	registration, servers, err := microsoftServerOf(env, address)
 	if err != nil {
 		return n, err
 	}
-	defer unix.Close(pi)
-	data, err := readFileAt(pi, "mcp.json", 1<<20)
-	if errors.Is(err, os.ErrNotExist) {
-		return n, nil
+	var server struct {
+		Env  map[string]string `json:"env"`
+		Args []string          `json:"args"`
 	}
-	if err != nil {
-		return n, err
-	}
-	var config struct {
-		Servers map[string]struct {
-			Env  map[string]string `json:"env"`
-			Args []string          `json:"args"`
-		} `json:"mcpServers"`
-	}
-	if json.Unmarshal(data, &config) != nil {
+	if raw := servers[registration.current()]; raw != nil && json.Unmarshal(raw, &server) != nil {
 		return n, ToolFailed
 	}
-	server := config.Servers[microsoftServerName(address)]
 	n.mcpClient, n.mcpTenant, n.mcpArgs = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"], server.Args
 	for i, a := range server.Args {
 		if a == "--allowed-scopes" && i+1 < len(server.Args) {
@@ -200,6 +186,9 @@ func (m *microsoft) refuse(address string, app MicrosoftApp, reason string) {
 }
 
 func (m *microsoft) Misaligned(env Env, address string) bool {
+	if microsoftRenameNeeded(env, address) {
+		return true
+	}
 	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return false
@@ -218,6 +207,13 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		return ToolFailed
 	}
 	defer m.native.Unlock()
+	// A registration under the hex-encoded name of earlier releases moves
+	// to the readable one first; it needs no sign-in and changes nothing else.
+	if microsoftRenameNeeded(env, address) {
+		if err := microsoftRenameServer(ctx, env, address); err != nil {
+			return err
+		}
+	}
 	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return nil
@@ -390,7 +386,11 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	if !ok {
 		return ToolFailed
 	}
-	args := []string{"mcp", "add", microsoftServerName(address)}
+	server, _, err := microsoftServerOf(env, address)
+	if err != nil {
+		return err
+	}
+	args := []string{"mcp", "add", server.name}
 	for _, e := range mcp.Env {
 		args = append(args, "--env", e)
 	}
@@ -398,6 +398,11 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	args = append(args, mcp.Args...)
 	if _, err := env.run(ctx, Command{Path: pi, Args: args}, nil); err != nil {
 		return ToolFailed
+	}
+	// The registration now lives under the readable name. A legacy entry
+	// left by a failed removal is dropped by the next Align.
+	if server.legacy != "" {
+		_, _ = env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", server.legacy}}, nil)
 	}
 	return nil
 }

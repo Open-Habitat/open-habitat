@@ -5,7 +5,6 @@ package integrations
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -768,9 +767,6 @@ func microsoftRemoveFiles(env Env, rel string) error {
 	}
 	return nil
 }
-func microsoftServerName(address string) string {
-	return "habitat-microsoft-" + hex.EncodeToString([]byte(address))
-}
 func (l *microsoftLogin) Commit(ctx context.Context, address string) (result error) {
 	l.entry.native.Lock()
 	defer l.entry.native.Unlock()
@@ -877,16 +873,16 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			// partial account remains visible for explicit repair/removal.
 			keepPartial := false
 			if !hadServer {
-				configured, err := microsoftMCPConfigured(l.env, address)
+				server, _, err := microsoftServerOf(l.env, address)
 				if err != nil {
 					keepPartial = true
-				} else if configured {
+				} else if server.registered {
 					pi, ok := l.env.Tool("pi")
 					if !ok {
 						keepPartial = true
 					} else {
 						cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-						_, err := l.env.run(cleanup, Command{Path: pi, Args: []string{"mcp", "remove", microsoftServerName(address)}}, nil)
+						_, err := l.env.run(cleanup, Command{Path: pi, Args: []string{"mcp", "remove", server.name}}, nil)
 						cancel()
 						keepPartial = err != nil
 					}
@@ -953,29 +949,8 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 // Pi's remove command returns failure for an absent name. Read its native
 // store first so an interrupted setup can still be removed idempotently.
 func microsoftMCPConfigured(env Env, address string) (bool, error) {
-	fd, err := openHomeDir(env.Home, false, ".pi", "agent")
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	defer unix.Close(fd)
-	data, err := readFileAt(fd, "mcp.json", 1<<20)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	var config struct {
-		Servers map[string]json.RawMessage `json:"mcpServers"`
-	}
-	if json.Unmarshal(data, &config) != nil {
-		return false, ToolFailed
-	}
-	_, ok := config.Servers[microsoftServerName(address)]
-	return ok, nil
+	server, _, err := microsoftServerOf(env, address)
+	return server.configured(), err
 }
 
 func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
@@ -984,16 +959,23 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	if !ValidAddress(address) {
 		return ToolFailed
 	}
-	configured, err := microsoftMCPConfigured(env, address)
+	server, _, err := microsoftServerOf(env, address)
 	if err != nil {
 		return err
 	}
-	if configured {
+	var names []string
+	if server.registered {
+		names = append(names, server.name)
+	}
+	if server.legacy != "" {
+		names = append(names, server.legacy)
+	}
+	for _, name := range names {
 		pi, ok := env.Tool("pi")
 		if !ok {
 			return ToolFailed
 		}
-		if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", microsoftServerName(address)}}, nil); err != nil {
+		if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", name}}, nil); err != nil {
 			return ToolFailed
 		}
 	}
@@ -1219,7 +1201,11 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			list = strings.Replace(list, "Outlook works without one", "Outlook and file search work without one", 1)
 		}
 	}
-	body := fmt.Sprintf(microsoftOutlookSkill, uses, microsoftServerName(address)) + "\n\n" + files + search + "\n\n" + list +
+	name, _ := microsoftServerNames(address)
+	if server, _, err := microsoftServerOf(env, address); err == nil {
+		name = server.current()
+	}
+	body := fmt.Sprintf(microsoftOutlookSkill, uses, name) + "\n\n" + files + search + "\n\n" + list +
 		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
 	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
 }

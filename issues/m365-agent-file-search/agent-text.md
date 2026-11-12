@@ -4,6 +4,13 @@ Status: **waiting for Jari's proofreading.** No pilot release carries this
 text before Jari has read and accepted it. `m365-agent-file-search` stays at
 `testing`.
 
+Changed after the rethink (12.11.2026, `readable-mcp-server-names`): the
+Microsoft account's Pi MCP server name is now readable,
+`habitat-microsoft-person-example-test` instead of the hex-encoded
+`habitat-microsoft-706572…`. [personal-data-after.md](personal-data-after.md)
+was rendered again by the code and differs from the reviewed version only in
+that name; the quoted text below shows it too.
+
 This is the whole text a person's agents read about mail, calendars, contacts
 and cloud files: the generated `~/.agents/skills/personal-data/SKILL.md`
 (English only, no Finnish version) and the one paragraph of the host context
@@ -332,7 +339,7 @@ and contacts are reached…".
 ````markdown
 ### person@example.test — Microsoft
 
-Outlook mail, calendars, contacts and Microsoft 365 files are reached through the Pi MCP server `habitat-microsoft-706572736f6e406578616d706c652e74657374`, which is signed in as this account only; its tool descriptions carry the syntax. For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app.
+Outlook mail, calendars, contacts and Microsoft 365 files are reached through the Pi MCP server `habitat-microsoft-person-example-test`, which is signed in as this account only; its tool descriptions carry the syntax. For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app.
 
 The OneDrive folders and SharePoint libraries the person chose sync both ways: OneDrive under `~/cloud/onedrive/person@example.test/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/person@example.test/`.
 
