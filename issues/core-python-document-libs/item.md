@@ -3,12 +3,13 @@ created: 2026-11-12
 updated: 2026-11-12
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/openpyxl
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # Python document libraries (openpyxl and kin) on every installation
