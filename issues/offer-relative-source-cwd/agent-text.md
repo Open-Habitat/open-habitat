@@ -33,11 +33,15 @@ After:
 
 ## CLI error messages (new)
 
-- `file_source_not_found` / `view_source_not_found` before the daemon: "no file
-  or directory at ABSOLUTE-PATH; a relative --source is resolved against the
-  current working directory"
-- the same codes from the daemon: "no file or directory found among: PATH, PATH"
+- `file_source_not_found` / `view_source_not_found` from the daemon, re-messaged
+  by the CLI: "no file or directory found among: ABSOLUTE-PATH[, …]; a relative
+  --source is resolved against the current working directory"
+- the same codes from the CLI itself, when a `..` or a trailing `/` passes
+  through something that is not a directory: "no directory at PATH; a relative
+  --source is resolved against the current working directory"
 - `unsafe_file_source` / `unsafe_view_source`: "--source passes through the
   symlink PATH before ".."; symlinks in the path are refused; pass the real path"
+- `native_source_unavailable`: "--source passes through PATH, which cannot be
+  inspected as the person; pass a path without "..""
 - usage: "--source requires a file or directory path, absolute or relative to
   the current working directory (at most 1024 bytes)"

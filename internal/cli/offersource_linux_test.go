@@ -58,7 +58,7 @@ func TestOfferRelativeSourceUsesWorkingDirectory(t *testing.T) {
 	t.Chdir(filepath.Join(root, "other"))
 	// A logical $PWD through a symlink must not leak into the path: the
 	// daemon refuses symlinks and ".." would mean another directory.
-	t.Setenv("PWD", filepath.Join(root, "link", "..", "other"))
+	t.Setenv("PWD", root+"/link/../other")
 	key := "22222222-2222-4222-8222-222222222222"
 	base := []string{"offer", "--conversation", "pi:11111111-1111-4111-8111-111111111111", "--workspace", "ws_example123", "--idempotency-key", key}
 	for _, tc := range []struct{ source, want string }{
@@ -88,9 +88,9 @@ func TestOfferRelativeSourceUsesWorkingDirectory(t *testing.T) {
 	}
 }
 
-// A missing source is refused before the daemon with the absolute path that
-// was looked for; a symlink before ".." is refused rather than skipped over
-// lexically, and a symlink at the end is left for the daemon to refuse.
+// The CLI refuses what the kernel would refuse while walking the path: a
+// ".." through a missing directory, a file or a symlink, and a trailing "/"
+// on a file. Each refusal names the absolute path and nothing is sent.
 func TestOfferSourceRefusalsNameThePath(t *testing.T) {
 	root := offerSourceTree(t)
 	t.Chdir(filepath.Join(root, "other"))
@@ -100,12 +100,12 @@ func TestOfferSourceRefusalsNameThePath(t *testing.T) {
 		run              func([]string, func(string, string, []byte) (json.RawMessage, error)) (any, error)
 		source, code, in string
 	}{
-		{runAgentFileCommand, "a.pdf", "file_source_not_found", root + "/other/a.pdf"},
-		{runAgentFileCommand, "../sub/a.pdf/x", "file_source_not_found", root + "/sub/a.pdf/x"},
-		{runAgentFileCommand, root + "/nope", "file_source_not_found", root + "/nope"},
 		{runAgentFileCommand, "missing/../a.pdf", "file_source_not_found", root + "/other/missing"},
+		{runAgentFileCommand, "../sub/a.pdf/../r.html", "file_source_not_found", root + "/sub/a.pdf/"},
+		{runAgentFileCommand, "../sub/a.pdf/", "file_source_not_found", root + "/sub/a.pdf/"},
+		{runAgentFileCommand, "../sub/a.pdf/.", "file_source_not_found", root + "/sub/a.pdf/"},
 		{runAgentFileCommand, "../link/../sub/a.pdf", "unsafe_file_source", root + "/link"},
-		{runAgentViewCommand, "r.html", "view_source_not_found", root + "/other/r.html"},
+		{runAgentViewCommand, "../sub/r.html/../r.html", "view_source_not_found", root + "/sub/r.html/"},
 	} {
 		sent, err := capturedOffer(t, tc.run, append(append([]string{}, base...), "--source", tc.source))
 		var c *cliError
@@ -113,23 +113,36 @@ func TestOfferSourceRefusalsNameThePath(t *testing.T) {
 			t.Fatalf("%q: sent %v, %#v", tc.source, sent, err)
 		}
 	}
-	sent, err := capturedOffer(t, runAgentFileCommand, append(append([]string{}, base...), "--source", "../link"))
-	if paths, _ := sent["paths"].([]any); err == nil || len(paths) != 1 || paths[0] != root+"/link" {
-		t.Fatalf("final symlink not left to the daemon: %v %v", sent, err)
+	// A final symlink is the daemon's to refuse, and a missing source
+	// reaches the daemon too: a replay with the same key must succeed after
+	// the source is gone.
+	for _, source := range []string{"../link", "gone.pdf", root + "/gone.pdf"} {
+		sent, err := capturedOffer(t, runAgentFileCommand, append(append([]string{}, base...), "--source", source))
+		if paths, _ := sent["paths"].([]any); err == nil || len(paths) != 1 || !strings.HasPrefix(paths[0].(string), root+"/") {
+			t.Fatalf("%q not left to the daemon: %v %v", source, sent, err)
+		}
 	}
 }
 
-// When the daemon still finds no source (it vanished after the CLI looked),
-// the refusal names the absolute paths that were sent.
+// When the daemon finds no source, the refusal names the absolute paths the
+// CLI sent, so the agent sees what a relative path was taken to mean.
 func TestOfferDaemonNotFoundNamesSentPaths(t *testing.T) {
 	root := offerSourceTree(t)
-	t.Chdir(root)
-	args := []string{"offer", "--conversation", "pi:11111111-1111-4111-8111-111111111111", "--workspace", "ws_example123", "--idempotency-key", "22222222-2222-4222-8222-222222222222", "--source", "sub/a.pdf"}
-	_, err := runAgentFileCommand(args, func(string, string, []byte) (json.RawMessage, error) {
-		return nil, agentResponseError("POST", daemon.AgentFileOffersPath, 404, "file_source_not_found")
-	})
-	var c *cliError
-	if !errors.As(err, &c) || c.code != "file_source_not_found" || !strings.Contains(c.message, root+"/sub/a.pdf") {
-		t.Fatalf("daemon not-found: %#v", err)
+	t.Chdir(filepath.Join(root, "other"))
+	base := []string{"offer", "--conversation", "pi:11111111-1111-4111-8111-111111111111", "--workspace", "ws_example123", "--idempotency-key", "22222222-2222-4222-8222-222222222222"}
+	for _, tc := range []struct {
+		run                func([]string, func(string, string, []byte) (json.RawMessage, error)) (any, error)
+		path, source, code string
+	}{
+		{runAgentFileCommand, daemon.AgentFileOffersPath, "a.pdf", "file_source_not_found"},
+		{runAgentViewCommand, daemon.AgentViewsPath, "r.html", "view_source_not_found"},
+	} {
+		_, err := tc.run(append(append([]string{}, base...), "--source", tc.source), func(string, string, []byte) (json.RawMessage, error) {
+			return nil, agentResponseError("POST", tc.path, 404, tc.code)
+		})
+		var c *cliError
+		if !errors.As(err, &c) || c.code != tc.code || c.exit != 1 || !strings.Contains(c.message, root+"/other/"+tc.source) || !strings.Contains(c.message, "current working directory") {
+			t.Fatalf("daemon %s: %#v", tc.code, err)
+		}
 	}
 }

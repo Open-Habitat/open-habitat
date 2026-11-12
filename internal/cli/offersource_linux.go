@@ -17,7 +17,8 @@ import (
 // shell command the agent runs: a relative one names a file below the CLI
 // process's own working directory, not the conversation's workspace. The CLI
 // runs as the person, so it may look; the daemon still opens the absolute
-// path with its own no-symlink, no-magic-link rules and stays the judge.
+// path with its own no-symlink, no-magic-link rules and stays the judge of
+// what exists and may be offered.
 //
 // kind is "file" or "view" and picks the refusal codes the daemon would use.
 func absoluteOfferSource(kind, source string) (string, error) {
@@ -59,36 +60,46 @@ func absoluteOfferSource(kind, source string) (string, error) {
 	if len(abs) > 1024 {
 		return "", usage(fmt.Sprintf("--source resolves to %d bytes; at most 1024 bytes", len(abs)))
 	}
-	// Name the path that was looked for. Anything else (permissions, a
-	// symlink, a special file) is left for the daemon's own open to refuse.
-	if _, err := os.Lstat(abs); errors.Is(err, os.ErrNotExist) || errors.Is(err, unix.ENOTDIR) {
-		return "", offerSourceNotFound(kind, abs)
+	// A trailing "/" or "." demands a directory, as it does to the kernel;
+	// the cleaned path no longer says so. Existence itself is left to the
+	// daemon: an offer replayed with the same key must succeed after its
+	// source is gone, and the daemon answers that before it opens anything.
+	if base := path.Base(source); strings.HasSuffix(source, "/") || base == "." || base == ".." {
+		if st, err := os.Lstat(abs); err == nil && !st.IsDir() && st.Mode()&os.ModeSymlink == 0 {
+			return "", offerSourceNotFound(kind, abs+"/")
+		}
 	}
 	return abs, nil
 }
 
+// offerSourceComponent judges a directory that a following ".." leaves:
+// the kernel walks through it, so it must exist, be a directory and not be
+// a symlink, or the lexical result would name a file the kernel would not.
 func offerSourceComponent(kind, dir string) error {
 	st, err := os.Lstat(dir)
 	switch {
 	case errors.Is(err, os.ErrNotExist) || errors.Is(err, unix.ENOTDIR):
 		return offerSourceNotFound(kind, dir)
-	case err == nil && st.Mode()&os.ModeSymlink != 0:
+	case err != nil:
+		return &cliError{code: "native_source_unavailable", message: fmt.Sprintf("--source passes through %s, which cannot be inspected as the person; pass a path without \"..\"", dir), exit: 1}
+	case st.Mode()&os.ModeSymlink != 0:
 		return &cliError{code: "unsafe_" + kind + "_source", message: fmt.Sprintf("--source passes through the symlink %s before \"..\"; symlinks in the path are refused; pass the real path", dir), exit: 1}
+	case !st.IsDir():
+		return offerSourceNotFound(kind, dir+"/")
 	}
 	return nil
 }
 
 func offerSourceNotFound(kind, abs string) error {
-	return &cliError{code: kind + "_source_not_found", message: fmt.Sprintf("no file or directory at %s; a relative --source is resolved against the current working directory", abs), exit: 1}
+	return &cliError{code: kind + "_source_not_found", message: fmt.Sprintf("no directory at %s; a relative --source is resolved against the current working directory", abs), exit: 1}
 }
 
-// offerNotFoundNamesPaths adds the absolute paths sent to the daemon when it
-// still found no source (one vanished after the CLI looked, or a directory
-// descendant is missing).
+// offerNotFoundNamesPaths names the absolute paths the daemon looked for
+// when it found no source.
 func offerNotFoundNamesPaths(err error, kind string, sources []string) error {
 	var c *cliError
 	if errors.As(err, &c) && c.code == kind+"_source_not_found" {
-		return &cliError{code: c.code, message: "no file or directory found among: " + strings.Join(sources, ", "), exit: c.exit}
+		return &cliError{code: c.code, message: "no file or directory found among: " + strings.Join(sources, ", ") + "; a relative --source is resolved against the current working directory", exit: c.exit}
 	}
 	return err
 }
