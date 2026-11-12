@@ -2,7 +2,8 @@
 # Print the ID of the runtime builder image for this host's architecture,
 # building it from runtime/builder/Containerfile when the recipe changed.
 set -euo pipefail
-export TMPDIR=/var/tmp
+source "$(dirname "$0")/scratch.sh"
+TMPDIR=$(oh_scratch_root); export TMPDIR
 repo=$(cd "$(dirname "$0")/.." && pwd)
 tag=localhost/open-habitat-runtime-builder:latest
 recipe=$(sha256sum "$repo/runtime/builder/Containerfile" | cut -d' ' -f1)

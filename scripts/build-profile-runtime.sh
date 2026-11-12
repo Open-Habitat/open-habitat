@@ -5,7 +5,8 @@
 # integrations profile runs npm on its locked Node, so it needs a host of the
 # target's architecture.
 set -euo pipefail
-export TMPDIR=/var/tmp
+source "$(dirname "$0")/scratch.sh"
+TMPDIR=$(oh_scratch_root); export TMPDIR
 repo=$(cd "$(dirname "$0")/.." && pwd)
 case $(uname -m) in x86_64) host=linux-amd64;; aarch64) host=linux-arm64;; *) host=;; esac
 target=$host
@@ -18,7 +19,7 @@ profile=$1 out=$2
 # Python 3.14's tar reader. It neither installs nor executes the fetched runtime.
 if [[ $profile == python ]]; then
   python3 -c 'import compression.zstd' || { echo 'error: Python 3.14 zstd reader required for build' >&2; exit 1; }
-  work=$(mktemp -d /var/tmp/oh-python-build.XXXXXXXX)
+  oh_scratch_dir work ohpy
   trap 'rm -rf "$work"' EXIT
   mkdir "$work/inputs"
   cp "$repo/runtime/profiles/python/artifact-lock.json" "$work/inputs/"
@@ -33,7 +34,7 @@ if [[ $profile == integrations && $target != "$host" ]]; then
 fi
 image=$("$repo/scripts/runtime-builder-image.sh")
 # The mount parent is private, and the builder refuses an existing output child.
-work=$(mktemp -d /var/tmp/oh-profile-build.XXXXXXXX)
+oh_scratch_dir work ohpr
 trap 'rm -rf "$work"' EXIT
 if [[ $profile == integrations ]]; then
   mkdir "$work/inputs"

@@ -9,8 +9,16 @@ preferred=$(node --input-type=module -e 'import { ports } from "./web/test-ports
 portfile=$state/port
 port=$(cat "$portfile" 2>/dev/null || echo "$preferred")
 url=https://127.0.0.1:$port
-mkdir -p "$state/shots" /var/tmp/open-habitat-build
-export TMPDIR=/var/tmp/open-habitat-build
+mkdir -p "$state/shots"
+# The detached host outlives this launcher, so its private disk-backed TMPDIR
+# (scratch.sh says where) is recorded here and removed by the next stop or start.
+tmpfile=$state/tmpdir
+remove_lab_tmp() {
+  local old
+  old=$(cat "$tmpfile" 2>/dev/null) || return 0
+  case $old in /*/ohl.??????) [[ -d $old && ! -L $old ]] && rm -rf -- "$old";; esac
+  rm -f "$tmpfile"
+}
 alive() {
   [[ -f $pidfile ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null &&
     tr '\0' ' ' < "/proc/$(cat "$pidfile")/cmdline" | grep -Fq "$root/.cache/browser-host $root/web/dist"
@@ -21,6 +29,11 @@ case "${1:-}" in
     flock 9
     if alive; then echo "$url"; exit 0; fi
     rm -f "$pidfile"
+    remove_lab_tmp
+    source scripts/scratch.sh
+    oh_scratch_dir lab_tmp ohl
+    printf '%s\n' "$lab_tmp" > "$tmpfile"
+    export TMPDIR=$lab_tmp
     # Prefer the usual port, but choose a kernel-assigned free port if occupied.
     # The recorded port belongs to this worktree and is reused by url/shoot.
     port=$(LAB_PREFERRED="$preferred" python3 - <<'PYPORT'
@@ -74,6 +87,7 @@ PY
       done
     fi
     rm -f "$pidfile"
+    remove_lab_tmp
     echo 'lab stopped'
     ;;
   status)

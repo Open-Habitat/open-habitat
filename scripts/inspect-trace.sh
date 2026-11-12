@@ -23,7 +23,9 @@ transport failure). A directory must contain exactly one trace.zip recursively;
 otherwise pass a specific archive. No viewer is launched and nothing is deleted.
 
 Options: --help  Show this help; --json  Emit structured output.
-Environment: TMPDIR  Extraction parent (default /var/tmp on Linux, /tmp elsewhere).
+Environment: TMPDIR  Extraction parent. Default on Linux: OH_SCRATCH_ROOT, else
+  /var/tmp/agent-scratch when present and writable (an expiring scratch area),
+  else /var/tmp; elsewhere /tmp.
 On Linux TMPDIR must be disk-backed (not tmpfs/ramfs).
 Requires: python3, mktemp; Linux also requires stat.
 Exit codes: 0 success/help, 1 invalid input/archive, 2 I/O/missing dependency.
@@ -63,7 +65,16 @@ try:
         source = traces[0].resolve(strict=True)
     if not source.is_file() or source.suffix != ".zip":
         fail(f"Expected a .zip file, got {str(source)!r}")
-    parent_value = os.environ.get("TMPDIR", "/var/tmp" if sys.platform == "linux" else "/tmp")
+    if "TMPDIR" in os.environ:
+        parent_value = os.environ["TMPDIR"]
+    elif sys.platform != "linux":
+        parent_value = "/tmp"
+    elif os.environ.get("OH_SCRATCH_ROOT"):
+        parent_value = os.environ["OH_SCRATCH_ROOT"]
+    elif os.path.isdir("/var/tmp/agent-scratch") and os.access("/var/tmp/agent-scratch", os.W_OK):
+        parent_value = "/var/tmp/agent-scratch"
+    else:
+        parent_value = "/var/tmp"
     if not parent_value.strip():
         fail("TMPDIR must not be empty or whitespace-only")
     parent = Path(parent_value).resolve(strict=True)

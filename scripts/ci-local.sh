@@ -35,8 +35,12 @@ if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a
 reuse_phases=false
 if $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
-export TMPDIR=/var/tmp
-tmp=$(mktemp -d)
+# Test children's TMPDIR is this run's own directory, so whatever a killed child
+# leaves behind goes with it. Go tests need it short; scratch.sh says where.
+source "$repo/scripts/scratch.sh"
+oh_short_scratch_dir tmp ohc
+trap 'rm -rf "$tmp"' EXIT
+export TMPDIR=$tmp
 # Content-addressed build/download caches are disposable, but survive consecutive
 # runs in this checkout. HOME and the Python/tool installs remain private per run.
 export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"

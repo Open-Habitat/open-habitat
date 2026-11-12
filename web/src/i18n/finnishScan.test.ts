@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -64,21 +64,25 @@ it("finds no Finnish outside the catalogs", () => {
 
 it("finds Finnish in a string, a template and JSX text, not in a comment", () => {
   const src = mkdtempSync(join(tmpdir(), "finnish-scan-"));
-  mkdirSync(join(src, "text"));
-  writeFileSync(
-    join(src, "text", "sample.ts"),
-    'const fi = { close: "Sulje" };\nexport const t = catalog(fi, { close: "Close" });\n',
-  );
-  writeFileSync(
-    join(src, "View.tsx"),
-    [
-      "// Sulje tämä kommentti",
-      'export const a = "Sulje";',
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: source text of a template literal.
-      "export const b = (n: number) => `${n} päivää`;",
-      "export const c = <p>Avaa näkymä</p>;",
-      'export const d = "Close";',
-    ].join("\n"),
-  );
-  expect(unexplained(src).map(({ line }) => line)).toEqual([2, 3, 4]);
+  try {
+    mkdirSync(join(src, "text"));
+    writeFileSync(
+      join(src, "text", "sample.ts"),
+      'const fi = { close: "Sulje" };\nexport const t = catalog(fi, { close: "Close" });\n',
+    );
+    writeFileSync(
+      join(src, "View.tsx"),
+      [
+        "// Sulje tämä kommentti",
+        'export const a = "Sulje";',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: source text of a template literal.
+        "export const b = (n: number) => `${n} päivää`;",
+        "export const c = <p>Avaa näkymä</p>;",
+        'export const d = "Close";',
+      ].join("\n"),
+    );
+    expect(unexplained(src).map(({ line }) => line)).toEqual([2, 3, 4]);
+  } finally {
+    rmSync(src, { recursive: true, force: true });
+  }
 });

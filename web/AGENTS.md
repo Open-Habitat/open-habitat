@@ -54,7 +54,7 @@ exception in the checker.
 From the repository root, after installing web dependencies:
 
 ```sh
-node web/scripts/catalog-review.mjs > /var/tmp/catalog-review.json
+mkdir -p .cache && node web/scripts/catalog-review.mjs > .cache/catalog-review.json
 ```
 
 Give that one JSON file to a reviewing agent: each key has Finnish, US and effective UK

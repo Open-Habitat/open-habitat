@@ -7,7 +7,12 @@ if [[ ${1:-} != --locked ]]; then
 fi
 shift
 umask 077
-export TMPDIR="${TMPDIR:-/var/tmp}"
+# Browser hosts and Chromium profiles get a private disk-backed TMPDIR that
+# leaves with this run; scratch.sh says where.
+source scripts/scratch.sh
+oh_scratch_dir run_tmp ohs
+trap 'rm -rf "$run_tmp"' EXIT
+export TMPDIR=$run_tmp
 export OH_CPU_THROTTLE=4 OH_REPLY_DELAY_MS=250 OH_TIMEOUT_SCALE=4
 export OH_REPLY_SEED="${OH_REPLY_SEED:-$(date +%s%N)}"
 export OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-2}"

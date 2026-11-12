@@ -4,8 +4,42 @@ import argparse
 import os
 from pathlib import Path
 import re
+import shutil
+import signal
 import subprocess
 import sys
+import tempfile
+import time
+
+
+def scratch_dir():
+    """Return a private run directory under the scratch root that scripts/scratch.sh describes.
+
+    The returned lease file object must stay open while the directory is in use.
+    """
+    root = os.environ.get('OH_SCRATCH_ROOT', '')
+    if root:
+        if not (os.path.isabs(root) and os.path.isdir(root) and os.access(root, os.W_OK)):
+            sys.exit(f'error: OH_SCRATCH_ROOT {root!r} is not a writable absolute directory')
+    elif os.path.isdir('/var/tmp/agent-scratch') and os.access('/var/tmp/agent-scratch', os.W_OK):
+        root = '/var/tmp/agent-scratch'
+    else:
+        root = '/var/tmp'
+    lease = None
+    try:
+        import fcntl
+        lease = open(os.path.join(root, '.lease'), 'rb')
+        for _ in range(60):
+            try:
+                fcntl.flock(lease, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                time.sleep(1)
+        else:
+            print(f'warning: scratch lease {lease.name} busy; continuing without it', file=sys.stderr)
+    except OSError:
+        pass
+    return tempfile.mkdtemp(prefix='ohb.', dir=root), lease
 
 
 def main():
@@ -23,7 +57,21 @@ def main():
             parser.error('synthetic demo has a separate specialist config')
     if args.tag is not None and (not args.tag or args.tag.startswith('-')):
         parser.error('invalid tag')
-    os.environ['TMPDIR'] = '/var/tmp'
+    # Browser hosts, daemons and Chromium profiles go into this run's own
+    # disk-backed TMPDIR, so whatever a killed child leaves goes with the run.
+    run_tmp, lease = scratch_dir()
+    os.environ['TMPDIR'] = run_tmp
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda signum, _frame: sys.exit(128 + signum))
+    try:
+        return run(args, repo)
+    finally:
+        shutil.rmtree(run_tmp, ignore_errors=True)
+        if lease:
+            lease.close()
+
+
+def run(args, repo):
     # `git bisect run` and hooks export GIT_DIR; the host fixtures' `git init`
     # inheriting it would rewrite this repository instead of a scratch one.
     for name in subprocess.run(['git', 'rev-parse', '--local-env-vars'], capture_output=True,

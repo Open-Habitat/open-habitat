@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Podman/QEMU subprocesses may allocate large host-side scratch files.
-export TMPDIR=/var/tmp
+# Podman/QEMU subprocesses may allocate large host-side scratch files; they go
+# to the disk-backed scratch root that scratch.sh describes.
+source "$(dirname "$0")/scratch.sh"
+TMPDIR=$(oh_scratch_root); export TMPDIR
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scenario=${1:-}
 json=false

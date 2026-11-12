@@ -231,6 +231,23 @@ For Playwright install Chromium at `PLAYWRIGHT_BROWSERS_PATH`, normally
 standalone use can test stale output. Use `--no-reuse` on the clean gate
 when checking an identical tree for a suspected flake.
 
+### Scratch directories
+
+`ci-local.sh`, `test-focused.sh`, `browser-focused.py` and
+`browser-stress.sh` give their test children a private disk-backed TMPDIR
+that each removes on exit, so what a killed child leaves behind still goes
+with the run. `scripts/scratch.sh` says where those directories live:
+`OH_SCRATCH_ROOT`, else an expiring `/var/tmp/agent-scratch` when the host
+offers one, else `/var/tmp`. Ad-hoc scratch belongs in the same place. A
+directory made directly in `/var/tmp` is never aged, so a run that cannot
+remove it leaves it until someone does. Keep scratch paths short, because
+tests put Unix sockets under TMPDIR and socket paths are limited to 108 bytes.
+Go tests bind sockets under `t.TempDir()` with long test names, so their
+TMPDIR may be at most 21 bytes, which is shorter than `/var/tmp/agent-scratch`
+itself. `ci-local.sh` and `test-focused.sh` therefore put their Go run's
+directory directly in `/var/tmp` under a short name and remove it on exit, and a
+direct `go test` runs with TMPDIR unset or `/var/tmp`, not under the scratch root.
+
 ### Browser host lifetime and stray cleanup
 
 `python3 scripts/browser-hosts.py --json` reports same-UID synthetic hosts whose
@@ -261,8 +278,8 @@ runs with `--config web/playwright.lab.config.ts`, whose results are in
 
 The directory form requires exactly one `trace.zip`; pass a specific archive
 when several tests produced traces. The script extracts into a fresh private
-`oh-trace.*` directory under `$TMPDIR` (Linux default `/var/tmp`, disk-backed
-storage required), prints its path, a bounded summary of failed actions,
+`oh-trace.*` directory under `$TMPDIR` (Linux default: the scratch root above;
+disk-backed storage required), prints its path, a bounded summary of failed actions,
 console/page errors and recent network failures, and a local viewer command.
 It requires Python 3 and `mktemp` (plus `stat` on Linux), never launches a viewer
 or deletes files, and leaves both the archive and extracted files intact.
@@ -689,8 +706,9 @@ harness's logic, not the behaviour of any VM.
 
 ### Integration tools and Microsoft native single-grant qualification
 
-Build `./scripts/build-profile-runtime.sh integrations /var/tmp/NEW_PROFILE`, then
-run `python3 scripts/test-integrations-runtime.py /var/tmp/NEW_PROFILE CORE_RUNTIME` (a built or installed core's `runtime/`, read-only) to inspect
+Build `./scripts/build-profile-runtime.sh integrations "$SCRATCH/NEW_PROFILE"` (`SCRATCH` is a
+task directory under the scratch root above, removed afterwards), then
+run `python3 scripts/test-integrations-runtime.py "$SCRATCH/NEW_PROFILE" CORE_RUNTIME` (a built or installed core's `runtime/`, read-only) to inspect
 the sealed native tools, npm/Node closure, notices, file digests/modes and
 minimal-env wrappers. It runs himalaya, rclone, gog and tea for their pinned
 versions and the real Pi wrapper through a profile link, including native MCP

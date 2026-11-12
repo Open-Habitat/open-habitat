@@ -3,12 +3,13 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/var-tmp-oh
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # Product scripts and workers leave oh-* scratch under /var/tmp that nothing cleans

@@ -3,7 +3,8 @@
 # npm resolves the target CPU's optional packages and runs on the locked Node,
 # so a target is built on a host of its own architecture.
 set -euo pipefail
-export TMPDIR=/var/tmp
+source "$(dirname "$0")/scratch.sh"
+TMPDIR=$(oh_scratch_root); export TMPDIR
 repo=$(cd "$(dirname "$0")/.." && pwd)
 case $(uname -m) in x86_64) host=linux-amd64;; aarch64) host=linux-arm64;; *) host=;; esac
 target=$host

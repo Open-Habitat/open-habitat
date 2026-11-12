@@ -24,8 +24,16 @@ if ((${#browser_args[@]})) && [[ $area != browser ]]; then usage; fi
 if [[ -n $package && $area != go ]]; then usage; fi
 if [[ -n $tag && $tag == -* ]]; then usage; fi
 if [[ -n $package && ! $package =~ ^\./internal/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then usage; fi
-export TMPDIR=/var/tmp
 umask 077
+# Test children get a private disk-backed TMPDIR that leaves with this run,
+# short enough for Go tests' sockets; scratch.sh says where. The browser area
+# makes its own.
+if [[ $area != browser ]]; then
+  source "$repo/scripts/scratch.sh"
+  oh_short_scratch_dir run_tmp ohf
+  trap 'chmod -R u+w "$run_tmp" 2>/dev/null || true; rm -rf "$run_tmp"' EXIT
+  export TMPDIR=$run_tmp
+fi
 case "$area" in
   web)
     echo 'Focused web checks; skipped: Playwright, Go, contracts, packaging, clean receipt.' >&2
