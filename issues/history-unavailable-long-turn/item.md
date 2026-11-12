@@ -31,3 +31,9 @@ To find: which native condition makes the history read refuse (session file
 being appended by a long tool call, size/page limits, revision mismatch,
 writer lease, compaction), whether the card is right to tell a person to
 contact the administrator for it, and the fix. Log the refusal reason.
+
+Kaisa suspects a limit was hit (Jari 12.11.). Candidates: the per-person
+storage quota (a full quota cuts every write, including the session file the
+history is read from) or the model provider's usage limit. Whatever the
+limit, the person must get a meaningful message naming it, not "history
+unavailable, tell the administrator".
