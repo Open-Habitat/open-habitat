@@ -4,6 +4,7 @@ package integrations
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -167,7 +168,9 @@ func microsoftMoveLock(fd int, name, moved, session string) error {
 			return err
 		}
 	}
-	if err := writeNewFileAt(fd, moved, data, 0600); err != nil {
+	// A stop between writing the new lock and removing the old one left
+	// the new one already written: removing the old one finishes the move.
+	if err := writeNewFileAt(fd, moved, data, 0600); err != nil && !errors.Is(err, unix.EEXIST) {
 		return err
 	}
 	return unix.Unlinkat(fd, name, 0)
