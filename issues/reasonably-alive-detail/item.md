@@ -2,13 +2,15 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker observation
 source_ref: taskfleet:01m77y0mxpza1hfya7vxqf3fvm/observed:focused-go-python-venv
 originating_run: 01m77y0mxpza1hfya7vxqf3fvm
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Focused Go checks fail contract-schema daemon tests without ci-local's Python venv
