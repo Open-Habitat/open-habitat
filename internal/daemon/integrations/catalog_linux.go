@@ -805,6 +805,12 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	a := c.relay.attempts[e.Provider()]
 	nativeBusy := a != nil && a.provider == e.Provider() && !finished(a.state) && a.state == "completing"
 	initial := a != nil && a.provider == e.Provider() && a.address == address && a.syncing && a.state != "completed"
+	// A sign-in completes under the same lock without a first pass; only a
+	// pass promises a check after it.
+	held := StateUnknown
+	if a != nil && a.syncing && (initial || nativeBusy) {
+		held = StatePendingFirstSync
+	}
 	var progress *SyncProgress
 	failed := false
 	var refused firstPassRefusal
@@ -825,7 +831,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	// after it; the files it copies become syncing below.
 	if (initial && !failed) || nativeBusy {
 		for _, id := range e.Services() {
-			services = append(services, Service{ID: id, State: StatePendingFirstSync})
+			services = append(services, Service{ID: id, State: held})
 		}
 	} else if g, ok := e.(GrantEntry); ok {
 		services, grant = g.CheckGrant(ctx, c.env, address)

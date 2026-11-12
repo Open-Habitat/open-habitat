@@ -186,8 +186,18 @@ func TestServicesBesideFirstPassWaitForIt(t *testing.T) {
 	if n := asked.Load(); n != 0 {
 		t.Fatal("tool asked beside the native pass", n)
 	}
+	// A sign-in exchange holds the same lock without a first pass, so it
+	// promises no check after one.
 	c.relay.mu.Lock()
-	pass.state = "completed"
+	pass.syncing = false
+	c.relay.mu.Unlock()
+	for id, s := range states(c.check(context.Background(), e, "other@example.test")) {
+		if s != StateUnknown {
+			t.Fatal("sign-in reported as a first sync", id, s)
+		}
+	}
+	c.relay.mu.Lock()
+	pass.syncing, pass.state = true, "completed"
 	c.relay.mu.Unlock()
 	after := states(c.check(context.Background(), e, "person@example.test"))
 	if asked.Load() != 1 || after["mail"] != StateOK || after["calendar"] != StateOK {
