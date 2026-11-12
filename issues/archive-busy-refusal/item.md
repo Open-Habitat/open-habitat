@@ -3,12 +3,18 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/archive-busy
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
+commits:
+- hash: 8d2054c55
+  summary: 'daemon: queue quick annotation writes behind the workspace writer'
+- hash: 3e7cc0c01
+  summary: 'web, daemon: word writer-holder refusals on every write path'
 ---
 
 # Archiving conversations quickly fails with 'Toinen muutos oli juuri kesken'
