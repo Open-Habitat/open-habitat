@@ -130,7 +130,7 @@ func runAgentViewCommand(args []string, exchange func(string, string, []byte) (j
 	}
 	source, ok := values["--source"]
 	if !ok || source == "" || len(source) > 1024 {
-		return nil, usage("--source requires an absolute or workspace-relative file or directory path (at most 1024 bytes)")
+		return nil, usage("--source requires a file or directory path, absolute or relative to the current working directory (at most 1024 bytes)")
 	}
 	request := map[string]any{"idempotency_key": key, "workspace_id": workspace, "path": source, "dry_run": dry}
 	if entry, ok := values["--entry-file"]; ok {
@@ -142,10 +142,14 @@ func runAgentViewCommand(args []string, exchange func(string, string, []byte) (j
 		}
 		request["title"] = title
 	}
+	if source, err = absoluteOfferSource("view", source); err != nil {
+		return nil, err
+	}
+	request["path"] = source
 	body, _ := json.Marshal(request)
 	data, err := exchange("POST", path, body)
 	if err != nil {
-		return nil, err
+		return nil, offerNotFoundNamesPaths(err, "view", []string{source})
 	}
 	warnings := []string{}
 	if !dry {

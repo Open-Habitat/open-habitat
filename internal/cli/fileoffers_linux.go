@@ -114,11 +114,11 @@ func runAgentFileCommand(args []string, exchange func(string, string, []byte) (j
 		return nil, usage("provide exactly one of --current or --conversation pi:UUID; the card appears in that conversation")
 	}
 	if len(sources) == 0 || len(sources) > 20 {
-		return nil, usage("provide 1 to 20 --source flags, each an absolute or workspace-relative file or directory")
+		return nil, usage("provide 1 to 20 --source flags, each a file or directory path, absolute or relative to the current working directory")
 	}
 	for _, source := range sources {
 		if source == "" || len(source) > 1024 {
-			return nil, usage("--source requires an absolute or workspace-relative file or directory path (at most 1024 bytes)")
+			return nil, usage("--source requires a file or directory path, absolute or relative to the current working directory (at most 1024 bytes)")
 		}
 	}
 	title, hasTitle := values["--title"]
@@ -147,6 +147,13 @@ func runAgentFileCommand(args []string, exchange func(string, string, []byte) (j
 	if !workspacePattern.MatchString(workspace) {
 		return nil, usage(fmt.Sprintf("invalid --workspace %q; expected ws_ ID from agent workspace list (optional only with --current)", workspace))
 	}
+	for i, source := range sources {
+		abs, err := absoluteOfferSource("file", source)
+		if err != nil {
+			return nil, err
+		}
+		sources[i] = abs
+	}
 	request := map[string]any{"idempotency_key": key, "workspace_id": workspace, "paths": sources, "dry_run": dry}
 	if hasTitle {
 		request["title"] = title
@@ -154,7 +161,7 @@ func runAgentFileCommand(args []string, exchange func(string, string, []byte) (j
 	body, _ := json.Marshal(request)
 	data, err := exchange("POST", daemon.AgentFileOffersPath+"?"+query, body)
 	if err != nil {
-		return nil, err
+		return nil, offerNotFoundNamesPaths(err, "file", sources)
 	}
 	warnings := []string{}
 	if !dry {

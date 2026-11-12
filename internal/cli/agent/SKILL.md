@@ -69,10 +69,11 @@ what the person will see and, when useful, its iteration; for example,
 "Viimeisimmät sivupalkissa – prototyyppi, kierros 2". Without it the card falls
 back to a filename, not the HTML document's `<title>`.
 
-For both view and file offers, `--source` accepts an absolute path inside or
+For both view and file offers, `--source` is an absolute path inside or
 outside the workspace (for example `/var/tmp/report.html`), or a path relative
-to the conversation's workspace (for example `site/index.html`). The source
-must be readable as the person; symlinks in the path are refused.
+to your current working directory, as in any shell command (for example
+`site/index.html`). The source must be readable as the person; symlinks in the
+path are refused.
 
 The offer copies the file, or the directory's files, into a frozen view: later
 edits do not change it, so offer again (new key) after a change. The person sees

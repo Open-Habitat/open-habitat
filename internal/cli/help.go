@@ -214,10 +214,10 @@ func commandHelp(args []string) (any, error) {
 				flag["possible_values"] = integrationapps.Providers
 			}
 			if f == "--workspace" && (key == "agent view offer" || key == "agent file offer") {
-				flag["description"] = "Own conversation workspace ws_ ID; base for relative --source paths; defaults to the launch context's workspace with --current"
+				flag["description"] = "Own conversation workspace ws_ ID the offer belongs to; defaults to the launch context's workspace with --current"
 			}
 			if f == "--source" && key == "agent file offer" {
-				flag["description"] = "Absolute path inside or outside the workspace, or workspace-relative path, readable as the person; file or directory, repeatable up to 20; a file keeps its name, a directory its folders (one directory alone is the package); symlinks and special files refuse the offer, hidden entries in a directory are skipped; at most 200 files and 512 MiB"
+				flag["description"] = "Absolute path, or path relative to the current working directory as in any shell command, readable as the person; file or directory, repeatable up to 20; a file keeps its name, a directory its folders (one directory alone is the package); symlinks and special files refuse the offer, hidden entries in a directory are skipped; at most 200 files and 512 MiB"
 			}
 			if f == "--title" && key == "agent file offer" {
 				flag["description"] = "Always supply a short descriptive title in the person's language, not a filename; plain text, 1–200 UTF-8 bytes; defaults to the file or directory name if omitted; required with several --source"
@@ -279,7 +279,7 @@ func helpFlag(name string) map[string]any {
 	case "--attachment":
 		v["description"] = "Registered attachment UUID; binary downloads require --output"
 	case "--source":
-		v["description"] = "Absolute path inside or outside the workspace, or workspace-relative path, readable as the person; HTML file, or a directory exported with --entry-file; symlinks and special files refuse the offer, hidden entries are skipped; at most 500 files and 50 MiB"
+		v["description"] = "Absolute path, or path relative to the current working directory as in any shell command, readable as the person; HTML file, or a directory exported with --entry-file; symlinks and special files refuse the offer, hidden entries are skipped; at most 500 files and 50 MiB"
 	case "--entry-file":
 		v["description"] = "The .html file the view opens, relative to a --source directory; for a file it may only repeat the file's name"
 	case "--title":

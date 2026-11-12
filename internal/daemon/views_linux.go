@@ -233,7 +233,9 @@ func viewOpenError(err error) error {
 	}
 }
 
-// openOfferSource keeps relative sources beneath the workspace. Absolute
+// openOfferSource keeps relative sources beneath the workspace (the CLI
+// resolves the agent's relative paths against its own working directory and
+// sends them absolute; relative ones remain safe for direct callers). Absolute
 // sources may name another filesystem, so their lookup allows mount
 // crossings. Neither lookup follows symlinks; descendants of a named
 // directory retain the same beneath/no-mount rules as workspace sources.
