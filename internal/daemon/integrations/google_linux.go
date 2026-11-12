@@ -310,19 +310,22 @@ func (g *google) Skill(env Env, address string) SkillAccount {
 			services = append(services, Service{ID: id, Access: googleRules.access(id, granted)})
 		}
 	}
-	body := fmt.Sprintf("Use `GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json` followed by the gog command. Use `gmail` (drafts first), `calendar`, `contacts`, `drive` for online Google-native documents, and `sheets`, `docs` and `slides` to read and edit Google Sheets, Docs and Slides in place. The keyring password is a fixed native file-backend setting, not a secret. Never export or print tokens. Consult the tool's --help for syntax.", mustTool(env, "gog"), address)
-	body += "\n\nAn error saying an API \"has not been used in project\", \"is disabled\" or \"is not enabled for this OAuth project\" is not missing permission and the person cannot fix it by signing in again: the server's administrator must enable that API in the Google Cloud project, at " + googleEnableURL(env) + " or the link Google's error names. Tell the person exactly that."
-	if ready && googleDriveMirror(env, address) {
-		body += fmt.Sprintf("\n\nOrdinary Drive files are under `~/cloud/google-drive/%s/`. Read them with filesystem tools. Drive is read only: this directory is a one-way mirror of Drive. Nothing written here reaches Drive, and the next pass overwrites or deletes any local change, so never keep work here. Google-native documents and shortcuts are not mirrored: read those with gog online.", address)
+	body := fmt.Sprintf("Gmail, Calendar, Contacts and Drive are reached with gog. Every command starts\n\n    GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json\n\nfollowed by the gog command: `gmail`, `calendar`, `contacts`, `drive` for Google-native documents online, and `sheets`, `docs` and `slides` to read and edit Google Sheets, Docs and Slides in place; `--help` has the syntax. The keyring password on that line is a fixed setting of gog's file backend and not a secret. The tokens in the keyring are, which is why `auth tokens export` is left alone.", mustTool(env, "gog"), address)
+	body += "\n\nAn error saying an API \"has not been used in project\", \"is disabled\" or \"is not enabled for this OAuth project\" is not missing permission, and the person cannot fix it by signing in again: the server's administrator must enable that API in the Google Cloud project, at " + googleEnableURL(env) + " or the link Google's error names. Tell the person exactly that."
+	mirror := ready && googleDriveMirror(env, address)
+	backups := fmt.Sprintf(" Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/google-backups/%s/`.", address)
+	const native = " Google-native documents and shortcuts are not ordinary files and are left out: reach those online with gog."
+	if mirror {
+		body += fmt.Sprintf("\n\nOrdinary Drive files are under `~/cloud/google-drive/%s/`, a one-way mirror of Drive because Drive is read-only for this account.", address) + native + backups
 	} else if ready {
-		body += fmt.Sprintf("\n\nOrdinary Drive files sync continuously both ways under `~/cloud/google-drive/%s/`. Edits, moves and deletions reach the cloud. Google-native documents and shortcuts are excluded from filesystem sync: use gog online for those. Write only what the person requested. Native bisync safeguards must not be bypassed with --force, blind --resync or remove/reconnect: reconnection is a cloud-preferred union, not deletion approval. Initial conflicting local versions are backed up under `~/.local/share/rclone/google-backups/%s/`.", address, address)
+		body += fmt.Sprintf("\n\nOrdinary Drive files sync both ways under `~/cloud/google-drive/%s/`.", address) + native + backups
 	} else if driveAccess != AccessNone {
-		body += "\n\nDrive initial sync is not ready. Finish the initial folder choice in Settings → Integrations; do not assume local files are available."
+		body += "\n\nDrive's initial sync is not ready, so local Drive files cannot be relied on yet. The person finishes the folder choice in Settings → Integrations."
 	} else {
-		body += "\n\nDrive files are not synced: Drive is not granted."
+		body += "\n\nDrive is not granted, so no Drive files are synced."
 	}
 	body += accessSummary(services, map[string]string{"drive": "Drive", "mail": "Gmail", "calendar": "Calendar", "contacts": "Contacts"})
-	return SkillAccount{Label: "Google", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: body}
+	return SkillAccount{Label: "Google", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: mirror, Body: body}
 }
 
 // googleAPIs are the APIs gog calls for the scopes the levels request; the

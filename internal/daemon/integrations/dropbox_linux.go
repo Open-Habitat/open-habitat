@@ -283,16 +283,17 @@ func (d *dropbox) Skill(env Env, address string) SkillAccount {
 		dir = n.directory
 	}
 	if !ready {
-		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Body: fmt.Sprintf("Dropbox is signed in, but initial sync is not ready. Do not assume files are available under `~/%s/`. Ask the person to sign in again in Settings → Integrations and finish the initial sync choice.", dir)}
+		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Body: fmt.Sprintf("Dropbox is signed in, but its initial sync is not ready, so files under `~/%s/` may be missing or partial. The person finishes it in Settings → Integrations by signing in again and making the sync choice.", dir)}
 	}
 	scope := ""
 	if n.appFolder(address) {
-		scope = " The account reaches only this application's own folder in Dropbox (Apps/<application>), never the rest of the person's Dropbox."
+		scope = " The account reaches only this application's own folder in Dropbox (`Apps/<application>`), not the rest of the person's Dropbox."
 	}
+	backups := fmt.Sprintf(" Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/dropbox-backups/%s/`.", address)
 	if n.access() != AccessFull {
-		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`. Read them with filesystem tools, not the repository catalog. The account is read only: this directory is a one-way mirror of Dropbox. Nothing written here reaches Dropbox, and the next pass overwrites or deletes any local change, so never keep work here.%s", dir, scope)}
+		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Mirrored: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`, a one-way mirror of Dropbox because the account is read-only.%s%s", dir, scope, backups)}
 	}
-	return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`. Read them with filesystem tools, not the repository catalog. This is continuous two-way sync: edits, moves and deletions reach Dropbox and other devices. Write only what the person requested. If a native bisync safeguard stops sync, keep both copies and ask the person/operator to inspect the native rclone state. Do not use `--force`, blindly `--resync`, or remove and reconnect to approve deletions: reconnection is a union and can restore deleted files. Settings → Integrations can renew a rejected login, but does not approve mass deletions.%s", dir, scope)}
+	return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`, synced both ways.%s%s", dir, scope, backups)}
 }
 func (d *dropbox) Remove(_ context.Context, env Env, address string) error {
 	d.native.Lock()

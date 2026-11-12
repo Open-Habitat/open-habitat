@@ -17,6 +17,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// piMCPGrantSkill tells an agent what the chosen level is worth: the scopes
+// a level requests are merged with whatever the server challenges for, so the
+// connection can hold more than the person chose.
+const piMCPGrantSkill = "The level the person chose is what the sign-in asked for, not a ceiling: Pi also accepts further scopes the server asks for, so the tools may be able to change more than the person meant. Go by what they asked you to do, not by what the tools allow, and when a tool answers with a request for a new sign-in or wider consent, pass that decision to the person instead of starting it."
+
 // piMCP is a provider reached through Pi's own remote MCP OAuth. A connection
 // is a named entry in Pi's mcp.json and its grant is Pi's mcp-auth.json state
 // under that name; Habitat keeps no connection ledger or token of its own.

@@ -194,7 +194,7 @@ func TestDropboxConnectSyncRestartAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	skill, err := os.ReadFile(filepath.Join(env.Home, SkillDir, "SKILL.md"))
-	if err != nil || !bytes.Contains(skill, []byte("~/cloud/dropbox/person@example.test/")) || !bytes.Contains(skill, []byte("live two-way sync")) {
+	if err != nil || !bytes.Contains(skill, []byte("~/cloud/dropbox/person@example.test/")) || !bytes.Contains(skill, []byte("In a folder that syncs both ways")) {
 		t.Fatalf("skill: %v", err)
 	}
 	cmd, ok := d.SyncCommand(env, k.address)

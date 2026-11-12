@@ -241,7 +241,7 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 		t.Fatal("native MCP setup", err)
 	}
 	skill := m.Skill(env, address)
-	if !skill.Synced || !strings.Contains(skill.Body, "drafts first") {
+	if !skill.Synced || skill.Mirrored || !strings.Contains(skill.Body, "`create-draft-email`") {
 		t.Fatal(skill)
 	}
 	if err := m.Remove(context.Background(), env, address); err != nil {

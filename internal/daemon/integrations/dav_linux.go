@@ -262,44 +262,43 @@ func (d *dav) Skill(env Env, address string) SkillAccount {
 		tool = "curl"
 	}
 	cmd := fmt.Sprintf("%s --disable --config ~/%s/%s.conf --globoff --silent --show-error", tool, d.dir(), address)
-	namespace, resource, mime := "urn:ietf:params:xml:ns:caldav", "calendar", "text/calendar"
+	// what is the kind of thing; resource and data are CalDAV's or CardDAV's
+	// own names for the collection and its report payload.
+	label, what, namespace, resource, mime, data := "calendars (CalDAV)", "Calendars", "urn:ietf:params:xml:ns:caldav", "calendar", "text/calendar", "calendar-data"
+	invitations := "\nSaving an event that has attendees can make the server send them invitations,\nwhich is the person's call just as sending mail is."
 	if d.provider == CardDAV {
-		namespace, resource, mime = "urn:ietf:params:xml:ns:carddav", "addressbook", "text/vcard"
+		label, what, namespace, resource, mime, data = "contacts (CardDAV)", "Contacts", "urn:ietf:params:xml:ns:carddav", "addressbook", "text/vcard", "address-data"
+		invitations = ""
 	}
-	dataElement := "calendar-data"
-	if d.provider == CardDAV {
-		dataElement = "address-data"
-	}
-	return SkillAccount{Label: string(d.provider), Kinds: d.Services(), Body: fmt.Sprintf(`%[1]s uses curl's own private config (URL and credentials). Do not print it.
-No local sync or calendar/contact database is maintained.
+	return SkillAccount{Label: label, Kinds: d.Services(), Body: fmt.Sprintf(`%[1]s over %[2]s with curl. Nothing is synced or cached locally: every read
+is a request to the server. Every command starts
 
-The configured URL was found when the account was connected: it is the
-account's %[5]s home set when the provider announced one, on the host that
-serves this account. List its collections with PROPFIND and Depth: 1 (request
-DAV:resourcetype and DAV:displayname):
+    %[3]s
 
-    %[2]s --request PROPFIND --header 'Depth: 1' --header 'Content-Type: application/xml' --data-binary '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:displayname/></d:prop></d:propfind>'
+The config file holds the account's URL and password, which is why the command
+names no URL and why the file is not for printing. The URL is the account's
+%[5]s home set where the provider announced one, so a PROPFIND with
+Depth: 1 lists the collections:
 
-If that lists no collections, discover DAV:current-user-principal and the
-%[5]s-home-set explicitly (they may be absent from an allprop response):
+    %[3]s --request PROPFIND --header 'Depth: 1' --header 'Content-Type: application/xml' --data-binary '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:displayname/></d:prop></d:propfind>'
 
-    %[2]s --request PROPFIND --header 'Depth: 0' --header 'Content-Type: application/xml' --data-binary '<d:propfind xmlns:d="DAV:" xmlns:x="%[4]s"><d:prop><d:current-user-principal/><x:%[5]s-home-set/></d:prop></d:propfind>'
+If that lists none, ask for DAV:current-user-principal and the
+%[5]s-home-set by name, since an allprop response may omit them. To
+address a principal, home set, collection or item found in an href, add
+`+"`--request-target '/absolute/path/from/href'`"+`: it changes the path of the
+request and leaves the server and credentials as configured. From there it is
+ordinary %[2]s (namespace %[4]s): REPORT with
+%[5]s-query or %[5]s-multiget and %[7]s, GET with --include to see
+the ETag, PUT of %[6]s with If-Match: <ETag> (If-None-Match: * for a
+new UID), and DELETE with If-Match.
 
-Follow DAV hrefs only on the configured server. To target a discovered principal,
-home set, collection or item, add %[3]s; this changes
-only the request path, not the server or credentials. An absolute href is usable
-only when its host is the configured URL's host; use just its path. A redirect or
-an href to another host is not followed: tell the person to reconnect the account.
-Never use --location, --verbose, --trace, --insecure or a different --url with this account.
-For queries, create a DAV XML REPORT body and call:
+The password goes wherever curl sends the request and shows in whatever curl
+prints about it. So requests stay on the configured host: an href or redirect
+that points to another host is not followed (the person reconnects the account
+instead), and --location, --verbose, --trace, --insecure or another --url have
+no place with this config.
 
-    %[2]s --request-target '/collection/' --request REPORT --header 'Depth: 1' --header 'Content-Type: application/xml; charset=utf-8' --data-binary @query.xml
-
-Use %[5]s-query / %[5]s-multiget and %[7]s in that namespace
-(calendar-query filters VEVENT by time-range; addressbook-query filters vCards).
-GET an item with --include --request-target '/collection/item'. Read its ETag before editing.
-Only on the person's request, PUT an iCalendar/vCard file with Content-Type %[6]s
-and If-Match: <ETag> (If-None-Match: * for a new UID); never overwrite a 412 conflict.
-DELETE requires the person's explicit request for that specific item and If-Match.
-Prepare proposed changes first. Do not send calendar invitations without approval.`, d.provider, cmd, "`--request-target '/absolute/path/from/href'`", namespace, resource, mime, dataElement)}
+A change lands in the person's real data at once. Sending the ETag you read
+as If-Match makes a change made elsewhere in the meantime come back as 412
+instead of being overwritten; after a 412, read again rather than force.%[8]s`, what, map[Provider]string{CalDAV: "CalDAV", CardDAV: "CardDAV"}[d.provider], cmd, namespace, resource, mime, data, invitations)}
 }

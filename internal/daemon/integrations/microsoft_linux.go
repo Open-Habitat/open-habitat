@@ -1181,27 +1181,32 @@ func microsoftVerify(ctx context.Context, env Env, address string) (string, []st
 func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	_, ready := m.SyncCommand(env, address)
 	var directories strings.Builder
-	files := "Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`."
-	if remotes, err := microsoftRemotes(env, address); err == nil {
+	mirror := false
+	remotes, remotesErr := microsoftRemotes(env, address)
+	if remotesErr == nil {
 		for _, r := range remotes {
 			if microsoftReady(env, address, r) {
 				fmt.Fprintf(&directories, "\n- `~/%s/`", r.Directory)
 			}
-			if !r.Writable {
-				// The grant reads files only; its roots are one-way mirrors.
-				files = "Selected OneDrive files are a read-only one-way mirror under `~/cloud/onedrive/%s/`, selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Nothing written there reaches Microsoft, and the next pass overwrites or deletes any local change, so never keep work there. Files the first mirror pass replaced are backed up under `~/.local/share/rclone/microsoft-backups/%s/`."
-			}
+			// The grant reads files only; its roots are one-way mirrors.
+			mirror = mirror || !r.Writable
 		}
 	}
+	files := "The OneDrive folders and SharePoint libraries the person chose sync both ways"
+	if mirror {
+		files = "The OneDrive folders and SharePoint libraries the person chose are one-way mirrors, because this account's access to files is read-only"
+	}
+	files += fmt.Sprintf(": OneDrive under `~/cloud/onedrive/%s/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/%s/`.", address, address)
+	list := "Synced directories:" + directories.String()
 	if !ready {
-		if remotes, err := microsoftRemotes(env, address); err == nil && len(remotes) == 0 {
-			directories.WriteString("\nNo OneDrive or followed SharePoint roots are configured for this account; Outlook tools remain available.")
+		if remotesErr == nil && len(remotes) == 0 {
+			list = "No OneDrive folder or SharePoint library is synced for this account; Outlook works without one."
 		} else {
-			directories.WriteString("\nInitial sync is not ready; finish the folder choice in Settings → Integrations.")
+			list = "The first sync has not finished, so nothing under those paths can be relied on yet. The person finishes the folder choice in Settings → Integrations."
 		}
 	}
 	var services []Service
-	uses, search := "Outlook mail (drafts first), calendars and contacts", ""
+	uses, search := "Outlook mail, calendars and contacts", ""
 	if n, err := microsoftReadNative(env, address); err == nil && n.mcpAllowed != "" {
 		// The Outlook server's scopes were derived from the grant at sign-in.
 		allowed := microsoftGranted(strings.Fields(n.mcpAllowed))
@@ -1209,22 +1214,32 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			services = append(services, Service{ID: id, Access: microsoftRules.access(id, allowed)})
 		}
 		if !n.mcpOutdated() && microsoftRules.access("onedrive", allowed) != AccessNone {
-			uses = "Outlook mail (drafts first), calendars, contacts and finding Microsoft 365 files"
+			uses = "Outlook mail, calendars, contacts and Microsoft 365 files"
 			search = "\n\n" + fmt.Sprintf(microsoftSearchSkill, address, address)
+			list = strings.Replace(list, "Outlook works without one", "Outlook and file search work without one", 1)
 		}
 	}
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for "+uses+". It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. "+files+" One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + search + "\n\nReady sync directories:" + directories.String() + accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})}
+	body := fmt.Sprintf(microsoftOutlookSkill, uses, microsoftServerName(address)) + "\n\n" + files + search + "\n\n" + list +
+		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
+	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
 }
+
+// microsoftOutlookSkill names the account's server and the one trap its tool
+// names hide: the reply and forward tools are Graph's send actions, and only
+// the draft tools leave the sending to the person.
+const microsoftOutlookSkill = "%s are reached through the Pi MCP server `%s`, which is signed in as this account only; its tool descriptions carry the syntax. " +
+	"For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. " +
+	"Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app."
 
 // microsoftSearchSkill tells an agent to find files by search and fetch only
 // what it needs (Jari 12.11.2026): a full local copy of every library does not
 // fit the person's quota, and a recursive grep over a cloud tree that is not
 // fully local either misses files or downloads all of them. Jari proofreads
 // every change to this text before it reaches the pilots.
-const microsoftSearchSkill = "Find Microsoft 365 files by search, not by browsing or grepping. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` narrow to one site, library or folder. " +
-	"Fetch only the files you need with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; if the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. Create the parent directory first. The tool never overwrites: a file already there is an earlier fetch, so check its age before relying on it, and fetch the current version beside it under a new name rather than deleting a copy that may hold edits. " +
-	"Grep and read within the fetched files. A ready sync directory below is a full local copy, so a targeted search inside one is fine, but never grep or find recursively over `~/cloud/` as a whole. " +
-	"A fetched file is a local copy: you may edit it, but nothing reaches Microsoft, and no tool here uploads, moves, shares or deletes anything in the cloud. When the person wants an edited file back in Microsoft 365, tell them where the copy is so they can upload it."
+const microsoftSearchSkill = "Most of what this account can open is not on this machine, since a full copy of every library would not fit the person's storage. Microsoft's search is how files are found. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` look inside one site, library or folder.\n\n" +
+	"To read a file, fetch it with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; when the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. The local path then says where the file lives in the cloud. The tool needs the parent directory to exist and does not overwrite: a file already there is an earlier fetch that may be stale and may hold edits made here. Look at its age, and put a fresh fetch beside it under another name instead of deleting it.\n\n" +
+	"Grep and read within what you fetched, and inside the synced directories listed below, which are complete local copies. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud, and the synced copies can be very large.\n\n" +
+	"A fetched file is a local copy that you may edit, but the edit stays here: this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365. When the person wants an edited file back there, tell them where the copy is so they can upload it."
 
 var _ FolderEntry = (*microsoft)(nil)
 var _ GrantEntry = (*microsoft)(nil)

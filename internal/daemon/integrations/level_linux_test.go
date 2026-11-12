@@ -132,8 +132,8 @@ func TestDropboxReadLevelMirrorsOneWay(t *testing.T) {
 	if account["level"] != "read" || service["access"] != "read" || service["directory"] != "~/cloud/dropbox/"+email || service["last_synced_at"] == nil {
 		t.Fatal(account)
 	}
-	if body := d.Skill(env, email).Body; !strings.Contains(body, "one-way mirror") {
-		t.Fatal(body)
+	if s := d.Skill(env, email); !s.Mirrored || s.Synced || !strings.Contains(s.Body, "one-way mirror") {
+		t.Fatal(s.Body)
 	}
 }
 
@@ -337,8 +337,8 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 	if m.Misaligned(env, address) {
 		t.Fatal("the read level's application read as another application")
 	}
-	if body := m.Skill(env, address).Body; !strings.Contains(body, "one-way mirror") || strings.Contains(body, "sync both ways") {
-		t.Fatal(body)
+	if s := m.Skill(env, address); !s.Mirrored || s.Synced || !strings.Contains(s.Body, "one-way mirror") || strings.Contains(s.Body, "sync both ways") {
+		t.Fatal(s.Body)
 	}
 
 	verify := func(scopes string) ([]Service, *Grant) {

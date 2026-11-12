@@ -119,7 +119,7 @@ func accessSummary(services []Service, names map[string]string) string {
 		}
 		switch s.Access {
 		case AccessNone:
-			parts = append(parts, name+": not granted, do not use")
+			parts = append(parts, name+": not granted")
 		case AccessRead:
 			parts = append(parts, name+": read only")
 		case AccessDrafts:
@@ -129,5 +129,5 @@ func accessSummary(services []Service, names map[string]string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return "\n\nThe provider granted less than full access: " + strings.Join(parts, "; ") + ". The provider enforces this; do not try to work around it."
+	return "\n\nThis account's access is narrower than full: " + strings.Join(parts, "; ") + ". The provider enforces it, so a refused request is the answer and not an obstacle to get around; the person can widen the access in Settings → Integrations."
 }

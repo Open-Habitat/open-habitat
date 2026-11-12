@@ -5,6 +5,10 @@
 disposable test server. The issue stays at `testing` until Jari has read the
 text and a real account has been tried (KOKEILTAVAA).
 
+On 12.11.2026 the whole personal-data text, not only the Microsoft
+paragraph, was rewritten with `/rethink-instructions` for that proofreading;
+`agent-text.md` carries it in full, with before and after renderings beside it.
+
 ## What agents get
 
 A person's agent sees these file tools in the account's existing Pi MCP

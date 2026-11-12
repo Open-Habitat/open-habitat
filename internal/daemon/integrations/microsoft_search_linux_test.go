@@ -110,18 +110,22 @@ func TestMicrosoftSearchSkill(t *testing.T) {
 			writeMicrosoftRegistration(t, env, address, tc.args)
 			body := (&microsoft{}).Skill(env, address).Body
 			for _, want := range []string{
-				"Outlook mail (drafts first), calendars, contacts and finding Microsoft 365 files",
+				"Outlook mail, calendars, contacts and Microsoft 365 files are reached",
 				"`search-query` with the entity type `driveItem`",
 				"every SharePoint site and team, followed or not, and files shared with the person",
 				"`download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/person@example.test/`",
-				"never grep or find recursively over `~/cloud/` as a whole",
-				"no tool here uploads, moves, shares or deletes anything in the cloud",
+				"A recursive grep or find over `~/cloud/` as a whole is the thing to avoid",
+				"this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365",
 			} {
 				if strings.Contains(body, want) != tc.search {
 					t.Errorf("search %v, but %q in body:\n%s", tc.search, want, body)
 				}
 			}
-			if !tc.search && !strings.Contains(body, "for Outlook mail (drafts first), calendars and contacts.") {
+			// No library is synced here; only an account with the file tools is told search works.
+			if strings.Contains(body, "Outlook and file search work without one") != tc.search || strings.Contains(body, "; Outlook works without one") == tc.search {
+				t.Error(body)
+			}
+			if !tc.search && !strings.Contains(body, "Outlook mail, calendars and contacts are reached") {
 				t.Error(body)
 			}
 			rendered := string(renderSkill([]SkillAccount{(&microsoft{}).Skill(env, address)}))

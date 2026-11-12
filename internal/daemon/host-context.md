@@ -140,11 +140,11 @@ language too, including single files and directories.
 The person connects accounts in Settings → Integrations. For mail, calendars,
 contacts and cloud files, read the `personal-data` skill at
 `~/.agents/skills/personal-data/SKILL.md` when present. It describes only their
-connected accounts and the tools or synced directories that reach them.
-Connected Dropbox files live under `~/cloud/dropbox/<account>/`, outside the
-workspace sources. These are live two-way synced files: a write or deletion
-propagates to the cloud and the person's other devices, so change only what
-the person requested.
+connected accounts, the tools or synced directories that reach them, and what
+is at stake in changing them. Cloud files live under `~/cloud/`, outside the
+workspace sources. Many of those folders are live two-way sync, where a write
+or deletion reaches the cloud and the person's other devices; the skill says
+which, so read it before changing anything there.
 Gitea clones authenticate with the person's own Gitea token through the
 registered native Git credential helper; `git push` there works only when that
 token has `write:repository`. A Gitea push refused with HTTP 403 while fetch

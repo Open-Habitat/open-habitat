@@ -156,8 +156,8 @@ func TestGoogleReadLevelMirrorsDrive(t *testing.T) {
 	if account["level"] != "read" || drive["access"] != "read" || drive["directory"] != "~/cloud/google-drive/"+email || drive["last_synced_at"] == nil || len(grant["not_granted"].([]any)) != 0 {
 		t.Fatal(account)
 	}
-	if body := g.Skill(env, email).Body; !strings.Contains(body, "one-way mirror") || !strings.Contains(body, "Gmail: read only") {
-		t.Fatal(body)
+	if s := g.Skill(env, email); !s.Mirrored || s.Synced || !strings.Contains(s.Body, "one-way mirror") || !strings.Contains(s.Body, "Gmail: read only") {
+		t.Fatal(s.Body)
 	}
 	// A renewal without a level asks for the account's own set again.
 	login, err := g.StartLevelLogin(context.Background(), env, email, "")

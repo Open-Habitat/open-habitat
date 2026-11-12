@@ -429,14 +429,14 @@ configuration file, which also holds its password:
     %[1]s envelope list            # newest first; -m <mailbox>, -p <page>
     %[1]s envelope search …        # see envelope search --help
     %[1]s message read <id>
-    %[1]s mailbox list             # find the Drafts and Archive mailboxes
+    %[1]s mailbox list             # names the Drafts and Archive mailboxes
 
-To prepare a reply or a new message, save it as a draft without sending:
-`+"`%[1]s message compose --to … --subject … --body … --save <Drafts mailbox>`"+`
-(no `+"`--send`"+`). Only when the person explicitly authorizes sending that exact
-message, and the account has SMTP configured, use
-`+"`%[1]s message compose --to … --subject … --body-file … --send`"+`.
-Never send a test message to check credentials. `+"`account check --backend smtp --json`"+`
-checks SMTP without sending. If SMTP is absent the person sends drafts in their mail client.`, cmd),
+A reply or a new message is saved as a draft with
+`+"`%[1]s message compose --to … --subject … --body … --save <Drafts mailbox>`"+`.
+The same command with `+"`--send`"+` in place of `+"`--save <Drafts mailbox>`"+` sends
+it, which works only when the account has SMTP configured; without SMTP the person sends
+drafts from their own mail client. `+"`account check --backend smtp --json`"+`
+tells whether SMTP works without sending anything, so a test message is never
+needed.`, cmd),
 	}
 }

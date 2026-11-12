@@ -374,7 +374,7 @@ func TestDAVDiscoversICloudPartition(t *testing.T) {
 				t.Fatalf("stored %q, want %q (%v)", a.URL, c.home, err)
 			}
 			skill, err := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
-			if err != nil || strings.Contains(string(skill), secret) || strings.Contains(string(skill), "--location") && !strings.Contains(string(skill), "Never use --location") {
+			if err != nil || strings.Contains(string(skill), secret) || strings.Contains(string(skill), "--location") && !strings.Contains(string(skill), "another --url have\nno place with this config") {
 				t.Fatal("skill missing or unsafe")
 			}
 			// The agent's command from the skill reaches the partition host.
