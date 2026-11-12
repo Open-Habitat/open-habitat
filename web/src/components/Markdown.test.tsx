@@ -145,4 +145,24 @@ describe("untrusted conversation Markdown", () => {
     expect(container.querySelector(".ah-feed > li .ah-message")).toBeTruthy();
     expect(container.textContent).toContain("Ä🦊中");
   });
+
+  it("keeps short table cells whole and names the scroll wrapper", async () => {
+    const { container } = render(
+      <Markdown
+        text={
+          "| Pvm | h | Kuvaus |\n| --- | ---: | --- |\n| 11-10 | 8,25 | Työpäivä Contosoilla: suunnittelusäännöt ja agentin käyttöönotto |\n"
+        }
+      />,
+    );
+    const region = await screen.findByRole("group", { name: "Taulukko" });
+    expect(region.querySelector("table")).toBeTruthy();
+    const short = Array.from(
+      container.querySelectorAll(".ah-markdown-cell-short"),
+    ).map((cell) => cell.textContent);
+    expect(short).toEqual(["Pvm", "h", "Kuvaus", "11-10", "8,25"]);
+    const hours = Array.from(container.querySelectorAll("td")).find(
+      (cell) => cell.textContent === "8,25",
+    );
+    expect(hours?.style.textAlign).toBe("right");
+  });
 });

@@ -356,11 +356,48 @@ const components: Components = {
     <InlineCode className={className}>{children}</InlineCode>
   ),
   table: ({ children }) => (
-    <div className="ah-markdown-table">
+    // A table wider than the reply scrolls inside this wrapper; it is
+    // focusable so a keyboard user can scroll it with the arrow keys. A group
+    // rather than a region: a landmark per table would crowd landmark
+    // navigation in a long conversation.
+    // biome-ignore lint/a11y/useSemanticElements: a scroll wrapper, not a form fieldset.
+    <div
+      className="ah-markdown-table"
+      role="group"
+      aria-label={txt.table}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the wrapper scrolls.
+      tabIndex={0}
+    >
       <table>{children}</table>
     </div>
   ),
+  th: ({ children, node, style }) => (
+    <th className={cellClass(node)} style={style}>
+      {children}
+    </th>
+  ),
+  td: ({ children, node, style }) => (
+    <td className={cellClass(node)} style={style}>
+      {children}
+    </td>
+  ),
 };
+
+// A short cell (a date, an amount, a one-word header) keeps its value on one
+// line: the table layout would otherwise break "11-10" at its hyphen to give
+// a long column a few more pixels. Longer cells wrap normally.
+const shortCell = 16;
+type HastLike = { type?: string; value?: unknown; children?: HastLike[] };
+function hastText(node: HastLike | undefined): string {
+  if (!node) return "";
+  if (node.type === "text" && typeof node.value === "string") return node.value;
+  return (node.children ?? []).map(hastText).join("");
+}
+function cellClass(node: HastLike | undefined) {
+  return hastText(node).trim().length <= shortCell
+    ? "ah-markdown-cell-short"
+    : undefined;
+}
 const plainPlugins = [remarkGfm, remarkFileRefs];
 const breakPlugins = [remarkGfm, remarkBreaks, remarkFileRefs];
 const rehypePlugins: Options["rehypePlugins"] = [

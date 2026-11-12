@@ -1027,9 +1027,27 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-markdown-table {
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.ah-markdown-table:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: calc(-1 * var(--ah-focus-width));
 }
 .ah-markdown-table table {
   border-collapse: collapse;
+}
+/* The reply's overflow-wrap: anywhere would let a cell's min-content shrink to
+   one character, so the table layout crushed short columns ("11-10" became
+   "11 / -1 / 0"). In a table a word stays whole; a table wider than the reply
+   scrolls in its wrapper instead. A long text column still wraps at spaces,
+   and keeps enough width to stay readable. */
+.ah-markdown-table :is(th, td) {
+  overflow-wrap: normal;
+  min-width: 8em;
+}
+.ah-markdown-table :is(th, td).ah-markdown-cell-short {
+  white-space: nowrap;
+  min-width: 0;
 }
 .ah-mermaid {
   margin: var(--ah-s4) 0;
