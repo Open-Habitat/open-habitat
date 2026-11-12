@@ -935,9 +935,12 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 		return err
 	}
 	// Roots that each had their own token continue their pairs as aliases
-	// of the account. What this cannot move, the next start does.
+	// of the account. What this cannot move, the next start does; until
+	// then such a root does not sync (SyncCommand).
 	for _, r := range previousRemotes {
-		_ = microsoftMoveListings(l.env, address, r.Name)
+		if !microsoftPassRunning(l.env, address, r.Name) {
+			_ = microsoftMoveListings(l.env, address, r.Name)
+		}
 	}
 	for _, name := range turned {
 		// Listings of the other direction would misreport the root until

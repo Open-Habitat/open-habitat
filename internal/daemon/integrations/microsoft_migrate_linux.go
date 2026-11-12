@@ -4,7 +4,7 @@ package integrations
 
 import (
 	"encoding/json"
-	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -122,30 +122,59 @@ func microsoftListingsMoved(remote string) (string, string) {
 
 // microsoftMoveListings renames a root's bisync session files from its own
 // remote's name to the account's, so the alias continues the same pair
-// instead of starting over (or stopping on listings it cannot find). A
-// lock stays, as it names its session inside; the caller has made sure no
-// pass runs. Nothing is overwritten, and a second run finds nothing to do.
+// instead of starting over (or stopping on listings it cannot find). A lock
+// moves too, naming the new session inside, so rclone still judges an
+// interrupted pass by it (an expired lock makes it distrust the listings).
+// The caller has made sure no pass runs. Nothing is overwritten: a name the
+// alias already uses is an error, and a second run finds nothing to do.
 func microsoftMoveListings(env Env, address, remote string) error {
-	names, fd, err := listHomeDir(env.Home, microsoftWork(address, remote))
+	work := microsoftWork(address, remote)
+	names, fd, err := listHomeDir(env.Home, work)
 	if err != nil || fd < 0 {
 		return err
 	}
 	defer unix.Close(fd)
 	from, to := microsoftListingsMoved(remote)
 	for _, n := range names {
-		if !strings.Contains(n, from) || strings.HasSuffix(n, ".lck") {
+		if !strings.Contains(n, from) {
 			continue
 		}
-		err := unix.Renameat2(fd, n, fd, strings.Replace(n, from, to, 1), unix.RENAME_NOREPLACE)
-		if err != nil && !errors.Is(err, unix.EEXIST) {
+		moved := strings.Replace(n, from, to, 1)
+		if session, ok := strings.CutSuffix(moved, ".lck"); ok {
+			if err := microsoftMoveLock(fd, n, moved, filepath.Join(env.Home, work, session)); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := unix.Renameat2(fd, n, fd, moved, unix.RENAME_NOREPLACE); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// microsoftMoveLock moves a bisync lock to the new session's name with the
+// session it names rewritten; a lock that does not parse moves as it is.
+func microsoftMoveLock(fd int, name, moved, session string) error {
+	data, err := readFileAt(fd, name, 4096)
+	if err != nil {
+		return err
+	}
+	var lock map[string]any
+	if json.Unmarshal(data, &lock) == nil {
+		lock["Session"] = session
+		if data, err = json.Marshal(lock); err != nil {
+			return err
+		}
+	}
+	if err := writeNewFileAt(fd, moved, data, 0600); err != nil {
+		return err
+	}
+	return unix.Unlinkat(fd, name, 0)
+}
+
 // microsoftListingsUnmoved reports whether a root's work directory still
-// holds listings under its own remote's name.
+// holds session files under its own remote's name.
 func microsoftListingsUnmoved(env Env, address, remote string) bool {
 	names, fd, err := listHomeDir(env.Home, microsoftWork(address, remote))
 	if err != nil || fd < 0 {
@@ -153,7 +182,7 @@ func microsoftListingsUnmoved(env Env, address, remote string) bool {
 	}
 	unix.Close(fd)
 	from, _ := microsoftListingsMoved(remote)
-	return slices.ContainsFunc(names, func(n string) bool { return strings.Contains(n, from) && !strings.HasSuffix(n, ".lck") })
+	return slices.ContainsFunc(names, func(n string) bool { return strings.Contains(n, from) })
 }
 
 // microsoftMigrationNeeded reports whether the account's config or its
@@ -175,19 +204,28 @@ func microsoftMigrationNeeded(env Env, address string) bool {
 }
 
 // migrate brings the account to one token: the config first, then each
-// root's listings. The caller holds m.native with the account's sync client
-// stopped. An unfinished pass (a lock in a root's work directory) defers it.
+// root's session files. The caller holds m.native with the account's sync
+// client stopped; a pass still running defers it. Until every root's files
+// have moved, SyncCommand leaves out the roots whose files have not.
+// microsoftPassRunning reports whether a process may still use the root's
+// pair: a live or unreadable lock, or a process naming its work directory.
+func microsoftPassRunning(env Env, address, remote string) bool {
+	_, _, state := bisyncLock(env, microsoftWork(address, remote), time.Now())
+	return state == lockHeld || state == lockForeign
+}
+
 func (m *microsoft) migrate(env Env, address string) error {
 	roots, legacy, err := microsoftReadRoots(env, address)
 	if err != nil {
 		return err
 	}
-	if len(legacy) > 0 {
-		for _, r := range roots {
-			if name, _, state := bisyncLock(env, microsoftWork(address, r.Name), time.Now()); name != "" || state != lockAbsent {
-				return microsoftRecoveryBusy
-			}
+	// A pass that runs, or a lock that is not provably ours, waits.
+	for _, r := range roots {
+		if microsoftPassRunning(env, address, r.Name) {
+			return microsoftRecoveryBusy
 		}
+	}
+	if len(legacy) > 0 {
 		fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
 		if err != nil {
 			return err

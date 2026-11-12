@@ -267,6 +267,11 @@ func TestMicrosoftConfigWithATokenPerRootMigratesAtStart(t *testing.T) {
 			os.WriteFile(filepath.Join(work, "home_person_"+r.Name+".."+r.Name+"_"+f), []byte("native listing\n"), 0600)
 		}
 	}
+	// A pass killed before it ended left its expired lock: it moves with the
+	// listings and names the new session, so rclone still distrusts them.
+	oneDriveWork := filepath.Join(env.Home, microsoftWork(address, "onedrive"))
+	oldSession := filepath.Join(oneDriveWork, "home_person_onedrive..onedrive_")
+	os.WriteFile(oldSession+".lck", []byte(`{"Session":"`+oldSession+`","PID":"0","TimeExpires":"2001-01-01T00:00:00Z"}`), 0600)
 	var logs lockedBuffer
 	c := New(env, []Entry{&microsoft{}}, slog.New(slog.NewJSONHandler(&logs, nil)), WithQuota(func() Room { return Room{Free: 1 << 30, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
 	ctx, cancel := context.WithCancel(context.Background())
@@ -285,6 +290,11 @@ func TestMicrosoftConfigWithATokenPerRootMigratesAtStart(t *testing.T) {
 	if err != nil || len(legacy) != 0 || !slices.Equal(after, before) {
 		t.Fatalf("%v %v\n%+v\n%+v", legacy, err, after, before)
 	}
+	newSession := filepath.Join(oneDriveWork, "home_person_onedrive.."+microsoftAccount+"_")
+	if lock, err := os.ReadFile(newSession + ".lck"); err != nil || !strings.Contains(string(lock), `"Session":"`+newSession+`"`) || !strings.Contains(string(lock), "2001-01-01") {
+		t.Fatal("lock not moved with its session", string(lock), err)
+	}
+	os.Remove(newSession + ".lck")
 	for _, r := range before[:2] {
 		names, _ := filepath.Glob(filepath.Join(env.Home, microsoftWork(address, r.Name), "*"))
 		if len(names) != 3 {
@@ -427,5 +437,34 @@ func TestMicrosoftTokenRefreshRewritesOneToken(t *testing.T) {
 	after, legacy, err := microsoftReadRoots(env, l.address)
 	if err != nil || len(legacy) != 0 || !slices.Equal(after, before) {
 		t.Fatal("refresh changed the roots", err)
+	}
+}
+
+// An alias whose listings still carry its own remote's name, as a stop in
+// the middle of a migration leaves them, does not sync until they move.
+func TestMicrosoftUnmovedListingsWaitForTheMigration(t *testing.T) {
+	env := microsoftEnv(t)
+	address := "person@example.test"
+	writeConfig(t, env, address, []byte(testMicrosoftRoots("onedrive", "cloud/onedrive/"+address, "sp-0123456789abcdef01234567", "cloud/sharepoint/t--"+address+"/site/docs")))
+	for remote, session := range map[string]string{"onedrive": "local..microsoft_", "sp-0123456789abcdef01234567": "local..sp-0123456789abcdef01234567_"} {
+		work := filepath.Join(env.Home, microsoftWork(address, remote))
+		os.MkdirAll(work, 0700)
+		for _, side := range []string{".path1.lst", ".path2.lst"} {
+			os.WriteFile(filepath.Join(work, session+side), []byte("native listing\n"), 0600)
+		}
+	}
+	m := &microsoft{}
+	c, ok := m.SyncCommand(env, address)
+	if !ok || strings.Contains(strings.Join(c.Args, " "), "sp-0123456789abcdef01234567:") || !strings.Contains(strings.Join(c.Args, " "), "onedrive:") {
+		t.Fatal("unmoved pair synced", c.Args)
+	}
+	if !microsoftMigrationNeeded(env, address) {
+		t.Fatal("unmoved listings not migrated")
+	}
+	if err := m.migrate(env, address); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := m.SyncCommand(env, address); !strings.Contains(strings.Join(c.Args, " "), "sp-0123456789abcdef01234567:") {
+		t.Fatal("moved pair still left out", c.Args)
 	}
 }

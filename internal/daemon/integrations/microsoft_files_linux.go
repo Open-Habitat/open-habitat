@@ -1078,13 +1078,18 @@ func (*microsoft) passService(work string) string {
 }
 
 func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
-	remotes, err := microsoftRemotes(env, address)
+	remotes, legacy, err := microsoftReadRoots(env, address)
 	if err != nil {
 		return Command{}, false
 	}
 	var passes []syncPass
 	for _, r := range remotes {
 		if !microsoftReady(env, address, r) {
+			continue
+		}
+		// An alias whose session files still carry its own remote's name
+		// would not find its pair: it waits for the migration to move them.
+		if !slices.Contains(legacy, r.Name) && microsoftListingsUnmoved(env, address, r.Name) {
 			continue
 		}
 		work := microsoftWork(address, r.Name)
