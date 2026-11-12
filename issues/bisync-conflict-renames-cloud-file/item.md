@@ -2,13 +2,16 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet research run prototype (cloud write safety)
 source_ref: taskfleet:01m77a7cnyqcfyft7ccrym0kpr/finding:bisync-conflict-renames-both
 originating_run: 01m77a7cnyqcfyft7ccrym0kpr
 originating_run_kind: research
+lane: bisync-fixes
+preparation: ready
+lane_seq: 1
 ---
 
 # Sync conflicts rename both copies, so the colleague's SharePoint file loses its name (and Office extension)

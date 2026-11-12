@@ -2,13 +2,16 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet research run prototype (cloud write safety)
 source_ref: taskfleet:01m77a7cnyqcfyft7ccrym0kpr/finding:bisync-all-files-changed
 originating_run: 01m77a7cnyqcfyft7ccrym0kpr
 originating_run_kind: research
+lane: bisync-fixes
+preparation: ready
+lane_seq: 2
 ---
 
 # Synced library stops for good when every file is edited (bisync 'all files were changed' abort, unnamed failure)
