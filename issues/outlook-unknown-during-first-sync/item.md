@@ -2,13 +2,15 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet spinoff m365 config/refusal fixes, card state check
 source_ref: taskfleet:01m77a7a7dmnkw3mp4084b0d0c/finding:unknown-during-first-pass
 originating_run: 01m77a7a7dmnkw3mp4084b0d0c
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Outlook services show 'Tilaa ei saatu selville' during the account's own first file sync
