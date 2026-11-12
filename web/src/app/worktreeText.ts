@@ -1,6 +1,7 @@
 import { liveText, textNow } from "../i18n";
 import { trashText } from "../text/trash";
 import { worktreesText } from "../text/worktrees";
+import { refusalReason, writerHolder } from "./mutations";
 import {
   type BlockerText,
   blockerText,
@@ -102,6 +103,7 @@ export function worktreeFacts(w: Worktree): string[] {
 }
 
 export function worktreeRefusalText(code: string): string {
+  if (writerHolder(code)) return refusalReason(code);
   return txt.refusals[code] ?? refusalText(code);
 }
 

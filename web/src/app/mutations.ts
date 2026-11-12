@@ -316,6 +316,25 @@ const messageContentRefusals = new Set([
 export const messageContentRefused = (code: string | undefined) =>
   !!code && messageContentRefusals.has(code);
 
+/** The daemon's workspace-writer holders. After its bounded wait the daemon
+ * refuses a short write with the code of the operation still holding the
+ * writer, so every write path should word these as refusals naming it. */
+export const writerHolderCodes = [
+  "workspace_clone_running",
+  "workspace_checkout_check_running",
+  "workspace_worktree_create_running",
+  "workspace_worktree_cleanup_running",
+  "workspace_deletion_running",
+  "workspace_archive_running",
+  "workspace_settings_running",
+  "workspace_identity_running",
+  "workspace_publish_running",
+  "workspace_disconnect_running",
+] as const;
+const writerHolders = new Set<string>(writerHolderCodes);
+export const writerHolder = (code: string | undefined) =>
+  !!code && writerHolders.has(code);
+
 /** Why the host said no, in words the person can act on. */
 export function refusalReason(code: string, status = 409): string {
   switch (code) {

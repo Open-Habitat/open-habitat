@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { liveText } from "../i18n";
 import { workspaceIconWriteText } from "../text/workspaceIconWrite";
-import { writeOutcome } from "./mutations";
+import { refusalReason, writeOutcome, writerHolder } from "./mutations";
 import type { Workspace } from "./snapshot";
 import type { HostChange } from "./store";
 import { iconSetting } from "./workspaceIcons";
@@ -113,7 +113,9 @@ export function useWorkspaceIconWrite({
       setNote(
         Object.hasOwn(txt.refusals, outcome.code)
           ? txt.refusals[outcome.code]
-          : txt.refused,
+          : writerHolder(outcome.code)
+            ? `${txt.refused} ${refusalReason(outcome.code)}`
+            : txt.refused,
       );
     } else if (outcome.kind === "login") {
       setChoice(undefined);

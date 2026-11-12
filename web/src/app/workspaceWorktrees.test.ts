@@ -7,6 +7,7 @@ import {
   removeWorktree,
   type Worktree,
 } from "./workspaceWorktrees";
+import { worktreeRefusalText } from "./worktreeText";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -107,6 +108,9 @@ it("rejects replies outside the contract, for another worktree, and unnamed refu
   for (const [code, want] of [
     ["worktree_changed", "worktree_changed"],
     ["commit_failed", "commit_failed"],
+    // A writer still held after the daemon's bounded wait is a refusal
+    // that names the holder, not a server that did not answer.
+    ["workspace_clone_running", "workspace_clone_running"],
     ["something_else", "unavailable"],
   ]) {
     vi.stubGlobal(
@@ -121,4 +125,13 @@ it("rejects replies outside the contract, for another worktree, and unnamed refu
       code: want,
     });
   }
+});
+
+it("words a writer holder's refusal by the operation that holds it", () => {
+  expect(worktreeRefusalText("workspace_clone_running")).toMatch(
+    /GitHub-repositorion tuonti|Importing a GitHub repository/,
+  );
+  expect(worktreeRefusalText("workspace_clone_running")).not.toBe(
+    worktreeRefusalText("unavailable"),
+  );
 });

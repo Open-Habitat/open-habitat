@@ -234,6 +234,9 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
+			// The writer wait and the proof permit can each take up to 2 s
+			// before the work itself; keep the reply past the socket's 5 s.
+			extendReply(w, 15*time.Second)
 			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive, ClientCommandID: in.ClientCommandID})
 			return
 		}
@@ -254,6 +257,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
+		extendReply(w, 15*time.Second) // the writer wait precedes the work
 		if code := cloneWriter.waitBriefly(r.Context(), "workspace_settings_running"); code != "" {
 			snapshotError(w, 409, code)
 			return

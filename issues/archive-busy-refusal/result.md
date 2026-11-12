@@ -46,6 +46,25 @@ Tests:
   before the fix (a 409 reached the browser). The browser host gained a
   `/fixture/history?mode=several` that seeds three short settled histories.
 
+The browser words the holder codes on every path that can now receive them.
+Archive, hide and rename go through the mutation layer, whose
+`refusalReason` already knew them. Worktree removal had its own allowlist
+that turned unknown codes into "Palvelin ei vastannut", so it now accepts
+`writerHolderCodes` (`web/src/app/mutations.ts`) and words them the same way.
+The icon write appends the holder's reason to its own refusal. The archive
+and settings branches extend the reply's write deadline to 15 s, because the
+2 s writer wait plus archive's 2 s proof-permit wait could otherwise push a
+committed archive past the socket's 5 s deadline and lose the reply.
+
+## Review
+
+Independent `/llm-review`: gpt-6-astra as finder, claude-fable-5-2 as
+verifier on lock order (daemon concurrency surface). The finder's one
+candidate (worktree removal misreporting a holder refusal) was confirmed and
+fixed. The verifier found no deadlock or ownership defect and raised the
+write-deadline risk, which was fixed too. `/assess-findings`: 2 FIX, nothing
+to file.
+
 ## Other places where `refusals.busy` reaches the person
 
 These still answer `409 workspace_busy` immediately. The browser retries them

@@ -1,7 +1,7 @@
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-worktrees.schema.json";
 import { LazyAjv } from "./lazyAjv";
-import { mutationFetch } from "./mutations";
+import { mutationFetch, writerHolderCodes } from "./mutations";
 import {
   type PiActivity,
   readBounded,
@@ -124,6 +124,7 @@ export const worktreeRefusalCodes = [
   "worktrees_changed",
   "confirmation_mismatch",
   "commit_failed",
+  ...writerHolderCodes,
 ] as const;
 const refusals = new Set<string>(worktreeRefusalCodes);
 
