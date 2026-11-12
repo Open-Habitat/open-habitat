@@ -3,12 +3,14 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-12/history-unavailable-kaisa
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
+closed_by: claude-worker
 ---
 
 # History unavailable (503) during a long-running turn; card tells the person to contact the administrator
@@ -37,3 +39,9 @@ storage quota (a full quota cuts every write, including the session file the
 history is read from) or the model provider's usage limit. Whatever the
 limit, the person must get a meaningful message naming it, not "history
 unavailable, tell the administrator".
+
+## Resolution
+
+### 2026-11-12T12:49:17Z · @claude-worker
+
+Cause: the page reader refused any read during which Pi appended; fixed by reading the prefix seen at open. Quiet browser re-read, storage-cut card, refusal reason in the request log. See result.md.
