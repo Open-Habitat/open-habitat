@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 const [entry, manifest, path, id, cwd] = process.argv.slice(-5);
 try {
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.5.2') throw Error('version');
   const { SessionManager } = await import(new URL('./core/session-manager.js', pathToFileURL(entry)).href);
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);

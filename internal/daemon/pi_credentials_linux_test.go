@@ -203,7 +203,7 @@ func TestPiCredentialsAPIOnlyReadinessAndReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	models, err := p.catalog(ctx, "")
-	if err != nil || models.DefaultModel == nil || *models.DefaultModel != "gpt-5.5" {
+	if err != nil || models.DefaultModel == nil || *models.DefaultModel != "gpt-6.1-sol" {
 		t.Fatal("first API key did not select Pi's native default model")
 	}
 	if p.Status() != "usable" {
@@ -242,7 +242,7 @@ func TestPiCredentialsAnthropicAndDeepSeekNative(t *testing.T) {
 		t.Fatalf("unsafe or incomplete Anthropic reply: %s", reply)
 	}
 	models, err := p.catalog(ctx, "")
-	if err != nil || models.DefaultProvider == nil || *models.DefaultProvider != "anthropic" || models.DefaultModel == nil || *models.DefaultModel != "claude-opus-4-8" {
+	if err != nil || models.DefaultProvider == nil || *models.DefaultProvider != "anthropic" || models.DefaultModel == nil || *models.DefaultModel != "claude-opus-5-5" {
 		t.Fatal("first Anthropic key did not select Pi's native default")
 	}
 	if p.Status() != "usable" {
@@ -286,7 +286,7 @@ func TestPiCredentialsAnthropicAndDeepSeekNative(t *testing.T) {
 	cli, _ := filepath.Abs(filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js"))
 	node, _ := exec.LookPath("node")
 	for _, run := range []struct{ provider, model, want string }{
-		{"anthropic", "claude-opus-4-8", "/v1/messages " + anthropic + " "},
+		{"anthropic", "claude-opus-5-5", "/v1/messages " + anthropic + " "},
 		{"deepseek", "deepseek-v4-pro", "/v1/chat/completions  Bearer " + deepseek},
 	} {
 		cmd := exec.CommandContext(ctx, node, cli, "-p", "--no-session", "--provider", run.provider, "--model", run.model, "hello")
@@ -309,7 +309,7 @@ func TestPiCredentialsAnthropicAndDeepSeekNative(t *testing.T) {
 	if _, err = p.credentials(ctx, "remove", "deepseek", ""); err != nil {
 		t.Fatal(err)
 	}
-	if models, err = p.catalog(ctx, ""); err != nil || *models.DefaultProvider != "anthropic" || *models.DefaultModel != "claude-opus-4-8" {
+	if models, err = p.catalog(ctx, ""); err != nil || *models.DefaultProvider != "anthropic" || *models.DefaultModel != "claude-opus-5-5" {
 		t.Fatal("removal did not fall back to the remaining key")
 	}
 	if result, err = p.credentials(ctx, "remove", "anthropic", ""); err != nil || result.Anthropic.Present || result.DeepSeek.Present {

@@ -143,7 +143,7 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]string)) ReleaseArtifact {
 	files := map[string]RuntimeFile{"runtime/bin/node": {Component: "node", Mode: 0755}}
 	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.20.0", "workmux": "0.1.278", "agent-launcher": "1", "chromium-headless-shell": "145.0.7632.6"}
-	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.3.0", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.9.3", "@anthropic-ai/claude-agent-sdk": "0.3.301", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
 		files["runtime/node_modules/"+name+"/package.json"] = RuntimeFile{Component: "npm:node_modules/" + name, Mode: 0644}
 		versions["npm:node_modules/"+name] = version
 	}

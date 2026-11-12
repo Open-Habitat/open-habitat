@@ -11,7 +11,7 @@ const storageCode = error => {
   }
 };
 try {
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.5.2') throw Error('version');
   const recap = JSON.parse(value);
   const { SettingsManager } = await import(pathToFileURL(entry).href);
   const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });

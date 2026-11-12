@@ -37,8 +37,8 @@ def digest(p):
 # bump that moves the code fails the build instead of shipping unpatched.
 BRIDGE_PATCH = (
     'pi-claude-bridge/src/index.ts',
-    '\t\ttools: [],\n\t\tpermissionMode: "bypassPermissions",\n',
-    '\t\ttools: ["WebSearch", "WebFetch"],\n\t\tpermissionMode: "bypassPermissions",\n',
+    '\t\t\ttools: [],\n\t\t\tpermissionMode: "bypassPermissions",\n',
+    '\t\t\ttools: ["WebSearch", "WebFetch"],\n\t\t\tpermissionMode: "bypassPermissions",\n',
 )
 
 

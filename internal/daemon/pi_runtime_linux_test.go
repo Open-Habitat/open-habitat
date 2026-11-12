@@ -34,7 +34,7 @@ func TestTrustedPiRuntime(t *testing.T) {
 	}
 	write(p.Node, "#!/bin/sh\nprintf 'v22.21.1\\n'\n", 0755)
 	write(p.Entry, "export const ModelRuntime = {};\n", 0644)
-	good := `{"name":"@earendil-works/pi-coding-agent","version":"1.3.0","bin":{"pi":"dist/bundle/cli.js"},"exports":{".":{"import":"./dist/index.js"}}}`
+	good := `{"name":"@earendil-works/pi-coding-agent","version":"1.5.2","bin":{"pi":"dist/bundle/cli.js"},"exports":{".":{"import":"./dist/index.js"}}}`
 	write(p.Manifest, good, 0644)
 	if err := p.validateRuntime(); err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestTrustedPiRuntime(t *testing.T) {
 		t.Fatalf("safe internal link rejected: %v", err)
 	}
 	for name, mutate := range map[string]func(){
-		"wrong version":   func() { write(p.Manifest, strings.Replace(good, "1.3.0", "0.85.2", 1), 0644) },
+		"wrong version":   func() { write(p.Manifest, strings.Replace(good, "1.5.2", "0.85.2", 1), 0644) },
 		"wrong export":    func() { write(p.Manifest, strings.Replace(good, "./dist/index.js", "./dist/other.js", 1), 0644) },
 		"wrong node":      func() { write(p.Node, "#!/bin/sh\necho v23.0.0\n", 0755) },
 		"writable parent": func() { os.Chmod(filepath.Join(root, "bin"), 0777) },

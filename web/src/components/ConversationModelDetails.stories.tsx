@@ -5,7 +5,7 @@ import type { ModelChoice } from "./ModelPicker";
 const models: ModelChoice[] = [
   { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
   { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
-  { id: "claude-fable-5-1", name: "Claude Fable 5.1 1M" },
+  { id: "claude-fable-5-2", name: "Claude Fable 5.2 1M" },
   { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
 ].map((m) => ({
   ...m,

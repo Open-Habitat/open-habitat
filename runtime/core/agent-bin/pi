@@ -17,13 +17,13 @@ set -eu
 runtime=$(CDPATH= cd -P -- "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd -P)
 node="$runtime/bin/node"
 case ${1-} in
-# Pi 1.3.0's subcommands are its first argument and take no session flags.
+# Pi 1.5.2's subcommands are its first argument and take no session flags.
 install|remove|uninstall|update|list|config|auth|mcp) ;;
 *)
 	# Pi's own trust choice on the command line stands. --session and
 	# --resume can open a session whose directory is elsewhere, and Pi
 	# applies --approve to that directory, so they keep Pi's default too.
-	# Words are matched exactly as Pi 1.3.0's parser does, in every
+	# Words are matched exactly as Pi 1.5.2's parser does, in every
 	# position: Pi takes a `--` after a value flag as that value, so it
 	# ends nothing here. A message or value that equals one of them only
 	# leaves the flag out.

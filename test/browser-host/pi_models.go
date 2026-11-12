@@ -13,8 +13,8 @@ import (
 
 // piModelsFixture is deliberately synthetic: the browser host runs fake Pi,
 // while the daemon's disposable native-home test exercises the real SDK.
-// Pi 1.3's own ids for these providers, including its native default after a
-// first key (claude-opus-4-8, deepseek-v4-pro).
+// Pi's own ids for these providers, including Pi 1.5.2's native default after
+// a first key (claude-opus-5-5, deepseek-v4-pro).
 var fixtureKeyModels = map[string][][3]string{
 	"anthropic": {{"claude-opus-5-5", "Claude Opus 5.5", ""}, {"claude-sonnet-5-5", "Claude Sonnet 5.5", ""}, {"claude-opus-4-8", "Claude Opus 4.8", "older"}},
 	"deepseek":  {{"deepseek-v4-pro", "DeepSeek V4 Pro", ""}, {"deepseek-flash", "DeepSeek V4.1 Flash", ""}},

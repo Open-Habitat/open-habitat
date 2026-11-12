@@ -15,7 +15,7 @@ const reportStorage = error => {
 };
 let rejection;
 try {
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.5.2') throw Error('version');
   if (!['list', 'select', 'initialize-claude'].includes(action)) throw Error('action');
   const { ModelRuntime, SettingsManager } = await import(pathToFileURL(entry).href);
   // Load Pi's native provider configuration and cached catalog, without refreshing

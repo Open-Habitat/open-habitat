@@ -35,10 +35,23 @@ function offersSearch(tool) {
 		name === 'websearch' || name === 'webfetch';
 }
 
+// The tools a request declares. Pi 1.5 declares a Responses conversation's
+// tools in `additional_tools` input items (or a synthetic tool search's
+// output) where the model supports them, leaving no top-level `tools`; it
+// returns undefined for a request that declares no tools, such as a summary.
+function declaredTools(payload) {
+	const items = Array.isArray(payload.input)
+		? payload.input.filter(i => i?.type === 'additional_tools' || i?.type === 'tool_search_output')
+		: [];
+	if (!Array.isArray(payload.tools) && items.length === 0) return undefined;
+	return [...(Array.isArray(payload.tools) ? payload.tools : []), ...items.flatMap(i => Array.isArray(i.tools) ? i.tools : [])];
+}
+
 export function nativeSearchTools(model, payload) {
-	if (!model || !payload || typeof payload !== 'object' || !Array.isArray(payload.tools)) return [];
+	if (!model || !payload || typeof payload !== 'object') return [];
+	const declared = declaredTools(payload);
 	// Only the conversation's own request, not a helper call with another model.
-	if (payload.model !== model.id || payload.tools.some(offersSearch)) return [];
+	if (!declared || payload.model !== model.id || declared.some(offersSearch)) return [];
 	if (model.api === 'openai-codex-responses' || (model.api === 'openai-responses' && model.provider === 'openai')) {
 		// OpenAI refuses web_search at minimal reasoning effort.
 		if (payload.reasoning?.effort === 'minimal') return [];
@@ -90,7 +103,9 @@ export default function (pi) {
 		if (refused) return undefined;
 		const tools = nativeSearchTools(ctx.model, event.payload);
 		if (tools.length === 0) return undefined;
-		return { ...event.payload, tools: [...event.payload.tools, ...tools] };
+		// A top-level tool sits beside `additional_tools` items, which cannot
+		// replace or remove it.
+		return { ...event.payload, tools: [...(Array.isArray(event.payload.tools) ? event.payload.tools : []), ...tools] };
 	});
 	// Citations collected over the requests of one prompt, added to its final
 	// answer rather than to a message that goes on to call a tool.

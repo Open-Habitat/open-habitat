@@ -33,7 +33,7 @@ add('/etc/open-habitat/fixture-ca.crt', (run/'tls.crt').read_bytes())
 pi_root='/opt/open-habitat/fixture-pi'
 pi_pkg=pi_root+'/node_modules/@earendil-works/pi-coding-agent'
 add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.21.1; else echo \'{"type":"status","state":"usable"}\'; fi\n', '0755')
-add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'1.3.0','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
+add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'1.5.2','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
 add(pi_pkg+'/dist/index.js', '// routing fixture; never runs a prompt\n')
 add(pi_pkg+'/dist/bundle/cli.js', '// routing fixture; never runs a prompt\n')
 add('/opt/open-habitat/pi-runtime.json',json.dumps({'node':pi_root+'/bin/node','entry':pi_pkg+'/dist/index.js','manifest':pi_pkg+'/package.json'}))

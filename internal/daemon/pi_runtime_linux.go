@@ -112,7 +112,7 @@ func (p *PiDevice) validateRuntime() error {
 			Import string `json:"import"`
 		} `json:"exports"`
 	}
-	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Version != "1.3.0" || manifest.Exports["."].Import != "./dist/index.js" || manifest.Bin["pi"] != "dist/bundle/cli.js" {
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Version != "1.5.2" || manifest.Exports["."].Import != "./dist/index.js" || manifest.Bin["pi"] != "dist/bundle/cli.js" {
 		return errors.New("unsupported Pi SDK")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

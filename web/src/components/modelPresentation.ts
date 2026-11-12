@@ -57,6 +57,9 @@ export function modelDisplayName(model?: string, models: ModelChoice[] = []) {
     );
   if (claude)
     return `${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}${claude[3] ? `.${claude[3]}` : ""}`;
+  // Pi's own names for OpenAI's families: "GPT-6.1 Terra".
+  const gpt = /^gpt-([\d.]+)-(astra|sol|terra|luna)$/.exec(id ?? "");
+  if (gpt) return `GPT-${gpt[1]} ${gpt[2][0].toUpperCase()}${gpt[2].slice(1)}`;
   if (id && /^gpt-/i.test(id)) return id.replace(/^gpt-/i, "GPT ");
   return txt.modelUnknown;
 }

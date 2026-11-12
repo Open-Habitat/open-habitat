@@ -10,7 +10,7 @@ const [entry, manifest] = process.argv.slice(-2);
 const text = (value, max) => typeof value === 'string' ? (value.length > max ? value.slice(0, max) : value) : '';
 const count = n => Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 1e12) : 0;
 try {
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.5.2') throw Error('version');
   const pi = pathToFileURL(entry);
   const { SessionManager, SettingsManager, parseSessionEntries, migrateSessionEntries } = await import(pi.href);
   const { estimateTokens, estimateProjectedContextTokens, prepareCompaction, calculateContextTokens, extractFileOpsFromMessage } =
@@ -27,7 +27,7 @@ try {
   const projection = session.buildSessionProjection();
   const model = projection.model;
   // The Claude bridge sends Claude Code's own preset in place of Pi's base
-  // prompt and forwards only the portable sections (pi-claude-bridge 0.9.3).
+  // prompt and forwards only the portable sections (pi-claude-bridge 0.9.3 through 0.12.0).
   const harness = model?.provider === 'claude-bridge' ? 'claude_code' : 'pi';
   const replaced = new Set(harness === 'claude_code' ? ['preamble', 'tools', 'rules', 'docs', 'cwd'] : []);
 

@@ -247,7 +247,7 @@
       "queue"
     ],
     "given": [
-      "owned Pi 1.3.0 RPC advertises verified capabilities"
+      "owned Pi 1.5.2 RPC advertises verified capabilities"
     ],
     "when": [
       "message, steer, follow_up, clear_queue or interrupt is sent"

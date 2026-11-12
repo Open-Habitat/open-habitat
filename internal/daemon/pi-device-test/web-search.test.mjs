@@ -79,7 +79,7 @@ async function converse(provider, model, prompts, reply) {
   }
 }
 
-const added = body => body.tools.filter(t => !(t.type === 'function' || (t.input_schema && !t.type)));
+const added = body => (body.tools ?? []).filter(t => !(t.type === 'function' || (t.input_schema && !t.type)));
 
 test('an OpenAI key conversation searches natively and keeps the answer', async () => {
   const { bodies, out } = await converse('openai', 'gpt-5.5', ['first', 'second'], () => [200, responsesAnswer]);
@@ -92,8 +92,20 @@ test('an OpenAI key conversation searches natively and keeps the answer', async 
   assert.ok(replayed.some(t => t.includes('(https://example.com/)')), JSON.stringify(bodies[1].input));
 });
 
+// Pi 1.5 declares a current OpenAI model's tools in `additional_tools` input
+// items and sends no top-level tools; search still has to be offered.
+test('a current OpenAI model whose tools are additional_tools items searches natively', async () => {
+  const { bodies, out } = await converse('openai', 'gpt-6.1-terra', ['first', 'second'], () => [200, responsesAnswer]);
+  assert.equal(bodies.length, 2, out);
+  assert.ok(bodies[0].input.some(i => i.type === 'additional_tools'), JSON.stringify(bodies[0].input));
+  assert.deepEqual(added(bodies[0]), [{ type: 'web_search' }]);
+  assert.deepEqual(added(bodies[1]), [{ type: 'web_search' }]);
+  assert.match(out, /SEARCHED-ANSWER/);
+  assert.match(out, /\(https:\/\/example\.com\/\)/, 'the cited source must reach the answer');
+});
+
 test('an Anthropic key conversation gets server-side search and fetch and keeps the answer', async () => {
-  const { bodies, out } = await converse('anthropic', 'claude-sonnet-5', ['first'], () => [200, anthropicAnswer]);
+  const { bodies, out } = await converse('anthropic', 'claude-fable-5-2', ['first'], () => [200, anthropicAnswer]);
   assert.equal(bodies.length, 1, out);
   assert.deepEqual(added(bodies[0]).map(t => t.type), ['web_search_20250305', 'web_fetch_20250910']);
   assert.match(out, /SEARCHED-ANSWER/);
@@ -129,6 +141,11 @@ test('search is added only to the conversation model of a covered provider, once
   assert.deepEqual(nativeSearchTools(codex, payload({ reasoning: { effort: 'minimal' } })), []);
   // The person's own search tool wins, whatever its exact spelling.
   assert.deepEqual(nativeSearchTools(codex, payload({ tools: [{ type: 'function', name: 'web_search' }] })), []);
+  // Tools declared only in additional_tools items count as the conversation's.
+  const items = tools => ({ model: 'gpt-5.6', input: [{ type: 'additional_tools', role: 'developer', tools }, { type: 'message', role: 'user', content: [] }] });
+  assert.deepEqual(nativeSearchTools(codex, items([{ type: 'function', name: 'bash' }])), [{ type: 'web_search' }]);
+  assert.deepEqual(nativeSearchTools(codex, items([{ type: 'function', name: 'WebSearch' }])), []);
+  assert.deepEqual(nativeSearchTools(codex, { model: 'gpt-5.6', input: [{ type: 'message', role: 'user', content: [] }] }), []);
   const anthropic = { provider: 'anthropic', api: 'anthropic-messages', id: 'claude-sonnet-5' };
   assert.deepEqual(nativeSearchTools(anthropic, { model: 'claude-sonnet-5', tools: [{ name: 'WebFetch', input_schema: {} }] }), []);
   // A compatible endpoint of another provider is not assumed to have the tool.

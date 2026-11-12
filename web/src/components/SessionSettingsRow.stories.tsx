@@ -8,7 +8,7 @@ const meta = {
     marker: {
       key: "model",
       oldModel: "claude-bridge/claude-opus-5-5",
-      model: "claude-bridge/claude-fable-5-1",
+      model: "claude-bridge/claude-fable-5-2",
     },
   },
 } satisfies Meta<typeof SessionSettingsRow>;

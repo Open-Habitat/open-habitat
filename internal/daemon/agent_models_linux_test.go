@@ -113,13 +113,13 @@ func TestAgentModelsNativeDefaults(t *testing.T) {
 	request("DELETE", AgentModelsPath, "", 404)
 	request("POST", "/api/v1/pi/models", `{"model":"gpt-5.5"}`, 404)
 	for i := 0; i < 2; i++ {
-		result := request("POST", AgentModelsPath, `{"provider":"openai-codex","model":"gpt-5.5","thinking":"high"}`, 200)
+		result := request("POST", AgentModelsPath, `{"provider":"openai-codex","model":"gpt-6.1-terra","thinking":"high"}`, 200)
 		var reply piModelsResponse
-		if json.Unmarshal(result, &reply) != nil || reply.DefaultModel == nil || *reply.DefaultModel != "gpt-5.5" || reply.DefaultThinking != "high" {
+		if json.Unmarshal(result, &reply) != nil || reply.DefaultModel == nil || *reply.DefaultModel != "gpt-6.1-terra" || reply.DefaultThinking != "high" {
 			t.Fatalf("not read back: %s", result)
 		}
 	}
-	request("POST", AgentModelsPath, `{"provider":"openai-codex","model":"gpt-5.5"}`, 200)
+	request("POST", AgentModelsPath, `{"provider":"openai-codex","model":"gpt-6.1-terra"}`, 200)
 	data, _ := os.ReadFile(settings)
 	var stored map[string]any
 	if json.Unmarshal(data, &stored) != nil || stored["theme"] != "dark" || stored["defaultThinkingLevel"] != "high" {
@@ -128,7 +128,7 @@ func TestAgentModelsNativeDefaults(t *testing.T) {
 	// Native model validation must not change settings on a rejected selection.
 	before, _ = os.ReadFile(settings)
 	request("POST", AgentModelsPath, `{"model":"not-a-model"}`, 409)
-	request("POST", AgentModelsPath, `{"model":"gpt-5.5","thinking":"max"}`, 400)
+	request("POST", AgentModelsPath, `{"model":"gpt-6.1-sol","thinking":"off"}`, 400)
 	after, _ = os.ReadFile(settings)
 	if string(before) != string(after) {
 		t.Fatal("rejected selection changed defaults")

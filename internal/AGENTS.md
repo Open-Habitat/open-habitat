@@ -588,8 +588,9 @@ Generated-contract drift only arises when `contracts/v1/` or
 `cmd/contractgen` changed; the generated check catches it. Test selection and
 the full-gate policy are in the root `TESTING.md`.
 
-Pi 1.3 RPC serializes assistant deltas without cumulative `partial` snapshots.
-`toolcall_start` supplies the tool identity; later argument deltas do not. The
+Pi RPC (1.3.0 through 1.5.2) serializes assistant deltas without cumulative
+`partial` snapshots. `toolcall_start` supplies the tool identity; later
+argument deltas do not. The
 process relay therefore scopes identity to the current assistant message, and
 status diagnostics are an allowlisted signal tail, not raw native frames.
 Process selection in the browser retains the same owner/start-time fence as

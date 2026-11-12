@@ -41,7 +41,7 @@ const reportStorage = error => {
   if (code) process.stderr.write(code + '\n');
 };
 try {
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.5.2') throw Error('version');
   if (action !== 'read' && !providers.includes(provider)) throw Error('provider');
   const { SettingsManager, ModelRuntime } = await import(pathToFileURL(entry).href);
   const { AuthStorage, ReadOnlyAuthStorage, readStoredCredential } = await import(new URL('./core/auth-storage.js', pathToFileURL(entry)).href);

@@ -47,9 +47,9 @@ func groupModels(models []piModel) {
 			continue
 		}
 		major, _ := strconv.Atoi(strings.Split(parts[1], ".")[0])
-		// The real Pi 1.3 catalog's newest Terra is 5.6, not the
-		// prototype's invented 6.0. Known families compete across versions;
-		// pre-6 legacy suffixes such as mini remain in the older group.
+		// Known families compete across versions (Pi 1.5.2's Codex catalog
+		// has Terra 5.6 and 6.1); pre-6 legacy suffixes such as mini remain
+		// in the older group.
 		known := claudeModel(models[i]) || parts[2] == "luna" || parts[2] == "terra" || parts[2] == "sol" || parts[2] == "astra"
 		if major < 6 && !known {
 			models[i].Older = true
