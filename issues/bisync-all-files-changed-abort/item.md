@@ -2,7 +2,7 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet research run prototype (cloud write safety)
@@ -12,6 +12,10 @@ originating_run_kind: research
 lane: bisync-fixes
 preparation: ready
 lane_seq: 2
+closed: 2026-11-12
+commits:
+- hash: 3b85cc45b
+  summary: Resume an all-files-changed abort behind a deletion check
 ---
 
 # Synced library stops for good when every file is edited (bisync 'all files were changed' abort, unnamed failure)

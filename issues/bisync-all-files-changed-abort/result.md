@@ -63,7 +63,7 @@ kierrokset, vain kerran).
   roskakorissa (pilvestä poistettaessa) tai pilvessä/sen roskakorissa
   (paikallisesti poistettaessa). Ikkunaa ei saa suljettua ilman rclonen
   muutosta, joka ohittaisi vain kaikki-muuttuneet-tarkistuksen. Katselmointi
-  nosti tämän must-fixiksi; arvioin sen hyväksyttäväksi, perustelut alla.
+  nosti tämän must-fixiksi; arvioin sen hyväksyttäväksi edellä kuvatuin perustein.
 - **Kortin tila.** `all_changed` näkyy kortissa vain hetken, valvojan
   uudelleenkäynnistyksen viiveen ajan; jos koeajo löytää joukkopoiston,
   kortissa näkyy `delete_limit` ohjeineen kuten ennenkin.
