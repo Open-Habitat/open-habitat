@@ -117,9 +117,9 @@ func TestBisyncConflictKeepsTheCloudName(t *testing.T) {
 		t.Skip("the pass crossed midnight")
 	}
 	want := map[string]string{
-		"Budget.docx":                         "colleague's version",
+		"Budget.docx":                        "colleague's version",
 		conflictName("Budget", ".docx", day): "agent's version",
-		"notes.txt":                           "unchanged",
+		"notes.txt":                          "unchanged",
 	}
 	for side, dir := range map[string]string{"local": local, "cloud": remote} {
 		if got := tree(t, dir); !mapsEqual(got, want) {
@@ -210,10 +210,10 @@ func TestBisyncAllFilesChangedResumesSafely(t *testing.T) {
 	c.reconcile()
 	c.write.Unlock()
 	want := map[string]string{
-		"a.md":                         "reformatted a.md",
-		"b.md":                         "colleague's b",
+		"a.md":                        "reformatted a.md",
+		"b.md":                        "colleague's b",
 		conflictName("b", ".md", day): "reformatted b.md",
-		"c.md":                         "reformatted c.md",
+		"c.md":                        "reformatted c.md",
 	}
 	deadline := time.Now().Add(20 * time.Second)
 	for !mapsEqual(tree(t, remote), want) || !mapsEqual(tree(t, local), want) {
