@@ -272,6 +272,27 @@ class BuilderTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'invalid Pi CLI entry'):
                     integrations_build.pi_wrapper(lock)
 
+    def test_ms365_scope_patch_is_exact(self):
+        """The file tools request the applications' permissions; any upstream drift fails."""
+        spec = json.loads((Path(__file__).resolve().parent.parent / 'runtime/profiles/integrations/ms-365-mcp-server-scopes.json').read_text())
+        upstream = [dict(toolName=name, method='get', **change['from']) for name, change in spec['tools'].items()]
+        upstream.append(dict(toolName='list-mail-messages', method='get', scopes=['Mail.Read']))
+        patched = json.loads(integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(upstream).encode()))
+        by_name = {e['toolName']: e for e in patched}
+        for name, change in spec['tools'].items():
+            for key, value in change['to'].items():
+                self.assertEqual(by_name[name][key], value)
+                self.assertNotIn('Files.Read', [s for group in value for s in group])
+        self.assertEqual(by_name['list-mail-messages']['scopes'], ['Mail.Read'])
+        with self.assertRaisesRegex(ValueError, 'another package version'):
+            integrations_build.patch_ms365_scopes(spec, spec['package'], '0.171.0', json.dumps(upstream).encode())
+        drifted = json.loads(json.dumps(upstream))
+        drifted[0][next(iter(spec['tools']['search-query']['from']))] = ['Files.Read.All']
+        with self.assertRaisesRegex(ValueError, 'upstream metadata changed: search-query'):
+            integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(drifted).encode())
+        with self.assertRaisesRegex(ValueError, 'tool not unique: search-query'):
+            integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(upstream + upstream[:1]).encode())
+
     def test_raw_go_tool_is_digest_and_notice_checked(self):
         deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]
         binary = go_binary(deps)

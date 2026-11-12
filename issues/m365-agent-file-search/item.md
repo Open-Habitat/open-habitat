@@ -3,7 +3,7 @@ created: 2026-11-12
 updated: 2026-11-12
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/m365-agent-search

@@ -273,8 +273,9 @@ func TestMicrosoftAccessNeverUnderclaims(t *testing.T) {
 
 func TestMicrosoftAllowedScopes(t *testing.T) {
 	for granted, want := range map[string]string{
-		"User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite Files.ReadWrite.All": microsoftMCPScopes,
-		"User.Read Mail.Read Mail.ReadWrite Calendars.Read Contacts.Read":                               "User.Read Mail.ReadWrite Calendars.Read Contacts.Read",
+		"User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All": microsoftMCPScopes + " Files.ReadWrite.All Sites.ReadWrite.All",
+		"User.Read Mail.Read Mail.ReadWrite Calendars.Read Contacts.Read":                                                   "User.Read Mail.ReadWrite Calendars.Read Contacts.Read",
+		"User.Read Mail.Read Files.Read.All Files.ReadWrite.All Sites.Read.All":                                             "User.Read Mail.Read Files.ReadWrite.All Sites.Read.All",
 		"User.Read": "User.Read",
 	} {
 		set := map[string]bool{}

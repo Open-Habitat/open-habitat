@@ -1,0 +1,35 @@
+{
+  "package": "node_modules/@softeria/ms-365-mcp-server",
+  "version": "0.170.1",
+  "file": "dist/endpoints.json",
+  "tools": {
+    "search-query": {
+      "from": {"workScopes": ["Mail.Read", "Calendars.Read", "Files.Read.All", "People.Read", "Sites.Read.All", "Chat.Read", "ChannelMessage.Read.All"]},
+      "to": {"workScopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "search-onedrive-files": {
+      "from": {"scopes": ["Files.Read"]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "get-drive-root-item": {
+      "from": {"scopes": [["Files.Read"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "list-folder-files": {
+      "from": {"scopes": [["Files.Read"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "get-drive-item": {
+      "from": {"scopes": [["Files.Read"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "search-sharepoint-sites": {
+      "from": {"workScopes": ["Sites.Read.All"]},
+      "to": {"workScopes": [["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    },
+    "list-sharepoint-site-drives": {
+      "from": {"workScopes": [["Sites.Read.All"], ["Sites.Selected"]]},
+      "to": {"workScopes": [["Sites.ReadWrite.All"], ["Sites.Read.All"]]}
+    }
+  }
+}

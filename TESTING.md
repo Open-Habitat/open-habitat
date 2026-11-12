@@ -750,6 +750,13 @@ fixtures, and checks that the real adapter accepts the daemon's `verify` request
 import cancellation, expected-account refusal and replacement rollback.
 Neither test proves Microsoft consent/policy behavior; a real person's next
 browser connect is the live acceptance.
+With the same `OH_TEST_MICROSOFT_RUNTIME`,
+`go test -count=1 ./internal/daemon/integrations -run TestMicrosoftMCPToolsPinnedServer`
+starts the pinned server with each level's registration arguments and checks
+that it offers the file search and read tools and none that write, requests
+only permissions the level's application holds (the build's scope patch), and
+keeps the Outlook tool set of the earlier presets. It needs no network and
+proves nothing about Microsoft's answers.
 
 
 `./scripts/test-gateway-bind.sh` exercises a nonroot gateway-like process with

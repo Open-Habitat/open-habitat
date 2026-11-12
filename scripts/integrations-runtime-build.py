@@ -90,6 +90,32 @@ def add_tools(lock, inputs, put_bytes, components, target):
         components.append(dict(name=tool['name'], version=tool['version'], kind='native', license_files=licenses))
 
 
+def patch_ms365_scopes(spec, rel, version, data):
+    """Return endpoints.json with the scope metadata of the agent's file tools
+    rewritten to the Graph permissions the operator's applications hold.
+
+    The pinned server requests exactly the scopes its tool metadata names, and
+    a token request naming one the tenant has not consented to fails for every
+    tool of the server. Upstream names the narrow Files.Read (and, for
+    search-query, chat and people scopes) where the applications hold
+    Files.*.All and Sites.*.All, so without this the file tools cannot run at
+    all. Each entry must still read exactly as the reviewed upstream bytes did;
+    anything else, including a version bump, fails the build.
+    """
+    if rel != spec['package'] or version != spec['version']:
+        raise ValueError('ms365 scope patch targets another package version')
+    endpoints = json.loads(data)
+    for name, change in sorted(spec['tools'].items()):
+        found = [e for e in endpoints if e.get('toolName') == name]
+        if len(found) != 1:
+            raise ValueError('ms365 scope patch: tool not unique: ' + name)
+        entry = found[0]
+        if {k: entry.get(k) for k in change['from']} != change['from'] or set(change['from']) != set(change['to']):
+            raise ValueError('ms365 scope patch: upstream metadata changed: ' + name)
+        entry.update(change['to'])
+    return (json.dumps(endpoints, indent=2) + '\n').encode()
+
+
 def build(inputs, installed, node_archive, out, target):
     lock = json.loads((inputs / 'artifact-lock.json').read_text())
     packages = profiles.ubuntu_requirements(inputs / 'ubuntu-packages.json', target)
@@ -97,6 +123,8 @@ def build(inputs, installed, node_archive, out, target):
     if profiles.digest(node_archive) != node_pin['sha256']:
         raise ValueError('Node digest mismatch')
     npm = json.loads((inputs / 'package-lock.json').read_text())
+    ms365 = json.loads((inputs / 'ms-365-mcp-server-scopes.json').read_text())
+    patched = False
     if (installed / 'package-lock.json').read_bytes() != (inputs / 'package-lock.json').read_bytes():
         raise ValueError('npm lock mismatch')
     out.mkdir(mode=0o700)
@@ -144,6 +172,10 @@ def build(inputs, installed, node_archive, out, target):
             if p.is_symlink() or not p.is_file():
                 raise ValueError('unexpected npm link/special file')
             dest = 'runtime/' + p.relative_to(installed).as_posix()
+            if rel == ms365['package'] and p.relative_to(source).as_posix() == ms365['file']:
+                put_bytes(patch_ms365_scopes(ms365, rel, meta['version'], p.read_bytes()), dest, owner)
+                patched = True
+                continue
             put(p, dest, owner, bool(p.stat().st_mode & 0o111))
             if p.parent == source and p.name.lower().startswith(('license', 'licence', 'notice', 'copying')):
                 licenses.append(dest)
@@ -152,7 +184,9 @@ def build(inputs, installed, node_archive, out, target):
                 raise ValueError('license_unverified: ' + rel)
             licenses = ['runtime/' + rel + '/package.json']
         components.append(dict(name=owner, version=meta['version'], kind='npm', license_files=licenses))
-    for name in ['package.json', 'package-lock.json']:
+    if not patched:
+        raise ValueError('ms365 scope patch: endpoints not found')
+    for name in ['package.json', 'package-lock.json', 'ms-365-mcp-server-scopes.json']:
         put(inputs / name, 'runtime/' + name, 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
     add_tools(lock, inputs, put_bytes, components, target)

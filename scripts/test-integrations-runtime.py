@@ -54,6 +54,11 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TM
     assert actual == applicable, 'complete npm closure required'
     assert actual['node_modules/@azure/msal-node'] == '5.6.0'
     assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.170.1'
+    # The agent's file tools carry the scope patch the build applied.
+    patch = json.loads((root / 'runtime/ms-365-mcp-server-scopes.json').read_text())
+    endpoints = {e['toolName']: e for e in json.loads((root / 'runtime' / patch['package'] / patch['file']).read_text())}
+    for name, change in patch['tools'].items():
+        assert all(endpoints[name].get(k) == v for k, v in change['to'].items()), name
     runtime = root / 'runtime'
     pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1', 'tea': '0.16.0', 'glab': '1.124.0', 'sops': '3.13.3', 'tailscale': '1.104.4', 'tailscaled': '1.104.4'}
     for name, version in pins.items():

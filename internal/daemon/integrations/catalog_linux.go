@@ -757,14 +757,16 @@ func (c *Catalog) align(ctx context.Context, e AlignEntry, address string) {
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	err := e.Align(ctx, c.env, address, func() { c.sync.stop(k); stopped = true })
 	cancel()
-	if stopped {
-		c.reconcile()
-	}
 	outcome := "aligned"
 	if err != nil {
 		outcome = "deferred"
 	} else if e.Misaligned(c.env, address) {
 		outcome = "incomplete"
+	}
+	// An aligned registration may offer the agent other tools, which the
+	// skill describes.
+	if stopped || outcome == "aligned" {
+		c.reconcile()
 	}
 	c.log.Info("integration_align", "provider", string(e.Provider()), "outcome", outcome)
 }

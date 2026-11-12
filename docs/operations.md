@@ -1118,6 +1118,18 @@ headless file-encryption backend, and is pinned by username. Pi's own
 New agent conversations discover it and the generated personal-data skill;
 existing conversations may need a reload.
 
+With a files or sites grant, the same server also lets agents find files
+by Microsoft Search across every OneDrive, SharePoint site, team and shared
+item the person can open, list one folder, and fetch single files into
+`~/cloud/microsoft-fetched/<account>/`. It offers no file tool that uploads,
+moves, shares or deletes, at any level. This needs no change to the Entra
+application: the profile build rewrites the scope metadata of exactly these
+tools in the pinned server so that it requests the `Files.*.All` and
+`Sites.*.All` permissions the application already holds, and refuses to
+build if the upstream metadata changes. Accounts connected before this
+release are re-registered with the tenant's current grant when the daemon
+next checks them.
+
 If consent is still missing when a person connects, the page shows an
 administrator link plainly. It goes to the tenant's own administrator:
 

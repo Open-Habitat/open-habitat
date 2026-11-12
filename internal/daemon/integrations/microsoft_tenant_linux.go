@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -64,6 +65,7 @@ type microsoftNative struct {
 	mcpClient        string   // the Pi registration's, empty when unknown
 	mcpTenant        string
 	mcpAllowed       string // the registration's --allowed-scopes, from its grant
+	mcpArgs          []string
 }
 
 func (n microsoftNative) remotesStale(app MicrosoftApp) bool {
@@ -77,6 +79,12 @@ func (n microsoftNative) remotesStale(app MicrosoftApp) bool {
 
 func (n microsoftNative) mcpStale(app MicrosoftApp) bool {
 	return n.mcpTenant != "" && !strings.EqualFold(n.mcpTenant, app.TenantID)
+}
+
+// mcpOutdated is a registration an earlier release wrote, without the
+// current tool list (the Outlook presets before agents searched files).
+func (n microsoftNative) mcpOutdated() bool {
+	return n.mcpClient != "" && !slices.Equal(n.mcpArgs, microsoftMCPArgs(n.mcpAllowed))
 }
 
 func (n microsoftNative) otherApp(app MicrosoftApp) bool {
@@ -152,7 +160,7 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 		return n, ToolFailed
 	}
 	server := config.Servers[microsoftServerName(address)]
-	n.mcpClient, n.mcpTenant = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"]
+	n.mcpClient, n.mcpTenant, n.mcpArgs = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"], server.Args
 	for i, a := range server.Args {
 		if a == "--allowed-scopes" && i+1 < len(server.Args) {
 			n.mcpAllowed = server.Args[i+1]
@@ -197,7 +205,7 @@ func (m *microsoft) Misaligned(env Env, address string) bool {
 		return false
 	}
 	n, err := microsoftReadNative(env, address)
-	if err != nil || !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app)) {
+	if err != nil || !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app) || n.mcpOutdated()) {
 		return false
 	}
 	return m.refusal(address, app) == ""
@@ -253,6 +261,27 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
 		if n.mcpAllowed == "" {
 			allowed = microsoftMCPScopes
+		}
+		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
+			return err
+		}
+	} else if n.mcpOutdated() {
+		// An earlier registration's scopes leave out files, so the tenant's
+		// current grant decides which tools it now offers. A refused grant
+		// keeps the Outlook scopes until the next sign-in registers anew; an
+		// outage is asked again.
+		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
+		if n.mcpAllowed == "" {
+			allowed = microsoftMCPScopes
+		}
+		switch state, scopes := microsoftVerify(ctx, env, address); state {
+		case "ok":
+			if len(scopes) > 0 {
+				allowed = microsoftAllowed(microsoftGranted(scopes))
+			}
+		case "refused", "outside_tenant":
+		default:
+			return ServerUnreachable
 		}
 		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
 			return err

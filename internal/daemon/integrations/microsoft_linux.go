@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -194,11 +195,13 @@ func microsoftLevelOf(services []Service) Level {
 
 // microsoftAllowed is the Outlook server's --allowed-scopes for a grant:
 // its own scopes the grant holds, a read scope where only that was granted.
+// Files and sites scopes enable the file tools' search and reading; the server
+// is offered no file tool that writes, whatever the level.
 // The server then offers no tool the grant cannot run, and its silent token
 // requests never ask for a permission the tenant did not consent to.
 func microsoftAllowed(granted map[string]bool) string {
 	out := []string{"User.Read"}
-	for _, s := range [][2]string{{"Mail.ReadWrite", "Mail.Read"}, {"Mail.Send", ""}, {"Calendars.ReadWrite", "Calendars.Read"}, {"Contacts.ReadWrite", "Contacts.Read"}} {
+	for _, s := range [][2]string{{"Mail.ReadWrite", "Mail.Read"}, {"Mail.Send", ""}, {"Calendars.ReadWrite", "Calendars.Read"}, {"Contacts.ReadWrite", "Contacts.Read"}, {"Files.ReadWrite.All", "Files.Read.All"}, {"Sites.ReadWrite.All", "Sites.Read.All"}} {
 		if granted[s[0]] {
 			out = append(out, s[0])
 		} else if s[1] != "" && granted[s[1]] {
@@ -308,7 +311,7 @@ func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address, allowed string
 	if !ok {
 		return Command{}, false
 	}
-	c := Command{Path: tool, Args: append([]string{"--preset", "mail,calendar,contacts", "--allowed-scopes", allowed}, args...), Env: []string{
+	c := Command{Path: tool, Args: append(microsoftMCPArgs(allowed), args...), Env: []string{
 		"MS365_MCP_CLIENT_ID=" + app.ClientID, "MS365_MCP_TENANT_ID=" + app.TenantID,
 		"MS365_MCP_USE_KEYTAR=false", "MS365_MCP_TOKEN_CACHE_PATH=" + filepath.Join(env.Home, rel, ".token-cache.json"),
 		"MS365_MCP_SELECTED_ACCOUNT_PATH=" + filepath.Join(env.Home, rel, ".selected-account.json"),
@@ -316,6 +319,65 @@ func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address, allowed string
 	}}
 	return c, true
 }
+
+// microsoftMCPArgs are the Outlook server's arguments for a grant. Only the
+// listed tools are offered, and --allowed-scopes then hides those the grant
+// cannot run. Organisation mode is needed for search-query and the
+// SharePoint site tools; the rest of the list runs the same without it.
+func microsoftMCPArgs(allowed string) []string {
+	return []string{"--org-mode", "--enabled-tools", microsoftMCPTools, "--allowed-scopes", allowed}
+}
+
+// microsoftOutlookTools are what the pinned server's mail, calendar and
+// contacts presets enable. A version bump that changes the presets fails
+// TestMicrosoftMCPToolsPinnedServer, so the list is reviewed rather than
+// widened silently.
+var microsoftOutlookTools = []string{
+	"list-mail-messages", "list-mail-folders", "list-mail-child-folders", "create-mail-folder",
+	"create-mail-child-folder", "update-mail-folder", "delete-mail-folder",
+	"list-mail-folder-messages", "get-mail-message", "send-mail", "create-draft-email",
+	"delete-mail-message", "move-mail-message", "update-mail-message", "add-mail-attachment",
+	"create-mail-attachment-upload-session", "list-mail-attachments", "delete-mail-attachment",
+	"forward-mail-message", "reply-mail-message", "reply-all-mail-message", "create-forward-draft",
+	"create-reply-draft", "create-reply-all-draft", "send-draft-message", "list-mail-rules",
+	"create-mail-rule", "update-mail-rule", "delete-mail-rule", "list-focused-inbox-overrides",
+	"create-focused-inbox-override", "update-focused-inbox-override", "delete-focused-inbox-override",
+	"get-mail-message-mime", "get-mail-attachment-content", "get-mailbox-settings",
+	"update-mailbox-settings", "copy-mail-message", "list-mail-folder-messages-delta",
+	"list-outlook-categories", "create-outlook-category", "get-mail-tips",
+	"list-supported-time-zones", "list-supported-languages", "download-bytes",
+	"download-bytes-to-file", "get-upload-url", "upload-attachment-from-file", "read-mail-text",
+	"list-calendar-events", "get-calendar-event", "create-calendar-event", "update-calendar-event",
+	"delete-calendar-event", "accept-calendar-event", "decline-calendar-event",
+	"tentatively-accept-calendar-event", "list-specific-calendar-events",
+	"get-specific-calendar-event", "create-specific-calendar-event", "update-specific-calendar-event",
+	"delete-specific-calendar-event", "get-calendar-view", "get-specific-calendar-view",
+	"get-schedule", "list-calendar-event-instances", "list-calendars", "create-calendar",
+	"update-calendar", "delete-calendar", "find-meeting-times", "get-room", "get-room-list",
+	"list-room-list-rooms", "get-room-list-room", "update-place", "cancel-calendar-event",
+	"forward-calendar-event", "snooze-calendar-event-reminder", "dismiss-calendar-event-reminder",
+	"add-calendar-event-attachment", "create-calendar-event-attachment-upload-session",
+	"list-calendar-events-delta", "list-calendar-view-delta", "list-my-calendar-permissions",
+	"create-my-calendar-permission", "update-my-calendar-permission", "delete-my-calendar-permission",
+	"list-outlook-contacts", "get-outlook-contact", "create-outlook-contact",
+	"update-outlook-contact", "delete-outlook-contact", "list-contact-folder-child-folders",
+	"create-contact-child-folder", "list-contact-folders", "create-contact-folder",
+	"update-contact-folder", "delete-contact-folder", "list-contact-folder-contacts",
+	"create-contact-in-folder",
+}
+
+// microsoftFileTools find and read the person's Microsoft 365 files:
+// search-query searches every site, team and shared item the person can
+// open, the others narrow to one site, drive or folder, and the Outlook
+// list's download-bytes-to-file fetches one file. None of them writes to the
+// cloud; upload, move, share and delete come later and separately. Their
+// scope metadata is patched at build time (ms-365-mcp-server-scopes.json).
+var microsoftFileTools = []string{
+	"search-query", "search-onedrive-files", "search-sharepoint-sites", "list-sharepoint-site-drives",
+	"get-drive-root-item", "list-folder-files", "get-drive-item", "get-download-url",
+}
+
+var microsoftMCPTools = "^(?:" + strings.Join(append(slices.Clone(microsoftOutlookTools), microsoftFileTools...), "|") + ")$"
 
 type microsoftHTTPStatus int
 
@@ -1119,15 +1181,30 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 	}
 	var services []Service
+	uses, search := "Outlook mail (drafts first), calendars and contacts", ""
 	if n, err := microsoftReadNative(env, address); err == nil && n.mcpAllowed != "" {
 		// The Outlook server's scopes were derived from the grant at sign-in.
 		allowed := microsoftGranted(strings.Fields(n.mcpAllowed))
 		for _, id := range []string{"mail", "calendar", "contacts"} {
 			services = append(services, Service{ID: id, Access: microsoftRules.access(id, allowed)})
 		}
+		if !n.mcpOutdated() && microsoftRules.access("onedrive", allowed) != AccessNone {
+			uses = "Outlook mail (drafts first), calendars, contacts and finding Microsoft 365 files"
+			search = "\n\n" + fmt.Sprintf(microsoftSearchSkill, address, address)
+		}
 	}
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. "+files+" One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String() + accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})}
+	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for "+uses+". It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. "+files+" One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + search + "\n\nReady sync directories:" + directories.String() + accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})}
 }
+
+// microsoftSearchSkill tells an agent to find files by search and fetch only
+// what it needs (Jari 12.11.2026): a full local copy of every library does not
+// fit the person's quota, and a recursive grep over a cloud tree that is not
+// fully local either misses files or downloads all of them. Jari proofreads
+// every change to this text before it reaches the pilots.
+const microsoftSearchSkill = "Find Microsoft 365 files by search, not by browsing or grepping. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` narrow to one site, library or folder. " +
+	"Fetch only the files you need with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; if the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. Create the parent directory first. The tool never overwrites: a file already there is an earlier fetch, so check its age before relying on it, and fetch the current version beside it under a new name rather than deleting a copy that may hold edits. " +
+	"Grep and read within the fetched files. A ready sync directory below is a full local copy, so a targeted search inside one is fine, but never grep or find recursively over `~/cloud/` as a whole. " +
+	"A fetched file is a local copy: you may edit it, but nothing reaches Microsoft, and no tool here uploads, moves, shares or deletes anything in the cloud. When the person wants an edited file back in Microsoft 365, tell them where the copy is so they can upload it."
 
 var _ FolderEntry = (*microsoft)(nil)
 var _ GrantEntry = (*microsoft)(nil)
