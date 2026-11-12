@@ -93,6 +93,7 @@ type record struct {
 	mu     sync.Mutex
 	id     string
 	user   string
+	reason string
 	phases []any
 }
 
@@ -196,6 +197,9 @@ func Requests(log *slog.Logger, opts RequestOptions, next http.Handler) http.Han
 		if rec.user != "" {
 			attrs = append(attrs, slog.String("user", rec.user))
 		}
+		if rec.reason != "" {
+			attrs = append(attrs, slog.String("reason", rec.reason))
+		}
 		if len(rec.phases) > 0 {
 			attrs = append(attrs, slog.Group("phases_ms", rec.phases...))
 		}
@@ -260,4 +264,29 @@ func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		w.streamed = true
 	}
 	return conn, rw, err
+}
+
+// Reason names, as a fixed code, why the handler refused the request; the
+// record carries it as reason. A wire error code is often shared by several
+// checks, and the journal must say which one refused.
+func Reason(ctx context.Context, code string) {
+	if r, ok := ctx.Value(recordKey{}).(*record); ok && validReason(code) {
+		r.mu.Lock()
+		r.reason = code
+		r.mu.Unlock()
+	}
+}
+
+// validReason keeps reason a fixed vocabulary word: lowercase letters, digits
+// and underscores, never content.
+func validReason(code string) bool {
+	if code == "" || len(code) > 64 {
+		return false
+	}
+	for _, c := range code {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_') {
+			return false
+		}
+	}
+	return true
 }

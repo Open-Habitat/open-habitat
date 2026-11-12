@@ -3,9 +3,11 @@
 package daemon
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -52,42 +54,55 @@ func readNativeTail(path string, uid int, limit int) nativeSession {
 	return settleNativeWindow(func() nativeSession { return nativeWindow(path, uid, "", limit, 0, "", false) })
 }
 
+// nativeWindowReadHook runs after a window read has taken its bytes and before
+// it checks the file again; tests append to the file there.
+var nativeWindowReadHook func()
+
 func nativeWindow(path string, uid int, beforeKey string, limit, messages int, contentKey string, hashed bool) nativeSession {
 	var result nativeSession
+	gone := func(reason string) nativeSession { return nativeSession{refusal: reason} }
+	refuse := func(reason string) nativeSession {
+		result.state, result.refusal = "corrupt", reason
+		return result
+	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 {
-		return result
+		return gone("source_missing")
 	}
 	if uid >= 0 {
 		owner, ok := fileOwner(info)
 		if !ok || owner != uid {
-			return result
+			return gone("source_not_owned")
 		}
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return result
+		return gone("source_open_failed")
 	}
 	defer f.Close()
 	opened, err := f.Stat()
 	if err != nil || !os.SameFile(info, opened) {
-		return result
+		return gone("source_replaced")
 	}
+	// Pi only appends to a live session, one whole record per write, so the
+	// bytes up to the size seen here are a complete history even while Pi
+	// writes on: the read takes exactly them and later growth is the next
+	// read's. Refusing growth made a long conversation unreadable whenever Pi
+	// appended a tool step during the read (12.11.2026, 5 MiB, 30 of 30 reads
+	// in a busy tool loop). Pi rewrites a file in place only when it loads
+	// one, never while a turn appends; a shrunk or replaced file still fails.
+	size := info.Size()
 	if hashed {
 		hash := sha256.New()
-		if _, err = io.Copy(hash, f); err != nil {
-			return result
-		}
-		if end, e := f.Seek(0, io.SeekCurrent); e != nil || end != info.Size() {
-			return result
+		if _, err = io.CopyN(hash, f, size); err != nil {
+			return gone("source_shrank")
 		}
 		result.revision = base64.RawURLEncoding.EncodeToString(hash.Sum(nil)[:18])
 	}
 	result.path, result.state = path, "readable"
 	header := readNativeHeader(path, uid)
 	if header.id == "" {
-		result.state = "corrupt"
-		return result
+		return refuse("header_unreadable")
 	}
 	result.id, result.cwd = header.id, header.cwd
 	result.boundaryFound = beforeKey == ""
@@ -96,35 +111,33 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 	var chain bool
 	var leaf bool
 	var broken bool
+	var cut bool
 	var stopped bool
 	counted := 0
 	seen := map[string]bool{}
-	// ReadAt preserves native order independently of the forward hash pass.
-	size := info.Size()
 	// Locate a bounded incomplete final record without loading the full history.
+	// It is either a record Pi is still writing, which the file grows past
+	// before this read ends, or one a full quota cut (decided below).
 	var last [1]byte
 	if _, err := f.ReadAt(last[:], size-1); err != nil {
-		return nativeSession{}
+		return gone("source_read_failed")
 	}
+	fragmentBad := false
 	if last[0] != '\n' {
 		end, err := lastNativeNewline(f, size)
 		if err != nil {
-			return nativeSession{}
+			return gone("source_read_failed")
 		}
 		if end == 0 {
-			result.state = "corrupt"
-			return result
+			return refuse("record_over_bound")
 		}
 		fragment := make([]byte, size-end)
 		if _, err := f.ReadAt(fragment, end); err != nil {
-			return nativeSession{}
+			return gone("source_read_failed")
 		}
 		var value any
 		err = json.Unmarshal(fragment, &value)
-		if err == nil || err.Error() != "unexpected end of JSON input" {
-			result.state = "corrupt"
-			return result
-		}
+		fragmentBad = err == nil || err.Error() != "unexpected end of JSON input"
 		size = end
 		result.cutOff = true
 	}
@@ -138,6 +151,7 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 		}
 		if json.Unmarshal(line, &e) != nil || !entryIDPattern.MatchString(e.ID) {
 			broken = true
+			cut = quotaCutRecord(line)
 			return false
 		}
 		if seen[e.ID] {
@@ -208,20 +222,68 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 		}
 		return true
 	})
-	if err != nil || broken || (chain && !stopped && target != "") {
-		result.state = "corrupt"
-		return result
+	switch {
+	case errors.Is(err, errNativeLine):
+		return refuse("record_over_bound")
+	case err != nil:
+		return refuse("record_unreadable")
+	case cut:
+		return refuse("quota_cut_record")
+	case broken:
+		return refuse("broken_record")
+	case chain && !stopped && target != "":
+		return refuse("broken_chain")
+	}
+	if nativeWindowReadHook != nil {
+		nativeWindowReadHook()
 	}
 	after, err := os.Lstat(path)
-	if err != nil || !os.SameFile(info, after) || info.Size() != after.Size() || !info.ModTime().Equal(after.ModTime()) {
-		result.state = "corrupt"
-		return result
+	if err != nil || !os.SameFile(info, after) || after.Size() < info.Size() || after.Size() == info.Size() && !info.ModTime().Equal(after.ModTime()) {
+		return refuse("source_changed")
+	}
+	if after.Size() > info.Size() {
+		// The unterminated record was being written: the file grew past it.
+		result.cutOff = false
+	} else if fragmentBad {
+		return refuse("broken_tail")
 	}
 	result.olderComplete = !stopped
 	for i, j := 0, len(result.entries)-1; i < j; i, j = i+1, j-1 {
 		result.entries[i], result.entries[j] = result.entries[j], result.entries[i]
 	}
 	return result
+}
+
+// quotaCutRecord tells whether line is what a full storage quota leaves
+// behind once Pi writes again: a record cut short (a write that ran out of
+// room) with the next whole record appended right after it on the same line.
+// The history is not repaired or read past it; the refusal only names the
+// cause, so the person learns that storage ran out rather than that something
+// unknown broke (12.11.2026).
+func quotaCutRecord(line []byte) bool {
+	// The appended record is the line's end, so candidates are tried from
+	// the end; its own content blocks also start like a record, hence the
+	// generous bound. Only a line that already failed to parse comes here.
+	start := []byte(`{"type":"`)
+	end := len(line)
+	for tries := 0; tries < 256; tries++ {
+		at := bytes.LastIndex(line[:end], start)
+		if at < 1 {
+			return false
+		}
+		end = at
+		var next struct {
+			ID string `json:"id"`
+		}
+		if !json.Valid(line[at:]) || json.Unmarshal(line[at:], &next) != nil || !entryIDPattern.MatchString(next.ID) {
+			continue
+		}
+		var value any
+		err := json.Unmarshal(line[:at], &value)
+		// A cut that fell just before the newline leaves a whole record.
+		return err == nil || err.Error() == "unexpected end of JSON input"
+	}
+	return false
 }
 
 // reverseLines reads newline-delimited records from the end without allocating

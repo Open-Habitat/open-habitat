@@ -21,6 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/diagnostic"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -62,6 +63,9 @@ type nativeSession struct {
 	entries                      []historyEntry
 	boundaryFound, olderComplete bool
 	cutOff                       bool
+	// refusal names, as a fixed code, which check made a read unreadable;
+	// the request record carries it (never content).
+	refusal string
 	// active is the active branch of a whole-file read of a branched file;
 	// nil when every entry is on it.
 	active map[string]bool
@@ -597,6 +601,36 @@ const historyPageEntries = 1000
 const historyPageBudget = 2<<20 - 128<<10
 const historyBlockBudget = 1 << 20
 
+// refuseHistory answers a history read the native source cannot serve now.
+// The wire code is the same for every such refusal; the request record names
+// which check refused (12.11.2026: three 503s in the journal and no way to
+// tell why).
+func refuseHistory(w http.ResponseWriter, r *http.Request, reason string) {
+	diagnostic.Reason(r.Context(), reason)
+	if reason == "quota_cut_record" {
+		// The one refusal the person can understand and act on: storage ran
+		// out while Pi wrote, and the browser says so.
+		snapshotError(w, 503, "native_history_cut")
+		return
+	}
+	snapshotError(w, 503, "native_source_unavailable")
+}
+
+// pageRefusal names why a page read of s did not give s's history.
+func pageRefusal(loaded nativeSession, s *nativeSession) string {
+	switch {
+	case loaded.refusal != "":
+		return loaded.refusal
+	case loaded.id == "":
+		return "source_unstable"
+	case loaded.id != s.id || loaded.cwd != s.cwd:
+		return "identity_changed"
+	case loaded.state == "corrupt":
+		return "corrupt"
+	}
+	return "not_readable"
+}
+
 // historyReadWait is how long one history read may take before its reply.
 const historyReadWait = 60 * time.Second
 
@@ -623,7 +657,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 		path := r.URL.EscapedPath()
 		sessions, err := sessionsReader(cfg)
 		if err != nil {
-			snapshotError(w, 503, "native_source_unavailable")
+			refuseHistory(w, r, "discovery_failed")
 			return
 		}
 		if serveSpinoffs(w, r, cfg, sessions) || serveSpinoffWork(w, r, cfg, sessions) {
@@ -675,7 +709,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			for i := range sessions {
 				if "pi:"+sessions[i].id == id {
 					if s != nil {
-						snapshotError(w, 503, "native_source_unavailable")
+						refuseHistory(w, r, "duplicate_session_id")
 						return
 					}
 					s = &sessions[i]
@@ -686,7 +720,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				return
 			}
 			if s.state != "readable" {
-				snapshotError(w, 503, "native_source_unavailable")
+				refuseHistory(w, r, "session_unavailable")
 				return
 			}
 			if q.Has("after") && len(q["after"]) != 1 {
@@ -704,7 +738,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				}
 				loaded := readNativePageSettled(s.path, cfg.UID, q.Get("before"), limit, messages)
 				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
-					snapshotError(w, 503, "native_source_unavailable")
+					refuseHistory(w, r, pageRefusal(loaded, s))
 					return
 				}
 				if !loaded.boundaryFound {
@@ -719,7 +753,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &entries[i])
 					wire, err := json.Marshal(entries[i])
 					if err != nil {
-						snapshotError(w, 503, "native_source_unavailable")
+						refuseHistory(w, r, "encode_failed")
 						return
 					}
 					if start < len(entries) && pageBytes+len(wire) > pageBudget {
@@ -739,7 +773,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			}
 			loaded, found := readNativeForward(s.path, cfg.UID, q.Get("after"), limit)
 			if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
-				snapshotError(w, 503, "native_source_unavailable")
+				refuseHistory(w, r, pageRefusal(loaded, s))
 				return
 			}
 			if !found {
@@ -758,7 +792,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &e)
 				wire, err := json.Marshal(e)
 				if err != nil {
-					snapshotError(w, 503, "native_source_unavailable")
+					refuseHistory(w, r, "encode_failed")
 					return
 				}
 				if len(entries) > 0 && pageBytes+len(wire) > pageBudget {
@@ -803,7 +837,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					continue
 				}
 				if s.state != "readable" {
-					snapshotError(w, 503, "native_source_unavailable")
+					refuseHistory(w, r, "session_unavailable")
 					return
 				}
 				loaded := readNativeWindowSettled(s.path, cfg.UID, "", 1, key)
