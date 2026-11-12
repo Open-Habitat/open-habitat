@@ -767,9 +767,17 @@ export class ConversationStore {
           ? "older"
           : "tail",
       );
-    } catch {
-      if (this.epoch === epoch && this.windows.get(id) === record)
-        this.markStale(id);
+    } catch (error) {
+      if (this.epoch === epoch && this.windows.get(id) === record) {
+        // A cut behind a readable tail is found only here, scrolling back.
+        if ((error as Error).message === "history_cut")
+          this.publish(id, {
+            ...record.value,
+            historyCut: true,
+            state: unsettled(record),
+          });
+        else this.markStale(id);
+      }
     } finally {
       if (record.loading === read) this.finishRead(id, record);
     }

@@ -225,6 +225,8 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 	switch {
 	case errors.Is(err, errNativeLine):
 		return refuse("record_over_bound")
+	case errors.Is(err, errQuotaCutLine):
+		return refuse("quota_cut_record")
 	case err != nil:
 		return refuse("record_unreadable")
 	case cut:
@@ -253,6 +255,10 @@ func nativeWindow(path string, uid int, beforeKey string, limit, messages int, c
 	}
 	return result
 }
+
+// errQuotaCutLine is reverseLines' refusal of an invalid-UTF-8 line that
+// quotaCutRecord recognizes.
+var errQuotaCutLine = errors.New("native record cut by a full quota")
 
 // quotaCutRecord tells whether line is what a full storage quota leaves
 // behind once Pi writes again: a record cut short (a write that ran out of
@@ -313,6 +319,11 @@ func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 			return false, err
 		}
 		if !utf8.Valid(line) {
+			// A quota cut can fall inside a multibyte rune; say so, so the
+			// window reader can name it. Either way the line is refused.
+			if quotaCutRecord(line) {
+				return false, errQuotaCutLine
+			}
 			return false, io.ErrUnexpectedEOF
 		}
 		return visit(line), nil

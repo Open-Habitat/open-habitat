@@ -216,13 +216,27 @@ func TestHistoryNamesARecordAFullQuotaCut(t *testing.T) {
 	steps := piStep("cut", "t001-reply")
 	next := piStep("after", "cut-call")
 	appendNative(t, path, steps[0][:len(steps[0])/2]) // ENOSPC mid-write
-	appendNative(t, path, next[0]+next[1])           // room again
+	appendNative(t, path, next[0]+next[1])            // room again
 	cfg := transport.Config{Home: home, UID: os.Getuid()}
 	var log bytes.Buffer
 	h := diagnostic.Requests(slog.New(slog.NewJSONHandler(&log, nil)), diagnostic.RequestOptions{}, historyHandlerWithReader(cfg, func(*http.Request) bool { return true }, nativeSessions))
 	status, _, body := getRacePage(t, h, url+"?messages=100")
 	if status != 503 || !strings.Contains(body, `"native_history_cut"`) || !strings.Contains(log.String(), `"reason":"quota_cut_record"`) {
 		t.Fatalf("quota cut: %d %s %s", status, body, log.String())
+	}
+	// A cut inside a multibyte rune is named the same.
+	original, _ := os.ReadFile(path)
+	umlaut := strings.Replace(piStep("rune", "t001-reply")[0], `"sleep 3000"`, `"echo ä"`, 1)
+	cutAt := strings.Index(umlaut, "ä") + 1 // after ä's first byte
+	if err := os.WriteFile(path, append(append([]byte{}, original...), umlaut[:cutAt]+next[0]...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	log.Reset()
+	if status, _, body := getRacePage(t, h, url+"?messages=100"); status != 503 || !strings.Contains(body, `"native_history_cut"`) {
+		t.Fatalf("quota cut inside a rune: %d %s %s", status, body, log.String())
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
 	}
 	// The bytes are never repaired.
 	got, _ := os.ReadFile(path)
