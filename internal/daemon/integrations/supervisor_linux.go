@@ -89,6 +89,10 @@ func (s *Supervisor) run(ctx context.Context, k key, c *child) {
 		cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
 		var out *passOutput
 		if c.passes != nil {
+			if f := c.passes.forced(); f != "" {
+				cmd.Env = append(cmd.Env, forceEnv+"="+f)
+				s.log.Warn("integration_sync", "provider", string(k.provider), "outcome", "resuming", "reason", AllChanged)
+			}
 			out = c.passes.output()
 			cmd.Stderr = out
 		}

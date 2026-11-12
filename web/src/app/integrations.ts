@@ -122,6 +122,7 @@ export type SyncFailure =
   | "not_chosen"
   | "initial_sync_resume_failed"
   | "delete_limit"
+  | "all_changed"
   | "needs_resync"
   | "remote_unreachable"
   | "pass_failed"

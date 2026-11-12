@@ -406,7 +406,9 @@ func googleBisync(env Env, address string) (Command, bool) {
 	if !ok {
 		return Command{}, false
 	}
-	return googleCommand(env, address, append([]string{"bisync", filepath.Join(env.Home, "cloud/google-drive", address), "google:", "--workdir", filepath.Join(env.Home, googleWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime"}, filter...)...)
+	// googleCommand puts Drive's own flags after the arguments.
+	pass := bisyncCommand(Command{}, env, "cloud/google-drive/"+address, "google:", googleWork(address))
+	return googleCommand(env, address, append(pass.Args, filter...)...)
 }
 
 // googleMirror is one pass of the read-only mirror (mirrorCommand).

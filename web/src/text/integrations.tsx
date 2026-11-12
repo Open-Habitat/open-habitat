@@ -246,6 +246,8 @@ const fi = {
     initial_sync_resume_failed:
       "Ensimmäisen synkronoinnin jatkaminen epäonnistui",
     delete_limit: "Pysäytetty: liian monta poistoa kerralla",
+    all_changed:
+      "Kaikki tiedostot muuttuivat kerralla, tarkistetaan ja jatketaan",
     needs_resync: "Pysähtyi eikä jatku itsestään",
     remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
     pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
@@ -859,6 +861,7 @@ export const integrationsText = catalog(
       not_chosen: "Not synchronized",
       initial_sync_resume_failed: "Continuing the first synchronization failed",
       delete_limit: "Stopped: too many deletions at once",
+      all_changed: "Every file changed at once, checking and continuing",
       needs_resync: "Stopped and does not continue by itself",
       remote_unreachable: "The service cannot be reached, trying again",
       pass_failed: "The latest synchronization failed, trying again",

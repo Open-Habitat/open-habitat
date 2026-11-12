@@ -231,6 +231,7 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 	if !ready || strings.Contains(strings.Join(cmd.Args, " "), "--resync") || strings.Contains(strings.Join(cmd.Args, " "), "'onedrive:'") {
 		t.Fatal("selection or restart safety", cmd)
 	}
+	assertBisyncSafety(t, cmd)
 	services := m.Check(context.Background(), env, address)
 	if services[0].State == StateOK || services[1].State != StateOK || services[2].State != StateOK {
 		t.Fatal(services)

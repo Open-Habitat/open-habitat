@@ -348,7 +348,11 @@ func dropboxBisync(env Env, address string) (Command, bool) {
 	if err != nil {
 		return Command{}, false
 	}
-	return dropboxCommand(env, address, "bisync", filepath.Join(env.Home, n.directory), "dropbox:", "--workdir", filepath.Join(env.Home, dropboxWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
+	c, ok := dropboxCommand(env, address)
+	if !ok {
+		return Command{}, false
+	}
+	return bisyncCommand(c, env, n.directory, "dropbox:", dropboxWork(address)), true
 }
 func (d *dropbox) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
 	if len(ids) != 1 || ids[0] != "all" {

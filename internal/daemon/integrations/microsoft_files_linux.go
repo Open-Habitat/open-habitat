@@ -927,7 +927,11 @@ func microsoftMirror(env Env, address string, r microsoftRemote) (Command, bool)
 }
 
 func microsoftBisync(env Env, address string, r microsoftRemote) (Command, bool) {
-	return microsoftCommand(env, address, "bisync", filepath.Join(env.Home, r.Directory), r.Name+":", "--workdir", filepath.Join(env.Home, microsoftWork(address, r.Name)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
+	c, ok := microsoftCommand(env, address)
+	if !ok {
+		return Command{}, false
+	}
+	return bisyncCommand(c, env, r.Directory, r.Name+":", microsoftWork(address, r.Name)), true
 }
 func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
 	m.native.Lock()

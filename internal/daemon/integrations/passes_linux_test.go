@@ -5,6 +5,7 @@ package integrations
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -82,6 +83,8 @@ func TestSteadySyncPassesReachTheCard(t *testing.T) {
 	c.write.Lock()
 	c.reconcile()
 	c.write.Unlock()
+	cmd, _ := (&dropbox{}).SyncCommand(env, address)
+	assertBisyncSafety(t, cmd)
 	h := c.Handler(allow)
 	service := func() map[string]any {
 		_, out, _ := call(t, h, "GET", ListPath, "", nil)
@@ -155,6 +158,7 @@ func TestPassOutputClassifiesOnlyItsOwnPass(t *testing.T) {
 		{"safeguard outranks a later generic error", []string{start, deletes, network, end("1")}, DeleteLimit},
 		{"network", []string{start, network, end("1")}, RemoteUnreachable},
 		{"exit 2 is rclone's usage error, not a resync claim", []string{start, `{"level":"error","msg":"something else"}`, end("2")}, PassFailed},
+		{"all files changed", []string{start, `{"level":"error","msg":"Safety abort: all files were changed on Path1 \"/home/p/cloud/dropbox/\". Run with --force if desired."}`, end("1")}, AllChanged},
 		{"resync claim", []string{start, `{"level":"error","msg":"Bisync aborted. Must run --resync to recover."}`, end("7")}, NeedsResync},
 		{"unclassified", []string{start, end("7")}, PassFailed},
 		{"error outside a pass is not this pass's", []string{deletes, start, end("1")}, PassFailed},
@@ -185,6 +189,22 @@ func TestPassOutputClassifiesOnlyItsOwnPass(t *testing.T) {
 	feed(o, start)
 	if got := o.snapshot()["w"]; !got.Running || got.Failure != PassFailed {
 		t.Fatalf("retry hid the failure: %+v", got)
+	}
+
+	// Only a pass that ended in the all-files-changed abort is resumed with
+	// --force, and only until it ends some other way.
+	o = newPassObserver([]string{"w0", "w1", "w2"})
+	changed := `{"level":"error","msg":"Safety abort: all files were changed on Path2 \"remote:\". Run with --force if desired."}`
+	pass := func(i, code string, lines ...string) []string {
+		return append(append([]string{`{"open_habitat_pass":` + i + `}`}, lines...), `{"open_habitat_pass":`+i+`,"exit":`+code+`}`)
+	}
+	feed(o, slices.Concat(pass("0", "1", changed), pass("1", "1", deletes), pass("2", "1", changed))...)
+	if got := o.forced(); got != "0 2" {
+		t.Fatalf("forced %q", got)
+	}
+	feed(o, slices.Concat(pass("0", "0"), pass("1", "1", deletes), pass("2", "1", network))...)
+	if got := o.forced(); got != "" {
+		t.Fatalf("forced again %q", got)
 	}
 }
 

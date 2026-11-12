@@ -162,6 +162,7 @@ func TestGoogleConnectSyncRestartAndRemove(t *testing.T) {
 	if !ok || strings.Contains(strings.Join(cmd.Args, " "), "--resync") {
 		t.Fatal("ordinary run can resync")
 	}
+	assertBisyncSafety(t, cmd)
 	// Execute one actual supervised pass, then stop and rederive from native files.
 	deadline := time.Now().Add(3 * time.Second)
 	for {
