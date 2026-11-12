@@ -53,7 +53,8 @@ export type ServiceState =
   | "unreachable"
   | "sync_restarting"
   | "quota_full"
-  | "unknown";
+  | "unknown"
+  | "pending_first_sync";
 export type LoginKind =
   | "app_password"
   | "pasted_redirect"

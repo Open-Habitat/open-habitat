@@ -480,6 +480,34 @@ export const BackgroundInitialSync: Story = {
     },
   },
 };
+// Outlook shares the first pass's native sign-in, so its services are
+// checked after the pass instead of being reported as unknown.
+export const MicrosoftFirstSync: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "microsoft",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "onedrive",
+              state: "syncing",
+              directory: "~/cloud/onedrive/person@example.test",
+              progress: { ...nativeProgress, service: "onedrive" },
+            },
+            { id: "sharepoint", state: "pending_first_sync" },
+            { id: "mail", state: "pending_first_sync" },
+            { id: "calendar", state: "pending_first_sync" },
+            { id: "contacts", state: "pending_first_sync" },
+          ],
+        },
+      ],
+    },
+  },
+};
 export const InitialSyncFailed: Story = {
   args: {
     list: {

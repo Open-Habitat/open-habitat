@@ -64,6 +64,11 @@ const (
 	StateSyncRestarting      ServiceState = "sync_restarting"
 	StateQuotaFull           ServiceState = "quota_full"
 	StateUnknown             ServiceState = "unknown"
+	// StatePendingFirstSync is a service the catalog does not ask about while
+	// a first native pass of the same provider runs: its tool shares the
+	// pass's native lock and token, so the state is read after the pass. It
+	// is not "unknown", which says a check was made and failed.
+	StatePendingFirstSync ServiceState = "pending_first_sync"
 )
 
 // InitialSyncIncomplete is a sync_failed service whose login works but whose
@@ -816,9 +821,11 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	var grant *Grant
 	// A first pass that failed holds nothing native any more: the tool is
 	// asked as usual, and only the file service carries the failure below.
+	// While it runs, the services it does not copy say they are checked
+	// after it; the files it copies become syncing below.
 	if (initial && !failed) || nativeBusy {
 		for _, id := range e.Services() {
-			services = append(services, Service{ID: id, State: StateUnknown})
+			services = append(services, Service{ID: id, State: StatePendingFirstSync})
 		}
 	} else if g, ok := e.(GrantEntry); ok {
 		services, grant = g.CheckGrant(ctx, c.env, address)

@@ -236,6 +236,7 @@ const fi = {
     sync_restarting: "Synkronointi pysähtyi, käynnistetään uudelleen",
     quota_full: "Kiintiö täynnä, synkronointi pysähtyi",
     unknown: "Tilaa ei saatu selville",
+    pending_first_sync: "Tarkistetaan ensimmäisen synkronoinnin jälkeen",
   } as Record<string, string>,
   failure: {
     quota_insufficient: "Valitut tiedostot eivät mahdu kiintiöön",
@@ -849,6 +850,7 @@ export const integrationsText = catalog(
       sync_restarting: "Synchronization stopped, restarting",
       quota_full: "Quota full, synchronization stopped",
       unknown: "The state could not be found out",
+      pending_first_sync: "Checked after the first sync",
     },
     failure: {
       quota_insufficient: "The chosen files do not fit in the quota",

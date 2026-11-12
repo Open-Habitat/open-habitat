@@ -516,9 +516,11 @@ function ServiceStatus({
             ? "warning"
             : service.failure === "not_chosen"
               ? "info"
-              : service.state === "syncing" || passing
-                ? "refresh"
-                : "check"
+              : service.state === "pending_first_sync"
+                ? "clock"
+                : service.state === "syncing" || passing
+                  ? "refresh"
+                  : "check"
         }
       />
       {text}
@@ -700,7 +702,9 @@ export function AccountCard({
                   txt.notSynced
                 )}
               </span>
-            ) : clockTime(account.checked_at) ? (
+            ) : // Not checked now: a check time would say it was.
+            s.state !== "pending_first_sync" &&
+              clockTime(account.checked_at) ? (
               <span data-testid="integration-checked-at" className="ig-meta">
                 {txt.checkedAt(clockTime(account.checked_at) ?? "")}
               </span>

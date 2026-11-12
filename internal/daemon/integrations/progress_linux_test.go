@@ -144,6 +144,57 @@ func TestNativeProgressBelongsToTheCurrentLibrary(t *testing.T) {
 	}
 }
 
+// countedEntry is a provider with files and other services whose tool counts
+// how often it is asked.
+type countedEntry struct {
+	syncScriptEntry
+	asked *atomic.Int32
+}
+
+func (e countedEntry) Services() []string { return []string{"drive", "mail", "calendar"} }
+func (e countedEntry) Check(context.Context, Env, string) []Service {
+	e.asked.Add(1)
+	return []Service{{ID: "drive", State: StateOK}, {ID: "mail", State: StateOK}, {ID: "calendar", State: StateOK}}
+}
+
+// While a first pass holds the provider's native sign-in, the services it
+// does not copy are neither asked nor reported as a failed check: this
+// account's and another account's of the same provider wait for the pass.
+func TestServicesBesideFirstPassWaitForIt(t *testing.T) {
+	asked := &atomic.Int32{}
+	e := countedEntry{syncScriptEntry{&scriptEntry{provider: Microsoft}}, asked}
+	c := New(Env{Home: t.TempDir()}, []Entry{e}, nil)
+	pass := &attempt{provider: Microsoft, address: "person@example.test", syncing: true, state: "completing", progress: &SyncProgress{Service: "drive", Phase: "transferring", Bytes: 42}}
+	c.relay.put(pass)
+	states := func(a Account) map[string]ServiceState {
+		out := map[string]ServiceState{}
+		for _, s := range a.Services {
+			out[s.ID] = s.State
+		}
+		return out
+	}
+	own := states(c.check(context.Background(), e, "person@example.test"))
+	if own["drive"] != StateSyncing || own["mail"] != StatePendingFirstSync || own["calendar"] != StatePendingFirstSync {
+		t.Fatal("account in its first pass", own)
+	}
+	other := states(c.check(context.Background(), e, "other@example.test"))
+	for id, s := range other {
+		if s != StatePendingFirstSync {
+			t.Fatal("another account beside the provider's first pass", id, s)
+		}
+	}
+	if n := asked.Load(); n != 0 {
+		t.Fatal("tool asked beside the native pass", n)
+	}
+	c.relay.mu.Lock()
+	pass.state = "completed"
+	c.relay.mu.Unlock()
+	after := states(c.check(context.Background(), e, "person@example.test"))
+	if asked.Load() != 1 || after["mail"] != StateOK || after["calendar"] != StateOK {
+		t.Fatal("services not checked after the pass", after, asked.Load())
+	}
+}
+
 // The synthetic provider owns half a million files, but choice never asks for
 // recursive inventory. Slow inventory starts only after approval, survives the
 // request, and never starts copying when fresh quota admission refuses it.
