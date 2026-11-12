@@ -148,6 +148,12 @@ test('search is added only to the conversation model of a covered provider, once
   assert.deepEqual(nativeSearchTools(codex, { model: 'gpt-5.6', input: [{ type: 'message', role: 'user', content: [] }] }), []);
   const anthropic = { provider: 'anthropic', api: 'anthropic-messages', id: 'claude-sonnet-5' };
   assert.deepEqual(nativeSearchTools(anthropic, { model: 'claude-sonnet-5', tools: [{ name: 'WebFetch', input_schema: {} }] }), []);
+  // A search tool added mid-conversation is defined in a tool_addition block.
+  const fable = { provider: 'anthropic', api: 'anthropic-messages', id: 'claude-fable-5-2' };
+  const later = name => ({ model: 'claude-fable-5-2', tools: [{ name: 'read', input_schema: {} }, { name: '__pi_deferred_placeholder__', input_schema: {}, defer_loading: true }],
+    messages: [{ role: 'user', content: 'hi' }, { role: 'system', content: [{ type: 'tool_addition', tool: { type: 'tool_definition', definition: { name, input_schema: {} } } }] }] });
+  assert.deepEqual(nativeSearchTools(fable, later('web_search')), []);
+  assert.equal(nativeSearchTools(fable, later('bash')).length, 2);
   // A compatible endpoint of another provider is not assumed to have the tool.
   for (const model of [{ provider: 'openrouter', api: 'openai-responses', id: 'x' }, { provider: 'claude-bridge', api: 'claude-bridge', id: 'x' },
     { provider: 'deepseek', api: 'anthropic-messages', id: 'x' }]) {

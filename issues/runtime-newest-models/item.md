@@ -3,12 +3,13 @@ created: 2026-11-12
 updated: 2026-11-12
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/models
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # Update runtime to the newest OpenAI and Anthropic models (Pi 1.5.2, bridge 0.12.0)

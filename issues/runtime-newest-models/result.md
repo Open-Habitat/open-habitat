@@ -11,7 +11,7 @@ versions under *Older models*, so no product code had to name the new ids.
 **The next release needs a core runtime rebuild for both architectures
 (`--rebuilt`).** The rebuilt arm64 output from this tree is kept at
 `/var/tmp/agent-keep/runtime-newest-models/core-arm64-final` on Birch
-(`core.tar.gz` sha256 `5c370208304e1895d1ee4d86f1b991dfad36f22273fabd24dfb30ac5b97c805e`);
+(`core.tar.gz` sha256 `daff6db3eb00292f99d0ab45b20b027f775fd50a196a61ef82fa2a8f8b335810`);
 amd64 must be built on an amd64 host.
 
 ## What changed
@@ -37,6 +37,11 @@ amd64 must be built on an amd64 host.
   items as the conversation's (also for spotting a person's own search tool)
   and adds `web_search` as a top-level tool beside them. A real-Pi test with
   `gpt-6.1-terra` covers it and fails without the fix.
+- The review found that Anthropic models with native mid-conversation tool
+  changes (Fable 5.x, Opus 4.8–5.5, Sonnet/Haiku 5.5) keep top-level `tools`
+  at the initial set and define later tools in `tool_addition` message blocks,
+  so a person's own search tool activated mid-conversation would not have
+  suppressed the native one. `declaredTools` now reads those blocks too.
 - Daemon tests that named ids Pi 1.5 no longer has or defaults it changed:
   Pi's first-key defaults are now `gpt-6.1-sol` (OpenAI) and
   `claude-opus-5-5` (Anthropic); the Codex catalog no longer has `gpt-5.5`,
@@ -83,7 +88,7 @@ amd64 must be built on an amd64 host.
 - `OH_CORE_ARTIFACT_DIR=… go test ./internal/host -run 'TestReleaseClosure|TestReleaseCoreAgentTools'`
   including `TestReleaseClosureBuiltCore` on the built archive: pass.
 - `node --test internal/daemon/pi-device-test/*.test.mjs` (real Pi 1.5.2):
-  74 pass, including the new Terra web-search case.
+  74 pass, including the new Terra web-search case and the `tool_addition` case.
 - `go test ./internal/daemon/...` (with `requirements-ci.txt`'s Python):
   pass; `OH_CORE_RUNTIME=… TestMCPBuiltRuntimeAgent` on the built runtime:
   pass; launcher trust tests (`TestLauncher*`, `TestProjectTrust*`,
@@ -99,8 +104,9 @@ amd64 must be built on an amd64 host.
 Disposable `HOME` (and with it `~/.pi/agent` and `~/.claude`) holding copies
 of Jari's ChatGPT and Claude logins; neither token was near expiry (66 h and
 6 h), so no refresh could rotate his real login. The copies were deleted
-afterwards. Each run went through the final arm64 build's own
-`runtime/agent-bin/pi` over RPC (`evidence/`):
+afterwards. Each run went through a built arm64 payload's own
+`runtime/agent-bin/pi` over RPC (`evidence/`); that build predates the review
+fix, which changed only the extension:
 
 - `claude-bridge/claude-fable-5-2`: answered as Fable 5.2; Claude Code ran
   WebSearch twice and WebFetch twice; a read tool round trip; a real
@@ -111,6 +117,17 @@ afterwards. Each run went through the final arm64 build's own
 - `openai-codex/gpt-6.1-terra`: answered; native web search with source links
   on three turns, a read round trip, and a real compaction (`tokensBefore`
   15,397) followed by a search.
+
+After the review fix the arm64 runtime was rebuilt; through its launcher
+GPT-6.1 Terra again ran native `web_search_call`s and Fable 5.2 answered a
+search with sources, and `TestReleaseClosureBuiltCore` passed on the archive.
+
+### Review
+
+Major dependency bump of what every agent runs, so an independent
+`/llm-review` (finder gpt-6-astra, verifier claude-fable-5-1) plus
+`/assess-findings`: one confirmed should-fix (the `tool_addition` case
+above), fixed here with a test; nothing dropped or deferred.
 
 ## Decisions for later review
 

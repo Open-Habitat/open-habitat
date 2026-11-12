@@ -35,16 +35,22 @@ function offersSearch(tool) {
 		name === 'websearch' || name === 'webfetch';
 }
 
-// The tools a request declares. Pi 1.5 declares a Responses conversation's
-// tools in `additional_tools` input items (or a synthetic tool search's
-// output) where the model supports them, leaving no top-level `tools`; it
-// returns undefined for a request that declares no tools, such as a summary.
+// The tools a request declares, or undefined for a request that declares
+// none, such as a summary. Pi 1.5 declares a Responses conversation's tools in
+// `additional_tools` input items (or a synthetic tool search's output) where
+// the model supports them, leaving no top-level `tools`. An Anthropic model
+// with native tool changes keeps the top-level list at the initial tools and
+// defines every later one in a `tool_addition` block of a message.
 function declaredTools(payload) {
 	const items = Array.isArray(payload.input)
 		? payload.input.filter(i => i?.type === 'additional_tools' || i?.type === 'tool_search_output')
 		: [];
 	if (!Array.isArray(payload.tools) && items.length === 0) return undefined;
-	return [...(Array.isArray(payload.tools) ? payload.tools : []), ...items.flatMap(i => Array.isArray(i.tools) ? i.tools : [])];
+	const added = Array.isArray(payload.messages)
+		? payload.messages.flatMap(m => Array.isArray(m?.content) ? m.content : [])
+			.filter(b => b?.type === 'tool_addition' && b.tool?.definition).map(b => b.tool.definition)
+		: [];
+	return [...(Array.isArray(payload.tools) ? payload.tools : []), ...items.flatMap(i => Array.isArray(i.tools) ? i.tools : []), ...added];
 }
 
 export function nativeSearchTools(model, payload) {
