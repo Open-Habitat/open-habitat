@@ -44,8 +44,10 @@ export function splitFrontmatter(text: string): {
   };
 }
 
+// Every pattern here stays linear on long lines: a crafted file must not
+// stall the preview. The key's trailing blanks are trimmed afterwards.
 const keyLine =
-  /^([^\s#:'"[\]{},&*!|>%@`-][^:]*?|"[^"]*"|'[^']*')[ \t]*:(?:[ \t]+(.*))?$/;
+  /^([^\s#:'"[\]{},&*!|>%@`-][^:]*|"[^"]*"|'[^']*'):(?:[ \t]+(.*))?$/;
 
 function parseEntries(block: string[]): FrontmatterEntry[] | null {
   const entries: FrontmatterEntry[] = [];
@@ -58,7 +60,7 @@ function parseEntries(block: string[]): FrontmatterEntry[] | null {
     }
     const match = keyLine.exec(line);
     if (!match) return null;
-    const key = unquoteKey(match[1]);
+    const key = unquoteKey(match[1].trimEnd());
     const inline = (match[2] ?? "").trim();
     // A key's value continues on indented lines, and a block list may start
     // at the key's own column.
@@ -87,7 +89,7 @@ function parseValue(
   if (/^[&*!]/.test(inline)) return { key, yaml: [inline, ...rest].join("\n") };
   if (!inline)
     return rest.length ? { key, yaml: dedent(rest) } : { key, value: "" };
-  const block = /^([|>])[+-]?[1-9]?[+-]?(\s+#.*)?$/.exec(inline);
+  const block = /^([|>])[+-]?[1-9]?[+-]?(\s#.*)?$/.exec(inline);
   if (block) {
     const lines = dedent(rest).split("\n");
     return {
@@ -121,7 +123,7 @@ function unquote(text: string): string | null {
     if (inner.replace(/''/g, "").includes("'")) return null;
     return inner.replace(/''/g, "'");
   }
-  if (/(^|[^\\])(\\\\)*"/.test(inner)) return null;
+  if (inner.replace(/\\./g, "").includes('"')) return null;
   return inner.replace(/\\(.)/g, (_, c: string) =>
     c === "n" ? "\n" : c === "t" ? "\t" : c,
   );
@@ -133,7 +135,7 @@ function stripComment(text: string): string {
   if (quote) {
     const end = text.lastIndexOf(quote);
     return end > 0
-      ? text.slice(0, end + 1) + text.slice(end + 1).replace(/\s+#.*$/, "")
+      ? text.slice(0, end + 1) + text.slice(end + 1).replace(/\s#.*$/, "")
       : text;
   }
   return text.replace(/(^|\s)#.*$/, "").trimEnd();
@@ -143,7 +145,13 @@ function fold(lines: string[]): string {
   return lines
     .join("\n")
     .split(/\n[ \t]*\n/)
-    .map((paragraph) => paragraph.replace(/\s*\n\s*/g, " ").trim())
+    .map((paragraph) =>
+      paragraph
+        .split("\n")
+        .map((line) => line.trim())
+        .join(" ")
+        .trim(),
+    )
     .join("\n");
 }
 

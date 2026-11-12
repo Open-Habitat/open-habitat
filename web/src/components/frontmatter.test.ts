@@ -112,6 +112,20 @@ describe("splitFrontmatter", () => {
     expect(body).toBe("Body\r\n");
   });
 
+  it("stays fast on long hostile lines", () => {
+    const long = 200_000;
+    const lines = [
+      `a${" ".repeat(long)}`,
+      `k: "${"\\".repeat(long)}`,
+      `k: '${" ".repeat(long)}'x`,
+      `k: >${" ".repeat(long)}`,
+      `k: ${"x ".repeat(long / 2)}`,
+    ];
+    const started = performance.now();
+    for (const line of lines) splitFrontmatter(`---\n${line}\n---\n`);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it("does not let frontmatter comments count as headings", () => {
     expect(headingLines("---\n# comment\nname: x\n---\n# Title\n")).toEqual([
       4,
