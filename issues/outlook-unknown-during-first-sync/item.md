@@ -2,7 +2,7 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet spinoff m365 config/refusal fixes, card state check
@@ -11,6 +11,12 @@ originating_run: 01m77a7a7dmnkw3mp4084b0d0c
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
+commits:
+- hash: 50ac955ae
+  summary: Say Outlook and Google services wait for the first sync instead of unknown
+- hash: 3df3f56c4
+  summary: Claim a check after the first sync only while a first pass runs
 ---
 
 # Outlook services show 'Tilaa ei saatu selville' during the account's own first file sync
@@ -44,3 +50,15 @@ from the MCP adapter's own MSAL cache, not rclone, but `CheckGrant` takes
 `m.native`, and Commit renames that cache under the same lock, so probing it
 during the pass needs a design (or the browser could say "checked after the
 first sync" for those services instead of "unknown").
+
+## Acceptance Criteria
+
+- [x] Mail, calendar and contacts do not show "Tilaa ei saatu selville" during the same account's first sync (`pending_first_sync`).
+- [x] No tool process is started beside the native pass.
+- [x] Google services and a second account of the same provider checked.
+
+## Resolution
+
+### 2026-11-12T08:22:11Z · @issuectl
+
+pending_first_sync replaces unknown for services the first pass does not copy; see result.md.
