@@ -900,6 +900,24 @@ const fi = {
       know: "Monta suurta kuvaa on koottu yhdelle riville, jotta muu historia pysyy kevyenä lukea.",
       try: "Avaa kuvat",
     },
+    K30: {
+      name: "Muutokset",
+      lead: "Näyttää vuoron muuttamat tiedostot ja rivimäärät ja avaa listan tähän.",
+      know: "Tieto tulee agentin työkalukutsuista. Komennon muuttama tiedosto näkyy vain, jos komento nimeää sen.",
+      try: "Avaa muutokset",
+    },
+    K31: {
+      name: "Aikajana",
+      lead: "Näyttää vuoron muutokset sen kellolla listan sijaan.",
+      know: "Ympyrä on agentin muokkaus ja neliö komento. Merkki avaa juuri sen muutoksen.",
+      try: "Näytä aikajana",
+    },
+    K32: {
+      name: "Avaa editorissa",
+      lead: "Avaa tiedoston editoriin keskustelun viereen ensimmäisestä muuttuneesta rivistä.",
+      know: "Rivi tiedetään, kun vuoro luki tiedoston ennen muutosta. Muuten tiedosto avautuu alusta.",
+      try: "Avaa editorissa",
+    },
     V33: {
       name: "Muut ilmoitukset",
       lead: "Näyttää myös keskustelun ja luonnoksen muut ilmoitukset.",
@@ -2547,6 +2565,24 @@ export const explainModeText = catalog(fi, {
       lead: "Shows the row's pictures; each then loads from its own button.",
       know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
       try: "Open pictures",
+    },
+    K30: {
+      name: "Changes",
+      lead: "Shows the files this turn changed and their line counts, and opens the list here.",
+      know: "It comes from the agent's tool calls. A file a command changed shows only when the command names it.",
+      try: "Open the changes",
+    },
+    K31: {
+      name: "Timeline",
+      lead: "Shows the turn's changes on its clock instead of the list.",
+      know: "A circle is the agent's edit and a square a command. A mark opens that change.",
+      try: "Show the timeline",
+    },
+    K32: {
+      name: "Open in editor",
+      lead: "Opens the file in the editor beside the conversation at its first changed line.",
+      know: "The line is known when the turn read the file before changing it. Otherwise the file opens at the top.",
+      try: "Open in editor",
     },
     V33: {
       name: "More notices",

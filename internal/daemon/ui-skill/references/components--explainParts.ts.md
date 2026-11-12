@@ -326,6 +326,9 @@ export const parts: Record<CardId, Part> = {
   K27: { kind: "nav", sel: '[data-testid="conversation-weight-new"]' },
   K28: { kind: "once", sel: '[data-testid="conversation-weight-dismiss"]' },
   K29: { kind: "once", sel: '[data-testid="history-pictures-open"]' },
+  K30: { kind: "info", sel: '[data-testid="turn-changes-toggle"]' },
+  K31: { kind: "info", sel: '[data-testid="turn-changes-timeline-toggle"]' },
+  K32: { kind: "nav", sel: '[data-testid="turn-changes-open-editor"]' },
   K20: { kind: "once", sel: '[data-testid="markdown-preview-toggle"]' },
   K21: { kind: "once", sel: '[data-testid="markdown-preview-expand"]' },
   K22: {

@@ -672,6 +672,21 @@ export const settingsSections = [
         ],
         desc: "Nimetyt workerit tekevät työnsä kierroksina ja odottavat pääagentin seuraavaa viestiä.",
       },
+      {
+        id: "turn-changes",
+        label: "Vuoron muutokset",
+        kw: [
+          "muutokset",
+          "changes",
+          "diffi",
+          "diff",
+          "aikajana",
+          "timeline",
+          "tiedostot",
+          "files",
+        ],
+        desc: "Valmiin vuoron alla rivi siitä, mitä tiedostoja agentti muutti.",
+      },
     ],
   },
   {

@@ -308,6 +308,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Helpers",
         desc: "Named workers work in rounds and wait for the main agent's next message.",
       },
+      "turn-changes": {
+        label: "Turn changes",
+        desc: "A line under a finished turn about which files the agent changed.",
+      },
     },
   },
   palvelin: {

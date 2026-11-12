@@ -20,6 +20,8 @@ const fi = {
   line: (n: number) => `, rivi ${n}`,
   diagram: "Kaavio",
   diagramSource: "Kaavion lähde",
+  frontmatter: "Metatiedot",
+  table: "Taulukko",
 };
 
 export const markdownRendererText = catalog(fi, {
@@ -35,6 +37,8 @@ export const markdownRendererText = catalog(fi, {
   line: (n) => `, line ${n}`,
   diagram: "Diagram",
   diagramSource: "Diagram source",
+  frontmatter: "Metadata",
+  table: "Table",
 });
 
 ```

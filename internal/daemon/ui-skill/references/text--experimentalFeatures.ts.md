@@ -139,6 +139,17 @@ const fi = {
         "Taskfleet, jossa on nimetyt workerit (run create --resident). Pyydä agenttia tekemään avustaja; se saa ohjeen, kun keskustelu seuraavan kerran käynnistyy. Avustajalle et kirjoita itse: viestit, kierrosten yhdistäminen ja lopetus kulkevat pääagentin kautta. Keskustelu näkee vain omat avustajansa.",
       caption: "Avustajat",
     },
+    "turn-changes": {
+      name: "Vuoron muutokset",
+      desc: "Valmiin vuoron vastauksen alla yksi rivi: mitä tiedostoja agentti muutti ja montako riviä. Rivi avaa listan samaan kohtaan, ja tiedosto avaa koko muutoksensa.",
+      where:
+        "Keskustelussa jokaisen valmiin vuoron vastauksen alla, jos vuoro muutti tiedostoja. Aikajana-painike näyttää samat muutokset vuoron kellolla.",
+      shows:
+        "Muutetut tiedostot vuoron järjestyksessä, rivimäärät ja merkinnät kirjoitettu, poistettu ja komennolla. Avaa editorissa vie ensimmäiseen muuttuneeseen riviin, kun se tiedetään.",
+      needs:
+        "Ei muuta. Tieto tulee agentin työkalukutsuista: komennon muuttama tiedosto näkyy vain, jos komento nimeää sen, ja muokkauksen rivi tiedetään vain, jos agentti luki tiedoston ensin.",
+      caption: "Muutokset",
+    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -298,6 +309,17 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "A Taskfleet with named workers (run create --resident). Ask the agent to make a helper; it learns how the next time the conversation starts. You do not write to a helper yourself: messages, landing rounds and stopping go through the main agent. A conversation sees only its own helpers.",
       caption: "Helpers",
+    },
+    "turn-changes": {
+      name: "Turn changes",
+      desc: "One line under a finished turn's reply: which files the agent changed and by how many lines. The line opens the list in place, and a file opens its whole change.",
+      where:
+        "In the conversation under each finished turn's reply, when the turn changed files. The Timeline button shows the same changes on the turn's clock.",
+      shows:
+        "The changed files in the turn's order, line counts and the tags written, deleted and by command. Open in editor goes to the first changed line when it is known.",
+      needs:
+        "Nothing else. It comes from the agent's tool calls: a file a command changed shows only when the command names it, and an edit's line is known only when the agent read the file first.",
+      caption: "Changes",
     },
   },
   picture: {

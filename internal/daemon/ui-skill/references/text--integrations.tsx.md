@@ -241,6 +241,7 @@ const fi = {
     sync_restarting: "Synkronointi pysähtyi, käynnistetään uudelleen",
     quota_full: "Kiintiö täynnä, synkronointi pysähtyi",
     unknown: "Tilaa ei saatu selville",
+    pending_first_sync: "Tarkistetaan ensimmäisen synkronoinnin jälkeen",
   } as Record<string, string>,
   failure: {
     quota_insufficient: "Valitut tiedostot eivät mahdu kiintiöön",
@@ -250,6 +251,8 @@ const fi = {
     initial_sync_resume_failed:
       "Ensimmäisen synkronoinnin jatkaminen epäonnistui",
     delete_limit: "Pysäytetty: liian monta poistoa kerralla",
+    all_changed:
+      "Kaikki tiedostot muuttuivat kerralla, tarkistetaan ja jatketaan",
     needs_resync: "Pysähtyi eikä jatku itsestään",
     remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
     pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
@@ -292,7 +295,9 @@ const fi = {
   initialHelp:
     "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät.",
   quotaHelp:
-    "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu.",
+    "Mitään ei kopioitu. Kirjaudu uudelleen ja valitse vähemmän kansioita, tai vapauta tilaa tai pyydä ylläpitäjältä lisää ja yritä uudelleen.",
+  quotaNeeded: (needed: string, free: string) =>
+    `Valitut tiedostot eivät mahdu tilaasi: tarvitaan ${needed}, vapaana ${free}`,
   retryHelp:
     "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät.",
   synced: "Synkronoitu",
@@ -593,6 +598,8 @@ const fi = {
     too_many:
       "Kaikki Teams-tiimisi eivät mahtuneet valittavaksi, joten osa jätettiin pois.",
   },
+  teamsNotOffered: (teams: string) =>
+    `Kaikki Teams-tiimisi eivät mahtuneet valittavaksi. Nämä tiimit jätettiin pois: ${teams}.`,
   initialSync:
     "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon.",
   filesDiscovery: "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…",
@@ -850,6 +857,7 @@ export const integrationsText = catalog(
       sync_restarting: "Synchronization stopped, restarting",
       quota_full: "Quota full, synchronization stopped",
       unknown: "The state could not be found out",
+      pending_first_sync: "Checked after the first sync",
     },
     failure: {
       quota_insufficient: "The chosen files do not fit in the quota",
@@ -858,6 +866,7 @@ export const integrationsText = catalog(
       not_chosen: "Not synchronized",
       initial_sync_resume_failed: "Continuing the first synchronization failed",
       delete_limit: "Stopped: too many deletions at once",
+      all_changed: "Every file changed at once, checking and continuing",
       needs_resync: "Stopped and does not continue by itself",
       remote_unreachable: "The service cannot be reached, trying again",
       pass_failed: "The latest synchronization failed, trying again",
@@ -900,7 +909,9 @@ export const integrationsText = catalog(
     initialHelp:
       "Sign in again and choose synchronization, and the first synchronization is completed. Files already copied stay.",
     quotaHelp:
-      "Free some space or ask the administrator for more and try again. Nothing was copied.",
+      "Nothing was copied. Sign in again and choose fewer folders, or free some space or ask the administrator for more and try again.",
+    quotaNeeded: (needed, free) =>
+      `The chosen files do not fit in your space: ${needed} needed, ${free} free`,
     retryHelp:
       "Sign in again and try the synchronization again. Files already copied stay.",
     synced: "Synchronized",
@@ -1194,6 +1205,8 @@ export const integrationsText = catalog(
       too_many:
         "Not all of your teams fit in the choice, so some were left out.",
     },
+    teamsNotOffered: (teams) =>
+      `Not all of your teams fit in the choice. These teams were left out: ${teams}.`,
     initialSync:
       "The first synchronization is running. This can take long if there are many files.",
     filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",

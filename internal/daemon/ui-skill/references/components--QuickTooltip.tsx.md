@@ -117,6 +117,11 @@ function TooltipContent({ label }: { label: string }) {
     props.triggerRef?.current?.closest(
       'main, aside:not([role]), nav, [role="main"], [role="complementary"], [role="navigation"], [role="banner"], [role="contentinfo"]',
     ) ?? props.triggerRef?.current?.closest("header, footer");
+  // Help has no exit animation, so it leaves the tree when it closes. Kept
+  // mounted, React Aria's exit state sticks when one render both closes this
+  // help and lets the next one replace it instantly (a slow page batches the
+  // two), and the trigger's next Escape or press shows it again for good.
+  if (!isOpen) return null;
   return (
     <Tooltip
       className={styles.tooltip}
