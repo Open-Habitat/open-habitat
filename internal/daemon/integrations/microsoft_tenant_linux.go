@@ -105,7 +105,7 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 	}
 	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
 	if err == nil {
-		data, err := readFileAt(fd, address+".conf", 64<<10)
+		data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 		unix.Close(fd)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return n, err
@@ -334,17 +334,18 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 		return "", err
 	}
 	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", 64<<10)
+	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if err != nil {
 		return "", err
 	}
 	// A section runs to the next header; blank lines inside it are rclone's
-	// to allow. A missing tenant goes after the section's last key.
+	// to allow. A missing tenant goes after the section's last key, in the
+	// remotes that sign in (type onedrive), never in a root's alias.
 	lines := strings.Split(string(data), "\n")
 	out := make([]string, 0, len(lines)+4)
-	inRemote, hasTenant, last := false, false, 0
+	inRemote, signsIn, hasTenant, last := false, false, false, 0
 	endRemote := func() {
-		if inRemote && !hasTenant {
+		if inRemote && signsIn && !hasTenant {
 			out = append(out[:last], append([]string{"tenant = " + app.TenantID}, out[last:]...)...)
 		}
 	}
@@ -352,13 +353,15 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
 			endRemote()
-			inRemote, hasTenant = true, false
+			inRemote, signsIn, hasTenant = true, false, false
 			out = append(out, line)
 			last = len(out)
 			continue
 		}
-		key, _, ok := strings.Cut(line, "=")
+		key, value, ok := strings.Cut(line, "=")
 		switch k := strings.TrimSpace(key); {
+		case ok && inRemote && k == "type":
+			signsIn = strings.TrimSpace(value) == "onedrive"
 		case ok && inRemote && k == "tenant":
 			line, hasTenant = "tenant = "+app.TenantID, true
 		case ok && inRemote && k == "token":

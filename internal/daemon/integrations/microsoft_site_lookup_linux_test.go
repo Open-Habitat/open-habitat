@@ -96,7 +96,7 @@ func TestMicrosoftFollowedSiteFallsBackToWebURL(t *testing.T) {
 	if len(l.skippedSites) != 0 || len(l.unavailableSites) != 0 {
 		t.Fatal("resolvable site reported as left out")
 	}
-	if !strings.Contains(string(l.config), "drive_id = moved-drive") {
+	if !strings.Contains(string(l.config), "drive_id=moved-drive,") {
 		t.Fatal("resolved site's library not offered")
 	}
 	if !slices.Equal(l.siteLookups, []string{siteLookupWebURL}) {
@@ -122,7 +122,7 @@ func TestMicrosoftFollowedSiteLookupMixedList(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, drive := range []string{"primary-drive", "moved-drive", "library-drive"} {
-		if !strings.Contains(string(l.config), "drive_id = "+drive) {
+		if !strings.Contains(string(l.config), "drive_id="+drive+",") {
 			t.Fatal("reachable root lost", drive)
 		}
 	}

@@ -401,6 +401,7 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 		fail(w, 503, "native_unavailable")
 		return
 	}
+	c.forgetRefusal(key{e.Provider(), address})
 	// Sync stops before its directory moves, so the client never sees its
 	// tree vanish and propagates that as a mass deletion.
 	skill := c.reconcile()

@@ -26,7 +26,8 @@ for (const width of [1280, 390]) {
         address: "person@example.test",
         relogin: false,
         unavailable_sites: ["Unavailable team"],
-        teams_left_out: "channels_not_granted",
+        teams_left_out: "too_many",
+        teams_not_offered: ["Left-out team"],
         ...(phase === "choose_folders"
           ? {
               directory: "~/cloud/onedrive/person@example.test",
@@ -82,9 +83,17 @@ for (const width of [1280, 390]) {
                       checked_at: "2026-10-22T12:00:00Z",
                       services: [
                         {
+                          id: "onedrive",
+                          state: "sync_failed",
+                          failure: "not_chosen",
+                          directory: "~/cloud/onedrive/person@example.test",
+                        },
+                        {
                           id: "sharepoint",
                           state: "sync_failed",
                           failure: "quota_insufficient",
+                          needed_bytes: 220396051998,
+                          free_bytes: 42409644032,
                           directory:
                             "~/cloud/sharepoint/team/person@example.test",
                           progress: {
@@ -129,7 +138,7 @@ for (const width of [1280, 390]) {
       ).toContainText("Unavailable team"); // native display name, not UI wording
       await expect(
         dialog.getByTestId("integration-teams-left-out"),
-      ).toBeVisible();
+      ).toContainText("Left-out team"); // the team's native name
       const start = dialog.getByTestId("integration-sync-start");
       const own = dialog
         .getByTestId("integration-folder-onedrive")
@@ -182,18 +191,29 @@ for (const width of [1280, 390]) {
       await page.reload();
       const card = page.getByTestId("integration-account-microsoft");
       await expect(
-        card.getByTestId("integration-service-state"),
+        card
+          .getByTestId("integration-service-sharepoint")
+          .getByTestId("integration-service-state"),
       ).toHaveAttribute("data-failure", "quota_insufficient");
+      // Files left out are a choice, not a failed status check.
+      await expect(
+        card
+          .getByTestId("integration-service-onedrive")
+          .getByTestId("integration-service-state"),
+      ).toHaveAttribute("data-failure", "not_chosen");
       await expect(card.getByTestId("integration-sync-progress")).toHaveCount(
         0,
       );
       // The account column can be narrow even on a desktop viewport. Status
       // and actions must wrap instead of squeezing its native path/name.
       expect(
-        await card.locator("code").evaluate((el) => {
-          const line = Number.parseFloat(getComputedStyle(el).lineHeight);
-          return el.getBoundingClientRect().height / line;
-        }),
+        await card
+          .getByTestId("integration-service-sharepoint")
+          .locator("code")
+          .evaluate((el) => {
+            const line = Number.parseFloat(getComputedStyle(el).lineHeight);
+            return el.getBoundingClientRect().height / line;
+          }),
       ).toBeLessThan(4);
 
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

@@ -96,6 +96,10 @@ type Service struct {
 	// LastSyncedAt is when the latest successful pass ended, from rclone's
 	// own committed listings; for several libraries, the oldest of them.
 	LastSyncedAt string `json:"last_synced_at,omitempty"`
+	// NeededBytes and FreeBytes are a quota_insufficient refusal's counted
+	// size of the chosen files and the room it did not fit.
+	NeededBytes uint64 `json:"needed_bytes,omitempty"`
+	FreeBytes   uint64 `json:"free_bytes,omitempty"`
 	// Access is what the provider's grant allows this service, when the
 	// grant can be read (grant_linux.go).
 	Access Access `json:"access,omitempty"`
@@ -798,16 +802,14 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	initial := a != nil && a.provider == e.Provider() && a.address == address && a.syncing && a.state != "completed"
 	var progress *SyncProgress
 	failed := false
-	failure := ""
+	var refused firstPassRefusal
 	if initial {
 		progress, failed = a.progress, a.state == "failed"
 		if failed {
-			code := loginFailure(a.failure)
-			if code == "quota_insufficient" || code == "quota_unavailable" {
-				failure = code
-			}
+			refused, _ = refusalOf(a.failure)
 		}
 	}
+	failure := refused.Failure
 	resume := c.relay.resume[key{e.Provider(), address}]
 	c.relay.mu.Unlock()
 	var services []Service
@@ -922,6 +924,17 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		for i := range services {
 			if services[i].State == StateSyncFailed {
 				services[i].Failure = failure
+				if failure != "" {
+					services[i].NeededBytes, services[i].FreeBytes = refused.NeededBytes, refused.FreeBytes
+				}
+			}
+		}
+	} else if r, ok := c.refusal(key{e.Provider(), address}); ok {
+		// Files whose first pass never ran or never finished after a
+		// refused choice say why, also after a restart.
+		for i := range services {
+			if s := &services[i]; s.State == StateSyncFailed && (s.Failure == FoldersNotChosen || s.Failure == InitialSyncIncomplete) {
+				s.Failure, s.NeededBytes, s.FreeBytes = r.Failure, r.NeededBytes, r.FreeBytes
 			}
 		}
 	}

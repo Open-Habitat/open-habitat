@@ -162,7 +162,28 @@ func microsoftLabel(parts ...string) string {
 	return label[:cut] + "…"
 }
 
-const maxMicrosoftRemotes, maxMicrosoftConfig = 64, 64 << 10
+// An account's config holds its one token in the microsoftAccount remote,
+// and each cloud root is an alias of it with the root's drive: rclone saves
+// a refreshed token into the remote's own section (its config name, not the
+// alias's or the connection string's), so every root shares one token and a
+// refresh rewrites that one. A token in every root's section once fit only
+// about eleven roots under the read bound.
+const microsoftAccount = "microsoft"
+
+// maxMicrosoftConfig bounds what discovery writes; every reader accepts up
+// to maxMicrosoftConfigRead. The difference is room for rclone to write a
+// longer refreshed token: a reader refuses the whole file above its bound.
+const maxMicrosoftRemotes, maxMicrosoftConfig, maxMicrosoftConfigRead = 64, 56 << 10, 64 << 10
+
+// microsoftAliasRemote is a root's alias target: the account remote with
+// the root's drive. Its parts are validated identifiers, never provider text.
+var microsoftAliasRemote = regexp.MustCompile(`^` + microsoftAccount + `,drive_id=([A-Za-z0-9!_-]{1,256}),drive_type=(personal|business|documentLibrary):$`)
+
+// microsoftAccountSection is the account remote: the application, tenant,
+// grant and token every root uses.
+func microsoftAccountSection(app MicrosoftApp, granted []string, token []byte) string {
+	return fmt.Sprintf("[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\n%stoken = %s\n\n", microsoftAccount, app.ClientID, app.TenantID, grantLine(granted), token)
+}
 
 // errMicrosoftTruncated is a library list Graph paged: the inventory would
 // be partial. A followed site fails discovery; a team is left out.
@@ -195,7 +216,8 @@ type microsoftDiscovery struct {
 }
 
 func (l *microsoftLogin) discover(ctx context.Context, bearer string, granted map[string]bool) (result error) {
-	d := &microsoftDiscovery{microsoftLogin: l, ctx: ctx, bearer: bearer, step: "onedrive", tenantKind: "unknown", sites: map[string]bool{}, drives: map[string]bool{}, reachable: map[string]bool{}, hostOf: map[int]string{}, size: len(microsoftConfigHeader) + len(microsoftDiscoveryFixed)}
+	account := microsoftAccountSection(l.app, l.granted, l.token)
+	d := &microsoftDiscovery{microsoftLogin: l, ctx: ctx, bearer: bearer, step: "onedrive", tenantKind: "unknown", sites: map[string]bool{}, drives: map[string]bool{}, reachable: map[string]bool{}, hostOf: map[int]string{}, size: len(microsoftConfigHeader) + len(microsoftDiscoveryFixed) + len(account)}
 	defer func() {
 		if result != nil {
 			result = microsoftDiscoveryError{step: d.step, tenantKind: d.tenantKind, err: result}
@@ -278,7 +300,11 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, granted ma
 			return err
 		}
 	}
-	l.config = []byte(microsoftConfigHeader + microsoftDiscoveryFixed + strings.Join(d.sections, ""))
+	// Without roots there is no token for rclone to keep.
+	if len(d.sections) == 0 {
+		account = ""
+	}
+	l.config = []byte(microsoftConfigHeader + microsoftDiscoveryFixed + account + strings.Join(d.sections, ""))
 	return nil
 }
 
@@ -408,14 +434,14 @@ func (d *microsoftDiscovery) add(group []microsoftRemote) (bool, error) {
 		if r.Label != "" {
 			label = microsoftLabelKey + " = " + base64.RawURLEncoding.EncodeToString([]byte(r.Label)) + "\n"
 		}
-		s := fmt.Sprintf("[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\n%stoken = %s\n%s\n", r.Name, d.app.ClientID, d.app.TenantID, r.DriveID, r.DriveType, r.Directory, label, d.token, grantLine(d.granted))
+		s := fmt.Sprintf("[%s]\ntype = alias\nremote = %s,drive_id=%s,drive_type=%s:\ndescription = %s\n%s\n", r.Name, microsoftAccount, r.DriveID, r.DriveType, r.Directory, label)
 		more, n = append(more, s), n+len(s)
 	}
-	d.step = "remote_limit"
+	d.step = microsoftRemoteLimit
 	if len(d.sections)+len(more) > maxMicrosoftRemotes {
 		return false, nil
 	}
-	d.step = "config_limit"
+	d.step = microsoftConfigLimit
 	if d.size+n > maxMicrosoftConfig {
 		return false, nil
 	}
@@ -423,13 +449,53 @@ func (d *microsoftDiscovery) add(group []microsoftRemote) (bool, error) {
 	return true, nil
 }
 
+// microsoftShortestRoot is less than any root's config section: its fixed
+// lines with the shortest name, drive and path.
+const microsoftShortestRoot = 128
+
+// The bounds that can leave teams out of the folder step, for the journal.
+const (
+	microsoftRemoteLimit = "remote_limit"
+	microsoftConfigLimit = "config_limit"
+	microsoftLibraryList = "library_list_paged"
+	microsoftTeamList    = "team_list_paged"
+)
+
+// bound records that a bound fired, once per kind.
+func (d *microsoftDiscovery) bound(kind string) {
+	if !slices.Contains(d.bounds, kind) {
+		d.bounds = append(d.bounds, kind)
+	}
+}
+
+func cloneSet(m map[string]bool) map[string]bool {
+	out := make(map[string]bool, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
+// leaveOut names a team the folder step does not offer. The page's list is
+// bounded; its last entry then says there are more.
+func (d *microsoftDiscovery) leaveOut(team string) {
+	d.teamsLeftOut = teamsTooMany
+	d.teamsOmitted++
+	if len(d.teamsNotOffered) < 32 {
+		d.teamsNotOffered = append(d.teamsNotOffered, team)
+	} else {
+		d.teamsNotOffered[31] = "…"
+	}
+}
+
 const microsoftLabelKey = "habitat_label"
 
 // teams adds the libraries of the teams the person has joined, and of each
-// private or shared channel's own site, one team at a time while the
-// config's bounds allow. A standard channel's files are a folder of its
-// team's library, already offered. What is left out is said in the folder
-// step (teamsLeftOut, unavailableSites); none of it fails sign-in.
+// private or shared channel's own site, one whole team at a time. A team
+// that does not fit the config's bounds is left out and named, and the next
+// one is still tried. A standard channel's files are a folder of its team's
+// library, already offered. What is left out is said in the folder step
+// (teamsLeftOut, teamsNotOffered, unavailableSites); none of it fails sign-in.
 func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 	if !microsoftGrantsAny(granted, microsoftTeamScopes) {
 		d.teamsLeftOut = teamsNotGranted
@@ -458,6 +524,7 @@ func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 	}
 	if teams.Next != "" {
 		d.teamsLeftOut = teamsTooMany
+		d.bound(microsoftTeamList)
 	}
 	for _, t := range teams.Value {
 		d.step = "team_id"
@@ -465,6 +532,21 @@ func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 			return ToolFailed
 		}
 		team := microsoftDisplayName(t.Name, "Teams")
+		// Once no root can fit, the rest are named without asking Graph. No
+		// root's section is shorter than microsoftShortestRoot.
+		if len(d.sections) >= maxMicrosoftRemotes {
+			d.bound(microsoftRemoteLimit)
+			d.leaveOut(team)
+			continue
+		}
+		if d.size+microsoftShortestRoot > maxMicrosoftConfig {
+			d.bound(microsoftConfigLimit)
+			d.leaveOut(team)
+			continue
+		}
+		// A team left out leaves its sites and libraries to later teams: a
+		// shared channel's library can belong to several.
+		sites, drives := cloneSet(d.sites), cloneSet(d.drives)
 		var group []microsoftRemote
 		var root microsoftSite
 		d.step = "team_site"
@@ -476,7 +558,9 @@ func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 			found, err := d.libraries(root, "Teams", team)
 			if errors.Is(err, errMicrosoftTruncated) {
 				// A team too large to list whole is left out, and said.
-				d.teamsLeftOut = teamsTooMany
+				d.bound(microsoftLibraryList)
+				d.leaveOut(team)
+				d.sites, d.drives = sites, drives
 				continue
 			}
 			if err != nil {
@@ -496,8 +580,9 @@ func (d *microsoftDiscovery) teams(granted map[string]bool) error {
 			return err
 		}
 		if !fits {
-			d.teamsLeftOut = teamsTooMany
-			return nil
+			d.bound(d.step)
+			d.leaveOut(team)
+			d.sites, d.drives = sites, drives
 		}
 	}
 	return nil
@@ -569,59 +654,115 @@ func (d *microsoftDiscovery) channels(teamID, team string) ([]microsoftRemote, e
 const microsoftConfigHeader = "# Microsoft cloud roots discovered for this native account.\n"
 
 func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
+	roots, _, err := microsoftReadRoots(env, address)
+	return roots, err
+}
+
+// microsoftReadRoots reads the account's roots and the names of those still
+// in the earlier form, each its own rclone remote with its own token, which
+// the next start migrates (microsoftMigrate).
+func microsoftReadRoots(env Env, address string) ([]microsoftRemote, []string, error) {
 	if !ValidAddress(address) {
-		return nil, ToolFailed
+		return nil, nil, ToolFailed
 	}
 	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", 64<<10)
+	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if errors.Is(err, unix.ENOENT) {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	return microsoftParseRoots(data, address)
+}
+
+func microsoftParseRoots(data []byte, address string) ([]microsoftRemote, []string, error) {
 	var out []microsoftRemote
+	var kinds, remotes []string
+	var granted map[string]bool
+	ownGrant := map[int]bool{}
 	seen := map[string]bool{}
+	account, inAccount := false, false
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			name := strings.TrimSuffix(strings.TrimPrefix(line, "["), "]")
+			if name == microsoftAccount && !account {
+				account, inAccount = true, true
+				continue
+			}
 			if !microsoftRemoteName.MatchString(name) || seen[name] {
-				return nil, ToolFailed
+				return nil, nil, ToolFailed
 			}
-			seen[name] = true
-			out = append(out, microsoftRemote{Name: name, Writable: true})
+			seen[name], inAccount = true, false
+			out, kinds, remotes = append(out, microsoftRemote{Name: name, Writable: true}), append(kinds, ""), append(remotes, "")
 		} else if key, value, ok := strings.Cut(line, "="); ok {
-			if len(out) == 0 {
-				return nil, ToolFailed
+			key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+			if inAccount {
+				switch key {
+				case "type":
+					if value != "onedrive" {
+						return nil, nil, ToolFailed
+					}
+				case grantKey:
+					granted = microsoftGranted(strings.Fields(value))
+				}
+				continue
 			}
-			switch strings.TrimSpace(key) {
+			if len(out) == 0 {
+				return nil, nil, ToolFailed
+			}
+			r, i := &out[len(out)-1], len(out)-1
+			switch key {
+			case "type":
+				kinds[i] = value
+			case "remote":
+				remotes[i] = value
 			case "description":
-				out[len(out)-1].Directory = strings.TrimSpace(value)
+				r.Directory = value
+			case "drive_id":
+				r.DriveID = value
 			case "drive_type":
-				out[len(out)-1].DriveType = strings.TrimSpace(value)
+				r.DriveType = value
 			case microsoftLabelKey:
 				// A label that does not decode to a showable name is not shown.
-				if label, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(value)); err == nil && microsoftDisplayName(string(label), "") != "" {
-					out[len(out)-1].Label = string(label)
+				if label, err := base64.RawURLEncoding.DecodeString(value); err == nil && microsoftDisplayName(string(label), "") != "" {
+					r.Label = string(label)
 				}
 			case microsoftRecoverySelected:
-				out[len(out)-1].RecoverySelected = strings.TrimSpace(value) == "true"
+				r.RecoverySelected = value == "true"
 			case grantKey:
-				r := &out[len(out)-1]
-				r.Writable = microsoftWritable(r.service(), microsoftGranted(strings.Fields(value)))
+				r.Writable, ownGrant[i] = microsoftWritable(r.service(), microsoftGranted(strings.Fields(value))), true
 			}
 		}
 	}
+	var legacy []string
 	dirs := map[string]bool{}
-	for _, r := range out {
+	for i := range out {
+		r := &out[i]
+		switch kinds[i] {
+		case "alias":
+			// A root reaches only its own drive through the account's token.
+			m := microsoftAliasRemote.FindStringSubmatch(remotes[i])
+			if m == nil || !account {
+				return nil, nil, ToolFailed
+			}
+			r.DriveID, r.DriveType = m[1], m[2]
+			if granted != nil && !ownGrant[i] {
+				r.Writable = microsoftWritable(r.service(), granted)
+			}
+		case "onedrive":
+			legacy = append(legacy, r.Name)
+		default:
+			return nil, nil, ToolFailed
+		}
 		dir := r.Directory
 		valid := dir == "cloud/onedrive/"+address
 		if r.Name != "onedrive" {
@@ -629,16 +770,16 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 			valid = len(parts) == 5 && parts[0] == "cloud" && parts[1] == "sharepoint" && strings.HasSuffix(parts[2], "--"+address)
 		}
 		if !valid || filepath.Clean(dir) != dir || strings.ContainsAny(dir, "\r\n\\") || dirs[dir] {
-			return nil, ToolFailed
+			return nil, nil, ToolFailed
 		}
 		for _, p := range strings.Split(dir, "/") {
 			if p == "" || p == "." || p == ".." {
-				return nil, ToolFailed
+				return nil, nil, ToolFailed
 			}
 		}
 		dirs[dir] = true
 	}
-	return out, nil
+	return out, legacy, nil
 }
 func microsoftCommand(env Env, address string, args ...string) (Command, bool) {
 	tool, ok := env.Tool("rclone")
@@ -670,6 +811,21 @@ func microsoftReady(env Env, address string, r microsoftRemote) bool {
 	}
 	return one && two
 }
+
+// microsoftPassStarted reports whether a root ever had a first pass: its
+// work directory holds something. A choice refused before the copy, or a
+// root the person left out, leaves it absent or empty.
+func microsoftPassStarted(env Env, address string, r microsoftRemote) bool {
+	names, fd, err := listHomeDir(env.Home, microsoftWork(address, r.Name))
+	if err != nil {
+		return true
+	}
+	if fd >= 0 {
+		unix.Close(fd)
+	}
+	return len(names) > 0
+}
+
 func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {
@@ -804,7 +960,7 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 		return err
 	}
 	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", 64<<10)
+	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if err != nil {
 		return err
 	}

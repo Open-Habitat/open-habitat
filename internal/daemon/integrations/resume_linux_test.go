@@ -389,7 +389,7 @@ func TestMicrosoftResumesOnlyTheInterruptedLibrary(t *testing.T) {
 	sp := "sp-" + strings.Repeat("ab", 12)
 	other := "sp-" + strings.Repeat("cd", 12)
 	os.MkdirAll(filepath.Join(env.Home, microsoftDir), 0700)
-	config := fmt.Sprintf("[onedrive]\ndescription = cloud/onedrive/%[1]s\n\n[%[2]s]\ndescription = cloud/sharepoint/t--%[1]s/site/docs\n\n[%[3]s]\ndescription = cloud/sharepoint/t--%[1]s/site/other\n", address, sp, other)
+	config := testMicrosoftRoots("onedrive", "cloud/onedrive/"+address, sp, "cloud/sharepoint/t--"+address+"/site/docs", other, "cloud/sharepoint/t--"+address+"/site/other")
 	os.WriteFile(filepath.Join(env.Home, microsoftDir, address+".conf"), []byte(config), 0600)
 	for remote, files := range map[string][]string{"onedrive": {"s.path1.lst-new", "s.lck"}, sp: {"s.path1.lst", "s.path2.lst"}} {
 		work := filepath.Join(env.Home, microsoftWork(address, remote))
@@ -556,7 +556,7 @@ func TestMicrosoftResumeOutcomeIsShownPerService(t *testing.T) {
 	address := "person@example.test"
 	sp := "sp-" + strings.Repeat("ab", 12)
 	os.MkdirAll(filepath.Join(env.Home, microsoftDir), 0700)
-	config := fmt.Sprintf("[onedrive]\ndescription = cloud/onedrive/%[1]s\n\n[%[2]s]\ndescription = cloud/sharepoint/t--%[1]s/site/docs\n", address, sp)
+	config := testMicrosoftRoots("onedrive", "cloud/onedrive/"+address, sp, "cloud/sharepoint/t--"+address+"/site/docs")
 	os.WriteFile(filepath.Join(env.Home, microsoftDir, address+".conf"), []byte(config), 0600)
 	work := filepath.Join(env.Home, microsoftWork(address, "onedrive"))
 	os.MkdirAll(work, 0700)

@@ -18,7 +18,7 @@ func TestMicrosoftCompositeSiteWirePath(t *testing.T) {
 	if err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
 		t.Fatal(err)
 	}
-	if len(l.skippedSites) != 0 || !strings.Contains(string(l.config), "drive_id = library-drive") {
+	if len(l.skippedSites) != 0 || !strings.Contains(string(l.config), "drive_id=library-drive,") {
 		t.Fatal("composite site did not yield its library")
 	}
 }

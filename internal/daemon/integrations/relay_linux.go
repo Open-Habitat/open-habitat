@@ -53,9 +53,11 @@ type attempt struct {
 	// measuring are the folders whose size FolderSizer is still counting.
 	measuring        map[string]bool
 	unavailableSites []string
-	// teamsLeftOut says why Teams files are missing from the folder step.
-	teamsLeftOut string
-	room         Room
+	// teamsLeftOut says why Teams files are missing from the folder step,
+	// teamsNotOffered which teams were left out whole.
+	teamsLeftOut    string
+	teamsNotOffered []string
+	room            Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
 	// syncing distinguishes the first native pass from a redirect exchange.
@@ -97,6 +99,7 @@ type LoginView struct {
 	LoginPhase       string        `json:"login_phase,omitempty"`
 	UnavailableSites []string      `json:"unavailable_sites,omitempty"`
 	TeamsLeftOut     string        `json:"teams_left_out,omitempty"`
+	TeamsNotOffered  []string      `json:"teams_not_offered,omitempty"`
 	SchemaVersion    int           `json:"schema_version"`
 	State            string        `json:"state"`
 	AttemptID        string        `json:"attempt_id,omitempty"`
@@ -199,7 +202,7 @@ func (r *relay) view(owner string, provider Provider) LoginView {
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
 		v.LoginPhase = a.prompt.Flow
 	}
-	v.UnavailableSites, v.TeamsLeftOut = a.unavailableSites, a.teamsLeftOut
+	v.UnavailableSites, v.TeamsLeftOut, v.TeamsNotOffered = a.unavailableSites, a.teamsLeftOut, a.teamsNotOffered
 	if a.syncing {
 		v.Progress = a.progress
 	}
@@ -634,8 +637,12 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		for _, lookup := range ms.siteLookups {
 			c.log.Info("integration_discovery", "provider", Microsoft, "outcome", "observed", "reason", "site_lookup_fallback", "site_lookup", lookup)
 		}
+		// Team names are the person's; the journal keeps the bound and a count.
+		for _, bound := range ms.bounds {
+			c.log.Info("integration_discovery", "provider", Microsoft, "outcome", "partial", "reason", "teams_left_out", "bound", bound, "teams_left_out", ms.teamsOmitted)
+		}
 		c.setAttempt(a, func() {
-			a.unavailableSites, a.teamsLeftOut = append([]string(nil), ms.unavailableSites...), ms.teamsLeftOut
+			a.unavailableSites, a.teamsLeftOut, a.teamsNotOffered = append([]string(nil), ms.unavailableSites...), ms.teamsLeftOut, append([]string(nil), ms.teamsNotOffered...)
 		})
 	}
 	if err == nil && !validCatalogAddress(e.Provider(), address) {
@@ -801,6 +808,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				c.write.Unlock()
 				return
 			}
+			c.forgetRefusal(key{e.Provider(), address})
 			if !c.setAttempt(a, func() { a.state, a.address = "completed", address }) {
 				c.dropStale(e, a, address)
 				c.write.Unlock()
@@ -819,8 +827,10 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				c.write.Unlock()
 				return
 			}
-			// The person's own choice replaces any earlier resume outcome.
+			// The person's own choice replaces any earlier resume outcome
+			// and refusal.
 			c.markResume(key{e.Provider(), address}, 0)
+			c.forgetRefusal(key{e.Provider(), address})
 			// The count and the copy may take hours. Like a resumed pass they
 			// run without c.write, so the person's other sign-ins and
 			// connections are not held behind them: reconcile leaves this
@@ -846,6 +856,8 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				if r, ok := fe.(resumableEntry); ok && (!c.live(a) || ctx.Err() == nil) {
 					forgetInterruptedPasses(c.env, r, address)
 				}
+				// A refusal before the copy is said again after a restart.
+				c.recordRefusal(key{e.Provider(), address}, syncErr)
 				c.reconcile()
 				c.write.Unlock()
 				c.failAttempt(a, syncErr)
@@ -937,6 +949,7 @@ func (c *Catalog) firstPass(ctx context.Context, fe FolderEntry, a *attempt, add
 func (c *Catalog) dropStale(e Entry, a *attempt, address string) {
 	if a.discard || (!a.existing[address] && !a.syncing) {
 		_ = e.Remove(context.Background(), c.env, address)
+		c.forgetRefusal(key{e.Provider(), address})
 		c.reconcile()
 	}
 }
@@ -955,6 +968,7 @@ func (c *Catalog) discardNew(e Entry, address string) {
 	c.write.Lock()
 	defer c.write.Unlock()
 	_ = e.Remove(context.Background(), c.env, address)
+	c.forgetRefusal(key{e.Provider(), address})
 	c.reconcile()
 }
 

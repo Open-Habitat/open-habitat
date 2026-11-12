@@ -287,7 +287,9 @@ const fi = {
   initialHelp:
     "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät.",
   quotaHelp:
-    "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu.",
+    "Mitään ei kopioitu. Kirjaudu uudelleen ja valitse vähemmän kansioita, tai vapauta tilaa tai pyydä ylläpitäjältä lisää ja yritä uudelleen.",
+  quotaNeeded: (needed: string, free: string) =>
+    `Valitut tiedostot eivät mahdu tilaasi: tarvitaan ${needed}, vapaana ${free}`,
   retryHelp:
     "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät.",
   synced: "Synkronoitu",
@@ -588,6 +590,8 @@ const fi = {
     too_many:
       "Kaikki Teams-tiimisi eivät mahtuneet valittavaksi, joten osa jätettiin pois.",
   },
+  teamsNotOffered: (teams: string) =>
+    `Kaikki Teams-tiimisi eivät mahtuneet valittavaksi. Nämä tiimit jätettiin pois: ${teams}.`,
   initialSync:
     "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon.",
   filesDiscovery: "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…",
@@ -895,7 +899,9 @@ export const integrationsText = catalog(
     initialHelp:
       "Sign in again and choose synchronization, and the first synchronization is completed. Files already copied stay.",
     quotaHelp:
-      "Free some space or ask the administrator for more and try again. Nothing was copied.",
+      "Nothing was copied. Sign in again and choose fewer folders, or free some space or ask the administrator for more and try again.",
+    quotaNeeded: (needed, free) =>
+      `The chosen files do not fit in your space: ${needed} needed, ${free} free`,
     retryHelp:
       "Sign in again and try the synchronization again. Files already copied stay.",
     synced: "Synchronized",
@@ -1189,6 +1195,8 @@ export const integrationsText = catalog(
       too_many:
         "Not all of your teams fit in the choice, so some were left out.",
     },
+    teamsNotOffered: (teams) =>
+      `Not all of your teams fit in the choice. These teams were left out: ${teams}.`,
     initialSync:
       "The first synchronization is running. This can take long if there are many files.",
     filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",

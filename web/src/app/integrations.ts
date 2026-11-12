@@ -101,6 +101,10 @@ export type Service = {
   failure?: SyncFailure;
   /** When the latest successful pass ended, from the tool's own listings. */
   last_synced_at?: string;
+  /** With quota_insufficient: the counted size of the chosen files and the
+   * room they did not fit, when known. */
+  needed_bytes?: number;
+  free_bytes?: number;
   /** What the provider's grant lets the service do, read from the grant;
    * absent when it cannot be read. */
   access?: Access;
@@ -215,6 +219,8 @@ export type LoginView = {
     | "refused"
     | "channels_not_granted"
     | "too_many";
+  /** With too_many: the teams left out whole, by name. */
+  teams_not_offered?: string[];
   directory?: string;
   progress?: SyncProgress;
   free_bytes?: number;

@@ -33,7 +33,7 @@ func microsoftRecoveryNeeded(env Env, address string) bool {
 		return false
 	}
 	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", 64<<10)
+	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if err != nil {
 		return false
 	}
@@ -41,7 +41,7 @@ func microsoftRecoveryNeeded(env Env, address string) bool {
 	if err != nil || len(roots) == 0 {
 		return false
 	}
-	if !strings.Contains(string(data), microsoftDiscoveryFixed) {
+	if !strings.Contains(string(data), microsoftDiscoveryFixed) || microsoftMigrationNeeded(env, address) {
 		return true
 	}
 	for _, r := range roots {
@@ -53,11 +53,15 @@ func microsoftRecoveryNeeded(env Env, address string) bool {
 }
 
 // recoverLibraries runs only with the account's supervised client stopped and
-// the relay slot held. It preserves existing sections (including their tokens,
-// grant and paths); rediscovery can only append newly offered roots.
+// the relay slot held. It first brings a config with a token per root to one
+// token (migrate). It preserves existing sections (including the token, grant
+// and paths); rediscovery can only append newly offered roots.
 func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address string) error {
 	m.native.Lock()
 	defer m.native.Unlock()
+	if err := m.migrate(env, address); err != nil {
+		return err
+	}
 	roots, err := microsoftRemotes(env, address)
 	if err != nil {
 		return err
@@ -67,7 +71,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		return err
 	}
 	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", 64<<10)
+	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if err != nil {
 		return err
 	}
@@ -106,7 +110,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		if json.Unmarshal([]byte(n.token), &token) != nil || token.Access == "" {
 			return ToolFailed
 		}
-		data, err = readFileAt(fd, address+".conf", 64<<10)
+		data, err = readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 		if err != nil {
 			return err
 		}
@@ -145,7 +149,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		// Config sections are generated locally by discover, never provider text.
 		for _, section := range strings.Split(string(l.config), "\n[")[1:] {
 			name, _, _ := strings.Cut(section, "]")
-			if existing[name] {
+			if existing[name] || name == microsoftAccount {
 				continue
 			}
 			added.WriteString("\n[" + section)
@@ -156,7 +160,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		// A real 403/404 with literal IDs is a completed inventory, not a
 		// reason to interrupt healthy sync every minute indefinitely.
 		merged := microsoftDiscoveryFixed + string(data) + added.String()
-		if len(merged) > 64<<10 {
+		if len(merged) > maxMicrosoftConfig {
 			return ToolFailed
 		}
 		if err := writeFileAt(fd, address+".conf", []byte(merged), 0600); err != nil {
@@ -268,9 +272,17 @@ func (c *Catalog) tryRecoverMicrosoft(ctx context.Context, m *microsoft, address
 			}
 		}
 	}
+	migrating := microsoftMigrationNeeded(c.env, address)
 	if err == nil {
 		syncCtx := context.WithValue(runCtx, syncProgressKey{}, func(p SyncProgress) { c.setAttempt(a, func() { a.progress = &p }) })
 		err = m.recoverLibraries(syncCtx, c.env, address)
+	}
+	if migrating {
+		outcome := "completed"
+		if microsoftMigrationNeeded(c.env, address) {
+			outcome = "deferred"
+		}
+		c.log.Info("integration_config_migration", "provider", string(Microsoft), "outcome", outcome, "change", "one_token_per_account")
 	}
 	removed := c.finishResume(a, err)
 	c.write.Lock()

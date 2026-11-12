@@ -38,8 +38,9 @@ func connectedWithCommon(t *testing.T, env Env, client string) string {
 	// A blank line inside a section is valid rclone syntax.
 	old := strings.ReplaceAll(string(data), "tenant = "+testTenant, "\ntenant = common")
 	old = strings.ReplaceAll(old, "client_id = 00000000-0000-0000-0000-000000000001", "client_id = "+client)
-	if strings.Count(old, "tenant = common") != 2 {
-		t.Fatal("fixture: expected OneDrive and one library")
+	// The roots are aliases of the one account remote that signs in.
+	if strings.Count(old, "tenant = common") != 1 || strings.Count(old, "type = alias") != 2 {
+		t.Fatal("fixture: expected the account remote with OneDrive and one library")
 	}
 	if err := os.WriteFile(conf, []byte(old), 0600); err != nil {
 		t.Fatal(err)
@@ -118,7 +119,7 @@ func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
 	}
 	data, _ := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
 	config := string(data)
-	if strings.Contains(config, "common") || strings.Count(config, "tenant = "+testTenant+"\n") != 2 || strings.Count(config, `"refresh_token":"tenant-refresh"`) != 2 || strings.Contains(config, "refresh-secret") {
+	if strings.Contains(config, "common") || strings.Count(config, "tenant = "+testTenant+"\n") != 1 || strings.Count(config, `"refresh_token":"tenant-refresh"`) != 1 || strings.Contains(config, "refresh-secret") {
 		t.Fatal("remotes not on the tenant's grant:\n", config)
 	}
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 2 {
@@ -188,7 +189,7 @@ func TestMicrosoftTenantRefusalSaysWhyAndKeepsTheConfigs(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, s := range c.check(context.Background(), m, address).Services {
-				if s.Failure != "" {
+				if s.State == StateLoginExpired {
 					t.Fatal("refusal outlived the new sign-in", s)
 				}
 			}
@@ -230,7 +231,7 @@ func TestMicrosoftUnreachableTenantIsAskedAgain(t *testing.T) {
 	c := New(env, []Entry{m}, nil)
 	for i := 0; i < 2; i++ {
 		for _, s := range c.check(context.Background(), m, address).Services {
-			if s.Failure != "" {
+			if s.State == StateLoginExpired {
 				t.Fatal("an outage became a refusal", s)
 			}
 		}

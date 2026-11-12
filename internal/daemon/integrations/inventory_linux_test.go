@@ -29,7 +29,7 @@ func TestNativeFileChoicesDoNotEnumerateAndMeasureOnlyApprovedRoots(t *testing.T
 				dir = microsoftDir
 				id = "onedrive"
 				entry = &microsoft{}
-				config = "[onedrive]\ndescription = cloud/onedrive/" + address + "\n[sp-0123456789abcdef01234567]\ndescription = cloud/sharepoint/tenant--" + address + "/site/library\n"
+				config = testMicrosoftRoots("onedrive", "cloud/onedrive/"+address, "sp-0123456789abcdef01234567", "cloud/sharepoint/tenant--"+address+"/site/library")
 			}
 			if err := os.MkdirAll(filepath.Join(env.Home, dir), 0700); err != nil {
 				t.Fatal(err)

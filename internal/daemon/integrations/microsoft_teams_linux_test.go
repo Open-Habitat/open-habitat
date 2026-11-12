@@ -138,8 +138,8 @@ func TestMicrosoftTeamsDiscovery(t *testing.T) {
 	if followed != 1 {
 		t.Fatal("followed site listed", followed, "times")
 	}
-	for _, drive := range []string{"drive_id = b!private-drive", "drive_id = b!shared-drive", "drive_id = team-drive"} {
-		if strings.Count(string(l.config), drive+"\n") != 1 {
+	for _, drive := range []string{"drive_id=b!private-drive,", "drive_id=b!shared-drive,", "drive_id=team-drive,"} {
+		if strings.Count(string(l.config), drive) != 1 {
 			t.Fatalf("%s not offered exactly once\n%s", drive, l.config)
 		}
 	}
@@ -210,28 +210,6 @@ func TestMicrosoftTeamsLeftOut(t *testing.T) {
 	}
 }
 
-// Teams that do not fit the config's bounds are left out and said; the
-// account's own roots still connect.
-func TestMicrosoftTeamsBeyondBoundsLeaveOthersConnected(t *testing.T) {
-	m, _ := syntheticTeams(t, nil)
-	// Every section repeats the token; a large one leaves room for few.
-	token := `{"access_token":"` + strings.Repeat("a", 15<<10) + `"}`
-	l := &microsoftLogin{entry: m, address: "person@example.test", token: []byte(token)}
-	if err := l.discover(context.Background(), "access-secret", testTeamsScopes); err != nil {
-		t.Fatal(err)
-	}
-	if l.teamsLeftOut != teamsTooMany || len(l.config) > maxMicrosoftConfig {
-		t.Fatal(l.teamsLeftOut, len(l.config))
-	}
-	if !strings.Contains(string(l.config), "drive_id = primary-drive") || !strings.Contains(string(l.config), "drive_id = library-drive") {
-		t.Fatal("own roots lost")
-	}
-	// A team is added whole or not at all.
-	if strings.Contains(string(l.config), "drive_id = team-drive") != strings.Contains(string(l.config), "drive_id = b!private-drive") {
-		t.Fatalf("team split\n%d", strings.Count(string(l.config), "[sp-"))
-	}
-}
-
 // A malformed team or channel identifier never reaches a Graph path.
 func TestMicrosoftTeamIdentifiersValidatedBeforeRequest(t *testing.T) {
 	for _, tc := range []struct{ path, body, step string }{
@@ -281,7 +259,7 @@ func TestMicrosoftPagedTeamLibrariesLeaveTheTeamOut(t *testing.T) {
 	if l.teamsLeftOut != teamsTooMany || strings.Contains(string(l.config), "team-drive") || strings.Contains(string(l.config), "private-drive") {
 		t.Fatalf("%q\n%s", l.teamsLeftOut, l.config)
 	}
-	if !strings.Contains(string(l.config), "drive_id = library-drive") {
+	if !strings.Contains(string(l.config), "drive_id=library-drive,") {
 		t.Fatal("own roots lost")
 	}
 }
@@ -306,7 +284,8 @@ func TestMicrosoftLabelsGiveWayToTheAccountsOwnRoots(t *testing.T) {
 		}
 	}
 	bare := len(probe.config) - labelBytes
-	l := &microsoftLogin{entry: m, address: "person@example.test", token: []byte(strings.Repeat("t", (maxMicrosoftConfig-bare)/2))}
+	// The one token, in the account's section, takes the rest of the room.
+	l := &microsoftLogin{entry: m, address: "person@example.test", token: []byte(strings.Repeat("t", maxMicrosoftConfig-bare))}
 	if err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
 		t.Fatal(err)
 	}

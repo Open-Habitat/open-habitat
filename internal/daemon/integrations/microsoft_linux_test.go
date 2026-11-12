@@ -19,6 +19,20 @@ import (
 	"time"
 )
 
+// testMicrosoftRoots is an account config in the form discovery writes,
+// with the given roots as name and directory pairs.
+func testMicrosoftRoots(pairs ...string) string {
+	config := "[" + microsoftAccount + "]\ntype = onedrive\nclient_id = 00000000-0000-0000-0000-000000000001\nregion = global\ntenant = " + testTenant + "\ntoken = {}\n\n"
+	for i := 0; i+1 < len(pairs); i += 2 {
+		kind := "documentLibrary"
+		if pairs[i] == "onedrive" {
+			kind = "business"
+		}
+		config += fmt.Sprintf("[%s]\ntype = alias\nremote = %s,drive_id=drive-%d,drive_type=%s:\ndescription = %s\n\n", pairs[i], microsoftAccount, i, kind, pairs[i+1])
+	}
+	return config
+}
+
 func microsoftEnv(t *testing.T) Env {
 	t.Helper()
 	tool := filepath.Join(t.TempDir(), "ms365")
@@ -316,7 +330,7 @@ func TestMicrosoftRefusesUntrustedPathsAndSelection(t *testing.T) {
 		t.Fatal("accepted forged remote")
 	}
 	config := filepath.Join(env.Home, microsoftDir, a+".conf")
-	if err := os.WriteFile(config, []byte("[sp-012345678901234567890123]\ndescription = cloud/sharepoint/org--"+a+"/../outside\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte(testMicrosoftRoots("sp-012345678901234567890123", "cloud/sharepoint/org--"+a+"/../outside")), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := microsoftRemotes(env, a); err == nil {
@@ -1196,7 +1210,7 @@ func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
 			if len(l.unavailableSites) != 1 || l.unavailableSites[0] != "Unavailable team" || len(l.skippedSites) != 1 {
 				t.Fatal("missing partial-discovery notice")
 			}
-			if !strings.Contains(string(l.config), "drive_id = primary-drive") || !strings.Contains(string(l.config), "drive_id = library-drive") {
+			if !strings.Contains(string(l.config), "drive_id=primary-drive,") || !strings.Contains(string(l.config), "drive_id=library-drive,") {
 				t.Fatal("reachable roots lost")
 			}
 			log, _ := json.Marshal(l.skippedSites[0].diagnostic())

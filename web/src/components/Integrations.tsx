@@ -488,13 +488,21 @@ function ServiceStatus({
   );
   // An ok file service with a pass running is syncing right now.
   const passing = service.state === "ok" && !!service.progress;
-  const text = service.failure
-    ? failureText[service.failure]
-    : passing
-      ? txt.syncingNow
-      : service.state === "ok" && service.directory
-        ? txt.syncingAlways
-        : stateText[service.state];
+  const text =
+    service.failure === "quota_insufficient" &&
+    service.needed_bytes !== undefined &&
+    service.free_bytes !== undefined
+      ? txt.quotaNeeded(
+          gigabytes(service.needed_bytes),
+          gigabytes(service.free_bytes),
+        )
+      : service.failure
+        ? failureText[service.failure]
+        : passing
+          ? txt.syncingNow
+          : service.state === "ok" && service.directory
+            ? txt.syncingAlways
+            : stateText[service.state];
   return (
     <span
       data-testid="integration-service-state"
@@ -2657,7 +2665,11 @@ export function ConnectDialog({
           data-testid="integration-teams-left-out"
         >
           <Icon name="warning" />
-          <span>{txt.teamsLeftOut[v.teams_left_out]}</span>
+          <span>
+            {v.teams_left_out === "too_many" && v.teams_not_offered?.length
+              ? txt.teamsNotOffered(v.teams_not_offered.join(", "))
+              : txt.teamsLeftOut[v.teams_left_out]}
+          </span>
         </p>
       ) : null;
       const leftOut =

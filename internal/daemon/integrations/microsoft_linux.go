@@ -258,7 +258,7 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 		defer unix.Close(fd)
 		for _, n := range names {
 			if a, ok := strings.CutSuffix(n, ".conf"); ok && ValidAddress(a) {
-				if _, err := readFileAt(fd, n, 64<<10); err != nil {
+				if _, err := readFileAt(fd, n, maxMicrosoftConfigRead); err != nil {
 					return nil, err
 				}
 				accounts[a] = true
@@ -487,8 +487,13 @@ type microsoftLogin struct {
 	// siteLookups are the lookup forms other than the composite ID that
 	// opened a site, one per site, for the journal.
 	siteLookups []string
-	// teamsLeftOut says why Teams files are missing from the folder step.
+	// teamsLeftOut says why Teams files are missing from the folder step,
+	// teamsNotOffered names the teams left out whole (at most 32 names), and
+	// teamsOmitted counts them. bounds are the limits that left them out.
 	teamsLeftOut     string
+	teamsNotOffered  []string
+	teamsOmitted     int
+	bounds           []string
 	entry            *microsoft
 	env              Env
 	app              MicrosoftApp
@@ -778,7 +783,7 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 		return err
 	}
 	defer unix.Close(fd)
-	old, oldErr := readFileAt(fd, address+".conf", 64<<10)
+	old, oldErr := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
 	if oldErr != nil && !errors.Is(oldErr, os.ErrNotExist) {
 		return oldErr
 	}
@@ -929,6 +934,11 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	if err := writeFileAt(fd, address+".conf", l.config, 0600); err != nil {
 		return err
 	}
+	// Roots that each had their own token continue their pairs as aliases
+	// of the account. What this cannot move, the next start does.
+	for _, r := range previousRemotes {
+		_ = microsoftMoveListings(l.env, address, r.Name)
+	}
 	for _, name := range turned {
 		// Listings of the other direction would misreport the root until
 		// its next first pass replaces them (which clears them too).
@@ -1066,11 +1076,18 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 				continue
 			}
 			if err, rejected := dropboxStatus(ctx, env, cmd); err == nil {
+				// The login works; whether the files sync is what the roots'
+				// native state says, as for Google's and Dropbox's.
+				ready, started := false, false
 				for _, candidate := range remotes {
-					sameService := (candidate.Name == "onedrive") == (r.Name == "onedrive")
-					if sameService && microsoftReady(env, address, candidate) {
-						out[i].State = StateOK
+					if candidate.service() == r.service() {
+						ready = ready || microsoftReady(env, address, candidate)
+						started = started || microsoftPassStarted(env, address, candidate)
 					}
+				}
+				out[i].State, out[i].Failure = signedInState(ready)
+				if !ready && !started {
+					out[i].State, out[i].Failure = StateSyncFailed, FoldersNotChosen
 				}
 			} else if rejected {
 				out[i].State = StateLoginExpired

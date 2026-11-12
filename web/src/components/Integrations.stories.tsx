@@ -665,6 +665,7 @@ export const TeamsFoldersAndLeftOut: Story = {
       provider: "microsoft",
       unavailable_sites: ["Esimerkkitiimi · Kielletty"],
       teams_left_out: "too_many",
+      teams_not_offered: ["Myyntitiimi", "Hallinto"],
       directory: "~/cloud/onedrive/person@example.test",
       folders: [
         { id: "onedrive", name: "OneDrive", suggested: true },
@@ -705,6 +706,43 @@ export const BackgroundQuotaRefusal: Story = {
               failure: "quota_insufficient",
               directory: "~/cloud/dropbox/person@example.test",
             },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+// A Microsoft first pass refused before anything was copied: the files say
+// why and how much was asked, also after the daemon restarted. SharePoint
+// was left out of the choice.
+export const MicrosoftRefusedFirstPass: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "microsoft",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "onedrive",
+              state: "sync_failed",
+              failure: "quota_insufficient",
+              needed_bytes: 220396051998,
+              free_bytes: 42409644032,
+              directory: "~/cloud/onedrive/person@example.test",
+            },
+            {
+              id: "sharepoint",
+              state: "sync_failed",
+              failure: "not_chosen",
+              directory: "~/cloud/sharepoint/contoso--person@example.test",
+            },
+            { id: "mail", state: "ok" },
+            { id: "calendar", state: "ok" },
+            { id: "contacts", state: "ok" },
           ],
         },
       ],
