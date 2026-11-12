@@ -3,12 +3,13 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/file-offer-relative
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # file/view offer resolves a relative --source against the workspace root, not the shell's cwd, and the error does not say so
