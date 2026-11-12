@@ -772,9 +772,10 @@ func (c *Catalog) align(ctx context.Context, e AlignEntry, address string) {
 	} else if e.Misaligned(c.env, address) {
 		outcome = "incomplete"
 	}
-	// An aligned registration may offer the agent other tools, which the
-	// skill describes.
-	if stopped || outcome == "aligned" {
+	// An aligned registration may offer the agent other tools, or have
+	// another name, which the skill describes. An incomplete Align still
+	// completed a step.
+	if stopped || err == nil {
 		c.reconcile()
 	}
 	c.log.Info("integration_align", "provider", string(e.Provider()), "outcome", outcome)

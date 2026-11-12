@@ -205,7 +205,7 @@ func TestMicrosoftNarrowerGrantConnectsAndLimitsOutlook(t *testing.T) {
 	}
 
 	// The skill reads the registration's scopes, and alignment keeps them.
-	server := map[string]any{"mcpServers": map[string]any{microsoftPlainServer(address): map[string]any{"args": []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", allowed}, "env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": "00000000-0000-4000-8000-0000000000bb"}}}}
+	server := map[string]any{"mcpServers": map[string]any{microsoftPlainServer(address): map[string]any{"args": []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", allowed}, "env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": "00000000-0000-4000-8000-0000000000bb", "MS365_MCP_TOKEN_CACHE_PATH": microsoftTestCache(env, address)}}}}
 	data, _ := json.Marshal(server)
 	os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), data, 0600)
 	if body := m.Skill(env, address).Body; !strings.Contains(body, "Outlook mail: read and drafts, sending is not granted") || !strings.Contains(body, "Outlook calendar: read only") {

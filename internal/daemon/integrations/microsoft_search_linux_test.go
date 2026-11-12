@@ -79,7 +79,7 @@ func writeMicrosoftRegistrationAt(t *testing.T, env Env, address, tenant string,
 	t.Helper()
 	server := map[string]any{"mcpServers": map[string]any{microsoftPlainServer(address): map[string]any{
 		"command": "/x", "args": args,
-		"env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": tenant},
+		"env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": tenant, "MS365_MCP_TOKEN_CACHE_PATH": microsoftTestCache(env, address)},
 	}}}
 	data, _ := json.Marshal(server)
 	if err := os.MkdirAll(filepath.Join(env.Home, ".pi/agent"), 0700); err != nil {

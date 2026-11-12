@@ -21,7 +21,7 @@ import (
 // made readable: lowercased, with every run of other characters turned into
 // one `-` (aino.virtanen@contoso.test → habitat-microsoft-aino-virtanen-contoso-test).
 // Nothing decodes a name back to an address: the account owns the entry
-// whose token cache is its own (microsoftOthersServer), as the cache directory
+// whose token cache is its own (microsoftOwnsServer), as the cache directory
 // and rclone config are named by the address itself.
 const microsoftServerPrefix = "habitat-microsoft-"
 
@@ -67,22 +67,19 @@ func microsoftLegacyServerName(address string) string {
 	return microsoftServerPrefix + hex.EncodeToString([]byte(address))
 }
 
-// microsoftOthersServer says whether a Pi entry demonstrably belongs to
-// someone else: its token cache is not this account's native cache. An
-// entry under our prefix with no cache of its own is taken to be this
-// account's, as earlier releases took the hex-encoded name to be.
-func microsoftOthersServer(env Env, raw json.RawMessage, address string) bool {
+// microsoftOwnsServer says whether a Pi entry is this account's Outlook
+// server: its token cache is the account's own native cache, as every
+// registration Habitat has written says. A readable name is lossy, so an
+// entry under it without that proof is someone else's and is never
+// adopted, replaced or removed.
+func microsoftOwnsServer(env Env, raw json.RawMessage, address string) bool {
 	var entry struct {
 		Env map[string]string `json:"env"`
 	}
-	if raw == nil {
+	if raw == nil || json.Unmarshal(raw, &entry) != nil {
 		return false
 	}
-	if json.Unmarshal(raw, &entry) != nil {
-		return true
-	}
-	cache, ok := entry.Env["MS365_MCP_TOKEN_CACHE_PATH"]
-	return ok && cache != filepath.Join(env.Home, microsoftMCPDir, address, ".token-cache.json")
+	return entry.Env["MS365_MCP_TOKEN_CACHE_PATH"] == filepath.Join(env.Home, microsoftMCPDir, address, ".token-cache.json")
 }
 
 // microsoftServerName is the account's readable name in Pi's servers: the
@@ -92,7 +89,7 @@ func microsoftOthersServer(env Env, raw json.RawMessage, address string) bool {
 func microsoftServerName(env Env, servers map[string]json.RawMessage, address string) (string, error) {
 	plain, suffixed := microsoftServerNames(address)
 	ours := func(name string) bool {
-		return servers[name] != nil && !microsoftOthersServer(env, servers[name], address)
+		return microsoftOwnsServer(env, servers[name], address)
 	}
 	free := func(name string) bool {
 		for other := range servers {
@@ -176,7 +173,7 @@ func microsoftServerOf(env Env, address string) (microsoftServer, map[string]jso
 	if err != nil {
 		return microsoftServer{}, nil, err
 	}
-	s := microsoftServer{name: name, registered: servers[name] != nil}
+	s := microsoftServer{name: name, registered: microsoftOwnsServer(env, servers[name], address)}
 	if legacy := microsoftLegacyServerName(address); servers[legacy] != nil {
 		s.legacy = legacy
 	}

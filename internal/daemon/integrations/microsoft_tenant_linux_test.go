@@ -45,7 +45,7 @@ func connectedWithCommon(t *testing.T, env Env, client string) string {
 	if err := os.WriteFile(conf, []byte(old), 0600); err != nil {
 		t.Fatal(err)
 	}
-	registration := fmt.Sprintf(`{"mcpServers":{%q:{"command":"/x","env":{"MS365_MCP_CLIENT_ID":%q,"MS365_MCP_TENANT_ID":"common"}}}}`, microsoftPlainServer(address), client)
+	registration := fmt.Sprintf(`{"mcpServers":{%q:{"command":"/x","env":{"MS365_MCP_CLIENT_ID":%q,"MS365_MCP_TENANT_ID":"common","MS365_MCP_TOKEN_CACHE_PATH":%q}}}}`, microsoftPlainServer(address), client, microsoftTestCache(env, address))
 	if err := os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), []byte(registration), 0600); err != nil {
 		t.Fatal(err)
 	}

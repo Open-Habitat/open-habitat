@@ -71,7 +71,8 @@ set -eu
 printf '%s\n' "$@" >>"$HOME/pi-commands"
 mkdir -p "$HOME/.pi/agent"
 case "$2" in
- add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json"
+ add) cache=; for a; do case "$a" in MS365_MCP_TOKEN_CACHE_PATH=*) cache=${a#*=};; esac; done
+ printf '{"mcpServers":{"%s":{"env":{"MS365_MCP_TOKEN_CACHE_PATH":"%s"}}}}' "$3" "$cache" >"$HOME/.pi/agent/mcp.json"
  if [ -f "$HOME/block-rollback" ]; then
   mkdir -p "$HOME/.config/ms-365-mcp-server/open-habitat/.pending/person@example.test"
   echo barrier >"$HOME/.config/ms-365-mcp-server/open-habitat/.pending/person@example.test/barrier"

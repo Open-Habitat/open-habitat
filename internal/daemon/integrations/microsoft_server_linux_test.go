@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,12 @@ import (
 func microsoftPlainServer(address string) string {
 	plain, _ := microsoftServerNames(address)
 	return plain
+}
+
+// microsoftTestCache is the token cache path a registration of the account
+// names, which is what makes the entry the account's.
+func microsoftTestCache(env Env, address string) string {
+	return filepath.Join(env.Home, microsoftMCPDir, address, ".token-cache.json")
 }
 
 // piServerName is Pi's own rule (pi-mcp config.js SERVER_NAME).
@@ -99,15 +106,15 @@ func TestMicrosoftServerNameCollision(t *testing.T) {
 		t.Fatal("plain name not reused")
 	}
 
-	// A name Pi folds onto ours holds it; so does a foreign entry with
-	// another cache. An entry without any cache is ours, as before.
+	// A name Pi folds onto ours holds it; so does an entry without this
+	// account's cache, even one with no cache at all.
 	servers = map[string]json.RawMessage{strings.ReplaceAll(plain, "-", "_"): json.RawMessage(`{"command":"/other"}`)}
 	if got := resolve(first); got != microsoftServerNamesSuffixed(first) {
 		t.Fatalf("folded name: %q", got)
 	}
-	servers = map[string]json.RawMessage{plain: json.RawMessage(`{"command":"/x"}`)}
-	if got := resolve(first); got != plain {
-		t.Fatalf("own entry without cache: %q", got)
+	servers = map[string]json.RawMessage{plain: json.RawMessage(`{"url":"https://other.example/mcp"}`)}
+	if got := resolve(first); got != microsoftServerNamesSuffixed(first) {
+		t.Fatalf("entry without cache adopted: %q", got)
 	}
 	servers = map[string]json.RawMessage{plain: microsoftServerEntry(env, "someone@else.test"), microsoftServerNamesSuffixed(first): microsoftServerEntry(env, "third@else.test")}
 	if name, err := microsoftServerName(env, servers, first); err == nil {
@@ -315,5 +322,37 @@ func TestMicrosoftServerNamesPinnedPi(t *testing.T) {
 	cmd.Env = []string{"HOME=" + env.Home, "PATH=/usr/bin:/bin"}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("non-ASCII address's name refused: %v %s", err, out)
+	}
+}
+
+// A legacy registration that is also outdated is renamed in an Align of its
+// own, which succeeds so the catalog rewrites the skill, even when the
+// tenant cannot be asked; the outdated arguments wait for the next check.
+func TestMicrosoftServerRenameIsItsOwnStep(t *testing.T) {
+	const address = "person@example.test"
+	env := microsoftEnv(t)
+	m := &microsoft{}
+	outlook := "User.Read Mail.ReadWrite"
+	writeMicrosoftRegistrationAt(t, env, address, testTenant, []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook})
+	_, servers := readPiMCP(t, env)
+	writePiMCP(t, env, map[string]json.RawMessage{microsoftLegacyServerName(address): servers[microsoftPlainServer(address)]})
+	cache := filepath.Join(env.Home, microsoftMCPDir, address)
+	os.MkdirAll(cache, 0700)
+	os.WriteFile(filepath.Join(cache, ".token-cache.json"), []byte("native"), 0600)
+	os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"state":"unreachable"}`), 0600)
+	if err := m.Align(context.Background(), env, address, func() {}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, "mcp-checked")); err == nil {
+		t.Fatal("the rename's Align went on to ask the tenant")
+	}
+	if _, servers := readPiMCP(t, env); servers[microsoftPlainServer(address)] == nil || len(servers) != 1 {
+		t.Fatalf("%v", servers)
+	}
+	if !m.Misaligned(env, address) {
+		t.Fatal("outdated registration forgotten after the rename")
+	}
+	if err := m.Align(context.Background(), env, address, func() {}); !errors.Is(err, ServerUnreachable) {
+		t.Fatal(err)
 	}
 }

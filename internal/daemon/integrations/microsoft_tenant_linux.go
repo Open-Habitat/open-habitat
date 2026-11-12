@@ -208,11 +208,13 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 	}
 	defer m.native.Unlock()
 	// A registration under the hex-encoded name of earlier releases moves
-	// to the readable one first; it needs no sign-in and changes nothing else.
+	// to the readable one first; it needs no sign-in and changes nothing
+	// else. It is a step of its own: the catalog rewrites the skill after a
+	// successful Align, so a later failure here must not leave the skill
+	// naming a server that no longer exists. Anything else misaligned
+	// follows at the next check.
 	if microsoftRenameNeeded(env, address) {
-		if err := microsoftRenameServer(ctx, env, address); err != nil {
-			return err
-		}
+		return microsoftRenameServer(ctx, env, address)
 	}
 	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
