@@ -130,10 +130,17 @@ const fi = {
       : `Tarkistettu klo ${time}: viesti ei näy keskustelussa, eikä ole varmistunut, ettei agentti saanut sitä.`,
   rechecking: "Tarkistetaan",
   historyUnavailable: "Historiaa ei saada",
+  // A refused read is usually momentary and is read again by itself; the
+  // administrator is named only once a check finds it still refused.
   historyUnavailableDetail:
-    "Palvelin ei pystynyt lukemaan tämän keskustelun tallennettua historiaa. Mitään ei ole kadonnut. Tarkista tila uudelleen; jos sama toistuu, kerro ylläpitäjälle.",
-  historyStillUnavailable:
-    "Tarkistettu: historiaa ei vieläkään saada. Mitään ei ole kadonnut; kerro ylläpitäjälle.",
+    "Keskustelun tallennettua historiaa ei juuri nyt saatu luettua. Mitään ei ole kadonnut, ja lukemista yritetään itsestään uudelleen.",
+  historyStillUnavailable: (time: string): string =>
+    `Tarkistettu klo ${time}: historiaa ei vieläkään saada. Mitään ei ole kadonnut, ja lukemista yritetään edelleen. Jos tilanne ei korjaannu, kerro ylläpitäjälle.`,
+  // A full storage quota cut a record mid-write; nobody can make it
+  // readable, so the card says what happened and what prevents it again.
+  historyCut: "Tallennustila loppui kesken tallennuksen",
+  historyCutDetail:
+    "Tallennustila oli täynnä, kun agentti tallensi tätä keskustelua, ja yksi sen viesteistä katkesi. Siksi keskustelua ei voi enää lukea selaimessa. Alkuperäistä tiedostoa ei ole muutettu. Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa, ettei sama toistu, ja jatka uudessa keskustelussa.",
   historyUnavailableSend: (inField: boolean): string =>
     inField
       ? "Siksi ei myöskään tiedetä, saiko agentti viimeisen viestisi. Sitä ei lähetetä uudelleen automaattisesti, ja teksti on kirjoituskentässä."
@@ -262,9 +269,12 @@ export const browserConversationText = catalog(fi, {
   rechecking: "Checking",
   historyUnavailable: "The history is not available",
   historyUnavailableDetail:
-    "The server could not read this conversation's saved history. Nothing has been lost. Check the status again; if it keeps happening, tell your administrator.",
-  historyStillUnavailable:
-    "Checked: the history is still not available. Nothing has been lost; tell your administrator.",
+    "This conversation's saved history could not be read just now. Nothing has been lost, and it is read again by itself.",
+  historyStillUnavailable: (time) =>
+    `Checked at ${time}: the history is still not available. Nothing has been lost, and reading it is still retried. If it does not recover, tell your administrator.`,
+  historyCut: "Storage ran out while saving",
+  historyCutDetail:
+    "Storage was full while the agent saved this conversation, and one of its messages was cut off. So the conversation can no longer be read in the browser. The original file has not been changed. Free up space or ask your administrator for more, so that it does not happen again, and continue in a new conversation.",
   historyUnavailableSend: (inField) =>
     inField
       ? "So it is also not known whether the agent got your last message. It is not resent automatically, and its text is in the field."

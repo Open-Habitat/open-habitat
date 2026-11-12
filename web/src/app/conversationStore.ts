@@ -26,6 +26,9 @@ import type { Agent, Snapshot } from "./snapshot";
 export type WindowView = Readonly<{
   entries: HistoryEntry[];
   cutOff?: boolean;
+  /** The last read was refused because a full storage quota cut a record
+   * of the native history: no re-read will change that. */
+  historyCut?: boolean;
   next?: string;
   revision?: string;
   state: "loading" | "ready" | "empty" | "stale" | "error";
@@ -720,6 +723,7 @@ export class ConversationStore {
         this.noteHistoryRead(id, true);
         this.publish(id, {
           ...record.value,
+          historyCut: (error as Error).message === "history_cut",
           state: record.value.entries.length ? "stale" : "error",
         });
       }
@@ -811,7 +815,11 @@ export class ConversationStore {
           return;
         this.noteHistoryRead(id, true);
         if (!record.deferred)
-          this.publish(id, { ...record.value, state: unsettled(record) });
+          this.publish(id, {
+            ...record.value,
+            historyCut: (error as Error).message === "history_cut",
+            state: unsettled(record),
+          });
       }
     } finally {
       if (record.loading === read) this.finishRead(id, record);

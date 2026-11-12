@@ -192,7 +192,7 @@ import { settingsHref } from "./settingsRoute";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { TurnChangesRoot } from "./TurnChangesSource";
 import { useTurnIdentity } from "./turnIdentity";
-import { useConversation } from "./useConversation";
+import { historyCardDelay, useConversation } from "./useConversation";
 import {
   isReadingIntro,
   useFollowLatest,
@@ -405,6 +405,7 @@ function BrowserConversationContent({
     setContinuation,
     navigate,
     historyError,
+    historyCut,
     cutOff,
   } = useConversation({
     workspace,
@@ -432,6 +433,13 @@ function BrowserConversationContent({
   const visibleHistoryError = useSettledWarning(
     historyError,
     `${identity}/${id ?? ""}`,
+  );
+  // The card waits for the quiet re-read (useConversation): a refusal it
+  // fixes is never shown. A cut record is shown at once.
+  const historyCard = useSettledWarning(
+    historyError,
+    `${identity}/${id ?? ""}`,
+    historyCut ? 800 : historyCardDelay,
   );
   // An explicit check shows that it ran: Checking… while it runs, and for
   // a history that still cannot be read, that it was checked.
@@ -3217,7 +3225,32 @@ function BrowserConversationContent({
                     />
                   ) : null}
                 </div>
-                {!statusStale && visibleHistoryError ? (
+                {!statusStale && historyCard && historyCut ? (
+                  <div className="ah-status-check">
+                    <WarningBanner
+                      data-testid="history-unavailable"
+                      data-reason="storage_cut"
+                      subject="send"
+                      tone="neutral"
+                      title={txt.historyCut}
+                      actions={
+                        <Button
+                          size="row"
+                          variant="secondary"
+                          label={txt.newConversation}
+                          onPress={() =>
+                            navigate(`/workspaces/${workspace.workspace_id}`)
+                          }
+                        />
+                      }
+                    >
+                      {txt.historyCutDetail}
+                      {unknownSend
+                        ? ` ${txt.historyUnavailableSend(unknownInField)}`
+                        : null}
+                    </WarningBanner>
+                  </div>
+                ) : !statusStale && historyCard ? (
                   <div className="ah-status-check">
                     <WarningBanner
                       data-testid="history-unavailable"
@@ -3243,7 +3276,7 @@ function BrowserConversationContent({
                       {/* The one warning also says what the person's own
                         message is waiting for. */}
                       {recheckState === "done"
-                        ? txt.historyStillUnavailable
+                        ? txt.historyStillUnavailable(checkedAt)
                         : txt.historyUnavailableDetail}
                       {unknownSend
                         ? ` ${txt.historyUnavailableSend(unknownInField)}`

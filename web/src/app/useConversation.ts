@@ -27,6 +27,12 @@ import { useReadingPosition } from "./useReadingPosition";
 const txt = liveText(useConversationText);
 
 // Owns the native read model and journal recovery for one conversation.
+/** The first quiet re-read of a refused history comes this soon; the card
+ * that says so waits for it (historyCardDelay). */
+export const historyRetryFirst = 1_500;
+/** A refused read that the quiet re-read did not fix is shown after this. */
+export const historyCardDelay = 4_000;
+
 export function useConversation({
   workspace,
   id,
@@ -750,8 +756,29 @@ export function useConversation({
       }),
     [id, onStatusEvent],
   );
+  // A refused history read is usually momentary (a busy disk, the daemon
+  // restarting): read again quietly, sooner first, for as long as it lasts.
+  // Before this the window waited for the next event, and a turn whose one
+  // tool ran for an hour kept "history unavailable" up that long (12.11.2026).
+  // A record a full quota cut stays cut; reading again would not help.
+  const historyCut = !!windowView?.historyCut;
+  useEffect(() => {
+    if (!historyError || historyCut || !id) return;
+    let delay = historyRetryFirst;
+    let timer: number;
+    const next = () => {
+      timer = window.setTimeout(() => {
+        void store.reconnect(id);
+        delay = Math.min(delay * 3, 30_000);
+        next();
+      }, delay);
+    };
+    next();
+    return () => window.clearTimeout(timer);
+  }, [historyError, historyCut, id, store]);
   return {
     cutOff: windowView?.cutOff,
+    historyCut,
     current,
     statusStale: id ? metadata.staleStatuses.has(id) : false,
     opened: id

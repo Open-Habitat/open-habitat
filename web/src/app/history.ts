@@ -130,11 +130,22 @@ export async function readHistory(
   response: Response,
 ): Promise<HistoryPage | BlockChunk> {
   if (response.status === 401) throw new Error("identity_lost");
-  if (
-    !response.ok ||
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
-    throw new Error("history unavailable");
+  const json =
+    response.headers.get("content-type")?.split(";")[0] === "application/json";
+  if (!response.ok) {
+    // The one refusal a person can act on: a full storage quota cut a
+    // record of the history. Every other refusal reads as unavailable.
+    const code = json
+      ? await response
+          .json()
+          .then((v: { error?: { code?: unknown } }) => v?.error?.code)
+          .catch(() => undefined)
+      : undefined;
+    throw new Error(
+      code === "native_history_cut" ? "history_cut" : "history unavailable",
+    );
+  }
+  if (!json) throw new Error("history unavailable");
   const reader = response.body?.getReader();
   if (!reader) throw new Error("missing history body");
   let size = 0;

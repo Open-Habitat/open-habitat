@@ -76,7 +76,10 @@ for (const width of [1440, 390]) {
       );
       await page.reload();
       await page.setViewportSize({ width, height: 1000 });
-      await expect(page.getByTestId("history-unavailable")).toBeVisible();
+      // The history card waits for the quiet re-read before it shows.
+      await expect(page.getByTestId("history-unavailable")).toBeVisible({
+        timeout: 15_000,
+      });
       await expect(page.getByTestId("storage-full-notice")).toBeVisible();
       await page
         .locator('.ah-composer input[type="file"]')

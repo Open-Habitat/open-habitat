@@ -307,8 +307,11 @@ test("@browser-conversation failing history read says why and shows its check", 
   });
   await page.reload();
   const banner = page.getByTestId("history-unavailable");
-  await expect(banner).toContainText("Historiaa ei saada");
-  await expect(banner).toContainText("kerro ylläpitäjälle");
+  // Shown only once the quiet re-read has also been refused, and without
+  // sending the person to the administrator for what may pass by itself.
+  await expect(banner).toContainText("Historiaa ei saada", { timeout: 15_000 });
+  await expect(banner).toContainText("yritetään itsestään uudelleen");
+  await expect(banner).not.toContainText("ylläpitäjälle");
   await expect(page.getByTestId("history-read-error")).toHaveCount(0);
   await expect(banner).toHaveAttribute("data-tone", "neutral");
   const check = banner.getByTestId("conversation-recheck");
@@ -322,11 +325,98 @@ test("@browser-conversation failing history read says why and shows its check", 
   release();
   await expect(banner).toHaveAttribute("data-state", "done");
   await expect(banner).toContainText("historiaa ei vieläkään saada");
+  await expect(banner).toContainText("kerro ylläpitäjälle");
   failing = false;
   await check.click();
   await expect(banner).toHaveCount(0);
   await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
   await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+});
+
+// 12.11.2026: a history read refused once while Pi appended, and the card
+// stayed up through a 52-minute tool run. A momentary refusal is read again
+// quietly and never shown.
+test("@browser-conversation a momentary history refusal is read again without a card", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  await page.getByTestId("message-input").fill("muista tämä historia");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+  let refused = 0;
+  await page.route("**/api/v1/agents/*/history*", async (route) => {
+    if (refused >= 1) return route.continue();
+    refused++;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        error: {
+          code: "native_source_unavailable",
+          message: "Request could not be completed",
+          retryable: false,
+          correlation_id: "req_00000000",
+        },
+      }),
+    });
+  });
+  await page.reload();
+  const seen = page
+    .getByTestId("history-unavailable")
+    .waitFor({ timeout: 8_000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+  expect(refused).toBe(1);
+  expect(await seen).toBe(false);
+});
+
+// A full quota cut a record of the history: no re-read helps, so the card
+// names storage and what helps instead of the administrator.
+test("@browser-conversation a history a full quota cut names storage", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  await page.getByTestId("message-input").fill("muista tämä historia");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "muista tämä historia".', {});
+  await page.route("**/api/v1/agents/*/history*", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        error: {
+          code: "native_history_cut",
+          message: "Request could not be completed",
+          retryable: false,
+          correlation_id: "req_00000000",
+        },
+      }),
+    }),
+  );
+  await page.reload();
+  const banner = page.getByTestId("history-unavailable");
+  await expect(banner).toHaveAttribute("data-reason", "storage_cut");
+  await expect(banner).toContainText(
+    "Tallennustila loppui kesken tallennuksen",
+  );
+  await expect(banner).toContainText("Vapauta tilaa");
+  await expect(banner).not.toContainText("kerro ylläpitäjälle");
+  await expect(banner.getByTestId("conversation-recheck")).toHaveCount(0);
 });
 
 test("@browser-conversation own message shows every line it fits; a clipped one fades only its last", async ({
