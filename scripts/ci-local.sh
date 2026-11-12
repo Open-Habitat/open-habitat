@@ -100,8 +100,8 @@ echo "$issue_sha  $issue_archive" | sha256sum -c -
 tar -xJf "$issue_archive" -C "$tmp"
 cp "$tmp/issuectl-$issue_triple/issuectl" "$tmp/bin/issuectl"
 export PATH="$tmp/bin:$PATH"
-python3 -m venv "$tmp/venv"
-PIP_CACHE_DIR="$repo/.cache/ci-local/pip" "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
+source "$repo/scripts/ci-python.sh"
+oh_ci_venv "$tmp/venv"
 export PYTHON="$tmp/venv/bin/python"
 # Go fixture subprocesses also invoke python3 directly, not only $PYTHON.
 export PATH="$tmp/venv/bin:$PATH"

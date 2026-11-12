@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"os/exec"
 	"os/user"
 	"reflect"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/nativegh"
+	"github.com/open-habitat/open-habitat/internal/testpython"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -255,10 +255,7 @@ func TestSnapshotTellsOutageRetryAndRestrictedOrgs(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("%d %s", w.Code, w.Body.String())
 		}
-		python := os.Getenv("PYTHON")
-		if python == "" {
-			python = "python3"
-		}
+		python := testpython.Validator(t)
 		cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 		cmd.Stdin = bytes.NewReader(w.Body.Bytes())
 		if out, e := cmd.CombinedOutput(); e != nil {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/open-habitat/open-habitat/internal/nativegh"
+	"github.com/open-habitat/open-habitat/internal/testpython"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net/http"
@@ -142,10 +143,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		if want != 200 {
 			return nil
 		}
-		python := os.Getenv("PYTHON")
-		if python == "" {
-			python = "python3"
-		}
+		python := testpython.Validator(t)
 		cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 		cmd.Stdin = bytes.NewReader(w.Body.Bytes())
 		if out, e := cmd.CombinedOutput(); e != nil {

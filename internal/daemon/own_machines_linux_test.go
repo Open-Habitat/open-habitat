@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/daemon/tailnetfake"
+	"github.com/open-habitat/open-habitat/internal/testpython"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -122,10 +123,7 @@ func (f *machinesFixture) do(t *testing.T, body string) (int, map[string]any) {
 func (f *machinesFixture) matchContract(t *testing.T) {
 	t.Helper()
 	all, _ := json.Marshal(f.replies)
-	python := os.Getenv("PYTHON")
-	if python == "" {
-		python = "python3"
-	}
+	python := testpython.Validator(t)
 	cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); v=m['Draft202012Validator'](m['schemas']['own-machines.schema.json'],registry=m['registry'],format_checker=m['format_checker']); [v.validate(r) for r in json.load(sys.stdin)]`)
 	cmd.Stdin = strings.NewReader(string(all))
 	if out, err := cmd.CombinedOutput(); err != nil {

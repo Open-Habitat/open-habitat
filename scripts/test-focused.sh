@@ -34,6 +34,18 @@ if [[ $area != browser ]]; then
   trap 'chmod -R u+w "$run_tmp" 2>/dev/null || true; rm -rf "$run_tmp"' EXIT
   export TMPDIR=$run_tmp
 fi
+# The contract validator, and the Go tests that call it, use the pinned Python
+# from requirements-ci.txt, as the clean gate does, not the host's. A caller's
+# own $PYTHON is honoured, as the Go tests' hint offers.
+if [[ $area == go || $area == contracts ]]; then
+  if [[ -z ${PYTHON-} ]]; then
+    source "$repo/scripts/ci-python.sh"
+    oh_ci_python PYTHON
+  fi
+  export PYTHON
+  # Go fixtures also run python3 directly, not only $PYTHON.
+  if [[ $PYTHON == */* ]]; then export PATH="$(dirname "$PYTHON"):$PATH"; fi
+fi
 case "$area" in
   web)
     echo 'Focused web checks; skipped: Playwright, Go, contracts, packaging, clean receipt.' >&2
@@ -42,6 +54,13 @@ case "$area" in
     exec python3 "$repo/scripts/browser-focused.py" "${browser_args[@]}";;
   go)
     echo 'Focused Go checks; skipped: web, browser, contracts, packaging, clean receipt.' >&2
+    # Daemon tests drive the pinned Pi SDK; install it as the gate does when a
+    # fresh worktree lacks it or the lockfile moved, rather than fail on it.
+    pi=internal/daemon/pi-device-test
+    if [[ (-z $package || $package == ./internal/daemon || $package == ./internal/daemon/*) &&
+          ! $pi/node_modules/.package-lock.json -nt $pi/package-lock.json ]]; then
+      npm ci --prefix "$pi" --ignore-scripts --prefer-offline --no-audit --no-fund >&2
+    fi
     if [[ -n $package ]]; then
       go test -count=1 "$package"
     else
@@ -50,5 +69,5 @@ case "$area" in
   contracts)
     echo 'Focused contract checks; skipped: web, browser, Go tests, packaging, clean receipt.' >&2
     ./scripts/check-generated.sh
-    python3 scripts/validate-contracts.py;;
+    "$PYTHON" scripts/validate-contracts.py;;
 esac

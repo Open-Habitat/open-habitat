@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/core"
+	"github.com/open-habitat/open-habitat/internal/testpython"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -250,10 +251,7 @@ func TestCompactThroughPinnedPi(t *testing.T) {
 
 func validateCompaction(t *testing.T, body []byte) {
 	t.Helper()
-	python := os.Getenv("PYTHON")
-	if python == "" {
-		python = "python3"
-	}
+	python := testpython.Validator(t)
 	cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['compaction.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 	cmd.Stdin = bytes.NewReader(body)
 	if out, err := cmd.CombinedOutput(); err != nil {

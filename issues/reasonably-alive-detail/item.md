@@ -2,7 +2,7 @@
 created: 2026-11-12
 updated: 2026-11-12
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker observation
@@ -11,6 +11,7 @@ originating_run: 01m77y0mxpza1hfya7vxqf3fvm
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # Focused Go checks fail contract-schema daemon tests without ci-local's Python venv

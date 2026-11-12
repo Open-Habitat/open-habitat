@@ -24,7 +24,7 @@ import json, os, sys
 with open(os.environ['FOCUSED_CALLS'], 'a') as out:
     out.write(json.dumps(sys.argv[1:]) + '\\n')
 with open(os.environ['FOCUSED_ENV'], 'w') as out:
-    json.dump({key: os.environ.get(key) for key in ('OH_REPLY_DELAY_MS', 'OH_REPLY_SEED', 'TMPDIR')}, out)
+    json.dump({key: os.environ.get(key) for key in ('OH_REPLY_DELAY_MS', 'OH_REPLY_SEED', 'TMPDIR', 'PYTHON', 'PATH')}, out)
 with open(os.path.join(os.environ['TMPDIR'], 'left-behind'), 'w') as out:
     out.write('a killed child leaves this\\n')
 if os.environ.get('FOCUSED_HANG'):
@@ -36,6 +36,9 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
         # The Go area runs `go test`; this stand-in behaves like the npx one.
         (self.root / 'go').write_text(npx.read_text())
         (self.root / 'go').chmod(0o700)
+        # A fresh checkout's Go area installs the Pi SDK; never reach npm here.
+        (self.root / 'npm').write_text('#!/bin/sh\nexit 0\n')
+        (self.root / 'npm').chmod(0o700)
         self.scratch = self.root / 'scratch'
         self.scratch.mkdir()
         (self.scratch / '.lease').touch()
@@ -43,7 +46,9 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
                     'FOCUSED_CALLS': str(self.log),
                     'FOCUSED_ENV': str(self.root / 'env.json'),
                     'OH_BROWSER_SUITE_LOCK': str(self.root / 'suite.lock'),
-                    'OH_SCRATCH_ROOT': str(self.scratch)}
+                    'OH_SCRATCH_ROOT': str(self.scratch),
+                    # A given interpreter skips building the pinned venv.
+                    'PYTHON': '/oh-test/bin/python'}
         self.env.pop('OH_REPLY_DELAY_MS', None)
         self.env.pop('OH_REPLY_SEED', None)
 
@@ -97,7 +102,7 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
                     self.env['OH_REPLY_SEED'] = 'focused-replay'
                     self.run_focused(*selection)
                     observed = json.loads((self.root / 'env.json').read_text())
-                    observed.pop('TMPDIR')
+                    observed = {k: observed[k] for k in ('OH_REPLY_DELAY_MS', 'OH_REPLY_SEED')}
                     self.assertEqual(observed, {'OH_REPLY_DELAY_MS': override or '60',
                                                 'OH_REPLY_SEED': 'focused-replay'})
 
@@ -127,6 +132,14 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
                     result = self.run_area(area, *args)
                     self.assertEqual(result.returncode, code, result.stderr)
                     self.assert_scratch_removed(prefix)
+
+    def test_go_area_gets_the_validator_python(self):
+        result = self.run_area('go', '--go-package', './internal/daemon')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        seen = json.loads((self.root / 'env.json').read_text())
+        self.assertEqual(seen['PYTHON'], '/oh-test/bin/python')
+        # Fixtures that run python3 directly find the same interpreter first.
+        self.assertEqual(seen['PATH'].split(os.pathsep)[0], '/oh-test/bin')
 
     def test_private_tmpdir_removed_when_terminated(self):
         # Outlive the signal briefly, as a test child finishing its cleanup does.

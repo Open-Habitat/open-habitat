@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/open-habitat/open-habitat/internal/testpython"
 )
 
 func (f *worktreeFixture) createPlace(hint string) (string, error) {
@@ -31,7 +33,7 @@ func (f *worktreeFixture) snapshot() map[string]any {
 	if w.Code != 200 {
 		f.t.Fatalf("snapshot %d: %s", w.Code, w.Body.String())
 	}
-	cmd := exec.Command("python3", "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
+	cmd := exec.Command(testpython.Validator(f.t), "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 	cmd.Stdin = bytes.NewReader(w.Body.Bytes())
 	if out, e := cmd.CombinedOutput(); e != nil {
 		f.t.Fatalf("schema: %s: %v", out, e)

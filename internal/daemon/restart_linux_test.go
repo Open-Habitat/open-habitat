@@ -5,11 +5,12 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/open-habitat/open-habitat/internal/testpython"
 )
 
 // The person sees the catch-up's details, never its agent-facing English text
@@ -136,10 +137,7 @@ func TestBranchScanSeesAnErrorTurn(t *testing.T) {
 
 func validateHistoryPage(t *testing.T, page string) {
 	t.Helper()
-	python := os.Getenv("PYTHON")
-	if python == "" {
-		python = "python3"
-	}
+	python := testpython.Validator(t)
 	cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['history.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 	cmd.Stdin = bytes.NewReader([]byte(page))
 	if out, err := cmd.CombinedOutput(); err != nil {

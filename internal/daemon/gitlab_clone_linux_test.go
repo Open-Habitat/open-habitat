@@ -20,6 +20,7 @@ import (
 	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
 	"github.com/open-habitat/open-habitat/internal/nativegitlab"
 	"github.com/open-habitat/open-habitat/internal/nativegitlab/gitlabfake"
+	"github.com/open-habitat/open-habitat/internal/testpython"
 )
 
 // gitlabHelperForTest makes the nativegitlab calls internal/cli's `gitlab
@@ -55,10 +56,7 @@ func gitlabHelperForTest(op string) int {
 // repository's own validator.
 func matchesSchema(t *testing.T, schema, body string) {
 	t.Helper()
-	python := os.Getenv("PYTHON")
-	if python == "" {
-		python = "python3"
-	}
+	python := testpython.Validator(t)
 	cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas'][sys.argv[1]],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`, schema)
 	cmd.Stdin = strings.NewReader(body)
 	if out, err := cmd.CombinedOutput(); err != nil {

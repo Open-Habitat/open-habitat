@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/open-habitat/open-habitat/internal/testpython"
 )
 
 // The gate already installs Python jsonschema for contract validation. Exercise
@@ -141,7 +143,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	change("identities.login_shell.subjects", []any{"654321"})
 	change("views.origin_template", "https://oh-code-*.example.org")
 	payload, _ := json.Marshal(cases)
-	cmd := exec.Command("python3", "-c", `
+	cmd := exec.Command(testpython.Validator(t), "-c", `
 import json,sys
 from jsonschema import Draft202012Validator
 schema=json.load(open('../../site/schema.json'))
