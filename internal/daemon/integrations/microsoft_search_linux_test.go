@@ -72,9 +72,14 @@ func TestMicrosoftMCPArgsPerLevel(t *testing.T) {
 // earlier or the current release would have.
 func writeMicrosoftRegistration(t *testing.T, env Env, address string, args []string) {
 	t.Helper()
+	writeMicrosoftRegistrationAt(t, env, address, testTenant, args)
+}
+
+func writeMicrosoftRegistrationAt(t *testing.T, env Env, address, tenant string, args []string) {
+	t.Helper()
 	server := map[string]any{"mcpServers": map[string]any{microsoftServerName(address): map[string]any{
 		"command": "/x", "args": args,
-		"env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": testTenant},
+		"env": map[string]string{"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID": tenant},
 	}}}
 	data, _ := json.Marshal(server)
 	if err := os.MkdirAll(filepath.Join(env.Home, ".pi/agent"), 0700); err != nil {
@@ -134,18 +139,21 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 	const address = "person@example.test"
 	outlook := "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
 	for _, tc := range []struct {
-		name, reply, allowed string
-		err                  error
+		name, reply, allowed, tenant string
+		err                          error
 	}{
-		{"granted", `{"state":"ok","scopes":["openid","User.Read","Mail.ReadWrite","Mail.Send","Calendars.ReadWrite","Contacts.ReadWrite","Files.ReadWrite.All","Sites.ReadWrite.All"]}`, outlook + " Files.ReadWrite.All Sites.ReadWrite.All", nil},
-		{"read files", `{"state":"ok","scopes":["User.Read","Mail.Read","Files.Read.All","Sites.Read.All"]}`, "User.Read Mail.Read Files.Read.All Sites.Read.All", nil},
-		{"refused", `{"state":"refused"}`, outlook, nil},
-		{"unreachable", `{"state":"unreachable"}`, "", ServerUnreachable},
+		{"granted", `{"state":"ok","scopes":["openid","User.Read","Mail.ReadWrite","Mail.Send","Calendars.ReadWrite","Contacts.ReadWrite","Files.ReadWrite.All","Sites.ReadWrite.All"]}`, outlook + " Files.ReadWrite.All Sites.ReadWrite.All", testTenant, nil},
+		{"read files", `{"state":"ok","scopes":["User.Read","Mail.Read","Files.Read.All","Sites.Read.All"]}`, "User.Read Mail.Read Files.Read.All Sites.Read.All", testTenant, nil},
+		{"refused", `{"state":"refused"}`, outlook, testTenant, nil},
+		{"unreachable", `{"state":"unreachable"}`, "", testTenant, ServerUnreachable},
+		// On an earlier tenant too, the move and the file scopes land together.
+		{"earlier tenant", `{"state":"ok","scopes":["User.Read","Mail.Read","Files.Read.All","Sites.Read.All"]}`, "User.Read Mail.Read Files.Read.All Sites.Read.All", "common", nil},
+		{"earlier tenant unreachable", `{"state":"unreachable"}`, "", "common", ServerUnreachable}, // no remotes prove the tenant
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			env := microsoftEnv(t)
 			m := &microsoft{}
-			writeMicrosoftRegistration(t, env, address, []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook})
+			writeMicrosoftRegistrationAt(t, env, address, tc.tenant, []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook})
 			cache := filepath.Join(env.Home, microsoftMCPDir, address)
 			if err := os.MkdirAll(cache, 0700); err != nil {
 				t.Fatal(err)

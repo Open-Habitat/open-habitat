@@ -100,7 +100,9 @@ def patch_ms365_scopes(spec, rel, version, data):
     search-query, chat and people scopes) where the applications hold
     Files.*.All and Sites.*.All, so without this the file tools cannot run at
     all. Each entry must still read exactly as the reviewed upstream bytes did;
-    anything else, including a version bump, fails the build.
+    anything else, including a version bump, fails the build. The server
+    requests the first group the allowed scopes cover, so ReadWrite.All groups
+    come first: a write level must never request a Read.All it does not hold.
     """
     if rel != spec['package'] or version != spec['version']:
         raise ValueError('ms365 scope patch targets another package version')

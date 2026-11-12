@@ -240,48 +240,36 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 			return nil
 		}
 	}
-	if n.mcpStale(app) {
-		// The remotes' grant, from the same sign-in as MSAL's, now works at
-		// the tenant: the tenant accepts this person. Without remotes, MSAL's
-		// own grant is asked through the tenant; an outage is asked again.
-		if len(n.clients) == 0 {
-			switch state, _ := microsoftVerify(ctx, env, address); state {
-			case "ok":
-			case "refused":
-				m.refuse(address, app, TenantChanged)
-				return nil
-			case "outside_tenant":
-				m.refuse(address, app, OutsideTenant)
-				return nil
-			default:
-				return ServerUnreachable
-			}
-		}
+	if stale, outdated := n.mcpStale(app), n.mcpOutdated(); stale || outdated {
 		// The registration keeps the scopes its sign-in's grant gave it.
 		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
 		if n.mcpAllowed == "" {
 			allowed = microsoftMCPScopes
 		}
-		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
-			return err
-		}
-	} else if n.mcpOutdated() {
-		// An earlier registration's scopes leave out files, so the tenant's
-		// current grant decides which tools it now offers. A refused grant
-		// keeps the Outlook scopes until the next sign-in registers anew; an
-		// outage is asked again.
-		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
-		if n.mcpAllowed == "" {
-			allowed = microsoftMCPScopes
-		}
-		switch state, scopes := microsoftVerify(ctx, env, address); state {
-		case "ok":
-			if len(scopes) > 0 {
-				allowed = microsoftAllowed(microsoftGranted(scopes))
+		// The remotes' grant, from the same sign-in as MSAL's, now works at
+		// the tenant: the tenant accepts this person. Without remotes, MSAL's
+		// own grant is asked through the tenant; an outage is asked again.
+		// An earlier release's registration also leaves out files, so the
+		// tenant's current grant decides which tools it now offers; a refused
+		// grant then keeps the Outlook scopes until the next sign-in.
+		if (stale && len(n.clients) == 0) || outdated {
+			switch state, scopes := microsoftVerify(ctx, env, address); state {
+			case "ok":
+				if outdated && len(scopes) > 0 {
+					allowed = microsoftAllowed(microsoftGranted(scopes))
+				}
+			case "refused", "outside_tenant":
+				if stale && len(n.clients) == 0 {
+					m.refuse(address, app, map[string]string{"refused": TenantChanged, "outside_tenant": OutsideTenant}[state])
+					return nil
+				}
+			default:
+				// A tenant move the remotes' grant already proved does not
+				// wait for the file scopes; it keeps the Outlook ones.
+				if !stale || len(n.clients) == 0 {
+					return ServerUnreachable
+				}
 			}
-		case "refused", "outside_tenant":
-		default:
-			return ServerUnreachable
 		}
 		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
 			return err

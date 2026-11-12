@@ -95,8 +95,13 @@ the version changes.
    earlier release wrote (with `--preset`) counts as misaligned; alignment
    asks the tenant for the current grant through the adapter's `verify` and
    registers with it. An outage is retried at the next check; a refused grant
-   keeps the old Outlook scopes until the next sign-in. Alternative: require a
-   new sign-in, which would have meant asking every pilot person to reconnect.
+   keeps the old Outlook scopes until the next sign-in. A registration that is
+   also on an earlier tenant moves and gains the file scopes in one step; only
+   if the rclone remotes already proved the tenant move and the adapter is
+   unreachable at that moment does the move go ahead with the Outlook scopes
+   (files then wait for the next sign-in), so a tenant move never waits on an
+   outage. Alternative: require a new sign-in, which would have meant asking
+   every pilot person to reconnect.
 5. **Two read-only Outlook tools now appear**: `get-schedule` (free/busy, which
    organisation mode enables under the existing calendar scope) and
    `get-download-url` (scope-free; fails harmlessly without a files grant).
@@ -106,6 +111,19 @@ the version changes.
    equal to what the pinned presets enabled. A version bump that changes the
    presets fails `TestMicrosoftMCPToolsPinnedServer` instead of widening the
    agent's tools silently.
+
+## Review
+
+Critical rigor, because the change decides what agents reach with the
+person's Microsoft credentials: GPT-6 Astra as finder, Claude Fable 5.1 as a
+focused verifier of the credential boundary. One confirmed defect, fixed
+before merge: a registration both on an earlier tenant and from an earlier
+release would have moved tenant with Outlook-only scopes and never gained
+the file tools. The verifier found no path to a write tool, an unconsented
+scope request, or a widening/looping re-registration; it noted that the
+patch's group order (ReadWrite.All first) is load-bearing, which the
+pinned-server test enforces and the build function now says. Four other
+observations were dropped as pre-existing or already guarded.
 
 ## Verification
 
