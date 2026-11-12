@@ -3,12 +3,13 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/md-frontmatter
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
 ---
 
 # Markdown preview renders YAML frontmatter as rule and running text

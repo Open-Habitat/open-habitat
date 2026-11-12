@@ -1,3 +1,4 @@
+import { splitFrontmatter } from "./frontmatter";
 import type { IconName } from "./Icon";
 
 /** What the full-view preview of an open text file is. JSON, YAML and code
@@ -15,12 +16,14 @@ const views: [RegExp, FileView][] = [
 export const fileView = (path?: string): FileView | undefined =>
   path ? views.find(([pattern]) => pattern.test(path))?.[1] : undefined;
 
-/** The 0-based lines of a Markdown text's ATX headings outside fences, in
- * the order the rendered document shows them. */
+/** The 0-based lines of a Markdown text's ATX headings outside fences and
+ * frontmatter, in the order the rendered document shows them. */
 export function headingLines(text: string): number[] {
   const out: number[] = [];
   let fence: string | undefined;
+  const skip = splitFrontmatter(text).frontmatter?.lines ?? 0;
   text.split("\n").forEach((line, n) => {
+    if (n < skip) return;
     const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
     if (fence) {
       if (marker?.[0] === fence[0] && marker.length >= fence.length)

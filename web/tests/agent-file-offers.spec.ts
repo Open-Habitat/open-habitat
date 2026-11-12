@@ -412,3 +412,49 @@ test.describe("phone", () => {
     await panel.getByTestId("close-view").click();
   });
 });
+
+test("an offered Markdown file shows its frontmatter as metadata above the body", async ({
+  page,
+}) => {
+  // A real Pi skill file: frontmatter with a long quoted description, then
+  // a comment and the body.
+  const skill = readFileSync("tests/fixtures/skill-personal-data.md", "utf8");
+  const id = await conversation(page);
+  const [, , md] = await offer(page, id, "types");
+  await page.route(`**/${md}/download/**`, (route) =>
+    route.fulfill({ contentType: "text/markdown", body: skill }),
+  );
+  await expect(card(page, md)).toHaveAttribute("data-state", "ready");
+  await card(page, md).getByTestId("offer-open").click();
+  const document = page
+    .getByTestId("offer-panel")
+    .getByTestId("attachment-document");
+  const meta = document.getByTestId("markdown-frontmatter");
+  await expect(meta.locator("dt")).toHaveText(["name", "description"]);
+  await expect(meta.locator("dd").first()).toHaveText("personal-data");
+  await expect(meta.locator("dd").nth(1)).toContainText(
+    "Not for repository or source files.",
+  );
+  // The block is metadata, not a rule and running text, and the body
+  // renders as before with its own heading first.
+  const markdown = document.locator(".ah-markdown");
+  await expect(markdown.locator(":scope > hr")).toHaveCount(0);
+  await expect(markdown.locator(":scope > :nth-child(2)")).toHaveText(
+    "Personal data",
+  );
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="attachment-document"]')
+    .analyze();
+  expect(axe.violations).toEqual([]);
+  if (capture)
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: theme });
+        await page.waitForTimeout(400);
+        await page.screenshot({
+          path: `../issues/markdown-preview-frontmatter/frontmatter-${width}-${theme}.png`,
+        });
+      }
+    }
+});

@@ -78,7 +78,7 @@ export default function DocumentPreview({
         <PdfPages bytes={bytes} />
       ) : kind === "markdown" ? (
         <div className="ah-attachment-markdown">
-          <Markdown text={utf8(bytes) ?? ""} />
+          <Markdown text={utf8(bytes) ?? ""} document />
         </div>
       ) : kind === "docx" ? (
         <WordFrame bytes={bytes} name={name} />

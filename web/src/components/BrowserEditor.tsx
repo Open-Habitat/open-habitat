@@ -504,7 +504,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
                   <Suspense fallback={<p role="status">{t.loadingPreview}</p>}>
                     <Mounted then={arrive}>
                       {view.kind === "markdown" ? (
-                        <Markdown text={rendered} />
+                        <Markdown text={rendered} document />
                       ) : (
                         <FilePreview
                           kind={view.kind}
