@@ -3,12 +3,16 @@ created: 2026-11-12
 updated: 2026-11-12
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/md-tables
 lane: unlaned
 preparation: ready
+closed: 2026-11-12
+commits:
+- hash: 84694002f
+  summary: keep short Markdown table cells whole and scroll wide tables
 ---
 
 # Markdown tables crush short columns so dates and numbers break mid-word
