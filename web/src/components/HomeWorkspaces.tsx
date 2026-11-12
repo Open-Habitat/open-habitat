@@ -8,7 +8,7 @@ import { currentRecap, readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
 import { liveText } from "../i18n";
 import { homeWorkspacesText } from "../text/homeWorkspaces";
-import { agentPresentation, waitingName } from "./agentPresentation";
+import { agentPresentation, waitedFor, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { LatestMessageAge, useMinuteNow } from "./RecapCard";
@@ -174,8 +174,13 @@ export function HomeCard({
       {activity === "waiting_background" ? (
         <p className="ah-home-live">
           {txt.waitingBackground}
-          {conversation.waitingOn?.length
-            ? txt.waitingOn(conversation.waitingOn.map(waitingName).join(", "))
+          {conversation.waitingOn?.some(waitedFor)
+            ? txt.waitingOn(
+                conversation.waitingOn
+                  .filter(waitedFor)
+                  .map(waitingName)
+                  .join(", "),
+              )
             : ""}
         </p>
       ) : null}

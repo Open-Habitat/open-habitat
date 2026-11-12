@@ -149,6 +149,42 @@ describe("workspace home", () => {
     ]);
     expect(sections[1].open).toEqual([]);
   });
+  it("names only the waits the turn ended for, not a service left running", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("recap unavailable")),
+    );
+    const wait = (name: string, before_turn?: true) => ({
+      process_id: name,
+      name,
+      kind: "process" as const,
+      run_ids: [],
+      before_turn,
+    });
+    const card = (waitingOn: ReturnType<typeof wait>[]) => (
+      <MemoryRouter>
+        <HomeWorkspaces
+          workspaces={[workspace("one")]}
+          conversations={[
+            conversation("example", "one", {
+              process: "daemon_managed_live",
+              command: "idle",
+              runActive: false,
+              waitingOn,
+            }),
+          ]}
+        />
+      </MemoryRouter>
+    );
+    const view = render(card([wait("serve", true), wait("build")]));
+    const live = () =>
+      view.container.querySelector(".ah-home-live")?.textContent ?? null;
+    expect(live()).toContain("build");
+    expect(live()).not.toContain("serve");
+    // A service alone is not background work the card describes.
+    view.rerender(card([wait("serve", true)]));
+    expect(live()).toBeNull();
+  });
   it("rereads only a changed native history and keeps earlier text while pending", async () => {
     let release: ((value: Response) => void) | undefined;
     const read = vi.fn(
