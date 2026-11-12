@@ -847,8 +847,9 @@ func resolveWorktree(ctx context.Context, cfg transport.Config, wid, entryID str
 }
 
 func removeOneWorktree(w http.ResponseWriter, cfg transport.Config, c *ConversationController, in workspaceRequest) {
-	if !cloneWriter.TryLock("workspace_worktree_cleanup_running") {
-		snapshotError(w, 409, "workspace_busy")
+	// Removals clicked one after another queue rather than refuse.
+	if code := cloneWriter.waitBriefly(context.Background(), "workspace_worktree_cleanup_running"); code != "" {
+		snapshotError(w, 409, code)
 		return
 	}
 	defer cloneWriter.Unlock()
@@ -1282,8 +1283,9 @@ func deleteMergedBranch(home string, wsFd, trees int, o worktreeObs) string {
 // cleanMergedWorktrees removes every merged worktree of the listing the
 // person confirmed. A merged set that changed since is refused whole.
 func cleanMergedWorktrees(w http.ResponseWriter, cfg transport.Config, c *ConversationController, scope, token string) {
-	if !cloneWriter.TryLock("workspace_worktree_cleanup_running") {
-		snapshotError(w, 409, "workspace_busy")
+	// Removals clicked one after another queue rather than refuse.
+	if code := cloneWriter.waitBriefly(context.Background(), "workspace_worktree_cleanup_running"); code != "" {
+		snapshotError(w, 409, code)
 		return
 	}
 	defer cloneWriter.Unlock()

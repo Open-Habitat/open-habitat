@@ -41,8 +41,9 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
-	if !cloneWriter.TryLock("workspace_archive_running") {
-		snapshotError(w, 409, "workspace_busy")
+	// Archives clicked in quick succession queue here instead of refusing.
+	if code := cloneWriter.waitBriefly(ctx, "workspace_archive_running"); code != "" {
+		snapshotError(w, 409, code)
 		return
 	}
 	defer cloneWriter.Unlock()

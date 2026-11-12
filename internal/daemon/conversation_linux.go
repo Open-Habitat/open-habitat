@@ -700,9 +700,7 @@ func (c *ConversationController) createWorktree(ctx context.Context, w http.Resp
 	// A checkout observation or a state-file fsync may overlap a send. Wait
 	// briefly before doing any work, rather than making the person resubmit.
 	// Long operations still return a definite refusal identifying the holder.
-	waitCtx, cancelWait := context.WithTimeout(ctx, 2*time.Second)
-	defer cancelWait()
-	if code := cloneWriter.wait(waitCtx, "workspace_worktree_create_running"); code != "" {
+	if code := cloneWriter.waitBriefly(ctx, "workspace_worktree_create_running"); code != "" {
 		return "", 409, code
 	}
 	defer cloneWriter.Unlock()

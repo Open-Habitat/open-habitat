@@ -1110,6 +1110,13 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				} else if mode == "several" {
+					// Three short settled conversations beside the default
+					// one, for archiving several in quick succession.
+					if e := seedSeveralHistories(filepath.Dir(path), filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				} else if mode == "turn-changes" {
 					if e := seedTurnChangesHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
 						http.Error(w, "fixture failed", 500)
@@ -1659,6 +1666,31 @@ func (b *fixtureBroker) ReadQuota(_ context.Context, id string) (gateway.Quota, 
 }
 func (b *fixtureBroker) SetQuota(_ context.Context, id string, limit uint64) error {
 	b.limits.Store(id, limit)
+	return nil
+}
+
+// seedSeveralHistories writes three short settled native histories, titled
+// "Arkistoitava 1".."Arkistoitava 3", with IDs 33333333-…-00000000000N.
+func seedSeveralHistories(dir, cwd string) error {
+	for n := 1; n <= 3; n++ {
+		id := fmt.Sprintf("33333333-3333-4333-8333-%012d", n)
+		rows := []map[string]any{
+			{"type": "session", "version": 3, "id": id, "cwd": cwd},
+			{"type": "message", "id": "u1", "message": map[string]any{"role": "user", "content": fmt.Sprintf("Arkistoitava %d", n)}},
+			{"type": "message", "id": "a1", "message": map[string]any{"role": "assistant", "content": []map[string]any{{"type": "text", "text": "Selvä."}}}},
+		}
+		var b []byte
+		for _, row := range rows {
+			line, e := json.Marshal(row)
+			if e != nil {
+				return e
+			}
+			b = append(append(b, line...), '\n')
+		}
+		if e := os.WriteFile(filepath.Join(dir, fmt.Sprintf("several-%d.jsonl", n)), b, 0600); e != nil {
+			return e
+		}
+	}
 	return nil
 }
 

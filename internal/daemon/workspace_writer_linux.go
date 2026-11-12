@@ -5,7 +5,16 @@ package daemon
 import (
 	"context"
 	"sync"
+	"time"
 )
+
+// briefWriterWait bounds how long a short, person-initiated write queues
+// behind another holder of the writer. Archive, rename, hide and the other
+// annotation writes take milliseconds, and checkout observations and state
+// fsyncs are brief too, so the person should not have to redo a click
+// because two of them met. A holder still running after this long is a real
+// operation (a clone, a deletion), and the refusal names it.
+const briefWriterWait = 2 * time.Second
 
 // workspaceWriter keeps the existing daemon-wide exclusion for ~/src and
 // annotations. Its reason is a fixed product code, never a path or native text.
@@ -46,6 +55,15 @@ func (m *workspaceWriter) Unlock() {
 	close(m.released)
 	m.released = nil
 	m.reason = ""
+}
+
+// waitBriefly takes the writer, queueing behind the current holder for at
+// most briefWriterWait. It returns "" when held (the caller must Unlock), or
+// the product code of the holder that was still running.
+func (m *workspaceWriter) waitBriefly(ctx context.Context, reason string) string {
+	ctx, cancel := context.WithTimeout(ctx, briefWriterWait)
+	defer cancel()
+	return m.wait(ctx, reason)
 }
 
 func (m *workspaceWriter) wait(ctx context.Context, reason string) string {
