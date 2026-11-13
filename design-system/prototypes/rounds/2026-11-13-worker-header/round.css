@@ -1,0 +1,67 @@
+/* Review chrome above the production shell, as in earlier rounds: the shell
+   is anchored below the review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.wh-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.wh-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.wh-bar strong { font-weight: 600; }
+.wh-bar select { font: inherit; }
+.wh-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.wh-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.wh-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .wh-bar { padding: 6px 10px; }
+  .wh-controls > strong { display: none; }
+  .wh-lines, .wh-recommend { line-height: 1.3; }
+  .wh-lines li:not([aria-current]) { display: none; }
+}
+.wh-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.wh-stage .ah-rail { top: var(--review-h, 0px); }
+.wh-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.wh-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.wh-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* The round's only own rules. In the band the header's buttons sit as a
+   group. */
+.wh-band-buttons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1); }
+/* The band's text colour is the accent ink; its buttons keep the header's. */
+.ah-worker-band .wh-band-buttons { color: var(--ah-ink); }
+.ah-worker-band .wh-band-buttons > * { background: var(--ah-surface); }
+.wh-pr { gap: var(--ah-s1); text-decoration: none; }
+.wh-pr svg { width: 14px; height: 14px; }
+.wh-pr-state { color: var(--ah-ink-2); font-weight: 400; }
+/* Unknown is said with a "?" and a sentence, never left empty or coloured. */
+.wh-unknown { color: var(--ah-muted); border-style: dashed; }
+.wh-unknown .ah-ctx-track { stroke-dasharray: 2 2; }
+@media (max-width: 800px) {
+  /* Production's phone header reads Git, context and model into its facts
+     line; it has no place for a pull request yet (NOTES.md). */
+  .ah-agent-topline > .wh-pr { display: none; }
+}
+@media (max-width: 800px) {
+  /* A phone: the band keeps worker, parent and Ask on one line; its
+     buttons get their own line beneath. */
+  .ah-worker-band .wh-band-buttons { flex: 1 0 100%; order: 5; }
+}
+@media (max-width: 800px) {
+  /* Production indents the header's title row and activity mark beside the
+     phone's floating menu button, assuming the header is the frame's first
+     row. In a worker view the band is first and already clears the button,
+     so the header should not indent (today's WorkerView has the same gap;
+     NOTES.md). */
+  .ah-worker-band ~ .ah-agent-header .ah-title-row,
+  .ah-worker-band ~ .ah-agent-header .ah-agent-topline > .ah-header-activity {
+    margin-inline-start: 0;
+  }
+}
