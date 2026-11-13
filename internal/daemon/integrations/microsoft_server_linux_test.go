@@ -33,10 +33,10 @@ var piServerName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 func TestMicrosoftServerNames(t *testing.T) {
 	long := strings.Repeat("a.", 31) + "b@" + strings.Repeat("sub.", 40) + "example.com"
 	for address, want := range map[string]string{
-		"aino.virtanen@contoso.test":       "habitat-microsoft-aino-virtanen-contoso-test",
+		"aino.virtanen@contoso.test":     "habitat-microsoft-aino-virtanen-contoso-test",
 		"person@example.test":            "habitat-microsoft-person-example-test",
 		"a+tag_x%y--z@mail.example.fi":   "habitat-microsoft-a-tag-x-y-z-mail-example-fi",
-		"Aino.Virtanen@Contoso.TEST":       "habitat-microsoft-aino-virtanen-contoso-test",
+		"Aino.Virtanen@Contoso.TEST":     "habitat-microsoft-aino-virtanen-contoso-test",
 		"jörö.ääkkönen@esimerkki.fi":     "habitat-microsoft-j-r-kk-nen-esimerkki-fi",
 		"-.leading.and.trailing.-@x.fi.": "habitat-microsoft-leading-and-trailing-x-fi",
 		long:                             microsoftServerPrefix + strings.Repeat("a-", 31) + "b-" + strings.Repeat("sub-", 40) + "example-com",
