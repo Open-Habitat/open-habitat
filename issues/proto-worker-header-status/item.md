@@ -2,11 +2,12 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: feature
-status: open
+status: done
 priority: normal
 preparation: pending
 lane: worker-header-proto
 lane_seq: 1
+closed: 2026-11-13
 ---
 
 # Worker view header: Git changes, context fill and model as buttons

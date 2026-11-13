@@ -34,3 +34,11 @@ read.
 - The Claude Code worker's context ring needs the daemon to read Claude's
   usage (new host data). Until then, should the ring show "?" for Claude
   workers?
+
+## Verdict (Jari 13.11.2026)
+
+Direction 1, **Otsikkorivillä**. The open questions were not answered
+separately, so the round's own choices stand as the default: the pull
+request is a button beside Git, and a Claude Code worker's ring shows "?"
+with its sentence until the daemon reads Claude's usage. Implementation:
+`worker-header-status`.
