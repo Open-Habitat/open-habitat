@@ -67,6 +67,10 @@ def living_markdown() -> list[Path]:
         parts = Path(name).parts
         if parts[0] == "private-dev":
             continue
+        # The website's pages link by site URL; its build
+        # (starlight-links-validator) checks them, not this file walk.
+        if parts[:3] == ("website", "src", "content"):
+            continue
         if parts[0] == "issues" and len(parts) > 2:
             if parts[1] not in open_issue:
                 item = ROOT / "issues" / parts[1] / "item.md"

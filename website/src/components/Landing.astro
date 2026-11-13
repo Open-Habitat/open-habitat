@@ -1,0 +1,734 @@
+---
+// The site's front door in both languages: what Open Habitat is and for
+// whom, how it compares, what it is not, the security model and how to try
+// it. Claims rest on the repository's docs/product.md, docs/operations.md
+// and the product itself; the comparison mirrors the README draft's table.
+// The people and the server in the diagram are made up.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+interface Props {
+  lang: 'en' | 'fi';
+}
+
+const { lang } = Astro.props;
+const prefix = lang === 'fi' ? '/fi/' : '/';
+const repo = 'https://github.com/Open-Habitat/open-habitat';
+const pi = '<a href="https://github.com/earendil-works/pi">Pi</a>';
+
+const t = {
+  en: {
+    title: 'Your team’s AI agents on one Linux server',
+    description:
+      'Open Habitat: each person works as their own Unix user, reachable from any browser. Open source, pre-release.',
+    heroTitle: 'Your team’s AI agents on <em>one Linux server</em>.',
+    tagline: `Each person works as their own Unix user, reachable from any browser. Sign in from a laptop or phone, talk to your ${pi} agent, close the tab, and it keeps working.`,
+    status: 'Pre-release · open source (MIT)',
+    tryIt: 'How to try it',
+    compareCta: 'How it compares',
+    diagram: {
+      laptop: 'laptop',
+      phone: 'phone',
+      closed: 'tab closed',
+      gateway: 'GitHub sign-in → your Unix user',
+      daemonAs: 'daemon as',
+      broker: 'only creates accounts on first approved sign-in',
+      working: 'Working',
+      turn: 'Your turn',
+      tasks: ['Refactor the sign-in flow', 'Release notes for 0.4', 'Nightly data import'],
+      caption: 'One server, a home per person. Chen closed the browser; the agent did not stop.',
+    },
+    sameWork:
+      'The conversation is Pi’s own session in your home directory, so the files, Git repositories and history are the ones you would find over SSH. Open Habitat adds a browser, not a second place where your work lives.',
+    whatTitle: 'What you get',
+    whatLede:
+      'For small teams, schools and households that already have, or can rent, one Linux server.',
+    cards: [
+      ['One server, many people', 'Everyone who signs in with GitHub gets their own Linux account, home directory, credentials and agent daemon. The administrator decides who is admitted; nobody picks a Unix user in the browser.'],
+      ['Native tools keep the truth', 'Pi stores its own history, <code>git</code> and <code>gh</code> keep their own logins, and workspaces are ordinary directories under <code>~/src</code>. No workspace registry, no copied history, no vendor database.'],
+      ['Work outlives the browser', 'Agents run under your daemon on the server. Steer a running agent, queue the next message, answer its questions or stop it, from a desktop or a phone.'],
+      ['The rest of the workbench', 'A browser terminal on the same tmux sessions, a Git worktree per agent, a VS Code editor running as you, and your own connections to GitHub, Gitea, GitLab, Google, Microsoft 365 and Dropbox.'],
+      ['Your own model account', 'Each person connects their own provider sign-in through Pi, for example a ChatGPT or Claude subscription, or uses a key the server provides. Nobody shares a personal API key.'],
+      ['Nothing phones home', 'No telemetry, no relay, no Open Habitat account between your browser and your server. The interface works in English and Finnish, light and dark.'],
+    ],
+    compareTitle: 'How it compares',
+    compareLede: 'Plenty of tools put coding agents in a window. The difference here is who the server is for.',
+    compareAria: 'Comparison table',
+    piWebUis: 'Pi web UIs',
+    rows: [
+      ['Built for', 'several people on one shared server', 'one developer running many agents', 'teams, as a hosted service', 'one person', 'groups running notebooks'],
+      ['Separation between people', 'Unix accounts', 'none: every paired device is the same user', 'cloud organisation and task permissions', 'none (no sign-in)', 'Unix accounts or containers'],
+      ['Where history lives', 'the agent’s native files', 'native files plus its own journal and scrollback', 'synced to the vendor’s Postgres', 'native files plus the UI’s own stores', 'notebooks on disk'],
+      ['Agents', 'Pi', '35+ CLI agents', 'Claude Code, Codex, OpenCode, Pi', 'Pi', 'not an agent host'],
+      ['Shape', 'browser, desktop and phone', 'desktop app, phone app, browser client', 'desktop, browser, phone over a cloud', 'browser', 'browser'],
+    ],
+    notes: [
+      '<b>Choose Orca</b> if you want many agents on your own machine and a polished desktop app today. It supports far more agents than Open Habitat does.',
+      '<b>JupyterHub</b> is the mature form of the same idea, one server and a Unix user per person, for notebooks. Open Habitat applies it to agents.',
+    ],
+    notTitle: 'What it is not',
+    nots: [
+      ['Not a sandbox between you and your agent.', 'An agent runs as its owner, with the owner’s files and credentials. Unix accounts separate people from each other; they do not limit what your own agent can do in your own home.'],
+      ['Not a cluster.', 'One Linux server, Ubuntu 24.04 on amd64 or arm64.'],
+      ['Not multi-harness yet.', 'Pi is the agent the browser drives.'],
+      ['Not a hosted service.', 'You run the server. There is no Open Habitat account or cloud.'],
+      ['Root is root.', 'The server’s administrator can read every home on it, as on any Linux machine.'],
+    ],
+    secTitle: 'Security model',
+    secLede: 'Three components hold separate authority.',
+    layers: [
+      ['gateway', 'Authenticates the browser and maps the person to a Unix user.'],
+      ['daemon', 'Runs as each person and trusts no identity claim from the browser or the gateway.'],
+      ['root broker', 'Small, and only creates the account on a person’s first approved sign-in.'],
+    ],
+    secMore:
+      'Code that a person controls, such as the editor, agent-published pages and shared links, is served on its own hostname, apart from the app.',
+    secLink: 'Read the security model',
+    vuln: `Found a vulnerability? Use GitHub’s <a href="${repo}/security/advisories/new">private vulnerability reporting</a>, not a public issue.`,
+    tryTitle: 'Try it',
+    tryStatus:
+      '<b>Status: pre-release.</b> Open Habitat runs on multi-person installations, but there is no public release yet. Formats and interfaces still change between releases without migration code, and installing still assumes some help from the maintainers.',
+    need: 'You need:',
+    reqs: [
+      'a Linux server you administer: Ubuntu 24.04 LTS with systemd, amd64 or arm64',
+      'a DNS name with HTTPS',
+      'a GitHub OAuth app for sign-in',
+      'for each person, their own model provider account, or a key the server provides',
+    ],
+    howTitle: 'How installation works',
+    how:
+      'A release is a GitHub Release with a product package and a runtime release per architecture, checked against the SHA-256 digests GitHub states. The operator writes one site file and applies the host plan it returns. No source checkout, Go or npm is needed on the server. A short path for a plain VPS comes before the public launch.',
+    tryLink: 'What an installation needs',
+    opsLink: 'Operator guide',
+    source: 'Source on GitHub',
+    footLicence: 'Open Habitat is open source under the MIT licence.',
+    footFonts: `Fonts: Instrument Sans and JetBrains Mono, <a href="${repo}/tree/main/design-system/fonts">SIL Open Font License</a>.`,
+    footPrivacy: 'This site sets no cookies, loads nothing from other servers and has no analytics.',
+  },
+  fi: {
+    title: 'Tiimin AI-agentit yhdellä Linux-palvelimella',
+    description:
+      'Open Habitat: jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Avointa lähdekoodia, esijulkaisu.',
+    heroTitle: 'Tiimin AI-agentit <em>yhdellä Linux-palvelimella</em>.',
+    tagline: `Jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Kirjaudu läppäriltä tai puhelimelta, keskustele ${pi}-agenttisi kanssa, sulje välilehti, ja työ jatkuu.`,
+    status: 'Esijulkaisu · avoin lähdekoodi (MIT)',
+    tryIt: 'Näin kokeilet',
+    compareCta: 'Miten se eroaa',
+    diagram: {
+      laptop: 'läppäri',
+      phone: 'puhelin',
+      closed: 'välilehti suljettu',
+      gateway: 'GitHub-kirjautuminen → oma Unix-käyttäjä',
+      daemonAs: 'daemon käyttäjänä',
+      broker: 'vain luo tilin ensimmäisellä hyväksytyllä kirjautumisella',
+      working: 'Työskentelee',
+      turn: 'Sinun vuorosi',
+      tasks: ['Kirjautumisen refaktorointi', 'Version 0.4 julkaisutiedote', 'Yöllinen datatuonti'],
+      caption: 'Yksi palvelin, oma koti jokaiselle. Chen sulki selaimen; agentti ei pysähtynyt.',
+    },
+    sameWork:
+      'Keskustelu on Pi:n oma istunto kotihakemistossasi, joten tiedostot, Git-repot ja historia ovat samat, jotka löydät SSH:lla. Open Habitat tuo selaimen, ei toista paikkaa, jossa työsi asuu.',
+    whatTitle: 'Mitä saat',
+    whatLede:
+      'Pienille tiimeille, kouluille ja kotitalouksille, joilla on yksi Linux-palvelin tai jotka voivat vuokrata sellaisen.',
+    cards: [
+      ['Yksi palvelin, monta ihmistä', 'Jokainen GitHubilla kirjautuva saa oman Linux-tunnuksen, kotihakemiston, kirjautumistiedot ja agenttidaemonin. Ylläpitäjä päättää, kuka pääsee sisään; selaimessa kukaan ei valitse Unix-käyttäjää.'],
+      ['Natiivit työkalut pitävät totuuden', 'Pi tallentaa oman historiansa, <code>git</code> ja <code>gh</code> omat kirjautumisensa, ja työtilat ovat tavallisia hakemistoja <code>~/src</code>-hakemistossa. Ei työtilarekisteriä, kopioitua historiaa eikä toimittajan tietokantaa.'],
+      ['Työ jatkuu ilman selainta', 'Agentit ajetaan omistajansa daemonin alla palvelimella. Ohjaa käynnissä olevaa agenttia, jonota seuraava viesti, vastaa sen kysymyksiin tai pysäytä se, työpöydältä tai puhelimelta.'],
+      ['Muu työpenkki', 'Selainterminaali samoihin tmux-istuntoihin, oma Git-worktree agentille, sinuna ajettava VS Code -editori sekä omat yhteydet GitHubiin, Giteaan, GitLabiin, Googleen, Microsoft 365:een ja Dropboxiin.'],
+      ['Oma mallitili', 'Jokainen yhdistää oman palveluntarjoajansa kirjautumisen Pi:n kautta, esimerkiksi ChatGPT- tai Claude-tilauksen, tai käyttää palvelimen tarjoamaa avainta. Kenenkään ei tarvitse jakaa omaa API-avaintaan.'],
+      ['Ei kotiinsoittoa', 'Ei telemetriaa, ei välityspalvelinta eikä Open Habitat -tiliä selaimesi ja palvelimesi välissä. Käyttöliittymä toimii suomeksi ja englanniksi, vaaleana ja tummana.'],
+    ],
+    compareTitle: 'Miten se eroaa',
+    compareLede: 'Agentteja saa ikkunaan monella työkalulla. Ero on siinä, kenelle palvelin on.',
+    compareAria: 'Vertailutaulukko',
+    piWebUis: 'Pi-selainkäyttöliittymät',
+    rows: [
+      ['Kenelle', 'usealle ihmiselle yhteisellä palvelimella', 'yhdelle kehittäjälle, jolla on monta agenttia', 'tiimeille, pilvipalveluna', 'yhdelle ihmiselle', 'ryhmille, notebookeja varten'],
+      ['Ihmisten erottelu', 'Unix-tunnukset', 'ei ole: jokainen pariutettu laite on sama käyttäjä', 'pilven organisaatio- ja tehtäväoikeudet', 'ei ole (ei kirjautumista)', 'Unix-tunnukset tai kontit'],
+      ['Missä historia on', 'agentin omissa tiedostoissa', 'natiivit tiedostot sekä oma journaali ja scrollback', 'synkronoituna toimittajan Postgresiin', 'natiivit tiedostot sekä käyttöliittymän omat varastot', 'notebookit levyllä'],
+      ['Agentit', 'Pi', 'yli 35 CLI-agenttia', 'Claude Code, Codex, OpenCode, Pi', 'Pi', 'ei agenttien isäntä'],
+      ['Muoto', 'selain, työpöytä ja puhelin', 'työpöytäsovellus, mobiilisovellus, selainasiakas', 'työpöytä, selain ja puhelin pilven kautta', 'selain', 'selain'],
+    ],
+    notes: [
+      '<b>Valitse Orca</b>, jos haluat paljon agentteja omalle koneellesi ja viimeistellyn työpöytäsovelluksen jo nyt. Se tukee paljon useampia agentteja kuin Open Habitat.',
+      '<b>JupyterHub</b> on saman ajatuksen, yksi palvelin ja Unix-käyttäjä jokaiselle, kypsä toteutus notebookeille. Open Habitat soveltaa sitä agentteihin.',
+    ],
+    notTitle: 'Mitä se ei ole',
+    nots: [
+      ['Ei hiekkalaatikko sinun ja agenttisi välillä.', 'Agentti toimii omistajanaan, omistajan tiedostoin ja tunnuksin. Unix-tunnukset erottavat ihmiset toisistaan; ne eivät rajoita, mitä oma agenttisi voi tehdä omassa kodissasi.'],
+      ['Ei klusteri.', 'Yksi Linux-palvelin, Ubuntu 24.04, amd64 tai arm64.'],
+      ['Ei vielä monen harnessin.', 'Selain ohjaa Pi-agenttia.'],
+      ['Ei pilvipalvelu.', 'Palvelin on sinun. Open Habitat -tiliä tai -pilveä ei ole.'],
+      ['Root on root.', 'Palvelimen ylläpitäjä voi lukea jokaisen kodin, kuten millä tahansa Linux-koneella.'],
+    ],
+    secTitle: 'Tietoturvamalli',
+    secLede: 'Kolmella osalla on erilliset valtuudet.',
+    layers: [
+      ['gateway', 'Tunnistaa selaimen ja liittää ihmisen Unix-käyttäjään.'],
+      ['daemon', 'Ajetaan kunkin ihmisen tunnuksella, eikä se luota selaimen tai gatewayn identiteettiväitteisiin.'],
+      ['root broker', 'Pieni, ja luo vain tilin ihmisen ensimmäisellä hyväksytyllä kirjautumisella.'],
+    ],
+    secMore:
+      'Käyttäjän hallitsema koodi, kuten editori, agentin julkaisemat sivut ja jaetut linkit, tarjoillaan omalta hostiltaan erillään sovelluksesta.',
+    secLink: 'Lue tietoturvamalli',
+    vuln: `Löysitkö haavoittuvuuden? Käytä GitHubin <a href="${repo}/security/advisories/new">yksityistä haavoittuvuusraportointia</a>, älä julkista issueta.`,
+    tryTitle: 'Kokeile',
+    tryStatus:
+      '<b>Tila: esijulkaisu.</b> Open Habitat on käytössä monen ihmisen asennuksissa, mutta julkista julkaisua ei vielä ole. Formaatit ja rajapinnat muuttuvat vielä julkaisujen välillä ilman siirtokoodia, ja asennus olettaa vielä ylläpitäjien apua.',
+    need: 'Tarvitset:',
+    reqs: [
+      'Linux-palvelimen, jota ylläpidät: Ubuntu 24.04 LTS ja systemd, amd64 tai arm64',
+      'DNS-nimen ja HTTPS:n',
+      'GitHub OAuth -sovelluksen kirjautumista varten',
+      'jokaiselle oman mallipalveluntarjoajan tilin tai palvelimen tarjoaman avaimen',
+    ],
+    howTitle: 'Miten asennus toimii',
+    how:
+      'Julkaisu on GitHub-julkaisu, jossa on tuotepaketti ja runtime-julkaisu arkkitehtuureittain, ja ne tarkistetaan GitHubin ilmoittamia SHA-256-tiivisteitä vasten. Ylläpitäjä kirjoittaa yhden sivustotiedoston ja toteuttaa sen pohjalta palautuvan asennussuunnitelman. Palvelimella ei tarvita lähdekoodia, Go:ta eikä npm:ää. Lyhyt polku tavalliselle VPS:lle tulee ennen julkistusta.',
+    tryLink: 'Mitä asennus tarvitsee',
+    opsLink: 'Ylläpito-opas',
+    source: 'Lähdekoodi GitHubissa',
+    footLicence: 'Open Habitat on avointa lähdekoodia MIT-lisenssillä.',
+    footFonts: `Fontit: Instrument Sans ja JetBrains Mono, <a href="${repo}/tree/main/design-system/fonts">SIL Open Font License</a>.`,
+    footPrivacy: 'Tämä sivusto ei aseta evästeitä, ei lataa mitään muilta palvelimilta eikä seuraa kävijöitä.',
+  },
+}[lang];
+
+const d = t.diagram;
+const laptopIcon =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1 13.5h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+const phoneIcon =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+const homes = [
+  ['anna', '~/src/api', 'work'],
+  ['ben', '~/src/docs', 'turn'],
+  ['chen', '~/src/etl', 'work'],
+]
+  .map(
+    ([who, ws, state], i) => `
+    <div class="oh-home">
+      <div><div class="oh-path">/home/${who}</div><div class="oh-who">${lang === 'fi' ? `daemon ${who}-käyttäjänä` : `${d.daemonAs} ${who}`}</div></div>
+      <div class="oh-agent"><div class="oh-task">${d.tasks[i]}</div><div class="oh-ws">${ws}</div><div class="oh-state oh-s-${state}"><span class="oh-dot"></span>${state === 'work' ? d.working : d.turn}</div></div>
+    </div>`,
+  )
+  .join('');
+const diagram = `
+<figure class="oh-server" aria-labelledby="oh-server-cap">
+  <div class="oh-clients">
+    <span class="oh-chip">${laptopIcon}anna · ${d.laptop}</span>
+    <span class="oh-chip">${phoneIcon}ben · ${d.phone}</span>
+    <span class="oh-chip oh-off">chen · ${d.closed}</span>
+  </div>
+  <div class="oh-srv">
+    <div class="oh-srv-head"><span class="oh-mono">habitat.example.org</span><span class="oh-label">Ubuntu 24.04</span></div>
+    <div class="oh-layer"><b>gateway</b><span>${d.gateway}</span></div>
+    <div class="oh-homes">${homes}</div>
+    <div class="oh-layer"><b>root broker</b><span>${d.broker}</span></div>
+  </div>
+  <figcaption id="oh-server-cap">${d.caption}</figcaption>
+</figure>`;
+const otherTools = [
+  ['Orca', 'https://github.com/stablyai/orca'],
+  ['HumanLayer', 'https://github.com/humanlayer/humanlayer'],
+];
+---
+
+<StarlightPage
+  frontmatter={{
+    title: t.title,
+    description: t.description,
+    template: 'splash',
+    hero: {
+      title: t.heroTitle,
+      tagline: `<span class="oh-status"><span class="oh-dot"></span>${t.status}</span>${t.tagline}`,
+      image: { html: diagram },
+      actions: [
+        { text: t.tryIt, link: '#try', variant: 'primary', icon: 'right-arrow' },
+        { text: t.compareCta, link: '#compare', variant: 'minimal' },
+      ],
+    },
+  }}
+>
+  <div class="not-content oh-landing">
+    <p class="oh-same">{t.sameWork}</p>
+
+    <section id="what" aria-labelledby="oh-what">
+      <h2 id="oh-what">{t.whatTitle}</h2>
+      <p class="oh-lede">{t.whatLede}</p>
+      <div class="oh-grid">
+        {
+          t.cards.map(([title, body]) => (
+            <div class="oh-card">
+              <h3>{title}</h3>
+              <p set:html={body} />
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section id="compare" aria-labelledby="oh-compare">
+      <h2 id="oh-compare">{t.compareTitle}</h2>
+      <p class="oh-lede">{t.compareLede}</p>
+      <div class="oh-tablewrap" role="region" aria-label={t.compareAria} tabindex="0">
+        <table>
+          <thead>
+            <tr>
+              <td></td>
+              <th scope="col" class="oh-us">Open Habitat</th>
+              {otherTools.map(([name, href]) => <th scope="col"><a href={href}>{name}</a></th>)}
+              <th scope="col">
+                {t.piWebUis}
+                <br />
+                <span class="oh-small">
+                  <a href="https://github.com/jmfederico/pi-web">PI WEB</a>,{' '}
+                  <a href="https://github.com/agegr/pi-web">Pi Web</a>
+                </span>
+              </th>
+              <th scope="col"><a href="https://jupyter.org/hub">JupyterHub</a></th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              t.rows.map(([head, ...cells]) => (
+                <tr>
+                  <th scope="row">{head}</th>
+                  {cells.map((cell, i) => <td class={i === 0 ? 'oh-us' : undefined}>{cell}</td>)}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="oh-notes">{t.notes.map((n) => <p set:html={n} />)}</div>
+    </section>
+
+    <section id="security" class="oh-two" aria-label={`${t.notTitle} · ${t.secTitle}`}>
+      <div>
+        <h2>{t.notTitle}</h2>
+        <ul class="oh-plain">
+          {
+            t.nots.map(([b, rest]) => (
+              <li>
+                <b>{b}</b> {rest}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+      <div>
+        <h2>{t.secTitle}</h2>
+        <p>{t.secLede}</p>
+        <div class="oh-layers">
+          {
+            t.layers.map(([name, body]) => (
+              <div class="oh-layer">
+                <b>{name}</b>
+                <span>{body}</span>
+              </div>
+            ))
+          }
+        </div>
+        <p>{t.secMore}</p>
+        <p set:html={t.vuln} />
+        <p><a href={`${prefix}docs/security/`}>{t.secLink} →</a></p>
+      </div>
+    </section>
+
+    <section id="try" class="oh-two" aria-labelledby="oh-try">
+      <div>
+        <h2 id="oh-try">{t.tryTitle}</h2>
+        <p set:html={t.tryStatus} />
+        <p>{t.need}</p>
+        <ul class="oh-req">{t.reqs.map((r) => <li>{r}</li>)}</ul>
+      </div>
+      <div>
+        <h3 class="oh-h3">{t.howTitle}</h3>
+        <p>{t.how}</p>
+        <div class="oh-actions">
+          <a class="oh-btn oh-btn-primary" href={`${prefix}docs/try/`}>{t.tryLink}</a>
+          <a class="oh-btn" href={`${prefix}docs/operations/`}>{t.opsLink}</a>
+          <a class="oh-btn" href={repo}>{t.source}</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="oh-foot">
+      <div>
+        <p>{t.footLicence}</p>
+        <p set:html={t.footFonts} />
+      </div>
+      <p>{t.footPrivacy}</p>
+    </footer>
+  </div>
+</StarlightPage>
+
+<style is:global>
+  /* Landing page only; every colour is a design-system token. */
+  .hero h1 em {
+    font-style: normal;
+    color: var(--ah-accent);
+  }
+  .hero .tagline a {
+    color: var(--ah-accent-ink);
+  }
+  .oh-status {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 3px 10px;
+    border: 1px solid var(--ah-accent-line);
+    border-radius: 999px;
+    background: var(--ah-accent-soft);
+    color: var(--ah-accent-ink);
+    font-size: var(--ah-size-meta);
+    font-weight: 500;
+  }
+  .oh-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ah-accent);
+    flex: none;
+  }
+
+  /* Hero diagram: one server, a home per person. */
+  .hero .oh-server {
+    margin: 0;
+    width: 100%;
+    max-width: 30rem;
+    text-align: start;
+    font-size: var(--ah-size-ui);
+  }
+  .oh-clients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .oh-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--ah-line);
+    border-radius: 999px;
+    background: var(--ah-surface);
+    color: var(--ah-ink-2);
+    font-size: var(--ah-size-meta);
+  }
+  .oh-chip svg {
+    width: 14px;
+    height: 14px;
+  }
+  .oh-chip.oh-off {
+    border-style: dashed;
+    color: var(--ah-muted);
+  }
+  .oh-srv {
+    border: 1px solid var(--ah-line);
+    border-radius: 12px;
+    background: var(--ah-bg);
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .oh-srv-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .oh-mono,
+  .oh-path,
+  .oh-ws {
+    font-family: var(--ah-mono);
+    font-size: var(--ah-size-code);
+  }
+  .oh-label,
+  .oh-who {
+    color: var(--ah-muted);
+    font-size: var(--ah-size-meta);
+  }
+  .oh-layer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+    padding: 8px 10px;
+    border: 1px solid var(--ah-line);
+    border-radius: 8px;
+    background: var(--ah-surface);
+    color: var(--ah-ink-2);
+  }
+  .oh-layer b {
+    font-family: var(--ah-mono);
+    font-size: var(--ah-size-code);
+    font-weight: 500;
+    color: var(--ah-ink);
+  }
+  .oh-homes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .oh-home {
+    display: grid;
+    gap: 8px;
+    align-content: space-between;
+    padding: 10px;
+    border: 1px solid var(--ah-accent-line);
+    border-radius: 10px;
+    background: var(--ah-surface);
+  }
+  .oh-agent {
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--ah-sunken);
+  }
+  .oh-task {
+    font-weight: 500;
+    color: var(--ah-ink);
+    line-height: 1.3;
+  }
+  .oh-ws {
+    color: var(--ah-muted);
+    margin: 2px 0 6px;
+  }
+  .oh-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--ah-size-meta);
+    color: var(--ah-ink-2);
+  }
+  .oh-s-work .oh-dot {
+    background: var(--ah-accent);
+  }
+  .oh-s-turn .oh-dot {
+    background: var(--ah-turn);
+  }
+  .oh-server figcaption {
+    margin-top: 10px;
+    color: var(--ah-muted);
+    font-size: var(--ah-size-meta);
+  }
+
+  /* Sections */
+  .oh-landing {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4.5rem;
+    padding-bottom: 2rem;
+    color: var(--ah-ink-2);
+    font-size: var(--ah-size-body);
+    line-height: var(--ah-lh-body);
+  }
+  .oh-landing h2 {
+    margin: 0 0 0.5rem;
+    color: var(--ah-ink);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .oh-landing h3 {
+    margin: 0 0 0.4rem;
+    color: var(--ah-ink);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .oh-landing p {
+    margin: 0 0 0.75rem;
+  }
+  .oh-landing a {
+    color: var(--ah-accent-ink);
+  }
+  .oh-landing code {
+    font-family: var(--ah-mono);
+    font-size: 0.9em;
+    background: var(--ah-sunken);
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+  .oh-same {
+    max-width: 48rem;
+    margin: 0 auto !important;
+    text-align: center;
+    color: var(--ah-muted);
+    font-size: 1.05rem;
+  }
+  .oh-lede {
+    max-width: 44rem;
+    color: var(--ah-muted);
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem !important;
+  }
+  .oh-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .oh-card {
+    padding: 20px;
+    border: 1px solid var(--ah-line);
+    border-radius: 12px;
+    background: var(--ah-surface);
+  }
+  .oh-card p {
+    margin: 0;
+  }
+  .oh-tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--ah-line);
+    border-radius: 12px;
+  }
+  .oh-tablewrap table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 760px;
+    font-size: var(--ah-size-ui);
+  }
+  .oh-tablewrap th,
+  .oh-tablewrap td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ah-line-soft);
+    text-align: start;
+    vertical-align: top;
+  }
+  .oh-tablewrap tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+  .oh-tablewrap thead th {
+    color: var(--ah-ink);
+    font-weight: 600;
+    background: var(--ah-bg);
+    border-bottom: 1px solid var(--ah-line);
+  }
+  .oh-tablewrap thead td {
+    background: var(--ah-bg);
+    border-bottom: 1px solid var(--ah-line);
+  }
+  .oh-tablewrap tbody th {
+    color: var(--ah-ink);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .oh-tablewrap .oh-us {
+    background: var(--ah-accent-soft);
+    color: var(--ah-ink);
+  }
+  .oh-small {
+    font-weight: 400;
+    font-size: var(--ah-size-meta);
+  }
+  .oh-notes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 1.25rem;
+  }
+  .oh-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+  .oh-plain {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .oh-plain b {
+    color: var(--ah-ink);
+  }
+  .oh-layers {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .oh-req {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .oh-h3 {
+    margin-top: 0.6rem !important;
+  }
+  .oh-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1rem;
+  }
+  .oh-landing .oh-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--ah-control-line);
+    border-radius: 8px;
+    background: var(--ah-control);
+    color: var(--ah-ink);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .oh-landing .oh-btn:hover {
+    background: var(--ah-control-hover);
+  }
+  .oh-landing .oh-btn-primary {
+    border-color: var(--ah-accent);
+    background: var(--ah-accent);
+    color: var(--ah-on-accent);
+  }
+  .oh-landing .oh-btn-primary:hover {
+    background: var(--ah-accent-hover);
+  }
+  .oh-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--ah-line);
+    color: var(--ah-muted);
+    font-size: var(--ah-size-meta);
+  }
+  .oh-foot p {
+    margin: 0;
+  }
+
+  @media (max-width: 60rem) {
+    .oh-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  /* Starlight puts the hero image first on narrow screens; the headline
+     says what the diagram shows, so it comes first here. */
+  @media (max-width: 50rem) {
+    .hero > .hero-html {
+      order: 2;
+    }
+  }
+  @media (max-width: 45rem) {
+    .oh-grid,
+    .oh-notes,
+    .oh-two {
+      grid-template-columns: 1fr;
+    }
+    .oh-two {
+      gap: 4.5rem;
+    }
+    .oh-landing h2 {
+      font-size: 1.5rem;
+    }
+    .oh-homes {
+      grid-template-columns: 1fr;
+    }
+    .oh-home {
+      grid-template-columns: 1fr 1.4fr;
+      align-items: center;
+    }
+  }
+</style>

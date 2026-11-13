@@ -1,0 +1,42 @@
+/* Starlight on the product's design system. design-system/styles.css
+   (loaded first) defines the --ah-* tokens for light and for
+   [data-theme="dark"], the attribute Starlight's theme switch sets, so one
+   mapping serves both themes. A value the tokens lack is added to the
+   tokens, not here. */
+:root[data-theme] {
+  --sl-font: var(--ah-font);
+  --sl-font-mono: var(--ah-mono);
+
+  --sl-color-accent-low: var(--ah-accent-soft);
+  --sl-color-accent: var(--ah-accent);
+  --sl-color-accent-high: var(--ah-accent-ink);
+  --sl-color-text-accent: var(--ah-accent-ink);
+  --sl-color-text-invert: var(--ah-on-accent);
+
+  --sl-color-white: var(--ah-ink);
+  --sl-color-gray-1: var(--ah-ink-2);
+  --sl-color-gray-2: var(--ah-ink-2);
+  --sl-color-gray-3: var(--ah-muted);
+  --sl-color-gray-4: var(--ah-faint);
+  --sl-color-gray-5: var(--ah-line-strong);
+  --sl-color-gray-6: var(--ah-line);
+  --sl-color-gray-7: var(--ah-sunken);
+  --sl-color-black: var(--ah-surface);
+
+  --sl-color-bg: var(--ah-surface);
+  --sl-color-bg-nav: var(--ah-surface);
+  --sl-color-bg-sidebar: var(--ah-bg);
+  --sl-color-bg-inline-code: var(--ah-sunken);
+  --sl-color-hairline: var(--ah-line);
+  --sl-color-hairline-light: var(--ah-line-soft);
+  --sl-color-hairline-shade: var(--ah-line);
+  --sl-color-backdrop-overlay: var(--ah-scrim);
+}
+
+:root[data-theme='dark'] {
+  --sl-color-text-accent: var(--ah-accent-ink);
+}
+
+.sl-markdown-content table {
+  font-size: var(--sl-text-sm);
+}
