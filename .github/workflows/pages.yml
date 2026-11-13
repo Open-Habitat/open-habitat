@@ -8,6 +8,18 @@ on:
     branches: [main]
     paths:
       - website/**
+      - design-system/styles.css
+      - design-system/tokens/colors.css
+      - design-system/tokens/typography.css
+      - design-system/tokens/spacing.css
+      - design-system/tokens/motion.css
+      - design-system/fonts/instrument-sans-latin.woff2
+      - design-system/fonts/instrument-sans-latin-ext.woff2
+      - design-system/fonts/jetbrains-mono-latin.woff2
+      - design-system/fonts/jetbrains-mono-latin-ext.woff2
+      - design-system/fonts/habitat-composer.woff2
+      - docs/product.md
+      - docs/operations.md
       - .github/workflows/pages.yml
   workflow_dispatch:
 
