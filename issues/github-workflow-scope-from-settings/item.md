@@ -4,7 +4,7 @@ updated: 2026-11-13
 type: feature
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: code-hosts-github-scope
 lane_seq: 1
 ---

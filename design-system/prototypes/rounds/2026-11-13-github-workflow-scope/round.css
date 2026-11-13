@@ -1,0 +1,82 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-round, .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-round, .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* The round's pieces sit in production's card through a display:contents
+   slot, so the card's "* + *" divider is given to them here. */
+.rq-slot { display: contents; }
+.s-card > .rq-slot > .s-row { border-top: 1px solid var(--ah-line-soft); }
+
+/* The token's scopes as chips under the sign-in row's words (A, C). */
+.rq-scopes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.rq-scopes code { font-family: var(--ah-mono); font-size: 0.95em; }
+
+/* A: the workflow row's leading mark takes the letter tile's place. */
+.rq-wf-icon {
+  display: inline-grid; place-items: center; width: 32px; height: 32px;
+  border-radius: var(--ah-r-md); background: var(--ah-sunken, var(--ah-bg)); color: var(--ah-ink-2);
+}
+.rq-wf-row .s-val, .rq-list-wf .s-val { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--ah-s2); }
+
+/* B: every scope in plain words inside the GitHub row. */
+.rq-list { grid-column: 2 / -1; display: flex; flex-direction: column; gap: var(--ah-s2); min-width: 0; }
+.rq-list-h { margin: 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink-2); }
+.rq-list-items { margin: 0; padding: 0; list-style: none; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); }
+.rq-list-items li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--ah-s3); align-items: center; padding: 6px var(--ah-s3); }
+.rq-list-items li + li { border-top: 1px solid var(--ah-line-soft); }
+.rq-list-items li > svg { color: var(--ah-ok, var(--ah-ink-2)); }
+.rq-list-items li[data-refused] > svg { color: var(--ah-muted); }
+.rq-list code, .rq-gh-scopes code { font-family: var(--ah-mono); font-size: 0.92em; color: var(--ah-ink-2); }
+.rq-list-wf {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ah-s2) var(--ah-s4); align-items: center;
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken, transparent);
+}
+@media (max-width: 600px) {
+  .rq-list-wf, .rq-list-items li { grid-template-columns: 1fr; }
+  .rq-list-items li { grid-template-columns: auto 1fr; }
+  .rq-list-items li > .s-desc { grid-column: 2; }
+  .rq-list-wf .s-val, .rq-wf-row .s-val { justify-content: flex-start; }
+}
+
+/* C: production's Reconnect is the dialog's opener here. */
+.variant-2 [data-testid="github-reconnect"] { display: none; }
+
+/* The github.com stand-in. */
+.rq-gh h2, .rq-gh [slot="title"] { display: flex; align-items: center; gap: var(--ah-s2); }
+.rq-gh-scopes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.rq-gh-scopes li { display: flex; flex-wrap: wrap; gap: 4px var(--ah-s2); }
+.rq-gh-scopes li.rq-gh-new { font-weight: 600; }
+
+/* C: the checkbox's explanation under its label, not run on after it. */
+[data-testid="c-dialog"] .ah-checkbox small { display: block; margin-top: 4px; color: var(--ah-ink-2); }
