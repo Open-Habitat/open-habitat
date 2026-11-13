@@ -3,6 +3,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -15,14 +16,32 @@ generator = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(generator)
 
 
+# `source "$repo/scripts/x.sh"` or `source "$(dirname "$0")/x.sh"`.
+SOURCED = re.compile(r'^\s*(?:source|\.)\s+"?(?:\$repo/scripts/|\$\(dirname "\$0"\)/)([\w.-]+\.sh)"?', re.M)
+
+
+def copy_with_sourced(names, scripts):
+    """Copy entry scripts and, transitively, the helpers they source, so a new
+    helper does not need a hand-kept list here."""
+    pending = list(names)
+    while pending:
+        name = pending.pop()
+        if (scripts / name).exists():
+            continue
+        source = Path(__file__).with_name(name)
+        shutil.copy2(source, scripts / name)
+        if name.endswith(".sh"):
+            pending += SOURCED.findall(source.read_text())
+
+
 class ReferenceTest(unittest.TestCase):
     def test_fast_entrypoints_allow_reference_drift(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             scripts = root / "scripts"
             scripts.mkdir()
-            for name in ("test-focused.sh", "test-web-fast.sh", "generate-ui-reference.py"):
-                shutil.copy2(Path(__file__).with_name(name), scripts / name)
+            copy_with_sourced(("test-focused.sh", "test-web-fast.sh", "generate-ui-reference.py"), scripts)
+            self.assertTrue((scripts / "scratch.sh").exists())
             src = root / "web/src/app"
             src.mkdir(parents=True)
             for name in ("settingsIndex.ts", "settingsRoute.ts"):
