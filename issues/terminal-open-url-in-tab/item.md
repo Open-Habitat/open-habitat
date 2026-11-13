@@ -2,12 +2,16 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: terminal
 lane_seq: 4
 collision: [web/src/components/Terminal.tsx]
+closed: 2026-11-13
+commits:
+- hash: f29e0a0e
+  summary: browser terminal lane
 ---
 
 # Terminal: a program that opens a URL opens it in a tab next to Habitat
