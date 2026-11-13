@@ -2,13 +2,16 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed during a release upgrade, 13.11.2026
 source_ref: taskfleet:01m79ydxsvqmbx75ddb0y073hf/observed:daemon-server-failed-reason-dropped
 originating_run: 01m79ydxsvqmbx75ddb0y073hf
 originating_run_kind: spinoff
+lane: daemon-startup
+lane_seq: 1
+preparation: ready
 ---
 
 # A daemon that exits with server_failed at startup leaves no reason in the journal
@@ -45,3 +48,15 @@ detail code for each refusal `ServeHTTP` can return, logged next to
 `ServeHTTP` returns quickly from `transport.NewServer`, `PiDevice.validate`,
 `transport.ServeAgent` and `Server.ServeMux` (the last two re-check the
 activated listeners and return `denied`). Which one refuses here is unknown.
+
+## Agreed next action (13.11.2026)
+
+One person's daemon on our test installation fails this way on two
+consecutive test releases (journal 13.11.: `service_ready`, then
+`service_failed reason=server_failed` ~0.15 s later, five times, start limit),
+and the test-release watcher is stopped at `verify` because of it. Keeping the
+test server working is the agent's own authority, so this is fixed without a
+separate decision: first make the refusal reason visible as a fixed,
+enumerated detail code (no paths, home contents or native error text), then
+find and fix the actual cause in that person's state or in the product, and
+get pilot verify green again.
