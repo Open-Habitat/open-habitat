@@ -17,7 +17,7 @@ In the conversation rail, one conversation kept jumping between the
 "Your turn" (Sinun vuorosi) and "Running" (Käynnissä) sections, many times
 in quick succession, so the rail flickered. The likely conversation had
 finished its turn and still had background processes running (the rail
-showed its background-process marker). Seen on Trude 13.11.2026 ~14.38,
+showed its background-process marker). Seen on one installation 13.11.2026 ~14.38,
 pilot.29.
 
 ## Expected
