@@ -4,7 +4,7 @@ updated: 2026-11-13
 type: feature
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: website
 lane_seq: 1
 ---
@@ -36,7 +36,7 @@ GitHub Pages at `open-habitat.ai` once its preview has been approved.
 
 ## Next action
 
-Round 2 applied Jari's verdict on round 1 (no comparison table, maturity as
-version 0.1.0 pilot pre-releases); see the Round 2 section of
-[result.md](result.md). Jari judges the new preview; publishing waits for
-that verdict.
+Jari approved publishing on 13.11.2026: go live unannounced and fix live.
+Automatic deployment is enabled; DNS/Pages go-live is being done in the
+infrastructure repository. Keep crawler blocking until announcement; see
+[result.md](result.md).

@@ -1,12 +1,13 @@
 # Result: website first version
 
 The first version is in `website/` and builds with `npm ci && npm run build`
-(checked from a clean clone). It is **not live**: `.github/workflows/pages.yml`
-runs only on `workflow_dispatch`, only in `Open-Habitat/open-habitat`, and
-crawlers are kept out. The issue stays `status: open` with
-`preparation: pending`; it now waits for Jari's verdict on the preview
-(screenshots and a built copy were handed to the conductor outside the
-repository).
+(checked from a clean clone). Jari approved publishing on 13.11.2026:
+the site goes live unannounced and is fixed live. `.github/workflows/pages.yml`
+now builds and deploys on pushes to `main` changing `website/**` or the
+workflow itself, and still supports `workflow_dispatch`. The repository guard
+remains `Open-Habitat/open-habitat`, and crawlers are kept out. The issue stays
+`status: open` with `preparation: ready`. DNS/Pages go-live is being done in
+the infrastructure repository; it is not verified by this change.
 
 ## What was built
 
@@ -85,13 +86,22 @@ repository).
 5. Root `README.md` and `docs/index.md` do not link to the site yet; that is
    left for `readme-first-draft`.
 
-## Going live (not done here)
+## Publishing and announcement
 
-1. Jari approves the preview.
-2. In `website/launch.mjs`, set `indexable = true`.
-3. Add the push trigger shown in the comment of `.github/workflows/pages.yml`.
-4. Repository Pages settings (source: GitHub Actions, custom domain) and DNS
-   in the infrastructure repository; neither was touched.
+Publishing is approved and automatic deployment is enabled. Repository Pages
+settings (source: GitHub Actions, custom domain) and DNS are being handled in
+the infrastructure repository; neither was touched here.
+
+Keep `indexable = false` in `website/launch.mjs` until announcement. At
+announcement, set it to `true` there to remove both the `noindex, nofollow`
+meta tags and the `/robots.txt` block, then deploy.
+
+Validation for the deployment change: `cd website && npm ci && npm run build`
+and Python `yaml.safe_load` passed. Focused self-review verified the push
+filters, manual dispatch and repository guard; all 13 generated HTML pages
+still contain `noindex, nofollow`, and built `/robots.txt` disallows `/`.
+The build reports warnings for the empty i18n collection and missing 404
+content entry; internal link validation passes.
 
 ## Round 2 (Jari's verdict 13.11.2026)
 

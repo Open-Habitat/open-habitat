@@ -2,20 +2,13 @@ name: Website
 
 # Publishes the website (website/, Astro + Starlight) to GitHub Pages at
 # https://open-habitat.ai. The CNAME file in website/public/ sets the custom
-# domain. Deployment is manual until Jari approves the preview; then add the
-# push trigger below:
-#
-#   push:
-#     branches: [main]
-#     paths:
-#       - website/**
-#       - design-system/tokens/**
-#       - design-system/fonts/**
-#       - design-system/styles.css
-#       - docs/product.md
-#       - docs/operations.md
-#       - .github/workflows/pages.yml
+# domain.
 on:
+  push:
+    branches: [main]
+    paths:
+      - website/**
+      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions:
