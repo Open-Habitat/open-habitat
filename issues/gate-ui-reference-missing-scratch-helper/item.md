@@ -2,13 +2,14 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: untriaged
+status: fixed
 priority: high
 provenance: other
 provenance_detail: deterministic gate failure observed by the pilot.29 release worker
 source_ref: taskfleet:01m79j3eba3ds7pb39q5pe4zfa/gate-failure:test_fast_entrypoints_allow_reference_drift
 originating_run: 01m79j3eba3ds7pb39q5pe4zfa
 originating_run_kind: spinoff
+closed: 2026-11-13
 ---
 
 # Clean gate fails: test-ui-reference copies test-focused.sh without the scratch.sh it now sources

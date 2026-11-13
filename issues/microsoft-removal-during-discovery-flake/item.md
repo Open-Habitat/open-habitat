@@ -2,13 +2,14 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: release gate flake observed by the pilot.29 release worker
 source_ref: taskfleet:01m79j3eba3ds7pb39q5pe4zfa/gate-flake:TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished
 originating_run: 01m79j3eba3ds7pb39q5pe4zfa
 originating_run_kind: spinoff
+closed: 2026-11-13
 ---
 
 # Microsoft account removal during files_discovery intermittently answers 503 (gate flake)
