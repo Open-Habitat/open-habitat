@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import {
   type ConversationStore,
+  heldStatus,
   useConversationMetadata,
 } from "../app/conversationStore";
 import type { RecapRead } from "../app/conversations";
@@ -349,19 +350,20 @@ export function HomeWorkspaces({
 }) {
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
-  conversations = conversations.map((c) => ({
-    ...c,
-    command: metadata.staleStatuses.has(c.id)
-      ? c.command
-      : (metadata.statuses.get(c.id)?.state ?? c.command),
-    runActive: metadata.staleStatuses.has(c.id)
-      ? c.runActive
-      : (metadata.statuses.get(c.id)?.run_active ?? c.runActive),
-    pendingQuestion:
-      !metadata.staleStatuses.has(c.id) &&
-      (!!metadata.statuses.get(c.id)?.pending_question || !!c.pendingQuestion),
-    attention: metadata.attention.get(c.id) ?? c.attention,
-  }));
+  conversations = conversations.map((c) => {
+    // An invalidated status newer than the snapshot is still the newest
+    // observation of the turn (heldStatus).
+    const status = heldStatus(metadata, c.id);
+    const lost = !status && metadata.staleStatuses.has(c.id);
+    return {
+      ...c,
+      command: status?.state ?? c.command,
+      runActive: status?.run_active ?? c.runActive,
+      pendingQuestion:
+        !lost && (!!status?.pending_question || !!c.pendingQuestion),
+      attention: metadata.attention.get(c.id) ?? c.attention,
+    };
+  });
   const sections = homeSections(workspaces, conversations);
   const waiting = conversations.filter(
     (c) => c.attention === "new" || agentPresentation(c).activity === "waiting",

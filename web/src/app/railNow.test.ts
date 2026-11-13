@@ -146,6 +146,117 @@ describe("rail Nyt groups", () => {
       store.dispose();
     });
   }
+  it("keeps a turn's section while invalidations outrun the snapshot", () => {
+    // A conversation the person is not looking at, its reply read, with a
+    // process it left running in an earlier turn. Its next turn's session
+    // writes invalidate the status several times a second; the snapshot
+    // read takes seconds on the live route. Each invalidation used to fall
+    // back to the older snapshot and move the row between Käynnissä and
+    // Sinun vuorosi (rail-section-flicker-background).
+    const id = "pi:33333333-3333-4333-8333-333333333333";
+    const life = "44444444-4444-4444-8444-444444444444";
+    const store = new ConversationStore(
+      "person",
+      new ConversationPager(),
+      50,
+      () => new Promise<Status>(() => {}),
+    );
+    const status = (active: boolean, sequence: number) =>
+      ({
+        agent_id: id,
+        run_active: active,
+        state: active ? "accepted" : "idle",
+        journal_cursor: `ev1:${life}:${sequence}`,
+      }) as Status;
+    const idle = agent(id, {
+      run_active: false,
+      process: "daemon_managed_live",
+      last_reply: { id: "reply", at: "2026-11-13T00:00:00Z" },
+      waiting_on: [
+        {
+          process_id: "proc_0001",
+          name: "file-server",
+          kind: "process",
+          run_ids: [],
+          before_turn: true,
+        },
+      ],
+    });
+    const snapshot = {
+      agents: [idle],
+      workspaces: visible,
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${life}:10`,
+    } as Snapshot;
+    store.applySnapshot(snapshot);
+    store.applyStatus(id, status(false, 10));
+    const section = () => {
+      const rail = railNow({
+        agents: snapshot.agents,
+        snapshot,
+        workspaces: visible,
+        metadata: {
+          ...store.readMetadata(),
+          attention: new Map([[id, "seen"]]),
+        },
+        daemonSessions: [],
+        phase: "authenticated",
+      });
+      return ids(rail.yours).includes(id)
+        ? "yours"
+        : ids(rail.running).includes(id)
+          ? "running"
+          : "quiet";
+    };
+    let sequence = 10;
+    const invalidate = () => {
+      sequence++;
+      store.routeEvent({
+        resource: { agent_id: id },
+        kind: "snapshot.invalidated",
+        payload: { reason: "native_changed" },
+        cursor: `ev1:${life}:${sequence}`,
+        server_instance_id: life,
+        sequence,
+        event_id: `invalidated-${sequence}`,
+      } as never);
+    };
+    expect(section()).toBe("yours");
+    // The turn starts; the snapshot still shows the idle conversation.
+    store.applyStatus(id, status(true, 12));
+    sequence = 12;
+    const during: string[] = [];
+    for (let n = 0; n < 4; n++) {
+      invalidate();
+      expect(store.statusStale(id)).toBe(true);
+      during.push(section());
+      store.applyStatus(id, status(true, sequence));
+      during.push(section());
+    }
+    expect(during).toEqual(Array(8).fill("running"));
+    // A snapshot read during the turn, then the turn ends.
+    snapshot.agents = [{ ...idle, run_active: true, waiting_on: undefined }];
+    snapshot.event_cursor = `ev1:${life}:${sequence}`;
+    store.applySnapshot(snapshot);
+    expect(section()).toBe("running");
+    store.applyStatus(id, status(false, sequence + 1));
+    sequence++;
+    const after: string[] = [];
+    for (let n = 0; n < 4; n++) {
+      invalidate();
+      after.push(section());
+      store.applyStatus(id, status(false, sequence));
+      after.push(section());
+    }
+    expect(after).toEqual(Array(8).fill("yours"));
+    // The snapshot read after the turn's end agrees.
+    snapshot.agents = [idle];
+    snapshot.event_cursor = `ev1:${life}:${sequence}`;
+    store.applySnapshot(snapshot);
+    invalidate();
+    expect(section()).toBe("yours");
+    store.dispose();
+  });
   it("lists every other conversation in Hiljaiset, newest first, across process stops", () => {
     const finished = Array.from({ length: 7 }, (_, n) =>
       agent(`quiet-${n}`, {

@@ -12,6 +12,7 @@ import { statusText } from "../text/status";
 import { agentTitle } from "./agentTitle";
 import {
   type ConversationMetadata,
+  heldStatus,
   unreadableHistory,
 } from "./conversationStore";
 import type { Session } from "./conversations";
@@ -94,7 +95,9 @@ export function railNow({
     if (!w || a.archive === "archived" || current?.archive === "archived")
       continue;
     const status = metadata.statuses.get(a.agent_id);
-    const fresh = !metadata.staleStatuses.has(a.agent_id);
+    // The newest observation of the turn: an invalidated status still
+    // counts until a snapshot read after it arrives (heldStatus).
+    const turnStatus = heldStatus(metadata, a.agent_id);
     // A worktree conversation started under its place's ID.
     const managed = daemonSessions.some(
       (s) =>
@@ -109,16 +112,14 @@ export function railNow({
     )
       continue;
     const facts = {
-      // An event can invalidate the tab's status before its replacement
-      // arrives. Do not let that cached turn hide actions on a settled row.
-      runActive: (fresh ? status?.run_active : undefined) ?? a.run_active,
+      runActive: turnStatus?.run_active ?? a.run_active,
       waitingOn: a.waiting_on,
       process: managed ? "daemon_managed_live" : a.process,
       control: managed ? "writable" : a.control,
-      command: status && fresh ? status.state : undefined,
+      command: turnStatus?.state,
       attention: metadata.attention.get(a.agent_id),
       pendingQuestion:
-        !!a.pending_question || (status?.pending_question != null && fresh),
+        !!a.pending_question || turnStatus?.pending_question != null,
       intentionallyClosed:
         phase !== "stale" && a.process === "confirmed_exited",
     };

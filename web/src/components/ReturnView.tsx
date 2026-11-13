@@ -1,5 +1,6 @@
 import {
   type ConversationStore,
+  heldStatus,
   useConversationMetadata,
 } from "../app/conversationStore";
 import { liveText } from "../i18n";
@@ -169,22 +170,23 @@ export function ReturnView({
   workspaceName?: string;
 }) {
   const metadata = useConversationMetadata(store);
-  const decorated = conversations.map((conversation) => ({
-    ...conversation,
-    command: metadata.staleStatuses.has(conversation.id)
-      ? undefined
-      : (metadata.statuses.get(conversation.id)?.state ?? conversation.command),
-    runActive: metadata.staleStatuses.has(conversation.id)
-      ? undefined
-      : (metadata.statuses.get(conversation.id)?.run_active ??
-        conversation.runActive),
-    pendingQuestion:
-      !metadata.staleStatuses.has(conversation.id) &&
-      (!!metadata.statuses.get(conversation.id)?.pending_question ||
-        conversation.pendingQuestion),
-    attention:
-      metadata.attention.get(conversation.id) ?? conversation.attention,
-  }));
+  const decorated = conversations.map((conversation) => {
+    // An invalidated status newer than the snapshot is still the newest
+    // observation of the turn (heldStatus); an older one is unknown.
+    const status = heldStatus(metadata, conversation.id);
+    const lost = !status && metadata.staleStatuses.has(conversation.id);
+    return {
+      ...conversation,
+      command: lost ? undefined : (status?.state ?? conversation.command),
+      runActive: lost
+        ? undefined
+        : (status?.run_active ?? conversation.runActive),
+      pendingQuestion:
+        !lost && (!!status?.pending_question || conversation.pendingQuestion),
+      attention:
+        metadata.attention.get(conversation.id) ?? conversation.attention,
+    };
+  });
   // Snapshot order is catalog order, not a last-opened timestamp. Keep it
   // stable rather than inventing recency, and never drop urgent rows for a cap.
   const attention = decorated.filter(

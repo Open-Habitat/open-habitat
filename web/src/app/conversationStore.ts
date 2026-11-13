@@ -88,7 +88,41 @@ type Metadata = Readonly<{
   staleStatuses: ReadonlySet<string>;
   historyReadFailures: ReadonlySet<string>;
   attention: ReadonlyMap<string, "new" | "seen">;
+  /** The journal position of the snapshot behind agents. */
+  snapshotCursor?: string;
 }>;
+
+const journalPosition = (cursor: string | undefined) => {
+  const match = /^ev1:([0-9a-fA-F-]{36}):(0|[1-9][0-9]*)$/.exec(cursor ?? "");
+  const sequence = Number(match?.[2]);
+  return match && Number.isSafeInteger(sequence)
+    ? { instance: match[1], sequence }
+    : undefined;
+};
+/**
+ * The conversation's status when it is the newest observation of its turn
+ * this tab holds, else undefined and the snapshot's facts apply. A status the
+ * journal has invalidated still counts while it was read at or after the
+ * snapshot's position in the same daemon life: on the live route a snapshot
+ * read takes seconds, while a running turn invalidates the status several
+ * times a second. Falling back to the older snapshot on each invalidation
+ * moved a conversation whose turn began or ended between the rail's
+ * Käynnissä and Sinun vuorosi until the snapshot caught up
+ * (rail-section-flicker-background). An invalidated status yields to a
+ * snapshot read after it, so a cached turn cannot hide a settled one.
+ */
+export function heldStatus(metadata: Metadata, id: string): Status | undefined {
+  const status = metadata.statuses.get(id);
+  if (!status || !metadata.staleStatuses.has(id)) return status;
+  const read = journalPosition(status.journal_cursor);
+  const snapshot = journalPosition(metadata.snapshotCursor);
+  return read &&
+    snapshot &&
+    read.instance === snapshot.instance &&
+    read.sequence >= snapshot.sequence
+    ? status
+    : undefined;
+}
 
 /** One tab's native read model. A missing window never implies an empty native history. */
 export class ConversationStore {
@@ -477,6 +511,7 @@ export class ConversationStore {
     this.metadata = {
       ...this.metadata,
       agents: new Map(snapshot.agents.map((agent) => [agent.agent_id, agent])),
+      snapshotCursor: snapshot.event_cursor,
     };
     this.noticeReplies(snapshot);
     this.metaListeners.forEach((listener) => {
