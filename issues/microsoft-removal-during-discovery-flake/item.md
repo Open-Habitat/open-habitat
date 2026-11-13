@@ -28,3 +28,7 @@ Rate, measured alone on idle Birch with `go test -race -run '^TestMicrosoftRemov
 So it appears with the readable-names work (`d5c7d7203`..`f02df75d3`). `microsoft.Remove` first resolves the server via `microsoftServerOf(env, address)` and returns its error unchanged; a plausible cause is that this read of Pi's `mcp.json` (or the token-cache ownership check) races with the in-flight login's writer and returns an error that the handler maps to `native_unavailable`. Not confirmed.
 
 Product impact if the race is real: removing a Microsoft account at the instant a login is publishing could fail once with "request could not be completed"; a retry would succeed. Gate impact: the clean gate fails roughly one run in 150 on this test alone.
+
+## Fixed
+
+Covered by `5122e58f3` (gate-failure fix run `01m79mf2ybkz1qpjbr18wj5ng3`, 13.11.2026); the pilot.29 clean gate on `c61479f15` passed.

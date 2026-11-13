@@ -27,3 +27,7 @@ AssertionError: 1 != 0 : .../scripts/test-focused.sh: line 32: .../scripts/scrat
 Fix (verified locally, not committed): add `"scratch.sh"` to the copied names on line 24 of `scripts/test-ui-reference.py`; the test then passes. Every other gate check after it passed when run individually at that commit.
 
 This blocks the v0.1.0-pilot.29 release: the release worker stopped at the gate.
+
+## Fixed
+
+Covered by `480829f81` (gate-failure fix run `01m79mf2ybkz1qpjbr18wj5ng3`, 13.11.2026); the pilot.29 clean gate on `c61479f15` passed.
