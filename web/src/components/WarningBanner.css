@@ -6,7 +6,7 @@
   align-items: flex-start;
   gap: var(--ah-s2) var(--ah-s3);
   padding: 10px 12px;
-  border: 1px solid var(--ah-line);
+  border: 1px solid var(--ah-control-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-surface-2);
   color: var(--ah-ink-2);
@@ -73,7 +73,7 @@
   color: var(--ah-err);
 }
 .ah-warning-success {
-  border-color: var(--ah-accent-line);
+  border-color: var(--ah-ok-line);
   background: var(--ah-ok-soft);
   color: var(--ah-ok);
 }

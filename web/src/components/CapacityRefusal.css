@@ -13,7 +13,7 @@
   align-items: center;
   gap: var(--ah-s1);
   padding: 2px 10px;
-  border: 1px solid var(--ah-line);
+  border: 1px solid var(--ah-control-line);
   border-radius: 999px;
   background: var(--ah-surface);
   color: var(--ah-ink);

@@ -126,6 +126,16 @@ function PrimitiveFixture() {
         description="Snapshot on vanhentunut. Sisältö säilyy luettavana."
         tone="warning"
       />
+      <InlineNotice
+        title="Agentti kysyy"
+        description="Vastaa, niin agentti jatkaa."
+        tone="info"
+      />
+      <InlineNotice
+        title="Lähetys epäonnistui"
+        description="Luonnos säilyi. Yritä uudelleen."
+        tone="danger"
+      />
     </main>
   );
 }

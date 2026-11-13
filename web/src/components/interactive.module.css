@@ -39,7 +39,8 @@
 .surface:is(:disabled, [data-disabled]) {
   cursor: not-allowed;
   background: var(--ah-disabled-bg);
-  border-color: var(--ah-line-strong);
+  /* Quieter than an enabled control's line, never stronger. */
+  border-color: var(--ah-disabled-line);
   color: var(--ah-disabled-fg);
 }
 .surface[data-pending] {

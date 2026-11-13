@@ -262,7 +262,7 @@
   width: 100%;
   height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--ah-line);
+  border: 1px solid var(--ah-control-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-surface);
   color: var(--ah-ink);
@@ -492,6 +492,21 @@ code,
   box-shadow: inset 0 0 0 4px var(--ah-surface);
   background: var(--ah-accent);
 }
+/* An unavailable choice does not look like one that can be changed: grey box
+   on the disabled fill, and the label in the disabled colour. */
+.ah-checkbox[data-disabled],
+.ah-radio-group label[data-disabled] {
+  color: var(--ah-disabled-fg);
+  cursor: not-allowed;
+}
+.ah-checkbox[data-disabled] .ah-checkbox-box,
+.ah-radio-group label[data-disabled] .ah-radio-dot {
+  border-color: var(--ah-disabled-fg);
+  background: var(--ah-disabled-bg);
+}
+.ah-radio-group label[data-disabled][data-selected] .ah-radio-dot {
+  background: var(--ah-disabled-fg);
+}
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible,
@@ -511,10 +526,10 @@ select:focus-visible,
 :is(button, a, summary, input, textarea, select, [tabindex]) {
   scroll-margin: var(--ah-focus-room);
 }
-/* Route headings receive focus for screen readers but cannot be tabbed to.
-   Chromium can classify initial programmatic focus as :focus-visible. */
-h1[tabindex="-1"]:focus,
-h2.ah-landing-say[tabindex="-1"]:focus {
+/* Route and section headings receive focus for screen readers but cannot be
+   tabbed to, so a ring on them only makes a heading look like a field.
+   Chromium can classify programmatic focus as :focus-visible. */
+:is(h1, h2, h3)[tabindex="-1"]:focus {
   outline: none;
 }
 .ah-overlay {
@@ -617,7 +632,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   background: var(--ah-accent-soft);
 }
 .ah-notice.ah-tone-warning {
-  border-color: var(--ah-line);
+  border-color: var(--ah-turn-line);
   background: var(--ah-surface-2);
 }
 .ah-notice.ah-tone-danger {
@@ -641,6 +656,8 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   bottom: var(--ah-s5);
   z-index: 60;
   padding: var(--ah-s4);
+  border: 1px solid var(--ah-control-line);
+  border-radius: var(--ah-r-md);
   background: var(--ah-surface);
   box-shadow: var(--ah-shadow-float);
 }

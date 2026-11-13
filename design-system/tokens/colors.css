@@ -1,6 +1,16 @@
 /* Värit. Vaalea on oletus, tumma on [data-theme="dark"].
    Korostus #2b7f8c on rauhallinen, ei hälyttävä. Punainen on varattu virheelle. */
 
+/* Boundaries (WCAG 1.4.11): a line that tells a control or a state-carrying
+   box from what is around it (--ah-control-line, --ah-line-strong,
+   --ah-current-line and the tone lines --ah-accent-line, --ah-ok-line,
+   --ah-turn-line, --ah-err-line) reaches 3:1 against the hardest background
+   it can sit on: --ah-rail in the light theme, --ah-current in the dark one.
+   The surface fills alone stay near 1:1 by design, so the line carries the
+   boundary. --ah-line and --ah-line-soft are separators, not boundaries, and
+   stay quiet. A disabled control is outside the rule; --ah-disabled-line
+   keeps it from standing out more than an enabled one. */
+
 :root,
 [data-theme="light"] {
   --ah-syntax-keyword: #71419b;
@@ -44,7 +54,7 @@
   --ah-accent: #2b7f8c;
   --ah-accent-ink: #1d5f69;
   --ah-accent-soft: #e6f1f3;
-  --ah-accent-line: #cfe3e6;
+  --ah-accent-line: #609098;
   --ah-on-accent: #ffffff;
 
   --ah-ok: #2f7a55;
@@ -53,8 +63,8 @@
   --ah-turn: #b8740b;
   --ah-err: #a3412b;
   --ah-err-soft: #fdf1ee;
-  --ah-err-line: #f3d7d0;
-  --ah-line-strong: #c9d0d6;
+  --ah-err-line: #c17868;
+  --ah-line-strong: #858c93;
   --ah-accent-hover: #246f7b;
   --ah-accent-press: #1d5f69;
   --ah-on-err: #ffffff;
@@ -65,7 +75,7 @@
   --ah-surface-hover: #f2f4f6;
   --ah-surface-press: #e9edf0;
   --ah-current: #ffffff;
-  --ah-current-line: #d5dbe0;
+  --ah-current-line: #858c93;
   --ah-disabled-bg: #eef0f3;
   --ah-disabled-fg: #61676f;
   --ah-focus: #2b7f8c;
@@ -75,7 +85,10 @@
   --ah-control: rgba(16, 24, 40, 0.06);
   --ah-control-hover: rgba(16, 24, 40, 0.1);
   --ah-control-press: rgba(16, 24, 40, 0.14);
-  --ah-control-line: #b7c0c8;
+  --ah-control-line: #858c93;
+  --ah-ok-line: #5c977a;
+  --ah-turn-line: #a9854e;
+  --ah-disabled-line: #e2e6e9;
 }
 
 [data-theme="dark"] {
@@ -112,7 +125,7 @@
   --ah-accent: #4fa6b4;
   --ah-accent-ink: #9fd4dd;
   --ah-accent-soft: #173137;
-  --ah-accent-line: #2c4a52;
+  --ah-accent-line: #40808b;
   --ah-on-accent: #0f1417;
 
   --ah-ok: #8fcfa8;
@@ -120,8 +133,8 @@
   --ah-turn: #eab04e;
   --ah-err: #e8a08a;
   --ah-err-soft: #261c1b;
-  --ah-err-line: #4a2e28;
-  --ah-line-strong: #3a424a;
+  --ah-err-line: #976558;
+  --ah-line-strong: #6b737a;
   --ah-accent-hover: #63b4c1;
   --ah-accent-press: #7cc3cf;
   --ah-on-err: #1b1f23;
@@ -132,7 +145,7 @@
   --ah-surface-hover: #22272c;
   --ah-surface-press: #2a3036;
   --ah-current: #23282e;
-  --ah-current-line: #353c44;
+  --ah-current-line: #6b737a;
   --ah-disabled-bg: #1f2328;
   --ah-disabled-fg: #98a0a8;
   --ah-focus: #4fa6b4;
@@ -141,5 +154,8 @@
   --ah-control: rgba(255, 255, 255, 0.09);
   --ah-control-hover: rgba(255, 255, 255, 0.13);
   --ah-control-press: rgba(255, 255, 255, 0.17);
-  --ah-control-line: #4b545d;
+  --ah-control-line: #6b737a;
+  --ah-ok-line: #547a63;
+  --ah-turn-line: #8d6c32;
+  --ah-disabled-line: #2a3036;
 }

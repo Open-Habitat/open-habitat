@@ -7,7 +7,10 @@
   box-sizing: border-box;
   min-height: var(--b-h);
   padding: 0 var(--b-pad);
-  border: 1px solid transparent;
+  /* The variant's --i-border is the line drawn; a plain transparent border
+     here would override surface's border-color and leave secondary and
+     danger-subtle without a boundary. */
+  border: 1px solid var(--i-border, transparent);
   border-radius: var(--ah-r-md);
   font: inherit;
   font-size: var(--b-font);
@@ -46,7 +49,7 @@
 }
 .secondary {
   --i-bg: var(--ah-surface);
-  --i-border: var(--ah-line-strong);
+  --i-border: var(--ah-control-line);
   --i-hover: var(--ah-surface-hover);
   --i-pressed: var(--ah-surface-press);
 }
@@ -154,7 +157,7 @@ span.button {
   min-width: 0;
   margin: 0;
   padding: 2px;
-  border: 1px solid var(--ah-line);
+  border: 1px solid var(--ah-control-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-sunken);
 }
@@ -182,7 +185,8 @@ span.button {
   --i-bg: var(--ah-surface);
   --i-fg: var(--ah-ink);
   --i-hover: var(--ah-surface);
-  box-shadow: 0 0 0 1px var(--ah-line);
+  /* The selected option is told by its edge, not by the surface fill alone. */
+  box-shadow: 0 0 0 1px var(--ah-control-line);
   font-weight: 600;
 }
 .segment.icon {
@@ -289,6 +293,13 @@ span.button {
     padding: 2px var(--ah-s2);
   }
 }
+/* The current page among navigation links is told by an edge as well as the
+   --ah-current fill, which is near 1:1 against the rail. */
+.nav[aria-current="page"],
+.agent[aria-current="page"],
+.home[aria-current="page"] {
+  box-shadow: inset 0 0 0 1px var(--ah-current-line);
+}
 .return {
   display: block;
   min-height: 62px;
@@ -343,7 +354,7 @@ span.button {
   width: 100%;
   min-height: var(--ah-touch);
   padding: var(--ah-s3) var(--ah-s4);
-  border: 1px solid var(--ah-line);
+  border: 1px solid var(--ah-control-line);
   border-radius: var(--ah-r-md);
   --i-bg: var(--ah-surface);
   --i-hover: var(--ah-surface);
