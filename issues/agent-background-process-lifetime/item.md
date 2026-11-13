@@ -2,12 +2,13 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: agent-guide
 lane_seq: 1
 collision: [internal/daemon/host-context.md]
+closed: 2026-11-13
 ---
 
 # The agent cannot say whether its background processes survive a new conversation

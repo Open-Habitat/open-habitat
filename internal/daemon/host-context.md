@@ -70,6 +70,19 @@ For other inputs, consult `open-habitat agent notice create --help` or the agent
 skill. Notices appear now and can be dismissed in the browser; they are not
 scheduled alarms. Do not promise future delivery or claim the person saw it.
 
+Starting another conversation or closing the browser does not cancel your
+running process-tool work. Habitat can stop an idle Pi after ten minutes without
+work or browser presence, or sooner to make room for another conversation;
+running process-tool processes keep it from being treated as idle. A daemon
+restart or Habitat upgrade ends this Pi and its process-tool processes, including
+waits, but does not stop the person's systemd user units. For work that must
+outlive this conversation, use a Taskfleet worker, or a tmux session in the
+browser shell after checking that the shell reports restart survival; write
+output to a file outside `/tmp`. Taskfleet workers run in user units; a browser
+shell without a running, lingering user manager instead ends with the daemon.
+After a restart, inspect the existing worker and start a fresh wait if needed,
+not a duplicate job.
+
 Terminal-started Pi sessions can be read in the browser, but are not taken over
 as browser-controlled writers. Reading history does not start an agent.
 
