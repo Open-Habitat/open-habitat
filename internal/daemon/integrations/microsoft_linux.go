@@ -281,6 +281,11 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 				continue
 			}
 			dir, err := openHomeDir(env.Home, false, splitPath(store+"/"+a)...)
+			if errors.Is(err, os.ErrNotExist) {
+				// An abandoned login's Cancel removed its staging after
+				// the listing.
+				continue
+			}
 			if err != nil {
 				unix.Close(mcp)
 				return nil, err
@@ -754,6 +759,10 @@ func (l *microsoftLogin) Cancel() {
 		l.staging = ""
 	}
 }
+
+// microsoftRemoveFiles empties a store. A file already gone is removed: an
+// abandoned login's Cancel empties its staging while a removal of the same
+// account empties it too, and neither may fail on the other's work.
 func microsoftRemoveFiles(env Env, rel string) error {
 	names, fd, err := listHomeDir(env.Home, rel)
 	if err != nil || fd < 0 {
@@ -761,7 +770,7 @@ func microsoftRemoveFiles(env Env, rel string) error {
 	}
 	defer unix.Close(fd)
 	for _, n := range names {
-		if err := unix.Unlinkat(fd, n, 0); err != nil {
+		if err := unix.Unlinkat(fd, n, 0); err != nil && !errors.Is(err, unix.ENOENT) {
 			return err
 		}
 	}

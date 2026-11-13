@@ -64,8 +64,9 @@ func openHomeDir(home string, create bool, components ...string) (int, error) {
 	return fd, nil
 }
 
-// listHomeDir lists up to 256 names in home/rel. A missing directory is an
-// empty list with dir -1; otherwise the caller closes dir.
+// listHomeDir lists up to 256 names in home/rel. A missing directory, also one
+// removed while it is read, is an empty list with dir -1; otherwise the caller
+// closes dir.
 func listHomeDir(home, rel string) ([]string, int, error) {
 	dir, err := openHomeDir(home, false, splitPath(rel)...)
 	if errors.Is(err, os.ErrNotExist) {
@@ -83,6 +84,13 @@ func listHomeDir(home, rel string) ([]string, int, error) {
 	f := os.NewFile(uintptr(fd), rel)
 	defer f.Close()
 	names, err := f.Readdirnames(256)
+	// Linux reads a directory removed after it was opened as ENOENT; it is
+	// missing like one never there (an abandoned login's Cancel removes its
+	// staging while a removal lists it).
+	if errors.Is(err, unix.ENOENT) {
+		unix.Close(dir)
+		return nil, -1, nil
+	}
 	if err != nil && !errors.Is(err, io.EOF) {
 		unix.Close(dir)
 		return nil, -1, err
