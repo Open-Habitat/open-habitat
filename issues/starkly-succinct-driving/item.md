@@ -2,7 +2,7 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: pilot.29 clean gate failure (taskfleet run)
@@ -11,6 +11,7 @@ originating_run: 01m79mf2ybkz1qpjbr18wj5ng3
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-13
 ---
 
 # Microsoft removal during an abandoned login fails 503 on its own cleanup race
