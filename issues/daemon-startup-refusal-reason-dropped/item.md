@@ -2,7 +2,7 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed during a release upgrade, 13.11.2026
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: daemon-startup
 lane_seq: 1
 preparation: ready
+closed: 2026-11-13
 ---
 
 # A daemon that exits with server_failed at startup leaves no reason in the journal

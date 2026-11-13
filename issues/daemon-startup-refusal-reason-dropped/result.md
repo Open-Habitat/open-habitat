@@ -77,3 +77,12 @@ findings.
   conversations would degrade more gently, but it changes what a daemon
   promises at startup; not done here and worth a separate decision if this
   recurs.
+
+## Closed 13.11.2026 (conductor)
+
+The installation's runtime tooling was moved to the Pi version the product
+requires, outside this repository. Every person's daemon on the test
+installation then started, and the next test release (product `c8dbbad1`)
+installed and verified. The product part of this issue (the enumerated
+startup detail code) landed in `42b6dbe7`. Catching such runtime drift
+automatically is tracked in the installation's own repository.
