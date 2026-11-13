@@ -35,3 +35,7 @@ the error names the resolved path it looked for.
 
 The agent also said Open Habitat had no "intake key" for it to file this, so
 it proposed filing in Fleetrepo; recorded here instead.
+
+### 2026-11-13 · @jari
+
+Agent text proofread and approved for the pilot release.

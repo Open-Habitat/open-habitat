@@ -1,15 +1,16 @@
 ---
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-13
 type: feature
 reporter: jari
-status: testing
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-12/m365-agent-search
 lane: m365-search
 lane_seq: 1
 preparation: ready
+closed: 2026-11-13
 ---
 
 # Agents search and fetch Microsoft 365 files (read/search tools first)
@@ -32,3 +33,7 @@ fetched; avoid broad greps over cloud folders. Edits go to fetched files
 within the account's level. **Jari proofreads every agent instruction text
 before it reaches the pilots**: put the exact new text in `agent-text.md` in
 this issue for him.
+
+### 2026-11-13 · @jari
+
+Agent text proofread and approved for the pilot release.
