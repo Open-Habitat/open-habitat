@@ -136,7 +136,7 @@ itse, ja poistuu itsestään, kun tila korjaantuu.
 
 ## Sovelluskehys
 
-Sivupalkin Etusivu ja sen yllä palvelimen nimi vievät työtilojen etusivulle ([vedos](drafts/Etusivu.proto.html),
+Sivupalkin Etusivu ja sen yllä palvelimen nimi vievät työtilojen etusivulle ([nykyinen navigaatiovedos](drafts/Navigaatio%20ja%20asetukset.dc.html),
 Jari 14.10.2026, kierros `prototypes/rounds/2026-10-14-katsaukset`, suunta
 Työtilaosiot). Työtila on osion otsikko: nimi, Git-haara ja muuttuneiden
 tiedostojen määrä, valmiiden lukumäärä, uusi keskustelu ja `…`-valikko

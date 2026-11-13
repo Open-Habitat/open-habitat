@@ -31,13 +31,13 @@ No push attempt, write PAT, real Fleetrepo import, SSH setup, LFS/submodule auth
 
 ## Plan and approval
 
-Implements @fleetrepo-gitea-habitat [implementation-plan.md](../fleetrepo-gitea-habitat/implementation-plan.md), section 6 (UID + read-only provider proof). Read [ADR 0031](../../docs/decisions/adr-0031-native-gitea-connections.md) and [native evidence](../fleetrepo-gitea-habitat/native-auth-evidence.md). The latest parent Decision (Jari 2026-10-24) supersedes older proposal-only network/authorization wording: core tea ownership, network boundary and read-only first scope are approved for scheduling. Detailed mechanics remain implementation proposals, not new architecture authority. No URL-only substitute, login/admission change, server routing work or additional write permission.
+Implements section 6 (UID + read-only provider proof) of the historical implementation plan (`issues/fleetrepo-gitea-habitat/implementation-plan.md`). That plan and its native authentication evidence (`issues/fleetrepo-gitea-habitat/native-auth-evidence.md`) belong to the project's history, not this repository. Read [ADR 0031](../../docs/decisions/adr-0031-native-gitea-connections.md) for the current architectural decision. The latest parent Decision (Jari 2026-10-24) supersedes older proposal-only network/authorization wording: core tea ownership, network boundary and read-only first scope are approved for scheduling. Detailed mechanics remain implementation proposals, not new architecture authority. No URL-only substitute, login/admission change, server routing work or additional write permission.
 
 ## UI specification
 
 Validate the accepted connect-riff dialog and minimal common list (workspace-import round 3) on installed product; request Jari's product verdict, without claiming fixture acceptance is provider proof.
 
-Prototype evidence and verdicts: [connect](../fleetrepo-gitea-habitat/prototypes/connect/NOTES.md), [connect-riff](../fleetrepo-gitea-habitat/prototypes/connect-riff/NOTES.md), [workspace-import](../fleetrepo-gitea-habitat/prototypes/workspace-import/NOTES.md).
+Historical prototype evidence and verdicts: connection setup (`issues/fleetrepo-gitea-habitat/prototypes/connect/NOTES.md`), connection variants (`issues/fleetrepo-gitea-habitat/prototypes/connect-riff/NOTES.md`), and workspace import (`issues/fleetrepo-gitea-habitat/prototypes/workspace-import/NOTES.md`). These notes belong to the project's history, not this repository.
 
 ## Proposed scheduling (not assigned)
 

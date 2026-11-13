@@ -20,7 +20,7 @@ activity easier to understand: richer diffs, a renderer for an MCP, web or
 subtask tool actually used, or a justified density or display-style option.
 
 This is accepted design work after v1 covering L9–L11 in
-[the TUI follow-up list](../native-agent-host-architecture/ui-design-later.md).
+the historical TUI follow-up list (`issues/native-agent-host-architecture/ui-design-later.md`, in the project's history, not in this repository).
 Those entries are candidates, not a commitment to implement the whole list.
 
 The linked [review issue](../review-mvp/item.md) records Jari's decision on
@@ -33,10 +33,11 @@ The linked [review issue](../review-mvp/item.md) records Jari's decision on
 Choose the improvement from a concrete difficulty observed in use. Ground the
 visual and interaction design in real diff/event data and the information the
 native component actually supplies. The
-[design package](../native-agent-host-architecture/ui-design-package.md) and
-[conversation v1 brief](../native-agent-host-architecture/ui-design-conversation.md)
-provide the earlier design context; their proposals do not establish current
-adapter support.
+historical design package (`issues/native-agent-host-architecture/ui-design-package.md`)
+and conversation v1 brief (`issues/native-agent-host-architecture/ui-design-conversation.md`)
+provided the earlier design context; their proposals do not establish current
+adapter support. Both documents belong to the project's history, not this repository.
+For current visual guidance, see [the conversation design](../../design-system/design.md#keskustelu).
 
 Grouping should make activity easier to scan while keeping individual calls,
 their order, errors and user requests visible or inspectable. Parent and

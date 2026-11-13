@@ -18,7 +18,7 @@ preparation: pending
 Design the smallest useful way to show native task profile/model changes and
 reliable Taskfleet/tmux bindings when observed use of the working product
 reveals a need. This is accepted follow-up design work covering L8 and L13 in
-[the TUI follow-up list](../native-agent-host-architecture/ui-design-later.md).
+the historical TUI follow-up list (`issues/native-agent-host-architecture/ui-design-later.md`, in the project's history, not in this repository).
 
 The result is a concrete information and interaction design, reviewed before
 implementation begins or an implementation issue is activated. Available native
@@ -54,8 +54,10 @@ of browser control. Unverified capabilities remain explicit uncertainties.
 Keep the design, supporting evidence and review results in this issue directory.
 
 Sources: architecture (`docs/architecture.md`),
-[design package](../native-agent-host-architecture/ui-design-package.md),
-[conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
+the historical design package (`issues/native-agent-host-architecture/ui-design-package.md`)
+and conversation v1 brief (`issues/native-agent-host-architecture/ui-design-conversation.md`).
+These two documents belong to the project's history, not this repository.
+For current visual guidance, see [the design](../../design-system/design.md).
 
 ## Decisions
 

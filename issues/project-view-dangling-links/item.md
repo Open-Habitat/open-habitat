@@ -1,8 +1,8 @@
 ---
 created: 2026-11-13
 updated: 2026-11-13
-type: chore
-status: open
+type: bug
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while validating an unrelated change
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-repair
 lane_seq: 1
 preparation: ready
+closed: 2026-11-13
 ---
 
 # Project-view validation fails on main with 16 dangling Markdown links
@@ -40,5 +41,12 @@ issues/gitea-readonly-acceptance/item.md: missing local link target: ../fleetrep
 issues/gitea-readonly-acceptance/item.md: missing local link target: ../fleetrepo-gitea-habitat/prototypes/workspace-import/NOTES.md
 issues/live-gap-banner-returns/item.md: missing local link target: attachments/banner.png
 ```
+
+## Acceptance Criteria
+
+- [x] The project-view validator passes without weakening its checks or recreating missing files.
+- [x] The project-script regression tests pass.
+
+Reclassified from chore to bug because the dangling links caused an observed release-gate failure; the tracker reserves `fixed` for bugs. Verification is recorded in [result.md](result.md).
 
 Expected: the validator passes on `main`. Each link either points at a file that exists or becomes a plain repository path / history reference, as the root AGENTS.md asks for removed files, and the prune script does not remove a directory that a living document still links to.

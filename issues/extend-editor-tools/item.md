@@ -13,7 +13,7 @@ preparation: pending
 
 # Evaluate command completion and editor shortcuts after v1
 
-This is accepted follow-up design work covering L6 and L12 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). The aim is to identify which command and editor improvements would help people using the browser, based on observed use of the working product. Acceptance of this design work does not commit us to implementing every candidate.
+This is accepted follow-up design work covering L6 and L12 in the historical TUI follow-up list (`issues/native-agent-host-architecture/ui-design-later.md`, in the project's history, not in this repository). The aim is to identify which command and editor improvements would help people using the browser, based on observed use of the working product. Acceptance of this design work does not commit us to implementing every candidate.
 
 Begin with native command discovery and midline slash completion if useful. Double-Escape and alternate copying modes remain browser-specific candidates, not mandatory TUI ports.
 
@@ -23,7 +23,7 @@ Ground command discovery in what the harness actually exposes, such as command n
 
 Normal browser selection, IME input, editor undo and browser shortcuts are the baseline to preserve. Consider keyboard and mobile interaction when evaluating completion. Quick clear or smart/default copying modes need an observed benefit beyond ordinary selection, deletion and copying. If double-Escape is worth pursuing, account for focus, open popups, agent activity, recoverability and the browser's own Escape behavior.
 
-The [conversation v1 brief](../native-agent-host-architecture/ui-design-conversation.md) describes the editor and copying baseline. The [design package](../native-agent-host-architecture/ui-design-package.md) distinguishes delivered proposals from accepted requirements; double-Escape was not accepted as a v1 requirement.
+The historical conversation v1 brief (`issues/native-agent-host-architecture/ui-design-conversation.md`) described the editor and copying baseline. The historical design package (`issues/native-agent-host-architecture/ui-design-package.md`) distinguished delivered proposals from accepted requirements; double-Escape was not accepted as a v1 requirement. Both documents belong to the project's history, not this repository. For current visual guidance, see [the conversation design](../../design-system/design.md#keskustelu).
 
 ## Boundaries and result
 

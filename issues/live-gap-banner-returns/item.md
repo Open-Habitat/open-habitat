@@ -20,7 +20,8 @@ pitkän vuoron aikana banneri "Tapahtumia jäi väliin · Live-tapahtumien
 häntä ei ole täydellinen. Tarkista natiivi historia." Banneri pysyi
 näkyvissä, kunnes vuoro päättyi ja lopullinen vastaus tuli. Samalla
 välivastaukset ja työkalukutsut näkyivät normaalisti
-([kuvakaappaus](attachments/banner.png)).
+(alkuperäinen bannerin kuvakaappaus `attachments/banner.png` kuuluu projektin
+historiaan eikä ole tässä repositoriossa).
 
 Vuorossa oli useita lyhyitä välivastauksia, ja agentti teki git pushin
 ja issuectl-kutsuja. Jari kirjoitti kaksi viestiä kesken vuoron
