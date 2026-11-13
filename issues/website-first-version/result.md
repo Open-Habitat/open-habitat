@@ -92,3 +92,52 @@ repository).
 3. Add the push trigger shown in the comment of `.github/workflows/pages.yml`.
 4. Repository Pages settings (source: GitHub Actions, custom domain) and DNS
    in the infrastructure repository; neither was touched.
+
+## Round 2 (Jari's verdict 13.11.2026)
+
+Jari's answers: English stays at the root; the comparison table goes; the
+maturity text was wrong in spirit.
+
+### What changed
+
+- **Comparison table → four short paragraphs** ("How it differs", both
+  languages), each leading with Open Habitat's difference:
+  several people separated by Unix accounts; your own server with no account,
+  cloud or relay in between; history stays in the agent's native files; one
+  agent (Pi), not many. A tool is named only where it makes the point
+  clearer, and every claim about it was checked against that tool's own
+  public page on 13.11.2026:
+  - JupyterHub: default PAM authenticator uses the server's accounts and the
+    default spawner starts each server "running under their system username"
+    (jupyterhub.readthedocs.io, technical overview).
+  - PI WEB (jmfederico/pi-web): "assumes trusted users" and "is not a
+    sandbox or a multi-tenant platform" (README).
+  - HumanLayer: runs Claude Code, Codex, OpenCode and Pi on your machines;
+    "HumanLayer Cloud runs this code"; self-hosting "guides … are in
+    progress" (README).
+  - Orca: desktop app, "works with any CLI agent" (README).
+- **Maturity**: hero chip, meta description, the landing "Try it" status and
+  the docs Overview and Try it pages now say version 0.1.0, an early
+  pre-release in use on multi-person installations, published as pilot
+  pre-releases (`v0.1.0-pilot.N`) on GitHub Releases (linked), with the
+  caveats beside it: formats and interfaces may change, no migration
+  guarantee, an administrator is assumed. No stability claim.
+- The diagram's made-up task "Release notes for 0.4" became "Weekly status
+  report", so it cannot be read as the product's own version.
+- `website/AGENTS.md` records both rules (maturity as the release line;
+  other tools only with checkable claims, as paragraphs).
+
+### Dropped for lack of a verifiable claim
+
+- Orca: "every paired device is the same user", "its own journal and
+  scrollback", "browser client", "35+ agents" (the README now lists 34 named
+  agents plus "any CLI agent"; the paragraph uses the latter).
+- HumanLayer: history "synced to the vendor's Postgres" — the README mentions
+  Postgres synced to clients but not where it runs.
+- Pi web UIs: "no sign-in" — Pi Web (agegr/pi-web) now has optional password
+  login; "native files plus the UI's own stores" — Pi Web reads Pi's own
+  session files and PI WEB's README does not say.
+- JupyterHub: "or containers" (true only with a non-default spawner; not
+  needed for the point).
+- The "Choose Orca" / JupyterHub notes under the table, replaced by the
+  paragraphs above.

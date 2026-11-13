@@ -33,6 +33,16 @@ A missing value is added to the tokens, not hard-coded here.
   root is root. An overstated security claim fails at the first critical
   reader. When the root README's positioning changes, change the landing
   page with it.
+- **Maturity is stated as the release line.** The page names the current
+  version (0.1.0, published as `v0.1.0-pilot.N` pre-releases on GitHub
+  Releases) and keeps its caveats beside it: formats and interfaces may
+  change, no migration guarantee, an administrator is assumed. It never
+  claims stability.
+- **Other tools only where a claim can be checked.** Differences are written
+  as short paragraphs that lead with Open Habitat's difference, not as a
+  feature table. Another tool is named only where it makes the point
+  clearer, and only with a claim its own public docs support; recheck those
+  claims when the page changes, and drop one that no longer holds.
 - **No installation's details.** No customers, pilots, real hosts or
   accounts; the diagram's people and server are made up.
 

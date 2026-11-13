@@ -4,7 +4,7 @@ updated: 2026-11-13
 type: feature
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: website
 lane_seq: 1
 ---
@@ -36,6 +36,7 @@ GitHub Pages at `open-habitat.ai` once its preview has been approved.
 
 ## Next action
 
-The first version and its preview are built ([result.md](result.md)).
-Jari judges the preview and answers its open questions; publishing waits for
+Round 2 applied Jari's verdict on round 1 (no comparison table, maturity as
+version 0.1.0 pilot pre-releases); see the Round 2 section of
+[result.md](result.md). Jari judges the new preview; publishing waits for
 that verdict.

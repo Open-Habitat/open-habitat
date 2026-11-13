@@ -16,8 +16,9 @@ their files, credentials and conversation histories.
 - [Install and operate](/docs/operations/): the full operator guide for your
   own server, the repository's `docs/operations.md`.
 
-The project is in pre-release. Formats and interfaces still change between
-releases. Report problems through
+The current version is 0.1.0, an early pre-release published as pilot
+pre-releases on [GitHub Releases](https://github.com/Open-Habitat/open-habitat/releases). Formats and interfaces may still
+change between them. Report problems through
 [GitHub Issues](https://github.com/Open-Habitat/open-habitat/issues), and
 security problems through GitHub's
 [private vulnerability reporting](https://github.com/Open-Habitat/open-habitat/security/advisories/new).

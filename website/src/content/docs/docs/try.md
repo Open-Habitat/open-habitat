@@ -3,11 +3,13 @@ title: Try it
 description: What an Open Habitat installation needs and how it goes today.
 ---
 
-**Status: pre-release.** Open Habitat runs on multi-person installations, but
-there is no public release yet. Formats and interfaces still change between
-releases without migration code, and installing it still assumes some help
-from the maintainers. A short path for a plain VPS is planned before the
-public launch.
+**Status: version 0.1.0, an early pre-release.** Open Habitat is in use on
+multi-person installations. Version 0.1.0 is published as pilot pre-releases
+(`v0.1.0-pilot.N`) on [GitHub Releases](https://github.com/Open-Habitat/open-habitat/releases). It is not stable: formats and
+interfaces may still change from one pre-release to the next, there is no
+migration guarantee between them, and an installation assumes an
+administrator who runs the server. A short path for a plain VPS is planned
+before the public launch.
 
 ## What you need
 

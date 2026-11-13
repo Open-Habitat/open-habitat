@@ -18,8 +18,9 @@ kirjautumisensa ja keskusteluhistoriansa.
 - [Asennus ja ylläpito](/fi/docs/operations/): koko ylläpito-opas omalle
   palvelimelle, repon `docs/operations.md`, englanniksi.
 
-Projekti on esijulkaisuvaiheessa. Formaatit ja rajapinnat muuttuvat vielä
-julkaisujen välillä. Ongelmat raportoidaan
+Nykyinen versio on 0.1.0, varhainen esijulkaisu, jota julkaistaan
+pilottiesijulkaisuina [GitHub Releases](https://github.com/Open-Habitat/open-habitat/releases) -sivulla. Formaatit ja rajapinnat
+voivat vielä muuttua niiden välillä. Ongelmat raportoidaan
 [GitHub Issuesiin](https://github.com/Open-Habitat/open-habitat/issues) ja
 tietoturvaongelmat GitHubin
 [yksityisellä haavoittuvuusraportoinnilla](https://github.com/Open-Habitat/open-habitat/security/advisories/new).

@@ -3,10 +3,12 @@ title: Kokeile
 description: Mitä Open Habitat -asennus tarvitsee ja miten se nyt etenee.
 ---
 
-**Tila: esijulkaisu.** Open Habitat on käytössä monen ihmisen asennuksissa,
-mutta julkista julkaisua ei vielä ole. Formaatit ja rajapinnat muuttuvat vielä
-julkaisujen välillä ilman siirtokoodia, ja asennus olettaa vielä ylläpitäjien
-apua. Lyhyt polku tavalliselle VPS:lle on tarkoitus tehdä ennen julkistusta.
+**Tila: versio 0.1.0, varhainen esijulkaisu.** Open Habitat on käytössä
+monen ihmisen asennuksissa. Versio 0.1.0 julkaistaan pilottiesijulkaisuina
+(`v0.1.0-pilot.N`) [GitHub Releases](https://github.com/Open-Habitat/open-habitat/releases) -sivulla. Se ei ole vakaa: formaatit
+ja rajapinnat voivat vielä muuttua esijulkaisusta toiseen, niiden välillä ei
+luvata siirtoa, ja asennus olettaa ylläpitäjän, joka hoitaa palvelinta. Lyhyt
+polku tavalliselle VPS:lle on tarkoitus tehdä ennen julkistusta.
 
 ## Mitä tarvitset
 

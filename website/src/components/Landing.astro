@@ -1,8 +1,9 @@
 ---
 // The site's front door in both languages: what Open Habitat is and for
-// whom, how it compares, what it is not, the security model and how to try
+// whom, how it differs, what it is not, the security model and how to try
 // it. Claims rest on the repository's docs/product.md, docs/operations.md
-// and the product itself; the comparison mirrors the README draft's table.
+// and the product itself. A claim about another tool is one that tool's own
+// public docs supported when it was written (see website/AGENTS.md).
 // The people and the server in the diagram are made up.
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 
@@ -19,12 +20,12 @@ const t = {
   en: {
     title: 'Your team’s AI agents on one Linux server',
     description:
-      'Open Habitat: each person works as their own Unix user, reachable from any browser. Open source, pre-release.',
+      'Open Habitat: each person works as their own Unix user, reachable from any browser. Open source, version 0.1.0 pre-release.',
     heroTitle: 'Your team’s AI agents on <em>one Linux server</em>.',
     tagline: `Each person works as their own Unix user, reachable from any browser. Sign in from a laptop or phone, talk to your ${pi} agent, close the tab, and it keeps working.`,
-    status: 'Pre-release · open source (MIT)',
+    status: 'Version 0.1.0 · early pre-release · open source (MIT)',
     tryIt: 'How to try it',
-    compareCta: 'How it compares',
+    compareCta: 'How it differs',
     diagram: {
       laptop: 'laptop',
       phone: 'phone',
@@ -34,7 +35,7 @@ const t = {
       broker: 'only creates accounts on first approved sign-in',
       working: 'Working',
       turn: 'Your turn',
-      tasks: ['Refactor the sign-in flow', 'Release notes for 0.4', 'Nightly data import'],
+      tasks: ['Refactor the sign-in flow', 'Weekly status report', 'Nightly data import'],
       caption: 'One server, a home per person. Chen closed the browser; the agent did not stop.',
     },
     sameWork:
@@ -50,20 +51,13 @@ const t = {
       ['Your own model account', 'Each person connects their own provider sign-in through Pi, for example a ChatGPT or Claude subscription, or uses a key the server provides. Nobody shares a personal API key.'],
       ['Nothing phones home', 'No telemetry, no relay, no Open Habitat account between your browser and your server. The interface works in English and Finnish, light and dark.'],
     ],
-    compareTitle: 'How it compares',
-    compareLede: 'Plenty of tools put coding agents in a window. The difference here is who the server is for.',
-    compareAria: 'Comparison table',
-    piWebUis: 'Pi web UIs',
-    rows: [
-      ['Built for', 'several people on one shared server', 'one developer running many agents', 'teams, as a hosted service', 'one person', 'groups running notebooks'],
-      ['Separation between people', 'Unix accounts', 'none: every paired device is the same user', 'cloud organisation and task permissions', 'none (no sign-in)', 'Unix accounts or containers'],
-      ['Where history lives', 'the agent’s native files', 'native files plus its own journal and scrollback', 'synced to the vendor’s Postgres', 'native files plus the UI’s own stores', 'notebooks on disk'],
-      ['Agents', 'Pi', '35+ CLI agents', 'Claude Code, Codex, OpenCode, Pi', 'Pi', 'not an agent host'],
-      ['Shape', 'browser, desktop and phone', 'desktop app, phone app, browser client', 'desktop, browser, phone over a cloud', 'browser', 'browser'],
-    ],
-    notes: [
-      '<b>Choose Orca</b> if you want many agents on your own machine and a polished desktop app today. It supports far more agents than Open Habitat does.',
-      '<b>JupyterHub</b> is the mature form of the same idea, one server and a Unix user per person, for notebooks. Open Habitat applies it to agents.',
+    compareTitle: 'How it differs',
+    compareLede: 'Plenty of tools put coding agents in a window. These are the differences that matter when you choose.',
+    diffs: [
+      ['Several people, kept apart by the operating system', `Open Habitat is built for a server that several people share. Each person who signs in gets their own Unix account and their agents run as that account, so ordinary file permissions, not rules inside a web app, keep one person’s files and credentials from another. <a href="https://jupyter.org/hub">JupyterHub</a> does the same for notebooks: by default it starts each person’s server under their own system username. Browser front ends for ${pi} are made for one person or a group that trusts each other; <a href="https://github.com/jmfederico/pi-web">PI WEB</a> says plainly that it is not a multi-tenant platform.`],
+      ['Your server, with nothing in between', 'You install Open Habitat on a Linux server you run, and the browser talks to that server and nothing else: there is no Open Habitat account, cloud or relay. Some team tools divide the work differently. <a href="https://github.com/humanlayer/humanlayer">HumanLayer</a> runs agents on your own machines; the part that coordinates them is offered as HumanLayer Cloud, and its guides for running that part yourself are still being written.'],
+      ['History stays where the agent keeps it', 'A conversation is Pi’s own session file in your home directory, and a workspace is a plain directory with Git. Open Habitat keeps no copy of your work in a store of its own, so what you see in the browser is what you would find over SSH, and your work stays readable without Open Habitat.'],
+      ['One agent, not many', 'The browser drives Pi and only Pi. If you want one window for many different agents, other tools go much further today: <a href="https://github.com/stablyai/orca">Orca</a> is a desktop app that works with any CLI agent, and HumanLayer runs Claude Code, Codex, OpenCode and Pi.'],
     ],
     notTitle: 'What it is not',
     nots: [
@@ -86,7 +80,7 @@ const t = {
     vuln: `Found a vulnerability? Use GitHub’s <a href="${repo}/security/advisories/new">private vulnerability reporting</a>, not a public issue.`,
     tryTitle: 'Try it',
     tryStatus:
-      '<b>Status: pre-release.</b> Open Habitat runs on multi-person installations, but there is no public release yet. Formats and interfaces still change between releases without migration code, and installing still assumes some help from the maintainers.',
+      `<b>Status: version 0.1.0, an early pre-release.</b> Open Habitat is in use on multi-person installations. Version 0.1.0 is published as pilot pre-releases (<code>v0.1.0-pilot.N</code>) on <a href="${repo}/releases">GitHub Releases</a>. It is not stable: formats and interfaces may still change from one pre-release to the next, there is no migration guarantee between them, and an installation assumes an administrator who runs the server.`,
     need: 'You need:',
     reqs: [
       'a Linux server you administer: Ubuntu 24.04 LTS with systemd, amd64 or arm64',
@@ -107,10 +101,10 @@ const t = {
   fi: {
     title: 'Tiimin AI-agentit yhdellä Linux-palvelimella',
     description:
-      'Open Habitat: jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Avointa lähdekoodia, esijulkaisu.',
+      'Open Habitat: jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Avointa lähdekoodia, version 0.1.0 esijulkaisu.',
     heroTitle: 'Tiimin AI-agentit <em>yhdellä Linux-palvelimella</em>.',
     tagline: `Jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Kirjaudu läppäriltä tai puhelimelta, keskustele ${pi}-agenttisi kanssa, sulje välilehti, ja työ jatkuu.`,
-    status: 'Esijulkaisu · avoin lähdekoodi (MIT)',
+    status: 'Versio 0.1.0 · varhainen esijulkaisu · avoin lähdekoodi (MIT)',
     tryIt: 'Näin kokeilet',
     compareCta: 'Miten se eroaa',
     diagram: {
@@ -122,7 +116,7 @@ const t = {
       broker: 'vain luo tilin ensimmäisellä hyväksytyllä kirjautumisella',
       working: 'Työskentelee',
       turn: 'Sinun vuorosi',
-      tasks: ['Kirjautumisen refaktorointi', 'Version 0.4 julkaisutiedote', 'Yöllinen datatuonti'],
+      tasks: ['Kirjautumisen refaktorointi', 'Viikkoraportti', 'Yöllinen datatuonti'],
       caption: 'Yksi palvelin, oma koti jokaiselle. Chen sulki selaimen; agentti ei pysähtynyt.',
     },
     sameWork:
@@ -139,19 +133,12 @@ const t = {
       ['Ei kotiinsoittoa', 'Ei telemetriaa, ei välityspalvelinta eikä Open Habitat -tiliä selaimesi ja palvelimesi välissä. Käyttöliittymä toimii suomeksi ja englanniksi, vaaleana ja tummana.'],
     ],
     compareTitle: 'Miten se eroaa',
-    compareLede: 'Agentteja saa ikkunaan monella työkalulla. Ero on siinä, kenelle palvelin on.',
-    compareAria: 'Vertailutaulukko',
-    piWebUis: 'Pi-selainkäyttöliittymät',
-    rows: [
-      ['Kenelle', 'usealle ihmiselle yhteisellä palvelimella', 'yhdelle kehittäjälle, jolla on monta agenttia', 'tiimeille, pilvipalveluna', 'yhdelle ihmiselle', 'ryhmille, notebookeja varten'],
-      ['Ihmisten erottelu', 'Unix-tunnukset', 'ei ole: jokainen pariutettu laite on sama käyttäjä', 'pilven organisaatio- ja tehtäväoikeudet', 'ei ole (ei kirjautumista)', 'Unix-tunnukset tai kontit'],
-      ['Missä historia on', 'agentin omissa tiedostoissa', 'natiivit tiedostot sekä oma journaali ja scrollback', 'synkronoituna toimittajan Postgresiin', 'natiivit tiedostot sekä käyttöliittymän omat varastot', 'notebookit levyllä'],
-      ['Agentit', 'Pi', 'yli 35 CLI-agenttia', 'Claude Code, Codex, OpenCode, Pi', 'Pi', 'ei agenttien isäntä'],
-      ['Muoto', 'selain, työpöytä ja puhelin', 'työpöytäsovellus, mobiilisovellus, selainasiakas', 'työpöytä, selain ja puhelin pilven kautta', 'selain', 'selain'],
-    ],
-    notes: [
-      '<b>Valitse Orca</b>, jos haluat paljon agentteja omalle koneellesi ja viimeistellyn työpöytäsovelluksen jo nyt. Se tukee paljon useampia agentteja kuin Open Habitat.',
-      '<b>JupyterHub</b> on saman ajatuksen, yksi palvelin ja Unix-käyttäjä jokaiselle, kypsä toteutus notebookeille. Open Habitat soveltaa sitä agentteihin.',
+    compareLede: 'Agentteja saa ikkunaan monella työkalulla. Nämä erot ratkaisevat, kun valitset.',
+    diffs: [
+      ['Monta ihmistä, jotka käyttöjärjestelmä pitää erillään', `Open Habitat on tehty palvelimelle, jonka usea ihminen jakaa. Jokainen kirjautuja saa oman Unix-tunnuksen, ja hänen agenttinsa toimivat sillä tunnuksella, joten tavalliset tiedosto-oikeudet, eivät verkkosovelluksen säännöt, pitävät yhden ihmisen tiedostot ja tunnukset erossa toisesta. <a href="https://jupyter.org/hub">JupyterHub</a> tekee saman notebookeille: oletuksena se käynnistää jokaisen palvelimen tämän omalla järjestelmätunnuksella. ${pi}-agentin selainkäyttöliittymät on tehty yhdelle ihmiselle tai toisiinsa luottavalle ryhmälle; <a href="https://github.com/jmfederico/pi-web">PI WEB</a> sanoo suoraan, ettei se ole monen vuokralaisen alusta.`],
+      ['Oma palvelin, ei mitään välissä', 'Asennat Open Habitatin Linux-palvelimelle, jota itse ylläpidät, ja selain puhuu vain sen kanssa: Open Habitat -tiliä, -pilveä tai välityspalvelinta ei ole. Jotkin tiimityökalut jakavat työn toisin. <a href="https://github.com/humanlayer/humanlayer">HumanLayer</a> ajaa agentit omilla koneillasi; niitä koordinoiva osa tarjotaan palveluna nimellä HumanLayer Cloud, ja ohjeet sen ajamiseen itse ovat vielä tekeillä.'],
+      ['Historia pysyy siellä, minne agentti sen tallentaa', 'Keskustelu on Pi:n oma istuntotiedosto kotihakemistossasi, ja työtila on tavallinen hakemisto Gitillä. Open Habitat ei pidä työstäsi kopiota omassa varastossaan, joten selaimessa näet saman, minkä löytäisit SSH:lla, ja työsi pysyy luettavana ilman Open Habitatia.'],
+      ['Yksi agentti, ei monta', 'Selain ohjaa Pi-agenttia eikä muita. Jos haluat yhden ikkunan monelle eri agentille, muut työkalut menevät tänään paljon pidemmälle: <a href="https://github.com/stablyai/orca">Orca</a> on työpöytäsovellus, joka toimii minkä tahansa komentoriviagentin kanssa, ja HumanLayer ajaa Claude Codea, Codexia, OpenCodea ja Pi:tä.'],
     ],
     notTitle: 'Mitä se ei ole',
     nots: [
@@ -174,7 +161,7 @@ const t = {
     vuln: `Löysitkö haavoittuvuuden? Käytä GitHubin <a href="${repo}/security/advisories/new">yksityistä haavoittuvuusraportointia</a>, älä julkista issueta.`,
     tryTitle: 'Kokeile',
     tryStatus:
-      '<b>Tila: esijulkaisu.</b> Open Habitat on käytössä monen ihmisen asennuksissa, mutta julkista julkaisua ei vielä ole. Formaatit ja rajapinnat muuttuvat vielä julkaisujen välillä ilman siirtokoodia, ja asennus olettaa vielä ylläpitäjien apua.',
+      `<b>Tila: versio 0.1.0, varhainen esijulkaisu.</b> Open Habitat on käytössä monen ihmisen asennuksissa. Versio 0.1.0 julkaistaan pilottiesijulkaisuina (<code>v0.1.0-pilot.N</code>) <a href="${repo}/releases">GitHub Releases</a> -sivulla. Se ei ole vakaa: formaatit ja rajapinnat voivat vielä muuttua esijulkaisusta toiseen, niiden välillä ei luvata siirtoa, ja asennus olettaa ylläpitäjän, joka hoitaa palvelinta.`,
     need: 'Tarvitset:',
     reqs: [
       'Linux-palvelimen, jota ylläpidät: Ubuntu 24.04 LTS ja systemd, amd64 tai arm64',
@@ -227,10 +214,6 @@ const diagram = `
   </div>
   <figcaption id="oh-server-cap">${d.caption}</figcaption>
 </figure>`;
-const otherTools = [
-  ['Orca', 'https://github.com/stablyai/orca'],
-  ['HumanLayer', 'https://github.com/humanlayer/humanlayer'],
-];
 ---
 
 <StarlightPage
@@ -270,37 +253,16 @@ const otherTools = [
     <section id="compare" aria-labelledby="oh-compare">
       <h2 id="oh-compare">{t.compareTitle}</h2>
       <p class="oh-lede">{t.compareLede}</p>
-      <div class="oh-tablewrap" role="region" aria-label={t.compareAria} tabindex="0">
-        <table>
-          <thead>
-            <tr>
-              <td></td>
-              <th scope="col" class="oh-us">Open Habitat</th>
-              {otherTools.map(([name, href]) => <th scope="col"><a href={href}>{name}</a></th>)}
-              <th scope="col">
-                {t.piWebUis}
-                <br />
-                <span class="oh-small">
-                  <a href="https://github.com/jmfederico/pi-web">PI WEB</a>,{' '}
-                  <a href="https://github.com/agegr/pi-web">Pi Web</a>
-                </span>
-              </th>
-              <th scope="col"><a href="https://jupyter.org/hub">JupyterHub</a></th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              t.rows.map(([head, ...cells]) => (
-                <tr>
-                  <th scope="row">{head}</th>
-                  {cells.map((cell, i) => <td class={i === 0 ? 'oh-us' : undefined}>{cell}</td>)}
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
+      <div class="oh-diffs">
+        {
+          t.diffs.map(([title, body]) => (
+            <div>
+              <h3>{title}</h3>
+              <p set:html={body} />
+            </div>
+          ))
+        }
       </div>
-      <div class="oh-notes">{t.notes.map((n) => <p set:html={n} />)}</div>
     </section>
 
     <section id="security" class="oh-two" aria-label={`${t.notTitle} · ${t.secTitle}`}>
@@ -579,55 +541,13 @@ const otherTools = [
   .oh-card p {
     margin: 0;
   }
-  .oh-tablewrap {
-    overflow-x: auto;
-    border: 1px solid var(--ah-line);
-    border-radius: 12px;
-  }
-  .oh-tablewrap table {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 760px;
-    font-size: var(--ah-size-ui);
-  }
-  .oh-tablewrap th,
-  .oh-tablewrap td {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--ah-line-soft);
-    text-align: start;
-    vertical-align: top;
-  }
-  .oh-tablewrap tbody tr:last-child > * {
-    border-bottom: 0;
-  }
-  .oh-tablewrap thead th {
-    color: var(--ah-ink);
-    font-weight: 600;
-    background: var(--ah-bg);
-    border-bottom: 1px solid var(--ah-line);
-  }
-  .oh-tablewrap thead td {
-    background: var(--ah-bg);
-    border-bottom: 1px solid var(--ah-line);
-  }
-  .oh-tablewrap tbody th {
-    color: var(--ah-ink);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .oh-tablewrap .oh-us {
-    background: var(--ah-accent-soft);
-    color: var(--ah-ink);
-  }
-  .oh-small {
-    font-weight: 400;
-    font-size: var(--ah-size-meta);
-  }
-  .oh-notes {
+  .oh-diffs {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 1.25rem;
+    gap: 2rem 3rem;
+  }
+  .oh-diffs p {
+    margin: 0;
   }
   .oh-two {
     display: grid;
@@ -713,7 +633,7 @@ const otherTools = [
   }
   @media (max-width: 45rem) {
     .oh-grid,
-    .oh-notes,
+    .oh-diffs,
     .oh-two {
       grid-template-columns: 1fr;
     }
