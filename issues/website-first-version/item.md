@@ -4,7 +4,7 @@ updated: 2026-11-13
 type: feature
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: website
 lane_seq: 1
 ---
