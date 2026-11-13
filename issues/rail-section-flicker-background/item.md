@@ -2,11 +2,12 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: rail-flicker
 lane_seq: 1
+closed: 2026-11-13
 ---
 
 # Rail flickers: a conversation with background processes jumps between Your turn and Running
@@ -35,3 +36,7 @@ answer that alternates (busy / unknown / idle) or from two sources that
 disagree (turn state vs background activity), it flickers.
 
 Reported by Jari 13.11.2026.
+
+## Acceptance Criteria
+
+- [x] A conversation stays in one rail section while its status is invalidated and re-read, and changes section only when its turn state changes (`railNow.test.ts` regression test).
