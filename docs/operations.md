@@ -635,7 +635,11 @@ hand-copy the broker's initial JSON examples into an occupied installation.
 The gateway cannot read homes; mapped daemons cannot read gateway secrets.
 
 The daemon validates the pinned Node/Pi tree selected by
-`/opt/open-habitat/pi-runtime.json`. Host apply and upgrade also publish
+`/opt/open-habitat/pi-runtime.json`. A daemon that refuses a startup check
+logs `service_failed` with `reason` `server_failed` and a fixed `detail` word
+naming the check; a selector naming a safe tree of another Pi or Node version
+than the release pins logs `pi_runtime_version_unsupported`, and an unsafe or
+unreadable tree `pi_runtime_untrusted`. Host apply and upgrade also publish
 `/opt/open-habitat/site-origin.json`, the declared `gateway.origin` and whether
 `views` is declared, world-readable so a person's agent can give them links to
 this site and knows whether it can show views; daemons treat it as display

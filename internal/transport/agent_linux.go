@@ -126,5 +126,5 @@ func ServeAgent(ctx context.Context, ln *net.UnixListener, c Config, handler htt
 	if ctx.Err() != nil || errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
-	return denied
+	return ErrServeEnded
 }

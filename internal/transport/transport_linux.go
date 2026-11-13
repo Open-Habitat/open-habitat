@@ -50,6 +50,13 @@ const seedDeadline = 20 * time.Second
 
 var denied = errors.New("native token handoff failed")
 
+// ErrServeEnded is what ServeMux and ServeAgent return when their listener
+// passed its checks and the accept loop then ended without a cancellation.
+// Every refusal before serving stays the opaque denied error, so a caller
+// can tell "this listener was refused" from "serving stopped" without either
+// carrying native error text.
+var ErrServeEnded = errors.New("daemon listener stopped serving")
+
 type request struct {
 	Version  int    `json:"version"`
 	Nonce    string `json:"nonce"`
@@ -699,7 +706,7 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
-	return denied
+	return ErrServeEnded
 }
 
 // A real socket activation starts with a gateway connection already queued.

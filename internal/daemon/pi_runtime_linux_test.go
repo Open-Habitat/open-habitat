@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,8 +83,15 @@ func TestTrustedPiRuntime(t *testing.T) {
 		write(p.Entry, "export {};", 0644)
 		t.Run(name, func(t *testing.T) {
 			mutate()
-			if err := p.validateRuntime(); err == nil {
+			err := p.validateRuntime()
+			if err == nil {
 				t.Fatal("unsafe runtime accepted")
+			}
+			// Only a safe tree of the wrong version is reported as a
+			// version mismatch; everything else stays untrusted.
+			version := name == "wrong version" || name == "wrong node"
+			if errors.Is(err, errRuntimeUnsupported) != version {
+				t.Fatalf("version classification: %v", err)
 			}
 		})
 	}

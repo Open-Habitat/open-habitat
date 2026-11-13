@@ -33,10 +33,13 @@ var buildCommit = ""
 type options struct{ json, verbose bool }
 type cliError struct {
 	code, message string
-	exit          int
-	invalid       any
-	expected      any
-	result        json.RawMessage
+	// detail is a fixed, enumerated word logged beside code on a service's
+	// stderr, where message is never written.
+	detail   string
+	exit     int
+	invalid  any
+	expected any
+	result   json.RawMessage
 }
 
 func (e *cliError) Error() string { return e.message }
@@ -124,14 +127,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		// Service stderr is an operator diagnostic stream, not a place for
 		// arbitrary config paths, native errors or credential-bearing URLs.
 		if len(rest) >= 2 && rest[1] == "exec" && (rest[0] == "gateway" || rest[0] == "daemon" || rest[0] == "broker") {
-			var ce *cliError
-			reason := "internal_error"
-			exit := 2
-			if errors.As(err, &ce) {
-				reason, exit = ce.code, ce.exit
-			}
-			diagnostic.New(stderr, rest[0]).Error("service_failed", "outcome", "failed", "reason", reason)
-			return exit
+			return logServiceFailure(stderr, rest[0], err)
 		}
 		return emitError(err, opts, stderr)
 	}
@@ -371,9 +367,9 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			}
 			diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
 			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime, daemon.AgentListener{Listener: agentListener, Version: version, Commit: runningCommit()}); err != nil {
-				// ServeHTTP returns only fixed, redacted startup/transport errors;
-				// surface the reason so an unsafe runtime can be repaired.
-				return nil, system("server_failed", "daemon socket service failed: "+err.Error())
+				// The journal gets the refusing check's code, never the
+				// message: an operator repairs that check from it.
+				return nil, daemonServeFailure(err)
 			}
 			return nil, nil
 		}
@@ -401,6 +397,28 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 		return nil, system("server_failed", err.Error())
 	}
 	return nil, nil
+}
+
+// logServiceFailure writes a service's last diagnostic: the error's code and,
+// when it has one, its enumerated detail. The message is never written.
+func logServiceFailure(stderr io.Writer, component string, err error) int {
+	var ce *cliError
+	reason, detail := "internal_error", ""
+	exit := 2
+	if errors.As(err, &ce) {
+		reason, detail, exit = ce.code, ce.detail, ce.exit
+	}
+	fields := []any{"outcome", "failed", "reason", reason}
+	if detail != "" {
+		fields = append(fields, "detail", detail)
+	}
+	diagnostic.New(stderr, component).Error("service_failed", fields...)
+	return exit
+}
+func daemonServeFailure(err error) *cliError {
+	e := system("server_failed", "daemon socket service failed: "+err.Error())
+	e.detail = daemon.StartupRefusalCode(err)
+	return e
 }
 func daemonHealthMux() *http.ServeMux {
 	mux := http.NewServeMux()

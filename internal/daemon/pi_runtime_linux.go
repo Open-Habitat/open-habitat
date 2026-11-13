@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,12 @@ import (
 	"syscall"
 	"time"
 )
+
+// errRuntimeUnsupported is a safe release tree whose Pi SDK or Node is not
+// the version this daemon pins: the operator selected an older or newer
+// runtime than the release supports, which is repaired differently from an
+// unsafe tree.
+var errRuntimeUnsupported = errors.New("unsupported Pi runtime version")
 
 // validateRuntime trusts only a root-owned, non-writable release tree. In
 // particular, no mapped user may redirect module resolution through a symlink.
@@ -112,16 +119,22 @@ func (p *PiDevice) validateRuntime() error {
 			Import string `json:"import"`
 		} `json:"exports"`
 	}
-	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Version != "1.5.2" || manifest.Exports["."].Import != "./dist/index.js" || manifest.Bin["pi"] != "dist/bundle/cli.js" {
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Exports["."].Import != "./dist/index.js" || manifest.Bin["pi"] != "dist/bundle/cli.js" {
 		return errors.New("unsupported Pi SDK")
+	}
+	if manifest.Version != "1.5.2" {
+		return fmt.Errorf("%w: Pi SDK", errRuntimeUnsupported)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Node, "--version")
 	cmd.Env = []string{"HOME=" + p.Home, "PATH=/usr/bin:/bin"}
 	output, err := cmd.Output()
-	if err != nil || strings.TrimSpace(string(output)) != "v22.21.1" {
-		return errors.New("unsupported Node runtime")
+	if err != nil {
+		return errors.New("Node runtime unavailable")
+	}
+	if strings.TrimSpace(string(output)) != "v22.21.1" {
+		return fmt.Errorf("%w: Node", errRuntimeUnsupported)
 	}
 	return nil
 }

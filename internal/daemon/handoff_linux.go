@@ -35,18 +35,18 @@ func ServeHandoff(ctx context.Context, listener *net.UnixListener, cfg transport
 // alongside future daemon workspace routes on a shared HTTP/1.1 ServeMux.
 func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, adapter *nativegh.Adapter, mux *http.ServeMux, runtime *core.PiRuntimeConfig, agents ...AgentListener) error {
 	if adapter == nil {
-		return errors.New("native credential adapter unavailable")
+		return refuse(RefusalAdapterUnavailable, errors.New("native credential adapter unavailable"))
 	}
 	server, err := transport.NewServer(cfg, adapter.Consumer())
 	if err != nil {
-		return err
+		return refuse(RefusalTransportConfig, err)
 	}
 	if mux == nil {
 		mux = http.NewServeMux()
 	}
 	// A missing selector is an unsafe deployment, not a first-use login state.
 	if runtime == nil {
-		return errors.New("native Pi runtime unavailable")
+		return refuse(RefusalPiRuntimeMissing, errors.New("native Pi runtime unavailable"))
 	}
 	// Pi status is queried only by the explicit onboarding endpoint.
 	pi := &PiDevice{Home: cfg.Home}
@@ -183,9 +183,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		defer cancel()
 		results := make(chan error, 2)
 		go func() {
-			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, speech, clones))
+			results <- listenerRefusal(RefusalAgentListener, RefusalAgentServeEnded, transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, speech, clones)))
 		}()
-		go func() { results <- server.ServeMux(child, listener, outer) }()
+		go func() {
+			results <- listenerRefusal(RefusalDaemonListener, RefusalDaemonServeEnded, server.ServeMux(child, listener, outer))
+		}()
 		err := <-results
 		cancel()
 		other := <-results
@@ -194,7 +196,16 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		}
 		return other
 	}
-	return server.ServeMux(ctx, listener, outer)
+	return listenerRefusal(RefusalDaemonListener, RefusalDaemonServeEnded, server.ServeMux(ctx, listener, outer))
+}
+
+// listenerRefusal tags a transport serve error: a listener refused before
+// serving, or an accept loop that ended on its own.
+func listenerRefusal(refused, ended string, err error) error {
+	if errors.Is(err, transport.ErrServeEnded) {
+		return refuse(ended, err)
+	}
+	return refuse(refused, err)
 }
 
 // newIntegrations starts the person's integration catalog (ADR 0026): the

@@ -56,14 +56,14 @@ type PiDeviceEvent struct {
 // changed by this UID; walking all dependencies again on a read adds seconds.
 func (p *PiDevice) validate() error {
 	if err := p.validateConfiguration(); err != nil {
-		return err
+		return refuse(RefusalPiConfiguration, err)
 	}
 	selector := p.selectorCheck
 	if selector == nil {
 		selector = p.checkSharedSelector
 	}
 	if err := selector(); err != nil {
-		return err
+		return refuse(RefusalPiSelector, err)
 	}
 	if p.TrustedRuntime {
 		check := p.runtimeCheck
@@ -71,7 +71,11 @@ func (p *PiDevice) validate() error {
 			check = p.validateRuntime
 		}
 		if err := check(); err != nil {
-			return errors.New("native Pi runtime unavailable")
+			code := RefusalPiRuntimeUntrusted
+			if errors.Is(err, errRuntimeUnsupported) {
+				code = RefusalPiRuntimeVersion
+			}
+			return refuse(code, errors.New("native Pi runtime unavailable"))
 		}
 	}
 	return nil
