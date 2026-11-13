@@ -1,0 +1,62 @@
+name: Website
+
+# Publishes the website (website/, Astro + Starlight) to GitHub Pages at
+# https://open-habitat.ai. The CNAME file in website/public/ sets the custom
+# domain. Deployment is manual until Jari approves the preview; then add the
+# push trigger below:
+#
+#   push:
+#     branches: [main]
+#     paths:
+#       - website/**
+#       - design-system/tokens/**
+#       - design-system/fonts/**
+#       - design-system/styles.css
+#       - docs/product.md
+#       - docs/operations.md
+#       - .github/workflows/pages.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build website
+    if: github.repository == 'Open-Habitat/open-habitat'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: website
+      - run: npm run build
+        working-directory: website
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
