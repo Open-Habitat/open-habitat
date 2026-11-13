@@ -4,7 +4,6 @@ updated: 2026-10-18
 type: task
 status: obsolete
 priority: normal
-epic: native-agent-host-architecture
 labels: [human-review]
 reviewer: jari
 closed_by: jari

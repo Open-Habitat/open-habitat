@@ -10,7 +10,7 @@ source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-production-ui
 originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
-related: ['@fleetrepo-gitea-habitat']
+related: []
 blocked_by: ['@gitea-common-catalog']
 collision: [web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, contracts/v1/, design-system/, web/src/app/, web/src/components/]
 lane: gitea

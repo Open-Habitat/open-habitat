@@ -10,7 +10,7 @@ source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-readonly-accept
 originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
-related: ['@fleetrepo-gitea-habitat']
+related: []
 blocked_by: ['@gitea-production-ui', '@gitea-runtime-qualification']
 collision: [contracts/v1/, internal/nativegitea/, internal/daemon/github_jobs_linux.go]
 lane: gitea

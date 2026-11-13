@@ -5,7 +5,7 @@ type: feature
 reporter: jari
 status: done
 priority: high
-related: ['@deliver-install-runtime-profile']
+related: []
 preparation: ready
 provenance: chat
 source_ref: chat:2026-11-05/taskfleet-in-every-install

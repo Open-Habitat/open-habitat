@@ -10,7 +10,7 @@ source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-native-owner
 originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
-related: ['@fleetrepo-gitea-habitat']
+related: []
 collision: [internal/nativegitea/, internal/cli/]
 lane: gitea
 lane_seq: 1

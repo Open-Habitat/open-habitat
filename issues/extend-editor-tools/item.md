@@ -4,7 +4,6 @@ updated: 2026-10-05
 type: task
 status: open
 priority: normal
-epic: native-agent-host-architecture
 blocked_by: ['@review-mvp']
 lane: post-mvp-design
 lane_seq: 30

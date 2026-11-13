@@ -366,7 +366,7 @@ product inventory. Leaving `site.release` on the old runtime manifest cannot
 install a new product. Publish the new manifest together with the product and
 identify unchanged archive hashes in the handoff.
 
-`scripts/release-cut.py` cuts such a product-only release of this repository
+A maintainer's release operator cuts such a product-only release of this repository
 from a commit whose clean gate passed. When runtime inputs changed since the
 predecessor it refuses unless each changed profile is passed as a native
 build output with `--rebuilt ARCH=DIR` for both architectures; those archives

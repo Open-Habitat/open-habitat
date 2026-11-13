@@ -10,7 +10,7 @@ source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-common-catalog
 originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
-related: ['@fleetrepo-gitea-habitat']
+related: []
 closed: 2026-10-24
 collision: [contracts/v1/, internal/nativegitea/, web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, web/src/app/, web/src/components/]
 lane: gitea

@@ -51,8 +51,6 @@ architecture and gate mode; it selects no installation or release policy, so
 a maintainer's own release operator supplies those. It refuses an unpushed or
 dirty tree, and in clean-gate mode a gate receipt for any other tree, because
 the published bytes must be the ones the gate and the remote both saw.
-`release-cut.py` and `prepare-test-release.sh` are transitional private
-entries that are not part of the public tree; leave them in place.
 
 A verified archive says nothing about a host. The daemon socket template's
 `DirectoryMode=0710` only removes world traversal; the real isolation is a
