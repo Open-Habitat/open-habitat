@@ -3,10 +3,15 @@ created: 2026-11-13
 updated: 2026-11-13
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:brand-round-2026-11-13/app
+lane: brand
+lane_seq: 2
+blocked_by: ['@non-text-contrast-boundaries']
+collision: [design-system/]
+preparation: pending
 ---
 
 # New brand: three themes, new mark and the mark as the agent state indicator

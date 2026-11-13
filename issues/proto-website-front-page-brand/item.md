@@ -3,10 +3,13 @@ created: 2026-11-13
 updated: 2026-11-13
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:brand-round-2026-11-13/website
+lane: website-brand-proto
+lane_seq: 1
+preparation: ready
 ---
 
 # Prototype: website front page style drafts in the new brand

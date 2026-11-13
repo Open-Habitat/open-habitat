@@ -3,10 +3,14 @@ created: 2026-11-13
 updated: 2026-11-13
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:brand-round-2026-11-13/contrast
+lane: brand
+lane_seq: 1
+collision: [design-system/]
+preparation: ready
 ---
 
 # Control and state-box boundaries below 3:1; a button's border is never drawn
