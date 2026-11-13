@@ -1,0 +1,19 @@
+---
+created: 2026-11-13
+updated: 2026-11-13
+type: improvement
+status: untriaged
+priority: normal
+provenance: chat
+source_ref: conductor:2026-11-13/test-release-runtime
+---
+
+# Test releases: build or reuse the runtime release with the package
+
+## Description
+
+## Proposal
+
+Add an option to `scripts/prepare-release.sh` that also builds the runtime release (or reuses one whose runtime inputs are unchanged), so that a per-commit test release is a complete release, as published ones are. A test installation could then run each release's own core runtime without rebuilding it outside the product from a guess at the build's inputs.
+
+Raised 13.11.2026 when our test installation moved to the release-bundled core runtime.
