@@ -283,3 +283,40 @@ func TestWorktreeCreationCancelledBeforeAdmission(t *testing.T) {
 	}
 	cloneWriter.Unlock()
 }
+
+// A worker's header reads its worktree through the workspace Git route: the
+// spinoffs read names the worktree's place ID from Git's own registry, the
+// main checkout's own ID for a worker there, and nothing for a directory Git
+// does not register, since the route never takes a path.
+func TestWorkerGitWorkspaceIsTheWorktreesPlace(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.add("wt-tyo", true)
+	discovery := Discover(f.cfg)
+	id := workerGitWorkspace(f.cfg, discovery, f.wt("wt-tyo")+"/")
+	place, ok := findPlace(f.cfg, f.cfg.Home, discovery, id)
+	if id == "" || id == f.id || !ok || place.Path != f.wt("wt-tyo") {
+		t.Fatalf("%q %+v %v", id, place, ok)
+	}
+	h := WorkspaceGitHandler(f.cfg, func(*http.Request) bool { return true })
+	r := httptest.NewRequest("GET", "http://unix"+WorkspaceGitPath+"?workspace_id="+id, nil)
+	r.RequestURI = WorkspaceGitPath + "?workspace_id=" + id
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	var detail map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &detail)
+	if w.Code != 200 || detail["branch"] != "wt-tyo" {
+		t.Fatalf("%d %v", w.Code, detail)
+	}
+	if got := workerGitWorkspace(f.cfg, discovery, f.src("app")); got != f.id {
+		t.Fatalf("main checkout %q, want %q", got, f.id)
+	}
+	stray := f.src("app__worktrees/irrallinen")
+	if err := os.MkdirAll(stray, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{stray, f.wt("poistettu"), "app__worktrees/wt-tyo"} {
+		if got := workerGitWorkspace(f.cfg, discovery, path); got != "" {
+			t.Fatalf("%s has no place, got %q", path, got)
+		}
+	}
+}

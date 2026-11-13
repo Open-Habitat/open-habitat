@@ -424,6 +424,7 @@ export function GitStatusDetails({
   fetchFailed,
   onFetch,
   fetchUnavailable,
+  filesNote,
   embedded = false,
 }: {
   summary: GitSummaryFacts;
@@ -438,6 +439,9 @@ export function GitStatusDetails({
   fetchFailed?: boolean;
   onFetch: () => void;
   fetchUnavailable?: string;
+  /** Why no file list will come, when no reading can give one (a worker
+   * whose worktree Habitat cannot read: its counts come from its branch). */
+  filesNote?: string;
   /** Inside another layer that has its own heading and close. */
   embedded?: boolean;
 }) {
@@ -563,7 +567,9 @@ export function GitStatusDetails({
             {txt.readError}
           </p>
         ) : !detail ? (
-          <p className="ah-gs-note">{loading ? txt.reading : ""}</p>
+          <p className="ah-gs-note">
+            {loading ? txt.reading : (filesNote ?? "")}
+          </p>
         ) : !files.length ? (
           <p className="ah-gs-note">{txt.noChanges}</p>
         ) : (

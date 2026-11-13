@@ -18,27 +18,6 @@
   height: 15px;
   flex: none;
 }
-/* What the worker has produced, in words (worker-row sentence): the band's
-   own full-width line, so it stays on a phone where the meta hides. */
-.ah-worker-work {
-  display: flex;
-  flex: 1 0 100%;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--ah-s1) var(--ah-s3);
-  margin: 0;
-  color: var(--ah-ink-2);
-}
-.ah-worker-work a {
-  display: inline-flex;
-  gap: var(--ah-s1);
-  align-items: center;
-  color: var(--ah-accent-ink);
-}
-.ah-worker-work svg {
-  width: 13px;
-  height: 13px;
-}
 .ah-worker-kind {
   display: inline-flex;
   gap: var(--ah-s1);
@@ -300,5 +279,47 @@
   }
   .ah-worker-ask-short {
     display: inline;
+  }
+}
+
+/* The worker's header facts (worker-header-status, direction 1 of the
+   2026-11-13 worker-header round): Git, pull request, context and model on
+   the title row. Unknown is said with a "?" and a sentence, never left empty
+   or coloured. */
+.ah-worker-unknown {
+  color: var(--ah-muted);
+  border-style: dashed;
+}
+.ah-worker-unknown .ah-ctx-track {
+  stroke-dasharray: 2 2;
+}
+.ah-worker-pr {
+  gap: var(--ah-s1);
+  text-decoration: none;
+}
+.ah-agent-topline .ah-worker-pr svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-worker-pr-state {
+  color: var(--ah-ink-2);
+  font-weight: 400;
+}
+@media (max-width: 800px) {
+  /* The phone header reads Git, context and model into its facts line; the
+     pull request is in the worker's details there. */
+  .ah-agent-topline > .ah-worker-pr {
+    display: none;
+  }
+  /* The header indents its title row and activity mark beside the phone's
+     floating menu button, assuming it is the frame's first row. In a worker
+     view the band is first and already clears the button. */
+  .ah-conversation-frame > .ah-worker-band ~ .ah-agent-header .ah-title-row,
+  .ah-conversation-frame
+    > .ah-worker-band
+    ~ .ah-agent-header
+    .ah-agent-topline
+    > .ah-header-activity {
+    margin-inline-start: 0;
   }
 }

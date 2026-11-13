@@ -188,7 +188,7 @@ const row = (page: Page, title: string) =>
     .locator('[data-kind="spin"]')
     .filter({ has: page.getByTestId(`spinoff-${title}`) });
 
-test("@worker-row-sentence @a11y each row says its work by default and the worker view links its PR", async ({
+test("@worker-row-sentence @a11y each row says its work by default and the worker view's header links its PR", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -243,19 +243,25 @@ test("@worker-row-sentence @a11y each row says its work by default and the worke
   );
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // The worker view says the whole sentence and opens the PR on GitHub.
+  // The worker view's header carries the PR beside Git (worker-header-status);
+  // the sentence line is gone from the band.
   await page.getByTestId("spinoff-Sääaseman CSV-vienti").click();
   await expect(page).toHaveURL(new RegExp(`spinoff=${id.busy}`));
-  const sentence = page.getByTestId("worker-work");
-  await expect(sentence).toBeVisible();
+  await expect(page.getByTestId("worker-work")).toHaveCount(0);
+  const topline = page.locator(".ah-agent-topline");
+  // Without a registered worktree the chip shows spinoff-work's counts.
+  await expect(topline.getByTestId("git-chip")).toHaveAttribute(
+    "data-changes",
+    "3",
+  );
   await expect(
-    sentence.getByRole("link").and(page.getByTestId("worker-pr")),
+    topline.getByRole("link").and(page.getByTestId("worker-pr")),
   ).toHaveAttribute(
     "href",
     "https://github.com/example-owner/example-repo/pull/412",
   );
   expect(
-    (await new AxeBuilder({ page }).include(".ah-worker-work").analyze())
+    (await new AxeBuilder({ page }).include(".ah-agent-topline").analyze())
       .violations,
   ).toEqual([]);
   await shot(page, "worker");

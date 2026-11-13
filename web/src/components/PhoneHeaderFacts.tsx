@@ -9,6 +9,8 @@ import "./PhoneHeaderFacts.css";
 type Readout = {
   git?: string;
   compactGit?: string;
+  /** A ring that cannot be drawn honestly ("?" for an unknown fill). */
+  compactContext?: string;
   context?: string;
   percent?: number;
   level?: ContextLevel;
@@ -38,6 +40,7 @@ export function usePhoneHeaderReadout(row: RefObject<HTMLElement | null>) {
       const next: Readout = {
         git: git?.dataset.menuSummary,
         compactGit: git?.dataset.phoneSummary,
+        compactContext: context?.dataset.phoneSummary,
         context: context?.dataset.menuSummary,
         percent: number("data-percent"),
         tick: number("data-tick"),
@@ -186,13 +189,19 @@ export function PhoneHeaderFacts({
           {readout.context ? (
             <>
               <span aria-hidden="true">·</span>
-              <span data-level={readout.level}>
-                <Ring
-                  percent={readout.percent}
-                  level={readout.level ?? "nowindow"}
-                  tick={readout.tick}
-                />
-              </span>
+              {readout.compactContext ? (
+                <span className="ah-phone-context">
+                  {readout.compactContext}
+                </span>
+              ) : (
+                <span data-level={readout.level}>
+                  <Ring
+                    percent={readout.percent}
+                    level={readout.level ?? "nowindow"}
+                    tick={readout.tick}
+                  />
+                </span>
+              )}
             </>
           ) : null}
           {showModel && readout.compactModel ? (

@@ -95,6 +95,7 @@ type spinoffRow struct {
 	AwaitingInput bool   `json:"awaiting_input"`
 	Terminal      string `json:"terminal,omitempty"`
 	TerminalSpace string `json:"terminal_workspace,omitempty"`
+	GitWorkspace  string `json:"git_workspace,omitempty"`
 	Brief         string `json:"brief,omitempty"`
 	OtherRepo     string `json:"other_repository,omitempty"`
 	EndedAt       string `json:"ended_at,omitempty"`
@@ -340,11 +341,15 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 						summary += reason
 					}
 					row.Summary = prefixBytes(summary, 16000)
+					discovery := Discover(cfg)
 					if token := workerTerminal(detail); token != "" {
-						if space := workerTerminalWorkspace(cfg, detail.WorktreePath); space != "" {
+						if space := workerTerminalWorkspaceIn(cfg, discovery, detail.WorktreePath); space != "" {
 							row.Terminal, row.TerminalSpace = token, space
 						}
 					}
+					// The header's Git chip reads the worktree through the
+					// workspace Git route, which takes only this opaque ID.
+					row.GitWorkspace = workerGitWorkspace(cfg, discovery, worktree)
 					row.Brief = readRunBrief(cfg, r.ID)
 					// One node's conversation is the view; a later node (a
 					// retried attempt) replaces an earlier one.

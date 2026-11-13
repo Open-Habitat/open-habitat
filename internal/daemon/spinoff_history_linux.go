@@ -497,17 +497,65 @@ func workerTerminal(r nativeSpinoff) string {
 // worker's window: the one whose checkout or worktree container holds the
 // run's worktree. A worker may work in another repository than its parent.
 func workerTerminalWorkspace(cfg transport.Config, worktree string) string {
+	return workerTerminalWorkspaceIn(cfg, Discover(cfg), worktree)
+}
+
+func workerTerminalWorkspaceIn(cfg transport.Config, discovery Discovery, worktree string) string {
 	if !filepath.IsAbs(worktree) {
 		return ""
 	}
 	worktree = filepath.Clean(worktree)
-	for _, entry := range Discover(cfg).Entries {
+	for _, entry := range discovery.Entries {
 		if entry.Error != "" || entry.Kind == "unknown" || entry.Metadata == "error" {
 			continue
 		}
 		dir := filepath.Join(cfg.Home, "src", entry.Name)
 		if worktree == dir || strings.HasPrefix(worktree, dir+"/") || strings.HasPrefix(worktree, dir+"__worktrees/") {
 			return workspaceIDOf(cfg, entry)
+		}
+	}
+	return ""
+}
+
+// workerGitWorkspace is the opaque ID under which the workspace Git route
+// reads the worker's worktree: a Git workspace of its own, or a worktree
+// place of a discovered checkout (ADR 0025) as Git's own registry names it.
+// The route resolves the ID again on every read and never takes a path, so
+// a worktree that is neither has no ID and the view shows its counts only.
+func workerGitWorkspace(cfg transport.Config, discovery Discovery, worktree string) string {
+	if !filepath.IsAbs(worktree) || !worktreeOnDisk(worktree) {
+		return ""
+	}
+	worktree = filepath.Clean(worktree)
+	usable := func(e Workspace) bool {
+		return e.Error == "" && e.Metadata != "error" && (e.Kind == "git_main_worktree" || e.Kind == "git_linked_worktree")
+	}
+	var likely, rest []Workspace
+	for _, entry := range discovery.Entries {
+		if !usable(entry) {
+			continue
+		}
+		dir := filepath.Join(cfg.Home, "src", entry.Name)
+		if worktree == dir {
+			return workspaceIDOf(cfg, entry)
+		}
+		// Taskfleet's worktrees sit in the checkout's sibling container;
+		// look there first, then in every other registry.
+		if strings.HasPrefix(worktree, dir+"__worktrees/") || strings.HasPrefix(worktree, dir+"/") {
+			likely = append(likely, entry)
+		} else {
+			rest = append(rest, entry)
+		}
+	}
+	for _, entry := range append(likely, rest...) {
+		if entry.Kind != "git_main_worktree" {
+			continue
+		}
+		places, _ := readWorktreePlaces(cfg.Home, entry, workspaceIDOf(cfg, entry))
+		for _, p := range places {
+			if filepath.Clean(p.Path) == worktree {
+				return p.ID
+			}
 		}
 	}
 	return ""

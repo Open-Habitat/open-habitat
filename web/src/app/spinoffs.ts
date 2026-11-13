@@ -27,6 +27,9 @@ export interface Spinoff {
   terminal?: string;
   /** The workspace whose terminal route lists that window. */
   terminal_workspace?: string;
+  /** The ID the workspace Git route reads the worker's worktree under;
+   * only for the selected run while its worktree is registered. */
+  git_workspace?: string;
   /** The task Taskfleet gave the worker; only for the selected run. */
   brief?: string;
   preserved: boolean;

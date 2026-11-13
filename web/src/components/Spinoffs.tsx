@@ -14,10 +14,10 @@ import {
   type WorkerTranscript,
 } from "../app/spinoffs";
 import type { WorkerWork } from "../app/spinoffWork";
-import { workSentence } from "../app/workSentence";
 import { useText } from "../i18n";
 import { spinoffsText } from "../text/spinoffs";
-import { ControlButton, ExternalLink } from "./ControlElements";
+import { type ContextUsage, contextSentence } from "./ContextRing";
+import { ControlButton } from "./ControlElements";
 import {
   ConversationTimeline,
   ConversationVoice,
@@ -31,6 +31,14 @@ import { PiBoundary } from "./PiBlocks";
 import { Button } from "./Primitives";
 import { InlineNotice, type StatusKind } from "./Status";
 import type { TimelineItem } from "./types";
+import {
+  prFact,
+  WorkerContext,
+  WorkerGit,
+  type WorkerGitView,
+  WorkerModel,
+  WorkerPr,
+} from "./WorkerHeader";
 import "./Spinoffs.css";
 export const SpinoffContext = createContext<{
   data?: Spinoffs;
@@ -172,6 +180,9 @@ export function WorkerView({
   terminal,
   historyArrived = false,
   work,
+  git,
+  context,
+  model,
   onParent,
   onTell,
 }: {
@@ -188,8 +199,14 @@ export function WorkerView({
   terminal?: ReactNode;
   /** The history became readable while this view was open. */
   historyArrived?: boolean;
-  /** What the worker has produced (the worker-row sentence, experimental). */
+  /** What the worker has produced and its pull request (spinoff-work). */
   work?: WorkerWork;
+  /** The worker's Git for the header's chip; absent before anything is read. */
+  git?: WorkerGitView;
+  /** How full the worker's context is, from its Pi session. */
+  context?: ContextUsage;
+  /** The worker's model as its session names it. */
+  model?: { name: string; words: string };
   onParent: () => void;
   /** Sends the parent conversation a request about this worker's work. */
   onTell?: () => void;
@@ -206,6 +223,26 @@ export function WorkerView({
     run?.harness === "pi" || run?.harness === "claude"
       ? harnessName[run.harness]
       : txt.agent;
+  const toggleDetails = () => setDetails((open) => !open);
+  // A fact the host could not give says why in its own chip.
+  const contextUnknown =
+    run?.harness === "claude"
+      ? txt.header.contextClaude
+      : readable
+        ? txt.header.contextFirst
+        : transcript?.availability === "unsupported" ||
+            run?.harness === "unknown"
+          ? txt.header.contextUnsupported
+          : txt.header.contextUnread;
+  const modelUnknown = txt.header.modelUnknown(
+    readable
+      ? "unnamed"
+      : transcript?.availability === "unsupported" || run?.harness === "unknown"
+        ? "unsupported"
+        : "unread",
+    run?.profile,
+  );
+  const pr = run && run.state !== "merged" ? work?.pull_request : undefined;
   const why = !transcript
     ? txt.historyUnread
     : transcript.availability === "unsupported"
@@ -363,22 +400,6 @@ export function WorkerView({
           </span>
         ) : null}
         <WorkerAsk run={run} onParent={onParent} />
-        {run && work && run.state !== "merged" ? (
-          <p className="ah-worker-work" data-testid="worker-work">
-            <span>{workSentence(work, run.source_branch)}</span>
-            {work.pull_request ? (
-              <ExternalLink
-                data-testid="worker-pr"
-                href={work.pull_request.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {txt.openPr(work.pull_request.number)}
-                <Icon name="external" />
-              </ExternalLink>
-            ) : null}
-          </p>
-        ) : null}
       </div>
       <AgentHeader
         title={run?.title || txt.worker}
@@ -389,7 +410,43 @@ export function WorkerView({
         workspaceLabel={workspaceLabel}
         workspaceHref={workspaceHref}
         detailsExpanded={details}
-        onToggleDetails={() => setDetails(!details)}
+        onToggleDetails={toggleDetails}
+        gitStatus={
+          run ? (
+            // A fragment, not a wrapper: the header's phone readout and
+            // shortening find the chips as the row's own children.
+            <>
+              <WorkerGit
+                git={git ?? { state: "reading" }}
+                source={run.source_branch}
+                branchOnly={!run.git_workspace}
+                onUnknown={toggleDetails}
+              />
+              <WorkerPr pr={pr} />
+            </>
+          ) : undefined
+        }
+        contextIndicator={
+          run ? (
+            <WorkerContext
+              usage={context}
+              unknown={contextUnknown}
+              open={details}
+              onToggle={toggleDetails}
+            />
+          ) : undefined
+        }
+        modelPicker={
+          run ? (
+            <WorkerModel
+              name={model?.name}
+              words={model?.words}
+              unknown={modelUnknown}
+              open={details}
+              onToggle={toggleDetails}
+            />
+          ) : undefined
+        }
         detailsFacts={
           run
             ? [
@@ -401,6 +458,25 @@ export function WorkerView({
                   label: txt.facts.agent,
                   value: `${harness}${run.profile ? txt.facts.profile(run.profile) : ""}`,
                 },
+                { label: txt.facts.model, value: model?.words ?? modelUnknown },
+                {
+                  label: txt.facts.context,
+                  value: context ? contextSentence(context) : contextUnknown,
+                },
+                ...(pr
+                  ? [
+                      {
+                        label: txt.facts.pullRequest,
+                        value: prFact(pr, txt.header),
+                      },
+                      // The phone hides the pill: the address stays copyable.
+                      {
+                        label: txt.facts.pullRequestUrl,
+                        value: pr.url,
+                        copy: true,
+                      },
+                    ]
+                  : []),
                 {
                   label: txt.facts.history,
                   value: readable

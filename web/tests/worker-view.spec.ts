@@ -20,6 +20,8 @@ async function shot(page: Page, name: string) {
   mkdirSync(capture, { recursive: true });
   for (const [width, scheme] of [
     [1440, "light"],
+    [1440, "dark"],
+    [390, "light"],
     [390, "dark"],
   ] as const) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
@@ -88,6 +90,21 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
     .and(page.getByTestId("worker-terminal-card"));
   await expect(band).toBeVisible();
   await expect(card).toBeVisible();
+  // The header's facts (worker-header-status): this worker's worktree is not
+  // on disk and Claude Code's usage is not read, so each says "?" and why.
+  const topline = page.locator(".ah-agent-topline");
+  await expect(topline.getByTestId("git-chip")).toHaveAttribute(
+    "data-unknown",
+    "true",
+  );
+  await expect(topline.getByTestId("git-chip")).toHaveAccessibleName(
+    /Git-tilaa ei saatu luettua/,
+  );
+  await expect(topline.getByTestId("context-ring")).toHaveAccessibleName(
+    /Claude Coden käyttötietoja/,
+  );
+  await expect(topline.getByTestId("worker-model")).toHaveText("Malli ?");
+  await expect(page.getByTestId("worker-work")).toHaveCount(0);
   // The brief comes from Taskfleet's run before any history exists.
   await expect(page.locator('[data-voice="brief"]')).toContainText(
     "Lisää kellonäkymälle testit kesäajan vaihtumiselle.",
@@ -172,4 +189,162 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
   await shot(page, "claude-laskeutui");
   await page.getByRole("button").and(page.getByTestId("parent-top")).click();
   await expect(composer).toBeVisible();
+});
+
+// worker-header-status: a worker in a registered worktree of a Git workspace
+// gets production's Git chip and layer for its own files, read through the
+// workspace Git route by the place ID the spinoffs read names; the pull
+// request sits beside it and a Pi worker's ring is its own session's reading.
+test("@worker-view @a11y a worker's header carries its Git, pull request, context and model", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
+    .click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
+    .click();
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
+    .fill("käynnistä worker");
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText(
+    'Selvä. Kysyit: "käynnistä worker".',
+    { timeout: 20000 },
+  );
+  const parentURL = page.url();
+  const parent = new URL(parentURL).searchParams
+    .get("conversation")
+    ?.replace(/^pi:/, "");
+  expect(
+    (
+      await page.request.get(`/fixture/cross-workspace?parent=${parent}`)
+    ).status(),
+  ).toBe(204);
+  // The host's own Git and Taskfleet answers; only what this host has no
+  // native source for is added: a Pi session's usage and gh's pull request.
+  await page.route("**/api/v1/agents/pi:*/spinoffs?run=*", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const run of body.runs) {
+      run.harness = "pi";
+      run.profile = "pi-codex";
+    }
+    body.transcripts = [
+      {
+        node_id: "n-0001",
+        harness: "pi",
+        availability: "available",
+        truncated: false,
+        entries: [
+          {
+            entry_key: "u1",
+            kind: "user",
+            content: {
+              media_type: "text/plain",
+              text: "Lisää korkeusprofiili.",
+              complete: true,
+            },
+          },
+          {
+            entry_key: "t1",
+            kind: "unknown",
+            entry_type: "thinking_level_change",
+            content: { media_type: "text/plain", text: "high", complete: true },
+          },
+          {
+            entry_key: "a1",
+            kind: "assistant",
+            model: "openai-codex/gpt-5.5",
+            context_tokens: 210000,
+            content: {
+              media_type: "text/markdown",
+              text: "Korkeusprofiili piirtyy nyt reitin alle.",
+              complete: true,
+            },
+          },
+        ],
+      },
+    ];
+    await route.fulfill({ response, json: body });
+  });
+  await page.route("**/api/v1/agents/pi:*/spinoff-work", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const run of body.runs) {
+      run.pull_request_state = "found";
+      run.pull_request = {
+        number: 418,
+        state: "open",
+        url: "https://github.com/example-owner/example-repo/pull/418",
+        checks: { passed: 4, failed: 0, pending: 2 },
+      };
+    }
+    await route.fulfill({ response, json: body });
+  });
+  const gitReads: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/v1/workspaces/git?")) gitReads.push(r.url());
+  });
+  await page.goto(`${parentURL}&spinoff=${runID}`);
+  const topline = page.locator(".ah-agent-topline");
+  const chip = topline.getByRole("button").and(page.getByTestId("git-chip"));
+  await expect(chip).toHaveAttribute("data-branch", "cross-worker");
+  await expect(chip).not.toHaveAttribute("data-unknown", /.*/);
+  expect(gitReads.length).toBeGreaterThan(0);
+  await expect(
+    topline.getByRole("link").and(page.getByTestId("worker-pr")),
+  ).toHaveAttribute(
+    "href",
+    "https://github.com/example-owner/example-repo/pull/418",
+  );
+  const ring = topline.getByTestId("context-ring");
+  await expect(ring).not.toHaveAttribute("data-unknown", /.*/);
+  await expect(ring).toHaveAttribute("data-tokens", "210000");
+  await expect(topline.getByTestId("worker-model")).toHaveAttribute(
+    "title",
+    /· High$/,
+  );
+  // Git opens production's layer for the worker's own branch, read only.
+  await chip.click();
+  const layer = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
+  await expect(layer).toContainText("cross-worker");
+  await expect(
+    layer.getByRole("button").and(page.getByTestId("fetch-git")),
+  ).toBeDisabled();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-worker-frame").analyze())
+      .violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(layer).toHaveCount(0);
+  // The model is read only: it opens the worker's details, no picker.
+  await topline.getByTestId("worker-model").click();
+  await expect(page.locator(".ah-agent-header")).toContainText("PR #418");
+  await topline.getByTestId("worker-model").click();
+  await shot(page, "otsikkorivi");
+  // A phone reads Git, context and model into the header's facts line.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("phone-header-facts")).toBeVisible();
+  await expect(topline.getByTestId("worker-pr")).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.scrollingElement?.scrollWidth ?? Number.POSITIVE_INFINITY,
+    ),
+  ).toBeLessThanOrEqual(390);
 });

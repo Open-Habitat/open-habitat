@@ -14,11 +14,15 @@ import {
   WorkerVoice,
   workerLive,
 } from "../components/Spinoffs";
-import { textNow } from "../i18n";
+import { textNow, useText } from "../i18n";
 import { spinoffConversationText } from "../text/spinoffConversation";
+import { spinoffsText } from "../text/spinoffs";
 import { useExperimentalFeature } from "./accountPreferences";
+import { contextUsage } from "./contextUsage";
 import type { timelineItems } from "./HistoryView";
 import { readHelpersSeen, writeHelperSeen } from "./helpersSeen";
+import { modelDisplayName, thinkingDisplayName, usePiModels } from "./PiModels";
+import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
 import {
   readSpinoffs,
@@ -27,6 +31,7 @@ import {
   type WorkerTranscript,
 } from "./spinoffs";
 import { readSpinoffWork, type SpinoffWork } from "./spinoffWork";
+import { useWorkerGit } from "./WorkerGitStatus";
 import { WorkerTerminal } from "./WorkerTerminal";
 import { askable } from "./workerRequests";
 // An incomplete read is not proof that a run vanished: Taskfleet keeps
@@ -310,6 +315,37 @@ function WorkerConversation({
     transcript?.truncated,
     onLogin,
   ]);
+  // The header's facts (worker-header-status): the model and context come
+  // from the worker's own session as the view holds it, the same readings a
+  // conversation's header makes; Claude Code records no usage Habitat reads.
+  const txt = useText(spinoffsText);
+  const { data: models } = usePiModels();
+  const readable = availability === "available" && !!entries;
+  const settings: { model?: string; thinking?: string } = readable
+    ? latestSettings(entries)
+    : {};
+  const modelName = settings.model
+    ? modelDisplayName(settings.model, models?.models)
+    : undefined;
+  const model = modelName
+    ? {
+        name: modelName,
+        words: settings.thinking
+          ? `${modelName} · ${thinkingDisplayName(settings.thinking)}`
+          : modelName,
+      }
+    : undefined;
+  const context =
+    readable && run?.harness === "pi"
+      ? contextUsage({ entries, model: settings.model, catalog: models })
+      : undefined;
+  const work = run ? spinoffs?.work?.get(run.run_id) : undefined;
+  const git = useWorkerGit(
+    run,
+    work,
+    spinoffs?.work !== undefined,
+    txt.header.workerBranch,
+  );
   const token = run?.terminal;
   const space = run?.terminal_workspace;
   const terminal =
@@ -335,7 +371,10 @@ function WorkerConversation({
       }
       terminal={terminal}
       historyArrived={arrived}
-      work={run ? spinoffs?.work?.get(run.run_id) : undefined}
+      work={work}
+      git={git}
+      context={context}
+      model={model}
       onParent={onParent}
       onTell={onTell}
     />

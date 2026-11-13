@@ -176,6 +176,11 @@
               }
             }
           },
+          "git_workspace": {
+            "description": "The opaque ID under which the workspace Git routes read the worker's worktree: a Git workspace of its own or a worktree place of one (ADR 0025), as Git's own registry names it. Only for the selected run, only while its worktree is on disk and registered; the route resolves it again on every read.",
+            "type": "string",
+            "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+          },
           "terminal_workspace": {
             "description": "The workspace whose terminal route lists that window: the one holding the worker's worktree, which may be another than the parent's. Present exactly with terminal.",
             "type": "string",

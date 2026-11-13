@@ -139,8 +139,12 @@ export function ContextRing({
   usage,
   open = false,
   onToggle,
+  action,
 }: {
   usage: ContextUsage;
+  /** What pressing does, when it is not the context page (a worker's ring
+   * opens its details). */
+  action?: string;
   /** The context page is showing. */
   open?: boolean;
   onToggle?: () => void;
@@ -190,8 +194,9 @@ export function ContextRing({
         presentation="pill"
         variant="quiet"
         className="ah-ctx-chip"
-        aria-label={`${sentence} ${open ? txt.back : txt.open}`}
-        aria-pressed={open}
+        aria-label={`${sentence} ${action ?? (open ? txt.back : txt.open)}`}
+        aria-pressed={action ? undefined : open}
+        aria-expanded={action ? open : undefined}
         title={sentence}
         onPress={onToggle}
       >
