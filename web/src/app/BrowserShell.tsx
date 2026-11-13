@@ -20,10 +20,12 @@ import {
   type TerminalTab,
   TerminalToggle,
 } from "../components/TerminalPanel";
+import { leaveHistoryKey } from "../components/terminalModes";
 import { isTerminalShortcut } from "../components/terminalShortcut";
 import { WarningBanner, WarningBannerView } from "../components/WarningBanner";
 import { liveText, useLanguage } from "../i18n";
 import { browserShellText } from "../text/browserShell";
+import { useExperimentalFeature } from "./accountPreferences";
 import { WriteRefused } from "./mutations";
 import {
   closeShell,
@@ -167,6 +169,12 @@ export function useBrowserShell({
   const [nonce, setNonce] = useState(0);
   const [paste, setPaste] = useState<string[]>();
   const [selection, setSelection] = useState<TerminalSelection>();
+  // The text copy on select put on the clipboard; the chip says so while
+  // that text is the selection.
+  const [copied, setCopied] = useState<string>();
+  const [urlOffer, setUrlOffer] = useState<string>();
+  const copyOnSelect = useExperimentalFeature("terminal-copy-on-select");
+  const openUrls = useExperimentalFeature("terminal-open-urls");
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
@@ -259,6 +267,7 @@ export function useBrowserShell({
       setReady(undefined);
       setPaste(undefined);
       setSelection(undefined);
+      setUrlOffer(undefined);
       const mine = () => connection.current?.id === id;
       const socket = new TerminalSocket(
         terminalURL(workspaceId, target),
@@ -502,7 +511,10 @@ export function useBrowserShell({
       return;
     const s = stickyRef.current;
     if (s.ctrl || s.alt) setSticky({ ctrl: false, alt: false });
-    const text = withModifiers(data, s);
+    // The surface's key for leaving tmux's history leads typed input; the
+    // modifiers belong to what was typed.
+    const lead = data.startsWith(leaveHistoryKey) ? leaveHistoryKey : "";
+    const text = lead + withModifiers(data.slice(lead.length), s);
     if (!c.typed) c.socket.send(text);
     else if (c.typed.reduce((n, t) => n + t.length, text.length) <= typedLimit)
       c.typed.push(text);
@@ -629,6 +641,12 @@ export function useBrowserShell({
         feedback={eventNotice}
         paste={paste}
         selection={selection}
+        selectionCopied={!!selection && selection.text === copied}
+        urlOffer={openUrls ? urlOffer : undefined}
+        onDismissUrl={() => {
+          setUrlOffer(undefined);
+          focusTerminal();
+        }}
         sticky={sticky}
         tablistRef={tablist}
         onSelectTab={(key) => {
@@ -733,6 +751,9 @@ export function useBrowserShell({
             }}
             onSelection={setSelection}
             onPasteRequest={askPaste}
+            copyOnSelect={copyOnSelect}
+            onCopied={setCopied}
+            onOpenUrl={openUrls ? setUrlOffer : undefined}
             onOpen={() => {
               if (focusOnOpen.current) {
                 focusOnOpen.current = false;

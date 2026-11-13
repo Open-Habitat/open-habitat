@@ -769,3 +769,72 @@ func TestTerminalControlCommandKeepsShellIdentity(t *testing.T) {
 		t.Fatalf("reused hidden shell identity: %+v", next.ready)
 	}
 }
+
+// The web terminal's side channel: the title tells it whether the pane shows
+// tmux's history and which address a program asked to open; $BROWSER is the
+// helper that asks; the wheel scrolls a line a report; the leave key ends
+// copy mode and never reaches the shell.
+func TestTerminalBrowserChannel(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	w, _ := f.dial(t, "workspace_id="+f.id+"&shell=new")
+	w.resize(t, 90, 30)
+	w.waitReady(t)
+	if !w.until(t, "\x1b]0;oh;0;", 5*time.Second) {
+		t.Fatalf("no channel title: %q", w.screen.String())
+	}
+	w.send(t, wsframe.OpBinary, "\"$BROWSER\" 'https://example.test/login/device?code=1#x' && echo helper-$?\r")
+	if !w.until(t, " https://example.test/login/device?code=1#x\a", 5*time.Second) {
+		t.Fatalf("address not offered: %q", w.screen.String())
+	}
+	if !w.until(t, "helper-0", 5*time.Second) {
+		t.Fatalf("helper failed: %q", w.screen.String())
+	}
+	if !strings.Contains(w.screen.String(), "Open in your browser: https://example.test/") {
+		t.Fatalf("address not printed: %q", w.screen.String())
+	}
+	for _, refused := range []string{"file:///etc/passwd", "javascript:alert(1)", "'https://a.test/x y'", "\"https://a.test/$(printf '\\033')x\""} {
+		w.screen.Reset()
+		w.send(t, wsframe.OpBinary, "\"$BROWSER\" "+refused+"; echo refused-$?\r")
+		if !w.until(t, "refused-1", 5*time.Second) {
+			t.Fatalf("%s not refused: %q", refused, w.screen.String())
+		}
+		if strings.Contains(w.screen.String(), "\x1b]0;oh;") {
+			t.Fatalf("%s offered: %q", refused, w.screen.String())
+		}
+	}
+	socket := f.host.socket(false)
+	for _, table := range []string{"copy-mode", "copy-mode-vi"} {
+		out, err := f.host.run(context.Background(), socket, "list-keys", "-T", table, "WheelUpPane")
+		if err != nil || !strings.Contains(string(out), "-N 1 scroll-up") {
+			t.Fatalf("%s wheel binding %q %v", table, out, err)
+		}
+	}
+	w.send(t, wsframe.OpBinary, "seq 1 200; echo seq-$((1+1))\r")
+	if !w.until(t, "seq-2", 5*time.Second) {
+		t.Fatal("no output")
+	}
+	w.screen.Reset()
+	// An SGR wheel-up report enters copy mode; the title says so.
+	w.send(t, wsframe.OpBinary, "\x1b[<64;10;10M\x1b[<64;10;10M")
+	if !w.until(t, "\x1b]0;oh;1;", 5*time.Second) {
+		t.Fatalf("history not reported: %q", w.screen.String())
+	}
+	w.screen.Reset()
+	// tmux 3.4 drops input that arrives within a few milliseconds of the
+	// redraw that entered copy mode, q as much as this key; a person's next
+	// key comes later than that.
+	time.Sleep(100 * time.Millisecond)
+	w.send(t, wsframe.OpBinary, terminalLeaveHistoryKey)
+	if !w.until(t, "\x1b]0;oh;0;", 5*time.Second) {
+		t.Fatalf("leave key did not end copy mode: %q", w.screen.String())
+	}
+	// Outside a mode the key is bound to nothing the shell sees.
+	w.screen.Reset()
+	w.send(t, wsframe.OpBinary, terminalLeaveHistoryKey+"echo typed-$((40+2))\r")
+	if !w.until(t, "typed-42", 5*time.Second) {
+		t.Fatalf("typing after the leave key: %q", w.screen.String())
+	}
+	if strings.Contains(w.screen.String(), "29999") || strings.Contains(w.screen.String(), "~echo") {
+		t.Fatalf("leave key reached the shell: %q", w.screen.String())
+	}
+}

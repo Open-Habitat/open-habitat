@@ -307,6 +307,14 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Turn changes",
         desc: "A line under a finished turn about which files the agent changed.",
       },
+      "terminal-copy-on-select": {
+        label: "Copy on select in the terminal",
+        desc: "Text selected in the terminal goes straight to the clipboard.",
+      },
+      "terminal-open-urls": {
+        label: "Terminal addresses in the browser",
+        desc: "An address a program in the terminal opens shows in Habitat and opens in a new tab.",
+      },
     },
   },
   palvelin: {

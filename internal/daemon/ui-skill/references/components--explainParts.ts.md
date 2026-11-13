@@ -514,6 +514,8 @@ export const parts: Record<CardId, Part> = {
   R07: { kind: "once", sel: '[data-testid="resize-terminal"]' },
   R08: { kind: "info", sel: '[data-testid="terminal-panel"] kbd' },
   R09: { kind: "once", sel: '[data-testid="terminal-keys"]' },
+  R10: { kind: "once", sel: ".ah-terminal-chip" },
+  R11: { kind: "once", sel: '[data-testid="terminal-url-offer"]' },
   D01: { kind: "panel", sel: '[data-testid="editor-header"]' },
   D02: { kind: "panel", sel: '[data-testid="editor-picker"]' },
   D03: { kind: "once", sel: '[data-testid="editor-save"]', key: "Ctrl+S" },

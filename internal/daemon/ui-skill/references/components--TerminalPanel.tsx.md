@@ -13,7 +13,7 @@ import {
 } from "react";
 import { textNow, useText } from "../i18n";
 import { terminalPanelText } from "../text/terminalPanel";
-import { ControlButton, IconButton } from "./ControlElements";
+import { ControlButton, controlClassName, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
 import { TooltipButton } from "./QuickTooltip";
@@ -108,6 +108,52 @@ export function TerminalToggle({
   );
 }
 
+/** A program in the terminal asked to open an address (its $BROWSER). The
+ * person sees where it leads before anything opens, and opens it with a
+ * press of their own, which browsers also allow as a new tab. */
+function UrlOffer({ url, onDismiss }: { url: string; onDismiss?: () => void }) {
+  const txt = useText(terminalPanelText);
+  const host = new URL(url).host;
+  return (
+    <section
+      data-testid="terminal-url-offer"
+      className="ah-terminal-url"
+      aria-label={txt.urlOffer}
+    >
+      <p>
+        <Icon name="globe" />
+        <span>
+          <strong>{txt.urlQuestion(host)}</strong> {txt.urlWhy}
+        </span>
+      </p>
+      <p className="ah-terminal-url-full ah-mono" data-testid="terminal-url">
+        {url}
+      </p>
+      <div className="ah-terminal-paste-actions">
+        <ControlButton
+          data-testid="terminal-url-dismiss"
+          size="row"
+          variant="secondary"
+          onPress={onDismiss}
+        >
+          {txt.urlDismiss}
+        </ControlButton>
+        <a
+          data-testid="terminal-url-open"
+          className={`ah-terminal-url-open ${controlClassName({ variant: "primary", size: "row", text: true })}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onDismiss}
+        >
+          <Icon name="external" />
+          {txt.urlOpen}
+        </a>
+      </div>
+    </section>
+  );
+}
+
 const tip = (tab: TerminalTab) => {
   const txt = textNow(terminalPanelText);
   return tab.busy
@@ -130,6 +176,8 @@ export function TerminalPanel({
   feedback,
   paste,
   selection,
+  selectionCopied = false,
+  urlOffer,
   sticky = { ctrl: false, alt: false },
   children,
   tablistRef,
@@ -145,6 +193,7 @@ export function TerminalPanel({
   onPasteAnswer,
   onCopySelection,
   onSendSelection,
+  onDismissUrl,
   onFocusTerminal,
 }: {
   workspaceLabel: string;
@@ -164,6 +213,10 @@ export function TerminalPanel({
   /** A multi-line paste waiting for a yes. */
   paste?: string[];
   selection?: TerminalSelection;
+  /** The selection is already on the clipboard (copy on select). */
+  selectionCopied?: boolean;
+  /** An http(s) address a program in the terminal asked to open. */
+  urlOffer?: string;
   sticky?: { ctrl: boolean; alt: boolean };
   children?: ReactNode;
   tablistRef?: Ref<HTMLDivElement>;
@@ -180,6 +233,8 @@ export function TerminalPanel({
   onCopySelection: () => void;
   /** Absent when there is no composer to send to. */
   onSendSelection?: () => void;
+  /** The address card goes away: opened or dismissed. */
+  onDismissUrl?: () => void;
   onFocusTerminal: () => void;
 }) {
   const txt = useText(terminalPanelText);
@@ -455,12 +510,13 @@ export function TerminalPanel({
           >
             <button
               data-testid="copy-selection"
+              data-copied={selectionCopied || undefined}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={onCopySelection}
             >
-              <Icon name="copy" />
-              <span>{txt.copy}</span>
+              <Icon name={selectionCopied ? "check" : "copy"} />
+              <span>{selectionCopied ? txt.copied : txt.copy}</span>
             </button>
             {onSendSelection ? (
               <button
@@ -475,6 +531,7 @@ export function TerminalPanel({
             ) : null}
           </div>
         ) : null}
+        {urlOffer ? <UrlOffer url={urlOffer} onDismiss={onDismissUrl} /> : null}
         {paste ? (
           // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape answers the paste question without leaving the panel.
           <fieldset

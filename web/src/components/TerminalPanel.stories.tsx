@@ -121,6 +121,20 @@ export const Selection: Story = {
     },
   },
 };
+export const SelectionCopied: Story = {
+  args: {
+    selection: {
+      text: "ok  example.invalid/aurinkokello",
+      at: { top: 110, left: 14 },
+    },
+    selectionCopied: true,
+  },
+};
+export const AddressOffer: Story = {
+  args: {
+    urlOffer: "https://example.invalid/login/device?code=ABCD-1234",
+  },
+};
 export const ConnectionLost: Story = { args: { offline: true } };
 export const NotSurvivingRestart: Story = { args: { volatile: true } };
 export const Phone: Story = {

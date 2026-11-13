@@ -48,8 +48,47 @@ const fi = {
   toParent: (title: string) => `Pääkeskusteluun: ${title}`,
   mainAgent: "pääagentti",
   mainConversation: "Pääkeskustelu",
-  openPr: (n: number) => `Avaa PR #${n}`,
   readOnlyControl: "Vain luku",
+  // The worker's header facts (worker-header-status): Git, pull request,
+  // context and model on the title row; unknown is a "?" with a sentence.
+  header: {
+    openDetails: "Avaa workerin tiedot.",
+    unknownValue: "?",
+    gitReading: "Workerin Git-tilaa luetaan.",
+    gitUnknown:
+      "Workerin Git-tilaa ei saatu luettua: työpuuta tai sen haaraa ei löytynyt.",
+    gitLanded: (branch?: string) =>
+      `Workerin työ on yhdistetty ${branch ? `haaraan ${branch}` : "lähtöhaaraan"}, eikä sen työpuuta ole enää.`,
+    gitBranchOnly:
+      "Workerin työpuuta ei ole tai Habitat ei tunne sitä, joten tiedostoja ei voi näyttää. Luvut on luettu workerin haarasta.",
+    gitFetch:
+      "Workerin haaran tila luetaan, kun avaat näkymän. Workerin työpuuta ei päivitetä selaimesta.",
+    workerBranch: "Workerin haara",
+    contextClaude:
+      "Kontekstin täyttöä ei tiedetä: Habitat ei vielä lue Claude Coden käyttötietoja.",
+    contextUnread:
+      "Kontekstin täyttöä ei tiedetä: workerin istuntoa ei ole vielä löytynyt.",
+    contextUnsupported:
+      "Kontekstin täyttöä ei tiedetä: Habitat ei lue tämän agentin istuntoa.",
+    contextFirst:
+      "Kontekstin täyttö selviää, kun worker on vastannut ensimmäisen kerran.",
+    modelValue: "Malli ?",
+    modelUnknown: (
+      reason: "unread" | "unsupported" | "unnamed",
+      profile?: string,
+    ) =>
+      `Mallia ei tiedetä: ${reason === "unsupported" ? "Habitat ei lue tämän agentin istuntoa" : reason === "unnamed" ? "workerin istunto ei nimeä sitä" : "workerin istuntoa ei ole löytynyt"}.${profile ? ` Profiili on ${profile}.` : ""}`,
+    pr: (n: number) => `PR #${n}`,
+    prState: {
+      open: "avoin",
+      draft: "luonnos",
+      closed: "suljettu",
+      merged: "yhdistetty",
+    } as Record<"open" | "draft" | "closed" | "merged", string>,
+    prChecks: (passed: number, failed: number, pending: number) =>
+      `Tarkistukset: ${passed} läpi, ${failed} epäonnistui, ${pending} kesken.`,
+    prOpen: (n: number) => `Avaa PR #${n} GitHubissa.`,
+  },
   facts: {
     parent: "Pääkeskustelu",
     agent: "Agentti",
@@ -63,6 +102,10 @@ const fi = {
     branch: "Tallessa oleva haara",
     worktree: "Työpuu",
     run: "Run",
+    model: "Malli",
+    context: "Konteksti",
+    pullRequest: "Pull request",
+    pullRequestUrl: "Pull requestin osoite",
     unknown: "Ei tiedossa",
   },
   stale: "Workerin ajantasaista tilaa ei saada.",
@@ -115,8 +158,42 @@ export const spinoffsText = catalog(fi, {
   toParent: (title) => `To the main conversation: ${title}`,
   mainAgent: "main agent",
   mainConversation: "Main conversation",
-  openPr: (n) => `Open PR #${n}`,
   readOnlyControl: "Read only",
+  header: {
+    openDetails: "Open the worker's details.",
+    unknownValue: "?",
+    gitReading: "Reading the worker's Git state.",
+    gitUnknown:
+      "The worker's Git state could not be read: its worktree or branch was not found.",
+    gitLanded: (branch) =>
+      `The worker's work is merged into ${branch || "its source branch"}, and its worktree is gone.`,
+    gitBranchOnly:
+      "The worker's worktree is gone or Habitat does not know it, so no files can be shown. The counts are read from the worker's branch.",
+    gitFetch:
+      "The worker's branch is read when you open this view. The worker's worktree is not refreshed from the browser.",
+    workerBranch: "The worker's branch",
+    contextClaude:
+      "How full the context is, is not known: Habitat does not read Claude Code's usage yet.",
+    contextUnread:
+      "How full the context is, is not known: the worker's session has not been found yet.",
+    contextUnsupported:
+      "How full the context is, is not known: Habitat does not read this agent's session.",
+    contextFirst:
+      "How full the context is, is known once the worker has replied for the first time.",
+    modelValue: "Model ?",
+    modelUnknown: (reason, profile) =>
+      `The model is not known: ${reason === "unsupported" ? "Habitat does not read this agent's session" : reason === "unnamed" ? "the worker's session does not name it" : "the worker's session has not been found"}.${profile ? ` The profile is ${profile}.` : ""}`,
+    pr: (n) => `PR #${n}`,
+    prState: {
+      open: "open",
+      draft: "draft",
+      closed: "closed",
+      merged: "merged",
+    },
+    prChecks: (passed, failed, pending) =>
+      `Checks: ${passed} passed, ${failed} failed, ${pending} pending.`,
+    prOpen: (n) => `Open PR #${n} on GitHub.`,
+  },
   facts: {
     parent: "Main conversation",
     agent: "Agent",
@@ -130,6 +207,10 @@ export const spinoffsText = catalog(fi, {
     branch: "Kept branch",
     worktree: "Worktree",
     run: "Run",
+    model: "Model",
+    context: "Context",
+    pullRequest: "Pull request",
+    pullRequestUrl: "Pull request address",
     unknown: "Unknown",
   },
   stale: "The worker's current state is not available.",

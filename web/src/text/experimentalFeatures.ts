@@ -145,6 +145,28 @@ const fi = {
         "Ei muuta. Tieto tulee agentin työkalukutsuista: komennon muuttama tiedosto näkyy vain, jos komento nimeää sen, ja muokkauksen rivi tiedetään vain, jos agentti luki tiedoston ensin.",
       caption: "Muutokset",
     },
+    "terminal-copy-on-select": {
+      name: "Päätteen kopiointi valitsemalla",
+      desc: "Päätteessä valittu teksti menee leikepöydälle heti, kun päästät hiiren irti, kuten monessa päätteessä.",
+      where:
+        "Päätepaneelissa. Valinnan Kopioi-painike muuttuu Kopioiduksi, kun teksti on leikepöydällä.",
+      shows:
+        "Shift pohjassa vedetty valinta ja tmuxin oma hiirivalinta kopioituvat. Ctrl+Shift+C ja valinnan Kopioi-painike kopioivat myös silloin, kun tämä on pois päältä.",
+      needs:
+        "Selaimen luvan kirjoittaa leikepöydälle. Jos selain kieltää sen, valinta jää näkyviin ja Kopioi-painike toimii.",
+      caption: "Pääte",
+    },
+    "terminal-open-urls": {
+      name: "Päätteen osoitteet selaimeen",
+      desc: "Kun päätteen ohjelma yrittää avata verkko-osoitteen selaimessa, esimerkiksi gh auth login, Habitat näyttää osoitteen ja avaa sen uuteen välilehteen, kun painat.",
+      where:
+        "Päätepaneelin alareunassa kortissa, jossa näkyy, mihin osoite vie, ja painikkeet Avaa uuteen välilehteen ja Ohita.",
+      shows:
+        "Vain http- ja https-osoitteet. Mitään ei avata ilman painallustasi, ja osoite tulostuu myös päätteeseen.",
+      needs:
+        "Päätteen, jonka Habitat on avannut tämän päivityksen jälkeen. Ohjelman täytyy käyttää selaimen avaamiseen BROWSER-muuttujaa tai xdg-openia.",
+      caption: "Pääte",
+    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -315,6 +337,28 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "Nothing else. It comes from the agent's tool calls: a file a command changed shows only when the command names it, and an edit's line is known only when the agent read the file first.",
       caption: "Changes",
+    },
+    "terminal-copy-on-select": {
+      name: "Copy on select in the terminal",
+      desc: "Text you select in the terminal goes to the clipboard as soon as you let go of the mouse, as in many terminals.",
+      where:
+        "In the terminal panel. The selection's Copy button turns into Copied once the text is on the clipboard.",
+      shows:
+        "A selection dragged with Shift held and tmux's own mouse selection are copied. Ctrl+Shift+C and the selection's Copy button copy even when this is off.",
+      needs:
+        "The browser's permission to write to the clipboard. If the browser refuses, the selection stays and the Copy button works.",
+      caption: "Terminal",
+    },
+    "terminal-open-urls": {
+      name: "Terminal addresses in the browser",
+      desc: "When a program in the terminal tries to open a web address in a browser, gh auth login for example, Habitat shows the address and opens it in a new tab when you press.",
+      where:
+        "At the bottom of the terminal panel, in a card that shows where the address leads, with the buttons Open in a new tab and Dismiss.",
+      shows:
+        "Only http and https addresses. Nothing opens without your press, and the address is also printed in the terminal.",
+      needs:
+        "A terminal Habitat opened after this update. The program has to open the browser through the BROWSER variable or xdg-open.",
+      caption: "Terminal",
     },
   },
   picture: {

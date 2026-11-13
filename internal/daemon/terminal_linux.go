@@ -822,6 +822,7 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		logClose("failed", "server_unavailable")
 		return
 	}
+	helper := h.browserHelper(socket)
 	shell := target.shell
 	if shell == "new" {
 		existing, err := h.shells(ctx, socket, target.base)
@@ -845,11 +846,15 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		sess := target.base + "-" + shell
 		// Set PATH per session too: a surviving tmux server may predate
 		// this daemon and retain its old environment.
-		// The status line would cost a row and show tmux's own tabs
-		// beside the panel's; mouse mode makes the wheel scroll tmux's
-		// history. Both apply to this session only.
-		if _, err := h.run(ctx, socket, "new-session", "-d", "-e", agentPath(h.cfg.Home), "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
-			"set-option", "status", "off", ";", "set-option", "mouse", "on"); err != nil {
+		args := []string{"new-session", "-d", "-e", agentPath(h.cfg.Home)}
+		if helper != "" {
+			args = append(args, "-e", "BROWSER="+helper)
+		}
+		// prepareSession repeats status and mouse; set here they are
+		// already in place for the first redraw.
+		args = append(args, "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
+			"set-option", "status", "off", ";", "set-option", "mouse", "on")
+		if _, err := h.run(ctx, socket, args...); err != nil {
 			ws.close(4503, "terminal_unavailable")
 			logClose("failed", "create_failed")
 			return
@@ -857,6 +862,7 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 	}
 	target.shell = shell
 	name = target.base + "-" + shell
+	h.prepareSession(ctx, socket, name, helper)
 	cmd = h.command(ctx, socket, "attach-session", "-t", "="+name)
 	pty, err := startOnPTY(cmd, size.Cols, size.Rows)
 	if err != nil {
