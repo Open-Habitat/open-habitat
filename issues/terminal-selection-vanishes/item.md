@@ -2,12 +2,16 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: terminal
 lane_seq: 1
 collision: [web/src/components/Terminal.tsx]
+closed: 2026-11-13
+commits:
+- hash: f29e0a0e
+  summary: browser terminal lane
 ---
 
 # Terminal: a mouse selection disappears before it can be copied
