@@ -2,13 +2,16 @@
 created: 2026-11-13
 updated: 2026-11-13
 type: chore
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while validating an unrelated change
 source_ref: taskfleet:01m7aecd6z08hz6vj3bmg4yvep/observed:project-view-dangling-links
 originating_run: 01m7aecd6z08hz6vj3bmg4yvep
 originating_run_kind: spinoff
+lane: gate-repair
+lane_seq: 1
+preparation: ready
 ---
 
 # Project-view validation fails on main with 16 dangling Markdown links
