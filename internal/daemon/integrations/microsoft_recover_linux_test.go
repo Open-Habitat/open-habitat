@@ -65,17 +65,11 @@ func recoveryAttempt(c *Catalog) bool {
 	return c.relay.current() != nil
 }
 
-// stopRecovery stops the started catalog the way its own shutdown does, but
-// before the test returns: once stopping is set no later reconcile starts a
-// sync client, and stopAll waits for those already running, so nothing writes
-// into the temporary home while it is removed.
+// stopRecovery stops the started catalog before the test returns, so nothing
+// writes into the temporary home while it is removed.
 func stopRecovery(c *Catalog, cancel context.CancelFunc) {
 	cancel()
-	c.relay.cancelAll()
-	c.write.Lock()
-	c.stopping = true
-	c.write.Unlock()
-	c.sync.stopAll()
+	c.Stop()
 }
 
 func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *testing.T) {

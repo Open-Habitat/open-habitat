@@ -275,7 +275,7 @@ func TestMicrosoftConfigWithATokenPerRootMigratesAtStart(t *testing.T) {
 	var logs lockedBuffer
 	c := New(env, []Entry{&microsoft{}}, slog.New(slog.NewJSONHandler(&logs, nil)), WithQuota(func() Room { return Room{Free: 1 << 30, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
 	ctx, cancel := context.WithCancel(context.Background())
-	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	defer func() { cancel(); c.Stop() }()
 	c.Start(ctx)
 	waitFor(t, "migration", func() bool { return strings.Contains(logs.String(), `"msg":"integration_config_migration"`) })
 	if !strings.Contains(logs.String(), `"outcome":"completed"`) {

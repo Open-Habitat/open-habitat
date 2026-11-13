@@ -29,6 +29,9 @@ type relay struct {
 	// resume marks accounts whose interrupted first pass the daemon queued
 	// or failed to resume since it started.
 	resume map[key]resumeNote
+	// closed is set by cancelAll at shutdown: no attempt starts after it, so
+	// every login driver Stop waits for is one that cancelAll cancelled.
+	closed bool
 }
 
 type attempt struct {
@@ -137,6 +140,7 @@ const loginLifetime = 20 * time.Minute
 
 func (r *relay) cancelAll() {
 	r.mu.Lock()
+	r.closed = true
 	var all []*attempt
 	for _, a := range r.attempts {
 		all = append(all, a)
@@ -351,7 +355,7 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level L
 	r := &c.relay
 	p := e.Provider()
 	r.mu.Lock()
-	if c.busy(owner, p) != nil {
+	if r.closed || c.busy(owner, p) != nil {
 		r.mu.Unlock()
 		return errAttemptActive
 	}
@@ -370,6 +374,9 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level L
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.closed {
+		return errAttemptActive
+	}
 	// Another start or a resume may have taken the place meanwhile. A
 	// finished resume clears its place itself rather than leaving its attempt.
 	replaced := map[*attempt]bool{}
@@ -394,7 +401,11 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level L
 		}
 	}
 	r.put(a)
-	go c.driveLogin(ctx, e, a)
+	c.background.Add(1)
+	go func() {
+		defer c.background.Done()
+		c.driveLogin(ctx, e, a)
+	}()
 	return nil
 }
 

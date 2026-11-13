@@ -580,8 +580,12 @@ type Catalog struct {
 	// and the supervised set, so a removal cannot race a login completing.
 	write    sync.Mutex
 	stopping bool // guarded by write; shutdown must not restart retained clients
-	sync     *Supervisor
-	relay    relay
+	// background counts Start's work and the login drivers, which Stop
+	// waits for; cancelStart ends Start's context.
+	background  sync.WaitGroup
+	cancelStart context.CancelFunc
+	sync        *Supervisor
+	relay       relay
 
 	// resumePoll is how often a resume looks again at a pass that another
 	// process or login holds; resumeFirst..resumeMax back off a provider
@@ -663,25 +667,46 @@ func kernelQuota() Room {
 // Start brings the home into step with what the tools hold when the daemon
 // starts: sync clients for every syncing account, the boot signal and the
 // skill, and the first passes a stop interrupted resume in the background.
-// It stops the sync clients when ctx ends.
+// It stops the sync clients when ctx ends; Stop also waits for the rest.
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
 	c.reconcile()
 	queue := c.interruptedQueue()
 	c.write.Unlock()
+	ctx, cancel := context.WithCancel(ctx)
+	c.cancelStart = cancel
+	c.background.Add(2)
 	go func() {
+		defer c.background.Done()
 		c.alignAll(ctx)
 		c.resumeInterrupted(ctx, queue)
 		c.recoverMicrosoft(ctx)
 	}()
 	go func() {
+		defer c.background.Done()
 		<-ctx.Done()
-		c.relay.cancelAll()
-		c.write.Lock()
-		c.stopping = true
-		c.sync.stopAll()
-		c.write.Unlock()
+		c.shutdown()
 	}()
+}
+
+// Stop ends the catalog's work and returns only when none of it can still
+// change the person's files: a recovery, migration or login cancelled at
+// shutdown still finishes its own step and cleanup, and an exit before that
+// would leave the step half done. Stop is called after Start, once.
+func (c *Catalog) Stop() {
+	if c.cancelStart != nil {
+		c.cancelStart()
+	}
+	c.shutdown()
+	c.background.Wait()
+}
+
+func (c *Catalog) shutdown() {
+	c.relay.cancelAll()
+	c.write.Lock()
+	c.stopping = true
+	c.sync.stopAll()
+	c.write.Unlock()
 }
 
 func (c *Catalog) entry(p Provider) Entry {

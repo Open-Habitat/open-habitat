@@ -371,7 +371,7 @@ func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
 	c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
-	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	defer func() { cancel(); c.Stop() }()
 	h := c.Handler(allow)
 	code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
 	if code != 200 {
@@ -697,7 +697,7 @@ func TestMicrosoftMailOnlyLicenceCompletesWithoutFolderChoice(t *testing.T) {
 			c := New(env, []Entry{m}, nil)
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Start(ctx)
-			defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+			defer func() { cancel(); c.Stop() }()
 			h := c.Handler(allow)
 			code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
 			if code != 200 {
@@ -854,7 +854,7 @@ func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
 			c := New(env, []Entry{e}, nil, opts...)
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Start(ctx)
-			defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+			defer func() { cancel(); c.Stop() }()
 			if !c.sync.supervised(key{Microsoft, address}) {
 				t.Fatal("initial native sync not supervised")
 			}
@@ -1005,7 +1005,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	c := New(env, []Entry{e}, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
-	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	defer func() { cancel(); c.Stop() }()
 	if err := c.startLogin(ownerA, e, "", ""); err != nil {
 		t.Fatal(err)
 	}
