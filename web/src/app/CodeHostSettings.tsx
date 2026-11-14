@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { LetterMark } from "../components/Integrations";
@@ -169,6 +169,15 @@ function GitHubWorkflowRow({
 }) {
   const prefs = useAccountPreferences(identity, csrf);
   const [pending, setPending] = useState(false);
+  // Back from GitHub through the browser's history: the page is restored
+  // as it was left, mid sign-in, though nothing is under way any more.
+  useEffect(() => {
+    const restored = (e: PageTransitionEvent) => {
+      if (e.persisted) setPending(false);
+    };
+    window.addEventListener("pageshow", restored);
+    return () => window.removeEventListener("pageshow", restored);
+  }, []);
   const [said, setSaid] = useState("");
   const s = workflowState(scopes, prefs.github_workflow, pending);
   const busy = !prefs.loaded || !!prefs.busy || !onReconnect;
@@ -252,7 +261,18 @@ function GitHubWorkflowRow({
               {txt.allowAgain}
             </ControlButton>
           </>
-        ) : s === "pending" ? null : (
+        ) : s === "pending" ? (
+          // A page brought back from the browser's history, or a sign-in
+          // the browser never left for, is not still signing in.
+          <ControlButton
+            data-testid="github-workflow-cancel"
+            size="row"
+            variant="quiet"
+            onPress={() => setPending(false)}
+          >
+            {txt.cancelSignIn}
+          </ControlButton>
+        ) : (
           <ControlButton
             data-testid="github-workflow-allow"
             size="row"

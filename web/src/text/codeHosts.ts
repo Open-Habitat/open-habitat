@@ -79,6 +79,7 @@ const fi = {
   allowAgain: "Salli uudelleen",
   keepOff: "Älä salli",
   removePerm: "Poista lupa",
+  cancelSignIn: "Peru",
   scopesLabel: "Oikeudet:",
   scopesUnknown: "Oikeuksia ei voitu lukea.",
   saidKeptOff:
@@ -166,6 +167,7 @@ export const codeHostsText = catalog(
     allowAgain: "Allow again",
     keepOff: "Don’t allow",
     removePerm: "Remove permission",
+    cancelSignIn: "Cancel",
     scopesLabel: "Permissions:",
     scopesUnknown: "Permissions could not be read.",
     saidKeptOff:

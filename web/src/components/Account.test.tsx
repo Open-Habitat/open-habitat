@@ -399,6 +399,8 @@ describe("account presentation", () => {
       fireEvent.click(screen.getByTestId("github-workflow-allow"));
       expect(onReconnect).toHaveBeenCalledWith(true);
       expect(row().dataset.wf).toBe("pending");
+      fireEvent.click(screen.getByTestId("github-workflow-cancel"));
+      expect(row().dataset.wf).toBe("off");
       // The card's own Reconnect leaves the choice to the app.
       fireEvent.click(screen.getByTestId("github-reconnect"));
       expect(onReconnect).toHaveBeenLastCalledWith();
