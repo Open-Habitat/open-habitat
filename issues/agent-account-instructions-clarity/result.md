@@ -57,6 +57,34 @@ names) is the likely mechanism, not an observed one. How Pi shortens a long
 tool name was read from its documentation, not seen in a session. Atlassian's
 and Trello's tool lists could not be counted without a signed-in connection.
 
+## Rethink of `tool-surface.md` (14.11.2026)
+
+`tool-surface.md` was rewritten so that it can be read as a proposal: a
+Finnish cover note with the three yes-or-no questions, the incident, what the
+agent is given today, the proposal, the alternatives, and at the end an
+"Erottelu" section that says what was decided, what is proposed, what was
+dropped and what contradicts something else. The proposal itself and its
+lists did not change; `tool-surface-check.py` was rerun against the installed
+0.170.1 server and its numbers match. Both diagrams parse with the product's
+Mermaid.
+
+Decisions made in the rewrite, for later review:
+
+1. **Tool names live only in `tool-surface-check.py`.** The document gives
+   groups, counts and what a person loses. Alternative: keep the name tables
+   in the document as well. Left out because the script checks its lists and
+   a second copy would drift.
+2. **The everyday/administration line is presented as a proposal**, although
+   `item.md` has its wording under "Direction (Jari)". Alternative: treat it
+   as decided. Asked of Jari in Erottelu, because the first record does not
+   show whose wording it is.
+3. **The 0.184.2 research was added**: the sign-in tools obey Habitat's list
+   there, so hiding them through Pi is a measure for the pinned version only.
+   Decision 5 under "Decisions for later review" and the Yhteenveto above do not say this.
+4. **`item.md` was not corrected** ("about 110 Outlook tools", mail rules),
+   since this run was limited to `tool-surface.md` and this file. The
+   contradiction is listed in Erottelu.
+
 ## Live check
 
 Nothing to try yet: this is a proposal. To see the surface as it is today, on
