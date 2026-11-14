@@ -22,80 +22,66 @@ try yet.
 ## Prototype round 1 — the rail (14.11.2026)
 
 Round `design-system/prototypes/rounds/2026-11-14-rail-agent-state/`.
-Its `NOTES.md` covers the build and check commands and "What the host
-would need" for each direction. The axis is **how the agent's declared
-state shows next to what Habitat observes**. All directions share the same
-rules about which section a row goes in. The picker also offers **Nyt**,
-today's rail for the same conversations.
+It follows the design above (commands, sections, expiry, labels), and its
+`NOTES.md` says what each direction needs from that model beyond it. The
+axis is **how the agent's declared state shows next to what Habitat
+observes**. All directions place rows by the design's rules. The picker
+also offers **Nyt**, today's rail for the same conversations.
 
-- **1 Agentin rivi**: the declaration picks the section, and the agent's
-  own words appear under the title as a second line ("Odottaa kahta
-  workeria", the question). A worker's question shows on the parent row
-  ("Korkeusdata kysyi, agentti vastaa"). A stale declaration stays visible
-  as muted italics. Observed rows keep one line, so a declaration looks
-  different from an observation.
-- **2 Sama kieli**: the declaration picks the section and the mark, and
-  the row stays one line and looks like an observation. Only a question
-  put to the person gets a second line. Stale declarations are dropped
-  without a trace.
+- **1 Agentin rivi**: the agent's words appear under the title as a second
+  line ("Odottaa kahta workeria", the question). A worker's open question
+  shows on the parent row ("Korkeusdata kysyy agentilta"). A
+  `waiting_workers` that lapsed after a restart stays visible as muted
+  italics ("Odotti kahta workeria · niitä ei enää näy") while its reply
+  waits. Observed rows keep one line, so a declaration looks different
+  from an observation.
+- **2 Sama kieli**: rows stay one line and a declaration looks like an
+  observation. Only `needs_answer` gets a second line, its text. A lapsed
+  handoff disappears without a trace, as in the design.
 - **3 Kysymysrivi**: rows as in 2, but each open question is its own
   indented row under its conversation. It sits in Käynnissä while the
   agent handles it and moves to Sinun vuorosi with the conversation when
-  the agent asks the person.
+  the agent escalates.
 
 **Recommendation: 1 Agentin rivi.** You can read why a conversation is
 where it is without opening it. The question is visible as words where the
-person decides whether to answer now. A declaration that might no longer
-be true says so instead of passing as an observation. Direction 2 is
-almost invisible in Käynnissä, because the mark alone does not tell
-"waiting for workers" from "working". Direction 3 makes the most of the
-worker question, but adds rows to a rail that has been kept to one line
-per conversation, and on a phone the question row has room for only a few
-words.
+person decides whether to answer now. A lapsed declaration says so instead
+of the row silently changing its reason. Direction 2 is almost invisible
+in Käynnissä, because the mark alone does not tell "waiting for workers"
+from "working". Direction 3 makes the most of the worker question, but
+adds rows to a rail kept to one line per conversation, and on a phone the
+question row has room for only a few words.
 
 The checks covered every direction at 1440 and 390 px in Päivä, Yö and
 Kontrasti, plus English (`check.mjs`, 457 checks, clean console). They
 also clicked the events: escalation, the person writing, and the workers
 finishing.
 
-### Decisions for later review
+### Decisions for later review (round 1)
 
-- **`done` moves the conversation to Hiljaiset even with an unread reply.**
-  Alternatives: keep it in Sinun vuorosi as a new reply, or Sinun vuorosi
-  with a weaker mark. Reason: "nothing pending" from the agent means the
-  person is not needed, and that is the point of the feature. The reply is
-  still there at the top of Hiljaiset.
-- **Observation wins over a declaration.** A running turn is Käynnissä
-  whatever was declared. A declaration counts only while the agent is
-  idle. Alternative: let the declaration rule always. Reason: a running
-  turn is a fact Habitat sees, while the declaration is the agent's
-  description of a moment that has passed.
-- **Expiry belongs to the daemon.** The declaration ends when the person
-  writes, when a new turn starts (other than the declaring turn), or when
-  its condition ends (no working or idle workers). A daemon restart makes
-  it stale. Alternative: the agent clears its own state. Reason: an agent
-  that forgets would leave the rail lying.
-- **The agent may set only its own conversation's state, through the
-  existing agent socket.** The person's `turn_mark` (raise, Ei nyt) stays
-  separate and the agent cannot touch it. This adds no new authority.
-  Alternative: one shared mark. Reason: the raise is the person's act
-  (Jari 7.11.2026).
-- **Escalating a worker's question is the parent's own `needs-answer`**,
-  optionally naming the worker run. Habitat never answers a worker for the
-  person. Alternative: route the worker's question straight to the person.
-  Reason: Jari's decision in `worker-asks-parent` (14.11.2026) is parent
-  first.
-- **Command name `open-habitat agent state set|clear --current`.**
-  Alternatives: `conversation update --state`, or a `rail` noun. Reason:
-  it fits the CLI's noun-verb form, and "rail" names the UI rather than
-  the fact.
+- **The waiting row counts the workers** ("Odottaa kahta workeria"), where
+  the design's label is *Odottaa workereita*. Alternative: the design's
+  fixed label. Reason: `spinoffs_working` already gives the count, and it
+  tells the person how much is still outstanding.
+- **A lapsed `waiting_workers` is shown as lapsed in direction 1.** The
+  design places the row by observation without a trace. Alternative: the
+  design as it is (directions 2 and 3). Reason: when a row jumps from
+  Käynnissä to Sinun vuorosi with no new reply, the person deserves to
+  know why. The cost is that the snapshot or railNow keeps the lapsed
+  handoff visible until its reply is opened.
+- **In direction 1 the question line shows the question itself, without
+  the *Kysyy sinulta* prefix.** Alternative: the design's full label on
+  the line. Reason: at rail width the prefix leaves room for two words of
+  the question. The section heading and the mark already say it is the
+  person's turn, and the prefix stays in the row's description for
+  assistive technology.
 
 ### Questions for Jari
 
-1. Is Hiljaiset right for `done`, or should a done conversation's unread
-   reply still reach Sinun vuorosi?
-2. Should a stale declaration be shown at all (direction 1), or just
-   dropped (directions 2 and 3)?
+1. Should a lapsed waiting-for-workers declaration be shown at all
+   (direction 1), or dropped as the design proposes (directions 2 and 3)?
+2. Direction 3's question rows: is a second row per question worth it in a
+   rail kept to one line per conversation?
 
 Live check: nothing changed on the test server. Open the round's offline
 page (worker-results copy) and compare 1/2/3 against Nyt. Then press

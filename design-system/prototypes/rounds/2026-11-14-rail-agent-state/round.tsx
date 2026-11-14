@@ -57,7 +57,7 @@ const params = new URLSearchParams(location.search);
 // ---------- The synthetic world ----------
 
 type Declared =
-  | { kind: "workers"; count: number; stale?: boolean }
+  | { kind: "workers"; count: number }
   | { kind: "answer"; question: string; fromWorker?: boolean }
   | { kind: "done" };
 
@@ -113,9 +113,11 @@ const START: Conv[] = [
     id: "backups",
     ws: "kirjanpito",
     age: 40,
-    turn: "idle",
-    workers: { working: 1, idle: 0 },
-    declared: { kind: "workers", count: 2, stale: true },
+    // Declared waiting_workers, then the daemon restarted and none of the
+    // conversation's runs is observed working any more: the handoff lapses
+    // (design.md §2.3) and the unread reply is placed by observation.
+    turn: "reply",
+    declared: { kind: "workers", count: 2 },
   },
   { id: "receipts", ws: "kirjanpito", age: 180, turn: "idle" },
   { id: "colors", ws: "retkiopas", age: 60 * 26, turn: "idle" },
@@ -151,8 +153,11 @@ function apply(world: Conv[], ev: Event): Conv[] {
   });
 }
 
-const live = (d?: Declared) =>
-  d && !(d.kind === "workers" && d.stale) ? d : undefined;
+/** waiting_workers holds only while Habitat itself sees one of the
+ * conversation's runs working (design.md §2.3). */
+const lapsed = (c: Conv) =>
+  c.declared?.kind === "workers" && (c.workers?.working ?? 0) === 0;
+const live = (c: Conv) => (lapsed(c) ? undefined : c.declared);
 
 // ---------- Rows ----------
 
@@ -184,7 +189,7 @@ function place(world: Conv[], d: number, t: Text, s: Words): Placed {
           ? t.noticeQuestion
           : t.workerQuestion
         : "";
-    const decl = d === 0 ? undefined : live(c.declared);
+    const decl = d === 0 ? undefined : live(c);
     const base: AgentNavModel = {
       agentId: c.id,
       href: `/workspaces/${c.ws}?conversation=${c.id}`,
@@ -214,7 +219,7 @@ function place(world: Conv[], d: number, t: Text, s: Words): Placed {
       [c.ws, state, extra].filter(Boolean).join(" · ");
     if (!decl) {
       const stale =
-        d > 0 && c.declared?.kind === "workers" && c.declared.stale
+        d > 0 && c.declared?.kind === "workers" && lapsed(c)
           ? c.declared
           : undefined;
       const model: AgentNavModel = {
@@ -261,7 +266,9 @@ function place(world: Conv[], d: number, t: Text, s: Words): Placed {
         ...base,
         activity: "waiting",
         activityLabel: t.done,
-        detail: say(t.done, t.agentSays),
+        // Hiljaiset, with the unread mark kept until the reply is opened.
+        attentionLabel: c.turn === "reply" ? s.newReply : undefined,
+        detail: say(t.done, c.turn === "reply" ? s.newReply : t.agentSays),
       });
       continue;
     }
@@ -512,11 +519,12 @@ function Sections({
 function command(c: Conv, t: Text) {
   const d = c.declared;
   if (!d) return undefined;
-  if (d.kind === "workers")
-    return `open-habitat agent state set --current waiting-workers`;
-  if (d.kind === "done") return `open-habitat agent state set --current done`;
+  // design.md §2: the agent's handoff for its own conversation.
+  const base = "open-habitat agent handoff create --current --state";
+  if (d.kind === "workers") return `${base} waiting_workers`;
+  if (d.kind === "done") return `${base} done`;
   const q = d.question === "notice" ? t.noticeQuestion : t.workerQuestion;
-  return `open-habitat agent state set --current needs-answer --question "${q}"`;
+  return `${base} needs_answer --text "${q}"${d.fromWorker ? " --worker-ask <run>/<ask>" : ""}`;
 }
 
 function Story({
@@ -538,7 +546,7 @@ function Story({
           const cmd = command(c, t);
           const status = c.ended
             ? t.ended[c.ended]
-            : c.declared?.kind === "workers" && c.declared.stale
+            : lapsed(c)
               ? t.status.stale
               : c.declared
                 ? t.status.live

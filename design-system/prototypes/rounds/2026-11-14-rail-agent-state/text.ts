@@ -15,7 +15,7 @@ const fi = {
     "3 Kysymysrivi: avoin kysymys on oma sisennetty rivinsä keskustelunsa alla, Käynnissä niin kauan kuin agentti hoitaa sitä ja Sinun vuorosi -osiossa, kun agentti kysyy sinulta.",
   ],
   recommend:
-    "Suositus: 1 Agentin rivi. Rivin syy luetaan avaamatta keskustelua, kysymys näkyy sanoina, ja vanhentunut ilmoitus näkyy vanhentuneena eikä totena.",
+    "Suositus: 1 Agentin rivi. Rivin syy luetaan avaamatta keskustelua, kysymys näkyy sanoina, ja rauennut ilmoitus näkyy rauenneena eikä totena.",
   // Synthetic conversations.
   conv: {
     release: "Kevään julkaisu",
@@ -35,26 +35,27 @@ const fi = {
   // the row's state words (all directions' descriptions).
   waitsWorkers: (n: number) =>
     n === 1 ? "Odottaa workeria" : `Odottaa ${n === 2 ? "kahta" : n} workeria`,
-  needsAnswer: "Tarvitsee vastauksesi",
-  needsAnswerLine: (q: string) => `Tarvitsee vastauksesi: ${q}`,
+  // design.md §2.1 and §2.4 share the native question's label.
+  needsAnswer: "Kysyy sinulta",
+  needsAnswerLine: (q: string) => `Kysyy sinulta: ${q}`,
   workerAsksLine: (w: string, q: string) => `${w} kysyy: ${q}`,
   workerAsked: (w: string) => `Worker ${w} kysyi`,
   parentAnswers: "agentti vastaa",
   fromWorker: (w: string) => `workerilta ${w}`,
   done: "Valmis, ei odota mitään",
   staleLine: (n: number) =>
-    `Odotti ${n === 2 ? "kahta" : n} workeria ennen uudelleenkäynnistystä`,
-  workerAskedAnswering: (w: string) => `${w} kysyi, agentti vastaa`,
-  stale: "ilmoitus vanhentunut",
+    `Odotti ${n === 2 ? "kahta" : n} workeria · niitä ei enää näy`,
+  workerAskedAnswering: (w: string) => `${w} kysyy agentilta`,
+  stale: "ilmoitus rauennut",
   answering: "Vastaa workerin kysymykseen",
   agentSays: "Agentti ilmoitti",
   // The story beside the rail.
   storyHead: "Mitä agentit ilmoittivat",
   storyLead:
-    "Agentti asettaa paikkansa komennolla. Ilmoitus on voimassa, kunnes kirjoitat keskusteluun, agentin seuraava vuoro alkaa tai sen ehto täyttyy (workerit valmistuvat).",
+    "Agentti ilmoittaa vuoronsa aikana, kenen siirto on seuraavaksi. Ilmoitus on voimassa vuoron päättymisestä seuraavan vuoron alkuun; odotus workereille raukeaa myös, kun Habitat ei enää näe niistä yhtään työssä.",
   status: {
     live: "Voimassa",
-    stale: "Vanhentunut: palvelin käynnistyi uudelleen, workereita ei enää tunneta",
+    stale: "Rauennut: palvelin käynnistyi uudelleen, eikä Habitat näe enää yhtään workeria työssä",
     observed: "Havaittu, ei ilmoitusta",
     workerAsked: "Taskfleet: worker kysyy pääagentilta",
   },
@@ -86,7 +87,7 @@ const en: Text = {
     "3 Question row: an open question is its own indented row under its conversation, in Running while the agent handles it and in Your turn once the agent asks you.",
   ],
   recommend:
-    "Recommendation: 1 Agent's line. The row's reason reads without opening the conversation, a question shows as words, and a stale declaration shows as stale rather than true.",
+    "Recommendation: 1 Agent's line. The row's reason reads without opening the conversation, a question shows as words, and a lapsed declaration shows as lapsed rather than true.",
   conv: {
     release: "Spring release",
     tiles: "Map tile cache",
@@ -103,25 +104,25 @@ const en: Text = {
   workerQuestion: "SRTM or the national elevation model?",
   waitsWorkers: (n: number) =>
     n === 1 ? "Waiting for a worker" : `Waiting for ${n === 2 ? "two" : n} workers`,
-  needsAnswer: "Needs your answer",
-  needsAnswerLine: (q: string) => `Needs your answer: ${q}`,
+  needsAnswer: "Asking you",
+  needsAnswerLine: (q: string) => `Asking you: ${q}`,
   workerAsksLine: (w: string, q: string) => `${w} asks: ${q}`,
   workerAsked: (w: string) => `Worker ${w} asked`,
   parentAnswers: "the agent is answering",
   fromWorker: (w: string) => `from worker ${w}`,
   done: "Done, nothing pending",
   staleLine: (n: number) =>
-    `Was waiting for ${n === 2 ? "two" : n} workers before the restart`,
-  workerAskedAnswering: (w: string) => `${w} asked, the agent answers`,
-  stale: "declaration stale",
+    `Was waiting for ${n === 2 ? "two" : n} workers · none seen now`,
+  workerAskedAnswering: (w: string) => `${w} asks the agent`,
+  stale: "declaration lapsed",
   answering: "Answering a worker's question",
   agentSays: "The agent declared",
   storyHead: "What the agents declared",
   storyLead:
-    "An agent sets its place with a command. The declaration holds until you write in the conversation, the agent's next turn starts, or its condition is met (the workers finish).",
+    "During its turn the agent says who has the next move. The declaration holds from the end of that turn to the start of the next; waiting for workers also lapses once Habitat sees none of them working.",
   status: {
     live: "In effect",
-    stale: "Stale: the server restarted and the workers are no longer known",
+    stale: "Lapsed: the server restarted and Habitat no longer sees any worker working",
     observed: "Observed, no declaration",
     workerAsked: "Taskfleet: a worker asks its main agent",
   },

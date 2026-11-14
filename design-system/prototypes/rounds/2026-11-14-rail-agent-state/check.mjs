@@ -4,7 +4,8 @@
 // (Päivä, Yö, Kontrasti): every row is in the section its direction says,
 // the declared lines are where the direction puts them (Agentin rivi: four,
 // Sama kieli: only the question, Kysymysrivi: none but two question rows),
-// the declared waiting-for-workers row carries the background mark, and the
+// the declared waiting-for-workers row carries the background mark, a
+// lapsed one (no worker seen after a restart) is placed by observation, and the
 // document does not overflow. At 390 the rail opens from the menu. Then at
 // 1440 Päivä on Agentin rivi and Kysymysrivi: the worker's question
 // escalates to Sinun vuorosi, the person's message ends a declaration, the
@@ -51,8 +52,9 @@ async function sections(page,d,at){
  eq(await inSection(page,'rail-quiet','glossary'),d===0?0:1,`${at}: glossary quiet when declared done`);
  eq(await inSection(page,'rail-yours','notice'),1,`${at}: the escalated question waits for you`);
  eq(await inSection(page,'rail-yours','a11y'),1,`${at}: an observed new reply waits for you`);
- for(const id of ['release','tiles','elevation','backups'])
+ for(const id of ['release','tiles','elevation'])
   eq(await inSection(page,'rail-running',id),1,`${at}: ${id} in Käynnissä`);
+ eq(await inSection(page,'rail-yours','backups'),1,`${at}: lapsed wait: the unread reply takes Sinun vuorosi`);
  eq(await inSection(page,'rail-quiet','receipts'),1,`${at}: receipts quiet`);
  const lines=page.getByTestId('declared-line');
  eq(await lines.count(),[0,4,1,0][d],`${at}: declared lines`);
@@ -60,10 +62,10 @@ async function sections(page,d,at){
  if(d>0){
   eq(await mark(page,'tiles'),'background',`${at}: declared wait has the background mark`);
   eq(await mark(page,'notice'),'waiting',`${at}: a question has the waiting mark`);
-  eq(await mark(page,'backups'),'working',`${at}: a stale declaration falls back to the observation`);
+  eq(await mark(page,'backups'),'waiting',`${at}: a lapsed declaration falls back to the observation`);
  }
  if(d===1){
-  eq(await page.locator('[data-testid="agent-item-backups"] [data-tone="stale"]').count(),1,`${at}: stale says stale`);
+  eq(await page.locator('[data-testid="agent-item-backups"] [data-tone="stale"]').count(),1,`${at}: lapsed says lapsed`);
   eq(await page.locator('[data-testid="agent-item-elevation"] [data-tone="worker"]').count(),1,`${at}: the worker's question on the parent row`);
  }
  if(d===3){
