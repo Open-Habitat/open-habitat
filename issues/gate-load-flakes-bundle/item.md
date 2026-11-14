@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: chore
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: gate-load-flakes
 lane_seq: 2
+closed: 2026-11-14
 ---
 
 # Browser cases that fail only under host load (six reports in one)
@@ -29,3 +30,9 @@ Collected from six earlier reports, now closed as duplicates of this issue:
 - `lab-startup-spurious-upgrade-notice`: a fresh lab conversation sometimes shows "Palvelin päivitettiin" under reply jitter; investigate first whether this is a real build/instance-fence defect before changing the test.
 
 Their texts and evidence stay in the closed issues.
+
+## Resolution
+
+### 2026-11-14T12:11:12Z · @issuectl
+
+First-turn load failure was a product race (first history read starved by reconciliation); fixed, 0/20 failures under load on the final code (before 4/8). Startup notice instrumented and reworded; other cases not reproduced. See result.md.

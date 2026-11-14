@@ -1,89 +1,129 @@
-# Load investigation — incomplete
+# Load flakes: result
 
-The bundle remains open. No product or test changes are proposed for landing:
-the required startup classification and first-turn fix are not established.
+## First turn followed before history: product race, fixed
 
-## Startup notice: not yet classified
+**Cause.** A new conversation whose cold status reports native history as
+present opens its window in state `loading`. The opened view (and with it the
+live turn) waits for the first tail read. During a running turn the journal
+invalidates several times a second, and every snapshot that discharged an
+invalidation ran `ConversationStore.reconcileStale()`, which bumped the epoch,
+cancelled every pager read and began the first read again. A read slower than
+that cadence never finished: 1.2 s in the spec, about 1 s on a loaded host.
+So the window stayed behind the `conversation-loading` notice for the whole
+first turn and only showed the work after the turn ended. The folded-work
+summary that history then shows is short, so the spec's "stream taller than
+two views" predicate never held.
 
-The `1440 light` skill-reader case passed 40/40 executions (10, then 30)
-with two browser workers, eight bounded CPU busy loops, 250 ms reply jitter,
-and `OH_REPLY_SEED=skill-third`. This does not disprove the earlier failure.
+Evidence (synthetic lab host, under load): a 100 ms DOM sampler in a failing
+run showed `conversation-loading` from 0.4 s after Send until 10.3 s, when the
+turn had ended. Console instrumentation in the store showed
+`reconcileStale` → `loadTail` every 200–500 ms through the turn. The trace
+had repeated aborted `history` requests and one successful read after the
+turn. This explains the previous round's "conversation-loading while the
+rail said working" snapshot, and why holding the turn longer did not help.
 
-There are two relevant notice paths:
+**Fix** (`web/src/app/conversationStore.ts`, `conversationPager.ts`):
+reconciliation no longer cancels the first read of a window that is still
+`loading` with no entries. It lets that read finish (`record.carried`,
+`ConversationPager.cancelAll(keep)`) and reads the tail once more after it.
+A reseed, a new daemon life and dispose still discard the read. Windows that
+show content keep the old cancel-and-reread rule. The spec is unchanged.
 
-- `App.tsx` sets its version-change state from `checkBundle()` when the served
-  index's asset references differ from those captured by the tab.
-- `ChunkLoadBoundary.tsx` shows the same notice for a `vite:preloadError`,
-  without establishing that a release changed. The earlier report's
-  `ERR_TOO_MANY_RETRIES` is consistent with this path but does not prove it.
+**Counts** (`lab-conversation-scroll.spec.ts`, "first turn is followed"; two
+workers, eight `timeout`-bounded busy loops, 250 ms reply jitter, seed
+`r56-reds`, `OH_PORT_BASE=12100`):
 
-No daemon-instance or gateway fence was changed. There is insufficient evidence
-to classify the reported occurrence as a fence defect or harness timing.
-A subsequent investigation should record the failed asset request and preload
-error alongside the index comparison, rather than infer a version change from
-this banner alone.
+| Code | Failed / executed |
+| --- | --- |
+| Before (this round) | 4 / 8 |
+| Before (previous round) | 3 / 6 |
+| First fix version | 0 / 30 (10 + 20) |
+| Final (after the review fix) | 0 / 20 |
 
-## Reproduction counts
+The whole scroll spec under the same load passed 12/12 on the final code.
+Traces of the failing baseline and diagnostic runs are kept locally under
+`/var/tmp/agent-keep/gate-load-flakes-bundle/r2/` (working evidence, not for
+publication).
 
-All batches used `OH_PORT_BASE=12100`, two workers, 250 ms reply jitter and eight
-CPU busy loops bounded by `timeout`. Each browser batch had a 600-second outer
-bound. These are focused spec runs, not clean-gate results.
+## Startup "Palvelin päivitettiin": instrumented, wording fixed
 
-| Case | Passed / executed | Seed |
+The original report describes a *full-page* notice after the first Send, with
+`net::ERR_TOO_MANY_RETRIES` in the console. Only `ChunkLoadBoundary` replaces
+the page. App's `checkBundle()` path shows a banner, and only while the page
+is stale or offline. So the reported occurrence fits the preload path: a lazy
+chunk that failed to load on a busy synthetic host. That path claimed a server
+update without consulting the served index.
+
+The boundary now:
+- first shows a new `part-failed` notice ("Osa sivusta ei latautunut" / "Part
+  of the page did not load"; reload; drafts are kept);
+- runs `checkBundle()` and switches to `version-changed` only when the served
+  index names another bundle;
+- marks its result in `data-chunk-load-failed` (`checking`, `newer`,
+  `current` or `unknown`), and writes one closed-field console line
+  `[bundle] {"path":"chunk-load","asset":"/assets/…","release":…}`.
+
+App's snapshot-failure path writes the same line with
+`"path":"snapshot-failed"` when it finds a newer bundle. A future occurrence
+can therefore be classified from the error-context snapshot or the trace
+console. Under load, the `1440 light` skill-reader case passed 10/10 (seed
+`skill-third`) on the new code. The previous round recorded 40/40.
+
+## Not reproduced: closed without spec changes
+
+| Case | Passed / executed | Round |
 | --- | --- | --- |
-| Skill reader, 1440 light | 40 / 40 | skill-third |
-| First turn followed before history | 3 / 6 | r56-reds |
-| Recap geometry journey | 6 / 6 | r56-reds |
-| rail-unread, quota-pressure, rail-archive, live-long-run, account-settings, workspace-slice (all cases in those files, three repeats) | 81 / 81 | gate-load |
+| Skill reader, 1440 light | 40 / 40, then 10 / 10 | previous, this |
+| Recap geometry journey | 6 / 6 | previous |
+| rail-unread, quota-pressure, rail-archive, live-long-run, account-settings, workspace-slice | 81 / 81 | previous |
+| Other lab-conversation-scroll cases | 12 / 12, then 12 / 12 | this |
 
-The first-turn failures were the reported 45-second stream-height predicate
-failure. This is the only reproduced baseline failure; no before/after stability
-claim is made for any case.
+Quota Escape already waits for focus inside the popover. No unrelated spec was
+edited.
 
-## Rejected first-turn experiment
+## Found along the way
 
-An experiment paused synthetic `longRun` after 30 steps using the existing
-`pi-visual-hold` scenario (before the live-tail limit), and held history requests
-until the browser had observed tall live work. It failed 4/6 loaded executions.
-One inspected failing snapshot still showed the conversation-loading state while
-the rail reported working. Thus extending the turn's lifetime alone does not
-resolve this failure. The experiment was reverted, not shipped as a fix.
+Three `browser-conversation.spec.ts` cases fail deterministically on current
+`main` too, without load. Filed unlaned as `unusually-spotless-pet`.
 
-In one baseline failure's trace, repeated history requests were cancelled before
-a final successful read. A useful next investigation is the ordering between
-cold status, `store.view`, buffered live events, and history cancellation. The
-current evidence does not distinguish an incorrectly gated live view from all
-other possible causes; it is not justification for disabling reconciliation.
+## Review
 
-## Other folded reports
+The store change was reviewed with an independent `/llm-review`: GPT-6 Astra
+as finder (no findings), then Claude Fable 5.2 on one focused question about
+the concurrency boundary. Fable found, and reproduced in a scratch test, a
+sequence where the carried read's follow-up `reconnect` could leave the window
+stale for good: native history gains an unstreamed entry before a streamed
+one. Fixed by making the follow-up a tail read, and the regression test was
+updated. The chunk-load change got focused self-review.
 
-- Quota Escape already waits for focus inside the popover; retained unchanged.
-- Recap geometry and the ordinary reported cases did not reproduce in these
-  batches. No unrelated spec was edited and no timeout was increased.
-- The next lane member was not touched.
-
-## Evidence and review
-
-Local logs and the rejected experimental patch are preserved under
-`/var/tmp/agent-keep/gate-load-flakes-bundle/`. They are working evidence, not
-public attachments. Playwright output directories were overwritten by subsequent
-batches, so the failing traces are not retained; only the observations above and
-the logs survive. This limits further trace-based diagnosis from this run.
-
-Focused self-review covered the findings and the reverted diff. No independent
-review was requested because no runnable change remains. Web/Go validation was
-not run for this evidence-only commit; it must not be treated as implementation
-completion. No full gate was run.
+Checks run: `test-focused.sh --area web` (passed), and focused browser specs
+`stale-tab-chunk-load`, `server-version-reload`, `lab-conversation-scroll`,
+`lab-conversation`, `history-first-page`, `native-history`,
+`new-conversation-placeholder`, `reconnect-paths`, `reconnect-recovery` and
+`rewind-conversation`. All passed except the three main failures above.
 
 ## Decisions for later review
 
-- Keep the issue open rather than claim all six reports fixed or file duplicates
-  of work still tracked here. Alternative: close on passing reruns. Rejected
-  because first-turn failures reproduce and the startup cause remains unknown.
-- Leave the build fence intact. Alternative: suppress the upgrade notice or
-  extend the chip timeout. Neither follows from the available evidence.
-- Revert the held-turn experiment. Alternative: land it as a timing fix. Its
-  failing repeats demonstrate it is not such a fix.
+- **A loading window may show a page read before an invalidation.** The rule
+  from 2 October 2026 was that no pre-invalidation page is ever published.
+  For a window that shows nothing yet, that rule starved the first read on a
+  loaded host. The page is now shown and a tail read always follows and
+  replaces it. Alternatives: render the live turn while the window is still
+  `loading` (changes what `opened` gates: header, composer, control), or keep
+  cancelling and make reads faster (does not remove the starvation). The
+  chosen change is the smallest. The brief flash it allows, an earlier prefix
+  of history replaced moments later, is far less harmful than a turn hidden
+  until it ends.
+- **The chunk-load notice says what is known.** A preload error alone is not
+  evidence of a release, so the notice says a part of the page did not load
+  unless the served index changed. Alternative: keep "server updated" (true
+  for the most common production cause, a release that removed old chunks).
+  Rejected because the index check costs one request and makes the wording
+  true in both cases.
+- **The console line is always on, not opt-in.** It fires only when a reload
+  notice appears, carries no identity or query, and a rare event has to
+  classify itself without anyone having enabled a debug flag first.
 
-Live check: no new behavior to try; this run produces investigation evidence,
-not a test-server change.
+Live check: open a new conversation on the test server while it is busy and
+send a long task. The work should appear and follow as it streams, instead of
+"Ladataan…" until the turn ends.
