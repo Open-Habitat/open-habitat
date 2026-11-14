@@ -1,13 +1,14 @@
 ---
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6xa50g3dz9s1ewkn7nwndj3/observed:agent-path-test-installed-host
 originating_run: 01m6xa50g3dz9s1ewkn7nwndj3
 originating_run_kind: spinoff
+closed: 2026-11-14
 ---
 
 # Agent PATH test fails on hosts with an installed release (agent-bin missing from expectation)
@@ -21,3 +22,9 @@ Observed 2026-11-08 in worktree wt/wkn7nwndj3-r68-rbrowser (`go test ./internal/
 Impact: every worker on an installed developer host (Birch) sees a red daemon package and has to tell this apart from its own change. The worktree's change did not touch agent PATH code.
 
 Direction: build the expected PATH with the same rule production uses for the selected runtime's `agent-bin`, or make the test ignore the host's installed selector.
+
+## Resolution
+
+### 2026-11-14T07:30:02Z · @issuectl
+
+The test was updated in 3535ad15 the same day; the clean gate passes on a host with an installed release (13.11.2026).

@@ -1,14 +1,17 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: low
 provenance: other
 provenance_detail: found while fixing live-long-run-working-missed-under-load
 source_ref: taskfleet:01m6dqa3f790m6d66yyfavs2nr/dead-command-state-pending
 originating_run: 01m6dqa3f790m6d66yyfavs2nr
 originating_run_kind: spinoff
+lane: code-hygiene
+lane_seq: 1
+preparation: ready
 ---
 
 # conversationStore tests command.changed payload.state, which the contract never sends

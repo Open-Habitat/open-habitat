@@ -1,13 +1,16 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6vcjv9yj5rkrstma9kbar47/occurrence:upgrade-start-failed-busy
 originating_run: 01m6vcjv9yj5rkrstma9kbar47
 originating_run_kind: spinoff
+lane: host-upgrade
+lane_seq: 1
+preparation: ready
 ---
 
 # Upgrade work inventory counts failed conversation starts as active turns

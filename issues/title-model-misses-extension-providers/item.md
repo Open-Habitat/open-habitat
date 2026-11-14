@@ -1,14 +1,17 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker finding from Kaisa's journal facts
 source_ref: taskfleet:01m6tyjw70920ryv19hn8srmx9/title-helper-extension-providers
 originating_run: 01m6tyjw70920ryv19hn8srmx9
 originating_run_kind: spinoff
+lane: titles
+lane_seq: 1
+preparation: ready
 ---
 
 # Automatic titles fail for accounts whose only AI sign-in is an extension provider (Claude subscription bridge)

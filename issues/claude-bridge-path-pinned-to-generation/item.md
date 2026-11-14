@@ -1,14 +1,17 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by the web-search-native worker on Birch
 source_ref: taskfleet:01m72sdb5txedt2x9p5rz4bsax/observed:bridge-settings-generation-path
 originating_run: 01m72sdb5txedt2x9p5rz4bsax
 originating_run_kind: spinoff
+lane: claude-bridge-path
+lane_seq: 1
+preparation: ready
 ---
 
 # Claude model selection pins the bridge to one release generation in a person's Pi settings

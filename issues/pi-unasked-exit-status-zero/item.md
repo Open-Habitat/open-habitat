@@ -1,14 +1,17 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker finding from Kaisa's journal facts
 source_ref: taskfleet:01m6tyjw70920ryv19hn8srmx9/pi-unasked-exit-status-0
 originating_run: 01m6tyjw70920ryv19hn8srmx9
 originating_run_kind: spinoff
+lane: pi-diagnostics
+lane_seq: 1
+preparation: ready
 ---
 
 # Pi ends itself (status 0, input open) in an empty browser conversation; the journal cannot say why

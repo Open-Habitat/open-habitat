@@ -1,11 +1,14 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: conductor:2026-11-13/test-release-runtime
+lane: runtime-release
+lane_seq: 1
+preparation: ready
 ---
 
 # Test releases: build or reuse the runtime release with the package

@@ -1,10 +1,13 @@
 ---
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-14
 type: feature
 reporter: jari
 status: open
 priority: normal
+lane: start-page
+lane_seq: 1
+preparation: ready
 ---
 
 # Start page goal option: start immediately when the request has no placeholder

@@ -1,14 +1,17 @@
 ---
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed live during authorized pilot release installation
 source_ref: taskfleet:01m6ddwv432z2bh7s74eyf476h/observed:settings-default-language
 originating_run: 01m6ddwv432z2bh7s74eyf476h
 originating_run_kind: spinoff
+lane: admin-cli
+lane_seq: 1
+preparation: ready
 ---
 
 # Admin settings CLI rejects a browser-selected default language

@@ -1,11 +1,13 @@
 ---
 created: 2026-10-25
-updated: 2026-10-30
+updated: 2026-11-14
 type: task
 reporter: jari
-status: deferred
+status: open
 priority: normal
 preparation: pending
+lane: pi-holder
+lane_seq: 1
 ---
 
 # Upgrades that do not kill running agent processes

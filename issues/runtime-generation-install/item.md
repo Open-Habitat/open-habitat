@@ -1,11 +1,14 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: conductor:2026-11-13/runtime-generation-install
+lane: runtime-release
+lane_seq: 2
+preparation: ready
 ---
 
 # Publish a runtime generation without a full host apply

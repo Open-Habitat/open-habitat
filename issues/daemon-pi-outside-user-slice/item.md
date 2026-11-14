@@ -1,13 +1,16 @@
 ---
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m68hqwwm215yz17mbzpnw471/observation:daemon-cgroup-outside-user-slice
 originating_run: 01m68hqwwm215yz17mbzpnw471
 originating_run_kind: research
+lane: pi-holder
+lane_seq: 2
+preparation: pending
 ---
 
 # Pi children of the daemon run outside user-<uid>.slice, so the documented per-person memory budget does not bound them

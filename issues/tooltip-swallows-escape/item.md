@@ -1,14 +1,15 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: duplicate
 priority: normal
 provenance: other
 provenance_detail: pilot.18 clean gate
 source_ref: taskfleet:01m6c2ybczc0gvg629k2gnka93/gate:tooltip-escape
 originating_run: 01m6c2ybczc0gvg629k2gnka93
 originating_run_kind: spinoff
+closed: 2026-11-14
 ---
 
 # An open hover tooltip swallows Escape meant for the composer
@@ -31,3 +32,9 @@ same thing: the first Esc only closes the tooltip.
 Fix: `QuickTooltip` closes its open help synchronously when Escape is
 pressed outside its trigger, so the key reaches the focused element; Escape
 on the trigger itself still only dismisses the help.
+
+## Resolution
+
+### 2026-11-14T07:30:02Z · @issuectl
+
+Fixed in race-tooltip-escape-under-load.

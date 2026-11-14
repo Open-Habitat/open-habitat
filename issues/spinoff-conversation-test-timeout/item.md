@@ -1,14 +1,15 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: cannot-reproduce
 priority: normal
 provenance: other
 provenance_detail: Observed focused test failure, independently reproduced on main
 source_ref: taskfleet:01m6bwnyyrr9qsk0cp2bae1h30/test-failure:spinoff-conversation
 originating_run: 01m6bwnyyrr9qsk0cp2bae1h30
 originating_run_kind: spinoff
+closed: 2026-11-14
 ---
 
 # Worker conversation unit test times out on current main
@@ -26,3 +27,9 @@ Result: the same test timed out after 5015 ms; the other test passed. The icon-w
 Investigate the fake-timer lifecycle and async history loading in that test and its production component. Determine whether the wait is a test synchronization defect or product regression before changing timeouts; do not merely increase the deadline. No production user failure established by this observation.
 
 Later verification: after main advanced to `8d765d2b` (including tooltip and resting-rename work), the icon-wish branch's complete web suite passed all 161 files / 1193 tests. This does not identify the cause; retain the earlier reproducible observation for triage, but the failure is not currently blocking that branch.
+
+## Resolution
+
+### 2026-11-14T07:29:52Z · @issuectl
+
+Passes in 4 s on current main (14.11.2026); the clean gate of 13.11. was green.

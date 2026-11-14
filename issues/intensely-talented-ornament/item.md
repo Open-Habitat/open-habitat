@@ -1,13 +1,14 @@
 ---
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: duplicate
 priority: normal
 provenance: other
 source_ref: taskfleet:01m6fx4hmwph2jfsxa47yttekp/observed:lab-recap-footer-gap
 originating_run: 01m6fx4hmwph2jfsxa47yttekp
 originating_run_kind: spinoff
+closed: 2026-11-14
 ---
 
 # lab-conversation recap footer gap check sometimes measures a non-positive gap
@@ -22,3 +23,9 @@ Observed 2026-11-03 on Birch under the ordering detector (`OH_REPLY_DELAY_MS=250
 - race-input-before-ready harvest branch: 1 in 6 and 1 in 2, at the same line.
 
 It looks like the geometry is measured while the layout is still settling (the strip, the card or the editor moving) rather than a wrong steady layout, but this has not been confirmed. Effect: an intermittent red in the lab suite under the detector.
+
+## Resolution
+
+### 2026-11-14T07:30:23Z · @issuectl
+
+Collected into gate-load-flakes-bundle (14.11.2026).

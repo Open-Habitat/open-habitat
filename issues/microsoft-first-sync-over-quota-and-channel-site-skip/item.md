@@ -1,14 +1,17 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-14
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: high
 provenance: chat
 source_ref: taskfleet:01m72a2pjq8ppye66vxcrg3wtd/contoso-m365-first-sync
 originating_run: 01m72a2pjq8ppye66vxcrg3wtd
 originating_run_kind: spinoff
+lane: m365-first-sync
+lane_seq: 1
+preparation: ready
 ---
 
 # Microsoft first sync refused over quota after a 16-minute count; a Teams channel site skipped with 404

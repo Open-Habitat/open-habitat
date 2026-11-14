@@ -1,13 +1,14 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: duplicate
 priority: normal
 provenance: ci
 source_ref: taskfleet:01m6v21zbr1w6eppekqqx8n3xh/gate:rail-unread
 originating_run: 01m6v21zbr1w6eppekqqx8n3xh
 originating_run_kind: spinoff
+closed: 2026-11-14
 ---
 
 # Enter on the first Sinun vuorosi row opened the second conversation under gate load (rail-unread)
@@ -28,3 +29,9 @@ Not reproduced alone: 8/8 idle and 12/12 under 10 CPU hogs on 8 cores (`npx play
 ### 2026-11-07T14:52:02Z · @claude-pilot20
 
 Not reproduced in 96 more runs (8 workers, OH_CPU_THROTTLE=4, other load ~10) and absent from the pilot.20 gate on 9d3a5ca1. In those runs the daemon snapshot's agent order never put a later conversation before an earlier readable one; the fixture names Pi files by second (`2006-01-02T15-04-05-000Z`, no milliseconds), so only same-second creations would tie on uuid, which this spec cannot produce. Sinun vuorosi has no explicit order: `railNow` keeps the snapshot order (only raises are sorted), so any reorder would come from the snapshot, not the rail.
+
+## Resolution
+
+### 2026-11-14T07:30:23Z · @issuectl
+
+Collected into gate-load-flakes-bundle (14.11.2026).

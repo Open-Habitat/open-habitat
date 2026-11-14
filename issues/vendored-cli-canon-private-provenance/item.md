@@ -1,14 +1,17 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-14
 type: chore
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: publication scanner inventory during oss-public-instructions
 source_ref: taskfleet:01m727vbew8y4zr7j1nyq91x7a/scanner-finding:ai-first-cli-canon-provenance
 originating_run: 01m727vbew8y4zr7j1nyq91x7a
 originating_run_kind: spinoff
+lane: public-hygiene
+lane_seq: 1
+preparation: ready
 ---
 
 # Vendored ai-first-cli-canon skill names the maintainer's private infrastructure repo

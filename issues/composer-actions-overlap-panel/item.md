@@ -1,12 +1,15 @@
 ---
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: conductor, screenshot review
 source_ref: screenshot:frontmatter-1440-light/composer
+lane: composer
+lane_seq: 2
+preparation: ready
 ---
 
 # Composer action row overlaps (Tiedosto / Sanele) when the file panel is open

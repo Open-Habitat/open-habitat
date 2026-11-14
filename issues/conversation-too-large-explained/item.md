@@ -1,13 +1,16 @@
 ---
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-14
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m6tynajccbp9qm5prefqy6jk/followup:history-too-large
 originating_run: 01m6tynajccbp9qm5prefqy6jk
 originating_run_kind: spinoff
+lane: history-limits
+lane_seq: 1
+preparation: ready
 ---
 
 # Explain a conversation over the 512 MiB native bound to the person
