@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while verifying gate-load-flakes-bundle
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: browser-conversation-red
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Three browser-conversation cases fail on main: rail mark and uncertain-send notice not found
