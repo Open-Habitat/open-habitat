@@ -3,13 +3,14 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/long-reply-text-hidden-in-work
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Long text written before a tool call hides in folded work

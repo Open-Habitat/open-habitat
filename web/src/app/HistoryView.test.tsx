@@ -399,6 +399,75 @@ it("keeps redacted and unknown blocks inert while loading a result image by its 
   expect(container.textContent).not.toContain("secret");
 });
 
+it.each([false, true])(
+  "keeps a reply whose preview budget was spent on thinking (read fails: %s)",
+  async (fails) => {
+    const agentId = "pi:11111111-1111-4111-8111-111111111111";
+    const text = "Summary and instructions. ".repeat(120);
+    const fetch = vi.fn(async () =>
+      fails
+        ? new Response("unavailable", { status: 503 })
+        : new Response(
+            JSON.stringify({
+              schema_version: 1,
+              agent_id: agentId,
+              native_revision: "rev1",
+              entry_key: "opening",
+              block_index: 1,
+              offset: 0,
+              chunk: { media_type: "text/plain", text, complete: true },
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const entries: HistoryEntry[] = [
+      {
+        ...entry,
+        kind: "assistant",
+        entry_key: "opening",
+        blocks: [
+          { type: "thinking", text: "Private reasoning. ".repeat(1000) },
+          { type: "text", text: "", readable: true },
+          { type: "toolCall", tool_call_id: "one", tool_name: "bash" },
+          { type: "toolCall", tool_call_id: "two", tool_name: "bash" },
+        ],
+      },
+      {
+        ...entry,
+        kind: "assistant",
+        entry_key: "final",
+        blocks: [{ type: "text", text: "Done." }],
+      },
+    ];
+    const view = render(
+      timelineItems(entries, undefined, agentId, "rev1").map((item) => (
+        <div key={item.id}>{item.content}</div>
+      )),
+    );
+    const interim = view.container.querySelector('[data-reply-role="interim"]');
+    expect(interim).not.toBeNull();
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    if (fails) {
+      await waitFor(() =>
+        expect(
+          interim?.querySelector(".ah-notice.ah-tone-warning"),
+        ).toBeTruthy(),
+      );
+      expect(
+        interim?.querySelector('[data-testid="history-block-load"]'),
+      ).toBeTruthy();
+    } else {
+      await waitFor(() => expect(interim?.textContent).toContain(text.trim()));
+    }
+    expect(
+      view.container.querySelector('[data-reply-role="final"]')?.textContent,
+    ).toContain("Done.");
+    expect(view.container.querySelectorAll(".ah-turn-work")).toHaveLength(0);
+    expect(view.container.querySelector('[data-tool-count="2"]')).toBeTruthy();
+  },
+);
+
 it("rejects a mismatched block response without replacing the visible prefix", async () => {
   vi.stubGlobal(
     "fetch",

@@ -214,6 +214,21 @@ it("does not let empty text close a work stage or mount a blank reply", () => {
   );
 });
 
+it("keeps a readable final reply even when its preview is empty", () => {
+  const view = render(
+    <AgentTurn
+      steps={[
+        work("thinking", "private reasoning", "thinking"),
+        { ...say("final", ""), readable: true },
+      ]}
+    />,
+  );
+  expect(view.getByTestId("stage-reply").getAttribute("data-reply-role")).toBe(
+    "final",
+  );
+  expect(view.container.querySelector(".ah-turn-work")).toBeNull();
+});
+
 it("retains the reader's fold choice across streaming updates and settlement", () => {
   const steps = [work("a", "työ"), say("f", "vastaus")];
   const turn = (working: boolean, activity: string, done = false) => (

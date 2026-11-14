@@ -113,7 +113,9 @@ function ReadableBlock({
   plainText = false,
   hasImage = false,
   part,
+  loadMissingPreview = false,
 }: {
+  loadMissingPreview?: boolean;
   hasImage?: boolean;
   part?: "skill_arguments";
   plainText?: boolean | "user" | "command";
@@ -219,6 +221,21 @@ function ReadableBlock({
       setPending(false);
     }
   };
+  // Thinking can consume the entry's entire preview budget. A saved reply
+  // still needs its first page, not an empty card or a hidden stage. Read once
+  // per source; failures retain the ordinary explicit retry control.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: more changes with loading state; only a new source/preview should start an automatic read.
+  useEffect(() => {
+    if (loadMissingPreview && block.readable && !block.text?.trim())
+      void more();
+  }, [
+    loadMissingPreview,
+    source,
+    block.readable,
+    block.text,
+    agentId,
+    revision,
+  ]);
   const control =
     block.readable && agentId && revision && !loaded?.complete ? (
       <Button
@@ -553,7 +570,7 @@ function FileUse({
 export function TurnText(props: Parameters<typeof ReadableBlock>[0]) {
   return (
     <div className="ah-ordered-blocks" data-reply-entry={props.entryKey}>
-      <ReadableBlock {...props} />
+      <ReadableBlock {...props} loadMissingPreview />
     </div>
   );
 }
@@ -1272,6 +1289,7 @@ export function timelineItems(
           kind: "text",
           key,
           text: block.text ?? "",
+          readable: block.readable,
           at,
           node: (
             <TurnText

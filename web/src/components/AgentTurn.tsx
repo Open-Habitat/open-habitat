@@ -138,6 +138,8 @@ export type TurnStep = (
       node: ReactNode;
       /** The text a copy button copies. */
       text: string;
+      /** Native text exists beyond the bounded history preview. */
+      readable?: boolean;
     }
 ) & {
   /** When native history saved the step's entry, in epoch milliseconds. */
@@ -157,7 +159,7 @@ export function turnStages(steps: TurnStep[]): Stage[] {
       // Native/streamed blocks may exist before their first visible delta.
       // An empty reply still mounts a card and a grid gap, lifting the
       // bottom-filled activity line until that placeholder disappears.
-      if (!step.text.trim()) continue;
+      if (!step.text.trim() && !step.readable) continue;
       stages.push({ work, end: step });
       work = [];
     } else work.push(step);
