@@ -24,10 +24,11 @@ Sallittu, Lupa puuttuu, Ei tiedossa) and its buttons.
   with `connected`.
 - **Opt-in**: `github_workflow` in the person's own
   `~/.config/open-habitat/preferences.json` (`account-preferences` contract).
-  After an explicit reconnect has installed its token in gh (`replace` and
-  phase installed or replaced), the daemon sets it to whether that token has
-  `workflow`. Unread scopes leave it unchanged. Don't allow writes `false`
-  through the ordinary preferences PUT.
+  After an explicit reconnect has installed a token that has `workflow`
+  (`replace` and phase installed or replaced), the daemon sets it to true.
+  A reconnect never clears it. Remove permission and Don't allow write
+  `false` through the ordinary preferences PUT; Remove does this before it
+  starts the reconnect without the scope.
 - **Browser**: Allow / Allow again start the reconnect with
   `scope=workflow`. Remove permission starts it without. The card's own
   Reconnect, and every other reconnect in the app, asks for `workflow` when
@@ -36,19 +37,24 @@ Sallittu, Lupa puuttuu, Ei tiedossa) and its buttons.
 
 ## Decisions for later review
 
-1. **Who writes the opt-in.** The opt-in is set from what the explicit
-   reconnect's token actually got, not by the browser before it leaves for
-   GitHub. As a result, cancelling on GitHub changes nothing (the prototype's
-   "Kirjautuminen peruttiin. Mikään ei muuttunut."). If GitHub grants less
-   than was asked, the card says so truthfully. This needed a hook from
-   nativegh's consumer into the daemon (`Adapter.OnReconnected`). No new
-   field crosses the gateway→daemon wire, and no authority moves: the daemon
-   writes only its own person's preferences, as itself.
-2. **Removal does not first write `false`.** If GitHub hands back a token
-   that still has `workflow` after a subset request (NOTES warns this is
-   unverified), the opt-in follows the token and the card keeps showing
-   Sallittu. It does not claim the permission was removed. The old token is
-   not revoked (Jari 14.11.).
+1. **Who writes the opt-in.** A reconnect whose token got `workflow` sets
+   it, so cancelling on GitHub changes nothing (the prototype's
+   "Kirjautuminen peruttiin. Mikään ei muuttunut."). Only the person's own
+   write clears it. The review found that letting the reconnect's token
+   also clear it would lose the wish: a generic reconnect started before
+   the page had read the preferences (or after the read failed) leaves out
+   the scope, and the daemon would then have written `false`. Now such a
+   reconnect leads to "Lupa puuttuu", and Allow again brings the
+   permission back. The hook from nativegh's consumer into the daemon is
+   `Adapter.OnReconnected`. No new field crosses the gateway→daemon wire,
+   and no authority moves: the daemon writes only its own person's
+   preferences, as itself.
+2. **Removal writes `false` first, then signs in again without the
+   scope.** If that write is not confirmed, the reconnect does not start.
+   If GitHub hands back a token that still has `workflow` after a subset
+   request (NOTES warns this is unverified), the token sets the opt-in
+   back to true and the card keeps showing Sallittu. It does not claim the
+   permission was removed. The old token is not revoked (Jari 14.11.).
 3. **The browser may write `github_workflow: true`.** The schema allows a
    boolean, though the UI writes only `false`. Writing `true` only changes
    what the card says; it grants nothing.
@@ -78,3 +84,15 @@ Sallittu, Lupa puuttuu, Ei tiedossa) and its buttons.
 
 Live check: not run on a live host; GitHub's behaviour for a subset re-request
 (decision 2) still needs one real reconnect with the production OAuth app.
+
+## Review
+
+An independent `/llm-review` was run, with gpt-6-astra as finder and
+claude-fable-5-2 as verifier, followed by `/assess-findings`. The review
+produced one confirmed finding, a generic reconnect clearing the remembered
+opt-in, which is fixed (decision 1). The verifier's focused pass on the
+gateway and token boundary found no path by which a cross-site or
+unauthenticated request could get `workflow`, no path by which any other
+scope could be requested, no weakening of the state, PKCE or flow-cookie
+checks, and no token or raw gh output reaching a log, the snapshot or a
+reply.

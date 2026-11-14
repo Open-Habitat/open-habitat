@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: code-hosts-github-scope
 lane_seq: 2
+closed: 2026-11-14
 ---
 
 # GitHub card: allow agents to change workflows (opt-in, remembered)
@@ -14,3 +15,9 @@ lane_seq: 2
 ## Goal
 
 Implement the accepted prototype `design-system/prototypes/rounds/2026-11-13-github-workflow-scope/`, direction A Rivi (see `issues/github-workflow-scope-from-settings/result.md`): on Settings › Code hosts' GitHub card, a row of its own lets the person allow agents to change GitHub Actions workflows. Off by default; turning it on re-runs the GitHub sign-in with `workflow` added; the card shows the token's scopes; Habitat remembers the opt-in so a later sign-in that drops the scope shows "permission missing" and offers to restore it; removing it does not revoke the old token. Accepted by Jari after the prototype: not an experimental feature.
+
+## Resolution
+
+### 2026-11-14T04:57:16Z · @issuectl
+
+Implemented (direction A Rivi): gateway workflow scope under the reconnect guard, daemon reads token scopes and remembers the opt-in, card row with all five states; result.md records decisions and validation.
