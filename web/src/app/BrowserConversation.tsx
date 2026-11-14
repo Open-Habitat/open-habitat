@@ -1709,17 +1709,25 @@ function BrowserConversationContent({
   });
   // The header's mark: a stop in progress, then the live turn's phase where
   // it is known, then a failure the rail would show too, then the activity.
+  // As railNow: a failed turn, a crash, or a turn cut off (a daemon restart,
+  // say) that nobody has continued; a stop the person asked for is not one.
+  const snapshotRest = archive?.rest;
   const failedTurn =
     presentation.activity !== "working" &&
     !statusStale &&
     (archive?.failure !== undefined ||
-      (archive?.rest?.cause === "crash" && !archive.rest.awake));
+      (!!snapshotRest &&
+        !snapshotRest.awake &&
+        (snapshotRest.cause === "crash" ||
+          (snapshotRest.cause !== "person" && !!archive?.interrupted_turn))));
   const headerMark: MarkState =
     current?.state === "stopping"
       ? "stopping"
       : failedTurn
         ? "error"
-        : activityMark(presentation.activity);
+        : !statusStale && current?.pending_question
+          ? "waiting"
+          : activityMark(presentation.activity);
   useEditorActivity(
     presentation.activity === "working",
     presentation.activityShortLabel,

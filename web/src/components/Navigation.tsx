@@ -618,13 +618,30 @@ function RowMark({
 }) {
   const state = agentMark(agent);
   return (
-    <HabitatMark
-      className="ah-row-mark"
-      data-testid="rail-mark"
-      state={state}
-      size={size}
-      subs={subMarks(agent.spinoffCounts)}
-    />
+    // The mark stands before the workspace icon, outside the row's link; a
+    // press on it opens the row as a press on the title does. Keyboard and
+    // assistive technology reach the same link, so the mark itself is not
+    // a control.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the row's link is the keyboard path.
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: a pointer shortcut to the row's link.
+    // biome-ignore lint/a11y/noStaticElementInteractions: as above.
+    <span
+      className="ah-row-mark-hit"
+      onClick={(event) =>
+        event.currentTarget
+          .closest(".ah-list-row")
+          ?.querySelector<HTMLAnchorElement>("a.ah-nav-link")
+          ?.click()
+      }
+    >
+      <HabitatMark
+        className="ah-row-mark"
+        data-testid="rail-mark"
+        state={state}
+        size={size}
+        subs={subMarks(agent.spinoffCounts)}
+      />
+    </span>
   );
 }
 /** The row's short age of its last change: nyt, 4 min, 2 t, 3 pv. */

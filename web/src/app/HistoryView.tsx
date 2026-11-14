@@ -1597,14 +1597,16 @@ function HistoryViewContent({
     process === "writer_present"
       ? agent.failure !== undefined && !agent.run_active
         ? "error"
-        : activityMark(
-            agentPresentation({
-              process: "terminal_observed_live",
-              runActive: agent.run_active,
-              waitingOn: agent.waiting_on,
-              pendingQuestion: !!agent.pending_question,
-            }).activity,
-          )
+        : agent.pending_question
+          ? "waiting"
+          : activityMark(
+              agentPresentation({
+                process: "terminal_observed_live",
+                runActive: agent.run_active,
+                waitingOn: agent.waiting_on,
+                pendingQuestion: !!agent.pending_question,
+              }).activity,
+            )
       : process === "not_observed"
         ? agent.failure !== undefined
           ? "error"

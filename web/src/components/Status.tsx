@@ -83,7 +83,8 @@ export function kindMark(kind: StatusKind, animated = false): MarkState {
     case "unknown":
       return "unknown";
     default:
-      return animated ? "loading" : "done";
+      // A neutral status claims nothing about the agent.
+      return animated ? "loading" : "unknown";
   }
 }
 export function Badge({

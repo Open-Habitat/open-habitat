@@ -152,6 +152,7 @@ export function creationHeader(
           ? txt.creatingWorktree
           : "",
     activityAnimated: !!worktree && !!waiting && !problem,
+    activityMark: refused ? "error" : undefined,
     controlLabel: "",
     detailsFacts: [{ label: txt.workspace, value: workspace.path ?? "" }],
     detailsExpanded: details,

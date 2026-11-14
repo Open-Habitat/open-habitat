@@ -169,6 +169,9 @@
   --ah-disabled-line: #24302a;
 }
 
+/* :root[...] as well: spacing.css restates the shadow tokens on :root,
+   which would otherwise win on <html> by coming later. */
+:root[data-theme="contrast"],
 [data-theme="contrast"] {
   --ah-syntax-keyword: #dcc0ff;
   --ah-syntax-string: #a8f0b8;

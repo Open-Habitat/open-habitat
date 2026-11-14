@@ -147,7 +147,9 @@ export function EditorSplit({
         >
           <HabitatMark
             state={
-              strip.unread ? "waiting" : strip.working ? "working" : "done"
+              // The strip knows only work and an unread reply; otherwise the
+              // resting logo, which claims no outcome.
+              strip.unread ? "waiting" : strip.working ? "working" : "idle"
             }
             size={14}
           />

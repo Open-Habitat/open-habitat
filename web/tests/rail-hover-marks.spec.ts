@@ -19,7 +19,7 @@ for (const touch of [false, true]) {
       isMobile: touch,
       viewport: { width: touch ? 390 : 1440, height: 900 },
     });
-    test("rail marks yield to hover and keyboard actions without losing their description", async ({
+    test("rail marks stay in sight beside hover and keyboard actions and open their row", async ({
       page,
     }) => {
       await page.route("**/api/v1/snapshot", async (route) => {
@@ -39,9 +39,11 @@ for (const touch of [false, true]) {
       const row = page
         .getByTestId("workspace-navigation")
         .getByTestId(/^agent-item-/)
-        .filter({ has: page.locator(".ah-worker-rail") })
+        .filter({ has: page.locator('[data-testid="rail-mark"] .oh-orbit') })
         .first();
-      const mark = row.locator(".ah-worker-rail");
+      // Wide rail B: the mark leads the row, so the actions at its end never
+      // cover it; its sub-agent orbits the resident.
+      const mark = row.getByTestId("rail-mark");
       const actions = row.locator(".ah-nav-archive");
       const link = row.getByTestId("agent-link");
       await expect(mark).toBeVisible();
@@ -66,7 +68,7 @@ for (const touch of [false, true]) {
         // Touch actions occupy their own space, rather than overlaying marks.
         await expect(actions).toHaveCSS("position", "static");
         // There the mark itself is reachable: a first tap in Explain mode
-        // explains its ball and ring.
+        // explains the state mark.
         const session = await (await page.request.get("/auth/session")).json();
         expect(
           (
@@ -92,8 +94,7 @@ for (const touch of [false, true]) {
           await page.getByTestId("navigation-open").tap();
         }
         await mark.tap();
-        await expect(card).toHaveAttribute("data-card", "S11");
-        await expect(card.getByTestId("worker-legend")).toBeVisible();
+        await expect(card).toHaveAttribute("data-card", "S10");
         if (process.env.OH_RAIL_BALL_CAPTURE)
           await card.screenshot({
             path: resolve(
@@ -104,19 +105,20 @@ for (const touch of [false, true]) {
       }
       await row.hover();
       await expect(actions).toHaveCSS("opacity", "1");
-      await expect(mark).toHaveCSS("opacity", "0");
+      await expect(mark).toHaveCSS("opacity", "1");
       await shot("hover");
       await page.mouse.move(1000, 800);
-      await expect(mark).toHaveCSS("opacity", "1");
       await link.focus();
       await expect(actions).toHaveCSS("opacity", "1");
-      await expect(mark).toHaveCSS("opacity", "0");
+      await expect(mark).toHaveCSS("opacity", "1");
       await expect(link).toHaveAccessibleDescription(said ?? "");
       await shot("focus");
-      await row.getByTestId("rail-rename-conversation").focus();
-      await expect(mark).toHaveCSS("opacity", "0");
-      await page.getByTestId("snapshot-refresh").focus();
-      await expect(mark).toHaveCSS("opacity", "1");
+      // The mark stands outside the link; a press on it opens the row.
+      const href = await link.getAttribute("href");
+      await mark.click();
+      await expect(page).toHaveURL(
+        (url) => `${url.pathname}${url.search}` === href,
+      );
     });
   });
 }

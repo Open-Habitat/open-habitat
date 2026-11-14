@@ -318,17 +318,17 @@
     /* biome-ignore lint/complexity/noImportantStyles: every state's animation rule is more specific; reduced motion stops them all. */
     animation: none !important;
   }
+  /* Thinking and an awaited sub-agent breathe; still, the resident is
+     smaller, so they differ from idle and from working. */
+  .oh-mark:is([data-state="thinking"], [data-state="awaited"]) .oh-dot {
+    transform: scale(0.6);
+  }
   .oh-mark:not([data-variant="ring"]):is(
       [data-state="waiting"],
       [data-state="read"]
     )
     .oh-dot {
     transform: translate(var(--tx), var(--ty));
-  }
-  /* Thinking and an awaited sub-agent breathe; still, the resident is
-     smaller, so they differ from idle and from working. */
-  .oh-mark:is([data-state="thinking"], [data-state="awaited"]) .oh-dot {
-    transform: scale(0.6);
   }
 }
 
