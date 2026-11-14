@@ -27,7 +27,7 @@ classification and crash/cut/failure rules are unchanged.
   current-turn process wait remains live, then Ei nyt into Käynnissä.
 - Four synthetic lab tests passed at 1440/390 CSS pixels in Finnish/US English:
   S33 maps to the action and Explain mode blocks its lasting effect. The paired
-  `explain-*.png`/`.html` captures were inspected: card fits and text is readable.
+  lab captures (kept outside the repository) were inspected: card fits and text is readable.
   UK uses the same text. No real installation was captured or tested.
 - UI-reference generation and its check passed; regeneration also exposed broad
   pre-existing checked-in reference drift. Generated outputs were restored, not
