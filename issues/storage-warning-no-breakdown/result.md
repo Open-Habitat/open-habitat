@@ -183,8 +183,15 @@ no run names is *finished*, anything else is *own*.
 - **The live group's checkbox carries its note as the disabled reason.**
   The prototype passed an empty reason, which production's `Checkbox`
   treats as enabled.
-- **On a shared disk without user limits**, "your files" is the sum of
-  what was measured (a lower bound), since there is no per-person figure.
+- **On a shared disk without user limits** there is no per-person figure:
+  the bar names what was measured ("Mitattu kotihakemistostasi") and the
+  rest of the disk as "Muut tiedostot levyllä", not as other people's files.
+- **An existing new-conversation draft is kept** below the request, and the
+  merged draft stays when the start waits (the model chooser, a creation
+  still pending), so nothing typed is lost.
+- **`~/.config/go/env` is read through symbolic links** (dotfile managers
+  link `~/.config`), non-blocking and only as a regular file; the paths it
+  names count only inside the home and are then walked confined.
 
 Tests: `internal/daemon/storage_breakdown_linux_test.go` (synthetic home:
 known caches, a `go env -w` GOMODCACHE, a CACHEDIR.TAG cache, an untagged
@@ -196,6 +203,14 @@ against the contract), gateway relay tests, contract fixtures and negative
 checks, `web/src/app/StorageBreakdown.test.tsx`, and
 `web/tests/storage-breakdown.spec.ts` (real daemon endpoint through the
 gateway, then the B1 flow to the prepared conversation).
+
+Review: independent `/llm-review` (finder gpt-6-astra, verifier
+claude-fable-5-2) + `/assess-findings`: 4 confirmed and fixed in this work
+(a FIFO named like a tag or the Go env file could wedge measurement until
+restart; shared-disk wording; a prior draft overwritten; an unregistered
+linked worktree directly under `~/src` offered as own), 2 refuted (the
+symlinked config read; enumeration order, bounded as in the existing
+walkers). No follow-up issues.
 
 Live check: on the test server, Asetukset › Kokeelliset ominaisuudet ›
 Tallennustilan erittely → Päällä; then Asetukset › Tallennustila shows

@@ -32,7 +32,7 @@ const fi = {
     `${used} / ${bound} · ${pct} %`,
   diskOf: (used: string, bound: string, pct: number) =>
     `Levyllä ${used} / ${bound} · ${pct} %`,
-  yourShare: (own: string) => `Sinun tiedostosi: ${own}`,
+  yourShare: (own: string) => `Mitattu kotihakemistostasi: ${own}`,
   warnLine: "Varoitus 85 %",
   barLabel: (now: string, after: string, bound: string) =>
     `Nyt ${now}, valinnan jälkeen ${after} / ${bound}`,
@@ -41,7 +41,7 @@ const fi = {
   nothingChosen: "Mitään ei ole valittu.",
   freesUp: (n: string) => `Vapauttaa ${n}`,
   legend: {
-    others: "Muiden käyttäjien tiedostot",
+    others: "Muut tiedostot levyllä",
     kept: "Projektit ja muut tiedostot",
     trash: "Roskakori",
     live: "Käynnissä oleva työ",
@@ -105,7 +105,8 @@ const fi = {
   request: "Pyyntö",
   open: "Avaa keskustelu",
   cancel: "Peru",
-  cannotOpen: "Uutta keskustelua ei voitu aloittaa tästä työtilasta.",
+  cannotOpen:
+    "Keskustelua ei voitu vielä aloittaa. Pyyntö odottaa työtilan uuden keskustelun kentässä.",
   noWorkspace: "Keskustelu tarvitsee työtilan. Lisää ensin työtila.",
   requestText: (r: CleanupRequest) => {
     const head = r.shared
@@ -142,7 +143,7 @@ export const storageBreakdownText = catalog(fi, {
   afterShort: "After the selection",
   ofBound: (used, bound, pct) => `${used} / ${bound} · ${pct} %`,
   diskOf: (used, bound, pct) => `On the disk ${used} / ${bound} · ${pct} %`,
-  yourShare: (own) => `Your files: ${own}`,
+  yourShare: (own) => `Measured in your home: ${own}`,
   warnLine: "Warning 85 %",
   barLabel: (now, after, bound) =>
     `Now ${now}, after the selection ${after} / ${bound}`,
@@ -151,7 +152,7 @@ export const storageBreakdownText = catalog(fi, {
   nothingChosen: "Nothing is selected.",
   freesUp: (n) => `Frees ${n}`,
   legend: {
-    others: "Other users' files",
+    others: "Other files on the disk",
     kept: "Projects and other files",
     trash: "Trash",
     live: "Work in progress",
@@ -216,7 +217,8 @@ export const storageBreakdownText = catalog(fi, {
   request: "Request",
   open: "Open the conversation",
   cancel: "Cancel",
-  cannotOpen: "A new conversation could not be started in this workspace.",
+  cannotOpen:
+    "The conversation could not start yet. The request waits in the workspace's new conversation field.",
   noWorkspace: "A conversation needs a workspace. Add a workspace first.",
   requestText: (r) => {
     const head = r.shared

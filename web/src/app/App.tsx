@@ -2471,18 +2471,24 @@ export function App() {
         identity && csrf && snapshot?.write_state !== "read_only"
           ? (workspaceId, text) => {
               // The request waits in the new conversation's field, unsent;
-              // no start-page goal names or guides it.
+              // no start-page goal names or guides it. Whatever the person
+              // had already written there stays below it.
               const owner = creationGuideOwner(identity, workspaceId);
+              const key = creationKeys(identity, workspaceId).draft;
+              const before = sessionStorage.getItem(key) ?? "";
+              const draft =
+                before.trim() && before !== text
+                  ? `${text}\n\n${before}`
+                  : text;
               setGuide(owner, undefined);
-              sessionStorage.setItem(
-                creationKeys(identity, workspaceId).draft,
-                text,
-              );
+              sessionStorage.setItem(key, draft);
               prepareField(owner, {
-                text,
+                text: draft,
                 start: text.length,
                 end: text.length,
               });
+              // A start that waits (the model chooser, a creation still
+              // pending) keeps the prepared draft for when it goes ahead.
               return startFromHome(workspaceId);
             }
           : undefined

@@ -17,6 +17,7 @@ import (
 
 	"github.com/open-habitat/open-habitat/internal/testpython"
 	"github.com/open-habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 func fill(t *testing.T, path string, n int) {
@@ -73,6 +74,16 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 	if err := os.Link(filepath.Join(home, ".cache", "pip", "one"), filepath.Join(home, ".cache", "pip", "two")); err != nil {
 		t.Fatal(err)
 	}
+	// A linked worktree no registry here names is not the person's own
+	// project, and a FIFO named like a tag cannot hold the measurement.
+	write(t, filepath.Join(home, "src", "loose", ".git"), "gitdir: /elsewhere/.git/worktrees/loose\n")
+	tagCache(t, filepath.Join(home, "src", "loose", "target"))
+	if err := os.MkdirAll(filepath.Join(home, ".cache", "piped"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Mkfifo(filepath.Join(home, ".cache", "piped", "CACHEDIR.TAG"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	fill(t, filepath.Join(home, ".local", "share", "Trash", "files", "old"), 8<<10)
 	fill(t, filepath.Join(home, ".pi", "agent", "sessions", "s.jsonl"), 8<<10)
 
@@ -87,9 +98,9 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 	}
 
 	res := measureStorage(context.Background(), f.cfg)
-	if !res.complete {
-		t.Fatalf("incomplete: %+v", res.items)
-	}
+	// The loose worktree is a workspace discovery cannot read, so the
+	// listing, and the result, say they are incomplete; each place
+	// measured is still measured in full (expect checks).
 	by := map[string]breakdownItem{}
 	for _, it := range res.items {
 		if _, dup := by[it.Path]; dup {
@@ -116,7 +127,7 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 	if pip := expect("~/.cache/pip", "caches", "pip", 64<<10); pip.Bytes >= 128<<10 {
 		t.Fatalf("hard link counted twice: %+v", pip)
 	}
-	for _, p := range []string{"~/.cache/untagged", "~/.cache/uv", "~/go/pkg/mod", "~/src/app/target", "~/src/toinen/node_modules"} {
+	for _, p := range []string{"~/.cache/untagged", "~/.cache/uv", "~/go/pkg/mod", "~/src/app/target", "~/src/toinen/node_modules", "~/src/loose/target", "~/.cache/piped"} {
 		if it, ok := by[p]; ok {
 			t.Fatalf("%s should not be listed: %+v", p, it)
 		}

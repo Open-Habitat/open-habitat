@@ -224,8 +224,11 @@ func (z *homeWalk) size(rel string) (int64, bool, bool) {
 	return total, complete, true
 }
 
+func (z *homeWalk) exhausted() bool { return z.budget < 0 || z.ctx.Err() != nil }
+
 func (z *homeWalk) walk(fd, depth int, total *int64) bool {
-	if depth > 256 {
+	// Checked before listing: a directory's names are read whole.
+	if depth > 256 || z.exhausted() {
 		return false
 	}
 	names, err := readDirNames(fd, 1<<20)
@@ -287,13 +290,19 @@ func (z *homeWalk) exists(rel string, mode uint32) bool {
 	return unix.Fstatat(parent, filepath.Base(rel), &s, unix.AT_SYMLINK_NOFOLLOW) == nil && s.Mode&unix.S_IFMT == mode
 }
 
-func (z *homeWalk) tagged(rel string) bool {
-	fd, err := open(unix.Openat2, z.home, filepath.Join(rel, "CACHEDIR.TAG"), unix.O_RDONLY, true)
+// readSmall reads at most limit bytes of a regular file below home. It
+// opens without blocking and refuses anything else, so a FIFO named like a
+// tag cannot hold the measurement.
+func (z *homeWalk) readSmall(rel string, limit int) []byte {
+	fd, err := open(unix.Openat2, z.home, rel, unix.O_RDONLY|unix.O_NONBLOCK, true)
 	if err != nil {
-		return false
+		return nil
 	}
 	defer unix.Close(fd)
-	buf := make([]byte, len(cacheDirTag))
+	if s, err := stat(fd); err != nil || s.Mode&unix.S_IFMT != unix.S_IFREG {
+		return nil
+	}
+	buf := make([]byte, limit)
 	n := 0
 	for n < len(buf) {
 		m, err := unix.Read(fd, buf[n:])
@@ -302,7 +311,11 @@ func (z *homeWalk) tagged(rel string) bool {
 		}
 		n += m
 	}
-	return n == len(cacheDirTag) && string(buf) == cacheDirTag
+	return buf[:n]
+}
+
+func (z *homeWalk) tagged(rel string) bool {
+	return string(z.readSmall(filepath.Join(rel, "CACHEDIR.TAG"), len(cacheDirTag))) == cacheDirTag
 }
 
 func (z *homeWalk) names(rel string, limit int) []string {
@@ -330,12 +343,20 @@ func (z *homeWalk) id(rel string) (fileID, bool) {
 
 // goEnvPath reads one path from the person's `go env -w` file. A value
 // outside the home is not the home's to count.
+//
+// Unlike the measured places, the file is read through symbolic links:
+// dotfile managers link ~/.config, and the read is the person's own. It is
+// opened without blocking and must be a regular file, so a FIFO cannot hold
+// the measurement.
 func goEnvPath(home, key string) (string, bool) {
-	f, err := os.Open(filepath.Join(home, ".config", "go", "env"))
+	f, err := os.OpenFile(filepath.Join(home, ".config", "go", "env"), os.O_RDONLY|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return "", false
 	}
 	defer f.Close()
+	if st, err := f.Stat(); err != nil || !st.Mode().IsRegular() {
+		return "", false
+	}
 	sc := bufio.NewScanner(io.LimitReader(f, 64<<10))
 	for sc.Scan() {
 		k, v, ok := strings.Cut(sc.Text(), "=")
@@ -435,6 +456,10 @@ func measureStorage(ctx context.Context, cfg transport.Config) breakdownResult {
 		res.items = append(res.items, it)
 	}
 	measure := func(rel string, it breakdownItem) {
+		if z.exhausted() {
+			res.complete = false
+			return
+		}
 		id, ok := z.id(rel)
 		if !ok || z.skip[id] {
 			return
@@ -484,7 +509,9 @@ func measureStorage(ctx context.Context, cfg transport.Config) breakdownResult {
 	srcNames := z.names("src", 4096)
 	for _, name := range srcNames {
 		root := filepath.Join("src", name)
-		if strings.HasPrefix(name, ".") || !z.exists(root, unix.S_IFDIR) {
+		// A linked worktree here is classified only through its registry
+		// and Taskfleet, above; one not seen there is never "own".
+		if strings.HasPrefix(name, ".") || !z.exists(root, unix.S_IFDIR) || z.exists(filepath.Join(root, ".git"), unix.S_IFREG) {
 			continue
 		}
 		for _, d := range z.buildDirs(root) {

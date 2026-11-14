@@ -117,7 +117,8 @@ export function StorageBreakdown({
   const pickable = items.filter((i) => PICK.includes(i.group));
   const chosen = pickable.filter((i) => selected.has(i.path));
   const { used, bound, shared } = room(quota);
-  // On a shared disk the person's own files are what was measured.
+  // On a shared disk only what was measured is known to be the person's;
+  // the rest of the disk is shown as other files, not as other people's.
   const own = shared ? total(items) : used;
   const chosenBytes = total(chosen);
   const after = Math.max(0, used - chosenBytes);
