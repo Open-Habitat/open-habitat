@@ -1,5 +1,6 @@
 // Executed by the mapped user's daemon with the selected Pi installation.
-// No agent session, extension or tools are created by this call.
+// No agent session or tools; only the shipped provider extension is loaded.
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 // Leave time to publish a fallback before the daemon kills this process.
@@ -18,7 +19,33 @@ const input = await new Promise((resolve, reject) => {
 const { backgroundModels } = await import(process.argv[2]);
 const conversation = process.argv[3] ? { provider: process.argv[3], id: process.argv[4] } : undefined;
 const runtime = await ModelRuntime.create({ allowModelNetwork: false });
-const models = backgroundModels(runtime.getAvailableSnapshot().filter(m => m.input?.includes('text')), conversation);
+const available = runtime.getAvailableSnapshot().filter(m => m.input?.includes('text'));
+const nativeModels = backgroundModels(available, conversation);
+let bridged;
+// Match the model picker: load only the shipped bridge into a separate,
+// credential-free registry, never arbitrary extensions or another provider's keys.
+if (process.argv[5]) {
+  try {
+    const { loadExtensions } = await import(pathToFileURL(join(dirname(process.argv[1]), 'core', 'extensions', 'loader.js')).href);
+    const { AuthStorage } = await import(pathToFileURL(join(dirname(process.argv[1]), 'core', 'auth-storage.js')).href);
+    const loaded = await loadExtensions([process.argv[5]], process.env.HOME);
+    if (!loaded.errors.length) {
+      bridged = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false, modelsPath: null, credentials: AuthStorage.inMemory() });
+      for (const registration of loaded.runtime.pendingProviderRegistrations) {
+        if (registration.name === 'claude-bridge') bridged.registerProvider(registration.name, registration.config);
+      }
+      available.push(...bridged.getModels('claude-bridge').filter(m => m.input?.includes('text')));
+    }
+  } catch {
+    // A missing or broken bridge must not disable native providers.
+  }
+}
+// A shipped bridge advertises models even without a subscription. Preserve
+// native selection unless the conversation uses the bridge or has no native
+// candidate, and retain native fallback if the bridge cannot answer.
+const models = conversation?.provider === 'claude-bridge' || !nativeModels.length
+  ? backgroundModels(available, conversation) : [...nativeModels];
+for (const model of nativeModels) if (!models.includes(model)) models.push(model);
 const bounded = (value, cap = false) => {
   if (typeof value !== 'string') return '';
   let title = value.trim().split(/\r?\n/u)[0].trim()
@@ -52,10 +79,11 @@ for (const model of models) {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (Date.now() >= deadline) { timedOut = true; break; }
       const signal = AbortSignal.timeout(Math.max(1, deadline - Date.now()));
-      const answer = await runtime.completeSimple(model, {
+      const selectedRuntime = model.provider === 'claude-bridge' && bridged ? bridged : runtime;
+      const answer = await selectedRuntime.completeSimple(model, {
         systemPrompt: instruction + (attempt ? ' The previous answer did not fit. Rewrite using fewer, shorter words; keep a complete phrase, strictly within 32 characters.' : ''),
         messages: [{ role: 'user', content: [{ type: 'text', text: input }], timestamp: Date.now() }],
-      }, { maxTokens: 256, toolChoice: 'none', signal });
+      }, { maxTokens: 256, toolChoice: 'none', signal, cacheRetention: 'none', sessionId: randomUUID() });
       // A token-limited response is not evidence that the model is unavailable.
       if (signal.aborted) { timedOut = true; break; }
       if (answer.stopReason !== 'stop') {

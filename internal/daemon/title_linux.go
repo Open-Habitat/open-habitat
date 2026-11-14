@@ -56,10 +56,17 @@ func (c *ConversationController) generateTitle(text string, model *piStartupChoi
 	text = prefixBytes(text, 4096)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	bridge := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/pi-claude-bridge/src/index.ts")
+	if info, err := os.Stat(bridge); err != nil || !info.Mode().IsRegular() {
+		bridge = ""
+	}
 	args := []string{"--input-type=module", "-e", titleHelper, c.runtime.Entry, backgroundModelURL}
 	if model != nil {
 		args = append(args, model.Provider, model.Model)
+	} else {
+		args = append(args, "", "")
 	}
+	args = append(args, bridge)
 	cmd := exec.CommandContext(ctx, c.runtime.Node, args...)
 	cmd.Env = []string{"HOME=" + c.home, "PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}
 	cmd.Dir = filepath.Dir(c.runtime.Entry)

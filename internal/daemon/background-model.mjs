@@ -50,7 +50,7 @@ function automatic(available, conversation) {
   const own = allowed.find(m => conversation && m.provider === conversation.provider && m.id === conversation.id);
   if (own && !out.includes(own)) out.push(own);
   // Without a known conversation, or when this registry holds nothing of its
-  // provider (the title helper does not load pi-claude-bridge), another
+  // provider (for example, its extension failed to load), another
   // configured provider's middle tier does the work.
   return out.length ? out : tier().slice(0, 1);
 }
