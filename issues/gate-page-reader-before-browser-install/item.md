@@ -2,13 +2,14 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: conductor:2026-11-14/gate-page-reader-order
 lane: gate-order
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Clean gate from an empty cache fails: page-reader test runs before Playwright browsers are installed
