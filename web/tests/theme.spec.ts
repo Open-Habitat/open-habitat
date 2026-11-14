@@ -51,10 +51,14 @@ test("Korkea kontrasti is a fourth choice, and Järjestelmä picks it when the d
   await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");
   // Settings › Ulkoasu shows the same choice; no empty selection.
   await page.goto("/settings/appearance");
-  await expect(
-    page.getByTestId("theme-choice").getByTestId("segment-contrast"),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.getByTestId("theme-choice").getByTestId("segment-system").click();
+  const theme = page.getByRole("button").and(page.getByTestId("theme-choice"));
+  await expect(theme).toHaveAttribute("data-value", "contrast");
+  await theme.click();
+  await expect(page.getByTestId("choice-contrast")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await page.getByTestId("choice-system").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ contrast: "more" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");

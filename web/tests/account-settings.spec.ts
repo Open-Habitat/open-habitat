@@ -149,12 +149,13 @@ test("@account-settings verified native state, route return and explicit disconn
     page.getByRole("heading").and(page.getByTestId("settings-section-tekoaly")),
   ).toBeVisible();
   await page.goForward();
-  await expect(
-    page.getByRole("group").and(page.getByTestId("theme-choice")),
-  ).toBeVisible();
-  await page.getByTestId("segment-dark").click();
+  const theme = page.getByRole("button").and(page.getByTestId("theme-choice"));
+  await expect(theme).toBeVisible();
+  await theme.click();
+  await page.getByTestId("choice-dark").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByTestId("segment-light").click();
+  await theme.click();
+  await page.getByTestId("choice-light").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("link").and(page.getByTestId("settings-tili")).click();
   await expect(page).toHaveURL(/\/settings\/account$/);
@@ -544,22 +545,26 @@ test("@account-settings @a11y compact phone drawer and settings separate list/de
     .getByRole("link")
     .and(page.getByTestId("settings-ulkoasu"))
     .click();
-  await expect(
-    page.getByRole("group").and(page.getByTestId("theme-choice")),
-  ).toBeVisible();
-  await page.getByRole("button").and(page.getByTestId("segment-dark")).click();
-  await expect(
-    page.getByRole("button").and(page.getByTestId("segment-dark")),
-  ).toHaveAttribute("aria-pressed", "true");
+  const theme = page.getByRole("button").and(page.getByTestId("theme-choice"));
+  await expect(theme).toBeVisible();
+  await theme.click();
+  await page.getByTestId("choice-dark").click();
+  await expect(theme).toHaveAttribute("data-value", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(1);
   await page
     .getByRole("button")
     .and(page.getByTestId("settings-list-back"))
     .click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.goBack();
-  await expect(
-    page.getByRole("group").and(page.getByTestId("theme-choice")),
-  ).toBeVisible();
+  await expect(theme).toBeVisible();
   await page.goForward();
   await expect(
     page.getByRole("heading").and(page.getByTestId("settings-title")),
