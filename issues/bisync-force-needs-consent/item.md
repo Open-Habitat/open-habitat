@@ -4,7 +4,7 @@ updated: 2026-11-14
 type: improvement
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: sync-consent
 lane_seq: 1
 ---

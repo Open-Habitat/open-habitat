@@ -1,0 +1,93 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60; /* above the dialog overlay (50): the review bar stays usable */
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-round, .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-round, .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* Production offers Kirjaudu uudelleen for every sync_failed except
+   needs_resync (needsSignIn). Signing in again would resync, which is the
+   wrong answer to this stop too; NOTES: the host would exclude it. */
+[data-testid="integration-account-microsoft"] [data-testid="integration-reauth"] { display: none; }
+
+/* The round's pieces sit in production's card through display:contents slots. */
+.rq-slot { display: contents; }
+.rq-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Production's help line for an unknown failure would say the wrong thing
+   under the stop; the round's own words replace it. */
+[data-testid="integration-service-onedrive"] > div:nth-child(2) > .ig-meta ~ .ig-meta { display: none; }
+
+.rq-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); margin-top: var(--ah-s2); }
+.rq-outcome { margin: 4px 0 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-outcome.rq-bad { color: var(--ah-err); }
+.rq-fine { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-would { margin: 0; color: var(--ah-ink); line-height: 1.5; }
+.rq-counting { margin: var(--ah-s3) 0; }
+
+/* A: under the row's own words. */
+.rq-a { display: block; margin-top: 2px; }
+.rq-a-why { display: block; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+
+/* B: the notice between the account line and the services. */
+.rq-b-wrap { padding: 0 var(--ah-s5) var(--ah-s3); }
+.rq-b > div { min-width: 0; }
+.rq-b .rq-outcome { margin: 0; }
+.rq-b[data-phase="done"] svg { color: var(--ah-ok); }
+
+/* C: a panel under OneDrive's row. */
+.rq-c {
+  margin: 0 var(--ah-s5) var(--ah-s3) calc(var(--ah-s5) + 28px + var(--ah-s3));
+  padding: var(--ah-s3) var(--ah-s4); border: 1px solid var(--ah-err-line); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken); display: flex; flex-direction: column; gap: var(--ah-s2);
+}
+.rq-c[data-phase="running"], .rq-c[data-phase="done"] { border-color: var(--ah-line); }
+.rq-c-h { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--ah-size-body, 14px); font-weight: 600; color: var(--ah-ink); }
+.rq-c-h svg { width: 16px; height: 16px; color: var(--ah-err); }
+.rq-c-why { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-c .rq-outcome { margin: 0; }
+@media (max-width: 600px) { .rq-c { margin-left: var(--ah-s4); margin-right: var(--ah-s4); } .rq-b-wrap { padding: 0 var(--ah-s4) var(--ah-s3); } }
+
+/* The count. */
+.rq-summary { display: flex; flex-direction: column; gap: var(--ah-s3); min-width: 0; }
+.rq-dialog .rq-summary { margin: var(--ah-s3) 0; }
+.rq-dialog { max-width: 560px; }
+.rq-table { width: 100%; border-collapse: collapse; font-size: var(--ah-size-meta); font-variant-numeric: tabular-nums; }
+.rq-table caption { text-align: left; font-weight: 600; color: var(--ah-ink-2); padding-bottom: 4px; }
+.rq-table th, .rq-table td { padding: 6px 8px; border-top: 1px solid var(--ah-line-soft); text-align: right; }
+.rq-table th[scope="row"], .rq-table thead th:first-child { text-align: left; font-weight: 500; color: var(--ah-ink); }
+.rq-table thead th { font-weight: 500; color: var(--ah-ink-2); border-top: 0; }
+.rq-table td[data-zero] { color: var(--ah-muted); }
+.rq-table td[data-danger] { color: var(--ah-err); font-weight: 600; }
+.rq-names { padding: 0; }
+.rq-names code { font-family: var(--ah-mono); }
+.rq-many { margin: 0; }
+@media (max-width: 600px) { .rq-table th, .rq-table td { padding: 6px 4px; } }
