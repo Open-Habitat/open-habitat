@@ -1,16 +1,16 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtemp, mkdir, writeFile, readFile, rm} from 'node:fs/promises';
+import {mkdtemp, mkdir, writeFile, readFile, rm, symlink, chmod} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const pkg = resolve(here, 'node_modules/@earendil-works/pi-coding-agent');
-function run(home, action, selected = '', thinking = '', provider = '') {
+function run(home, action, selected = '', thinking = '', provider = '', runtimePkg = pkg) {
   const child = spawnSync(process.execPath, ['--import', join(here, 'mock.mjs'), resolve(here, '../pi_models_helper.mjs'),
-    join(pkg, 'dist/index.js'), join(pkg, 'package.json'), action, selected],
+    join(runtimePkg, 'dist/index.js'), join(runtimePkg, 'package.json'), action, selected],
     {env: {HOME: home, PATH: process.env.PATH, PI_OFFLINE: '1', OH_PI_THINKING: thinking, OH_PI_PROVIDER: provider}, encoding: 'utf8', timeout: 12000});
   assert.equal(child.stderr, '');
   return {code: child.status, result: JSON.parse(child.stdout)};
@@ -87,6 +87,50 @@ test('declared bridge loads with pinned Pi 1.3 and writes a provider-qualified n
     assert.deepEqual(JSON.parse(await readFile(join(home,'.pi/agent/auth.json'),'utf8')), {});
     await assert.rejects(readFile(join(home,'.claude/.credentials.json')), {code:'ENOENT'});
   } finally { await rm(home,{recursive:true,force:true}); }
+});
+
+test('installed bridge settings survive generation pruning and selection never pins a release', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'bridge-generation-'));
+  try {
+    const installation = join(home, 'installation');
+    const runtime = join(installation, 'generations/current-release/payloads/core/runtime');
+    await mkdir(runtime, {recursive: true});
+    await symlink(join(here, 'node_modules'), join(runtime, 'node_modules'));
+    await symlink(runtime, join(installation, 'core'));
+    const runtimePkg = join(runtime, 'node_modules/@earendil-works/pi-coding-agent');
+    const stable = join(installation, 'core/node_modules/pi-claude-bridge/src/index.ts');
+    const old = join(installation, 'generations/pruned-release/payloads/core/runtime/node_modules/pi-claude-bridge/src/index.ts');
+    const dir = join(home, '.pi/agent');
+    await mkdir(dir, {recursive: true});
+    const custom = join(home, 'custom/pi-claude-bridge/src/index.ts');
+    const initial = {theme: 'dark', defaultProvider: 'openai', defaultModel: 'personal-default', extensions: [custom, old, stable, old]};
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(initial));
+    if (process.getuid() !== 0) {
+      await chmod(join(dir, 'settings.json'), 0o444);
+      const readonly = run(home, 'list', '', '', '', runtimePkg);
+      assert.equal(readonly.code, 0);
+      assert.deepEqual(JSON.parse(await readFile(join(dir, 'settings.json'))), initial);
+      const model = readonly.result.models.find(m => m.provider === 'claude-bridge');
+      assert.equal(run(home, 'select', model.id, model.thinking_levels[0], 'claude-bridge', runtimePkg).code, 1);
+      await chmod(join(dir, 'settings.json'), 0o600);
+    }
+    const listed = run(home, 'list', '', '', '', runtimePkg);
+    assert.equal(listed.code, 0);
+    const repaired = JSON.parse(await readFile(join(dir, 'settings.json')));
+    assert.deepEqual(repaired, {...initial, extensions: [custom, stable]});
+    const bytes = await readFile(join(dir, 'settings.json'), 'utf8');
+    assert.equal(run(home, 'initialize-claude', '', '', '', runtimePkg).code, 0);
+    assert.equal(await readFile(join(dir, 'settings.json'), 'utf8'), bytes);
+    // A new selection has no legacy path to migrate.
+    await writeFile(join(dir, 'settings.json'), JSON.stringify({theme: 'dark'}));
+    const model = listed.result.models.find(m => m.provider === 'claude-bridge');
+    assert.equal(run(home, 'select', model.id, model.thinking_levels[0], 'claude-bridge', runtimePkg).code, 0);
+    assert.deepEqual(JSON.parse(await readFile(join(dir, 'settings.json'))).extensions, [stable]);
+    const cli = spawnSync(process.execPath, [join(pkg, 'dist/bundle/cli.js'), '--list-models', 'claude-bridge'],
+      {env: {HOME: home, PATH: process.env.PATH, PI_OFFLINE: '1'}, encoding: 'utf8', timeout: 12000});
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.match(cli.stdout, /claude-fable-5-1/);
+  } finally { await rm(home, {recursive: true, force: true}); }
 });
 
 test('pinned native Claude status recognizes only a synthetic default-store subscription', async () => {

@@ -1,5 +1,5 @@
 // Invoked by the mapped-UID daemon with trusted Pi paths. Never print Pi errors or credentials.
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -43,9 +43,9 @@ try {
     // unrelated credential resolvers. Pinned Pi's loader queues provider registrations.
     const bridge = new URL('../../../pi-claude-bridge/src/index.ts', pathToFileURL(entry));
     if (existsSync(bridge)) {
-      bridgePath = bridge.pathname;
+      bridgePath = fileURLToPath(bridge);
       const { loadExtensions } = await import(new URL('./core/extensions/loader.js', pathToFileURL(entry)).href);
-      const loaded = await loadExtensions([bridge.pathname], process.env.HOME);
+      const loaded = await loadExtensions([bridgePath], process.env.HOME);
       if (loaded.errors.length) throw Error('bridge');
       // Registering a provider makes Pi refresh every provider in the background,
       // resolving stored keys; the bridge's catalog needs none of them.
@@ -62,6 +62,33 @@ try {
   const levels = m => getSupportedThinkingLevels(m).filter(level => ['off','minimal','low','medium','high','xhigh','max'].includes(level));
   const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
   for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
+  // Native settings outlive release generations. Only rewrite this installation's
+  // managed bridge entries; never resolve the old path (it may already be pruned).
+  const bridgeSuffix = '/node_modules/pi-claude-bridge/src/index.ts';
+  const generationBridge = /^(.*)\/generations\/[^/]+\/payloads\/core\/runtime\/node_modules\/pi-claude-bridge\/src\/index\.ts$/;
+  const declaredBridge = fileURLToPath(new URL('../../../pi-claude-bridge/src/index.ts', pathToFileURL(entry)));
+  const installed = declaredBridge.match(generationBridge) ?? declaredBridge.match(/^(.*)\/core\/node_modules\/pi-claude-bridge\/src\/index\.ts$/);
+  if (installed) {
+    const stable = installed[1] + '/core' + bridgeSuffix;
+    if (bridgePath) bridgePath = stable;
+    const paths = settings.getExtensionPaths();
+    let seen = false;
+    const repaired = paths.flatMap(path => {
+      const legacy = typeof path === 'string' && path.match(generationBridge);
+      if (path !== stable && (!legacy || legacy[1] !== installed[1])) return [path];
+      if (seen) return [];
+      seen = true;
+      return [stable];
+    });
+    if (JSON.stringify(paths) !== JSON.stringify(repaired)) {
+      settings.setExtensionPaths(repaired);
+      await settings.flush();
+      const failures = settings.drainErrors();
+      for (const failure of failures) reportStorage(failure.error);
+      // A readable catalog must remain available when housekeeping cannot write.
+      if (failures.length && action !== 'list') throw Error('write');
+    }
+  }
   // Pi has no built-in default for extension providers and falls back to the
   // first available row (Fable). Initialize only at successful browser sign-in,
   // never on a read or over a person's saved model, even from another provider.

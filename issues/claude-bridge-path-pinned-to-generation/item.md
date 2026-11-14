@@ -2,7 +2,7 @@
 created: 2026-11-10
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by the web-search-native worker on Birch
@@ -12,38 +12,30 @@ originating_run_kind: spinoff
 lane: claude-bridge-path
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Claude model selection pins the bridge to one release generation in a person's Pi settings
 
 ## Description
 
-Observed on Birch, 2026-11-10, in Jari's Habitat account: `~/.pi/agent/settings.json`
-has `"extensions": ["/opt/open-habitat/generations/5a34f1cc…/payloads/core/runtime/node_modules/pi-claude-bridge/src/index.ts"]`,
-while the installed generation is `9cc4df0c…` (`readlink -f /opt/open-habitat/current`).
+Selecting a Claude model persists the bridge extension path resolved from the installed Pi entry in native settings. That entry names a release generation rather than the stable installation selector. After upgrades, standalone Pi continues using the old bridge; after that generation is pruned, it reports a missing extension.
 
-Cause: `internal/daemon/pi_models_helper.mjs` (the `select` / `initialize-claude`
-path, around `settings.setExtensionPaths([...paths, bridgePath])`) writes the
-bridge path resolved from the Pi entry, which is the generation-specific path,
-so that the native default also works over SSH. Every later upgrade leaves the
-person's settings pointing at the generation that was current when they chose
-a Claude model.
+Browser conversations and the Habitat terminal launcher explicitly load the current bridge, but native settings still need repair so standalone Pi works too.
 
-Effects:
-- Browser conversations and the Habitat terminal's `pi` launcher load the
-  current bridge first through `--extension` (CLI paths load before settings,
-  and the first bridge instance registers the provider), so they are not
-  affected today.
-- A `pi` without the launcher (an SSH session running the person's own Pi)
-  loads the old generation's bridge. Since `web-search-native`, the release's
-  bridge is patched at build so Claude Code has WebSearch/WebFetch; an old
-  generation's copy is not, so that person has no search on Claude over SSH,
-  and keeps any other bridge fix only from the generation they selected in.
-- If an old generation is ever removed, Pi reports a missing extension path at
-  every start for that person.
+## Acceptance Criteria
 
-Possible directions: write a generation-independent path
-(`/opt/open-habitat/core/node_modules/pi-claude-bridge/src/index.ts`, which
-follows `current`), and on the next selection or sign-in replace an earlier
-`/opt/open-habitat/generations/*/…/pi-claude-bridge/src/index.ts` entry
-instead of appending.
+- [x] New Claude selections persist a generation-independent bridge path.
+- [x] Reads repair old generation entries even when the old path no longer exists.
+- [x] Unrelated extensions and model preferences survive repair.
+- [x] Focused daemon tests and native Pi regression tests pass.
+
+## Accepted scope
+
+Use the installation's stable core bridge path for new selections and repair previously persisted generation paths on settings read or start. Preserve unrelated extensions and native model preferences. This is an approved defect fix, not an experimental feature.
+
+## Resolution
+
+### 2026-11-14T07:48:06Z · @issuectl
+
+Fixed and validated; see result.md. Live check: real pinned Pi helper and standalone CLI passed with a synthetic installation and absent old generation; production deployment not performed.
