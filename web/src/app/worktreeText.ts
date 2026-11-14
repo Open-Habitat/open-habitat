@@ -112,7 +112,8 @@ export function worktreeName(w: Worktree): string {
   const ownerName = w.owner?.role === "helper" ? w.owner.name : w.owner?.title;
   if (ownerName) return ownerName;
   const short = w.name.replace(/^wt-[a-z0-9]+-/, "").replace(/-/g, " ");
-  return /^wt-[a-z0-9]+-/.test(w.name) ? txt.leftover(short) : w.name;
+  // A directory name says nothing about whether its run has ended.
+  return /^wt-[a-z0-9]+-/.test(w.name) ? short : w.name;
 }
 
 /** What happened, for the status line after a removal. */

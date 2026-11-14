@@ -251,7 +251,9 @@ func TestWorktreeRemovalBlockers(t *testing.T) {
 	// A live Taskfleet run owns the worktree: listed, but nothing to do.
 	script := filepath.Join(f.cfg.Home, ".local", "bin", "taskfleet")
 	runs := func(status string) {
-		write(t, script, "#!/bin/sh\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\""+status+"\",\"worktree_path\":\""+f.wt("busy")+"\"}]}}'\n")
+		// A run without repository identity is absent from --repo results,
+		// but its native worktree path is authoritative for ownership.
+		write(t, script, "#!/bin/sh\ncase \" $* \" in *' --repo '*) echo '{\"schema_version\":1,\"data\":{\"runs\":[]}}'; exit 0;; esac\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\""+status+"\",\"lifecycle\":\"interactive\",\"attention_required\":true,\"supervisor\":{\"state\":\"alive\"},\"worktree_path\":\""+f.wt("busy")+"\"}]}}'\n")
 		if e := os.Chmod(script, 0700); e != nil {
 			t.Fatal(e)
 		}
@@ -271,10 +273,34 @@ func TestWorktreeRemovalBlockers(t *testing.T) {
 	}
 	for _, status := range []string{"pending", "done", "cancelled", "failed"} {
 		runs(status)
-		live := len(blockerKinds(f.row("busy"))) > 0
+		row := f.row("busy")
+		owner := row["owner"].(map[string]any)
+		if (owner["role"] != "ended") != (status == "pending") {
+			t.Fatalf("run status %s: owner=%v", status, owner)
+		}
+		live := len(blockerKinds(row)) > 0
 		if live != (status == "pending") {
 			t.Fatalf("run status %s: blocked=%v", status, live)
 		}
+		if status == "pending" && owner["state"] != "waiting" {
+			t.Fatalf("interactive pending owner: %v", owner)
+		}
+	}
+	// Ownership appearing after the browser read invalidates its removal,
+	// including a run whose path is recorded only on its node.
+	runs("cancelled")
+	stale := f.row("busy")
+	write(t, script, "#!/bin/sh\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\"pending\",\"node_transcripts\":[{\"worktree_path\":\""+f.wt("busy")+"\"}]}]}}'\n")
+	if code, body := f.removeRow(stale, "remove", ""); code != 409 || errorCode(body) != "worktree_changed" || !exists(f.wt("busy")) {
+		t.Fatalf("new node-only owner: %d %v", code, body)
+	}
+	if row := f.row("busy"); actions(row) != "" || len(blockerKinds(row)) != 1 {
+		t.Fatalf("node-only owner not blocked: %v", row)
+	}
+	// An unnamed run being created in another repository is not an owner.
+	write(t, script, "#!/bin/sh\ncase \" $* \" in *' --repo '*) echo '{\"schema_version\":1,\"data\":{\"runs\":[]}}'; exit 0;; esac\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\"pending\",\"source_repo\":\"/synthetic/other\"}]}}'\n")
+	if row := f.row("busy"); len(blockerKinds(row)) != 0 || actions(row) == "" {
+		t.Fatalf("unrelated run blocks cleanup: %v", row)
 	}
 	// A live run that names no worktree may own any of them.
 	write(t, script, "#!/bin/sh\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\"running\",\"worktree_path\":null}]}}'\n")

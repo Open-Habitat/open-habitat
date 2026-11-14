@@ -34,7 +34,16 @@ const fi = {
     `Tallennetaanko muutokset ja poistetaan ${name}?`,
   titleForce: (name: string) => `Poistetaanko ${name} pakolla?`,
   titleRemove: (name: string) => `Poistetaanko ${name}?`,
-  leftover: (name: string) => `Jäänne · ${name}`,
+  runState: {
+    working: "Worker työskentelee. Worktreetä ei voi poistaa.",
+    waiting: "Worker odottaa päätöstäsi. Worktreetä ei voi poistaa.",
+    attention: "Worker tarvitsee huomiota. Worktreetä ei voi poistaa.",
+    ended: "Päättyneen ajon jäljelle jäänyt worktree.",
+  },
+  askParent:
+    "Jatka keskustelussa, jossa käynnistit workerin. Pyydä agenttia viimeistelemään tai peruuttamaan ajo.",
+  askCleanup:
+    "Poistaminen ei onnistu selaimesta tässä tilassa. Pyydä työtilan agenttia siivoamaan se.",
   leadCommit:
     "Muutokset ja uudet tiedostot tallennetaan ennen työkopion poistamista. Tallennettu työ säilyy. Voit pyytää työtilan agenttia palauttamaan sen.",
   leadForce:
@@ -66,7 +75,7 @@ const fi = {
   fileOperationHow: "Odota käsittelyn päättymistä.",
   process: "Prosessi ",
   processEnd: " on worktreen hakemistossa.",
-  processHow: "Sulje se tai siirry siinä pois hakemistosta.",
+  processHow: "Pyydä agenttia tarkistamaan, voiko tämän prosessin sulkea.",
   run: "Taskfleet-ajo ",
   runEnd: " omistaa tämän worktreen.",
   runHow:
@@ -144,7 +153,17 @@ export const worktreesText = catalog(fi, {
   titleCommit: (name) => `Save the changes and delete ${name}?`,
   titleForce: (name) => `Force delete ${name}?`,
   titleRemove: (name) => `Delete ${name}?`,
-  leftover: (name) => `Leftover · ${name}`,
+  runState: {
+    working: "The worker is working. This worktree cannot be deleted.",
+    waiting:
+      "The worker is waiting for your decision. This worktree cannot be deleted.",
+    attention: "The worker needs attention. This worktree cannot be deleted.",
+    ended: "A worktree left behind by an ended run.",
+  },
+  askParent:
+    "Continue in the conversation where you started the worker. Ask the agent to finish or cancel the run.",
+  askCleanup:
+    "The browser cannot delete it in this state. Ask the workspace agent to clean it up.",
   leadCommit:
     "Changes and new files are saved before the working copy is deleted. Saved work is kept. You can ask the workspace's agent to restore it.",
   leadForce:
@@ -175,7 +194,7 @@ export const worktreesText = catalog(fi, {
   fileOperationHow: "Wait for it to finish.",
   process: "The process ",
   processEnd: " is in the worktree's directory.",
-  processHow: "Close it or move it out of the directory.",
+  processHow: "Ask the agent to check whether this process can be closed.",
   run: "The Taskfleet run ",
   runEnd: " owns this worktree.",
   runHow:

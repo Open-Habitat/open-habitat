@@ -665,9 +665,8 @@ func porcelainCounts(status []byte) (statusCounts, bool) {
 	return out, true
 }
 
-// worktreeRuns asks Taskfleet, with the argv the deletion check uses, which
-// runs of this repository own a listed worktree. A run that owns one blocks
-// unless it has ended: done (merged), cancelled or failed. The same read
+// worktreeRuns matches Taskfleet's native paths to the listed worktrees.
+// A run that owns one blocks unless it has ended: done, cancelled or failed. The same read
 // names each worktree's run for the person (owner): a live one, else the
 // newest ended run that still names it.
 func worktreeRuns(ctx context.Context, home, wsPath string, obs []worktreeObs) (map[int]deletionBlocker, map[int]*worktreeOwner, bool) {
@@ -676,17 +675,16 @@ func worktreeRuns(ctx context.Context, home, wsPath string, obs []worktreeObs) (
 	if taskfleetBinary(home) == "" {
 		return out, owners, true
 	}
-	var reply struct {
-		Schema int `json:"schema_version"`
-		Data   struct {
-			Runs []nativeSpinoff `json:"runs"`
-		} `json:"data"`
-	}
-	if !taskfleetRead(ctx, home, []string{"run", "list", "--repo", wsPath, "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
+	// As in snapshot discovery, match native worktree paths across the full
+	// inventory. --repo excludes runs without recorded repository identity,
+	// even when they explicitly name one of this repository's worktrees.
+	runs, ok := listTaskfleetRuns(ctx, home)
+	if !ok || runs == nil {
 		return nil, nil, false
 	}
 	endedAt := map[int]string{}
-	for _, r := range reply.Data.Runs {
+	var repositoryRuns map[string]bool
+	for _, r := range runs {
 		if !taskfleetIDPattern.MatchString(r.ID) {
 			return nil, nil, false
 		}
@@ -704,6 +702,29 @@ func worktreeRuns(ctx context.Context, home, wsPath string, obs []worktreeObs) (
 		if !named {
 			if ended {
 				continue
+			}
+			// A run still being created in another repository must not
+			// block this one. Use Taskfleet's repository identity only for
+			// this case; named paths above need no repository metadata.
+			if r.SourceRepo != "" {
+				if repositoryRuns == nil {
+					var scoped struct {
+						Schema int `json:"schema_version"`
+						Data   struct {
+							Runs []nativeSpinoff `json:"runs"`
+						} `json:"data"`
+					}
+					if !taskfleetRead(ctx, home, []string{"run", "list", "--repo", wsPath, "--output", "json"}, &scoped) || scoped.Schema != 1 || scoped.Data.Runs == nil {
+						return nil, nil, false
+					}
+					repositoryRuns = map[string]bool{}
+					for _, candidate := range scoped.Data.Runs {
+						repositoryRuns[candidate.ID] = true
+					}
+				}
+				if !repositoryRuns[r.ID] {
+					continue
+				}
 			}
 			return nil, nil, false
 		}

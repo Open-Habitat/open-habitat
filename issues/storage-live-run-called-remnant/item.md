@@ -3,13 +3,14 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/storage-live-run-called-remnant
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Storage page calls a live Taskfleet run's worktree a remnant and offers delete
@@ -31,3 +32,10 @@ Expected: the row recognises a Taskfleet run and says so in human terms (for
 example "Worker odottaa päätöstäsi"), offers no delete for a live run, and
 points to the parent agent (or offers cancel through the agent). A cancelled
 run's leftover worktree is shown as such, with an honest action.
+
+## Acceptance Criteria
+
+- [x] Live Taskfleet owners are named from native run facts and cannot be deleted.
+- [x] Ended leftovers and ordinary worktrees have honest labels and actions.
+- [x] Blocked removal directs the person to the agent and disables resubmission.
+- [x] Focused daemon, web and added browser regression checks pass.

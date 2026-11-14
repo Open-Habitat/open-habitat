@@ -65,6 +65,7 @@ export function WorktreeList({
           w.conversations ? txt.conversations(w.conversations) : "",
         ].filter(Boolean);
         const facts = worktreeFacts(w);
+        const liveRun = w.owner && w.owner.state !== "ended";
         return (
           <li
             key={key}
@@ -96,6 +97,16 @@ export function WorktreeList({
                   </span>
                 ))}
               </span>
+              {w.owner ? (
+                <span className="ah-trash-why">
+                  {txt.runState[w.owner.state]}{" "}
+                  {liveRun
+                    ? txt.askParent
+                    : w.blockers.length
+                      ? txt.askCleanup
+                      : ""}
+                </span>
+              ) : null}
               {w.state === "locked" ? (
                 <span className="ah-trash-why">
                   {txt.locked}
@@ -107,14 +118,18 @@ export function WorktreeList({
                   {txt.lockedEnd}
                 </span>
               ) : null}
-              {w.blockers.length ? (
+              {w.blockers.filter((b) => !w.owner || b.kind !== "taskfleet_run")
+                .length ? (
                 <span className="ah-trash-why">
-                  {w.blockers.map(plainBlocker).join(" ")}
+                  {w.blockers
+                    .filter((b) => !w.owner || b.kind !== "taskfleet_run")
+                    .map(plainBlocker)
+                    .join(" ")}
                 </span>
               ) : null}
             </div>
             <span className="ah-trash-actions">
-              {w.actions.map((a) => (
+              {(liveRun || w.blockers.length ? [] : w.actions).map((a) => (
                 <ControlButton
                   data-testid={`worktree-${a}`}
                   key={a}
@@ -232,7 +247,7 @@ export function WorktreeRemoveDialog({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (busy) return;
+          if (busy || blockers?.length) return;
           if (disposal !== "force") onConfirm();
           else if (typed === name) onConfirm(w?.name);
         }}
@@ -250,7 +265,9 @@ export function WorktreeRemoveDialog({
         ) : null}
         {blockers?.length ? (
           <>
-            <p role="alert">{txt.inUse}</p>
+            <p role="alert">
+              {txt.inUse} {txt.askCleanup}
+            </p>
             <BlockerList blockers={blockers} describe={worktreeBlockerText} />
           </>
         ) : null}
@@ -271,7 +288,11 @@ export function WorktreeRemoveDialog({
             type="submit"
             variant={disposal === "commit" ? "primary" : "danger"}
             isPending={busy}
-            isDisabled={busy || (disposal === "force" && typed !== name)}
+            isDisabled={
+              busy ||
+              !!blockers?.length ||
+              (disposal === "force" && typed !== name)
+            }
           >
             {disposal === "commit"
               ? txt.confirmCommit

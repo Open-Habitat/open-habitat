@@ -41,6 +41,76 @@ describe("worktree list", () => {
     expect(onAction).toHaveBeenCalledWith(rows[3], "prune");
   });
 
+  it("uses run facts, never the directory spelling, to identify leftovers", () => {
+    const w: Worktree = {
+      ...rows[0],
+      name: "wt-123456-repair-search",
+      owner: {
+        run_id: "run",
+        role: "worker",
+        state: "waiting",
+        title: "Repair search",
+      },
+      actions: ["remove"],
+      blockers: [],
+    };
+    const { rerender } = render(
+      <WorktreeList worktrees={[w]} onAction={vi.fn()} />,
+    );
+    expect(screen.getByText(/Worker odottaa päätöstäsi/)).toBeTruthy();
+    expect(screen.queryByTestId("worktree-remove")).toBeNull();
+    expect(screen.queryByText(/Jäänne/)).toBeNull();
+    rerender(
+      <WorktreeList
+        worktrees={[
+          {
+            ...w,
+            owner: { run_id: "run", role: "ended", state: "ended" },
+            blockers: [{ kind: "unknown", check: "worktrees" }],
+          },
+        ]}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Päättyneen ajon/)).toBeTruthy();
+    expect(screen.getByText(/Pyydä työtilan agenttia/)).toBeTruthy();
+    expect(screen.queryByTestId("worktree-remove")).toBeNull();
+    rerender(
+      <WorktreeList
+        worktrees={[{ ...w, owner: undefined }]}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("repair search")).toBeTruthy();
+    expect(screen.queryByText(/Jäänne/)).toBeNull();
+    expect(screen.getByTestId("worktree-remove")).toBeTruthy();
+  });
+
+  it("keeps an ordinary worktree's spelling and blocks retry after a process refusal", () => {
+    const onConfirm = vi.fn();
+    render(
+      <WorktreeRemoveDialog
+        worktree={{ ...rows[0], name: "hotfix-2-1" }}
+        disposal="remove"
+        busy={false}
+        blockers={[{ kind: "process", pid: 42 }]}
+        onConfirm={onConfirm}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByRole("heading").textContent).toContain("hotfix-2-1");
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Pyydä työtilan agenttia",
+    );
+    expect(
+      screen.getByTestId("confirm-worktree").hasAttribute("disabled"),
+    ).toBe(true);
+    const form = screen.getByTestId("confirm-worktree").closest("form");
+    if (!form) throw new Error("Missing removal form");
+    fireEvent.submit(form);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("removes by force only after the name is typed", () => {
     const onConfirm = vi.fn();
     render(
