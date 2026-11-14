@@ -20,17 +20,21 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   // Wire seam: age chosen conversations' changed_at, as if they had been
   // quiet for two and a half hours, without waiting or touching the
   // host's files. The rail's clock moves once a minute, so not exactly two.
-  // A finished conversation is not in Käynnissä (rail-running-after-done);
-  // one whose worker waits at its own prompt is, as a your-turn row, so chosen
-  // conversations get such a worker.
+  // Parked workers are native host fixtures, not snapshot-only overrides:
+  // later host updates must agree that these parents still need the person.
   const aged = new Set<string>();
-  const parked = new Set<string>();
+  const park = async (id: string) => {
+    expect(
+      (
+        await page.request.get(`/fixture/parked-worker?parent=${id.slice(3)}`)
+      ).status(),
+    ).toBe(204);
+  };
   await page.route("**/api/v1/snapshot", async (route) => {
     try {
       const response = await route.fetch();
       const body = await response.json();
       for (const a of body.agents) {
-        if (parked.has(a.agent_id)) a.spinoffs_idle = 1;
         if (aged.has(a.agent_id) && a.changed_at)
           a.changed_at = new Date(
             Date.parse(a.changed_at) - 2.5 * 3600000,
@@ -48,12 +52,18 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   const running = nav.getByTestId("rail-running");
 
   const first = await start(page);
-  parked.add(first);
+  await park(first);
   await page.getByTestId("message-input").fill("Ensimmäinen viesti");
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
+  // Worker-waiting alone does not prove the parent's turn has settled.
+  // Stay on its reply until sending is available again; leaving during the
+  // turn can correctly put a later unread reply in Sinun vuorosi instead.
+  await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send", {
+    timeout: 25000,
+  });
   const row = running.getByTestId(`agent-item-${first}`);
   // The reply was read here, but the parked worker still needs the person;
   // the session file was just written, so the time is now.
@@ -82,10 +92,29 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
 
   // Opening another conversation never hides the older row.
   const second = await start(page);
-  parked.add(second);
+  await park(second);
+  // A native worker belongs to a readable parent history, not an empty draft.
+  await page.getByTestId("message-input").fill("Toinen viesti");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(running.getByTestId(`agent-item-${second}`)).toHaveAttribute(
+    "data-ball",
+    "you",
+    { timeout: 25000 },
+  );
   await nav.getByTestId("snapshot-refresh").click();
   await expect(running.getByTestId(`agent-item-${second}`)).toBeVisible();
   await expect(row).toBeVisible();
+  // APIRequestContext bypasses page routes: the host itself must retain both
+  // workers, rather than this spec merely repainting them in a snapshot.
+  const native = await (await page.request.get("/api/v1/snapshot")).json();
+  for (const id of [first, second]) {
+    expect(
+      native.agents.find((a: { agent_id: string }) => a.agent_id === id),
+    ).toMatchObject({ spinoffs_idle: 1 });
+  }
   await expect(running.getByTestId(/^rail-fold-/)).toHaveCount(0);
   await expect(row.locator("time")).toHaveText("2 t");
   expect(

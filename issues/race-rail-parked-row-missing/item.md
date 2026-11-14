@@ -1,8 +1,8 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m71zxxabyvwy0h1y2tec6n4g/observed:rail-parked-row
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: gate-load-flakes
 lane_seq: 5
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Parked first row disappears from the running group in the rail detector spec

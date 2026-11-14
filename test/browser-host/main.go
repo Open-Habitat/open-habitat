@@ -1431,6 +1431,12 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+			case "/fixture/parked-worker":
+				if e := writeParkedWorker(filepath.Join(tmp, "alice"), r.URL.Query().Get("parent")); e != nil {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
 			case "/fixture/taskfleet":
 				// One spinoff of a parent session, in a native-shaped run record
 				// whose manifest the snapshot's listing cache stamps.
