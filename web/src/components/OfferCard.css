@@ -86,7 +86,10 @@
 .ah-offer-seen[data-public] {
   color: var(--ah-accent-ink);
 }
-.ah-offer-mark-s {
+/* Compact sizing must win over the kind's default mark, regardless of
+   stylesheet load order. */
+.ah-view-offer-mark.ah-offer-mark-s,
+.ah-file-offer-mark.ah-offer-mark-s {
   width: 24px;
   height: 24px;
   border-radius: var(--ah-r-sm, 6px);

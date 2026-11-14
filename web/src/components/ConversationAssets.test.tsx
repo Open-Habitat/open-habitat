@@ -124,6 +124,28 @@ it("folds a re-offer of the same source and keeps the same name from elsewhere a
   ).toEqual([["Raportti"], ["Raportti", "Luonnos"], ["Raportti", "Raportti"]]);
 });
 
+it("folds matching sources across days and intervening offers, but not missing sources or other entries", () => {
+  const source = "/reports/site";
+  const entries = assetEntries(
+    [
+      { ...view(1, "index.html", "2026-11-08T08:00:00Z", "Draft"), source },
+      {
+        ...view(2, "index.html", "2026-11-09T08:00:00Z", "Other"),
+        source: "/reports/other",
+      },
+      { ...view(3, "index.html", "2026-11-09T09:00:00Z", "Final"), source },
+      { ...view(4, "detail.html", "2026-11-09T10:00:00Z", "Final"), source },
+      view(5, "index.html", "2026-11-07T08:00:00Z", "Final"),
+    ],
+    [{ offer, state: ready }],
+  );
+  expect(
+    entries
+      .filter((e) => e.kind === "view")
+      .map((e) => e.versions.map((v) => v.title)),
+  ).toEqual([["Final"], ["Final", "Draft"], ["Other"], ["Final"]]);
+});
+
 it("opens a row beside, closes it with the same row and leaves a modified click to the browser", () => {
   const toggle = vi.fn();
   const controls: AssetControls = {
