@@ -38,9 +38,29 @@ async function setup(page: Page, writer: Page, count = 2) {
     .click();
   const hrefs: string[] = [];
   for (let i = 0; i < count; i++) {
-    await writer.goto(`${hostOrigin}/workspaces`);
     hrefs.push(await create(writer));
+    const accepted = writer.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith("/send") &&
+        response.ok(),
+    );
     await send(writer, `reply ${i}`);
+    await accepted;
+    // Empty new conversations also occupy Your turn. A row count alone can
+    // navigate the writer away before its send, or hold Pi before it replies.
+    const id = conversationNow(writer)?.replace(/^pi:/, "");
+    await expect
+      .poll(
+        async () => {
+          const response = await writer.request.get(
+            `/api/v1/conversations/${id}/status`,
+          );
+          return (await response.json()).turn_settled?.state;
+        },
+        { timeout: 25000 },
+      )
+      .toBe("settled");
     await expect(
       page.getByTestId("rail-yours").getByTestId("agent-link"),
     ).toHaveCount(i + 1, { timeout: 25000 });
@@ -99,13 +119,19 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   await expect(line(page)).toHaveCount(0);
   accept();
   await expect(line(page)).toHaveAttribute("data-waiting", "2");
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include('[data-testid="next-waiting"]')
-        .analyze()
-    ).violations,
-  ).toEqual([]);
+  // A host invalidation briefly hides this freshness-dependent row while
+  // status is reread. Axe's asynchronous scan must observe a mounted row,
+  // not assume the preceding assertion freezes it for the whole scan.
+  await expect(async () => {
+    await expect(line(page)).toHaveAttribute("data-waiting", "2");
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('[data-testid="next-waiting"]')
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }).toPass({ timeout: 15000 });
   const currentURL = page.url();
   const input = page.getByTestId("message-input");
   for (const draft of ["next thought", " "]) {
@@ -123,19 +149,21 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   await expect(queue).toBeVisible();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    const nextBox = await line(page).boundingBox();
-    const workBox = await page.locator(".ah-bg-strip").boundingBox();
-    const queueBox = await queue.boundingBox();
-    const inputBox = await input.boundingBox();
-    if (!nextBox || !workBox || !queueBox || !inputBox)
-      throw new Error("Composer stack must be visible");
-    expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(workBox.y);
-    expect(workBox.y + workBox.height).toBeLessThanOrEqual(nextBox.y);
-    expect(nextBox.y + nextBox.height).toBeLessThanOrEqual(inputBox.y);
-    expect(workBox.y - queueBox.y - queueBox.height).toBeCloseTo(9, 0);
-    expect(nextBox.y - workBox.y - workBox.height).toBeCloseTo(9, 0);
-    expect(nextBox.x).toBeCloseTo(queueBox.x, 0);
-    expect(nextBox.width).toBeCloseTo(queueBox.width, 0);
+    await expect(async () => {
+      const nextBox = await line(page).boundingBox();
+      const workBox = await page.locator(".ah-bg-strip").boundingBox();
+      const queueBox = await queue.boundingBox();
+      const inputBox = await input.boundingBox();
+      if (!nextBox || !workBox || !queueBox || !inputBox)
+        throw new Error("Composer stack must be visible");
+      expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(workBox.y);
+      expect(workBox.y + workBox.height).toBeLessThanOrEqual(nextBox.y);
+      expect(nextBox.y + nextBox.height).toBeLessThanOrEqual(inputBox.y);
+      expect(workBox.y - queueBox.y - queueBox.height).toBeCloseTo(9, 0);
+      expect(nextBox.y - workBox.y - workBox.height).toBeCloseTo(9, 0);
+      expect(nextBox.x).toBeCloseTo(queueBox.x, 0);
+      expect(nextBox.width).toBeCloseTo(queueBox.width, 0);
+    }).toPass({ timeout: 15000 });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   await archiveOther(page, hrefs[0]);
@@ -171,8 +199,11 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   await send(page, "next turn");
   await expect(line(page)).toHaveAttribute("data-waiting", "1");
   await page.setViewportSize({ width: 390, height: 844 });
-  const box = await line(page).boundingBox();
-  expect(box?.width ?? 1000).toBeLessThanOrEqual(390);
+  await expect
+    .poll(async () => (await line(page).boundingBox())?.width ?? 1000, {
+      timeout: 15000,
+    })
+    .toBeLessThanOrEqual(390);
   await page.getByTestId("next-open").click();
   await expect
     .poll(() => conversationNow(page))

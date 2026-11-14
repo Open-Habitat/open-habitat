@@ -2,13 +2,14 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: conductor:2026-11-14/gate-46dcaffc
 lane: gate-red
 lane_seq: 3
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Clean gate: background-recap one-at-a-time test and next-waiting-row case fail intermittently
