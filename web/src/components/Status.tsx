@@ -188,6 +188,7 @@ export type ConnectionState =
   | "stale"
   | "resnapshot-required"
   | "version-changed"
+  | "part-failed"
   | "authentication-required"
   | "daemon-unavailable"
   | "host-read-only";
@@ -206,7 +207,7 @@ export function ConnectionBanner({
   hostWriteState?: "writable" | "read_only";
   problem?: ProblemView;
   onRetry?: () => void;
-  /** Loads the bundle the server serves now; "version-changed" offers it. */
+  /** Loads the page again; "version-changed" and "part-failed" offer it. */
   onReload?: () => void;
 }) {
   // Snapshot write_state describes workspace mutations, not conversation control.
@@ -233,6 +234,7 @@ export function ConnectionBanner({
       ...txt.connection["version-changed"],
       tone: "neutral",
     },
+    "part-failed": { ...txt.connection["part-failed"], tone: "neutral" },
     "authentication-required": {
       ...txt.connection["authentication-required"],
       tone: "danger",
@@ -253,7 +255,7 @@ export function ConnectionBanner({
       title={value.title}
       short={visibleState === "stale" ? txt.lastConfirmed : undefined}
       actions={
-        visibleState === "version-changed" ? (
+        visibleState === "version-changed" || visibleState === "part-failed" ? (
           onReload ? (
             <Button
               data-testid="connection-reload"

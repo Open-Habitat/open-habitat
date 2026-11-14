@@ -3,7 +3,7 @@ import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
-test("a missing lazy editor chunk offers explicit reload and preserves the draft", async ({
+test("a missing lazy editor chunk without a release offers reload, not an update, and preserves the draft", async ({
   page,
 }) => {
   await page.goto("/workspaces");
@@ -25,8 +25,15 @@ test("a missing lazy editor chunk offers explicit reload and preserves the draft
     return route.fulfill({ status: 404, body: "" });
   });
   await page.getByTestId("toggle-editor").click();
-  const banner = page.getByTestId("connection-version-changed");
+  // The served index is unchanged, so no release removed the chunk: the
+  // notice must not claim the server was updated.
+  const banner = page.getByTestId("connection-part-failed");
   await expect(banner).toBeVisible();
+  await expect(page.locator("[data-chunk-load-failed]")).toHaveAttribute(
+    "data-chunk-load-failed",
+    "current",
+  );
+  await expect(page.getByTestId("connection-version-changed")).toHaveCount(0);
   expect(missingRequests).toBeGreaterThan(0);
   await expect(page.getByTestId("connection-retry")).toHaveCount(0);
   // Neither React Router's raw failure nor the asset URL belongs on screen.

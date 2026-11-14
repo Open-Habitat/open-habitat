@@ -107,6 +107,24 @@ export function checkBundle(): Promise<"current" | "newer" | undefined> {
   return inFlight;
 }
 
+/**
+ * Says why a reload notice appeared, so that a notice nobody expected
+ * classifies itself from the console: which path raised it (a lazy part that
+ * failed to load, or a failed snapshot read), the asset that failed, and what
+ * the served index said. Closed fields only, and an asset path without its
+ * origin or query.
+ */
+export function bundleDiagnostic(value: {
+  path: "chunk-load" | "snapshot-failed";
+  asset?: string;
+  release: "newer" | "current" | "unknown";
+}) {
+  console.warn(
+    "[bundle]",
+    JSON.stringify({ at: new Date().toISOString(), ...value }),
+  );
+}
+
 /** Hide the prompt until the server serves yet another bundle. */
 export function dismissBundlePrompt() {
   dismissedKey = servedKey;

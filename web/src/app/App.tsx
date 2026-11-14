@@ -55,7 +55,12 @@ import {
 import { agentTitle } from "./agentTitle";
 import { BrowserConversation } from "./BrowserConversation";
 import type { LeaveSave } from "./BrowserDocument";
-import { checkBundle, reloadForNewBundle, watchBundle } from "./bundleRelease";
+import {
+  bundleDiagnostic,
+  checkBundle,
+  reloadForNewBundle,
+  watchBundle,
+} from "./bundleRelease";
 import { WorkspaceArchive } from "./ConversationArchiveFlow";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
@@ -876,6 +881,8 @@ export function App() {
         // keeps the ordinary retry, since reloading would lose the page.
         // A later read superseding this one does not void the answer.
         void checkBundle().then((status) => {
+          if (status === "newer")
+            bundleDiagnostic({ path: "snapshot-failed", release: status });
           if (generation === identityGeneration.current)
             setVersionChanged(status === "newer");
         });
