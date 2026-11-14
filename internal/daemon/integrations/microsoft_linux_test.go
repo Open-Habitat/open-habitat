@@ -862,7 +862,7 @@ func (e *fastMicrosoftEntry) StartLevelLogin(ctx context.Context, env Env, addre
 // other direction runs its first pass in the new one as the attempt's pass;
 // if that pass fails, the attempt fails and the account and its files stay.
 func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
-	for _, action := range []string{"renewal", "level-change", "level-change-fails"} {
+	for _, action := range []string{"renewal", "level-change", "level-change-fails", "level-change-full"} {
 		t.Run(action, func(t *testing.T) {
 			env := microsoftLevelEnv(t)
 			m := syntheticMicrosoft(t, "person@example.test", "")
@@ -879,7 +879,8 @@ func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
 				t.Fatal(err)
 			}
 			e := &fastMicrosoftEntry{microsoft: m}
-			c := New(env, []Entry{e}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+			room := Room{Free: 2048, OK: true}
+			c := New(env, []Entry{e}, nil, WithQuota(func() Room { return room }))
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Start(ctx)
 			defer func() { cancel(); c.Stop() }()
@@ -901,11 +902,17 @@ func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
 				env.Config.Tools["rclone"] = wrapper
 				c.env.Config.Tools["rclone"] = wrapper
 			}
+			if action == "level-change-full" {
+				// A full home takes no pass, not even one of local files.
+				c.write.Lock()
+				c.quota = func() Room { return Room{OK: true, Full: true} }
+				c.write.Unlock()
+			}
 			if err := c.startLogin(ownerA, e, address, level); err != nil {
 				t.Fatal(err)
 			}
 			h := c.Handler(allow)
-			if action == "level-change-fails" {
+			if action == "level-change-fails" || action == "level-change-full" {
 				if v := waitState(t, h, ownerA, "failed"); v["address"] != address {
 					t.Fatal(v)
 				}
@@ -929,9 +936,24 @@ func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
 				if remotes[0].Writable || !microsoftReady(env, address, remotes[0]) || !c.sync.supervised(key{Microsoft, address}) {
 					t.Fatal("the turned root does not sync as a mirror")
 				}
-			case "level-change-fails":
+			case "level-change-fails", "level-change-full":
 				if a, _ := m.Accounts(env); len(a) != 1 {
 					t.Fatal("a failed pass removed the account", a)
+				}
+				// The pass in the new direction stays recorded: the root
+				// is still the account's, and the next start runs it.
+				if !remotes[0].RecoverySelected || len(m.Directories(env, address)) != 1 || !microsoftRecoveryNeeded(env, address) {
+					t.Fatal("the turned root was forgotten", remotes[0])
+				}
+				renewal := msLogin(t, m, env, address)
+				if _, err := renewal.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
+					t.Fatal(err)
+				}
+				if err := renewal.Commit(context.Background(), address); err != nil {
+					t.Fatal(err)
+				}
+				if kept, _ := microsoftRemotes(env, address); len(kept) != 1 || kept[0].Name != "onedrive" {
+					t.Fatal("a renewal dropped the turned root", kept)
 				}
 			}
 		})

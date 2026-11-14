@@ -62,4 +62,10 @@ func TestMicrosoftFilesNeverChosenAreReachedOnDemand(t *testing.T) {
 	if _, ok := got["sharepoint"]; ok {
 		t.Fatal("an unchosen library shown", got)
 	}
+	// A read grant names SharePoint's access; its row is the sign-in's too.
+	reply, _ = json.Marshal(map[string]any{"state": "ok", "scopes": strings.Fields("User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read")})
+	os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), reply, 0600)
+	if s, ok := states()["sharepoint"]; !ok || s.State != StateOK || s.Access != AccessRead {
+		t.Fatalf("read sharepoint %+v", s)
+	}
 }

@@ -707,7 +707,16 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
 			c.setAttempt(a, func() { a.progress = &p })
 		})
-		syncErr := ms.entry.restartPasses(syncCtx, c.env, address, ms.restart)
+		// The roots' files are local, so no count is needed; the pass still
+		// waits for room the home can show.
+		var syncErr error
+		if room := c.quota(); !room.OK {
+			syncErr = errQuotaUnavailable
+		} else if room.Full {
+			syncErr = errQuota
+		} else {
+			syncErr = ms.entry.restartPasses(syncCtx, c.env, address, ms.restart)
+		}
 		close(pass)
 		if syncErr != nil {
 			c.write.Lock()

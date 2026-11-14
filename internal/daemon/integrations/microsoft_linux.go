@@ -824,11 +824,20 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			return FinalSyncFailed
 		}
 	}
+	// A turned root that synced runs its first pass again in the new
+	// direction: its files are local, so the pass copies little. The startup
+	// repair's selection records it in the config, so a stop or a failure of
+	// that pass leaves the root kept and the next start runs it again. A
+	// turned root whose own first pass never finished is left out (its files
+	// stay), since its pass in the new direction could be a whole download.
 	l.restart = nil
-	for _, r := range kept {
-		if slices.Contains(turned, r.Name) {
-			l.restart = append(l.restart, r.Name)
+	for i := range kept {
+		r := &kept[i]
+		if !slices.Contains(turned, r.Name) || !microsoftReady(l.env, address, *r) {
+			continue
 		}
+		r.RecoverySelected = true
+		l.restart = append(l.restart, r.Name)
 	}
 	if len(kept) > 0 {
 		if l.config, err = microsoftKeptConfig(l.app, l.granted, l.token, kept); err != nil {
@@ -1113,8 +1122,10 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	probes.Wait()
 	// Files nothing syncs are reached on demand through the Outlook server's
 	// file tools, so their state is that server's sign-in.
-	if inventoryErr == nil && !synced[0] {
-		out[0].State = out[2].State
+	for i := 0; i < 2; i++ {
+		if inventoryErr == nil && !synced[i] {
+			out[i].State = out[2].State
+		}
 	}
 	m.alignedView(env, address, out)
 	var grant *Grant

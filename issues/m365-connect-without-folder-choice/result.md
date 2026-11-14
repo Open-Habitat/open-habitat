@@ -72,10 +72,16 @@ sentence.
    count. A daemon-stop interruption is still resumed at start as before. A
    failed one shows "Ensimmäinen synkronointi jäi kesken" until pinning
    (`m365-pin-folders`) offers a way to choose again.
-3. **A direction change runs its first pass without a fresh size count.** The
-   data is already local (mirror↔two-way of the same library), so the quota
-   count the folder step did is not needed. The alternative was to stop the
-   root and wait for pinning, which is the silent stop the issue rules out.
+3. **A direction change reruns only roots that synced, without a fresh size
+   count.** Their data is already local (mirror↔two-way of the same library),
+   so instead of the folder step's count the pass only needs the home's room
+   to be known and not full. The root is marked with the startup repair's
+   selection (`habitat_recovery_selected`). If the pass is stopped or fails,
+   the root therefore stays the account's and the next daemon start runs the
+   pass again. A turned root whose own first pass never finished is left out,
+   because its pass could be a whole download; its files stay. Alternative:
+   stop the root and wait for pinning, which is the silent stop the issue
+   rules out.
 4. **The files row of an unsynced account shows the Outlook server's state**,
    and only once the tenant's answer has named the grant. Without discovery
    Habitat cannot tell a mail-only licence (no OneDrive) apart. Such an
@@ -90,6 +96,19 @@ sentence.
 6. **Contract fields kept, not deprecated in the schema**, so that older
    open tabs and examples validate. They can go when the schema is next
    revised.
+
+## Review
+
+Independent `/llm-review`: GPT-6 Astra as finder and Claude Fable 5.2 as
+verifier, then `/assess-findings`. It confirmed three defects, all fixed
+before merge:
+
+- A level-change pass that was stopped or failed left a root that had
+  synced unkept, and the next renewal dropped it.
+- The level-change pass had no quota admission.
+- A read-level account showed a SharePoint row in state unknown.
+
+Nothing was dropped.
 
 ## Verification
 
