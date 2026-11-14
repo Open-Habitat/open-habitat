@@ -204,6 +204,7 @@ export function gitChips(git: DeletionGit | undefined): {
 export const conversationsKept = (n: number) => txt.conversationsKept(n);
 
 export function bytes(n: number): string {
+  if (n === 0) return "0 B";
   if (n < 1024 ** 2)
     return `${formatNumber(Math.max(1, Math.round(n / 1024)))} KiB`;
   if (n < 1024 ** 3)

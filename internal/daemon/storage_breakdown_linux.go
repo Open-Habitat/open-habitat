@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -555,7 +556,25 @@ func measureStorage(ctx context.Context, cfg transport.Config) breakdownResult {
 	for _, b := range builds {
 		measure(b.rel, b.item)
 	}
-	measure(".local/share/Trash", breakdownItem{Group: "trash", Kind: "trash"})
+	// Count discarded contents, not the empty Trash's directory scaffolding
+	// or .trashinfo records. The Trash list also reports the entries themselves.
+	if fd, _, ok := z.open(".local/share/Trash/files"); ok {
+		var n int64
+		complete := z.walk(fd, 0, &n)
+		unix.Close(fd)
+		add(breakdownItem{Group: "trash", Kind: "trash", Path: "~/.local/share/Trash/files", Bytes: n, Complete: complete})
+	}
+	cloud, cloudComplete := integrations.StorageDirectories(newIntegrationEnv(cfg))
+	if !cloudComplete {
+		res.complete = false
+	}
+	for _, d := range cloud {
+		switch d.Service {
+		case "dropbox", "onedrive", "drive", "sharepoint":
+			measure(d.Path, breakdownItem{Group: d.Service, Kind: d.Service})
+		}
+	}
+	measure(strings.Join(fileOffersDirParts, "/"), breakdownItem{Group: "offered", Kind: "offered"})
 	measure(historyRoot, breakdownItem{Group: "history", Kind: "history"})
 	measure(".pi/agent/file-history", breakdownItem{Group: "history", Kind: "history"})
 	for _, name := range srcNames {

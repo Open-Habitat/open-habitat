@@ -86,6 +86,11 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 	}
 	fill(t, filepath.Join(home, ".local", "share", "Trash", "files", "old"), 8<<10)
 	fill(t, filepath.Join(home, ".pi", "agent", "sessions", "s.jsonl"), 8<<10)
+	fill(t, filepath.Join(home, ".local/state/open-habitat/files/offer/blob"), 32<<10)
+	write(t, filepath.Join(home, ".config/rclone/open-habitat-dropbox/person@example.test.conf"), "[dropbox]\ntype = dropbox\n")
+	fill(t, filepath.Join(home, "cloud/dropbox/person@example.test/photo"), 256<<10)
+	// A folder with a familiar name is not a connected integration.
+	fill(t, filepath.Join(home, "cloud/dropbox/unknown@example.test/photo"), 256<<10)
 
 	runs := []string{
 		`{"run_id":"01m53433zdhmcc9q1spepb30g1","status":"running","title":"Live work","supervisor":{"state":"alive"},"worktree_path":"` + f.wt("live") + `"}`,
@@ -141,7 +146,12 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 	}
 	expect(rel(filepath.Join(f.wt("handmade"), "target")), "own", "target", 64<<10)
 	expect("~/src/app/web/node_modules", "own", "node_modules", 32<<10)
-	expect("~/.local/share/Trash", "trash", "trash", 8<<10)
+	expect("~/.local/share/Trash/files", "trash", "trash", 8<<10)
+	expect("~/.local/state/open-habitat/files", "offered", "offered", 32<<10)
+	expect("~/cloud/dropbox/person@example.test", "dropbox", "dropbox", 256<<10)
+	if _, ok := by["~/cloud/dropbox/unknown@example.test"]; ok {
+		t.Fatal("unconnected folder classified as a synced folder")
+	}
 	expect("~/.pi/agent/sessions", "history", "history", 8<<10)
 	// A workspace's size leaves out the build directories listed apart.
 	expect("~/src/app", "workspaces", "workspace", 1)
@@ -159,6 +169,24 @@ func TestStorageBreakdownMeasuresKnownPlaces(t *testing.T) {
 			t.Fatalf("unknown run state shown as %s: %+v", it.Group, it)
 		}
 	}
+}
+
+func TestStorageBreakdownEmptyTrashHasNoPayload(t *testing.T) {
+	f := newWorktreeFixture(t)
+	for _, rel := range []string{".local/share/Trash/files", ".local/share/Trash/info"} {
+		if err := os.MkdirAll(filepath.Join(f.cfg.Home, rel), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, it := range measureStorage(context.Background(), f.cfg).items {
+		if it.Group == "trash" {
+			if it.Bytes != 0 || !it.Complete {
+				t.Fatalf("empty trash: %+v", it)
+			}
+			return
+		}
+	}
+	t.Fatal("missing trash measurement")
 }
 
 // The reply never waits for a measurement, and a measurement is not

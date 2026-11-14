@@ -145,15 +145,15 @@ it("moves the preview when a group is left out", async () => {
 
 it("opens a new conversation with the request built from the selection", async () => {
   reply(measured);
-  const ask = vi.fn(() => true);
+  const ask = vi.fn((_ws: string, _text: string) => true);
   render(
     <StorageBreakdown quota={quota} workspaces={workspaces} onAskAgent={ask} />,
   );
   await screen.findByTestId("group-list");
-  fireEvent.click(screen.getByTestId("ask-agent"));
-  const text = (
-    (await screen.findByTestId("request-text")) as HTMLTextAreaElement
-  ).value;
+  fireEvent.click(screen.getByTestId("cleanup-ask"));
+  expect(ask).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  const text = ask.mock.calls[0][1];
   expect(text).toContain("~/.cache/go-build (20 GiB): go clean -cache");
   expect(text).toContain(
     "~/src/app__worktrees/wt-old/target (9 GiB): cargo clean",
@@ -162,31 +162,73 @@ it("opens a new conversation with the request built from the selection", async (
   expect(text).toContain(
     "Älä koske käynnissä olevien workerien hakemistoihin:\n- ~/src/app__worktrees/wt-new/target",
   );
-  fireEvent.click(screen.getByTestId("cleanup-open"));
   // The workspace with the largest build directories is preselected.
   expect(ask).toHaveBeenCalledWith("ws_app", text);
 });
 
 it("asks the agent to find caches itself before the first measurement", async () => {
   reply({ schema_version: 1, measuring: true, complete: false, items: [] });
+  const ask = vi.fn((_ws: string, _text: string) => true);
   render(
-    <StorageBreakdown
-      quota={quota}
-      workspaces={workspaces}
-      onAskAgent={() => true}
-    />,
+    <StorageBreakdown quota={quota} workspaces={workspaces} onAskAgent={ask} />,
   );
   expect((await screen.findByTestId("measured")).textContent).toContain(
     "ensimmäistä kertaa",
   );
   expect(screen.queryByTestId("group-list")).toBeNull();
-  fireEvent.click(screen.getByTestId("ask-agent"));
-  const text = (
-    (await screen.findByTestId("request-text")) as HTMLTextAreaElement
-  ).value;
+  fireEvent.click(screen.getByTestId("cleanup-ask"));
+  const text = ask.mock.calls[0][1];
   expect(text).toContain(
     "Etsi kotihakemistostani uudelleen luotavat välimuistit",
   );
+});
+
+it("keeps known data out of other and out of the cleanup selection", async () => {
+  const groups = [
+    "dropbox",
+    "onedrive",
+    "offered",
+    "history",
+    "workspaces",
+  ] as const;
+  const data = groups.map((group, i) => ({
+    group,
+    kind: group === "workspaces" ? "workspace" : group,
+    path: `~/data/${group}`,
+    bytes: (i + 1) * G,
+    complete: true,
+  }));
+  reply({
+    ...measured,
+    items: [...data, items[0], { ...items[5], bytes: 0 }],
+  });
+  render(<StorageBreakdown quota={quota} />);
+  await screen.findByTestId("group-list");
+  for (const g of groups) {
+    const part = screen
+      .getByTestId("usage-bar")
+      .querySelector(`[data-part="${g}"]`);
+    expect(part).not.toBeNull();
+    fireEvent.click(screen.getByTestId(`more-${g}`));
+    expect(screen.getByText(`~/data/${g}`)).toBeTruthy();
+    expect(
+      within(
+        screen.getByText(`~/data/${g}`).closest("li") as HTMLElement,
+      ).queryByRole("checkbox"),
+    ).toBeNull();
+  }
+  expect(
+    screen
+      .getByTestId("usage-bar")
+      .querySelector<HTMLElement>('[data-part="kept"]')?.style.width,
+  ).toBe("62.5%");
+  expect(
+    screen.getByTestId("group-list").querySelector('[data-group-row="trash"]')
+      ?.textContent,
+  ).toContain("0 B");
+  expect(
+    screen.getByTestId("usage-bar").querySelector('[data-part="trash"]'),
+  ).toBeNull();
 });
 
 it("prefers the workspace holding the largest build directories", () => {

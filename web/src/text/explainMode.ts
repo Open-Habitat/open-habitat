@@ -1509,6 +1509,18 @@ const fi = {
       name: "Muokkaa Git-identiteettiä",
       lead: "Asettaa nimen ja sähköpostin, jotka tulevat agentin ja sinun commiteihisi.",
     },
+    M83: {
+      name: "Pyydä agenttia siivoamaan",
+      lead: "Avaa valinnoistasi tehdyn pyynnön uuden keskustelun kirjoituskenttään.",
+      know: "Voit muokata pyyntöä ennen lähettämistä. Mitään ei siivota vielä.",
+      try: "Avaa pyyntö",
+    },
+    M84: {
+      name: "Näytä tarkemmin",
+      lead: "Näyttää ryhmän kansiot ja niiden koot.",
+      know: "Välimuisteista ja käännöstiedostoista voit valita yksittäisiä kansioita. Muut ryhmät ovat vain katseltavissa.",
+      try: "Näytä tai piilota kansiot",
+    },
     M25: {
       name: "Versio",
       lead: "Palvelimen Habitat-versio ja onko tämä välilehti ajan tasalla sen kanssa.",
@@ -3192,6 +3204,18 @@ export const explainModeText = catalog(fi, {
     M24: {
       name: "Edit Git identity",
       lead: "Sets the name and email that go into your and your agents' commits.",
+    },
+    M83: {
+      name: "Ask an agent to clean up",
+      lead: "Opens a request built from your selections in a new conversation's composer.",
+      know: "You can edit the request before sending it. Nothing is cleaned up yet.",
+      try: "Open the request",
+    },
+    M84: {
+      name: "Show details",
+      lead: "Shows the group's folders and their sizes.",
+      know: "You can select individual cache and build folders. Other groups are read-only.",
+      try: "Show or hide folders",
     },
     M25: {
       name: "Version",

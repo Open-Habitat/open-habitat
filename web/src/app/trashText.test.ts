@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { blockerText, gitChips, onlyHere, shellWord } from "./trashText";
+import { bytes as storageBytes } from "./storageQuota";
+import { blockerText, bytes, gitChips, onlyHere, shellWord } from "./trashText";
 import type { DeletionGit } from "./workspaceTrash";
 
 it("quotes paths in copied commands only when a shell would split them", () => {
@@ -8,6 +9,11 @@ it("quotes paths in copied commands only when a shell would split them", () => {
   expect(
     blockerText({ kind: "linked_worktree", path: "/tmp/a b" }).command,
   ).toBe("git worktree remove '/tmp/a b'");
+});
+
+it("formats empty Trash as zero in both storage views", () => {
+  expect(bytes(0)).toBe("0 B");
+  expect(storageBytes(0)).toBe(bytes(0));
 });
 
 const clean: DeletionGit = {

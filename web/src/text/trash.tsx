@@ -162,7 +162,7 @@ const fi = {
   moveToTrash: "Siirrä roskakoriin",
   usageLabel: (usage: string, limit: string, trash?: string) =>
     `Käytössä ${usage} / ${limit}${trash !== undefined ? `, roskakorissa ${trash}` : ""}`,
-  usageOther: "Työtilat, agentin historia ja välimuistit",
+  usageOther: "Muut tiedostot",
   trash: "Roskakori",
   empty: "Roskakori on tyhjä.",
   nameTaken: (path: string) =>
@@ -390,7 +390,7 @@ export const trashText = catalog(fi, {
   moveToTrash: "Move to the Trash",
   usageLabel: (usage, limit, trash) =>
     `In use ${usage} / ${limit}${trash !== undefined ? `, in the Trash ${trash}` : ""}`,
-  usageOther: "Workspaces, agent history and caches",
+  usageOther: "Other files",
   trash: "Trash",
   empty: "The Trash is empty.",
   nameTaken: (path) => `${path} is already in use. Rename or remove it first.`,

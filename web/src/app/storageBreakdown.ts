@@ -17,7 +17,12 @@ export type BreakdownGroup =
   | "live"
   | "trash"
   | "workspaces"
-  | "history";
+  | "history"
+  | "offered"
+  | "dropbox"
+  | "onedrive"
+  | "drive"
+  | "sharepoint";
 export type BreakdownItem = {
   group: BreakdownGroup;
   kind: string;

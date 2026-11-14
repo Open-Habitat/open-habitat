@@ -80,6 +80,42 @@ func (c *Catalog) fileRoots() []fileRoot {
 	return roots
 }
 
+// StorageDirectories reads the native sync inventory without starting clients
+// or contacting providers. The caller measures these paths beneath its own home.
+func StorageDirectories(env Env) ([]SyncDirectory, bool) {
+	return storageDirectories(env, Production())
+}
+
+func storageDirectories(env Env, entries []Entry) ([]SyncDirectory, bool) {
+	var out []SyncDirectory
+	complete := true
+	seen := map[string]bool{}
+	for _, e := range entries {
+		s, ok := e.(SyncEntry)
+		if !ok {
+			continue
+		}
+		accounts, err := e.Accounts(env)
+		if err != nil {
+			complete = false
+			continue
+		}
+		sort.Strings(accounts)
+		for _, a := range accounts {
+			if !validCatalogAddress(e.Provider(), a) {
+				continue
+			}
+			for _, d := range s.Directories(env, a) {
+				if cloudDirectory(d.Path) && !seen[d.Path] {
+					seen[d.Path] = true
+					out = append(out, d)
+				}
+			}
+		}
+	}
+	return out, complete
+}
+
 // cloudDirectory is a clean home-relative path below cloud/ that the
 // contract's home_directory can carry.
 func cloudDirectory(rel string) bool {

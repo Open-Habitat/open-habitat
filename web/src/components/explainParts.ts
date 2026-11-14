@@ -395,6 +395,16 @@ export const parts: Record<CardId, Part> = {
   },
   V30: { kind: "once", sel: '[data-testid="ended-runs"]' },
   V31: { kind: "once", sel: '[data-testid="ask-agent"]' },
+  M83: {
+    kind: "nav",
+    sel: '[data-testid="cleanup-ask"], [data-testid="cleanup-warning-ask"]',
+    opens: true,
+  },
+  M84: {
+    kind: "panel",
+    sel: '[data-testid="storage-breakdown"] [data-testid^="more-"]',
+    opens: true,
+  },
   V32: { kind: "once", sel: '[data-testid="attachment-refusal-dismiss"]' },
   V33: {
     kind: "panel",

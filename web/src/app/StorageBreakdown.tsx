@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Heading } from "react-aria-components";
+import { useEffect, useRef, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
-import { Checkbox, Select, TextArea } from "../components/Primitives";
+import { Checkbox } from "../components/Primitives";
 import { StatusMark } from "../components/Status";
 import { WarningBannerView } from "../components/WarningBanner";
-import { TrashModal } from "../components/WorkspaceTrash";
 import { formatDate, useText } from "../i18n";
 import { storageBreakdownText } from "../text/storageBreakdown";
 import "./StorageBreakdown.css";
@@ -32,6 +30,15 @@ const pollMs = 3000;
 /** The groups a person can choose from, in the list's order. */
 const PICK: BreakdownGroup[] = ["caches", "finished", "own"];
 const DEFAULT: BreakdownGroup[] = ["caches", "finished"];
+const KEPT: BreakdownGroup[] = [
+  "dropbox",
+  "onedrive",
+  "drive",
+  "sharepoint",
+  "offered",
+  "history",
+  "workspaces",
+];
 
 const total = (items: readonly BreakdownItem[]) =>
   items.reduce((s, i) => s + i.bytes, 0);
@@ -67,7 +74,7 @@ export function StorageBreakdown({
   const [read, setRead] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const seen = useRef(new Set<string>());
-  const [asking, setAsking] = useState<BreakdownItem[] | null>(null);
+  const [problem, setProblem] = useState("");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read asks again.
   useEffect(() => {
@@ -129,13 +136,22 @@ export function StorageBreakdown({
     `${Math.max(0, Math.min(100, (100 * n) / bound)).toFixed(2)}%`;
   const live = total(of("live"));
   const trash = total(of("trash"));
+  const kept = KEPT.map((key) => ({ key, bytes: total(of(key)) }));
   const parts = measured
     ? [
         { key: "others", bytes: shared ? used - own : 0 },
         {
           key: "kept",
-          bytes: Math.max(0, own - total(pickable) - live - trash),
+          bytes: Math.max(
+            0,
+            own -
+              total(pickable) -
+              live -
+              trash -
+              total(items.filter((i) => KEPT.includes(i.group))),
+          ),
         },
+        ...kept,
         { key: "trash", bytes: trash },
         { key: "live", bytes: live },
         { key: "freeable", bytes: total(pickable) - chosenBytes },
@@ -171,6 +187,13 @@ export function StorageBreakdown({
       })),
       live: of("live").map((i) => i.path),
     });
+  const ask = () => {
+    const ws = preferredWorkspace(workspaces, items);
+    if (!ws) setProblem(t.noWorkspace);
+    else if (!onAskAgent?.(ws, request(measured ? chosen : [])))
+      setProblem(t.cannotOpen);
+    else setProblem("");
+  };
   const remeasure = () => {
     if (!csrf) return;
     void measureBreakdown(csrf).then(
@@ -192,10 +215,10 @@ export function StorageBreakdown({
         actions={
           onAskAgent ? (
             <ControlButton
-              data-testid="warning-ask"
+              data-testid="cleanup-warning-ask"
               size="row"
               variant="primary"
-              onPress={() => setAsking(measured ? chosen : [])}
+              onPress={ask}
             >
               {t.askAgent}
             </ControlButton>
@@ -293,7 +316,9 @@ export function StorageBreakdown({
             {parts.map((p) => (
               <li key={p.key}>
                 <span className={`ah-trash-swatch ah-sb-sw-${p.key}`} />
-                <span>{t.legend[p.key]}</span>
+                <span>
+                  {t.legend[p.key] ?? t.groups[p.key]} · {bytes(p.bytes)}
+                </span>
               </li>
             ))}
           </ul>
@@ -366,7 +391,27 @@ export function StorageBreakdown({
                   </li>
                 );
               })}
-              {trash ? (
+              {KEPT.map((g) => {
+                const list = of(g);
+                if (!list.length) return null;
+                return (
+                  <li key={g} data-group-row={g}>
+                    <div className="ah-sb-row">
+                      <span className={`ah-trash-swatch ah-sb-sw-${g}`} />
+                      <span className="ah-sb-trash-name">{t.groups[g]}</span>
+                      <code className="ah-sb-size">{bytes(total(list))}</code>
+                    </div>
+                    <Details
+                      group={g}
+                      list={list}
+                      selected={selected}
+                      label={label}
+                      onToggle={() => {}}
+                    />
+                  </li>
+                );
+              })}
+              {of("trash").length ? (
                 <li data-group-row="trash" className="ah-sb-trash-row">
                   <div className="ah-sb-row">
                     <span className="ah-trash-swatch ah-sb-sw-trash" />
@@ -428,11 +473,11 @@ export function StorageBreakdown({
             </p>
             {onAskAgent ? (
               <ControlButton
-                data-testid="ask-agent"
+                data-testid="cleanup-ask"
                 size="row"
                 variant={pctNow >= NEAR ? "primary" : "secondary"}
                 isDisabled={measured && !chosen.length}
-                onPress={() => setAsking(measured ? chosen : [])}
+                onPress={ask}
               >
                 {measured ? t.askAgentSelected(bytes(chosenBytes)) : t.askAgent}
               </ControlButton>
@@ -440,17 +485,7 @@ export function StorageBreakdown({
           </div>
         </section>
       </div>
-      {onAskAgent ? (
-        <CleanupDialog
-          key={asking ? "open" : "closed"}
-          items={asking}
-          text={asking ? request(asking) : ""}
-          workspaces={workspaces}
-          preferred={preferredWorkspace(workspaces, items)}
-          onAskAgent={onAskAgent}
-          onClose={() => setAsking(null)}
-        />
-      ) : null}
+      {problem ? <p role="alert">{problem}</p> : null}
     </>
   );
 }
@@ -495,13 +530,15 @@ function Details({
       </ControlButton>
       {open ? (
         <div className="ah-sb-details-panel">
-          <p className="s-desc">{t.detailsNote}</p>
+          {PICK.includes(group) ? (
+            <p className="s-desc">{t.detailsNote}</p>
+          ) : null}
           <ul className="ah-sb-pick">
             {list.map((i) => {
               const text = tag(i);
               return (
                 <li key={i.path} data-item={i.path} data-group={i.group}>
-                  {group === "live" ? (
+                  {!PICK.includes(group) ? (
                     <span className="ah-sb-item-name">{label(i)}</span>
                   ) : (
                     <Checkbox
@@ -550,82 +587,4 @@ export function preferredWorkspace(
     if ((sizes.get(w.name) ?? 0) > (best ? (sizes.get(best.name) ?? 0) : 0))
       best = w;
   return (best ?? workspaces[0])?.workspace_id;
-}
-
-/** The request as it will open in the new conversation's field, and the
- * workspace the conversation shows in. Nothing is sent from here. */
-function CleanupDialog({
-  items,
-  text,
-  workspaces,
-  preferred,
-  onAskAgent,
-  onClose,
-}: {
-  items: BreakdownItem[] | null;
-  text: string;
-  workspaces: readonly CleanupWorkspace[];
-  preferred?: string;
-  onAskAgent: (workspaceId: string, text: string) => boolean;
-  onClose: () => void;
-}) {
-  const t = useText(storageBreakdownText);
-  const [ws, setWs] = useState(preferred ?? "");
-  const [draft, setDraft] = useState(text);
-  const [problem, setProblem] = useState("");
-  const options = useMemo(
-    () => workspaces.map((w) => ({ value: w.workspace_id, label: w.name })),
-    [workspaces],
-  );
-  return (
-    <TrashModal
-      label={t.dialogTitle}
-      testId="cleanup-dialog"
-      isOpen={!!items}
-      onClose={onClose}
-    >
-      <div className="ah-sb-dialog">
-        <Heading slot="title">{t.dialogTitle}</Heading>
-        <p className="s-desc">{t.dialogNote}</p>
-        {options.length ? (
-          <>
-            <Select
-              label={t.convIn}
-              value={ws}
-              onChange={setWs}
-              options={options}
-            />
-            <p className="s-desc">{t.convInNote}</p>
-          </>
-        ) : (
-          <p role="alert">{t.noWorkspace}</p>
-        )}
-        <TextArea
-          data-testid="request-text"
-          label={t.request}
-          value={draft}
-          onChange={setDraft}
-          rows={12}
-        />
-        {problem ? <p role="alert">{problem}</p> : null}
-        <div className="ah-dialog-actions">
-          <ControlButton size="page" variant="secondary" onPress={onClose}>
-            {t.cancel}
-          </ControlButton>
-          <ControlButton
-            data-testid="cleanup-open"
-            size="page"
-            variant="primary"
-            isDisabled={!ws || !draft.trim()}
-            onPress={() => {
-              if (onAskAgent(ws, draft)) onClose();
-              else setProblem(t.cannotOpen);
-            }}
-          >
-            {t.open}
-          </ControlButton>
-        </div>
-      </div>
-    </TrashModal>
-  );
 }

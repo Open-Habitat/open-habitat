@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/account-storage-breakdown.schema.json",
-  "title": "What fills the signed-in person's home: known caches, build directories, Trash, workspaces and agent history",
+  "title": "What fills the signed-in person's home: caches, builds, Trash, synced folders, offered files, workspaces and agent history",
   "description": "GET and POST /api/v1/account/storage/breakdown. The person's daemon measures a fixed list of places in their own home, without following symbolic links or crossing mounts, and keeps only the latest result in memory. GET returns it and starts a new measurement when there is none or it is over 15 minutes old; POST asks for one now. A measurement never blocks the reply: while it runs, the reply carries the previous result with measuring true. Nothing here removes anything; clean-up is the agent's, at the person's request.",
   "$defs": {
     "measure": {
@@ -35,9 +35,14 @@
             "live",
             "trash",
             "workspaces",
-            "history"
+            "history",
+            "offered",
+            "dropbox",
+            "onedrive",
+            "drive",
+            "sharepoint"
           ],
-          "description": "caches: a tool's regenerable cache. finished: a build directory in a worktree whose Taskfleet run has ended, or a merged worktree no run holds. live: a build directory in a worktree a Taskfleet run still holds, or whose run state could not be read. own: a build directory in a workspace's own checkout or in a worktree no run names. trash, workspaces (a workspace folder under ~/src without the build directories listed separately) and history (agent conversations) are shown, not offered for clean-up."
+          "description": "caches: a tool's regenerable cache. finished: a build directory in a worktree whose Taskfleet run has ended, or a merged worktree no run holds. live: a build directory in a worktree a Taskfleet run still holds, or whose run state could not be read. own: a build directory in a workspace's own checkout or in a worktree no run names. trash (discarded contents, excluding directory scaffolding), workspaces (a workspace folder under ~/src without the build directories listed separately), history (agent conversations), offered (Habitat file offers), and dropbox, onedrive, drive and sharepoint (folders named by the native integration inventory) are shown, not offered for clean-up."
         },
         "kind": {
           "enum": [
@@ -53,7 +58,12 @@
             "node_modules",
             "trash",
             "workspace",
-            "history"
+            "history",
+            "offered",
+            "dropbox",
+            "onedrive",
+            "drive",
+            "sharepoint"
           ],
           "description": "cache-tag is a ~/.cache directory marked with a standard CACHEDIR.TAG. target is a Cargo build directory (it carries Cargo's CACHEDIR.TAG); node_modules sits beside a package.json."
         },

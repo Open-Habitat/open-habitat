@@ -39,9 +39,11 @@ const disk = (v: unknown): v is Disk =>
   size(v.free_bytes) &&
   v.free_bytes <= v.capacity_bytes;
 export const bytes = (n: number) =>
-  n < 1024 ** 3
-    ? `${formatNumber(n / 1024 ** 2, { maximumFractionDigits: 2 })} MiB`
-    : `${formatNumber(n / 1024 ** 3, { maximumFractionDigits: 2 })} GiB`;
+  n === 0
+    ? "0 B"
+    : n < 1024 ** 3
+      ? `${formatNumber(n / 1024 ** 2, { maximumFractionDigits: 2 })} MiB`
+      : `${formatNumber(n / 1024 ** 3, { maximumFractionDigits: 2 })} GiB`;
 export async function ownStorage(signal?: AbortSignal): Promise<OwnStorage> {
   const r = await fetch("/api/v1/account/storage", {
     credentials: "same-origin",

@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
@@ -72,6 +73,143 @@ const breakdown = {
   ],
 };
 
+test("@storage-breakdown cloud-heavy home has named read-only groups and empty trash", async ({
+  page,
+}) => {
+  await signIn(page);
+  await setFeature(page, true);
+  await page.route("**/api/v1/account/storage", (route) =>
+    route.fulfill({
+      json: { schema_version: 1, usage_bytes: 12 * G, limit_bytes: 14 * G },
+    }),
+  );
+  const data = [
+    {
+      group: "dropbox",
+      kind: "dropbox",
+      path: "~/cloud/dropbox/person@example.test",
+      bytes: 7 * G,
+    },
+    {
+      group: "onedrive",
+      kind: "onedrive",
+      path: "~/cloud/onedrive/person@example.test",
+      bytes: G,
+    },
+    {
+      group: "offered",
+      kind: "offered",
+      path: "~/.local/state/open-habitat/files",
+      bytes: G,
+    },
+    {
+      group: "history",
+      kind: "history",
+      path: "~/.pi/agent/sessions",
+      bytes: G / 2,
+    },
+    { group: "workspaces", kind: "workspace", path: "~/src/app", bytes: 2 * G },
+    { group: "caches", kind: "npm", path: "~/.npm/_cacache", bytes: 73728 },
+    {
+      group: "trash",
+      kind: "trash",
+      path: "~/.local/share/Trash/files",
+      bytes: 0,
+    },
+  ];
+  await page.route("**/api/v1/account/storage/breakdown", (route) =>
+    route.fulfill({
+      json: {
+        ...breakdown,
+        items: data.map((i) => ({ ...i, complete: true })),
+      },
+    }),
+  );
+  await page.goto("/settings/storage");
+  const card = page.getByTestId("storage-breakdown");
+  await expect(card.getByTestId("group-list")).toBeVisible();
+  for (const group of [
+    "dropbox",
+    "onedrive",
+    "offered",
+    "history",
+    "workspaces",
+  ]) {
+    await expect(card.locator(`[data-part="${group}"]`)).toHaveCount(1);
+    await card.getByTestId(`more-${group}`).click();
+    await expect(
+      card.locator(`[data-group-row="${group}"]`).getByRole("checkbox"),
+    ).toHaveCount(0);
+    await expect(
+      card.locator(`[data-details="${group}"] .ah-sb-path`),
+    ).toBeVisible();
+    await card.getByTestId(`more-${group}`).click();
+  }
+  await expect(card.locator('[data-group-row="trash"] .ah-sb-size')).toHaveText(
+    "0 B",
+  );
+  await expect(card.locator('[data-part="trash"]')).toHaveCount(0);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="storage-breakdown"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  if (process.env.OH_STORAGE_SCREENSHOT_DIR) {
+    const dir = process.env.OH_STORAGE_SCREENSHOT_DIR;
+    await mkdir(dir, { recursive: true });
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.screenshot({
+        path: `${dir}/storage-${width}.png`,
+        fullPage: true,
+      });
+      await writeFile(`${dir}/storage-${width}.html`, await page.content());
+    }
+    const session = await (await page.request.get("/auth/session")).json();
+    const preferences = async (data: object) => {
+      const reply = await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data,
+      });
+      expect(reply.ok()).toBe(true);
+    };
+    await preferences({ experimental: { "explain-mode": true } });
+    for (const language of ["fi", "en-US"]) {
+      await preferences({ language });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.reload();
+      await page.getByTestId("account-menu-trigger").click();
+      await page.getByTestId("menu-explain").click();
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 1000 });
+        for (const [control, id] of [
+          ["more-dropbox", "M84"],
+          ["cleanup-ask", "M83"],
+        ]) {
+          await page.getByTestId(control).hover();
+          await expect(page.getByTestId("explain-card")).toHaveAttribute(
+            "data-card",
+            id,
+          );
+          await page.screenshot({
+            path: `${dir}/explain-${language}-${width}-${id}.png`,
+            fullPage: true,
+          });
+          await writeFile(
+            `${dir}/explain-${language}-${width}-${id}.html`,
+            await page.content(),
+          );
+        }
+      }
+    }
+  }
+});
+
 async function signIn(page: Page) {
   await page.goto("/settings");
   await page.getByTestId("github-sign-in").click();
@@ -140,6 +278,11 @@ test("@storage-breakdown the daemon measures the home and the selection becomes 
   await page.reload();
   const card = page.getByTestId("storage-breakdown");
   await expect(card).toBeVisible();
+  // The workspace Trash list is empty in this fixture; it must not replace
+  // the breakdown's measurement (which also includes regular files).
+  await expect(card.locator('[data-group-row="trash"] .ah-sb-size')).toHaveText(
+    "4 GiB",
+  );
   await expect(page.getByTestId("storage-warning")).toContainText("89 %");
   await expect(card.getByTestId("frees")).toContainText("32");
   await expect(card.getByTestId("after")).toContainText("64 %");
@@ -167,18 +310,15 @@ test("@storage-breakdown the daemon measures the home and the selection becomes 
   await expect(card.getByTestId("frees")).toContainText("9");
   await expect(card.getByTestId("after")).toContainText("82 %");
 
-  await card.getByTestId("ask-agent").click();
-  const dialog = page.getByRole("dialog");
-  const request = dialog.getByTestId("request-text");
+  await card.getByTestId("cleanup-ask").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const request = page.getByTestId("message-input");
   await expect(request).toHaveValue(/wt-old\/target \(9 GiB\): cargo clean/);
   await expect(request).not.toHaveValue(/go-build/);
   await expect(request).toHaveValue(
     /Älä koske käynnissä olevien workerien hakemistoihin:\n- ~\/src\/app__worktrees\/wt-new\/target/,
   );
-  const text = await request.inputValue();
-  await dialog.getByTestId("cleanup-open").click();
   await expect(page).toHaveURL(/\/workspaces\/[^/?]+\?conversation=new$/);
-  await expect(page.getByTestId("message-input")).toHaveValue(text);
   expect(creations).toBe(1);
   await setFeature(page, false);
 });

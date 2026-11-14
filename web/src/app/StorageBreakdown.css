@@ -72,6 +72,23 @@
 .ah-sb-sw-kept {
   background: var(--ah-line-strong);
 }
+.ah-sb-sw-dropbox,
+.ah-sb-sw-drive {
+  background: var(--ah-source-2);
+}
+.ah-sb-sw-onedrive,
+.ah-sb-sw-sharepoint {
+  background: var(--ah-source-3);
+}
+.ah-sb-sw-offered {
+  background: var(--ah-accent);
+}
+.ah-sb-sw-history {
+  background: var(--ah-ink-2);
+}
+.ah-sb-sw-workspaces {
+  background: var(--ah-muted);
+}
 .ah-sb-sw-trash {
   background: var(--ah-muted);
 }
@@ -277,26 +294,6 @@
   gap: 4px var(--ah-s2);
   margin: 0;
   flex: 1 1 auto;
-}
-
-.ah-trash-modal:has(.ah-sb-dialog) {
-  width: min(720px, 100%);
-}
-.ah-sb-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ah-s3);
-}
-.ah-sb-dialog h2,
-.ah-sb-dialog [slot="title"] {
-  margin: 0;
-}
-.ah-sb-dialog p {
-  margin: 0;
-}
-.ah-sb-dialog textarea {
-  font-size: var(--ah-size-ui);
-  line-height: 1.45;
 }
 
 @media (max-width: 600px) {
