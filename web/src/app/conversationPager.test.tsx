@@ -85,4 +85,27 @@ describe("conversation pager", () => {
     pager.cancelAll();
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
   });
+  it("spares the reads of conversations it is told to keep", async () => {
+    const other = "pi:22222222-2222-4222-8222-222222222222";
+    const signals = new Map<string, AbortSignal>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init: RequestInit) => {
+        signals.set(
+          url.includes(other) ? other : id,
+          init.signal as AbortSignal,
+        );
+        return new Promise(() => {});
+      }),
+    );
+    const pager = new ConversationPager();
+    void pager.tail(id).catch(() => {});
+    void pager.tail(other).catch(() => {});
+    pager.cancelAll(new Set([id]));
+    expect(signals.get(id)?.aborted).toBe(false);
+    expect(signals.get(other)?.aborted).toBe(true);
+    // A kept read is still cancelled by the next cancellation that does not keep it.
+    pager.cancelAll();
+    expect(signals.get(id)?.aborted).toBe(true);
+  });
 });

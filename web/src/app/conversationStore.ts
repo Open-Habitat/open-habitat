@@ -55,6 +55,9 @@ type WindowRecord = {
   newestRead?: number;
   newestReadStatus?: number;
   readStatus?: number;
+  // A first read that reconciliation let run on (see reconcileStale): the
+  // read and the epoch it still belongs to.
+  carried?: { read: number; epoch: number };
 };
 const streamPosition = (live?: LiveTurn) =>
   live && { instance: live.instance, sequence: live.sequence };
@@ -689,6 +692,21 @@ export class ConversationStore {
     }
     return record.value;
   }
+  /** Whether a read's result no longer belongs to this window: the window
+   * was replaced, or the epoch moved on without carrying the read. */
+  private outdated(
+    id: string,
+    record: WindowRecord,
+    read: number,
+    epoch: number,
+  ) {
+    return (
+      this.disposed ||
+      this.windows.get(id) !== record ||
+      (this.epoch !== epoch &&
+        (record.carried?.read !== read || record.carried.epoch !== this.epoch))
+    );
+  }
   /** Every history read begun from now on is numbered above this. */
   readsBegun() {
     return this.readSeq;
@@ -729,20 +747,10 @@ export class ConversationStore {
     const epoch = this.epoch;
     try {
       const page = await this.pager.tail(id);
-      if (
-        this.disposed ||
-        this.epoch !== epoch ||
-        this.windows.get(id) !== record
-      )
-        return;
+      if (this.outdated(id, record, read, epoch)) return;
       this.applyPage(id, page, "tail");
     } catch (error) {
-      if (
-        this.disposed ||
-        this.epoch !== epoch ||
-        this.windows.get(id) !== record
-      )
-        return;
+      if (this.outdated(id, record, read, epoch)) return;
       if (
         (error as Error).message === "history_missing" &&
         (missing || record.value.state === "empty")
@@ -832,12 +840,7 @@ export class ConversationStore {
         new Set(record.value.entries.map((e) => e.entry_key)),
         maxPages,
       );
-      if (
-        this.disposed ||
-        this.epoch !== epoch ||
-        this.windows.get(id) !== record
-      )
-        return;
+      if (this.outdated(id, record, read, epoch)) return;
       // Join the complete range before releasing the read overlay.
       if (!met) this.applyPage(id, pages[0], "tail", false);
       else
@@ -848,7 +851,7 @@ export class ConversationStore {
         }
       if (record.loading === read) this.finishRead(id, record);
     } catch (error) {
-      if (this.epoch === epoch && this.windows.get(id) === record) {
+      if (!this.outdated(id, record, read, epoch)) {
         // Still no native file behind a confirmed empty window is no failure.
         if (
           (error as Error).message === "history_missing" &&
@@ -1023,6 +1026,7 @@ export class ConversationStore {
   }
   private finishRead(id: string, record: WindowRecord) {
     record.loading = false;
+    record.carried = undefined;
     record.readFrom = undefined;
     record.readEntries.clear();
     if (record.readAgain) {
@@ -1384,8 +1388,25 @@ export class ConversationStore {
     // A read begun before the authoritative snapshot must not turn a stale
     // window back into a ready one after reconciliation has been scheduled.
     ++this.epoch;
-    this.pager.cancelAll();
+    // A window still loading has nothing on screen to turn back: its first
+    // read runs on and is read again after it. Cancelled and begun again
+    // instead, a read slower than the invalidations of a running turn (a
+    // loaded host, several a second) never ended, and a new conversation's
+    // first turn stayed behind the loading notice until the turn was over.
+    const carried = new Set<string>();
+    for (const [id, record] of this.windows)
+      if (
+        record.loading &&
+        record.value.state === "loading" &&
+        !record.value.entries.length
+      ) {
+        record.carried = { read: record.loading, epoch: this.epoch };
+        record.readAgain = true;
+        carried.add(id);
+      }
+    this.pager.cancelAll(carried);
     for (const [id, record] of this.windows) {
+      if (carried.has(id)) continue;
       const stale =
         record.value.state === "stale" || record.value.state === "error";
       // A quiet catch-up cancelled above is owed again.

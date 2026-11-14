@@ -281,7 +281,49 @@ describe("recent conversation windows", () => {
     store.view(id(1));
     expect(tail).toHaveBeenCalledTimes(1);
   });
-  it("does not publish a pre-invalidation page after snapshot reconciliation", async () => {
+  // A running turn invalidates history several times a second. A first read
+  // cancelled and begun again at each of them never ended on a loaded host,
+  // and a new conversation stayed behind its loading notice for the turn.
+  it("lets a loading window's first read finish through reconciliations and reads again after it", async () => {
+    const resolves: Array<(p: HistoryPage) => void> = [];
+    const tail = vi.fn(
+      () => new Promise<HistoryPage>((resolve) => resolves.push(resolve)),
+    );
+    let reconciled!: (v: { pages: HistoryPage[]; met: boolean }) => void;
+    const reconnect = vi.fn(
+      () =>
+        new Promise<{ pages: HistoryPage[]; met: boolean }>((resolve) => {
+          reconciled = resolve;
+        }),
+    );
+    const pager = {
+      tail,
+      older: vi.fn(),
+      reconnect,
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager);
+    store.view(id(1));
+    store.reconcileStale();
+    store.reconcileStale();
+    store.reconcileStale();
+    expect(tail).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(pager.cancelAll).mock.calls.at(-1)?.[0]).toEqual(
+      new Set([id(1)]),
+    );
+    resolves[0](page(id(1), ["before"]));
+    await flush();
+    expect(store.read(id(1))?.state).toBe("ready");
+    // The page read before the invalidations is never the last word.
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    reconciled({ pages: [page(id(1), ["before", "latest"])], met: true });
+    await flush();
+    expect(store.read(id(1))?.entries.map((entry) => entry.entry_key)).toEqual([
+      "before",
+      "latest",
+    ]);
+  });
+  it("does not carry a first read across a reseed", async () => {
     const resolves: Array<(p: HistoryPage) => void> = [];
     const tail = vi.fn(
       () => new Promise<HistoryPage>((resolve) => resolves.push(resolve)),
@@ -295,9 +337,13 @@ describe("recent conversation windows", () => {
     const store = new ConversationStore("person", pager);
     store.view(id(1));
     store.reconcileStale();
-    expect(pager.cancelAll).toHaveBeenCalledOnce();
+    store.reseed({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:22222222-2222-4222-8222-222222222222:0",
+      agents: [{ agent_id: id(1), live_tail: [] }],
+    } as never);
     expect(tail).toHaveBeenCalledTimes(2);
-    resolves[0](page(id(1), ["obsolete"]));
+    resolves[0](page(id(1), ["other-life"]));
     await flush();
     expect(store.read(id(1))?.state).toBe("loading");
     resolves[1](page(id(1), ["latest"]));

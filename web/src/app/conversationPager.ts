@@ -8,7 +8,7 @@ export const historyPageMessages = 100;
 
 /** Network-only pager. The consumer owns the contiguous window and scroll position. */
 export class ConversationPager {
-  private readonly pending = new Set<AbortController>();
+  private readonly pending = new Map<AbortController, string>();
 
   private async page(
     id: string,
@@ -16,7 +16,7 @@ export class ConversationPager {
     signal?: AbortSignal,
   ): Promise<HistoryPage> {
     const controller = new AbortController();
-    this.pending.add(controller);
+    this.pending.set(controller, id);
     const combined = signal
       ? AbortSignal.any([signal, controller.signal])
       : controller.signal;
@@ -97,9 +97,13 @@ export class ConversationPager {
     return { pages, met: false };
   }
 
-  cancelAll(): void {
-    for (const controller of this.pending) controller.abort();
-    this.pending.clear();
+  /** Aborts every read in flight except those for the conversations in `keep`. */
+  cancelAll(keep?: ReadonlySet<string>): void {
+    for (const [controller, id] of this.pending) {
+      if (keep?.has(id)) continue;
+      controller.abort();
+      this.pending.delete(controller);
+    }
   }
 }
 
