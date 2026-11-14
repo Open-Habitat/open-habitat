@@ -2,9 +2,15 @@
 
 package daemon
 
-import "time"
+import (
+	"time"
 
-const maxConversationRecords = 128
+	"github.com/open-habitat/open-habitat/internal/livelimits"
+)
+
+// Live children are never evicted, so the records hold the highest limit
+// and the reserved background place (background_linux.go).
+const maxConversationRecords = livelimits.Max + 1
 
 // makeRecordRoom holds c.mu. Keep recent receipts for lost-request lookup,
 // evicting only under pressure. Native history and browser ownership survive

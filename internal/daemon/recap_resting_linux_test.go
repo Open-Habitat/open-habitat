@@ -142,16 +142,21 @@ func TestRecapInterruptedByRestartReportsUnwrittenWhenRecoveryCannotStart(t *tes
 	if got := after.recapRecoveryFailure(id); got != nil {
 		t.Fatalf("unattempted recap failed: %v", got)
 	}
-	// Capacity refusal exercises the production recovery's silent skip path.
-	after.maxLive = 1
+	// Without a Pi runtime the recovery the background queue runs cannot
+	// start Pi: the production recovery's silent skip path.
 	after.recapRestingConversations(context.Background())
-	w := httptest.NewRecorder()
-	after.stoppedStatus(w, id, "")
+	var w *httptest.ResponseRecorder
 	var reply struct {
 		Failure *struct{ Reason, Through, Trigger string } `json:"recap_failure"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
-		t.Fatal(err)
+	deadline := time.Now().Add(10 * time.Second)
+	for reply.Failure == nil && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+		w = httptest.NewRecorder()
+		after.stoppedStatus(w, id, "")
+		if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if w.Code != 200 || reply.Failure == nil || reply.Failure.Reason != "not_written" || reply.Failure.Through != "a1" || reply.Failure.Trigger != "automatic" {
 		t.Fatalf("restarted status silently lost recap: %d %s", w.Code, w.Body.String())

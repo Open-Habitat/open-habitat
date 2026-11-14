@@ -540,7 +540,7 @@ func (c *ConversationController) notePresence(w http.ResponseWriter, r *http.Req
 	}
 	if !c.closed {
 		// A stopped handle keeps it too: a recap the idle stop handed on
-		// waits for the person as the timer would have (recapAfterIdleStop).
+		// waits for the person as the timer would have (serveBackground).
 		s.recapLastActivity = time.Now()
 		s.presentAt = s.recapLastActivity
 	}

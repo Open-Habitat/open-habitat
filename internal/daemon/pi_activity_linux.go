@@ -21,7 +21,8 @@ import (
 // A person may have this many daemon-owned Pi children at once. Only a busy
 // child holds its place: an idle one is stopped when the place is needed, and
 // its conversation resumes from native history on the next send, as after a
-// daemon restart.
+// daemon restart. One more Pi, for the system's background work, comes on
+// top of the limit (background_linux.go).
 //
 // The limit protects the host, not the person's way of working: people run
 // eight to ten agents side by side, and a conversation whose background
@@ -33,8 +34,9 @@ import (
 // much each. A fixed number is used rather than a reading of available
 // memory because it can be checked and tested exactly; a memory reading
 // moves with every other process on the host and would refuse at random.
-// The 128-session bound of create is separate: it bounds the controller's
-// in-memory records, live or not, and is also the highest limit.
+// The record bound of create is separate: it bounds the controller's
+// in-memory records, live or not, at the highest limit plus the reserved
+// background place.
 //
 // The administrator may set another number for the installation and for a
 // person (live-conversation-limit-admin). It reaches the daemon only as
@@ -216,7 +218,7 @@ func (c *ConversationController) stopIdleLocked(idle []*conversation, cause stri
 		s.state = "stopping"
 		stopFor(s, cause)
 		// A recapDue still set is a recap this stop cancels before its timer
-		// was admitted: the one the idle stop hands on (recapAfterIdleStop).
+		// was admitted: the one the stop hands on to the background queue.
 		if s.recapTimer != nil {
 			s.recapTimer.Stop()
 		}
@@ -258,13 +260,13 @@ func (c *ConversationController) closeStopping(marked []*conversation) {
 // and why. It reads only this daemon's own children; nobody else's use is
 // known here.
 func (c *ConversationController) capacity(w http.ResponseWriter, r *http.Request) {
-	busy, _ := c.classify(r.Context(), func(*conversation) bool { return true })
+	busy, _ := c.classify(r.Context(), holdsPersonsPlace)
 	c.mu.Lock()
 	limit, source := c.effectiveLimit()
 	holding := make([]map[string]any, 0, len(busy))
 	for _, b := range busy {
 		s := c.sessions[strings.TrimPrefix(b.agentID, "pi:")]
-		if s == nil || !liveChild(s) {
+		if s == nil || !liveChild(s) || !holdsPersonsPlace(s) {
 			continue
 		}
 		holding = append(holding, map[string]any{"agent_id": b.agentID, "workspace_id": s.workspace, "activity": b.activity})
@@ -273,11 +275,19 @@ func (c *ConversationController) capacity(w http.ResponseWriter, r *http.Request
 	historyJSON(w, map[string]any{"schema_version": 1, "limit": limit, "source": source, "holding": holding})
 }
 
-// liveCount is the number of children holding a place. Caller holds c.mu.
+// holdsPersonsPlace is a child counted against the person's limit: every
+// live one except the Pi in the reserved background place
+// (background_linux.go). Caller holds c.mu.
+func holdsPersonsPlace(s *conversation) bool {
+	return !holdsBackgroundSlot(s)
+}
+
+// liveCount is the number of children holding one of the person's places.
+// Caller holds c.mu.
 func (c *ConversationController) liveCount() int {
 	n := 0
 	for _, s := range c.sessions {
-		if liveChild(s) {
+		if liveChild(s) && holdsPersonsPlace(s) {
 			n++
 		}
 	}
@@ -286,7 +296,9 @@ func (c *ConversationController) liveCount() int {
 
 // makeRoom stops idle children, the longest unused first and those waiting
 // only on a Taskfleet run last, until one more child fits under the limit. When every place is busy it stops nothing and
-// the caller's own check refuses at capacity.
+// the caller's own check refuses at capacity. The background Pi holds no
+// place of the person's and is never stopped for one. A recap a stopped
+// child still owed goes to the background queue, as after the idle stop.
 func (c *ConversationController) makeRoom(ctx context.Context) {
 	c.mu.Lock()
 	need := c.liveCount() - c.liveLimit() + 1
@@ -294,7 +306,7 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 	if need <= 0 {
 		return
 	}
-	_, idle := c.classify(ctx, func(*conversation) bool { return true })
+	_, idle := c.classify(ctx, holdsPersonsPlace)
 	// A Pi held only by its working Taskfleet run yields after the truly idle.
 	var waiting map[*conversation]bool
 	if len(idle) > need {
@@ -311,8 +323,20 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 		idle = idle[:need]
 	}
 	marked := c.stopIdleLocked(idle, "room")
+	owed := owedOf(marked)
 	c.mu.Unlock()
 	c.closeStopping(marked)
+	c.handOnOwedRecaps(marked, owed)
+}
+
+// owedOf reads the recap each marked handle's stop cancelled. Caller holds
+// c.mu.
+func owedOf(marked []*conversation) map[*conversation]time.Time {
+	owed := make(map[*conversation]time.Time, len(marked))
+	for _, s := range marked {
+		owed[s] = s.recapDue
+	}
+	return owed
 }
 
 // lastSeen is when the child was last used or the person last reported being
@@ -399,10 +423,7 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		}
 	}
 	marked := c.stopIdleLocked(stop, "idle")
-	owed := map[*conversation]time.Time{}
-	for _, s := range marked {
-		owed[s] = s.recapDue
-	}
+	owed := owedOf(marked)
 	c.mu.Unlock()
 	c.closeStopping(marked)
 	for _, s := range marked {
@@ -411,10 +432,8 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 			outcome = "uncertain"
 		}
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_idle_stop", "outcome", outcome, "reason", "idle_timeout", "agent_id", "pi:"+s.id)
-		if !owed[s].IsZero() && outcome == "stopped" {
-			go c.recapAfterIdleStop(ctx, s, owed[s])
-		}
 	}
+	c.handOnOwedRecaps(marked, owed)
 }
 
 // waitingOnRuns says which of these conversations created a Taskfleet run
@@ -450,9 +469,6 @@ func (c *ConversationController) FixtureIdleStop(ctx context.Context) {
 	if !c.fixture {
 		return
 	}
-	// A recap the stop hands on outlives the fixture request that asked
-	// for it; the controller's close still ends it.
-	ctx = context.WithoutCancel(ctx)
 	now := time.Now()
 	c.stopExpiredIdlePi(ctx, now)
 	c.stopExpiredIdlePi(ctx, now.Add(piIdlePeriod))

@@ -53,7 +53,7 @@ var defaultRecapSettings = recapSettings{Level: "standard", DelaySeconds: 180, W
 // The lower delay is the browser's presence cadence (recapHold.ts): a shorter
 // delay would fire while the person is still reading. The upper one is an
 // hour; a longer delay outlasts Pi's idle stop, which hands the recap to a
-// rested Pi started for it (recapAfterIdleStop). The other bounds keep a
+// rested Pi started for it in the background place (background_linux.go). The other bounds keep a
 // recap within the extension's 20-second budget.
 type recapField struct {
 	stored   string

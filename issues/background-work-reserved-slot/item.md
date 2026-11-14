@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: background-slot
 lane_seq: 1
+closed: 2026-11-14
 ---
 
 # A reserved background slot for recaps and other system work

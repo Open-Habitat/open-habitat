@@ -267,16 +267,12 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	if err != nil {
 		return nil, "unproven"
 	}
-	// A recap the person did not ask for never stops another Pi for room,
-	// and leaves one place free for the person's next start.
+	// A recap the person did not ask for never stops another Pi for room:
+	// it takes the reserved background place (background_linux.go).
 	if kind != startRecap {
 		c.makeRoom(context.Background())
 	}
 	c.mu.Lock()
-	room := c.liveLimit()
-	if kind == startRecap {
-		room--
-	}
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
 	if c.closed || (c.sessions[id] != old && !(c.sessions[id] == nil && old != nil && old.recordEvicted)) {
@@ -289,7 +285,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		c.mu.Unlock()
 		return nil, "controlled"
 	}
-	if c.liveCount() >= room {
+	if kind == startRecap && !c.backgroundSlotFree() || kind != startRecap && c.liveCount() >= c.liveLimit() {
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"
 	}
@@ -335,6 +331,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 	}
 	delete(c.recapRecoveryFailures, id)
 	s.recapOnly = kind == startRecap
+	s.backgroundSlot = kind == startRecap
 	s.autoWake = kind == startAutoWake
 	c.sessions[id] = s
 	if c.journal != nil {

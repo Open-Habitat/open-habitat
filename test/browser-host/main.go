@@ -1245,6 +1245,10 @@ esac
 				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-recap-failing", "pi-rewind", "pi-slow-start", "pi-start-fail", "pi-slow-intake":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
+					if err := os.Remove(filepath.Join(tmp, "fakepi-start-fail")); err != nil && !os.IsNotExist(err) {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {
 						http.Error(w, "fixture failed", 500)
 						return
@@ -1440,6 +1444,20 @@ esac
 						http.Error(w, "fixture failed", 400)
 						return
 					}
+				}
+				w.WriteHeader(204)
+			case "/fixture/pi-start-fail":
+				// on=1 makes every following Pi start fail; anything else ends it.
+				flag := filepath.Join(tmp, "fakepi-start-fail")
+				var err error
+				if r.URL.Query().Get("on") == "1" {
+					err = os.WriteFile(flag, nil, 0600)
+				} else if err = os.Remove(flag); os.IsNotExist(err) {
+					err = nil
+				}
+				if err != nil {
+					http.Error(w, "fixture failed", 500)
+					return
 				}
 				w.WriteHeader(204)
 			case "/fixture/pi-restart":

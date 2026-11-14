@@ -30,8 +30,9 @@ const Path = "/opt/open-habitat/live-limits.json"
 // none: some 7 GiB of Pi children per person (about 210 MiB each).
 const HostDefault = 32
 
-// Max bounds every limit. Create keeps at most 128 conversation records in
-// memory, so a larger number of live children could never happen.
+// Max bounds every limit. The daemon keeps one conversation record more than
+// this in memory, for its reserved background place, so a larger number of
+// live children could never happen.
 const Max = 128
 
 // MaxPeople bounds the exceptions so that the file and the broker's reply

@@ -175,7 +175,7 @@ test("@recap an automatic recap a daemon restart cut off is made after the resta
   }
 });
 
-test("@recap interrupted generation leaves a card when restart recovery has no room", async ({
+test("@recap interrupted generation leaves a card when restart recovery cannot start Pi", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -190,15 +190,11 @@ test("@recap interrupted generation leaves a card when restart recovery has no r
         (await page.request.get("/fixture/recap-hold")).status(),
       )
       .toBe(204);
-    const { csrf } = await (await page.request.get("/auth/session")).json();
+    // Recovery runs in the reserved background place, which a person's
+    // full limit never takes; a Pi that cannot start is what stops it.
     expect(
-      (
-        await page.request.put("/api/v1/server/conversations", {
-          headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": csrf },
-          data: { limit: 1 },
-        })
-      ).ok(),
-    ).toBe(true);
+      (await page.request.get("/fixture/pi-start-fail?on=1")).status(),
+    ).toBe(204);
     expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
       204,
     );
@@ -211,14 +207,9 @@ test("@recap interrupted generation leaves a card when restart recovery has no r
     });
     expect((await status(page, id)).state).toBe("stopped");
     // Another restart derives the obligation again, not a saved failure.
-    expect(
-      (
-        await page.request.put("/api/v1/server/conversations", {
-          headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": csrf },
-          data: { limit: 32 },
-        })
-      ).ok(),
-    ).toBe(true);
+    expect((await page.request.get("/fixture/pi-start-fail")).status()).toBe(
+      204,
+    );
     expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
       204,
     );

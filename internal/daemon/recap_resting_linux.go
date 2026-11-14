@@ -106,74 +106,25 @@ func (c *ConversationController) recapRecoveryFailure(id string) map[string]stri
 	return nil
 }
 
-// recapRestingConversations makes the recaps owed from before this daemon
-// started, one at a time, each when it falls due.
-func (c *ConversationController) recapRestingConversations(ctx context.Context) {
+// recapRestingConversations hands the recaps owed from before this daemon
+// started to the background queue, each due when its quiet interval ends.
+// Native history is the record: nothing else says what is still owed.
+func (c *ConversationController) recapRestingConversations(context.Context) {
+	owed := c.owedRecaps(time.Now(), c.backgroundDelay(), "")
 	c.mu.Lock()
-	delay := c.recapIdleDelay
-	c.mu.Unlock()
-	if delay == 0 {
-		delay = recapDelay(c.home)
-	}
-	for _, owed := range c.owedRecaps(time.Now(), delay, "") {
-		if wait := time.Until(owed.due); wait > 0 {
-			timer := time.NewTimer(wait)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-			}
+	defer c.mu.Unlock()
+	for _, o := range owed {
+		// A conversation already handed on by a stop in this daemon keeps
+		// its handle, which follows the person's presence.
+		if _, queued := c.background[o.id]; !queued {
+			c.enqueueBackground(backgroundJob{id: o.id, due: o.due})
 		}
-		if ctx.Err() != nil {
-			return
-		}
-		c.recapResting(ctx, owed, nil)
-	}
-}
-
-// recapAfterIdleStop makes the automatic recap whose timer the idle stop
-// cancelled. A quiet time may outlast Pi's ten idle minutes (Jari 30.10.2026:
-// a delay of 15 or 60 minutes is as reasonable as 5), and the timer ends with
-// the Pi. The recap falls due as the timer would have, later if the person
-// still read the rested conversation, and is still made only if native
-// history owes it then.
-func (c *ConversationController) recapAfterIdleStop(ctx context.Context, s *conversation, due time.Time) {
-	c.mu.Lock()
-	delay := c.recapIdleDelay
-	c.mu.Unlock()
-	if delay == 0 {
-		delay = recapDelay(c.home)
-	}
-	for {
-		c.mu.Lock()
-		if seen := s.presentAt.Add(delay); seen.After(due) {
-			due = seen
-		}
-		gone := c.closed || c.sessions[s.id] != s
-		c.mu.Unlock()
-		if gone {
-			return
-		}
-		wait := time.Until(due)
-		if wait <= 0 {
-			break
-		}
-		timer := time.NewTimer(wait)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return
-		case <-timer.C:
-		}
-	}
-	for _, owed := range c.owedRecaps(time.Now(), delay, s.id) {
-		c.recapResting(ctx, owed, s)
 	}
 }
 
 // recapResting starts Pi for one resting conversation only to make its owed
-// recap and stops it again. No turn runs and the rest stays as it was, so the
+// recap and stops it again. The background queue calls it, one at a time,
+// in the reserved place (background_linux.go). No turn runs and the rest stays as it was, so the
 // agent's catch-up still comes with the person's next message. The person
 // comes first: a conversation this daemon already has a handle for follows
 // its own schedule, nobody's Pi is stopped to make room, and a Pi the person
@@ -198,7 +149,7 @@ func (c *ConversationController) recapResting(ctx context.Context, owed owedReca
 		skip = "closed"
 	case c.sessions[id] != old, old != nil && (liveChild(old) || old.state != "stopped" || len(old.held) > 0 || old.bash.active()):
 		skip = "controlled"
-	case c.liveCount() >= c.liveLimit()-1:
+	case !c.backgroundSlotFree():
 		skip = "capacity"
 	}
 	c.mu.Unlock()
@@ -269,10 +220,16 @@ func (c *ConversationController) recapResting(ctx context.Context, owed owedReca
 	c.mu.Lock()
 	var marked []*conversation
 	// A person reading the conversation meanwhile may be about to write:
-	// their Pi is left to the idle stop rather than closed under them.
+	// their Pi is left to the idle stop rather than closed under them. It
+	// then holds one of their places, not the background one, which the
+	// next job needs.
 	if c.sessions[id] == s && s.recapOnly && s.presentAt.Before(started) {
 		marked = c.stopIdleLocked([]*conversation{s}, "idle")
+	} else {
+		s.backgroundSlot = false
 	}
 	c.mu.Unlock()
+	// An unreaped child keeps the reserved place until it is reaped
+	// (holdsBackgroundSlot); it never moves onto the person's limit.
 	c.closeStopping(marked)
 }

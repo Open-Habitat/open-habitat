@@ -84,6 +84,12 @@ type ConversationController struct {
 	// Startup recovery selects at most maxRestingRecaps. Refusals before a
 	// handle exists live only for this daemon, like conversation.recapFailure.
 	recapRecoveryFailures map[string]*recapFailure
+	// The background queue (background_linux.go), protected by mu: owed
+	// recaps by conversation, the server's wake-up and its cancel, which is
+	// nil while no server runs.
+	background       map[string]backgroundJob
+	backgroundWake   chan struct{}
+	backgroundCancel context.CancelFunc
 	// fixtureLimits stands in for root's live-limits file in the synthetic
 	// browser host only. Protected by mu.
 	fixtureLimits func() ([]byte, error)
@@ -194,6 +200,9 @@ type conversation struct {
 	// Started only for an owed recap and stopped after it; the person's
 	// first wake, send or command makes the Pi theirs (recap_resting_linux.go).
 	recapOnly bool
+	// backgroundSlot: this recap-only Pi was started in the reserved
+	// background place and its job has not finished (background_linux.go).
+	backgroundSlot bool
 }
 
 type heldMessage struct {
@@ -330,6 +339,9 @@ func (c *ConversationController) shutdown() {
 		return
 	}
 	c.closed = true
+	if c.backgroundCancel != nil {
+		c.backgroundCancel()
+	}
 	list := make([]*conversation, 0, len(c.sessions))
 	for _, s := range c.sessions {
 		if s.recapTimer != nil {

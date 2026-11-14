@@ -90,6 +90,11 @@ func runFakePi(args []string) {
 	if mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario")); strings.TrimSpace(string(mode)) == "pi-start-fail" {
 		os.Exit(3)
 	}
+	// /fixture/pi-start-fail does the same within another scenario, such as
+	// a recap case whose restart recovery cannot start Pi.
+	if _, err := os.Stat(filepath.Join(filepath.Dir(home), "fakepi-start-fail")); err == nil {
+		os.Exit(3)
+	}
 	dir := filepath.Join(home, ".pi", "agent", "sessions", "--"+strings.ReplaceAll(strings.Trim(cwd, "/"), "/", "-")+"--")
 	path := filepath.Join(dir, time.Now().UTC().Format("2006-01-02T15-04-05-000Z")+"_"+id+".jsonl")
 	if existing != "" {
