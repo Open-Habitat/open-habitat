@@ -3,7 +3,7 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/rail-title-box
@@ -11,6 +11,7 @@ lane: unlaned
 lane_seq: 1
 collision: [web/src/components/components.css]
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Rail row shows the rename field's box at rest

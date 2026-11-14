@@ -1,8 +1,112 @@
+import { resolve } from "node:path";
+import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
 import { openedConversation } from "./conversation-view";
-import { expect, test } from "./worker-host";
+import { createHostTest, expect } from "./worker-host";
 
-test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+const capture = Boolean(process.env.OH_RAIL_TITLE_EVIDENCE);
+const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
+
+test.use({
+  baseURL: hostOrigin,
+  ignoreHTTPSErrors: true,
+  deviceScaleFactor: 2,
+});
+
+test("rail titles have no field outline at rest, selected, hovered or focused", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.locator('a[href*="code=42"]').click();
+  await page
+    .getByRole("navigation")
+    .getByTestId(capture ? "workspace-aurinkokello" : "workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await openedConversation(page);
+  const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  const row = page.getByRole("navigation").getByTestId(`agent-item-${id}`);
+  const link = row.getByTestId("agent-link");
+  await page.getByTestId("message-input").fill("A synthetic rail title");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(row.locator("time")).toHaveCount(1);
+  for (const theme of ["light", "dark", "contrast"]) {
+    await page.getByTestId("account-menu-trigger").click();
+    await page.getByTestId(`segment-${theme}`).click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(link).toHaveAttribute("aria-current", "page");
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+    if (process.env.OH_RAIL_TITLE_EVIDENCE) {
+      await page.evaluate(() =>
+        Promise.all(document.getAnimations().map((a) => a.finished)),
+      );
+      await snapshot(
+        page,
+        resolve(process.env.OH_RAIL_TITLE_EVIDENCE, `${theme}-selected`),
+        { labOrigin: new URL(page.url()).origin },
+      );
+    }
+    for (const selected of [true, false]) {
+      if (!selected) {
+        await page
+          .getByRole("navigation")
+          .getByTestId(
+            capture ? "workspace-aurinkokello" : "workspace-ordinary-dir",
+          )
+          .click();
+        await expect(link).not.toHaveAttribute("aria-current", "page");
+      }
+      await page.mouse.move(0, 0);
+      await page.evaluate(() =>
+        (document.activeElement as HTMLElement)?.blur(),
+      );
+      for (const state of ["rest", "hover", "focus"]) {
+        if (state === "hover") await row.hover();
+        if (state === "focus") {
+          await page.keyboard.press("Tab");
+          await link.focus();
+          await expect(row.locator(".ah-now-row")).toHaveCSS(
+            "outline-style",
+            "solid",
+          );
+        }
+        for (const element of [link, row.locator(".ah-nav-label")]) {
+          for (const side of ["Top", "Right", "Bottom", "Left"]) {
+            await expect(element).toHaveCSS(
+              `border-${side.toLowerCase()}-width`,
+              "0px",
+            );
+          }
+          await expect(element).toHaveCSS("box-shadow", "none");
+          await expect(element).toHaveCSS("outline-style", "none");
+        }
+      }
+    }
+    await link.click();
+    await row.getByTestId("rail-rename-conversation").click();
+    await expect(row.locator(".ah-name-field")).toBeVisible();
+    await expect(row.locator(".ah-name-field")).toHaveCSS(
+      "border-top-width",
+      "1px",
+    );
+    await expect(row.locator("time")).toHaveCount(0);
+    if (process.env.OH_RAIL_TITLE_EVIDENCE) {
+      await snapshot(
+        page,
+        resolve(process.env.OH_RAIL_TITLE_EVIDENCE, `${theme}-renaming`),
+        { labOrigin: new URL(page.url()).origin },
+      );
+    }
+    await page.keyboard.press("Escape");
+  }
+});
 
 test("a rail conversation archives from its row on hover or by keyboard, without opening it, and comes back from the notice", async ({
   page,

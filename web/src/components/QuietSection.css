@@ -6,12 +6,22 @@
 .ah-rail .ah-now-row:has(.ah-nav-link[aria-current="page"]) {
   border-radius: var(--ah-r-nav);
   background: var(--ah-current);
-  box-shadow: 0 0 0 1.5px var(--ah-accent);
+  box-shadow: 0 0 0 1.5px var(--ah-accent-line);
 }
 .ah-rail .ah-now-row .ah-nav-link[aria-current="page"] {
   background: transparent;
+  /* The whole row already carries selection; the shared link's inset edge
+     would draw a second box around the title and time, like a rename field. */
+  box-shadow: none;
   color: var(--ah-ink);
   font-weight: 600;
+}
+.ah-rail .ah-now-row .ah-nav-link:focus-visible {
+  outline: none;
+}
+.ah-rail .ah-now-row:has(.ah-nav-link:focus-visible) {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
 }
 
 h2.ah-rail-section-head.ah-quiet-head {

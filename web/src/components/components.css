@@ -5190,7 +5190,7 @@ h2.ah-rail-section-head {
    (HabitatMark.css). */
 @media (forced-colors: active) {
   .ah-rail .ah-now-row:has(.ah-nav-link[aria-current="page"]),
-  [aria-current="page"],
+  [aria-current="page"]:not(.ah-now-row .ah-nav-link),
   [aria-pressed="true"] {
     outline: 2px solid Highlight;
   }
