@@ -106,6 +106,9 @@
   --ah-syntax-deletion: #f0a08c;
   /* Restated so they resolve against this theme's values where the theme is
      set below the root. */
+  --ah-source-1: var(--ah-syntax-title);
+  --ah-source-2: var(--ah-syntax-string);
+  --ah-source-3: var(--ah-syntax-keyword);
   --ah-glyph-0: var(--ah-accent);
   --ah-glyph-1: var(--ah-syntax-title);
   --ah-glyph-2: var(--ah-syntax-keyword);
@@ -175,6 +178,9 @@
   --ah-syntax-deletion: #ffb3a0;
   /* Restated so they resolve against this theme's values where the theme is
      set below the root. */
+  --ah-source-1: var(--ah-syntax-title);
+  --ah-source-2: var(--ah-syntax-string);
+  --ah-source-3: var(--ah-syntax-keyword);
   --ah-glyph-0: var(--ah-accent);
   --ah-glyph-1: var(--ah-syntax-title);
   --ah-glyph-2: var(--ah-syntax-keyword);
@@ -217,7 +223,7 @@
   --ah-err-hover: #ffb7a6;
   --ah-err-press: #ffcdc0;
   --ah-err-soft-hover: #45130a;
-  --ah-err-soft-press: #5a1a0e;
+  --ah-err-soft-press: #3a0f08;
   --ah-surface-hover: #1f1f1f;
   --ah-surface-press: #333333;
   --ah-current: #1c1c1c;

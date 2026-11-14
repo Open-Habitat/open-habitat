@@ -18,7 +18,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 const noop = () => {};
-function Example({ theme }: { theme: "light" | "dark" }) {
+function Example({ theme }: { theme: "light" | "dark" | "contrast" }) {
   return (
     <div
       data-theme={theme}
@@ -236,3 +236,6 @@ function Example({ theme }: { theme: "light" | "dark" }) {
 }
 export const Light: Story = { render: () => <Example theme="light" /> };
 export const Dark: Story = { render: () => <Example theme="dark" /> };
+export const Contrast: Story = {
+  render: () => <Example theme="contrast" />,
+};

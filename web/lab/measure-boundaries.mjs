@@ -7,7 +7,8 @@
 // For each target the ratio is the better of its fill and its drawn edge
 // (border or box-shadow ring) against the opaque background behind it, which
 // is what tells the box from its surroundings. Writes boundaries.json and
-// boundaries.md and exits 1 when a target is below 3:1.
+// boundaries.md and exits 1 when a target is below 3:1 (4.5:1 in Korkea
+// kontrasti).
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -24,9 +25,12 @@ if (!existsSync(join(root, "iframe.html")))
 if (!out.startsWith(`${cache}/`) && !out.startsWith(resolve(repo, "issues")))
   throw new Error("Output must be under .cache/lab/ or issues/");
 
-// [story id, theme global, [[label, selector, minimum = 3]]]
+// Päivä, Yö and Korkea kontrasti; the last holds boundaries to 4.5:1.
+const themes = ["light", "dark", "contrast"];
+const floor = (theme) => (theme === "contrast" ? 4.5 : 3);
+// [story id, theme global, [[label, selector, minimum = floor(theme)]]]
 const targets = [
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     `production-interaction-states--${theme}`,
     theme,
     [
@@ -65,24 +69,24 @@ const targets = [
       ["checkbox disabled", ".ah-checkbox[data-disabled] .ah-checkbox-box", 0],
     ],
   ]),
-  ...["light", "dark"].flatMap((theme) =>
+  ...themes.flatMap((theme) =>
     ["danger", "neutral", "progress", "success", "page"].map((story) => [
       `production-warning-banner--${story}`,
       theme,
       [[`banner ${story}`, ".ah-warning"]],
     ]),
   ),
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     "production-capacity-refusal--installation-limit",
     theme,
     [["capacity chip", ".ah-capacity-chip"]],
   ]),
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     "production-catalog--unhappy-states",
     theme,
     [["toast", ".ah-toast"]],
   ]),
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     "production-catalog--primitives",
     theme,
     [
@@ -91,7 +95,7 @@ const targets = [
       ["notice danger", ".ah-notice.ah-tone-danger"],
     ],
   ]),
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     "production-catalog--navigation",
     theme,
     [
@@ -102,7 +106,7 @@ const targets = [
       ],
     ],
   ]),
-  ...["light", "dark"].map((theme) => [
+  ...themes.map((theme) => [
     "production-catalog--account",
     theme,
     [["settings page selected", ".s-nav-i[aria-current]"]],
@@ -229,7 +233,7 @@ try {
       .waitFor({ timeout: 15000 });
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(300);
-    for (const [label, selector, minimum = 3] of items) {
+    for (const [label, selector, minimum = floor(theme)] of items) {
       const found = await page.evaluate(measure, selector);
       // The weakest instance stands for the component.
       const worst = found.sort((a, b) => a.ratio - b.ratio)[0];

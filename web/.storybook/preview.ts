@@ -15,7 +15,7 @@ const preview: Preview = {
     theme: {
       description: "Tuotantoteema",
       defaultValue: "light",
-      toolbar: { icon: "paintbrush", items: ["light", "dark"] },
+      toolbar: { icon: "paintbrush", items: ["light", "dark", "contrast"] },
     },
   },
   decorators: [
