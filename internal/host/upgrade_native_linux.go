@@ -708,7 +708,7 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 			if e == nil && json.Unmarshal(data, &reply) == nil && reply.Data.Result.Sessions != nil {
 				u.TurnsObservable = true
 				for _, v := range reply.Data.Result.Sessions {
-					if v.State != "idle" && v.State != "stopped" && v.State != "failed" {
+					if upgradeSessionActive(v.State) {
 						u.ActiveTurns++
 					}
 				}
@@ -717,6 +717,17 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+func upgradeSessionActive(state string) bool {
+	switch state {
+	case "idle", "stopped", "failed", "start_failed":
+		// A failed start is retained for recovery, but has no live child.
+		return false
+	default:
+		// Unfamiliar states must not make work look safe to interrupt.
+		return true
+	}
 }
 
 // A live daemon is conservatively busy: an idle conversation list cannot
