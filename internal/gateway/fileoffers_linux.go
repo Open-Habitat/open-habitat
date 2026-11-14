@@ -147,7 +147,7 @@ func attachmentDisposition(name string) string {
 // host's short pages, and a zip is named after the offer.
 type publicRead struct {
 	charge func(int64) bool
-	// zipBytes is charged for a zip, whose length is not known in advance.
+	// zipBytes is the manifest-derived upper bound charged for a public zip.
 	zipBytes int64
 	zipName  string
 	fail     func(status int)
@@ -294,8 +294,7 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, target Identity
 	for {
 		n, readErr := res.Body.Read(buf)
 		if n > 0 {
-			// A public zip was charged before its length was known: it
-			// never sends more than that.
+			// A public zip never sends more than its charged upper bound.
 			if sent += int64(n); pub != nil && mode == "zip" && sent > pub.zipBytes {
 				panic(http.ErrAbortHandler)
 			}
@@ -303,6 +302,11 @@ func (a *Auth) fileRelay(w http.ResponseWriter, r *http.Request, target Identity
 				return
 			}
 			if _, err := w.Write(buf[:n]); err != nil {
+				return
+			}
+			// Even a short first chunk must reach the browser while the
+			// daemon is still producing the rest of the archive.
+			if err := controller.Flush(); err != nil && !errors.Is(err, http.ErrNotSupported) {
 				return
 			}
 		}

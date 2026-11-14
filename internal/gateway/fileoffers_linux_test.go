@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 const offerTestA = "faaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -156,6 +157,56 @@ func TestFileOfferBytesArePresentedByTheGateway(t *testing.T) {
 		if res := d.do("GET", "host.test", path, "", appCookie); res.StatusCode != 200 {
 			t.Fatalf("%s: %d", path, res.StatusCode)
 		}
+	}
+}
+
+// A producer pauses after less than net/http's output buffer. The browser
+// must receive those bytes before the producer is allowed to finish.
+func TestFileOfferZipFlushesBeforeProducerFinishes(t *testing.T) {
+	const size = 170_000_000
+	release := make(chan struct{})
+	d := newEditorDesk(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", strconv.Itoa(size))
+		io.WriteString(w, "PK\x03\x04")
+		http.NewResponseController(w).Flush()
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+		chunk := strings.Repeat("x", 64<<10)
+		for left := size - 4; left > 0; {
+			n := min(left, len(chunk))
+			if _, err := io.WriteString(w, chunk[:n]); err != nil {
+				return
+			}
+			left -= n
+		}
+	}))
+	// The timeout bounds a regression instead of deadlocking the suite.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	res := d.do("GET", "host.test", "/api/v1/file-offers/"+offerTestA+"/zip", "", func(r *http.Request) {
+		*r = *r.WithContext(ctx)
+		appCookie(r)
+	})
+	if res.StatusCode != 200 || res.ContentLength != size {
+		t.Fatalf("zip: %d length %d", res.StatusCode, res.ContentLength)
+	}
+	first := make([]byte, 4)
+	if _, err := io.ReadFull(res.Body, first); err != nil || string(first) != "PK\x03\x04" {
+		t.Fatalf("first bytes before producer release: %q %v", first, err)
+	}
+	close(release)
+	if n, err := io.Copy(io.Discard, res.Body); err != nil || n != size-4 {
+		t.Fatalf("remaining zip: %d bytes, %v", n, err)
 	}
 }
 

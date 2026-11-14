@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -747,11 +748,26 @@ func serveOfferFile(w http.ResponseWriter, r *http.Request, store int, id, rel s
 	http.ServeContent(w, r, "", time.Time{}, io.NewSectionReader(f, 0, st.Size))
 }
 
+// offerZipSize matches serveOfferZip's Store entries: local header (30),
+// central header (46), data descriptor (16), and two modification-time extras
+// (9 each), plus the UTF-8 name twice and the end record (22). Offer creation
+// caps exports at 200 files and 512 MiB and sets nonzero CreatedAt, so it
+// produces no ZIP64 records.
+func offerZipSize(m fileOfferManifest) int64 {
+	size := int64(22)
+	for _, item := range m.Items {
+		size += item.Bytes + 110 + 2*int64(len(item.Path))
+	}
+	return size
+}
+
 // serveOfferZip streams the offer's files into one stored zip; nothing is
 // written to disk. A file that cannot be read aborts the response, so
 // the browser sees a failed download rather than a quietly shorter archive.
 func serveOfferZip(w http.ResponseWriter, r *http.Request, store int, m fileOfferManifest) {
-	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(time.Hour))
+	controller := http.NewResponseController(w)
+	_ = controller.SetWriteDeadline(time.Now().Add(time.Hour))
+	w.Header().Set("Content-Length", strconv.FormatInt(offerZipSize(m), 10))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "no-store")
@@ -769,6 +785,16 @@ func serveOfferZip(w http.ResponseWriter, r *http.Request, store int, m fileOffe
 		f := os.NewFile(uintptr(fd), "offered file")
 		out, err := z.CreateHeader(&zip.FileHeader{Name: item.Path, Method: zip.Store, Modified: created})
 		if err == nil {
+			// Publish the first ZIP bytes before reading the file payload.
+			err = z.Flush()
+		}
+		if err == nil {
+			err = controller.Flush()
+			if errors.Is(err, http.ErrNotSupported) {
+				err = nil
+			}
+		}
+		if err == nil {
 			var n int64
 			n, err = io.Copy(out, io.LimitReader(f, item.Bytes+1))
 			if err == nil && n != item.Bytes {
@@ -781,7 +807,9 @@ func serveOfferZip(w http.ResponseWriter, r *http.Request, store int, m fileOffe
 			panic(http.ErrAbortHandler)
 		}
 	}
-	_ = z.Close()
+	if err := z.Close(); err != nil {
+		panic(http.ErrAbortHandler)
+	}
 }
 
 // agentFileOffers is the agent listener's offer, list and remove. An offer
@@ -1016,6 +1044,13 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 		"paketti/LUE MINUT ä.txt": []byte("synteettinen\n"),
 		"paketti/.salainen":       []byte("hidden"),
 	}
+	if set == "large-zip" {
+		large := append(append([]byte(nil), png...), make([]byte, 17_000_000-len(png))...)
+		contents = map[string][]byte{}
+		for i := 0; i < 10; i++ {
+			contents["large/kuva-ä-"+strconv.Itoa(i)+".png"] = large
+		}
+	}
 	if set == "large-images" {
 		// Real large inputs but cheap fixture generation: PNG permits trailing
 		// bytes. The regression measures what the browser actually transfers.
@@ -1039,7 +1074,7 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 	switch set {
 	case "single", "removed":
 		groups = [][]string{{"kaavio.png"}}
-	case "large-images":
+	case "large-images", "large-zip":
 		groups = [][]string{{"large"}}
 	case "folder":
 		groups = [][]string{{"paketti"}}

@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -243,16 +244,28 @@ func TestFileOfferReadsOnlyFilesOfThatOffer(t *testing.T) {
 	if w := readExport(read, FileOffersPath+"/"+a.Offer.ID+"/files/kuvat/nauvo%20%C3%A4.png"); w.Code != 200 || !bytes.HasPrefix(w.Body.Bytes(), []byte("\x89PNG")) {
 		t.Fatalf("encoded name: %d", w.Code)
 	}
-	// The zip holds exactly the offer's files.
+	// The zip holds exactly the offer's files, including a UTF-8 name.
+	// Compare the declared length with actual archive bytes, not the formula.
 	w = readExport(read, FileOffersPath+"/"+a.Offer.ID+"/zip")
+	if got := w.Header().Get("Content-Length"); got != strconv.Itoa(w.Body.Len()) {
+		t.Fatalf("zip length: header %q, written %d", got, w.Body.Len())
+	}
+	head := httptest.NewRecorder()
+	read.ServeHTTP(head, httptest.NewRequest("HEAD", "http://unix"+FileOffersPath+"/"+a.Offer.ID+"/zip", nil))
+	if head.Code != 200 || head.Body.Len() != 0 || head.Header().Get("Content-Length") != w.Header().Get("Content-Length") {
+		t.Fatalf("zip HEAD: %d %v, %d bytes", head.Code, head.Header(), head.Body.Len())
+	}
 	zr, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))
 	if w.Code != 200 || err != nil || len(zr.File) != 4 {
 		t.Fatalf("zip: %d %v", w.Code, err)
 	}
 	for _, f := range zr.File {
 		rc, _ := f.Open()
-		data, _ := io.ReadAll(rc)
+		data, err := io.ReadAll(rc)
 		rc.Close()
+		if err != nil {
+			t.Fatalf("zip entry %s: %v", f.Name, err)
+		}
 		if int64(len(data)) != facts[f.Name].Bytes {
 			t.Fatalf("zip entry %s: %d bytes", f.Name, len(data))
 		}

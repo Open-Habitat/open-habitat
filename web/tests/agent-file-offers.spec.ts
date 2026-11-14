@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
@@ -203,6 +203,65 @@ test("five large offered images transfer thumbnails only until opened", async ({
     .toBe(480);
 });
 
+test("a 170 MB folder zip starts streaming with a known length and downloads from its card", async ({
+  page,
+}) => {
+  const target = await conversation(page);
+  const [id] = await offer(page, target, "large-zip");
+  const folderCard = card(page, id);
+  await expect(folderCard).toHaveAttribute("data-state", "ready");
+  const link = folderCard.getByTestId("offer-download");
+  const url = await link.getAttribute("href");
+  expect(url).toBeTruthy();
+  if (!url) throw new Error("Missing folder download URL");
+
+  // Read the real gateway stream in Chromium, without buffering the full
+  // body in Playwright's API client. The deadline applies to first bytes,
+  // not export preparation or the complete download.
+  const first = await page.evaluate(async (url) => {
+    const started = performance.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.body) throw new Error("Missing ZIP response body");
+      const reader = response.body.getReader();
+      const { value } = await reader.read();
+      const result = {
+        status: response.status,
+        length: Number(response.headers.get("content-length")),
+        bytes: value?.length ?? 0,
+        signature: Array.from(value?.slice(0, 4) ?? []),
+        elapsed: performance.now() - started,
+      };
+      await reader.cancel();
+      return result;
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
+    }
+  }, url);
+  expect(first.status).toBe(200);
+  expect(first.length).toBeGreaterThan(170_000_000);
+  expect(first.bytes).toBeGreaterThan(0);
+  expect(first.bytes).toBeLessThan(first.length);
+  expect(first.signature).toEqual([80, 75, 3, 4]);
+  expect(first.elapsed).toBeLessThan(5000);
+  console.log(
+    `Large ZIP first bytes: ${Math.round(first.elapsed)} ms; length: ${first.length}`,
+  );
+
+  await folderCard.hover();
+  const pending = page.waitForEvent("download");
+  await link.click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe("large.zip");
+  const downloaded = await download.path();
+  expect(await download.failure()).toBeNull();
+  if (!downloaded) throw new Error("Missing ZIP download");
+  expect(statSync(downloaded).size).toBe(first.length);
+});
+
 test("an offered file opened directly runs nothing on the app's origin", async ({
   page,
   context,
@@ -354,6 +413,10 @@ test("a removed offer stays as an inert card", async ({ page }) => {
   await expect(card(page, removed).getByRole("link")).toHaveCount(0);
   await expect(card(page, removed).getByRole("button")).toHaveCount(0);
 
+  // Keep another live offer so a background list refresh cannot remove
+  // the assets chip before we use it to reread the deleted offer.
+  const [keeper] = await offer(page, id, "single");
+  await expect(card(page, keeper)).toHaveAttribute("data-state", "ready");
   // An offer removed while the page is open turns inert when the
   // conversation's list reads its offers again.
   const [later] = await offer(page, id, "single");
