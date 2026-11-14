@@ -26,6 +26,8 @@ const features = [
   "atlassian-connect",
   "trello-connect",
   "turn-changes",
+  "terminal-copy-on-select",
+  "terminal-open-urls",
 ];
 
 async function signIn(page: Page) {

@@ -56,6 +56,7 @@ import { textNow, useLanguage, useText } from "../i18n";
 import { accountText } from "../text/account";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
+import { ChoiceMenu } from "./ChoiceMenu";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
 import { useExplainEntry } from "./ExplainMode";
@@ -964,8 +965,7 @@ export function AccountSettings({
                 <span className="s-desc">{t.themeDesc}</span>
               </div>
               <div className="s-val">
-                <Segmented
-                  size="row"
+                <ChoiceMenu
                   data-testid="theme-choice"
                   label={t.theme}
                   options={[

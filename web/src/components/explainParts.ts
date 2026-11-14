@@ -71,7 +71,7 @@ export const parts: Record<CardId, Part> = {
   },
   Y06: {
     kind: "menu",
-    sel: '[data-testid="conversation-model"], [data-testid="menu-fact-model"]',
+    sel: '[data-testid="conversation-model"], [data-testid="worker-model"], [data-testid="menu-fact-model"]',
   },
   Y07: {
     kind: "panel",

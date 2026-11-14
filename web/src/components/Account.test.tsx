@@ -52,18 +52,18 @@ describe("account presentation", () => {
         ?.textContent,
     ).toBe("A");
   });
-  it("keeps the settings radio in sync with a theme change made elsewhere", () => {
+  it("keeps the settings choice in sync with a theme change made elsewhere", () => {
     setThemeChoice("light");
     try {
       render(<AccountSettings name="Oma tili" onClose={() => {}} />);
       fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
-        screen.getByTestId("segment-light").getAttribute("aria-pressed"),
-      ).toBe("true");
+        screen.getByTestId("theme-choice").getAttribute("data-value"),
+      ).toBe("light");
       act(() => setThemeChoice("dark"));
       expect(
-        screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
-      ).toBe("true");
+        screen.getByTestId("theme-choice").getAttribute("data-value"),
+      ).toBe("dark");
     } finally {
       act(() => setThemeChoice("system"));
     }
@@ -85,8 +85,8 @@ describe("account presentation", () => {
       render(<AccountSettings name="Oma tili" onClose={() => {}} />);
       fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
-        screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
-      ).toBe("true");
+        screen.getByTestId("theme-choice").getAttribute("data-value"),
+      ).toBe("dark");
     } finally {
       get.mockRestore();
       put.mockRestore();

@@ -48,6 +48,18 @@ for (const locale of ["fi-FI", "en-US"]) {
           });
         expect(new Set(layout.tops).size).toBe(1);
         expect(layout.fits, `theme at ${width}`).toBe(true);
+        const theme = page.getByTestId("theme-choice");
+        await theme.click();
+        await expect(page.getByRole("menuitemradio")).toHaveCount(4);
+        await page.getByTestId("choice-contrast").click();
+        await expect(theme).toHaveAttribute("data-value", "contrast");
+        await expect(page.locator("html")).toHaveAttribute(
+          "data-theme",
+          "contrast",
+        );
+        await theme.click();
+        await page.getByTestId("choice-system").click();
+        await expect(theme).toHaveAttribute("data-value", "system");
         const before = await trigger.getAttribute("data-value");
         await trigger.click();
         await expect(page.getByRole("menuitemradio")).toHaveCount(4);
@@ -70,7 +82,7 @@ for (const locale of ["fi-FI", "en-US"]) {
         )
           await snapshot(
             page,
-            `../issues/choice-menu-single-select/evidence/language-${locale}-${width}`,
+            `../issues/gate-red-settings-and-explain-1411/evidence/language-${locale}-${width}`,
             { labOrigin: hostOrigin },
           );
         // Opening a bottom sheet must not accidentally choose the item
