@@ -1,0 +1,47 @@
+---
+created: 2026-11-14
+updated: 2026-11-14
+type: improvement
+status: open
+priority: normal
+preparation: ready
+lane: agent-instructions
+lane_seq: 1
+---
+
+# Clearer agent instructions and a smaller tool surface for connected accounts
+
+## Observed (a pilot installation, 14.11.2026, release v0.1.1)
+
+Asked to find an employment contract in a SharePoint folder, the person's
+agent found it (search worked, 9 tool calls) but on the way called the
+Microsoft MCP server's `delete-mail-folder`. The call was refused only
+because a required argument was missing; nothing changed. The agent
+reported it itself: listing files needed no such tool.
+
+## Why (conductor's reading)
+
+The agent's text for a Microsoft account is reason-based and short, but the
+agent is handed about 110 Outlook tools (mail folders, rules, focused-inbox
+overrides, calendar permissions, contact folders, each with create / update /
+delete) next to 8 file tools, many with similar names (`list-folder-files`,
+`list-mail-folders`, `delete-mail-folder`). Instructions cannot make that
+surface clear; the surface itself is the confusing part.
+
+## Direction (Jari 14.11.2026)
+
+Clarify the agent's instructions: short, simple guidance that steers the
+agent the right way so it knows what to do — not one more "don't do X" line.
+Deliver a proposal for Jari, nothing shipped before he has read it:
+
+1. The agent-facing text (host context `internal/daemon/host-context.md`,
+   the personal-data skill `internal/daemon/integrations/skill_linux.go`
+   and the per-account sections) rewritten for clarity: what each account
+   is for, the normal path for each common task (find a file, read mail,
+   prepare a reply, look at the calendar), and what is at stake, in as few
+   words as carry it. Exact text in `agent-text.md` for Jari.
+2. A proposal for the tool surface the agent is given per account level:
+   which tools an agent's ordinary work needs, which are mailbox
+   administration nobody asks an agent for, and how the level setting
+   (`integration-account-level-microsoft-dropbox`) maps to that, with the
+   trade-offs.
