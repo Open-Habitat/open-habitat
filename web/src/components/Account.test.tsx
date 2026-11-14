@@ -341,4 +341,128 @@ describe("account presentation", () => {
     expect(row().dataset.reason).toBeUndefined();
     expect(card()).toContain("ei juuri nyt voitu vahvistaa");
   });
+  describe("GitHub workflow permission", () => {
+    const reply = (identity: string, workflow: boolean) =>
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          web_identity_id: identity,
+          engine: "codemirror6",
+          language: "system",
+          quiet_sort: "newest",
+          quiet_workspace: null,
+          github_workflow: workflow,
+          experimental: {},
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const base = ["gist", "read:org", "repo"];
+    const show = (
+      identity: string,
+      onReconnect: (workflow?: boolean) => void,
+      nativeScopes: string[] | null | undefined,
+      nativeState: "connected" | "expired" = "connected",
+    ) => (
+      <AccountSettings
+        editorIdentity={identity}
+        csrf="synthetic-csrf"
+        nativeState={nativeState}
+        nativeLogin="example-a"
+        nativeScopes={nativeScopes}
+        onReconnect={onReconnect}
+        onClose={() => {}}
+      />
+    );
+    const row = () => screen.getByTestId("github-workflow");
+    it("is off by default and allowing signs in again with the workflow scope", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => reply("wid_wf-off", false)),
+      );
+      const onReconnect = vi.fn();
+      render(show("wid_wf-off", onReconnect, base));
+      fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId("github-workflow-allow")
+            .hasAttribute("data-disabled"),
+        ).toBe(false),
+      );
+      expect(row().dataset.wf).toBe("off");
+      expect(row().textContent).toContain("Ei sallittu");
+      expect(row().textContent).toContain("salaisuudet");
+      const chips = screen.getByTestId("github-scopes");
+      expect(
+        [...chips.querySelectorAll("li")].map((li) => li.dataset.scope),
+      ).toEqual(base);
+      fireEvent.click(screen.getByTestId("github-workflow-allow"));
+      expect(onReconnect).toHaveBeenCalledWith(true);
+      expect(row().dataset.wf).toBe("pending");
+      // The card's own Reconnect leaves the choice to the app.
+      fireEvent.click(screen.getByTestId("github-reconnect"));
+      expect(onReconnect).toHaveBeenLastCalledWith();
+      vi.unstubAllGlobals();
+    });
+    it("shows an allowed token and removing it signs in again without the scope", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => reply("wid_wf-on", true)),
+      );
+      const onReconnect = vi.fn();
+      render(show("wid_wf-on", onReconnect, [...base, "workflow"]));
+      fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId("github-workflow-remove")
+            .hasAttribute("data-disabled"),
+        ).toBe(false),
+      );
+      expect(row().dataset.wf).toBe("on");
+      fireEvent.click(screen.getByTestId("github-workflow-remove"));
+      expect(onReconnect).toHaveBeenCalledWith(false);
+      vi.unstubAllGlobals();
+    });
+    it("says a remembered permission is missing, and Don't allow forgets it on the daemon's confirmation", async () => {
+      const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+        reply("wid_wf-missing", init?.method !== "PUT"),
+      );
+      vi.stubGlobal("fetch", fetch);
+      render(show("wid_wf-missing", vi.fn(), base));
+      fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
+      await waitFor(() => expect(row().dataset.wf).toBe("missing"));
+      expect(row().textContent).toContain("Lupa puuttuu");
+      expect(screen.getByTestId("github-workflow-allow").textContent).toBe(
+        "Salli uudelleen",
+      );
+      fireEvent.click(screen.getByTestId("github-workflow-keep-off"));
+      await waitFor(() => expect(row().dataset.wf).toBe("off"));
+      const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
+      expect(put?.[1]?.body).toBe('{"github_workflow":false}');
+      expect(new Headers(put?.[1]?.headers).get("X-Agent-Host-CSRF")).toBe(
+        "synthetic-csrf",
+      );
+      expect(
+        (await screen.findByTestId("github-workflow-said")).textContent,
+      ).toContain("enää huomauteta");
+      vi.unstubAllGlobals();
+    });
+    it("says unread scopes are not known, and has no row without a working login", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => reply("wid_wf-unknown", false)),
+      );
+      const { rerender } = render(show("wid_wf-unknown", vi.fn(), null));
+      fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
+      expect(row().dataset.wf).toBe("unknown");
+      expect(screen.getByTestId("github-scopes").textContent).toContain(
+        "Oikeuksia ei voitu lukea",
+      );
+      rerender(show("wid_wf-unknown", vi.fn(), undefined, "expired"));
+      expect(screen.queryByTestId("github-workflow")).toBeNull();
+      expect(screen.queryByTestId("github-scopes")).toBeNull();
+      vi.unstubAllGlobals();
+    });
+  });
 });

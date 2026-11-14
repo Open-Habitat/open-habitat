@@ -264,9 +264,9 @@ def must_reject(schema: str, instance: object) -> None:
 # Change exactly one field of a valid reply, so a newly required field
 # cannot make every negative check pass for the wrong reason.
 preferences_reply = json.loads((BASE / "examples/account-preferences.json").read_text())
-for change in ({"engine": "monaco"}, {"uid": 123}, {"experimental": {"worker-row-sentence": False}}, {"experimental": {"../x": True}}, {"language": "sv"}, {"quiet_sort": "oldest"}, {"quiet_workspace": "../x"}, {"quiet_workspace": ""}, {"recent_count": 5}):
+for change in ({"engine": "monaco"}, {"uid": 123}, {"experimental": {"worker-row-sentence": False}}, {"experimental": {"../x": True}}, {"language": "sv"}, {"quiet_sort": "oldest"}, {"quiet_workspace": "../x"}, {"quiet_workspace": ""}, {"recent_count": 5}, {"github_workflow": "yes"}, {"github_workflow": None}):
     must_reject("account-preferences.schema.json", {**preferences_reply, **change})
-for missing in ("language", "quiet_sort", "quiet_workspace"):
+for missing in ("language", "quiet_sort", "quiet_workspace", "github_workflow"):
     must_reject("account-preferences.schema.json", {k: v for k, v in preferences_reply.items() if k != missing})
 # The pre-sign-in language names only the server's default.
 must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "sv"})
@@ -709,9 +709,9 @@ must_reject("integrations.schema.json", unread_integrations)
 
 # A preferences write names exactly one change.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
-for ok in ({"quiet_sort": "newest"}, {"quiet_sort": "workspace"}, {"quiet_sort": "name"}, {"quiet_workspace": "ws_example123"}, {"quiet_workspace": None}, {"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
+for ok in ({"quiet_sort": "newest"}, {"quiet_sort": "workspace"}, {"quiet_sort": "name"}, {"quiet_workspace": "ws_example123"}, {"quiet_workspace": None}, {"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}, {"github_workflow": True}, {"github_workflow": False}):
     preferences_write.validate(ok)
-for bad in ({"recent_count": 5}, {"quiet_sort": "oldest"}, {"quiet_sort": None}, {"quiet_workspace": "../x"}, {"quiet_workspace": "ws_short"}, {"quiet_workspace": 5}, {"quiet_sort": "name", "quiet_workspace": None}, {"quiet_sort": "name", "engine": "vscode"}, {}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
+for bad in ({"recent_count": 5}, {"quiet_sort": "oldest"}, {"quiet_sort": None}, {"quiet_workspace": "../x"}, {"quiet_workspace": "ws_short"}, {"quiet_workspace": 5}, {"quiet_sort": "name", "quiet_workspace": None}, {"quiet_sort": "name", "engine": "vscode"}, {}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}, {"github_workflow": None}, {"github_workflow": True, "engine": "vscode"}):
     assert not preferences_write.is_valid(bad), f"preferences write accepted {bad!r}"
 
 # GitLab: the token travels only in connect and replace and never in a
@@ -756,6 +756,13 @@ must_reject("snapshot.schema.json", good)
 good["auth"]["native_github"]["restricted_orgs"] = []
 del good["auth"]["native_github"]["retry"]["next_at"]
 must_reject("snapshot.schema.json", good)
+# The token's scopes: a sorted list of scope names, or null when unread.
+good = json.loads((BASE / "examples" / "snapshot.json").read_text())
+good["auth"]["native_github"]["scopes"] = None
+must_accept("snapshot.schema.json", good)
+for scopes in (["repo", "repo"], ["Repo"], ["repo, workflow"], "repo"):
+    good["auth"]["native_github"]["scopes"] = scopes
+    must_reject("snapshot.schema.json", good)
 must_accept("github-repository.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "restricted", "restriction": "saml"})
 must_reject("github-repository.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "restricted"})
 for origin in ({"base_url": "https://gitlab.example.test", "full_name": "example-group/infra/terraform"},):

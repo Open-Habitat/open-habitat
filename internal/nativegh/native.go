@@ -134,8 +134,63 @@ var (
 	statusArgs = []string{"auth", "status", "--hostname", "github.com"}
 	// --hostname: without it gh asks whichever host it is logged into, so a
 	// person with only an Enterprise login would be identified there.
-	userArgs = []string{"api", "--hostname", "github.com", "user", "--jq", "{id: .id, login: .login}"}
+	// --include: the same answer's headers carry the token's OAuth scopes
+	// (X-OAuth-Scopes), so they are read without another request.
+	userArgs = []string{"api", "--hostname", "github.com", "user", "--include", "--jq", "{id: .id, login: .login}"}
 )
+
+// scopePattern is one OAuth scope name as GitHub lists them (repo, read:org,
+// admin:repo_hook, ...). A header with anything else is not read at all.
+var scopePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?::[a-z][a-z0-9_]*)?$`)
+
+// userReply splits gh api --include's output into the body and the token's
+// scopes. gh prints the status line, the headers, an empty line and then
+// the body. scopes is nil when the answer has no X-OAuth-Scopes header (a
+// fine-grained or GitHub App token) or the header is not one this host
+// recognizes; otherwise it is the sorted list, possibly empty. ok is false
+// when the output is not that shape at all.
+func userReply(b []byte) (body []byte, scopes []string, ok bool) {
+	text := string(b)
+	if !strings.HasPrefix(text, "HTTP/") {
+		return nil, nil, false
+	}
+	var header []string
+	seen := 0
+	for {
+		line, rest, found := strings.Cut(text, "\n")
+		if !found {
+			return nil, nil, false
+		}
+		text = rest
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			break
+		}
+		name, value, colon := strings.Cut(line, ":")
+		if colon && strings.EqualFold(strings.TrimSpace(name), "X-OAuth-Scopes") {
+			seen++
+			header = strings.Split(value, ",")
+		}
+	}
+	if seen != 1 {
+		return []byte(text), nil, true
+	}
+	scopes = []string{}
+	for _, s := range header {
+		s = strings.TrimSpace(s)
+		if s == "" && len(header) == 1 {
+			break // a token with no scopes at all
+		}
+		if !scopePattern.MatchString(s) || len(s) > 64 || len(scopes) >= 32 {
+			return []byte(text), nil, true
+		}
+		if !slices.Contains(scopes, s) {
+			scopes = append(scopes, s)
+		}
+	}
+	slices.Sort(scopes)
+	return []byte(text), scopes, true
+}
 
 func absentDiagnostic(b []byte) bool {
 	// gh 2.45/2.46's complete diagnostics for no hosts at all and for logins
@@ -195,7 +250,8 @@ type bounded struct {
 }
 
 func (b *bounded) Write(p []byte) (int, error) {
-	if len(b.b)+len(p) > 8192 {
+	// gh api --include prints GitHub's headers before the body: about 2 KiB.
+	if len(b.b)+len(p) > 16384 {
 		b.overflow = true
 		return len(p), errors.New("output limit")
 	}
@@ -231,6 +287,9 @@ type Result struct {
 	CleanupOK         bool
 	HelperInert       bool
 	RevokesOAuthToken bool
+	// Scopes are the installed token's OAuth scopes as GitHub named them
+	// in the check after the install; nil when not read.
+	Scopes []string
 }
 
 // Evidence supplies positive keyring attestation only from a trusted OS-specific
@@ -260,16 +319,19 @@ type Adapter struct {
 	retry       *time.Timer
 	told        Observation
 	onChange    func()
-	verifyAfter time.Duration
-	retryDelays []time.Duration
-	early       time.Duration // how early a check may come and still be the scheduled one
-	budget      time.Duration // one whole check
-	pageWait    time.Duration // how long a snapshot waits for a fresh check
-	lastAsked   time.Time
-	home        string
-	subject     string
-	run         Runner
-	evidence    Evidence
+	// onReconnected is told the scopes of an explicit reconnect's token;
+	// guarded by flightMu.
+	onReconnected func(scopes []string)
+	verifyAfter   time.Duration
+	retryDelays   []time.Duration
+	early         time.Duration // how early a check may come and still be the scheduled one
+	budget        time.Duration // one whole check
+	pageWait      time.Duration // how long a snapshot waits for a fresh check
+	lastAsked     time.Time
+	home          string
+	subject       string
+	run           Runner
+	evidence      Evidence
 }
 
 func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) {
@@ -308,11 +370,29 @@ func (a *Adapter) Recheck() {
 	a.start()
 }
 
+// OnReconnected names what to call, outside the adapter's locks, after the
+// person's explicit reconnect installed its token in gh: with the new
+// token's scopes, or nil when they could not be read. The daemon remembers
+// from it whether the person allowed the workflow scope.
+func (a *Adapter) OnReconnected(f func(scopes []string)) {
+	a.flightMu.Lock()
+	a.onReconnected = f
+	a.flightMu.Unlock()
+}
+
 // Consumer can be passed to transport.NewServer/daemon.ServeHTTP. The token
 // exists only as a call-local reader; callers must not retry the handoff.
 func (a *Adapter) Consumer() transport.Consumer {
 	return func(ctx context.Context, token string, replace bool) (bool, error) {
 		result, err := a.Install(ctx, token, replace)
+		if err == nil && replace && (result.Phase == Replaced || result.Phase == Installed) {
+			a.flightMu.Lock()
+			f := a.onReconnected
+			a.flightMu.Unlock()
+			if f != nil {
+				f(result.Scopes)
+			}
+		}
 		// The phase is native observation, distinct from the transport ack.
 		// Never include token, gh output, stderr, login or credential storage.
 		if err != nil {
@@ -346,9 +426,9 @@ const (
 	outage               // gh could not reach GitHub, or GitHub failed
 )
 
-func (a *Adapter) identity(ctx context.Context) (string, bool) {
-	login, kind, _ := a.classify(ctx)
-	return login, kind == own
+func (a *Adapter) identity(ctx context.Context) (string, []string, bool) {
+	login, kind, _, scopes := a.classify(ctx)
+	return login, scopes, kind == own
 }
 
 // timedOut tells a command that ran out of time from one that failed.
@@ -361,45 +441,51 @@ func timedOut(ctx context.Context, e error) bool {
 // for an unreachable network, and newer gh exit 1 for either. Identity, and
 // whether the token is dead, come from GitHub's answer to gh api user. An
 // unclassified account comes with the Reason it could not be classified.
-func (a *Adapter) classify(ctx context.Context) (string, account, string) {
+// The person's own login also comes with its token's scopes, nil when
+// GitHub's answer did not name them.
+func (a *Adapter) classify(ctx context.Context) (string, account, string, []string) {
 	if _, e := a.gh(ctx, false, nil, statusArgs...); errors.Is(e, noAuth) {
-		return "", absent, ""
+		return "", absent, "", nil
 	} else if timedOut(ctx, e) {
-		return "", unclassified, ReasonTimeout
+		return "", unclassified, ReasonTimeout, nil
 	}
 	b, e := a.gh(ctx, true, nil, userArgs...)
 	if errors.Is(e, rejected) {
-		return "", revoked, ""
+		return "", revoked, "", nil
 	}
 	if errors.Is(e, unreachable) {
-		return "", outage, ""
+		return "", outage, "", nil
 	}
 	if errors.Is(e, githubError) {
-		return "", unclassified, ReasonGitHubError
+		return "", unclassified, ReasonGitHubError, nil
 	}
 	if timedOut(ctx, e) {
-		return "", unclassified, ReasonTimeout
+		return "", unclassified, ReasonTimeout, nil
 	}
 	if e != nil {
-		return "", unclassified, ReasonUnrecognized
+		return "", unclassified, ReasonUnrecognized, nil
+	}
+	body, scopes, ok := userReply(b)
+	if !ok {
+		return "", unclassified, ReasonUnrecognized, nil
 	}
 	var v struct {
 		ID    json.Number `json:"id"`
 		Login string      `json:"login"`
 	}
-	d := json.NewDecoder(strings.NewReader(string(b)))
+	d := json.NewDecoder(strings.NewReader(string(body)))
 	d.UseNumber()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !loginPattern.MatchString(v.Login) {
-		return "", unclassified, ReasonUnrecognized
+		return "", unclassified, ReasonUnrecognized, nil
 	}
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
 	if e != nil || id == 0 || strconv.FormatUint(id, 10) != string(v.ID) {
-		return "", unclassified, ReasonUnrecognized
+		return "", unclassified, ReasonUnrecognized, nil
 	}
 	if string(v.ID) != a.subject {
-		return v.Login, foreign, ""
+		return v.Login, foreign, "", nil
 	}
-	return v.Login, own, ""
+	return v.Login, own, "", scopes
 }
 
 // Observation is one status check: the state, and for the person's own
@@ -417,6 +503,10 @@ type Observation struct {
 	// For "unknown": why the check learned nothing, one of the Reason
 	// constants, so the page can say it instead of a bare "unknown".
 	Reason string
+	// For "connected": the OAuth scopes of gh's token, read from GitHub's
+	// X-OAuth-Scopes header of the identity check. nil when they could not
+	// be read (no header: a fine-grained or GitHub App token).
+	Scopes []string
 }
 
 // Why a check ended "unknown".
@@ -728,7 +818,7 @@ func (a *Adapter) stopRetry() {
 }
 
 func sameConnection(x, y Observation) bool {
-	return x.State == y.State && x.Login == y.Login && x.Attempt == y.Attempt
+	return x.State == y.State && x.Login == y.Login && x.Attempt == y.Attempt && (x.Scopes == nil) == (y.Scopes == nil) && slices.Equal(x.Scopes, y.Scopes)
 }
 
 func (a *Adapter) wait(ctx context.Context, f *statusFlight) Observation {
@@ -862,7 +952,7 @@ func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
 		return unknown(ReasonChecking), true, false // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
-	login, kind, reason := a.classify(ctx)
+	login, kind, reason, scopes := a.classify(ctx)
 	if ctx.Err() != nil {
 		return unknown(ReasonTimeout), false, true
 	}
@@ -893,7 +983,7 @@ func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
 	if !ok {
 		return Observation{State: "partial", Login: login}, false, remember
 	}
-	return Observation{State: "connected", Login: login}, false, remember
+	return Observation{State: "connected", Login: login, Scopes: scopes}, false, remember
 }
 func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 	// Resolve parent components first; the final path is opened with O_NOFOLLOW.
@@ -1001,12 +1091,13 @@ func trustedGitHelper(output []byte) bool {
 	return helper == "!gh auth git-credential" || helper == "!/usr/bin/gh auth git-credential"
 }
 
-func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
-	login, ok := a.identity(ctx)
+func (a *Adapter) observe(ctx context.Context) (string, []string, Storage, bool) {
+	login, scopes, ok := a.identity(ctx)
 	if !ok {
-		return login, Unknown, false
+		return login, nil, Unknown, false
 	}
-	return a.observeWithLogin(ctx, login)
+	login, storage, ok := a.observeWithLogin(ctx, login)
+	return login, scopes, storage, ok
 }
 func (a *Adapter) observeWithLogin(ctx context.Context, login string) (string, Storage, bool) {
 	login, storage, ok, _ := a.observeLogin(ctx, login)
@@ -1077,7 +1168,7 @@ func (a *Adapter) Install(ctx context.Context, token string, replace bool) (Resu
 	// (network, keyring, unknown output) is left alone.
 	stamp, stamped := credentialStamp(a.home)
 	phase := Installed
-	switch login, kind, _ := a.classify(ctx); {
+	switch login, kind, _, _ := a.classify(ctx); {
 	case ctx.Err() != nil:
 		return result, denied
 	case kind == own:
@@ -1121,9 +1212,9 @@ func (a *Adapter) Install(ctx context.Context, token string, replace bool) (Resu
 		_, err = a.gh(ctx, false, nil, "auth", "setup-git", "--hostname", "github.com")
 	}
 	installed, installedStamped := credentialStamp(a.home)
-	login, storage, ok := a.observe(ctx)
+	login, scopes, storage, ok := a.observe(ctx)
 	if err == nil && ok {
-		return Result{Phase: phase, Storage: storage}, nil
+		return Result{Phase: phase, Storage: storage, Scopes: scopes}, nil
 	}
 	result.Storage = storage
 	// A failed gh auth login installed nothing, so whatever login gh shows
@@ -1186,7 +1277,7 @@ func (a *Adapter) Disconnect(ctx context.Context, fresh, confirmed bool) (Result
 	if !fresh || !confirmed {
 		return r, denied
 	}
-	login, ok := a.identity(ctx)
+	login, _, ok := a.identity(ctx)
 	if !ok {
 		return r, denied
 	}

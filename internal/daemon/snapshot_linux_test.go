@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -34,7 +35,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		calls++
 		// The handler, not only the adapter, names a login only beside a
 		// state gh works with.
-		return nativegh.Observation{State: status, Login: "alice", Reason: nativegh.ReasonTimeout}
+		return nativegh.Observation{State: status, Login: "alice", Reason: nativegh.ReasonTimeout, Scopes: []string{"repo", "workflow"}}
 	})
 	request := func(id string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
@@ -68,14 +69,19 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		var doc struct {
 			Auth struct {
 				NativeGitHub struct {
-					State  string `json:"state"`
-					Login  string `json:"login"`
-					Reason string `json:"reason"`
+					State  string    `json:"state"`
+					Login  string    `json:"login"`
+					Reason string    `json:"reason"`
+					Scopes *[]string `json:"scopes"`
 				} `json:"native_github"`
 			} `json:"auth"`
 		}
 		if err := json.Unmarshal(w.Body.Bytes(), &doc); err != nil {
 			t.Fatal(err)
+		}
+		// The token's scopes are named only beside a working login.
+		if scopes := doc.Auth.NativeGitHub.Scopes; (state == "connected") != (scopes != nil) || scopes != nil && !reflect.DeepEqual(*scopes, []string{"repo", "workflow"}) {
+			t.Fatalf("scopes state=%s body=%s", state, w.Body.String())
 		}
 		want := state
 		if state == "invalid" {

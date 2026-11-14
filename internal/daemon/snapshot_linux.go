@@ -677,6 +677,15 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		if (ghState == "connected" || ghState == "partial") && gh.Login != "" {
 			nativeGitHub["login"] = gh.Login
 		}
+		// The token's scopes, for the GitHub card's workflow permission:
+		// null when the check could not read them.
+		if ghState == "connected" {
+			if gh.Scopes != nil {
+				nativeGitHub["scopes"] = gh.Scopes
+			} else {
+				nativeGitHub["scopes"] = nil
+			}
+		}
 		// Why the state is unknown, so the page can say it.
 		if ghState == "unknown" {
 			switch gh.Reason {

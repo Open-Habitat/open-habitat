@@ -37,6 +37,13 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if adapter == nil {
 		return refuse(RefusalAdapterUnavailable, errors.New("native credential adapter unavailable"))
 	}
+	// The person's explicit reconnect asked for the workflow scope exactly
+	// when they allowed it; what the installed token got is their opt-in.
+	adapter.OnReconnected(func(scopes []string) {
+		if rememberGitHubWorkflow(cfg.Home, scopes) != nil {
+			diagnostic.New(os.Stderr, "daemon").Warn("github_workflow_preference", "outcome", "failed", "reason", "preferences_unavailable")
+		}
+	})
 	server, err := transport.NewServer(cfg, adapter.Consumer())
 	if err != nil {
 		return refuse(RefusalTransportConfig, err)

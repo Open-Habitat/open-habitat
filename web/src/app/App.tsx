@@ -1316,14 +1316,24 @@ export function App() {
     nativeGitHub?.login,
   );
   // The page in the address bar, which is Settings when it lies over a view.
-  const reconnectGitHub = useCallback(() => {
-    if (syntheticDemo) return;
-    const returnTo = safeRoute(route.pathname);
-    markReconnect(`${route.pathname}${route.search}`, returnTo);
-    window.location.assign(
-      `/auth/github/start?return_to=${encodeURIComponent(returnTo)}&reconnect=1`,
-    );
-  }, [route.pathname, route.search]);
+  // Whether a reconnect keeps the workflow scope when nobody says otherwise:
+  // the person allowed it, or gh's token has it now. Read at call time.
+  const keepWorkflow = useRef(false);
+  const reconnectGitHub = useCallback(
+    (workflow?: unknown) => {
+      if (syntheticDemo) return;
+      const returnTo = safeRoute(route.pathname);
+      markReconnect(`${route.pathname}${route.search}`, returnTo);
+      // Callers that are press handlers pass an event: only a boolean
+      // chooses; anything else keeps what the person has.
+      const scope =
+        typeof workflow === "boolean" ? workflow : keepWorkflow.current;
+      window.location.assign(
+        `/auth/github/start?return_to=${encodeURIComponent(returnTo)}&reconnect=1${scope ? "&scope=workflow" : ""}`,
+      );
+    },
+    [route.pathname, route.search],
+  );
   useEffect(() => {
     const back = takeReturnRoute(route.pathname, route.search);
     if (back) navigate(back, { replace: true });
@@ -1429,6 +1439,9 @@ export function App() {
     csrf,
   });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
+  keepWorkflow.current =
+    confirmedPreferences.github_workflow ||
+    !!nativeGitHub?.scopes?.includes("workflow");
   const icons = useMemo(
     () => (snapshot ? workspaceIcons(snapshot.workspaces) : undefined),
     [snapshot],
@@ -2430,6 +2443,7 @@ export function App() {
       nativeState={snapshot?.auth?.native_github.state}
       nativeReason={snapshot?.auth?.native_github.reason}
       nativeLogin={snapshot?.auth?.native_github.login}
+      nativeScopes={snapshot?.auth?.native_github.scopes}
       onReconnect={reconnectGitHub}
       onPiSignIn={() => navigate(`${route.pathname}?pi_sign_in=1`)}
       modelSelector={

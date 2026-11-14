@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -34,6 +35,10 @@ type accountPreferences struct {
 	QuietSort      string          `json:"quiet_sort,omitempty"`
 	QuietWorkspace string          `json:"quiet_workspace,omitempty"`
 	Experimental   map[string]bool `json:"experimental"`
+	// GitHubWorkflow is the person's opt-in to the GitHub sign-in's
+	// workflow scope: what they want, beside what gh's token holds, so a
+	// later sign-in that drops the scope shows as a missing permission.
+	GitHubWorkflow bool `json:"github_workflow,omitempty"`
 	// RecentCount is the retired Viimeisimmät count. A file that has it still
 	// reads, so the person's other choices survive; the next save drops it.
 	RecentCount json.RawMessage `json:"recent_count,omitempty"`
@@ -46,6 +51,7 @@ type preferencesWrite struct {
 	QuietWorkspace *string
 	Engine         *string
 	Language       *string
+	GitHubWorkflow *bool
 	Experimental   map[string]bool
 }
 
@@ -112,7 +118,8 @@ func (p accountPreferences) valid() bool {
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
 // one object with exactly one key: "engine", "language", "quiet_sort",
-// "quiet_workspace" (a workspace or null), or "experimental" naming one
+// "quiet_workspace" (a workspace or null), "github_workflow" (a boolean),
+// or "experimental" naming one
 // feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
@@ -156,6 +163,14 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 			return change, false
 		}
 		change.Language = &language
+		return change, true
+	}
+	if raw, ok := outer["github_workflow"]; ok {
+		var on *bool
+		if json.Unmarshal(raw, &on) != nil || on == nil {
+			return change, false
+		}
+		change.GitHubWorkflow = on
 		return change, true
 	}
 	var switches map[string]*bool
@@ -313,6 +328,9 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 			value.Language = ""
 		}
 	}
+	if change.GitHubWorkflow != nil {
+		value.GitHubWorkflow = *change.GitHubWorkflow
+	}
 	for id, on := range change.Experimental {
 		if on {
 			value.Experimental[id] = true
@@ -321,6 +339,19 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 		}
 	}
 	return value, savePreferences(home, value)
+}
+
+// rememberGitHubWorkflow records, after the person's explicit GitHub
+// reconnect installed its token, whether that token has the workflow scope:
+// the reconnect asked for it exactly when the person allowed it, and GitHub
+// may grant less than was asked. Unread scopes leave the opt-in as it was.
+func rememberGitHubWorkflow(home string, scopes []string) error {
+	if scopes == nil {
+		return nil
+	}
+	on := slices.Contains(scopes, "workflow")
+	_, err := applyPreferences(home, preferencesWrite{GitHubWorkflow: &on})
+	return err
 }
 
 func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
@@ -366,6 +397,6 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 		if value.QuietWorkspace != "" {
 			workspace = value.QuietWorkspace
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "quiet_sort": sort, "quiet_workspace": workspace, "experimental": value.Experimental})
+		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "quiet_sort": sort, "quiet_workspace": workspace, "github_workflow": value.GitHubWorkflow, "experimental": value.Experimental})
 	})
 }

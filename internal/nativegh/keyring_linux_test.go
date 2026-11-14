@@ -154,7 +154,7 @@ func TestProtectedFileWinsOverKeyring(t *testing.T) {
 	f.logged = true
 	called := false
 	a.evidence = loginEvidence{func(context.Context, string) bool { called = true; return true }}
-	_, storage, ok := a.observe(context.Background())
+	_, _, storage, ok := a.observe(context.Background())
 	if !ok || storage != ProtectedFile || called {
 		t.Fatalf("file precedence: %s %v %v", storage, ok, called)
 	}
@@ -175,7 +175,7 @@ func TestUnsafeFilePrecedesKeyring(t *testing.T) {
 	}
 	called := false
 	a.evidence = loginEvidence{func(context.Context, string) bool { called = true; return true }}
-	_, storage, ok := a.observe(context.Background())
+	_, _, storage, ok := a.observe(context.Background())
 	if ok || storage != Unknown || called {
 		t.Fatalf("unsafe plaintext masked: storage=%s ok=%v called=%v", storage, ok, called)
 	}

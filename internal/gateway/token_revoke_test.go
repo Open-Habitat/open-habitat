@@ -318,3 +318,102 @@ func TestExplicitReconnectReplacesGhLogin(t *testing.T) {
 		t.Fatal(logs.String())
 	}
 }
+
+// A reconnect may add the workflow scope, and only under the reconnect's own
+// guard: the person's session on their own page. Any other scope, or the
+// scope without a reconnect, is not a sign-in shape at all; a refused
+// reconnect is an ordinary sign-in that asks for the usual scopes.
+func TestReconnectMayAskForWorkflowScope(t *testing.T) {
+	gh := &syntheticGitHub{}
+	p := GitHubProvider{ClientID: "client", ClientSecret: "secret", CallbackURL: "https://host.test/auth/github/callback", Client: &http.Client{Transport: gh}}
+	s := &replacingSink{}
+	var logs bytes.Buffer
+	now := time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC)
+	a, e := NewAuth(OAuthConfig{ClientID: "client", ClientSecret: "secret", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: p, Sink: s, Broker: newFakeBroker(), Now: func() time.Time { return now }, Log: CallbackLogger(&logs)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	h := NewWithAuth("", a)
+	start := func(query, site string, session *http.Cookie) *httptest.ResponseRecorder {
+		t.Helper()
+		r := httptest.NewRequest("GET", "https://host.test/auth/github/start?"+query, nil)
+		if site != "" {
+			r.Header.Set("Sec-Fetch-Site", site)
+		}
+		if session != nil {
+			r.AddCookie(session)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	scope := func(w *httptest.ResponseRecorder) string {
+		t.Helper()
+		if w.Code != 302 {
+			t.Fatalf("start: %d %s", w.Code, w.Body.String())
+		}
+		u, _ := url.Parse(w.Header().Get("Location"))
+		return u.Query().Get("scope")
+	}
+	first := start("return_to=%2Fsettings%2Fcode-hosts", "", nil)
+	u, _ := url.Parse(first.Header().Get("Location"))
+	w := callback(h, u.Query().Get("state"), first.Result().Cookies()[0])
+	var session *http.Cookie
+	for _, c := range w.Result().Cookies() {
+		if c.Name == cookieName {
+			session = c
+		}
+	}
+	if session == nil || u.Query().Get("scope") != "repo read:org gist" {
+		t.Fatal("first sign-in", u.Query().Get("scope"))
+	}
+	const allow = "return_to=%2Fsettings%2Fcode-hosts&reconnect=1&scope=workflow"
+	w = start(allow, "same-origin", session)
+	if got := scope(w); got != "repo read:org gist workflow" {
+		t.Fatal(got)
+	}
+	u, _ = url.Parse(w.Header().Get("Location"))
+	if back := callback(h, u.Query().Get("state"), w.Result().Cookies()[0]); back.Code != 303 || !slices.Equal(s.replaced, []bool{false, true}) {
+		t.Fatal(back.Code, s.replaced)
+	}
+	// The reconnect's guard refuses: an ordinary sign-in, usual scopes.
+	for _, c := range []struct {
+		site    string
+		session *http.Cookie
+	}{{"cross-site", session}, {"", session}, {"same-origin", nil}} {
+		if got := scope(start(allow, c.site, c.session)); got != "repo read:org gist" {
+			t.Fatalf("%+v: %s", c, got)
+		}
+	}
+	for _, q := range []string{
+		"return_to=%2Fsettings%2Fcode-hosts&reconnect=1&scope=admin%3Aorg",
+		"return_to=%2Fsettings%2Fcode-hosts&reconnect=1&scope=workflow+admin%3Aorg",
+		"return_to=%2Fsettings%2Fcode-hosts&reconnect=1&scope=",
+		"return_to=%2Fsettings%2Fcode-hosts&reconnect=1&scope=workflow&scope=workflow",
+		"return_to=%2Fsettings%2Fcode-hosts&scope=workflow",
+		"return_to=%2Fsettings%2Fcode-hosts&reconnect=0&scope=workflow",
+		"return_to=https%3A%2F%2Fevil.test&reconnect=1&scope=workflow",
+	} {
+		if w := start(q, "same-origin", session); w.Code != 400 {
+			t.Fatalf("%s: %d", q, w.Code)
+		}
+	}
+	if !strings.Contains(logs.String(), `"outcome":"started","reason":"reconnect_scope"`) {
+		t.Fatal(logs.String())
+	}
+}
+
+// The provider adds only allowed extra scopes to its own.
+func TestAuthorizationURLExtraScopes(t *testing.T) {
+	p := GitHubProvider{ClientID: "client", CallbackURL: "https://host.test/auth/github/callback"}
+	for extra, want := range map[string]string{"": "repo read:org gist", "workflow": "repo read:org gist workflow", "admin:org": "repo read:org gist"} {
+		var scopes []string
+		if extra != "" {
+			scopes = []string{extra}
+		}
+		u, err := url.Parse(p.AuthorizationURL("state", "challenge", scopes))
+		if err != nil || u.Query().Get("scope") != want || u.Query().Get("code_challenge_method") != "S256" {
+			t.Fatalf("%q: %v %v", extra, u, err)
+		}
+	}
+}

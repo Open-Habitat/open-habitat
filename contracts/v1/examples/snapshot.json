@@ -180,6 +180,7 @@
     "native_github": {
       "state": "connected",
       "login": "example-a",
+      "scopes": ["gist", "read:org", "repo"],
       "git_protocol": "https",
       "storage": "credential_store"
     }

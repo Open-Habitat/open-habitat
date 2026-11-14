@@ -232,6 +232,9 @@ export interface Snapshot {
         | "verifying";
       reason?: "checking" | "timeout" | "github_error" | "unrecognized";
       login?: string;
+      /** The token's OAuth scopes, only with state connected; null when
+       * the host could not read them. */
+      scopes?: string[] | null;
       retry?: {
         attempt: number;
         attempts: number;

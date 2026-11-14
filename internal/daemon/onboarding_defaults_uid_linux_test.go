@@ -272,7 +272,7 @@ func serveDefaultsDaemon(t *testing.T) {
 
 type defaultsProvider struct{}
 
-func (defaultsProvider) AuthorizationURL(state, challenge string) string {
+func (defaultsProvider) AuthorizationURL(state, challenge string, _ []string) string {
 	return "https://github.com/login/oauth/authorize?" + url.Values{"state": {state}}.Encode()
 }
 func (defaultsProvider) Exchange(_ context.Context, code, _ string) (string, string, string, error) {

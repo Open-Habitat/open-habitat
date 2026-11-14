@@ -56,6 +56,34 @@ const fi = {
   noneImported:
     "Näistä palveluista ei ole vielä tuotu työtiloja. Uusi työtila listaa yllä olevien palvelujen repot.",
   newWorkspace: "Uusi työtila…",
+  // The GitHub card's workflow permission (github-workflow-scope, A Rivi).
+  wfTitle: "GitHub Actions -työnkulut",
+  wfExplain:
+    "Agentit voivat lisätä ja muuttaa repojen työnkulkuja (.github/workflows). Työnkulku ajetaan GitHubissa, ja se voi lukea repon salaisuudet, kuten julkaisuavaimet. Salli vain, jos agenttien pitää tehdä CI-muutoksia.",
+  wfShort:
+    "Agentit voivat muuttaa GitHub Actions -työnkulkuja, jotka voivat lukea repon salaisuudet.",
+  wfOff: "Ei sallittu",
+  wfOn: "Sallittu",
+  wfMissing: "Lupa puuttuu",
+  wfUnknown: "Ei tiedossa",
+  wfPending: "Kirjautuminen kesken",
+  wfOnDesc:
+    "Agentit voivat lisätä ja muuttaa työnkulkuja. Työnkulut voivat lukea repon salaisuudet.",
+  wfPendingDesc:
+    "Siirrytään GitHubiin kirjautumaan workflow-oikeuden kanssa. Kortti päivittyy, kun palaat.",
+  wfMissingDesc:
+    "Olit sallinut työnkulut, mutta palvelimen gh:lla on nyt valtuutus ilman workflow-oikeutta. Valtuutus on vaihtunut sen jälkeen: vanhentuneen tilalle tavallisella kirjautumisella tai päätteessä gh auth login- tai gh auth refresh -komennolla. Push, joka muuttaa työnkulkua, ei onnistu.",
+  wfUnknownDesc:
+    "Valtuutuksen oikeuksia ei voitu lukea, joten ei tiedetä, onko lupa voimassa. gh auth status päätteessä kertoo ne.",
+  allow: "Salli GitHubissa",
+  allowAgain: "Salli uudelleen",
+  keepOff: "Älä salli",
+  removePerm: "Poista lupa",
+  scopesLabel: "Oikeudet:",
+  scopesUnknown: "Oikeuksia ei voitu lukea.",
+  saidKeptOff:
+    "Selvä. Työnkulkuja ei sallita, eikä puuttuvasta luvasta enää huomauteta.",
+  wfSaveFailed: "Valintaa ei voitu tallentaa. Yritä uudelleen.",
 };
 
 export const codeHostsText = catalog(
@@ -116,6 +144,33 @@ export const codeHostsText = catalog(
     noneImported:
       "No workspaces have been imported from these services yet. New workspace lists the repositories of the services above.",
     newWorkspace: "New workspace…",
+    wfTitle: "GitHub Actions workflows",
+    wfExplain:
+      "Agents can add and change the repositories’ workflows (.github/workflows). A workflow runs on GitHub and can read the repository’s secrets, such as release keys. Allow it only if agents need to make CI changes.",
+    wfShort:
+      "Agents can change GitHub Actions workflows, which can read the repository’s secrets.",
+    wfOff: "Not allowed",
+    wfOn: "Allowed",
+    wfMissing: "Permission missing",
+    wfUnknown: "Not known",
+    wfPending: "Signing in",
+    wfOnDesc:
+      "Agents can add and change workflows. Workflows can read the repository’s secrets.",
+    wfPendingDesc:
+      "Going to GitHub to sign in with the workflow scope. The card updates when you come back.",
+    wfMissingDesc:
+      "You had allowed workflows, but the server’s gh now holds an authorization without the workflow scope. The authorization has changed since: an ordinary sign-in replaced an expired one, or gh auth login or gh auth refresh ran in a terminal. A push that changes a workflow will fail.",
+    wfUnknownDesc:
+      "The authorization’s permissions could not be read, so it is not known whether the permission holds. gh auth status in a terminal tells them.",
+    allow: "Allow on GitHub",
+    allowAgain: "Allow again",
+    keepOff: "Don’t allow",
+    removePerm: "Remove permission",
+    scopesLabel: "Permissions:",
+    scopesUnknown: "Permissions could not be read.",
+    saidKeptOff:
+      "Understood. Workflows are not allowed, and the missing permission is no longer flagged.",
+    wfSaveFailed: "The choice could not be saved. Try again.",
   },
   {
     expiredDesc:
@@ -128,5 +183,9 @@ export const codeHostsText = catalog(
       "Signing out of the browser does not remove the server's authorisation.",
     disconnectedNotice:
       "The local gh authorisation was removed. GitHub's OAuth grant was not revoked.",
+    wfMissingDesc:
+      "You had allowed workflows, but the server’s gh now holds an authorisation without the workflow scope. The authorisation has changed since: an ordinary sign-in replaced an expired one, or gh auth login or gh auth refresh ran in a terminal. A push that changes a workflow will fail.",
+    wfUnknownDesc:
+      "The authorisation’s permissions could not be read, so it is not known whether the permission holds. gh auth status in a terminal tells them.",
   },
 );

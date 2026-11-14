@@ -25,7 +25,7 @@ type fakeProvider struct {
 	authorization    string
 }
 
-func (f *fakeProvider) AuthorizationURL(state, challenge string) string {
+func (f *fakeProvider) AuthorizationURL(state, challenge string, extraScopes []string) string {
 	f.authorization = "https://github.com/login/oauth/authorize?" + url.Values{"state": {state}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}.Encode()
 	return f.authorization
 }

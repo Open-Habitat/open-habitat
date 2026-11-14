@@ -260,6 +260,22 @@
               "minLength": 1,
               "maxLength": 100
             },
+            "scopes": {
+              "description": "The OAuth scopes of the token gh holds, present only with state connected: GitHub's X-OAuth-Scopes header of the host's own identity check, sorted. null when they could not be read: the answer named none, as for a fine-grained or GitHub App token, or named them in a form the host does not recognize.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*(:[a-z][a-z0-9_]*)?$",
+                    "maxLength": 64
+                  }
+                },
+                {"type": "null"}
+              ]
+            },
             "git_protocol": {
               "const": "https"
             },

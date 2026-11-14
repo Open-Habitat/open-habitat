@@ -33,13 +33,17 @@
         {"type": "null"}
       ]
     },
+    "github_workflow": {
+      "description": "Whether the person allowed agents to change GitHub Actions workflows: the opt-in behind the GitHub sign-in's workflow scope. It records what the person wants, not what gh's token holds (native_github.scopes in the snapshot). The person's explicit GitHub reconnect sets it to whether the installed token has the workflow scope; a write sets it directly, as Don't allow does. When it is true and the token lacks the scope, the page says the permission is missing.",
+      "type": "boolean"
+    },
     "feature_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, the Hiljaiset order or workspace, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the GitHub workflow opt-in, or one experimental feature's switch. The daemon merges it into the stored document.",
       "oneOf": [
         {
           "type": "object",
@@ -80,6 +84,12 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["github_workflow"],
+          "properties": {"github_workflow": {"$ref": "#/$defs/github_workflow"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "experimental"
           ],
@@ -109,9 +119,11 @@
         "language",
         "quiet_sort",
         "quiet_workspace",
+        "github_workflow",
         "experimental"
       ],
       "properties": {
+        "github_workflow": {"$ref": "#/$defs/github_workflow"},
         "quiet_sort": {"$ref": "#/$defs/quiet_sort"},
         "quiet_workspace": {"$ref": "#/$defs/quiet_workspace"},
         "schema_version": {

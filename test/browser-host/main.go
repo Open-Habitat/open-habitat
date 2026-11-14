@@ -48,7 +48,7 @@ type provider struct {
 	missingEmail atomic.Bool // one-shot synthetic fixture for onboarding
 }
 
-func (p *provider) AuthorizationURL(state, challenge string) string {
+func (p *provider) AuthorizationURL(state, challenge string, extraScopes []string) string {
 	p.challenges.Store("state:"+state, challenge)
 	p.challenges.Store("challenge:"+challenge, true)
 	return p.origin + "/fixture/provider?state=" + url.QueryEscape(state) + "&challenge=" + url.QueryEscape(challenge)

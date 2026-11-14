@@ -37,6 +37,8 @@ type fake struct {
 	probed func()
 	// held is what gh auth token shows while logged in.
 	held string
+	// scopes is the X-OAuth-Scopes header gh api user shows; nil omits it.
+	scopes []string
 }
 
 func (f *fake) set(change func()) {
@@ -72,7 +74,7 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 		if !f.logged {
 			return nil, noAuth
 		}
-	case "gh api --hostname github.com user --jq {id: .id, login: .login}":
+	case "gh api --hostname github.com user --include --jq {id: .id, login: .login}":
 		if probed := f.probed; probed != nil {
 			f.probed = nil
 			// A probe may change the fake itself.
@@ -83,7 +85,13 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 		if f.apiErr != nil {
 			return nil, f.apiErr
 		}
-		return []byte(fmt.Sprintf(`{"id":%s,"login":"alice"}`, f.id)), nil
+		// gh api --include: the status line, GitHub's headers, an empty
+		// line, then the body, with gh's own mix of line endings.
+		scopes := ""
+		if f.scopes != nil {
+			scopes = "X-Oauth-Scopes: " + strings.Join(f.scopes, ", ") + "\r\n"
+		}
+		return []byte(fmt.Sprintf("HTTP/2.0 200 OK\nContent-Type: application/json\r\n%s\r\n{\"id\":%s,\"login\":\"alice\"}", scopes, f.id)), nil
 	case "gh config get git_protocol --host github.com":
 		return []byte("https\n"), nil
 	case "git config --global --get credential.https://github.com.helper":
@@ -131,7 +139,7 @@ func fixture(t *testing.T, keyring bool) (*Adapter, *fake, string) {
 			t.Fatal(err)
 		}
 	}
-	f := &fake{t: t, token: "unique-synthetic-sentinel", id: "42"}
+	f := &fake{t: t, token: "unique-synthetic-sentinel", id: "42", scopes: []string{"gist", "read:org", "repo"}}
 	a, e := New(home, "42", f, attest(keyring))
 	if e != nil {
 		t.Fatal(e)
@@ -192,7 +200,7 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 		t.Fatal(got)
 	}
 	f.id = "42"
-	f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
+	f.fail = "gh api --hostname github.com user --include --jq {id: .id, login: .login}"
 	if got := a.Status(context.Background()); got != "unknown" {
 		t.Fatal(got)
 	}
@@ -497,7 +505,7 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 			if e != nil || r.Phase != Installed {
 				t.Fatalf("%+v %v", r, e)
 			}
-			if !reflect.DeepEqual(f.log[len(f.log)-7:], []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"}) {
+			if !reflect.DeepEqual(f.log[len(f.log)-7:], []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --include --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"}) {
 				t.Fatal(f.log)
 			}
 			r, e = a.Install(context.Background(), f.token, false)
@@ -656,7 +664,7 @@ func TestGitHelperExactFormsAcrossObservationAndDisconnect(t *testing.T) {
 			a, f, _ := fixture(t, true)
 			f.helper = tc.helper
 			f.logged = true
-			_, storage, ok := a.observe(context.Background())
+			_, _, storage, ok := a.observe(context.Background())
 			if ok != tc.accept || (tc.accept && storage != Keyring) {
 				t.Fatalf("observation: storage=%s ok=%v", storage, ok)
 			}
@@ -745,7 +753,7 @@ func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
 			case "partial-helper":
 				f.fail = "git config --global --get credential.https://github.com.helper"
 			case "api-unavailable":
-				f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
+				f.fail = "gh api --hostname github.com user --include --jq {id: .id, login: .login}"
 			case "api-denied":
 				// Network failure, unreadable keyring or unknown wording.
 				f.apiErr = denied
@@ -857,7 +865,7 @@ func TestFailedLoginNeverCleansUp(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
-	for _, failed := range []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"} {
+	for _, failed := range []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --include --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"} {
 		t.Run(failed, func(t *testing.T) {
 			a, f, _ := fixture(t, false)
 			f.fail = failed
@@ -979,7 +987,7 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 	calls := func() int {
 		n := 0
 		for _, c := range f.log {
-			if c == "gh api --hostname github.com user --jq {id: .id, login: .login}" {
+			if c == "gh api --hostname github.com user --include --jq {id: .id, login: .login}" {
 				n++
 			}
 		}
@@ -992,7 +1000,7 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 		t.Fatalf("unchanged inputs must not ask GitHub again: %s after %d calls", got, calls())
 	}
 	// The remembered observation names the person's own login.
-	if got := a.ObservedConnection(context.Background()); got != (Observation{State: "connected", Login: "alice"}) || calls() != 1 {
+	if got := a.ObservedConnection(context.Background()); !reflect.DeepEqual(got, Observation{State: "connected", Login: "alice", Scopes: f.scopes}) || calls() != 1 {
 		t.Fatalf("own login: %+v after %d calls", got, calls())
 	}
 	// Another login on this machine rewrites hosts.yml.
@@ -1001,7 +1009,7 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Another account's login is not the person's, so its name is not told.
-	if got := a.ObservedConnection(context.Background()); got != (Observation{State: "disconnected"}) || calls() != 2 {
+	if got := a.ObservedConnection(context.Background()); !reflect.DeepEqual(got, Observation{State: "disconnected"}) || calls() != 2 {
 		t.Fatalf("hosts.yml change: %+v after %d calls", got, calls())
 	}
 	// A Git credential helper change lives in ~/.gitconfig, not in gh's files.
@@ -1174,10 +1182,10 @@ case "$*" in
 	echo "  X Failed to log in to github.com account alice ($HOME/.config/gh/hosts.yml)"
 	echo "  - The token in $HOME/.config/gh/hosts.yml is invalid."
 	exit 0 ;;
-"api --hostname github.com user --jq {id: .id, login: .login}")
+"api --hostname github.com user --include --jq {id: .id, login: .login}")
 	case "$state" in
-	fresh) echo '{"id":42,"login":"alice"}' ;;
-	foreign) echo '{"id":43,"login":"mallory"}' ;;
+	fresh) printf 'HTTP/2.0 200 OK\nX-Oauth-Scopes: gist, read:org, repo\r\n\r\n{"id":42,"login":"alice"}\n' ;;
+	foreign) printf 'HTTP/2.0 200 OK\nX-Oauth-Scopes: repo\r\n\r\n{"id":43,"login":"mallory"}\n' ;;
 	revoked) echo '{"message":"Bad credentials","status":"401"}'; echo "gh: Bad credentials (HTTP 401)" >&2; exit 1 ;;
 	locked) echo '{"message":"Requires authentication","status":"401"}'; echo "gh: Requires authentication (HTTP 401)" >&2; exit 1 ;;
 	*) printf 'error connecting to api.github.com\ncheck your internet connection or https://githubstatus.com\n' >&2; exit 1 ;;
@@ -1489,7 +1497,7 @@ func TestRecheckHintStartsOneCheck(t *testing.T) {
 	}
 	n := 0
 	for _, c := range f.log {
-		if c == "gh api --hostname github.com user --jq {id: .id, login: .login}" {
+		if c == "gh api --hostname github.com user --include --jq {id: .id, login: .login}" {
 			n++
 		}
 	}
@@ -1510,7 +1518,7 @@ func TestOutageCountFollowsTheScheduleNotTheReads(t *testing.T) {
 	a.OnChange(func() { told.Add(1) })
 	first := a.Status(context.Background())
 	for range 5 {
-		if got := a.wait(context.Background(), a.start()); got != (Observation{State: "unreachable", Since: got.Since, Attempt: 1, NextAt: got.NextAt}) || got.NextAt.Sub(got.Since) != time.Hour {
+		if got := a.wait(context.Background(), a.start()); !reflect.DeepEqual(got, Observation{State: "unreachable", Since: got.Since, Attempt: 1, NextAt: got.NextAt}) || got.NextAt.Sub(got.Since) != time.Hour {
 			t.Fatalf("an early check counted: %+v", got)
 		}
 	}
@@ -1627,5 +1635,86 @@ func TestBusyCheckKeepsTheOutageRetry(t *testing.T) {
 			t.Fatal("the busy check stopped the retry")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// gh api --include's output: the scopes come from the one X-OAuth-Scopes
+// header, sorted; a missing, repeated or unrecognized header reads as not
+// known, and output without the status line is not gh's at all.
+func TestUserReplyScopes(t *testing.T) {
+	body := `{"id":42,"login":"alice"}`
+	for name, tc := range map[string]struct {
+		out    string
+		scopes []string
+		ok     bool
+	}{
+		"classic":      {"HTTP/2.0 200 OK\nX-Oauth-Scopes: repo, workflow, gist, read:org\r\nVary: Accept\r\n\r\n" + body, []string{"gist", "read:org", "repo", "workflow"}, true},
+		"no-scopes":    {"HTTP/2.0 200 OK\nX-OAuth-Scopes: \r\n\r\n" + body, []string{}, true},
+		"fine-grained": {"HTTP/2.0 200 OK\nVary: Accept\r\n\r\n" + body, nil, true},
+		"repeated":     {"HTTP/2.0 200 OK\nX-Oauth-Scopes: repo\r\nX-Oauth-Scopes: workflow\r\n\r\n" + body, nil, true},
+		"odd-name":     {"HTTP/2.0 200 OK\nX-Oauth-Scopes: repo, <b>\r\n\r\n" + body, nil, true},
+		"lf-only":      {"HTTP/2.0 200 OK\nX-Oauth-Scopes: repo\n\n" + body, []string{"repo"}, true},
+		"body-only":    {body, nil, false},
+		"no-body-gap":  {"HTTP/2.0 200 OK\nX-Oauth-Scopes: repo\r\n", nil, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, scopes, ok := userReply([]byte(tc.out))
+			if ok != tc.ok || !reflect.DeepEqual(scopes, tc.scopes) || ok && string(got) != body {
+				t.Fatalf("%q %#v %v", got, scopes, ok)
+			}
+		})
+	}
+}
+
+// A connected observation carries the token's scopes; a token whose answer
+// names none (a fine-grained token) has them unknown, not empty.
+func TestObservationScopes(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged, f.scopes = true, []string{"workflow", "repo"}
+	if got := a.wait(context.Background(), a.start()); got.State != "connected" || !reflect.DeepEqual(got.Scopes, []string{"repo", "workflow"}) {
+		t.Fatalf("%+v", got)
+	}
+	f.set(func() { f.scopes = nil })
+	a.observed = nil
+	if got := a.wait(context.Background(), a.start()); got.State != "connected" || got.Scopes != nil {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// Only the person's explicit reconnect that installed its token tells the
+// daemon the new token's scopes; an ordinary sign-in, or a reconnect that
+// kept gh's login, tells nothing.
+func TestReconnectTellsScopes(t *testing.T) {
+	ownFixture := func(t *testing.T) (*Adapter, *fake, *[][]string) {
+		a, f, home := fixture(t, false)
+		if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(staleHosts), 0600); err != nil {
+			t.Fatal(err)
+		}
+		f.logged, f.held = true, "gho_older-native-token"
+		told := &[][]string{}
+		a.OnReconnected(func(s []string) { *told = append(*told, s) })
+		return a, f, told
+	}
+	a, f, told := ownFixture(t)
+	f.scopes = []string{"gist", "read:org", "repo", "workflow"}
+	if _, e := a.Consumer()(context.Background(), f.token, true); e != nil || !reflect.DeepEqual(*told, [][]string{{"gist", "read:org", "repo", "workflow"}}) {
+		t.Fatal(e, *told)
+	}
+	a, f, told = ownFixture(t)
+	if _, e := a.Consumer()(context.Background(), f.token, false); e != nil || len(*told) != 0 {
+		t.Fatal(e, *told)
+	}
+	a, f, told = ownFixture(t)
+	f.held = f.token // gh already holds this very token: the login is kept
+	if _, e := a.Consumer()(context.Background(), f.token, true); e != nil || len(*told) != 0 {
+		t.Fatal(e, *told)
+	}
+	// A reconnect into an absent login installs it, and tells.
+	a, f, _ = fixture(t, false)
+	told = &[][]string{}
+	a.OnReconnected(func(s []string) { *told = append(*told, s) })
+	f.scopes = nil
+	if _, e := a.Consumer()(context.Background(), f.token, true); e != nil || len(*told) != 1 || (*told)[0] != nil {
+		t.Fatal(e, *told)
 	}
 }

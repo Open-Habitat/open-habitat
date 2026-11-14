@@ -26,7 +26,7 @@ import (
 
 type routeProvider struct{}
 
-func (routeProvider) AuthorizationURL(state, _ string) string {
+func (routeProvider) AuthorizationURL(state, _ string, _ []string) string {
 	return "https://provider.invalid/?state=" + url.QueryEscape(state)
 }
 func (routeProvider) Exchange(_ context.Context, code, _ string) (string, string, string, error) {

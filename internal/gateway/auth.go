@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,8 +60,10 @@ type OAuthConfig struct {
 
 // Provider must validate the authorization code and obtain an authenticated account ID.
 // Token is transient: implementations must not log request/response bodies.
+// extraScopes are scopes asked for beyond the provider's own fixed set; only
+// the person's own explicit reconnect asks for any (allowedExtraScopes).
 type Provider interface {
-	AuthorizationURL(state, challenge string) string
+	AuthorizationURL(state, challenge string, extraScopes []string) string
 	Exchange(context.Context, string, string) (token string, numericID string, login string, err error)
 }
 
@@ -545,18 +548,33 @@ func uiReturn(path string) bool {
 	}
 	return true
 }
+
+// allowedExtraScopes are the scopes a reconnect may add to the sign-in's
+// own: workflow, for agents that change GitHub Actions workflows. The person
+// opts in on Settings › Code hosts; their daemon remembers the choice.
+var allowedExtraScopes = []string{"workflow"}
+
 func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	returnTo := "/workspaces"
 	reconnect, intent := "", "none"
-	if a.exact(r, "/auth/github/start", "return_to", "reconnect") && uiReturn(r.URL.Query().Get("return_to")) && r.URL.Query().Get("reconnect") == "1" {
+	var extra []string
+	reconnecting := a.exact(r, "/auth/github/start", "return_to", "reconnect") && r.URL.Query().Get("reconnect") == "1"
+	// A reconnect may also ask for one more scope from a fixed list. It only
+	// widens what the person themselves approves on GitHub, so the browser
+	// may ask; it is honoured under the same guard as the reconnect.
+	scoped := a.exact(r, "/auth/github/start", "return_to", "reconnect", "scope") && r.URL.Query().Get("reconnect") == "1" && slices.Contains(allowedExtraScopes, r.URL.Query().Get("scope"))
+	if (reconnecting || scoped) && uiReturn(r.URL.Query().Get("return_to")) {
 		returnTo = r.URL.Query().Get("return_to")
 		// A reconnect replaces gh's working login, so only the person's own
 		// page may ask for it: a cross-site navigation carries the Lax
 		// session cookie but not a same-origin fetch site. A refused intent
-		// is an ordinary sign-in.
+		// is an ordinary sign-in, and asks for no extra scope.
 		intent = "reconnect_refused"
 		if s, ok := a.authenticated(r); ok && r.Header.Get("Sec-Fetch-Site") == "same-origin" && len(r.Header.Values("Sec-Fetch-Site")) == 1 {
 			reconnect, intent = s.identity.Subject, "reconnect"
+			if scoped {
+				extra, intent = []string{r.URL.Query().Get("scope")}, "reconnect_scope"
+			}
 		}
 	} else if a.exact(r, "/auth/github/start", "return_to") && uiReturn(r.URL.Query().Get("return_to")) {
 		returnTo = r.URL.Query().Get("return_to")
@@ -607,7 +625,7 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
-	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)
+	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge, extra), http.StatusFound)
 }
 
 // admit spends one token from the per-peer bucket that sign-in starts and

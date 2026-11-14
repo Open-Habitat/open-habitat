@@ -267,6 +267,7 @@ export function AccountSettings({
   nativeState,
   nativeReason,
   nativeLogin,
+  nativeScopes,
   onPiSignIn,
   modelSelector,
   onClose,
@@ -287,13 +288,17 @@ export function AccountSettings({
   name?: string;
   csrf?: string;
   onDisconnect?: () => void;
-  /** Sign in with GitHub again; the sign-in replaces an expired gh login. */
-  onReconnect?: () => void;
+  /** Sign in with GitHub again; the sign-in replaces an expired gh login.
+   * workflow asks for, or drops, the workflow scope; without it the app
+   * keeps what the person has. */
+  onReconnect?: (workflow?: boolean) => void;
   /** A workspace came back from the Trash: read the snapshot again. */
   onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
   nativeReason?: NativeUnknownReason;
   nativeLogin?: string;
+  /** The token's scopes with a working login: null when unread. */
+  nativeScopes?: readonly string[] | null;
   onPiSignIn?: () => void;
   modelSelector?: React.ReactNode;
   /** Closes Settings: the X in the corner, or Esc outside a field. */
@@ -923,10 +928,12 @@ export function AccountSettings({
         )}
         {section === "koodipalvelut" && (
           <CodeHostSettings
+            identity={editorIdentity}
             csrf={csrf}
             nativeState={nativeState}
             nativeReason={nativeReason}
             nativeLogin={nativeLogin}
+            nativeScopes={nativeScopes}
             onReconnect={onReconnect}
             onDisconnect={onDisconnect}
             workspaces={workspaces}

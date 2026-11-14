@@ -30,6 +30,7 @@ const reply = (
       language,
       quiet_sort: "newest",
       quiet_workspace: null,
+      github_workflow: false,
       experimental,
     }),
     { headers: { "Content-Type": "application/json" } },

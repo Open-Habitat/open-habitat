@@ -543,6 +543,40 @@
   color: var(--ah-muted);
   text-decoration: line-through;
 }
+/* GitHub's row: the token's scopes as chips under its words. */
+.s-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.s-scopes code {
+  font-family: var(--ah-mono);
+  font-size: 0.95em;
+}
+/* GitHub's workflow permission row: a mark in the letter tile's place. */
+.s-wf-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken, var(--ah-bg));
+  color: var(--ah-ink-2);
+}
+.s-wf-row .s-val {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ah-s2);
+}
+@media (max-width: 600px) {
+  .s-wf-row .s-val {
+    justify-content: flex-start;
+  }
+}
 .s-key-add {
   background: var(--ah-sunken);
 }

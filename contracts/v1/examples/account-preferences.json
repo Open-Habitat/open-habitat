@@ -5,6 +5,7 @@
   "language": "en",
   "quiet_sort": "newest",
   "quiet_workspace": "ws_example123",
+  "github_workflow": false,
   "experimental": {
     "worker-row-sentence": true
   }

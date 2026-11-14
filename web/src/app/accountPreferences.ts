@@ -43,6 +43,7 @@ type Reply = {
   language: LanguageChoice;
   quiet_sort: QuietSort;
   quiet_workspace: string | null;
+  github_workflow: boolean;
   experimental: Record<string, true>;
 };
 const ajv = new LazyAjv({ strict: false });
@@ -55,14 +56,17 @@ const url = "/api/v1/account/preferences";
 
 /** What the daemon last confirmed, and the one write in flight. `loaded`
  * says the first read has finished, either way. `busy` and `error` name what
- * they concern: "engine", "language", "quiet_sort", "quiet_workspace", a
- * feature id, or "read". */
+ * they concern: "engine", "language", "quiet_sort", "quiet_workspace",
+ * "github_workflow", a feature id, or "read". */
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
   quiet_sort: QuietSort;
   /** The one workspace Hiljaiset is narrowed to; null for every one. */
   quiet_workspace: string | null;
+  /** The person allowed agents to change GitHub Actions workflows: the
+   * opt-in behind the sign-in's workflow scope, not what the token holds. */
+  github_workflow: boolean;
   experimental: Readonly<Record<string, true>>;
   loaded: boolean;
   busy?: string;
@@ -73,6 +77,7 @@ const initial: Preferences = {
   language: "system",
   quiet_sort: "newest",
   quiet_workspace: null,
+  github_workflow: false,
   experimental: {},
   loaded: false,
 };
@@ -132,6 +137,7 @@ async function readReply(response: Response, identity: string) {
     language: result.language,
     quiet_sort: result.quiet_sort,
     quiet_workspace: result.quiet_workspace,
+    github_workflow: result.github_workflow,
     experimental: result.experimental,
   };
 }
@@ -223,6 +229,12 @@ export function chooseLanguage(
   csrf: string,
 ) {
   return write(identity, csrf, "language", { language });
+}
+
+/** Records the GitHub workflow opt-in; Don't allow writes false. Allowing
+ * goes through the GitHub sign-in, whose installed token sets it. */
+export function setGitHubWorkflow(identity: string, on: boolean, csrf: string) {
+  return write(identity, csrf, "github_workflow", { github_workflow: on });
 }
 
 export function setExperimentalFeature(

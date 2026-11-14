@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +21,20 @@ type GitHubProvider struct {
 	Client                              *http.Client
 }
 
-func (g GitHubProvider) AuthorizationURL(state, challenge string) string {
-	q := url.Values{"client_id": {g.ClientID}, "redirect_uri": {g.CallbackURL}, "state": {state}, "scope": {"repo read:org gist"}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}
+// githubScopes are what every sign-in asks for, so the person's gh can clone,
+// push, see organisation memberships and create gists.
+const githubScopes = "repo read:org gist"
+
+// AuthorizationURL asks for githubScopes and the extra scopes start allowed
+// (only ever from allowedExtraScopes).
+func (g GitHubProvider) AuthorizationURL(state, challenge string, extraScopes []string) string {
+	scope := githubScopes
+	for _, s := range extraScopes {
+		if slices.Contains(allowedExtraScopes, s) {
+			scope += " " + s
+		}
+	}
+	q := url.Values{"client_id": {g.ClientID}, "redirect_uri": {g.CallbackURL}, "state": {state}, "scope": {scope}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}
 	return "https://github.com/login/oauth/authorize?" + q.Encode()
 }
 func (g GitHubProvider) client() *http.Client {

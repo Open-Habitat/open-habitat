@@ -129,6 +129,9 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		{"PUT", "", `{"language":"sv"}`, 400}, {"PUT", "", `{"language":""}`, 400}, {"PUT", "", `{"language":null}`, 400},
 		{"PUT", "", `{"language":"en","engine":"vscode"}`, 400}, {"PUT", "", `{"Language":"en"}`, 400},
 		{"PUT", "", `{"Engine":"vscode"}`, 400}, {"PUT", "", `{"engine":null}`, 400}, {"PUT", "", `[]`, 400},
+		{"PUT", "", `{"github_workflow":true}`, 200}, {"PUT", "", `{"github_workflow":false}`, 200},
+		{"PUT", "", `{"github_workflow":null}`, 400}, {"PUT", "", `{"github_workflow":"true"}`, 400},
+		{"PUT", "", `{"GitHub_Workflow":true}`, 400}, {"PUT", "", `{"github_workflow":true,"engine":"vscode"}`, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "http://unix"+AccountPreferencesPath+tc.suffix, strings.NewReader(tc.body))
 		if tc.body != "" {
@@ -248,5 +251,47 @@ func TestAccountPreferencesDropRetiredRecentCount(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(dir, "preferences.json"))
 	if err != nil || strings.Contains(string(raw), "recent_count") || !strings.Contains(string(raw), `"quiet_sort":"name"`) {
 		t.Fatalf("stored: %s %v", raw, err)
+	}
+}
+
+// The workflow opt-in: off until chosen and stored only while on; the
+// explicit reconnect sets it to whether the installed token has the scope,
+// and unread scopes leave it alone.
+func TestAccountPreferencesGitHubWorkflow(t *testing.T) {
+	home := t.TempDir()
+	file := filepath.Join(home, ".config/open-habitat/preferences.json")
+	value, err := readPreferences(home)
+	if err != nil || value.GitHubWorkflow {
+		t.Fatalf("default: %+v %v", value, err)
+	}
+	if err := rememberGitHubWorkflow(home, []string{"gist", "read:org", "repo", "workflow"}); err != nil {
+		t.Fatal(err)
+	}
+	if value, err = readPreferences(home); err != nil || !value.GitHubWorkflow {
+		t.Fatalf("granted: %+v %v", value, err)
+	}
+	if err := rememberGitHubWorkflow(home, nil); err != nil {
+		t.Fatal(err)
+	}
+	if value, err = readPreferences(home); err != nil || !value.GitHubWorkflow {
+		t.Fatalf("unread scopes changed it: %+v %v", value, err)
+	}
+	if err := rememberGitHubWorkflow(home, []string{"repo"}); err != nil {
+		t.Fatal(err)
+	}
+	if value, err = readPreferences(home); err != nil || value.GitHubWorkflow {
+		t.Fatalf("dropped: %+v %v", value, err)
+	}
+	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), "github_workflow") {
+		t.Fatalf("off stored a key: %s", raw)
+	}
+	cfg := transport.Config{Home: home, Provider: "github", Subject: "42"}
+	handler := AccountPreferencesHandler(cfg, func(*http.Request) bool { return true })
+	r := httptest.NewRequest("GET", "http://unix"+AccountPreferencesPath, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	var reply map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil || reply["github_workflow"] != false {
+		t.Fatalf("reply: %s %v", w.Body.String(), err)
 	}
 }
