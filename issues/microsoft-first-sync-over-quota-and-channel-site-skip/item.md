@@ -3,7 +3,7 @@ created: 2026-11-10
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: taskfleet:01m72a2pjq8ppye66vxcrg3wtd/contoso-m365-first-sync
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: m365-first-sync
 lane_seq: 1
 preparation: pending
+closed: 2026-11-14
 ---
 
 # Microsoft first sync refused over quota after a 16-minute count; a Teams channel site skipped with 404
@@ -85,3 +86,9 @@ did not say whether the site's host was the tenant's own.
 - [ ] Design (not decided here): give Microsoft's folder step size information
   (or a fast estimate) so a person can choose within the quota before a long
   count, and show the counted size against free space when a pass is refused.
+
+## Decisions
+
+### 2026-11-14T11:41:50Z · @jari
+
+Jari 14.11.2026: the folder-size prototype is superseded. Microsoft connect no longer offers folder choice (m365-connect-without-folder-choice); pinning folders locally is a separate feature (m365-pin-folders). Diagnostics delivered earlier stand; the remaining criterion is dropped.
