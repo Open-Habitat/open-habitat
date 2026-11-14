@@ -2,13 +2,16 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while verifying gate-load-flakes-bundle
 source_ref: taskfleet:01m7cwhrde7wwwthz6aab2hrfs/main-failure:browser-conversation-three
 originating_run: 01m7cwhrde7wwwthz6aab2hrfs
 originating_run_kind: spinoff
+lane: browser-conversation-red
+lane_seq: 1
+preparation: ready
 ---
 
 # Three browser-conversation cases fail on main: rail mark and uncertain-send notice not found
