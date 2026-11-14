@@ -28,4 +28,4 @@ looking timing-dependent.
 - Browser: `tests/next-waiting-row.spec.ts:79` — acceptance opens, live list
   empties and reopens, finish closes permanently (653 passed otherwise).
 
-Output: `/var/tmp/agent-scratch/oh-gate.7DyEmI/gate.json` on Trude.
+Output: kept in the conductor's gate clone (not public).
