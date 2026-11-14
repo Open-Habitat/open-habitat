@@ -1,10 +1,10 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-14
 type: bug
 status: fixed
 priority: normal
-related: ['@microsoft-first-sync-over-quota-and-channel-site-skip', '@m365-teams-files-and-messages']
+related: ['@m365-teams-files-and-messages']
 preparation: ready
 lane: m365-followed-sites
 lane_seq: 1
