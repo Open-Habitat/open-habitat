@@ -4,7 +4,7 @@ updated: 2026-11-14
 type: feature
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: worker-ask
 lane_seq: 1
 ---
@@ -38,3 +38,9 @@ before its agent loop (`taskfleet-worker-trust-prompt`) is silent.
   unnoticed.
 
 Most of this belongs to Taskfleet; Habitat's part is showing and waking.
+
+## Decisions
+
+### 2026-11-14T12:58:25Z · @jari
+
+Jari 14.11.2026: the question goes to the parent agent, which answers it and asks the person only when the person must answer. Design needed; benchmark how Raine's workmux implements worker-to-parent questions as possible architecture material.
