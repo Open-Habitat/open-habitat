@@ -1151,6 +1151,34 @@ export type LiveTool = {
   failureCause?: BashFailure;
 };
 
+/**
+ * The aborted replies a server restart cut rather than the person. Pi saves
+ * both alike; the host tells them apart. The catch-up Habitat gave the agent
+ * after a restart says whether the turn Pi was working on never finished
+ * (interrupted_turn), which then is the aborted reply just before it, and
+ * while the conversation still rests the snapshot says the same of its
+ * latest reply.
+ */
+function restartCutReplies(entries: HistoryEntry[], lastCut?: boolean) {
+  const cut = new Set<string>();
+  let aborted: string | undefined;
+  for (const entry of entries) {
+    if (entry.kind === "assistant")
+      aborted = entry.stop_reason === "aborted" ? entry.entry_key : undefined;
+    else if (entry.restart) {
+      if (
+        aborted &&
+        entry.restart.interrupted_turn &&
+        entry.restart.stopped?.cause === "restart"
+      )
+        cut.add(aborted);
+      aborted = undefined;
+    }
+  }
+  if (lastCut && aborted) cut.add(aborted);
+  return cut;
+}
+
 export function timelineItems(
   entries: HistoryEntry[],
   onLogin?: () => void,
@@ -1165,7 +1193,11 @@ export function timelineItems(
   /** Palaa tähän's chosen message: it and what follows dim while the
    * sheet is open. */
   dimFrom?: string,
+  /** The host says the conversation rests after a server restart cut its
+   * latest turn (snapshot rest cause restart with interrupted_turn). */
+  restartCut?: boolean,
 ) {
+  const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
   for (const entry of entries)
@@ -1289,7 +1321,12 @@ export function timelineItems(
           failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
-              ? { at: savedAt(group[group.length - 1]) }
+              ? {
+                  at: savedAt(group[group.length - 1]),
+                  by: cutByRestart.has(group[group.length - 1].entry_key)
+                    ? "restart"
+                    : undefined,
+                }
               : undefined
           }
           steps={[
@@ -1868,6 +1905,11 @@ function HistoryViewContent({
               onLogin,
               agent.agent_id,
               window?.revision,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              agent.rest?.cause === "restart" && !!agent.interrupted_turn,
             )}
             historyMode="pagedAccessible"
             emptyLabel={txt.empty}

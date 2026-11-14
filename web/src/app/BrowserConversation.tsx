@@ -2023,6 +2023,7 @@ function BrowserConversationContent({
     id ? (callId) => store.toolExpansion(id, callId) : undefined,
     liveTurn,
     rewind.target,
+    archive?.rest?.cause === "restart" && !!archive.interrupted_turn,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;

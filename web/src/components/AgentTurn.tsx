@@ -292,14 +292,20 @@ function StageReply({
 
 /**
  * The quiet end of a turn the person stopped. Without it a stopped turn looks
- * like one that ended by itself (Jari 24.10.2026).
+ * like one that ended by itself (Jari 24.10.2026). Pi saves a turn the
+ * daemon's restart cut the same way; that one says the server cut it, since
+ * the person did nothing.
  */
-function StoppedRow({ at }: { at?: number }) {
+function StoppedRow({ at, by }: { at?: number; by?: "restart" }) {
   const time = at === undefined ? undefined : new Date(at);
   return (
-    <div data-testid="turn-stopped" className="ah-turn-stopped">
+    <div
+      data-testid="turn-stopped"
+      data-by={by ?? "person"}
+      className="ah-turn-stopped"
+    >
       <span className="ah-turn-stopped-text">
-        {txt.stopped}
+        {by === "restart" ? txt.stoppedRestart : txt.stopped}
         {time ? (
           <>
             {" · "}
@@ -339,8 +345,9 @@ export function AgentTurn({
   steps: TurnStep[];
   /** When native history saved the message that started the turn. */
   startedAt?: number;
-  /** Pi recorded the turn's end as an abort, saved at `at` when known. */
-  stopped?: { at?: number };
+  /** Pi recorded the turn's end as an abort, saved at `at` when known;
+   * `by` says a server restart, not the person, cut it. */
+  stopped?: { at?: number; by?: "restart" };
   failed?: boolean;
   /** What the failed reply says instead of the provider's own words, in one
    * short row (an AI sign-in the provider refused). */
@@ -492,7 +499,9 @@ export function AgentTurn({
         </div>
       ) : null}
       {!working ? changes : null}
-      {stopped && !working ? <StoppedRow at={stopped.at} /> : null}
+      {stopped && !working ? (
+        <StoppedRow at={stopped.at} by={stopped.by} />
+      ) : null}
     </section>
   );
 }

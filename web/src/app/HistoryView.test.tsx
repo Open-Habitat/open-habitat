@@ -1145,3 +1145,84 @@ it("folds many large pictures into one row until the person opens them", () => {
   );
   expect(screen.queryByTestId("history-pictures-folded")).toBeNull();
 });
+
+it("says a server restart, not the person, ended a turn the restart cut", () => {
+  const user = (key: string): HistoryEntry => ({ ...entry, entry_key: key });
+  const aborted = (key: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "assistant",
+    stop_reason: "aborted",
+    content: { media_type: "text/plain", text: "", complete: true },
+    blocks: [],
+  });
+  const answer = (key: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "assistant",
+    stop_reason: "stop",
+    content: { media_type: "text/plain", text: "Valmis", complete: true },
+    blocks: [{ type: "text", text: "Valmis" }],
+  });
+  const catchUp = (
+    key: string,
+    cause: "restart" | "idle",
+    interrupted_turn: boolean,
+  ): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "unknown",
+    restart: {
+      stopped: { cause, at: "2026-11-14T04:10:20Z" },
+      interrupted_turn,
+      processes: [],
+      runs: [],
+      still_running: [],
+    },
+  });
+  const stops = (items: ReturnType<typeof timelineItems>) =>
+    Array.from(
+      render(
+        items.map((item) => <div key={item.id}>{item.content}</div>),
+      ).container.querySelectorAll('[data-testid="turn-stopped"]'),
+    ).map((row) => row.getAttribute("data-by"));
+  // The restart's catch-up says the turn never finished: the abort before it
+  // was the restart's. A person's stop the restart did not interrupt stays
+  // theirs, and so does one after an earlier restart.
+  expect(
+    stops(
+      timelineItems([
+        user("u1"),
+        aborted("a1"),
+        user("u2"),
+        catchUp("c1", "restart", true),
+        answer("a2"),
+        user("u3"),
+        aborted("a3"),
+        user("u4"),
+        catchUp("c2", "restart", false),
+        answer("a4"),
+        user("u5"),
+        aborted("a5"),
+      ]),
+    ),
+  ).toEqual(["restart", "person", "person"]);
+  // While it still rests, the snapshot says the latest turn was cut.
+  const resting = [user("u1"), aborted("a1")];
+  expect(
+    stops(
+      timelineItems(
+        resting,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      ),
+    ),
+  ).toEqual(["restart"]);
+  expect(stops(timelineItems(resting))).toEqual(["person"]);
+});

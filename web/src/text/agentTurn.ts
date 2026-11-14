@@ -16,6 +16,7 @@ const fi = {
   agentWorking: "Agentti työskentelee",
   workerWorking: "Worker työskentelee",
   stopped: "Keskeytit",
+  stoppedRestart: "Katkesi palvelimen uudelleenkäynnistyksessä",
 };
 
 export const agentTurnText = catalog(fi, {
@@ -33,4 +34,5 @@ export const agentTurnText = catalog(fi, {
   agentWorking: "Agent working",
   workerWorking: "Worker working",
   stopped: "You stopped it",
+  stoppedRestart: "Cut off when the server restarted",
 });
