@@ -29,3 +29,9 @@ Habitat's own observation; how an agent-set state expires or is overridden
 when the person writes or a worker finishes; how it relates to
 `worker-asks-parent` (a worker's question reaching the parent) and to the
 existing rail rules (`rail-background-service-not-running`).
+
+## Decisions
+
+### 2026-11-14T18:38:02Z · @jari
+
+Jari 14.11.2026: the agent only decides its conversation's section through an open-habitat command, in practice whether it is in Sinun vuorosi or Käynnissä. No agent-written text on the row. (Answers the round-1 prototype: none of its text directions; the rail looks as today.)

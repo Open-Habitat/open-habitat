@@ -44,3 +44,7 @@ Most of this belongs to Taskfleet; Habitat's part is showing and waking.
 ### 2026-11-14T12:58:25Z · @jari
 
 Jari 14.11.2026: the question goes to the parent agent, which answers it and asks the person only when the person must answer. Design needed; benchmark how Raine's workmux implements worker-to-parent questions as possible architecture material.
+
+### 2026-11-14T18:38:02Z · @jari
+
+Jari 14.11.2026 (on agent-sets-rail-state): the agent's own rail control is only the section, Sinun vuorosi or Käynnissä, set with an open-habitat command; no agent text on the row.
