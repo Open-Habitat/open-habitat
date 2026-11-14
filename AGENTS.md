@@ -136,7 +136,13 @@ acknowledgements, restated status and soon-stale delivery details are noise.
 Subdirectory `README.md` files are reserved for the public front door, so
 content for agents goes in that directory's `AGENTS.md`; each `CLAUDE.md` is a
 symlink to it, so edit the `AGENTS.md`. CLI work follows the AI-first CLI
-canon (`/ai-first-cli-canon`), tracked in `CONFORMANCE.md`.
+canon (`/ai-first-cli-canon`), tracked in `CONFORMANCE.md`. The vendored canon
+excludes upstream maintenance provenance, which is authoring context rather
+than public canon content.
+After `project-canon skill install --target <repo>`, remove that maintenance
+comment from both harness copies if the installed release still emits it;
+`scripts/validate-project-view.py` rejects its return. Keep the installation
+metadata and canon sections intact.
 
 ## These instructions
 

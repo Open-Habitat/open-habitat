@@ -2,7 +2,7 @@
 created: 2026-11-10
 updated: 2026-11-14
 type: chore
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: publication scanner inventory during oss-public-instructions
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: public-hygiene
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Vendored ai-first-cli-canon skill names the maintainer's private infrastructure repo
@@ -34,3 +35,9 @@ A local hand edit would be reverted by the next install.
 
 Observed by `oss-public-instructions` (scanner inventory before and after its
 rewrite; these are the only remaining harness-entry findings).
+
+## Resolution
+
+### 2026-11-14T07:32:56Z · @issuectl
+
+Removed maintenance provenance from both copies and added a gate regression guard. See result.md. Live check: installed generator output and repaired local skill copies inspected; no deployment involved.

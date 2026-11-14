@@ -18,7 +18,7 @@ ENV.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null',
 
 class ProjectScripts(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='project-scripts-', dir='/var/tmp')
+        self.temp = tempfile.TemporaryDirectory(prefix='project-scripts-', dir=os.environ.get('TMPDIR', '/var/tmp'))
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'product'
         self.root.mkdir()
@@ -83,6 +83,19 @@ class ProjectScripts(unittest.TestCase):
         self.run_cmd('git', 'rm', '--cached', '-rf', 'history')
         self.put('.gitignore', '')
         self.run_cmd('python3', 'scripts/validate-project-view.py', expected=1)
+
+    def test_vendored_canon_excludes_generator_maintenance(self):
+        for agent in ('.claude', '.pi'):
+            with self.subTest(agent=agent):
+                name = f'{agent}/skills/ai-first-cli-canon/SKILL.md'
+                clean = '<!-- Installed by project-canon -->\n# CLI canon\n'
+                self.put(name, clean)
+                self.run_cmd('python3', 'scripts/validate-project-view.py')
+                self.put(name, clean + '<!-- PROVENANCE / MAINTENANCE (project-canon).\n'
+                         'Synthetic upstream authoring context. -->\n')
+                self.run_cmd('python3', 'scripts/validate-project-view.py', expected=1)
+                self.put(name, clean)
+                self.run_cmd('python3', 'scripts/validate-project-view.py')
 
     def test_explicit_archive(self):
         self.put('removed.md', 'archive content\n')

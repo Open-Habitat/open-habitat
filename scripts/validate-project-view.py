@@ -126,6 +126,13 @@ def main() -> int:
         for target in LINK.findall(text):
             check_link(errors, page, target, stems)
 
+    # Generator authoring provenance is not part of the public CLI canon.
+    # Catch reinstallations of generator versions that still embed that note.
+    for agent in (".claude", ".pi"):
+        skill = ROOT / agent / "skills/ai-first-cli-canon/SKILL.md"
+        if skill.is_file() and "PROVENANCE / MAINTENANCE" in skill.read_text(encoding="utf-8"):
+            fail(errors, f"{skill.relative_to(ROOT)}: remove upstream maintenance provenance before publishing")
+
     for page in living_markdown():
         if page.is_relative_to(SITE) and page in pages:
             continue
