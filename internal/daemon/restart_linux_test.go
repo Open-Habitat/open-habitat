@@ -94,6 +94,9 @@ func TestBranchScanSeesACutTurn(t *testing.T) {
 		{"tool aborted by a restart", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", "restart"), line("e4", "e3", result), line("e5", "e4", `{"role":"assistant","stopReason":"error","errorMessage":"This operation was aborted"}`)}, true},
 		// A mark from an earlier turn does not make the person's own stop a cut.
 		{"person's stop after a restarted turn", []string{line("e1", "", prompt), line("e2", "e1", "restart"), line("e3", "e2", aborted), line("e4", "e3", prompt), line("e5", "e4", aborted)}, false},
+		// An automatic wake opens its run with the catch-up: a stop in that
+		// run is the person's, and only the first halted reply is the cut.
+		{"stop in a woken run", []string{line("e1", "", prompt), line("e2", "e1", "restart"), line("e3", "e2", aborted), `{"type":"custom_message","customType":"oh-resume-catch-up","id":"e4","parentId":"e3","timestamp":"2030-01-01T00:00:00Z","display":true,"content":"x","details":{}}`, line("e5", "e4", aborted)}, false},
 		{"restart while idle", []string{line("e1", "", prompt), line("e2", "e1", answer), line("e3", "e2", "restart")}, false},
 		// The person's `!command` and Habitat's messages are not the answer.
 		{"shell after a tool result", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result), line("e4", "e3", shell)}, true},

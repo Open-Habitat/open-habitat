@@ -1155,27 +1155,38 @@ export type LiveTool = {
  * The aborted replies a server restart cut rather than the person. Pi saves
  * both alike; the host tells them apart. The catch-up Habitat gave the agent
  * after a restart says whether the turn Pi was working on never finished
- * (interrupted_turn), which then is the aborted reply just before it, and
- * while the conversation still rests the snapshot says the same of its
- * latest reply.
+ * (interrupted_turn). That turn is the one the catch-up's run continues: the
+ * turn before the person's message that woke it, or the turn just before an
+ * automatic wake. While the conversation still rests, the snapshot says the
+ * same of its latest turn. Either way the cut turn is named only when it
+ * ended in an aborted reply; a prompt Pi never answered has no stop to show.
  */
 function restartCutReplies(entries: HistoryEntry[], lastCut?: boolean) {
   const cut = new Set<string>();
-  let aborted: string | undefined;
+  // The current turn's aborted reply, the previous turn's, and whether the
+  // newest conversation message is the person's.
+  let current: string | undefined;
+  let previous: string | undefined;
+  let afterPerson = false;
   for (const entry of entries) {
-    if (entry.kind === "assistant")
-      aborted = entry.stop_reason === "aborted" ? entry.entry_key : undefined;
-    else if (entry.restart) {
+    if (entry.kind === "user") {
+      previous = current;
+      current = undefined;
+      afterPerson = true;
+    } else if (entry.kind === "assistant") {
+      current = entry.stop_reason === "aborted" ? entry.entry_key : undefined;
+      afterPerson = false;
+    } else if (entry.restart) {
+      const continued = afterPerson ? previous : current;
       if (
-        aborted &&
+        continued &&
         entry.restart.interrupted_turn &&
         entry.restart.stopped?.cause === "restart"
       )
-        cut.add(aborted);
-      aborted = undefined;
+        cut.add(continued);
     }
   }
-  if (lastCut && aborted) cut.add(aborted);
+  if (lastCut && !afterPerson && current) cut.add(current);
   return cut;
 }
 

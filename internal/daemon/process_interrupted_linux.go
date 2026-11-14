@@ -112,6 +112,7 @@ func scanBranchStream(r io.Reader) branchScan {
 		at           int64
 		personStop   bool
 		restartStop  bool
+		catchUp      bool // Habitat's catch-up, which opens a woken run
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
 		person       bool // that message is the person's (role user)
@@ -222,6 +223,7 @@ func scanBranchStream(r io.Reader) branchScan {
 		case e.Type == "custom" && e.CustomType == restartStopType:
 			f.restartStop = true
 		case e.Type == "custom_message" && customType == catchUpMessageType:
+			f.catchUp = true
 			var d struct {
 				Processes []struct {
 					ID    string `json:"id"`
@@ -261,7 +263,7 @@ func scanBranchStream(r io.Reader) branchScan {
 	reported := map[string]bool{}
 	scan := branchScan{runs: map[string]bool{}, refused: map[string]int64{}, works: map[string]int64{}}
 	// The daemon's restart mark is ahead of the reply Pi aborted on its way
-	// down, within the turn the person last began.
+	// down, within the run it cut; the first such reply uses it up.
 	restarted := false
 	for _, f := range facts {
 		if !active[f.id] {
@@ -269,6 +271,11 @@ func scanBranchStream(r io.Reader) branchScan {
 		}
 		if f.restartStop {
 			restarted = true
+		}
+		// An automatic wake opens its run with Habitat's catch-up, not with
+		// the person's message: the mark belongs to the run before it.
+		if f.catchUp {
+			restarted = false
 		}
 		scan.last = max(scan.last, f.at)
 		if f.refused {
@@ -287,6 +294,9 @@ func scanBranchStream(r io.Reader) branchScan {
 			// A reply the restart aborted or failed leaves its turn cut, not
 			// stopped by the person nor failed by the provider.
 			cut := restarted && f.halted
+			if cut {
+				restarted = false
+			}
 			scan.turnCut, scan.turnError = f.open || cut, f.failed && !cut
 			scan.reply, scan.replyAt = "", 0
 			if f.answer {

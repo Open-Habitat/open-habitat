@@ -39,6 +39,9 @@ test('the last message says whether Pi stopped in the middle of a turn', () => {
   assert.equal(branchFacts([prompt, call, restart, result, said('assistant', { stopReason: 'error' })]).turnCut, true, 'a tool the restart aborted was cut');
   assert.equal(branchFacts([prompt, restart, aborted, prompt, aborted]).turnCut, false, 'a mark from an earlier turn does not make the person\'s stop a cut');
   assert.equal(branchFacts([prompt, answer, restart]).turnCut, false, 'a restart while idle cuts nothing');
+  const woken = { type: 'custom_message', customType: 'oh-resume-catch-up', details: {} };
+  assert.equal(branchFacts([prompt, restart, aborted, woken, aborted]).turnCut, false, 'a stop in an automatically woken run is not the restart\'s');
+  assert.equal(branchFacts([prompt, restart, aborted, woken, said('assistant', { stopReason: 'error' })]).turnCut, false, 'a provider error in a woken run is not the restart\'s');
   const shell = said('bashExecution', { command: 'git status' }), note = said('custom', { customType: 'oh-resume-catch-up' });
   assert.equal(branchFacts([prompt, call, result, shell]).turnCut, true, 'the person\'s !command does not finish the agent\'s turn');
   assert.equal(branchFacts([prompt, note]).turnCut, true, 'a custom message after the prompt is not its answer');

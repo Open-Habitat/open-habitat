@@ -1225,4 +1225,43 @@ it("says a server restart, not the person, ended a turn the restart cut", () => 
     ),
   ).toEqual(["restart"]);
   expect(stops(timelineItems(resting))).toEqual(["person"]);
+  // A newer prompt Pi never answered was the cut turn: the person's earlier
+  // stop stays theirs, at rest and after the continuation's catch-up.
+  const unanswered = [user("u1"), aborted("a1"), user("u2")];
+  expect(
+    stops(
+      timelineItems(
+        unanswered,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      ),
+    ),
+  ).toEqual(["person"]);
+  expect(
+    stops(
+      timelineItems([
+        ...unanswered,
+        user("u3"),
+        catchUp("c1", "restart", true),
+        answer("a2"),
+      ]),
+    ),
+  ).toEqual(["person"]);
+  // An automatic wake's catch-up follows the cut turn directly.
+  expect(
+    stops(
+      timelineItems([
+        user("u1"),
+        aborted("a1"),
+        catchUp("c1", "restart", true),
+        answer("a2"),
+      ]),
+    ),
+  ).toEqual(["restart"]);
 });

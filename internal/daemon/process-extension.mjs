@@ -147,12 +147,16 @@ export function branchFacts(branch) {
     const m = entry?.message;
     const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
     if (entry?.type === 'custom' && entry.customType === restartStopType) restartStop = true;
+    // An automatic wake opens its run with the catch-up, not a person's message.
+    if (custom?.customType === catchUpType) restartStop = false;
     // Only the turn's own messages decide, not a `!command` or a custom message.
     // A reply Pi aborted or failed after the daemon's restart mark was cut by
     // the restart, not stopped by the person.
     if (entry?.type === 'message' && ['user', 'assistant', 'toolResult'].includes(m?.role)) {
       if (m.role === 'user') restartStop = false;
-      turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse' || (restartStop && (m.stopReason === 'aborted' || m.stopReason === 'error'));
+      const cut = restartStop && m.role === 'assistant' && (m.stopReason === 'aborted' || m.stopReason === 'error');
+      if (cut) restartStop = false;
+      turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse' || cut;
     }
     if (m?.role === 'toolResult' && m.toolName === 'process') {
       const d = m.details;
