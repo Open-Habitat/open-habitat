@@ -41,3 +41,9 @@ separately (`m365-pin-folders`), not part of the connect dialog.
 - [x] Connecting Microsoft with files shows no folder choice and starts no sync; agent search/fetch works
 - [x] An existing syncing account keeps syncing after upgrade and after renewal
 - [x] Browser tests updated for the connect flow
+
+## Decisions
+
+### 2026-11-14T12:54:31Z · @jari
+
+Jari 14.11.2026: agent text reads well; approved for pilots, the real test is use in the environment where it is needed.

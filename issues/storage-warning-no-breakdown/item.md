@@ -8,7 +8,7 @@ provenance: chat
 source_ref: conductor:2026-11-13/storage-warning
 lane: storage-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # The storage warning leads nowhere: no cache breakdown and no way to ask the agent to clean up
@@ -37,3 +37,9 @@ although build scratch belongs to a disposable scratch location.
 - Where the Go build cache should live for agent and worker builds.
 
 Reported by Jari 13.11.2026.
+
+## Decisions
+
+### 2026-11-14T12:54:31Z · @jari
+
+Jari 14.11.2026: round 2 direction B1 Esikatselu accepted; it is the specification. Trash stays a separate action (conductor's default; Jari did not ask for it in the list). Implement as an experimental feature.

@@ -36,3 +36,7 @@ of the concrete shape (`preparation: pending`).
 ### 2026-11-14T11:42:19Z · @jari
 
 Jari 14.11.2026: direction accepted; next action a prototype round of the stop notice and the consent to one forced pass.
+
+### 2026-11-14T12:54:31Z · @jari
+
+Jari 14.11.2026 on round 1: a person will not find this in Settings. The stop and the consent belong where the agent started the work and caused the change (the conversation), not the integrations card. Round 2 explores that.
