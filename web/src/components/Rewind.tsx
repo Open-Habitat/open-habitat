@@ -191,6 +191,9 @@ export function RewindSheet({
         </div>
         <div className="ah-rewind-foot">
           <div className="ah-rewind-notes">
+            {withFiles ? (
+              <p className="ah-rewind-meta">{t.restoreWarning}</p>
+            ) : null}
             {preview && total ? (
               <p className="ah-rewind-meta">
                 {withFiles && preview.commands.length ? (

@@ -66,7 +66,7 @@ const fi = {
       shows:
         "Mitä jää sivuun ja mitkä tiedostot palautuvat. Korvattu jatko jää keskusteluun riviksi, josta voit avata sen tai jatkaa siitä tiedostoineen.",
       needs:
-        "Tiedostot palautuvat viesteistä, jotka lähetit ominaisuuden ollessa päällä. Palautuvat agentin muokkaamat tiedostot; komentojen tekemät muutokset jäävät. Kopiot tiedostoista jäävät omalle tilillesi.",
+        "Tiedostot palautuvat viesteistä, jotka lähetit ominaisuuden ollessa päällä. Agentin muokkaamien tiedostojen kaikki myöhemmät muutokset korvataan, myös omasi. Nykyinen sisältö tallennetaan ensin, jotta voit perua palautuksen. Vain komennoilla muutetut tiedostot jäävät ennalleen. Kopiot tiedostoista jäävät omalle tilillesi.",
       caption: "Oman viestin valikko",
     },
     "remote-browser": {
@@ -259,7 +259,7 @@ export const experimentalFeaturesText = catalog(fi, {
       shows:
         "What is set aside and which files are restored. The replaced continuation stays in the conversation as a row you can open or continue from, with its files.",
       needs:
-        "Files are restored for messages you sent while the feature was on. Files the agent edited are restored; changes made by commands stay. Copies of the files stay in your own account.",
+        "Files are restored for messages you sent while the feature was on. All later changes to files the agent edited are replaced, including your own. The current contents are saved first so you can undo the restore. Files changed only by commands stay as they are. Copies of the files stay in your own account.",
       caption: "Your message's menu",
     },
     "remote-browser": {

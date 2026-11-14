@@ -7,8 +7,9 @@ import { catalog, plural } from "../i18n";
 
 // Palaa tähän (components/Rewind.tsx): the own message's menu item, the
 // confirmation sheet above the composer and the history rows a return
-// leaves. Only the agent's edit and write tools' file changes are restored;
-// a command's effects stay, which the sheet says when commands ran.
+// leaves. Files tracked by the agent's edit and write tools are restored in
+// full, replacing anyone's later edits. Current contents are saved for undo.
+// Files changed only by commands are not tracked.
 const messages = (n: number) => (n === 1 ? "1 viestisi" : `${n} viestiäsi`);
 const replies = (n: number) => (n === 1 ? "1 vastaus" : `${n} vastausta`);
 const files = (n: number) => (n === 1 ? "1 tiedosto" : `${n} tiedostoa`);
@@ -36,7 +37,9 @@ const fi = {
   noCopies: "Tästä viestistä ei ole kopioita",
   reading: "Luetaan…",
   readFailed: "Tietoja ei voitu lukea; keskustelu voi silti palata.",
-  commandsStay: "Komennon muutokset jäävät.",
+  commandsStay: "Vain komennoilla muutetut tiedostot jäävät ennalleen.",
+  restoreWarning:
+    "Näiden tiedostojen kaikki myöhemmät muutokset korvataan, myös omasi. Nykyinen sisältö tallennetaan ensin, jotta voit perua palautuksen.",
   showFiles: "Näytä tiedostot",
   hideFiles: "Piilota tiedostot",
   created: "uusi",
@@ -73,14 +76,14 @@ const fi = {
   branchPartial: "Näytetään jatkon uusin osa.",
   continueThis: "Jatka tästä jatkosta",
   alsoFiles: "Palauta myös sen tiedostot",
-  alsoFilesHint: "Tiedostot palaavat tilaan, johon agentti ne jätti",
+  alsoFilesHint: "Tiedostot palaavat ennen palautusta tallennettuun tilaan",
   filesRestored: (n: number, time?: string) =>
     `${files(n)} palautettu${time ? ` tilaan ennen viestiäsi klo ${time}` : ""}.`,
   conversationContinues:
     "Keskustelu jatkuu ennallaan; agentille kerrottiin palautuksesta.",
   undo: "Peru palautus",
   undone:
-    "Tiedostojen palautus peruttu: agentin muutokset ovat taas paikallaan. Agentille kerrottiin.",
+    "Tiedostojen palautus peruttu: palautusta edeltänyt sisältö on taas paikallaan. Agentille kerrottiin.",
   fileErrors: (n: number) =>
     n === 1
       ? "1 tiedostoa ei voitu palauttaa."
@@ -136,7 +139,9 @@ export const rewindText = catalog(fi, {
   reading: "Reading…",
   readFailed:
     "The details could not be read; the conversation can still go back.",
-  commandsStay: "Changes made by commands stay.",
+  commandsStay: "Files changed only by commands stay as they are.",
+  restoreWarning:
+    "All later changes to these files are replaced, including your own. The current contents are saved first so you can undo the restore.",
   showFiles: "Show files",
   hideFiles: "Hide files",
   created: "new",
@@ -169,14 +174,14 @@ export const rewindText = catalog(fi, {
   branchPartial: "Showing the newest part of the continuation.",
   continueThis: "Continue from this one",
   alsoFiles: "Restore its files too",
-  alsoFilesHint: "The files go back to how the agent left them",
+  alsoFilesHint: "The files go back to the state saved before the restore",
   filesRestored: (n, time) =>
     `${enFiles(n)} restored${time ? ` to before your message at ${time}` : ""}.`,
   conversationContinues:
     "The conversation continues as it is; the agent was told about the restore.",
   undo: "Undo restore",
   undone:
-    "File restore undone: the agent's changes are back in place. The agent was told.",
+    "File restore undone: the contents from before the restore are back in place. The agent was told.",
   fileErrors: (n) => `${enFiles(n)} could not be restored.`,
   failed: {
     turn_running: "The agent started working. Choose again.",

@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: rewind-text
 lane_seq: 1
+closed: 2026-11-14
 ---
 
 # Rewind confirmation says the person's own later edits are replaced too
@@ -27,5 +28,5 @@ question, no attempt to tell who wrote which line.
 
 ## Acceptance Criteria
 
-- [ ] Finnish and English confirmation text in `web/src/text/rewind.ts` (and any other place describing the file restore) says this
-- [ ] Existing rewind tests updated
+- [x] Finnish and English confirmation text in `web/src/text/rewind.ts` (and any other place describing the file restore) says this
+- [x] Existing rewind tests updated

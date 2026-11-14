@@ -88,6 +88,9 @@ for (const width of [1440, 390]) {
       await page.getByRole("menuitem", { name: /Palaa tähän/ }).click();
 
       const sheet = page.getByTestId("rewind-sheet");
+      await expect(sheet).toContainText(
+        "Näiden tiedostojen kaikki myöhemmät muutokset korvataan, myös omasi. Nykyinen sisältö tallennetaan ensin, jotta voit perua palautuksen.",
+      );
       await expect(sheet).toBeVisible();
       await expect(sheet).toHaveAttribute("data-what", "both");
       await expect(page.getByTestId("rewind-conversation")).toContainText(

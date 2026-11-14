@@ -1,8 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { RewindPreview } from "../app/rewind";
+import { resetLanguageForTests } from "../i18n";
 import { ConversationFrame } from "./ConversationFrame";
 import { RewindRow, RewindSheet } from "./Rewind";
+
+afterEach(() => resetLanguageForTests("fi"));
 
 const preview: RewindPreview = {
   schema_version: 1,
@@ -58,13 +61,41 @@ it("offers the conversation and the files together by default and says what each
   expect(screen.getByTestId("rewind-files").textContent).toContain(
     "2 tiedostoa palautuu",
   );
-  expect(screen.getByText("Komennon muutokset jäävät.")).toBeTruthy();
+  expect(
+    screen.getByText("Vain komennoilla muutetut tiedostot jäävät ennalleen."),
+  ).toBeTruthy();
   fireEvent.click(screen.getByTestId("rewind-go"));
   expect(go).toHaveBeenCalledWith("both");
   expect(screen.getByTestId("rewind-go").textContent).toContain(
     "Palaa ja palauta",
   );
 });
+
+it.each([
+  [
+    "fi",
+    "Näiden tiedostojen kaikki myöhemmät muutokset korvataan, myös omasi. Nykyinen sisältö tallennetaan ensin, jotta voit perua palautuksen.",
+  ],
+  [
+    "en-US",
+    "All later changes to these files are replaced, including your own. The current contents are saved first so you can undo the restore.",
+  ],
+  [
+    "en-GB",
+    "All later changes to these files are replaced, including your own. The current contents are saved first so you can undo the restore.",
+  ],
+] as const)(
+  "explains replacement and undo before restoring files (%s)",
+  (language, warning) => {
+    resetLanguageForTests(language);
+    sheet();
+    expect(screen.getByText(warning)).toBeTruthy();
+    toggle("rewind-conversation");
+    expect(screen.getByText(warning)).toBeTruthy();
+    toggle("rewind-files");
+    expect(screen.queryByText(warning)).toBeNull();
+  },
+);
 
 it("names the already committed files before the restore and says their commits stay", () => {
   sheet({
