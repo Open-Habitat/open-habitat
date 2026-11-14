@@ -1150,6 +1150,12 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 			s.state = "idle"
 		}
 	}
+	// Native settlement can publish before this acknowledgement takes the
+	// lock. It could not schedule while pending. A rejected queue message
+	// also returns to idle without another native event to schedule for it.
+	if s.state == "idle" && s.settled && s.settlement["native_key"] != "" {
+		c.scheduleAutomaticRecap(s)
+	}
 	if kind == "send" {
 		outcome := s.ack
 		if undelivered {

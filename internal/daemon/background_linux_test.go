@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -199,6 +200,83 @@ func TestBackgroundRecapsRunOneAtATime(t *testing.T) {
 			t.Fatalf("no recap for %s: %v", id, probe.made)
 		}
 	}
+}
+
+func TestRejectedQueueMessageAfterSettlementKeepsRecap(t *testing.T) {
+	for _, kind := range []string{"steer", "follow_up"} {
+		for _, published := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/published=%v", kind, published), func(t *testing.T) {
+				c := &ConversationController{home: t.TempDir(), recapIdleDelay: time.Hour}
+				s := &conversation{state: "pending", settled: true}
+				if published {
+					s.settlement = map[string]string{"state": "settled", "native_key": "current"}
+				}
+				// The turn settled while a queue write was pending; its admitted
+				// attachment then disappeared before the native write could run.
+				c.finishPrompt(s, kind, []string{activityCommand(1)},
+					"/api/v1/attachments/11111111-1111-4111-8111-111111111111", nil, "accepted", false, nil)
+				if s.recapTimer != nil {
+					defer s.recapTimer.Stop()
+				}
+				if s.state != "idle" || s.ack != "rejected" || s.recapDue.IsZero() == published {
+					t.Fatalf("state=%s ack=%s recap due=%v, published=%v", s.state, s.ack, s.recapDue, published)
+				}
+			})
+		}
+	}
+}
+
+func TestNativeRunDiscardsPreviousSettlementProof(t *testing.T) {
+	const id = "11111111-1111-4111-8111-111111111111"
+	rpc := &piRPC{events: make(chan json.RawMessage, 1)}
+	s := &conversation{id: id, rpc: rpc, state: "idle", settled: true,
+		settlement: map[string]string{"state": "settled", "native_key": "previous"}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, recapIdleDelay: time.Hour}
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		c.pauseRecap(s)
+	}()
+	rpc.events <- []byte(`{"type":"agent_start"}`)
+	close(rpc.events)
+	c.drain(s)
+	if s.settlement != nil {
+		t.Fatal("native run retained the previous turn's settlement proof")
+	}
+}
+
+// A fast Pi may publish its whole turn before finishPrompt records the
+// acknowledgement. That ordering must still leave an owed recap to hand on.
+func TestBackgroundRecapAfterSettlementBeforePromptReceipt(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	probe := &backgroundProbe{}
+	probe.install(c)
+	id := h.create(c)
+	h.setFile("prompt-ack-hold", "1")
+	if w := h.send(c, id, "Fast reply", activityCommand(1)); w.Code != 200 {
+		t.Fatalf("send: %d", w.Code)
+	}
+	h.eventually("settlement before acknowledgement", func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		s := c.sessions[id]
+		return s.state == "pending" && s.settlement["native_key"] != ""
+	})
+	h.setFile("prompt-ack-hold", "")
+	h.eventually("acknowledged turn owes a recap", func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		s := c.sessions[id]
+		return s.state == "idle" && !s.recapDue.IsZero()
+	})
+	h.quiescent(c, id) // the acknowledgement also starts the automatic title
+	now := time.Now()
+	c.stopExpiredIdlePi(context.Background(), now)
+	c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod))
+	runQueuedNow(t, c, id)
+	h.eventually("owed recap made", func() bool { return probe.count() == 1 })
 }
 
 // The queue is the daemon's memory only. A restarted daemon finds the

@@ -106,7 +106,9 @@ for line in sys.stdin:
             out(dict(type="response",id=r["id"],command="prompt",success=False)); continue
         if os.path.exists(os.path.join(home,"prompt-exit")): sys.exit(4)
         open(os.path.join(home,"prompts.log"),"a").write(json.dumps(r["message"])+"\n")
-        out(dict(type="response",id=r["id"],command="prompt",success=True))
+        ack_hold=os.path.join(home,"prompt-ack-hold")
+        defer_ack=os.path.exists(ack_hold)
+        if not defer_ack: out(dict(type="response",id=r["id"],command="prompt",success=True))
         out(dict(type="agent_start"))
         while os.path.exists(os.path.join(home,"prompt-hold")): time.sleep(.02)
         ms=int(time.time()*1000)
@@ -114,6 +116,9 @@ for line in sys.stdin:
         append(dict(type="message",message=dict(role="assistant",content=[dict(type="text",text="ok")],timestamp=ms,stopReason="stop")))
         out(dict(type="agent_end"))
         out(dict(type="agent_settled"))
+        if defer_ack:
+            while os.path.exists(ack_hold): time.sleep(.02)
+            out(dict(type="response",id=r["id"],command="prompt",success=True))
     elif r["type"]=="get_commands":
         out(dict(type="response",id=r["id"],command="get_commands",success=True,data=dict(commands=COMMANDS)))
     elif r["type"]=="bash":

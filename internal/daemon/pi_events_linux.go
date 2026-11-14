@@ -413,6 +413,7 @@ func (c *ConversationController) drain(s *conversation) {
 			s.runActive = true
 			s.runInitial = s.state != "pending" && s.state != "accepted"
 			s.settled = false
+			s.settlement = nil // a native wake also supersedes the previous turn's proof
 			// Native wake-ups have no browser receipt. They still own an active run
 			// and sends must steer instead of prompting a streaming Pi.
 			if s.state == "idle" || s.state == "rejected" {
@@ -482,7 +483,7 @@ func (c *ConversationController) drain(s *conversation) {
 				if c.journal != nil {
 					c.journal.activity("pi:"+s.id, "idle")
 				}
-				if key != "" && s.state == "idle" {
+				if key != "" {
 					s.recapLastActivity = time.Now()
 					c.scheduleAutomaticRecap(s)
 				}
