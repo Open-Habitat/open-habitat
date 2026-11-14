@@ -1,12 +1,13 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: website
 lane_seq: 1
+closed: 2026-11-14
 ---
 
 # Website: first version (Astro + Starlight, fi/en) in website/

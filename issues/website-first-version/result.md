@@ -151,3 +151,7 @@ maturity text was wrong in spirit.
   needed for the point).
 - The "Choose Orca" / JupyterHub notes under the table, replaced by the
   paragraphs above.
+
+## Closed 14.11.2026 (conductor)
+
+Jari approved publishing on 13.11.; the site is live at https://open-habitat.ai (GitHub Pages, deploys on push to main; four other domains redirect; noindex stays until announcement). The front page now uses the new look (`website-front-page-brand`).
