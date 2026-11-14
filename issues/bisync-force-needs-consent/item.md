@@ -4,7 +4,7 @@ updated: 2026-11-14
 type: improvement
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: sync-consent
 lane_seq: 1
 ---
@@ -30,3 +30,9 @@ separate consent, e.g. *Jatka silti* in the account's card, or asking the
 agent), seeing what the forced pass would do (counts of changes and
 deletions from the dry run) before confirming. Awaiting Jari's confirmation
 of the concrete shape (`preparation: pending`).
+
+## Decisions
+
+### 2026-11-14T11:42:19Z · @jari
+
+Jari 14.11.2026: direction accepted; next action a prototype round of the stop notice and the consent to one forced pass.
