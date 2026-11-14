@@ -3,7 +3,7 @@ created: 2026-11-13
 updated: 2026-11-14
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:brand-round-2026-11-13/app
@@ -12,6 +12,7 @@ lane_seq: 2
 blocked_by: ['@non-text-contrast-boundaries']
 collision: [design-system/]
 preparation: ready
+closed: 2026-11-14
 ---
 
 # New brand: three themes, new mark and the mark as the agent state indicator
@@ -405,16 +406,22 @@ Wide rail **B**; narrow rail **N2** (dashed ring for `read`); sub-agents at 20 p
 
 ## Acceptance Criteria
 
-- [ ] The three themes replace light and dark and add `contrast`, selectable in Settings › Ulkoasu, the
+- [x] The three themes replace light and dark and add `contrast`, selectable in Settings › Ulkoasu, the
       account menu and by `prefers-contrast: more` under Järjestelmä; no stale selection state.
-- [ ] Favicon, landing mark and its static copy use the new mark; the landing page plays `intro` once.
-- [ ] Every place listed above draws the new mark with the mapping in the table; no place keeps the old
+- [x] Favicon, landing mark and its static copy use the new mark; the landing page plays `intro` once.
+- [x] Every place listed above draws the new mark with the mapping in the table; no place keeps the old
       ball, and the header shows failure.
-- [ ] Rail rows follow Jari's choice for the wide and the narrow rail; the branch mark is gone.
-- [ ] Reduced motion: every state is still told apart by shape and colour.
-- [ ] `forced-colors`: the mark and the selected states remain visible.
-- [ ] Text contrast measured in the rendered interface is at least 4.5:1 in Päivä and Yö and 7:1 in the
+- [x] Rail rows follow Jari's choice for the wide and the narrow rail; the branch mark is gone.
+- [x] Reduced motion: every state is still told apart by shape and colour.
+- [x] `forced-colors`: the mark and the selected states remain visible.
+- [x] Text contrast measured in the rendered interface is at least 4.5:1 in Päivä and Yö and 7:1 in the
       contrast theme; the two known light-theme shortfalls on main are listed if they remain.
-- [ ] Mermaid, terminal and syntax colours follow all three themes; what cannot follow (code-server) is
+- [x] Mermaid, terminal and syntax colours follow all three themes; what cannot follow (code-server) is
       stated in the notes.
-- [ ] Browser specs for the theme choice and the state mapping; a KOKEILTAVAA line.
+- [x] Browser specs for the theme choice and the state mapping; a KOKEILTAVAA line.
+
+## Resolution
+
+### 2026-11-14T05:29:27Z · @issuectl
+
+Landed: three themes, HabitatMark in every state place, rail B/N2, header failure; see result.md.
