@@ -20,7 +20,7 @@ commit=$(git -C "$repo" rev-parse HEAD)
 # when parallel UI work left the checked-in development references behind.
 build_repo="$stage/source"
 mkdir -p "$build_repo/scripts" "$build_repo/web"
-(cd "$repo" && tar --exclude=node_modules -cf - cmd internal go.mod go.sum policy.go systemd tmpfiles.d apparmor.d) | tar -xf - -C "$build_repo"
+(cd "$repo" && tar --exclude=node_modules -cf - cmd internal go.mod go.sum policy.go systemd tmpfiles.d apparmor.d needrestart) | tar -xf - -C "$build_repo"
 cp "$repo/scripts/generate-ui-reference.py" "$build_repo/scripts/"
 ln -s "$repo/web/src" "$build_repo/web/src"
 python3 "$build_repo/scripts/generate-ui-reference.py"

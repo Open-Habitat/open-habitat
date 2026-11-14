@@ -65,6 +65,11 @@ func (n *nativeApply) recoverGateway(ctx context.Context) error {
 	if e = repairGatewayUnit(ctx, n.site); e != nil {
 		return e
 	}
+	// A late resume skips staging, so an apply begun by a binary that
+	// predates this file would otherwise never pass verification.
+	if e = installPolicy("/", needrestartOverride, 0); e != nil {
+		return e
+	}
 	if e = verifyInstalledUnits(ctx, n.site); e != nil {
 		return e
 	}

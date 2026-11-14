@@ -24,6 +24,7 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		os.RemoveAll(root)
 		os.Remove("/usr/lib/systemd/user/open-habitat-containers.service")
 		os.Remove(headlessShellAppArmor.Path)
+		os.Remove(needrestartOverride.Path)
 	})
 	s := Site{Profiles: []string{"core", "integrations", "native-build", "python", "containers"}, Release: Release{"1", strings.Repeat("a", 64)}}
 	prepare := func(site Site, unit string) {
@@ -72,6 +73,9 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		}
 		if !policiesMatch("/", []policyFile{headlessShellAppArmor}, 0) {
 			t.Fatal("headless shell sandbox profile was not published")
+		}
+		if !needrestartOverrideMatches() {
+			t.Fatal("needrestart override was not published")
 		}
 	}
 	if err := finishGeneration(s); err != nil {

@@ -710,6 +710,11 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings administrati
 	if !integrationsConfigMatches() {
 		return ErrNativeApply
 	}
+	// Not part of generationMatches: a predecessor installed before this
+	// file existed must still validate as an upgrade source.
+	if !needrestartOverrideMatches() {
+		return ErrNativeApply
+	}
 	c, e := r.ObserveRuntimePackages(ctx, s.Profiles)
 	if e != nil || c.Status != "pass" {
 		return ErrNativeApply

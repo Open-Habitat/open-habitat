@@ -1372,6 +1372,28 @@ a site that contains it, so upgrade first and add the field afterwards.
 
 - **Recovered browser load failures:** `journalctl -u open-habitat-gateway.service -o cat --since today | grep '"event":"client_load_failed"'` selects browser reports. `phase` distinguishes a first-load landing from a retained stale view; `read` and `reason` identify the first failed read in that episode (session, snapshot, onboarding, or identity pairing; network, HTTP, invalid reply, deadline, or identity mismatch). `status` is the observed HTTP status when available, otherwise 0. `read_duration_ms` is elapsed time in the failing load attempt, `episode_duration_ms` is time from entering the failure state to a validated recovery, and `attempts` counts that failed attempt and subsequent load attempts. Durations saturate at one day and attempts at 10,000. `online` is the browser's hint at failure, not evidence that the host was reachable. Reports are untrusted client observations, not server diagnoses. `user` is the authenticated account when reporting, not proof of the identity at failure; `request_id` joins the reporting POST, not the failed read. The browser keeps only one volatile episode and sends once after a matching session/snapshot pair succeeds. Closing/reloading the tab, a login requirement, a lost report, or rate limiting can leave no event. No anonymous reports are accepted. The gateway budget allows a burst of 20 and refills one report every three seconds across the installation; it returns 429 when exhausted. Nothing is retried and no UI changes depend on delivery.
 - **Logs and failures:** `journalctl -u open-habitat-gateway.service -u open-habitat-broker.service --since today` and `journalctl -u 'open-habitat-daemon@<username>.service' --since today` read classified JSONL stderr diagnostics. Mutating, failed and slow (≥250 ms) requests appear as `http_request` records; `slow: true` marks those over 1 s, and a gateway and daemon record with the same `request_id` belong to one browser request (for example `journalctl -u open-habitat-gateway.service -u 'open-habitat-daemon@*' -o cat | grep '"request_id":"<id>"'`). Restrict journal access and retention. For failures, inspect `systemctl status` of the corresponding socket/service, `journalctl`, socket owner/mode and parent ACLs, quota enforcement and free space, config owner/parent paths, OAuth callback/HTTPS and pinned Pi selector. Broker startup refuses pending or drifted ledger/account/ACL/quota state; investigate it rather than deleting state or blindly restarting. A broken administrator state stops gateway startup; invalid session state may discard sessions and require login. Login records are not joined across services, and the system does not provide an audit log.
+- **OS updates and service restarts:** keep Ubuntu's unattended upgrades on.
+  After a library update, needrestart restarts the services still using the
+  old library, and a restarted `open-habitat-daemon@<username>.service` ends
+  every turn that person has running. Apply and upgrade therefore install
+  `/etc/needrestart/conf.d/open-habitat.conf`, which has needrestart list the
+  `open-habitat-*` services as needing a restart but never restart them
+  itself; apply puts the file back if it is changed or removed. The update
+  still reaches people's agents: the daemon stops a conversation's Pi after
+  ten minutes idle, and the next turn starts a new one with the updated
+  libraries. The product binary is statically linked, so the gateway, the
+  broker and the daemon process itself have no shared library to refresh.
+  Other long-running programs in a person's daemon, such as integration sync
+  clients or a browser shell or editor of someone without a lingering user
+  manager, keep the old library until that daemon restarts. That happens at
+  the next named-release upgrade or reboot, or when you restart it yourself:
+  `needrestart -r l` lists the waiting services, and
+  `systemctl restart open-habitat-daemon@<username>.service` restarts one
+  person's daemon. Choose a moment when that person has nothing running,
+  because the restart ends their turns. Programs in a person's own user
+  manager (SSH sessions, a lingering person's shells and editors) are never
+  restarted automatically by Ubuntu; they pick up the update when they are
+  restarted or at reboot.
 - **Free space without per-user limits:** nothing stops one home from filling
   the shared filesystem. Watch `df -h /home` (the administrator storage page
   shows the same figures) and act before it is full: a full disk makes every

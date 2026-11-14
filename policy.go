@@ -46,3 +46,6 @@ var RevokeSocket string
 
 //go:embed apparmor.d/open-habitat-headless-shell
 var HeadlessShellAppArmor string
+
+//go:embed needrestart/open-habitat.conf
+var NeedrestartOverride string

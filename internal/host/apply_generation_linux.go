@@ -408,7 +408,22 @@ func finishGeneration(s Site) error {
 			return e
 		}
 	}
+	if e = installPolicy("/", needrestartOverride, 0); e != nil {
+		return e
+	}
 	return publishHeadlessShellSandbox()
+}
+
+// needrestartOverride keeps an OS library update from restarting the
+// product's services: Ubuntu's unattended upgrades run needrestart, which
+// would otherwise restart every person's daemon and end their running turns.
+// The file's own comments say why each unit is safe to leave running. It is
+// installed even where needrestart is absent, so a later install honours it,
+// and needrestart reads only *.conf, never the unpublished .next stage.
+var needrestartOverride = policyFile{"/etc/needrestart/conf.d/open-habitat.conf", policy.NeedrestartOverride}
+
+func needrestartOverrideMatches() bool {
+	return policiesMatch("/", []policyFile{needrestartOverride}, 0)
 }
 
 // headlessShellAppArmor lets the core runtime's headless Chromium start its

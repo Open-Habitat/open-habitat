@@ -77,7 +77,7 @@ class ReferenceTest(unittest.TestCase):
                 (root / folder).mkdir(parents=True)
             for name in ("package-release.sh", "generate-ui-reference.py"):
                 shutil.copy2(repo / "scripts" / name, root / "scripts" / name)
-            for folder in ("systemd", "sysusers.d", "tmpfiles.d", "apparmor.d", "licenses", "site"):
+            for folder in ("systemd", "sysusers.d", "tmpfiles.d", "apparmor.d", "needrestart", "licenses", "site"):
                 shutil.copytree(repo / folder, root / folder)
             for name in ("go.mod", "go.sum", "policy.go"):
                 (root / name).write_text("")
