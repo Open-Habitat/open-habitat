@@ -104,6 +104,39 @@ func TestAdminOperatorAndGatewaySingleWriter(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsShowsSavedDefaultLanguage(t *testing.T) {
+	for _, language := range []string{"", "system", "fi", "en", "en-US", "en-GB"} {
+		t.Run("language="+language, func(t *testing.T) {
+			state := filepath.Join(t.TempDir(), "administration.json")
+			// The browser administration writer persists this optional field.
+			settings := map[string]any{"version": 1, "name": "", "administrators": []string{}}
+			if language != "" {
+				settings["default_language"] = language
+			}
+			before, err := json.Marshal(settings)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(state, before, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			viaAccessGatewayState(t, state)
+			code, out, stderr := call(t, "--json", "admin", "settings", "show")
+			if code != 0 {
+				t.Fatalf("settings show: exit %d: %s", code, stderr)
+			}
+			got, present := out["data"].(map[string]any)["default_language"]
+			if language == "" && present || language != "" && got != language {
+				t.Fatalf("default_language = %v (present %v), want %q", got, present, language)
+			}
+			after, err := os.ReadFile(state)
+			if err != nil || string(after) != string(before) {
+				t.Fatalf("settings read changed saved state: %s, %v", after, err)
+			}
+		})
+	}
+}
+
 func TestAdminUnprivilegedDenied(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("requires a nonroot caller")

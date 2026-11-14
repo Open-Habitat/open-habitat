@@ -23,6 +23,7 @@ type controlSettings struct {
 	Name              string   `json:"name"`
 	Administrators    []string `json:"administrators"`
 	DefaultLimitBytes uint64   `json:"default_limit_bytes"`
+	DefaultLanguage   string   `json:"default_language,omitempty"`
 	// Declared administrators the gateway grants at the sign-in that binds them.
 	PendingAdministrators []string `json:"pending_administrators,omitempty"`
 	// Roles a browser administrator gave, pending until granted at sign-in.

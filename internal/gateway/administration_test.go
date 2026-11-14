@@ -419,12 +419,19 @@ func TestDefaultLanguage(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"default_language":"en"`) {
 		t.Fatalf("administration view: %d %s", w.Code, w.Body.String())
 	}
-	for _, language := range []string{"en", "en-US", "en-GB"} {
+	for _, language := range []string{"system", "fi", "en", "en-US", "en-GB"} {
 		if code := adminPut(h, cookie, session.CSRF, `{"default_language":"`+language+`"}`); code != 204 {
 			t.Fatalf("%s administrator write: %d", language, code)
 		}
 		if got := read(); got != language {
 			t.Fatalf("public language = %q, want %q", got, language)
+		}
+		control, err := a.AdminControl(context.Background(), []byte(`{"operation":"show"}`))
+		var settings struct {
+			DefaultLanguage string `json:"default_language"`
+		}
+		if err != nil || json.Unmarshal(control, &settings) != nil || settings.DefaultLanguage != language {
+			t.Fatalf("control read lost browser choice: %s, %v", control, err)
 		}
 		fresh := &Auth{}
 		if e := fresh.loadAdministration(path); e != nil || fresh.settings.DefaultLanguage != language {
