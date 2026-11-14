@@ -1025,13 +1025,20 @@ export class ConversationStore {
     });
   }
   private finishRead(id: string, record: WindowRecord) {
+    const carried = record.carried;
     record.loading = false;
     record.carried = undefined;
     record.readFrom = undefined;
     record.readEntries.clear();
     if (record.readAgain) {
       record.readAgain = false;
-      void this.reconnect(id);
+      // A carried read may have landed long after the daemon read the file,
+      // and an entry the stream never carried can lie between its page and
+      // the entries streamed since. A catch-up cannot join across that and
+      // would leave the window stale for good; the window holds only this
+      // first page, so a tail read replaces it instead.
+      if (carried) void this.loadTail(id);
+      else void this.reconnect(id);
     }
   }
   setLive(id: string, live: LiveTurn) {
@@ -1393,6 +1400,7 @@ export class ConversationStore {
     // instead, a read slower than the invalidations of a running turn (a
     // loaded host, several a second) never ended, and a new conversation's
     // first turn stayed behind the loading notice until the turn was over.
+    // The read after it is a tail read (finishRead).
     const carried = new Set<string>();
     for (const [id, record] of this.windows)
       if (

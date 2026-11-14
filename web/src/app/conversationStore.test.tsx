@@ -284,22 +284,15 @@ describe("recent conversation windows", () => {
   // A running turn invalidates history several times a second. A first read
   // cancelled and begun again at each of them never ended on a loaded host,
   // and a new conversation stayed behind its loading notice for the turn.
-  it("lets a loading window's first read finish through reconciliations and reads again after it", async () => {
+  it("lets a loading window's first read finish through reconciliations and reads the tail again after it", async () => {
     const resolves: Array<(p: HistoryPage) => void> = [];
     const tail = vi.fn(
       () => new Promise<HistoryPage>((resolve) => resolves.push(resolve)),
     );
-    let reconciled!: (v: { pages: HistoryPage[]; met: boolean }) => void;
-    const reconnect = vi.fn(
-      () =>
-        new Promise<{ pages: HistoryPage[]; met: boolean }>((resolve) => {
-          reconciled = resolve;
-        }),
-    );
     const pager = {
       tail,
       older: vi.fn(),
-      reconnect,
+      reconnect: vi.fn(),
       cancelAll: vi.fn(),
     } as unknown as ConversationPager;
     const store = new ConversationStore("person", pager);
@@ -311,16 +304,22 @@ describe("recent conversation windows", () => {
     expect(vi.mocked(pager.cancelAll).mock.calls.at(-1)?.[0]).toEqual(
       new Set([id(1)]),
     );
-    resolves[0](page(id(1), ["before"]));
+    resolves[0](page(id(1), ["a", "b", "streamed"]));
     await flush();
     expect(store.read(id(1))?.state).toBe("ready");
-    // The page read before the invalidations is never the last word.
-    expect(reconnect).toHaveBeenCalledTimes(1);
-    reconciled({ pages: [page(id(1), ["before", "latest"])], met: true });
+    // The page read before the invalidations is never the last word. Native
+    // history may since hold an entry the stream never carried before one it
+    // did; a catch-up could not join that, the second tail read replaces it.
+    expect(tail).toHaveBeenCalledTimes(2);
+    expect(pager.reconnect).not.toHaveBeenCalled();
+    resolves[1](page(id(1), ["a", "b", "unstreamed", "streamed"]));
     await flush();
+    expect(store.read(id(1))?.state).toBe("ready");
     expect(store.read(id(1))?.entries.map((entry) => entry.entry_key)).toEqual([
-      "before",
-      "latest",
+      "a",
+      "b",
+      "unstreamed",
+      "streamed",
     ]);
   });
   it("does not carry a first read across a reseed", async () => {
