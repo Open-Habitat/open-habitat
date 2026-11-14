@@ -1,6 +1,6 @@
 ---
 created: 2026-10-18
-updated: 2026-10-31
+updated: 2026-11-14
 type: feature
 reporter: jari
 status: done
@@ -10,7 +10,6 @@ preparation: ready
 lane: integrations
 lane_seq: 4
 collision: [internal/daemon/integrations]
-blocked_by: ['@integrations-catalog-core']
 ---
 
 # Integration: IMAP/SMTP mail and CalDAV/CardDAV

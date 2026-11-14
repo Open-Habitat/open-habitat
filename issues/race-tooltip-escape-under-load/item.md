@@ -1,17 +1,16 @@
 ---
 created: 2026-11-11
-updated: 2026-11-11
+updated: 2026-11-14
 type: bug
 status: fixed
 priority: normal
-related: ['@tooltip-swallows-escape']
+commits:
+- hash: 7291f2ec0
+  summary: 'fix(web): keep closed hover help out of the tree so it cannot return'
 preparation: ready
 lane: tooltip-escape
 lane_seq: 1
 closed: 2026-11-11
-commits:
-- hash: 7291f2ec0
-  summary: 'fix(web): keep closed hover help out of the tree so it cannot return'
 ---
 
 # Escape does not close the editor's Save tooltip under load (gate red on ea674a66b)
