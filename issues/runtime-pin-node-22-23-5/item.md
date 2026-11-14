@@ -1,14 +1,17 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:node@22.23.5
+lane: runtime-pins
+lane_seq: 6
+preparation: ready
 ---
 
 # Runtime pin: node 22.23.5 is available (pinned 22.21.1)

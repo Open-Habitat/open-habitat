@@ -1,14 +1,17 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:rclone@1.76.0
+lane: runtime-pins
+lane_seq: 9
+preparation: pending
 ---
 
 # Runtime pin: rclone 1.76.0 is available (pinned 1.71.2)
