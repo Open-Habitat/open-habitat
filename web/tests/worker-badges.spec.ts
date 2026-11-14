@@ -136,36 +136,28 @@ test("worker balls keep state and wait independent, with an explain legend", asy
     .click();
   await page.getByTestId("conversation-start").first().click();
   const rail = page.getByRole("navigation");
-  await expect(
-    rail.locator('.ah-worker-branch[data-kind="working"][data-waited]'),
-  ).toHaveCount(1);
-  await expect(
-    rail.locator('.ah-worker-branch[data-kind="working"]:not([data-waited])'),
-  ).toHaveCount(1);
-  await expect(rail.locator('.ah-worker-branch[data-kind="idle"]')).toHaveCount(
-    1,
-  );
-  // The state ball is the branch's own end node: it pulses only while the
-  // worker works, and the whole mark stays inside the row.
-  const railBall = (kind: string) =>
+  // Sub-agents are dots orbiting the row mark's resident (Jari 14.11.2026);
+  // the branch mark at the row's end is gone.
+  await expect(rail.locator(".ah-worker-branch")).toHaveCount(0);
+  const sub = (state: string) =>
     rail
-      .locator(`.ah-worker-branch[data-kind="${kind}"] .ah-worker-branch-ball`)
+      .locator(`[data-testid="rail-mark"] .oh-sub[data-state="${state}"]`)
       .first();
+  await expect(sub("working")).toBeAttached();
+  await expect(sub("waiting")).toBeAttached();
+  // A working sub-agent breathes; with reduced motion it stands still and
+  // the waiting one keeps its own colour.
   await page.emulateMedia({ reducedMotion: "no-preference" });
   expect(
-    await railBall("working").evaluate(
-      (el) => getComputedStyle(el).animationName,
-    ),
-  ).toBe("ah-pulse");
-  expect(
-    await railBall("idle").evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("none");
+    await sub("working").evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("oh-breathe");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(
-    await railBall("working").evaluate(
-      (el) => getComputedStyle(el).animationName,
-    ),
+    await sub("working").evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
+  expect(
+    await sub("waiting").evaluate((el) => getComputedStyle(el).fill),
+  ).not.toBe(await sub("working").evaluate((el) => getComputedStyle(el).fill));
   const railRows = rail.locator(".ah-waiting-spinoff");
   const railCapture = process.env.OH_RAIL_BALL_CAPTURE;
   for (const width of [1440, 390]) {
@@ -174,9 +166,11 @@ test("worker balls keep state and wait independent, with an explain legend", asy
     await expect(railRows).toHaveCount(3);
     for (const item of await railRows.all()) {
       const edge = await item.locator(".ah-now-row").boundingBox();
-      const mark = await item.locator(".ah-worker-branch").boundingBox();
+      const mark = await item.getByTestId("rail-mark").boundingBox();
       if (!edge || !mark) throw new Error("rail row not laid out");
-      expect(mark.x + mark.width).toBeLessThanOrEqual(edge.x + edge.width - 4);
+      expect(mark.x).toBeGreaterThanOrEqual(edge.x);
+      expect(mark.y).toBeGreaterThanOrEqual(edge.y);
+      expect(mark.y + mark.height).toBeLessThanOrEqual(edge.y + edge.height);
     }
     for (const theme of railCapture ? (["light", "dark"] as const) : []) {
       await page.emulateMedia({ colorScheme: theme });
@@ -217,16 +211,19 @@ test("worker balls keep state and wait independent, with an explain legend", asy
   await expect(row(5)).toHaveAttribute("data-kind", "merged");
   await expect(row(6)).toHaveAttribute("data-kind", "unfinished");
   await expect(row(7)).toHaveAttribute("data-kind", "failed");
+  // A working worker's door travels round the ring; one waiting for the
+  // person knocks instead, and reduced motion stills both.
+  const ring = (n: number) => row(n).locator(".oh-ring");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   expect(
-    await row(0).evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("ah-pulse");
+    await ring(0).evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("oh-turn");
   expect(
-    await row(2).evaluate((el) => getComputedStyle(el).animationName),
+    await ring(2).evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(
-    await row(0).evaluate((el) => getComputedStyle(el).animationName),
+    await ring(0).evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
   if (process.env.OH_VISUAL_CAPTURE === "1") {
     const { snapshot } = await import("../lab/session.mjs");

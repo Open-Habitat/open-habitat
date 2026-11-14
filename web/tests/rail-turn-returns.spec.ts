@@ -33,7 +33,7 @@ const ball = (page: Page, agent: string) =>
   page
     .getByRole("navigation")
     .getByTestId(`agent-item-${agent}`)
-    .locator(".ah-ball");
+    .getByTestId("rail-mark");
 
 async function reply(page: Page, message: string) {
   await page.getByTestId("message-input").fill(message);
@@ -69,7 +69,7 @@ test("every finished turn returns a quiet conversation to Sinun vuorosi until se
   // for the answer first; leaving before it is there makes it news.
   await reply(page, "first");
   await expect(page.locator("main")).toContainText('Selvä. Kysyit: "first".');
-  await expect(ball(page, agent ?? "")).toHaveAttribute("data-turn", "read");
+  await expect(ball(page, agent ?? "")).toHaveAttribute("data-state", "read");
   await notNow(page, agent ?? "");
   await page.goto("/workspaces");
   await expect(
@@ -87,19 +87,31 @@ test("every finished turn returns a quiet conversation to Sinun vuorosi until se
     await reply(writer, message);
     await writer.goto(`${hostOrigin}/workspaces`);
     await expect(yours(page, href)).toHaveCount(1, { timeout: 25000 });
-    await expect(ball(page, agent ?? "")).not.toHaveAttribute("data-turn");
+    await expect(ball(page, agent ?? "")).not.toHaveAttribute(
+      "data-state",
+      "read",
+    );
     // A reload has missed the turn's event and still knows.
     await page.reload();
     await expect(yours(page, href)).toHaveCount(1);
-    await expect(ball(page, agent ?? "")).not.toHaveAttribute("data-turn");
+    await expect(ball(page, agent ?? "")).not.toHaveAttribute(
+      "data-state",
+      "read",
+    );
     const later = await context.newPage();
     await later.goto(`${hostOrigin}/workspaces`);
     await expect(yours(later, href)).toHaveCount(1);
-    await expect(ball(later, agent ?? "")).not.toHaveAttribute("data-turn");
+    await expect(ball(later, agent ?? "")).not.toHaveAttribute(
+      "data-state",
+      "read",
+    );
     await yours(page, href).click();
     await expect(page.getByTestId("message-input")).toBeVisible();
-    await expect(ball(page, agent ?? "")).toHaveAttribute("data-turn", "read");
-    await expect(ball(later, agent ?? "")).toHaveAttribute("data-turn", "read");
+    await expect(ball(page, agent ?? "")).toHaveAttribute("data-state", "read");
+    await expect(ball(later, agent ?? "")).toHaveAttribute(
+      "data-state",
+      "read",
+    );
     await notNow(page, agent ?? "");
     await expect(yours(page, href)).toHaveCount(0);
     await expect(yours(later, href)).toHaveCount(0, { timeout: 15000 });

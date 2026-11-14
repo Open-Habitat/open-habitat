@@ -111,7 +111,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   await expect(row).toBeVisible();
   const phone = await row.getByRole("link").boundingBox();
   expect(phone?.height).toBeGreaterThanOrEqual(40);
-  await expect(row.locator(".ah-ball")).toBeVisible();
+  await expect(row.getByTestId("rail-mark")).toBeVisible();
   await nav.screenshot({
     path: "test-results/evidence/rail-groups-phone.png",
   });

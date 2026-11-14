@@ -11,7 +11,7 @@ async function login(page: import("@playwright/test").Page) {
 }
 async function select(
   page: import("@playwright/test").Page,
-  theme: "light" | "dark" | "system",
+  theme: "light" | "dark" | "contrast" | "system",
 ) {
   await page.getByTestId("account-menu-trigger").click();
   const option = page.getByTestId(`segment-${theme}`);
@@ -38,6 +38,35 @@ test("production theme follows the system, persists an explicit device choice, a
   await select(page, "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("Korkea kontrasti is a fourth choice, and Järjestelmä picks it when the device asks for more contrast", async ({
+  page,
+}) => {
+  await login(page);
+  await select(page, "contrast");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");
+  // Settings › Ulkoasu shows the same choice; no empty selection.
+  await page.goto("/settings/appearance");
+  await expect(
+    page.getByTestId("theme-choice").getByTestId("segment-contrast"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("theme-choice").getByTestId("segment-system").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.emulateMedia({ contrast: "more" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");
+  await page.emulateMedia({ contrast: "no-preference", colorScheme: "light" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  // Before the bundle runs, the bootstrap resolves the same way.
+  await page.emulateMedia({ contrast: "more" });
+  await page.route("**/assets/*.js", (route) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+  );
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "contrast");
 });
 
 test("theme is applied before the application bundle executes", async ({

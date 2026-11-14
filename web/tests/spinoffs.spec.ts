@@ -429,8 +429,8 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   const read = rail
     .getByTestId("rail-yours")
     .getByTestId(`agent-item-pi:${parent}`)
-    .locator(".ah-ball");
-  await expect(read).toHaveAttribute("data-turn", "read");
+    .getByTestId("rail-mark");
+  await expect(read).toHaveAttribute("data-state", "read");
   await expect(
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
   ).toHaveCount(0);
@@ -465,7 +465,7 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   await expect(
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
   ).toHaveCount(0);
-  await expect(read).toHaveAttribute("data-turn", "read");
+  await expect(read).toHaveAttribute("data-state", "read");
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
 });
 

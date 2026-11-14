@@ -63,7 +63,10 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   // says Ei nyt: the composer has no turn button (Jari 7.11.2026).
   const yours = row(page, "rail-yours", id);
   await expect(yours).toBeVisible();
-  await expect(yours.locator(".ah-ball")).toHaveAttribute("data-turn", "read");
+  await expect(yours.getByTestId("rail-mark")).toHaveAttribute(
+    "data-state",
+    "read",
+  );
   await expect(page.locator(".ah-crow")).not.toContainText("Ei nyt");
   await expect(page.locator(".ah-crow")).not.toContainText("Nosta");
   await press(page, "rail-yours", id, "not-now");
@@ -80,7 +83,10 @@ test("@raise-to-your-turn Ei nyt and Nosta hold on every device until the person
   // still the agent's state, not an arrow.
   await press(page, "rail-quiet", id, "raise");
   await expect(yours).toBeVisible();
-  await expect(yours.locator(".ah-ball")).not.toHaveAttribute("data-turn");
+  await expect(yours.getByTestId("rail-mark")).not.toHaveAttribute(
+    "data-state",
+    "read",
+  );
   await expect(page.locator(".ah-crow")).not.toContainText("Sinun vuorossasi");
   // The other device follows the host's event without a reload.
   const there = row(other, "rail-yours", id);

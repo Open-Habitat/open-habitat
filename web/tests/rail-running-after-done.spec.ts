@@ -47,8 +47,8 @@ test("@rail-running-after-done a finished conversation leaves Käynnissä and re
   });
   await expect(row).toHaveCount(0, { timeout: 25000 });
   await expect(
-    yours.getByTestId(`agent-item-${id}`).locator(".ah-ball"),
-  ).toHaveAttribute("data-turn", "read");
+    yours.getByTestId(`agent-item-${id}`).getByTestId("rail-mark"),
+  ).toHaveAttribute("data-state", "read");
 
   // The agent leaves a file and its notice after the turn: still finished.
   expect(

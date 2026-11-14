@@ -92,14 +92,11 @@ test("@visual reduced motion removes running animation without hiding status", a
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?fixture=design");
-  const mark = page
-    .locator('[data-testid="status-mark"][data-animated="running"]')
-    .first();
+  // The header's animated state mark stands still and stays visible.
+  const mark = page.getByTestId("header-activity").locator(".oh-mark").first();
   await expect(mark).toBeVisible();
-  await expect(mark.locator(".ah-status-dot")).toHaveCSS(
-    "animation-name",
-    "none",
-  );
+  await expect(mark).toHaveAttribute("data-state", "loading");
+  await expect(mark.locator(".oh-ring")).toHaveCSS("animation-name", "none");
 });
 for (const fixture of ["design", "design-unhappy"] as const) {
   for (const theme of ["light", "dark"] as const) {

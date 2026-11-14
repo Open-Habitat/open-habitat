@@ -318,16 +318,17 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   const waitingRow = page.locator(".ah-waiting-spinoff");
   await expect(waitingRow).toHaveCount(1);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  // The wait is independent of state: this snapshot has no worker activity.
-  const mark = waitingRow.locator(".ah-worker-branch");
-  await expect(mark).toHaveAttribute("data-waited", "true");
+  // The agent waits on its worker: the row's mark is the background wait,
+  // the door drifting slowly round the ring; no branch mark at the row's end.
+  const mark = waitingRow.getByTestId("rail-mark");
   await expect(mark).toBeVisible();
-  await expect(mark).toHaveAttribute("data-kind", "unknown");
+  await expect(mark).toHaveAttribute("data-state", "background");
+  await expect(waitingRow.locator(".ah-worker-branch")).toHaveCount(0);
   expect(
     await mark
-      .locator(".ah-worker-branch-ball")
+      .locator(".oh-ring")
       .evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("none");
+  ).toBe("oh-drift");
   await page.emulateMedia({ reducedMotion: "reduce" });
   const agentUrl = page.url();
   const agentId = new URL(agentUrl).searchParams.get("conversation");

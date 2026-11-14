@@ -76,10 +76,10 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
       .getByTestId(
         `agent-item-${new URL(url, hostOrigin).searchParams.get("conversation")}`,
       )
-      .locator(".ah-ball");
+      .getByTestId("rail-mark");
   await expect(yours).toHaveCount(2);
-  await expect(ball(urls[0])).toHaveAttribute("data-turn", "read");
-  await expect(ball(urls[1])).not.toHaveAttribute("data-turn");
+  await expect(ball(urls[0])).toHaveAttribute("data-state", "read");
+  await expect(ball(urls[1])).not.toHaveAttribute("data-state", "read");
   await expect(
     page.getByTestId("rail-running").locator(`a[href="${urls[0]}"]`),
   ).toHaveCount(0);
@@ -94,7 +94,7 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
   await expect(page.getByTestId("message-input")).toBeFocused();
   // Ei nyt from each row empties Sinun vuorosi and the badge with it.
   await page.getByTestId("navigation-open").click();
-  await expect(ball(urls[1])).toHaveAttribute("data-turn", "read");
+  await expect(ball(urls[1])).toHaveAttribute("data-state", "read");
   for (const url of urls) {
     const row = page
       .getByRole("navigation")

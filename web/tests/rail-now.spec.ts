@@ -119,9 +119,13 @@ test("@rail-now a new conversation waits in Sinun vuorosi until its first messag
     .and(page.locator('[data-mode="send"]'))
     .click();
   const read = nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`);
-  await expect(read.locator(".ah-ball")).toHaveAttribute("data-turn", "read", {
-    timeout: 30000,
-  });
+  await expect(read.getByTestId("rail-mark")).toHaveAttribute(
+    "data-state",
+    "read",
+    {
+      timeout: 30000,
+    },
+  );
   await read.hover();
   await read.getByTestId("rail-not-now-conversation").click();
   await expect(

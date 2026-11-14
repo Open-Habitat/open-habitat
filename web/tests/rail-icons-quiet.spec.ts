@@ -433,9 +433,13 @@ test("@rail-quiet a finished native conversation remains after idle stop and dae
   );
   await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send");
   const read = nav.getByTestId("rail-yours").getByTestId(`agent-item-${id}`);
-  await expect(read.locator(".ah-ball")).toHaveAttribute("data-turn", "read", {
-    timeout: 25000,
-  });
+  await expect(read.getByTestId("rail-mark")).toHaveAttribute(
+    "data-state",
+    "read",
+    {
+      timeout: 25000,
+    },
+  );
   await read.hover();
   await read.getByTestId("rail-not-now-conversation").click();
   const row = nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`);

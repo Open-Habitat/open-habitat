@@ -160,8 +160,8 @@ navigaatiosisältö avautuu valikkolaatikkoon keskustelun päälle.
 Tilipainike on kiinteästi sivupalkin alareunassa, ja vain työtilojen lista
 vierii sen yläpuolella. Painikkeessa näkyvät etunimi ja profiilikuva tai sen
 varaesitys. Se avaa ylöspäin valikon: koko nimi ja sähköposti, Asetukset,
-Palvelimen ylläpito vain ylläpitäjälle, teeman valinta (Järjestelmä, Vaalea,
-Tumma) ja Kirjaudu ulos. Palvelimen ylläpidolla ei ole muuta linkkiä
+Palvelimen ylläpito vain ylläpitäjälle, teeman valinta (Järjestelmä, Päivä,
+Yö, Korkea kontrasti) ja Kirjaudu ulos. Palvelimen ylläpidolla ei ole muuta linkkiä
 sivupalkissa. Työtilat-otsikon vieressä on Uusi työtila, ja työtilarivin
 `…`-valikossa ovat Uusi keskustelu, Avaa työtilasivu, Kopioi polku, Avaa
 GitHubissa ja Poista työtila, joka on estetty, kunnes palautettava poisto on
