@@ -4,7 +4,7 @@ updated: 2026-11-14
 type: feature
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 lane: worker-ask
 lane_seq: 1
 ---
