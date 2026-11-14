@@ -1,9 +1,9 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:brand-round-2026-11-13/contrast
@@ -11,6 +11,7 @@ lane: brand
 lane_seq: 1
 collision: [design-system/]
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Control and state-box boundaries below 3:1; a button's border is never drawn
