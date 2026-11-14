@@ -2,7 +2,7 @@
 created: 2026-11-02
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: low
 provenance: other
 provenance_detail: found while fixing live-long-run-working-missed-under-load
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: code-hygiene
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # conversationStore tests command.changed payload.state, which the contract never sends

@@ -69,6 +69,67 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("recent conversation windows", () => {
+  it.each(["not_started", "failed"])(
+    "refreshes active pending %s receipts without erasing the live answer",
+    async (execution) => {
+      const agent = id(1);
+      const { tail } = setup();
+      const status = {
+        agent_id: agent,
+        state: execution === "failed" ? "start_failed" : "starting",
+        start_problem: execution === "failed" ? "pi_start_failed" : "",
+      };
+      const reader = vi.fn().mockResolvedValue(status);
+      const pager = {
+        tail,
+        cancelAll: vi.fn(),
+      } as unknown as ConversationPager;
+      const store = new ConversationStore("person", pager, 50, reader);
+      store.applyStatus(agent, { agent_id: agent, state: "starting" } as never);
+      store.view(agent);
+      const instance = "11111111-1111-4111-8111-111111111111";
+      const frame = {
+        resource: { agent_id: agent },
+        kind: "assistant.delta",
+        payload: { text: "still answering", content_index: 0 },
+        cursor: `ev1:${instance}:1`,
+        server_instance_id: instance,
+        sequence: 1,
+        event_id: "evt_abcdefgh1",
+      };
+      store.setLive(agent, {
+        cursor: frame.cursor,
+        instance,
+        sequence: 1,
+        fragments: [frame as never],
+        truncated: true,
+      });
+      store.routeEvent(
+        {
+          ...frame,
+          kind: "command.changed",
+          sequence: 2,
+          cursor: `ev1:${instance}:2`,
+          payload: {
+            client_command_id: "queued-send",
+            acceptance: "pending",
+            execution,
+            ...(execution === "failed"
+              ? { error_code: "pi_start_failed" }
+              : {}),
+          },
+        } as never,
+        agent,
+      );
+      expect(reader).toHaveBeenCalledWith(agent);
+      expect(store.read(agent)?.live?.fragments).toEqual([frame]);
+      expect(store.read(agent)?.live?.truncated).toBe(true);
+      await flush();
+      expect(store.status(agent)).toMatchObject(status);
+      expect(store.statusStale(agent)).toBe(false);
+      store.dispose();
+    },
+  );
   it("drops the pre-login controller status so reopening reads native state", () => {
     const { store } = setup();
     const agent = id(14);
@@ -567,7 +628,11 @@ describe("recent conversation windows", () => {
       event_id: `evt_abcdefgh${sequence}`,
     });
     store.routeEvent(
-      frame(1, "command.changed", { state: "pending" }) as never,
+      frame(1, "command.changed", {
+        client_command_id: "queued-send",
+        acceptance: "pending",
+        execution: "not_started",
+      }) as never,
       agent,
     );
     expect(store.statusStale(agent)).toBe(true);
@@ -1409,7 +1474,7 @@ describe("attention markers", () => {
     store.applySnapshot(observation("missing") as never);
     expect(store.readMetadata().attention.get(agentId)).toBe("new");
   });
-  it("orders new events across views, preserves seen waiting, and clears on the next command", () => {
+  it("keeps question attention while a send waits, until the question is resolved", () => {
     const { store } = setup();
     const agent = id(1);
     const event = (
@@ -1442,7 +1507,15 @@ describe("attention markers", () => {
     } as never);
     expect(store.readMetadata().attention.get(agent)).toBe("seen");
     store.routeEvent(
-      event("command.changed", 3, { state: "pending" }) as never,
+      event("command.changed", 3, {
+        client_command_id: "queued-send",
+        acceptance: "pending",
+        execution: "not_started",
+      }) as never,
+    );
+    expect(store.readMetadata().attention.get(agent)).toBe("seen");
+    store.routeEvent(
+      event("question.resolved", 4, { request_id: "q1" }) as never,
     );
     expect(store.readMetadata().attention.has(agent)).toBe(false);
     store.dispose();

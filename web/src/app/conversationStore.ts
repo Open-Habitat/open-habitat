@@ -4,7 +4,6 @@ import { readStartPage, type StartPage } from "./composerReads";
 import {
   applyTurnEvent,
   type ConversationEvent,
-  commandOutput,
   cursorParts,
   initialTurn,
   keptAfterAnswer,
@@ -1110,11 +1109,7 @@ export class ConversationStore {
         listener();
       });
     }
-    if (
-      event.resource.agent_id &&
-      (event.kind === "question.resolved" ||
-        (event.kind === "command.changed" && event.payload.state === "pending"))
-    ) {
+    if (event.resource.agent_id && event.kind === "question.resolved") {
       const id = event.resource.agent_id;
       this.attentionKeys.delete(id);
       if (this.metadata.attention.has(id)) {
@@ -1164,7 +1159,7 @@ export class ConversationStore {
     if (
       event.resource.agent_id &&
       event.kind === "command.changed" &&
-      event.payload.state === "pending"
+      event.payload.acceptance === "pending"
     )
       this.notifyStatus(event.resource.agent_id);
     else if (
@@ -1298,15 +1293,7 @@ export class ConversationStore {
         live: result.turn,
       });
     } else {
-      const turn =
-        event.kind === "command.changed" && event.payload.state === "pending"
-          ? {
-              ...result.turn,
-              fragments: commandOutput(result.turn.fragments),
-              truncated: false,
-            }
-          : result.turn;
-      this.publish(id, { ...record.value, live: turn });
+      this.publish(id, { ...record.value, live: result.turn });
     }
   }
   // The stream is contiguous; native history only has entries the events did
