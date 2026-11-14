@@ -345,7 +345,7 @@ describe("Ryhmät rows", () => {
       row("n")
         .querySelector('[data-testid="rail-not-now-conversation"]')
         ?.getAttribute("aria-label"),
-    ).toBe("Ei nyt: siirrä Keskustelu n Hiljaisiin");
+    ).toBe("Ei nyt: Keskustelu n");
     // A read reply keeps its ring; a raised row's mark is its agent's state.
     expect(row("n").getAttribute("data-ball")).toBe("you");
     const mark = (id: string) =>

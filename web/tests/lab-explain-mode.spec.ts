@@ -180,6 +180,51 @@ for (const width of [1440, 390]) {
   }
 }
 
+for (const width of [1440, 390]) {
+  for (const locale of ["fi-FI", "en-US"]) {
+    test.describe(`not now ${width} ${locale}`, () => {
+      test.use({
+        viewport: { width, height: 900 },
+        hasTouch: width === 390,
+        isMobile: width === 390,
+        locale,
+      });
+      test("@lab @rail-read-explain Not now explains ongoing work and does not dismiss in Explain mode", async ({
+        page,
+      }) => {
+        await signIn(page);
+        await newConversation(page);
+        if (width === 390) await page.getByTestId("navigation-open").tap();
+        await page.getByTestId("account-menu-trigger").click();
+        await page.getByTestId("menu-explain").click();
+        const action = page.getByTestId("rail-not-now-conversation").first();
+        if (width === 390) {
+          await page.getByTestId("explain-close").tap();
+          await action.tap();
+        } else await action.hover();
+        await expect(card(page)).toHaveAttribute("data-card", "S33");
+        await expect(card(page)).toContainText(
+          locale === "fi-FI"
+            ? "Taustatyö jatkuu Käynnissä-listalla"
+            : "Background work stays in Running",
+        );
+        if (process.env.OH_VISUAL_CAPTURE === "1")
+          await snapshot(
+            page,
+            resolve(
+              `../issues/rail-open-moves-turn-to-running/explain-${locale}-${width}`,
+            ),
+            { labOrigin: new URL(page.url()).origin },
+          );
+        await action.click();
+        await expect(
+          page.getByTestId("rail-yours").getByTestId("agent-link"),
+        ).toHaveCount(1);
+      });
+    });
+  }
+}
+
 async function pointAt(page: Page, testId: string) {
   const box = await page.getByTestId(testId).last().boundingBox();
   if (!box) throw new Error(`${testId} has no box`);

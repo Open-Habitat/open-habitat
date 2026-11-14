@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { agentMark } from "../components/markState";
+import { ballOf } from "../components/Navigation";
 import { ConversationPager } from "./conversationPager";
 import {
   type ConversationMetadata,
@@ -71,6 +73,93 @@ function run(
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
 
 describe("rail Nyt groups", () => {
+  it.each([
+    ["nothing live", { process: "confirmed_exited" }],
+    [
+      "waiting_background process",
+      {
+        waiting_on: [
+          {
+            process_id: "proc_build",
+            name: "build",
+            kind: "process",
+            run_ids: [],
+          },
+        ],
+      },
+    ],
+    ["busy worker", { spinoffs_working: 1 }],
+    ["idle worker", { spinoffs_idle: 1 }],
+    ["working turn then settled", {}],
+  ] satisfies [string, Partial<Agent>][])(
+    "opening a reply keeps its section with %s",
+    (_name, extra) => {
+      const id = "reply";
+      const at = "2026-11-14T10:00:00Z";
+      const row = agent(id, {
+        run_active: false,
+        last_reply: { id: "r1", at },
+        ...extra,
+      });
+      const section = (now: ReturnType<typeof run>) =>
+        (["yours", "running", "quiet"] as const).find((key) =>
+          ids(now[key]).includes(id),
+        );
+      const before = run([row], { attention: [[id, "new"]] });
+      const after = run([row], { attention: [[id, "seen"]] });
+      expect(section(before)).toBe("yours");
+      expect(section(after)).toBe(section(before));
+      expect(after.hints).toEqual(before.hints);
+      expect(after.yours[0].turnMark).toBe("read");
+      expect(before.yours[0].attentionLabel).toBeTruthy();
+      expect(after.yours[0].attentionLabel).toBeUndefined();
+      expect(before.yours[0].turnAction).toBe("not_now");
+      expect(after.yours[0].turnAction).toBe("not_now");
+
+      // Ei nyt still releases the reply, whether read here or elsewhere.
+      const dismissed = {
+        ...row,
+        turn_mark: { state: "not_now" as const, reply_id: "r1", at },
+      };
+      for (const attention of ["new", "seen"] as const) {
+        expect(
+          section(run([dismissed], { attention: [[id, attention]] })),
+        ).not.toBe("yours");
+      }
+      // The person's reply removes last_reply from the host's snapshot;
+      // a retained seen marker must not keep the old reply waiting.
+      expect(
+        section(
+          run([{ ...row, last_reply: undefined }], {
+            attention: [[id, "seen"]],
+          }),
+        ),
+      ).not.toBe("yours");
+
+      // A new turn wins over the old reply before the snapshot catches up;
+      // opening it during work is neutral too. Settling hands it back.
+      const working = {
+        ...row,
+        process: "daemon_managed_live" as const,
+        run_active: true,
+      };
+      for (const attention of ["new", "seen"] as const) {
+        const active = run([working], { attention: [[id, attention]] });
+        expect(section(active)).toBe("running");
+        expect(active.running[0].attentionLabel).toBeUndefined();
+        expect(active.running[0].turnAction).toBeUndefined();
+        expect(ballOf(active.running[0])).toBe("work");
+        expect(agentMark(active.running[0])).toBe("working");
+        expect(
+          section(
+            run([{ ...working, run_active: false }], {
+              attention: [[id, attention]],
+            }),
+          ),
+        ).toBe("yours");
+      }
+    },
+  );
   for (const replyFirst of [false, true]) {
     it(`keeps Ei nyt on a settled background reply (status first: ${replyFirst})`, async () => {
       const id = "pi:11111111-1111-4111-8111-111111111111";
@@ -142,7 +231,7 @@ describe("rail Nyt groups", () => {
       await Promise.resolve();
       expect(render().yours[0].turnAction).toBe("not_now");
       store.applyStatus(id, status(true, 9));
-      expect(render().yours[0].turnAction).toBeUndefined();
+      expect(render().running[0].turnAction).toBeUndefined();
       store.dispose();
     });
   }
@@ -418,16 +507,17 @@ describe("rail Nyt groups", () => {
     expect(ids(open.running)).toEqual(["served"]);
     expect(open.running[0].activityLabel).toBe("Työskentelee");
 
-    // A process started within the latest turn is what the turn ended to
-    // wait for: the agent continues by itself.
+    // A current-turn wait does not take back a reply handed to the person.
+    // It still reports background activity, without the old-service mark.
     const waiting = { ...service, before_turn: undefined };
     const build = run([{ ...served, waiting_on: [waiting] }], {
       sessions,
       attention: [["served", "seen"]],
     });
-    expect(ids(build.running)).toEqual(["served"]);
-    expect(build.running[0].activityLabel).toBe("Odottaa taustatyötä");
-    expect(build.running[0].backgroundService).toBeUndefined();
+    expect(ids(build.yours)).toEqual(["served"]);
+    expect(build.yours[0].activity).toBe("waiting_background");
+    expect(build.yours[0].turnMark).toBe("read");
+    expect(build.yours[0].backgroundService).toBeUndefined();
     // So is a Taskfleet wait for a worker, whenever it was started.
     const worker = run(
       [
@@ -438,14 +528,14 @@ describe("rail Nyt groups", () => {
       ],
       { sessions, attention: [["served", "seen"]] },
     );
-    expect(ids(worker.running)).toEqual(["served"]);
+    expect(ids(worker.yours)).toEqual(["served"]);
     // A turn waiting for a build while an old service also runs still waits.
     const both = run([{ ...served, waiting_on: [service, waiting] }], {
       sessions,
       attention: [["served", "seen"]],
     });
-    expect(ids(both.running)).toEqual(["served"]);
-    expect(both.running[0]).toMatchObject({
+    expect(ids(both.yours)).toEqual(["served"]);
+    expect(both.yours[0]).toMatchObject({
       backgroundService: "hilla-dell-script-review",
     });
   });

@@ -52,6 +52,29 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
     await expect(yours).toHaveCount(urls.length, { timeout: 25000 });
   }
   await elsewhere.close();
+  // Wire seam: the first reply has settled but its agent still waits on a
+  // current-turn background process. Opening must only change its read mark.
+  const firstId = new URL(urls[0], hostOrigin).searchParams.get("conversation");
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const agent of body.agents)
+      if (agent.agent_id === firstId)
+        agent.waiting_on = [
+          {
+            process_id: "proc_build",
+            name: "build",
+            kind: "process",
+            run_ids: [],
+          },
+        ];
+    await route.fulfill({ response, json: body });
+  });
+  await page.getByTestId("snapshot-refresh").click();
+  await expect(page.getByTestId(`agent-item-${firstId}`)).toHaveAttribute(
+    "title",
+    /build/,
+  );
   await page.bringToFront();
   await expect(yours.nth(0)).toHaveAttribute("href", urls[0]);
   await expect(yours.nth(1)).toHaveAttribute("href", urls[1]);
@@ -92,7 +115,7 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
   await second.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("message-input")).toBeFocused();
-  // Ei nyt from each row empties Sinun vuorosi and the badge with it.
+  // Ei nyt releases the reply without ending its background wait.
   await page.getByTestId("navigation-open").click();
   await expect(ball(urls[1])).toHaveAttribute("data-state", "read");
   for (const url of urls) {
@@ -108,4 +131,7 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
   }
   await expect(yours).toHaveCount(0);
   await expect(page.getByTestId("navigation-badge")).toHaveCount(0);
+  await expect(
+    page.getByTestId("rail-running").getByTestId(`agent-item-${firstId}`),
+  ).toHaveAttribute("title", /Odottaa taustatyötä · build/);
 });

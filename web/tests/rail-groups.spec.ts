@@ -12,7 +12,7 @@ async function start(page: Page) {
   return new URL(page.url()).searchParams.get("conversation") ?? "";
 }
 
-test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the host's last-change time, old rows stay visible", async ({
+test("@rail-groups @a11y Read replies with parked workers stay in Sinun vuorosi, one line with the host's last-change time", async ({
   page,
 }) => {
   await page.request.get("/fixture/conversations-reset");
@@ -49,7 +49,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const nav = page.getByTestId("workspace-navigation");
-  const running = nav.getByTestId("rail-running");
+  const yours = nav.getByTestId("rail-yours");
 
   const first = await start(page);
   await park(first);
@@ -64,8 +64,8 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send", {
     timeout: 25000,
   });
-  const row = running.getByTestId(`agent-item-${first}`);
-  // The reply was read here, but the parked worker still needs the person;
+  const row = yours.getByTestId(`agent-item-${first}`);
+  // Reading the reply does not yield the person's turn to the parked worker;
   // the session file was just written, so the time is now.
   await expect(row).toHaveAttribute("data-ball", "you", { timeout: 25000 });
   await expect(row.locator("time")).toHaveText("nyt");
@@ -74,14 +74,14 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   await expect(row.getByTestId("workspace-icon-button")).toHaveAccessibleName(
     /ordinary-dir/,
   );
-  await expect(running.getByTestId(/^rail-group-/)).toHaveCount(0);
+  await expect(yours.getByTestId(/^rail-group-/)).toHaveCount(0);
   const box = await row.getByRole("link").boundingBox();
   expect(box?.height).toBeLessThanOrEqual(26);
   // The line keeps only the title and the time; the rest is said.
   await expect(row.locator(".ah-nav-detail")).toHaveCount(0);
   await expect(row).toHaveAttribute(
     "title",
-    /ordinary-dir · Worker odottaa sinua/,
+    /ordinary-dir · Luettu · odottaa vastaustasi · Worker odottaa sinua/,
   );
 
   // Two hours quiet: the open conversation never folds away.
@@ -99,13 +99,13 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(running.getByTestId(`agent-item-${second}`)).toHaveAttribute(
+  await expect(yours.getByTestId(`agent-item-${second}`)).toHaveAttribute(
     "data-ball",
     "you",
     { timeout: 25000 },
   );
   await nav.getByTestId("snapshot-refresh").click();
-  await expect(running.getByTestId(`agent-item-${second}`)).toBeVisible();
+  await expect(yours.getByTestId(`agent-item-${second}`)).toBeVisible();
   await expect(row).toBeVisible();
   // APIRequestContext bypasses page routes: the host itself must retain both
   // workers, rather than this spec merely repainting them in a snapshot.
@@ -115,7 +115,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
       native.agents.find((a: { agent_id: string }) => a.agent_id === id),
     ).toMatchObject({ spinoffs_idle: 1 });
   }
-  await expect(running.getByTestId(/^rail-fold-/)).toHaveCount(0);
+  await expect(yours.getByTestId(/^rail-fold-/)).toHaveCount(0);
   await expect(row.locator("time")).toHaveText("2 t");
   expect(
     (
@@ -233,13 +233,17 @@ test("@rail-groups A service the agent left running does not keep the person's t
     nav.getByTestId("rail-running").getByTestId(`agent-item-${id}`),
   ).toHaveCount(0);
 
-  // A process started within the turn is what the turn ended to wait for.
+  // A current-turn wait does not take back the reply just read.
   waits = [service];
   await nav.getByTestId("snapshot-refresh").click();
   const running = nav
     .getByTestId("rail-running")
     .getByTestId(`agent-item-${id}`);
-  await expect(running).toBeVisible({ timeout: 25000 });
-  await expect(running).toHaveAttribute("data-ball", "work");
-  await expect(running.getByTestId("rail-background-service")).toHaveCount(0);
+  await expect(running).toHaveCount(0);
+  await expect(yours).toBeVisible({ timeout: 25000 });
+  await expect(yours.getByTestId("rail-mark")).toHaveAttribute(
+    "data-state",
+    "read",
+  );
+  await expect(yours.getByTestId("rail-background-service")).toHaveCount(0);
 });

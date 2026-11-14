@@ -467,8 +467,8 @@ const fi = {
     },
     S33: {
       name: "Ei nyt",
-      lead: "Siirtää vastausta odottavan keskustelun Hiljaisiin, kun et ehdi siihen nyt.",
-      know: "Keskustelu säilyy ennallaan. Nosta tuo sen takaisin Sinun vuoroosi.",
+      lead: "Siirtää keskustelun pois Sinun vuorosi -listasta, kun et ehdi vastata.",
+      know: "Taustatyö jatkuu Käynnissä-listalla; muuten keskustelu siirtyy Hiljaisiin. Uusi vastaus tuo sen takaisin Sinun vuoroosi.",
     },
     E01: {
       name: "Työtilat",
@@ -2149,8 +2149,8 @@ export const explainModeText = catalog(fi, {
     },
     S33: {
       name: "Not now",
-      lead: "Moves a conversation waiting for your reply to Quiet when you cannot get to it now.",
-      know: "The conversation stays as it is. Raise brings it back to Your turn.",
+      lead: "Moves the conversation out of Your turn when you cannot reply now.",
+      know: "Background work stays in Running; otherwise the conversation moves to Quiet. A new reply brings it back to Your turn.",
     },
     E01: {
       name: "Workspaces",

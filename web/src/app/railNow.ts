@@ -131,7 +131,10 @@ export function railNow({
       process: phase === "stale" ? "stale" : facts.process,
       connectionLost: phase === "stale",
     });
-    const attention = facts.attention === "new";
+    // Starting a new turn supersedes its previous reply, even while the
+    // snapshot still names it. Reading alone never changes turn ownership.
+    const replyCanClaimTurn = observed.activity !== "working";
+    const attention = replyCanClaimTurn && facts.attention === "new";
     // A live process whose turn state is not known still runs, and so does
     // an agent whose worker works on after the agent's own turn ended.
     const workerBusy = (a.spinoffs_working ?? 0) > 0;
@@ -162,7 +165,8 @@ export function railNow({
       !(reply && Date.parse(reply.at) > Date.parse(mark.at));
     // Read means a reply the snapshot still names: a stale entry of a reply
     // that is gone (its turn was cut, say) does not wait.
-    const read = !live && !!reply && facts.attention === "seen" && !dismissed;
+    const read =
+      replyCanClaimTurn && !!reply && facts.attention === "seen" && !dismissed;
     // A conversation opened with + waits for the person until its first
     // message is written, as a reply does (Jari 7.11.2026): Pi has written
     // no history yet. Ei nyt, which has no reply to name, moves it to
@@ -292,13 +296,14 @@ export function railNow({
           ? txt.rail.historyUnknown
           : undefined,
       // Ei nyt said on another device answers a reply this one has not shown.
-      attentionLabel: dismissed ? undefined : presentation.attentionLabel,
+      attentionLabel:
+        attention && !dismissed ? presentation.attentionLabel : undefined,
       turnMark: raised ? "raised" : read ? "read" : undefined,
       turnAction: isQuiet
         ? "raise"
         : raised
           ? "lower"
-          : turn && !facts.pendingQuestion && !live
+          : turn && !facts.pendingQuestion
             ? "not_now"
             : undefined,
       // A sub-agent at work, whether or not the parent still waits for it:

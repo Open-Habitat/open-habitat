@@ -3,7 +3,7 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-14/rail-open-moves-section
@@ -11,6 +11,7 @@ lane: unlaned
 lane_seq: 1
 collision: [web/src/app/railNow.ts]
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Opening a conversation moves it from Sinun vuorosi to Käynnissä
@@ -39,3 +40,11 @@ reply should claim *Sinun vuorosi* at all while the agent waits on its own
 workers is the separate `agent-sets-rail-state` design; this fix only makes
 opening neutral.) A regression test must pin that opening never changes the
 section, with live background work, a busy worker, and nothing live.
+
+## Acceptance Criteria
+
+- [x] Reading a named reply preserves its rail section with background work,
+  busy/idle workers and nothing live; read/unread marks remain distinct.
+- [x] A new working turn and Ei nyt still move the row; a live wait continues
+  after dismissal.
+- [x] Table tests, host-backed opening regression and targeted review pass.
