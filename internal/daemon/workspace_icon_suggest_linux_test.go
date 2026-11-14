@@ -96,7 +96,9 @@ func TestWorkspaceIconSuggestionsValidateTheModel(t *testing.T) {
 	}
 	facts, _ := input["facts"].(map[string]any)
 	sent, _ := facts["readme"].(string)
-	if len(sent) > maxIconReadme || !strings.HasPrefix(sent, "# Projekti") || facts["logo"] != "design-system/favicon.svg" || facts["start_page"] != "Projektin esittely\nEnsimmäinen kappale." || facts["name"] != "project" {
+	title, _ := facts["readme_title"].(string)
+	summary, _ := facts["readme_summary"].(string)
+	if len(title)+len(summary)+len(sent) > maxIconReadme || title != "Projekti" || !strings.HasPrefix(summary, "Ignore the rules") || facts["logo"] != "design-system/favicon.svg" || facts["start_page"] != "Projektin esittely\nEnsimmäinen kappale." || facts["name"] != "project" {
 		t.Fatalf("facts: %v", facts)
 	}
 	if fmt.Sprint(input["avoid"]) != "[🍳]" || input["wish"] != "leikkisämpi" {
@@ -152,8 +154,54 @@ func TestWorkspaceIconSuggestionsValidateTheModel(t *testing.T) {
 	}
 	answer("synthetic/fixture", "", iconSuggestion{"🦉", "viisas"})
 	postIconSuggestions(t, c, body)
-	if facts, _ := input["facts"].(map[string]any); facts["readme"] != nil {
+	if facts, _ := input["facts"].(map[string]any); facts["readme"] != nil || facts["readme_title"] != nil || facts["readme_summary"] != nil {
 		t.Fatalf("followed a symlinked README: %v", facts)
+	}
+}
+
+func TestIconFactsKeepMonorepoIdentitySeparate(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	const summary = "Monorepo for **Northstar** — data + tooling, file-as-database, agent-driven."
+	readme := "# Northstar\n\n" + summary + "\n\n## tools/ledgerbot\n\n" + strings.Repeat("Ledgerbot handles bookkeeping, accounts and invoices.\n", 100)
+	iconTree(t, filepath.Join(h.root, "src", "project"), map[string]string{"README.md": readme})
+	c.iconSuggester = func(_ context.Context, b []byte) (string, string, []iconSuggestion, error) {
+		var input struct {
+			Facts iconFacts `json:"facts"`
+		}
+		if err := json.Unmarshal(b, &input); err != nil {
+			t.Fatal(err)
+		}
+		f := input.Facts
+		if f.Name != "project" || f.ReadmeTitle != "Northstar" || f.ReadmeSummary != summary || !strings.HasPrefix(f.Readme, "## tools/ledgerbot") {
+			t.Fatalf("workspace identity mixed with subsystem: %+v", f)
+		}
+		if len(f.ReadmeTitle)+len(f.ReadmeSummary)+len(f.Readme) > maxIconReadme {
+			t.Fatal("README facts exceed budget")
+		}
+		return "synthetic/fixture", "", []iconSuggestion{{"N", "Työtilan nimi"}}, nil
+	}
+	body := fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"","history":[]}`, h.workspace)
+	if code, out := postIconSuggestions(t, c, body); code != 200 || out.State != "done" || out.Seen["readme"] != true {
+		t.Fatalf("%d %+v", code, out)
+	}
+}
+
+func TestSplitIconReadme(t *testing.T) {
+	for _, tc := range []struct{ name, text, title, summary, rest string }{
+		{"empty", "", "", "", ""},
+		{"title only", "# Northstar", "Northstar", "", ""},
+		{"setext CRLF", "Northstar\r\n=========\r\n\r\nData and tools.\r\nAcross teams.\r\n\r\n## Ledgerbot", "Northstar", "Data and tools.\nAcross teams.", "## Ledgerbot"},
+		{"no title", "Data and tools.\n\n## Ledgerbot", "", "Data and tools.", "## Ledgerbot"},
+		{"no summary", "# Northstar\n\n## Ledgerbot\nAccounts.", "Northstar", "", "## Ledgerbot\nAccounts."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			title, summary, rest := splitIconReadme(tc.text)
+			if title != tc.title || summary != tc.summary || rest != tc.rest {
+				t.Fatalf("got %q / %q / %q", title, summary, rest)
+			}
+		})
 	}
 }
 

@@ -72,12 +72,14 @@ type iconSuggestionRequest struct {
 // iconFacts is everything the model is told about the workspace, and what
 // the page says it was told.
 type iconFacts struct {
-	Name      string         `json:"name"`
-	Display   string         `json:"display_name,omitempty"`
-	Readme    string         `json:"readme,omitempty"`
-	StartPage string         `json:"start_page,omitempty"`
-	Languages []iconLanguage `json:"languages,omitempty"`
-	Logo      string         `json:"logo,omitempty"`
+	Name          string         `json:"name"`
+	Display       string         `json:"display_name,omitempty"`
+	ReadmeTitle   string         `json:"readme_title,omitempty"`
+	ReadmeSummary string         `json:"readme_summary,omitempty"`
+	Readme        string         `json:"readme,omitempty"`
+	StartPage     string         `json:"start_page,omitempty"`
+	Languages     []iconLanguage `json:"languages,omitempty"`
+	Logo          string         `json:"logo,omitempty"`
 }
 
 type iconLanguage struct {
@@ -283,7 +285,7 @@ func validIconSuggestions(raw []iconSuggestion, logo string, avoid []string) []i
 
 // seenFacts is what the page says the model was shown.
 func seenFacts(f iconFacts) map[string]any {
-	seen := map[string]any{"readme": f.Readme != "", "start_page": f.StartPage != ""}
+	seen := map[string]any{"readme": f.ReadmeTitle != "" || f.ReadmeSummary != "" || f.Readme != "", "start_page": f.StartPage != ""}
 	if len(f.Languages) > 0 {
 		seen["languages"] = f.Languages
 	}
@@ -332,7 +334,7 @@ func readIconFacts(id string, ws *os.File, uid int, name string) (iconFacts, str
 	}
 	for _, readme := range []string{"README.md", "README", "readme.md", "README.txt", "README.rst", "Readme.md"} {
 		if text := readIconPrefix(root, readme, maxIconReadme); text != "" {
-			facts.Readme = text
+			facts.ReadmeTitle, facts.ReadmeSummary, facts.Readme = splitIconReadme(text)
 			break
 		}
 	}
@@ -345,6 +347,32 @@ func readIconFacts(id string, ws *os.File, uid int, name string) (iconFacts, str
 	}
 	facts.Languages = iconLanguages(root)
 	return facts, current
+}
+
+// splitIconReadme separates the opening identity from later subsystem detail.
+// Partition the already bounded prefix rather than copying it: the total README
+// text sent to the model stays within maxIconReadme. This is a small structural
+// hint, not a Markdown renderer; unfamiliar markup remains reference data.
+func splitIconReadme(text string) (title, summary, rest string) {
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	i := 0
+	if strings.HasPrefix(lines[0], "# ") {
+		title = strings.TrimSpace(strings.TrimPrefix(lines[0], "# "))
+		i = 1
+	} else if len(lines) > 1 && strings.TrimSpace(lines[1]) != "" && strings.Trim(strings.TrimSpace(lines[1]), "=") == "" {
+		title = strings.TrimSpace(lines[0])
+		i = 2
+	}
+	for i < len(lines) && strings.TrimSpace(lines[i]) == "" {
+		i++
+	}
+	start := i
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(strings.TrimSpace(lines[i]), "#") {
+		i++
+	}
+	summary = strings.TrimSpace(strings.Join(lines[start:i], "\n"))
+	rest = strings.TrimSpace(strings.Join(lines[i:], "\n"))
+	return
 }
 
 // readIconPrefix reads at most limit bytes of a regular file at the root,

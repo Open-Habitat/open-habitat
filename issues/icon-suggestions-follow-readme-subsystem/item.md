@@ -3,7 +3,7 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/icon-suggest-subsystem
@@ -11,6 +11,7 @@ lane: unlaned
 lane_seq: 1
 collision: [internal/daemon/icon-helper.mjs]
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Workspace icon suggestions follow a subsystem the README mentions, not the workspace
