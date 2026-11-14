@@ -91,8 +91,9 @@ type piRPC struct {
 	// Why this daemon itself ended Pi's input, if it did: closing stdin
 	// makes Pi shut down, which the exit watcher otherwise only sees as an
 	// unasked end. The first cause wins (endInput).
-	endMu    sync.Mutex
-	endCause string
+	endMu             sync.Mutex
+	endCause          string
+	stderrDiagnostics *piDiagnostics
 }
 
 // A full event queue makes the reader wait for the controller, and Pi waits
@@ -239,7 +240,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 			cmd.Env = append(cmd.Env, "OH_PROCESS_PACKAGE="+filepath.Clean(filepath.Join(filepath.Dir(arg), "../../package.json")))
 		}
 	}
-	stderrR, stderrW, stderrDone, err := storageDiagnosticPipe("pi_runtime")
+	stderrR, stderrW, stderrDone, stderrDiagnostics, err := piDiagnosticPipe()
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +264,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{launched: time.Now().UnixMilli(), processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), eventsDrained: make(chan struct{}), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{stderrDiagnostics: stderrDiagnostics, launched: time.Now().UnixMilli(), processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), eventsDrained: make(chan struct{}), done: make(chan struct{}), exited: make(chan struct{})}
 	if owner != nil {
 		p.processParentID = owner.id
 	}
@@ -283,6 +284,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		// Drain final diagnostics, but never wait on a detached inheritor's EOF.
 		_ = stderrR.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 		<-stderrDone
+		stderrDiagnostics.markReaped()
 		stderrR.Close()
 		close(p.exited)
 	}()

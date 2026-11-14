@@ -5,7 +5,6 @@ package daemon
 import (
 	"bytes"
 	"errors"
-	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -66,16 +65,4 @@ func (d *storageDiagnostics) Write(p []byte) (int, error) {
 		p = p[size:]
 	}
 	return n, nil
-}
-
-// A direct pipe avoids os/exec's copy goroutine delaying child reaping when a
-// detached native tool inherits stderr. The caller closes the reader at exit.
-func storageDiagnosticPipe(operation string) (*os.File, *os.File, <-chan struct{}, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	done := make(chan struct{})
-	go func() { defer close(done); _, _ = io.Copy(&storageDiagnostics{operation: operation}, r) }()
-	return r, w, done, nil
 }

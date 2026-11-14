@@ -782,7 +782,7 @@ func (c *ConversationController) watch(s *conversation) {
 			state = s.rpc.cmd.ProcessState
 		}
 		s.stopDetail = crashDetail(inputCause, state)
-		diagnostic.New(os.Stderr, "daemon").Warn("conversation_pi_ended", "outcome", "unasked", "agent_id", "pi:"+s.id, "detail", s.stopDetail)
+		diagnostic.New(os.Stderr, "daemon").Warn("conversation_pi_ended", "outcome", "unasked", "agent_id", "pi:"+s.id, "detail", s.stopDetail, "stderr_class", s.rpc.stderrDiagnostics.lastClass(), "stderr_recency", s.rpc.stderrDiagnostics.freshness())
 	}
 	s.interrupted = s.runActive || s.state == "pending" || s.state == "accepted"
 	s.runActive = false // a reaped child runs nothing, whatever its last event said
