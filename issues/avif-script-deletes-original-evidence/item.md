@@ -2,13 +2,14 @@
 created: 2026-11-08
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: conductor
 source_ref: r68-avif-originals
 lane: evidence-tools
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # screenshots-to-avif.py converts and deletes original PNG evidence in an issue's evidence directory

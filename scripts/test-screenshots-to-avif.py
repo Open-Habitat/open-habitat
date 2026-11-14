@@ -12,6 +12,7 @@ import struct
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import zlib
 
 SCRIPT = Path(__file__).with_name('screenshots-to-avif.py')
@@ -51,11 +52,104 @@ class ScreenshotsToAvifTests(unittest.TestCase):
         self.evidence = self.repo / 'issues' / 'some-issue' / 'evidence'
         self.evidence.mkdir(parents=True)
         (self.repo / 'docs').mkdir()
+        self.env = os.environ.copy()
+        names = subprocess.run(['git', 'rev-parse', '--local-env-vars'], check=True,
+                               capture_output=True, text=True).stdout.splitlines()
+        for name in names:
+            self.env.pop(name, None)
+        self.git('init', '-q')
+        self.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                 'commit', '-q', '--allow-empty', '-m', 'Initial fixture')
+
+    def git(self, *args):
+        return subprocess.run(['git', '-C', str(self.repo), *args], env=self.env,
+                              check=True, capture_output=True)
+
+    def commit_original(self, path):
+        self.git('add', str(path))
+        self.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                 'commit', '-q', '-m', 'Original fixture')
 
     def run_script(self, *args):
         done = subprocess.run(['python3', str(self.repo / 'scripts' / SCRIPT.name), '--json', *args],
                               capture_output=True, text=True, cwd=self.repo)
         return done.returncode, json.loads(done.stdout)
+
+    @unittest.skipUnless(has_converter(), 'no AVIF converter')
+    def test_mixed_directory_keeps_committed_original_and_converts_new_png(self):
+        original = self.evidence / 'original.png'
+        fresh = self.evidence / 'fresh.png'
+        write_png(original, 4, 3)
+        self.commit_original(original)
+        before = original.read_bytes()
+        write_png(fresh, 8, 6)
+        code, report = self.run_script(str(self.evidence))
+        self.assertEqual(code, 1, report)
+        self.assertEqual(original.read_bytes(), before)
+        self.assertFalse(original.with_suffix('.avif').exists())
+        self.assertFalse(fresh.exists())
+        self.assertTrue(fresh.with_suffix('.avif').exists())
+        self.assertIn('tracked', report['files'][1]['error'])
+
+    def test_explicit_original_is_protected_in_head_or_index(self):
+        original = self.evidence / 'original.png'
+        write_png(original, 4, 3)
+        before = original.read_bytes()
+        self.git('add', str(original))
+        for state in ('staged', 'committed', 'modified', 'staged-deletion'):
+            if state == 'committed':
+                self.commit_original(original)
+            elif state == 'modified':
+                write_png(original, 7, 9)
+                before = original.read_bytes()
+            elif state == 'staged-deletion':
+                self.git('rm', '--cached', str(original))
+            for flags in ((), ('--dry-run',)):
+                with self.subTest(state=state, flags=flags):
+                    code, report = self.run_script(*flags, str(original))
+                    if code == 3:
+                        self.skipTest('no AVIF converter')
+                    self.assertEqual(code, 1, report)
+                    self.assertIn('tracked', report['files'][0]['error'])
+                    self.assertEqual(original.read_bytes(), before)
+                    self.assertFalse(original.with_suffix('.avif').exists())
+
+    def test_staged_deleted_target_is_not_recreated(self):
+        source = self.evidence / 'a.png'
+        target = source.with_suffix('.avif')
+        target.write_bytes(b'original AVIF')
+        self.commit_original(target)
+        write_png(source, 4, 3)
+        self.git('rm', str(target))
+        code, report = self.run_script(str(source))
+        if code == 3:
+            self.skipTest('no AVIF converter')
+        self.assertEqual(code, 1, report)
+        self.assertTrue(source.exists())
+        self.assertFalse(target.exists())
+
+    def test_inherited_git_index_cannot_hide_staged_original(self):
+        original = self.evidence / 'staged.png'
+        write_png(original, 4, 3)
+        self.git('add', str(original))
+        with mock.patch.dict(os.environ, {'GIT_INDEX_FILE': str(self.repo / 'other-index')}):
+            code, report = self.run_script(str(original))
+        if code == 3:
+            self.skipTest('no AVIF converter')
+        self.assertEqual(code, 1, report)
+        self.assertIn('tracked', report['files'][0]['error'])
+        self.assertTrue(original.exists())
+        self.assertFalse(original.with_suffix('.avif').exists())
+
+    def test_git_failure_refuses_before_conversion(self):
+        source = self.evidence / 'a.png'
+        write_png(source, 4, 3)
+        (self.repo / '.git').rename(self.repo / 'git-hidden')
+        code, report = self.run_script(str(source))
+        self.assertEqual(code, 2, report)
+        self.assertIn('cannot inspect Git', report['error'])
+        self.assertTrue(source.exists())
+        self.assertFalse(source.with_suffix('.avif').exists())
 
     def test_refuses_path_outside_allowed_trees_before_converting(self):
         inside = self.evidence / 'a.png'

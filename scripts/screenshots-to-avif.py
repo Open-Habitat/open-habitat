@@ -7,7 +7,9 @@ usage: screenshots-to-avif.py [--dry-run] [--json] [--quality Q]
 Each PATH is a PNG file or a directory, which is searched recursively for
 *.png files (symlinks are neither followed nor converted). Every path must
 resolve inside the repository's issues/ or design-system/ tree; one path
-outside refuses the whole run before anything is converted.
+outside refuses the whole run before anything is converted. Only untracked
+files may be converted: paths in HEAD or the index are refused, even when
+explicitly named. Git inspection failures refuse the run.
 
 Each PNG is encoded into a private temporary directory, the AVIF is decoded
 back and its dimensions compared with the PNG's, and only then is the AVIF
@@ -91,6 +93,22 @@ def collect(args: list[str]) -> list[Path]:
     return unique
 
 
+def protected_paths() -> set[Path]:
+    """HEAD also protects originals whose deletion has already been staged."""
+    try:
+        env = os.environ.copy()
+        local_vars = subprocess.run(['git', 'rev-parse', '--local-env-vars'],
+                                    check=True, capture_output=True, text=True)
+        for name in local_vars.stdout.splitlines():
+            env.pop(name, None)
+        result = subprocess.run(
+            ['git', '-C', str(ROOT), 'ls-files', '--cached', '--with-tree=HEAD', '-z'],
+            env=env, check=True, capture_output=True)
+    except (OSError, subprocess.CalledProcessError) as err:
+        raise Refused('cannot inspect Git HEAD and index; refusing conversion') from err
+    return {ROOT / os.fsdecode(name) for name in result.stdout.split(b'\0') if name}
+
+
 def imagemagick() -> str | None:
     for name in ("magick", "convert"):
         exe = shutil.which(name)
@@ -145,6 +163,9 @@ def convert_one(converter, source: Path, quality: int, dry_run: bool) -> dict:
              "width": None, "height": None, "status": "error", "error": None,
              "png_bytes": None, "avif_bytes": None}
     try:
+        protected = protected_paths()
+        if source in protected or target in protected:
+            raise RuntimeError('source or target is tracked in Git HEAD or index; refusing conversion')
         entry["png_bytes"] = source.stat().st_size
         entry["width"], entry["height"] = png_size(source)
         if target.exists() or target.is_symlink():
@@ -160,10 +181,12 @@ def convert_one(converter, source: Path, quality: int, dry_run: bool) -> dict:
             out.write(data)
         if target.stat().st_size != len(data):
             raise RuntimeError(f"{entry['target']} was not written completely")
+        if source in protected_paths():
+            raise RuntimeError('source became tracked during conversion; keeping PNG')
         os.remove(source)
         entry["avif_bytes"] = len(data)
         entry["status"] = "converted"
-    except (OSError, ValueError, RuntimeError) as err:
+    except (OSError, ValueError, RuntimeError, Refused) as err:
         entry["error"] = str(err)
     return entry
 
@@ -171,7 +194,8 @@ def convert_one(converter, source: Path, quality: int, dry_run: bool) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Convert PNG screenshots under issues/ or design-system/ to AVIF "
-                    "and remove each PNG only after its AVIF is verified.")
+                    "and remove each untracked PNG only after its AVIF is verified. "
+                    "Files in Git HEAD or the index are refused, including explicit paths.")
     parser.add_argument("paths", nargs="+", metavar="PATH", help="PNG file or directory")
     parser.add_argument("--dry-run", action="store_true", help="list what would be converted")
     parser.add_argument("--json", action="store_true", help="print a JSON report")
@@ -191,6 +215,7 @@ def main() -> int:
 
     try:
         sources = collect(args.paths)
+        protected_paths()
     except Refused as err:
         return fail(EXIT_USAGE, f"refused: {err}")
     converter = pick_converter(args.converter)
