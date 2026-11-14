@@ -1,0 +1,80 @@
+/* Review chrome above the production shell, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]) { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  /* The phone's drawer opens below the review bar and above the picker. */
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+
+/* The story beside the rail: what each agent declared and the events. */
+.ra-main { height: 100%; overflow: auto; color: var(--ah-ink); font: var(--ah-size-body)/1.5 var(--ah-font); }
+.ra-story { max-width: 720px; padding: var(--ah-s5) var(--ah-s5) 96px; }
+.ra-story h1 { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-title); font-weight: 600; }
+.ra-story h2 { margin: var(--ah-s5) 0 var(--ah-s2); font-size: var(--ah-size-body); font-weight: 600; }
+.ra-lead { margin: 0 0 var(--ah-s4); color: var(--ah-ink-2); }
+.ra-cards { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); }
+.ra-cards li {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px var(--ah-s3);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ra-cards code {
+  grid-column: 1 / -1; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.4 var(--ah-mono); color: var(--ah-ink-2);
+}
+.ra-ws { color: var(--ah-muted); font: var(--ah-size-meta)/1.6 var(--ah-mono); }
+.ra-status { grid-column: 1 / -1; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.ra-status[data-status="live"] { color: var(--ah-accent-ink); }
+.ra-status[data-status="ended"] { color: var(--ah-muted); font-style: italic; }
+.ra-events { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+.ra-events button {
+  font: inherit; font-size: var(--ah-size-meta); padding: 6px 12px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-phone-hint { display: none; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+@media (max-width: 800px) {
+  .ra-story { padding: var(--ah-s4) var(--ah-s3) 96px; }
+  .ra-phone-hint { display: block; }
+}
+
+/* Agentin rivi / Sama kieli: the declared line under the title. The agent's
+   words carry a speech mark and stay in ink; a question to the person is in
+   the accent; a worker's question in ink-2; a stale declaration is muted and
+   italic, so it reads as old news rather than the present. */
+.ah-rail .ra-line { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ra-line-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ra-line-icon { flex: none; width: 12px; height: 12px; }
+.ra-line[data-tone="agent"] { color: var(--ah-ink-2); }
+.ra-line[data-tone="question"] { color: var(--ah-accent-ink); font-weight: 600; }
+.ra-line[data-tone="worker"] { color: var(--ah-ink-2); }
+.ra-line[data-tone="stale"] { color: var(--ah-muted); font-style: italic; }
+
+/* Kysymysrivi: the question's own row, indented under its conversation. */
+.ra-child .ah-list-row { padding-inline-start: 20px; }
+.ra-child .ah-nav-label { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.ra-child[data-mark="waiting"] .ah-nav-label { color: var(--ah-accent-ink); font-weight: 600; }
+.ra-child-mark { display: inline-grid; place-items: center; width: 20px; }
+.ra-child-end { color: var(--ah-muted); font-size: var(--ah-size-meta); white-space: nowrap; }
