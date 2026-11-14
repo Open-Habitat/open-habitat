@@ -34,3 +34,10 @@ reason.
 2. Removing the permission leaves the old workflow token unused on GitHub.
    Revoking it would need the daemon to hand gh's token to the gateway.
    The round does not revoke it; is that acceptable?
+
+## Verdict (Jari 14.11.2026)
+
+Direction **A Rivi**. Habitat remembers the opt-in (so a later sign-in that
+drops the scope shows "permission missing"). Removing the permission does
+not revoke the old token on GitHub; that is enough. Implementation:
+`github-workflow-scope`.

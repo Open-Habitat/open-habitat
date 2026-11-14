@@ -1,12 +1,13 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: feature
-status: open
+status: done
 priority: normal
 preparation: pending
 lane: code-hosts-github-scope
 lane_seq: 1
+closed: 2026-11-14
 ---
 
 # Renew the GitHub connection with the workflow permission from Settings

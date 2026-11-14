@@ -1,6 +1,6 @@
 ---
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 type: feature
 reporter: jari
 status: open
@@ -11,7 +11,7 @@ lane: brand
 lane_seq: 2
 blocked_by: ['@non-text-contrast-boundaries']
 collision: [design-system/]
-preparation: pending
+preparation: ready
 ---
 
 # New brand: three themes, new mark and the mark as the agent state indicator
@@ -390,7 +390,11 @@ Found while trying it in the real interface:
 - A sub-agent dot is 2.2 px in a 20 px mark and barely readable at 1×; a figure beside the mark may
   serve better there too.
 
-### Open decisions for Jari
+### Decisions (Jari 14.11.2026)
+
+Wide rail **B**; narrow rail **N2** (dashed ring for `read`); sub-agents at 20 px as dots up to three, a figure above that. Jari reviews them on the test server.
+
+### Original open decisions
 
 1. Wide rail: mark in its present place at 20 px (A), at the left edge of the row before the workspace
    icon at 20 px (B), or at the left edge at 24 px with a 36 px row (C). Recommendation: B.

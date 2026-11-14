@@ -39,3 +39,10 @@ Questions for Jari:
   that wording acceptable on the live site?
 - Should the live site also offer Korkea kontrasti in its theme menu, or
   only select it through `prefers-contrast: more`?
+
+## Verdict (Jari 14.11.2026)
+
+Direction **3 Merkki kantaa**. Its state captions are fine for now; the
+text content is reviewed later, once the look is settled. Korkea kontrasti
+stays out of the site's theme menu (system preference only). Implementation:
+`website-front-page-brand`.
