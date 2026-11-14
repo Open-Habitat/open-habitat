@@ -11,7 +11,7 @@ originating_run: 01m72a2pjq8ppye66vxcrg3wtd
 originating_run_kind: spinoff
 lane: m365-first-sync
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Microsoft first sync refused over quota after a 16-minute count; a Teams channel site skipped with 404

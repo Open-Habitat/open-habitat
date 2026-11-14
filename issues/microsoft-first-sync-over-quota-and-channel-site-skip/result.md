@@ -56,3 +56,66 @@ needs.
   root host.** Habitat does not otherwise learn the root host, and asking
   Graph for it adds a request to every discovery. With no reachable site the
   value is `no_reachable_site` rather than a guess.
+
+# Prototype round 1 — 2026-11-14 (folder step with sizes)
+
+Round: `design-system/prototypes/rounds/2026-11-14-microsoft-folder-sizes/`
+(build and check commands, and *What the host would need*, are in its
+`NOTES.md`). One view: production's Microsoft `ConnectDialog` in Settings ›
+Tiedot agenteille, folder step and quota refusal, Finnish and English.
+Synthetic pilot-shaped data: 19.8 GB free of 20 GB, OneDrive + two libraries
+counted 21.4 GB.
+
+Same in all directions: right after sign-in the host asks Graph for each
+library's size (one batched request, under a second), shows it as an
+estimate, still counts exactly after the choice, and the refusal shows needed
+vs free.
+
+Axis: how the size reaches the person before the choice.
+
+- **A Rows:** production's folder step unchanged, with the host filling in
+  `bytes`/`estimated`. Only a host change. Its weakness shows in the
+  "upper bound" situation: Microsoft's `quota.used` reads as "noin",
+  and production does not block on an estimate.
+- **B Folders open:** each library opens into its top-level folders with
+  sizes (one `root/children` request per library). A choice that does not
+  fit opens the largest library. After a refusal, *Choose again* returns to
+  the choice with the counted sizes, in the same attempt.
+- **C Space meter:** free space as a meter on top that the choice fills,
+  with the upper bound hatched and "no longer fits" marks on rows. The
+  refusal shows the counted size running past the limit.
+
+**Recommendation: B, with C's hatched upper bound.** In the pilot the
+libraries did not fit together and none could be taken in part. A only says
+which library to leave out whole.
+
+Situations (selector): sizes loading; known and fits; over before the count;
+upper bound only; refused after the count; two unopened sites (partner
+channel, removed site).
+
+Live check: nothing on the test server yet (prototype only). Open
+`offline.html` from the worker results, pick B, situation "Valinta ei mahdu",
+untick OneDrive › Kuvat and see the meter fit.
+
+## Decisions for later review (round 1)
+
+- **An estimate close to the count blocks Start (B, C); an upper bound never
+  does.** Alternatives: never block on an estimate (production today, A), or
+  block on any estimate. Why: a root-size sum over free space means a long
+  count that will almost surely be refused, which is exactly the pilot's 16
+  minutes; Microsoft's `quota.used` overstates (version history, recycle
+  bin, whole site), so blocking on it would refuse choices that fit.
+- **Upper bound worded "enintään"/"at most", not "noin".** It is an upper
+  bound, and calling it "about" makes a fitting choice look over.
+- **Counts from the same attempt are reused after a refusal (proposed limit
+  30 min), with a fresh quota observation.** Alternative: always count again
+  (the UI text "not counted again" then changes). Risk: a library that grew
+  meanwhile could fill the home quota during the pass.
+- **Unopened sites get a reason** (`other_host` / `not_found` / `denied`, from
+  the existing `site_host` classification and HTTP status) and are shown as
+  disabled rows (B, C) or a notice in place of production's "ask your admin
+  for access" (A). For a partner's shared channel, asking for access is the
+  wrong advice.
+- **Not verified:** whether a SharePoint library root's `size` includes
+  version history. If it does, it is an upper bound too and is reported as
+  `at_most`.

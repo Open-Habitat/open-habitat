@@ -1,0 +1,108 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-round, .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-round, .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+
+/* The round's pieces sit in production's dialog through display:contents
+   slots, so the dialog's flow gap applies to them as to its own children. */
+.rq-slot { display: contents; }
+.rq-reopen { position: fixed; right: 24px; bottom: 84px; z-index: 40; font: inherit; }
+
+/* B and C replace production's list, meter and buttons with their own;
+   production's heading, intro and steps stay. In the refusal production's
+   result line stays and the round's own text and buttons follow it. */
+html:not([data-rq-direction="0"])[data-rq-phase="choose"] .ig-flow > .ig-folders,
+html:not([data-rq-direction="0"])[data-rq-phase="choose"] .ig-flow > .ig-room,
+html:not([data-rq-direction="0"])[data-rq-phase="choose"] .ig-flow > [data-testid="integration-folders-too-big"],
+html:not([data-rq-direction="0"])[data-rq-phase="choose"] .ig-flow > .ig-row,
+html:not([data-rq-direction="0"])[data-rq-phase="failed"] .ig-flow > .ig-p,
+html:not([data-rq-direction="0"])[data-rq-phase="failed"] .ig-flow > .ig-row { display: none; }
+/* A: production's notice for unopened sites, in the round's words. */
+html[data-rq-direction="0"] [data-testid="integration-unavailable-sites"] { display: none; }
+
+.rq-need { margin: 0; }
+.rq-refusal { display: flex; flex-direction: column; gap: var(--ah-s3); }
+.rq-counted { display: flex; flex-direction: column; gap: 4px; }
+.rq-counted ul { margin: 0; padding: 0; list-style: none; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); }
+.rq-counted li { display: flex; justify-content: space-between; gap: var(--ah-s3); padding: 6px 12px; }
+.rq-counted li + li { border-top: 1px solid var(--ah-line-soft); }
+.rq-counted .ig-meta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Unopened sites as rows of the list (B, C). */
+.rq-gone .ig-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-warn, var(--ah-ink-2)); }
+.rq-gone .ah-checkbox small { display: block; margin-top: 2px; max-width: 46ch; color: var(--ah-ink-2); }
+
+/* Microsoft's figure that is only an upper bound. */
+.rq-hatch {
+  background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--ah-surface) 70%, transparent) 3px 6px) !important;
+}
+.ig-room.rq-maybe { color: var(--ah-ink); }
+.ig-folder .ah-checkbox small { display: block; margin-top: 2px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+
+/* B: libraries that open into folders. */
+.rq-tree .rq-lib + .rq-lib, .rq-tree .rq-lib + .rq-gone { border-top: 1px solid var(--ah-line-soft); }
+.rq-libhead { align-items: center; padding-left: 4px; gap: 6px; }
+.rq-libhead > .ah-checkbox { flex: 1; min-width: 0; }
+.rq-children { padding: 0 0 6px 40px; background: var(--ah-surface-2); border-top: 1px solid var(--ah-line-soft); }
+.rq-child { padding: 6px 12px 6px 0; }
+.rq-child + .rq-child { border-top: 1px solid var(--ah-line-soft); }
+.rq-later { margin: 4px 0 0; }
+
+/* C: the free space as a meter on top. */
+.rq-meter { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); }
+.rq-meter p { margin: 0; }
+.rq-meter-bar { position: relative; display: flex; height: 18px; border-radius: 4px; background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line-soft); overflow: visible; }
+.rq-meter-bar > span:not(.rq-m-limit) { height: 100%; }
+.rq-meter-bar > span + span:not(.rq-m-limit) { box-shadow: inset 1px 0 0 var(--ah-surface); }
+.rq-m-used { background: var(--ah-line-strong); }
+.rq-t1 { background: var(--ah-accent); }
+.rq-t2 { background: color-mix(in srgb, var(--ah-accent) 62%, var(--ah-surface)); }
+.rq-t3 { background: color-mix(in srgb, var(--ah-accent) 38%, var(--ah-surface)); }
+.rq-m-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ah-ink); }
+.rq-meter.over .rq-m-limit { background: var(--ah-err); }
+.rq-meter-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+.rq-meter-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
+.rq-meter-legend b { margin-left: auto; color: var(--ah-ink); font-weight: 600; }
+.rq-meter-legend b.rq-m-overtext { color: var(--ah-err); }
+.rq-cmeta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; }
+.rq-chip { padding: 0 6px; border-radius: 999px; border: 1px solid var(--ah-line); font-size: 11.5px; color: var(--ah-ink-2); }
+.rq-noroom .ah-checkbox { color: var(--ah-ink-2); }
+@media (max-width: 600px) {
+  .rq-children { padding-left: 28px; }
+  .rq-meter-legend b { margin-left: 0; flex-basis: 100%; }
+}
+/* The dialog opens over the page but under the review bar. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 60px; }
+/* A row's hint stays beside its size rather than pushing it to a line of its own. */
+.rq-folder-list .ig-folder > .ah-checkbox, .rq-tree .ig-folder > .ah-checkbox { flex: 1 1 0; min-width: 0; }
