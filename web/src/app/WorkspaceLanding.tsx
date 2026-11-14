@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useExplainState } from "../components/explainModeState";
 import { WorkspaceIntro } from "../components/WorkspaceIntro";
 import { useText } from "../i18n";
 import { workspaceLandingText } from "../text/workspaceLanding";
@@ -24,10 +25,11 @@ export function WorkspaceLanding({
 }: {
   workspaceId: string;
   identity?: string;
-  onNew?: (id: string) => void;
+  onNew?: (id: string) => boolean;
   startReason?: string;
 }) {
   const t = useText(workspaceLandingText);
+  const explain = useExplainState();
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
@@ -93,14 +95,17 @@ export function WorkspaceLanding({
               goal,
               page: page.title,
               signal: controller.signal,
+              allowImmediate: !explain.on,
+              onStart: () => start() === true,
             });
           } catch {
             if (!controller.signal.aborted) setProblem(true);
           } finally {
-            preparation.current = null;
-            if (!controller.signal.aborted) setPreparing(undefined);
+            if (!prepared) {
+              preparation.current = null;
+              if (!controller.signal.aborted) setPreparing(undefined);
+            }
           }
-          if (prepared) start();
         }}
       />
       {problem ? (

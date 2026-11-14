@@ -26,6 +26,15 @@ export function goalRequest(goal: StartGoal) {
   return { request, placeholder };
 }
 
+/** Immediate start is opt-in, and never consumes input the person must edit. */
+export function goalStartsImmediately(goal: StartGoal, draft: string) {
+  return (
+    goal.start === "immediate" &&
+    !draft.trim() &&
+    !goalRequest(goal).placeholder
+  );
+}
+
 /** The draft Aloita prepares. A goal's own skill (`carried`) already holds
  * the request, so only the invocation, the person's draft and the
  * placeholder go into the field; Pi records the request with the skill. */

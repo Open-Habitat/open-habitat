@@ -6,6 +6,10 @@ import { catalog } from "../i18n";
 // Agent reference: author the shared introduction in .agents/start-page.md;
 // it appears on the workspace page and at the start of new conversations.
 // /skill:open-habitat-start-page invokes the authoring skill.
+// Goals may opt into `start: immediate`. Choosing one sends once through the
+// ordinary send path if the prompt has no placeholder and the existing draft
+// is blank. Otherwise it only prepares the draft. Explain mode never sends.
+// Omit start for prepare-and-wait; immediate is the only supported value.
 const fi = {
   unreadable: "Aloitussivua ei saatu luettua.",
   retry: "Yritä uudelleen",

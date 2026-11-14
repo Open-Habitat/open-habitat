@@ -44,7 +44,8 @@ type startGoal struct {
 	Prompt string   `json:"prompt" yaml:"prompt"`
 	Skill  string   `json:"skill,omitempty" yaml:"skill,omitempty"`
 	// The name of a conversation the goal starts; the title when absent.
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	Name  string `json:"name,omitempty" yaml:"name,omitempty"`
+	Start string `json:"start,omitempty" yaml:"start,omitempty"`
 }
 
 const WorkspaceStartPagePath = "/api/v1/workspaces/start_page"
@@ -197,6 +198,9 @@ func parseStartPageDocument(data []byte) (*startPage, string) {
 			if !valid(step, 1024, true) {
 				return nil, "invalid_step"
 			}
+		}
+		if goal.Start != "" && goal.Start != "immediate" {
+			return nil, "invalid_goal_fields"
 		}
 		if goal.Name != "" && !validTitle(goal.Name) {
 			return nil, "invalid_goal_fields"

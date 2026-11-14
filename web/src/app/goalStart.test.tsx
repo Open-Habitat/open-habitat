@@ -13,7 +13,7 @@ import {
   setGuide,
   usePreparedField,
 } from "./goalGuide";
-import { creationKeys } from "./heldMessages";
+import { adoptCreation, creationKeys, readHeld } from "./heldMessages";
 
 vi.mock("./composerReads", () => ({ readCommands: vi.fn() }));
 
@@ -77,6 +77,76 @@ const selected = (field: HTMLTextAreaElement) =>
   field.value.slice(field.selectionStart, field.selectionEnd);
 
 describe("a goal chosen on the workspace page", () => {
+  it.each([
+    {
+      draft: "",
+      prompt: "Complete request.",
+      allowImmediate: true,
+      sends: true,
+    },
+    {
+      draft: "My draft",
+      prompt: "Complete request.",
+      allowImmediate: true,
+      sends: false,
+    },
+    {
+      draft: "",
+      prompt: "Request [input]",
+      allowImmediate: true,
+      sends: false,
+    },
+    {
+      draft: "",
+      prompt: "Complete request.",
+      allowImmediate: false,
+      sends: false,
+    },
+  ])(
+    "immediate start respects draft, placeholder and Explain mode: %j",
+    async ({ draft, prompt, allowImmediate, sends }) => {
+      vi.mocked(readCommands).mockResolvedValue(listed(goal.title));
+      sessionStorage.setItem(draftKey, draft);
+      await prepareGoalConversation({
+        identity: "person",
+        workspaceId: "ws",
+        page: "Page",
+        goal: { ...goal, prompt, start: "immediate" },
+        signal: new AbortController().signal,
+        allowImmediate,
+        onStart: () => true,
+      });
+      const held = readHeld(creationKeys("person", "ws").held);
+      expect(held).toHaveLength(sends ? 1 : 0);
+      if (sends) {
+        expect(held[0]).toMatchObject({
+          text: "/skill:korjaa ",
+          posted: false,
+        });
+        expect(sessionStorage.getItem(draftKey)).toBeNull();
+        adoptCreation("person", "ws", "pi:new");
+        adoptCreation("person", "ws", "pi:new");
+        expect(readHeld("nah:person:held:pi:new")).toEqual(held);
+      } else {
+        expect(sessionStorage.getItem(draftKey)).toContain(draft);
+      }
+    },
+  );
+  it("leaves only a draft when creation is blocked or opens a model chooser", async () => {
+    vi.mocked(readCommands).mockResolvedValue(listed(goal.title));
+    const started = await prepareGoalConversation({
+      identity: "person",
+      workspaceId: "ws",
+      page: "Page",
+      goal: { ...goal, prompt: "Complete request.", start: "immediate" },
+      signal: new AbortController().signal,
+      onStart: () => false,
+    });
+    expect(started).toBe(false);
+    expect(readHeld(creationKeys("person", "ws").held)).toEqual([]);
+    expect(sessionStorage.getItem(draftKey)).toBe("/skill:korjaa ");
+  });
+
   it("prepares the new conversation's draft and guide as Aloita would", async () => {
     vi.mocked(readCommands).mockResolvedValue(listed("Korjaa havaittu virhe"));
     sessionStorage.setItem(draftKey, "Oma ajatus.");

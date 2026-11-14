@@ -2846,7 +2846,7 @@ function BrowserConversationContent({
                         onPage={(read) =>
                           setStartPage({ key: pageKey, page: read })
                         }
-                        onStarted={(started, title, prepared) => {
+                        onStarted={(started, title, prepared, immediate) => {
                           // A goal names the conversation it starts, until the
                           // person renames it.
                           const name = goalConversationName(started);
@@ -2859,7 +2859,10 @@ function BrowserConversationContent({
                             ).catch(() => {
                               /* The automatic title then stands. */
                             });
-                          if (!guide) return;
+                          const sending =
+                            immediate && (canSend || sendWhenReady);
+                          if (sending) composer.onSendNow?.(prepared.text);
+                          if (!guide) return sending;
                           prepareField(guide, {
                             text: prepared.text,
                             start: prepared.selectionStart,
@@ -2870,6 +2873,7 @@ function BrowserConversationContent({
                             page: title,
                             open: guideOpensItself(),
                           });
+                          return sending;
                         }}
                       />
                     ) : undefined
@@ -3190,6 +3194,11 @@ function BrowserConversationContent({
               onChange={changeDraft}
               onPage={(read) => setStartPage({ key: pageKey, page: read })}
               onGiveBack={creationView.giveBack}
+              onSend={(text) => {
+                if (creationBlock(creation)) return false;
+                composer.onSendNow?.(text);
+                return true;
+              }}
             />
           )}
           <div className="ah-composer-stack">

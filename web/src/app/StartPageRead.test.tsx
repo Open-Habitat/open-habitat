@@ -267,11 +267,16 @@ it("leaves the request to the goal's own skill and selects the placeholder after
   fireEvent.click(screen.getByTestId("starting-goal"));
   const prepared = "/skill:native [observation]";
   await waitFor(() => expect(onChange).toHaveBeenCalledWith(prepared));
-  expect(onStarted).toHaveBeenCalledWith(goal, "Repository title", {
-    text: prepared,
-    selectionStart: "/skill:native ".length,
-    selectionEnd: prepared.length,
-  });
+  expect(onStarted).toHaveBeenCalledWith(
+    goal,
+    "Repository title",
+    {
+      text: prepared,
+      selectionStart: "/skill:native ".length,
+      selectionEnd: prepared.length,
+    },
+    false,
+  );
   view.rerender(content(prepared));
   const field = screen.getByTestId("draft") as HTMLTextAreaElement;
   expect(document.activeElement).toBe(field);

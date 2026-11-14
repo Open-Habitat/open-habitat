@@ -3,11 +3,12 @@ created: 2026-11-12
 updated: 2026-11-14
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: start-page
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Start page goal option: start immediately when the request has no placeholder
@@ -20,6 +21,6 @@ Proposal: an optional goal field (e.g. `start: immediate`) in `.agents/start-pag
 
 ## Acceptance Criteria
 
-- [ ] A goal marked for immediate start, chosen from the workspace page or an empty conversation, sends its request once without a second press; the conversation shows the goal chip and guide as today
-- [ ] Goals with a placeholder or an existing nonblank draft are unchanged
-- [ ] Format, validation, start-page skill and UI guide document the field; browser test covers both paths
+- [x] A goal marked for immediate start, chosen from the workspace page or an empty conversation, sends its request once without a second press; the conversation shows the goal chip and guide as today
+- [x] Goals with a placeholder or an existing nonblank draft are unchanged
+- [x] Format, validation, start-page skill and UI guide document the field; browser test covers both paths

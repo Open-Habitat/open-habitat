@@ -181,6 +181,7 @@ export function CreationStream({
   onChange,
   onPage,
   onGiveBack,
+  onSend,
 }: {
   workspace: Workspace;
   creation: Creation;
@@ -194,6 +195,7 @@ export function CreationStream({
   onChange: (value: string) => void;
   onPage: (page: StartPage | null) => void;
   onGiveBack: () => void;
+  onSend: (text: string) => boolean;
 }) {
   const { problem, refused, worktree, onCreateAgain, onRetry } = creation;
   return (
@@ -209,7 +211,7 @@ export function CreationStream({
             draft={draft}
             onChange={onChange}
             onPage={onPage}
-            onStarted={(goal, title, prepared) => {
+            onStarted={(goal, title, prepared, immediate) => {
               prepareField(guide, {
                 text: prepared.text,
                 start: prepared.selectionStart,
@@ -220,6 +222,7 @@ export function CreationStream({
                 page: title,
                 open: guideOpensItself(),
               });
+              return immediate && onSend(prepared.text);
             }}
           />
         }

@@ -1,10 +1,14 @@
 import { type RefObject, useLayoutEffect, useSyncExternalStore } from "react";
 import { splitAttachments } from "../components/AttachmentChips";
 import type { ComposerGoal } from "../components/composer/GoalChip";
-import { goalDraft, goalRequest } from "../components/StartHere";
+import {
+  goalDraft,
+  goalRequest,
+  goalStartsImmediately,
+} from "../components/StartHere";
 import { readCommands, type StartGoal, type StartPage } from "./composerReads";
 import { conversationName } from "./conversationName";
-import { creationKeys } from "./heldMessages";
+import { creationKeys, readHeld, writeHeld } from "./heldMessages";
 import { type HistoryEntry, readHistory } from "./history";
 import { startPageGoal } from "./startPageRequest";
 
@@ -177,8 +181,9 @@ export function usePreparedField(
 /**
  * Choosing a goal outside a conversation is its Aloita: the new
  * conversation's draft is prepared before it is created, and its guide is
- * set as Aloita sets it. Returns false when the skill could not be checked;
- * nothing is then prepared.
+ * set as Aloita sets it. With onStart, returns whether creation began;
+ * a declined start retains the draft without queueing an immediate send.
+ * An unavailable skill read rejects before anything is prepared.
  */
 export async function prepareGoalConversation({
   identity,
@@ -186,12 +191,17 @@ export async function prepareGoalConversation({
   goal,
   page,
   signal,
+  allowImmediate = true,
+  onStart,
 }: {
   identity: string;
   workspaceId: string;
   goal: StartGoal;
   page: string;
   signal: AbortSignal;
+  allowImmediate?: boolean;
+  /** True only once creation has begun; a model chooser is not creation. */
+  onStart?: () => boolean;
 }) {
   const { goal: effective, carried } = await resolveGoal(
     goal,
@@ -199,12 +209,10 @@ export async function prepareGoalConversation({
     signal,
   );
   if (signal.aborted) return false;
-  const key = creationKeys(identity, workspaceId).draft;
-  const prepared = goalDraft(
-    effective,
-    sessionStorage.getItem(key) ?? "",
-    carried,
-  );
+  const keys = creationKeys(identity, workspaceId);
+  const key = keys.draft;
+  const draft = sessionStorage.getItem(key) ?? "";
+  const prepared = goalDraft(effective, draft, carried);
   sessionStorage.setItem(key, prepared.text);
   const owner = creationGuideOwner(identity, workspaceId);
   prepareField(owner, {
@@ -213,7 +221,21 @@ export async function prepareGoalConversation({
     end: prepared.selectionEnd,
   });
   setGuide(owner, { goal: effective, page, open: guideOpensItself() });
-  return true;
+  const started = onStart?.() ?? false;
+  if (
+    started &&
+    allowImmediate &&
+    goalStartsImmediately(effective, draft) &&
+    !readHeld(keys.held).length
+  ) {
+    // Enqueue only after creation begins, before its view mounts. A refused
+    // start or a model chooser leaves a draft, never a send for a later visit.
+    writeHeld(keys.held, [
+      { command_id: crypto.randomUUID(), text: prepared.text, posted: false },
+    ]);
+    sessionStorage.removeItem(key);
+  }
+  return onStart ? started : true;
 }
 
 /** A new conversation's draft that is a native invocation, caret after it. */

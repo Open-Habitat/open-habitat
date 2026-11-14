@@ -144,7 +144,7 @@ export function WorkspacePage({
   csrf?: string;
   /** The person whose new-conversation draft a chosen goal prepares. */
   identity?: string;
-  onNew?: (id: string) => void;
+  onNew?: (id: string) => boolean;
   onNewWorktree?: (id: string) => void;
   onArchive?: (id: string) => Promise<boolean>;
   archiveReason?: (conversation: HomeConversation) => string;

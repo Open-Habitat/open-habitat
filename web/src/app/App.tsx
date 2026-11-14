@@ -1891,10 +1891,10 @@ export function App() {
       railStarting.current.has(workspaceId) ||
       createReason(workspaceId)
     )
-      return;
+      return false;
     if (!choice && newWorktree === undefined && defaultStart?.blocked) {
       setNewChoiceWorkspace(workspaceId);
-      return;
+      return false;
     }
     setNewChoiceWorkspace(undefined);
     railStarting.current.add(workspaceId);
@@ -1995,6 +1995,7 @@ export function App() {
           return next;
         });
       });
+    return true;
   };
   // A workspace made with "Luo työtila" gets one conversation, opened with
   // focus in its field (Jari 16.10.2026). The new workspace's ID is known only

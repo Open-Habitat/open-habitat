@@ -64,6 +64,8 @@ func TestStartPageIsWorkspaceBoundAndNativeSkillReferencesAreOptional(t *testing
 
 func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 	for _, text := range []string{
+		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    start: automatic", 1),
+		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    start: true", 1),
 		"no frontmatter", "---\ntitle: only\nunknown: field\n---\n", strings.Replace(fixtureStartPage, "title:", "unknown:", 1),
 		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests/../../secret", 1),
 		strings.Replace(fixtureStartPage, "skill: tests", "skill: _bad", 1),
@@ -87,6 +89,10 @@ func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 	}
 	if parseStartPage([]byte(strings.ReplaceAll(fixtureStartPage, "\n", "\r\n"))) == nil {
 		t.Fatal("rejected CRLF")
+	}
+	immediate := parseStartPage([]byte(strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    start: immediate", 1)))
+	if immediate == nil || immediate.Goals[0].Start != "immediate" || immediate.Goals[1].Start != "" {
+		t.Fatalf("goal start: %+v", immediate)
 	}
 	// A goal may name the conversation it starts.
 	named := parseStartPage([]byte(strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    name: Viikkoraportti", 1)))

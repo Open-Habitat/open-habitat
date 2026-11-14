@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { goalDraft, StartHere } from "../components/StartHere";
+import { useExplainState } from "../components/explainModeState";
+import {
+  goalDraft,
+  goalStartsImmediately,
+  StartHere,
+} from "../components/StartHere";
 import { useText } from "../i18n";
 import { workspaceLandingText } from "../text/workspaceLanding";
 import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
@@ -28,11 +33,14 @@ export function StartPageRead({
     goal: StartGoal,
     page: string,
     prepared: ReturnType<typeof goalDraft>,
-  ) => void;
+    immediate: boolean,
+  ) => boolean | undefined;
 }) {
   const latest = useRef({ draft, onChange, onPage, onStarted });
   latest.current = { draft, onChange, onPage, onStarted };
   const t = useText(workspaceLandingText);
+  const explain = useExplainState();
+  const startedImmediately = useRef(false);
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
@@ -104,7 +112,7 @@ export function StartPageRead({
           latest.current.onChange(prepared.text);
         }}
         onGoal={async (goal) => {
-          if (preparation.current) return;
+          if (preparation.current || startedImmediately.current) return;
           const controller = new AbortController();
           preparation.current = controller;
           setPreparing(goal);
@@ -125,14 +133,24 @@ export function StartPageRead({
             if (!controller.signal.aborted) setPreparing(undefined);
           }
           const { goal: effective, carried } = resolved;
+          const immediate =
+            !explain.on &&
+            goalStartsImmediately(effective, latest.current.draft);
           const prepared = goalDraft(effective, latest.current.draft, carried);
           setPreparedDraft({
             ...prepared,
             chip: effective.skill ? `/skill:${effective.skill} `.length : 0,
           });
           latest.current.onChange(prepared.text);
-          if (page && !("state" in page))
-            latest.current.onStarted?.(effective, page.title, prepared);
+          if (page && !("state" in page)) {
+            const sent = latest.current.onStarted?.(
+              effective,
+              page.title,
+              prepared,
+              immediate,
+            );
+            startedImmediately.current = immediate && sent === true;
+          }
         }}
       />
       {prepareError && <p role="status">{t.skillUnchecked}</p>}

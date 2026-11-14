@@ -69,6 +69,12 @@ at most 160 bytes): the name of the conversation the goal starts, when the
 goal's title is not a good one (for example `Viikkoraportti` for the goal
 *Kirjoita viikon raportti*). The person can rename it later. All guide fields are required;
 old goals without them are invalid. Guide fields are plain text, not Markdown.
+An optional `start: immediate` sends a complete request as soon as the person
+chooses the goal. Omit `start` to prepare and wait for Send (the default); no
+other value is supported. Propose immediate start only for a self-contained
+request the person has approved for one-press use. A placeholder or an existing
+nonblank draft always keeps prepare-and-wait. In Explain mode choosing a goal
+only prepares it, even with immediate start.
 No other fields. Use short,
 plain Finnish text unless the person requests another language. Quote YAML
 strings or use block scalars so punctuation stays text.
@@ -85,6 +91,7 @@ goals:
     when: Kun avaat tämän repon ensimmäistä kertaa.
     prompt: Näytä projektin tärkeimmät osat ja ehdota yhtä pientä aloitustehtävää.
     skill: tutustu-projektiin
+    start: immediate
   - title: Tarkista muutos
     what: Saat konkreettiset virheet ja ehdotukset niiden korjaamiseen.
     steps:
@@ -133,7 +140,9 @@ behind a disclosure) and the same goals, so put what a newcomer must know
 first, such as a safety note, in that first paragraph. Choosing a goal, on the
 workspace page or at the start of a conversation, prepares the request in the
 editable draft of that new or empty conversation and opens the goal's guide
-beside it; it never sends. With the goal's own skill the draft holds
+beside it. With `start: immediate`, no placeholder and no existing nonblank
+draft, it sends once without a separate Send. Otherwise it waits for Send.
+With the goal's own skill the draft holds
 only its invocation, shown as a chip, and the person's text. The existing
 nonblank draft is retained, and requests without a placeholder end with two
 newlines with the caret at the end.
