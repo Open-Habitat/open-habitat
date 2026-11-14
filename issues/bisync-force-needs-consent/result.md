@@ -33,6 +33,20 @@ to the other side. This has not been observed; it is a known gap.
   the work that caused the change, not on the integrations card in Settings,
   where a person will not find them. (Decisions, 12:54Z, on round 1.)
 
+Today and decided, side by side:
+
+```mermaid
+flowchart TD
+    E["Agent edits every file in the folder"] --> S["Sync stops"]
+    S --> T["Today: Habitat checks for mass deletion"]
+    T --> TF["Habitat forces one pass by itself"]
+    S --> D["Decided: sync stays stopped"]
+    D --> DS["Person sees why, and what continuing would do"]
+    DS --> DC{"Person consents?"}
+    DC -- yes --> DF["One forced pass"]
+    DC -- no --> DW["Sync stays stopped"]
+```
+
 Everything below is a proposal built on those two decisions.
 
 ## Round 2: three places in the conversation
@@ -68,10 +82,42 @@ no rail mark. The bell item explains the stop and opens the count and
 consent in a dialog, and the Microsoft 365 card in Settings shows a notice
 with the same dialog. This is what remains of round 1.
 
+Where the person meets the stop, as proposed:
+
+```mermaid
+flowchart TD
+    S["Sync stops"] --> Q{"Did one conversation surely cause it?"}
+    Q -- yes --> C["Card in that conversation (A)"]
+    Q -- yes --> R["Mark on the conversation in the rail"]
+    Q -- no --> F["Notice on the Settings card"]
+    S --> B["Bell item for the whole account"]
+    C --> K["Count and consent"]
+    B --> K
+    F --> K
+```
+
 ## Proposals that the directions share
 
 None of these has been decided. They are what the prototype shows, and the
 mechanisms are described in the two rounds' `NOTES.md`.
+
+What the count and consent go through, in every direction:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Stopped
+    Stopped --> Counting: person asks what continuing would do
+    Counting --> Counted: count shown
+    Counting --> Failed: count fails
+    Counted --> Stopped: person cancels
+    Counted --> Running: person consents to this count
+    Counted --> Refused: files changed after the count
+    Refused --> Counting: person looks again
+    Running --> Done: forced pass finishes
+    Running --> Failed: forced pass fails
+    Failed --> Stopped
+    Done --> [*]
+```
 
 - **The count is made when the person asks for it**, not at the moment of
   the stop, so that it is fresh when they read it.

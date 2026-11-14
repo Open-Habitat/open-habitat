@@ -50,6 +50,35 @@ englannin, ja vaatii puhtaan konsolin.
 Kierroksen 1 `NOTES.md` kuvaa laskelman ja sen, miten lupa sidotaan
 laskelmaan; ne ovat tässä samat. Tämä kierros lisää kolme asiaa.
 
+Suunta A alusta loppuun, ehdotuksen mukaan:
+
+```mermaid
+sequenceDiagram
+    actor I as Ihminen
+    participant S as Selain
+    participant D as Daemon
+    participant P as Pilvikansio
+    D->>P: synkronointiajo
+    P-->>D: pysähdys, kaikki tiedostot muuttuivat
+    D->>D: etsii aiheuttaneen keskustelun historiasta
+    D-->>S: pysähdys ja keskustelu
+    S-->>I: kortti, sivupalkin merkki ja kello
+    I->>S: Katso, mitä jatkaminen tekisi
+    S->>D: pyytää laskelman
+    D->>P: kuivaharjoitus
+    D-->>S: laskelma
+    S-->>I: muutokset ja poistot
+    I->>S: Jatka kerran
+    S->>D: lupa tälle laskelmalle
+    D->>P: tarkistaa, ettei mikään muuttunut
+    alt ei muutoksia
+        D->>P: yksi pakotettu ajo
+        D-->>S: valmis
+    else jokin muuttui
+        D-->>S: torjuttu, katso uudelleen
+    end
+```
+
 ### Mikä keskustelu aiheutti pysähdyksen
 
 Daemon lukee jo keskustelujen natiivihistoriaa. Kun synkronointi pysähtyy,
@@ -68,6 +97,16 @@ jonka historiaa daemon ei lue) tai osumat ovat pelkkiä epävarmoja
 `bash`-kutsuja, pysähdystä ei liitetä mihinkään ja käytetään varapaikkaa:
 kello ja tilin kortti Asetuksissa. Väärään keskusteluun liitetty kortti
 kertoisi ihmiselle väärän syyn, joten epävarmassa tapauksessa ei arvata.
+
+```mermaid
+flowchart TD
+    S["Synkronointi pysähtyy"] --> H["Daemon etsii kirjoituksia kansioon"]
+    H --> Q{"Selittävätkö yhden keskustelun kirjoitukset muutoksen?"}
+    Q -- "kyllä, edit tai write" --> K["Liitetään keskusteluun"]
+    Q -- "vain epävarmoja bash-osumia" --> V["Varapaikka: kello ja Asetukset"]
+    Q -- "ei, muutos tuli muualta" --> V
+    Q -- "kaksi keskustelua" --> E["Liitetään siihen, jolla on enemmän osumia"]
+```
 
 Liitos on daemonin muistissa oleva havainto, kuten pysähdyskin, eikä sille
 tehdä tallennetta: uudelleenkäynnistyksen jälkeen seuraava ajo pysähtyy taas
