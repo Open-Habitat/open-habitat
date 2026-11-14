@@ -3,7 +3,7 @@ created: 2026-11-13
 updated: 2026-11-14
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: done
 priority: normal
 labels: [runtime-pin]
 provenance: other
@@ -12,6 +12,7 @@ source_ref: runtime-pin:code-server@4.145.2
 lane: runtime-pins
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Runtime pin: code-server 4.145.2 is available (pinned 4.141.0)
@@ -29,3 +30,8 @@ A research run assesses this release before it is scheduled and writes its
 findings and a verdict (safe-to-bump, needs-work or hold) to research.md in
 this issue directory. A safe-to-bump release is raised automatically; anything
 else stays here for the conductor.
+
+## Acceptance Criteria
+
+- [x] Update both editor artifact pins without changing launch flags or licence retention.
+- [x] Build both target archives and pass arm64 startup, native Explorer and focused fixture/Go checks; record qualification limits in result.md.
