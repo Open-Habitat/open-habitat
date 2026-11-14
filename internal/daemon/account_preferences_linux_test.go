@@ -254,9 +254,9 @@ func TestAccountPreferencesDropRetiredRecentCount(t *testing.T) {
 	}
 }
 
-// The workflow opt-in: off until chosen and stored only while on; the
-// explicit reconnect sets it to whether the installed token has the scope,
-// and unread scopes leave it alone.
+// The workflow opt-in: off until chosen and stored only while on. A
+// reconnect whose token has the scope sets it; one without the scope, or
+// with unread scopes, leaves it alone; only the person's write clears it.
 func TestAccountPreferencesGitHubWorkflow(t *testing.T) {
 	home := t.TempDir()
 	file := filepath.Join(home, ".config/open-habitat/preferences.json")
@@ -279,8 +279,12 @@ func TestAccountPreferencesGitHubWorkflow(t *testing.T) {
 	if err := rememberGitHubWorkflow(home, []string{"repo"}); err != nil {
 		t.Fatal(err)
 	}
-	if value, err = readPreferences(home); err != nil || value.GitHubWorkflow {
-		t.Fatalf("dropped: %+v %v", value, err)
+	if value, err = readPreferences(home); err != nil || !value.GitHubWorkflow {
+		t.Fatalf("a token without the scope cleared the wish: %+v %v", value, err)
+	}
+	off := false
+	if value, err = applyPreferences(home, preferencesWrite{GitHubWorkflow: &off}); err != nil || value.GitHubWorkflow {
+		t.Fatalf("the person's write: %+v %v", value, err)
 	}
 	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), "github_workflow") {
 		t.Fatalf("off stored a key: %s", raw)

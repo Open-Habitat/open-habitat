@@ -153,9 +153,10 @@ function ScopeChips({ scopes }: { scopes: readonly string[] | null }) {
 
 /** A Rivi (github-workflow-scope): the GitHub card's own row for letting
  * agents change GitHub Actions workflows. Allowing and removing both run the
- * GitHub sign-in again, with and without the workflow scope; the token gh
- * then holds sets the remembered opt-in in the person's daemon. Removing it
- * does not revoke the old token on GitHub. */
+ * GitHub sign-in again, with and without the workflow scope. A token that
+ * got the scope sets the remembered opt-in in the person's daemon; only the
+ * person's own write clears it, before the sign-in that drops the scope.
+ * Removing it does not revoke the old token on GitHub. */
 function GitHubWorkflowRow({
   identity,
   csrf,
@@ -186,6 +187,14 @@ function GitHubWorkflowRow({
     setSaid("");
     if (workflow) setPending(true);
     onReconnect(workflow);
+  };
+  // The wish is cleared first, by the person's own write: the reconnect's
+  // token never clears it, so a reconnect from a page that could not read
+  // it cannot lose it.
+  const remove = async () => {
+    if (!identity || !csrf) return;
+    setSaid("");
+    if (await setGitHubWorkflow(identity, false, csrf)) signIn(false);
   };
   const keepOff = async () => {
     if (!identity || !csrf) return;
@@ -234,7 +243,9 @@ function GitHubWorkflowRow({
             size="row"
             variant="secondary"
             isDisabled={busy}
-            onPress={() => signIn(false)}
+            onPress={() => {
+              void remove();
+            }}
           >
             {txt.removePerm}
           </ControlButton>

@@ -407,10 +407,10 @@ describe("account presentation", () => {
       vi.unstubAllGlobals();
     });
     it("shows an allowed token and removing it signs in again without the scope", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => reply("wid_wf-on", true)),
+      const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+        reply("wid_wf-on", init?.method !== "PUT"),
       );
+      vi.stubGlobal("fetch", fetch);
       const onReconnect = vi.fn();
       render(show("wid_wf-on", onReconnect, [...base, "workflow"]));
       fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
@@ -422,8 +422,12 @@ describe("account presentation", () => {
         ).toBe(false),
       );
       expect(row().dataset.wf).toBe("on");
+      // The wish is cleared by the person's own write first; only its
+      // confirmation starts the sign-in without the scope.
       fireEvent.click(screen.getByTestId("github-workflow-remove"));
-      expect(onReconnect).toHaveBeenCalledWith(false);
+      await waitFor(() => expect(onReconnect).toHaveBeenCalledWith(false));
+      const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
+      expect(put?.[1]?.body).toBe('{"github_workflow":false}');
       vi.unstubAllGlobals();
     });
     it("says a remembered permission is missing, and Don't allow forgets it on the daemon's confirmation", async () => {

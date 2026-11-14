@@ -231,10 +231,13 @@ export function chooseLanguage(
   return write(identity, csrf, "language", { language });
 }
 
-/** Records the GitHub workflow opt-in; Don't allow writes false. Allowing
- * goes through the GitHub sign-in, whose installed token sets it. */
+/** Records the GitHub workflow opt-in: Remove permission and Don't allow
+ * write false. Allowing goes through the GitHub sign-in, whose installed
+ * token sets it. Resolves to whether the daemon confirmed the value. */
 export function setGitHubWorkflow(identity: string, on: boolean, csrf: string) {
-  return write(identity, csrf, "github_workflow", { github_workflow: on });
+  return write(identity, csrf, "github_workflow", {
+    github_workflow: on,
+  }).then(() => states.get(key(identity, csrf))?.github_workflow === on);
 }
 
 export function setExperimentalFeature(

@@ -341,15 +341,17 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 	return value, savePreferences(home, value)
 }
 
-// rememberGitHubWorkflow records, after the person's explicit GitHub
-// reconnect installed its token, whether that token has the workflow scope:
-// the reconnect asked for it exactly when the person allowed it, and GitHub
-// may grant less than was asked. Unread scopes leave the opt-in as it was.
+// rememberGitHubWorkflow records the opt-in when the person's explicit
+// GitHub reconnect installed a token that has the workflow scope. It never
+// clears it: a reconnect without the scope may come from a page that could
+// not read the opt-in, and the remembered wish is what makes the card say
+// the permission is missing. Removing it is the person's own write, made
+// before the reconnect that drops the scope.
 func rememberGitHubWorkflow(home string, scopes []string) error {
-	if scopes == nil {
+	if !slices.Contains(scopes, "workflow") {
 		return nil
 	}
-	on := slices.Contains(scopes, "workflow")
+	on := true
 	_, err := applyPreferences(home, preferencesWrite{GitHubWorkflow: &on})
 	return err
 }

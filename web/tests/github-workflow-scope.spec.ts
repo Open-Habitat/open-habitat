@@ -136,12 +136,18 @@ test("@github-workflow-scope off by default; allowing and removing sign in again
   await page.getByRole("link").nth(0).click();
   await expect(row).toHaveAttribute("data-wf", "on");
 
-  // Removing signs in again without it.
+  // Removing clears the remembered wish first, then signs in again
+  // without the scope.
+  const cleared = page.waitForRequest(
+    (r) =>
+      r.url().endsWith("/api/v1/account/preferences") && r.method() === "PUT",
+  );
   const removed = page.waitForRequest(/\/auth\/github\/start\?/);
   await page
     .getByRole("button")
     .and(page.getByTestId("github-workflow-remove"))
     .click();
+  expect((await cleared).postData()).toBe('{"github_workflow":false}');
   const remove = new URL((await removed).url());
   expect(remove.searchParams.get("reconnect")).toBe("1");
   expect(remove.searchParams.has("scope")).toBe(false);

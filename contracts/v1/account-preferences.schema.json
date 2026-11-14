@@ -34,7 +34,7 @@
       ]
     },
     "github_workflow": {
-      "description": "Whether the person allowed agents to change GitHub Actions workflows: the opt-in behind the GitHub sign-in's workflow scope. It records what the person wants, not what gh's token holds (native_github.scopes in the snapshot). The person's explicit GitHub reconnect sets it to whether the installed token has the workflow scope; a write sets it directly, as Don't allow does. When it is true and the token lacks the scope, the page says the permission is missing.",
+      "description": "Whether the person allowed agents to change GitHub Actions workflows: the opt-in behind the GitHub sign-in's workflow scope. It records what the person wants, not what gh's token holds (native_github.scopes in the snapshot). The person's explicit GitHub reconnect sets it when the installed token has the workflow scope and never clears it; a write sets it directly, as Remove permission and Don't allow do with false. When it is true and the token lacks the scope, the page says the permission is missing.",
       "type": "boolean"
     },
     "feature_id": {
