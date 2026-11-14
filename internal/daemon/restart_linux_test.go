@@ -70,6 +70,9 @@ func TestBranchScanSeesACutTurn(t *testing.T) {
 		if message == "" {
 			return `{"type":"session_info","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","name":"otsikko"}`
 		}
+		if message == "restart" {
+			return `{"type":"custom","customType":"oh-restart-stop","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","data":{"schema_version":1}}`
+		}
 		return `{"type":"message","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","message":` + message + `}`
 	}
 	prompt, call, result := `{"role":"user","content":"x"}`, `{"role":"assistant","stopReason":"toolUse"}`, `{"role":"toolResult","toolName":"read"}`
@@ -85,6 +88,13 @@ func TestBranchScanSeesACutTurn(t *testing.T) {
 		{"tool call without result", []string{line("e1", "", prompt), line("e2", "e1", call)}, true},
 		{"unanswered tool result", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result)}, true},
 		{"aborted reply", []string{line("e1", "", prompt), line("e2", "e1", aborted)}, false},
+		// The daemon marked its own stop ahead of the abort: the restart cut
+		// the turn, also when a running tool's abort is saved as an error.
+		{"reply aborted by a restart", []string{line("e1", "", prompt), line("e2", "e1", "restart"), line("e3", "e2", aborted)}, true},
+		{"tool aborted by a restart", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", "restart"), line("e4", "e3", result), line("e5", "e4", `{"role":"assistant","stopReason":"error","errorMessage":"This operation was aborted"}`)}, true},
+		// A mark from an earlier turn does not make the person's own stop a cut.
+		{"person's stop after a restarted turn", []string{line("e1", "", prompt), line("e2", "e1", "restart"), line("e3", "e2", aborted), line("e4", "e3", prompt), line("e5", "e4", aborted)}, false},
+		{"restart while idle", []string{line("e1", "", prompt), line("e2", "e1", answer), line("e3", "e2", "restart")}, false},
 		// The person's `!command` and Habitat's messages are not the answer.
 		{"shell after a tool result", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result), line("e4", "e3", shell)}, true},
 		{"custom after the prompt", []string{line("e1", "", prompt), line("e2", "e1", note)}, true},

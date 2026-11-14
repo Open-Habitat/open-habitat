@@ -485,3 +485,21 @@ func TestSnapshotNamesTheLastFinishedReply(t *testing.T) {
 		t.Fatalf("cut turn: last_reply %q", got)
 	}
 }
+
+// The daemon's own stop asks the companion to mark a running turn as cut by
+// the restart; any other first cause does not (process-extension.mjs).
+func TestRestartStopMarksOnlyTheDaemonsOwnStop(t *testing.T) {
+	restart := &conversation{rpc: &piRPC{}}
+	stopFor(restart, "restart")
+	if !restart.rpc.restartStop.Load() || restart.rpc.personStop.Load() {
+		t.Fatal("a restart stop was not marked as the restart's")
+	}
+	for _, cause := range []string{"idle", "room", "person", "crash"} {
+		s := &conversation{rpc: &piRPC{}}
+		stopFor(s, cause)
+		stopFor(s, "restart")
+		if s.rpc.restartStop.Load() {
+			t.Fatalf("a %s stop was marked as the restart's", cause)
+		}
+	}
+}

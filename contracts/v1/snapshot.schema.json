@@ -714,7 +714,7 @@
           "$ref": "history.schema.json#/$defs/stop"
         },
         "interrupted_turn": {
-          "description": "The conversation rests (rest present, not awake) and the turn its Pi was working on never finished: the last message on its native branch is a prompt, a tool call or a tool result the model never answered, so Pi stopped mid-turn, for example when the daemon restarted for an upgrade. The rest report says the same. Absent otherwise, and for an archived conversation; the person's next message ends the rest and with it this fact.",
+          "description": "The conversation rests (rest present, awake or not) and the turn its Pi was working on never finished: the last message on its native branch is a prompt, a tool call or a tool result the model never answered, or a reply Pi aborted after the daemon marked its own stop, so Pi stopped mid-turn, for example when the daemon restarted for an upgrade. The rest report says the same. Absent otherwise, and for an archived conversation; the person's next message ends the rest and with it this fact.",
           "const": true
         },
         "last_reply": {

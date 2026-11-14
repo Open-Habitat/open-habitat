@@ -8,6 +8,8 @@ const live = p => ['running', 'terminating', 'terminate_timeout'].includes(p.sta
 const token = p => `pt_${p.startTime}`;
 const maxFrame = 256 * 1024;
 const catchUpType = 'oh-resume-catch-up';
+// The companion marks a turn the daemon's own stop cuts (shutdown op).
+const restartStopType = 'oh-restart-stop';
 const runPattern = /^[0-9a-hjkmnp-tv-z]{26}$/;
 const key = p => `${p.id}:${p.startTime}`;
 // The daemon's narrow Taskfleet wait grammar (processes_linux.go taskfleetWait),
@@ -140,12 +142,18 @@ export async function foregroundWaitRuns(tools, records, scan = liveWaitRuns) {
 // unfinished (a prompt, tool call or tool result nobody answered).
 export function branchFacts(branch) {
   const open = new Map(), order = [], reported = new Set(), runs = new Set();
-  let turnCut = false;
+  let turnCut = false, restartStop = false;
   for (const entry of branch) {
     const m = entry?.message;
     const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
+    if (entry?.type === 'custom' && entry.customType === restartStopType) restartStop = true;
     // Only the turn's own messages decide, not a `!command` or a custom message.
-    if (entry?.type === 'message' && ['user', 'assistant', 'toolResult'].includes(m?.role)) turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse';
+    // A reply Pi aborted or failed after the daemon's restart mark was cut by
+    // the restart, not stopped by the person.
+    if (entry?.type === 'message' && ['user', 'assistant', 'toolResult'].includes(m?.role)) {
+      if (m.role === 'user') restartStop = false;
+      turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse' || (restartStop && (m.stopReason === 'aborted' || m.stopReason === 'error'));
+    }
     if (m?.role === 'toolResult' && m.toolName === 'process') {
       const d = m.details;
       if (d?.action === 'start' && /^proc_[a-f0-9]{4}$/.test(d.process?.id ?? '') && d.process.startTime > 0) {
@@ -468,6 +476,12 @@ export default function (pi) {
     // process inventory is asked, whose failure must not lose it; not in
     // the LLM context.
     if (q.op === 'shutdown' && q.person === true && context) { try { pi.appendEntry('oh-person-stop', { schema_version: 1 }); } catch {} }
+    // The daemon is stopping (a restart or an upgrade) while a turn runs: Pi
+    // saves the turn as aborted on its way down, which alone reads as the
+    // person's stop. The mark ahead of it says the restart cut the turn
+    // (branchFacts, process_interrupted_linux.go restartStopType). An idle
+    // Pi gets none, so a restart does not touch a finished conversation.
+    else if (q.op === 'shutdown' && q.restart === true && context && context.isIdle?.() === false) { try { pi.appendEntry(restartStopType, { schema_version: 1 }); } catch {} }
     // Refuse ambiguous managers before dispatching ANY browser control. Shutdown
     // is different: it intentionally stops every native owner in this Pi.
     const inventories = await ask('request:list', {}, q.op === 'shutdown');

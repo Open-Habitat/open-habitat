@@ -545,7 +545,7 @@
           ]
         },
         "interrupted_turn": {
-          "description": "The turn Pi was working on when it stopped never finished: the branch ends in a prompt, tool call or tool result nobody answered. Absent or false when the turn had ended. A rest with no cut-off process, no cut turn, no settled run and a fully read Taskfleet has nothing to tell: the browser shows no card and the agent gets no catch-up.",
+          "description": "The turn Pi was working on when it stopped never finished: the branch ends in a prompt, tool call or tool result nobody answered, or in a reply Pi aborted after the daemon marked its own stop (a restart cut the turn, the person did not stop it). Absent or false when the turn had ended. A rest with no cut-off process, no cut turn, no settled run and a fully read Taskfleet has nothing to tell: the browser shows no card and the agent gets no catch-up.",
           "type": "boolean"
         },
         "processes": {

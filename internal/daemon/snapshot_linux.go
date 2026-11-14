@@ -593,7 +593,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if ok && live && scan.turnError {
 				agent["failure"] = "turn_error"
 			}
-			if ok && asleep && scan.turnCut {
+			// Also while typing has woken Pi and the person's message has not
+			// reached it: the cut turn is still the last thing in history.
+			if ok && rest != nil && agent["archive"] == "active" && scan.turnCut {
 				agent["interrupted_turn"] = true
 			}
 			if waiting, has := agent["waiting_on"].([]waitingProcess); ok && has {

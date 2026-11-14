@@ -32,6 +32,12 @@ type branchProcess struct {
 // The companion appends this custom entry when the person stops Pi.
 const personStopType = "oh-person-stop"
 
+// The companion appends this custom entry when the daemon stops a Pi whose
+// turn runs because the daemon itself is stopping (a restart or an upgrade).
+// Pi then saves the turn as aborted, which without the mark reads as the
+// person's stop.
+const restartStopType = "oh-restart-stop"
+
 type interruptedProcess struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
@@ -105,11 +111,13 @@ func scanBranchStream(r io.Reader) branchScan {
 		replaceStart string
 		at           int64
 		personStop   bool
+		restartStop  bool
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
 		person       bool // that message is the person's (role user)
 		failed       bool // that message is a reply the provider failed
 		answer       bool // that message is the model's finished answer
+		halted       bool // that message is a reply Pi aborted or failed
 		provider     string
 		refused      bool // the provider refused the sign-in
 		works        bool // the provider answered (an answer or a tool call)
@@ -162,6 +170,7 @@ func scanBranchStream(r io.Reader) branchScan {
 				// person's abort, not a failure.
 				stop := piStopReason(e.Message.StopReason, e.Message.ErrorMessage)
 				f.failed = stop == "error"
+				f.halted = stop == "error" || stop == "aborted"
 				f.answer = !f.open && stop != "error" && stop != "aborted"
 				if aiProviders[e.Message.Provider] {
 					f.provider = e.Message.Provider
@@ -210,6 +219,8 @@ func scanBranchStream(r io.Reader) branchScan {
 			}
 		case e.Type == "custom" && e.CustomType == personStopType:
 			f.personStop = true
+		case e.Type == "custom" && e.CustomType == restartStopType:
+			f.restartStop = true
 		case e.Type == "custom_message" && customType == catchUpMessageType:
 			var d struct {
 				Processes []struct {
@@ -249,9 +260,15 @@ func scanBranchStream(r io.Reader) branchScan {
 	order := []*branchProcess{}
 	reported := map[string]bool{}
 	scan := branchScan{runs: map[string]bool{}, refused: map[string]int64{}, works: map[string]int64{}}
+	// The daemon's restart mark is ahead of the reply Pi aborted on its way
+	// down, within the turn the person last began.
+	restarted := false
 	for _, f := range facts {
 		if !active[f.id] {
 			continue
+		}
+		if f.restartStop {
+			restarted = true
 		}
 		scan.last = max(scan.last, f.at)
 		if f.refused {
@@ -264,7 +281,13 @@ func scanBranchStream(r io.Reader) branchScan {
 			if f.person && !scan.turnCut {
 				scan.turnAt = f.at
 			}
-			scan.turnCut, scan.turnError = f.open, f.failed
+			if f.person {
+				restarted = false
+			}
+			// A reply the restart aborted or failed leaves its turn cut, not
+			// stopped by the person nor failed by the provider.
+			cut := restarted && f.halted
+			scan.turnCut, scan.turnError = f.open || cut, f.failed && !cut
 			scan.reply, scan.replyAt = "", 0
 			if f.answer {
 				scan.reply, scan.replyAt = f.id, f.at

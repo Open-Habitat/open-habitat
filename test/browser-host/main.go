@@ -825,6 +825,14 @@ esac
 			case "/fixture/daemon-restart":
 				// Restart the actual Unix HTTP servers as well as their controller
 				// incarnations. The gateway/session and invented native homes survive.
+				// The fake Pi marks a turn the restart cuts, as Pi's companion does
+				// when the daemon stops it for its own restart.
+				restarting := filepath.Join(tmp, "fakepi-restarting")
+				if err := os.WriteFile(restarting, nil, 0600); err != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				defer os.Remove(restarting)
 				for i, srv := range servers {
 					if err := srv.Close(); err != nil {
 						http.Error(w, "fixture close failed", 500)

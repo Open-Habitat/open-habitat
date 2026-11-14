@@ -44,6 +44,9 @@ func stopFor(s *conversation, cause string) {
 	if s.stopCause == "person" && s.rpc != nil {
 		s.rpc.personStop.Store(true)
 	}
+	if s.stopCause == "restart" && s.rpc != nil {
+		s.rpc.restartStop.Store(true)
+	}
 }
 
 // restOf is the rest a handle is in, and whether its Pi is up and ready for

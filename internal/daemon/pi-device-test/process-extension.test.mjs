@@ -128,6 +128,30 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
     await rm(directory, { recursive: true, force: true });
   }
 });
+// The daemon's own stop marks a running turn, so the reply Pi aborts on its
+// way down reads as cut by the restart; an idle Pi's branch is left alone.
+for (const idle of [false, true]) test(`a restart's shutdown ${idle ? 'leaves an idle branch alone' : 'marks the running turn'}`, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'oh-restart-stop-'));
+  const path = join(directory, 'p.sock');
+  const previous = process.env.OH_PROCESS_SOCKET;
+  process.env.OH_PROCESS_SOCKET = path;
+  const hooks = new Map(), bus = new Map(), appended = [];
+  const api = { on: (k, f) => hooks.set(k, f), appendEntry: (type, data) => appended.push([type, data]), events: {
+    on(k, f) { bus.set(k, [...(bus.get(k) ?? []), f]); },
+    emit(k, q) { for (const f of bus.get(k) ?? []) f(q); },
+  } };
+  companion(api);
+  api.events.on('processes:request:list', q => q.reply([]));
+  try {
+    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [] }, isIdle: () => idle });
+    assert.equal((await request(path, { op: 'shutdown', person: false, restart: true })).data.result, 'stopped');
+    assert.deepEqual(appended, idle ? [] : [['oh-restart-stop', { schema_version: 1 }]]);
+  } finally {
+    hooks.get('session_shutdown')();
+    if (previous === undefined) delete process.env.OH_PROCESS_SOCKET; else process.env.OH_PROCESS_SOCKET = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 test('foreground bash pipeline exposes expanded waits without inventing a background process', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'oh-pipe-'));
   const path = join(directory, 'p.sock');

@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -157,11 +159,38 @@ func runFakePi(args []string) {
 	steering, followUp := []string{}, []string{}
 	var mu sync.Mutex
 	queueUpdate := func() { emit(map[string]any{"type": "queue_update", "steering": steering, "followUp": followUp}) }
+	// As Pi's RPC mode: stdin's end or SIGTERM disposes the runtime, which
+	// aborts a running turn and saves it as aborted before Pi exits. The
+	// companion has marked the turn first when the daemon stopped Pi for its
+	// own restart (process-extension.mjs restart shutdown); this fake has no
+	// companion socket, so /fixture/daemon-restart says so with a file.
+	var shutdown sync.Once
+	stop := func() {
+		shutdown.Do(func() {
+			mu.Lock()
+			if busy && s.run != nil {
+				if _, err := os.Stat(filepath.Join(filepath.Dir(home), "fakepi-restarting")); err == nil {
+					s.append(map[string]any{"type": "custom", "customType": "oh-restart-stop", "data": map[string]any{"schema_version": 1}})
+				}
+			}
+			idle := s.abortRun()
+			mu.Unlock()
+			select {
+			case <-idle:
+			case <-time.After(3 * time.Second):
+			}
+			os.Exit(0)
+		})
+	}
+	terminated := make(chan os.Signal, 1)
+	signal.Notify(terminated, syscall.SIGTERM)
+	go func() { <-terminated; stop() }()
 	// A frame carries a prompt's images, as large as Pi's own frames.
 	in := bufio.NewReaderSize(slowIntake{home}, 64<<10)
 	for {
 		line, err := in.ReadBytes('\n')
 		if err != nil {
+			stop()
 			break
 		}
 		var req struct {
