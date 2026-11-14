@@ -437,7 +437,7 @@ export const parts: Record<CardId, Part> = {
   L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
   L03: {
     kind: "list",
-    sel: '[data-testid^="composer-command-"]:not([data-testid^="composer-command-skill:"])',
+    sel: '[data-testid^="composer-command-"]:not([data-testid^="composer-command-skill:"]):not([data-testid="composer-command-compact"]):not([data-testid="composer-command-new"])',
   },
   L04: { kind: "list", sel: '[data-testid="composer-file-choice"]' },
   L05: { kind: "info", sel: '[data-testid="file-git-mark"]' },
@@ -461,6 +461,12 @@ export const parts: Record<CardId, Part> = {
   },
   L11: { kind: "once", sel: '[data-testid="model-commit"]' },
   L12: { kind: "nav", sel: '[data-testid="settings-claude"]' },
+  L13: { kind: "once", sel: '[data-testid="composer-command-compact"]' },
+  L14: {
+    kind: "nav",
+    sel: '[data-testid="composer-command-new"]',
+    opens: true,
+  },
   P01: {
     kind: "panel",
     sel: '[data-testid="git-dialog"] .ah-gs-top, [data-testid="workspace-git-dialog"] > h2',
@@ -638,6 +644,7 @@ export const parts: Record<CardId, Part> = {
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "J08",
   "J09",
+  "L13",
   "M72",
   "M73",
   "M75",

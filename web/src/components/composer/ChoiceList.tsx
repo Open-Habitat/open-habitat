@@ -3,6 +3,7 @@ import type { GitMark } from "../../app/composerReads";
 import { useText } from "../../i18n";
 import { choiceListText } from "../../text/choiceList";
 import { Icon } from "../Icon";
+import { type Availability, unavailableReason } from "../types";
 import { ownName } from "./fieldTree";
 
 /** One row of the composer's list. A loading or failed row is not pickable. */
@@ -24,7 +25,8 @@ export type Choice =
       /** Opens Pi's own terminal dialogs: listed, not runnable here. */
       terminalOnly?: boolean;
       /** A browser action runs at once instead of inserting text. */
-      run?: () => void;
+      run?: (argumentsText: string) => void;
+      availability?: Availability;
     }
   | {
       type: "file";
@@ -238,11 +240,13 @@ export function ChoiceList({
           );
         }
         if (choice.type !== "command") return null;
+        const reason =
+          choice.availability && unavailableReason(choice.availability);
         return (
           <div
             key={`c:${choice.tone}:${choice.name}`}
             className="ah-choice-command"
-            aria-disabled={choice.terminalOnly || undefined}
+            aria-disabled={choice.terminalOnly || !!reason || undefined}
             {...common}
           >
             <span className="ah-choice-name">/{choice.name}</span>
@@ -252,8 +256,8 @@ export function ChoiceList({
             {choice.description ? (
               <span className="ah-choice-desc">{choice.description}</span>
             ) : null}
-            {choice.terminalOnly ? (
-              <span className="ah-choice-why">{t.terminalOnly}</span>
+            {choice.terminalOnly || reason ? (
+              <span className="ah-choice-why">{reason || t.terminalOnly}</span>
             ) : null}
           </div>
         );

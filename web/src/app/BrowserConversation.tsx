@@ -96,6 +96,7 @@ import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { compactionNotice } from "./compactionNotice";
 import { useCompaction } from "./compactionView";
+import { conversationBuiltins } from "./composerBuiltins";
 import {
   readCommands,
   readFiles,
@@ -1656,7 +1657,7 @@ function BrowserConversationContent({
       : undefined;
   const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
-  const composerSources = useMemo(
+  const composerReads = useMemo(
     () => ({
       commands: (signal: AbortSignal) =>
         readCommands(
@@ -1986,13 +1987,22 @@ function BrowserConversationContent({
   const compaction = useCompaction({
     id,
     csrf,
-    enabled: contextViewOn && controlled,
+    enabled: controlled,
     busy: controlled && turnUnderway(current?.state, current?.run_active),
     stopped: notStarted,
     workspaceId: runWorkspace,
     onLogin,
     onSettled: () => setContextRead((n) => n + 1),
   });
+  const composerSources = {
+    ...composerReads,
+    browserActions:
+      id && (!opened || controlled)
+        ? conversationBuiltins(compaction, () =>
+            navigate(`/workspaces/${workspace.workspace_id}`),
+          )
+        : [],
+  };
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");

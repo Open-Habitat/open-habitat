@@ -1206,6 +1206,17 @@ const fi = {
       name: "Tekoäly-asetukset",
       lead: "Avaa asetukset, joissa kirjaudut mallipalveluun tai lisäät avaimen.",
     },
+    L13: {
+      name: "/compact",
+      lead: "Tiivistää aiemmat viestit yhteenvedoksi ja vapauttaa tilaa keskusteluun.",
+      know: "Toimii vain agentin odottaessa viestiäsi. Aiemmat viestit säilyvät historiassa.",
+    },
+    L14: {
+      name: "/new",
+      lead: "Avaa uuden keskustelun samassa työtilassa.",
+      know: "Nykyinen keskustelu säilyy. Käynnissä oleva työ ei pysähdy.",
+      try: "Avaa uusi keskustelu",
+    },
     P01: {
       name: "Git-tila",
       lead: "Työtilan haara verrattuna etärepoon ja pohjahaaraan, sekä muuttuneet tiedostot.",
@@ -2881,6 +2892,17 @@ export const explainModeText = catalog(fi, {
     L12: {
       name: "AI settings",
       lead: "Opens the settings where you sign in to a model service or add a key.",
+    },
+    L13: {
+      name: "/compact",
+      lead: "Turns earlier messages into a summary to free space in the conversation.",
+      know: "Runs immediately while the agent waits for your message. Earlier messages stay in history.",
+    },
+    L14: {
+      name: "/new",
+      lead: "Opens a new conversation in the same workspace.",
+      know: "The current conversation is kept. Work in progress does not stop.",
+      try: "Open a new conversation",
     },
     P01: {
       name: "Git state",

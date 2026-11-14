@@ -413,6 +413,143 @@ function Controlled({
   return <Composer {...base} value={value} onChange={setValue} sources={src} />;
 }
 
+describe("composer built-ins and unmatched commands", () => {
+  it("lists browser actions alongside native commands and runs a selected action", async () => {
+    const run = vi.fn();
+    const src = {
+      ...sources(),
+      browserActions: [{ name: "compact", description: "Compact", run }],
+    };
+    const view = render(<Controlled initial="" src={src} />);
+    const el = field(view);
+    el.focus();
+    fireEvent.change(el, { target: { value: "/", selectionStart: 1 } });
+    await waitFor(() =>
+      expect(view.getByTestId("composer-command-review")).toBeTruthy(),
+    );
+    expect(view.getByTestId("composer-command-compact")).toBeTruthy();
+    fireEvent.change(el, { target: { value: "/compact", selectionStart: 8 } });
+    fireEvent.keyDown(el, { key: "Enter" });
+    expect(run).toHaveBeenCalledWith("");
+    expect(field(view).value).toBe("");
+  });
+
+  it.each(["/zzz", "/settings", "/compact"])(
+    "leaves unmatched %s editable and sends it as text",
+    async (value) => {
+      const send = vi.fn();
+      const src = sources();
+      const view = render(
+        <Composer {...base} value={value} sources={src} onSendNow={send} />,
+      );
+      const el = field(view);
+      el.setSelectionRange(value.length, value.length);
+      fireEvent.click(el);
+      await waitFor(() => expect(src.commands).toHaveBeenCalled());
+      await act(async () => {});
+      expect(el.getAttribute("aria-activedescendant")).toBeNull();
+      expect(fireEvent.keyDown(el, { key: "ArrowDown" })).toBe(true);
+      expect(fireEvent.keyDown(el, { key: "Tab" })).toBe(true);
+      await act(async () => {
+        fireEvent.keyDown(el, { key: "Enter" });
+      });
+      expect(send).toHaveBeenCalledWith(value);
+    },
+  );
+
+  it("Send routes an exact built-in with instructions without reading or sending a prompt", async () => {
+    const run = vi.fn();
+    const send = vi.fn();
+    const change = vi.fn();
+    const src = {
+      ...sources(),
+      browserActions: [
+        {
+          name: "compact",
+          description: "Compact",
+          acceptsArguments: true,
+          run,
+        },
+      ],
+    };
+    const view = render(
+      <Composer
+        {...base}
+        value="/compact keep tests"
+        sources={src}
+        onSendNow={send}
+        onChange={change}
+      />,
+    );
+    fireEvent.click(view.getByTestId("send"));
+    expect(run).toHaveBeenCalledWith("keep tests");
+    expect(change).toHaveBeenCalledWith("");
+    expect(send).not.toHaveBeenCalled();
+    expect(src.commands).not.toHaveBeenCalled();
+  });
+
+  it("keeps invalid action arguments in the draft without sending or running", () => {
+    const run = vi.fn();
+    const send = vi.fn();
+    const change = vi.fn();
+    const src = {
+      ...sources(),
+      browserActions: [
+        {
+          name: "compact",
+          description: "Compact",
+          acceptsArguments: true,
+          validateArguments: () => "Shorten the instructions",
+          run,
+        },
+      ],
+    };
+    const view = render(
+      <Composer
+        {...base}
+        value="/compact long instructions"
+        sources={src}
+        onSendNow={send}
+        onChange={change}
+      />,
+    );
+    fireEvent.click(view.getByTestId("send"));
+    expect(run).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    expect(change).not.toHaveBeenCalled();
+    expect(view.getByText("Shorten the instructions")).toBeTruthy();
+  });
+
+  it("keeps a refused built-in in the field and explains why", async () => {
+    const run = vi.fn();
+    const src = {
+      ...sources(),
+      browserActions: [
+        {
+          name: "compact",
+          description: "Compact",
+          run,
+          availability: {
+            state: "disabled" as const,
+            reason: "Wait for the turn",
+          },
+        },
+      ],
+    };
+    const view = render(<Controlled initial="/compact" src={src} />);
+    const el = field(view);
+    el.setSelectionRange(8, 8);
+    fireEvent.click(el);
+    await waitFor(() =>
+      expect(view.getByTestId("composer-command-compact")).toBeTruthy(),
+    );
+    fireEvent.keyDown(el, { key: "Enter" });
+    expect(run).not.toHaveBeenCalled();
+    expect(el.value).toBe("/compact");
+    expect(view.getByText("Wait for the turn")).toBeTruthy();
+  });
+});
+
 describe("composer lists", () => {
   it("completes `/` at the caret without offering terminal-only commands", async () => {
     const src = sources();
