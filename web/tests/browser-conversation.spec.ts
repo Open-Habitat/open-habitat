@@ -98,9 +98,15 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const header = page.locator(".ah-agent-header");
-  const row = page.locator(".ah-agent-item").last();
+  await readyConversation(page);
+  const conversationURL = new URL(page.url());
+  const row = page.locator(".ah-agent-item").filter({
+    has: page.locator(
+      `a[href="${conversationURL.pathname}${conversationURL.search}"]`,
+    ),
+  });
   await expect(header.locator(".ah-status-neutral")).toBeVisible();
-  await expect(row.locator(".ah-nav-mark")).toBeVisible();
+  await expect(row.getByTestId("rail-mark")).toBeVisible();
   await expect(page.getByTestId("history-unavailable")).toHaveCount(0);
   await expect(page.getByTestId("recap-heading")).toHaveCount(0);
   await page.getByTestId("message-input").fill("Testaa uusi keskustelu");
@@ -122,7 +128,7 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await expect(
     page.locator(".ah-agent-header").locator(".ah-status-neutral"),
   ).toBeVisible();
-  await expect(row.locator(".ah-nav-mark")).toBeVisible();
+  await expect(row.getByTestId("rail-mark")).toBeVisible();
   await expect(page.getByTestId("recap-heading")).toHaveCount(0);
   await expect(page.getByTestId("history-unavailable")).toHaveCount(0);
 });
@@ -2739,7 +2745,12 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.getByTestId("send-uncertain")).toBeVisible();
+  // Failed observation takes precedence over the send-only warning.
+  await expect(page.getByTestId("conversation-stale")).toBeVisible();
+  await expect(editor).toHaveValue("only once");
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeDisabled();
   await page.unroute("**/api/v1/conversations/*/status");
   await page.reload();
   await expect(editor).toBeVisible();
@@ -2937,12 +2948,13 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
 }) => {
   // Keep SSE unavailable during the lost receipt and freeze scheduled
   // retries: the HTTP snapshot must initiate the check on its own. Let the
-  // initial conversation become writable before disabling its event stream.
+  // initial conversation become writable through HTTP, with no SSE stream
+  // established: routing later would leave an existing EventSource connected.
+  await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
   await readyConversation(page);
-  await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await page.clock.pauseAt(new Date());
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -2951,19 +2963,28 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
     expect(reply.status()).toBe(200);
     await route.abort("failed");
   });
-  await page.route("**/api/v1/conversations/*/status", (route) =>
-    route.abort(),
-  );
-  await page.route("**/api/v1/snapshot", (route) => route.abort());
+  // Background recovery may already be reading: do not make the composer
+  // unavailable before the deliberate send crosses the write boundary.
+  for (const path of [
+    "conversations/*/status",
+    "conversations/*/receipt?command_id=*",
+    "snapshot",
+  ]) {
+    await page.route(`**/api/v1/${path}`, async (route) => {
+      if (sends) return route.abort();
+      const response = await route.fetch();
+      // A read begun before the send may still observe its acceptance.
+      return sends ? route.abort() : route.fulfill({ response });
+    });
+  }
   await editor.fill("original message");
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.getByTestId("send-uncertain")).toHaveAttribute(
-    "data-reason",
-    "failed",
-  );
+  await expect.poll(() => sends).toBe(1);
+  // With both transports unavailable, the connection warning takes
+  // precedence over the send-only warning.
   await page.getByTestId("snapshot-refresh").click();
   await expect(
     page.locator('[data-testid^="connection-"][data-state]'),
@@ -2973,6 +2994,7 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   ).toBeDisabled();
   await expect(editor).toHaveValue("original message");
   await page.unroute("**/api/v1/conversations/*/status");
+  await page.unroute("**/api/v1/conversations/*/receipt?command_id=*");
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(page.getByTestId("send-uncertain")).toHaveCount(0);
