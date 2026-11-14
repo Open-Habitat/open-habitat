@@ -42,28 +42,8 @@ func generationPayloadMatches(ctx context.Context, s Site, r AuthenticatedReleas
 		return e
 	}
 	unix.Close(fd)
-	artifacts, e := r.Select(s.Profiles)
-	if e != nil {
+	if e = runtimePayloadMatches(ctx, gen, r, s.Profiles, 0); e != nil {
 		return e
-	}
-	for _, a := range artifacts {
-		if a.Closure == nil {
-			return ErrReleaseArchive
-		}
-		for _, f := range a.Closure.Files {
-			if e = ctx.Err(); e != nil {
-				return e
-			}
-			path := gen + "/payloads/" + a.Profile + "/" + f.Path
-			st, e := os.Lstat(path)
-			if e != nil || !st.Mode().IsRegular() || uint32(st.Mode().Perm()) != uint32(f.Mode) {
-				return ErrReleaseArchive
-			}
-			sum, e := fileDigest(path)
-			if e != nil || sum != f.SHA256 {
-				return ErrReleaseArchive
-			}
-		}
 	}
 	b, e := trustedBytes(gen+"/product.json", MaxReleaseManifestBytes)
 	if e != nil {
@@ -380,10 +360,7 @@ func finishGeneration(s Site) error {
 			}
 		}
 	}
-	runtime := generationPath(s) + "/payloads/core/runtime"
-	selector := map[string]string{"node": runtime + "/bin/node", "entry": runtime + "/node_modules/@earendil-works/pi-coding-agent/dist/index.js", "manifest": runtime + "/node_modules/@earendil-works/pi-coding-agent/package.json"}
-	b, _ := json.Marshal(selector)
-	if e = installPolicy("/", policyFile{"/opt/open-habitat/pi-runtime.json", string(b)}, 0); e != nil {
+	if e = publishPiRuntime("/opt/open-habitat", generationPath(s), 0); e != nil {
 		return e
 	}
 	if e = installPolicy("/", policyFile{"/opt/open-habitat/site-origin.json", siteFactsFile(s)}, 0); e != nil {
@@ -412,6 +389,13 @@ func finishGeneration(s Site) error {
 		return e
 	}
 	return publishHeadlessShellSandbox()
+}
+
+func publishPiRuntime(prefix, generation string, owner uint32) error {
+	runtime := generation + "/payloads/core/runtime"
+	selector := map[string]string{"node": runtime + "/bin/node", "entry": runtime + "/node_modules/@earendil-works/pi-coding-agent/dist/index.js", "manifest": runtime + "/node_modules/@earendil-works/pi-coding-agent/package.json"}
+	b, _ := json.Marshal(selector)
+	return installPolicy("/", policyFile{prefix + "/pi-runtime.json", string(b)}, owner)
 }
 
 // needrestartOverride keeps an OS library update from restarting the

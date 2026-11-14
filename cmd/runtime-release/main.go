@@ -1,4 +1,4 @@
-// runtime-release is build tooling, not a daemon or installed host operator.
+// runtime-release builds and verifies closures; install is a root-only operator.
 // verify and stage receive the approved target (version and the manifest digest
 // GitHub states for the release asset) separately from the bundle; nothing in
 // the bundle can authorize it. manifest writes the release.json whose SHA-256,
@@ -17,6 +17,7 @@ import (
 	"github.com/open-habitat/open-habitat/internal/host"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"syscall"
 )
@@ -30,7 +31,7 @@ func main() {
 }
 func run() error {
 	if len(os.Args) < 2 {
-		return errors.New("expected manifest|verify|stage; use COMMAND --help")
+		return errors.New("expected manifest|verify|stage|install; use COMMAND --help")
 	}
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
@@ -40,8 +41,11 @@ func run() error {
 	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (manifest only; default artifact.json is one core descriptor)")
 	upgradeFile := fs.String("upgrade-file", "", "authenticated transition/product descriptor JSON (manifest only)")
 	platform := fs.String("platform", "", "ubuntu-24.04-amd64 or ubuntu-24.04-arm64, the architecture every archive was built for (manifest only)")
-	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage)")
+	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage/install)")
 	parent := fs.String("stage-parent", "", "existing trusted root-owned 0700 directory (stage only)")
+	selectProfile := fs.String("select", "", "required profile: core (install only)")
+	prefix := fs.String("prefix", "/opt/open-habitat", "trusted runtime installation prefix (install only; requires root)")
+	dryRun := fs.Bool("dry-run", false, "refuse without writing: runtime selection has no dry-run (install only)")
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -53,6 +57,34 @@ func run() error {
 	}
 	if *dir == "" || *version == "" {
 		return errors.New("directory and exact version required")
+	}
+	if command == "install" {
+		if *dryRun {
+			return errors.New("dry_run_unsupported: install requires locked runtime publication; use verify for read-only closure verification")
+		}
+		if *selectProfile != "core" || *parent != "" || *commit != "" || *artifactsFile != "" || *upgradeFile != "" || *platform != "" {
+			return errors.New("install requires --select core and accepts only directory, version, manifest-sha256 and prefix")
+		}
+		b, err := readInput(filepath.Join(*dir, "release.json"), host.MaxReleaseManifestBytes)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+		if err = host.InstallRuntime(ctx, b, host.Release{Version: *version, ManifestSHA256: *digest}, *prefix, opener(*dir)); err != nil {
+			return err
+		}
+		fmt.Println(`{"schema_version":1,"data":{"status":"installed"},"warnings":[]}`)
+		return nil
+	}
+	installFlag := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "select" || f.Name == "prefix" || f.Name == "dry-run" {
+			installFlag = true
+		}
+	})
+	if installFlag {
+		return errors.New("select, prefix and dry-run are install-only")
 	}
 	if command == "manifest" {
 		if *commit == "" || *platform == "" {

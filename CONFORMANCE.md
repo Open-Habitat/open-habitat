@@ -505,6 +505,27 @@ runtime startup evidence, not a conversation/provider, quota, boot-gate or
 customer apply/upgrade acceptance. Ordinary product packaging stays checksum-only;
 only the manifest-pinned core archive has the new authentication inventory.
 
+### Runtime-only installation
+
+`runtime-release install` extends the helper to deliberate root-only publication
+for manually installed hosts. `--select core`, exact version/digest and an
+explicit closure directory select the operation; `--prefix` defaults to the
+standard runtime prefix and exists for disposable qualification. There is no
+new service or unprivileged authority. Host operation locking and journal guards
+prevent bypassing host apply/upgrade.
+
+§§1,11,12,22: installation shares authenticated staging, generation publication,
+link writers and Pi-selector serialization with host maintenance. Retries verify
+archives and existing payload bytes. Failed selection reobserves and restores
+both outputs, including post-rename failures; failed recovery is explicit.
+SIGINT/SIGTERM cancel staging cooperatively. `--dry-run` explicitly refuses;
+`verify` is the read-only closure check, not an activation plan. The helper's
+existing JSON-only output, coarse exit code and ordinary flag help remain
+partial, not a full canon-conformance claim. It does not establish installed-host
+readiness, install packages or start services. Focused runtime-install tests cover
+retry, corrupt archives/generations, interrupted journals, unsafe selectors and
+post-rename failure recovery in disposable prefixes.
+
 ## Host preparation part 5 — read-only storage boot boundary
 
 Canon **v4**, §§1–24, scoped to installed startup policy and preparation's

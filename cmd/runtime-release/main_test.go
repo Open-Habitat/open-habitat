@@ -64,9 +64,14 @@ func TestVerifyRefusesUnpinnedManifestAndRetiredKeyInputs(t *testing.T) {
 		return run()
 	}
 	for name, args := range map[string][]string{
-		"wrong digest":       {"verify", "--directory", dir, "--version", "1.0.0", "--manifest-sha256", strings.Repeat("0", 64)},
-		"unpinned":           {"stage", "--directory", dir, "--version", "1.0.0"},
-		"manifest no commit": {"manifest", "--directory", dir, "--version", "1.0.0"},
+		"wrong digest":               {"verify", "--directory", dir, "--version", "1.0.0", "--manifest-sha256", strings.Repeat("0", 64)},
+		"unpinned":                   {"stage", "--directory", dir, "--version", "1.0.0"},
+		"manifest no commit":         {"manifest", "--directory", dir, "--version", "1.0.0"},
+		"install missing selection":  {"install", "--directory", dir, "--version", "1.0.0"},
+		"install optional selection": {"install", "--directory", dir, "--version", "1.0.0", "--select", "editor"},
+		"install dry run":            {"install", "--directory", dir, "--version", "1.0.0", "--select", "core", "--dry-run"},
+		"install stage parent":       {"install", "--directory", dir, "--version", "1.0.0", "--select", "core", "--stage-parent", dir},
+		"verify prefix":              {"verify", "--directory", dir, "--version", "1.0.0", "--prefix", "/opt/open-habitat"},
 		// Releases are unsigned: the retired key input and commands are refused, not ignored.
 		"key file":   {"verify", "--directory", dir, "--version", "1.0.0", "--manifest-sha256", pinned, "--key-file", filepath.Join(dir, "release.json")},
 		"sign":       {"sign", "--directory", dir, "--version", "1.0.0", "--commit", strings.Repeat("a", 40), "--platform", "ubuntu-24.04-amd64"},

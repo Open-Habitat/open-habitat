@@ -146,8 +146,8 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 // too, and an older core lacks what this release added.
 func (r AuthenticatedRelease) RequireCoreRuntime() error {
 	for _, a := range r.manifest.Artifacts {
-		// Without a closure there is nothing to judge here; staging and
-		// verification refuse such an archive.
+		// Installation callers must separately require a complete closure;
+		// this check only qualifies the component versions when one exists.
 		if a.Profile == "core" && a.Closure != nil && !validCoreRuntime(a) {
 			return ErrReleaseProfile
 		}

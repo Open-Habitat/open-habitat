@@ -599,6 +599,41 @@ No installation readiness follows from staging alone. Newer Ubuntu security
 updates satisfy the declared minimums; never downgrade or hold packages to match
 an old build. The customer's apt owns all Ubuntu dependency closure and updates.
 
+For a manually installed product **not managed by host apply**, root can publish
+and select just the core runtime without changing the product or its services:
+
+```sh
+sudo /path/to/product/bin/runtime-release install \
+  --directory /path/to/test-release/runtime \
+  --version <exact-runtime-version> \
+  --manifest-sha256 <independently-approved-64-hex-digest> \
+  --select core
+```
+
+A test release built with `--runtime-cache` supplies this `runtime/` closure.
+Use its runtime manifest version, not the product version. The command always
+emits JSON (`data.status=installed` on success). It requires root, a trusted
+root-owned `/var/lib/open-habitat` parent for the shared host operation lock,
+and already-installed runtime package minimums; it does not run apt. It refuses
+host installation/operation journals and a host-managed `current` generation:
+use host upgrade there. A manually maintained product `current` is left alone.
+Only `--select core` is supported; optional-profile activation remains host
+apply's responsibility.
+
+Payloads are staged and authenticated before publication into
+`/opt/open-habitat/generations/runtime-<manifest-digest>`. The command uses the
+host's publication and Pi-selector writer, updates `core` and `pi-runtime.json`,
+and leaves site settings, product binaries, units and running processes alone.
+An existing core alias must point into this prefix's generation payload layout;
+foreign layouts are refused rather than adopted. Invalid archives leave selection
+unchanged; an ordinary selector write failure rolls back the core alias. After
+an interruption, repeat the same command. A retry rechecks archives and published
+file bytes, rather than trusting the directory's existence. Old generations are
+retained for running processes; operators must remove them only when unused.
+This operation does not establish full host readiness or install browser sandbox
+policy. `--prefix <absolute-path>` selects a different trusted runtime prefix for
+disposable qualification; the installed daemon still reads the standard path.
+
 Use `bash scripts/test-ubuntu-requirements.sh` to qualify the apt adapter in a
 disposable Ubuntu container. It does not prove multi-user daemon startup,
 provider consent, customer projects, quota preparation or live activation.
