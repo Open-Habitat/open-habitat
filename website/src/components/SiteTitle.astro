@@ -1,15 +1,13 @@
 ---
-// The header's site title: the design system's doorway mark
-// (design-system/favicon.svg), inlined so its colours follow the theme.
+// The header's site title: the Open Habitat mark, inline so its colour
+// follows the theme.
+import { mark } from './mark';
+
 const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
 ---
 
 <a href={siteTitleHref} class="site-title">
-  <svg viewBox="0 0 48 48" width="28" height="28" aria-hidden="true">
-    <rect x="2.5" y="2.5" width="43" height="43" rx="12" fill="var(--ah-accent-soft)" stroke="var(--ah-accent-line)"></rect>
-    <path d="M14 36V23a10 10 0 0 1 20 0v13" fill="none" stroke="var(--ah-accent)" stroke-width="3" stroke-linecap="round"></path>
-    <circle cx="24" cy="28.5" r="3.2" fill="var(--ah-accent)"></circle>
-  </svg>
+  <Fragment set:html={mark('idle', 22)} />
   <span translate="no">{siteTitle}</span>
 </a>
 
@@ -25,8 +23,8 @@ const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
     white-space: nowrap;
     min-width: 0;
   }
-  svg {
-    flex: none;
+  .site-title :global(.oh-mark) {
+    color: var(--ah-accent);
   }
   span {
     overflow: hidden;

@@ -1,8 +1,8 @@
-/* Starlight on the product's design system. design-system/styles.css
-   (loaded first) defines the --ah-* tokens for light and for
-   [data-theme="dark"], the attribute Starlight's theme switch sets, so one
-   mapping serves both themes. A value the tokens lack is added to the
-   tokens, not here. */
+/* Starlight on the product's design system. The --ah-* tokens (from
+   design-system/styles.css and brand.css, loaded first) follow data-theme,
+   the attribute Starlight's theme switch sets (light, dark, and contrast
+   from contrast.mjs), so one mapping serves every theme. A value the tokens
+   lack is added to the tokens, not here. */
 :root[data-theme] {
   --sl-font: var(--ah-font);
   --sl-font-mono: var(--ah-mono);
@@ -35,6 +35,14 @@
 
 :root[data-theme='dark'] {
   --sl-color-text-accent: var(--ah-accent-ink);
+}
+
+/* Starlight paints backgrounds (the search shortcut, the search dialog,
+   file trees) with gray-6 as well as lines. Korkea kontrasti's line is a
+   mid grey that white text cannot sit on, so there gray-6 is a raised
+   black instead. */
+:root[data-theme='contrast'] {
+  --sl-color-gray-6: var(--ah-surface-hover);
 }
 
 .sl-markdown-content table {

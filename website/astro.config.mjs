@@ -5,6 +5,7 @@ import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
 import { repoDocsDir, repoDocsMarkdown } from './docs.mjs';
 import { indexable } from './launch.mjs';
+import { contrastScript } from './contrast.mjs';
 
 export default defineConfig({
   site: 'https://open-habitat.ai',
@@ -23,12 +24,17 @@ export default defineConfig({
         fi: { label: 'Suomi', lang: 'fi' },
       },
       favicon: '/favicon.svg',
-      head: indexable ? [] : [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } }],
-      // The product's own design system: its tokens, light and dark on the
-      // same data-theme attribute Starlight sets, and its bundled fonts.
-      customCss: ['../design-system/styles.css', './src/styles/habitat.css'],
+      head: [
+        { tag: 'script', content: contrastScript },
+        ...(indexable ? [] : [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } }]),
+      ],
+      // The product's own design system: its tokens and bundled fonts, then
+      // the brand's themes (Päivä, Yö, Korkea kontrasti) on the same
+      // data-theme attribute Starlight sets, and the mark.
+      customCss: ['../design-system/styles.css', './src/styles/brand.css', './src/styles/habitat.css'],
       components: {
         SiteTitle: './src/components/SiteTitle.astro',
+        Hero: './src/components/Hero.astro',
       },
       expressiveCode: {
         themes: ['github-dark-dimmed', 'github-light'],

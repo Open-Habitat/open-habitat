@@ -20,7 +20,17 @@ English only, so their `/fi/` pages are Starlight's untranslated fallback.
 The look is the product's design system itself: `astro.config.mjs` loads
 `../design-system/styles.css` (tokens and bundled fonts), and
 `src/styles/habitat.css` maps Starlight's variables onto the `--ah-*` tokens.
-A missing value is added to the tokens, not hard-coded here.
+A missing value is added to the tokens, not hard-coded here. The one
+exception is `src/styles/brand.css`, the new brand's themes and mark copied
+unchanged; it goes once the design system's tokens carry them.
+
+The themes are Päivä (light) and Yö (dark), from the system or Starlight's
+theme menu, which names them Day/Night (`src/content/i18n/`). Korkea
+kontrasti is never in the menu: `contrast.mjs` shows it only while the menu
+is on Auto and the system asks for more contrast. The mark is markup from
+`src/components/mark.ts` and CSS states; its animations stop under reduced
+motion. The landing hero replaces Starlight's `Hero` so the headline comes
+before the mark's states in reading order.
 
 ## What it must keep true
 
@@ -49,6 +59,6 @@ A missing value is added to the tokens, not hard-coded here.
 ## Launch switches
 
 `launch.mjs` holds `indexable`. While it is false every page carries
-`noindex, nofollow` and `/robots.txt` disallows everything. Deployment is
-manual (`workflow_dispatch`) until the preview is approved; the workflow's
-comment holds the push trigger to add.
+`noindex, nofollow` and `/robots.txt` disallows everything. The site
+deploys on every push to main that touches it, so a merge is a release of
+the (still unindexed) preview.

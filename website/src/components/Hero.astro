@@ -1,0 +1,143 @@
+---
+// The landing page's hero (the only page with one): the large mark draws
+// itself and the resident steps in, then the headline, tagline and actions;
+// the hero's html "image" (the mark's states) sits beside them. It replaces
+// Starlight's Hero so that the DOM follows the reading order: Starlight puts
+// the image before the h1, which would put the states' heading first.
+// A tagline element with class oh-eyebrow is shown above the headline but
+// read after it.
+import { LinkButton } from '@astrojs/starlight/components';
+import { mark } from './mark';
+
+const PAGE_TITLE_ID = '_top';
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, image, actions = [] } = data.hero || {};
+const rawHtml = image && 'html' in image ? image.html : undefined;
+---
+
+<div class="hero">
+  <div class="stack">
+    <span class="oh-bigmark" set:html={mark('intro', 132)} />
+    <div class="copy">
+      <h1 id={PAGE_TITLE_ID} data-page-title set:html={title} />
+      {tagline && <div class="tagline" set:html={tagline} />}
+    </div>
+    {
+      actions.length > 0 && (
+        <div class="actions">
+          {actions.map(({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+            <LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+              {text}
+              {icon?.html && <Fragment set:html={icon.html} />}
+            </LinkButton>
+          ))}
+        </div>
+      )
+    }
+  </div>
+  {rawHtml && <div class="hero-html" set:html={rawHtml} />}
+</div>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
+    gap: 64px;
+    align-items: center;
+    padding-block: 48px 56px;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .oh-bigmark {
+    display: block;
+    color: var(--ah-accent);
+    margin-bottom: 24px;
+  }
+  .oh-bigmark :global(svg) {
+    display: block;
+  }
+  .copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* The eyebrow (the status pill) is visually above the headline but
+     follows it in the DOM, so the h1 is read first. */
+  .tagline {
+    display: contents;
+  }
+  .copy :global(.oh-eyebrow) {
+    order: -1;
+  }
+  h1 {
+    margin: 16px 0;
+    max-width: 18ch;
+    color: var(--ah-ink);
+    font-size: 50px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+  .copy :global(.oh-tagline) {
+    max-width: 36rem;
+    margin: 0;
+    color: var(--ah-ink-2);
+    font-size: 18.5px;
+    line-height: 1.6;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1.25rem;
+  }
+  .actions :global(.sl-link-button) {
+    padding: 9px 18px;
+    border: 1px solid var(--ah-control-line);
+    border-radius: 8px;
+    background: var(--ah-surface);
+    color: var(--ah-ink);
+    font-size: var(--sl-text-base);
+    font-weight: 500;
+  }
+  .actions :global(.sl-link-button:hover) {
+    background: var(--ah-surface-hover);
+  }
+  .actions :global(.sl-link-button.primary) {
+    border-color: var(--ah-accent);
+    background: var(--ah-accent);
+    color: var(--ah-on-accent);
+  }
+  .actions :global(.sl-link-button.primary:hover) {
+    background: var(--ah-accent-hover);
+  }
+  .actions :global(.sl-link-button svg) {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  @media (max-width: 64rem) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 40px;
+    }
+  }
+  @media (max-width: 45rem) {
+    .hero {
+      padding-top: 32px;
+    }
+    .oh-bigmark :global(svg) {
+      width: 96px;
+      height: 96px;
+    }
+    h1 {
+      font-size: 34px;
+    }
+    .copy :global(.oh-tagline) {
+      font-size: 17px;
+    }
+  }
+</style>
