@@ -62,7 +62,7 @@ var helpSpecs = []helpSpec{
 	{"agent speech-key delete", "Remove the dictation key file; dictation stops until a key is saved again", "agent speech-key delete --json", []string{"--dry-run"}},
 	{"agent recap-settings show", "Read the conversation recap settings Pi keeps in its settings.json", "agent recap-settings show --json", nil},
 	{"agent recap-settings update", "Replace the recap settings with a complete document (every field of show's settings)", "agent recap-settings update --input-file - --json", []string{"--input-file", "--dry-run"}},
-	{"agent conversation list", "List live daemon handles without starting Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
+	{"agent conversation list", "List daemon handles with title (native name, then first message, then Uusi keskustelu); manual names beat automatic titles; never starts Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
 	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
 	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
 	{"agent conversation stop", "Stop the daemon-owned Pi, not its detached tools", "agent conversation stop --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},

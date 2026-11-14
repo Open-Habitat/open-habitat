@@ -172,7 +172,17 @@ an uncertain write automatically when later versions add mutations.
 
 Always name the target explicitly with `--conversation pi:UUID`; mutations never
 infer it from `--current`, cwd, or history text. Start with `conversation list`
-(live daemon handles only; `--output FILE.jsonl` exports them). Use
+(daemon-held conversations only; `--output FILE.jsonl` exports them). Each
+`data.result.sessions[]` row includes a string `title`, matching the rail: Pi's native
+session name wins, then the first-message preview, then `Uusi keskustelu` for
+an unnamed conversation without a message. Manual names win over automatic
+titles because automatic naming preserves them; both live in Pi's native name.
+A name given before Pi writes its history is included too. Reading starts no Pi.
+Find a named target without reading session files, for example:
+
+    open-habitat agent conversation list --json | jq '.data.result.sessions[] | select(.title == "Planning")'
+
+Titles are not unique identifiers: inspect matches and use their `agent_id`. Use
 `conversation show --conversation pi:UUID` for full status, queues and pending
 questions. The older positional `conversation show pi:UUID` remains a minimal
 live-record read. Use `history list` for native histories, including terminal-created and ended sessions.

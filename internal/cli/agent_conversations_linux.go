@@ -27,7 +27,11 @@ func agentConversationCommand(args []string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := exchangeAgentBody(req.method, req.path, req.body)
+	return runConversationRequest(req, exchangeAgentBody)
+}
+
+func runConversationRequest(req conversationRequest, exchange func(string, string, []byte) (json.RawMessage, error)) (any, error) {
+	data, err := exchange(req.method, req.path, req.body)
 	if err != nil {
 		return nil, err
 	}

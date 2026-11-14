@@ -10,6 +10,62 @@ import (
 	"testing"
 )
 
+func TestConversationListTitleJSON(t *testing.T) {
+	wire := json.RawMessage(`{"schema_version":1,"sessions":[{"agent_id":"pi:00000000-0000-4000-8000-000000000001","title":"Planning"}]}`)
+	exchange := func(method, path string, body []byte) (json.RawMessage, error) {
+		if method != "GET" || path != "/agent/v1/conversations" || len(body) != 0 {
+			t.Fatalf("unexpected request: %s %s %s", method, path, body)
+		}
+		return wire, nil
+	}
+	for _, output := range []string{"", filepath.Join(t.TempDir(), "conversations.jsonl")} {
+		args := []string{"conversation", "list"}
+		if output != "" {
+			args = append(args, "--output", output)
+		}
+		req, err := parseConversationRequest(args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := runConversationRequest(req, exchange)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var row map[string]any
+		if output == "" {
+			encoded, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope struct {
+				Data struct {
+					Result struct {
+						Sessions []map[string]any `json:"sessions"`
+					} `json:"result"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(encoded, &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if len(envelope.Data.Result.Sessions) != 1 {
+				t.Fatalf("unexpected envelope: %s", encoded)
+			}
+			row = envelope.Data.Result.Sessions[0]
+		} else {
+			encoded, err := os.ReadFile(output)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(encoded, &row); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if row["title"] != "Planning" {
+			t.Fatalf("title lost: %#v", row)
+		}
+	}
+}
+
 func TestAgentConversationRequest(t *testing.T) {
 	id := "pi:00000000-0000-4000-8000-000000000001"
 	key := "00000000-0000-4000-8000-000000000002"

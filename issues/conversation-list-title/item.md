@@ -2,13 +2,14 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: conductor:2026-11-14/conversation-list-title
 lane: agent-cli
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # agent conversation list does not return the conversation's title

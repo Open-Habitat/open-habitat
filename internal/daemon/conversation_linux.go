@@ -535,9 +535,35 @@ func (c *ConversationController) list(w http.ResponseWriter) {
 	c.mu.Lock()
 	items := make([]map[string]any, 0, len(c.sessions))
 	for _, s := range c.sessions {
-		items = append(items, map[string]any{"agent_id": "pi:" + s.id, "workspace_id": s.workspace, "state": s.state, "startup_choice": s.startupChoice})
+		title, _ := sessionTitle("", s.givenName)
+		items = append(items, map[string]any{"agent_id": "pi:" + s.id, "workspace_id": s.workspace, "state": s.state, "startup_choice": s.startupChoice, "title": title})
 	}
 	c.mu.Unlock()
+	if len(items) > 0 {
+		read := nativeSessions
+		title := func(s nativeSession) (string, string) {
+			return firstPrompt(s, c.cfg.UID), nativeNameDisplay(s, c.cfg.UID)
+		}
+		if c.facts != nil {
+			read = c.facts.sessions.read
+			title = func(s nativeSession) (string, string) { return c.facts.sessions.title(s, c.cfg.UID) }
+		}
+		// Like the rail, retain controller-only names when history is unavailable.
+		// Handle discovery must still work after a lost create reply.
+		if sessions, err := read(c.nativeCfg()); err == nil {
+			byID := make(map[string]nativeSession, len(sessions))
+			for _, s := range sessions {
+				if s.state == "readable" {
+					byID["pi:"+s.id] = s
+				}
+			}
+			for _, item := range items {
+				if s, ok := byID[item["agent_id"].(string)]; ok {
+					item["title"], _ = sessionTitle(title(s))
+				}
+			}
+		}
+	}
 	historyJSON(w, map[string]any{"schema_version": 1, "sessions": items})
 }
 
