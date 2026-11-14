@@ -8,7 +8,7 @@ provenance: chat
 source_ref: conductor:2026-11-13/storage-warning
 lane: storage-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # The storage warning leads nowhere: no cache breakdown and no way to ask the agent to clean up
