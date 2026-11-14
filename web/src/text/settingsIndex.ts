@@ -315,6 +315,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Terminal addresses in the browser",
         desc: "An address a program in the terminal opens shows in Habitat and opens in a new tab.",
       },
+      "storage-breakdown": {
+        label: "Storage breakdown",
+        desc: "What fills your space and what can be freed, and a clean-up request for an agent.",
+      },
     },
   },
   palvelin: {

@@ -117,3 +117,90 @@ information.
   production action?
 
 Live check: none. This is a prototype round, nothing is on the test server. Open round 2's `offline.html` from the worker results, pick B1 in "Yli 85 %": untick a group and watch the striped part and the after number move against the 85 % line, then open "Näytä tarkemmin".
+
+## Implementation — B1 as an experimental feature (14.11.2026)
+
+Settings › Kokeelliset ominaisuudet › **Tallennustilan erittely**
+(`storage-breakdown`, off by default). With it off, Storage is unchanged.
+With it on, the usage card in Settings › Tallennustila is replaced by B1:
+the warning from 85 % with *Pyydä agenttia siivoamaan…*, the bar with the
+selection striped at its end, the after-tick and the 85 % line, *Nyt →
+Valinnan jälkeen*, the verdict, the plain-language groups (caches and
+finished work selected by default, own builds not, work in progress not
+selectable), paths behind *Näytä tarkemmin*, and the Trash as its own row
+pointing to production's Empty Trash below. The button opens a dialog with
+the request built from the selection and a workspace choice; *Avaa
+keskustelu* opens a new conversation in that workspace with the request in
+its field, unsent.
+
+Host: `GET/POST /api/v1/account/storage/breakdown`
+(`contracts/v1/account-storage-breakdown.schema.json`), relayed by the
+gateway like the account keys; the person's daemon
+(`internal/daemon/storage_breakdown_linux.go`) measures its own home as
+that person. It walks only a fixed list of places from a pinned home
+descriptor (`openat2` beneath home, no symbolic links, no other
+filesystems), counts allocated blocks with each hard-linked file once, and
+keeps the latest result in memory. A read never waits: it returns the
+previous result with `measuring: true` and starts a measurement when there
+is none or it is over 15 minutes old; POST asks for one now (single-flight,
+at most one start per 30 s). The walk runs on its own thread at nice 19 and
+idle I/O priority, bounded to 3 minutes and 4 million entries; a bounded
+walk reports `complete: false` and the view says the figures are lower
+bounds. Build directories are a Cargo `target/` carrying Cargo's
+CACHEDIR.TAG and a `node_modules/` beside a `package.json`, in a worktree
+or `~/src` checkout or one level below it. A worktree's state comes from
+the worktree listing's Taskfleet facts: a live run (or unreadable run
+state, or a process blocker) is *live*, an ended run or a merged worktree
+no run names is *finished*, anything else is *own*.
+
+### Decisions for later review
+
+- **No daemon-side 85 % trigger.** The NOTES proposed measuring when the
+  quota crosses 85 %, but the quota is the broker's, read by the gateway;
+  the daemon does not see it. The warning leads to Storage, whose read
+  starts a measurement when the last is stale, so the outcome is the same
+  without giving the daemon a quota read. Alternative: a gateway→daemon
+  nudge, a new cross-component path for little gain.
+- **Workspaces are `~/src`'s top-level folders**, read from the
+  directory rather than from discovery, so `<name>__worktrees` folders
+  appear as their own row (without their build directories). History is
+  `~/.pi/agent/sessions` and `~/.pi/agent/file-history`. Neither group is
+  shown as its own bar part in B1; they are inside "Projektit ja muut
+  tiedostot", as in the prototype.
+- **An unregistered linked worktree is never "own".** When scanning a
+  `~/src` checkout one level down, a directory holding a `.git` file is
+  skipped: its build directories belong to a worktree whose run state is
+  known only through the registry.
+- **Clean commands live in the browser** (`cleanCommand` by kind), not in
+  the contract: they are request text for the agent, not host facts.
+  Cargo registries and `node_modules` and other caches say "remove the
+  directory".
+- **The dialog keeps round 1's workspace choice**, defaulting to the
+  workspace holding the largest build directories (the
+  `<name>__worktrees` folder counts for `<name>`), and the request text is
+  editable before opening. Opening uses the ordinary new-conversation path
+  with the creation draft prefilled; nothing is sent.
+- **The live group's checkbox carries its note as the disabled reason.**
+  The prototype passed an empty reason, which production's `Checkbox`
+  treats as enabled.
+- **On a shared disk without user limits**, "your files" is the sum of
+  what was measured (a lower bound), since there is no per-person figure.
+
+Tests: `internal/daemon/storage_breakdown_linux_test.go` (synthetic home:
+known caches, a `go env -w` GOMODCACHE, a CACHEDIR.TAG cache, an untagged
+cache left out, a symlink out of the home not followed, a hard link counted
+once, live/finished/hand-made worktrees from a fake Taskfleet, unreadable
+run state never shown finished; the handler never waits, measures once,
+re-measures when stale, rejects other bodies, and its replies validate
+against the contract), gateway relay tests, contract fixtures and negative
+checks, `web/src/app/StorageBreakdown.test.tsx`, and
+`web/tests/storage-breakdown.spec.ts` (real daemon endpoint through the
+gateway, then the B1 flow to the prepared conversation).
+
+Live check: on the test server, Asetukset › Kokeelliset ominaisuudet ›
+Tallennustilan erittely → Päällä; then Asetukset › Tallennustila shows
+"Tilaa mitataan ensimmäistä kertaa" and within a minute the groups with
+sizes. Untick a group and watch the striped part and the after number
+move; open "Näytä tarkemmin"; press "Pyydä agenttia siivoamaan valitut…",
+pick a workspace and "Avaa keskustelu": the request waits unsent in the
+new conversation's field.

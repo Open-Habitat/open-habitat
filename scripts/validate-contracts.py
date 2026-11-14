@@ -89,6 +89,8 @@ checks = {
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
     "account-storage-not-in-use.json": "account-storage.schema.json",
+    "account-storage-breakdown.json": "account-storage-breakdown.schema.json",
+    "account-storage-breakdown-measuring.json": "account-storage-breakdown.schema.json",
     "account-sessions.json": "device-link.schema.json",
     "device-link-status.json": "device-link.schema.json",
     "server-storage.json": "server-storage.schema.json",
@@ -431,6 +433,19 @@ must_reject("site-onboarding.schema.json", {**site_onboarding, "site_key_copy": 
 # The seed is a fact of the creating sign-in, never a negative or a value to choose.
 must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": False})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": "seeded"})
+# The storage breakdown names places below home only, and carries no delete.
+breakdown = json.loads((BASE / "examples" / "account-storage-breakdown.json").read_text())
+must_reject("account-storage-breakdown.schema.json", {**breakdown, "items": [{**breakdown["items"][0], "path": "/home/someone/.cache/go-build"}]})
+must_reject("account-storage-breakdown.schema.json", {**breakdown, "items": [{**breakdown["items"][0], "group": "other"}]})
+must_reject("account-storage-breakdown.schema.json", {**breakdown, "items": [{**breakdown["items"][0], "action": "delete"}]})
+breakdown_measure = Draft202012Validator({"$ref": schemas["account-storage-breakdown.schema.json"]["$id"] + "#/$defs/measure"}, registry=registry)
+breakdown_measure.validate({"measure": True})
+try:
+    breakdown_measure.validate({"measure": True, "path": "~/.cache"})
+    raise AssertionError("a measurement request names no path")
+except ValidationError:
+    pass
+
 # The first-route mark is only ever finished, and names no path or other person.
 must_reject("first-route.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "finished": True, "path": "/home/x"})
 must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})

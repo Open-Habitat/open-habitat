@@ -33,6 +33,7 @@ export const experimentalFeatureIds = [
   "turn-changes",
   "terminal-copy-on-select",
   "terminal-open-urls",
+  "storage-breakdown",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

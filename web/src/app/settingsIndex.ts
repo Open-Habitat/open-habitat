@@ -713,6 +713,21 @@ export const settingsSections = [
         ],
         desc: "Päätteen ohjelman avaama osoite näkyy Habitatissa ja avautuu uuteen välilehteen.",
       },
+      {
+        id: "storage-breakdown",
+        label: "Tallennustilan erittely",
+        kw: [
+          "tallennustila",
+          "storage",
+          "välimuisti",
+          "cache",
+          "siivous",
+          "clean",
+          "levy",
+          "disk",
+        ],
+        desc: "Mikä tilasi täyttää ja mitä voi vapauttaa, ja siivouspyyntö agentille.",
+      },
     ],
   },
   {

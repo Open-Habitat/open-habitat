@@ -167,6 +167,17 @@ const fi = {
         "Päätteen, jonka Habitat on avannut tämän päivityksen jälkeen. Ohjelman täytyy käyttää selaimen avaamiseen BROWSER-muuttujaa tai xdg-openia.",
       caption: "Pääte",
     },
+    "storage-breakdown": {
+      name: "Tallennustilan erittely",
+      desc: "Tallennustila kertoo arkikielellä, mikä tilasi täyttää ja mitä voi vapauttaa: työkalujen välimuistit, valmiiden töiden käännöstiedostot ja omien projektien käännöstiedostot. Valitse siivottavat, ja agentti siivoaa ne pyynnöstäsi.",
+      where:
+        "Asetukset › Tallennustila, käyttöpalkin paikalla. Yli 85 %:n varoitus johtaa sinne.",
+      shows:
+        "Palkin, joka näyttää valinnan vaikutuksen rajaan ja 85 %:n varoitusrajaan, ryhmät kokoineen ja Näytä tarkemmin -kohdan takana kansiot polkuineen. Agentin käynnissä olevien töiden tiedostoja ei voi valita. Painike avaa uuden keskustelun, jonka kentässä on valinnasta koottu siivouspyyntö; se lähtee vasta, kun lähetät sen.",
+      needs:
+        "Ei muuta. Ensimmäinen mittaus voi kestää minuutin, ja tulos mitataan uudelleen, kun se on yli 15 minuuttia vanha.",
+      caption: "Tallennustila",
+    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -359,6 +370,17 @@ export const experimentalFeaturesText = catalog(fi, {
       needs:
         "A terminal Habitat opened after this update. The program has to open the browser through the BROWSER variable or xdg-open.",
       caption: "Terminal",
+    },
+    "storage-breakdown": {
+      name: "Storage breakdown",
+      desc: "Storage says in plain language what fills your space and what can be freed: tools' caches, build files from finished work and build files in your projects. Choose what to clean up, and an agent does it at your request.",
+      where:
+        "Settings › Storage, in place of the usage bar. The warning from 85 % leads there.",
+      shows:
+        "A bar showing what the selection does against the limit and the 85 % warning line, the groups with their sizes and, behind Show details, the folders with their paths. Files of the agent's work in progress cannot be selected. The button opens a new conversation with a clean-up request built from the selection in its field; it goes only when you send it.",
+      needs:
+        "Nothing else. The first measurement can take a minute, and the result is measured again when it is over 15 minutes old.",
+      caption: "Storage",
     },
   },
   picture: {

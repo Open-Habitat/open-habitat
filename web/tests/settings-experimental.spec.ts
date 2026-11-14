@@ -28,6 +28,7 @@ const features = [
   "turn-changes",
   "terminal-copy-on-select",
   "terminal-open-urls",
+  "storage-breakdown",
 ];
 
 async function signIn(page: Page) {

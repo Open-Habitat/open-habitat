@@ -122,6 +122,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(EditorFilesPrefix, controller.EditorFiles())
 	mux.Handle(AccountPreferencesPath, AccountPreferencesHandler(cfg, server.TrustedPeer))
 	mux.Handle(AccountKeysPath, AccountKeysHandler(cfg, server.TrustedPeer))
+	mux.Handle(StorageBreakdownPath, StorageBreakdownHandler(cfg, server.TrustedPeer))
 	mux.Handle(OwnMachinesPath, OwnMachinesHandler(cfg, server.TrustedPeer))
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))

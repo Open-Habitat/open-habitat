@@ -284,6 +284,7 @@ export function AccountSettings({
   onNavigate,
   workspaces,
   onNewWorkspace,
+  onAskAgent,
 }: {
   editorIdentity?: string;
   profile?: AccountProfile;
@@ -314,6 +315,9 @@ export function AccountSettings({
   /** The snapshot's workspaces, for Koodipalvelut's imported list. */
   workspaces?: readonly Workspace[];
   onNewWorkspace?: () => void;
+  /** Opens a new conversation in the workspace with text in its field,
+   * unsent: Storage's clean-up request. */
+  onAskAgent?: (workspaceId: string, text: string) => boolean;
 }) {
   const theme = useThemeChoice();
   const language = useLanguage();
@@ -986,6 +990,8 @@ export function AccountSettings({
           <PersonalStorage
             csrf={csrf}
             onWorkspacesChanged={onWorkspacesChanged}
+            workspaces={workspaces?.filter((w) => !w.place)}
+            onAskAgent={onAskAgent}
           />
         )}
         {adminSections.some(({ id }) => id === section) &&

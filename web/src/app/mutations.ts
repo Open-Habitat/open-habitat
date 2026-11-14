@@ -86,6 +86,8 @@ export const mutationClasses = {
   "account.first_route": "confirmed",
   "account.keys": "confirmed",
   "account.own_machines": "confirmed",
+  // Asks the daemon to measure the home again; nothing is written.
+  "account.storage_breakdown": "confirmed",
   "editor.stop": "confirmed",
   // The person's server browser: the chip says it starts or stops until
   // the host answers; control changes show once the host has them.

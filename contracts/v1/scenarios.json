@@ -892,5 +892,31 @@
       "examples/speech-error.json",
       "examples/server-speech-key.json"
     ]
+  },
+  {
+    "id": "CT-046",
+    "covers": [
+      "storage breakdown",
+      "partial host operation"
+    ],
+    "given": [
+      "a person's home holds tool caches, worktrees of running and finished Taskfleet runs, a Trash, workspaces and agent history"
+    ],
+    "when": [
+      "the person opens Storage with the breakdown experiment on",
+      "the person asks to measure again",
+      "a measurement takes longer than its bound"
+    ],
+    "then": [
+      "the daemon measures only its fixed list of places in that person's home, as that person, without following symbolic links or crossing mounts",
+      "the reply never waits for a measurement: it carries the previous result with measuring true, or no items before the first",
+      "a build directory of a worktree a live run holds, or whose run state cannot be read, is live and never offered for clean-up",
+      "a measurement over its bound reports what it found with complete false",
+      "nothing in the breakdown removes anything; the browser prepares a request for an agent, which the person sends"
+    ],
+    "fixtures": [
+      "examples/account-storage-breakdown.json",
+      "examples/account-storage-breakdown-measuring.json"
+    ]
   }
 ]

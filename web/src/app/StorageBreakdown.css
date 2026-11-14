@@ -1,0 +1,334 @@
+/* Storage with the storage-breakdown experiment (StorageBreakdown.tsx). */
+.ah-sb-card {
+  padding: var(--ah-s4);
+}
+.ah-sb-card + .s-card,
+.ah-warning + .ah-sb-card {
+  margin-top: var(--ah-s4);
+}
+.ah-sb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-sb h3 {
+  margin: 0;
+  font-size: var(--ah-size-title);
+}
+.ah-sb-size {
+  font-family: var(--ah-mono);
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-sb-path {
+  font-family: var(--ah-mono);
+  font-size: var(--ah-size-code);
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+}
+.ah-sb-ok-ink {
+  color: var(--ah-ok);
+}
+
+.ah-sb-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ah-s2) var(--ah-s4);
+}
+.ah-sb-numbers > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ah-sb-numbers strong {
+  font-size: var(--ah-size-title);
+  font-variant-numeric: tabular-nums;
+}
+.ah-sb-numbers > svg {
+  align-self: center;
+  color: var(--ah-muted);
+}
+.ah-sb-frees {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-ok-soft);
+  color: var(--ah-ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ah-sb-share {
+  flex-basis: 100%;
+}
+
+/* Parts of the bar. What stays is neutral, Trash as production, work in
+   progress in a source colour (accent and ok are both green in dark), what
+   could go in ok's soft tone and what is chosen in ok, striped, so the
+   chosen part reads without colour too. */
+.ah-sb-sw-others {
+  background: var(--ah-line);
+}
+.ah-sb-sw-kept {
+  background: var(--ah-line-strong);
+}
+.ah-sb-sw-trash {
+  background: var(--ah-muted);
+}
+.ah-sb-sw-live {
+  background: var(--ah-source-1);
+}
+.ah-sb-sw-freeable {
+  background: var(--ah-ok-soft);
+  box-shadow: inset 0 0 0 1px var(--ah-ok-line);
+}
+.ah-sb-sw-chosen {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ah-ok) 0 5px,
+    var(--ah-ok-line) 5px 8px
+  );
+}
+
+/* The limit is the track's end; the 85 % line stands over it with its label. */
+.ah-sb-bar-wrap {
+  position: relative;
+  padding-top: 20px;
+}
+.ah-sb-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ah-sunken);
+  box-shadow: inset 0 0 0 1px var(--ah-line);
+}
+.ah-sb-bar > span {
+  display: block;
+  height: 100%;
+}
+.ah-sb-bar > span + span {
+  box-shadow: inset 1px 0 0 var(--ah-surface);
+}
+.ah-sb-warnline {
+  position: absolute;
+  top: 14px;
+  bottom: -4px;
+  width: 0;
+  border-left: 2px dashed var(--ah-err);
+  pointer-events: none;
+}
+.ah-sb-warnline-label {
+  position: absolute;
+  top: -16px;
+  right: 4px;
+  white-space: nowrap;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-err);
+  font-weight: 600;
+}
+.ah-sb-aftertick {
+  position: absolute;
+  top: 16px;
+  bottom: -6px;
+  width: 0;
+  border-left: 2px solid var(--ah-ink);
+  pointer-events: none;
+}
+.ah-sb-legend {
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-sb-legend .ah-trash-swatch {
+  width: 12px;
+  height: 12px;
+}
+.ah-sb-verdict {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 500;
+}
+.ah-sb-verdict-ok {
+  color: var(--ah-ok);
+}
+.ah-sb-verdict-over {
+  color: var(--ah-err);
+}
+
+.ah-sb-list,
+.ah-sb-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ah-sb-list > li {
+  border-top: 1px solid var(--ah-line-soft);
+  padding: var(--ah-s2) 0;
+}
+.ah-sb-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--ah-s3);
+  align-items: start;
+}
+.ah-sb-row > .ah-trash-swatch {
+  margin-top: 5px;
+  width: 12px;
+  height: 12px;
+}
+.ah-sb-row .ah-checkbox {
+  font-weight: 500;
+}
+.ah-sb-row .ah-checkbox small {
+  display: block;
+  font-weight: 400;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-sb-row > .ah-sb-size {
+  padding-top: 1px;
+}
+.ah-sb-trash-name {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+}
+.ah-sb-row .ah-sb-trash-name small {
+  font-weight: 400;
+  font-size: var(--ah-size-meta);
+}
+.ah-sb-list > li[data-group-row="live"] .ah-checkbox {
+  color: var(--ah-ink-2);
+}
+.ah-sb-trash-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+}
+.ah-sb-trash-row > .ah-sb-row {
+  flex: 1 1 260px;
+}
+.ah-sb-details {
+  margin-left: 25px;
+}
+.ah-sb-details > button {
+  margin-top: 2px;
+}
+.ah-sb-details-panel {
+  margin-top: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ah-sb-details-panel > .s-desc {
+  margin: 0 0 var(--ah-s2);
+}
+.ah-sb-pick li {
+  display: grid;
+  grid-template-columns: minmax(0, 13em) auto minmax(0, 1fr) auto;
+  gap: 4px var(--ah-s3);
+  align-items: center;
+  padding: 4px 0;
+}
+.ah-sb-pick li + li {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-sb-item-name {
+  padding-left: 28px;
+  color: var(--ah-ink-2);
+}
+.ah-sb-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta);
+  font-weight: 500;
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+}
+.ah-sb-tag-live {
+  color: var(--ah-ink);
+  box-shadow: inset 2px 0 0 var(--ah-source-1);
+}
+.ah-sb-tag-finished {
+  background: var(--ah-ok-soft);
+  color: var(--ah-ink);
+}
+
+.ah-sb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2) var(--ah-s3);
+  margin-top: var(--ah-s2);
+}
+.ah-sb-measured {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--ah-s2);
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.ah-trash-modal:has(.ah-sb-dialog) {
+  width: min(720px, 100%);
+}
+.ah-sb-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-sb-dialog h2,
+.ah-sb-dialog [slot="title"] {
+  margin: 0;
+}
+.ah-sb-dialog p {
+  margin: 0;
+}
+.ah-sb-dialog textarea {
+  font-size: var(--ah-size-ui);
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .ah-sb-card {
+    padding: var(--ah-s3);
+  }
+  .ah-sb-numbers strong {
+    font-size: var(--ah-size-ui);
+  }
+  .ah-sb-frees {
+    margin-left: 0;
+  }
+  .ah-sb-details {
+    margin-left: 0;
+  }
+  .ah-sb-pick li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ah-sb-pick li > .ah-sb-tag {
+    grid-column: 1;
+    justify-self: start;
+    margin-left: 28px;
+  }
+  .ah-sb-pick li > span:empty {
+    display: none;
+  }
+  .ah-sb-pick li > .ah-sb-path {
+    grid-column: 1 / -1;
+    margin-left: 28px;
+  }
+  .ah-sb-pick li > .ah-sb-size {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

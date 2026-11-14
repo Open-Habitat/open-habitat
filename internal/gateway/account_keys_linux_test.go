@@ -15,6 +15,7 @@ func TestAccountKeysRelayRequiresSessionAndCSRF(t *testing.T) {
 	// Short subtest names: the daemon socket lives in the test's directory.
 	t.Run("k", func(t *testing.T) { personalRelayRequiresSessionAndCSRF(t, accountKeysPath, `{"kind":"ssh"}`) })
 	t.Run("m", func(t *testing.T) { personalRelayRequiresSessionAndCSRF(t, ownMachinesPath, `{"action":"connect"}`) })
+	t.Run("s", func(t *testing.T) { personalRelayRequiresSessionAndCSRF(t, storageBreakdownPath, `{"measure":true}`) })
 }
 
 func personalRelayRequiresSessionAndCSRF(t *testing.T, path, body string) {

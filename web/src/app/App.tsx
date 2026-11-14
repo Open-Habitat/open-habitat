@@ -100,6 +100,7 @@ import {
   creationGuideOwner,
   goalConversationName,
   guideOwner,
+  prepareField,
   readGuide,
   setGuide,
 } from "./goalGuide";
@@ -2466,6 +2467,26 @@ export function App() {
       csrf={csrf}
       onDisconnect={refresh}
       onWorkspacesChanged={refresh}
+      onAskAgent={
+        identity && csrf && snapshot?.write_state !== "read_only"
+          ? (workspaceId, text) => {
+              // The request waits in the new conversation's field, unsent;
+              // no start-page goal names or guides it.
+              const owner = creationGuideOwner(identity, workspaceId);
+              setGuide(owner, undefined);
+              sessionStorage.setItem(
+                creationKeys(identity, workspaceId).draft,
+                text,
+              );
+              prepareField(owner, {
+                text,
+                start: text.length,
+                end: text.length,
+              });
+              return startFromHome(workspaceId);
+            }
+          : undefined
+      }
       onClose={closeSettings}
     />
   );

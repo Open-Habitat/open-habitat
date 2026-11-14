@@ -9,6 +9,8 @@ import {
 } from "../components/WorkspaceTrash";
 import { liveText } from "../i18n";
 import { trashText } from "../text/trash";
+import { useExperimentalFeature } from "./accountPreferences";
+import { type CleanupWorkspace, StorageBreakdown } from "./StorageBreakdown";
 import { type OwnStorage, ownStorage } from "./storageQuota";
 import { blockerText, bytes, refusalText } from "./trashText";
 import { WorktreeCleanup } from "./WorktreeCleanup";
@@ -41,10 +43,17 @@ const inspectLimit = 50;
 export function PersonalStorage({
   csrf,
   onWorkspacesChanged,
+  workspaces,
+  onAskAgent,
 }: {
   csrf?: string;
   onWorkspacesChanged?: () => void;
+  /** Where a clean-up conversation can open (storage-breakdown). */
+  workspaces?: readonly CleanupWorkspace[];
+  /** Opens a new conversation with text in its field, unsent. */
+  onAskAgent?: (workspaceId: string, text: string) => boolean;
 }) {
+  const breakdown = useExperimentalFeature("storage-breakdown");
   const [quota, setQuota] = useState<OwnStorage>();
   const [error, setError] = useState(false);
   const [quotaRead, setQuotaRead] = useState(0);
@@ -63,26 +72,39 @@ export function PersonalStorage({
   }, [quotaRead]);
   return (
     <>
-      <div className="s-card">
-        <section aria-label={txt.usage} data-settings-row="usage" tabIndex={-1}>
-          {quota?.limits === "not_in_use" ? (
-            <SharedDisk
-              capacity={quota.filesystem.capacity_bytes}
-              free={quota.filesystem.free_bytes}
-            />
-          ) : quota ? (
-            <StorageUsage
-              usage={quota.usage_bytes}
-              limit={quota.limit_bytes}
-              trash={trashBytes}
-            />
-          ) : error ? (
-            <p>{txt.usageFailed}</p>
-          ) : (
-            <p>{txt.usageLoading}</p>
-          )}
-        </section>
-      </div>
+      {breakdown && quota ? (
+        <StorageBreakdown
+          quota={quota}
+          csrf={csrf}
+          workspaces={workspaces}
+          onAskAgent={onAskAgent}
+        />
+      ) : (
+        <div className="s-card">
+          <section
+            aria-label={txt.usage}
+            data-settings-row="usage"
+            tabIndex={-1}
+          >
+            {quota?.limits === "not_in_use" ? (
+              <SharedDisk
+                capacity={quota.filesystem.capacity_bytes}
+                free={quota.filesystem.free_bytes}
+              />
+            ) : quota ? (
+              <StorageUsage
+                usage={quota.usage_bytes}
+                limit={quota.limit_bytes}
+                trash={trashBytes}
+              />
+            ) : error ? (
+              <p>{txt.usageFailed}</p>
+            ) : (
+              <p>{txt.usageLoading}</p>
+            )}
+          </section>
+        </div>
+      )}
       {csrf ? (
         <WorktreeCleanup
           csrf={csrf}

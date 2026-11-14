@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/account-storage-breakdown.schema.json",
+  "title": "What fills the signed-in person's home: known caches, build directories, Trash, workspaces and agent history",
+  "description": "GET and POST /api/v1/account/storage/breakdown. The person's daemon measures a fixed list of places in their own home, without following symbolic links or crossing mounts, and keeps only the latest result in memory. GET returns it and starts a new measurement when there is none or it is over 15 minutes old; POST asks for one now. A measurement never blocks the reply: while it runs, the reply carries the previous result with measuring true. Nothing here removes anything; clean-up is the agent's, at the person's request.",
+  "$defs": {
+    "measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measure"
+      ],
+      "properties": {
+        "measure": {
+          "const": true
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group",
+        "kind",
+        "path",
+        "bytes",
+        "complete"
+      ],
+      "properties": {
+        "group": {
+          "enum": [
+            "caches",
+            "finished",
+            "own",
+            "live",
+            "trash",
+            "workspaces",
+            "history"
+          ],
+          "description": "caches: a tool's regenerable cache. finished: a build directory in a worktree whose Taskfleet run has ended, or a merged worktree no run holds. live: a build directory in a worktree a Taskfleet run still holds, or whose run state could not be read. own: a build directory in a workspace's own checkout or in a worktree no run names. trash, workspaces (a workspace folder under ~/src without the build directories listed separately) and history (agent conversations) are shown, not offered for clean-up."
+        },
+        "kind": {
+          "enum": [
+            "go-build",
+            "go-mod",
+            "npm",
+            "cargo",
+            "playwright",
+            "uv",
+            "pip",
+            "cache-tag",
+            "target",
+            "node_modules",
+            "trash",
+            "workspace",
+            "history"
+          ],
+          "description": "cache-tag is a ~/.cache directory marked with a standard CACHEDIR.TAG. target is a Cargo build directory (it carries Cargo's CACHEDIR.TAG); node_modules sits beside a package.json."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 4096,
+          "pattern": "^~/[^\\u0000]+$",
+          "description": "Below the person's home, starting with ~/. Never an absolute path."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Allocated size (st_blocks), each hard-linked file counted once in a measurement."
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "False when the walk hit its time or entry bound, or a part could not be read; bytes is then a lower bound."
+        },
+        "workspace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "The workspace folder under ~/src the item belongs to, for build directories and workspaces."
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-z]{26}$",
+          "description": "The Taskfleet run that holds or held the worktree."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "That run's title."
+        },
+        "merged": {
+          "const": true,
+          "description": "The worktree's branch is merged; set on finished items no run names."
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "measuring",
+        "complete",
+        "items"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "measuring": {
+          "type": "boolean",
+          "description": "A measurement is running now; items are the previous result, or empty before the first."
+        },
+        "measured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the result in items finished. Absent before the first measurement."
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "False when some place could not be measured in full or the list of worktrees was incomplete."
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}

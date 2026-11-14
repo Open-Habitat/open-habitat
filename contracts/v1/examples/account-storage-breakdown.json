@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "measuring": false,
+  "measured_at": "2030-01-01T09:12:00Z",
+  "complete": true,
+  "items": [
+    {"group": "caches", "kind": "go-build", "path": "~/.cache/go-build", "bytes": 23407886745, "complete": true},
+    {"group": "caches", "kind": "npm", "path": "~/.npm/_cacache", "bytes": 3328599654, "complete": true},
+    {"group": "caches", "kind": "cache-tag", "path": "~/.cache/example-tool", "bytes": 52428800, "complete": true},
+    {"group": "finished", "kind": "target", "path": "~/src/example-app__worktrees/wt-old-search/target", "bytes": 9556302233, "complete": true, "workspace": "example-app__worktrees", "run_id": "01m7cccccccccccccccccccccc", "title": "Old search"},
+    {"group": "finished", "kind": "node_modules", "path": "~/src/example-site__worktrees/wt-header/node_modules", "bytes": 644245094, "complete": true, "workspace": "example-site__worktrees", "merged": true},
+    {"group": "live", "kind": "target", "path": "~/src/example-app__worktrees/wt-calendar/target", "bytes": 15676630630, "complete": false, "workspace": "example-app__worktrees", "run_id": "01m7aaaaaaaaaaaaaaaaaaaaaa", "title": "Calendar view"},
+    {"group": "own", "kind": "target", "path": "~/src/example-app/target", "bytes": 2576980377, "complete": true, "workspace": "example-app"},
+    {"group": "workspaces", "kind": "workspace", "path": "~/src/example-app", "bytes": 19541180825, "complete": true, "workspace": "example-app"},
+    {"group": "trash", "kind": "trash", "path": "~/.local/share/Trash", "bytes": 4509715660, "complete": true},
+    {"group": "history", "kind": "history", "path": "~/.pi/agent/sessions", "bytes": 3113851289, "complete": true}
+  ]
+}

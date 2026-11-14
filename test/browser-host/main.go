@@ -600,6 +600,7 @@ esac
 		// writing only into the disposable home.
 		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.StorageBreakdownPath, daemon.StorageBreakdownHandler(fixtureWorkspaceCfg, trusted))
 		if _, own, e := newOwnMachinesHost(tmp, m.Username); e != nil {
 			log.Fatal(e)
 		} else {
