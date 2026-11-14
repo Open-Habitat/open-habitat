@@ -1,0 +1,97 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker (as round 1). */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60; /* above the dialog overlay (50) */
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-bar button[data-testid="rq-change"] { display: none; }
+  .rq-round, .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-round, .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rq-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+.rq-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Shared pieces of the count (round 1). */
+.rq-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); margin-top: var(--ah-s1); }
+.rq-outcome { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-outcome.rq-bad { color: var(--ah-err); }
+.rq-fine { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-would, .rq-lead { margin: 0; color: var(--ah-ink); line-height: 1.5; }
+.rq-lead { font-weight: 600; }
+.rq-counting { margin: var(--ah-s1) 0; }
+.rq-summary { display: flex; flex-direction: column; gap: var(--ah-s3); min-width: 0; }
+.rq-dialog .rq-summary { margin: var(--ah-s3) 0; }
+.rq-dialog { max-width: 560px; }
+.rq-table { width: 100%; border-collapse: collapse; font-size: var(--ah-size-meta); font-variant-numeric: tabular-nums; }
+.rq-table caption { text-align: left; font-weight: 600; color: var(--ah-ink-2); padding-bottom: 4px; }
+.rq-table th, .rq-table td { padding: 6px 8px; border-top: 1px solid var(--ah-line-soft); text-align: right; }
+.rq-table th[scope="row"], .rq-table thead th:first-child { text-align: left; font-weight: 500; color: var(--ah-ink); }
+.rq-table thead th { font-weight: 500; color: var(--ah-ink-2); border-top: 0; }
+.rq-table td[data-zero] { color: var(--ah-muted); }
+.rq-table td[data-danger] { color: var(--ah-err); font-weight: 600; }
+.rq-many { margin: 0; }
+@media (max-width: 600px) { .rq-table th, .rq-table td { padding: 6px 4px; } }
+
+/* A and B: Habitat's card in the timeline. Habitat's voice, not the agent's
+   and not the person's: framed like production's native question, with the
+   source named in its head. */
+.rq-card {
+  max-width: min(var(--ah-measure), 100%);
+  display: flex; flex-direction: column; gap: var(--ah-s2);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-err-line); border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2); overflow-wrap: anywhere;
+}
+.rq-card[data-phase="running"], .rq-card[data-phase="done"] { border-color: var(--ah-line); }
+.rq-card-head { display: flex; align-items: center; gap: 6px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600; }
+.rq-card-head svg { width: 15px; height: 15px; color: var(--ah-err); flex: none; }
+.rq-card[data-phase="done"] .rq-card-head svg { color: var(--ah-ok); }
+.rq-card[data-phase="running"] .rq-card-head svg { color: var(--ah-ink-2); }
+.rq-card-b { border-color: var(--ah-line); }
+.rq-card-b .rq-card-head svg { color: var(--ah-accent-ink); }
+.rq-b-turn { display: flex; flex-direction: column; gap: var(--ah-s3); }
+
+/* B: Habitat's message to the agent, a quiet line in the timeline. */
+.rq-told { display: flex; gap: 6px; align-items: flex-start; justify-content: center; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; text-align: center; }
+.rq-told svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* C: the line above the field, where production keeps the background strip. */
+.rq-strip {
+  display: flex; align-items: center; gap: var(--ah-s2);
+  margin: 0 0 var(--ah-s2); padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+}
+.rq-strip-stop { border-color: var(--ah-err-line); }
+.rq-strip > svg { width: 16px; height: 16px; flex: none; color: var(--ah-ink-2); }
+.rq-strip-stop > svg { color: var(--ah-err); }
+.rq-strip[data-phase="done"] > svg { color: var(--ah-ok); }
+.rq-strip-body { flex: 1 1 auto; min-width: 0; }
+.rq-strip-lead { margin: 0; color: var(--ah-ink); font-size: var(--ah-size-meta); font-weight: 600; line-height: 1.4; }
+.rq-short { display: none; }
+@media (max-width: 600px) { .rq-long { display: none; } .rq-short { display: inline; } }

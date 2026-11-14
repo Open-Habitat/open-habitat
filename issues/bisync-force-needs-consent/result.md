@@ -80,3 +80,82 @@ Nothing on the test server yet. This is an offline prototype. Open
 tekisi…, then Jatka kerran. Then choose "Laskelma: paljon poistoja" and the
 checkbox. Then open the count again, press "Simuloi: tiedosto muuttuu
 laskelman jälkeen" and continue, which is refused.
+
+# Prototype round 2: the stop and consent in the conversation (14.11.2026)
+
+Round: `design-system/prototypes/rounds/2026-11-14-sync-consent-2/` (build
+and check commands, and "What the host would need", in its `NOTES.md`).
+Jari on round 1: the person will not find the stop in Settings; it belongs
+where the agent did the work that caused it.
+
+**Axis:** where in the conversation the stop and the consent sit. The count
+and its binding are round 1's. Same in all directions: the rail marks the
+conversation that caused the stop (production's attention mark), the bell
+carries it for the whole account, and the consent is always Habitat's own
+button, never the agent's word.
+
+- **A Kortti**: Habitat's card in the timeline right after the turn whose
+  edits stopped sync ("Synkronointi pysähtyi, koska tämän keskustelun
+  muutokset koskivat kaikkia OneDrive-kansion tiedostoja"), naming the
+  edits. *Katso, mitä jatkaminen tekisi* fills the count and the consent
+  into the card. *Kysy agentilta* drafts a message in the field.
+- **B Agentti kertoo**: Habitat tells the agent (a line in the timeline),
+  the agent explains in its own words what it did and runs the count, and
+  Habitat's consent card sits under its reply.
+- **C Kentän yllä**: a fixed line above the message field, not in the
+  timeline. The count and the consent are in round 1's dialog.
+
+**Fallback** (no conversation caused it): no rail mark. The bell item
+explains and opens round 1's dialog, and the Microsoft card in Settings
+keeps round 1's notice (B) behind *Avaa asetukset*.
+
+**Recommendation: A.** It sits where the person reads the agent's result
+and says which edits caused the stop. The consent needs no agent turn, so
+A works when the agent has moved on or Pi has stopped. B explains best,
+but it starts a turn the person did not ask for, and the agent's account
+can be wrong. A's *Kysy agentilta* gives that explanation on request. C
+comes loose from its cause and takes field space on a phone.
+
+States in every direction: stopped, counting, count (no deletions / 212
+moved, deletions gated by a checkbox), running, done, refused (change after
+the count; the review bar simulates it), failed, another conversation open,
+fallback. Finnish and English.
+
+## Round 2 decisions for later review
+
+- **Attribution only when it is sure enough.** The daemon attributes the
+  stop from the native history of the user's conversations. `edit`/`write`
+  paths inside the synced folder are certain. `bash` with its cwd in the
+  folder, or naming the folder, is probable. Otherwise the fallback is
+  used. Alternative: attribute the most recent conversation that touched
+  the folder at all. Why not: a card in the wrong conversation gives the
+  wrong cause.
+- **The agent may count and explain, never force.** Round 1 let the agent
+  request the forced pass after a yes in the conversation. Round 2 drops
+  that, per Jari's "a real button, not the agent's word": the CLI has no
+  force command and the skill says so. Not an enforced boundary (same Unix
+  user, as in round 1), and no authority moves.
+- **B wakes an idle agent once per stop**, the way a finished background
+  process does. If Pi is not running, B behaves as A. Alternative: never
+  start a turn, and tell the agent only at the person's next message. Why:
+  B's whole point is the agent telling. That cost is part of why A is
+  recommended.
+- **A's card is host state, not native history.** It shows while the stop
+  holds, then as a one-line receipt until the conversation is reopened.
+- **The bell carries the stop in every case**, also when the causing
+  conversation is open, because it is an account condition.
+
+## Questions for Jari (round 2)
+
+1. Direction: A, or another?
+2. In the fallback, is the bell plus the Settings card enough, or should
+   the stop also open as a notice on the start page?
+
+## Live check
+
+Nothing on the test server yet. This is an offline prototype. Open
+`offline.html` from the worker results. In A, press *Katso, mitä jatkaminen
+tekisi*, then *Jatka kerran*. Switch Keskustelu to *Arkistointi* for the
+212-deletions case and its checkbox. Choose *Toinen keskustelu auki* and
+click the marked conversation in the rail. Choose *Varapaikka* and open the
+bell.
