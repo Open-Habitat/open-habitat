@@ -510,3 +510,23 @@ func TestNativeCutOffTail(t *testing.T) {
 		}
 	}
 }
+
+// A conversation past the former 512 MiB whole-file bound is discovered as
+// readable with its size, which the browser uses to advise a new
+// conversation; discovery must not fall back to a bare unavailable state.
+// The file is sparse, so the test writes only its header.
+func TestDiscoveryKeepsConversationOverFormerBoundReadable(t *testing.T) {
+	id := "11111111-2222-3333-4444-555555555555"
+	path := filepath.Join(t.TempDir(), "large.jsonl")
+	if err := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"`+id+`","cwd":"/workspace"}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	const size = 600 << 20
+	if err := os.Truncate(path, size); err != nil {
+		t.Fatal(err)
+	}
+	s := readNativeHeader(path, os.Getuid())
+	if s.id != id || s.state != "readable" || s.bytes != size {
+		t.Fatalf("large conversation discovered as id=%q state=%q bytes=%d", s.id, s.state, s.bytes)
+	}
+}
