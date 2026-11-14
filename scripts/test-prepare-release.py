@@ -61,6 +61,13 @@ echo "$out/$name.tar.gz"
 ''')
             for path in (scripts / 'verify-release.sh', scripts / 'package-release.sh'):
                 path.chmod(0o755)
+            (scripts / 'prepare-release-closure.py').write_text('''import json, pathlib, sys
+repo, cache, output, binary, target, version, commit = sys.argv[1:]
+out = pathlib.Path(output)
+out.mkdir()
+(out / 'release.json').write_text(json.dumps({'version': version, 'commit': commit, 'target': target}))
+print('synthetic runtime verification', file=sys.stderr)
+''')
             git('add', '.')
             git('commit', '-qm', 'synthetic source')
             git('push', '-q', 'origin', 'HEAD:main')
@@ -68,6 +75,8 @@ echo "$out/$name.tar.gz"
             fake.mkdir()
             (fake / 'npm').write_text('#!/bin/sh\nexit 0\n')
             (fake / 'npm').chmod(0o755)
+            (fake / 'go').write_text('#!/bin/sh\nif [ "$1" = env ]; then echo arm64; fi\n')
+            (fake / 'go').chmod(0o755)
             output = root / 'output'
             output.mkdir()
             env = {**os.environ, 'PATH': str(fake) + ':' + os.environ['PATH']}
@@ -81,6 +90,21 @@ echo "$out/$name.tar.gz"
             self.assertEqual(json.loads((output / 'release-gate.json').read_text()), {
                 'gate': 'ungated', 'source_commit': git('rev-parse', 'HEAD'),
                 'tree': git('rev-parse', 'HEAD^{tree}')})
+            runtime_output = root / 'with-runtime'
+            runtime = subprocess.run(self.command(scripts, runtime_output, 'ungated') +
+                                     ['--runtime-cache', str(root / 'runtime-cache')], cwd=repo,
+                                     env=env, capture_output=True, text=True)
+            self.assertEqual(runtime.returncode, 0, runtime.stderr)
+            self.assertEqual(len(runtime.stdout.splitlines()), 1)
+            self.assertIn('synthetic runtime verification', runtime.stderr)
+            self.assertEqual(json.loads((runtime_output / 'runtime/release.json').read_text()), {
+                'version': '0.0.0-pilot.99', 'commit': git('rev-parse', 'HEAD'), 'target': 'linux-amd64'})
+            self.assertTrue((runtime_output / 'release-gate.json').exists())
+            invalid = subprocess.run(self.command(scripts, root / 'invalid', 'ungated') +
+                                     ['--runtime-cache', 'relative'], cwd=repo, env=env,
+                                     capture_output=True, text=True)
+            self.assertNotEqual(invalid.returncode, 0)
+            self.assertIn('absolute disposable directory', invalid.stderr)
             # Both policy modes still require the exact committed, pushed source.
             (repo / 'untracked').write_text('dirty')
             dirty = subprocess.run(self.command(scripts, root / 'dirty-output', 'ungated'),

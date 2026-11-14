@@ -3,12 +3,12 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 export TMPDIR=${TMPDIR:-/var/tmp}
-version= output= gate= target= remote= branch=
+version= output= gate= target= remote= branch= runtime_cache=
 while (($#)); do
   case "$1" in
-    --version|--output|--target|--gate|--remote|--branch)
+    --version|--output|--target|--gate|--remote|--branch|--runtime-cache)
       (($# >= 2)) || { echo "error: missing value for $1" >&2; exit 1; }
-      case "$1" in --version) version=$2;; --output) output=$2;; --target) target=$2;; --gate) gate=$2;; --remote) remote=$2;; --branch) branch=$2;; esac
+      case "$1" in --version) version=$2;; --output) output=$2;; --target) target=$2;; --gate) gate=$2;; --remote) remote=$2;; --branch) branch=$2;; --runtime-cache) runtime_cache=$2; [[ $runtime_cache == /* ]] || { echo 'error: --runtime-cache requires an absolute disposable directory' >&2; exit 1; };; esac
       shift 2;;
     *) echo "error: unknown argument $1" >&2; exit 1;;
   esac
@@ -64,6 +64,13 @@ data = json.loads(raw)['data']
 if data.get('commit') != source or data.get('version') != version:
     sys.exit('error: packaged binary source or version differs from approved checkout')
 PY
+if [[ -n $runtime_cache ]]; then
+  # A native verifier also permits validating a transferred foreign-arch cache.
+  # Never install this helper into the machine's PATH or global Go bin directory.
+  CGO_ENABLED=0 GOOS=linux GOARCH=$(go env GOHOSTARCH) go build -trimpath -o "$stage/runtime-release" ./cmd/runtime-release
+  python3 scripts/prepare-release-closure.py "$repo" "$runtime_cache" "$(realpath "$output")/runtime" \
+    "$stage/runtime-release" "$target" "$version" "$source_commit"
+fi
 if [[ $gate == ungated ]]; then
   [[ -z $(git status --porcelain --untracked-files=all) ]] || { echo 'error: checkout changed during package verification' >&2; exit 1; }
   gate=ungated

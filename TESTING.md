@@ -187,6 +187,29 @@ clean gate; a disposable test release does not, and neither does landing on
 synthetic Git origins and build commands, not a live build; the preparer has
 no dry-run mode.
 
+For a test release with its own runtime, add
+`--runtime-cache /var/tmp/agent-scratch/oh-runtime-cache`. Hold the scratch
+lease for the entire preparation (`flock --shared /var/tmp/agent-scratch/.lease`)
+and put `TMPDIR` in a task-specific scratch directory. The option writes
+`OUTPUT/runtime/{core.tar.gz,integrations.tar.gz,release.json}` alongside the
+product package, with the requested version and source commit. The cache is
+local, disposable build output, keyed by runtime input content and architecture;
+it may be deleted when not in use. Keep it writable only by the trusted builder;
+transfer entries only from a trusted builder (the cache key is not a signature).
+Product-only commits reuse archive bytes,
+not the old manifest. Every use passes the current product's closure verifier.
+A corrupt or no-longer-accepted cache fails closed: remove that entry and retry
+on a native builder. Cache misses require a native Linux host of the requested
+target architecture and the runtime builders' Go/Podman/network prerequisites.
+For the other architecture, transfer the matching cache entry from a native
+builder; without it preparation fails, rather than emulating or omitting runtime.
+This is the required core/integrations closure, not optional profiles or an
+upgrade descriptor. It does not install or activate anything.
+`python3 scripts/test-prepare-release-closure.py` checks content invalidation,
+fresh manifest identity, verifier invocation, failed-cache publication and
+non-native cache handling with synthetic builders; it does not prove a real
+runtime build or installation.
+
 Documentation-, issue- and evidence-only changes need relevant validators and
 `git diff --check`; run `issuectl doctor --json` when issue metadata changes.
 This includes `python3 scripts/validate-project-view.py` for project documentation.

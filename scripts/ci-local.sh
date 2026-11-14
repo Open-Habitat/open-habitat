@@ -147,6 +147,7 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/test-cloud-qualify.py
     "$PYTHON" scripts/test-profile-runtime-build.py
     "$PYTHON" scripts/test-prepare-release.py
+    "$PYTHON" scripts/test-prepare-release-closure.py
     "$PYTHON" scripts/test-screenshots-to-avif.py
     ./scripts/vm-test.sh self-test --json
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
