@@ -67,7 +67,6 @@ const fi = {
       "Kontekstin täyttöä ei tiedetä: Habitat ei lue tämän agentin istuntoa.",
     contextFirst:
       "Kontekstin täyttö selviää, kun worker on vastannut ensimmäisen kerran.",
-    modelValue: "Malli ?",
     modelUnknown: (
       reason: "unread" | "unsupported" | "unnamed",
       profile?: string,
@@ -175,7 +174,6 @@ export const spinoffsText = catalog(fi, {
       "How full the context is, is not known: Habitat does not read this agent's session.",
     contextFirst:
       "How full the context is, is known once the worker has replied for the first time.",
-    modelValue: "Model ?",
     modelUnknown: (reason, profile) =>
       `The model is not known: ${reason === "unsupported" ? "Habitat does not read this agent's session" : reason === "unnamed" ? "the worker's session does not name it" : "the worker's session has not been found"}.${profile ? ` The profile is ${profile}.` : ""}`,
     pr: (n) => `PR #${n}`,

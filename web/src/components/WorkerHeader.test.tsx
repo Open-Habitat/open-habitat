@@ -8,7 +8,7 @@ import type { WorkerGitView } from "./WorkerHeader";
 
 // worker-header-status (Jari 13.11.2026, direction 1 "Otsikkorivillä"): the
 // worker's Git, pull request, context and model are buttons on the title
-// row; unknown is a "?" with a sentence, never an empty chip or zero ring.
+// row; unknown model/context are omitted, never an empty chip or zero ring.
 
 const run: Spinoff = {
   run_id: "01m7examplerun000000000000pr",
@@ -119,7 +119,7 @@ it("puts the worker's Git, pull request, context and model on the title row", ()
   expect(details).toContain("PR #418 · avoin");
 });
 
-it("says why a fact is unknown with a '?' in the same control", () => {
+it("omits unknown model/context while keeping Git's explanation", () => {
   const claude = {
     ...run,
     harness: "claude" as const,
@@ -133,21 +133,29 @@ it("says why a fact is unknown with a '?' in the same control", () => {
   expect(chip.getAttribute("aria-label")).toContain(
     "Git-tilaa ei saatu luettua",
   );
-  const ring = v.getByTestId("context-ring");
-  expect(ring.hasAttribute("data-unknown")).toBe(true);
-  expect(ring.textContent).toBe("?");
-  expect(ring.getAttribute("aria-label")).toContain("Claude Coden");
-  // The phone's facts line says "?" rather than drawing an empty ring.
-  expect(ring.getAttribute("data-phone-summary")).toBe("?");
-  const model = v.getByTestId("worker-model");
-  expect(model.textContent).toBe("Malli ?");
-  expect(model.getAttribute("title")).toContain("prototype-opus");
+  expect(v.queryByTestId("context-ring")).toBeNull();
+  expect(v.queryByTestId("worker-model")).toBeNull();
   expect(v.queryByTestId("worker-pr")).toBeNull();
   // The "?" opens the worker's details, where the same sentences stand.
   fireEvent.click(chip);
   expect(v.container.querySelector(".ah-agent-header")?.textContent).toContain(
     "Habitat ei vielä lue Claude Coden käyttötietoja",
   );
+});
+
+it.each([undefined, "after", "edited"] as const)(
+  "omits unknown Pi facts at startup or after invalidated usage (%s)",
+  (phase) => {
+    const v = view({ run, context: phase ? { phase } : undefined });
+    expect(v.queryByTestId("worker-model")).toBeNull();
+    expect(v.queryByTestId("context-ring")).toBeNull();
+  },
+);
+
+it("shows a native model before the first usage reading", () => {
+  const v = view({ run, model: { name: "GPT-5.5", words: "GPT-5.5" } });
+  expect(v.getByTestId("worker-model").textContent).toBe("GPT-5.5");
+  expect(v.queryByTestId("context-ring")).toBeNull();
 });
 
 it("reads a kept branch's counts as the chip, with nothing uncommitted", () => {

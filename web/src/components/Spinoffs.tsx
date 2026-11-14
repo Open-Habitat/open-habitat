@@ -431,7 +431,6 @@ export function WorkerView({
           run ? (
             <WorkerContext
               usage={context}
-              unknown={contextUnknown}
               open={details}
               onToggle={toggleDetails}
             />
@@ -442,7 +441,6 @@ export function WorkerView({
             <WorkerModel
               name={model?.name}
               words={model?.words}
-              unknown={modelUnknown}
               open={details}
               onToggle={toggleDetails}
             />

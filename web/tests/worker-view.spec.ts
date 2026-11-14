@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
@@ -29,6 +29,10 @@ async function shot(page: Page, name: string) {
     await page.screenshot({
       path: resolve(capture, `${name}-${width}-${scheme}.png`),
     });
+    writeFileSync(
+      resolve(capture, `${name}-${width}-${scheme}.html`),
+      await page.content(),
+    );
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: "light" });
@@ -91,7 +95,7 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
   await expect(band).toBeVisible();
   await expect(card).toBeVisible();
   // The header's facts (worker-header-status): this worker's worktree is not
-  // on disk and Claude Code's usage is not read, so each says "?" and why.
+  // on disk. Unknown model/context are omitted; Git keeps its explanation.
   const topline = page.locator(".ah-agent-topline");
   await expect(topline.getByTestId("git-chip")).toHaveAttribute(
     "data-unknown",
@@ -100,10 +104,8 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
   await expect(topline.getByTestId("git-chip")).toHaveAccessibleName(
     /Git-tilaa ei saatu luettua/,
   );
-  await expect(topline.getByTestId("context-ring")).toHaveAccessibleName(
-    /Claude Coden käyttötietoja/,
-  );
-  await expect(topline.getByTestId("worker-model")).toHaveText("Malli ?");
+  await expect(topline.getByTestId("context-ring")).toHaveCount(0);
+  await expect(topline.getByTestId("worker-model")).toHaveCount(0);
   await expect(page.getByTestId("worker-work")).toHaveCount(0);
   // The brief comes from Taskfleet's run before any history exists.
   await expect(page.locator('[data-voice="brief"]')).toContainText(
@@ -238,6 +240,7 @@ test("@worker-view @a11y a worker's header carries its Git, pull request, contex
   ).toBe(204);
   // The host's own Git and Taskfleet answers; only what this host has no
   // native source for is added: a Pi session's usage and gh's pull request.
+  let nativeFactsAvailable = false;
   await page.route("**/api/v1/agents/pi:*/spinoffs?run=*", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -281,6 +284,7 @@ test("@worker-view @a11y a worker's header carries its Git, pull request, contex
         ],
       },
     ];
+    if (!nativeFactsAvailable) body.transcripts = [];
     await route.fulfill({ response, json: body });
   });
   await page.route("**/api/v1/agents/pi:*/spinoff-work", async (route) => {
@@ -313,6 +317,10 @@ test("@worker-view @a11y a worker's header carries its Git, pull request, contex
     "href",
     "https://github.com/example-owner/example-repo/pull/418",
   );
+  await expect(topline.getByTestId("context-ring")).toHaveCount(0);
+  await expect(topline.getByTestId("worker-model")).toHaveCount(0);
+  await shot(page, "pi-startup");
+  nativeFactsAvailable = true;
   const ring = topline.getByTestId("context-ring");
   await expect(ring).not.toHaveAttribute("data-unknown", /.*/);
   await expect(ring).toHaveAttribute("data-tokens", "210000");

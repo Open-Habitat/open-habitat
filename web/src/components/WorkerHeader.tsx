@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import type { WorkerPullRequest } from "../app/spinoffWork";
 import { useText } from "../i18n";
 import { spinoffsText } from "../text/spinoffs";
-import { ContextRing, type ContextUsage, Ring } from "./ContextRing";
+import { ContextRing, type ContextUsage } from "./ContextRing";
 import { ControlButton, controlClassName } from "./ControlElements";
 import {
   GitStatusChip,
@@ -16,8 +16,7 @@ import { Icon } from "./Icon";
 // the worker's Git changes, pull request, context and model sit on the title
 // row in the place and order a conversation has them. Model and ring are
 // read only: they open the worker's details, never a picker. A fact the host
-// could not give is a "?" with a sentence in the same control, never an
-// empty chip or a zero ring.
+// could not give is omitted for model/context; Git keeps its explanation.
 
 /** The worker's Git as the application layer read it. */
 export type WorkerGitView =
@@ -43,8 +42,6 @@ function UnknownChip({
   sentence,
   value,
   phoneSummary,
-  level,
-  expanded,
   onPress,
   children,
 }: {
@@ -53,8 +50,6 @@ function UnknownChip({
   sentence: string;
   value: string;
   phoneSummary?: string;
-  level?: string;
-  expanded?: boolean;
   onPress: () => void;
   children?: React.ReactNode;
 }) {
@@ -63,20 +58,17 @@ function UnknownChip({
     <ControlButton
       data-testid={testId}
       data-unknown
-      data-level={level}
       data-menu-summary={sentence}
       data-phone-summary={phoneSummary}
       size="inline"
       presentation="pill"
-      variant={level ? "quiet" : undefined}
       className={`${className} ah-worker-unknown`}
       aria-label={`${sentence} ${txt.header.openDetails}`}
-      aria-expanded={expanded}
       title={sentence}
       onPress={onPress}
     >
       {children}
-      <span className={level ? "ah-ctx-value" : "ah-gs-counts"}>{value}</span>
+      <span className="ah-gs-counts">{value}</span>
     </ControlButton>
   );
 }
@@ -171,18 +163,19 @@ export function prFact(
 /** The ring, read only: it opens the worker's details. */
 export function WorkerContext({
   usage,
-  unknown,
   open,
   onToggle,
 }: {
   usage?: ContextUsage;
-  /** Why the fill is not known, when it is not. */
-  unknown: string;
   open: boolean;
   onToggle: () => void;
 }) {
   const txt = useText(spinoffsText);
-  if (usage)
+  if (
+    usage &&
+    (usage.phase === "compacting" ||
+      (usage.phase === "known" && usage.tokens !== undefined))
+  )
     return (
       <ContextRing
         usage={usage}
@@ -191,28 +184,13 @@ export function WorkerContext({
         action={txt.header.openDetails}
       />
     );
-  return (
-    <UnknownChip
-      testId="context-ring"
-      className="ah-ctx-chip"
-      sentence={unknown}
-      value={txt.header.unknownValue}
-      phoneSummary={txt.header.unknownValue}
-      level="nowindow"
-      expanded={open}
-      onPress={onToggle}
-    >
-      <Ring level="nowindow" />
-    </UnknownChip>
-  );
+  return null;
 }
 
-/** The model, read only: like the conversation header's fallback chip it
- * opens the details, never a picker. */
+/** A known model opens the worker's details, never a picker. */
 export function WorkerModel({
   name,
   words,
-  unknown,
   open,
   onToggle,
 }: {
@@ -220,26 +198,25 @@ export function WorkerModel({
   name?: string;
   /** Model and thinking level, for the tooltip and the phone's facts. */
   words?: string;
-  unknown: string;
   open: boolean;
   onToggle: () => void;
 }) {
   const txt = useText(spinoffsText);
-  const sentence = words ?? unknown;
+  if (!name) return null;
+  const sentence = words ?? name;
   return (
     <ControlButton
       data-testid="worker-model"
-      data-unknown={name ? undefined : true}
       data-menu-summary={sentence}
       size="inline"
       presentation="pill"
-      className={`ah-set-chip ah-set-compact${name ? "" : " ah-worker-unknown"}`}
+      className="ah-set-chip ah-set-compact"
       aria-label={`${sentence} ${txt.header.openDetails}`}
       aria-expanded={open}
       title={sentence}
       onPress={onToggle}
     >
-      <span className="ah-set-model">{name ?? txt.header.modelValue}</span>
+      <span className="ah-set-model">{name}</span>
     </ControlButton>
   );
 }

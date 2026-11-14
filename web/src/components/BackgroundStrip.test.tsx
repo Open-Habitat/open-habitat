@@ -90,6 +90,13 @@ describe("background strip facts", () => {
   it("keeps the wait mark while the agent works; the turn has not ended yet", () => {
     expect(facts([run({})], [wait], false).spin.marks[0].waited).toBe(true);
   });
+  it("recognizes a new waking wait even beside an older non-waking observer", () => {
+    const observer = { ...wait, id: "proc_old", wakes_agent: false };
+    const f = facts([run({ state: "idle" })], [observer, wait], false);
+    expect(f.spin.live[0].waited).toBe(true);
+    expect(f.spin.live[0].wait?.id).toBe("proc_wait");
+    expect(facts([run({})], [observer], false).spin.live[0].waited).toBe(false);
+  });
   it("counts a wait whose end does not wake the agent as no wait, but keeps it on the row", () => {
     for (const wakes_agent of [false, null] as const) {
       const f = facts([run({})], [{ ...wait, wakes_agent } as ProcessRecord]);

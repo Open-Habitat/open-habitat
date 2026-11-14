@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Spinoffs } from "../src/app/spinoffs";
@@ -26,6 +26,10 @@ async function shot(page: Page, name: string, width: number, scheme: string) {
   await page.screenshot({
     path: resolve(capture, `${name}-${width}-${scheme}.png`),
   });
+  writeFileSync(
+    resolve(capture, `${name}-${width}-${scheme}.html`),
+    await page.content(),
+  );
 }
 
 const id = {
@@ -141,6 +145,8 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
 }) => {
   test.setTimeout(90000);
   const stops: unknown[] = [];
+  let panelRuns = runs;
+  let processes = [wait("a", id.waited)];
   await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
     const url = new URL(route.request().url());
     const run = url.searchParams.get("run");
@@ -149,7 +155,7 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
         schema_version: 1,
         parent_id: url.pathname.split("/agents/")[1].split("/spinoffs")[0],
         availability: "available",
-        runs: run ? runs.filter((r) => r.run_id === run) : runs,
+        runs: run ? panelRuns.filter((r) => r.run_id === run) : panelRuns,
         transcripts: [],
       },
     });
@@ -166,7 +172,7 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
         availability: "available",
         unavailable_reason: null,
         interrupted: [],
-        processes: [wait("a", id.waited)],
+        processes,
         foreground_run_ids: [id.elsewhere],
       },
     });
@@ -284,6 +290,30 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
   await expect(page.getByTestId("worker-band")).toBeVisible();
   await page.getByRole("button").and(page.getByTestId("parent-top")).click();
   await expect(page).not.toHaveURL(/spinoff=/);
+
+  // One worker waits at its startup prompt. Its row remains, so the count
+  // must remain one, and a new waking wait must beat an older observer.
+  panelRuns = [runs[0]];
+  processes = [{ ...wait("old", id.waited), wakes_agent: false }];
+  await expect(pill).toHaveAttribute("data-count", "1");
+  await pill.click();
+  await expect(waited).toHaveAttribute("data-waited", "false");
+  panelRuns = [{ ...runs[0], state: "idle" }];
+  processes = [
+    ...processes,
+    { ...wait("new", id.waited), started_at: Date.now() },
+  ];
+  await expect(waited).toHaveAttribute("data-state", "idle");
+  await expect(waited).toHaveAttribute("data-waited", "true");
+  await expect(pill).toHaveAttribute("data-working", "0");
+  await expect(pill).toHaveAttribute("data-count", "1");
+  await expect(
+    strip.locator('[role="tab"][aria-selected="true"] .ah-bg-tab-n'),
+  ).toHaveText("1");
+  await shot(page, "waiting-worker", 1440, "light");
+  await waited.getByTestId("stop-wait").click();
+  await expect.poll(() => stops.length).toBe(2);
+  expect(stops[1]).toMatchObject({ process_token: "pt_new" });
 });
 
 // English (en-workers): an English browser with the server default System

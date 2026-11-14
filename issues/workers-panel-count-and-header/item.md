@@ -3,13 +3,14 @@ created: 2026-11-14
 updated: 2026-11-14
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/workers-panel-count-and-header
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Workers panel count drops to 0 for a waiting worker; parent wait and Pi model shown late or as ?
