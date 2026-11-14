@@ -64,3 +64,7 @@ Tarkistus: `enter-sends-twice-1`;
 `idleStarts`-ehto. Sääntö koskee selaimen lähetystä, ei kaikkia agenttien ohjauskomentoja.
 
 Pois jäi 49 ★-kohtaa myöhemmin korvautuneina tai ratkaistuina taikka tämän katselmoinnin kannalta vähäisinä; mukana ovat myös tutkimusehdotukset, joista ei tullut voimassa olevaa valintaa.
+
+## Verdict (Jari 14.11.2026)
+
+Item 2 (interrupted work stays in Käynnissä until continued or archived) and item 3 (a late steer starts a new turn): keep, as they are. Item 1 filed as `recap-lost-when-making-room`. The decisions made after 31.10. get the same distilling review (`decisions-review-after-31-10`).
