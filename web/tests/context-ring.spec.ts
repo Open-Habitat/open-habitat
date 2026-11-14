@@ -3,6 +3,7 @@ import { hostOrigin } from "../test-ports.mjs";
 import { createHostTest, expect } from "./worker-host";
 
 const capture = process.env.OH_VISUAL_CAPTURE === "1";
+const captureDir = process.env.OH_VISUAL_CAPTURE_DIR;
 const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
 
 test.beforeEach(async ({ page }) => {
@@ -15,6 +16,8 @@ test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 720 },
+  deviceScaleFactor: 2,
+  reducedMotion: "reduce",
 });
 
 async function send(page: import("@playwright/test").Page, text: string) {
@@ -171,3 +174,202 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   const box = await phoneRing.boundingBox();
   expect(box && box.x + box.width).toBeLessThanOrEqual(390);
 });
+
+for (const held of [false, true]) {
+  test(`@compaction-spacing keeps the conversation rhythm after ${held ? "a held message" : "a normal reply"}`, async ({
+    page,
+  }) => {
+    test.setTimeout(120000);
+    await page.clock.install();
+    await page.addInitScript(() => {
+      const listen = EventSource.prototype.addEventListener;
+      EventSource.prototype.addEventListener = function (
+        type: string,
+        listener:
+          | EventListenerOrEventListenerObject
+          | ((this: EventSource, event: MessageEvent) => unknown)
+          | null,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        listen.call(
+          this,
+          type,
+          (event) => {
+            if (document.documentElement.dataset.holdConversation) return;
+            if (typeof listener === "function")
+              listener.call(this, event as MessageEvent);
+            else listener?.handleEvent(event);
+          },
+          options,
+        );
+      };
+    });
+    await page.request.get("/fixture/scenario?value=pi-rewind");
+    await page.goto("/workspaces");
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
+    const session = await (await page.request.get("/auth/session")).json();
+    expect(
+      (
+        await page.request.put("/api/v1/account/preferences", {
+          headers: {
+            Origin: new URL(page.url()).origin,
+            "X-Agent-Host-CSRF": session.csrf,
+          },
+          data: { experimental: { "rewind-conversation": true } },
+        })
+      ).ok(),
+    ).toBe(true);
+    await page.reload();
+    await page
+      .getByRole("navigation")
+      .getByTestId(
+        capture ? "workspace-aurinkokello" : "workspace-ordinary-dir",
+      )
+      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await expect(page.getByTestId("message-input")).toBeEnabled();
+    if (held) {
+      await expect(page).toHaveURL(/conversation=pi:/);
+      const conversationId = new URL(page.url()).searchParams.get(
+        "conversation",
+      );
+      if (!conversationId) throw new Error("Missing conversation ID");
+      const identity = (
+        await (await page.request.get("/api/v1/snapshot")).json()
+      ).identity.web_identity_id;
+      // An acknowledged held message stays visible until native history
+      // contains it. Seed that short delivery grace before mounting the page.
+      await page.evaluate(
+        ({ identity, conversationId }) => {
+          sessionStorage.setItem(
+            `nah:${identity}:held:${conversationId}`,
+            JSON.stringify([
+              {
+                command_id: crypto.randomUUID(),
+                text: "Keep this message until the agent is ready",
+                posted: true,
+                delivered: Date.now(),
+              },
+            ]),
+          );
+        },
+        { identity, conversationId },
+      );
+      await page.reload();
+      await expect(page.getByTestId("waiting-message")).toBeVisible();
+    }
+    await send(page, "tiivistä konteksti 250000");
+    const notice = page.getByTestId("compaction-notice");
+    await expect(notice).toHaveAttribute("data-state", "running");
+    // Freeze incoming events and poll timers, not the DOM or the connection:
+    // native Pi can finish while the browser retains its running observation.
+    await page.evaluate(() => {
+      document.documentElement.dataset.holdConversation = "true";
+    });
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    for (const attachment of [false, true]) {
+      if (attachment) {
+        await page.locator('.ah-composer input[type="file"]').setInputFiles({
+          name: "notes.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("Synthetic notes"),
+        });
+        await expect(
+          page.locator(".ah-composer").getByTestId("attachment-chip"),
+        ).toBeVisible();
+      }
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const theme of ["light", "dark", "contrast"]) {
+          await page.evaluate(
+            (theme) => (document.documentElement.dataset.theme = theme),
+            theme,
+          );
+          await notice.scrollIntoViewIfNeeded();
+          // Let follow-latest release its temporary tail spacer after resize.
+          await page.clock.runFor(300);
+          await page.evaluate(() => document.fonts.ready);
+          if (held)
+            await expect(page.getByTestId("waiting-message")).toBeVisible();
+          const gaps = await notice.evaluate((el) => {
+            const row = el.getBoundingClientRect();
+            const stream = el.parentElement;
+            const stack = document.querySelector(".ah-composer-stack");
+            if (!stream || !stack)
+              throw new Error("Missing conversation layout");
+            const previous = [...stream.querySelectorAll(".ah-feed > li")]
+              .filter((node) => node.getBoundingClientRect().height > 0)
+              .at(-1);
+            const next =
+              el.nextElementSibling ??
+              [...stack.children].find(
+                (node) => node.getBoundingClientRect().height > 0,
+              );
+            if (!previous || !next)
+              throw new Error("Missing notice neighbours");
+            return {
+              above: row.top - previous.getBoundingClientRect().bottom,
+              below: next.getBoundingClientRect().top - row.bottom,
+              rhythm: Number.parseFloat(getComputedStyle(stack).rowGap),
+            };
+          });
+          const name = `${held ? "held" : "reply"}-${attachment ? "attachment" : "plain"}-${width}-${theme}`;
+          if (captureDir) {
+            const { snapshot } = await import("../lab/session.mjs");
+            await snapshot(page, `${captureDir}/${name}`, {
+              labOrigin: new URL(page.url()).origin,
+            });
+          }
+          expect.soft(gaps.above, `${name}: above`).toBeCloseTo(gaps.rhythm, 0);
+          expect.soft(gaps.below, `${name}: below`).toBeCloseTo(gaps.rhythm, 0);
+        }
+      }
+      if (attachment)
+        await page
+          .locator(".ah-composer")
+          .getByTestId("attachment-remove")
+          .click();
+    }
+    // Palaa tähän is a floating overlay, not another flow row. It may
+    // cover the notice while open; closing it must restore the same gap.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page
+      .getByTestId(/^message-menu-/)
+      .first()
+      .click();
+    await page.getByRole("menuitem").click();
+    const sheet = page.getByTestId("rewind-sheet");
+    await expect(sheet).toBeVisible();
+    await expect(
+      page.locator(".ah-floating-controls").getByTestId("rewind-sheet"),
+    ).toBeVisible();
+    if (captureDir) {
+      const { snapshot } = await import("../lab/session.mjs");
+      await snapshot(
+        page,
+        `${captureDir}/${held ? "held" : "reply"}-return-sheet`,
+        {
+          labOrigin: new URL(page.url()).origin,
+        },
+      );
+    }
+    await page.getByTestId("rewind-close").click();
+    await expect(sheet).toHaveCount(0);
+    await notice.scrollIntoViewIfNeeded();
+    await page.clock.runFor(300);
+    const gap = await notice.evaluate((el) => {
+      const stack = document.querySelector(".ah-composer-stack");
+      if (!stack) throw new Error("Missing composer stack");
+      return (
+        stack.getBoundingClientRect().top -
+        el.getBoundingClientRect().bottom -
+        Number.parseFloat(getComputedStyle(stack).rowGap)
+      );
+    });
+    expect(gap).toBeCloseTo(0, 0);
+  });
+}
