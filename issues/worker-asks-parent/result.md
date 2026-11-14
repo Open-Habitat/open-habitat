@@ -33,3 +33,24 @@ issues-only research. No live inter-agent delivery experiment was performed.
 
 Live check: no test-server behavior changed. Read the report and discuss proposal
 A against B/C; there is no new worker-question control to try yet.
+
+# Design result (14.11.2026)
+
+[Design for review](design.md): the end-to-end flow of a worker's question, the
+agent's own `handoff` declaration for the rail, phasing, and a self-contained
+Taskfleet proposal (§4, not filed, Taskfleet unchanged). Nothing is
+implemented; both issues stay open with preparation pending until Jari has
+reviewed the design and answered its §6 questions.
+
+The decisions made by judgement are listed in the design's §5 "Decisions for
+later review", each with its alternative and reason.
+
+Review: focused self-review of every claim against the code named in the
+design's §0 (rail rule, agent CLI and notice write path, wake, Taskfleet
+observation, Taskfleet 0.20.0 help and source). `git diff --check` clean; no
+tests, since only issue documents changed.
+
+Live check: no test-server behaviour changed. To see what the design starts
+from, let an agent start a worker and reply "I'll report when it finishes":
+the conversation shows under Sinun vuorosi as a new reply although nothing is
+asked of you. Slice 1 of the design changes that.
