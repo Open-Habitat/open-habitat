@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: m365-connect
 lane_seq: 1
+closed: 2026-11-14
 ---
 
 # Microsoft connect without folder choice: files are reached on demand
@@ -37,6 +38,6 @@ separately (`m365-pin-folders`), not part of the connect dialog.
 
 ## Acceptance Criteria
 
-- [ ] Connecting Microsoft with files shows no folder choice and starts no sync; agent search/fetch works
-- [ ] An existing syncing account keeps syncing after upgrade and after renewal
-- [ ] Browser tests updated for the connect flow
+- [x] Connecting Microsoft with files shows no folder choice and starts no sync; agent search/fetch works
+- [x] An existing syncing account keeps syncing after upgrade and after renewal
+- [x] Browser tests updated for the connect flow
