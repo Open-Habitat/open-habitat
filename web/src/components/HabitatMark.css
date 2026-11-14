@@ -1,0 +1,347 @@
+/* Open Habitat mark and its states (HabitatMark.tsx). The colour comes from
+   currentColor; a state shows in both shape and colour: your turn
+   --ah-turn, done --ah-ok, error --ah-err. */
+.oh-mark {
+  --tx: 5px;
+  --ty: -5px;
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+  color: var(--oh-mark-color, var(--ah-accent));
+  vertical-align: middle;
+}
+.oh-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 81.3 18.7;
+}
+.oh-dot,
+.oh-sub {
+  fill: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* idle: still, the same as the logo. */
+/* thinking: the resident breathes. */
+.oh-mark[data-state="thinking"] .oh-dot {
+  animation: oh-breathe 1.5s ease-in-out infinite;
+}
+@keyframes oh-breathe {
+  0%,
+  100% {
+    transform: scale(0.55);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+/* working: the door travels round the ring. It starts half a turn away, so a
+   still frame differs from the logo too. */
+.oh-mark[data-state="working"] .oh-ring {
+  stroke-dashoffset: -50;
+  animation: oh-turn 1.7s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes oh-turn {
+  to {
+    stroke-dashoffset: -150;
+  }
+}
+/* waiting (your turn): the resident comes to the door and knocks. The whole
+   mark changes colour, because the dot alone does not show at 14–16 px. */
+.oh-mark[data-state="waiting"] {
+  color: var(--ah-turn);
+}
+.oh-mark[data-state="waiting"] .oh-dot {
+  animation: oh-knock 2.6s ease-in-out infinite;
+}
+@keyframes oh-knock {
+  0%,
+  8% {
+    transform: translate(0, 0);
+  }
+  28% {
+    transform: translate(var(--tx), var(--ty));
+  }
+  38% {
+    transform: translate(calc(var(--tx) * 0.75), calc(var(--ty) * 0.75));
+  }
+  48% {
+    transform: translate(var(--tx), var(--ty));
+  }
+  58% {
+    transform: translate(calc(var(--tx) * 0.75), calc(var(--ty) * 0.75));
+  }
+  68%,
+  82% {
+    transform: translate(var(--tx), var(--ty));
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+/* done: the door is shut, the ring whole. */
+.oh-mark[data-state="done"] {
+  color: var(--ah-ok);
+}
+.oh-mark[data-state="done"] .oh-ring {
+  stroke-dasharray: 100 0;
+}
+/* error: the error colour and a hollow resident. */
+.oh-mark[data-state="error"] {
+  color: var(--ah-err);
+}
+.oh-mark[data-state="error"] .oh-dot,
+.oh-mark[data-state="read"] .oh-dot {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+/* read: the reply has been read. The resident stands at the door quietly,
+   hollow and without knocking. */
+.oh-mark[data-state="read"] {
+  color: var(--ah-turn);
+}
+.oh-mark[data-state="read"] .oh-dot {
+  transform: translate(var(--tx), var(--ty));
+}
+/* background: the agent waits on background work. The resident is dim and
+   the door travels slowly and evenly. */
+.oh-mark[data-state="background"] .oh-dot {
+  opacity: 0.45;
+}
+.oh-mark[data-state="background"] .oh-ring {
+  stroke-dashoffset: -25;
+  animation: oh-drift 6s linear infinite;
+}
+@keyframes oh-drift {
+  to {
+    stroke-dashoffset: -125;
+  }
+}
+/* awaited: a sub-agent its main agent waits for. It works, and its resident
+   breathes as it does. */
+.oh-mark[data-state="awaited"] .oh-ring {
+  stroke-dashoffset: -50;
+  animation: oh-turn 1.7s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.oh-mark[data-state="awaited"] .oh-dot {
+  animation: oh-breathe 1.5s ease-in-out infinite;
+}
+/* unknown: the state is not known. A dashed ring, a muted colour, nobody
+   home. */
+.oh-mark[data-state="unknown"] {
+  color: var(--ah-muted);
+}
+.oh-mark[data-state="unknown"] .oh-ring {
+  stroke-dasharray: 4.5 8;
+}
+.oh-mark[data-state="unknown"] .oh-dot {
+  display: none;
+}
+/* stopping: the turn is being stopped. The door closes and opens. */
+.oh-mark[data-state="stopping"] .oh-ring {
+  animation: oh-close 1.2s ease-in-out infinite alternate;
+}
+.oh-mark[data-state="stopping"] .oh-dot {
+  opacity: 0.45;
+}
+@keyframes oh-close {
+  from {
+    stroke-dasharray: 81.3 18.7;
+  }
+  to {
+    stroke-dasharray: 100 0;
+  }
+}
+/* loading: the ring is finding its shape; the resident is not home yet. */
+.oh-mark[data-state="loading"] .oh-dot {
+  transform: scale(0.4);
+  opacity: 0.3;
+}
+.oh-mark[data-state="loading"] .oh-ring {
+  animation: oh-load 1.8s ease-in-out infinite;
+}
+@keyframes oh-load {
+  0% {
+    stroke-dasharray: 8 92;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 70 30;
+    stroke-dashoffset: -40;
+  }
+  100% {
+    stroke-dasharray: 8 92;
+    stroke-dashoffset: -100;
+  }
+}
+/* intro: the page opens, the ring draws itself and the resident steps in
+   through the door (once). */
+.oh-mark[data-state="intro"] .oh-ring {
+  animation: oh-draw 1.1s ease-in-out both;
+}
+@keyframes oh-draw {
+  from {
+    stroke-dasharray: 0 100;
+  }
+  to {
+    stroke-dasharray: 81.3 18.7;
+  }
+}
+.oh-mark[data-state="intro"] .oh-dot {
+  animation: oh-enter 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) 0.9s both;
+}
+@keyframes oh-enter {
+  from {
+    transform: translate(calc(var(--tx) * 2.6), calc(var(--ty) * 2.6))
+      scale(0.4);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Sub-agents orbit the resident. */
+.oh-orbit {
+  animation: oh-orbit 16s linear infinite;
+}
+@keyframes oh-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.oh-mark:has(.oh-sub) .oh-dot {
+  r: 2px;
+}
+.oh-sub[data-state="working"] {
+  animation: oh-breathe 0.9s ease-in-out infinite;
+}
+.oh-sub[data-state="thinking"] {
+  animation: oh-breathe 1.9s ease-in-out infinite;
+}
+.oh-sub[data-state="waiting"] {
+  fill: var(--ah-turn);
+  animation: oh-blink 1.2s steps(2, jump-none) infinite;
+}
+.oh-sub[data-state="error"] {
+  fill: var(--ah-err);
+}
+@keyframes oh-blink {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+
+/* Below 20 px the number of sub-agents is a figure beside the mark. */
+.oh-mark-with-count {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+}
+.oh-mark-count {
+  min-width: 0.6em;
+  color: var(--ah-ink-2);
+  font-size: max(10px, calc(var(--oh-mark-size, 16px) * 0.62));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The ring variant (narrow rail, N2): the habitat drawn round the
+   workspace icon, which stands where the resident would. It cannot knock,
+   so the person's turn puts a resident at the door, and a read reply has a
+   dashed ring so it differs from an unread one by more than motion. */
+.oh-mark[data-variant="ring"] .oh-ring {
+  stroke-width: 1.4;
+}
+.oh-mark[data-variant="ring"] .oh-door {
+  display: none;
+  animation: none;
+  transform: none;
+}
+.oh-mark[data-variant="ring"]:is(
+    [data-state="waiting"],
+    [data-state="read"],
+    [data-state="error"]
+  )
+  .oh-door {
+  display: inline;
+}
+.oh-mark[data-variant="ring"][data-state="waiting"] .oh-door {
+  animation: oh-door-knock 2.6s ease-in-out infinite;
+}
+@keyframes oh-door-knock {
+  0%,
+  20%,
+  60%,
+  100% {
+    transform: none;
+  }
+  30%,
+  50% {
+    transform: translate(0.9px, -0.9px);
+  }
+  40% {
+    transform: translate(-0.4px, 0.4px);
+  }
+}
+.oh-mark[data-variant="ring"][data-state="read"] .oh-ring {
+  stroke-dasharray: 5 3.2;
+}
+.oh-mark[data-variant="ring"]:is([data-state="read"], [data-state="error"])
+  .oh-door {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+/* Reduced motion: the state still shows from shape and colour (at the door,
+   shut, hollow, dashed). */
+@media (prefers-reduced-motion: reduce) {
+  .oh-mark *,
+  .oh-orbit {
+    /* biome-ignore lint/complexity/noImportantStyles: every state's animation rule is more specific; reduced motion stops them all. */
+    animation: none !important;
+  }
+  .oh-mark:not([data-variant="ring"]):is(
+      [data-state="waiting"],
+      [data-state="read"]
+    )
+    .oh-dot {
+    transform: translate(var(--tx), var(--ty));
+  }
+}
+
+/* Forced colours: the browser replaces the palette, so the mark draws in
+   system colours and your turn and error stand out as Highlight. */
+@media (forced-colors: active) {
+  .oh-mark {
+    color: CanvasText;
+  }
+  .oh-mark:is(
+    [data-state="waiting"],
+    [data-state="read"],
+    [data-state="error"]
+  ) {
+    color: Highlight;
+  }
+  .oh-sub[data-state="waiting"],
+  .oh-sub[data-state="error"] {
+    fill: Highlight;
+  }
+}

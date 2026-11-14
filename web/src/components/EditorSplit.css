@@ -99,10 +99,6 @@
   background: var(--ah-hover);
   color: var(--ah-ink);
 }
-.ah-editor-strip .ah-status-dot.ah-editor-unread {
-  border-color: var(--ah-accent);
-  background: var(--ah-accent);
-}
 .ah-editor-strip-label {
   writing-mode: vertical-rl;
 }

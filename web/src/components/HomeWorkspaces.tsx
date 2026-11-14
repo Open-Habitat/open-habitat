@@ -11,7 +11,9 @@ import { liveText } from "../i18n";
 import { homeWorkspacesText } from "../text/homeWorkspaces";
 import { agentPresentation, waitedFor, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
+import { HabitatMark } from "./HabitatMark";
 import { Icon } from "./Icon";
+import { activityMark } from "./markState";
 import { LatestMessageAge, useMinuteNow } from "./RecapCard";
 import type { ReturnConversation } from "./ReturnView";
 import { StatusMark } from "./Status";
@@ -122,9 +124,14 @@ export function HomeCard({
           href={conversation.href}
           kind="inline"
         >
-          <span
-            aria-hidden="true"
-            className={`ah-home-dot ah-home-${rank(conversation)} ah-home-dot-${activity}`}
+          <HabitatMark
+            className="ah-home-dot"
+            state={
+              conversation.attention === "new"
+                ? "waiting"
+                : activityMark(activity)
+            }
+            size={16}
           />
           <span className="ah-home-card-title">{conversation.title}</span>
         </LinkRow>

@@ -66,6 +66,12 @@
   --i-hover: var(--ah-control-hover);
   --i-pressed: var(--ah-control-press);
 }
+/* Korkea kontrasti: the fixed grey fill reads 1.2:1 on black, so a text
+   button carries a line (menu items are told by the menu instead). */
+:global([data-theme="contrast"])
+.text.quiet:not([role^="menuitem"], :disabled, [data-disabled]) {
+  --i-border: var(--ah-line);
+}
 /* An icon beside a text label sits left of the text on its centre line with
    the role's fixed gap. */
 .text:has(> svg),
@@ -188,6 +194,9 @@ span.button {
   /* The selected option is told by its edge, not by the surface fill alone. */
   box-shadow: 0 0 0 1px var(--ah-control-line);
   font-weight: 600;
+}
+:global([data-theme="contrast"]) .segment[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--ah-ink);
 }
 .segment.icon {
   width: calc(var(--b-h) + 4px);

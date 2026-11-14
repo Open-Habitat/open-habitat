@@ -113,20 +113,8 @@
 .ah-home-card-head a:hover {
   background: var(--ah-surface-hover);
 }
-.ah-home-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  margin-right: 8px;
-}
 .ah-home-card-head .ah-home-dot {
   flex: none;
-  margin: 0;
-}
-.ah-home-0 {
-  background: var(--ah-accent-ink);
 }
 .ah-home-card p {
   margin: 0;
@@ -228,16 +216,6 @@
 }
 .ah-home-card-waiting {
   border-color: var(--ah-accent-line);
-}
-/* The shared background-wait dot (components.css); new reply still wins.
-   The working dot is components.css's own. */
-.ah-home-dot-waiting_background:not(.ah-home-0) {
-  border: 1.5px solid var(--ah-accent);
-  background: radial-gradient(
-    circle closest-side,
-    var(--ah-accent) 0 48%,
-    transparent 58%
-  );
 }
 .ah-home-card .ah-home-live {
   padding: 6px 10px;

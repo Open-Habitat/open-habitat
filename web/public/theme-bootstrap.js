@@ -1,4 +1,5 @@
 // Runs before styles and the application; no inline script or CSP exception needed.
+// Resolves the theme the same way as src/theme.ts.
 (() => {
   let choice;
   try {
@@ -6,9 +7,15 @@
   } catch {
     /* Storage may be disabled. */
   }
-  const dark =
-    choice === "dark" ||
-    (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
-  document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  const theme =
+    choice === "light" || choice === "dark" || choice === "contrast"
+      ? choice
+      : matchMedia("(prefers-contrast: more)").matches
+        ? "contrast"
+        : matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme =
+    theme === "light" ? "light" : "dark";
 })();

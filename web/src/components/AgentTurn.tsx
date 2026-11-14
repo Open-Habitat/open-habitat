@@ -464,7 +464,7 @@ export function AgentTurn({
                   <span className="ah-turn-status-name">
                     <StatusMark
                       kind="working"
-                      animated="running"
+                      mark="working"
                       label={
                         voice === "person"
                           ? txt.agentWorking

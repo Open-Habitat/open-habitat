@@ -12,8 +12,10 @@ import {
 import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { ExplainToggle, useExplainEntry } from "./ExplainMode";
+import { HabitatMark, type MarkState } from "./HabitatMark";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
+import { agentMark, subMarks } from "./markState";
 import { NameEditor } from "./NameEditor";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
@@ -26,10 +28,9 @@ import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { TooltipSide } from "./QuickTooltip";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
-import { Badge, StatusMark } from "./Status";
+import { Badge, kindMark, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
-import { WorkerBranchMark } from "./WorkerMark";
 import {
   type WorkspaceCardActions,
   WorkspaceIcon,
@@ -442,23 +443,20 @@ export function NavLink({
 }
 /** The rail's compact activity mark; its meaning is said in words beside it. */
 function NavMark({ mark }: { mark: string }) {
-  const title = activityLabelForMark(mark);
-  // Working is the draft's pulsing accent dot, not a glyph. A background wait
-  // is a still ring around a core, so it is neither the pulsing working dot
-  // nor the open ring. A question asked of the person is the accent disc.
-  const kind = (
-    { "◌": "working", "◉": "background", "?": "question" } as Record<
-      string,
-      string
-    >
+  const state = (
+    {
+      "●": "waiting",
+      "?": "waiting",
+      "◌": "working",
+      "○": "done",
+      "◉": "background",
+      "✓": "done",
+      "–": "unknown",
+    } as Record<string, MarkState>
   )[mark];
   return (
-    <span
-      className={`ah-nav-mark${kind ? ` ah-nav-${kind}` : ""}`}
-      aria-hidden="true"
-      title={title}
-    >
-      {kind === "working" || kind === "background" ? null : mark}
+    <span className="ah-nav-mark" title={activityLabelForMark(mark)}>
+      <HabitatMark state={state ?? "unknown"} size={14} />
     </span>
   );
 }
@@ -506,6 +504,9 @@ export interface AgentNavModel {
   spinoffWorking?: boolean;
   spinoffIdle?: boolean;
   spinoffWaited?: boolean;
+  /** How many of the agent's sub-agents work and how many wait at their own
+   * prompt: the mark draws one dot each. */
+  spinoffCounts?: { working: number; idle: number };
   /** Processes the agent left running behind an ended turn (a file server,
    * a watcher): they run on, but the conversation does not wait for them. */
   backgroundService?: string;
@@ -604,20 +605,25 @@ export function ballOf(
   if (activity === "waiting" || activity === "closed") return "done";
   return "unknown";
 }
-/** A read reply's ball is a ring (raise-to-your-turn). */
-function Ball({
-  kind,
-  turn,
+/** The row's state as the Open Habitat mark (markState.agentMark). Its
+ * meaning is said in words in the row's description. */
+function RowMark({
+  agent,
+  size,
 }: {
-  kind: BallKind;
-  turn?: AgentNavModel["turnMark"];
+  agent: Parameters<typeof agentMark>[0] & {
+    spinoffCounts?: AgentNavModel["spinoffCounts"];
+  };
+  size: number;
 }) {
+  const state = agentMark(agent);
   return (
-    <span
-      className={`ah-nav-mark ah-ball ah-ball-${kind}`}
-      data-turn={turn === "read" ? turn : undefined}
-      aria-hidden="true"
-      title={ballLabel(kind)}
+    <HabitatMark
+      className="ah-row-mark"
+      data-testid="rail-mark"
+      state={state}
+      size={size}
+      subs={subMarks(agent.spinoffCounts)}
     />
   );
 }
@@ -653,6 +659,7 @@ export function AgentNavItem({
   spinoffWorking = false,
   spinoffIdle = false,
   spinoffWaited = false,
+  spinoffCounts,
   backgroundService,
   pendingLabel,
   worktree,
@@ -733,142 +740,131 @@ export function AgentNavItem({
       <ListRow
         className="ah-sidebar-agent-row ah-now-row"
         indicator={
-          workspaceIcon && workspaceId ? (
-            <WorkspaceIconButton
-              icon={workspaceIcon}
-              workspaceId={workspaceId}
-              actions={card}
+          // Wide rail B (Jari 14.11.2026): the mark in its own column at the
+          // row's start, before the workspace icon.
+          <>
+            <RowMark
+              size={20}
+              agent={{
+                failed,
+                attentionLabel,
+                question,
+                turnMark,
+                activity,
+                spinoffWorking,
+                spinoffIdle,
+                spinoffCounts,
+              }}
             />
-          ) : undefined
+            {workspaceIcon && workspaceId ? (
+              <WorkspaceIconButton
+                icon={workspaceIcon}
+                workspaceId={workspaceId}
+                actions={card}
+              />
+            ) : null}
+          </>
         }
         trailing={
-          !editing &&
-          (spinoffWorking ||
-            spinoffIdle ||
-            spinoffWaited ||
-            archive ||
-            rename ||
-            turnRow) ? (
-            <>
-              {spinoffWorking || spinoffIdle || spinoffWaited ? (
-                <span className="ah-worker-rail">
-                  <WorkerBranchMark
-                    kind={
-                      // A worker waiting for the person outranks one at work:
-                      // the conversation's own ball already says work goes on.
-                      spinoffIdle
-                        ? "idle"
-                        : spinoffWorking
-                          ? "working"
-                          : "unknown"
-                    }
-                    waited={spinoffWaited}
-                  />
-                </span>
-              ) : null}
-              {archive || rename || turnRow ? (
-                <span
-                  className="ah-nav-archive"
-                  // The row's own description is a native title; over its
-                  // buttons it would open below them, on the next row.
-                  title=""
-                  data-actions={
-                    [archive, rename, turnRow].filter(Boolean).length
-                  }
-                >
-                  {turn && turnRow ? (
-                    <span>
-                      <ControlButton
-                        title={
-                          turnRow === "raise"
-                            ? t.raise
-                            : turnRow === "lower"
-                              ? t.lower
-                              : t.notNow
-                        }
-                        data-testid={`rail-${turnRow === "not_now" ? "not-now" : turnRow}-conversation`}
-                        variant="quiet"
-                        size="inline"
-                        aria-label={
-                          turnRow === "raise"
-                            ? t.raiseNamed(shownTitle)
-                            : turnRow === "lower"
-                              ? t.lowerNamed(shownTitle)
-                              : t.notNowNamed(shownTitle)
-                        }
-                        onPress={() => turn.run(agentId, turnRow)}
-                      >
-                        <Icon name={turnRow === "raise" ? "top" : "bottom"} />
-                      </ControlButton>
-                    </span>
-                  ) : null}
-                  {rename ? (
-                    <span>
-                      <ControlButton
-                        title={renameReason || t.rename}
-                        data-testid="rail-rename-conversation"
-                        variant="quiet"
-                        size="inline"
-                        aria-label={t.renameNamed(shownTitle)}
-                        isDisabled={!!renameReason}
-                        onPress={() => setEditing(true)}
-                      >
-                        <Icon name="pencil" />
-                      </ControlButton>
-                    </span>
-                  ) : null}
-                  {archive ? (
-                    <span>
-                      <ControlButton
-                        title={archiveReason || (closes ? t.close : t.archive)}
-                        data-testid={
-                          closes
-                            ? "rail-close-conversation"
-                            : "rail-archive-conversation"
-                        }
-                        data-archive-agent={agentId}
-                        variant="quiet"
-                        size="inline"
-                        aria-label={
-                          closes
-                            ? t.closeNamed(shownTitle)
-                            : t.archiveNamed(shownTitle)
-                        }
-                        aria-describedby={
-                          archiveReason ? archiveReasonId : undefined
-                        }
-                        isDisabled={!!archiveReason}
-                        onPress={(event) => {
-                          // The row leaves the list at once; keep the keyboard in
-                          // the rail on the next row rather than on the page.
-                          const row = (event.target as HTMLElement).closest(
-                            "li",
-                          );
-                          const rows = [
-                            ...(row
-                              ?.closest(".ah-now")
-                              ?.querySelectorAll<HTMLElement>(
-                                ".ah-agent-item .ah-nav-link",
-                              ) ?? []),
-                          ];
-                          const here = rows.findIndex((r) => row?.contains(r));
-                          if (row?.contains(document.activeElement))
-                            (rows[here + 1] ?? rows[here - 1])?.focus();
-                          archive.run(agentId);
-                        }}
-                      >
-                        <Icon name={closes ? "cross" : "archive"} />
-                      </ControlButton>
-                    </span>
-                  ) : null}
-                  {archiveReason ? (
-                    <span id={archiveReasonId} className="ah-visually-hidden">
-                      {archiveReason}
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-            </>
+          !editing && (archive || rename || turnRow) ? (
+            archive || rename || turnRow ? (
+              <span
+                className="ah-nav-archive"
+                // The row's own description is a native title; over its
+                // buttons it would open below them, on the next row.
+                title=""
+                data-actions={[archive, rename, turnRow].filter(Boolean).length}
+              >
+                {turn && turnRow ? (
+                  <span>
+                    <ControlButton
+                      title={
+                        turnRow === "raise"
+                          ? t.raise
+                          : turnRow === "lower"
+                            ? t.lower
+                            : t.notNow
+                      }
+                      data-testid={`rail-${turnRow === "not_now" ? "not-now" : turnRow}-conversation`}
+                      variant="quiet"
+                      size="inline"
+                      aria-label={
+                        turnRow === "raise"
+                          ? t.raiseNamed(shownTitle)
+                          : turnRow === "lower"
+                            ? t.lowerNamed(shownTitle)
+                            : t.notNowNamed(shownTitle)
+                      }
+                      onPress={() => turn.run(agentId, turnRow)}
+                    >
+                      <Icon name={turnRow === "raise" ? "top" : "bottom"} />
+                    </ControlButton>
+                  </span>
+                ) : null}
+                {rename ? (
+                  <span>
+                    <ControlButton
+                      title={renameReason || t.rename}
+                      data-testid="rail-rename-conversation"
+                      variant="quiet"
+                      size="inline"
+                      aria-label={t.renameNamed(shownTitle)}
+                      isDisabled={!!renameReason}
+                      onPress={() => setEditing(true)}
+                    >
+                      <Icon name="pencil" />
+                    </ControlButton>
+                  </span>
+                ) : null}
+                {archive ? (
+                  <span>
+                    <ControlButton
+                      title={archiveReason || (closes ? t.close : t.archive)}
+                      data-testid={
+                        closes
+                          ? "rail-close-conversation"
+                          : "rail-archive-conversation"
+                      }
+                      data-archive-agent={agentId}
+                      variant="quiet"
+                      size="inline"
+                      aria-label={
+                        closes
+                          ? t.closeNamed(shownTitle)
+                          : t.archiveNamed(shownTitle)
+                      }
+                      aria-describedby={
+                        archiveReason ? archiveReasonId : undefined
+                      }
+                      isDisabled={!!archiveReason}
+                      onPress={(event) => {
+                        // The row leaves the list at once; keep the keyboard in
+                        // the rail on the next row rather than on the page.
+                        const row = (event.target as HTMLElement).closest("li");
+                        const rows = [
+                          ...(row
+                            ?.closest(".ah-now")
+                            ?.querySelectorAll<HTMLElement>(
+                              ".ah-agent-item .ah-nav-link",
+                            ) ?? []),
+                        ];
+                        const here = rows.findIndex((r) => row?.contains(r));
+                        if (row?.contains(document.activeElement))
+                          (rows[here + 1] ?? rows[here - 1])?.focus();
+                        archive.run(agentId);
+                      }}
+                    >
+                      <Icon name={closes ? "cross" : "archive"} />
+                    </ControlButton>
+                  </span>
+                ) : null}
+                {archiveReason ? (
+                  <span id={archiveReasonId} className="ah-visually-hidden">
+                    {archiveReason}
+                  </span>
+                ) : null}
+              </span>
+            ) : null
           ) : undefined
         }
       >
@@ -901,16 +897,13 @@ export function AgentNavItem({
               ) : undefined
             }
             leading={
-              <>
-                <Ball kind={ball} turn={turnMark} />
-                {worktree ? (
-                  <Icon
-                    name={worktree.merged ? "merge" : "worktree"}
-                    className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </>
+              worktree ? (
+                <Icon
+                  name={worktree.merged ? "merge" : "worktree"}
+                  className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
+                  aria-hidden="true"
+                />
+              ) : undefined
             }
             end={
               (workspaceTag && workspaceName) ||
@@ -1068,7 +1061,15 @@ function NowDot(agent: AgentNavModel) {
             {initials(agent.workspaceName ?? agent.title)}
           </span>
         )}
-        <Ball kind={ball} turn={agent.turnMark} />
+        {/* Narrow rail N2 (Jari 14.11.2026): the habitat drawn round the
+            workspace icon, which stands in the resident's place. */}
+        <HabitatMark
+          className="ah-now-dot-ring"
+          data-testid="rail-mark"
+          variant="ring"
+          state={agentMark(agent)}
+          size={40}
+        />
         <span className="ah-visually-hidden">
           {agent.title}: {status}
         </span>
@@ -1578,6 +1579,7 @@ export function AgentHeader({
   activityControl,
   activityAnimated = false,
   activityKind = "neutral",
+  activityMark,
   controlKind = "neutral",
   controlLabel,
   workspaceLabel,
@@ -1609,6 +1611,8 @@ export function AgentHeader({
   activityControl?: ReactNode;
   activityAnimated?: boolean;
   activityKind?: StatusKind;
+  /** The agent's state as the mark; derived from the kind when absent. */
+  activityMark?: MarkState;
   controlKind?: StatusKind;
   controlLabel: string;
   workspaceLabel: string;
@@ -1801,9 +1805,11 @@ export function AgentHeader({
         ]
       : []),
   ];
+  const mark = activityMark ?? kindMark(activityKind, activityAnimated);
   return (
     <header
       data-activity={activityKind}
+      data-mark={mark}
       data-control={controlKind}
       className="ah-agent-header"
     >
@@ -1852,6 +1858,7 @@ export function AgentHeader({
                 <StatusMark
                   label={activityLabel}
                   kind={activityKind}
+                  mark={mark}
                   tone="info"
                 />
               ) : undefined
@@ -1888,7 +1895,7 @@ export function AgentHeader({
               <HeaderActivity
                 label={activityLabel}
                 detail={activityDetail}
-                animated={activityAnimated}
+                mark={mark}
                 kind={activityKind}
               />
             ))

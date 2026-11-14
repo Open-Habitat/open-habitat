@@ -305,6 +305,13 @@ export function railNow({
       // a daemon restart ends the wait, not the run.
       spinoffWorking: phase !== "stale" && (a.spinoffs_working ?? 0) > 0,
       spinoffIdle: phase !== "stale" && workerIdle,
+      spinoffCounts:
+        phase !== "stale"
+          ? {
+              working: a.spinoffs_working ?? 0,
+              idle: a.spinoffs_idle ?? 0,
+            }
+          : undefined,
       backgroundService: services.length ? services.join(", ") : undefined,
       spinoffWaited:
         phase !== "stale" &&

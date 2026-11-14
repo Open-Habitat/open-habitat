@@ -26,6 +26,7 @@ import {
 import { ConversationFrame, ConversationStream } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { workerMark } from "./markState";
 import { AgentHeader } from "./Navigation";
 import { PiBoundary } from "./PiBlocks";
 import { Button } from "./Primitives";
@@ -405,7 +406,7 @@ export function WorkerView({
         title={run?.title || txt.worker}
         activityLabel={run ? spinoffStateLabel(run) : ""}
         activityKind={run ? stateKind(run) : "neutral"}
-        activityAnimated={run?.state === "working"}
+        activityMark={run ? workerMark(run.state) : "loading"}
         controlLabel={txt.readOnlyControl}
         workspaceLabel={workspaceLabel}
         workspaceHref={workspaceHref}

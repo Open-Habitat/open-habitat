@@ -7,7 +7,9 @@ const txt = liveText(markdownRendererText);
 type Diagram = { url: string; width?: number; height?: number };
 
 function currentTheme(): "dark" | "light" {
-  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const theme = document.documentElement.dataset.theme;
+  // Korkea kontrasti has a dark ground too.
+  return theme === "dark" || theme === "contrast" ? "dark" : "light";
 }
 
 function useDocumentTheme() {

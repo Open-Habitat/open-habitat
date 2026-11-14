@@ -47,8 +47,10 @@ import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
 import { ModelChip, modelSummary } from "../components/ModelChip";
+import { activityMark } from "../components/markState";
 import { NoticeStack, NoticeStackProvider } from "../components/NoticeStack";
 import {
   ProcessAwareToolUse,
@@ -1705,6 +1707,19 @@ function BrowserConversationContent({
     waitingOn: archive?.waiting_on,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
+  // The header's mark: a stop in progress, then the live turn's phase where
+  // it is known, then a failure the rail would show too, then the activity.
+  const failedTurn =
+    presentation.activity !== "working" &&
+    !statusStale &&
+    (archive?.failure !== undefined ||
+      (archive?.rest?.cause === "crash" && !archive.rest.awake));
+  const headerMark: MarkState =
+    current?.state === "stopping"
+      ? "stopping"
+      : failedTurn
+        ? "error"
+        : activityMark(presentation.activity);
   useEditorActivity(
     presentation.activity === "working",
     presentation.activityShortLabel,
@@ -2560,6 +2575,15 @@ function BrowserConversationContent({
                   : presentation.activity === "unknown"
                     ? "unknown"
                     : "neutral"
+              }
+              activityMark={
+                // The resident breathes while Pi thinks (live turn activity).
+                headerMark === "working" &&
+                liveWorking &&
+                !activeToolName &&
+                last?.kind === "thinking"
+                  ? "thinking"
+                  : headerMark
               }
               settings={nativeSettings}
               emptyConversation={emptyConversation}

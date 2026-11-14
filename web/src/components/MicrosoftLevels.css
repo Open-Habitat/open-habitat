@@ -467,10 +467,10 @@
     transition: none;
   }
 }
-[data-theme="dark"] .ml-shot-frame img {
+:is([data-theme="dark"], [data-theme="contrast"]) .ml-shot-frame img {
   filter: brightness(0.82) contrast(1.05);
 }
-[data-theme="dark"] .ml-mark {
+:is([data-theme="dark"], [data-theme="contrast"]) .ml-mark {
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
 }
 /* A screen nobody captured: said under the band, on a quiet surface. */

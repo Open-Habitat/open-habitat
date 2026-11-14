@@ -47,3 +47,20 @@
   cursor: progress;
   /* Pending retains the variant contrast; the action label conveys progress. */
 }
+/* Korkea kontrasti: a hover or press is a shade change of under 3:1 on
+   black, so the edge turns to ink as well; a disabled control's quiet line
+   is dashed so it does not read as an enabled one. */
+:global([data-theme="contrast"])
+.surface:not(:disabled, [data-disabled], [data-pending]):is(
+  :hover,
+  [data-hovered],
+  [data-ah-state="hover"],
+  :active,
+  [data-pressed],
+  [data-ah-state="pressed"]
+) {
+  border-color: var(--ah-ink);
+}
+:global([data-theme="contrast"]) .surface:is(:disabled, [data-disabled]) {
+  border-style: dashed;
+}

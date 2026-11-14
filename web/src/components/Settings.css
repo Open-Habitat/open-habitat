@@ -1098,7 +1098,7 @@
   /* Ink, not the muted path colour: a mark keeps its contrast. */
   color: var(--ah-ink);
 }
-[data-theme="dark"] .s-results mark {
+:is([data-theme="dark"], [data-theme="contrast"]) .s-results mark {
   background: color-mix(in srgb, var(--ah-accent) 38%, transparent);
 }
 .s-results-none {

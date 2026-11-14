@@ -8,6 +8,7 @@ import { returnViewText } from "../text/returnView";
 import { agentPresentation } from "./agentPresentation";
 import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
+import { activityMark } from "./markState";
 import { ListRow } from "./Primitives";
 import { StatusMark } from "./Status";
 
@@ -98,16 +99,13 @@ function ConversationGroup({
                   <span className="ah-return-meta">
                     <span className="ah-mono">{conversation.workspace}</span>
                     {presentation(conversation).running ? (
-                      <StatusMark
-                        label={
-                          conversation.process === "terminal_observed_live"
-                            ? txt.inTerminal
-                            : txt.processRunning
-                        }
-                        kind="working"
-                        tone="info"
-                        animated="running"
-                      />
+                      // Where the process runs, in words: the activity's
+                      // mark follows and says what the agent does.
+                      <span className="ah-return-process">
+                        {conversation.process === "terminal_observed_live"
+                          ? txt.inTerminal
+                          : txt.processRunning}
+                      </span>
                     ) : null}
                     <StatusMark
                       label={presentation(conversation).activityLabel}
@@ -121,6 +119,7 @@ function ConversationGroup({
                               ? "background"
                               : "unknown"
                       }
+                      mark={activityMark(presentation(conversation).activity)}
                     />
                     {conversation.history &&
                     conversation.history !== "readable" ? (

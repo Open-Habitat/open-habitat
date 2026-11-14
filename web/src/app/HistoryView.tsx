@@ -21,13 +21,16 @@ import {
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { archiveAction } from "../components/ArchiveControls";
 import { attachmentsIn, messageText } from "../components/AttachmentChips";
+import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { ArchivedFoot } from "../components/ConversationArchive";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
+import { activityMark } from "../components/markState";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
@@ -1587,6 +1590,26 @@ function HistoryViewContent({
       : (eligibility?.process ?? "unknown");
   const mayWrite =
     process === "not_observed" && !!csrf && agent.history === "readable";
+  // The header's mark from what the snapshot says of the agent, as the rail
+  // draws it: a writer elsewhere may be working, waiting or have failed, and
+  // a history nobody writes rests.
+  const historyMark: MarkState =
+    process === "writer_present"
+      ? agent.failure !== undefined && !agent.run_active
+        ? "error"
+        : activityMark(
+            agentPresentation({
+              process: "terminal_observed_live",
+              runActive: agent.run_active,
+              waitingOn: agent.waiting_on,
+              pendingQuestion: !!agent.pending_question,
+            }).activity,
+          )
+      : process === "not_observed"
+        ? agent.failure !== undefined
+          ? "error"
+          : "done"
+        : "unknown";
   const blockedReason =
     process === "writer_present" ? txt.writerRunning : txt.processUnconfirmed;
   const [busy, setBusy] = useState(false);
@@ -1759,6 +1782,7 @@ function HistoryViewContent({
               ? "working"
               : "unknown"
         }
+        activityMark={historyMark}
         controlKind="read-only"
         controlLabel={txt.readOnly}
         settings={settings}

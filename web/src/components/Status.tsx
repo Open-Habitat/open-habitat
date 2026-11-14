@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { liveText } from "../i18n";
 import { statusText } from "../text/status";
+import { HabitatMark, type MarkState } from "./HabitatMark";
 import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Action, ProblemView, Tone } from "./types";
@@ -23,21 +24,27 @@ export function StatusMark({
   tone = "neutral",
   animated = false,
   kind = "neutral",
+  mark,
 }: {
   label: string;
   tone?: Tone;
   animated?: false | "running";
   kind?: StatusKind;
+  /** An agent's state: drawn as the Open Habitat mark in place of the dot. */
+  mark?: MarkState;
   "data-testid"?: string;
 }) {
   return (
     <span
       data-animated={animated || undefined}
       data-kind={kind}
+      data-mark={mark}
       data-testid={testId ?? "status-mark"}
       className={`ah-status ah-tone-${tone} ah-status-${kind}`}
     >
-      {kind === "success" || kind === "error" || kind === "unknown" ? (
+      {mark ? (
+        <HabitatMark state={mark} size={14} />
+      ) : kind === "success" || kind === "error" || kind === "unknown" ? (
         <Icon
           name={
             kind === "success"
@@ -60,6 +67,24 @@ export function StatusMark({
       {label}
     </span>
   );
+}
+/** The mark for a status that does not name one itself (an agent header
+ * fed by a page that only knows the status kind). */
+export function kindMark(kind: StatusKind, animated = false): MarkState {
+  switch (kind) {
+    case "working":
+      return "working";
+    case "background":
+      return "background";
+    case "error":
+      return "error";
+    case "success":
+      return "done";
+    case "unknown":
+      return "unknown";
+    default:
+      return animated ? "loading" : "done";
+  }
 }
 export function Badge({
   label,

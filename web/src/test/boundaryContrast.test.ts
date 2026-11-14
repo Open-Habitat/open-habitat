@@ -35,7 +35,10 @@ function ratio(a: string, b: string) {
 const themes = {
   light: block('[data-theme="light"]'),
   dark: block('[data-theme="dark"]'),
+  contrast: block('[data-theme="contrast"]'),
 };
+// Korkea kontrasti holds marks and boundaries to 4.5:1.
+const minimum: Record<string, number> = { light: 3, dark: 3, contrast: 4.5 };
 const backgrounds = [
   "--ah-bg",
   "--ah-surface",
@@ -60,8 +63,8 @@ const ownFill: Record<string, string> = {
   "--ah-err-line": "--ah-err-soft",
 };
 
-describe.each(Object.entries(themes))("%s theme boundaries", (_, theme) => {
-  it.each(boundaries)("%s reaches 3:1 on every background", (token) => {
+describe.each(Object.entries(themes))("%s theme boundaries", (name, theme) => {
+  it.each(boundaries)("%s reaches the minimum on every background", (token) => {
     const fills = [...backgrounds, ...(ownFill[token] ? [ownFill[token]] : [])];
     for (const fill of fills) {
       expect(theme[token], token).toBeDefined();
@@ -69,7 +72,7 @@ describe.each(Object.entries(themes))("%s theme boundaries", (_, theme) => {
       expect(
         ratio(theme[token], theme[fill]),
         `${token} on ${fill}`,
-      ).toBeGreaterThanOrEqual(3);
+      ).toBeGreaterThanOrEqual(minimum[name]);
     }
   });
 

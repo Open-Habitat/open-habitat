@@ -164,11 +164,12 @@ export function AccountShelf({
   const themes: {
     id: ThemeChoice;
     label: string;
-    icon: "system" | "sun" | "moon";
+    icon: "system" | "sun" | "moon" | "contrast";
   }[] = [
     { id: "system", label: t.themeSystem, icon: "system" },
     { id: "light", label: t.themeLight, icon: "sun" },
     { id: "dark", label: t.themeDark, icon: "moon" },
+    { id: "contrast", label: t.themeContrast, icon: "contrast" },
   ];
   return (
     <div className="ah-account-shelf" data-account-controls>
@@ -971,6 +972,7 @@ export function AccountSettings({
                     { id: "system", label: t.themeSystem },
                     { id: "light", label: t.themeLight },
                     { id: "dark", label: t.themeDark },
+                    { id: "contrast", label: t.themeContrast },
                   ]}
                   value={theme}
                   onChange={setThemeChoice}

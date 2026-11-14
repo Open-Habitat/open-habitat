@@ -34,8 +34,10 @@ sellaisinaan monospacella. Käyttäjä kopioi ne terminaaliin ja vertaa niitä
 natiivilähteisiin, joten käännetty tai toiseksi muutettu tunniste katkaisee
 yhteyden siihen, mitä host oikeasti tietää.
 
-Vaalea ja tumma teema ovat yhtä tuettuja. Oletus seuraa `prefers-color-scheme`a,
-ja `tokens/colors.css` toteuttaa tumman `data-theme="dark"`-attribuutilla. Teema on
+Kolme teemaa ovat yhtä tuettuja: Päivä (`data-theme="light"`), Yö
+(`data-theme="dark"`) ja Korkea kontrasti (`data-theme="contrast"`, tumma), kaikki
+`tokens/colors.css`:ssä. Järjestelmä-valinta seuraa `prefers-color-scheme`a ja
+valitsee Korkean kontrastin, kun laite pyytää `prefers-contrast: more`. Teema on
 laitteen esitysvalinta eikä kuulu host-snapshotiin, koska snapshot kuvaa natiivia
 tilaa eikä selaimen asetuksia.
 

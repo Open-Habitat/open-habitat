@@ -44,6 +44,7 @@ export type IconName =
   | "system"
   | "sun"
   | "moon"
+  | "contrast"
   | "archive"
   | "github"
   | "pencil"
@@ -319,6 +320,12 @@ export function Icon({
       </>
     ),
     moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+    contrast: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" />
+      </>
+    ),
     up: <path d="M12 20V4m-6 6 6-6 6 6" />,
     slash: <path d="M15 4 9 20" />,
     at: (

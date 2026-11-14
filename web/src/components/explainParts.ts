@@ -129,8 +129,15 @@ export const parts: Record<CardId, Part> = {
   S07: { kind: "list", sel: '[data-testid="rail-quiet-fold"]' },
   S08: { kind: "menu", sel: '[data-testid="rail-quiet-menu"]' },
   S09: { kind: "nav", sel: '.ah-rail [data-testid="agent-link"]' },
-  S10: { kind: "info", sel: ".ah-rail .ah-ball" },
-  S11: { kind: "info", sel: ".ah-rail .ah-worker-rail", workerLegend: true },
+  S10: {
+    kind: "info",
+    sel: ".ah-rail .ah-row-mark, .ah-rail .ah-now-dot-ring",
+  },
+  S11: {
+    kind: "info",
+    sel: ".ah-rail .oh-orbit, .ah-rail .oh-mark-count",
+    workerLegend: true,
+  },
   S12: { kind: "once", sel: '[data-testid="rail-rename-conversation"]' },
   S13: { kind: "once", sel: '[data-testid="rail-archive-conversation"]' },
   S14: { kind: "list", sel: '[data-testid="workspace-summary"]' },

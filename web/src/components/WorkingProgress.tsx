@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { liveText } from "../i18n";
 import { workingProgressText } from "../text/workingProgress";
+import { HabitatMark } from "./HabitatMark";
 
 const txt = liveText(workingProgressText);
 
@@ -117,7 +118,10 @@ export function WorkingProgress({
       className="ah-working-progress"
       role="status"
     >
-      <span className="ah-status-dot ah-running" aria-hidden="true" />
+      <HabitatMark
+        state={state === "stopping" ? "stopping" : "working"}
+        size={16}
+      />
       <span>{label}</span>
     </section>
   );

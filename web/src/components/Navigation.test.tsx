@@ -222,12 +222,19 @@ describe("rail activity marks", () => {
       </MemoryRouter>,
     );
   };
-  const ball = (view: ReturnType<typeof row>) =>
-    view.container.querySelector(".ah-ball")?.className ?? "";
-  it("maps a working turn to the working ball", () => {
+  const mark = (view: ReturnType<typeof row>) =>
+    view.container
+      .querySelector('[data-testid="rail-mark"]')
+      ?.getAttribute("data-state");
+  it("maps a working turn to the working mark", () => {
     const view = row({ process: "daemon_managed_live", runActive: true });
-    expect(ball(view)).toContain("ah-ball-work");
-    expect(view.container.querySelector(".ah-ball")?.textContent).toBe("");
+    expect(mark(view)).toBe("working");
+    // The mark is decorative: the row says its state in words.
+    expect(
+      view.container
+        .querySelector('[data-testid="rail-mark"]')
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
 
     const link = view.getByRole("link");
     expect(
@@ -236,9 +243,9 @@ describe("rail activity marks", () => {
   });
   it("shows a turn that ended, waiting for a message, as done", () => {
     const view = row({ process: "daemon_managed_live", runActive: false });
-    expect(ball(view)).toContain("ah-ball-done");
+    expect(mark(view)).toBe("done");
   });
-  it("counts a background wait as working", () => {
+  it("shows a background wait as its own mark", () => {
     const view = row({
       process: "daemon_managed_live",
       command: "idle",
@@ -246,18 +253,16 @@ describe("rail activity marks", () => {
         { process_id: "p", name: "testit", kind: "process", run_ids: [] },
       ],
     });
-    expect(ball(view)).toContain("ah-ball-work");
+    expect(mark(view)).toBe("background");
     expect(view.container.querySelector('[data-waiting="true"]')).toBeTruthy();
   });
-  it("carries the working state in the worker branch's own ball", () => {
+  it("draws sub-agents in the mark and no branch mark at the row's end", () => {
     const view = row(
       { process: "daemon_managed_live", runActive: false },
       true,
     );
-    const marks = view.container.querySelectorAll(".ah-worker-rail > *");
-    expect(marks).toHaveLength(1);
-    expect(marks[0].getAttribute("class")).toBe("ah-worker-branch");
-    expect(marks[0].getAttribute("data-kind")).toBe("working");
+    expect(mark(view)).toBe("working");
+    expect(view.container.querySelector(".ah-worker-branch")).toBeNull();
   });
 });
 
@@ -343,13 +348,13 @@ describe("Ryhmät rows", () => {
     ).toBe("Ei nyt: siirrä Keskustelu n Hiljaisiin");
     // A read reply keeps its ring; a raised row's mark is its agent's state.
     expect(row("n").getAttribute("data-ball")).toBe("you");
-    expect(row("n").querySelector(".ah-ball")?.getAttribute("data-turn")).toBe(
-      "read",
-    );
+    const mark = (id: string) =>
+      row(id)
+        .querySelector('[data-testid="rail-mark"]')
+        ?.getAttribute("data-state");
+    expect(mark("n")).toBe("read");
     expect(row("r").getAttribute("data-ball")).toBe("done");
-    expect(row("r").querySelector(".ah-ball")?.hasAttribute("data-turn")).toBe(
-      false,
-    );
+    expect(mark("r")).toBe("done");
   });
   it("keeps the row to one line and says the rest", () => {
     const view = render(

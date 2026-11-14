@@ -36,8 +36,10 @@ export function QrCode({ value }: { value: string }) {
       aria-label={txt.qr}
       shape-rendering="crispEdges"
     >
+      {/* Fixed dark-on-white in every theme: a camera reads the code by
+          its contrast, not by the page's colours. */}
       <rect width={size} height={size} fill="#fff" />
-      <path d={d} fill="#16191d" />
+      <path d={d} fill="#000" />
     </svg>
   );
 }

@@ -52,27 +52,11 @@ main:has(.ah-landing) > .ah-mobile-toolbar {
   }
 }
 .ah-landing-mark {
+  display: block;
   width: 48px;
   height: 48px;
   margin-bottom: 8px;
-}
-.ah-landing-mark-tile {
-  fill: var(--ah-accent-soft);
-  stroke: var(--ah-accent-line);
-}
-.ah-landing-mark-arch {
-  fill: none;
-  stroke: var(--ah-accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-.ah-landing-mark-dot {
-  fill: var(--ah-accent);
-  animation: ah-pulse var(--ah-pulse);
-}
-.ah-landing[data-failed] .ah-landing-mark-dot {
-  animation: none;
-  fill: var(--ah-muted);
+  line-height: 0;
 }
 .ah-landing-word {
   margin: 0;

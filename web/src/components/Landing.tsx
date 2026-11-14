@@ -1,29 +1,35 @@
+import { useState } from "react";
 import { useText } from "../i18n";
 import { landingText } from "../text/landing";
 import { ControlButton } from "./ControlElements";
+import { HabitatMark, type MarkState } from "./HabitatMark";
 import { Icon } from "./Icon";
 import "./Landing.css";
 
-// The placeholder mark of the accepted Merkki landing (an arch with a dot).
-// It stays until Open Habitat has a real mark; web/index.html carries the same
-// markup so the landing can paint before the bundle runs.
-export function LandingMark() {
+// The Open Habitat mark: the landing plays its intro once per page (the ring
+// draws itself and the resident steps in), then the mark loads until the app
+// takes over, or shows the error state. web/index.html carries the same
+// markup so the landing can paint before the bundle runs; when that copy has
+// been on screen, its intro was the page's.
+let introPlayed =
+  typeof document !== "undefined" &&
+  !!document.querySelector('.ah-landing[data-landing="static"]') &&
+  performance.now() > 300;
+export function LandingMark({ failed = false }: { failed?: boolean }) {
+  const [state, setState] = useState<MarkState>(
+    introPlayed ? "loading" : "intro",
+  );
   return (
-    <svg className="ah-landing-mark" viewBox="0 0 48 48" aria-hidden="true">
-      <rect
-        className="ah-landing-mark-tile"
-        x="2.5"
-        y="2.5"
-        width="43"
-        height="43"
-        rx="12"
-      />
-      <path
-        className="ah-landing-mark-arch"
-        d="M14 36V23a10 10 0 0 1 20 0v13"
-      />
-      <circle className="ah-landing-mark-dot" cx="24" cy="28.5" r="3.2" />
-    </svg>
+    <span
+      className="ah-landing-mark"
+      onAnimationEnd={(event) => {
+        if (event.animationName !== "oh-enter") return;
+        introPlayed = true;
+        setState("loading");
+      }}
+    >
+      <HabitatMark state={failed ? "error" : state} size={48} />
+    </span>
   );
 }
 
@@ -68,7 +74,7 @@ export function Landing({
       data-failed={failed ? "" : undefined}
     >
       <div className="ah-landing-in">
-        <LandingMark />
+        <LandingMark failed={failed} />
         <h1 data-testid="landing-heading" className="ah-landing-word">
           Open Habitat
         </h1>

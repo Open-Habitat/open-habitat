@@ -6,8 +6,9 @@ import { catalog } from "../i18n";
 const fi = {
   ownAccount: "Oma tili",
   themeSystem: "Järjestelmä",
-  themeLight: "Vaalea",
-  themeDark: "Tumma",
+  themeLight: "Päivä",
+  themeDark: "Yö",
+  themeContrast: "Korkea kontrasti",
   accountMenu: "Tilivalikko",
   accountMenuOf: (name: string) => `${name}, Tilivalikko`,
   theme: "Teema",
@@ -37,7 +38,8 @@ const fi = {
   signedIn: "Kirjautunut",
   signInAgain: "Kirjaudu uudelleen",
   signInChatgpt: "Kirjaudu ChatGPT:hen",
-  themeDesc: "Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.",
+  themeDesc:
+    "Järjestelmä seuraa laitteen asetusta ja valitsee korkean kontrastin, jos laite pyytää sitä. Koskee tätä selainta.",
   checkingAdmin: "Tarkistetaan ylläpito-oikeutta…",
   adminOnly: "Ylläpito on vain ylläpitäjille.",
   adminUnknown: "Ylläpito-oikeutta ei voitu vahvistaa.",
@@ -57,8 +59,9 @@ const fi = {
 export const accountText = catalog(fi, {
   ownAccount: "Your account",
   themeSystem: "System",
-  themeLight: "Light",
-  themeDark: "Dark",
+  themeLight: "Day",
+  themeDark: "Night",
+  themeContrast: "High contrast",
   accountMenu: "Account menu",
   accountMenuOf: (name) => `${name}, Account menu`,
   theme: "Theme",
@@ -88,7 +91,8 @@ export const accountText = catalog(fi, {
   signedIn: "Signed in",
   signInAgain: "Sign in again",
   signInChatgpt: "Sign in to ChatGPT",
-  themeDesc: "System follows the device's setting. Applies to this browser.",
+  themeDesc:
+    "System follows the device's setting and picks high contrast when the device asks for it. Applies to this browser.",
   checkingAdmin: "Checking administrator rights…",
   adminOnly: "Administration is for administrators only.",
   adminUnknown: "Administrator rights could not be confirmed.",

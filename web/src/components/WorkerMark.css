@@ -1,109 +1,9 @@
 .ah-worker-mark {
-  display: inline-block;
-  flex: none;
-  box-sizing: border-box;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.ah-bg-mark .ah-worker-mark {
-  width: 10px;
-  height: 10px;
-}
-.ah-worker-mark[data-kind="working"] {
-  background: var(--ah-accent);
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
-  animation: ah-pulse var(--ah-pulse);
-}
-.ah-worker-mark[data-kind="idle"] {
-  background: var(--ah-turn);
-}
-.ah-worker-mark[data-kind="waiting_parent"] {
-  background: var(--ah-faint);
-}
-.ah-worker-mark[data-kind="unknown"] {
-  border: 1.5px solid var(--ah-faint);
-}
-.ah-worker-mark[data-kind="merged"] {
-  background: var(--ah-ok);
-}
-.ah-worker-mark[data-kind="unfinished"],
-.ah-worker-mark[data-kind="failed"],
-.ah-worker-mark[data-kind="unmerged"] {
-  border-radius: 1px;
-  transform: scale(0.85) rotate(45deg);
-}
-.ah-worker-mark[data-kind="unfinished"] {
-  background: var(--ah-err);
-}
-.ah-worker-mark[data-kind="failed"] {
-  border: 1.5px solid var(--ah-err);
-}
-.ah-worker-mark[data-kind="unmerged"] {
-  border: 1.5px solid var(--ah-faint);
-}
-.ah-worker-mark[data-kind="checking"] {
-  border: 1.5px solid var(--ah-accent-line);
-  border-top-color: var(--ah-accent);
-  animation: ah-worker-turn 1s linear infinite;
-}
-/* A named worker's round report the person has not opened yet. */
-.ah-worker-mark[data-kind="reported"] {
-  border: 1.5px solid var(--ah-accent);
-  background: radial-gradient(
-    circle,
-    var(--ah-accent) 0 1.5px,
-    transparent 2px
-  );
-}
-.ah-worker-mark[data-kind="answer"] {
-  border: 1.5px solid var(--ah-turn);
-}
-.ah-worker-mark[data-waited] {
-  box-shadow: none;
-  outline: 1.5px solid var(--ah-accent);
-  outline-offset: 2px;
-  margin: 0 3px;
-}
-/* The row's trailing slot has no end padding of its own: keep the mark off
-   the row's rounded edge and the open row's ring. */
-.ah-worker-rail {
   display: inline-flex;
-  align-items: center;
-  margin-inline-end: 6px;
-}
-/* The branch is quiet; its end node is the worker's ball and carries the
-   state in the same colours as the other worker marks. */
-.ah-worker-branch {
   flex: none;
-  width: 18px;
-  height: 18px;
-}
-.ah-worker-branch-stem {
-  fill: none;
-  stroke: var(--ah-muted);
-  stroke-width: 1.75;
-  stroke-linecap: round;
-}
-.ah-worker-branch-ball {
-  fill: var(--ah-faint);
-}
-.ah-worker-branch[data-kind="working"] .ah-worker-branch-ball {
-  fill: var(--ah-accent);
-  animation: ah-pulse var(--ah-pulse);
-}
-.ah-worker-branch[data-kind="idle"] .ah-worker-branch-ball {
-  fill: var(--ah-turn);
-}
-.ah-worker-branch[data-kind="unknown"] .ah-worker-branch-ball {
-  fill: none;
-  stroke: var(--ah-faint);
-  stroke-width: 2;
-}
-.ah-worker-branch-ring {
-  fill: none;
-  stroke: var(--ah-accent);
-  stroke-width: 1.5;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 .ah-worker-legend {
   width: 100%;
@@ -124,15 +24,4 @@
   text-align: left;
   font-weight: 400;
   padding: 4px;
-}
-@keyframes ah-worker-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ah-worker-mark[data-kind],
-  .ah-worker-branch-ball {
-    animation: none;
-  }
 }

@@ -3579,28 +3579,12 @@ details[open] > summary:not([class])::before {
   color: var(--ah-muted);
 }
 .ah-rail .ah-nav-mark {
+  display: inline-flex;
   flex: none;
-  width: 14px;
-  text-align: center;
-  color: var(--ah-muted);
 }
-/* Työskentelee is the draft's accent dot that pulses: one look for the
-   sidebar, start page, return view and conversation. With reduced motion it
-   stands still inside a ring, so it still differs from Uusi vastaus. A new
-   reply's mark wins on the start page. */
-.ah-rail .ah-nav-working {
-  display: inline-grid;
-  place-items: center;
-  height: 14px;
-}
-.ah-rail .ah-nav-working::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-}
-.ah-status-working .ah-status-dot,
-.ah-home-dot-working:not(.ah-home-0),
-.ah-rail .ah-nav-working::before {
+/* A status not yet drawn as the mark keeps its dot: working pulses, a
+   background wait is a still ring around a core. */
+.ah-status-working .ah-status-dot {
   box-sizing: border-box;
   border: 0;
   border-radius: 50%;
@@ -3608,29 +3592,11 @@ details[open] > summary:not([class])::before {
   animation: ah-pulse var(--ah-pulse);
 }
 @media (prefers-reduced-motion: reduce) {
-  .ah-status-working .ah-status-dot,
-  .ah-home-dot-working:not(.ah-home-0),
-  .ah-rail .ah-nav-working::before {
+  .ah-status-working .ah-status-dot {
     box-shadow: 0 0 0 2px var(--ah-accent-line);
   }
 }
-/* Odottaa taustatyötä: the agent is busy in the background and asks nothing
-   of the person. A still accent ring around a core: not the pulsing working
-   dot, not the open waiting ring, not the unknown dash. One look for the
-   sidebar, start page, return view and the conversation's top status. */
-.ah-rail .ah-nav-background {
-  display: inline-grid;
-  place-items: center;
-  height: 14px;
-}
-.ah-rail .ah-nav-background::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-}
-.ah-background-dot,
-.ah-status-background .ah-status-dot,
-.ah-rail .ah-nav-background::before {
+.ah-status-background .ah-status-dot {
   display: inline-block;
   flex: none;
   box-sizing: border-box;
@@ -3642,9 +3608,6 @@ details[open] > summary:not([class])::before {
     transparent 58%
   );
   animation: none;
-}
-.ah-agent-topline .ah-background-dot {
-  margin-inline-end: var(--ah-s2);
 }
 /* The conversation's menu holds its secondary actions on a phone, and on a
    desktop once the row has had to move the workspace there. A quiet icon
@@ -4359,12 +4322,6 @@ details[open] > summary:not([class])::before {
   .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-time {
     display: none;
   }
-  /* Hide the whole worker mark (branch, state and wait badge) beneath the
-     action overlay, retaining its space. NavLink's description says its state. */
-  .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive)
-  .ah-worker-rail {
-    opacity: 0;
-  }
   .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-link {
     padding-inline-end: 30px;
   }
@@ -4885,43 +4842,21 @@ h2.ah-rail-section-head {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
-.ah-rail .ah-ball {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ah-faint);
+/* The row's state mark (wide rail B, Jari 14.11.2026): a 20 px column at
+   the row's start, before the workspace icon, so the 32 px row keeps its
+   height and the marks line up whatever the row carries. The mark is
+   decorative; the row's link says its state in words. */
+.ah-rail .ah-now-row .ah-list-row-indicator {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
 }
-/* Working pulses with a halo: teal and green are close in a still image. */
-.ah-rail .ah-ball-work {
-  background: var(--ah-accent);
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
-  animation: ah-pulse var(--ah-pulse);
+.ah-rail .ah-row-mark {
+  margin-inline-start: 6px;
+  pointer-events: none;
 }
-.ah-rail .ah-ball-you {
-  background: var(--ah-turn);
-}
-.ah-rail .ah-ball-done {
-  background: var(--ah-ok);
-}
-/* Failed is a diamond: red and green are close for many eyes. */
-.ah-rail .ah-ball-fail {
-  border-radius: 1px;
-  background: var(--ah-err);
-  transform: scale(0.9) rotate(45deg);
-}
-/* Unknown is an open ring, so it is never read as one of the four states. */
-.ah-rail .ah-ball-unknown {
-  box-sizing: border-box;
-  border: 1.5px solid var(--ah-faint);
-  background: transparent;
-}
-/* Raise and Ei nyt (raise-to-your-turn): a reply read but not
-   answered keeps its turn as a ring. A raised row's mark is its agent's
-   state; the raise itself shows only in its place and words. */
-.ah-rail .ah-ball-you[data-turn="read"] {
-  box-sizing: border-box;
-  border: 1.5px solid var(--ah-turn);
-  background: transparent;
+.ah-rail .ah-now-row:not(:has(.ah-wsi-button)) .ah-nav-link {
+  padding-inline-start: 6px;
 }
 .ah-now-group {
   display: grid;
@@ -5107,14 +5042,11 @@ h2.ah-rail-section-head {
   font-size: 11px;
   font-weight: 600;
 }
-.ah-rail .ah-now-dot .ah-nav-mark {
+/* Narrow rail N2: the mark's ring round the workspace icon. */
+.ah-rail .ah-now-dot .ah-now-dot-ring {
   position: absolute;
-  right: 0;
-  bottom: 2px;
-  transform: scale(0.85);
-}
-.ah-rail .ah-now-dot .ah-ball-fail {
-  transform: scale(0.8) rotate(45deg);
+  inset: 0;
+  pointer-events: none;
 }
 /* The phone's menu button says when something waits for the person. */
 .ah-navigation-open {
@@ -5239,4 +5171,24 @@ h2.ah-rail-section-head {
 .ah-rest-marker .ah-rest-wake {
   padding: 0;
   background: none;
+}
+
+/* Korkea kontrasti: shadows do not show on black (the theme sets the shadow
+   tokens to none), so a floating surface without a line of its own draws
+   one, and a white canvas (a diagram, an agent's page) gets a frame. */
+[data-theme="contrast"] :is(.ah-dialog, [role="dialog"], .ah-toast),
+[data-theme="contrast"] :is(.ah-mermaid, .ah-attachment-page, iframe) {
+  outline: 1px solid var(--ah-line);
+}
+
+/* Forced colours: the browser replaces the palette and drops backgrounds
+   and shadows, so a selection told by a fill alone gets an outline. The
+   state mark draws with currentColor and keeps its own rule
+   (HabitatMark.css). */
+@media (forced-colors: active) {
+  .ah-rail .ah-now-row:has(.ah-nav-link[aria-current="page"]),
+  [aria-current="page"],
+  [aria-pressed="true"] {
+    outline: 2px solid Highlight;
+  }
 }

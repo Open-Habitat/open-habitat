@@ -1,11 +1,17 @@
-/* Värit. Vaalea on oletus, tumma on [data-theme="dark"].
-   Korostus #2b7f8c on rauhallinen, ei hälyttävä. Punainen on varattu virheelle. */
+/* Värit: kolme teemaa. Päivä (Sammal) on oletus ja [data-theme="light"],
+   Yö (Matrix) [data-theme="dark"] ja Korkea kontrasti [data-theme="contrast"],
+   tumma. theme.ts valitsee teeman; Järjestelmä valitsee kontrastin, kun laite
+   pyytää sitä (prefers-contrast: more). Punainen on varattu virheelle.
+
+   Text pairs reach 4.5:1 and marks and focus rings 3:1 against their
+   backgrounds in Päivä and Yö; in Korkea kontrasti 7:1 and 4.5:1. */
 
 /* Boundaries (WCAG 1.4.11): a line that tells a control or a state-carrying
    box from what is around it (--ah-control-line, --ah-line-strong,
    --ah-current-line and the tone lines --ah-accent-line, --ah-ok-line,
    --ah-turn-line, --ah-err-line) reaches 3:1 against the hardest background
-   it can sit on: --ah-rail in the light theme, --ah-current in the dark one.
+   it can sit on: --ah-rail in Päivä, --ah-current in Yö. In Korkea kontrasti
+   they reach 4.5:1 on black.
    The surface fills alone stay near 1:1 by design, so the line carries the
    boundary. --ah-line and --ah-line-soft are separators, not boundaries, and
    stay quiet. A disabled control is outside the rule; --ah-disabled-line
@@ -17,7 +23,7 @@
   --ah-syntax-string: #216142;
   --ah-syntax-number: #8a4b16;
   --ah-syntax-title: #185e87;
-  --ah-syntax-comment: #61676f;
+  --ah-syntax-comment: #5c675d;
   --ah-syntax-deletion: #a3412b;
   /* Neutral marks for the person's other services (Integraatiot): letter
      tiles, not brand colours, so they follow the syntax hues of each theme. */
@@ -34,70 +40,70 @@
   --ah-glyph-5: #9b3d73;
   --ah-glyph-6: #4a5a6b;
   --ah-glyph-7: #5c6a1a;
-  --ah-sunken: #f3f5f7;
-  --ah-hover: rgba(16, 24, 40, 0.06);
-  --ah-bg: #f6f7f8;
+  --ah-sunken: #eff3ea;
+  --ah-hover: rgba(20, 40, 20, 0.06);
+  --ah-bg: #f6f8f2;
   --ah-surface: #ffffff;
-  --ah-surface-2: #fbfcfd;
-  /* Agent HTML views draw their own page on a browser tab's canvas, in both
+  --ah-surface-2: #fbfcf9;
+  /* Agent HTML views draw their own page on a browser tab's canvas, in every
      themes, so content that assumes a white page stays legible. */
   --ah-content-canvas: #ffffff;
-  --ah-rail: #f1f3f5;
-  --ah-line: #e2e6e9;
-  --ah-line-soft: #eef0f3;
+  --ah-rail: #eef2e8;
+  --ah-line: #dde4d5;
+  --ah-line-soft: #e9eee2;
 
-  --ah-ink: #16191d;
-  --ah-ink-2: #3d434b;
-  --ah-muted: #61676f;
-  --ah-faint: #6b7178;
+  --ah-ink: #17201a;
+  --ah-ink-2: #3a453c;
+  --ah-muted: #5c675d;
+  --ah-faint: #626d63;
 
-  --ah-accent: #2b7f8c;
-  --ah-accent-ink: #1d5f69;
-  --ah-accent-soft: #e6f1f3;
-  --ah-accent-line: #609098;
+  --ah-accent: #2c6e3f;
+  --ah-accent-ink: #1f5430;
+  --ah-accent-soft: #e3f1e1;
+  --ah-accent-line: #6a9272;
   --ah-on-accent: #ffffff;
 
-  --ah-ok: #2f7a55;
-  --ah-ok-soft: #eef7f1;
-  /* Sinun vuorosi: the rail's ball for a question or an unread reply. */
-  --ah-turn: #b8740b;
+  --ah-ok: #0f6f78;
+  --ah-ok-soft: #e4f3f5;
+  /* Sinun vuorosi: the state mark for a question or an unread reply. */
+  --ah-turn: #a86400;
   --ah-err: #a3412b;
   --ah-err-soft: #fdf1ee;
-  --ah-err-line: #c17868;
-  --ah-line-strong: #858c93;
-  --ah-accent-hover: #246f7b;
-  --ah-accent-press: #1d5f69;
+  --ah-err-line: #bf7565;
+  --ah-line-strong: #7f8b78;
+  --ah-accent-hover: #245e35;
+  --ah-accent-press: #1f5430;
   --ah-on-err: #ffffff;
   --ah-err-hover: #8e3825;
   --ah-err-press: #7a2f1f;
   --ah-err-soft-hover: #fae4de;
   --ah-err-soft-press: #f6d6cd;
-  --ah-surface-hover: #f2f4f6;
-  --ah-surface-press: #e9edf0;
+  --ah-surface-hover: #f1f4ec;
+  --ah-surface-press: #e7ecdf;
   --ah-current: #ffffff;
-  --ah-current-line: #858c93;
-  --ah-disabled-bg: #eef0f3;
-  --ah-disabled-fg: #61676f;
-  --ah-focus: #2b7f8c;
+  --ah-current-line: #828b7e;
+  --ah-disabled-bg: #ebefe5;
+  --ah-disabled-fg: #5c675d;
+  --ah-focus: #2c6e3f;
   --ah-composer-focus: #086bc1;
-  --ah-scrim: rgba(16, 24, 40, 0.32);
+  --ah-scrim: rgba(20, 32, 22, 0.32);
   /* Text buttons: a tint of the ink, so the button reads on the page and on a card alike. */
-  --ah-control: rgba(16, 24, 40, 0.06);
-  --ah-control-hover: rgba(16, 24, 40, 0.1);
-  --ah-control-press: rgba(16, 24, 40, 0.14);
-  --ah-control-line: #858c93;
-  --ah-ok-line: #5c977a;
-  --ah-turn-line: #a9854e;
-  --ah-disabled-line: #e2e6e9;
+  --ah-control: rgba(20, 40, 20, 0.06);
+  --ah-control-hover: rgba(20, 40, 20, 0.1);
+  --ah-control-press: rgba(20, 40, 20, 0.14);
+  --ah-control-line: #7f8b78;
+  --ah-ok-line: #47949b;
+  --ah-turn-line: #b07a22;
+  --ah-disabled-line: #dde4d5;
 }
 
 [data-theme="dark"] {
-  --ah-syntax-keyword: #c7a3ed;
-  --ah-syntax-string: #93d3ad;
+  --ah-syntax-keyword: #c9a6f0;
+  --ah-syntax-string: #9ad8a0;
   --ah-syntax-number: #edba8d;
-  --ah-syntax-title: #9acced;
-  --ah-syntax-comment: #a3abb3;
-  --ah-syntax-deletion: #e8a08a;
+  --ah-syntax-title: #8fd0e8;
+  --ah-syntax-comment: #96a69a;
+  --ah-syntax-deletion: #f0a08c;
   /* Restated so they resolve against this theme's values where the theme is
      set below the root. */
   --ah-glyph-0: var(--ah-accent);
@@ -106,56 +112,134 @@
   --ah-glyph-3: var(--ah-syntax-string);
   --ah-glyph-4: var(--ah-syntax-number);
   --ah-glyph-5: #e7a3c8;
-  --ah-glyph-6: #aab6c3;
-  --ah-glyph-7: #c3cf7e;
-  --ah-sunken: #14171a;
-  --ah-hover: rgba(255, 255, 255, 0.07);
-  --ah-bg: #14171a;
-  --ah-surface: #1b1f23;
-  --ah-surface-2: #171a1e;
-  --ah-rail: #171a1e;
-  --ah-line: #2a3036;
-  --ah-line-soft: #232830;
+  --ah-glyph-6: #a8b8ae;
+  --ah-glyph-7: #d3cf74;
+  --ah-sunken: #090d0b;
+  --ah-hover: rgba(160, 255, 170, 0.07);
+  --ah-bg: #0d1210;
+  --ah-surface: #141b17;
+  --ah-surface-2: #101613;
+  --ah-rail: #0a0f0d;
+  --ah-line: #24302a;
+  --ah-line-soft: #1b2520;
 
-  --ah-ink: #e6e9ec;
-  --ah-ink-2: #c5cad0;
-  --ah-muted: #98a0a8;
-  --ah-faint: #949ca6;
+  --ah-ink: #e3ece4;
+  --ah-ink-2: #bccabf;
+  --ah-muted: #8d9e92;
+  --ah-faint: #879a8c;
 
-  --ah-accent: #4fa6b4;
-  --ah-accent-ink: #9fd4dd;
-  --ah-accent-soft: #173137;
-  --ah-accent-line: #40808b;
-  --ah-on-accent: #0f1417;
+  --ah-accent: #8fe36b;
+  --ah-accent-ink: #a6ee86;
+  --ah-accent-soft: #17301b;
+  --ah-accent-line: #4c8447;
+  --ah-on-accent: #0a1a0b;
 
-  --ah-ok: #8fcfa8;
-  --ah-ok-soft: #1b2721;
-  --ah-turn: #eab04e;
-  --ah-err: #e8a08a;
-  --ah-err-soft: #261c1b;
-  --ah-err-line: #976558;
-  --ah-line-strong: #6b737a;
-  --ah-accent-hover: #63b4c1;
-  --ah-accent-press: #7cc3cf;
-  --ah-on-err: #1b1f23;
-  --ah-err-hover: #eeb3a1;
-  --ah-err-press: #f2c3b4;
-  --ah-err-soft-hover: #33221f;
-  --ah-err-soft-press: #3d2823;
-  --ah-surface-hover: #22272c;
-  --ah-surface-press: #2a3036;
-  --ah-current: #23282e;
-  --ah-current-line: #6b737a;
-  --ah-disabled-bg: #1f2328;
-  --ah-disabled-fg: #98a0a8;
-  --ah-focus: #4fa6b4;
+  --ah-ok: #86dba6;
+  --ah-ok-soft: #14261c;
+  --ah-turn: #e8b450;
+  --ah-err: #ff8370;
+  --ah-err-soft: #3a1814;
+  --ah-err-line: #b0503f;
+  --ah-line-strong: #617267;
+  --ah-accent-hover: #a2ec82;
+  --ah-accent-press: #b6f29b;
+  --ah-on-err: #1a0c08;
+  --ah-err-hover: #ffa48f;
+  --ah-err-press: #ffb8a7;
+  --ah-err-soft-hover: #481e19;
+  --ah-err-soft-press: #56241e;
+  --ah-surface-hover: #1a231e;
+  --ah-surface-press: #212c26;
+  --ah-current: #1c2620;
+  --ah-current-line: #64736a;
+  --ah-disabled-bg: #171e1a;
+  --ah-disabled-fg: #8d9e92;
+  --ah-focus: #8fe36b;
   --ah-composer-focus: #79c0ff;
-  --ah-scrim: rgba(0, 0, 0, 0.5);
-  --ah-control: rgba(255, 255, 255, 0.09);
-  --ah-control-hover: rgba(255, 255, 255, 0.13);
-  --ah-control-press: rgba(255, 255, 255, 0.17);
-  --ah-control-line: #6b737a;
-  --ah-ok-line: #547a63;
-  --ah-turn-line: #8d6c32;
-  --ah-disabled-line: #2a3036;
+  --ah-scrim: rgba(0, 0, 0, 0.55);
+  --ah-control: rgba(190, 255, 200, 0.09);
+  --ah-control-hover: rgba(190, 255, 200, 0.13);
+  --ah-control-press: rgba(190, 255, 200, 0.17);
+  --ah-control-line: #617267;
+  --ah-ok-line: #45795f;
+  --ah-turn-line: #886a2c;
+  --ah-disabled-line: #24302a;
+}
+
+[data-theme="contrast"] {
+  --ah-syntax-keyword: #dcc0ff;
+  --ah-syntax-string: #a8f0b8;
+  --ah-syntax-number: #ffd0a0;
+  --ah-syntax-title: #a8dcff;
+  --ah-syntax-comment: #d6d6d6;
+  --ah-syntax-deletion: #ffb3a0;
+  /* Restated so they resolve against this theme's values where the theme is
+     set below the root. */
+  --ah-glyph-0: var(--ah-accent);
+  --ah-glyph-1: var(--ah-syntax-title);
+  --ah-glyph-2: var(--ah-syntax-keyword);
+  --ah-glyph-3: var(--ah-syntax-string);
+  --ah-glyph-4: var(--ah-syntax-number);
+  --ah-glyph-5: #ffb8dc;
+  --ah-glyph-6: #d0d8e0;
+  --ah-glyph-7: #e6ee8a;
+  --ah-content-canvas: #ffffff;
+  --ah-sunken: #000000;
+  --ah-hover: #1f1f1f;
+  --ah-bg: #000000;
+  --ah-surface: #000000;
+  --ah-surface-2: #000000;
+  --ah-rail: #000000;
+  --ah-line: #8c8c8c;
+  --ah-line-soft: #5c5c5c;
+
+  --ah-ink: #ffffff;
+  --ah-ink-2: #ffffff;
+  --ah-muted: #d6d6d6;
+  --ah-faint: #d6d6d6;
+
+  --ah-accent: #9dff70;
+  --ah-accent-ink: #b9ff99;
+  --ah-accent-soft: #12300a;
+  --ah-accent-line: #b3b3b3;
+  --ah-on-accent: #000000;
+
+  --ah-ok: #7dffb0;
+  --ah-ok-soft: #06240f;
+  --ah-turn: #ffd34d;
+  --ah-err: #ffa08a;
+  --ah-err-soft: #300c05;
+  --ah-err-line: #ffa08a;
+  --ah-line-strong: #ffffff;
+  --ah-accent-hover: #b9ff99;
+  --ah-accent-press: #d2ffbd;
+  --ah-on-err: #000000;
+  --ah-err-hover: #ffb7a6;
+  --ah-err-press: #ffcdc0;
+  --ah-err-soft-hover: #45130a;
+  --ah-err-soft-press: #5a1a0e;
+  --ah-surface-hover: #1f1f1f;
+  --ah-surface-press: #333333;
+  --ah-current: #1c1c1c;
+  --ah-current-line: #ffffff;
+  --ah-disabled-bg: #1c1c1c;
+  --ah-disabled-fg: #b8b8b8;
+  --ah-focus: #9dff70;
+  --ah-composer-focus: #9ecbff;
+  --ah-scrim: rgba(0, 0, 0, 0.75);
+  /* Fixed greys, not translucent tints: a tint of white reads 1.35–2.46:1
+     on black, so a text button's state would be a shade alone. */
+  --ah-control: #1f1f1f;
+  --ah-control-hover: #333333;
+  --ah-control-press: #474747;
+  --ah-control-line: #ffffff;
+  --ah-ok-line: #7dffb0;
+  --ah-turn-line: #ffd34d;
+  --ah-disabled-line: #5c5c5c;
+  /* A shadow does not show on black; floating surfaces draw a line instead
+     (the contrast rules at the end of web/src/components/components.css). */
+  --ah-shadow-app: none;
+  --ah-shadow-float: none;
+  --ah-shadow-menu: none;
+  --ah-shadow-dialog: none;
 }

@@ -1,3 +1,4 @@
+import { HabitatMark } from "./HabitatMark";
 import { useOpenSpinoff } from "./Spinoffs";
 import "./ProcessTray.css";
 import {
@@ -853,7 +854,7 @@ export function ProcessWaitingChip({ label }: { label: string }) {
           : context?.showInventory()
       }
     >
-      <span aria-hidden="true" className="ah-status-dot ah-background-dot" />
+      <HabitatMark state="background" size={16} />
       {label}
     </ControlButton>
   );
