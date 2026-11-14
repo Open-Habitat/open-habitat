@@ -2,13 +2,14 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-14/pilot-trust-prompt
 lane: worker-trust
 lane_seq: 1
 preparation: ready
+closed: 2026-11-14
 ---
 
 # Taskfleet Pi workers in a workspace's __worktrees stop at Pi's trust prompt

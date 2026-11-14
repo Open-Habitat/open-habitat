@@ -20,23 +20,49 @@ case ${1-} in
 # Pi 1.5.2's subcommands are its first argument and take no session flags.
 install|remove|uninstall|update|list|config|auth|mcp) ;;
 *)
-	# Pi's own trust choice on the command line stands. --session and
-	# --resume can open a session whose directory is elsewhere, and Pi
-	# applies --approve to that directory, so they keep Pi's default too.
-	# Words are matched exactly as Pi 1.5.2's parser does, in every
-	# position: Pi takes a `--` after a value flag as that value, so it
-	# ends nothing here. A message or value that equals one of them only
-	# leaves the flag out.
+	# Pi's own trust choice on the command line stands. Pi runs in the
+	# directory of the session it opens and applies --approve there, so
+	# --resume, which can pick any session, and --session-id, which can
+	# open one recorded for another directory whose session folder name
+	# collides with this one's, keep Pi's default. So does
+	# --session, except in the one form Taskfleet starts every Pi worker
+	# with: a single absolute file path, checked below to be a new session
+	# or one recorded for this directory. Words are matched exactly as Pi
+	# 1.5.2's parser does, in every position: Pi takes a `--` after a value
+	# flag as that value, so it ends nothing here. A message or value that
+	# equals one of them only leaves the flag out.
 	approve=yes
+	sessions=0
+	session=
+	take=
 	for arg in "$@"; do
+		if [ -n "$take" ]; then
+			session=$arg
+			take=
+		fi
 		case $arg in
-		--approve|-a|--no-approve|-na|--session|--resume|-r) approve= ;;
+		--approve|-a|--no-approve|-na|--resume|-r|--session-id|--session=*) approve= ;;
+		--session)
+			sessions=$((sessions + 1))
+			take=yes
+			;;
 		esac
 	done
-	# Pi's process cwd is canonical, as Pi's trust keys are. The store is
-	# where Pi reads it: PI_CODING_AGENT_DIR (with Pi's ~ and file:// forms) or
-	# ~/.pi/agent. Exit status 0 means the flag applies; any error leaves it out.
-	if [ -n "$approve" ] && "$node" -e '
+	if [ -n "$take" ] || [ "$sessions" -gt 1 ]; then
+		approve=
+	fi
+	if [ "$sessions" -eq 0 ]; then
+		session=
+	elif [ -z "$session" ]; then
+		approve=
+	fi
+	# Pi's process cwd is canonical, as Pi's trust keys are. Pi opens a
+	# --session file in its header's cwd (the first line, as Taskfleet writes
+	# it) or, while the file does not exist yet, in the process cwd; anything
+	# else leaves the flag out. The store is where Pi reads it:
+	# PI_CODING_AGENT_DIR (with Pi's ~ and file:// forms) or ~/.pi/agent.
+	# Exit status 0 means the flag applies; any error leaves it out.
+	if [ -n "$approve" ] && OH_PI_SESSION=$session "$node" -e '
 const fs = require("fs"), os = require("os"), path = require("path"), url = require("url");
 try {
 	const home = os.homedir();
@@ -46,6 +72,24 @@ try {
 	const src = fs.realpathSync(path.join(home, "src"));
 	const dir = process.cwd();
 	if (!dir.startsWith(src + "/")) process.exit(1);
+	const session = process.env.OH_PI_SESSION;
+	if (session) {
+		if (!path.isAbsolute(session)) process.exit(1);
+		let fd;
+		try {
+			fd = fs.openSync(path.resolve(session), "r");
+		} catch (e) {
+			if (e.code !== "ENOENT") process.exit(1);
+		}
+		if (fd !== undefined) {
+			const head = Buffer.alloc(1 << 16);
+			const n = fs.readSync(fd, head, 0, head.length, 0);
+			const end = head.subarray(0, n).indexOf(10);
+			if (end < 0) process.exit(1);
+			const header = JSON.parse(head.subarray(0, end).toString("utf8"));
+			if (header === null || header.type !== "session" || typeof header.id !== "string" || header.cwd !== dir) process.exit(1);
+		}
+	}
 	let b;
 	try {
 		b = fs.readFileSync(path.resolve(agent, "trust.json"));

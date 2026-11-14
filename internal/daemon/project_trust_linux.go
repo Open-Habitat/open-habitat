@@ -29,7 +29,8 @@ import (
 //
 // The core runtime's `pi` launcher (runtime/core/agent-bin/pi), which runs
 // Taskfleet's Pi workers and terminal `pi`, applies the same rule to its own
-// working directory; TestLauncherAppliesDaemonTrustRule keeps the two alike.
+// working directory, also when Taskfleet opens its worker's own session file
+// there; TestLauncherAppliesDaemonTrustRule keeps the two alike.
 
 // maxTrustStore bounds the read of Pi's trust store.
 const maxTrustStore = 1 << 20

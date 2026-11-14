@@ -264,7 +264,8 @@ func launcherArgs(t *testing.T, launcher, home, dir string, env []string, args .
 // The release's `pi` launcher, which Taskfleet's Pi workers and a Habitat
 // terminal run, applies the daemon's rule to its working directory and to
 // Pi's trust store, and leaves an explicit trust choice, a session that may
-// live elsewhere and Pi's subcommands alone.
+// live elsewhere and Pi's subcommands alone. Taskfleet's own --session form
+// is judged by the directory the session opens in.
 func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -323,6 +324,10 @@ func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
 		{[]string{"--session", "other.jsonl"}, []string{"--session", "other.jsonl"}},
 		{[]string{"--resume"}, []string{"--resume"}},
 		{[]string{"-r"}, []string{"-r"}},
+		// Pi opens an existing session by id in the directory it was
+		// recorded for, which need not be this one.
+		{[]string{"--session-id", "a2b96202"}, []string{"--session-id", "a2b96202"}},
+		{[]string{"--continue"}, []string{"--approve", "--continue"}},
 		// Pi reads this `--` as the prompt and still opens the session.
 		{[]string{"--system-prompt", "--", "--session", "other.jsonl"}, []string{"--system-prompt", "--", "--session", "other.jsonl"}},
 		{[]string{"--", "hello"}, []string{"--approve", "--", "hello"}},
@@ -332,14 +337,92 @@ func TestLauncherAppliesDaemonTrustRule(t *testing.T) {
 			t.Errorf("pi %q: Pi got %q, want %q", tc.args, got, tc.want)
 		}
 	}
+
+	// Taskfleet starts every Pi worker in its worktree with one absolute
+	// --session file of its own, whose header it may already have written
+	// with the worker's cwd. Pi opens that session in the header's cwd, or in
+	// its own while the file is new, and applies --approve there.
+	wt := filepath.Join(home, "src", "project__worktrees", "feature")
+	sessions := filepath.Join(home, ".taskfleet", ".creating", "pi-sessions", "run")
+	if err := os.MkdirAll(sessions, 0700); err != nil {
+		t.Fatal(err)
+	}
+	session := func(name, body string) string {
+		t.Helper()
+		p := filepath.Join(sessions, name+".jsonl")
+		if err := os.WriteFile(p, []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	header := func(cwd string) string {
+		b, err := json.Marshal(map[string]any{"type": "session", "version": 3, "id": "a2b96202", "cwd": cwd})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b) + "\n"
+	}
+	worker := func(path string) []string {
+		return []string{"--model", "m", "--extension", "/x/message.ts", "--session", path}
+	}
+	fresh := filepath.Join(sessions, "fresh.jsonl")
+	here := session("here", header(wt)+`{"type":"model_change"}`+"\n")
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		approve bool
+	}{
+		{"new worker session", worker(fresh), true},
+		{"worker session recorded here", worker(here), true},
+		{"session recorded elsewhere", worker(session("elsewhere", header(filepath.Join(home, "elsewhere", "repo")))), false},
+		{"session recorded in the workspace", worker(session("workspace", header(ws))), false},
+		{"header not first", worker(session("late", `{"type":"model_change"}`+"\n"+header(wt))), false},
+		{"header without id", worker(session("noid", `{"type":"session","cwd":"`+wt+`"}`+"\n")), false},
+		{"unterminated header", worker(session("partial", strings.TrimSuffix(header(wt), "\n"))), false},
+		{"session is a directory", worker(sessions), false},
+		{"relative path", worker("fresh.jsonl"), false},
+		{"session id", worker("a2b96202"), false},
+		{"two sessions", append(worker(fresh), "--session", here), false},
+		{"session without a value", append(worker(fresh)[:4], "--session"), false},
+		{"empty session", worker(""), false},
+		{"equals form", []string{"--session=" + fresh}, false},
+		{"with resume", append(worker(fresh), "-r"), false},
+		// Pi reads this --session as the model and opens the id's session.
+		{"session as a value, with an id", []string{"--model", "--session", fresh, "--session-id", "a2b96202"}, false},
+	} {
+		got := launcherArgs(t, launcher, home, wt, nil, tc.args...)
+		if approved(got) != tc.approve {
+			t.Errorf("%s: Pi got %q, want approve=%v", tc.name, got, tc.approve)
+		}
+		if tc.approve && !slices.Equal(got[len(got)-len(tc.args):], tc.args) {
+			t.Errorf("%s: Taskfleet's argv was changed: %q", tc.name, got)
+		}
+	}
+	// The person's saved "do not trust" for the worktrees still stands, and
+	// a worker outside ~/src keeps Pi's default.
+	writeTrustStore(t, home, `{"`+filepath.Dir(wt)+`": false}`)
+	if got := launcherArgs(t, launcher, home, wt, nil, worker(here)...); approved(got) {
+		t.Errorf("saved false on the worktrees was overridden for a worker: %q", got)
+	}
+	setTrustStore(t, home, noTrustStore)
+	if got := launcherArgs(t, launcher, home, filepath.Join(home, "elsewhere", "repo"), nil, worker(fresh)...); approved(got) {
+		t.Errorf("a worker outside ~/src was approved: %q", got)
+	}
+	if _, err := os.Stat(fresh); !os.IsNotExist(err) {
+		t.Fatalf("the launcher created the session file: %v", err)
+	}
 }
 
-// launcherCommands asks the launcher's Pi in dir for its commands over RPC.
-func launcherCommands(t *testing.T, launcher, home, dir string) []piCommand {
+// launcherCommands asks the launcher's Pi in dir for its commands over RPC,
+// without a session unless args name one.
+func launcherCommands(t *testing.T, launcher, home, dir string, args ...string) []piCommand {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, launcher, "--mode", "rpc", "--no-session")
+	if len(args) == 0 {
+		args = []string{"--no-session"}
+	}
+	cmd := exec.CommandContext(ctx, launcher, append([]string{"--mode", "rpc"}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin"}
 	cmd.WaitDelay = 2 * time.Second
@@ -408,8 +491,8 @@ func TestLauncherPinnedPiTrustsWorkspaceSkills(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	has := func(dir string) bool {
-		for _, c := range launcherCommands(t, launcher, home, dir) {
+	has := func(dir string, args ...string) bool {
+		for _, c := range launcherCommands(t, launcher, home, dir, args...) {
 			if c.Name == "skill:repo-skill" && c.Source == "skill" && c.Scope == "project" {
 				return true
 			}
@@ -422,11 +505,29 @@ func TestLauncherPinnedPiTrustsWorkspaceSkills(t *testing.T) {
 	if has(elsewhere) {
 		t.Fatal("a directory outside ~/src was trusted")
 	}
+	// A Taskfleet worker: Pi opens its own session file, new or with the
+	// header Taskfleet wrote for the worktree, in the worktree.
+	sessions := filepath.Join(home, ".taskfleet", "pi-sessions")
+	if err := os.MkdirAll(sessions, 0700); err != nil {
+		t.Fatal(err)
+	}
+	recorded := filepath.Join(sessions, "recorded.jsonl")
+	if err := os.WriteFile(recorded, []byte(`{"cwd":"`+ws+`","id":"a2b96202","timestamp":"2026-01-01T00:00:00Z","type":"session","version":3}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, session := range []string{filepath.Join(sessions, "new.jsonl"), recorded} {
+		if !has(ws, "--session", session) {
+			t.Fatalf("the worktree's own skill is missing for a worker session %s", filepath.Base(session))
+		}
+	}
+	if has(elsewhere, "--session", filepath.Join(sessions, "elsewhere.jsonl")) {
+		t.Fatal("a worker outside ~/src was trusted")
+	}
 	if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "trust.json")); !os.IsNotExist(err) {
 		t.Fatalf("Pi's trust store was written: %v", err)
 	}
 	writeTrustStore(t, home, `{"`+ws+`": false}`)
-	if has(ws) {
+	if has(ws) || has(ws, "--session", recorded) {
 		t.Fatal("the person's saved distrust was overridden")
 	}
 }
