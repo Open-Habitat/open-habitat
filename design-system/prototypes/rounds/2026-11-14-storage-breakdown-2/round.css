@@ -1,0 +1,192 @@
+/* Review chrome above the production shell; the shell is anchored below the
+   review bar and clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-round, .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-round, .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* The round's card replaces production's usage card; Worktrees and Trash
+   stay production's own below it. */
+.rq-slot { display: contents; }
+.rq-review [data-settings-row="usage"] { display: none; }
+.rq-review .s-card:has(> [data-settings-row="usage"]) { display: none; }
+.rq-slot > .ah-warning { margin-bottom: var(--ah-s4); }
+.rq-card { padding: var(--ah-s4); margin-bottom: var(--ah-s4); }
+.rq-card h3, .rq-card h4 { margin: 0; }
+.rq-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px var(--ah-s3); align-items: baseline; }
+.rq-measured { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ah-s2); margin: 0; }
+.rq-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s2) var(--ah-s3); margin-top: var(--ah-s2); }
+.rq-actions:has(> :only-child) { justify-content: flex-end; }
+.rq-actions > .rq-measured { flex: 1 1 auto; }
+.rq-size { font-family: var(--ah-mono); color: var(--ah-ink-2); white-space: nowrap; }
+.rq-path { font-family: var(--ah-mono); font-size: var(--ah-size-code); color: var(--ah-ink-2); overflow-wrap: anywhere; }
+
+/* Parts of the bar. What stays is neutral, Trash as production, work in
+   progress in a source colour (accent and ok are both green in dark), what
+   could go in ok's soft tone and what is chosen in ok, striped, so the
+   chosen part reads without colour too. */
+.rq-sw-others { background: var(--ah-line); }
+.rq-sw-kept { background: var(--ah-line-strong); }
+.rq-sw-trash { background: var(--ah-muted); }
+.rq-sw-live { background: var(--ah-source-1); }
+.rq-sw-freeable { background: var(--ah-ok-soft); box-shadow: inset 0 0 0 1px var(--ah-ok-line); }
+.rq-sw-chosen {
+  background: repeating-linear-gradient(135deg, var(--ah-ok) 0 5px, var(--ah-ok-line) 5px 8px);
+}
+.rq-tag {
+  display: inline-block; padding: 0 6px; border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta); font-weight: 500; background: var(--ah-sunken); color: var(--ah-ink-2);
+}
+.rq-tag-live { background: var(--ah-sunken); color: var(--ah-ink); box-shadow: inset 2px 0 0 var(--ah-source-1); }
+.rq-tag-finished { background: var(--ah-ok-soft); color: var(--ah-ink); }
+.rq-ok-ink { color: var(--ah-ok); }
+
+.rq-freeable { display: flex; flex-direction: column; gap: var(--ah-s3); }
+.rq-freeable h3 { font-size: var(--ah-size-title); }
+.rq-numbers { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ah-s2) var(--ah-s4); }
+.rq-numbers > div { display: flex; flex-direction: column; gap: 2px; }
+.rq-numbers strong { font-size: var(--ah-size-title); font-variant-numeric: tabular-nums; }
+.rq-numbers > svg { align-self: center; color: var(--ah-muted); }
+.rq-frees {
+  margin-left: auto; padding: 2px 10px; border-radius: var(--ah-r-pill);
+  background: var(--ah-ok-soft); color: var(--ah-ink); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.rq-share { flex-basis: 100%; }
+
+/* The large bar (B1) and the bar of parts (B2): the limit is the track's
+   end, the 85 % line stands over it with its label. */
+.rq-bigbar-wrap { position: relative; padding-top: 20px; }
+.rq-bigbar {
+  display: flex; height: 22px; border-radius: 6px; overflow: hidden;
+  background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line);
+}
+.rq-bigbar > span { display: block; height: 100%; }
+.rq-bigbar > span + span { box-shadow: inset 1px 0 0 var(--ah-surface); }
+.rq-bigbar > .rq-sw-freeable + span, .rq-bigbar > span + .rq-sw-freeable { box-shadow: inset 0 0 0 1px var(--ah-ok-line); }
+.rq-warnline { position: absolute; top: 14px; bottom: -4px; width: 0; border-left: 2px dashed var(--ah-err); pointer-events: none; }
+.rq-warnline-label {
+  position: absolute; top: -16px; right: 4px; white-space: nowrap;
+  font-size: var(--ah-size-meta); color: var(--ah-err); font-weight: 600;
+}
+.rq-aftertick { position: absolute; top: 16px; bottom: -6px; width: 0; border-left: 2px solid var(--ah-ink); pointer-events: none; }
+.rq-legend { gap: 6px 14px; margin: 0; padding: 0; list-style: none; }
+.rq-legend .ah-trash-swatch { width: 12px; height: 12px; }
+.rq-verdict { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 500; }
+.rq-verdict-ok { color: var(--ah-ok); }
+.rq-verdict-over { color: var(--ah-err); }
+
+/* B2: the parts are buttons. */
+.rq-segbar-wrap { padding-top: 22px; }
+.rq-segbar {
+  display: flex; height: 56px; border-radius: 8px; overflow: hidden;
+  background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line);
+}
+.rq-seg { display: flex; align-items: center; justify-content: center; min-width: 0; height: 100%; overflow: hidden; }
+.rq-seg + .rq-seg { box-shadow: inset 2px 0 0 var(--ah-surface); }
+.rq-seg-label {
+  display: flex; flex-direction: column; align-items: center; padding: 0 4px; min-width: 0;
+  font-size: var(--ah-size-meta); line-height: 1.2; text-align: center; color: var(--ah-ink);
+}
+.rq-seg-label small { font-family: var(--ah-mono); font-size: 11px; }
+.rq-seg-label svg { width: 14px; height: 14px; }
+.rq-seg-tap { border: 0; padding: 0; margin: 0; font: inherit; cursor: pointer; }
+.rq-seg-fixed .rq-seg-label, .rq-seg-tap.rq-sw-chosen .rq-seg-label { background: var(--ah-surface); border-radius: var(--ah-r-sm); padding: 2px 5px; max-width: calc(100% - 6px); }
+.rq-seg-label > * { max-width: 100%; }
+.rq-seg-label { overflow-wrap: anywhere; hyphens: auto; }
+.rq-seg-tap:hover { filter: brightness(0.95); }
+.rq-seg-tap:focus-visible { outline: var(--ah-focus-width, 2px) solid var(--ah-focus); outline-offset: -3px; }
+.rq-taphint, .rq-enlarged { margin: 0; }
+.rq-segbar-wrap .rq-warnline { top: 16px; bottom: -4px; }
+
+/* The plain-language list (B1, B3) and B2's key. */
+.rq-glist, .rq-key, .rq-pick { list-style: none; margin: 0; padding: 0; }
+.rq-glist > li, .rq-key > li { border-top: 1px solid var(--ah-line-soft); padding: var(--ah-s2) 0; }
+.rq-grow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--ah-s3); align-items: start; }
+.rq-grow > .ah-trash-swatch { margin-top: 5px; width: 12px; height: 12px; }
+.rq-grow .ah-checkbox { font-weight: 500; }
+.rq-grow .ah-checkbox small { display: block; font-weight: 400; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rq-grow > .rq-size { padding-top: 1px; }
+.rq-key-name, .rq-trash-name { display: flex; flex-direction: column; font-weight: 500; }
+.rq-key-name small, .rq-trash-name small { font-weight: 400; font-size: var(--ah-size-meta); }
+.rq-glist > li[data-group-row="live"] .ah-checkbox { color: var(--ah-ink-2); }
+.rq-details { margin-left: 25px; }
+.rq-details > button { margin-top: 2px; }
+.rq-details-panel { margin-top: var(--ah-s2); padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: var(--ah-surface-2); }
+.rq-details-panel > .s-desc { margin: 0 0 var(--ah-s2); }
+.rq-pick li { display: grid; grid-template-columns: minmax(0, 13em) auto minmax(0, 1fr) auto; gap: 4px var(--ah-s3); align-items: center; padding: 4px 0; }
+.rq-pick li + li { border-top: 1px solid var(--ah-line-soft); }
+.rq-item-name { padding-left: 28px; color: var(--ah-ink-2); }
+.rq-trash-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s2); }
+.rq-trash-row > .rq-grow { flex: 1 1 260px; }
+
+/* B3: the compact summary sticks to the top of the settings scroll while the
+   list scrolls; production cards clip their overflow, which would stop it. */
+.rq-card[data-direction-card="b3"] { overflow: visible; }
+.rq-cmp {
+  position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 6px;
+  margin: calc(-1 * var(--ah-s4)) calc(-1 * var(--ah-s4)) 0; padding: var(--ah-s3) var(--ah-s4);
+  background: var(--ah-surface); border-bottom: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-lg) var(--ah-r-lg) 0 0;
+}
+.rq-cmp-head { display: flex; align-items: center; gap: var(--ah-s3); }
+.rq-cmp-row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 9.5em; gap: var(--ah-s3); align-items: center; }
+.rq-cmp-label { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.rq-cmp-bar { position: relative; display: block; padding: 3px 0; }
+.rq-thinbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line-soft); }
+.rq-thinbar > span { display: block; height: 100%; }
+.rq-cmp-bar .rq-warnline { top: -1px; bottom: -1px; }
+.rq-cmp-num { text-align: right; font-family: var(--ah-mono); font-size: var(--ah-size-code); white-space: nowrap; }
+.rq-cmp-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px var(--ah-s3); font-size: var(--ah-size-meta); }
+.rq-warnline-key { display: inline-block; width: 0; height: 10px; border-left: 2px dashed var(--ah-err); vertical-align: middle; }
+
+/* The new conversation stand-in. */
+.rq-conv-modal { width: min(92vw, 720px); max-width: none; }
+.rq-conv { display: flex; flex-direction: column; gap: var(--ah-s3); }
+.rq-conv h2, .rq-conv [slot="title"] { display: flex; align-items: center; gap: var(--ah-s2); margin: 0; }
+.rq-conv textarea { font-size: var(--ah-size-ui); line-height: 1.45; }
+.rq-standin-note { padding: var(--ah-s2) var(--ah-s3); border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-md); margin: 0; }
+
+@media (max-width: 600px) {
+  .rq-card { padding: var(--ah-s3); }
+  .rq-numbers strong { font-size: var(--ah-size-ui); }
+  .rq-frees { margin-left: 0; }
+  .rq-details { margin-left: 0; }
+  .rq-pick li { grid-template-columns: minmax(0, 1fr) auto; }
+  .rq-pick li > .rq-tag { grid-column: 1; justify-self: start; margin-left: 28px; }
+  .rq-pick li > span:empty { display: none; }
+  .rq-pick li > .rq-path { grid-column: 1 / -1; margin-left: 28px; }
+  .rq-pick li > .rq-size { grid-column: 2; grid-row: 1; }
+  .rq-cmp { margin: calc(-1 * var(--ah-s3)) calc(-1 * var(--ah-s3)) 0; padding: var(--ah-s2) var(--ah-s3); }
+  .rq-cmp-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--ah-s2); }
+  .rq-cmp-bar { grid-column: 1 / -1; grid-row: 2; }
+  .rq-segbar { height: 56px; }
+  .rq-seg-label small { font-size: 10px; letter-spacing: -0.02em; white-space: nowrap; }
+  .rq-seg-fixed .rq-seg-label, .rq-seg-tap.rq-sw-chosen .rq-seg-label { padding: 2px 3px; }
+}

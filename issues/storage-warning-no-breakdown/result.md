@@ -61,7 +61,59 @@ the person saw and chose.
 - Is the agent-only clean-up right, or do you want a direct "empty this
   cache" button for the safest entries (Go build cache, npm)?
 
-Live check: none yet. This is a prototype round, nothing is on the test
-server. Open `offline.html` from the worker results and try the three
-directions in the "Yli 85 %" situation: B's checkboxes change the request
-text.
+## Round 2 — variations of B (14.11.2026)
+
+Round `design-system/prototypes/rounds/2026-11-14-storage-breakdown-2/`
+(its `NOTES.md` has the build and check). Jari chose B and asked for
+plain-language groups with folders and paths behind "Näytä tarkemmin", and
+a bar that shows what the selection frees against the limit and the 85 %
+warning line. **Axis:** how the bar and the checklist combine.
+
+- **B1 Esikatselu (preview):** one large bar above an ordinary checklist;
+  the selected part is striped at the end of the bar, a tick marks where
+  usage lands, and "Nyt → Valinnan jälkeen" sits above it.
+- **B2 Palkkivalinta (bar picks):** the bar's parts are the toggles; a key
+  without checkboxes below. Small parts are enlarged to stay tappable, so
+  the bar is no longer to scale; on a phone the parts show only a rounded
+  size.
+- **B3 Ennen ja jälkeen (before/after):** a compact summary with two thin
+  bars, Now and After clean-up, that stays at the top while the list
+  scrolls.
+
+All three show a verdict line ("below the warning line after the
+selection" / "still over"); on a shared disk the person's own 40 GiB
+barely moves the bar, which is the honest picture.
+
+**Recommendation: B1.** One bar shows in one picture what is used, what the
+selection frees and where the limit and warning line are, and the plain
+checklist works on a phone. B2's enlarged parts break the scale and bar
+tapping is unfamiliar; B3's comparison takes twice the room for the same
+information.
+
+### Decisions for later review (round 2)
+
+- **Plain group names:** "Ohjelmointityökalujen välimuistit", "Valmiiden
+  töiden jäljet", "Omien projektien käännöstiedostot", "Agentin käynnissä
+  olevat työt". Worker, worktree and target appear only inside Show
+  details and in the request. Alternative: round 1's technical names.
+- **Selection is per group on the default view, per folder inside
+  details.** A partly selected group shows "valittu x / y"; ticking it
+  selects all. Production's `Checkbox` has no indeterminate state; adding
+  one is left to implementation.
+- **Trash is not part of the selection.** It stays a row linking to
+  production's Empty Trash below, because emptying is an existing direct
+  action and the agent request explicitly leaves the Trash alone.
+  Alternative: include it in the preview as a selectable part.
+- **The warning's button sends the current selection** (default: caches
+  and finished work), not every freeable item.
+- **Colours:** work in progress uses `--ah-source-1`, because accent and
+  ok are both green in dark theme (round 1's note); the chosen part is
+  striped so it reads without colour.
+
+### Questions for Jari
+
+- B1, B2 or B3 (recommendation B1)?
+- Should the Trash be selectable in the preview, or stay a separate
+  production action?
+
+Live check: none. This is a prototype round, nothing is on the test server. Open round 2's `offline.html` from the worker results, pick B1 in "Yli 85 %": untick a group and watch the striped part and the after number move against the 85 % line, then open "Näytä tarkemmin".
