@@ -1,22 +1,19 @@
-# Design result (14.11.2026)
+# Design result (14.11.2026, rewritten the same evening)
 
 The design is in [worker-asks-parent/design.md](../worker-asks-parent/design.md),
-written together with the worker-question flow because the two meet in the
-rail: §2 covers this issue (the `open-habitat agent handoff` command, which
-states the agent may declare, what stays Habitat's observation, expiry and
-override, trust), §2.4 how a worker's open question and "needs your answer"
-combine, and §3 the phasing, where this issue is slice 1 and needs nothing
-from Taskfleet.
+together with the worker-question flow. Its part 1 covers this issue and was
+rewritten to Jari's decision: the agent chooses only its conversation's
+section, *Käynnissä* or *Sinun vuorosi*, with an `open-habitat` command, and
+writes no text on the row. It says when the choice holds and ends, what
+Habitat still observes and always wins, and how it would be built. This issue
+is the first slice and needs nothing from Taskfleet.
 
 Nothing is implemented. The issue stays open with preparation pending until
-Jari has reviewed the design; its decisions for later review (§5) and open
-questions with recommendations (§6) are in the design.
+Jari has read the design and answered its questions. What was kept as
+decided, what became a proposal and what was dropped is listed under
+"Erottelu" in [worker-asks-parent/result.md](../worker-asks-parent/result.md).
 
-Review: focused self-review against the code (`web/src/app/railNow.ts`,
-`internal/daemon/turn_marks_linux.go`, `notices_linux.go`,
-`process-extension.mjs`, `process_interrupted_linux.go`).
-
-Live check: no test-server behaviour changed; there is no handoff command to
+Live check: no test-server behaviour changed; there is no section command to
 try yet.
 
 ## Prototype round 1 — the rail (14.11.2026)

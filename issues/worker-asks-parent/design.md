@@ -1,325 +1,292 @@
-# Design: a worker's question to its parent, and the agent's own word in the rail
+# Design: the agent chooses its rail section, and a worker asks its parent
 
-Design for review, 14.11.2026. **Nothing here is implemented or approved.** It
-covers two issues: `worker-asks-parent` and `agent-sets-rail-state`.
+> **Saatesanat (Jarille)**
+>
+> Tämä on kahden issuen yhteinen suunnitelma: `agent-sets-rail-state` ja
+> `worker-asks-parent`. Mitään ei ole toteutettu.
+> **Osa 1** on kirjoitettu uusiksi iltapäätöksesi mukaan: agentti valitsee
+> komennolla vain osion (Käynnissä tai Sinun vuorosi), riville ei tule agentin
+> tekstiä ja raili näyttää samalta kuin nyt. Käytännön hyöty: vastaus
+> "käynnistin workerit, palaan asiaan" ei enää nouse Sinun vuorosi -osioon.
+> **Osa 2** on workerin kysymys vanhemmalleen ennallaan, ilman railin tekstejä.
+> **Sinulta tarvitaan:** tarkista, että osa 1 vastaa sitä mitä tarkoitit, ja
+> vastaa lopun kuuteen kysymykseen; jokaisessa on suositus.
+> **Suositus:** osa 1 tehdään ensin, koska se on pelkkää Habitatia. Osa 2 alkaa
+> Taskfleet-ehdotuksesta (liite), jota ei ole vielä viety Taskfleetiin.
 
-## Yhteenveto Jarille
+## The problem
 
-- **Kaksi osaa, jotka toimivat erikseen.** (1) Agentti kertoo itse, kenen vuoro
-  on: `open-habitat agent handoff` (*odottaa workereita* / *tarvitsee
-  vastauksesi: kysymys* / *valmis*). (2) Worker kysyy vanhemmaltaan:
-  `taskfleet node ask` odottaa vastausta, `taskfleet run answer` vastaa.
-- **Ensimmäinen viipale on pelkkää Habitatia** eikä tarvitse Taskfleetiin
-  mitään: agentin ilmoitus ja railin sääntö. Hyöty heti: vastaus "käynnistin
-  kolme workeria, palaan asiaan" ei enää nouse *Sinun vuorosi* -ryhmään.
-- **Agentin sana ei ohita havaintoa.** Käynnissä oleva vuoro, virheet, Pi:n oma
-  kysymys ja sinun Nosta / Ei nyt -merkkisi voittavat aina. *Odottaa
-  workereita* pätee vain niin kauan kuin Habitat näkee workerin työssä.
-- **Ilmoitus tallennetaan keskustelun omaan Pi-historiaan** (kuten agentin
-  ilmoitukset nyt), ei uuteen tiedostoon: se kestää daemonin uudelleenkäynnistyksen
-  ja raukeaa itsestään, kun seuraava vuoro alkaa (sinä kirjoitat tai worker
-  herättää agentin).
-- **Workerin kysymys menee agentille, ei sinulle.** Taskfleet palauttaa
-  vanhemman `run wait` -odotuksen heti; Habitat herättää pysähtyneen
-  keskustelun kuten valmistuneesta workerista. Agentti vastaa itse tai siirtää
-  kysymyksen sinulle (`taskfleet run escalate` + *tarvitsee vastauksesi*).
-- **Aikakatkaisu:** worker jatkaa ilmoittamallaan oletuksella ja kirjaa sen.
-  Jos agentti ei reagoi viidessä minuutissa, kysymys nousee sinun vuoroosi.
-- **Taskfleet-ehdotus** on omana lukunaan (§4), valmiina vietäväksi
-  Taskfleetin trackeriin. Sitä ei ole viety eikä Taskfleetiä muutettu.
-- **Sinulta tarvitaan** viisi päätöstä (§6): komennon nimi, *valmis*-tilan
-  käytös, saako Habitat herättää keskustelun joka ei odottanut, vastaatko
-  Workers-paneelista suoraan vai agentin kautta, ja oletusaikakatkaisu.
+An agent starts three workers and replies "started, I'll report when they
+finish". The rail puts that conversation under *Sinun vuorosi*, because a new
+reply claims the person's turn unless the agent's own turn is running. Nothing
+is asked of the person. Habitat cannot tell this reply from one that needs an
+answer; the agent can.
 
-## 0. What the code does today
+The second problem is on the worker's side. A worker that meets a decision
+outside its brief can only stop and report `success: false`. It cannot ask its
+parent and carry on with the answer, and on Claude or Codex nobody can reach it
+mid-run at all.
 
-Read at Open Habitat `97ad46ac`, installed Taskfleet 0.20.0 (commit `6ad8d7ca`,
-the `v0.20.0` tag) and its source three issue-only commits later.
+## What Jari has decided
 
-**The rail** (`web/src/app/railNow.ts`) sorts each conversation from observed
-facts. A conversation is the person's turn when it has a new reply
-(`attention === "new"`), a read reply while nothing is live, the person's
-raise, a new conversation without a first message, or a native Pi question
-(`pending_question`). Otherwise it is in Käynnissä when its turn runs, it waits
-on a background process or a `taskfleet run wait`, or one of its workers works
-or idles (`spinoffs_working`, `spinoffs_idle`); the rest is Hiljaiset. Two
-consequences matter here:
+1. **The agent decides only its conversation's section**, through an
+   `open-habitat` command: in practice *Sinun vuorosi* or *Käynnissä*. No
+   agent-written text appears on the row, and the rail looks as it does today.
+   (14.11.2026, on `agent-sets-rail-state`.)
+2. **A worker's question goes to the parent agent**, which answers it and asks
+   the person only when the person must answer. (14.11.2026, on
+   `worker-asks-parent`.)
 
-- A new reply claims the person's turn **even while the conversation's workers
-  work and the agent waits for them**: `turn` is computed before `live` is
-  consulted. "I started the workers, nothing for you yet" lands in Sinun
-  vuorosi.
-- The person's own word already exists as `turn_mark` (Nosta, Ei nyt), kept in
-  `~/.config/open-habitat/turn-marks.json` by the daemon
-  (`internal/daemon/turn_marks_linux.go`). The agent has no word at all.
+Everything below is a proposal for carrying these out, unless it says it is
+today's behaviour.
 
-**The agent CLI** reaches the person's daemon over the per-user socket
-`/run/open-habitat/users/<user>/agent.sock` (`internal/cli/agent_linux.go`).
-`--current` sends the conversation, workspace and launch generation that the
-daemon's Pi launch exported; the daemon refuses a stale generation
-(`current_context_stale`). `agent notice create` is the existing precedent for
-an agent write scoped to its own conversation: the daemon asks the Pi companion
-(`internal/daemon/process-extension.mjs`, op `notice`) to append a custom entry
-to the native branch through Pi's own writer, after the companion re-checks
-session and generation. The companion also records `oh-person-stop` this way.
+## Part 1: the agent's section choice
 
-**Taskfleet** has a durable question state already: a worker appends
-`node.awaiting_input` with `discussion_items` (topic, options,
-`recommended_default`) through the generic `taskfleet event create`. `run show`
-and `run list` then say `awaiting_input: true`; a default `run wait` settles on
-it after a 180-second grace (`crates/taskfleet/src/run/awaiting_input.rs`), and
-`--terminal` ignores it. `node.input_resolved` clears it by event sequence and
-delivers nothing. `run message` reaches only a live Taskfleet-launched Pi
-worker or a resident worker between rounds. There is no command that blocks
-until an answer arrives, no answer record, and no timeout that applies a
-default.
+### The idea
 
-**Habitat's Taskfleet observation** is read-only: the daemon runs only
-`taskfleet run list` and `run show` (`internal/daemon/spinoffs_linux.go`,
-`process_taskfleet_linux.go`). A run belongs to a conversation when a Pi
-session created it directly (`belongsSpinoff`: `created_by_session`, no
-`created_by_run_id`). For `awaiting_input` today:
+The agent can say one thing about the reply it is writing: **"this reply does
+not ask anything of you; my work goes on."** The rail then leaves the
+conversation in *Käynnissä*, where its workers already keep it, instead of
+lifting it to *Sinun vuorosi*.
 
-- The Workers panel says *Odottaa vastausta päätteessä* and points at
-  `taskfleet run attach` (`web/src/components/Spinoffs.tsx`,
-  `BackgroundStrip.tsx`): it means a prompt in the worker's terminal.
-- The rail ignores it: `workingSpinoffs` counts the run as working, so the row
-  says *Worker työskentelee* while the worker is blocked.
-- A stopped parent whose `run wait` was cut off is woken when its runs "settle
-  as the wait would have returned" (`internal/daemon/wake_linux.go`,
-  `waitOutcome`); `catchUpLive` already treats `awaiting_input` as settled, and
-  the catch-up tells the agent the run "is waiting for you (needs attention)".
-  The check runs once a minute, and one automatic wake per conversation is
-  allowed in 30 minutes (`wakeCooldown`).
-- A live parent is woken by Pi's own process notification when its backgrounded
-  `run wait` exits. A parent that did not arm a wait is never woken; the
-  companion only reminds it once at turn end (`uncoveredRuns`).
-
-A worker launched from a Habitat conversation **inherits the parent's
-`OPEN_HABITAT_CONVERSATION_ID`, workspace and launch generation**, as the agent
-skill says and as this design's own worker run showed. `--current` in a worker
-therefore names the parent conversation. §2.5 deals with that.
-
-## 1. The flow, end to end
+That is the whole effect. The choice changes how one reply is counted and
+nothing else, so every other rail rule works as it does today and nothing new
+is drawn on the row.
 
 ```
-worker                    Taskfleet                 parent agent            Habitat / person
-  │ node ask (blocks) ──▶ node.asked
-  │                       run wait settles ──────▶ turn starts
-  │                       (or: Habitat sees the ask and wakes a stopped parent)
-  │                                                 answers itself:
-  │ ◀── exit 0, answer ── node.answered ◀────────── run answer
-  │                                                 or must ask the person:
-  │                       node.ask_escalated ◀───── run escalate
-  │                                                 handoff needs_answer ──▶ Sinun vuorosi:
-  │                                                                          "Kysyy sinulta: …"
-  │                                                 ◀── the person replies in the conversation
-  │ ◀── exit 0, answer ── node.answered ◀────────── run answer --decided-by person
-  │
-  │ deadline passes: exit 2, worker continues with its stated default (node.ask_timed_out)
+open-habitat agent section update --current --section running --json
+open-habitat agent section update --current --section yours --json
+open-habitat agent section show --current --json
 ```
 
-1. **The worker asks.** Any harness runs one shell command with a question, a
-   stated default and a timeout (§4). The command blocks. Because agent
-   harnesses cap a single command's run time, the command returns "still
-   pending" after a bounded slice and the worker re-invokes it with the same
-   key; the deadline does not move.
-2. **The parent is woken.** Three cases, by what the parent was doing:
-   - *Live, with a `run wait` armed:* Taskfleet settles the wait at once and
-     Pi's process notification starts the parent's turn. Habitat does nothing.
-   - *Stopped, its wait cut off:* Habitat's existing wake applies, because the
-     wait would have returned. It needs the open ask to count as settled
-     (§3, slice 3) and a wake budget per question instead of per conversation.
-   - *Not waiting at all* (live and idle, or stopped without a cut wait):
-     nothing wakes it today. Proposed: Habitat wakes it for a question
-     addressed to it (§6, question 3), except a conversation the person
-     stopped or archived, whose question goes to the person (below).
-3. **The parent answers or escalates.** It answers within its own brief with
-   `taskfleet run answer`. When only the person can decide, it runs
-   `taskfleet run escalate` (which keeps the worker waiting and extends the
-   deadline), declares `needs_answer` with the question (§2), and asks in its
-   reply. The person answers in the conversation as they answer anything else;
-   the agent then runs `run answer --decided-by person`.
-4. **The answer reaches the worker** as the blocked command's output and exit
-   status. No terminal input is injected and no harness adapter is needed.
-5. **Timeout.** At the deadline the command exits with the timed-out outcome
-   and repeats the default; the worker continues with it and Taskfleet records
-   that it did. A late `run answer` is refused with the ask's final state, so
-   the parent learns the worker went on without it.
+- `running`: the reply of this turn does not claim the person's turn while
+  Habitat sees the conversation's work going on.
+- `yours`: the reply claims the person's turn. This is what happens without
+  the command, so it exists for saying so explicitly and for taking back a
+  `running` said earlier in the same turn. The last word in a turn counts.
 
-**Who owns what.** Taskfleet owns the question, the answer, the deadline and
-every state between them, in the run's event log. Habitat stores none of it:
-it reads the open ask from `run list`/`run show` as it reads everything else
-about a run, shows it, wakes the parent, and gives the person's turn to a
-question nobody is handling. The person-facing answer path is the parent
-conversation, not a second inbox.
+There is no value for *Hiljaiset*: the decision names two sections.
 
-**When no agent handles the question.** If an ask has been open and
-unescalated for five minutes and the parent's turn is not running (the person
-stopped the conversation, the wake was declined, Pi could not start), the
-conversation moves to Sinun vuorosi as *Worker odottaa vastausta: <question>*.
-Otherwise the worker would fall to its default with nobody having seen the
-question.
+### Where a conversation lands
 
-## 2. The agent's own word: `open-habitat agent handoff`
-
-A **handoff** is what the agent says, during a turn, about who has the next
-move once that turn ends. It is the agent's counterpart of the person's
-`turn_mark`.
-
-```
-open-habitat agent handoff create --current --state waiting_workers --json
-open-habitat agent handoff create --current --state needs_answer --text "Kumpi kirjasto: A vai B?" --json
-open-habitat agent handoff create --current --state done --json
-open-habitat agent handoff show --current --json
-open-habitat agent handoff delete --current --json
+```mermaid
+flowchart TD
+    A[Agent's turn ends with a reply] --> B{Native Pi question?}
+    B -- yes --> Y[Sinun vuorosi]
+    B -- no --> C{Agent chose 'running'<br/>for this reply?}
+    C -- no --> Y
+    C -- yes --> D{Does Habitat see<br/>work going on?}
+    D -- yes --> R[Käynnissä]
+    D -- "no, or no longer" --> Y
+    R -- "work ends, no new turn" --> Y
+    R -- "new turn starts" --> N[Choice is over;<br/>the next reply is judged afresh]
 ```
 
-`--text` (or `--text-file -`) is one line of plain text, at most 200 UTF-8
-bytes, required for `needs_answer` and refused for the other states. There is
-no `--conversation` form: the command exists only for the caller's own
-conversation.
+"Work going on" is Habitat's own observation: one of the conversation's
+workers is working, or the agent waits on a background process or a
+`taskfleet run wait`. A worker that itself waits for the person does not count.
 
-### 2.1 What the agent may declare
+### When the choice holds and when it ends
 
-| State | Meaning | Rail |
+- **It starts when the turn ends.** During the turn the row is in *Käynnissä*
+  as *Työskentelee*, as today.
+- **A new turn ends it.** The person writes, or a finished worker wakes the
+  agent: the choice belonged to the previous reply. The agent chooses again if
+  it still applies.
+- **The work ending ends it.** When Habitat no longer sees work going on and
+  no new turn has started, the reply claims *Sinun vuorosi* like any reply. A
+  wrong or forgotten `running` therefore cannot hide a reply for longer than
+  the workers run. This is also why no text is needed: a row is in *Käynnissä*
+  only while there is an observed reason that today's labels already name
+  (*Worker työskentelee*, *Odottaa taustatyötä*).
+- **Opening the conversation changes nothing**, as reading never moves a row.
+  The reply stays unread until it is opened.
+
+### What Habitat still observes, and what always wins
+
+The agent chooses nothing else. Unchanged, and never overridden by the choice:
+
+- a running turn;
+- failures: a crashed Pi, a cut turn, an error turn, a failed worker;
+- a native Pi question, which claims the person's turn;
+- the person's own marks, *Nosta* and *Ei nyt*, exactly as they work today;
+- archive, the new-conversation rule and lost-connection marking.
+
+### How it is built (proposals)
+
+- **Stored in the conversation's own Pi history**, as a small entry written
+  through the Pi companion, the way `agent notice create` writes today. No new
+  file. The choice belongs to one reply, so it ends by its position in the
+  history, survives a daemon restart, reads the same on every device, and a
+  rewind removes it with its turn. The snapshot gains one optional field for
+  it, so the implementation changes `contracts/v1/` and needs the independent
+  review.
+- **Own conversation only, and only during its running turn.** The command has
+  no `--conversation` form. The daemon refuses it unless that conversation's
+  turn is running. The reason is concrete: a worker started from a Habitat
+  conversation inherits the parent's conversation ID and launch generation, so
+  without this a worker, or a leftover background script, could re-mark a
+  parent that has moved on.
+- **No new authority.** The command uses the person's per-user agent socket
+  and writes to that person's own history, as notices do. Any process of the
+  same Unix user can already send messages to and stop that user's
+  conversations through the same socket; choosing a section is weaker than
+  both.
+
+## Part 2: a worker asks its parent
+
+### The flow
+
+```mermaid
+sequenceDiagram
+    participant W as Worker
+    participant T as Taskfleet
+    participant A as Parent agent
+    participant P as Person
+    W->>T: node ask (question, default, deadline)
+    Note over W: the command waits
+    T-->>A: run wait returns, or Habitat wakes the conversation
+    alt the agent can decide
+        A->>T: run answer
+    else only the person can decide
+        A->>T: run escalate (worker keeps waiting)
+        A->>P: asks in its reply
+        P->>A: answers in the conversation
+        A->>T: run answer --decided-by person
+    end
+    T-->>W: the command returns the answer
+    Note over W,T: no answer by the deadline: the command returns<br/>"timed out" and the worker continues with its default
+```
+
+1. **The worker asks** with one shell command that states the question, the
+   default it will take if nobody answers, and a deadline. The command waits.
+   Because it is an ordinary command, it works in Pi, Claude and Codex alike.
+2. **The parent agent is woken.** If it is waiting with `taskfleet run wait`,
+   the wait returns at once. If its Pi was stopped mid-wait, Habitat wakes the
+   conversation as it does today for a finished worker; that wake is extended
+   to questions. If it was not waiting at all,
+   nothing wakes it today; question 3 below asks whether Habitat should.
+3. **The agent answers, or asks the person.** Within its own brief it answers
+   with `taskfleet run answer`. When only the person can decide, it tells
+   Taskfleet so (`run escalate`, which keeps the worker waiting longer), asks
+   the person in its reply, and passes their answer on.
+4. **The answer reaches the worker** as the output of the command it was
+   waiting in. Nothing is typed into the worker's terminal.
+5. **No answer in time:** the command returns "timed out", the worker
+   continues with its stated default, and Taskfleet records that it did. A
+   late answer is refused, so the parent learns the worker went on without it.
+
+### The states of one question
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: worker asks
+    Open --> Escalated: parent passes it to the person
+    Open --> Answered: parent answers
+    Escalated --> Answered: person's answer passed on
+    Open --> TimedOut: deadline passes
+    Escalated --> TimedOut: longer deadline passes
+    Open --> Cancelled: run cancelled
+    Escalated --> Cancelled: run cancelled
+    Answered --> [*]
+    TimedOut --> [*]
+    Cancelled --> [*]
+```
+
+### Who owns what
+
+Taskfleet owns the question, the answer, the deadline and every state between
+them, in the run's event log. Habitat stores none of it. It reads the open
+question from `taskfleet run list` and `run show`, as it reads everything else
+about a run, shows it, and wakes the parent. The person answers in the parent
+conversation; there is no second inbox.
+
+### What the person sees
+
+The rail gets no new text and no new kind of row.
+
+| Situation | Rail | Worker's row in the Workers panel |
 | --- | --- | --- |
-| `waiting_workers` | "This reply asks nothing of you; I continue when my workers report." | Käynnissä, *Odottaa workereita*. The reply does not claim Sinun vuorosi; it stays unread. |
-| `needs_answer` + text | "Nothing continues until you answer this." | Sinun vuorosi, *Kysyy sinulta: <text>*, sorted and counted like a native question. |
-| `done` | "Finished; nothing is pending for you." | Hiljaiset, with the unread mark kept on the row until the reply is opened. |
+| Question open, the agent is handling it | *Käynnissä*, as today | *Kysyy agentilta*, with the question, the default and the deadline |
+| The agent has asked the person | *Sinun vuorosi*, because the agent's reply asks, as any reply does | *Odottaa sinun vastaustasi* |
+| Answered | as today | back to *Työskentelee* |
+| Timed out | as today | *Jatkoi oletuksella*, with the default, until the run ends |
+| Open for five minutes and no agent is handling it | *Sinun vuorosi*, with today's label *Worker odottaa sinua* | as the first row, marked unanswered |
 
-### 2.2 What stays Habitat's observation
+The last row is the safety net. If the question has been open for five
+minutes, the agent has not passed it on, and the agent's turn is not running
+(the person stopped the conversation, Pi could not start), the conversation
+moves to *Sinun vuorosi*. Otherwise the worker would fall to its default with
+nobody having seen the question.
 
-The agent cannot set, and a handoff never overrides:
+When the agent asks the person, it simply does not choose `running` for that
+reply; part 1 needs nothing more for this.
 
-- **a running turn** (always Käynnissä, *Työskentelee*);
-- **failures**: a crashed Pi, a cut turn, an error turn, a failed worker;
-- **a native Pi question** (`pending_question`), which needs its own answer;
-- **the person's marks**: Nosta puts the row in Sinun vuorosi and Ei nyt in
-  Hiljaiset whatever the agent said, and Ei nyt is offered on a `needs_answer`
-  row;
-- **archive**, the new-conversation rule, and lost-connection marking.
+The Workers panel's present *Odottaa vastausta päätteessä* stays for the
+prompts that really are answered in the worker's own terminal.
 
-Order, first match wins: running turn → failure → the person's mark → native
-question → handoff → today's observation.
+## Order of work
 
-### 2.3 Expiry and override
-
-The handoff is stored as a custom entry (`oh-agent-handoff`) on the
-conversation's native Pi branch, written by Pi's own writer through the
-companion, as notices are. It is not part of the model's context. The daemon's
-branch scan (`scanBranch`) reads it and the snapshot carries it as an optional
-`handoff` object on the agent (`state`, `text`, `at`), a new field in
-`contracts/v1/snapshot.schema.json`.
-
-- **Scope.** A handoff is valid from the end of the turn it was declared in
-  until the next turn begins. The scan drops it at any later person message or
-  turn-starting companion message (a wake's catch-up). The last declaration in
-  a turn wins; `handoff delete` withdraws it.
-- **The person writes.** Their message starts a turn: the handoff is gone, and
-  the agent declares again if it still applies. A steer into a running turn
-  drops it too; the agent has just been redirected.
-- **A worker finishes.** `waiting_workers` holds only while Habitat itself
-  observes one of the conversation's own runs working (`spinoffs_working > 0`
-  or a `taskfleet_wait` in `waiting_on`). When none remains it lapses and the
-  row is placed by observation: the unread reply takes Sinun vuorosi. Normally
-  the finished worker wakes the agent first and the new turn replaces it.
-- **The turn ends.** That is when the handoff takes effect, not when it
-  expires. `needs_answer` has no time limit, like an unanswered reply.
-  `done` is tied to the reply it was declared with.
-- **Daemon restart, Pi stop, another device.** Nothing is kept in daemon
-  memory, so all three read the same branch. A rewind or fork behind the entry
-  removes it with the turn it belonged to.
-
-A new file beside `turn-marks.json` was considered and rejected: it would be a
-second place for a fact that belongs to one point in the conversation's
-history, and every expiry rule above would need code instead of following from
-where the entry sits.
-
-### 2.4 A worker's open question and `needs_answer` together
-
-| Situation | Workers panel row | Rail |
-| --- | --- | --- |
-| Ask open, parent being woken or in its turn | *Kysyy agentilta: <question>* · default and deadline | Käynnissä, *Worker kysyy agentilta* |
-| Ask open and unescalated ≥ 5 min, parent's turn not running | same, marked unanswered | Sinun vuorosi, *Worker odottaa vastausta: <question>* |
-| Parent escalated and declared `needs_answer` | *Odottaa sinun vastaustasi* · deadline | Sinun vuorosi, *Kysyy sinulta: <text>* |
-| Answered | back to *Työskentelee* | by observation |
-| Timed out | *Jatkoi oletuksella: <default>* until the run ends | by observation |
-
-The parent may name the ask in its handoff (`--worker-ask <run_id>/<ask_id>`,
-slice 4). Habitat then drops the `needs_answer` when that ask is no longer open
-(the worker timed out and went on), so the row does not keep asking the person
-something that no longer waits for them.
-
-The native-question label *Kysyy sinulta* is shared on purpose: to the person
-both are "the agent asks you". The Workers panel's present
-*Odottaa vastausta päätteessä* stays for `awaiting_input` and startup prompts,
-which really are answered in the worker's terminal.
-
-### 2.5 Trust
-
-- **No new authority.** The command talks to the person's own daemon over
-  their per-user socket; the daemon, running as that user, writes to that
-  user's own Pi history. Gateway and provisioning are untouched and no identity
-  claim is trusted that is not trusted today.
-- **Not a security boundary inside one user, and not presented as one.** Any
-  process of the person's Unix user can already send messages to, interrupt or
-  stop any of their conversations through the same socket
-  (`agent message create --conversation`). A handoff is weaker than all of
-  those: it changes a label and a rail section.
-- **Own conversation only.** No explicit-target form exists. The daemon checks
-  the launch generation and the companion re-checks session and generation, as
-  for notices.
-- **Only during that conversation's running turn.** The daemon refuses
-  (`turn_not_active`) unless the conversation's own turn is running. An agent
-  only ever acts inside a turn, so this costs it nothing, and it is what keeps
-  a worker with the inherited parent context, or a leftover background script,
-  from re-marking a parent that has moved on. A worker that calls it during the
-  parent's own turn is not stopped by this; the agent skill tells workers that
-  `handoff` is the parent's command, and the worst outcome is a wrong label
-  until the next turn.
-- **It cannot hide anything that needs the person** (§2.2), cannot keep a row
-  in Käynnissä without real workers, and cannot touch the person's marks.
-- **The text is data.** Plain, one line, bounded, rendered as text and named as
-  the agent's question. It grants nothing and is never read as an instruction.
-
-## 3. Phasing
-
-| Slice | Where | Delivers | Depends on |
+| Slice | Where | Delivers | Needs |
 | --- | --- | --- | --- |
-| 1. Agent handoff | Habitat | `agent handoff` (CLI, daemon route, companion op, branch scan, snapshot field, rail rule, skill text). The rail follows the agent's word; a "waiting for workers" reply no longer claims the turn; explicit question rows. | nothing |
-| 2. Ask/answer | Taskfleet | `node ask`, `run answer`, `run escalate`, wait settling, projections, worker preamble (§4). Already useful without Habitat changes for a live parent with an armed wait. | nothing |
-| 3. Show and wake | Habitat | `ask` on worker rows (contract), panel row and rail label, catch-up state "asks" with the answer and escalate commands, wake keyed per ask, open ask treated as settled in `catchUpLive` and the companion's `liveRun`. | 2 |
-| 4. Close the loop | Habitat | `handoff --worker-ask`, the five-minute unanswered rule, the person's answer action in the Workers panel, waking a parent that was not waiting. | 1, 3 |
+| 1. Section choice | Habitat | Part 1: the command, the rail rule, the agent skill text | nothing |
+| 2. Ask and answer | Taskfleet | The appendix: `node ask`, `run answer`, `run escalate` | nothing |
+| 3. Show and wake | Habitat | The question on the worker's row; waking a stopped parent for a question, counted per question | 2 |
+| 4. Safety net | Habitat | The five-minute rule; the person's answer action in the Workers panel; waking a parent that was not waiting | 3 |
 
-Slice 2 before slice 3 degrades safely: Habitat ignores the unknown `open_ask`
-field, a stopped parent is not woken, and the worker continues with its default
-at the deadline. Slices 1 and 2 are independent and can be built in parallel.
+Slices 1 and 2 are independent. Slice 2 is useful before slice 3 exists for a
+parent that waits with `run wait`; Habitat ignores a field it does not know,
+and an unanswered worker continues with its default.
 
-Slice 1 changes the snapshot contract, the daemon and the session branch, so
-its implementation run needs the independent review (`/llm-review` and
-`/assess-findings`).
+Not in this design: non-blocking notes from a worker to its parent, and a
+worker that is stuck before its agent starts. Such a worker cannot run any
+command, so it cannot ask; Taskfleet tracks that separately.
 
-**Out of this design:** non-blocking notes from worker to parent, and startup
-silence. A worker stuck before its agent loop cannot run any command; Taskfleet
-already has that as its own item (`startup-blocked-attention`), and Habitat
-observes it today as a blocked worker (`workerBlocked`,
-`internal/daemon/spinoff_activity_linux.go`).
+## Open questions for Jari
 
-## 4. Taskfleet proposal (self-contained; to be filed in Taskfleet's tracker)
+1. **Is the command right?** Recommendation:
+   `open-habitat agent section update --section running|yours`.
+2. **Is leaving out *Hiljaiset* what you meant?** Your first idea included
+   "done, nothing pending"; the decision names two sections. Recommendation:
+   leave it out. A finished reply that nobody has read belongs in *Sinun
+   vuorosi*.
+3. **May Habitat wake a conversation that was not waiting, when its worker
+   asks?** Today a conversation that only started runs is not woken.
+   Recommendation: yes for questions, once per question, never a conversation
+   you stopped or archived. A question is addressed to the parent; a finished
+   run is only news.
+4. **When you answer a worker's question from the Workers panel, does it go
+   through the parent conversation?** Recommendation: yes. The panel writes
+   your message to the parent conversation naming the run, and the agent
+   passes it on. The conversation stays the record, and the daemon keeps only
+   reading Taskfleet. The alternative, the daemon answering Taskfleet itself,
+   is faster but would be the daemon's first write into Taskfleet.
+5. **Does "no agent text" also cover the Workers panel?** The table above
+   shows the worker's question on the worker's own row there. Recommendation:
+   show it. The panel is where you look at one worker, and the question is
+   Taskfleet's data about that worker, not the agent's word about the
+   conversation.
+6. **Deadlines.** Recommendation: 30 minutes for a question, four hours once
+   it has been passed to you, and five minutes before an unhandled question
+   moves the conversation to *Sinun vuorosi*.
+
+## Appendix: proposal to Taskfleet
+
+Written to be filed in Taskfleet's tracker as it stands. It has not been
+filed, and Taskfleet is unchanged. Read against Taskfleet 0.20.0.
 
 ### A worker's blocking question to its parent: `node ask`, `run answer`
 
 **Problem.** A worker that meets a decision outside its brief can only end the
-run with `success: false`, or append a low-level `node.awaiting_input` event
-that is described as a human decision, reaches the parent's `run wait` after a
-180-second grace, and has no answer: `node.input_resolved` clears attention and
-delivers nothing. `run message` reaches a live worker only on Pi. So a Claude
-or Codex worker cannot get a mid-run answer at all, and no worker can wait for
-one with a bounded, recorded fallback.
+run with `success: false`, or append a low-level `node.awaiting_input` event.
+That event is described as a human decision, reaches the parent's `run wait`
+after a 180-second grace, and has no answer: `node.input_resolved` clears
+attention and delivers nothing. `run message` reaches a live worker only on
+Pi. A Claude or Codex worker cannot get a mid-run answer, and no worker can
+wait for one with a bounded, recorded fallback.
 
-**Proposal.** A correlated, durable ask/answer exchange carried by ordinary
-shell commands, so it works in every harness that can run one.
+**Proposal.** A durable question and answer, matched by an ID and carried by
+ordinary shell commands, so it works in every harness that can run one.
 
 #### Worker side
 
@@ -331,186 +298,93 @@ taskfleet node ask (--current | <RUN_ID> <NODE_ID>)
     --idempotency-key KEY [--json]
 ```
 
-- `--current` resolves the run as `run show --current` does (worktree
-  ownership, not the branch name). `TASKFLEET_RUN_ID` is not exported for every
-  harness, so it cannot be the only way.
 - `--default` is required: what the worker does if nobody answers. It must be
   something the brief already allows, which may be "stop and report the
-  decision". Taskfleet records it; it does not judge it. With `--option`, the
-  default must be one of the options, as `discussion_items` requires today.
-- `--timeout` (default 30m) sets an absolute `expires_at` on first append.
-  `--wait` (default 8m) bounds one invocation, because harnesses cap command
-  run time. Re-invoking with the same key attaches to the same ask and never
+  decision". Taskfleet records it and does not judge it.
+- `--timeout` sets the deadline once, when the question is first asked.
+  `--wait` bounds one invocation, because harnesses cap how long a command may
+  run. Re-invoking with the same key attaches to the same question and never
   moves the deadline.
-- One open ask per node. A second, different ask while one is open is refused
-  (`ask_already_open`), naming the open one.
-- Limits: question 4 KiB, default and each option 512 bytes, eight options.
-
-Outcome in `data.outcome`, with exit codes that follow `run wait`:
+- One open question per node; a second is refused and names the open one.
+- `--current` resolves the run from the worktree, as `run show --current`
+  does, because `TASKFLEET_RUN_ID` is not exported in every harness.
 
 | Exit | `outcome` | Meaning |
 | --- | --- | --- |
-| 0 | `answered` | `data.answer`, `data.choice` (when options), `data.decided_by` |
-| 4 | `pending` | `--wait` elapsed, the ask is still open: re-invoke with the same key |
-| 2 | `timed_out` | deadline passed; `data.default` repeats what to do now |
+| 0 | `answered` | the answer, the chosen option if any, and who decided |
+| 4 | `pending` | `--wait` elapsed and the question is still open: re-invoke with the same key |
+| 2 | `timed_out` | the deadline passed; the output repeats the default to take |
 | 3 | `cancelled` | the run was cancelled or the node ended |
-| 1 | — | usage or unknown run (error envelope) |
+| 1 | — | usage error or unknown run |
 
 #### Parent side
 
 ```
 taskfleet run answer <RUN_ID> --ask <ASK_ID>
     (--text TEXT | --body-file FILE | --choice OPTION)
-    [--decided-by agent|person] [--node n-0001] [--json]
+    [--decided-by agent|person] [--json]
 
-taskfleet run escalate <RUN_ID> --ask <ASK_ID>
-    [--extend 4h] [--note TEXT] [--node n-0001] [--json]
+taskfleet run escalate <RUN_ID> --ask <ASK_ID> [--extend 4h] [--note TEXT] [--json]
 ```
 
-- `run answer` appends the answer and releases the worker. On an ask that is
-  not open it fails with `ask_not_open` and reports the final state
-  (`answered`, `timed_out`, `cancelled`) and the default the worker took.
-  Answer limit 16 KiB.
-- `--decided-by` (default `agent`) is the answering session's own statement of
-  whether a person made the decision. It is a told value, not verified; it lets
-  a worker's report distinguish "my parent judged" from "the person decided".
-  It grants the worker no permission its brief did not.
-- `run escalate` says the parent has passed the question to a person. The ask
-  stays open, the worker keeps waiting, `expires_at` moves to now + `--extend`
-  (default 4h, never earlier than the current deadline), and the ask stops
-  settling `run wait` so the parent can wait again without spinning.
+- `run answer` records the answer and releases the worker. On a question that
+  is no longer open it fails and reports how it ended and which default the
+  worker took.
+- `--decided-by` is the answering session's own statement of whether a person
+  made the decision. It is not verified and grants the worker nothing its
+  brief did not; it lets the worker's report tell "my parent judged" from "the
+  person decided".
+- `run escalate` says the parent has passed the question to a person. The
+  question stays open, the deadline moves later, and the question stops
+  returning `run wait`, so the parent can wait again.
 
-#### Events and projection
+#### Events and what observers read
 
-| Event (node-scoped) | Data |
-| --- | --- |
-| `node.asked` | `ask_id`, `question`, `options[]`, `default`, `expires_at` |
-| `node.ask_escalated` | `ask_id`, `expires_at`, `note` |
-| `node.answered` | `ask_id`, `answer`, `choice`, `decided_by` |
-| `node.ask_timed_out` | `ask_id`, `default` |
+Four node events: `node.asked`, `node.ask_escalated`, `node.answered`,
+`node.ask_timed_out`. The question's ID comes from the sequence of its
+`node.asked` event, so a stale answer cannot close a newer question. The first
+closing event wins. If the worker's command is gone when the deadline passes,
+readers derive `timed_out` from the deadline, as `stalled` is derived today.
 
-`ask_id` is derived from the `node.asked` event's sequence, so a stale answer
-can never close a newer question (the property `node.input_resolved` has
-today). All four append under the run lock; the first closing event wins and
-the reducer ignores a later one. `node ask` appends the timeout itself at the
-deadline; if the worker's command is gone, an ask past `expires_at` reads as
-`timed_out` at read time, as `stalled` is derived today, and the next append
-records it.
+`run show`, `run list` and each `run wait` outcome gain `open_ask` (ID,
+question, options, default, asked and expiry times, whether escalated) and
+`last_ask` (how the previous question ended).
 
-`run show`, `run list` and each `run wait` run outcome gain:
-
-```json
-"open_ask": {
-  "ask_id": "a-0042", "node_id": "n-0001",
-  "question": "…", "options": ["…"], "default": "…",
-  "asked_at": "…", "expires_at": "…",
-  "escalated": false, "pending_age_secs": 12
-},
-"last_ask": { "ask_id": "a-0041", "outcome": "timed_out", "default": "…", "closed_at": "…" }
-```
-
-`awaiting_input` is **not** set for an ask. It keeps meaning a prompt that is
-answered at the worker itself, and observers that show it as such stay right.
+`awaiting_input` is not set for a question. It keeps meaning a prompt answered
+at the worker itself, which is how Habitat's Workers panel presents it.
 
 #### `run wait`
 
-- An open, unescalated ask settles a default `run wait` **immediately**, with
-  no grace. The grace exists so a short-lived prompt does not page a person;
-  here the worker is blocked and the reader is its parent agent. The run's
-  outcome carries `asking: true`, `open_ask`, and the reason
-  `worker asks its parent`.
-- An escalated ask does not settle the wait. `--terminal` ignores asks, as it
-  ignores other attention.
-- A timed-out or answered ask does not settle the wait: the worker is working
-  again. `last_ask` tells an observer what happened.
+- An open question that has not been escalated returns a default `run wait`
+  at once, with no grace. The grace exists so that a short-lived prompt does
+  not page a person; here the worker is blocked and the reader is its parent
+  agent.
+- An escalated, answered or timed-out question does not return the wait.
+  `--terminal` ignores questions, as it ignores other attention.
 
 #### Worker instructions
 
-The generated run-context preamble's "Decisions and live replies" section
-changes from "write a `success: false` report" to: ask with `node ask`, state a
-default the brief already allows, continue on the answer or on the default,
-and name in the terminal report any decision that was taken by default. Ending
-with `success: false` remains for a decision with no acceptable default.
+The generated run preamble changes from "write a `success: false` report" to:
+ask with `node ask`, state a default the brief allows, continue on the answer
+or the default, and name in the final report any decision taken by default.
+Ending with `success: false` remains for a decision with no acceptable
+default.
 
 #### Not proposed
 
-- Terminal-input injection or per-harness delivery adapters: the answer is the
-  blocked command's output.
-- A non-blocking message or note channel.
-- A push hook to the parent. Parents observe through `run wait` and `run list`
-  as they do for every other state.
-- Startup silence (`startup-blocked-attention`): a worker that never reached
-  its agent loop cannot ask.
-- Any change to who may write to a run. Ask and answer use the same local
-  state root and file permissions as every other event.
+Typing into the worker's terminal or per-harness delivery adapters; a
+non-blocking note channel; a push hook to the parent; any change to who may
+write to a run.
 
 #### Acceptance
 
-- A Claude worker and a Pi worker each ask, block, and continue on a parent's
-  `run answer`, with the answer in the command's output.
-- A killed or timed-out `node ask` invocation re-attaches to the same ask with
-  the same key and the same deadline.
-- With no answer, the worker gets `timed_out` at the deadline and a later
-  `run answer` is refused with `ask_not_open` and the default taken.
-- A parent's default `run wait` returns at once for a new ask, and blocks again
-  after `run escalate`.
-- A race of answer and timeout leaves exactly one closing event, and both
+- A Claude worker and a Pi worker each ask, wait, and continue on the parent's
+  answer, which arrives as the command's output.
+- A killed `node ask` re-attaches to the same question with the same key and
+  the same deadline.
+- With no answer the worker gets `timed_out` at the deadline, and a later
+  `run answer` is refused and names the default taken.
+- A parent's default `run wait` returns at once for a new question and waits
+  again after `run escalate`.
+- An answer racing the deadline leaves exactly one closing event, and both
   commands report it.
-
-## 5. Decisions for later review
-
-1. **Storage in the Pi branch, not a new file.** Alternative: a sibling of
-   `turn-marks.json`. Chosen because the fact belongs to one turn and then
-   expires by position, survives restarts without daemon memory, and adds no
-   store.
-2. **The noun `handoff`.** Alternatives: `rail-state`, `conversation state`,
-   `turn-claim`. Chosen because it names what the agent does (hands the turn
-   over, or says it has not) and does not tie the CLI to one view's name.
-3. **`waiting_workers` is bounded by observed workers.** Alternative: trust the
-   agent until the next turn. Chosen so a wrong or stale claim cannot keep a
-   reply out of Sinun vuorosi after the workers are gone.
-4. **Handoff accepted only during the conversation's running turn.**
-   Alternative: any time with a valid launch generation. Chosen because
-   workers inherit the parent's context.
-5. **Asks get a new `open_ask` field, not `awaiting_input: true`.**
-   Alternative: reuse the flag for compatibility with today's wake. Chosen
-   because Habitat's panel tells the person to answer `awaiting_input` in the
-   worker's terminal, which would be wrong for an ask.
-6. **No grace before an ask settles `run wait`.** Alternative: keep 180 s.
-   Chosen because the reader is an agent and the worker is blocked.
-7. **`run escalate` is separate from Habitat's `needs_answer`.** Alternative:
-   one Habitat command doing both. Chosen because Taskfleet must not depend on
-   Habitat, and a parent in a plain terminal escalates too.
-8. **The five-minute unanswered rule gives the question to the person.**
-   Alternative: leave it to the timeout. Chosen so a question is not lost
-   silently when the parent cannot be woken.
-9. **One open ask per node.** Alternative: several. Chosen because a blocked
-   worker has one thing it waits for; several questions fit in one ask's text.
-10. **The catch-up carries the question text** (bounded) into the woken
-    parent's turn. Alternative: only tell it to read `run show`. Chosen because
-    the question is the news; it is the same user's own data.
-
-## 6. Open questions for Jari
-
-1. **Is `handoff` the right name?** Recommendation: yes
-   (`open-habitat agent handoff create|show|delete`). If you want the rail in
-   the name, `agent rail-state` works with the same shape.
-2. **Should `done` move an unread reply straight to Hiljaiset?**
-   Recommendation: yes, keeping the unread mark on the row. If that feels like
-   replies going missing, drop `done` from slice 1; the other two states carry
-   most of the value.
-3. **May Habitat wake a conversation that was not waiting, for a worker's
-   question?** Today the rule is that a conversation that only created runs is
-   not woken. Recommendation: yes for questions, once per ask, never for a
-   conversation you stopped or archived: a question is addressed to the parent,
-   a completion is only news.
-4. **When you answer a worker's question yourself from the Workers panel, does
-   it go through the parent conversation?** Recommendation: yes. The panel's
-   action writes your message to the parent conversation naming the run (as
-   *Kerro agentille* does), and the agent runs `run answer`. The daemon then
-   keeps reading Taskfleet only, and the conversation stays the record. The
-   alternative, the daemon running `taskfleet run answer` itself, is faster but
-   would be the daemon's first write into Taskfleet.
-5. **Default timeout.** Recommendation: 30 minutes for an ask, extended to
-   4 hours when escalated to you. A night's work would need the worker's
-   default anyway; a longer wait holds a worktree idle.
