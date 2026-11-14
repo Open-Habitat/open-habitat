@@ -2,11 +2,15 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: host-os-updates
 lane_seq: 1
+closed: 2026-11-14
+commits:
+- hash: 3b3f7ddd
+  summary: 'host: keep needrestart from restarting Open Habitat services'
 ---
 
 # An unattended OS update restarts every daemon and cuts all running turns
@@ -31,3 +35,9 @@ so Open Habitat's units are listed but not auto-restarted, and the product
 restarts a daemon itself when that person has no running turn or process
 (or reports a pending restart to the administrator) so security updates
 still take effect.
+
+## Resolution
+
+### 2026-11-14T04:27:18Z · @issuectl
+
+Fixed: host apply/upgrade install and verify a needrestart override for open-habitat-* services; see result.md. Live check: not run on a live installation.
