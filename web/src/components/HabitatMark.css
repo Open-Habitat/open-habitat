@@ -325,12 +325,18 @@
     .oh-dot {
     transform: translate(var(--tx), var(--ty));
   }
+  /* Thinking and an awaited sub-agent breathe; still, the resident is
+     smaller, so they differ from idle and from working. */
+  .oh-mark:is([data-state="thinking"], [data-state="awaited"]) .oh-dot {
+    transform: scale(0.6);
+  }
 }
 
 /* Forced colours: the browser replaces the palette, so the mark draws in
    system colours and your turn and error stand out as Highlight. */
 @media (forced-colors: active) {
-  .oh-mark {
+  .oh-mark,
+  .oh-mark[data-state] {
     color: CanvasText;
   }
   .oh-mark:is(
