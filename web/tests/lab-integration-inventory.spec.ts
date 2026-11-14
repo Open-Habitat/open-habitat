@@ -8,7 +8,7 @@ import { expect, test } from "./lab-host";
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 for (const width of [1280, 390]) {
   for (const theme of ["light", "dark"]) {
-    test(`@a11y unknown sizes, partial discovery and background admission ${width} ${theme}`, async ({
+    test(`@a11y unknown sizes and background admission ${width} ${theme}`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
@@ -22,22 +22,19 @@ for (const width of [1280, 390]) {
         schema_version: 1,
         state: phase,
         attempt_id: "20261022T120000.000000001",
-        provider: "microsoft",
+        provider: "google",
         address: "person@example.test",
         relogin: false,
-        unavailable_sites: ["Unavailable team"],
-        teams_left_out: "too_many",
-        teams_not_offered: ["Left-out team"],
         ...(phase === "choose_folders"
           ? {
-              directory: "~/cloud/onedrive/person@example.test",
+              directory: "~/cloud/google-drive/person@example.test",
 
               quota_bytes: 50 * 1024 ** 3,
               folders: [
-                { id: "onedrive", name: "OneDrive", suggested: true },
+                { id: "own", name: "Oma Drive", suggested: true },
                 {
-                  id: "sp_1",
-                  name: "Teams · Esimerkkitiimi · Asiakirjat",
+                  id: "shared",
+                  name: "Jaettu kanssani",
                   suggested: false,
                 },
               ],
@@ -61,16 +58,10 @@ for (const width of [1280, 390]) {
             schema_version: 1,
             providers: [
               {
-                id: "microsoft",
+                id: "google",
                 available: true,
-                login: "device_code",
-                services: [
-                  "onedrive",
-                  "sharepoint",
-                  "mail",
-                  "calendar",
-                  "contacts",
-                ],
+                login: "pasted_redirect",
+                services: ["mail", "calendar", "contacts", "drive"],
               },
             ],
             skill: "current",
@@ -78,26 +69,20 @@ for (const width of [1280, 390]) {
               phase === "failed"
                 ? [
                     {
-                      provider: "microsoft",
+                      provider: "google",
                       address: "person@example.test",
                       checked_at: "2026-10-22T12:00:00Z",
                       services: [
+                        { id: "mail", state: "ok" },
                         {
-                          id: "onedrive",
-                          state: "sync_failed",
-                          failure: "not_chosen",
-                          directory: "~/cloud/onedrive/person@example.test",
-                        },
-                        {
-                          id: "sharepoint",
+                          id: "drive",
                           state: "sync_failed",
                           failure: "quota_insufficient",
                           needed_bytes: 220396051998,
                           free_bytes: 42409644032,
-                          directory:
-                            "~/cloud/sharepoint/team/person@example.test",
+                          directory: "~/cloud/google-drive/person@example.test",
                           progress: {
-                            service: "sharepoint",
+                            service: "drive",
                             phase: "inventory",
                             elapsed_seconds: 12,
                             bytes: 0,
@@ -133,27 +118,21 @@ for (const width of [1280, 390]) {
       await expect(
         dialog.getByTestId("integration-folder-choice"),
       ).toBeVisible();
-      await expect(
-        dialog.getByTestId("integration-unavailable-sites"),
-      ).toContainText("Unavailable team"); // native display name, not UI wording
-      await expect(
-        dialog.getByTestId("integration-teams-left-out"),
-      ).toContainText("Left-out team"); // the team's native name
       const start = dialog.getByTestId("integration-sync-start");
       const own = dialog
-        .getByTestId("integration-folder-onedrive")
+        .getByTestId("integration-folder-own")
         .getByRole("checkbox");
       const team = dialog
-        .getByTestId("integration-folder-sp_1")
+        .getByTestId("integration-folder-shared")
         .getByRole("checkbox");
-      await dialog.getByTestId("integration-folder-onedrive").click();
+      await dialog.getByTestId("integration-folder-own").click();
       await expect(own).not.toBeChecked();
       await expect(start).toBeDisabled();
       await expect(dialog.getByTestId("integration-capacity")).toHaveAttribute(
         "data-known",
         "false",
       );
-      await dialog.getByTestId("integration-folder-sp_1").click();
+      await dialog.getByTestId("integration-folder-shared").click();
       await expect(team).toBeChecked();
       await expect(start).toBeEnabled();
       for (const stage of ["choice", "inventory", "quota"]) {
@@ -162,7 +141,7 @@ for (const width of [1280, 390]) {
           await expect(
             dialog.getByTestId("integration-sync-progress"),
           ).toBeVisible();
-          expect(choices).toEqual([["sp_1"]]);
+          expect(choices).toEqual([["shared"]]);
         } else if (stage === "quota") {
           phase = "failed";
           await expect(
@@ -189,18 +168,12 @@ for (const width of [1280, 390]) {
       }
       await dialog.getByTestId("dialog-close").first().click();
       await page.reload();
-      const card = page.getByTestId("integration-account-microsoft");
+      const card = page.getByTestId("integration-account-google");
       await expect(
         card
-          .getByTestId("integration-service-sharepoint")
+          .getByTestId("integration-service-drive")
           .getByTestId("integration-service-state"),
       ).toHaveAttribute("data-failure", "quota_insufficient");
-      // Files left out are a choice, not a failed status check.
-      await expect(
-        card
-          .getByTestId("integration-service-onedrive")
-          .getByTestId("integration-service-state"),
-      ).toHaveAttribute("data-failure", "not_chosen");
       await expect(card.getByTestId("integration-sync-progress")).toHaveCount(
         0,
       );
@@ -208,7 +181,7 @@ for (const width of [1280, 390]) {
       // and actions must wrap instead of squeezing its native path/name.
       expect(
         await card
-          .getByTestId("integration-service-sharepoint")
+          .getByTestId("integration-service-drive")
           .locator("code")
           .evaluate((el) => {
             const line = Number.parseFloat(getComputedStyle(el).lineHeight);

@@ -1143,44 +1143,22 @@ describe("account levels", () => {
   });
 });
 
-describe("Microsoft folder step", () => {
+describe("Microsoft without a folder step", () => {
   const microsoft: Provider = {
     id: "microsoft",
     available: true,
     login: "device_code",
     services: ["onedrive", "sharepoint", "mail", "calendar", "contacts"],
+    levels: [
+      { id: "full", available: true },
+      { id: "read", available: true },
+    ],
   };
-  const choose = (extra: Partial<LoginView>) =>
+  const dialog = (stage: Parameters<typeof ConnectDialog>[0]["stage"]) =>
     render(
       <ConnectDialog
         provider={microsoft}
-        stage={{
-          stage: "login",
-          view: {
-            schema_version: 1,
-            state: "choose_folders",
-            attempt_id: "a1",
-            provider: "microsoft",
-            relogin: false,
-            address: "person@example.test",
-            directory: "~/cloud/onedrive/person@example.test",
-            free_bytes: 10 * 1024 ** 3,
-            folders: [
-              { id: "onedrive", name: "OneDrive", suggested: true },
-              {
-                id: "sp-000000000000000000000001",
-                name: "Teams · Esimerkkitiimi · Asiakirjat",
-                suggested: false,
-              },
-              {
-                id: "sp-000000000000000000000002",
-                name: "Teams · Esimerkkitiimi · Suunnittelu",
-                suggested: false,
-              },
-            ],
-            ...extra,
-          },
-        }}
+        stage={stage}
         onContinue={noop}
         onPassword={noop}
         onPaste={noop}
@@ -1190,35 +1168,86 @@ describe("Microsoft folder step", () => {
       />,
     );
 
-  it("offers team and channel libraries by the names people know", () => {
-    const view = choose({});
-    expect(
-      view.getByTestId("integration-folder-sp-000000000000000000000002")
-        .textContent,
-    ).toContain("Teams · Esimerkkitiimi · Suunnittelu");
-    expect(view.queryByTestId("integration-teams-left-out")).toBeNull();
+  it("says before signing in that files are searched, not synchronized", () => {
+    const view = dialog({ stage: "intro" });
+    const text = view.baseElement.textContent ?? "";
+    expect(text).toContain("Microsoftin haulla");
+    expect(text).not.toContain("Synkronoituu kotihakemistoosi");
+    expect(text).not.toContain("OneDriven tai Dropboxin");
   });
 
-  it("says why Teams files are missing instead of leaving them out silently", () => {
-    const view = choose({
-      teams_left_out: "not_granted",
-      folders: [{ id: "onedrive", name: "OneDrive", suggested: true }],
+  it("finishes the sign-in with no folder step or step counter", () => {
+    const view = dialog({
+      stage: "login",
+      view: {
+        schema_version: 1,
+        state: "completed",
+        attempt_id: "20261114T120000.000000000",
+        provider: "microsoft",
+        relogin: false,
+        address: "person@example.test",
+      },
     });
-    expect(
-      view.getByTestId("integration-teams-left-out").textContent,
-    ).toContain("tiimiluettelo");
+    expect(view.getByTestId("integration-connected")).toBeTruthy();
+    expect(view.queryByTestId("integration-steps")).toBeNull();
+    expect(view.baseElement.textContent).not.toContain("pilvikansioita");
   });
 
-  it("names unreachable channels beside a partial team list", () => {
-    const view = choose({
-      teams_left_out: "channels_not_granted",
-      unavailable_sites: ["Esimerkkitiimi · Kielletty"],
-    });
-    expect(
-      view.getByTestId("integration-unavailable-sites").textContent,
-    ).toContain("Esimerkkitiimi · Kielletty");
-    expect(
-      view.getByTestId("integration-teams-left-out").textContent,
-    ).toContain("kanavien");
+  it("shows the files as reached on demand, and a level change of a synced account keeps its folders", async () => {
+    const searched: Account = {
+      provider: "microsoft",
+      address: "person@example.test",
+      checked_at: "2026-11-14T06:38:00Z",
+      level: "full",
+      services: [
+        { id: "onedrive", state: "ok", access: "full" },
+        { id: "mail", state: "ok", access: "full" },
+      ],
+      grant: { granted: [], not_granted: [] },
+    };
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          schema_version: 1,
+          providers: [microsoft],
+          skill: "current",
+          accounts: [searched],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onChangeLevel={noop}
+        onRemove={noop}
+      />,
+    );
+    const card = view.getByTestId("integration-account-microsoft");
+    expect(card.textContent).toContain("Microsoftin haulla");
+    expect(card.textContent).not.toContain("Ei synkronoida");
+    view.unmount();
+
+    // Without a synced folder a level change says nothing of folders.
+    const plain = dialog({ stage: "intro", account: searched });
+    await userEvent.click(plain.getByTestId("integration-level-read"));
+    expect(plain.baseElement.textContent).not.toContain("peiliksi");
+    plain.unmount();
+
+    const synced: Account = {
+      ...searched,
+      services: [
+        {
+          id: "onedrive",
+          state: "ok",
+          access: "full",
+          directory: "~/cloud/onedrive/person@example.test",
+        },
+        { id: "mail", state: "ok", access: "full" },
+      ],
+    };
+    const change = dialog({ stage: "intro", account: synced });
+    await userEvent.click(change.getByTestId("integration-level-read"));
+    const text = change.baseElement.textContent ?? "";
+    expect(text).toContain("Jo synkronoituvat kansiot jatkavat peileinä");
+    expect(text).not.toContain("Valitset kansiot uudelleen");
   });
 });

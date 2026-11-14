@@ -60,8 +60,8 @@ var microsoftLevels = []Level{LevelFull, LevelNoSend, LevelDrafts, LevelRead}
 // without Mail.Send, the one permission that sends mail. Drafts sends
 // nothing: mail is drafted, calendars and files only read, since an event
 // sends invitations and a file grant can create a public sharing link.
-// Every level lists the person's teams and channels by name, which only
-// finds their files and changes nothing.
+// Every level lists the person's teams and channels by name, which changes
+// nothing (microsoftTeamsScopes).
 var microsoftLevelScopes = map[Level]string{
 	LevelFull:   microsoftScopes + " " + microsoftMCPScopes + " " + microsoftTeamsScopes,
 	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite " + microsoftTeamsScopes,
@@ -105,9 +105,11 @@ const microsoftMCPDir = ".config/ms-365-mcp-server/open-habitat"
 const microsoftScopes = "openid profile User.Read offline_access Files.ReadWrite.All Sites.ReadWrite.All"
 const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
 
-// microsoftTeamsScopes find the libraries of the person's teams and
-// channels (microsoft_files_linux.go); their files are read through the
-// files and sites grants.
+// microsoftTeamsScopes let the folder step of earlier releases offer the
+// libraries of the person's teams and channels. Nothing reads those lists
+// now that agents search instead; they stay in each level's consent because
+// dropping them changes the application an operator sets up in Entra, which
+// is a decision of its own.
 const microsoftTeamsScopes = "Team.ReadBasic.All Channel.ReadBasic.All"
 
 // microsoftRequest is what a sign-in asks of the tenant. microsoftScopes and
@@ -491,13 +493,9 @@ type microsoftLogin struct {
 	// siteLookups are the lookup forms other than the composite ID that
 	// opened a site, one per site, for the journal.
 	siteLookups []string
-	// teamsLeftOut says why Teams files are missing from the folder step,
-	// teamsNotOffered names the teams left out whole (at most 32 names), and
-	// teamsOmitted counts them. bounds are the limits that left them out.
-	teamsLeftOut     string
-	teamsNotOffered  []string
-	teamsOmitted     int
-	bounds           []string
+	// restart are the roots whose sync this sign-in turned to the other
+	// direction (Commit); their first pass in the new direction follows.
+	restart          []string
 	entry            *microsoft
 	env              Env
 	app              MicrosoftApp
@@ -682,17 +680,10 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	l.address = address
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
-	phase = "graph_discovery"
-	if scopes["Files.ReadWrite.All"] || scopes["Files.Read.All"] {
-		// A read files grant mirrors its roots one way (level_linux.go).
-		if err := l.discover(ctx, token.Access, scopes); err != nil {
-			return "", err
-		}
-	} else {
-		// Without a files grant the account keeps Outlook with no cloud
-		// roots, as an Exchange-only one.
-		l.config = []byte(microsoftConfigHeader)
-	}
+	// Agents search and fetch files through the Outlook server's file tools,
+	// so a sign-in neither lists libraries nor offers a choice of folders
+	// (Jari 14.11.2026). Commit carries over only the roots that already sync.
+	l.config = []byte(microsoftConfigHeader)
 	// The union grant is imported by the pinned MSAL closure; MSAL creates its
 	// own account/refresh records, and the MCP library encrypts its native cache.
 	// Only stdin carries the refresh token. Existing published stores are untouched
@@ -797,11 +788,22 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	if err != nil {
 		return err
 	}
-	// A root whose files the new grant syncs the other way starts over
-	// from the person's next choice. One that synced both ways and will not
-	// first syncs both ways once more with the old grant, so nothing made
-	// locally is left behind; if that fails, nothing changes.
+	// The roots that already sync stay, with the new token and grant; no
+	// sign-in adds one. Without a files grant rclone has nothing to sync with.
 	granted := microsoftGranted(l.granted)
+	var kept []microsoftRemote
+	if granted["Files.ReadWrite.All"] || granted["Files.Read.All"] {
+		for _, r := range previousRemotes {
+			if microsoftKept(l.env, address, r) {
+				kept = append(kept, r)
+			}
+		}
+	}
+	// A root whose files the new grant syncs the other way runs its first
+	// pass again in the new direction once the sign-in is in place (restart).
+	// One that synced both ways and will not first syncs both ways once more
+	// with the old grant, so nothing made locally is left behind; if that
+	// fails, nothing changes.
 	var turned []string
 	for _, r := range previousRemotes {
 		writable := microsoftWritable(r.service(), granted)
@@ -822,7 +824,17 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			return FinalSyncFailed
 		}
 	}
-	l.config = microsoftPreserveDirectories(l.config, previousRemotes)
+	l.restart = nil
+	for _, r := range kept {
+		if slices.Contains(turned, r.Name) {
+			l.restart = append(l.restart, r.Name)
+		}
+	}
+	if len(kept) > 0 {
+		if l.config, err = microsoftKeptConfig(l.app, l.granted, l.token, kept); err != nil {
+			return err
+		}
+	}
 	hadServer, err := microsoftMCPConfigured(l.env, address)
 	if err != nil {
 		return err
@@ -1055,22 +1067,28 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 			out[i].State = state
 		}
 	}()
-	remotes, inventoryErr := microsoftRemotes(env, address)
-	hasSharePoint := false
-	checked := map[int]bool{}
+	all, inventoryErr := microsoftRemotes(env, address)
+	// Only roots that had a first pass are the account's synced files; one
+	// an earlier release's folder step offered and nobody chose is nothing.
+	var remotes []microsoftRemote
+	for _, r := range all {
+		if microsoftKept(env, address, r) {
+			remotes = append(remotes, r)
+		}
+	}
+	synced := [2]bool{}
 	if inventoryErr == nil {
 		// One representative per displayed service: all these native remotes
 		// carry the same grant, and sync supervision supplies pair failures.
 		for _, r := range remotes {
 			i := 0
-			if r.Name != "onedrive" {
+			if r.service() == "sharepoint" {
 				i = 1
-				hasSharePoint = true
 			}
-			if checked[i] {
+			if synced[i] {
 				continue
 			}
-			checked[i] = true
+			synced[i] = true
 			cmd, ok := microsoftCommand(env, address, "about", r.Name+":", "--json")
 			if !ok {
 				continue
@@ -1078,17 +1096,13 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 			if err, rejected := dropboxStatus(ctx, env, cmd); err == nil {
 				// The login works; whether the files sync is what the roots'
 				// native state says, as for Google's and Dropbox's.
-				ready, started := false, false
+				ready := false
 				for _, candidate := range remotes {
 					if candidate.service() == r.service() {
 						ready = ready || microsoftReady(env, address, candidate)
-						started = started || microsoftPassStarted(env, address, candidate)
 					}
 				}
 				out[i].State, out[i].Failure = signedInState(ready)
-				if !ready && !started {
-					out[i].State, out[i].Failure = StateSyncFailed, FoldersNotChosen
-				}
 			} else if rejected {
 				out[i].State = StateLoginExpired
 			} else {
@@ -1097,6 +1111,11 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 		}
 	}
 	probes.Wait()
+	// Files nothing syncs are reached on demand through the Outlook server's
+	// file tools, so their state is that server's sign-in.
+	if inventoryErr == nil && !synced[0] {
+		out[0].State = out[2].State
+	}
 	m.alignedView(env, address, out)
 	var grant *Grant
 	if granted != nil {
@@ -1104,15 +1123,17 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 		_, level, _ := microsoftAppOf(env, address)
 		grant = microsoftGrantOf(granted, level)
 	}
-	// A file service without roots is shown only when the grant says why:
-	// otherwise the account simply has no OneDrive or followed libraries.
+	// OneDrive's row ("OneDrive and SharePoint") stands for the files agents
+	// search and fetch, shown once the tenant's answer says what the grant
+	// allows; a separate SharePoint row only for synced libraries, or when
+	// the grant says why there is none.
 	shown := func(i int) bool { return out[i].Access != "" && out[i].Access != AccessFull }
 	var kept []Service
 	for i, s := range out {
-		if i == 0 && inventoryErr == nil && len(remotes) == 0 && !shown(0) {
+		if i == 0 && inventoryErr == nil && !synced[0] && out[0].Access == "" {
 			continue
 		}
-		if i == 1 && inventoryErr == nil && !hasSharePoint && !shown(1) {
+		if i == 1 && inventoryErr == nil && !synced[1] && !shown(1) {
 			continue
 		}
 		kept = append(kept, s)
@@ -1178,10 +1199,13 @@ func microsoftVerify(ctx context.Context, env Env, address string) (string, []st
 func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	_, ready := m.SyncCommand(env, address)
 	var directories strings.Builder
-	mirror := false
-	remotes, remotesErr := microsoftRemotes(env, address)
-	if remotesErr == nil {
+	mirror, syncs := false, false
+	if remotes, err := microsoftRemotes(env, address); err == nil {
 		for _, r := range remotes {
+			if !microsoftKept(env, address, r) {
+				continue
+			}
+			syncs = true
 			if microsoftReady(env, address, r) {
 				fmt.Fprintf(&directories, "\n- `~/%s/`", r.Directory)
 			}
@@ -1189,18 +1213,20 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			mirror = mirror || !r.Writable
 		}
 	}
-	files := "The OneDrive folders and SharePoint libraries the person chose sync both ways"
-	if mirror {
-		files = "The OneDrive folders and SharePoint libraries the person chose are one-way mirrors, because this account's access to files is read-only"
-	}
-	files += fmt.Sprintf(": OneDrive under `~/cloud/onedrive/%s/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/%s/`.", address, address)
-	list := "Synced directories:" + directories.String()
-	if !ready {
-		if remotesErr == nil && len(remotes) == 0 {
-			list = "No OneDrive folder or SharePoint library is synced for this account; Outlook works without one."
-		} else {
-			list = "The first sync has not finished, so nothing under those paths can be relied on yet. The person finishes the folder choice in Settings → Integrations."
+	// Only an account whose libraries an earlier release synced has local
+	// copies to describe; every other one reaches its files by search alone.
+	files, list := "", ""
+	if syncs {
+		files = "The OneDrive folders and SharePoint libraries the person chose sync both ways"
+		if mirror {
+			files = "The OneDrive folders and SharePoint libraries the person chose are one-way mirrors, because this account's access to files is read-only"
 		}
+		files += fmt.Sprintf(": OneDrive under `~/cloud/onedrive/%s/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/%s/`.", address, address)
+		list = "\n\nSynced directories:" + directories.String()
+		if !ready {
+			list = "\n\nThe first sync has not finished, so nothing under those paths can be relied on yet."
+		}
+		files = "\n\n" + files
 	}
 	var services []Service
 	uses, search := "Outlook mail, calendars and contacts", ""
@@ -1212,15 +1238,14 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 		if !n.mcpOutdated() && microsoftRules.access("onedrive", allowed) != AccessNone {
 			uses = "Outlook mail, calendars, contacts and Microsoft 365 files"
-			search = "\n\n" + fmt.Sprintf(microsoftSearchSkill, address, address)
-			list = strings.Replace(list, "Outlook works without one", "Outlook and file search work without one", 1)
+			search = "\n\n" + microsoftSearchSkill(address, syncs)
 		}
 	}
 	name, _ := microsoftServerNames(address)
 	if server, _, err := microsoftServerOf(env, address); err == nil && server.current() != "" {
 		name = server.current()
 	}
-	body := fmt.Sprintf(microsoftOutlookSkill, uses, name) + "\n\n" + files + search + "\n\n" + list +
+	body := fmt.Sprintf(microsoftOutlookSkill, uses, name) + files + search + list +
 		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
 	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
 }
@@ -1235,13 +1260,23 @@ const microsoftOutlookSkill = "%s are reached through the Pi MCP server `%s`, wh
 // microsoftSearchSkill tells an agent to find files by search and fetch only
 // what it needs (Jari 12.11.2026): a full local copy of every library does not
 // fit the person's quota, and a recursive grep over a cloud tree that is not
-// fully local either misses files or downloads all of them. Jari proofreads
-// every change to this text before it reaches the pilots.
-const microsoftSearchSkill = "Most of what this account can open is not on this machine, since a full copy of every library would not fit the person's storage. Microsoft's search is how files are found. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` look inside one site, library or folder.\n\n" +
-	"To read a file, fetch it with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; when the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. The local path then says where the file lives in the cloud. The tool needs the parent directory to exist and does not overwrite: a file already there is an earlier fetch that may be stale and may hold edits made here. Look at its age, and put a fresh fetch beside it under another name instead of deleting it.\n\n" +
-	"Grep and read within what you fetched, and inside the synced directories listed below, which are complete local copies. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud, and the synced copies can be very large.\n\n" +
-	"A fetched file is a local copy that you may edit, but the edit stays here: this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365. When the person wants an edited file back there, tell them where the copy is so they can upload it."
+// fully local either misses files or downloads all of them. Since 14.11.2026
+// a sign-in syncs nothing, so only an account whose libraries an earlier
+// release synced (syncs) hears of synced directories. Jari proofreads every
+// change to this text before it reaches the pilots.
+func microsoftSearchSkill(address string, syncs bool) string {
+	local := "Most of what this account can open is not on this machine, since a full copy of every library would not fit the person's storage."
+	grep := "Grep and read within what you fetched, and inside the synced directories listed below, which are complete local copies. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud, and the synced copies can be very large."
+	if !syncs {
+		local = "None of this account's files are copied to this machine, since a full copy of every library would not fit the person's storage."
+		grep = "Grep and read within what you fetched. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud."
+	}
+	return local + " Microsoft's search is how files are found. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` look inside one site, library or folder.\n\n" +
+		fmt.Sprintf("To read a file, fetch it with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; when the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. The local path then says where the file lives in the cloud. The tool needs the parent directory to exist and does not overwrite: a file already there is an earlier fetch that may be stale and may hold edits made here. Look at its age, and put a fresh fetch beside it under another name instead of deleting it.\n\n", address, address) +
+		grep + "\n\n" +
+		"A fetched file is a local copy that you may edit, but the edit stays here: this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365. When the person wants an edited file back there, tell them where the copy is so they can upload it."
+}
 
-var _ FolderEntry = (*microsoft)(nil)
+var _ resumableEntry = (*microsoft)(nil)
 var _ GrantEntry = (*microsoft)(nil)
 var _ LoginEntry = (*microsoft)(nil)

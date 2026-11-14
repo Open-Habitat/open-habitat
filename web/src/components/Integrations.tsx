@@ -172,8 +172,15 @@ function levelAccess(level: Level, service: ServiceId): Access {
 }
 
 /** What agents may do with a service at a level, before signing in. */
-function levelAbility(level: Level, service: ServiceId): string {
+function levelAbility(
+  provider: ProviderId,
+  level: Level,
+  service: ServiceId,
+): string {
   const access = levelAccess(level, service);
+  // Microsoft's files are searched and fetched, never synced at connection.
+  if (provider === "microsoft" && fileServices.includes(service))
+    return txt.onDemandFiles;
   if (fileServices.includes(service)) {
     if (level === "app_folder") return txt.appFolder;
     return access === "full" ? txt.syncBoth : txt.mirror;
@@ -262,6 +269,14 @@ const scopeName = (scope: string) =>
 function gets(provider: ProviderId, service: Service): ReactNode {
   if (service.access === "read" && service.directory)
     return txt.readFolder(<code>{service.directory}</code>);
+  // Microsoft files that no earlier sync keeps here are reached on demand.
+  if (
+    provider === "microsoft" &&
+    fileServices.includes(service.id) &&
+    !service.directory &&
+    service.access !== "none"
+  )
+    return txt.onDemandFiles;
   const limited = narrower(service);
   if (limited) return limited;
   if (service.directory) return txt.folder(<code>{service.directory}</code>);
@@ -1227,16 +1242,8 @@ export type ConnectStage =
 
 function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
   const files = provider.services.find((s) => fileServices.includes(s));
-  // Microsoft has its own two-grant counter until authentication finishes.
-  // Showing the outer login/folder counter here would give two different 2/2s.
-  if (
-    !files ||
-    view.relogin ||
-    (provider.id === "microsoft" &&
-      ["starting", "device_code", "completing"].includes(view.state) &&
-      !view.address)
-  )
-    return null;
+  // Microsoft has no folder step: its files are searched, not chosen.
+  if (!files || view.relogin || provider.id === "microsoft") return null;
   const steps = [
     { id: "login", label: txt.stepLogin(providerCopy[provider.id].name) },
     {
@@ -2281,7 +2288,7 @@ function LevelChoice({
                           {serviceName(provider.id, s)}
                         </b>
                         <span className="ig-level-svc-text">
-                          {levelAbility(l.id, s)}
+                          {levelAbility(provider.id, l.id, s)}
                         </span>
                       </li>
                     ))}
@@ -2310,6 +2317,12 @@ function LevelChange({
   const file = provider.services.find((s) => fileServices.includes(s));
   const before = account.services.find((s) => s.id === file)?.access;
   const appFolder = (l?: Level) => l === "app_folder";
+  // Microsoft syncs only what an earlier release chose; without such a
+  // folder its files are searched at every level and nothing changes.
+  const microsoft = provider.id === "microsoft";
+  const synced = account.services.some(
+    (s) => fileServices.includes(s.id) && !!s.directory,
+  );
   const items: [IconName, string][] = [
     ["external", txt.signInAgainAt(copy.gen)],
     [
@@ -2323,7 +2336,7 @@ function LevelChange({
             : txt.oldRemoved(copy.site, copy.gen),
     ],
   ];
-  if (file) {
+  if (file && (!microsoft || synced)) {
     const name = serviceName(provider.id, file);
     const after = levelAccess(level, file);
     const rootChanges = appFolder(account.level) !== appFolder(level);
@@ -2335,9 +2348,15 @@ function LevelChange({
         appFolder(level) ? txt.toAppFolder : txt.fromAppFolder,
       ]);
     if (after === "read" && before !== "read")
-      items.push(["folder", txt.becomesMirror(name)]);
+      items.push([
+        "folder",
+        microsoft ? txt.becomesMirrorKept(name) : txt.becomesMirror(name),
+      ]);
     if (after === "full" && before === "read" && !rootChanges)
-      items.push(["folder", txt.syncsAgain(name)]);
+      items.push([
+        "folder",
+        microsoft ? txt.syncsAgainKept(name) : txt.syncsAgain(name),
+      ]);
   }
   return (
     <>
@@ -2472,7 +2491,10 @@ function Intro({
   if (provider.levels)
     return (
       <>
-        {account || provider.id === "google" || isMCP(provider.id) ? null : (
+        {account ||
+        provider.id === "google" ||
+        provider.id === "microsoft" ||
+        isMCP(provider.id) ? null : (
           <CloudFolderHint />
         )}
         <p className="ig-lead">{txt.whatMay}</p>
@@ -2500,9 +2522,7 @@ function Intro({
     );
   return (
     <>
-      {(provider.id === "microsoft" || provider.id === "dropbox") && (
-        <CloudFolderHint />
-      )}
+      {provider.id === "dropbox" && <CloudFolderHint />}
       <p className="ig-lead">{txt.agentsGet}</p>
       <ul className="ig-picks">
         {provider.services.map((s) => (
@@ -2652,37 +2672,6 @@ export function ConnectDialog({
     case "login": {
       const v = stage.view;
       const steps = <Steps provider={provider} view={v} />;
-      const unavailableSites = v.unavailable_sites?.length ? (
-        <p
-          className="ig-result bad"
-          role="status"
-          data-testid="integration-unavailable-sites"
-        >
-          <Icon name="warning" />
-          <span>{txt.sitesUnavailable(v.unavailable_sites.join(", "))}</span>
-        </p>
-      ) : null;
-      const teamsLeftOut = v.teams_left_out ? (
-        <p
-          className="ig-result bad"
-          role="status"
-          data-testid="integration-teams-left-out"
-        >
-          <Icon name="warning" />
-          <span>
-            {v.teams_left_out === "too_many" && v.teams_not_offered?.length
-              ? txt.teamsNotOffered(v.teams_not_offered.join(", "))
-              : txt.teamsLeftOut[v.teams_left_out]}
-          </span>
-        </p>
-      ) : null;
-      const leftOut =
-        unavailableSites || teamsLeftOut ? (
-          <>
-            {unavailableSites}
-            {teamsLeftOut}
-          </>
-        ) : null;
       if (
         v.state === "starting" ||
         v.state === "completing" ||
@@ -2785,9 +2774,10 @@ export function ConnectDialog({
           />
         );
       else {
-        const dir = v.relogin
-          ? undefined
-          : provider.services.some((s) => fileServices.includes(s));
+        const dir =
+          v.relogin || provider.id === "microsoft"
+            ? undefined
+            : provider.services.some((s) => fileServices.includes(s));
         body = (
           <>
             <p
@@ -2802,7 +2792,6 @@ export function ConnectDialog({
                   : txt.connectedTo(v.address ?? "")}
               </span>
             </p>
-            {leftOut}
             {dir ? <p className="ig-p">{txt.foldersContinue}</p> : null}
             <div className="ig-row">
               <ControlButton
@@ -2817,13 +2806,6 @@ export function ConnectDialog({
           </>
         );
       }
-      if (leftOut && v.state !== "completed")
-        body = (
-          <>
-            {body}
-            {leftOut}
-          </>
-        );
       break;
     }
   }

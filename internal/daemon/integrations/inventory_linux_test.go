@@ -11,7 +11,7 @@ import (
 )
 
 func TestNativeFileChoicesDoNotEnumerateAndMeasureOnlyApprovedRoots(t *testing.T) {
-	for _, provider := range []string{"dropbox", "google", "microsoft"} {
+	for _, provider := range []string{"dropbox", "google"} {
 		t.Run(provider, func(t *testing.T) {
 			env := dropboxEnv(t)
 			address := "person@example.test"
@@ -24,12 +24,6 @@ func TestNativeFileChoicesDoNotEnumerateAndMeasureOnlyApprovedRoots(t *testing.T
 				dir = googleDir
 				config = "[google]\ntype = drive\n"
 				entry = &google{}
-			}
-			if provider == "microsoft" {
-				dir = microsoftDir
-				id = "onedrive"
-				entry = &microsoft{}
-				config = testMicrosoftRoots("onedrive", "cloud/onedrive/"+address, "sp-0123456789abcdef01234567", "cloud/sharepoint/tenant--"+address+"/site/library")
 			}
 			if err := os.MkdirAll(filepath.Join(env.Home, dir), 0700); err != nil {
 				t.Fatal(err)
@@ -60,9 +54,6 @@ func TestNativeFileChoicesDoNotEnumerateAndMeasureOnlyApprovedRoots(t *testing.T
 			}
 			measured, err := os.ReadFile(filepath.Join(env.Home, "measured"))
 			remote := provider
-			if provider == "microsoft" {
-				remote = "onedrive"
-			}
 			if err != nil || string(measured) != remote+":\n" {
 				t.Fatal("unselected roots measured", string(measured), err)
 			}

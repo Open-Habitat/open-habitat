@@ -321,11 +321,12 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 	if !slices.Equal(asked, []string{"00000000-0000-0000-0000-000000000002"}) {
 		t.Fatal("asked", asked)
 	}
+	earlierRoots(t, m, env, address, LevelRead, microsoftReadGrant)
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil || len(remotes) != 2 || remotes[0].Writable || remotes[1].Writable {
 		t.Fatal("read grant's roots", remotes, err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{"onedrive"}); err != nil {
+	if err := m.testChoose(context.Background(), env, address, []string{"onedrive"}); err != nil {
 		t.Fatal(err)
 	}
 	if mirrors, _ := os.ReadFile(filepath.Join(env.Home, "mirrors")); !strings.HasPrefix(string(mirrors), "onedrive: "+filepath.Join(env.Home, "cloud/onedrive", address)) {
@@ -411,6 +412,7 @@ func TestMicrosoftNoSendLevelIsItsApplicationAndNeverSends(t *testing.T) {
 	if strings.Contains(" "+l.allowed+" ", " Mail.Send ") || !strings.Contains(l.allowed, "Calendars.ReadWrite") || !strings.Contains(l.allowed, "Mail.ReadWrite") {
 		t.Fatal("allowed scopes", l.allowed)
 	}
+	earlierRoots(t, m, env, address, LevelNoSend, microsoftNoSendGrant)
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil || len(remotes) != 2 || !remotes[0].Writable || !remotes[1].Writable {
 		t.Fatal("no-send grant's roots", remotes, err)
@@ -448,10 +450,12 @@ func TestMicrosoftLevelChangeSyncsBothWaysOnce(t *testing.T) {
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{"onedrive"}); err != nil {
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+	if err := m.testChoose(context.Background(), env, address, []string{"onedrive"}); err != nil {
 		t.Fatal(err)
 	}
 	microsoftGrantToken(t, m, microsoftReadGrant, true)
+	var changed []string
 	change := func() error {
 		login, err := m.StartLevelLogin(context.Background(), env, address, LevelRead)
 		if err != nil {
@@ -463,7 +467,9 @@ func TestMicrosoftLevelChangeSyncsBothWaysOnce(t *testing.T) {
 		if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
 			t.Fatal(err)
 		}
-		return l.Commit(context.Background(), address)
+		err = l.Commit(context.Background(), address)
+		changed = l.restart
+		return err
 	}
 	os.WriteFile(filepath.Join(env.Home, "pass-fail"), nil, 0600)
 	if err := change(); !errors.Is(err, FinalSyncFailed) {
@@ -486,8 +492,8 @@ func TestMicrosoftLevelChangeSyncsBothWaysOnce(t *testing.T) {
 	if n, _ := microsoftReadNative(env, address); !slices.Contains(n.clients, "00000000-0000-0000-0000-000000000002") {
 		t.Fatal("roots not on the read level's application", n.clients)
 	}
-	if choose, _ := m.FolderChoiceAfterLogin(env, address); !choose {
-		t.Fatal("the mirror needs the person's choice")
+	if !slices.Equal(changed, []string{"onedrive"}) {
+		t.Fatal("the turned root's mirror pass does not follow", changed)
 	}
 }
 

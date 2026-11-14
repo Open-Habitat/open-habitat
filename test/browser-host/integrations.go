@@ -21,8 +21,8 @@ import (
 // The synthetic host's integration catalog is the product's IMAP entry run
 // against test/fixtures/integrations/himalaya, plus a Google entry with a
 // pasted redirect and a Microsoft entry with a device code. These replace the
-// native OAuth entries so the browser relays, the folder
-// choice and sync supervision can be exercised end to end; they never ship.
+// native OAuth entries so the browser relays, Google's folder choice and sync
+// supervision can be exercised end to end; they never ship.
 // Their "tools" are records under the disposable home, like a real tool's
 // token store, so the catalog reads accounts from files exactly as it does in
 // production. Tests steer them through /fixture/integrations.
@@ -226,8 +226,24 @@ func (f *fixtureEntry) Skill(_ integrations.Env, address string) integrations.Sk
 		Body: "Synthetic fixture account; files in `~/cloud/" + f.dir + "/" + address + "/`."}
 }
 
-func (f *fixtureEntry) Directories(_ integrations.Env, address string) []integrations.SyncDirectory {
+func (f *fixtureEntry) Directories(env integrations.Env, address string) []integrations.SyncDirectory {
+	// As the native Microsoft entry: only files an earlier release left
+	// syncing have a directory (seedAgentFiles); the rest are searched.
+	if _, synced := f.SyncCommand(env, address); f.provider == integrations.Microsoft && !synced {
+		return nil
+	}
 	return []integrations.SyncDirectory{{Service: f.files, Path: "cloud/" + f.dir + "/" + address}}
+}
+
+// FolderChoiceAfterLogin follows the native entries: Microsoft offers no
+// folder step, since agents search its files; the others offer one until
+// their files sync.
+func (f *fixtureEntry) FolderChoiceAfterLogin(env integrations.Env, address string) (bool, error) {
+	if f.provider == integrations.Microsoft {
+		return false, nil
+	}
+	_, synced := f.SyncCommand(env, address)
+	return !synced, nil
 }
 
 func (f *fixtureEntry) SyncCommand(env integrations.Env, address string) (integrations.Command, bool) {

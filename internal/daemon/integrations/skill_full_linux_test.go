@@ -83,11 +83,13 @@ func fullSkill(t *testing.T) string {
 		if err := l.Commit(ctx, got); err != nil {
 			t.Fatal(err)
 		}
-		folders, err := m.Folders(ctx, env, address)
+		// Libraries an earlier release's folder step chose keep syncing.
+		earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+		folders, err := m.testFolders(ctx, env, address)
 		if err != nil || len(folders) != 2 {
 			t.Fatal(folders, err)
 		}
-		if err := m.ChooseFolders(ctx, env, address, []string{folders[0].ID, folders[1].ID}); err != nil {
+		if err := m.testChoose(ctx, env, address, []string{folders[0].ID, folders[1].ID}); err != nil {
 			t.Fatal(err)
 		}
 		writeMicrosoftRegistration(t, env, address, microsoftMCPArgs("User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite Files.ReadWrite.All Sites.ReadWrite.All"))

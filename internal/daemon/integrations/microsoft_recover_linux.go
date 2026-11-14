@@ -130,11 +130,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 			granted = strings.Fields(microsoftScopes)
 		}
 		scopes := microsoftGranted(granted)
-		// This repair restores followed sites' libraries; the person's teams
-		// are offered at their next sign-in, never selected here.
-		for _, s := range append(microsoftTeamScopes, microsoftChannelScopes...) {
-			delete(scopes, s)
-		}
+		// This repair restores followed sites' libraries only.
 		l := &microsoftLogin{entry: m, env: env, app: app, address: address, token: []byte(n.token), granted: granted}
 		if err := l.discover(ctx, token.Access, scopes); err != nil {
 			return err
@@ -298,7 +294,13 @@ func (c *Catalog) tryRecoverMicrosoft(ctx context.Context, m *microsoft, address
 			outcome = "deferred"
 		}
 	}
-	c.log.Info("integration_library_recovery", "provider", string(Microsoft), "outcome", outcome)
+	attrs := []any{"provider", string(Microsoft), "outcome", outcome}
+	// Discovery's step and Graph's allowlisted answer, never provider text.
+	var discovery microsoftDiscoveryError
+	if errors.As(err, &discovery) {
+		attrs = append(attrs, discovery.diagnostic()...)
+	}
+	c.log.Info("integration_library_recovery", attrs...)
 	// A failed initial pass is not blindly repeated while the daemon lives.
 	// Its native interrupted state is handled by startup resume, or the
 	// person can choose again; a critical abort always remains stopped.

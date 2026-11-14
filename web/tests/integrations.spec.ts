@@ -286,7 +286,7 @@ test("DAV endpoints connect independently and renew the right provider without r
   expect(JSON.stringify(list)).not.toContain("dav-password");
 });
 
-test("a device code relays to the browser, folders fit the quota, and sync starts", async ({
+test("a device code relays to the browser and Microsoft connects with no folder step", async ({
   page,
 }) => {
   await signIn(page);
@@ -338,59 +338,14 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     .analyze();
   expect(audit.violations).toEqual([]);
   await fixture(page, "action=approve");
-  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  // No folder step: Microsoft's files are searched, not synced.
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
   await page.unroute("**/api/v1/integrations/login*");
-  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
-  const choice = await (
-    await page.request.get("/api/v1/integrations/login")
-  ).json();
-  // Hold the browser in the real relay's long initial-sync phase. The native
-  // stand-in completes immediately; only the observation is delayed here.
-  const syncing = {
-    schema_version: 1,
-    state: "completing",
-    attempt_id: choice.attempt_id,
-    provider: choice.provider,
-    address: choice.address,
-    relogin: false,
-    progress: {
-      phase: "transferring",
-      elapsed_seconds: 82,
-      bytes: 1048576,
-      total_bytes: 8388608,
-      files: 2,
-      total_files: 10,
-    },
-  };
-  await page.route("**/api/v1/integrations/login*", async (route) => {
-    if (route.request().method() === "PUT") await route.fetch();
-    else if (route.request().method() !== "GET") return route.continue();
-    return route.fulfill({ json: syncing });
-  });
+  await expect(dialog.getByTestId("integration-folder-choice")).toHaveCount(0);
   await dialog
     .getByRole("button")
-    .and(dialog.getByTestId("integration-sync-start"))
+    .and(dialog.getByTestId("integration-done"))
     .click();
-  await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
-  await expect(dialog.getByTestId("dialog-close")).toBeVisible();
-  await expect(dialog.getByTestId("integration-sync-progress")).toBeVisible();
-  expect(
-    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
-      .violations,
-  ).toEqual([]);
-  const cancellations: string[] = [];
-  page.on("request", (request) => {
-    if (
-      request.method() === "DELETE" &&
-      request.url().endsWith("/api/v1/integrations/login")
-    )
-      cancellations.push(request.url());
-  });
-  // Closing is now safe: the initial pass belongs to the daemon, not the dialog.
-  await dialog.getByTestId("integration-sync-background").click();
-  await expect(dialog).toHaveCount(0);
-  await page.unroute("**/api/v1/integrations/login*");
-  expect(cancellations).toEqual([]);
   const card = page
     .getByRole("article")
     .and(page.getByTestId("integration-account-microsoft"));
@@ -400,12 +355,10 @@ test("a device code relays to the browser, folders fit the quota, and sync start
       .getByTestId("integration-service-onedrive")
       .getByTestId("integration-service-state"),
   ).toHaveAttribute("data-state", "ok");
-  await expect(
-    card
-      .getByTestId("integration-service-onedrive")
-      .getByTestId("integration-service-state"),
-  ).toBeVisible();
-  await expect(card).toContainText("~/cloud/onedrive/person@work.example.test");
+  await expect(card.getByTestId("integration-service-onedrive")).toContainText(
+    "Microsoftin haulla",
+  );
+  await expect(card).not.toContainText("~/cloud/onedrive");
   await expect(
     page.getByRole("button").and(page.getByTestId("integration-add-microsoft")),
   ).toBeVisible();
@@ -531,12 +484,8 @@ test("an account level is chosen when connecting and changed later by signing in
     .click();
   await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
   await fixture(page, "action=approve");
-  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
-  await dialog
-    .getByRole("button")
-    .and(dialog.getByTestId("integration-sync-start"))
-    .click();
   await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await expect(dialog.getByTestId("integration-folder-choice")).toHaveCount(0);
   await dialog
     .getByRole("button")
     .and(dialog.getByTestId("integration-done"))
@@ -554,7 +503,7 @@ test("an account level is chosen when connecting and changed later by signing in
   );
 
   // Vaihda taso… offers the same cards; the current level cannot be chosen
-  // again, and a renewal keeps the folders, so no folder step follows.
+  // again, and no folder step follows.
   await card
     .getByRole("button")
     .and(card.getByTestId("integration-change-level"))
@@ -620,12 +569,8 @@ test("the no-send level connects with mail drafted but never sent, and everythin
     .click();
   await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
   await fixture(page, "action=approve");
-  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
-  await dialog
-    .getByRole("button")
-    .and(dialog.getByTestId("integration-sync-start"))
-    .click();
   await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await expect(dialog.getByTestId("integration-folder-choice")).toHaveCount(0);
   await dialog
     .getByRole("button")
     .and(dialog.getByTestId("integration-done"))
@@ -688,15 +633,56 @@ test("Google offers Täysi and Vain luku, says it has no drafts level, and a cha
     .and(dialog.getByTestId("integration-connect"))
     .click();
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  const choice = await (
+    await page.request.get("/api/v1/integrations/login")
+  ).json();
+  // Hold the browser in the real relay's long initial-sync phase. The native
+  // stand-in completes immediately; only the observation is delayed here.
+  const syncing = {
+    schema_version: 1,
+    state: "completing",
+    attempt_id: choice.attempt_id,
+    provider: choice.provider,
+    address: choice.address,
+    relogin: false,
+    progress: {
+      phase: "transferring",
+      elapsed_seconds: 82,
+      bytes: 1048576,
+      total_bytes: 8388608,
+      files: 2,
+      total_files: 10,
+    },
+  };
+  await page.route("**/api/v1/integrations/login*", async (route) => {
+    if (route.request().method() === "PUT") await route.fetch();
+    else if (route.request().method() !== "GET") return route.continue();
+    return route.fulfill({ json: syncing });
+  });
   await dialog
     .getByRole("button")
     .and(dialog.getByTestId("integration-sync-start"))
     .click();
-  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
-  await dialog
-    .getByRole("button")
-    .and(dialog.getByTestId("integration-done"))
-    .click();
+  await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
+  await expect(dialog.getByTestId("dialog-close")).toBeVisible();
+  await expect(dialog.getByTestId("integration-sync-progress")).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  const cancellations: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "DELETE" &&
+      request.url().endsWith("/api/v1/integrations/login")
+    )
+      cancellations.push(request.url());
+  });
+  // Closing is now safe: the initial pass belongs to the daemon, not the dialog.
+  await dialog.getByTestId("integration-sync-background").click();
+  await expect(dialog).toHaveCount(0);
+  await page.unroute("**/api/v1/integrations/login*");
+  expect(cancellations).toEqual([]);
   const card = page
     .getByRole("article")
     .and(page.getByTestId("integration-account-google"));

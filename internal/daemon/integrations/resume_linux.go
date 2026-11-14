@@ -30,9 +30,9 @@ import (
 // pass the daemon started again after a stop, and that resumed pass failed.
 const InitialSyncResumeFailed = "initial_sync_resume_failed"
 
-// resumableEntry is a FolderEntry whose interrupted first pass can run again.
+// resumableEntry is a SyncEntry whose interrupted first pass can run again.
 type resumableEntry interface {
-	FolderEntry
+	SyncEntry
 	// interruptedPasses lists the home-relative bisync work directories of
 	// the account whose chosen first pass was stopped before committing.
 	interruptedPasses(env Env, address string) []string

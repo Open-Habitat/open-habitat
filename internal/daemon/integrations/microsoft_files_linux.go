@@ -112,34 +112,6 @@ func microsoftSegment(s string) string {
 	return strings.Trim(b.String(), "-") + "-" + hex.EncodeToString(h[:6])
 }
 
-// Teams' own permissions, the least privileged first. Graph also answers
-// the team and channel lists to the broader ones a tenant may have granted.
-var (
-	microsoftTeamScopes    = []string{"Team.ReadBasic.All", "TeamSettings.Read.All", "TeamSettings.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All", "User.Read.All", "User.ReadWrite.All"}
-	microsoftChannelScopes = []string{"Channel.ReadBasic.All", "ChannelSettings.Read.All", "ChannelSettings.ReadWrite.All", "Group.Read.All", "Group.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"}
-)
-
-// Why the folder step offers no or only some Teams files; the browser says
-// so (contracts/v1/integration-login.schema.json teams_left_out).
-const (
-	teamsNotGranted         = "not_granted"
-	teamsRefused            = "refused"
-	teamsChannelsNotGranted = "channels_not_granted"
-	teamsTooMany            = "too_many"
-)
-
-var microsoftGUID = regexp.MustCompile(`^` + microsoftSiteGUID + `$`)
-var microsoftChannelID = regexp.MustCompile(`^19:[A-Za-z0-9_-]{1,128}@thread\.(tacv2|skype)$`)
-
-func microsoftGrantsAny(granted map[string]bool, scopes []string) bool {
-	for _, s := range scopes {
-		if granted[s] {
-			return true
-		}
-	}
-	return false
-}
-
 // microsoftDisplayName is a provider name fit to show, or the fallback.
 func microsoftDisplayName(name, fallback string) string {
 	if name == "" || len(name) > 256 || !utf8.ValidString(name) || strings.IndexFunc(name, unicode.IsControl) >= 0 {
@@ -295,11 +267,6 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, granted ma
 		}
 		return err
 	}
-	if sitesGranted {
-		if err := d.teams(granted); err != nil {
-			return err
-		}
-	}
 	// Without roots there is no token for rclone to keep.
 	if len(d.sections) == 0 {
 		account = ""
@@ -449,207 +416,13 @@ func (d *microsoftDiscovery) add(group []microsoftRemote) (bool, error) {
 	return true, nil
 }
 
-// microsoftShortestRoot is less than any root's config section: its fixed
-// lines with the shortest name, drive and path.
-const microsoftShortestRoot = 128
-
-// The bounds that can leave teams out of the folder step, for the journal.
+// The bounds discovery's step names when the inventory does not fit.
 const (
 	microsoftRemoteLimit = "remote_limit"
 	microsoftConfigLimit = "config_limit"
-	microsoftLibraryList = "library_list_paged"
-	microsoftTeamList    = "team_list_paged"
 )
 
-// bound records that a bound fired, once per kind.
-func (d *microsoftDiscovery) bound(kind string) {
-	if !slices.Contains(d.bounds, kind) {
-		d.bounds = append(d.bounds, kind)
-	}
-}
-
-func cloneSet(m map[string]bool) map[string]bool {
-	out := make(map[string]bool, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
-}
-
-// leaveOut names a team the folder step does not offer. The page's list is
-// bounded; its last entry then says there are more.
-func (d *microsoftDiscovery) leaveOut(team string) {
-	d.teamsLeftOut = teamsTooMany
-	d.teamsOmitted++
-	if len(d.teamsNotOffered) < 32 {
-		d.teamsNotOffered = append(d.teamsNotOffered, team)
-	} else {
-		d.teamsNotOffered[31] = "…"
-	}
-}
-
 const microsoftLabelKey = "habitat_label"
-
-// teams adds the libraries of the teams the person has joined, and of each
-// private or shared channel's own site, one whole team at a time. A team
-// that does not fit the config's bounds is left out and named, and the next
-// one is still tried. A standard channel's files are a folder of its team's
-// library, already offered. What is left out is said in the folder step
-// (teamsLeftOut, teamsNotOffered, unavailableSites); none of it fails sign-in.
-func (d *microsoftDiscovery) teams(granted map[string]bool) error {
-	if !microsoftGrantsAny(granted, microsoftTeamScopes) {
-		d.teamsLeftOut = teamsNotGranted
-		return nil
-	}
-	var teams struct {
-		Value []struct {
-			ID   string `json:"id"`
-			Name string `json:"displayName"`
-		} `json:"value"`
-		Next string `json:"@odata.nextLink"`
-	}
-	d.step = "joined_teams"
-	if err := d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/me/joinedTeams", nil, d.bearer, &teams); err != nil {
-		var status microsoftHTTPStatus
-		if d.ctx.Err() == nil && errors.As(err, &status) && status == 403 {
-			d.skippedSites = append(d.skippedSites, microsoftDiscoveryError{step: d.step, tenantKind: d.tenantKind, err: err})
-			d.teamsLeftOut = teamsRefused
-			return nil
-		}
-		return err
-	}
-	channels := microsoftGrantsAny(granted, microsoftChannelScopes)
-	if !channels {
-		d.teamsLeftOut = teamsChannelsNotGranted
-	}
-	if teams.Next != "" {
-		d.teamsLeftOut = teamsTooMany
-		d.bound(microsoftTeamList)
-	}
-	for _, t := range teams.Value {
-		d.step = "team_id"
-		if !microsoftGUID.MatchString(t.ID) {
-			return ToolFailed
-		}
-		team := microsoftDisplayName(t.Name, "Teams")
-		// Once no root can fit, the rest are named without asking Graph. No
-		// root's section is shorter than microsoftShortestRoot.
-		if len(d.sections) >= maxMicrosoftRemotes {
-			d.bound(microsoftRemoteLimit)
-			d.leaveOut(team)
-			continue
-		}
-		if d.size+microsoftShortestRoot > maxMicrosoftConfig {
-			d.bound(microsoftConfigLimit)
-			d.leaveOut(team)
-			continue
-		}
-		// A team left out leaves its sites and libraries to later teams: a
-		// shared channel's library can belong to several.
-		sites, drives := cloneSet(d.sites), cloneSet(d.drives)
-		var group []microsoftRemote
-		var root microsoftSite
-		d.step = "team_site"
-		if err := d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/groups/"+t.ID+"/sites/root?$select=id,displayName,webUrl", nil, d.bearer, &root); err != nil {
-			if !d.unavailable(err, team, 403, 404) {
-				return err
-			}
-		} else if !d.sites[strings.ToLower(root.ID)] {
-			found, err := d.libraries(root, "Teams", team)
-			if errors.Is(err, errMicrosoftTruncated) {
-				// A team too large to list whole is left out, and said.
-				d.bound(microsoftLibraryList)
-				d.leaveOut(team)
-				d.sites, d.drives = sites, drives
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			group = append(group, found...)
-		}
-		if channels {
-			found, err := d.channels(t.ID, team)
-			if err != nil {
-				return err
-			}
-			group = append(group, found...)
-		}
-		fits, err := d.add(group)
-		if err != nil {
-			return err
-		}
-		if !fits {
-			d.bound(d.step)
-			d.leaveOut(team)
-			d.sites, d.drives = sites, drives
-		}
-	}
-	return nil
-}
-
-// channels lists a team's private and shared channels' own libraries.
-func (d *microsoftDiscovery) channels(teamID, team string) ([]microsoftRemote, error) {
-	var list struct {
-		Value []struct {
-			ID         string `json:"id"`
-			Name       string `json:"displayName"`
-			Membership string `json:"membershipType"`
-		} `json:"value"`
-		Next string `json:"@odata.nextLink"`
-	}
-	d.step = "team_channels"
-	if err := d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/teams/"+teamID+"/channels?$select=id,displayName,membershipType", nil, d.bearer, &list); err != nil {
-		if d.unavailable(err, team, 403, 404) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if list.Next != "" {
-		d.teamsLeftOut = teamsTooMany
-	}
-	var out []microsoftRemote
-	for _, c := range list.Value {
-		if c.Membership != "private" && c.Membership != "shared" {
-			continue
-		}
-		d.step = "channel_id"
-		if !microsoftChannelID.MatchString(c.ID) {
-			return nil, ToolFailed
-		}
-		channel := microsoftDisplayName(c.Name, "Teams")
-		var folder struct {
-			WebURL string `json:"webUrl"`
-			Parent struct {
-				DriveID   string `json:"driveId"`
-				DriveType string `json:"driveType"`
-			} `json:"parentReference"`
-		}
-		d.step = "channel_files"
-		// Graph documents a 400 for some channel names; like a 403/404 it
-		// leaves that one channel out.
-		if err := d.entry.request(d.ctx, "https://graph.microsoft.com/v1.0/teams/"+teamID+"/channels/"+url.PathEscape(c.ID)+"/filesFolder", nil, d.bearer, &folder); err != nil {
-			if d.unavailable(err, microsoftLabel(team, channel), 400, 403, 404) {
-				continue
-			}
-			return nil, err
-		}
-		drive := folder.Parent.DriveID
-		if d.drives[drive] {
-			continue
-		}
-		d.step = "channel_url"
-		u, err := url.Parse(folder.WebURL)
-		if err != nil || u.Scheme != "https" || u.Hostname() == "" {
-			return nil, ToolFailed
-		}
-		d.drives[drive] = true
-		h := sha256.Sum256([]byte(drive))
-		dir := "cloud/sharepoint/" + microsoftSegment(u.Hostname()) + "--" + d.address + "/" + microsoftSegment(c.ID+"-"+team+"-"+channel) + "/" + microsoftSegment(drive+"-"+channel)
-		out = append(out, microsoftRemote{Name: "sp-" + hex.EncodeToString(h[:12]), Directory: dir, DriveID: drive, DriveType: folder.Parent.DriveType, Label: microsoftLabel("Teams", team, channel)})
-	}
-	return out, nil
-}
 
 const microsoftConfigHeader = "# Microsoft cloud roots discovered for this native account.\n"
 
@@ -826,6 +599,9 @@ func microsoftPassStarted(env Env, address string, r microsoftRemote) bool {
 	return len(names) > 0
 }
 
+// Directories are the roots that sync, and while none does yet, those whose
+// first pass ran (a level change's or a resumed one). A root that never had
+// a pass is no directory of the account's.
 func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {
@@ -833,88 +609,23 @@ func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 	}
 	var out, pending []SyncDirectory
 	for _, r := range remotes {
-		service := "onedrive"
-		if r.Name != "onedrive" {
-			service = "sharepoint"
+		if !microsoftKept(env, address, r) {
+			continue
 		}
-		d := SyncDirectory{Service: service, Path: r.Directory}
-		pending = append(pending, d)
+		d := SyncDirectory{Service: r.service(), Path: r.Directory}
 		// A library whose listings a critical abort set aside stays listed,
 		// so its stop is reported rather than hidden behind a ready sibling.
 		if work := microsoftWork(address, r.Name); microsoftReady(env, address, r) || listingsFailed(env.Home, work) {
 			d.Work = work
 			out = append(out, d)
+		} else {
+			pending = append(pending, d)
 		}
 	}
-	// The first-choice view needs a destination before native listings exist.
-	// Once selected, advertise only directories actually being synced.
 	if len(out) == 0 {
 		return pending
 	}
 	return out
-}
-
-func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
-	m.native.Lock()
-	defer m.native.Unlock()
-	remotes, err := microsoftRemotes(env, address)
-	if err != nil {
-		return nil, err
-	}
-	var out []Folder
-	anyReady := false
-	for _, r := range remotes {
-		anyReady = anyReady || microsoftReady(env, address, r)
-	}
-	for _, r := range remotes {
-		label := r.Label
-		if label == "" && r.Name == "onedrive" {
-			label = "OneDrive"
-		} else if label == "" {
-			// Written before roots carried the person's names for them.
-			label = "SharePoint · " + strings.TrimPrefix(r.Directory, "cloud/sharepoint/")
-		}
-		out = append(out, Folder{ID: r.Name, Name: label, UnknownSize: true, Suggested: microsoftReady(env, address, r) || (!anyReady && r.Name == "onedrive")})
-	}
-	return out, nil
-}
-func (m *microsoft) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
-	m.native.Lock()
-	defer m.native.Unlock()
-	remotes, err := microsoftRemotes(env, address)
-	if err != nil {
-		return 0, err
-	}
-	var total uint64
-	for _, id := range ids {
-		found := false
-		for _, r := range remotes {
-			if r.Name != id {
-				continue
-			}
-			found = true
-			cmd, ok := microsoftCommand(env, address, "size", r.Name+":", "--json")
-			if !ok {
-				return 0, ToolFailed
-			}
-			service := "sharepoint"
-			if id == "onedrive" {
-				service = "onedrive"
-			}
-			n, err := env.measureSize(ctx, cmd, service)
-			if err != nil {
-				return 0, err
-			}
-			if n > maxSyncBytes-total {
-				return 0, ToolFailed
-			}
-			total += n
-		}
-		if !found {
-			return 0, ToolFailed
-		}
-	}
-	return total, nil
 }
 
 // microsoftMirror is one read-only root's mirror pass.
@@ -933,67 +644,22 @@ func microsoftBisync(env Env, address string, r microsoftRemote) (Command, bool)
 	}
 	return bisyncCommand(c, env, r.Directory, r.Name+":", microsoftWork(address, r.Name)), true
 }
-func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
+
+// restartPasses runs the first pass of roots a sign-in turned to the other
+// direction, in the new one, so a level change does not stop their sync.
+func (m *microsoft) restartPasses(ctx context.Context, env Env, address string, names []string) error {
 	m.native.Lock()
 	defer m.native.Unlock()
-	if len(ids) == 0 {
-		return ToolFailed
-	}
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {
 		return err
 	}
-	selected := map[string]bool{}
-	for _, id := range ids {
-		if selected[id] {
-			return ToolFailed
-		}
-		found := false
-		for _, r := range remotes {
-			found = found || id == r.Name
-		}
-		if !found {
-			return ToolFailed
-		}
-		selected[id] = true
-	}
-	// An explicit choice supersedes every automatic recovery selection, even
-	// if a later first pass fails. Never re-add a library the person removed.
-	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
-	if err != nil {
-		return err
-	}
-	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
-	if err != nil {
-		return err
-	}
-	var lines []string
-	for _, line := range strings.Split(string(data), "\n") {
-		key, _, _ := strings.Cut(line, "=")
-		if strings.TrimSpace(key) != microsoftRecoverySelected {
-			lines = append(lines, line)
-		}
-	}
-	if err := writeFileAt(fd, address+".conf", []byte(strings.Join(lines, "\n")), 0600); err != nil {
-		return err
-	}
 	for _, r := range remotes {
-		if !selected[r.Name] || microsoftReady(env, address, r) {
-			// Choosing more libraries never resyncs a healthy existing pair.
+		if !slices.Contains(names, r.Name) || microsoftReady(env, address, r) || listingsFailed(env.Home, microsoftWork(address, r.Name)) {
 			continue
 		}
 		if err := microsoftInitialPass(ctx, env, address, r); err != nil {
 			return err
-		}
-	}
-	// Native listings are the selection. Stop deselected pairs without
-	// deleting local files or approving any cloud-side deletion.
-	for _, r := range remotes {
-		if !selected[r.Name] {
-			if err := microsoftRemoveFiles(env, microsoftWork(address, r.Name)); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -1053,8 +719,7 @@ func (*microsoft) interruptedPasses(env Env, address string) []string {
 }
 
 // resumeInitial runs those libraries' first passes again, exactly as chosen.
-// Libraries the person chose but whose pass never started leave no native
-// trace, so they wait for the next explicit choice.
+// Libraries whose pass never started leave no native trace and do not sync.
 func (m *microsoft) resumeInitial(ctx context.Context, env Env, address string, works []string) error {
 	m.native.Lock()
 	defer m.native.Unlock()
@@ -1117,29 +782,36 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 	return syncLoop(passes), true
 }
 
-// Every Microsoft sign-in offers the current libraries again. An empty file
-// inventory (for example an Exchange-only licence) needs no folder step.
-func (*microsoft) FolderChoiceAfterLogin(env Env, address string) (bool, error) {
-	remotes, err := microsoftRemotes(env, address)
-	return len(remotes) > 0, err
+// microsoftKept reports whether a root keeps its place in the account's
+// config across a sign-in: it had a first pass (its work directory holds
+// listings, a mirror's marker or a stopped pass), or the startup repair
+// selected it. A root that never had a pass was only offered by an earlier
+// release's folder step, and nothing offers it now.
+func microsoftKept(env Env, address string, r microsoftRemote) bool {
+	return r.RecoverySelected || microsoftPassStarted(env, address, r)
 }
 
-// Keep the local root stable across cloud display-name changes. The remote
-// name is keyed by immutable drive ID, as are its native bisync listings.
-func microsoftPreserveDirectories(config []byte, previous []microsoftRemote) []byte {
-	paths := map[string]string{}
-	for _, r := range previous {
-		paths[r.Name] = r.Directory
-	}
-	lines := strings.Split(string(config), "\n")
-	remote := ""
-	for i, line := range lines {
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			remote = strings.Trim(line, "[]")
+// microsoftKeptConfig is the account's config after a sign-in: the new
+// token and grant, and the roots that already sync under their own names
+// and directories, so their native listings continue as they were.
+func microsoftKeptConfig(app MicrosoftApp, granted []string, token []byte, kept []microsoftRemote) ([]byte, error) {
+	var b strings.Builder
+	b.WriteString(microsoftConfigHeader + microsoftDiscoveryFixed + microsoftAccountSection(app, granted, token))
+	for _, r := range kept {
+		if !microsoftRemoteName.MatchString(r.Name) || !microsoftDriveID.MatchString(r.DriveID) || (r.DriveType != "personal" && r.DriveType != "business" && r.DriveType != "documentLibrary") {
+			return nil, ToolFailed
 		}
-		if key, _, ok := strings.Cut(line, "="); ok && strings.TrimSpace(key) == "description" && paths[remote] != "" {
-			lines[i] = "description = " + paths[remote]
+		fmt.Fprintf(&b, "[%s]\ntype = alias\nremote = %s,drive_id=%s,drive_type=%s:\ndescription = %s\n", r.Name, microsoftAccount, r.DriveID, r.DriveType, r.Directory)
+		if r.Label != "" {
+			b.WriteString(microsoftLabelKey + " = " + base64.RawURLEncoding.EncodeToString([]byte(r.Label)) + "\n")
 		}
+		if r.RecoverySelected {
+			b.WriteString(microsoftRecoverySelected + " = true\n")
+		}
+		b.WriteString("\n")
 	}
-	return []byte(strings.Join(lines, "\n"))
+	if b.Len() > maxMicrosoftConfig {
+		return nil, ToolFailed
+	}
+	return []byte(b.String()), nil
 }

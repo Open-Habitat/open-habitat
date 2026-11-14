@@ -17,7 +17,7 @@ import (
 // address is handed to the waiting tool and not kept.
 //
 // Each provider has at most one attempt, and of the providers whose sign-in
-// may copy files (FolderEntry) only one at a time: a first pass reserves the
+// may copy files (copiesFiles) only one at a time: a first pass reserves the
 // home's room and writes the provider's native configuration, so two of them
 // would race for both. A sign-in that copies no files (Atlassian, Trello) runs beside
 // them, though Pi's MCP sign-ins run one at a time: Pi keeps all their
@@ -54,13 +54,8 @@ type attempt struct {
 	prompt  Prompt
 	folders []Folder
 	// measuring are the folders whose size FolderSizer is still counting.
-	measuring        map[string]bool
-	unavailableSites []string
-	// teamsLeftOut says why Teams files are missing from the folder step,
-	// teamsNotOffered which teams were left out whole.
-	teamsLeftOut    string
-	teamsNotOffered []string
-	room            Room
+	measuring map[string]bool
+	room      Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
 	// syncing distinguishes the first native pass from a redirect exchange.
@@ -100,9 +95,6 @@ type attempt struct {
 // contracts/v1/integration-login.schema.json.
 type LoginView struct {
 	LoginPhase       string        `json:"login_phase,omitempty"`
-	UnavailableSites []string      `json:"unavailable_sites,omitempty"`
-	TeamsLeftOut     string        `json:"teams_left_out,omitempty"`
-	TeamsNotOffered  []string      `json:"teams_not_offered,omitempty"`
 	SchemaVersion    int           `json:"schema_version"`
 	State            string        `json:"state"`
 	AttemptID        string        `json:"attempt_id,omitempty"`
@@ -206,7 +198,6 @@ func (r *relay) view(owner string, provider Provider) LoginView {
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
 		v.LoginPhase = a.prompt.Flow
 	}
-	v.UnavailableSites, v.TeamsLeftOut, v.TeamsNotOffered = a.unavailableSites, a.teamsLeftOut, a.teamsNotOffered
 	if a.syncing {
 		v.Progress = a.progress
 	}
@@ -312,10 +303,14 @@ var errAttemptActive = errors.New("attempt_active")
 var errAttemptMissing = errors.New("attempt_not_found")
 
 // copiesFiles reports whether p's sign-in may end in a first pass that copies
-// files into the home.
+// files into the home: a folder choice's, or Microsoft's after a level change
+// (or a resumed one, which reserves the same slot).
 func (c *Catalog) copiesFiles(p Provider) bool {
-	_, ok := c.entry(p).(FolderEntry)
-	return ok
+	switch c.entry(p).(type) {
+	case FolderEntry, resumableEntry:
+		return true
+	}
+	return false
 }
 
 // conflicting are the attempts a start for p must replace or wait for: p's
@@ -640,22 +635,6 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		address, err = login.Wait(waitCtx)
 	}
 	waitCancel()
-	if ms, ok := login.(*microsoftLogin); ok {
-		for _, skipped := range ms.skippedSites {
-			attrs := append([]any{"provider", Microsoft, "outcome", "skipped", "reason", "site_unavailable"}, skipped.diagnostic()...)
-			c.log.Warn("integration_discovery", attrs...)
-		}
-		for _, lookup := range ms.siteLookups {
-			c.log.Info("integration_discovery", "provider", Microsoft, "outcome", "observed", "reason", "site_lookup_fallback", "site_lookup", lookup)
-		}
-		// Team names are the person's; the journal keeps the bound and a count.
-		for _, bound := range ms.bounds {
-			c.log.Info("integration_discovery", "provider", Microsoft, "outcome", "partial", "reason", "teams_left_out", "bound", bound, "teams_left_out", ms.teamsOmitted)
-		}
-		c.setAttempt(a, func() {
-			a.unavailableSites, a.teamsLeftOut, a.teamsNotOffered = append([]string(nil), ms.unavailableSites...), ms.teamsLeftOut, append([]string(nil), ms.teamsNotOffered...)
-		})
-	}
 	if err == nil && !validCatalogAddress(e.Provider(), address) {
 		err = ToolFailed
 	}
@@ -707,6 +686,45 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		if r, ok := login.(interface{ RevokeFailed() bool }); ok && r.RevokeFailed() {
 			c.log.Warn("integration_revoke", "provider", string(e.Provider()), "outcome", "failed", "reason", "previous_login_kept")
+		}
+	}
+	// A level change that turned roots which already sync to the other
+	// direction runs their first pass in the new one as this attempt's pass,
+	// so their sync does not stop. Like a chosen first pass it runs without
+	// c.write, and a removal of the account waits for it (abandonFor).
+	if ms, ok := login.(*microsoftLogin); ok && len(ms.restart) > 0 {
+		k := key{e.Provider(), address}
+		c.write.Lock()
+		pass := make(chan struct{})
+		if !c.live(a) || !c.setAttempt(a, func() { a.state, a.address, a.syncing, a.pass = "completing", address, true, pass }) {
+			c.dropStale(e, a, address)
+			c.write.Unlock()
+			return
+		}
+		c.markResume(k, 0)
+		c.forgetRefusal(k)
+		c.write.Unlock()
+		syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
+			c.setAttempt(a, func() { a.progress = &p })
+		})
+		syncErr := ms.entry.restartPasses(syncCtx, c.env, address, ms.restart)
+		close(pass)
+		if syncErr != nil {
+			c.write.Lock()
+			// Only a daemon stop leaves the pass for the next start to resume.
+			if !c.live(a) || ctx.Err() == nil {
+				forgetInterruptedPasses(c.env, ms.entry, address)
+			}
+			c.reconcile()
+			c.write.Unlock()
+			c.failAttempt(a, syncErr)
+			return
+		}
+		if ctx.Err() != nil {
+			c.write.Lock()
+			c.dropStale(e, a, address)
+			c.write.Unlock()
+			return
 		}
 	}
 	fe, choose := e.(FolderEntry)

@@ -121,8 +121,9 @@ func TestMicrosoftSearchSkill(t *testing.T) {
 					t.Errorf("search %v, but %q in body:\n%s", tc.search, want, body)
 				}
 			}
-			// No library is synced here; only an account with the file tools is told search works.
-			if strings.Contains(body, "Outlook and file search work without one") != tc.search || strings.Contains(body, "; Outlook works without one") == tc.search {
+			// No library is synced here: nothing is said of synced folders,
+			// and an account with the file tools is told none are copied.
+			if strings.Contains(body, "None of this account's files are copied to this machine") != tc.search || strings.Contains(body, "synced") || strings.Contains(body, "~/cloud/onedrive") {
 				t.Error(body)
 			}
 			if !tc.search && !strings.Contains(body, "Outlook mail, calendars and contacts are reached") {

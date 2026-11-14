@@ -62,3 +62,33 @@ func TestMicrosoftSiteIDValidationBeforeRequest(t *testing.T) {
 		}
 	}
 }
+
+// Labels are only names: an inventory that fits without them still
+// connects when they would not fit.
+func TestMicrosoftLabelsGiveWayToTheAccountsOwnRoots(t *testing.T) {
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	probe := &microsoftLogin{entry: m, address: "person@example.test"}
+	if err := probe.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
+		t.Fatal(err)
+	}
+	// Two sections with labels; choose a token that fits only without them.
+	labels := strings.Count(string(probe.config), microsoftLabelKey+" = ")
+	if labels != 2 {
+		t.Fatal(labels)
+	}
+	labelBytes := 0
+	for _, line := range strings.Split(string(probe.config), "\n") {
+		if strings.HasPrefix(line, microsoftLabelKey+" = ") {
+			labelBytes += len(line) + 1
+		}
+	}
+	bare := len(probe.config) - labelBytes
+	// The one token, in the account's section, takes the rest of the room.
+	l := &microsoftLogin{entry: m, address: "person@example.test", token: []byte(strings.Repeat("t", maxMicrosoftConfig-bare))}
+	if err := l.discover(context.Background(), "access-secret", map[string]bool{"Sites.ReadWrite.All": true}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(l.config), microsoftLabelKey) || len(l.config) > maxMicrosoftConfig || len(l.config)+labelBytes <= maxMicrosoftConfig {
+		t.Fatal(len(l.config), labelBytes)
+	}
+}

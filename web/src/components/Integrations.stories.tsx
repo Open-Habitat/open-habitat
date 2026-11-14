@@ -332,7 +332,7 @@ export const DialogPasswordRejected: Story = {
 export const DialogDeviceCode: Story = {
   render: dialog(microsoft, { stage: "login", view: device }),
 };
-export const DialogMicrosoftDiscovery: Story = {
+export const DialogMicrosoftFinishing: Story = {
   render: dialog(microsoft, {
     stage: "login",
     view: {
@@ -343,7 +343,7 @@ export const DialogMicrosoftDiscovery: Story = {
     },
   }),
 };
-export const DialogMicrosoftPartialSuccess: Story = {
+export const DialogMicrosoftConnected: Story = {
   render: dialog(microsoft, {
     stage: "login",
     view: {
@@ -351,7 +351,6 @@ export const DialogMicrosoftPartialSuccess: Story = {
       provider: "microsoft",
       state: "completed",
       address: "person@example.test",
-      unavailable_sites: ["Esimerkki – Työsuhteet"],
     },
   }),
 };
@@ -673,44 +672,6 @@ export const InventoryBeforeCopy: Story = {
   }),
 };
 
-export const UnavailableSharePointSite: Story = {
-  render: dialog(microsoft, {
-    stage: "login",
-    view: {
-      ...folders,
-      provider: "microsoft",
-      unavailable_sites: ["Unavailable team"],
-      directory: "~/cloud/onedrive/person@example.test",
-      folders: [{ id: "onedrive", name: "OneDrive", suggested: true }],
-    },
-  }),
-};
-export const TeamsFoldersAndLeftOut: Story = {
-  render: dialog(microsoft, {
-    stage: "login",
-    view: {
-      ...folders,
-      provider: "microsoft",
-      unavailable_sites: ["Esimerkkitiimi · Kielletty"],
-      teams_left_out: "too_many",
-      teams_not_offered: ["Myyntitiimi", "Hallinto"],
-      directory: "~/cloud/onedrive/person@example.test",
-      folders: [
-        { id: "onedrive", name: "OneDrive", suggested: true },
-        {
-          id: "sp-000000000000000000000001",
-          name: "Teams · Esimerkkitiimi · Asiakirjat",
-          suggested: false,
-        },
-        {
-          id: "sp-000000000000000000000002",
-          name: "Teams · Esimerkkitiimi · Suunnittelu",
-          suggested: false,
-        },
-      ],
-    },
-  }),
-};
 export const InventoryExceedsQuota: Story = {
   render: dialog(google, {
     stage: "login",

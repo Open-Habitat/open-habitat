@@ -91,7 +91,9 @@ const fi = {
     gitlab: { git: "gitlab.com tai yrityksen oma GitLab" },
   } as Record<string, Record<string, string>>,
   cloudFolder:
-    "OneDriven tai Dropboxin synkronoitu kansio välittää tiedostoja oman koneesi ja agentin välillä. Jaa siellä esimerkiksi kuvakaappauksia, tai pyydä agenttia tallentamaan sinne sähköpostiliitteet, jotka haluat omalle koneellesi. Synkronoi sama kansio myös omalla koneellasi.",
+    "Dropboxin synkronoitu kansio välittää tiedostoja oman koneesi ja agentin välillä. Jaa siellä esimerkiksi kuvakaappauksia, tai pyydä agenttia tallentamaan sinne sähköpostiliitteet, jotka haluat omalle koneellesi. Synkronoi sama kansio myös omalla koneellasi.",
+  onDemandFiles:
+    "Agentit etsivät tiedostoja Microsoftin haulla ja noutavat tarvitsemansa kotihakemistoosi. Mitään ei synkronoida, eivätkä muutokset palaa palveluun.",
   notGranted: "Ei myönnetty. Agentit eivät pääse tähän.",
   drafts: "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.",
   readFiles:
@@ -539,6 +541,10 @@ const fi = {
     `${name} muuttuu peiliksi: muutokset eivät enää palaa palveluun. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
   syncsAgain: (name: string) =>
     `${name} synkronoituu taas molempiin suuntiin. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
+  becomesMirrorKept: (name: string) =>
+    `${name} muuttuu peiliksi: muutokset eivät enää palaa palveluun. Jo synkronoituvat kansiot jatkavat peileinä.`,
+  syncsAgainKept: (name: string) =>
+    `${name} synkronoituu taas molempiin suuntiin. Jo synkronoituvat kansiot jatkavat.`,
 
   canSendMail: "lähettää postia",
   canCalendar: "muuttaa kalenteria ja lähettää kutsuja",
@@ -581,23 +587,9 @@ const fi = {
     </>
   ),
   done: "Valmis",
-  sitesUnavailable: (sites: string) =>
-    `Seuraavia SharePoint-sivustoja tai Teams-kanavia ei voitu avata, joten ne jätettiin pois: ${sites}. Jos tarvitset niitä, pyydä käyttöoikeus organisaatiosi ylläpitäjältä.`,
-  teamsLeftOut: {
-    not_granted:
-      "Teams-tiimien tiedostoja ei voitu hakea, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä tiimiluetteloasi. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
-    refused:
-      "Microsoft ei antanut tiimiluetteloasi, joten Teams-tiimien tiedostoja ei ole valittavana. Jos tarvitset niitä, pyydä apua organisaatiosi ylläpitäjältä.",
-    channels_not_granted:
-      "Tiimien tiedostot ovat valittavana, mutta yksityisten ja jaettujen kanavien omia tiedostoja ei, koska organisaatiosi ei ole antanut sovellukselle oikeutta nähdä kanavia. Jos tarvitset niitä, pyydä ylläpitäjää lisäämään sovellukselle Teams-oikeudet.",
-    too_many:
-      "Kaikki Teams-tiimisi eivät mahtuneet valittavaksi, joten osa jätettiin pois.",
-  },
-  teamsNotOffered: (teams: string) =>
-    `Kaikki Teams-tiimisi eivät mahtuneet valittavaksi. Nämä tiimit jätettiin pois: ${teams}.`,
   initialSync:
     "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon.",
-  filesDiscovery: "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…",
+  filesDiscovery: "Hyväksytty. Viimeistellään yhteyttä…",
   outlookFinishing:
     "Outlookin kirjautuminen hyväksyttiin. Viimeistellään yhteyttä…",
   finishing: "Viimeistellään kirjautumista ja haetaan valittavat pilvikansiot…",
@@ -711,7 +703,9 @@ export const integrationsText = catalog(
       gitlab: { git: "gitlab.com or a company's own GitLab" },
     },
     cloudFolder:
-      "A synchronized OneDrive or Dropbox folder passes files between your own computer and the agent. Share screenshots there, for example, or ask the agent to save email attachments you want on your own computer there. Synchronize the same folder on your own computer too.",
+      "A synchronized Dropbox folder passes files between your own computer and the agent. Share screenshots there, for example, or ask the agent to save email attachments you want on your own computer there. Synchronize the same folder on your own computer too.",
+    onDemandFiles:
+      "Agents find files with Microsoft's search and fetch the ones they need into your home directory. Nothing is synchronized, and changes do not go back to the service.",
     notGranted: "Not granted. Agents cannot reach this.",
     drafts: "Reads, organizes and writes drafts. Cannot send.",
     readFiles:
@@ -1147,6 +1141,10 @@ export const integrationsText = catalog(
       `${name} becomes a mirror: changes no longer go back to the service. You choose the folders again after signing in.`,
     syncsAgain: (name) =>
       `${name} synchronizes both ways again. You choose the folders again after signing in.`,
+    becomesMirrorKept: (name) =>
+      `${name} becomes a mirror: changes no longer go back to the service. Folders that already synchronize continue as mirrors.`,
+    syncsAgainKept: (name) =>
+      `${name} synchronizes both ways again. Folders that already synchronize continue.`,
 
     canSendMail: "send mail",
     canCalendar: "change the calendar and send invitations",
@@ -1188,23 +1186,9 @@ export const integrationsText = catalog(
       </>
     ),
     done: "Done",
-    sitesUnavailable: (sites) =>
-      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
-    teamsLeftOut: {
-      not_granted:
-        "Teams files could not be fetched because your organization has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
-      refused:
-        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organization's administrator for help.",
-      channels_not_granted:
-        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organization has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
-      too_many:
-        "Not all of your teams fit in the choice, so some were left out.",
-    },
-    teamsNotOffered: (teams) =>
-      `Not all of your teams fit in the choice. These teams were left out: ${teams}.`,
     initialSync:
       "The first synchronization is running. This can take long if there are many files.",
-    filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",
+    filesDiscovery: "Approved. Finishing the connection…",
     outlookFinishing:
       "The Outlook sign-in was approved. Finishing the connection…",
     finishing:
@@ -1269,17 +1253,5 @@ export const integrationsText = catalog(
     cancelled: "The sign-in was cancelled. Nothing was connected.",
     howDevice: (gen) =>
       `You sign in on the ${gen} page with a short code. With a work account, the organisation's administrator may have to approve the app first.`,
-    sitesUnavailable: (sites) =>
-      `The following SharePoint sites or Teams channels could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
-    teamsLeftOut: {
-      not_granted:
-        "Teams files could not be fetched because your organisation has not allowed the app to see your list of teams. If you need them, ask the administrator to add the Teams permissions to the app.",
-      refused:
-        "Microsoft did not return your list of teams, so no Teams files can be chosen. If you need them, ask your organisation's administrator for help.",
-      channels_not_granted:
-        "Your teams' files can be chosen, but not the own files of private and shared channels, because your organisation has not allowed the app to see channels. If you need them, ask the administrator to add the Teams permissions to the app.",
-      too_many:
-        "Not all of your teams fit in the choice, so some were left out.",
-    },
   },
 );

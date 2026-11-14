@@ -30,6 +30,7 @@ func connectedWithCommon(t *testing.T, env Env, client string) string {
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
 	conf := filepath.Join(env.Home, microsoftDir, address+".conf")
 	data, err := os.ReadFile(conf)
 	if err != nil {

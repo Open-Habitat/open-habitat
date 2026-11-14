@@ -32,19 +32,22 @@ func recoveryAccount(t *testing.T, narrow bool) (Env, *microsoft) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The pre-upgrade 404 left only OneDrive. Old releases did not record
-	// which discovery implementation produced the inventory.
-	m.client.Transport = original
-	l.config = []byte(strings.ReplaceAll(string(l.config), microsoftDiscoveryFixed, ""))
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	// The pre-upgrade 404 left only OneDrive. Old releases did not record
+	// which discovery implementation produced the inventory.
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+	m.client.Transport = original
+	path := filepath.Join(env.Home, microsoftDir, address+".conf")
+	config, _ := os.ReadFile(path)
+	writeConfig(t, env, address, []byte(strings.ReplaceAll(string(config), microsoftDiscoveryFixed, "")))
 	selected := []string{"onedrive"}
 	if narrow {
 		roots, _ := microsoftRemotes(env, address)
 		selected = []string{roots[1].Name}
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, selected); err != nil {
+	if err := m.testChoose(context.Background(), env, address, selected); err != nil {
 		t.Fatal(err)
 	}
 	if narrow {
@@ -106,7 +109,7 @@ func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *
 			if narrow && ready != 1 || !narrow && ready != 2 {
 				t.Fatal("selection changed incorrectly", ready)
 			}
-			folders, err := m.Folders(ctx, env, "person@example.test")
+			folders, err := m.testFolders(ctx, env, "person@example.test")
 			if err != nil || len(folders) != want {
 				t.Fatal("not offered in existing folder UI", folders, err)
 			}
@@ -132,7 +135,7 @@ func TestMicrosoftRecoveryPublicationSurvivesFailureAndExplicitDeselection(t *te
 	if err := os.Remove(fail); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, "person@example.test", []string{"onedrive"}); err != nil {
+	if err := m.testChoose(context.Background(), env, "person@example.test", []string{"onedrive"}); err != nil {
 		t.Fatal(err)
 	}
 	if microsoftRecoveryNeeded(env, "person@example.test") {

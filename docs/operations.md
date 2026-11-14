@@ -1117,10 +1117,8 @@ step. By hand, in the Entra admin center:
    `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`,
    `Mail.Send`, `Calendars.ReadWrite`, `Contacts.ReadWrite`,
    `Team.ReadBasic.All` and `Channel.ReadBasic.All`. The last two only list
-   the person's teams and channels by name so their files can be found;
-   Microsoft does not require administrator consent for them, but this app's
-   sign-in asks for what the tenant consented to, so an existing
-   registration must have them added and consented before Teams files appear.
+   the person's teams and channels by name; earlier releases used them to
+   offer Teams libraries for sync, and nothing reads them now.
 4. *Grant admin consent for <organisation>* (Cloud Application Administrator,
    Application Administrator or Privileged Role Administrator), so nobody is
    asked to consent and the tenant's user-consent policy cannot block a person.
@@ -1179,36 +1177,31 @@ https://login.microsoftonline.com/<TENANT_ID>/v2.0/adminconsent?client_id=<APP_C
 A Conditional Access policy blocking device code is a different failure; an
 administrator must decide whether that flow is allowed. Do not bypass policy.
 
-Folder choice selects whole OneDrive roots and whole document libraries from
-**followed SharePoint sites** and from the **Teams the person has joined**
-(each team's site, and the own site of each private or shared channel they
-belong to; a standard channel's files are a folder of its team's library),
-not every site in the tenant or individual subfolders. A site reached both
-ways is offered once, named as followed. To add another site, follow it in
-Microsoft first, then reconnect to rediscover libraries. Without
-`Team.ReadBasic.All` the folder step says that Teams files were left out and
-why; without `Channel.ReadBasic.All` it offers the teams' libraries and says
-that private and shared channels were left out. Each library repeats the
-sign-in's token in the account's rclone config, whose size is bounded, so a
-person in very many teams gets the teams that fit, whole, and is told the
-rest were left out. A shared channel the person belongs to without being a
-member of a team that hosts it is not discovered. Re-login offers folder choice again, with the current
-selection preselected; keeping a healthy pair does not reinitialize its bisync
-listings. Deselecting stops that pair without removing local files. Existing
-local roots stay stable when a cloud site/library is renamed. Discovery refuses truncated lists rather than silently
-omitting libraries. OneDrive syncs under `~/cloud/onedrive/<account>/`;
-SharePoint under `~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`.
-Provider identity hashes disambiguate names; the account in the organisation
-component prevents two grants syncing the same local directory. An Exchange-only account without OneDrive or followed libraries can connect
-Outlook without a folder step. Only chosen roots run bisync. Native listings determine readiness; restarts never resync
-implicitly. Initial cloud-preferred union conflicts are backed up under
+Connecting offers no choice of folders and copies no files: agents reach
+Microsoft 365 files by search and fetch only what they need, as above. A new
+account therefore has no `~/cloud/onedrive` or `~/cloud/sharepoint`
+directory and runs no rclone sync.
+
+Accounts that an earlier release left syncing OneDrive or SharePoint
+libraries keep syncing them. A renewal keeps exactly the libraries whose
+first pass ran, under the same local directories and bisync listings, with
+the new token; it neither looks for new libraries nor resyncs a healthy
+pair. Libraries the earlier folder step offered but nobody chose are dropped
+from the account's rclone config at the renewal; local files are never
+removed. A level change that turns a synced library to the other direction
+(two-way to mirror or back) syncs it both ways once more with the old grant
+where needed and then runs its first pass in the new direction. OneDrive
+syncs under `~/cloud/onedrive/<account>/`; SharePoint under
+`~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`. Native
+listings determine readiness; restarts never resync implicitly. Initial
+cloud-preferred union conflicts are backed up under
 `~/.local/share/rclone/microsoft-backups/<account>/<remote>/`. Removal deletes
 the native login and Pi entry; files remain unless the person selects Trash,
 and the Entra app grant is not revoked.
 
-After deployment, verify with a consenting person: both device codes, folder
-choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
-calendar/contacts reads, a second account, daemon restart, and removal. Also
+After deployment, verify with a consenting person: the device code, a file
+search and fetch, Outlook drafts, calendar/contacts reads, a second account,
+daemon restart, and removal. Also
 verify the consent-required link before admin consent and any applicable
 device policy. Synthetic tests cannot establish real tenant consent or token
 refresh.
@@ -1231,8 +1224,9 @@ delegated permissions:
 
 Every level's application also has `Team.ReadBasic.All` and
 `Channel.ReadBasic.All`, beside `openid`, `profile`, `offline_access` and
-`User.Read`: they read team and channel names only, and the files are read
-or synced through the level's own files and sites permissions.
+`User.Read`: they read team and channel names only, and nothing reads them
+now; the files are searched, fetched or synced through the level's own files
+and sites permissions.
 
 The nosend level is the full level without `Mail.Send`: mail is read,
 organised and drafted but never sent. Graph cannot change a calendar without

@@ -180,8 +180,8 @@ func TestMicrosoftNarrowerGrantConnectsAndLimitsOutlook(t *testing.T) {
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
 		t.Fatal("file roots without a files grant", remotes, err)
 	}
-	if choose, err := m.FolderChoiceAfterLogin(env, address); err != nil || choose {
-		t.Fatal(choose, err)
+	if dirs := m.Directories(env, address); len(dirs) != 0 {
+		t.Fatal(dirs)
 	}
 
 	// The tenant's answer to the Outlook tool's refresh names the grant.

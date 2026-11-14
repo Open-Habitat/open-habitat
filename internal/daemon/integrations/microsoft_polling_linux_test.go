@@ -95,23 +95,24 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 	if err := l.Commit(ctx, address); err != nil {
 		t.Fatal(err)
 	}
-	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 2 {
-		t.Fatal("files store not ready", err)
+	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
+		t.Fatal("a new account got cloud roots", remotes, err)
 	}
 	if state, _ := microsoftMCPState(ctx, env, address); state != StateOK {
 		t.Fatal("Outlook store not ready", state)
 	}
 }
 
-// A slow Graph response used to leave the already-spent files code visible.
-// Hold discovery at the daemon boundary, not a UI-only simulated state.
-func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
+// A slow Graph response used to leave the already-spent code visible. Hold
+// the identity read that follows approval at the daemon boundary, not a
+// UI-only simulated state.
+func TestMicrosoftRelayHidesApprovedCodeAfterApproval(t *testing.T) {
 	env := microsoftEnv(t)
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	base := m.client.Transport
 	entered, release := make(chan struct{}), make(chan struct{})
 	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path == "/v1.0/me/drive" {
+		if r.URL.Path == "/v1.0/me" {
 			close(entered)
 			select {
 			case <-release:
@@ -149,14 +150,14 @@ func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
 	select {
 	case <-entered:
 	case <-time.After(5 * time.Second):
-		t.Fatal("discovery not reached")
+		t.Fatal("identity read not reached")
 	}
 	view := c.relay.view(ownerA, "")
 	if view.State != "completing" || view.LoginPhase != "files_discovery" || view.UserCode != "" || view.VerificationURI != "" {
 		t.Fatalf("spent grant still advertised: state=%s phase=%s code_present=%t link_present=%t", view.State, view.LoginPhase, view.UserCode != "", view.VerificationURI != "")
 	}
 	close(release)
-	waitState(t, h, ownerA, "choose_folders")
+	waitState(t, h, ownerA, "completed")
 }
 
 // Cancelling the native import must not become tool_failed, nor alter the

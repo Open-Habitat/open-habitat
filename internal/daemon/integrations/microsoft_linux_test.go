@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -218,14 +219,15 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 	if err != nil || len(accounts) != 1 || accounts[0] != address {
 		t.Fatal(accounts, err)
 	}
-	folders, err := m.Folders(context.Background(), env, address)
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+	folders, err := m.testFolders(context.Background(), env, address)
 	if err != nil || len(folders) != 2 {
 		t.Fatal(folders, err)
 	}
 	if _, ready := m.SyncCommand(env, address); ready {
 		t.Fatal("synced without folder choice")
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{folders[1].ID}); err != nil {
+	if err := m.testChoose(context.Background(), env, address, []string{folders[1].ID}); err != nil {
 		t.Fatal(err)
 	}
 	cmd, ready := m.SyncCommand(env, address)
@@ -233,8 +235,10 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 		t.Fatal("selection or restart safety", cmd)
 	}
 	assertBisyncSafety(t, cmd)
+	// OneDrive, never chosen, is no synced root; its row waits for the
+	// tenant's answer to say what the grant allows.
 	services := m.Check(context.Background(), env, address)
-	if services[0].State == StateOK || services[1].State != StateOK || services[2].State != StateOK {
+	if services[0].ID != "sharepoint" || services[0].State != StateOK || services[1].State != StateOK {
 		t.Fatal(services)
 	}
 	data, err := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
@@ -328,7 +332,7 @@ func TestMicrosoftRefusesUntrustedPathsAndSelection(t *testing.T) {
 	if err := l.Commit(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, a, []string{"../escape"}); err == nil {
+	if err := m.testChoose(context.Background(), env, a, []string{"../escape"}); err == nil {
 		t.Fatal("accepted forged remote")
 	}
 	config := filepath.Join(env.Home, microsoftDir, a+".conf")
@@ -361,7 +365,7 @@ func TestMicrosoftConfigIsolation(t *testing.T) {
 	}
 }
 
-func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
+func TestMicrosoftCatalogRelaysOneCodeAndCompletesWithoutFolderStep(t *testing.T) {
 	env := microsoftEnv(t)
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	hold := filepath.Join(env.Home, "hold-mcp")
@@ -412,25 +416,20 @@ func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
 	if err := os.Remove(hold); err != nil {
 		t.Fatal(err)
 	}
-	choice := waitState(t, h, ownerA, "choose_folders")
-	if choice["address"] != "person@example.test" {
-		t.Fatal(choice)
+	// No folder step: the sign-in completes with nothing to sync.
+	done := waitState(t, h, ownerA, "completed")
+	if done["address"] != "person@example.test" {
+		t.Fatal(done)
 	}
-	c.quota = func() Room { return Room{Free: 2048, OK: true} }
-	code, _, _ = call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"onedrive"}})
-	if code != 200 {
-		t.Fatal(code)
-	}
-	waitState(t, h, ownerA, "completed")
 	// Completion is published before the worker's reconciliation, which starts
 	// sync and then writes the skill with an fsync under c.write. A removal sent
 	// in that window is refused as busy, not queued.
 	waitLoginWorker(t, c)
-	if !c.sync.supervised(key{Microsoft, "person@example.test"}) {
-		t.Fatal("chosen sync not supervised")
+	if c.sync.supervised(key{Microsoft, "person@example.test"}) {
+		t.Fatal("a sync started without a choice")
 	}
-	if _, err := os.Stat(filepath.Join(env.Home, BootSignal)); err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(env.Home, BootSignal)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("boot signal without a sync", err)
 	}
 	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": "person@example.test", "delete_directories": false})
 	if code != 200 {
@@ -455,6 +454,19 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	// rclone's configuration exists where a root syncs: one an earlier
+	// release chose, kept by the renewal.
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+	if err := m.testChoose(context.Background(), env, address, []string{"onedrive"}); err != nil {
+		t.Fatal(err)
+	}
+	renewal := msLogin(t, m, env, address)
+	if _, err := renewal.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if err := renewal.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
 	config, err := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
@@ -618,7 +630,10 @@ func TestMicrosoftOutageIsNotARejectedLogin(t *testing.T) {
 	}
 }
 
-func TestMicrosoftReloginPreservesDirectoriesAndDoesNotResyncHealthyPairs(t *testing.T) {
+// A renewal keeps exactly the roots that sync, under their own directories
+// and with their listings untouched; a root an earlier release's folder step
+// offered and nobody chose is left out, and no new library is looked for.
+func TestMicrosoftReloginKeepsSyncingRootsAndDoesNotResyncHealthyPairs(t *testing.T) {
 	env := microsoftEnv(t)
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	connect := func() *microsoftLogin {
@@ -632,90 +647,103 @@ func TestMicrosoftReloginPreservesDirectoriesAndDoesNotResyncHealthyPairs(t *tes
 	if err := connect().Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
 	remotes, err := microsoftRemotes(env, address)
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || len(remotes) != 2 {
+		t.Fatal(remotes, err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{remotes[1].Name}); err != nil {
+	if err := m.testChoose(context.Background(), env, address, []string{remotes[1].Name}); err != nil {
 		t.Fatal(err)
 	}
 	listing := filepath.Join(env.Home, microsoftWork(address, remotes[1].Name), "local..dropbox.path1.lst")
 	if err := os.WriteFile(listing, []byte("healthy native listing: do not reinitialize"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	base := m.client.Transport
+	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "graph.microsoft.com" && r.URL.Path != "/v1.0/me" {
+			t.Errorf("renewal looked for files: %s", r.URL.Path)
+		}
+		return base.RoundTrip(r)
+	})
 	l := connect()
-	l.config = []byte(strings.ReplaceAll(string(l.config), remotes[1].Directory, remotes[1].Directory+"-renamed"))
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	if len(l.restart) != 0 {
+		t.Fatal("a renewal at the same level restarted passes", l.restart)
+	}
 	current, err := microsoftRemotes(env, address)
-	if err != nil || current[1].Directory != remotes[1].Directory {
-		t.Fatal("cloud rename moved a live local sync root", current, err)
-	}
-	choice, err := m.FolderChoiceAfterLogin(env, address)
-	if err != nil || !choice {
-		t.Fatal("existing sync hides newly available libraries")
-	}
-	folders, err := m.Folders(context.Background(), env, address)
-	if err != nil || folders[0].Suggested || !folders[1].Suggested {
-		t.Fatal("relogin forgot existing selection", folders, err)
-	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{current[0].Name, current[1].Name}); err != nil {
-		t.Fatal(err)
+	if err != nil || len(current) != 1 || current[0] != remotes[1] {
+		t.Fatalf("roots after renewal %+v %v", current, err)
 	}
 	data, err := os.ReadFile(listing)
 	if err != nil || string(data) != "healthy native listing: do not reinitialize" {
 		t.Fatal("healthy pair was resynced", err)
 	}
-	// A fresh selection can also stop one existing pair, without removing data.
-	if err := m.ChooseFolders(context.Background(), env, address, []string{current[0].Name}); err != nil {
-		t.Fatal(err)
+	if cmd, ok := m.SyncCommand(env, address); !ok || !strings.Contains(strings.Join(cmd.Args, " "), remotes[1].Name+":") {
+		t.Fatal("the syncing library stopped", cmd.Args)
 	}
-	if microsoftReady(env, address, current[1]) {
-		t.Fatal("deselected pair still enabled")
+	if dirs := m.Directories(env, address); len(dirs) != 1 || dirs[0].Path != remotes[1].Directory {
+		t.Fatal(dirs)
 	}
-	if _, err := os.Stat(filepath.Join(env.Home, current[1].Directory)); err != nil {
-		t.Fatal("deselection removed local files", err)
+	config, _ := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
+	if strings.Count(string(config), "\ntoken = ") != 1 || !strings.Contains(string(config), "access-secret") || !strings.Contains(string(config), microsoftDiscoveryFixed) {
+		t.Fatalf("renewal's token not kept for the roots:\n%s", config)
 	}
 }
 
-func TestMicrosoftMailOnlyLicenceCompletesWithoutFolderChoice(t *testing.T) {
-	for _, body := range []string{`{"error":{"code":"itemNotFound"}}`, `<html>not json</html>`} {
-		t.Run(body, func(t *testing.T) {
-			env := microsoftEnv(t)
-			m := syntheticMicrosoft(t, "person@example.test", "")
-			base := m.client.Transport
-			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path == "/v1.0/me/drive" {
-					return &http.Response{StatusCode: 404, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
-				}
-				if r.URL.Path == "/v1.0/me/followedSites" {
-					return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"value":[]}`))}, nil
-				}
-				return base.RoundTrip(r)
-			})
-			c := New(env, []Entry{m}, nil)
-			ctx, cancel := context.WithCancel(context.Background())
-			c.Start(ctx)
-			defer func() { cancel(); c.Stop() }()
-			h := c.Handler(allow)
-			code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
-			if code != 200 {
-				t.Fatal(code)
-			}
-			waitState(t, h, ownerA, "completed")
-			address := "person@example.test"
-			services := m.Check(context.Background(), env, address)
-			if len(services) != 3 || services[0].ID != "mail" || services[0].State != StateOK {
-				t.Fatal(services)
-			}
-			if _, ready := m.SyncCommand(env, address); ready {
-				t.Fatal("invented a file connection")
-			}
-			if err := m.Remove(context.Background(), env, address); err != nil {
-				t.Fatal(err)
-			}
-		})
+// A new account with a files grant asks Graph nothing about its files,
+// offers no folder step and syncs nothing; its agents search and fetch.
+func TestMicrosoftConnectOffersNoFolderStepAndSyncsNothing(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	base := m.client.Transport
+	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "graph.microsoft.com" && r.URL.Path != "/v1.0/me" {
+			t.Errorf("sign-in looked for files: %s", r.URL.Path)
+		}
+		return base.RoundTrip(r)
+	})
+	c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{Free: 1 << 40, OK: true} }))
+	ctx, cancel := context.WithCancel(context.Background())
+	c.Start(ctx)
+	defer func() { cancel(); c.Stop() }()
+	h := c.Handler(allow)
+	if code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"}); code != 200 {
+		t.Fatal(code)
+	}
+	v := waitState(t, h, ownerA, "completed")
+	if v["address"] != "person@example.test" {
+		t.Fatal(v)
+	}
+	address := "person@example.test"
+	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
+		t.Fatal("roots without a choice", remotes, err)
+	}
+	if _, ready := m.SyncCommand(env, address); ready {
+		t.Fatal("a new account syncs")
+	}
+	if dirs := m.Directories(env, address); len(dirs) != 0 {
+		t.Fatal(dirs)
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, "cloud")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("a cloud directory was made", err)
+	}
+	// The files row is the one sign-in's: agents reach files through it.
+	reply, _ := json.Marshal(map[string]any{"state": "ok", "scopes": strings.Fields(earlierFullGrant + " " + microsoftMCPScopes)})
+	os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), reply, 0600)
+	services := m.Check(context.Background(), env, address)
+	var ids []string
+	for _, s := range services {
+		ids = append(ids, s.ID)
+	}
+	if !slices.Equal(ids, []string{"onedrive", "mail", "calendar", "contacts"}) || services[0].State != services[1].State || services[0].Failure != "" {
+		t.Fatalf("%+v", services)
+	}
+	skill := m.Skill(env, address)
+	if skill.Synced || skill.Mirrored || strings.Contains(skill.Body, "Synced directories") || strings.Contains(skill.Body, "~/cloud/onedrive") || strings.Contains(skill.Body, "first sync") {
+		t.Fatal(skill.Body)
 	}
 }
 
@@ -730,6 +758,7 @@ func TestMicrosoftStatusDoesNotStarveOutlookOrScaleWithLibraries(t *testing.T) {
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
 	configPath := filepath.Join(env.Home, microsoftDir, address+".conf")
 	config, err := os.ReadFile(configPath)
 	if err != nil {
@@ -743,6 +772,9 @@ func TestMicrosoftStatusDoesNotStarveOutlookOrScaleWithLibraries(t *testing.T) {
 	extra = strings.ReplaceAll(extra, remotes[1].Name, "sp-012345678901234567890123")
 	extra = strings.ReplaceAll(extra, remotes[1].Directory, remotes[1].Directory+"-extra")
 	if err := os.WriteFile(configPath, append(config, []byte(extra)...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.testChoose(context.Background(), env, address, []string{remotes[0].Name, remotes[1].Name, "sp-012345678901234567890123"}); err != nil {
 		t.Fatal(err)
 	}
 	wrapper := filepath.Join(t.TempDir(), "rclone")
@@ -774,11 +806,12 @@ func TestMicrosoftFailedPairDoesNotStarveOtherLibraries(t *testing.T) {
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := m.ChooseFolders(context.Background(), env, address, []string{remotes[0].Name, remotes[1].Name}); err != nil {
+	if err := m.testChoose(context.Background(), env, address, []string{remotes[0].Name, remotes[1].Name}); err != nil {
 		t.Fatal(err)
 	}
 	wrapper := filepath.Join(t.TempDir(), "rclone")
@@ -811,7 +844,6 @@ exec '` + env.Config.Tools["rclone"] + `' "$@"
 
 type fastMicrosoftEntry struct {
 	*microsoft
-	failFolders bool
 }
 
 func (e *fastMicrosoftEntry) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
@@ -824,16 +856,15 @@ func (e *fastMicrosoftEntry) StartLevelLogin(ctx context.Context, env Env, addre
 	}
 	return login, err
 }
-func (e *fastMicrosoftEntry) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
-	if e.failFolders {
-		return nil, ToolFailed
-	}
-	return e.microsoft.Folders(ctx, env, address)
-}
-func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
-	for _, action := range []string{"cancel", "expiry", "folder-error", "shutdown"} {
+
+// A renewal of an account whose OneDrive syncs completes without a folder
+// step and the sync carries on. A level change that turns the root to the
+// other direction runs its first pass in the new one as the attempt's pass;
+// if that pass fails, the attempt fails and the account and its files stay.
+func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
+	for _, action := range []string{"renewal", "level-change", "level-change-fails"} {
 		t.Run(action, func(t *testing.T) {
-			env := microsoftEnv(t)
+			env := microsoftLevelEnv(t)
 			m := syntheticMicrosoft(t, "person@example.test", "")
 			l := msLogin(t, m, env, "")
 			address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
@@ -843,68 +874,65 @@ func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
 			if err := l.Commit(context.Background(), address); err != nil {
 				t.Fatal(err)
 			}
-			if err := m.ChooseFolders(context.Background(), env, address, []string{"onedrive"}); err != nil {
+			earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
+			if err := m.testChoose(context.Background(), env, address, []string{"onedrive"}); err != nil {
 				t.Fatal(err)
 			}
-			e := &fastMicrosoftEntry{microsoft: m, failFolders: action == "folder-error"}
-			opts := []Option{WithQuota(func() Room { return Room{Free: 2048, OK: true} })}
-			if action == "expiry" {
-				opts = append(opts, WithClock(func() time.Time { return time.Now().Add(-loginLifetime + time.Second) }))
-			}
-			c := New(env, []Entry{e}, nil, opts...)
+			e := &fastMicrosoftEntry{microsoft: m}
+			c := New(env, []Entry{e}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Start(ctx)
 			defer func() { cancel(); c.Stop() }()
 			if !c.sync.supervised(key{Microsoft, address}) {
 				t.Fatal("initial native sync not supervised")
 			}
-			if err := c.startLogin(ownerA, e, address, ""); err != nil {
+			level := Level("")
+			if action != "renewal" {
+				level = LevelRead
+				microsoftGrantToken(t, m, microsoftReadGrant, true)
+			}
+			if action == "level-change-fails" {
+				// The read level's first pass is a mirror pass.
+				wrapper := filepath.Join(t.TempDir(), "rclone")
+				script := "#!/bin/sh\nset -eu\nfor a in \"$@\"; do [ \"$a\" != sync ] || exit 7; done\nexec '" + env.Config.Tools["rclone"] + "' \"$@\"\n"
+				if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil {
+					t.Fatal(err)
+				}
+				env.Config.Tools["rclone"] = wrapper
+				c.env.Config.Tools["rclone"] = wrapper
+			}
+			if err := c.startLogin(ownerA, e, address, level); err != nil {
 				t.Fatal(err)
 			}
 			h := c.Handler(allow)
-			if action == "folder-error" {
-				waitState(t, h, ownerA, "failed")
+			if action == "level-change-fails" {
+				if v := waitState(t, h, ownerA, "failed"); v["address"] != address {
+					t.Fatal(v)
+				}
 			} else {
-				waitState(t, h, ownerA, "choose_folders")
-				if c.sync.supervised(key{Microsoft, address}) {
-					t.Fatal("native refresher not stopped during replacement choice")
-				}
-				if action == "cancel" {
-					if err := c.cancelLogin(ownerA, c.relay.current().id); err != nil {
-						t.Fatal(err)
-					}
-				}
-				if action == "shutdown" {
-					cancel()
-				}
+				waitState(t, h, ownerA, "completed")
 			}
-			c.relay.mu.Lock()
-			done := c.relay.current().done
-			c.relay.mu.Unlock()
-			select {
-			case <-done:
-			case <-time.After(5 * time.Second):
-				t.Fatal("renewal did not finish")
+			waitLoginWorker(t, c)
+			remotes, err := microsoftRemotes(env, address)
+			if err != nil || len(remotes) != 1 || remotes[0].Name != "onedrive" {
+				t.Fatal("roots after", action, remotes, err)
 			}
-			if action == "shutdown" {
-				deadline := time.Now().Add(3 * time.Second)
-				for {
-					c.write.Lock()
-					stopped := c.stopping
-					c.write.Unlock()
-					if stopped {
-						break
-					}
-					if time.Now().After(deadline) {
-						t.Fatal("shutdown did not stop catalog")
-					}
-					time.Sleep(time.Millisecond)
+			if _, err := os.Stat(filepath.Join(env.Home, remotes[0].Directory)); err != nil {
+				t.Fatal("local files gone", err)
+			}
+			switch action {
+			case "renewal":
+				if !remotes[0].Writable || !c.sync.supervised(key{Microsoft, address}) {
+					t.Fatal("retained account lost sync after renewal")
 				}
-				if c.sync.supervised(key{Microsoft, address}) {
-					t.Fatal("late cleanup resurrected a shutdown client")
+			case "level-change":
+				if remotes[0].Writable || !microsoftReady(env, address, remotes[0]) || !c.sync.supervised(key{Microsoft, address}) {
+					t.Fatal("the turned root does not sync as a mirror")
 				}
-			} else if !c.sync.supervised(key{Microsoft, address}) {
-				t.Fatal("retained account lost sync after", action)
+			case "level-change-fails":
+				if a, _ := m.Accounts(env); len(a) != 1 {
+					t.Fatal("a failed pass removed the account", a)
+				}
 			}
 		})
 	}
@@ -1049,7 +1077,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	}
 }
 
-// Exercise real discovery and relay logging with provider-shaped failures. Raw
+// Exercise real discovery and its logging with provider-shaped failures. Raw
 // provider text, identifiers and bodies must never become log or browser data.
 func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
@@ -1076,11 +1104,11 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 				}
 				return base.RoundTrip(r)
 			})
-			l := msLogin(t, m, env, "")
-			prompted := false
-			_, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { prompted = true; return nil })
-			if err == nil || prompted {
-				t.Fatal("failed discovery reached native Outlook login", err)
+			// The startup repair is what still discovers (microsoft_recover_linux.go).
+			l := &microsoftLogin{entry: m, env: env, address: "person@example.test"}
+			err := l.discover(context.Background(), "access-secret", map[string]bool{"Files.ReadWrite.All": true, "Sites.ReadWrite.All": true})
+			if err == nil {
+				t.Fatal("failed discovery succeeded")
 			}
 			var logs bytes.Buffer
 			c := testCatalog(t, env.Home, nil)
@@ -1096,7 +1124,7 @@ func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
 			if tc.name == "pagination" || tc.name == "invalid-drive" {
 				wantStatus = 0
 			} // local validation, not a failed HTTP request
-			for key, want := range map[string]any{"phase": "graph_discovery", "step": tc.step, "reason": "tool_failed", "tool": "direct_http", "exit_status": "not_applicable", "http_status": float64(wantStatus), "tenant_kind": tc.kind, "graph_code": tc.code, "graph_message": tc.message} {
+			for key, want := range map[string]any{"step": tc.step, "reason": "tool_failed", "tool": "direct_http", "exit_status": "not_applicable", "http_status": float64(wantStatus), "tenant_kind": tc.kind, "graph_code": tc.code, "graph_message": tc.message} {
 				if event[key] != want {
 					t.Errorf("%s = %v, want %v", key, event[key], want)
 				}

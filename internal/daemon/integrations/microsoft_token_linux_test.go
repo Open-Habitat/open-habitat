@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -28,65 +27,6 @@ func realisticToken(access string, expiry time.Time) []byte {
 	return token
 }
 
-func testTeamID(i int) string { return fmt.Sprintf("%08x-0000-4000-8000-%012x", i+1, i+1) }
-
-// manyTeams answers Graph as a tenant where the person follows one site and
-// has joined len(libraries) teams, team i with libraries[i] libraries whose
-// drive IDs are as long as Graph's. It records the Graph paths asked.
-func manyTeams(t *testing.T, libraries []int) (*microsoft, *[]string) {
-	t.Helper()
-	m := syntheticMicrosoft(t, "person@example.test", "")
-	base := m.client.Transport
-	var asked []string
-	var mu sync.Mutex
-	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
-		mu.Lock()
-		asked = append(asked, r.URL.Path)
-		mu.Unlock()
-		body := ""
-		switch {
-		case r.URL.Path == "/"+testTenant+"/oauth2/v2.0/token":
-			// The sign-in's grant includes the team list.
-			body = `{"access_token":"access-secret","refresh_token":"refresh-secret","expires_in":3600,"scope":"User.Read Files.ReadWrite.All Sites.ReadWrite.All Team.ReadBasic.All"}`
-		case r.URL.Path == "/v1.0/me/joinedTeams":
-			var teams []string
-			for i := range libraries {
-				teams = append(teams, fmt.Sprintf(`{"id":%q,"displayName":"Contoso-tiimi %02d"}`, testTeamID(i), i+1))
-			}
-			body = `{"value":[` + strings.Join(teams, ",") + `]}`
-		case strings.HasPrefix(r.URL.Path, "/v1.0/groups/"):
-			i := -1
-			for j := range libraries {
-				if strings.Contains(r.URL.Path, testTeamID(j)) {
-					i = j
-				}
-			}
-			body = fmt.Sprintf(`{"id":"contoso.sharepoint.com,%s,%s","displayName":"Contoso-tiimi %02d","webUrl":"https://contoso.sharepoint.com/sites/contoso-tiimi-%02d"}`, testTeamID(i), testTeamID(i), i+1, i+1)
-		case strings.HasPrefix(r.URL.Path, "/v1.0/sites/contoso.sharepoint.com,") && strings.HasSuffix(r.URL.Path, "/drives") && !strings.Contains(r.URL.Path, "2C712604"):
-			var drives []string
-			for j := range libraries {
-				if !strings.Contains(r.URL.Path, testTeamID(j)) {
-					continue
-				}
-				for k := 0; k < libraries[j]; k++ {
-					drives = append(drives, fmt.Sprintf(`{"id":"b!%s%04d%04d","name":"Jaetut asiakirjat %d","driveType":"documentLibrary"}`, strings.Repeat("x", 56), j, k, k+1))
-				}
-			}
-			body = `{"value":[` + strings.Join(drives, ",") + `]}`
-		default:
-			return base.RoundTrip(r)
-		}
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
-	})
-	return m, &asked
-}
-
-var testManyTeamsScopes = map[string]bool{"Files.ReadWrite.All": true, "Sites.ReadWrite.All": true, "Team.ReadBasic.All": true}
-
-func manyTeamsLogin(m *microsoft, token []byte) *microsoftLogin {
-	return &microsoftLogin{entry: m, address: "person@example.test", app: MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}, token: token, granted: []string{"Files.ReadWrite.All", "Sites.ReadWrite.All", "Team.ReadBasic.All"}}
-}
-
 // writeConfig keeps config as the account's rclone config.
 func writeConfig(t *testing.T, env Env, address string, config []byte) string {
 	t.Helper()
@@ -99,106 +39,6 @@ func writeConfig(t *testing.T, env Env, address string, config []byte) string {
 		t.Fatal(err)
 	}
 	return path
-}
-
-// With real token sizes, a person in thirty teams is offered all of them:
-// the token is written once, not once per library.
-func TestMicrosoftOneTokenFitsManyRoots(t *testing.T) {
-	m, _ := manyTeams(t, slices.Repeat([]int{1}, 30))
-	l := manyTeamsLogin(m, realisticToken("access-secret", time.Now().Add(time.Hour)))
-	if err := l.discover(context.Background(), "access-secret", testManyTeamsScopes); err != nil {
-		t.Fatal(err)
-	}
-	if l.teamsLeftOut == teamsTooMany || len(l.teamsNotOffered) != 0 {
-		t.Fatal("teams left out", l.teamsNotOffered)
-	}
-	if n := strings.Count(string(l.config), "\ntoken = "); n != 1 {
-		t.Fatal("tokens in the config:", n)
-	}
-	env := microsoftEnv(t)
-	writeConfig(t, env, l.address, l.config)
-	roots, legacy, err := microsoftReadRoots(env, l.address)
-	if err != nil || len(legacy) != 0 || len(roots) != 32 {
-		t.Fatal(len(roots), legacy, err)
-	}
-	for _, r := range roots {
-		if !r.Writable || r.Label == "" || !microsoftDriveID.MatchString(r.DriveID) {
-			t.Fatalf("root %+v", r)
-		}
-	}
-}
-
-// Teams beyond the remote bound are named, and Graph is not asked about
-// them once nothing more can fit. The bound is the count of roots, not the
-// file: 64 roots with real token and name sizes fit the file.
-func TestMicrosoftTeamsBeyondTheBoundAreNamed(t *testing.T) {
-	m, asked := manyTeams(t, slices.Repeat([]int{1}, 70))
-	l := manyTeamsLogin(m, realisticToken("access-secret", time.Now().Add(time.Hour)))
-	if err := l.discover(context.Background(), "access-secret", testManyTeamsScopes); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Count(string(l.config), "\n[sp-") != maxMicrosoftRemotes-1 || len(l.config) > maxMicrosoftConfig {
-		t.Fatal(strings.Count(string(l.config), "\n[sp-"), len(l.config))
-	}
-	// OneDrive and the followed library come first: 62 teams fit.
-	var want []string
-	for i := 63; i <= 70; i++ {
-		want = append(want, fmt.Sprintf("Contoso-tiimi %02d", i))
-	}
-	if l.teamsLeftOut != teamsTooMany || !slices.Equal(l.teamsNotOffered, want) || l.teamsOmitted != 8 || !slices.Equal(l.bounds, []string{microsoftRemoteLimit}) {
-		t.Fatal(l.teamsLeftOut, l.teamsNotOffered, l.teamsOmitted, l.bounds)
-	}
-	for _, p := range *asked {
-		if strings.Contains(p, testTeamID(69)) {
-			t.Fatal("asked Graph about a team that could not fit", p)
-		}
-	}
-}
-
-// A team that does not fit the file is left out whole and named, and a
-// later team that fits is still offered.
-func TestMicrosoftTeamThatDoesNotFitDoesNotStopTheRest(t *testing.T) {
-	probe, _ := manyTeams(t, []int{1})
-	p := manyTeamsLogin(probe, nil)
-	if err := p.discover(context.Background(), "access-secret", testManyTeamsScopes); err != nil {
-		t.Fatal(err)
-	}
-	// A token that leaves room for one small team after the account's roots.
-	m, _ := manyTeams(t, []int{10, 1})
-	l := manyTeamsLogin(m, []byte(strings.Repeat("t", maxMicrosoftConfig-len(p.config))))
-	if err := l.discover(context.Background(), "access-secret", testManyTeamsScopes); err != nil {
-		t.Fatal(err)
-	}
-	config := string(l.config)
-	if strings.Contains(config, "x00000000") || !strings.Contains(config, "x00010000") || len(config) > maxMicrosoftConfig {
-		t.Fatalf("whole first team out, second in:\n%d", len(config))
-	}
-	if !slices.Equal(l.teamsNotOffered, []string{"Contoso-tiimi 01"}) || !slices.Equal(l.bounds, []string{microsoftConfigLimit}) {
-		t.Fatal(l.teamsNotOffered, l.bounds)
-	}
-}
-
-// The folder step names the teams left out, and the journal says which
-// bound fired and how many, never their names.
-func TestMicrosoftTeamsLeftOutReachTheViewAndTheJournal(t *testing.T) {
-	env := microsoftEnv(t)
-	m, _ := manyTeams(t, slices.Repeat([]int{1}, 66))
-	var logs lockedBuffer
-	c := New(env, []Entry{m}, slog.New(slog.NewJSONHandler(&logs, nil)), WithQuota(func() Room { return Room{Free: 1 << 40, OK: true} }))
-	h := c.Handler(allow)
-	if code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"}); code != 200 {
-		t.Fatal(code)
-	}
-	defer func() { c.relay.cancelAll(); c.sync.stopAll() }()
-	v := waitState(t, h, ownerA, "choose_folders")
-	names, _ := json.Marshal(v["teams_not_offered"])
-	if v["teams_left_out"] != teamsTooMany || string(names) != `["Contoso-tiimi 63","Contoso-tiimi 64","Contoso-tiimi 65","Contoso-tiimi 66"]` {
-		t.Fatal(v["teams_left_out"], string(names))
-	}
-	journal := logs.String()
-	if !strings.Contains(journal, `"reason":"teams_left_out","bound":"remote_limit","teams_left_out":4`) || strings.Contains(journal, "Contoso-tiimi") {
-		t.Fatal(journal)
-	}
 }
 
 type lockedBuffer struct {
@@ -409,14 +249,20 @@ func TestMicrosoftTokenRefreshRewritesOneToken(t *testing.T) {
 	}))
 	defer endpoint.Close()
 
-	m, _ := manyTeams(t, slices.Repeat([]int{1}, 22))
-	l := manyTeamsLogin(m, realisticToken("expired", time.Now().Add(-time.Hour)))
-	if err := l.discover(context.Background(), "access-secret", testManyTeamsScopes); err != nil {
+	// OneDrive and 23 libraries under one account token, as a sign-in keeps
+	// the roots that sync.
+	address := "person@example.test"
+	roots := []microsoftRemote{{Name: "onedrive", Directory: "cloud/onedrive/" + address, DriveID: "b!" + strings.Repeat("x", 60), DriveType: "business", Label: "OneDrive"}}
+	for i := 1; i < 24; i++ {
+		roots = append(roots, microsoftRemote{Name: fmt.Sprintf("sp-%024x", i), Directory: fmt.Sprintf("cloud/sharepoint/contoso--%s/site-%02d/library", address, i), DriveID: fmt.Sprintf("b!%s%04d", strings.Repeat("x", 56), i), DriveType: "documentLibrary", Label: fmt.Sprintf("SharePoint · Contoso-tiimi %02d", i)})
+	}
+	kept, err := microsoftKeptConfig(MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}, []string{"Files.ReadWrite.All", "Sites.ReadWrite.All"}, realisticToken("expired", time.Now().Add(-time.Hour)), roots)
+	if err != nil {
 		t.Fatal(err)
 	}
 	env := microsoftEnv(t)
-	path := writeConfig(t, env, l.address, l.config)
-	before, _, err := microsoftReadRoots(env, l.address)
+	path := writeConfig(t, env, address, kept)
+	before, _, err := microsoftReadRoots(env, address)
 	if err != nil || len(before) != 24 {
 		t.Fatal(len(before), err)
 	}
@@ -434,7 +280,7 @@ func TestMicrosoftTokenRefreshRewritesOneToken(t *testing.T) {
 	if !strings.Contains(config, microsoftDiscoveryFixed) || strings.Contains(config, "token_url") {
 		t.Fatal("rclone dropped the marker or kept the test endpoint", config)
 	}
-	after, legacy, err := microsoftReadRoots(env, l.address)
+	after, legacy, err := microsoftReadRoots(env, address)
 	if err != nil || len(legacy) != 0 || !slices.Equal(after, before) {
 		t.Fatal("refresh changed the roots", err)
 	}

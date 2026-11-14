@@ -221,8 +221,9 @@ move them into a repository unless asked.
 
 ## Files on the person's computer
 
-Suggest a synced OneDrive or Dropbox folder when the person wants to share files
-from their computer (for example screenshots) or receive files there. Use the
+Suggest a synced Dropbox folder, or a OneDrive folder that already syncs here,
+when the person wants to share files from their computer (for example
+screenshots) or receive files there. Use the
 connected integration's native sync directory; put outgoing files such as email
 attachments there. The person's computer must sync that folder too. Otherwise
 ask them to attach individual files. The browser grants no folder or disk access.
