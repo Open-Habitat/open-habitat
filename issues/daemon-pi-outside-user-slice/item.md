@@ -8,8 +8,8 @@ provenance: agent
 source_ref: taskfleet:01m68hqwwm215yz17mbzpnw471/observation:daemon-cgroup-outside-user-slice
 originating_run: 01m68hqwwm215yz17mbzpnw471
 originating_run_kind: research
-lane: pi-holder
-lane_seq: 2
+lane: pi-memory
+lane_seq: 1
 preparation: pending
 ---
 
@@ -49,3 +49,7 @@ daemon's Pi children (or the daemon itself) in the person's
 is a product-declared per-person `MemoryMax`/`TasksMax` on the daemon
 instance taken from root's site declaration. Either way the guide should
 describe what the limit actually covers.
+
+## Note (14.11.2026)
+
+The holder architecture that would also have solved this was declined (`upgrade-keeps-agent-processes`, wontfix). If this is pursued, it needs a simple fix of its own (for example a memory limit on the daemon unit or a delegated per-conversation sub-cgroup), agreed with Jari first.

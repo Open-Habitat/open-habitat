@@ -3,11 +3,10 @@ created: 2026-10-25
 updated: 2026-11-14
 type: task
 reporter: jari
-status: open
+status: wontfix
 priority: normal
 preparation: pending
-lane: pi-holder
-lane_seq: 1
+closed: 2026-11-14
 ---
 
 # Upgrades that do not kill running agent processes
@@ -38,3 +37,9 @@ Verify the current behaviour first: start a long-lived child from a conversation
 ### 2026-10-30T07:11:02Z · @jari
 
 Jari 30.10.: On tavallaan ok, että prosessit kuolevat päivityksessä; ne säilytetään vain, jos sen voi tehdä ilman ylimääräistä monimutkaisuutta. research.md: vaihtoehto A (host upgrade jättää käyttäjämanagerit rauhaan) on jo tehty; ainoa vaihtoehto, jossa käynnissä oleva vuoro jatkuu (B, keskustelukohtainen pi-host-pitäjä ja uudelleenkytkentäprotokolla), on iso. Siksi lykätty; herätys ja joutilaan Pi:n säilyttäminen (wake-stopped-conversation-on-run-settle) kattaa käytännön haitan.
+
+## Resolution
+
+### 2026-11-14T08:08:57Z · @issuectl
+
+Jari 14.11.2026: the per-conversation Pi holder (option B) is too complex for one corner case; not pursued. Option A (upgrade leaves user managers alone) landed in 609c613f, and needrestart no longer restarts daemons (needrestart-restarts-daemons).
