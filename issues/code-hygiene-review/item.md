@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-14
 type: task
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: code-hygiene
 lane_seq: 2
+closed: 2026-11-14
 ---
 
 # Code hygiene review: dead code, duplication, missing basic seams
@@ -24,3 +25,9 @@ Output: one intake issue per real finding (or per coherent cluster), each
 with where, why it matters (maintenance cost, risk of divergence) and the
 proposed refactor; plus a short report in this issue ranking them. The
 refactors themselves are scheduled from the findings.
+
+## Acceptance Criteria
+
+- [x] Run static-analysis and duplication tools and verify retained findings in source.
+- [x] File bounded proposals unlaned and record the ranked review in result.md.
+- [x] Leave product code unchanged.
