@@ -24,7 +24,7 @@ const extension = resolve(here, '../../../runtime/core/page-reader.mjs');
 const browsers = process.env.PLAYWRIGHT_BROWSERS_PATH || join(homedir(), '.cache/ms-playwright');
 let shell;
 try { shell = headlessShell(browsers); } catch {
-  throw new Error(`no Chromium headless shell under ${browsers}; install one with \`npx --prefix web playwright install chromium-headless-shell\``);
+  throw new Error(`no Chromium headless shell under ${browsers}; scripts/ci-local.sh installs it before device tests; for a direct run, use the same PLAYWRIGHT_BROWSERS_PATH with \`npm exec --prefix web playwright install chromium chromium-headless-shell\``);
 }
 
 const sources = {
