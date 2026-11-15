@@ -121,7 +121,7 @@
           "required": [
             "action",
             "entry",
-            "confirmation"
+            "listing_token"
           ],
           "properties": {
             "action": {
@@ -130,11 +130,9 @@
             "entry": {
               "$ref": "#/$defs/entryName"
             },
-            "confirmation": {
-              "description": "The entry's original workspace name, or the entry name when it has none.",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 255
+            "listing_token": {
+              "description": "The listing_token of the trash_list reply the person confirmed. Deletes only the named entry from that exact listing; a changed Trash is refused with trash_changed.",
+              "$ref": "#/$defs/listingToken"
             }
           }
         },

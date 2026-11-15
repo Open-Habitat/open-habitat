@@ -304,8 +304,8 @@ surface to bypass an active run's ownership.
 
 `trash list` observes entries and a listing token. `trash show --entry ENTRY`
 inspects one; `trash restore --entry ENTRY` never overwrites a current directory.
-Permanent single-entry deletion is `trash delete --entry ENTRY --confirmation NAME`:
-NAME is the workspace name shown by inspection, or the entry name if unlabelled.
+Permanent single-entry deletion is `trash delete --entry ENTRY --listing-token TOKEN`:
+TOKEN is from the listing that showed ENTRY; a changed Trash is refused.
 `trash delete --all --listing-token TOKEN` empties exactly that observed listing.
 No automatic purge, following symlinks or crossing filesystems is introduced.
 
@@ -362,7 +362,7 @@ the CLI; dispose of temporary secret input yourself.
   files; true stops sync then moves directories to the freedesktop Trash using
   the existing no-symlink/no-cross-filesystem operation. This removes local native
   login/configuration, **not** the provider's grant. Permanent Trash deletion is
-  still the separate typed/token-bound Trash workflow.
+  still the separate listing-token-bound Trash workflow.
 
 - `agent code-host create --provider gitea|gitlab --base-url URL --secret-file - --json`:
   connect the person's Gitea or GitLab account with their personal access

@@ -184,6 +184,38 @@ func blockerKinds(body map[string]any) []string {
 	return kinds
 }
 
+func (f *trashFixture) listingToken() string {
+	f.t.Helper()
+	code, body := f.request(map[string]any{"action": "trash_list"})
+	if code != 200 {
+		f.t.Fatalf("listing: %d %v", code, body)
+	}
+	return body["listing_token"].(string)
+}
+
+func TestTrashDeleteRefusesReusedEntryIdentity(t *testing.T) {
+	f := newTrashFixture(t)
+	write(t, f.src("notes")+"/original", "kept")
+	if code, body := f.remove("notes", "trash"); code != 200 {
+		t.Fatalf("trash: %d %v", code, body)
+	}
+	token := f.listingToken()
+	// Reuse the same name and metadata, but not the directory the person saw.
+	if err := os.Rename(f.trash("files", "notes"), f.src("saved")); err != nil {
+		t.Fatal(err)
+	}
+	write(t, f.trash("files", "notes")+"/replacement", "keep this too")
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "notes", "listing_token": token}); code != 409 || errorCode(body) != "trash_changed" {
+		t.Fatalf("changed identity: %d %v", code, body)
+	}
+	if !exists(f.trash("files", "notes")+"/replacement") || !exists(f.src("saved")+"/original") {
+		t.Fatal("stale confirmation deleted data")
+	}
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "notes", "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
+		t.Fatalf("fresh confirmation: %d %v", code, body)
+	}
+}
+
 func TestWorkspaceTrashMoveRestoreAndPermanentDelete(t *testing.T) {
 	f := newTrashFixture(t)
 	write(t, f.src("notes")+"/a/b.txt", "kept\n")
@@ -212,10 +244,10 @@ func TestWorkspaceTrashMoveRestoreAndPermanentDelete(t *testing.T) {
 	if code, body = f.remove("notes", "trash"); code != 200 || body["entry"] != "notes.2" {
 		t.Fatalf("second delete: %d %v", code, body)
 	}
-	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "notes.2", "confirmation": "wrong"}); code != 409 || errorCode(body) != "confirmation_mismatch" {
+	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "notes.2", "listing_token": strings.Repeat("0", 64)}); code != 409 || errorCode(body) != "trash_changed" {
 		t.Fatalf("mismatched confirmation: %d %v", code, body)
 	}
-	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "notes.2", "confirmation": "notes"}); code != 200 || body["state"] != "deleted" {
+	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "notes.2", "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
 		t.Fatalf("permanent delete: %d %v", code, body)
 	}
 	if exists(f.trash("files", "notes.2")) || exists(f.trash("info", "notes.2.trashinfo")) {
@@ -757,12 +789,12 @@ func TestWorkspaceDeleteRacesAndCrashes(t *testing.T) {
 		}
 		return nil
 	}
-	code, body = f.request(map[string]any{"action": "trash_delete", "entry": "work", "confirmation": "work"})
+	code, body = f.request(map[string]any{"action": "trash_delete", "entry": "work", "listing_token": f.listingToken()})
 	trashHook = func(string) error { return nil }
 	if code != 200 || body["state"] != "partial" || len(f.list()) != 1 {
 		t.Fatalf("interrupted permanent deletion: %d %v", code, body)
 	}
-	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "work", "confirmation": "work"}); code != 200 || body["state"] != "deleted" || len(f.list()) != 0 {
+	if code, body = f.request(map[string]any{"action": "trash_delete", "entry": "work", "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" || len(f.list()) != 0 {
 		t.Fatalf("second permanent deletion: %d %v", code, body)
 	}
 }
@@ -898,7 +930,7 @@ func TestWorkspaceDeleteKeepsNestedHistoryAndLongNames(t *testing.T) {
 	oldTable := deletionMountInfo
 	deletionMountInfo = table
 	defer func() { deletionMountInfo = oldTable }()
-	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "m", "confirmation": "m"}); code != 200 || body["state"] != "blocked" || !exists(f.trash("files", "m")+"/data/f") {
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "m", "listing_token": f.listingToken()}); code != 200 || body["state"] != "blocked" || !exists(f.trash("files", "m")+"/data/f") {
 		t.Fatalf("mount in entry: %d %v", code, body)
 	}
 }
@@ -922,7 +954,7 @@ func TestTrashTreatsOtherToolsEntriesAsData(t *testing.T) {
 	if code, _ := f.remove("w", "trash"); code != 200 {
 		t.Fatal(code)
 	}
-	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "w", "confirmation": "w"}); code != 200 || body["state"] != "deleted" {
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "w", "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
 		t.Fatalf("delete: %d %v", code, body)
 	}
 	if b, err := os.ReadFile(outside + "/precious"); err != nil || string(b) != "keep\n" {
@@ -953,17 +985,17 @@ func TestTrashTreatsOtherToolsEntriesAsData(t *testing.T) {
 		if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": entry}); code != 409 {
 			t.Fatalf("%s restore: %d", entry, code)
 		}
-		if code, body := f.request(map[string]any{"action": "trash_delete", "entry": entry, "confirmation": entry}); code != 200 || body["state"] != "deleted" {
+		if code, body := f.request(map[string]any{"action": "trash_delete", "entry": entry, "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
 			t.Fatalf("%s delete: %d %v", entry, code, body)
 		}
 	}
-	if code, _ := f.request(map[string]any{"action": "trash_delete", "entry": "forged", "confirmation": "forged"}); code != 409 {
+	if code, _ := f.request(map[string]any{"action": "trash_delete", "entry": "forged", "listing_token": f.listingToken()}); code != 409 {
 		t.Fatal(code)
 	}
 	if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": "lost"}); code != 409 {
 		t.Fatal("an entry without a recorded path was restored")
 	}
-	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "lost", "confirmation": "lost"}); code != 200 || body["state"] != "deleted" {
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "lost", "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
 		t.Fatalf("unlabelled delete: %d %v", code, body)
 	}
 
@@ -1369,7 +1401,7 @@ func TestTrashBothProducers(t *testing.T) {
 			}
 			trash()
 			rows = f.list()
-			if code, body := f.request(map[string]any{"action": "trash_delete", "entry": rows[0]["entry"], "confirmation": filepath.Base(rel)}); code != 200 || body["state"] != "deleted" {
+			if code, body := f.request(map[string]any{"action": "trash_delete", "entry": rows[0]["entry"], "listing_token": f.listingToken()}); code != 200 || body["state"] != "deleted" {
 				t.Fatalf("purge: %d %v", code, body)
 			}
 			if len(f.list()) != 0 {

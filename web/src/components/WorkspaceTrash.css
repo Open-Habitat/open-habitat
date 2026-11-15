@@ -141,26 +141,6 @@
   overflow-wrap: anywhere;
   font-size: 12px;
 }
-.ah-trash-type {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: var(--ah-size-meta);
-  color: var(--ah-ink-2);
-}
-.ah-trash-type input {
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--ah-line-strong);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: 13px var(--ah-mono);
-}
-.ah-trash-type input:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 1px;
-}
 
 /* Asetukset › Tallennustila */
 .ah-trash-section {

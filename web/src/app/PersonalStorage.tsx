@@ -151,9 +151,11 @@ function TrashSettings({
   const [loadProblem, setLoadProblem] = useState("");
   const [facts, setFacts] = useState<Record<string, DeletionFacts>>({});
   const [read, setRead] = useState(0);
+  const [listed, setListed] = useState(-1);
+  const settling = listed !== read;
   const [busy, setBusy] = useState<string>();
   const [status, setStatus] = useState("");
-  const [purge, setPurge] = useState<TrashRow>();
+  const [purge, setPurge] = useState<TrashRow & { listing_token: string }>();
   const [purgeProblem, setPurgeProblem] = useState("");
   const [emptyOpen, setEmptyOpen] = useState(false);
   const reload = useCallback(() => setRead((n) => n + 1), []);
@@ -168,6 +170,7 @@ function TrashSettings({
         // listing only.
         setFacts({});
         setListing(value);
+        setListed(read);
         setLoadProblem("");
         onTotal(value.entries.reduce((sum, e) => sum + (e.size_bytes ?? 0), 0));
         for (const e of value.entries.slice(0, inspectLimit)) {
@@ -222,8 +225,13 @@ function TrashSettings({
   };
   // The dialog describes what it will remove: read the entry afresh.
   const openPurge = (row: TrashRow) => {
+    if (!listing || settling) return;
     setPurgeProblem("");
-    setPurge({ ...row, facts: undefined });
+    setPurge({
+      ...row,
+      facts: undefined,
+      listing_token: listing.listing_token,
+    });
     void inspectTrashEntry(row.entry, csrf).then(
       (inspected) => {
         setFacts((all) => ({ ...all, [row.entry]: inspected.facts }));
@@ -236,12 +244,12 @@ function TrashSettings({
       () => {},
     );
   };
-  const confirmPurge = (typed: string) => {
+  const confirmPurge = () => {
     if (!purge) return;
     const row = purge;
     setBusy(row.entry);
     setPurgeProblem("");
-    void deleteTrashEntry(row.entry, typed, csrf)
+    void deleteTrashEntry(row.entry, row.listing_token, csrf)
       .then(
         (result) => {
           if (result.state === "deleted") {
@@ -262,7 +270,15 @@ function TrashSettings({
             onFreed();
           }
         },
-        (e) => setPurgeProblem(problemOf(e)),
+        (e) => {
+          if (
+            e instanceof WorkspaceTrashError &&
+            (e.code === "trash_changed" || e.code === "trash_entry_missing")
+          ) {
+            setPurge(undefined);
+            setStatus(`${rowName(row)}: ${problemOf(e)}`);
+          } else setPurgeProblem(problemOf(e));
+        },
       )
       .finally(() => {
         setBusy(undefined);
@@ -323,7 +339,7 @@ function TrashSettings({
           data-testid="open-empty-trash"
           variant="danger-subtle"
           size="row"
-          isDisabled={!rows.length || !!busy}
+          isDisabled={!rows.length || !!busy || settling}
           onPress={() => {
             setEmptyOpen(true);
           }}
@@ -350,7 +366,7 @@ function TrashSettings({
       ) : (
         <TrashList
           rows={rows}
-          busy={busy}
+          busy={busy ?? (settling ? "*" : undefined)}
           onRestore={restore}
           onPurge={openPurge}
         />

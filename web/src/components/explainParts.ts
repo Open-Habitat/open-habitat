@@ -270,6 +270,7 @@ export const parts: Record<CardId, Part> = {
   T36: { kind: "panel", sel: '[data-testid="workspace-delete-dialog"]' },
   T37: { kind: "once", sel: '[data-testid="trash-workspace"]' },
   T38: { kind: "once", sel: '[data-testid="purge-workspace"]' },
+  T47: { kind: "once", sel: '[data-testid="purge-trash"]', opens: true },
   T39: { kind: "info", sel: '[data-testid="workspace-icon-source"]' },
   T40: { kind: "input", sel: '[data-testid="workspace-icon-own"]' },
   T41: {

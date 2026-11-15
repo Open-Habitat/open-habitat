@@ -156,7 +156,7 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
     .click();
   await expect(notice).toBeVisible();
 
-  // Permanent deletion of one entry needs its name; emptying removes the rest.
+  // Permanent deletion needs only two clicks; emptying removes the rest.
   await openWorkspace(page, "muistiinpanot");
   await page
     .getByRole("button")
@@ -174,8 +174,8 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   const purge = dialog(page)
     .getByRole("button")
     .and(page.getByTestId("purge-workspace"));
-  await expect(purge).toBeDisabled();
-  await dialog(page).getByRole("textbox").fill("muistiinpanot");
+  await expect(purge).toBeEnabled();
+  await expect(dialog(page).getByRole("textbox")).toHaveCount(0);
   await purge.click();
   await expect(trashRow(page, "muistiinpanot")).toHaveCount(0);
   await expect(trashRow(page, "reseptikirja")).toBeVisible();

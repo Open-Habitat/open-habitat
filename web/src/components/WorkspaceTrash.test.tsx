@@ -126,7 +126,7 @@ describe("Trash rows and permanent deletion", () => {
     expect(restore.hasAttribute("disabled")).toBe(true);
   });
 
-  it("enables permanent deletion only for the exact name", () => {
+  it("confirms permanent deletion without typing", () => {
     const onConfirm = vi.fn();
     render(
       <TrashPurgeDialog
@@ -143,11 +143,9 @@ describe("Trash rows and permanent deletion", () => {
       />,
     );
     const button = screen.getByTestId("purge-workspace");
-    const input = screen.getByRole("textbox");
-    fireEvent.change(input, { target: { value: "a.2" } });
-    expect(button.hasAttribute("disabled")).toBe(true);
-    fireEvent.change(input, { target: { value: "a" } });
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(button.hasAttribute("disabled")).toBe(false);
     fireEvent.click(button);
-    expect(onConfirm).toHaveBeenCalledWith("a");
+    expect(onConfirm).toHaveBeenCalledWith();
   });
 });

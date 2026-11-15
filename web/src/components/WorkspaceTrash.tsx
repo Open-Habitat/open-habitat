@@ -2,11 +2,8 @@ import { type ReactNode, useState } from "react";
 import {
   Dialog as AriaDialog,
   Heading,
-  Input,
-  Label,
   Modal,
   ModalOverlay,
-  TextField,
 } from "react-aria-components";
 import { settingsHref } from "../app/settingsRoute";
 import {
@@ -642,7 +639,7 @@ export function TrashList({
   );
 }
 
-/** Permanent deletion of one entry: the person types its name. */
+/** Permanent deletion of the entry shown in the confirmation. */
 export function TrashPurgeDialog({
   row,
   remote,
@@ -655,10 +652,9 @@ export function TrashPurgeDialog({
   remote?: string;
   busy: boolean;
   problem?: string;
-  onConfirm: (typed: string) => void;
+  onConfirm: () => void;
   onClose: () => void;
 }) {
-  const [typed, setTyped] = useState("");
   const name = row ? rowName(row) : "";
   const facts = row?.facts;
   const only =
@@ -668,14 +664,11 @@ export function TrashPurgeDialog({
     <TrashModal
       label={txt.purgeLabel(name)}
       isOpen={!!row}
-      onClose={() => {
-        setTyped("");
-        onClose();
-      }}
+      onClose={onClose}
       dismissable={!busy}
     >
       <Heading slot="title">{txt.purgeTitle(<code>{name}</code>)}</Heading>
-      <p>{txt.cannotUndo(size ? bytes(size) : undefined)}</p>
+      <p>{txt.cannotUndo(size !== undefined ? bytes(size) : undefined)}</p>
       {!facts ? (
         <p className="ah-trash-sub">{txt.reading}</p>
       ) : row?.kind !== "workspace" ? (
@@ -709,28 +702,17 @@ export function TrashPurgeDialog({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (typed === name && !busy) onConfirm(typed);
+          if (!busy) onConfirm();
         }}
       >
-        <TextField
-          className="ah-trash-type"
-          value={typed}
-          onChange={setTyped}
-          autoFocus
-        >
-          <Label>{txt.typeToConfirm(<code>{name}</code>)}</Label>
-          <Input autoComplete="off" spellCheck={false} />
-        </TextField>
         {problem ? <p role="alert">{problem}</p> : null}
         <div className="ah-dialog-actions">
           <ControlButton
             size="page"
             variant="secondary"
             isDisabled={busy}
-            onPress={() => {
-              setTyped("");
-              onClose();
-            }}
+            onPress={onClose}
+            autoFocus
           >
             {txt.cancel}
           </ControlButton>
@@ -740,7 +722,7 @@ export function TrashPurgeDialog({
             type="submit"
             variant="danger"
             isPending={busy}
-            isDisabled={typed !== name || busy}
+            isDisabled={busy}
           >
             {txt.deletePermanently}
           </ControlButton>

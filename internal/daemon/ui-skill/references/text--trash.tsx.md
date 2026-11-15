@@ -88,7 +88,6 @@ const fi = {
       "Palautuskansiota ei voitu avata turvallisesti. Tarkista polku ja oikeudet.",
     trash_unavailable: "Roskakoria ei voitu käyttää. Mitään ei siirretty.",
     trash_entry_missing: "Tätä kohdetta ei ole enää roskakorissa.",
-    confirmation_mismatch: "Nimi ei täsmää.",
     trash_changed:
       "Roskakori muuttui sillä välin. Mitään ei poistettu; katso lista ja vahvista uudelleen.",
     identity_lost: "Istunto päättyi. Kirjaudu uudelleen.",
@@ -197,9 +196,6 @@ const fi = {
   lostForever: "Häviää lopullisesti, koska se on vain täällä:",
   everythingRemote: (remote: ReactNode): ReactNode => (
     <>Kaikki on etärepossa{remote}.</>
-  ),
-  typeToConfirm: (name: ReactNode): ReactNode => (
-    <>Kirjoita {name} vahvistukseksi</>
   ),
   emptyQuestion: "Tyhjennetäänkö roskakori?",
   emptyBody: (count: number, size?: string) =>
@@ -322,7 +318,6 @@ export const trashText = catalog(fi, {
       "The folder to restore into could not be opened safely. Check the path and permissions.",
     trash_unavailable: "The Trash could not be used. Nothing was moved.",
     trash_entry_missing: "This item is no longer in the Trash.",
-    confirmation_mismatch: "The name does not match.",
     trash_changed:
       "The Trash changed meanwhile. Nothing was deleted; look at the list and confirm again.",
     identity_lost: "The session ended. Sign in again.",
@@ -420,7 +415,6 @@ export const trashText = catalog(fi, {
   folderRemoved: "The folder and its content are deleted from this server.",
   lostForever: "Lost for good, because it is only here:",
   everythingRemote: (remote) => <>Everything is on the remote{remote}.</>,
-  typeToConfirm: (name) => <>Type {name} to confirm</>,
   emptyQuestion: "Empty the Trash?",
   emptyBody: (count, size) =>
     `${count} ${plural("en", count, { one: "item is", other: "items are" })} deleted permanently${size ? `, and ${size} is freed` : ""}. This cannot be undone.`,

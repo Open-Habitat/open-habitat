@@ -67,7 +67,7 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 		return
 	}
 	workspaceAction := in.Action == "delete_check" || in.Action == "delete"
-	if (in.Action == "trash_empty") != (in.ListingToken != "") {
+	if (in.Action == "trash_empty" || in.Action == "trash_delete") != (in.ListingToken != "") || in.ListingToken != "" && !listingTokenPattern.MatchString(in.ListingToken) {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -81,7 +81,7 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-	} else if in.WorkspaceID != "" || in.ObservationToken != "" || in.Disposal != "" || (in.Action == "trash_list") != (in.Entry == "") || in.Entry != "" && !validTrashEntry(in.Entry) || (in.Action == "trash_delete") != (in.Confirmation != "") || len(in.Confirmation) > 255 {
+	} else if in.WorkspaceID != "" || in.ObservationToken != "" || in.Disposal != "" || (in.Action == "trash_list") != (in.Entry == "") || in.Entry != "" && !validTrashEntry(in.Entry) || in.Confirmation != "" {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -102,7 +102,7 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 	case "trash_restore":
 		restoreTrashEntry(w, cfg, in.Entry)
 	case "trash_delete":
-		deleteTrashEntry(w, cfg, in.Entry, in.Confirmation)
+		deleteTrashEntry(w, cfg, in.Entry, in.ListingToken)
 	case "trash_empty":
 		emptyTrash(w, cfg, in.ListingToken)
 	}
@@ -675,7 +675,7 @@ func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 	historyJSON(w, result)
 }
 
-func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirmation string) {
+func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, token string) {
 	if !trashWriter.TryLock() {
 		snapshotError(w, 409, "workspace_busy")
 		return
@@ -687,17 +687,24 @@ func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirm
 		return
 	}
 	defer t.close()
-	entry, ok := trashEntry(cfg.Home, t, name)
-	if !ok {
-		snapshotError(w, 409, "trash_entry_missing")
+	entries, _, e := listTrash(cfg.Home, t, false, 500)
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
 		return
 	}
-	expected := entry.name
-	if expected == "" {
-		expected = entry.entry
+	if trashListingToken(entries) != token {
+		snapshotError(w, 409, "trash_changed")
+		return
 	}
-	if confirmation != expected {
-		snapshotError(w, 409, "confirmation_mismatch")
+	var entry trashListing
+	for _, listed := range entries {
+		if listed.entry == name {
+			entry = listed
+			break
+		}
+	}
+	if entry.entry == "" {
+		snapshotError(w, 409, "trash_entry_missing")
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), deletionWalkLimit)

@@ -29,7 +29,7 @@ var workspaceCommandSpecs = []workspaceCommandSpec{
 	{"trash list", "trash_list", "--output", "", "List own Trash and listing token", "trash list --output trash.jsonl"},
 	{"trash show", "trash_inspect", "--entry", "--entry", "Inspect one own Trash entry", "trash show --entry example"},
 	{"trash restore", "trash_restore", "--entry --dry-run", "--entry", "Restore without overwriting a workspace", "trash restore --entry example"},
-	{"trash delete", "trash_delete", "--entry --confirmation --all --listing-token --dry-run", "", "Permanently delete a typed entry or an exact Trash listing", "trash delete --entry example --confirmation example"},
+	{"trash delete", "trash_delete", "--entry --all --listing-token --dry-run", "--listing-token", "Permanently delete one entry or all entries from an exact Trash listing", "trash delete --entry example --listing-token <listing-token>"},
 	{"repository list", "", "--output", "", "Read the native gh repository catalog", "repository list --output repositories.jsonl"},
 	{"repository show", "", "--repository --checkout", "--repository", "Read one exact GitHub repository", "repository show --repository example/project"},
 	{"clone list", "", "--output", "", "Read clone jobs and interrupted destinations", "clone list"},
@@ -177,12 +177,12 @@ func parseWorkspaceRequest(args []string) (conversationRequest, error) {
 		}
 	case "trash delete":
 		if values["--all"] != "" {
-			if values["--listing-token"] == "" || values["--entry"] != "" || values["--confirmation"] != "" {
-				return req, usage("--all requires --listing-token and forbids entry/confirmation")
+			if values["--entry"] != "" {
+				return req, usage("--all forbids --entry")
 			}
 			body["action"] = "trash_empty"
-		} else if values["--entry"] == "" || values["--confirmation"] == "" || values["--listing-token"] != "" {
-			return req, usage("single Trash deletion requires --entry and typed --confirmation; listing token is bulk-only")
+		} else if values["--entry"] == "" {
+			return req, usage("single Trash deletion requires --entry and --listing-token")
 		}
 	case "repository list":
 		req.method = "GET"

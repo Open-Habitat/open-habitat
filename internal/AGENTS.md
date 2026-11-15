@@ -543,8 +543,8 @@ Native truth:
 - Shells are tmux's: the daemon keeps no list, buffer or record of them, and
   listing them never starts a tmux server.
 - Destruction is explicit. A workspace goes to the freedesktop Trash, and
-  permanent deletion happens only from the Trash on a typed request; a
-  clean, fully pushed clone is the one outright deletion. An interrupted
+  permanent deletion happens only from the Trash on an explicit request bound
+  to the observed listing; a clean, fully pushed clone is the one outright deletion. An interrupted
   clone is only restarted or removed when the person asks. Nothing is
   purged automatically, and removal never follows a symlink or crosses a
   filesystem.

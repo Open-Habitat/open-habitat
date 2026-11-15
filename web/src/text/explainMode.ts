@@ -738,9 +738,14 @@ const fi = {
       lead: "Kertoo, mitä keskustelusta jäi: avustaja nimeltä tai workerien työ ja sen tila.",
       know: "Tumma teksti on työtä, joka odottaa yhä jotakuta. Tarkan tilan ja haaran näet, kun avaat keskustelun.",
     },
+    T47: {
+      name: "Poista roskakorista",
+      lead: "Avaa vahvistuksen, jossa näet poistettavan kohteen ja sen koon.",
+      know: "Poista pysyvästi poistaa kohteen lopullisesti. Nimeä ei tarvitse kirjoittaa. Jos roskakori muuttui välillä, avaa vahvistus uudelleen.",
+    },
     T38: {
       name: "Poista pysyvästi",
-      lead: "Poistaa työtilan kansion lopullisesti, ohi roskakorin.",
+      lead: "Poistaa vahvistuksessa nimetyn kansion ja sen sisällön lopullisesti.",
       know: "Kansiota ei saa takaisin. Etärepossa oleva työ säilyy, ja sen voi kloonata uudelleen.",
     },
     A01: {
@@ -2446,9 +2451,14 @@ export const explainModeText = catalog(fi, {
       lead: "Says what the conversation left behind: a helper by name, or its workers' work and its state.",
       know: "Darker text is work that still waits for someone. Open the conversation to see the exact state and branch.",
     },
+    T47: {
+      name: "Delete from Trash",
+      lead: "Opens a confirmation showing the item to delete and its size.",
+      know: "Delete permanently removes the item for good. No need to type its name. If the Trash changed meanwhile, open the confirmation again.",
+    },
     T38: {
       name: "Delete permanently",
-      lead: "Deletes the workspace's folder for good, skipping the trash.",
+      lead: "Permanently deletes the folder named in the confirmation and its content.",
       know: "The folder cannot be restored. Work that is on the remote stays there and can be cloned again.",
     },
     A01: {

@@ -114,9 +114,9 @@ func TestAgentWorkspaceSafety(t *testing.T) {
 	}
 	entry := removed["entry"]
 	post(map[string]any{"action": "trash_inspect", "entry": entry}, 200)
-	post(map[string]any{"action": "trash_delete", "entry": entry, "confirmation": "wrong"}, 409)
+	post(map[string]any{"action": "trash_delete", "entry": entry, "listing_token": strings.Repeat("0", 64)}, 409)
 	if _, err := os.Stat(f.trash("files", entry.(string))); err != nil {
-		t.Fatal("typed confirmation removed data", err)
+		t.Fatal("stale listing removed data", err)
 	}
 	post(map[string]any{"action": "trash_empty", "listing_token": "listing_stale1234567890123456"}, 400)
 	post(map[string]any{"action": "trash_restore", "entry": entry}, 200)

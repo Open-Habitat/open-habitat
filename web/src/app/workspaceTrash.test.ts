@@ -36,7 +36,7 @@ it("sends IDs and entry names only, with CSRF, and accepts contract replies", as
   expect(result.outcome).toBe("blocked");
   expect(result.blockers.map((b) => b.kind)).toContain("taskfleet_run");
   expect((await listTrash("csrf-token")).entries[1].restore).toBe("name_taken");
-  await deleteTrashEntry("example.2", "example", "csrf-token");
+  await deleteTrashEntry("example.2", trash.listing_token, "csrf-token");
   const [url, init] = fetch.mock.calls[0];
   expect(url).toBe("/api/v1/workspaces");
   expect(init.method).toBe("POST");
@@ -48,7 +48,7 @@ it("sends IDs and entry names only, with CSRF, and accepts contract replies", as
   expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual({
     action: "trash_delete",
     entry: "example.2",
-    confirmation: "example",
+    listing_token: trash.listing_token,
   });
 });
 
@@ -90,7 +90,7 @@ it("rejects replies outside the contract or for another target", async () => {
       ),
   );
   await expect(
-    deleteTrashEntry("example", "example", "csrf-token"),
+    deleteTrashEntry("example", trash.listing_token, "csrf-token"),
   ).rejects.toMatchObject({ code: "invalid_reply" });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(check)));
   await expect(listTrash("csrf-token")).rejects.toMatchObject({

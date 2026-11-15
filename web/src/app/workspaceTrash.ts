@@ -152,7 +152,6 @@ export const refusalCodes = [
   "trash_parent_missing",
   "trash_destination_unavailable",
   "trash_entry_missing",
-  "confirmation_mismatch",
   "trash_changed",
 ] as const;
 const refusals = new Set<string>(refusalCodes);
@@ -333,15 +332,14 @@ export async function restoreTrashEntry(
   return value as RestoreResult;
 }
 
-// confirmation is the name the person typed: the entry's workspace name, or
-// the entry name for a directory without one.
+// Bind deletion to the listing shown when the confirmation opened.
 export async function deleteTrashEntry(
   entry: string,
-  confirmation: string,
+  listing_token: string,
   csrf: string,
 ): Promise<TrashDeleteResult> {
   const value = await post(
-    { action: "trash_delete", entry, confirmation },
+    { action: "trash_delete", entry, listing_token },
     csrf,
   );
   if (
