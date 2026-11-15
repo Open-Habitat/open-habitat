@@ -51,6 +51,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 it("loads from the daemon without browser storage and writes only confirmed choices with CSRF", async () => {
   const fetch = vi
@@ -188,6 +189,84 @@ it("keeps a feature off without a session, and ignores ids the browser does not 
   render(feature("wid_unknown", "u"));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   expect(screen.getByTestId("feature").textContent).toBe("false");
+});
+
+it("observes native changes while visible, pauses hidden reads, and disposes the poll on logout", async () => {
+  vi.useFakeTimers();
+  let enabled = false;
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  const fetch = vi.fn(() =>
+    Promise.resolve(
+      reply(
+        "wid_poll",
+        "codemirror6",
+        enabled ? { "rewind-conversation": true } : {},
+      ),
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const { rerender } = render(feature("wid_poll", "poll"));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  enabled = true;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(screen.getByTestId("feature").textContent).toBe("true");
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  const before = fetch.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(before);
+  enabled = false;
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  await act(async () => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(screen.getByTestId("feature").textContent).toBe("false");
+  rerender(
+    createElement(AccountPreferencesProvider, {}, createElement(Feature)),
+  );
+  const loggedOut = fetch.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(loggedOut);
+});
+
+it("does not let background polls dismiss a failed write, but explicit reload reconciles it", async () => {
+  vi.useFakeTimers();
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  const fetch = vi
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(reply("wid_poll_error", "codemirror6")),
+    );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    createElement(
+      AccountPreferencesProvider,
+      { identity: "wid_poll_error", csrf: "poll-error" },
+      createElement(Probe, { identity: "wid_poll_error", csrf: "poll-error" }),
+    ),
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  fetch.mockRejectedValueOnce(new Error("lost write"));
+  await act(() => chooseEditor("wid_poll_error", "vscode", "poll-error"));
+  expect(screen.getByTestId("choice").getAttribute("data-error")).toBe("true");
+  const failed = fetch.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10000);
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(fetch).toHaveBeenCalledTimes(failed);
+  expect(screen.getByTestId("choice").getAttribute("data-error")).toBe("true");
+  await act(() => loadAccountPreferences("wid_poll_error", "poll-error"));
+  expect(screen.getByTestId("choice").getAttribute("data-error")).toBe("false");
 });
 
 it("puts the interface in the person's confirmed language and back to the server default on System", async () => {

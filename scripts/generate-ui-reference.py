@@ -47,6 +47,12 @@ def render(root):
         fence = "`" * max(3, max((len(m[0]) + 1 for m in re.finditer(r"`+", source)), default=3))
         files[name] = f"# {relative}\n\nGenerated from web/src/{relative}; do not edit.\n\n{fence}tsx\n{source}\n{fence}\n"
         index.append(f"- [{relative}]({name})")
+    # Shared with the native agent command, outside the browser text modules.
+    catalog = root / "internal/experimental/catalog.json"
+    if catalog.exists():
+        name = "experimental-catalog.json.md"
+        files[name] = "# Experimental feature catalog\n\nGenerated from internal/experimental/catalog.json; do not edit.\n\n```json\n" + catalog.read_text() + "```\n"
+        index.append(f"- [Experimental feature catalog]({name})")
     files["index.md"] = "\n".join(index) + "\n"
     return files
 

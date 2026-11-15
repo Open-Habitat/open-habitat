@@ -229,3 +229,4 @@ A label alone does not establish that a control is available to this person.
 - [text/worktreeAttention.tsx](text--worktreeAttention.tsx.md)
 - [text/worktreeCleanup.ts](text--worktreeCleanup.ts.md)
 - [text/worktrees.tsx](text--worktrees.tsx.md)
+- [Experimental feature catalog](experimental-catalog.json.md)

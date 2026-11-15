@@ -60,6 +60,8 @@ var helpSpecs = []helpSpec{
 	{"agent speech-key show", "Read whether the person has a dictation (Soniox) key: presence, region, source (own or site) and at most its last four characters", "agent speech-key show --json", nil},
 	{"agent speech-key update", "Save the person's own Soniox key from protected raw input, as Settings → dictation does; stored only after Soniox takes it, under the region it answered in", "agent speech-key update --secret-file - --json", []string{"--secret-file", "--dry-run"}},
 	{"agent speech-key delete", "Remove the dictation key file; dictation stops until a key is saved again", "agent speech-key delete --json", []string{"--dry-run"}},
+	{"agent experimental list", "List this release's experimental features and your saved switches", "agent experimental list --json", nil},
+	{"agent experimental update", "Change your own experimental switch; use an id from list and exactly one of --on or --off", "agent experimental update explain-mode --on --json", []string{"--on", "--off", "--dry-run"}},
 	{"agent recap-settings show", "Read the conversation recap settings Pi keeps in its settings.json", "agent recap-settings show --json", nil},
 	{"agent recap-settings update", "Replace the recap settings with a complete document (every field of show's settings)", "agent recap-settings update --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent conversation list", "List daemon handles with title (native name, then first message, then Uusi keskustelu); manual names beat automatic titles; never starts Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
@@ -230,6 +232,8 @@ func commandHelp(args []string) (any, error) {
 	}
 	arguments := []any{}
 	switch key {
+	case "agent experimental update":
+		arguments = append(arguments, map[string]any{"name": "id", "required": true, "description": "Exact experimental feature id from agent experimental list"})
 	case "host operation show":
 		arguments = append(arguments, map[string]any{"name": "operation_id", "required": true, "description": "Exact 32-character lowercase hexadecimal durable operation ID"})
 	case "agent conversation show":
@@ -246,6 +250,9 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--on", "--off":
+		v["description"] = "Enable or disable the named experimental feature; exactly one of --on and --off is required"
+		v["default"] = false
 	case "--approve-maintenance":
 		v["description"] = "Explicitly approve the maintenance window for a real host upgrade; does not approve interruption of native work"
 		v["default"] = false

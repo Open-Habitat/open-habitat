@@ -199,6 +199,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 			probe(uid, path, 0)
 		}
 		probe(uid, AgentModelsPath, 0)
+		probe(uid, AgentExperimentalPath, 0)
 		probe(uid, AgentConversationsPath, 0)
 		for _, action := range []string{"receipt?command_id=11111111-1111-4111-8111-111111111111", "processes", "processes/proc_abcd/output?owner_generation=g&process_token=t&tail_lines=1", "processes/proc_abcd/stop", "processes/clear-finished", "question", "status", "eligibility", "archive", "recap", "send", "steer", "follow_up", "clear_queue", "cancel_held", "continue", "abort", "stop", "close", "regenerate_title", "history_title"} {
 			probe(uid, AgentConversationsPath+"/11111111-1111-4111-8111-111111111111/"+action, 0)

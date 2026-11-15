@@ -43,6 +43,7 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 		clones = cloneSets[0]
 	}
 	routes := agentWorkspaceRoutes(cfg, controller, clones)
+	routes[AgentExperimentalPath] = AgentExperimentalHandler(cfg)
 	var onAuthenticated func()
 	if controller != nil {
 		onAuthenticated = controller.ClearPiAuthFailures

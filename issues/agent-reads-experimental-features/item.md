@@ -3,7 +3,7 @@ created: 2026-11-15
 updated: 2026-11-15
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/agent-experimental-features
@@ -11,6 +11,7 @@ lane: unlaned
 lane_seq: 1
 collision: [contracts/v1/]
 preparation: ready
+closed: 2026-11-15
 ---
 
 # The agent can list experimental features and which are on

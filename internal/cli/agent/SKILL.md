@@ -151,6 +151,20 @@ read `model list` to observe what actually persisted. `--dry-run` fails with
 `dry_run_unsupported` because native settings/catalog can change before apply.
 Credential availability is reported through the catalog, never raw secrets.
 
+Experimental features (Settings → Kokeelliset ominaisuudet) are readable and
+changeable for this person only:
+
+    open-habitat agent experimental list --json
+    open-habitat agent experimental update explain-mode --on --json
+
+`data.result.features` lists this release's ids, Finnish and English titles and
+descriptions, `landed` availability and `enabled` saved switches, in Settings
+order. At the person's request, use an id from that list with exactly one of
+`--on` or `--off`; it writes the same preference as Settings. The visible browser
+reads it within about five seconds, or on focus. No other account can be named.
+An unknown id is refused. Read again after an uncertain write, never retry it
+automatically. `--dry-run` is explicitly unsupported.
+
 Conversation recap settings (Settings → Tilannekatsaus) live in Pi's own
 `settings.json`. `agent recap-settings show --json` returns them under
 `data.result.settings`; `agent recap-settings update --input-file - --json`

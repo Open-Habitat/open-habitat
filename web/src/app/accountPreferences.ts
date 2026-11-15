@@ -9,6 +9,7 @@ import {
 } from "react";
 import schema from "../../../contracts/v1/account-preferences.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
+import experimentalCatalog from "../../../internal/experimental/catalog.json";
 import { type LanguageChoice, setPersonalLanguage } from "../i18n";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
@@ -20,22 +21,11 @@ export type QuietSort = "newest" | "workspace" | "name";
 /** The experimental features the settings offer, in the section's order.
  * A feature reads its switch with `useExperimentalFeature(id)`. An id the
  * daemon returns that is not listed here is ignored. */
-export const experimentalFeatureIds = [
-  "rewind-conversation",
-  "explain-mode",
-  "agent-resources-view",
-  "shares-page",
-  "conversation-context-view",
-  "named-workers",
-  "remote-browser",
-  "atlassian-connect",
-  "trello-connect",
-  "turn-changes",
-  "terminal-copy-on-select",
-  "terminal-open-urls",
-  "storage-breakdown",
-] as const;
-export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
+export type ExperimentalFeatureId =
+  keyof typeof experimentalCatalog.fi.features;
+export const experimentalFeatureIds = experimentalCatalog.features.map(
+  ({ id }) => id as ExperimentalFeatureId,
+);
 
 type Reply = {
   schema_version: 1;
@@ -307,6 +297,26 @@ export function AccountPreferencesProvider({
   children?: ReactNode;
 }) {
   const state = useAccountPreferences(identity, csrf);
+  // Native agents and other devices write the same file. One poll per provider,
+  // only while visible; the reader coalesces requests and never races a write.
+  useEffect(() => {
+    if (!identity || !csrf) return;
+    const read = () => {
+      const error = states.get(key(identity, csrf))?.error;
+      // Do not dismiss failed-write feedback behind the person's back.
+      if (
+        document.visibilityState === "visible" &&
+        (!error || error === "read")
+      )
+        void loadAccountPreferences(identity, csrf);
+    };
+    const timer = window.setInterval(read, 5000);
+    document.addEventListener("visibilitychange", read);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", read);
+    };
+  }, [identity, csrf]);
   // The interface follows the person's confirmed choice. Until it is read,
   // the language of the last load stays. Without a session the app says
   // so itself (signed out: the server default and the browser decide).

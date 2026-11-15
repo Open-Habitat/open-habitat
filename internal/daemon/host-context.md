@@ -17,6 +17,9 @@ for inputs. Use
 this site's public address, and
 `open-habitat agent conversation show --current --json` for verified launch context.
 Unavailable quota is not unlimited space. These reads do not start Pi.
+Use `open-habitat agent experimental list --json` to read the release's
+experimental features and the person's switches; at their request, change one
+with `open-habitat agent experimental update <id> --on|--off --json`.
 
 When the person must act in the browser, give a full link built from
 `site.origin` in that environment output, never an address guessed or found

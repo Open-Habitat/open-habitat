@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -291,6 +292,7 @@ esac
 	var clearAuth []func()
 	var devices []*daemon.PiDevice
 	var configs []transport.Config
+	var experimentalAgent *http.Client
 	var trusters []func(*http.Request) bool
 	var conversationHandlers []*atomic.Value
 	var conversationFactories []func() (http.Handler, context.CancelFunc)
@@ -596,6 +598,13 @@ esac
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted, forges))
 		mux.Handle(daemon.AccountPreferencesPath, daemon.AccountPreferencesHandler(fixtureWorkspaceCfg, trusted))
+		if m.Username == "alice" {
+			var err error
+			experimentalAgent, err = experimentalAgentClient(home, fixtureWorkspaceCfg)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 		// The real handler and the system's own ssh-keygen and age-keygen,
 		// writing only into the disposable home.
 		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
@@ -1033,6 +1042,24 @@ esac
 				return
 			case "/fixture/browser":
 				fakeBrowserFixture(w, r, "alice")
+				return
+			case "/fixture/agent-experimental":
+				req, err := http.NewRequest(r.Method, "http://unix"+daemon.AgentExperimentalPath, r.Body)
+				if err != nil {
+					http.Error(w, "fixture request", 500)
+					return
+				}
+				req.ContentLength = r.ContentLength
+				req.Header.Set("Content-Type", "application/json")
+				res, err := experimentalAgent.Do(req)
+				if err != nil {
+					http.Error(w, "fixture agent unavailable", 500)
+					return
+				}
+				defer res.Body.Close()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(res.StatusCode)
+				io.Copy(w, res.Body)
 				return
 			case "/fixture/agent-files":
 				if e := seedAgentFiles(filepath.Join(tmp, "alice")); e != nil {

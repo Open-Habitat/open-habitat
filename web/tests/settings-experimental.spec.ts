@@ -136,6 +136,34 @@ test("@settings-experimental a feature is off by default, switches on the daemon
   );
 });
 
+test("@settings-experimental follows an own-user agent change without focus or reload", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.clock.install();
+  await page.goto("/settings/experimental");
+  await expect(segment(page, "explain-mode", "off")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  for (const enabled of [true, false]) {
+    const response = await page.request.put("/fixture/agent-experimental", {
+      data: { id: "explain-mode", enabled },
+    });
+    expect(response.status()).toBe(200);
+    const observed = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/v1/account/preferences") &&
+        response.request().method() === "GET",
+    );
+    await page.clock.runFor(5000);
+    await observed;
+    await expect(
+      segment(page, "explain-mode", enabled ? "on" : "off"),
+    ).toHaveAttribute("aria-pressed", "true");
+  }
+});
+
 test("@settings-experimental a failed save keeps the feature off and offers to read the saved choice", async ({
   page,
 }) => {

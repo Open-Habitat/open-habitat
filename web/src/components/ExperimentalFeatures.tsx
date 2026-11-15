@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { ControlButton, Segmented } from "./ControlElements";
 import "./ExperimentalFeatures.css";
+import catalog from "../../../internal/experimental/catalog.json";
+import { experimentalFeatureIds } from "../app/accountPreferences";
 import { liveText } from "../i18n";
 import { experimentalFeaturesText } from "../text/experimentalFeatures";
 
@@ -20,24 +22,10 @@ export type ExperimentalFeature = {
   landed: boolean;
 };
 
-const featureIds = [
-  { id: "rewind-conversation", landed: true },
-  { id: "explain-mode", landed: true },
-  { id: "agent-resources-view", landed: true },
-  { id: "shares-page", landed: true },
-  { id: "conversation-context-view", landed: true },
-  { id: "named-workers", landed: true },
-  { id: "remote-browser", landed: true },
-  { id: "atlassian-connect", landed: true },
-  { id: "trello-connect", landed: true },
-  { id: "turn-changes", landed: true },
-  { id: "terminal-copy-on-select", landed: true },
-  { id: "terminal-open-urls", landed: true },
-  { id: "storage-breakdown", landed: true },
-] as const satisfies readonly {
-  id: keyof typeof txt.features;
-  landed: boolean;
-}[];
+const featureIds = experimentalFeatureIds.map((id, index) => ({
+  id,
+  landed: catalog.features[index].landed,
+}));
 
 /** Every feature's card in the current language. */
 export function experimentalFeatureCards(): readonly ExperimentalFeature[] {

@@ -137,6 +137,8 @@ checks = {
     "pi-attempt.json": "pi-attempt.schema.json",
     "agent-pi-attempt.json": "pi-attempt.schema.json",
     "pi-models.json": "pi-models.schema.json",
+    "experimental-features.json": "experimental-features.schema.json",
+    "experimental-feature-update.json": "experimental-features.schema.json",
     "recap-settings.json": "recap-settings.schema.json",
     "recap-settings-update.json": "recap-settings.schema.json",
     "pi-conversation-create.json": "pi-conversation-create.schema.json",
@@ -587,6 +589,20 @@ must_reject("rewind.schema.json", {**rewind_request, "conversation": False, "fil
 must_reject("rewind.schema.json", {**rewind_request, "entry_key": "../x"})
 must_reject("compaction.schema.json", {"instructions": "x" * 2001})
 must_reject("compaction.schema.json", {"instructions": "x", "keep_recent_tokens": 1})
+experimental = json.loads((BASE / "examples" / "experimental-features.json").read_text())
+for update in ({"id": "explain-mode", "enabled": None}, {"id": "explain-mode", "enabled": "true"}, {"id": "explain-mode", "enabled": True, "uid": 1234}, {"id": "unknown--id", "enabled": False}):
+    must_reject("experimental-features.schema.json", update)
+must_reject("experimental-features.schema.json", {**experimental, "schema_version": 2})
+for field in ("title", "description", "enabled"):
+    row = dict(experimental["features"][0])
+    del row[field]
+    must_reject("experimental-features.schema.json", {**experimental, "features": [row]})
+# Validate the actual shared catalog's wire projection as well as the example.
+catalog = json.loads((BASE.parent.parent / "internal/experimental/catalog.json").read_text())
+rows = [{**f, "enabled": False, "title": {lang: catalog[lang]["features"][f["id"]]["name"] for lang in ("fi", "en")}, "description": {lang: catalog[lang]["features"][f["id"]]["desc"] for lang in ("fi", "en")}} for f in catalog["features"]]
+assert len({r["id"] for r in rows}) == len(rows)
+Draft202012Validator(schemas["experimental-features.schema.json"], registry=registry).validate({"schema_version": 1, "features": rows})
+
 recap_settings = json.loads((BASE / "examples" / "recap-settings.json").read_text())
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "delay_seconds": 30}})
 must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "mode": "manual"}})

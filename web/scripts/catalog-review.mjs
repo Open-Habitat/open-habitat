@@ -195,6 +195,20 @@ export async function readCatalogs(
       .sort()
       .flatMap((name) => {
         const source = readFileSync(new URL(name, dir), "utf8");
+        if (name === "experimentalFeatures.ts") {
+          // This catalog is shared with Go. Inspect every literal in the
+          // JSON source rather than evaluating the browser's shortcut helper.
+          const shared = JSON.parse(
+            readFileSync(
+              new URL("../../../internal/experimental/catalog.json", dir),
+              "utf8",
+            ),
+          );
+          return extractCatalog(
+            `const experimentalFeaturesText = catalog(${JSON.stringify(shared.fi)}, ${JSON.stringify(shared.en)});`,
+            name,
+          );
+        }
         return name === "settingsIndex.ts"
           ? extractSettings(settingsSections, source)
           : extractCatalog(source, name);
