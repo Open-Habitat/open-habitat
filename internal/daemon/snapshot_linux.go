@@ -192,8 +192,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		}
 		diagnostic.Phase(r.Context(), "taskfleet", started)
 		// Worktree places (ADR 0025): every main checkout's registered
-		// worktrees. A directory under ~/src that holds only their checkouts
-		// is their container, not a workspace. A Taskfleet run's worktree
+		// worktrees. Discovery already excludes their containers. A Taskfleet run's worktree
 		// is observed as its spinoff, not listed as a place.
 		started = time.Now()
 		observation, placesOf, placeByPath := conversationPlaces(cfg, nativeHome, observation, taskRuns, taskRunsOK)

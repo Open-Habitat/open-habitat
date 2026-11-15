@@ -220,10 +220,10 @@ func TestSnapshotListsWorktreePlaces(t *testing.T) {
 		}
 	}
 
-	// Something else in the container makes it an ordinary directory again.
+	// Unrelated content does not turn a conventional container into a workspace.
 	write(t, filepath.Join(f.src("app__worktrees"), "muistiinpanot", "a.txt"), "x\n")
-	if ws := f.snapshot()["workspaces"].([]any); len(ws) != 3 { // app, the container and the fixture's toinen
-		t.Fatalf("a container with other content was hidden: %v", ws)
+	if ws := f.snapshot()["workspaces"].([]any); len(ws) != 2 { // app and the fixture's toinen
+		t.Fatalf("a container with other content was listed: %v", ws)
 	}
 	if e := os.RemoveAll(filepath.Join(f.src("app__worktrees"), "muistiinpanot")); e != nil {
 		t.Fatal(e)

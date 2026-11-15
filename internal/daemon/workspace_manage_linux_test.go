@@ -53,6 +53,9 @@ func TestWorkspaceManagement(t *testing.T) {
 	if got := request(map[string]any{"action": "create", "name": "stale", "git": false, "user_observation_token": "obs_stale123"}); got != 409 {
 		t.Fatalf("stale source token: %d", got)
 	}
+	if got := request(map[string]any{"action": "create", "name": "alpha__worktrees", "git": false}); got != 400 || exists(filepath.Join(cfg.Home, "src", "alpha__worktrees")) {
+		t.Fatalf("reserved container name accepted: %d", got)
+	}
 	if got := request(map[string]any{"action": "create", "name": "alpha", "git": false}); got != 200 {
 		t.Fatalf("create: %d", got)
 	}

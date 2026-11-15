@@ -249,7 +249,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		if in.Action == "create" {
-			if !validWorkspaceName(in.Name) || in.WorkspaceID != "" || in.ObservationToken != "" || len(in.UserObservationToken) < 8 || len(in.UserObservationToken) > 200 || in.Hidden != nil || in.Git == nil || in.DisplayName != nil && !validDisplay(*in.DisplayName) {
+			if !validWorkspaceName(in.Name) || reservedWorkspaceName(in.Name) || in.WorkspaceID != "" || in.ObservationToken != "" || len(in.UserObservationToken) < 8 || len(in.UserObservationToken) > 200 || in.Hidden != nil || in.Git == nil || in.DisplayName != nil && !validDisplay(*in.DisplayName) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

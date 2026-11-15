@@ -394,6 +394,8 @@ func TestEditorFilesBoundedDirectoryAndQueryGrammar(t *testing.T) {
 
 func TestEditorFilesAliasesShareSaveGateAndLeases(t *testing.T) {
 	f := newWorktreeFixture(t)
+	// Keep the enclosing directory a workspace rather than a worktree-only container.
+	write(t, filepath.Join(f.src("toinen"), "notes.txt"), "notes\n")
 	nested := filepath.Join(f.src("toinen"), "nested")
 	f.git(f.src("app"), "worktree", "add", "-q", "-b", "alias", nested)
 	obs := Discover(f.cfg)

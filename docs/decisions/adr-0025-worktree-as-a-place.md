@@ -60,9 +60,11 @@ filesystem and outside the workspace's own tree. Its branch records the base
 natively as its upstream (the local branch it was made from), so `git status`
 in the worktree and the browser agree on ahead and behind. A worktree whose
 branch has no local upstream, such as one an agent made, is compared with the
-main checkout's current branch. A directory directly under `~/src` that holds
-only linked worktrees of discovered workspaces is their container, not a
-workspace of its own; this is judged from Git's registry, never from the name.
+main checkout's current branch. Names ending in `__worktrees` directly under
+`~/src` are reserved for worktree containers, not workspaces, even when empty
+or when the parent repository or native run records no longer exist. For other
+names, a directory holding only registered linked worktrees of discovered
+workspaces is also their container; mixed-use directories remain workspaces.
 
 The daemon finds a workspace's worktrees in Git's own registry
 (`$GIT_DIR/worktrees/*/gitdir`, the source `git worktree list --porcelain`

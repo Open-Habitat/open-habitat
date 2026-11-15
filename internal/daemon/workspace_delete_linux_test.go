@@ -641,9 +641,11 @@ func TestWorkspaceDeleteBlockers(t *testing.T) {
 	f.pushedClone("base")
 	f.git(f.src("base"), "worktree", "add", "-q", f.src("linked"))
 	expectBlocked("linked", "is_linked_worktree")
-	mustMkdir(f.src("base__worktrees"))
-	f.git(f.src("base"), "worktree", "add", "-q", f.src("base__worktrees")+"/wt1")
-	expectBlocked("base__worktrees", "contains_linked_worktree")
+	// A mixed-use directory remains a workspace, unlike a worktree-only container.
+	mustMkdir(f.src("mixed-checkouts"))
+	write(t, filepath.Join(f.src("mixed-checkouts"), "notes.txt"), "keep\n")
+	f.git(f.src("base"), "worktree", "add", "-q", f.src("mixed-checkouts")+"/wt1")
+	expectBlocked("mixed-checkouts", "contains_linked_worktree")
 
 	// 6. A mount below the workspace, and an unreadable mount table.
 	mustMkdir(f.src("mounted/data"))

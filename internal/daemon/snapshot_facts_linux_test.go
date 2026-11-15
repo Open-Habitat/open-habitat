@@ -493,7 +493,7 @@ func TestSnapshotTaskfleetFactsFollowRunRecords(t *testing.T) {
 	if err := os.Chmod(filepath.Join(f.home, ".local", "bin", "taskfleet"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	container := filepath.Join(f.src, "repo__worktrees")
+	container := filepath.Join(f.src, "custom-checkouts")
 	if err := os.MkdirAll(filepath.Join(container, "wt-task"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +501,7 @@ func TestSnapshotTaskfleetFactsFollowRunRecords(t *testing.T) {
 		b, _ := os.ReadFile(calls)
 		return strings.Count(string(b), "call")
 	}
-	if workspaceNamed(f.snapshot(), "repo__worktrees") == nil || workspaceNamed(f.snapshot(), "repo__worktrees") == nil || listed() != 1 {
+	if workspaceNamed(f.snapshot(), "custom-checkouts") == nil || workspaceNamed(f.snapshot(), "custom-checkouts") == nil || listed() != 1 {
 		t.Fatalf("container should be visible and listed once, listed %d", listed())
 	}
 	run := "01m52z7x908xeehvas4j6xrtj1"
@@ -509,18 +509,18 @@ func TestSnapshotTaskfleetFactsFollowRunRecords(t *testing.T) {
 	f.write(filepath.Join(dir, "manifest.json"), `{"kind":"spinoff"}`)
 	f.write(filepath.Join(dir, "nodes", "n-0001.json"), `{"worktree_path":"`+filepath.Join(container, "wt-task")+`"}`)
 	f.write(listing, `{"schema_version":1,"data":{"runs":[{"run_id":"`+run+`","kind":"spinoff","source_repo":"`+filepath.Join(f.src, "repo")+`","node_transcripts":[{"node_id":"n-0001","worktree_path":"`+filepath.Join(container, "wt-task")+`"}]}]}}`)
-	if workspaceNamed(f.snapshot(), "repo__worktrees") != nil || listed() != 2 {
+	if workspaceNamed(f.snapshot(), "custom-checkouts") != nil || listed() != 2 {
 		t.Fatalf("new node record: listed %d", listed())
 	}
 	f.write(filepath.Join(dir, "supervisor.state.json"), `{"state":"alive"}`)
 	f.write(filepath.Join(dir, "agent.log"), "working\n")
-	if workspaceNamed(f.snapshot(), "repo__worktrees") != nil || listed() != 2 {
+	if workspaceNamed(f.snapshot(), "custom-checkouts") != nil || listed() != 2 {
 		t.Fatalf("heartbeat caused a listing: %d", listed())
 	}
 	// A node record rewritten in place (same directory entries) still counts.
 	f.write(filepath.Join(dir, "nodes", "n-0001.json"), `{"worktree_path":"`+filepath.Join(f.src, "elsewhere")+`"}`)
 	f.write(listing, `{"schema_version":1,"data":{"runs":[]}}`)
-	if workspaceNamed(f.snapshot(), "repo__worktrees") == nil || listed() != 3 {
+	if workspaceNamed(f.snapshot(), "custom-checkouts") == nil || listed() != 3 {
 		t.Fatalf("rewritten node record: listed %d", listed())
 	}
 }

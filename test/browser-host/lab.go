@@ -484,6 +484,12 @@ func labGitStatus(home, dir string) error {
 // that owns one of them. The home gets a Git identity, which saving changes
 // to a branch needs.
 func labWorktrees(home string) error {
+	// Leftover containers have neither a checkout nor a Taskfleet record.
+	for _, name := range []string{"archived-project__worktrees", "removed-project__worktrees"} {
+		if err := os.MkdirAll(filepath.Join(home, "src", name), 0700); err != nil {
+			return err
+		}
+	}
 	repo := filepath.Join(home, "src", "aurinkokello")
 	wt := func(name string) string { return filepath.Join(home, "src", "aurinkokello__worktrees", name) }
 	if e := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[user]\n\tname = Synthetic lab\n\temail = synthetic@example.invalid\n"), 0600); e != nil {

@@ -421,6 +421,9 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	}()
 	fullName, requested, mode, restart := t.fullName, t.requested, t.mode, t.restart
 	name := cloneDirName(fullName)
+	if reservedWorkspaceName(name) {
+		return nil, 409, "checkout_unavailable"
+	}
 	src, err := cloneSource(c.cfg, c.home, true)
 	if err != nil {
 		return nil, 409, "checkout_unavailable"

@@ -214,9 +214,21 @@ func (c *ConversationController) placeFD(observation Discovery, id string) (*os.
 
 // worktreeContainers names the directories directly under ~/src that hold
 // only checkouts of registered worktrees: they are the worktrees' sibling
-// container, not workspaces. This is judged from Git's registry, never from
-// the directory's name.
-func worktreeContainers(home string, entries []Workspace, places []worktreePlace) map[string]bool {
+// container, not workspaces. Discovery already excludes conventional
+// __worktrees names; other names require evidence from Git's registry.
+func worktreeContainers(home string, entries []Workspace) map[string]bool {
+	candidate := false
+	for _, e := range entries {
+		candidate = candidate || e.Kind == "directory" && e.Metadata == "absent" && e.Error == ""
+	}
+	if !candidate {
+		return nil
+	}
+	var places []worktreePlace
+	for _, e := range entries {
+		found, _ := readWorktreePlaces(home, e, "")
+		places = append(places, found...)
+	}
 	src := filepath.Join(home, "src")
 	byParent := map[string]map[string]bool{}
 	for _, p := range places {

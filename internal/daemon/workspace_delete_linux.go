@@ -513,7 +513,7 @@ func trashView(cfg transport.Config, entry trashListing, names []string, namesOK
 	}
 	v.Kind, v.Name, v.DeletedAt = "workspace", entry.name, entry.deleted.UTC().Format(time.RFC3339)
 	v.OriginalPath = "~/" + entry.path
-	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name)
+	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name) && !reservedWorkspaceName(entry.name)
 	if !workspace {
 		v.Kind = "directory"
 		parent, err := openTrashDestination(cfg.Home, entry.path)
@@ -605,7 +605,7 @@ func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 		snapshotError(w, 409, "trash_entry_missing")
 		return
 	}
-	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name)
+	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name) && !reservedWorkspaceName(entry.name)
 	src, e := openTrashDestination(cfg.Home, entry.path)
 	if e != nil {
 		code := "trash_destination_unavailable"

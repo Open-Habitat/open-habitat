@@ -40,6 +40,10 @@ const maxGitfile = 1024
 
 var idPattern = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
+func reservedWorkspaceName(name string) bool {
+	return strings.HasSuffix(name, "__worktrees")
+}
+
 // Discover accepts only trusted local daemon configuration, never an HTTP field.
 func Discover(cfg transport.Config) Discovery {
 	return scan(cfg.Home, cfg.UID, unix.Openat2, false)
@@ -140,6 +144,12 @@ func scan(home string, uid int, op openFunction, icons bool) Discovery {
 			partial = true
 			continue
 		}
+		// These are native worktree containers even after the last checkout
+		// or the parent repository is removed. Do not depend on live run or
+		// Git registry entries to keep them out of every workspace consumer.
+		if reservedWorkspaceName(name) {
+			continue
+		}
 		// Do not trust d_type: some filesystems return DT_UNKNOWN. A failed
 		// stat is a partial observation, not evidence that an entry is absent.
 		var before unix.Stat_t
@@ -196,6 +206,18 @@ func scan(home string, uid int, op openFunction, icons bool) Discovery {
 			partial = true
 		}
 		result.Entries = append(result.Entries, w)
+	}
+	// Nonstandard container names still need Git's registry as evidence.
+	// Do this in discovery, not just the browser snapshot: agent listings
+	// and icon suggestions must observe the same workspace set.
+	if containers := worktreeContainers(home, result.Entries); len(containers) > 0 {
+		kept := result.Entries[:0]
+		for _, entry := range result.Entries {
+			if !containers[entry.Name] {
+				kept = append(kept, entry)
+			}
+		}
+		result.Entries = kept
 	}
 	again, err := dir(op, h, "src", false)
 	if err != nil {
