@@ -3,13 +3,14 @@ created: 2026-11-15
 updated: 2026-11-15
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/terminal-selection-contrast
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-15
 ---
 
 # Terminal selection is barely visible in the night theme

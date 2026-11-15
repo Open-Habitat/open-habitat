@@ -1,13 +1,16 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { snapshot as captureSnapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, type Page, test } from "./worker-host";
+import { createHostTest, expect, type Page } from "./worker-host";
 
 // The browser terminal against the real gateway relay, the real daemon
 // terminal routes and a real tmux and bash, as the test's own UID in an
 // invented home: selection, scrollback, copying and addresses a program asks
 // the browser to open. Synthetic host-backed evidence, not a live host.
 const shots = process.env.OH_TERMINAL_SHOTS;
+// Captures use the synthetic lab so its guarded offline snapshot is available.
+const test = createHostTest(false, shots ? { BROWSER_HOST_LAB: "1" } : {});
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
@@ -35,7 +38,8 @@ async function signIn(page: Page, experimental: Record<string, boolean>) {
   }
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const workspace = snapshot.workspaces.find(
-    (w: { name: string }) => w.name === "ordinary-dir",
+    (w: { name: string }) =>
+      w.name === (shots ? "aurinkokello" : "ordinary-dir"),
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
   await page
@@ -93,6 +97,80 @@ async function topNumber(page: Page) {
   const first = texts.find((t) => /^\d+\s*$/.test(t));
   return first ? Number(first.trim()) : Number.NaN;
 }
+
+test("@browser-shell selection is visible in every theme, with and without mouse reporting", async ({
+  page,
+}) => {
+  await signIn(page, {});
+  await openShell(page);
+  await page.keyboard.type("printf '\\033[31mselection sample\\033[0m\\n'\n");
+  await expect(
+    rows(page).filter({ hasText: /^selection sample\s*$/ }),
+  ).toHaveCount(1);
+  for (const mouse of [true, false]) {
+    if (!mouse) {
+      await page.locator(".ah-terminal-surface textarea").focus();
+      await page.keyboard.type("tmux set mouse off; echo mouse-$((1+1))\n");
+      await expect(screen(page)).toContainText("mouse-2");
+    }
+    for (const theme of ["light", "dark", "contrast"]) {
+      await page.evaluate((value) => {
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      const row = rows(page)
+        .filter({ hasText: /^selection sample\s*$/ })
+        .first();
+      const box = await row.boundingBox();
+      if (!box) throw new Error("no sample row");
+      if (mouse) await page.keyboard.down("Shift");
+      await page.mouse.move(box.x + 1, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 145, box.y + box.height / 2, { steps: 6 });
+      await page.mouse.up();
+      if (mouse) await page.keyboard.up("Shift");
+      await expect(highlight(page)).toBeVisible();
+      for (const focused of [true, false]) {
+        if (focused)
+          await page.locator(".ah-terminal-surface textarea").focus();
+        else await page.getByTestId("hide-terminal").focus();
+        await expect(highlight(page)).toBeVisible();
+        const colors = await surface(page).evaluate((el) => {
+          const style = getComputedStyle(el);
+          const rgb = (token: string) => {
+            const probe = document.createElement("span");
+            probe.style.color = style.getPropertyValue(token).trim();
+            el.append(probe);
+            const color = getComputedStyle(probe).color;
+            probe.remove();
+            return color;
+          };
+          return {
+            background: rgb("--ah-terminal-selection"),
+            foreground: rgb("--ah-terminal-selection-ink"),
+          };
+        });
+        await expect(highlight(page)).toHaveCSS(
+          "background-color",
+          colors.background,
+        );
+        // The sample is ANSI red; selection must override that colour as well.
+        await expect(row.locator("span").first()).toHaveCSS(
+          "color",
+          colors.foreground,
+        );
+        if (shots)
+          await captureSnapshot(
+            page,
+            join(
+              shots,
+              `selection-${theme}-${mouse ? "shift" : "normal"}-${focused ? "focused" : "unfocused"}`,
+            ),
+            { labOrigin: new URL(page.url()).origin },
+          );
+      }
+    }
+  }
+});
 
 test("@browser-shell a selection survives tmux's redraws; the wheel reads history a line at a time", async ({
   page,

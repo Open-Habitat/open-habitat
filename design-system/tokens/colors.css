@@ -62,6 +62,10 @@
   --ah-accent-soft: #e3f1e1;
   --ah-accent-line: #6a9272;
   --ah-on-accent: #ffffff;
+  /* Terminal selection must stand apart from the canvas, even unfocused.
+     Override ANSI text too: its original colour may match the selection. */
+  --ah-terminal-selection: var(--ah-accent);
+  --ah-terminal-selection-ink: var(--ah-on-accent);
 
   --ah-ok: #0f6f78;
   --ah-ok-soft: #e4f3f5;
@@ -136,6 +140,8 @@
   --ah-accent-soft: #17301b;
   --ah-accent-line: #4c8447;
   --ah-on-accent: #0a1a0b;
+  --ah-terminal-selection: var(--ah-accent);
+  --ah-terminal-selection-ink: var(--ah-on-accent);
 
   --ah-ok: #86dba6;
   --ah-ok-soft: #14261c;
@@ -212,6 +218,8 @@
   --ah-accent-soft: #12300a;
   --ah-accent-line: #b3b3b3;
   --ah-on-accent: #000000;
+  --ah-terminal-selection: var(--ah-accent);
+  --ah-terminal-selection-ink: var(--ah-on-accent);
 
   --ah-ok: #7dffb0;
   --ah-ok-soft: #06240f;

@@ -12,11 +12,22 @@ function block(selector: string): Record<string, string> {
   const start = css.indexOf(`\n${selector} {`);
   if (start < 0) throw new Error(`no ${selector} block`);
   const body = css.slice(start, css.indexOf("\n}", start));
+  const values = Object.fromEntries(
+    [
+      ...body.matchAll(
+        /(--ah-[a-z0-9-]+):\s*(#[0-9a-f]{6}|var\(--ah-[a-z0-9-]+\));/g,
+      ),
+    ].map((m) => [m[1], m[2]]),
+  );
+  const resolve = (value: string, seen = new Set<string>()): string => {
+    if (!value.startsWith("var(")) return value;
+    const token = value.slice(4, -1);
+    if (seen.has(token) || !values[token])
+      throw new Error(`Invalid alias: ${token}`);
+    return resolve(values[token], new Set([...seen, token]));
+  };
   return Object.fromEntries(
-    [...body.matchAll(/(--ah-[a-z0-9-]+):\s*(#[0-9a-f]{6});/g)].map((m) => [
-      m[1],
-      m[2],
-    ]),
+    Object.entries(values).map(([key, value]) => [key, resolve(value)]),
   );
 }
 
@@ -74,6 +85,18 @@ describe.each(Object.entries(themes))("%s theme boundaries", (name, theme) => {
         `${token} on ${fill}`,
       ).toBeGreaterThanOrEqual(minimum[name]);
     }
+  });
+
+  it("terminal selection and its text remain readable, focused or not", () => {
+    expect(
+      ratio(theme["--ah-terminal-selection"], theme["--ah-sunken"]),
+    ).toBeGreaterThanOrEqual(minimum[name]);
+    expect(
+      ratio(
+        theme["--ah-terminal-selection-ink"],
+        theme["--ah-terminal-selection"],
+      ),
+    ).toBeGreaterThanOrEqual(name === "contrast" ? 7 : 4.5);
   });
 
   it("a disabled line is quieter than an enabled control's", () => {
