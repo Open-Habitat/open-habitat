@@ -87,6 +87,7 @@ import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
 import { RewindContext, RewindEntryRow } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { useStoragePressure } from "./StoragePressure";
+import { SearchJumpBand, useJumpToHit, useSearchJump } from "./searchJump";
 import {
   hiddenSessionEntry,
   latestSettings,
@@ -1768,6 +1769,40 @@ function HistoryViewContent({
       viewport.removeEventListener("keydown", readerKey);
     };
   }, [entries, agent.agent_id]);
+  // A conversation opened from a search hit (⌘K): read back to the hit and
+  // hold it in the middle, as the reading anchor holds a reader's place.
+  const searchJump = useSearchJump(agent.agent_id);
+  const olderForJump = useCallback(
+    () => store.older(agent.agent_id),
+    [store, agent.agent_id],
+  );
+  const holdForJump = useCallback(
+    (held: { key: string; offset: number }) => {
+      const viewport = stream.current;
+      following.current = false;
+      anchor.current = held;
+      store.savePosition(agent.agent_id, held);
+      if (!viewport) return;
+      const row =
+        viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[
+          rowIndexOf(entries, held.key)
+        ];
+      if (!row) return;
+      viewport.scrollTop +=
+        row.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top -
+        held.offset;
+    },
+    [store, agent.agent_id, entries],
+  );
+  const jumpState = useJumpToHit({
+    jump: searchJump,
+    entries,
+    next: window?.next,
+    older: olderForJump,
+    feed: stream,
+    hold: holdForJump,
+  });
   const state =
     agent.history !== "readable" ? "error" : (window?.state ?? "loading");
   const loadMore = async () => {
@@ -2003,6 +2038,7 @@ function HistoryViewContent({
           onDismiss={() => setRecapDismissed(true)}
         />
       ) : null}
+      <SearchJumpBand jump={searchJump} state={jumpState} />
       {agent.archive === "archived" ? (
         <ArchivedFoot
           archivedAt={agent.archived_at}

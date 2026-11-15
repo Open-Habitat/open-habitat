@@ -153,6 +153,7 @@ import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
 import { ServerBrowserRail, ServerBrowserSheetHost } from "./ServerBrowser";
 import { SharesPage, SharesRail } from "./SharesPage";
+import { SwitcherHost } from "./SwitcherHost";
 import { ownWrites } from "./sentMessages";
 import {
   isSettingsRoute,
@@ -3261,6 +3262,18 @@ export function App() {
                 <>
                   <ExplainMode />
                   <ServerBrowserSheetHost identity={identity} csrf={csrf} />
+                  <SwitcherHost
+                    snapshot={snapshot}
+                    daemonSessions={daemonSessions}
+                    now={now}
+                    current={
+                      selectedAgentId ??
+                      (openConversation?.startsWith("pi:")
+                        ? openConversation
+                        : undefined)
+                    }
+                    onLogin={requireLogin}
+                  />
                 </>
               }
               bell={conversationBell ? undefined : <StatusBell />}

@@ -663,6 +663,7 @@ esac
 			daemon.MountEditorFixture(editorCtx, mux, fixtureWorkspaceCfg, trusted, editorDir, os.Getenv("BROWSER_HOST_CODE_SERVER"), startFakeEditor, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username))
 		}
 		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
+		mux.Handle(daemon.SearchPath, daemon.SearchHandlerWithNativeRoot(cfg, trusted, home))
 		mux.Handle(daemon.ContextDetailPattern, daemon.ContextDetailHandlerWithNativeRoot(cfg, trusted, credentialDevice, home))
 		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		catalog.Start(context.Background())
@@ -1155,6 +1156,16 @@ esac
 					}
 				} else if mode == "turn-changes" {
 					if e := seedTurnChangesHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else if mode == "search" {
+					cwd := filepath.Join(tmp, "alice", "src", "ordinary-dir")
+					if e := seedSearchHistory(path, cwd); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+					if e := seedSeveralHistories(filepath.Dir(path), cwd); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}

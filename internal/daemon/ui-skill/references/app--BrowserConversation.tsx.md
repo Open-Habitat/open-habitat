@@ -6,6 +6,7 @@ Generated from web/src/app/BrowserConversation.tsx; do not edit.
 import {
   type ComponentProps,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -189,6 +190,7 @@ import { ServerBrowserDock } from "./ServerBrowser";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
+import { SearchJumpBand, useJumpToHit, useSearchJump } from "./searchJump";
 import { useSentMessages, shownQueue as withSentQueue } from "./sentMessages";
 import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
@@ -616,6 +618,39 @@ function BrowserConversationContent({
     readingAnchor,
     restoreAnchor,
     setUnseen,
+  });
+  // A conversation opened from a search hit (⌘K): read back to the hit,
+  // hold it in the middle and mark its words.
+  const searchJump = useSearchJump(id);
+  const olderForJump = useCallback(
+    () => (id ? store.older(id) : undefined),
+    [id, store],
+  );
+  const holdForJump = useCallback(
+    (anchor: { key: string; offset: number }) => {
+      wasAtBottom.current = false;
+      readingAnchor.current = anchor;
+      if (id) store.savePosition(id, anchor);
+      restoreAnchor(anchor, entries);
+      setAwayFromLatest(true);
+    },
+    [
+      id,
+      store,
+      entries,
+      wasAtBottom,
+      readingAnchor,
+      restoreAnchor,
+      setAwayFromLatest,
+    ],
+  );
+  const jumpState = useJumpToHit({
+    jump: searchJump,
+    entries,
+    next,
+    older: olderForJump,
+    feed,
+    hold: holdForJump,
   });
   const { scrolled } = useFollowLatest({
     feed,
@@ -3482,6 +3517,9 @@ function BrowserConversationContent({
               <CreationNotice notice={creationView.notice} />
             )}
             {view === "opened" ? rewind.sheet : null}
+            {view === "opened" ? (
+              <SearchJumpBand jump={searchJump} state={jumpState} />
+            ) : null}
             {view === "opened" && archive?.archive === "archived" ? (
               // Archived: read-only, and the composer's place says so.
               <ArchivedFoot

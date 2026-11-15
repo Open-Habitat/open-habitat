@@ -482,6 +482,20 @@ const fi = {
       lead: "Siirtää keskustelun pois Sinun vuorosi -listasta, kun et ehdi vastata.",
       know: "Taustatyö jatkuu Käynnissä-listalla; muuten keskustelu siirtyy Hiljaisiin. Uusi vastaus tuo sen takaisin Sinun vuoroosi.",
     },
+    S34: {
+      name: "Hae keskusteluista",
+      lead: "Avaa haun, joka löytää keskustelun nimestä tai siitä, mitä sinä tai agentti siinä sanoitte.",
+      know: "Tyhjä haku näyttää viimeksi avatut, edellinen valmiina valittuna, joten näppäin ja Enter vaihtavat kahden keskustelun välillä. Työkalujen tulosteita ja agentin ajattelua ei haeta.",
+      keyboard:
+        "⌘K Macilla, Ctrl+K muualla; / tekstikenttien ulkopuolella. Pääte pitää Ctrl+K:n itsellään.",
+    },
+    S35: {
+      name: "Hakutulokset",
+      lead: "Rivi on keskustelu ja sen sisällä lause, joka osui. Enter avaa keskustelun juuri sen lauseen kohdalta.",
+      know: "Nimiosumat ovat ylimpinä ja arkistoidut viimeisinä. Keskustelun muut osumat ovat määränä, jonka → avaa rivin alle ja ← sulkee.",
+      keyboard:
+        "↑↓ valitsee, → ja ← avaavat ja sulkevat osumat, Enter avaa ja Esc sulkee.",
+    },
     E01: {
       name: "Työtilat",
       lead: "Etusivu kokoaa kaikki työtilasi ja niiden avoimen työn yhdelle sivulle.",
@@ -2197,6 +2211,20 @@ export const explainModeText = catalog(fi, {
       name: "Not now",
       lead: "Moves the conversation out of Your turn when you cannot reply now.",
       know: "Background work stays in Running; otherwise the conversation moves to Quiet. A new reply brings it back to Your turn.",
+    },
+    S34: {
+      name: "Search conversations",
+      lead: "Opens a search that finds a conversation by its name or by what you or the agent said in it.",
+      know: "An empty search lists recently opened conversations with the previous one chosen, so the key and Enter swap between two. Tool output and the agent's thinking are not searched.",
+      keyboard:
+        "⌘K on a Mac, Ctrl+K elsewhere; / outside text fields. The terminal keeps Ctrl+K for itself.",
+    },
+    S35: {
+      name: "Search results",
+      lead: "A row is a conversation with the sentence that matched inside it. Enter opens the conversation right at that sentence.",
+      know: "Name matches come first and archived conversations last. A conversation's other hits are a count that → opens under the row and ← closes.",
+      keyboard:
+        "↑↓ choose, → and ← open and close the hits, Enter opens and Esc closes.",
     },
     E01: {
       name: "Workspaces",

@@ -14,12 +14,14 @@ import { RailClones } from "../components/ClonePage";
 import { LinkRow } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { type QuietChoice, QuietSection } from "../components/QuietSection";
+import { SearchDoor } from "../components/Switcher";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { liveText, useText } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
 import { statusText } from "../text/status";
+import { switcherText } from "../text/switcher";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
@@ -29,6 +31,8 @@ import type { AccountProfile } from "./pi";
 import { setQuietFolded, useQuietFolded } from "./quietFold";
 import { railKeyboardOrder, useRailKeyboard } from "./railKeyboard";
 import { type RailNow, railNow } from "./railNow";
+import { openSwitcher } from "./SwitcherHost";
+import { switcherKey } from "./searchJump";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
@@ -207,6 +211,7 @@ export function WorkspaceRailView({
   clones?: CloneJobs;
 }) {
   const resourcesText = useText(agentResourcesText);
+  const searchText = useText(switcherText);
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
@@ -284,36 +289,46 @@ export function WorkspaceRailView({
         ) : undefined
       }
       now={
-        <NowSections
-          yours={now.yours}
-          running={now.running}
-          quiet={
-            <QuietSection
-              rows={now.quiet}
-              workspaces={snapshot.workspaces
-                .filter(
-                  (w) => w.presence === "present" && w.visibility === "visible",
-                )
-                .map((w) => ({
-                  id: w.workspace_id,
-                  name: w.display_name ?? w.name,
-                  icon: icons?.get(w.workspace_id),
-                }))}
-              choice={quietChoice}
-              folded={quietFolded}
-              onFold={setQuietFolded}
-              archive={archiveConversation}
-              rename={renameConversation}
-              turn={turnConversation}
-              card={card}
+        <>
+          {collapsed ? null : (
+            <SearchDoor
+              label={searchText.door}
+              keyHint={switcherKey}
+              onOpen={openSwitcher}
             />
-          }
-          collapsed={collapsed}
-          archive={archiveConversation}
-          rename={renameConversation}
-          turn={turnConversation}
-          card={card}
-        />
+          )}
+          <NowSections
+            yours={now.yours}
+            running={now.running}
+            quiet={
+              <QuietSection
+                rows={now.quiet}
+                workspaces={snapshot.workspaces
+                  .filter(
+                    (w) =>
+                      w.presence === "present" && w.visibility === "visible",
+                  )
+                  .map((w) => ({
+                    id: w.workspace_id,
+                    name: w.display_name ?? w.name,
+                    icon: icons?.get(w.workspace_id),
+                  }))}
+                choice={quietChoice}
+                folded={quietFolded}
+                onFold={setQuietFolded}
+                archive={archiveConversation}
+                rename={renameConversation}
+                turn={turnConversation}
+                card={card}
+              />
+            }
+            collapsed={collapsed}
+            archive={archiveConversation}
+            rename={renameConversation}
+            turn={turnConversation}
+            card={card}
+          />
+        </>
       }
       filterValue={filter}
       resultSummary={

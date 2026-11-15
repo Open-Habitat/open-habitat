@@ -175,6 +175,8 @@ export const parts: Record<CardId, Part> = {
   S31: { kind: "once", sel: '[data-testid="rail-raise-conversation"]' },
   S32: { kind: "once", sel: '[data-testid="rail-lower-conversation"]' },
   S33: { kind: "once", sel: '[data-testid="rail-not-now-conversation"]' },
+  S34: { kind: "list", sel: '[data-testid="search-door"]', opens: true },
+  S35: { kind: "list", sel: '[data-testid="switcher"]' },
   E01: { kind: "info", sel: '[data-testid="workspaces-title"]' },
   E02: { kind: "list", sel: ".ah-home-workspace-head" },
   E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },

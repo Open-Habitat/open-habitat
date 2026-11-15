@@ -217,3 +217,10 @@ func openSearchIndex(cfg transport.Config) (*searchindex.Index, string, error) {
 	index, err := searchindex.Open(path, func(p string) (*os.File, os.FileInfo, bool) { return openNative(p, cfg.UID) }, maxNativeLine)
 	return index, path, err
 }
+
+// SearchHandlerWithNativeRoot serves search over an invented home, for the
+// synthetic browser host, as HistoryHandlerWithNativeRoot serves history.
+func SearchHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, root string) http.Handler {
+	cfg.Home = root
+	return searchHandlerWith(cfg, trusted, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) })
+}

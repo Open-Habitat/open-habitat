@@ -61,6 +61,15 @@ The packages divide the work as follows.
   shell (`terminal_linux.go`: tmux sessions on a PTY, run as the person)
   and the workspace editor (`editor_linux.go`: code-server run as the
   person, its relay, and file links through `editor-extension/`).
+  `search_linux.go` serves the ⌘K switcher's search from `searchindex/`.
+- `searchindex/`: the person's conversation search index (ADR 0036), the one
+  store the daemon derives from native history and keeps between requests.
+  It is a cache in the person's state directory (0600): deleted and rebuilt
+  freely, never migrated, never read by the gateway or another person's
+  daemon, and its replies carry only what the switcher's list shows. It
+  holds the person's and the agent's message text and nothing else, so tool
+  output, thinking or a second user's sessions entering it is a design change,
+  not a tweak.
 - `daemon/integrations/`: the integrations catalog (ADR 0026), run inside the
   person's daemon. Entries are product code; accounts are read from each
   tool's own files under catalog-owned names, logins are relayed through the
