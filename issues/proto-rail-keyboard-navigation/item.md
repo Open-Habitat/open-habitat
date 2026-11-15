@@ -30,3 +30,7 @@ Jari 15.11.2026: implement direction 1 Suoraan (Alt/⌥+Up/Down opens the previo
 ### 2026-11-15T17:24:56Z · @jari
 
 Jari 15.11.2026 on round 2: direction 1 Lista. The way results are presented is still confusing (conversations at the top, message hits as separate lists below); riff in round 3 on how results are presented in the list.
+
+### 2026-11-15T17:46:18Z · @jari
+
+Jari 15.11.2026 on round 3: direction 1 Keskustelut (a row per conversation with its best matching sentence, +N → expands). Index: Jari asked its size (about 15 MB for two months of one active person's history, rebuildable) and did not object; the conductor proceeds with the SQLite FTS5 index in the person's daemon as recommended, recorded as an ADR in the implementation. Implementation: issue switcher-search.
