@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/dictation-limit
 lane: dictation-limit-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Dictation limit: warn before it, keep what was said after it

@@ -1,0 +1,101 @@
+/* Review chrome above the scenes, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.dl-head {
+  position: sticky; top: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.dl-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.dl-head strong { font-weight: 600; }
+.dl-head select { font: inherit; }
+.dl-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.dl-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.dl-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .dl-head { padding: 6px 10px; }
+  .dl-controls > strong { display: none; }
+  .dl-lines li:not([aria-current]) { display: none; }
+}
+
+/* The scenes: one composer each, two columns on a desktop. */
+.dl-stage {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 600px), 1fr));
+  gap: var(--ah-s5); padding: var(--ah-s5) var(--ah-s5) 96px; color: var(--ah-ink);
+  font: var(--ah-size-body)/1.5 var(--ah-font);
+}
+.dl-scene { display: grid; gap: var(--ah-s2); align-content: start; min-width: 0; }
+.dl-scene-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ah-s3); }
+.dl-scene h2 { margin: 0; font-size: var(--ah-size-body); font-weight: 600; }
+.dl-scene-acts { display: inline-flex; gap: var(--ah-s2); flex-wrap: wrap; justify-content: flex-end; }
+.dl-caption { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.dl-replay {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: var(--ah-size-meta); padding: 4px 12px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md);
+}
+.dl-replay svg { width: 13px; height: 13px; }
+.dl-composer { display: grid; gap: var(--ah-s2); min-width: 0; }
+@media (max-width: 600px) {
+  .dl-stage { padding: var(--ah-s4) var(--ah-s3) 96px; gap: var(--ah-s5); }
+}
+
+/* The directions draw their own time, note and notice in production's
+   places; production's own are hidden there. */
+.dl-review:not([data-direction="0"]) :is(
+  [data-testid="dictation-ceiling"], [data-testid="dictation-notice"],
+  .ah-dictation-bar > .ah-dictation-time, .ah-dictation-bar > .ah-dictation-state) { display: none; }
+.dl-review:not([data-direction="0"]) .ah-dictation-bar > :is(.ah-dictation-wave, .ah-dictation-hint) { order: 2; }
+.dl-bar {
+  order: 1; display: inline-flex; align-items: center; gap: 9px;
+  flex: none; min-width: 0; align-self: stretch;
+}
+.dl-time { font: 500 12px var(--ah-mono); font-variant-numeric: tabular-nums; }
+.dl-state { color: var(--ah-muted); }
+/* The last minute: the time becomes what is left, in a chip that grows
+   stronger at ten seconds. Word and colour together, never colour alone. */
+.dl-bar[data-tone="soon"] .dl-time,
+.dl-bar[data-tone="urgent"] .dl-time {
+  padding: 2px 8px; border-radius: var(--ah-r-pill);
+  background: var(--ah-surface); box-shadow: inset 0 0 0 1px var(--ah-err-line);
+  font: 600 12px var(--ah-font); font-variant-numeric: tabular-nums;
+}
+.dl-bar[data-tone="urgent"] .dl-time { background: var(--ah-err); color: var(--ah-on-err); box-shadow: none; }
+.dl-review[data-direction="3"] .dl-bar[data-tone] .dl-time {
+  padding: 0; background: none; box-shadow: none; color: inherit; font: 500 12px var(--ah-mono);
+}
+.dl-review[data-direction="3"] .dl-bar[data-tone="urgent"] .dl-state { color: var(--ah-err); font-weight: 600; }
+/* 3: the time left drains along the bar's lower edge. */
+.dl-drain {
+  position: absolute; left: 38px; right: 14px; bottom: 3px; height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ah-err) 22%, transparent);
+}
+.dl-drain i { display: block; height: 100%; border-radius: 2px; background: var(--ah-err); transition: width 240ms linear; }
+@media (max-width: 600px) {
+  .dl-state { display: none; }
+  .dl-bar[data-tone="urgent"] .dl-state { display: inline; }
+}
+
+/* The note above the field: production's, with its tones. */
+.dl-note[data-tone="soon"] { --ah-dictation-icon: var(--ah-err); border-color: var(--ah-err-line); }
+.dl-note[data-tone="drop"] { --ah-dictation-icon: var(--ah-err); }
+
+/* The end notice below the field: outside .ah-composer, so its icon sizes
+   are given here. */
+.dl-notice { --ah-dictation-icon: var(--ah-ok); border-color: var(--ah-ok-line); }
+.dl-notice > svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--ah-ok); }
+.dl-notice .dl-x svg { width: 14px; height: 14px; }
+.dl-act { gap: 6px; align-self: flex-start; margin-top: 5px; }
+.dl-act svg { width: 14px; height: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-drain i { transition: none; }
+}
+@media (forced-colors: active) {
+  .dl-bar[data-tone] .dl-time { forced-color-adjust: none; background: Canvas; color: CanvasText; box-shadow: inset 0 0 0 1px CanvasText; }
+  .dl-bar[data-tone="urgent"] .dl-time { background: Highlight; color: HighlightText; }
+  .dl-drain { background: GrayText; }
+  .dl-drain i { background: CanvasText; }
+}
