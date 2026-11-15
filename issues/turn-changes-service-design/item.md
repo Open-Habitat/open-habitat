@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/turn-changes-service
 lane: turn-changes-service
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design: one shared turn-changes service for turn summaries, rewind and the upstream extension
