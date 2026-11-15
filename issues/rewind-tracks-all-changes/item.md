@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/rewind-all-changes
 lane: rewind-all-changes
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Rewind restores only edit-tool changes; shell and script edits are not tracked
