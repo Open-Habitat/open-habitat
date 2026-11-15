@@ -52,7 +52,7 @@ outer padding for standalone YAML, now fixed.
 - Final targeted synthetic-lab captures: both new preview cases passed at
   1366 and 390 px; four Explain-mode cases passed at 1440 and 390 px in Finnish
   and US English. UK uses the same copy. Paired HTML/PNG evidence is in
-  `evidence/`; no live installation was captured.
+  captures kept outside the repository; no live installation was captured.
 - YAML tests cover depth, mixed lists, long/multiline strings, empty values,
   invalid syntax, a CI workflow, exact integers, hostile keys, aliases, cycles,
   excessive trees and inert HTML-looking content.
