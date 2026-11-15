@@ -73,7 +73,18 @@ For both view and file offers, `--source` is an absolute path inside or
 outside the workspace (for example `/var/tmp/report.html`), or a path relative
 to your current working directory, as in any shell command (for example
 `site/index.html`). The source must be readable as the person; symlinks in the
-path are refused.
+path are refused. Dot directories used as ancestors of an explicitly named
+file, such as `.pi/skills/test-guide/SKILL.md`, are allowed. Exported names
+cannot start with a dot. For file offers, a dot-named file or a dot directory
+combined with other sources is refused as `unsupported_file_name`. A dot
+directory offered alone exports its non-hidden contents, not its own name.
+`unsafe_file_source` or
+`unsafe_view_source` means a symlink or forbidden filesystem crossing, not a
+dot-directory ban: inspect ancestors as well as the final file. The daemon
+allows an explicitly named absolute source on another filesystem, but never
+crosses mounts while walking its descendants. Hidden entries found during a
+directory walk are skipped; this is not a secret-content detector. Offer only
+files you intend to share, never credentials.
 
 The offer copies the file, or the directory's files, into a frozen view: later
 edits do not change it, so offer again (new key) after a change. The person sees

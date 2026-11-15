@@ -136,13 +136,22 @@ func TestOfferDaemonNotFoundNamesSentPaths(t *testing.T) {
 	}{
 		{runAgentFileCommand, daemon.AgentFileOffersPath, "a.pdf", "file_source_not_found"},
 		{runAgentViewCommand, daemon.AgentViewsPath, "r.html", "view_source_not_found"},
+		{runAgentFileCommand, daemon.AgentFileOffersPath, ".pi/skills/test-guide/SKILL.md", "unsafe_file_source"},
+		{runAgentViewCommand, daemon.AgentViewsPath, ".github/report.html", "unsafe_view_source"},
 	} {
 		_, err := tc.run(append(append([]string{}, base...), "--source", tc.source), func(string, string, []byte) (json.RawMessage, error) {
 			return nil, agentResponseError("POST", tc.path, 404, tc.code)
 		})
 		var c *cliError
-		if !errors.As(err, &c) || c.code != tc.code || c.exit != 1 || !strings.Contains(c.message, root+"/other/"+tc.source) || !strings.Contains(c.message, "current working directory") {
+		if !errors.As(err, &c) || c.code != tc.code || c.exit != 1 || !strings.Contains(c.message, root+"/other/"+tc.source) {
 			t.Fatalf("daemon %s: %#v", tc.code, err)
+		}
+		hint := "current working directory"
+		if strings.HasPrefix(tc.code, "unsafe_") {
+			hint = "symlink"
+		}
+		if !strings.Contains(c.message, hint) {
+			t.Fatalf("daemon %s: missing cause hint: %s", tc.code, c.message)
 		}
 	}
 }

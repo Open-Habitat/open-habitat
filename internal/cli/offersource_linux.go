@@ -94,12 +94,17 @@ func offerSourceNotFound(kind, abs string) error {
 	return &cliError{code: kind + "_source_not_found", message: fmt.Sprintf("no directory at %s; a relative --source is resolved against the current working directory", abs), exit: 1}
 }
 
-// offerNotFoundNamesPaths names the absolute paths the daemon looked for
-// when it found no source.
+// offerNotFoundNamesPaths adds source context to the daemon's fixed refusal
+// codes without re-walking a potentially changed source or weakening its checks.
 func offerNotFoundNamesPaths(err error, kind string, sources []string) error {
 	var c *cliError
-	if errors.As(err, &c) && c.code == kind+"_source_not_found" {
-		return &cliError{code: c.code, message: "no file or directory found among: " + strings.Join(sources, ", ") + "; a relative --source is resolved against the current working directory", exit: c.exit}
+	if errors.As(err, &c) {
+		switch c.code {
+		case kind + "_source_not_found":
+			return &cliError{code: c.code, message: "no file or directory found among: " + strings.Join(sources, ", ") + "; a relative --source is resolved against the current working directory", exit: c.exit}
+		case "unsafe_" + kind + "_source":
+			return &cliError{code: c.code, message: "source lookup refused a symlink or a forbidden filesystem crossing among: " + strings.Join(sources, ", ") + "; check all components of the named paths for symlinks and descendants of named directories for mount points; a dot-prefixed ancestor alone is not a refusal reason; pass an explicitly chosen real source path", exit: c.exit}
+		}
 	}
 	return err
 }

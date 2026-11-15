@@ -17,13 +17,19 @@ import (
 // package, rather than only the source-path parser.
 func TestOfferAbs(t *testing.T) {
 	for _, kind := range []string{"view", "file"} {
-		for _, location := range []string{"inside", "outside"} {
+		for _, location := range []string{"inside", "outside", ".pi/skills/test-guide", ".agents", ".github"} {
 			for _, directory := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/dir=%v", kind, location, directory), func(t *testing.T) {
 					h := viewFixture(t)
 					base := filepath.Join(h.root, "src", "project")
 					if location == "outside" {
 						base = t.TempDir()
+					}
+					if location != "inside" && location != "outside" {
+						base = filepath.Join(base, location)
+						if err := os.MkdirAll(base, 0700); err != nil {
+							t.Fatal(err)
+						}
 					}
 					folder := filepath.Join(base, "report")
 					if err := os.Mkdir(folder, 0700); err != nil {
