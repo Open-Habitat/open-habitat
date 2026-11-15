@@ -17,3 +17,9 @@ preparation: pending
 ## Description
 
 Jari 15.11.2026: the "Vuoron muutokset" feature (`turn-changes-summary`, what the agent changed in a turn) suffers from the same problem as the rewind extension (`rewind-tracks-all-changes`): it sees only edit/write tool changes, not shell or script edits. Idea: one shared turn-changes capability — a plugin/service that captures each turn's file changes (e.g. the working-tree snapshots recommended in `rewind-tracks-all-changes/design.md`) and offers them as a service, which Habitat's Vuoron muutokset, Palaa tähän and the upstream better-pi-rewind extension could all use. Or something along those lines.
+
+## Decisions
+
+### 2026-11-15T19:15:41Z · @jari
+
+Jari 15.11.2026: recommended direction (recorder inside better-pi-rewind) noted; Jari asks the upstream maintainer first. Nothing is built until his opinion is known.
