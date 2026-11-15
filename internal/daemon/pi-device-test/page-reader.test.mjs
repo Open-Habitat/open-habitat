@@ -10,7 +10,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { readPage, headlessShell, launchArgs, egress, socketOwner, localAddress } from '../../../runtime/core/page-reader.mjs';
+import { readPage, extractor, headlessShell, launchArgs, egress, socketOwner, localAddress } from '../../../runtime/core/page-reader.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const cli = resolve(here, 'node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js');
@@ -33,9 +33,11 @@ const sources = {
 };
 
 const article = `<h1>Rendered heading</h1>${'<p>Paragraph text that a reader keeps, long enough to be an article body. </p>'.repeat(12)}<p>See <a href="/next">the next page</a>.</p>`;
+const quotes = await readFile(join(here, 'fixtures/quotes.html'), 'utf8');
 const pending = new Set();
 let localHits = 0;
 const pages = {
+  '/quotes': (req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end(quotes); },
   // Nothing in the HTML: the article only exists after the script fetched it.
   '/spa': (req, res) => {
     res.writeHead(200, { 'content-type': 'text/html' });
@@ -116,6 +118,63 @@ test('a page that renders its article with JavaScript is read after it rendered'
   assert.doesNotMatch(text(r), /Loading/);
   assert.ok(r.details.links >= 1);
   assert.match(text(r), new RegExp(`\\(${base}/next\\)`));
+  assert.equal(r.details.partial, false);
+});
+
+// Exercise extraction directly, without a request or the tool's appended
+// Links list masking text that was removed from the body.
+async function extract(html) {
+  const page = await browser.newPage();
+  try {
+    await page.setContent(html);
+    return await page.evaluate(extractor(sources.readability, sources.turndown, 20000));
+  } finally { await page.close(); }
+}
+
+test('inline authors remain beside their quotes, never a guessed page byline', async () => {
+  const r = await extract(quotes);
+  assert.equal(r.byline, '');
+  assert.equal((r.markdown.match(/Avery Example/g) || []).length, 2);
+  assert.match(r.markdown, /by Avery Example/);
+  assert.match(r.markdown, /by \[Blair Sample\]/);
+  assert.match(r.markdown, /\[Blair Sample\]\([^)]*\/author\/blair\)/);
+});
+
+test('short tag blocks survive extraction in place with their links', async () => {
+  const r = await extract(quotes);
+  assert.equal((r.markdown.match(/Tags:/g) || []).length, 3);
+  assert.match(r.markdown, /Tags: \[care\]\([^)]*\/tag\/care\) \[learning\]/);
+  assert.ok(r.markdown.indexOf('Tags:') < r.markdown.indexOf('A useful question'));
+  assert.doesNotMatch(r.markdown, /Popular tags|Fixture footer/);
+});
+
+test('preserving tags does not reveal explicitly hidden tag blocks', async () => {
+  for (const attribute of ['hidden', 'style="display:none"', 'aria-hidden="true"']) {
+    const r = await extract(quotes.replace('Tags:', `Tags:<div class="tags" ${attribute}>HIDDEN-TAG</div>`));
+    assert.doesNotMatch(r.markdown, /HIDDEN-TAG/);
+    assert.equal((r.markdown.match(/Tags:/g) || []).length, 3);
+  }
+});
+
+test('explicit page author metadata is still a byline without deleting inline credits', async () => {
+  const r = await extract(quotes.replace('</head>', '<meta name="author" content="Collection Editor"></head>'));
+  assert.equal(r.byline, 'Collection Editor');
+  assert.match(r.markdown, /by Avery Example/);
+});
+
+test('a lone inline credit is not sufficient evidence of page authorship either', async () => {
+  const r = await extract(`<title>Observations</title><article>${article}<p>by <a rel="author" href="/author">Casey Example</a></p></article>`);
+  assert.equal(r.byline, '');
+  assert.match(r.markdown, /by \[Casey Example\]/);
+});
+
+test('the saved quotes structure reaches the tool with complete attribution and tags', async () => {
+  const r = await read('/quotes');
+  const body = text(r).split('\nLinks:')[0];
+  assert.doesNotMatch(body, /^By:/m);
+  assert.match(body, /by Avery Example/);
+  assert.match(body, /by \[Blair Sample\]/);
+  assert.equal((body.match(/Tags:/g) || []).length, 3);
   assert.equal(r.details.partial, false);
 });
 

@@ -67,7 +67,7 @@ const parameters = {
 // The page-side extraction. `module` and `exports` are local here so that
 // both libraries hand over their export instead of looking for the page's own
 // AMD loader or touching its globals.
-const extractor = (readability, turndown, limit) => `(() => {
+export const extractor = (readability, turndown, limit) => `(() => {
 	const Readability = (() => { const module = { exports: {} }; const exports = module.exports;
 		${readability}
 		return module.exports; })();
@@ -77,7 +77,30 @@ const extractor = (readability, turndown, limit) => `(() => {
 	const html = document.contentType === 'text/html' || document.contentType === 'application/xhtml+xml';
 	let article = null;
 	if (html) {
-		try { article = new Readability(document.cloneNode(true)).parse(); } catch {}
+		try {
+			const copy = document.cloneNode(true);
+			// Readability treats class="tags" as clutter, then conditionally
+			// removes short, link-heavy divs. These are content annotations,
+			// not navigation: keep their text and links as ordinary paragraphs.
+			for (const tags of copy.querySelectorAll('div.tags, p.tags')) {
+				const paragraph = copy.createElement('p');
+				// Keep visibility attributes and other classes: a hidden tag
+				// block should still be discarded, not made into visible text.
+				for (const { name, value } of tags.attributes) {
+					paragraph.setAttribute(name, value);
+				}
+				paragraph.classList.remove('tags');
+				paragraph.append(...tags.childNodes);
+				tags.replaceWith(paragraph);
+			}
+			// An author-like body node may credit a quote, not the page. The
+			// heuristic also deletes that node, breaking its attribution. Only
+			// explicit page metadata should supply a separate page byline.
+			class PageReader extends Readability {
+				_isValidByline() { return false; }
+			}
+			article = new PageReader(copy).parse();
+		} catch {}
 	}
 	let markdown = '';
 	if (article && article.content) {
