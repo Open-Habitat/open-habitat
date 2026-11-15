@@ -1,0 +1,65 @@
+/* Review chrome above the scenes, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-body)/1.5 var(--ah-font); }
+.gc-head {
+  position: sticky; top: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.gc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.gc-head strong { font-weight: 600; }
+.gc-head select { font: inherit; }
+.gc-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.gc-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.gc-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .gc-head { padding: 6px 10px; }
+  .gc-controls > strong { display: none; }
+  .gc-lines li:not([aria-current]) { display: none; }
+}
+
+/* The Settings page's own frame without its navigation, so the card's
+   container queries see production's width. */
+.gc-page.ah-account-settings.s-page { margin: 0 auto; padding: var(--ah-s5) var(--ah-s5) 110px; box-sizing: border-box; }
+.gc-h { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-h2); }
+.gc-intro { margin-bottom: var(--ah-s4); }
+.gc-scenes { display: grid; gap: var(--ah-s6); }
+.gc-scene { display: grid; gap: var(--ah-s2); min-width: 0; }
+.gc-scene > h2 {
+  margin: 0; font: 600 var(--ah-size-label)/1.3 var(--ah-font); color: var(--ah-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.gc-caption { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+@media (max-width: 600px) {
+  .gc-page.ah-account-settings.s-page { padding: var(--ah-s4) var(--ah-s3) 110px; }
+}
+
+/* Nyt: only the GitHub card of production's page. */
+.gc-prod .s-intro, .gc-prod .s-gitea, .gc-prod [data-settings-row="workspaces"] { display: none; }
+
+/* The directions. */
+.gc-login { font-family: var(--ah-mono); font-size: 0.95em; color: var(--ah-ink); }
+.gc-identity strong { font-size: var(--ah-size-body); }
+.gc-details-row, .gc-footer { padding-block: var(--ah-s3); }
+.gc-details-row { display: block; }
+.gc-details summary { padding-block: 2px; }
+.gc-details[open] summary { margin-bottom: var(--ah-s3); }
+.gc-facts { display: grid; gap: var(--ah-s2); }
+.gc-facts p { margin: 0; }
+.gc-facts-h { color: var(--ah-ink-2); font-weight: 600; }
+.gc-facts code { font-family: var(--ah-mono); font-size: 0.9em; color: var(--ah-muted); }
+.gc-acts { display: grid; gap: var(--ah-s2); margin-top: var(--ah-s3); }
+.gc-act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3); }
+.gc-footer .s-val { gap: var(--ah-s2); }
+.gc-identity > .s-editor .gc-facts { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.4; }
+
+/* The disconnect dialog: the modal and its two static copies. */
+.gc-dialog { display: grid; gap: var(--ah-s3); max-width: 560px; }
+.gc-dialog h2, .gc-dialog p { margin: 0; }
+.gc-dialog .ah-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ah-s2); margin-top: var(--ah-s2); }
+.gc-dlg-step { padding: var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-sunken, var(--ah-bg)); }
+.gc-static-dialogs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--ah-s4); padding: var(--ah-s4); border-radius: var(--ah-r-lg); background: color-mix(in srgb, var(--ah-ink) 12%, var(--ah-bg)); }
+.gc-static.ah-dialog { padding: var(--ah-s5); box-sizing: border-box; }
+.gc-intro + .gc-scenes, .gc-h + .gc-scenes { margin-top: var(--ah-s4); }
+.gc-static.ah-dialog { align-content: start; }
+[data-testid="gc-menu"] .ah-menu-chevron { display: none; }

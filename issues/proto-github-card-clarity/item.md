@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/github-card
 lane: github-card-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # GitHub card in Settings is confusing; prototype again
