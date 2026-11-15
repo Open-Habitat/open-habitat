@@ -329,6 +329,8 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     "single-42",
   );
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await expect(page.getByTestId("terminal-event-notice")).toHaveCount(0);
   // Clipboard failures must remain visible even when the dock hides the
   // conversation (and its composer notice stack).
   await page.evaluate(() => {
@@ -353,6 +355,16 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
     page.getByTestId("terminal-panel").getByTestId("terminal-event-notice"),
   ).toBeVisible();
   await page.getByTestId("terminal-notice-close").click();
+  // Missing clipboard support must also produce an error, not silent success.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined });
+  });
+  await select();
+  await page.getByTestId("copy-selection").click();
+  await expect(
+    page.getByTestId("terminal-panel").getByTestId("terminal-event-notice"),
+  ).toBeVisible();
+  await page.getByTestId("terminal-notice-close").click();
   // Dismiss the close control's help before targeting the adjacent button.
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toBeHidden();
@@ -365,6 +377,8 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await expect(
     page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toHaveValue(/^```\nsingle-42\n```\n$/);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await expect(page.getByTestId("terminal-event-notice")).toHaveCount(0);
   await expect(
     page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeFocused();

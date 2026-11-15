@@ -174,9 +174,6 @@ export function useBrowserShell({
   const [nonce, setNonce] = useState(0);
   const [paste, setPaste] = useState<string[]>();
   const [selection, setSelection] = useState<TerminalSelection>();
-  // The text copy on select put on the clipboard; the chip says so while
-  // that text is the selection.
-  const [copied, setCopied] = useState<string>();
   const [urlOffer, setUrlOffer] = useState<string>();
   const copyOnSelect = useExperimentalFeature("terminal-copy-on-select");
   const openUrls = useExperimentalFeature("terminal-open-urls");
@@ -646,7 +643,6 @@ export function useBrowserShell({
         feedback={eventNotice}
         paste={paste}
         selection={selection}
-        selectionCopied={!!selection && selection.text === copied}
         urlOffer={openUrls ? urlOffer : undefined}
         onDismissUrl={() => {
           setUrlOffer(undefined);
@@ -711,12 +707,15 @@ export function useBrowserShell({
           setSelection(undefined);
           terminal.current?.clearSelection();
           if (!text) return;
-          navigator.clipboard
-            ?.writeText(text)
-            .then(() => setToast(txt.copied))
-            .catch(() =>
-              setShellNotice({ text: txt.copyRefused, tone: "danger" }),
-            );
+          if (!navigator.clipboard) {
+            setShellNotice({ text: txt.copyRefused, tone: "danger" });
+          } else {
+            navigator.clipboard
+              .writeText(text)
+              .catch(() =>
+                setShellNotice({ text: txt.copyRefused, tone: "danger" }),
+              );
+          }
           focusTerminal();
         }}
         onSendSelection={
@@ -727,7 +726,6 @@ export function useBrowserShell({
                 terminal.current?.clearSelection();
                 if (!text) return;
                 onSendToConversation(text);
-                setToast(txt.sentToComposer);
               }
             : undefined
         }
@@ -757,7 +755,6 @@ export function useBrowserShell({
             onSelection={setSelection}
             onPasteRequest={askPaste}
             copyOnSelect={copyOnSelect}
-            onCopied={setCopied}
             onOpenUrl={openUrls ? setUrlOffer : undefined}
             onOpen={() => {
               if (focusOnOpen.current) {

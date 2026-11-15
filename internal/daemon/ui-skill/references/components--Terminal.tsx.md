@@ -94,7 +94,6 @@ export function TerminalSurface({
   onPasteRequest,
   onOpen,
   copyOnSelect = false,
-  onCopied,
   onOpenUrl,
   ref,
 }: {
@@ -111,8 +110,6 @@ export function TerminalSurface({
   onOpen?: () => void;
   /** A finished selection goes to the clipboard (experimental). */
   copyOnSelect?: boolean;
-  /** The selection with this text is on the clipboard. */
-  onCopied?: (text: string) => void;
   /** A program asked to open an http(s) address; absent when the person has
    * not turned the offer on. Nothing is opened here. */
   onOpenUrl?: (url: string) => void;
@@ -127,7 +124,6 @@ export function TerminalSurface({
     onPasteRequest,
     onOpen,
     copyOnSelect,
-    onCopied,
     onOpenUrl,
   });
   handlers.current = {
@@ -137,7 +133,6 @@ export function TerminalSurface({
     onPasteRequest,
     onOpen,
     copyOnSelect,
-    onCopied,
     onOpenUrl,
   };
   // What clearSelection and reset must also forget or restore.
@@ -352,10 +347,7 @@ export function TerminalSurface({
     };
     const copy = (text: string) => {
       if (!handlers.current.copyOnSelect || !navigator.clipboard) return;
-      void navigator.clipboard.writeText(text).then(
-        () => handlers.current.onCopied?.(text),
-        () => {},
-      );
+      void navigator.clipboard.writeText(text).catch(() => {});
     };
     const reportSelection = () => {
       const text = selectionText();

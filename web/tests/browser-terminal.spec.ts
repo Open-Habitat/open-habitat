@@ -190,8 +190,8 @@ test("@browser-shell copy on select, the copy shortcut and tmux's own selection"
   await shiftSelect(page, /^copy-42\s*$/);
   await expect.poll(clipboard).toBe("copy-42");
   const chip = page.getByTestId("copy-selection");
-  await expect(chip).toHaveAttribute("data-copied", "true");
-  await expect(chip).toContainText("Kopioitu");
+  await expect(chip).not.toHaveAttribute("data-copied");
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   // Ctrl+Shift+C copies the selection whatever the setting.
   await page.evaluate(() => navigator.clipboard.writeText(""));
   await page.keyboard.press("Control+Shift+C");
@@ -208,7 +208,8 @@ test("@browser-shell copy on select, the copy shortcut and tmux's own selection"
   await page.mouse.move(box.x + 60, box.y + box.height / 2, { steps: 6 });
   await page.mouse.up();
   await expect.poll(clipboard).toMatch(/^tmux-5/);
-  await expect(chip).toHaveAttribute("data-copied", "true");
+  await expect(chip).not.toHaveAttribute("data-copied");
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   if (shots) {
     // Resizing for the captures clears the selection; select once more.
     await shiftSelect(page, /^copy-42\s*$/);

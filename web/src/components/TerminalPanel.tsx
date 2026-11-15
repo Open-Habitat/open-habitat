@@ -171,7 +171,6 @@ export function TerminalPanel({
   feedback,
   paste,
   selection,
-  selectionCopied = false,
   urlOffer,
   sticky = { ctrl: false, alt: false },
   children,
@@ -208,8 +207,6 @@ export function TerminalPanel({
   /** A multi-line paste waiting for a yes. */
   paste?: string[];
   selection?: TerminalSelection;
-  /** The selection is already on the clipboard (copy on select). */
-  selectionCopied?: boolean;
   /** An http(s) address a program in the terminal asked to open. */
   urlOffer?: string;
   sticky?: { ctrl: boolean; alt: boolean };
@@ -505,13 +502,12 @@ export function TerminalPanel({
           >
             <button
               data-testid="copy-selection"
-              data-copied={selectionCopied || undefined}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={onCopySelection}
             >
-              <Icon name={selectionCopied ? "check" : "copy"} />
-              <span>{selectionCopied ? txt.copied : txt.copy}</span>
+              <Icon name="copy" />
+              <span>{txt.copy}</span>
             </button>
             {onSendSelection ? (
               <button

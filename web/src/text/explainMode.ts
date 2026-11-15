@@ -1350,7 +1350,7 @@ const fi = {
     R10: {
       name: "Valinta",
       lead: "Kopioi päätteessä valitun tekstin tai vie sen keskustelun kirjoituskenttään.",
-      know: "Kopioitu tarkoittaa, että teksti on jo leikepöydällä. Ctrl+Shift+C kopioi saman.",
+      know: "Ctrl+Shift+C kopioi saman.",
     },
     R11: {
       name: "Osoite päätteestä",
@@ -3050,7 +3050,7 @@ export const explainModeText = catalog(fi, {
     R10: {
       name: "Selection",
       lead: "Copies the text selected in the terminal or puts it in the conversation's message field.",
-      know: "Copied means the text is already on the clipboard. Ctrl+Shift+C copies the same.",
+      know: "Ctrl+Shift+C copies the same.",
     },
     R11: {
       name: "Address from the terminal",

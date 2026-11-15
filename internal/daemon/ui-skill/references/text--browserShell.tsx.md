@@ -26,10 +26,7 @@ const fi = {
   rejoin: "Liity uudelleen",
   noClipboard:
     "Selain ei antanut leikepöytää. Liitä Ctrl+V:llä tai pitkällä painalluksella.",
-  copied: "Valinta kopioitiin leikepöydälle.",
   copyRefused: "Selain ei antanut kopioida.",
-  sentToComposer:
-    "Valinta lisättiin keskustelun kenttään. Lähetä, kun olet valmis.",
   terminalLabel: (name: string, readOnly: boolean) =>
     `Pääte ${name}${readOnly ? " (vain luku)" : ""}`,
   stopQuestion: (name: string) => `Lopetetaanko ${name}?`,
@@ -66,10 +63,7 @@ export const browserShellText = catalog(fi, {
   rejoin: "Rejoin",
   noClipboard:
     "The browser did not allow the clipboard. Paste with Ctrl+V or a long press.",
-  copied: "Selection copied to the clipboard.",
   copyRefused: "The browser did not allow copying.",
-  sentToComposer:
-    "The selection was added to the message field. Send it when you are ready.",
   terminalLabel: (name, readOnly) =>
     `Terminal ${name}${readOnly ? " (read-only)" : ""}`,
   stopQuestion: (name) => `Stop ${name}?`,
