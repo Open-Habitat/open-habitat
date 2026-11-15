@@ -10,17 +10,18 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = Path("internal/daemon/ui-skill/references")
-KEYBOARD = re.compile(r"onKeyDown|[\"']keydown[\"']|keymap\.of|isTerminalShortcut|isDictationShortcut")
+KEYBOARD = re.compile(r"onKeyDown|[\"']keydown[\"']|keymap\.of|attachCustomKeyEventHandler|isTerminalShortcut|isDictationShortcut")
 
 
 def render(root):
     src = root / "web/src"
     paths = set((src / "text").glob("*.ts*"))
     paths.update(src / p for p in ("app/settingsIndex.ts", "app/settingsRoute.ts"))
-    # The explain mode's parts name the element each of its cards explains.
-    parts = src / "components/explainParts.ts"
-    if parts.exists():
-        paths.add(parts)
+    # Include card targets and the platform detection used by shortcut labels.
+    for relative in ("components/explainParts.ts", "components/altKey.ts"):
+        path = src / relative
+        if path.exists():
+            paths.add(path)
     # Include the actual handlers, not just their displayed hints. Discover new
     # handlers too, so adding a shortcut cannot silently escape the drift check.
     for folder in ("app", "components"):

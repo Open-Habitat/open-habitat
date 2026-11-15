@@ -295,6 +295,53 @@ test("@browser-shell copy on select, the copy shortcut and tmux's own selection"
   }
 });
 
+test.describe("Mac clipboard shortcuts", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36",
+  });
+
+  test("@browser-shell Cmd+C copies canvas and tmux selections without interrupting", async ({
+    page,
+  }) => {
+    // Chromium's UA override does not change navigator.platform on Linux.
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "platform", { get: () => "MacIntel" }),
+    );
+    await page
+      .context()
+      .grantPermissions(["clipboard-read", "clipboard-write"]);
+    await signIn(page, { "terminal-copy-on-select": false });
+    await openShell(page);
+    const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+    await page.keyboard.type("echo copy-$((6*7)); echo tmux-$((7*8))\n");
+    await expect(screen(page)).toContainText("tmux-56");
+    await page.evaluate(() => navigator.clipboard.writeText("unchanged"));
+    await page.keyboard.type("echo intact");
+    await page.keyboard.press("Meta+c");
+    await page.keyboard.press("Enter");
+    await expect(rows(page).filter({ hasText: /^intact\s*$/ })).toHaveCount(1);
+    expect(await clipboard()).toBe("unchanged");
+    await shiftSelect(page, /^copy-42\s*$/);
+    await page.keyboard.press("Meta+c");
+    await expect.poll(clipboard).toBe("copy-42");
+
+    const row = rows(page)
+      .filter({ hasText: /^tmux-56\s*$/ })
+      .first();
+    const box = await row.boundingBox();
+    if (!box) throw new Error("no output row");
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 60, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await expect(page.getByTestId("copy-selection")).toBeVisible();
+    expect(await clipboard()).toBe("copy-42");
+    await page.keyboard.press("Meta+c");
+    await expect.poll(clipboard).toMatch(/^tmux-5/);
+  });
+});
+
 test("@browser-shell an address a program opens is offered and opens only on a press", async ({
   page,
 }) => {

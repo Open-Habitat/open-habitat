@@ -1,4 +1,8 @@
 import { altKey } from "../components/altKey";
+import {
+  terminalCopyKey,
+  terminalPasteKey,
+} from "../components/terminalKeyboard";
 import { catalog } from "../i18n";
 
 // The explain mode (components/ExplainMode.tsx, experimental): the bar, the
@@ -1340,7 +1344,7 @@ const fi = {
     },
     R08: {
       name: "Päätteen näppäimet",
-      lead: "Muistilista: valitse tekstiä Shift pohjassa vetämällä, Ctrl+C kopioi ja Ctrl+V liittää.",
+      lead: `Muistilista: valitse tekstiä Shift pohjassa vetämällä, ${terminalCopyKey} kopioi ja ${terminalPasteKey} liittää.`,
     },
     R09: {
       name: "Näppäinrivi",
@@ -1350,7 +1354,7 @@ const fi = {
     R10: {
       name: "Valinta",
       lead: "Kopioi päätteessä valitun tekstin tai vie sen keskustelun kirjoituskenttään.",
-      know: "Ctrl+Shift+C kopioi saman.",
+      know: `${terminalCopyKey} kopioi saman.`,
     },
     R11: {
       name: "Osoite päätteestä",
@@ -3040,7 +3044,7 @@ export const explainModeText = catalog(fi, {
     },
     R08: {
       name: "Terminal keys",
-      lead: "A reminder: select text by dragging with Shift held, Ctrl+C copies and Ctrl+V pastes.",
+      lead: `A reminder: select text by dragging with Shift held, ${terminalCopyKey} copies and ${terminalPasteKey} pastes.`,
     },
     R09: {
       name: "Key row",
@@ -3050,7 +3054,7 @@ export const explainModeText = catalog(fi, {
     R10: {
       name: "Selection",
       lead: "Copies the text selected in the terminal or puts it in the conversation's message field.",
-      know: "Ctrl+Shift+C copies the same.",
+      know: `${terminalCopyKey} copies the same.`,
     },
     R11: {
       name: "Address from the terminal",

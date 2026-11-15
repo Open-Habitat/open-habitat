@@ -2,6 +2,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { type ITheme, Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
+import { terminalKeyHandler } from "./terminalKeyboard";
 import {
   isReport,
   leaveHistoryKey,
@@ -9,7 +10,6 @@ import {
   wheelLines,
   wheelReport,
 } from "./terminalModes";
-import { isTerminalShortcut } from "./terminalShortcut";
 import { offerableUrl, readTitle } from "./terminalTitle";
 
 /** What the owner of a terminal can do to it. */
@@ -406,8 +406,8 @@ export function TerminalSurface({
       }
       return true;
     });
-    // Cmd+C is the browser's own copy; with no selection of xterm.js's it
-    // copies what tmux reported.
+    // Browser copy actions (for example the context menu) can also use
+    // the text tmux reported.
     const copyEvent = (event: ClipboardEvent) => {
       if (xterm.hasSelection() || !reported || !event.clipboardData) return;
       event.clipboardData.setData("text/plain", reported);
@@ -426,29 +426,17 @@ export function TerminalSurface({
         adopted = false;
       },
     };
-    xterm.attachCustomKeyEventHandler((event) => {
-      if (event.type !== "keydown") return true;
-      if (isTerminalShortcut(event)) return false;
-      // Cmd+C and Cmd+V stay with the browser on a Mac.
-      if (event.metaKey) return false;
-      const key = event.key.toLowerCase();
-      // Ctrl+Shift+C always copies; Ctrl+C only with a selection of
-      // xterm.js's, otherwise it interrupts the program.
-      const copy =
-        event.ctrlKey &&
-        key === "c" &&
-        (event.shiftKey || xterm.hasSelection());
-      if (copy) {
-        event.preventDefault();
-        const text = xterm.hasSelection() ? selectionText() : reported;
-        if (text) void navigator.clipboard?.writeText(text).catch(() => {});
-        xterm.clearSelection();
-        return false;
-      }
-      // Ctrl+V and Ctrl+Shift+V paste through the browser's paste event.
-      if (event.ctrlKey && key === "v") return false;
-      return true;
-    });
+    xterm.attachCustomKeyEventHandler((event) =>
+      terminalKeyHandler(
+        event,
+        {
+          hasSelection: () => xterm.hasSelection(),
+          text: () => (xterm.hasSelection() ? selectionText() : reported),
+          clear: () => xterm.clearSelection(),
+        },
+        (text) => void navigator.clipboard?.writeText(text).catch(() => {}),
+      ),
+    );
     const paste = (event: ClipboardEvent) => {
       event.preventDefault();
       event.stopPropagation();

@@ -129,6 +129,8 @@ out.chmod(0o755)
                 "app/settingsRoute.ts": 'const alias = "tili";',
                 "components/NewControl.tsx": 'onKeyDown={(e) => e.code === "Escape"}',
                 "components/NewControl.test.tsx": 'onKeyDown="test-only"',
+                "components/Terminal.tsx": 'xterm.attachCustomKeyEventHandler(handler);',
+                "components/altKey.ts": 'export const isMac = /Mac/.test(navigator.platform);',
             }.items():
                 path = root / "web/src" / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,6 +140,8 @@ out.chmod(0o755)
             out = root / generator.OUTPUT
             self.assertIn('e.code === "Escape"', (out / "components--NewControl.tsx.md").read_text())
             self.assertFalse((out / "components--NewControl.test.tsx.md").exists())
+            self.assertIn('attachCustomKeyEventHandler', (out / "components--Terminal.tsx.md").read_text())
+            self.assertIn('navigator.platform', (out / "components--altKey.ts.md").read_text())
             for change in ("text/demo.tsx", "text/added.ts", "app/settingsIndex.ts", "components/NewControl.tsx"):
                 (root / "web/src" / change).write_text('onKeyDown="changed"')
                 with contextlib.redirect_stdout(io.StringIO()):
