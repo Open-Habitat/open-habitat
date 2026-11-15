@@ -149,6 +149,19 @@ const waiting = () =>
   );
 
 describe("the conversation view while it becomes ready", () => {
+  it("shows one retry card when a cold status read fails and keeps unsendable input", async () => {
+    vi.mocked(conversations.status).mockRejectedValue(
+      new Error("synthetic read failure"),
+    );
+    render(view({ id: agent }));
+    expect(await screen.findAllByTestId("creation-problem")).toHaveLength(1);
+    fireEvent.change(field(), { target: { value: "Keep this message" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(screen.getAllByTestId("creation-problem")).toHaveLength(1);
+    expect(field().value).toBe("Keep this message");
+    expect(sent).toEqual([]);
+  });
+
   it("keeps the field the person types in from creation to the opened conversation", async () => {
     const shown = render(view({ viewKey: "created-here", creation: {} }));
     const typedIn = field();

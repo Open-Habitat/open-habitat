@@ -153,6 +153,7 @@ function Message({
   replyComplete = false,
   interim = false,
   delivery,
+  waiting,
   onCopy,
   actions,
 }: {
@@ -161,6 +162,7 @@ function Message({
   actions?: ReactNode;
   /** A message this page sent that Pi's history does not show yet. */
   delivery?: "pending" | "accepted";
+  waiting?: "waiting" | "failed";
   /** The person's own message, which a worker's view gives to the main agent. */
   person?: boolean;
   interim?: boolean;
@@ -186,12 +188,13 @@ function Message({
         );
   return (
     <article
-      data-testid="message"
+      data-testid={waiting ? "waiting-message" : "message"}
+      data-waiting={waiting}
       data-reply-complete={replyComplete || undefined}
       data-interim={interim || undefined}
       data-delivery={delivery}
       data-voice={voice === "person" ? undefined : voice}
-      className={`ah-message${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
+      className={`ah-message${waiting ? ` ah-waiting-message ah-waiting-${waiting}` : ""}${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${!waiting && (stateTone === "danger" || stateTone === "warning" || stateAnimated) ? " ah-message-alert" : ""}`}
     >
       <header>
         <strong>
@@ -234,11 +237,13 @@ export function UserMessage({
   deliveryState,
   deliveryTone = "neutral",
   delivery,
+  waiting,
   onCopy,
   actions,
 }: {
   sourceText: string;
   actions?: ReactNode;
+  waiting?: "waiting" | "failed";
   delivery?: "pending" | "accepted";
   skill?: ReactNode;
   children?: ReactNode;
@@ -265,9 +270,18 @@ export function UserMessage({
       speaker={txt.you}
       person
       time={time}
-      state={deliveryState}
-      stateTone={deliveryTone}
+      state={
+        waiting
+          ? waiting === "failed"
+            ? txt.notSent
+            : txt.waitingAgent
+          : deliveryState
+      }
+      stateTone={waiting === "failed" ? "danger" : deliveryTone}
+      stateAnimated={waiting === "waiting"}
+      stateKind={waiting === "failed" ? "error" : "neutral"}
       delivery={delivery}
+      waiting={waiting}
       onCopy={onCopy}
       actions={actions}
     >
@@ -381,40 +395,7 @@ export function WaitingMessage({
   state: "waiting" | "failed";
   onCopy: () => void;
 }) {
-  const label = state === "failed" ? txt.notSent : txt.waitingAgent;
-  return (
-    <article
-      data-testid="waiting-message"
-      className={`ah-message ah-waiting-message ah-waiting-${state}`}
-      data-waiting={state}
-    >
-      <header>
-        <strong>{txt.you}</strong>
-        <Button
-          data-testid="message-copy"
-          ariaLabel={txt.copyMessage(txt.you)}
-          label={txt.copy}
-          icon="copy"
-          presentation="messageIcon"
-          variant="quiet"
-          size="row"
-          onPress={onCopy}
-        />
-        <StatusMark
-          label={label}
-          tone={state === "failed" ? "danger" : "neutral"}
-          animated={state === "waiting" ? "running" : false}
-          kind={state === "failed" ? "error" : "neutral"}
-        />
-      </header>
-      <div className="ah-prose">
-        <div data-testid="user-content" className="ah-user-content">
-          <Markdown text={messageText(text)} breaks />
-          <AttachmentChips attachments={attachmentsIn(text)} />
-        </div>
-      </div>
-    </article>
-  );
+  return <UserMessage sourceText={text} waiting={state} onCopy={onCopy} />;
 }
 /** Pi did not start: the held messages are kept, with one primary retry and
  * a way to take them back for editing (Jari 16.10.2026, Kupla odottaa). */

@@ -4,13 +4,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  type AgentHeader,
-  Button,
-  ConversationStream,
-  ConversationTimeline,
-  WaitingMessage,
-} from "../components";
+import { type AgentHeader, Button } from "../components";
 import { Icon } from "../components/Icon";
 import { WarningBanner } from "../components/WarningBanner";
 import { liveText } from "../i18n";
@@ -81,27 +75,15 @@ export function loadingHeader(
   };
 }
 
-export function LoadingStream({
-  waiting,
+export function LoadingNotice({
   problem,
   onRetry,
 }: {
-  /** Messages sent while it loads; they go once it has opened. */
-  waiting: string[];
   problem?: string;
   onRetry?: () => void;
 }) {
   return (
-    <ConversationStream>
-      {waiting.map((text, index) => (
-        <WaitingMessage
-          // biome-ignore lint/suspicious/noArrayIndexKey: kept messages only grow at the end until they go.
-          key={index}
-          text={text}
-          state="waiting"
-          onCopy={() => void navigator.clipboard?.writeText(text)}
-        />
-      ))}
+    <>
       {problem ? (
         <WarningBanner
           data-state="uncertain"
@@ -126,7 +108,7 @@ export function LoadingStream({
           {txt.loading}
         </p>
       )}
-    </ConversationStream>
+    </>
   );
 }
 
@@ -170,17 +152,14 @@ export function creationBlock(creation: Creation) {
     : creation.worktree?.blocked;
 }
 
-export function CreationStream({
+export function CreationEmpty({
   workspace,
   creation,
   waiting,
   draft,
   guide,
-  snapshot,
-  csrf,
   onChange,
   onPage,
-  onGiveBack,
   onSend,
 }: {
   workspace: Workspace;
@@ -197,90 +176,66 @@ export function CreationStream({
   onGiveBack: () => void;
   onSend: (text: string) => boolean;
 }) {
-  const { problem, refused, worktree, onCreateAgain, onRetry } = creation;
+  const { worktree } = creation;
   return (
-    <ConversationStream>
+    <>
       {worktree && !waiting.length ? (
         <WorktreeIntro workspace={workspace} {...worktree} />
       ) : null}
-      <ConversationTimeline
-        state={waiting.length ? "ready" : "empty"}
-        emptyLabel={
-          <StartPageRead
-            workspaceId={workspace.workspace_id}
-            draft={draft}
-            onChange={onChange}
-            onPage={onPage}
-            onStarted={(goal, title, prepared, immediate) => {
-              prepareField(guide, {
-                text: prepared.text,
-                start: prepared.selectionStart,
-                end: prepared.selectionEnd,
-              });
-              setGuide(guide, {
-                goal,
-                page: title,
-                open: guideOpensItself(),
-              });
-              return immediate && onSend(prepared.text);
-            }}
-          />
-        }
-        historyMode="pagedAccessible"
-        onJumpToLatest={() => {}}
-        items={waiting.map((w) => ({
-          id: `held:${w.command_id}`,
-          kind: "user",
-          content: (
-            <WaitingMessage
-              text={w.text}
-              state={problem ? "failed" : "waiting"}
-              onCopy={() => void navigator.clipboard?.writeText(w.text)}
-            />
-          ),
-        }))}
+      <StartPageRead
+        workspaceId={workspace.workspace_id}
+        draft={draft}
+        onChange={onChange}
+        onPage={onPage}
+        onStarted={(goal, title, prepared, immediate) => {
+          prepareField(guide, {
+            text: prepared.text,
+            start: prepared.selectionStart,
+            end: prepared.selectionEnd,
+          });
+          setGuide(guide, {
+            goal,
+            page: title,
+            open: guideOpensItself(),
+          });
+          return immediate && onSend(prepared.text);
+        }}
       />
-      <div className="ah-creation-notices">
-        {problem && refused && creation.capacity ? (
-          // At the limit there is nothing to edit: the text is already back
-          // in the field (Jari 6.11.2026, Muokkaa pois).
-          <CapacityCard
-            workspace={workspace}
-            snapshot={snapshot}
-            csrf={csrf}
-            tries={creation.capacity.tries}
-            onRetry={onCreateAgain}
-            fallback={
-              <WarningBanner
-                data-testid="creation-problem"
-                data-state="refused"
-                title={txt.conversationNotCreated}
-                tone="danger"
-                actions={
-                  onCreateAgain ? (
-                    <Button
-                      data-testid="retry"
-                      size="row"
-                      variant="secondary"
-                      label={txt.retry}
-                      onPress={onCreateAgain}
-                    />
-                  ) : undefined
-                }
-              >
-                {problem}
-              </WarningBanner>
-            }
-          />
-        ) : problem ? (
-          <WarningBanner
-            data-testid="creation-problem"
-            data-state={refused ? "refused" : "uncertain"}
-            title={refused ? txt.conversationNotCreated : txt.stateUnconfirmed}
-            tone={refused ? "danger" : "neutral"}
-            actions={
-              <>
-                {onCreateAgain ? (
+    </>
+  );
+}
+
+export function CreationNotices({
+  workspace,
+  creation,
+  waiting,
+  snapshot,
+  csrf,
+  onGiveBack,
+}: Pick<
+  ComponentProps<typeof CreationEmpty>,
+  "workspace" | "creation" | "waiting" | "snapshot" | "csrf" | "onGiveBack"
+>) {
+  const { problem, refused, onCreateAgain, onRetry } = creation;
+  return (
+    <div className="ah-creation-notices">
+      {problem && refused && creation.capacity ? (
+        // At the limit there is nothing to edit: the text is already back
+        // in the field (Jari 6.11.2026, Muokkaa pois).
+        <CapacityCard
+          workspace={workspace}
+          snapshot={snapshot}
+          csrf={csrf}
+          tries={creation.capacity.tries}
+          onRetry={onCreateAgain}
+          fallback={
+            <WarningBanner
+              data-testid="creation-problem"
+              data-state="refused"
+              title={txt.conversationNotCreated}
+              tone="danger"
+              actions={
+                onCreateAgain ? (
                   <Button
                     data-testid="retry"
                     size="row"
@@ -288,32 +243,54 @@ export function CreationStream({
                     label={txt.retry}
                     onPress={onCreateAgain}
                   />
-                ) : null}
-                {onRetry ? (
-                  <Button
-                    data-testid="creation-recheck"
-                    size="row"
-                    variant="secondary"
-                    label={creation.retryLabel ?? txt.retry}
-                    onPress={onRetry}
-                  />
-                ) : null}
-                {waiting.length ? (
-                  <Button
-                    size="row"
-                    variant="secondary"
-                    label={txt.edit}
-                    onPress={onGiveBack}
-                  />
-                ) : null}
-              </>
-            }
-          >
-            {problem}
-          </WarningBanner>
-        ) : null}
-      </div>
-    </ConversationStream>
+                ) : undefined
+              }
+            >
+              {problem}
+            </WarningBanner>
+          }
+        />
+      ) : problem ? (
+        <WarningBanner
+          data-testid="creation-problem"
+          data-state={refused ? "refused" : "uncertain"}
+          title={refused ? txt.conversationNotCreated : txt.stateUnconfirmed}
+          tone={refused ? "danger" : "neutral"}
+          actions={
+            <>
+              {onCreateAgain ? (
+                <Button
+                  data-testid="retry"
+                  size="row"
+                  variant="secondary"
+                  label={txt.retry}
+                  onPress={onCreateAgain}
+                />
+              ) : null}
+              {onRetry ? (
+                <Button
+                  data-testid="creation-recheck"
+                  size="row"
+                  variant="secondary"
+                  label={creation.retryLabel ?? txt.retry}
+                  onPress={onRetry}
+                />
+              ) : null}
+              {waiting.length ? (
+                <Button
+                  size="row"
+                  variant="secondary"
+                  label={txt.edit}
+                  onPress={onGiveBack}
+                />
+              ) : null}
+            </>
+          }
+        >
+          {problem}
+        </WarningBanner>
+      ) : null}
+    </div>
   );
 }
 

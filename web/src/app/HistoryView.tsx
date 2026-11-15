@@ -824,6 +824,7 @@ function processSummary(entry: HistoryEntry): string | undefined {
 
 export function Entry({
   entry,
+  pending,
   onLogin,
   agentId,
   revision,
@@ -832,6 +833,12 @@ export function Entry({
   toolExpansion,
 }: {
   entry: HistoryEntry;
+  /** Local presentation only; never enters the native-history store. */
+  pending?: {
+    waiting?: "waiting" | "failed";
+    delivery?: "pending" | "accepted";
+    label?: string;
+  };
   toolExpansion?: (callId: string) => {
     get: () => boolean | undefined;
     set: (value: boolean) => void;
@@ -881,7 +888,10 @@ export function Entry({
         <UserMessage
           sourceText={content.text}
           onCopy={copy}
-          actions={rewind?.menu(entry)}
+          actions={pending ? undefined : rewind?.menu(entry)}
+          waiting={pending?.waiting}
+          delivery={pending?.delivery}
+          deliveryState={pending?.label}
           skill={
             entry.skill && entry.blocks?.[0]?.type === "text" ? (
               <SkillInvocation
@@ -1427,7 +1437,6 @@ export function timelineItems(
           kind: entry.kind,
           content: (
             <Entry
-              key={entry.entry_key}
               entry={entry}
               results={results}
               liveTools={liveTools}

@@ -1,3 +1,10 @@
+/* A conversation started in this view grows down from its first message.
+   Bottom-aligning a short transcript moves that message on every status,
+   history and streamed-reply update, before there is anything to scroll. */
+.ah-reading-view[data-created-here] .ah-conversation-stream > :first-child {
+  margin-top: 0;
+}
+
 /* One rhythm from the transcript's last status row through the draft.
    Strip insets and the composer's top padding must not add a second gap. */
 .ah-composer-stack {
