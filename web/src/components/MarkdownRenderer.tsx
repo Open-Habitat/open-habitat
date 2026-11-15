@@ -19,8 +19,9 @@ import { markdownRendererText } from "../text/markdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink, IconButton } from "./ControlElements";
 import { FileLinkContext, parseFileRef, webAddress } from "./fileRefs";
-import { type Frontmatter, splitFrontmatter } from "./frontmatter";
+import { splitFrontmatter } from "./frontmatter";
 import { Icon } from "./Icon";
+import { YamlPreview } from "./YamlPreview";
 import "./MarkdownBlockPreview.css";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { OutputBox } from "./OutputBox";
@@ -405,44 +406,6 @@ const rehypePlugins: Options["rehypePlugins"] = [
   rehypeStableText,
 ];
 
-/** A document's leading YAML frontmatter as quiet metadata. A block this
- * reader does not understand is shown as its source, never as Markdown. */
-function FrontmatterBlock({ frontmatter }: { frontmatter: Frontmatter }) {
-  const { entries, raw } = frontmatter;
-  if (entries && !entries.length) return null;
-  return (
-    <section
-      className="ah-frontmatter"
-      data-testid="markdown-frontmatter"
-      aria-label={txt.frontmatter}
-    >
-      {entries ? (
-        <dl>
-          {entries.map((entry, n) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: keys may repeat; the list is static.
-            <div key={n}>
-              <dt>{entry.key}</dt>
-              <dd>
-                {"yaml" in entry ? (
-                  <pre>
-                    <code>{entry.yaml}</code>
-                  </pre>
-                ) : (
-                  entry.value
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <pre data-testid="markdown-frontmatter-raw">
-          <code>{raw}</code>
-        </pre>
-      )}
-    </section>
-  );
-}
-
 // A settled reply re-renders with its parent (clock ticks, live updates of
 // other turns); unchanged text needs no new parse.
 const MarkdownRenderer = memo(function MarkdownRenderer({
@@ -459,7 +422,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
     : { frontmatter: null, body: text };
   return (
     <div className="ah-markdown">
-      {frontmatter ? <FrontmatterBlock frontmatter={frontmatter} /> : null}
+      {frontmatter ? <YamlPreview text={frontmatter.raw} frontmatter /> : null}
       <SourceContext.Provider value={body}>
         <ReactMarkdown
           remarkPlugins={breaks ? breakPlugins : plainPlugins}

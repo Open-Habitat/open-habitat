@@ -1,14 +1,14 @@
 import { splitFrontmatter } from "./frontmatter";
 import type { IconName } from "./Icon";
 
-/** What the full-view preview of an open text file is. JSON, YAML and code
- * have none: folding already shows their structure. */
+/** What the full-view preview of an open text file is. */
 export type FileView = {
-  kind: "markdown" | "table" | "image" | "page";
+  kind: "markdown" | "yaml" | "table" | "image" | "page";
   icon: IconName;
 };
 const views: [RegExp, FileView][] = [
   [/\.(md|markdown)$/i, { kind: "markdown", icon: "eye" }],
+  [/\.ya?ml$/i, { kind: "yaml", icon: "eye" }],
   [/\.(csv|tsv)$/i, { kind: "table", icon: "table" }],
   [/\.svg$/i, { kind: "image", icon: "image" }],
   [/\.html?$/i, { kind: "page", icon: "eye" }],

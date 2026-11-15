@@ -1,0 +1,116 @@
+.ah-yaml {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: var(--ah-lh-ui);
+}
+.ah-yaml :is(dl, ul, ol, blockquote, pre) {
+  margin: 0;
+}
+.ah-yaml .ah-yaml-map {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--ah-s2) var(--ah-s4);
+}
+.ah-yaml-map > div {
+  display: contents;
+}
+.ah-yaml-map dt {
+  max-width: 14rem;
+  color: var(--ah-muted);
+  font-family: var(--ah-mono);
+  font-size: var(--ah-size-code);
+}
+.ah-yaml-map dd {
+  margin: 0;
+  min-width: 0;
+}
+.ah-yaml-map .ah-yaml-map {
+  padding-left: var(--ah-s3);
+  box-shadow: inset 1px 0 var(--ah-line);
+}
+.ah-yaml .ah-yaml-block {
+  white-space: pre-wrap;
+  padding: var(--ah-s1) 0 var(--ah-s1) var(--ah-s3);
+  border-left: 3px solid var(--ah-line-strong);
+  color: var(--ah-ink);
+}
+.ah-yaml pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-yaml code {
+  font-family: var(--ah-mono);
+  font-size: var(--ah-size-code);
+}
+.ah-yaml-empty {
+  color: var(--ah-muted);
+  font-style: italic;
+}
+.ah-yaml .ah-yaml-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s1);
+  padding: 0;
+  list-style: none;
+}
+.ah-yaml-chips > li {
+  padding: 0 var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  font-size: var(--ah-size-meta);
+}
+.ah-yaml-list {
+  padding-left: var(--ah-s4);
+}
+.ah-yaml-list > li + li {
+  margin-top: var(--ah-s1);
+}
+.ah-yaml .ah-yaml-cards {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: 0;
+  list-style: none;
+}
+.ah-yaml-card {
+  padding: var(--ah-s2) var(--ah-s3);
+  background: var(--ah-surface);
+  box-shadow: inset 0 0 0 1px var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+}
+.ah-yaml-card > header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ah-s2);
+  margin-bottom: var(--ah-s2);
+}
+.ah-yaml-card > header strong {
+  font-weight: 600;
+  font-size: var(--ah-size-ui);
+}
+.ah-yaml-index {
+  color: var(--ah-muted);
+  font-family: var(--ah-mono);
+}
+/* Capping padding alone still lets each grid's key column consume width.
+   Deeper maps therefore stack their key above the value, without any indent. */
+.ah-yaml .ah-yaml-map[data-flat] {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 0;
+}
+.ah-yaml-list[data-flat] {
+  padding-left: 0;
+  list-style-position: inside;
+}
+.ah-yaml-cards[data-flat] > .ah-yaml-card {
+  padding-inline: 0;
+}
+@media (max-width: 600px) {
+  .ah-yaml .ah-yaml-map {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ah-s1);
+  }
+  .ah-yaml-map dd {
+    margin-bottom: var(--ah-s2);
+  }
+}

@@ -10,8 +10,14 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot as captureSnapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, type Page, test } from "./worker-host";
+import { openHeaderPanel } from "./conversation-view";
+import { createHostTest, expect, type Page } from "./worker-host";
+
+const test = createHostTest(false, {
+  BROWSER_HOST_LAB: process.env.OH_VISUAL_CAPTURE === "1" ? "1" : "0",
+});
 
 test.use({
   baseURL: hostOrigin,
@@ -863,6 +869,97 @@ const firstLine = (page: Page) =>
 for (const width of [1366, 390])
   test.describe(() => {
     test.use({ deviceScaleFactor: 2 });
+    test(`@browser-editor @nested-yaml-preview nested front matter and YAML ${width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      const visual = process.env.OH_VISUAL_CAPTURE === "1";
+      if (visual) {
+        await page.goto("/workspaces");
+        await page.getByTestId("github-sign-in").click();
+        await page.locator('a[href*="code=42"]').click();
+        await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
+        await openHeaderPanel(page, "toggle-editor");
+        if (width === 390) await page.getByTestId("hide-conversation").click();
+        await expect(page.getByTestId("editor-file-picker")).toBeVisible();
+      } else {
+        await openFile(page, width === 390);
+      }
+      const state = await (await page.request.get("/api/v1/snapshot")).json();
+      const root = state.workspaces.find(
+        (w: { name: string }) =>
+          w.name === (visual ? "aurinkokello" : "git-project"),
+      ).path;
+      await mkdir(join(root, ".agents"), { recursive: true });
+      await writeFile(
+        join(root, ".agents/start-page.md"),
+        "---\ntitle: Example workspace\ngoals:\n  - title: Plan work\n    steps: [Read, Discuss]\n    prompt: |\n      First line\n      Second line\ndeep: {a: {b: {c: {d: {e: {f: visible}}}}}}\n---\n# Introduction\n",
+      );
+      await writeFile(
+        join(root, "workflow.yml"),
+        "name: Checks\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Test\n        run: |\n          npm ci\n          npm test\n",
+      );
+      if (!(await page.getByTestId("editor-file-picker").isVisible()))
+        await page.getByTestId("editor-picker").click();
+      const agents = page
+        .getByTestId("editor-file-entry")
+        .and(page.locator('[data-path=".agents"]'));
+      await agents.click();
+      await openEntry(page, ".agents/start-page.md");
+      await page.getByTestId("editor-preview-toggle").click();
+      const preview = page.getByTestId("editor-preview");
+      await expect(preview.locator(".ah-yaml-card header")).toContainText(
+        "Plan work",
+      );
+      await expect(preview.locator("blockquote")).toContainText("Second line");
+      await expect(
+        preview.getByRole("heading", { name: "Introduction" }),
+      ).toBeVisible();
+      const flat = preview.locator(".ah-yaml-map[data-flat]");
+      const xs = await flat.evaluateAll((els) =>
+        els.map((el) => el.getBoundingClientRect().x),
+      );
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(1);
+      expect(
+        await preview.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      ).toBe(true);
+      if (process.env.OH_VISUAL_CAPTURE === "1")
+        await captureSnapshot(
+          page,
+          `../issues/frontmatter-nested-preview/evidence/start-${width}`,
+          { labOrigin: hostOrigin },
+        );
+      await openEntry(page, "workflow.yml");
+      await page.getByTestId("editor-preview-toggle").click();
+      await expect(preview).toHaveAttribute("data-kind", "yaml");
+      await expect(preview.getByText("on", { exact: true })).toBeVisible();
+      await expect(preview.locator(".ah-yaml-card header")).toContainText(
+        "Test",
+      );
+      await expect(preview.locator("blockquote")).toContainText("npm test");
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="browser-editor"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      if (process.env.OH_VISUAL_CAPTURE === "1")
+        await captureSnapshot(
+          page,
+          `../issues/frontmatter-nested-preview/evidence/yaml-${width}`,
+          { labOrigin: hostOrigin },
+        );
+      await page.getByTestId("editor-text-toggle").click();
+      await edit(page, "broken: [unclosed");
+      await page.getByTestId("editor-preview-toggle").click();
+      await expect(preview.getByRole("status")).toContainText("YAML");
+      await expect(preview.locator("pre")).toHaveText("broken: [unclosed");
+      expect(await readFile(join(root, "workflow.yml"), "utf8")).toContain(
+        "name: Checks",
+      );
+    });
+
     test(`@browser-editor @a11y markdown preview and heading folds ${width}`, async ({
       page,
     }) => {

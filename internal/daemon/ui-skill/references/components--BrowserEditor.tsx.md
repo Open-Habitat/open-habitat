@@ -17,6 +17,7 @@ import { useText } from "../i18n";
 import { browserEditorText } from "../text/browserEditor";
 import type { EditorPlaceApi } from "./CodeMirrorEditor";
 import { ControlButton, controlStyles } from "./ControlElements";
+import { EditorContentPreview, loadFilePreview } from "./EditorContentPreview";
 import { EditorFileTree } from "./EditorFileTree";
 import type { EditorChange, EditorMergeApi, MergeSource } from "./editorMerge";
 import {
@@ -29,13 +30,9 @@ import {
 import type { TreeDirectories } from "./editorTree";
 import type { FileRef } from "./fileRefs";
 import { Icon } from "./Icon";
-import { Markdown } from "./Markdown";
 import "./BrowserEditor.css";
 
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
-// Tables, pictures and pages load with the first such file.
-const loadFilePreview = () => import("./EditorFilePreview");
-const FilePreview = lazy(loadFilePreview);
 const apple = () => /Mac|iPhone|iPad/.test(navigator.platform);
 // Cmd on Apple keyboards, where Ctrl+E is CodeMirror's end of line.
 const mod = (e: KeyboardEvent) => (apple() ? e.metaKey : e.ctrlKey);
@@ -508,15 +505,11 @@ export function BrowserEditor(p: BrowserEditorProps) {
                 >
                   <Suspense fallback={<p role="status">{t.loadingPreview}</p>}>
                     <Mounted then={arrive}>
-                      {view.kind === "markdown" ? (
-                        <Markdown text={rendered} document />
-                      ) : (
-                        <FilePreview
-                          kind={view.kind}
-                          text={rendered}
-                          path={p.document.path}
-                        />
-                      )}
+                      <EditorContentPreview
+                        kind={view.kind}
+                        text={rendered}
+                        path={p.document.path}
+                      />
                     </Mounted>
                   </Suspense>
                 </section>

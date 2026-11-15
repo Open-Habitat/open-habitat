@@ -8,7 +8,7 @@ import {
   lineToHeight,
 } from "./editorPreview";
 
-it("gives a preview to Markdown, tables, SVG and HTML, not to data or code", () => {
+it("gives a preview to Markdown, YAML, tables, SVG and HTML", () => {
   expect(
     ["a.md", "b.MARKDOWN", "c.csv", "d.tsv", "e.svg", "f.html", "g.htm"].map(
       (path) => fileView(path)?.kind,
@@ -22,7 +22,9 @@ it("gives a preview to Markdown, tables, SVG and HTML, not to data or code", () 
     "page",
     "page",
   ]);
-  for (const path of ["a.json", "b.yaml", "c.go", "d.txt", "csv", undefined])
+  expect(fileView("config.yaml")?.kind).toBe("yaml");
+  expect(fileView("workflow.YML")?.kind).toBe("yaml");
+  for (const path of ["a.json", "c.go", "d.txt", "csv", undefined])
     expect(fileView(path)).toBeUndefined();
 });
 

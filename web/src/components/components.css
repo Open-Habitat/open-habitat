@@ -1003,44 +1003,6 @@ select:focus-visible,
   font-size: var(--ah-size-meta);
   line-height: var(--ah-lh-ui);
 }
-.ah-frontmatter dl {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
-  gap: var(--ah-s2) var(--ah-s4);
-  margin: 0;
-}
-.ah-frontmatter dl > div {
-  display: contents;
-}
-.ah-frontmatter dt {
-  max-width: 14rem;
-  color: var(--ah-muted);
-  font-family: var(--ah-mono);
-  font-size: var(--ah-size-code);
-}
-.ah-frontmatter dd {
-  margin: 0;
-  min-width: 0;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-.ah-frontmatter pre {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-family: var(--ah-mono);
-  font-size: var(--ah-size-code);
-}
-@media (max-width: 600px) {
-  .ah-frontmatter dl {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 0;
-  }
-  .ah-frontmatter dd + dt,
-  .ah-frontmatter dl > div + div dt {
-    margin-top: var(--ah-s3);
-  }
-}
 .ah-markdown-table {
   max-width: 100%;
   overflow-x: auto;

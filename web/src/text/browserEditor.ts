@@ -24,6 +24,7 @@ const fi = {
   backToText: "Takaisin tekstiin · Esc",
   views: {
     markdown: "Esikatselu",
+    yaml: "Esikatselu",
     table: "Taulukko",
     image: "Kuva",
     page: "Sivu",
@@ -63,6 +64,7 @@ export const browserEditorText = catalog(fi, {
   backToText: "Back to the text · Esc",
   views: {
     markdown: "Preview",
+    yaml: "Preview",
     table: "Table",
     image: "Picture",
     page: "Page",

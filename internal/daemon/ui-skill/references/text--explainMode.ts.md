@@ -1421,6 +1421,11 @@ const fi = {
       name: "Suodata nimellä",
       lead: "Rajaa tiedostopuun kirjoittamasi nimen mukaan.",
     },
+    D09: {
+      name: "YAML-esikatselu",
+      lead: "Näyttää sisäkkäiset tiedot kokonaan auki, listat kortteina tai luetteloina.",
+      know: "Esikatselu seuraa muokkauksiasi. Palaa Teksti-näkymään muokkaamaan; virheellinen sisältö näkyy lähteenä.",
+    },
     D08: {
       name: "Ei tiedostoa auki",
       lead: "Avaa tiedosto puusta tai keskustelun tiedostolinkistä.",
@@ -3144,6 +3149,11 @@ export const explainModeText = catalog(fi, {
     D07: {
       name: "Filter by name",
       lead: "Narrows the file tree to the name you type.",
+    },
+    D09: {
+      name: "YAML preview",
+      lead: "Shows nested data fully open, with lists as cards or bullets.",
+      know: "The preview follows your edits. Return to Text to edit; invalid content appears as source.",
     },
     D08: {
       name: "No file open",

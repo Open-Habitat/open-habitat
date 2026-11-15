@@ -295,10 +295,10 @@
 .ah-browser-document[data-preview="only"] .ah-browser-source {
   display: none;
 }
-.ah-browser-preview[data-kind="markdown"] {
+.ah-browser-preview:is([data-kind="markdown"], [data-kind="yaml"]) {
   padding: var(--ah-s4) var(--ah-s5);
 }
-.ah-browser-preview > .ah-markdown {
+.ah-browser-preview > :is(.ah-markdown, .ah-yaml) {
   max-width: 72ch;
   margin-inline: auto;
 }

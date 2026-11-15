@@ -550,6 +550,7 @@ export const parts: Record<CardId, Part> = {
   D05: { kind: "once", sel: '[data-testid="close-editor"]' },
   D06: { kind: "list", sel: '[data-testid="editor-file-picker"]' },
   D07: { kind: "input", sel: '[data-testid="editor-file-filter"]' },
+  D09: { kind: "panel", sel: ".ah-yaml" },
   D08: { kind: "info", sel: '.ah-browser-document > p[role="status"]' },
   W01: { kind: "info", sel: '[data-testid="worker-band"]' },
   W02: { kind: "nav", sel: '[data-testid="parent-top"]' },

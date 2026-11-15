@@ -7,6 +7,7 @@ import { frameCSP, inertMarkup } from "../app/documentPreview";
 import { useText } from "../i18n";
 import { editorFilePreviewText } from "../text/editorFilePreview";
 import { readTable } from "./csvTable";
+import { YamlPreview } from "./YamlPreview";
 
 /** Rows past this are left out, and the caption says so: the editor opens
  * files up to 1 MiB, and tens of thousands of rows would stall the tab. */
@@ -159,12 +160,14 @@ export default function FilePreview({
   text,
   path,
 }: {
-  kind: "table" | "image" | "page";
+  kind: "yaml" | "table" | "image" | "page";
   text: string;
   path: string;
 }) {
   const name = path.split("/").pop() ?? path;
-  return kind === "table" ? (
+  return kind === "yaml" ? (
+    <YamlPreview text={text} />
+  ) : kind === "table" ? (
     <TablePreview text={text} tabs={/\.tsv$/i.test(path)} />
   ) : kind === "image" ? (
     <ImagePreview text={text} name={name} />
