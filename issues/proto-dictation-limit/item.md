@@ -28,3 +28,9 @@ Today: one dictation's ceiling is 600 s (`internal/daemon/speech_linux.go`
 `SpeechMaxSessionSeconds`, Soniox ends the stream there; the browser warns at
 `warnAtMs` one minute before and stops two seconds before,
 `web/src/app/dictation.ts`).
+
+## Decisions
+
+### 2026-11-15T17:32:29Z · @jari
+
+Jari 15.11.2026: the round-1 limits are better — implement direction 2 Tunnin ketju (sessions chained, one-hour limit, warning and soft beep in the last minute and at 10 s, text kept with Jatka sanelua). Beep on by default (recommendation, not separately objected to).
