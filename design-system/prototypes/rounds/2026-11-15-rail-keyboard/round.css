@@ -1,0 +1,104 @@
+/* Review chrome above the production shell, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rk-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rk-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rk-bar strong { font-weight: 600; }
+.rk-bar select { font: inherit; }
+.rk-try { color: var(--ah-accent-ink); }
+.rk-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rk-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rk-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rk-bar { padding: 6px 10px; }
+  .rk-controls > strong, .rk-try { display: none; }
+  .rk-lines, .rk-recommend { line-height: 1.3; }
+  .rk-lines li:not([aria-current]), .rk-recommend { display: none; }
+}
+.rk-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rk-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rk-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rk-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rk-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* The first-use tip at the end of the rail's list. */
+.rk-tip {
+  margin: var(--ah-s3) var(--ah-s2); padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink);
+  font: var(--ah-size-meta)/1.45 var(--ah-font);
+}
+.rk-tip p { margin: 0 0 var(--ah-s1); }
+.rk-tip strong { font-weight: 600; color: var(--ah-accent-ink); }
+.rk-tip-why { color: var(--ah-muted); }
+.rk-tip button, .rk-explain button {
+  font: inherit; padding: 2px 10px; cursor: pointer; color: var(--ah-ink);
+  background: transparent; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+
+/* Selaa ensin: the rail is the keyboard's place and a band says its keys;
+   the focused row keeps production's own focus ring. */
+.rk-rail-band {
+  position: fixed; z-index: 40; left: 8px; top: calc(var(--review-h, 0px) + 6px);
+  margin: 0; padding: 4px 10px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+
+/* The explanation Explain mode would give for the rail. */
+.rk-explain {
+  position: fixed; z-index: 40; left: 300px; bottom: 76px; max-width: 320px;
+  display: grid; gap: 4px; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink); font: var(--ah-size-meta)/1.45 var(--ah-font);
+}
+.rk-explain::before {
+  content: ""; position: absolute; left: -7px; bottom: 24px; width: 12px; height: 12px;
+  background: var(--ah-surface); border-left: 1px solid var(--ah-accent); border-bottom: 1px solid var(--ah-accent);
+  transform: rotate(45deg);
+}
+@media (max-width: 800px) { .rk-explain { left: 12px; right: 12px; max-width: none; } .rk-explain::before { display: none; } }
+
+/* Vaihtaja: a command-palette dialog over the page. */
+.rk-switcher-back {
+  position: fixed; inset: 0; z-index: 70; display: grid; justify-items: center; align-content: start;
+  padding-top: calc(var(--review-h, 0px) + 72px); background: color-mix(in srgb, var(--ah-ink) 18%, transparent);
+}
+.rk-switcher {
+  width: min(560px, calc(100vw - 32px)); max-height: 60vh; display: grid; grid-template-rows: auto 1fr auto;
+  background: var(--ah-surface); color: var(--ah-ink); border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg, 12px); box-shadow: 0 16px 48px color-mix(in srgb, #000 28%, transparent);
+  overflow: hidden; font: var(--ah-size-body)/1.4 var(--ah-font);
+}
+.rk-switcher input {
+  font: inherit; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--ah-line);
+  background: transparent; color: var(--ah-ink); outline: none;
+}
+.rk-switcher ul { margin: 0; padding: 4px 0; list-style: none; overflow: auto; }
+.rk-sw-head {
+  padding: 8px 16px 2px; color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.rk-switcher [role="option"] {
+  display: flex; align-items: center; gap: 10px; padding: 6px 16px; cursor: pointer;
+}
+.rk-switcher [role="option"][aria-selected="true"] { background: var(--ah-accent-soft, color-mix(in srgb, var(--ah-accent) 14%, transparent)); }
+.rk-switcher [role="option"][aria-current="page"] .rk-sw-title { font-weight: 600; }
+.rk-sw-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-sw-prev { color: var(--ah-accent-ink); font-size: var(--ah-size-meta); }
+.rk-sw-ws { color: var(--ah-muted); font: var(--ah-size-meta)/1.4 var(--ah-mono); }
+.rk-sw-empty { padding: 12px 16px; color: var(--ah-muted); }
+.rk-sw-foot { margin: 0; padding: 8px 16px; border-top: 1px solid var(--ah-line); color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+/* A touch screen has no keys to learn: no tip, no key cap, no explanation
+   of keys. */
+@media (pointer: coarse) {
+  .rk-tip, .rk-explain, .ah-next-go kbd { display: none; }
+}
