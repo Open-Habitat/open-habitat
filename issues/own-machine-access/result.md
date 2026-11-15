@@ -118,3 +118,11 @@ Testikoneelta tarvitaan ulospäin UDP/HTTPS Tailscaleen.
 10. **Vanhenemispäivä on ensimmäinen hylätty päivä** (sshd:n `expiry-time`
     päivämäärällä alkaa keskiyöstä). Kone tulkitsee sen omalla aikavyöhykkeellään.
 11. **Uusimisen kesto valittavissa** (7/30/90, oletus 30), ei ikuista.
+
+## Live check
+
+Not yet performed. First try on a real tailnet, with your own tailnet and machine. Asetukset › Omat koneet (`/settings/machines`). *Lisää kone* › *Yhdistä Tailscaleen*: the dialog shows a QR code and *Avaa kirjautumissivu* (login.tailscale.com). Sign in with your own Tailscale account and approve the device `habitat-<user>`; the dialog notices it by itself within a few seconds. Choose a Mac or a Linux machine from the list (a phone is grey), type your user name on that machine, duration 30 days. Turn remote login on as the guide says.
+
+In the key-line step press *Tarkista yhteys* first without the line: *Kone ei hyväksy avainta vielä*. Run the copied command in the machine's terminal and check again: accepted. In the confirmation step compare the fingerprint with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run on the machine, read the three sentences and press *Täsmää, tallenna*. Then ask the agent to run `ssh <machine> -- uname -a` (on a Mac for example `defaults read com.apple.HIToolbox`): it must work as a plain `ssh <name>` command.
+
+Also try: the card's *Tarkista yhteys*; removing the line on the machine (*Näin katkaiset*), after which the check shows *Kone hylkää avaimen*; *Uusi pääsy* (opens at the key-line step); a second machine with *Lisää toinen kone*; *Poista*; and finally *Irrota Habitat verkostasi* (then remove the device in the Tailscale admin console). On the server: `systemctl --user status habitat-tailscale`, `ls -ld $XDG_RUNTIME_DIR/habitat-tailscale` (drwx------), and as another user `tailscale --socket=… status` gives permission denied.

@@ -63,3 +63,7 @@ paikallisen kansion.
 
 Ei todennettu: oikeat Entra- ja Dropbox-sovellukset (vain synteettiset);
 `rclone sync` ja peruminen oikeaa Dropboxia vastaan.
+
+## Live check
+
+Not yet performed. In the Yhdistä… dialog the level is chosen as a card (Microsoft: Täysi / Luonnokset, ei lähetystä / Vain luku; Dropbox: Koko Dropbox / Vain sovelluskansio / Vain luku). A level whose app the server lacks is grey and points to the administrator, who adds the level's app under the provider's row in Palvelinintegraatiot. The card title shows the level, and *Vaihda taso…* signs in again. Try Dropbox Koko → Vain luku: the files sync once more in both directions, the folder becomes a mirror (a local change is overwritten on the next round), and the old sign-in is revoked at Dropbox (see Dropbox's *Connected apps*). Microsoft's read and draft levels need their own Entra apps (`docs/operations.md`).

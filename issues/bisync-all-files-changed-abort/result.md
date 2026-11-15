@@ -80,3 +80,7 @@ automaattisen jatkamisen). Tarkistaja ajoi generoidun skriptin dashilla ja
 bashilla hankalilla argumenteilla eikä löytänyt virheitä lainauksista,
 kierrosindekseistä, koeajon lukoista tai listauksista, pakotuksen
 toistumisesta eikä ristiriitalipuista.
+
+## Live check
+
+Not yet performed. Ask the agent to edit every file in a small synced folder that has no subfolders. The changes reach the cloud within a couple of minutes and the card does not stay in an error (*Kaikki tiedostot muuttuivat kerralla, tarkistetaan ja jatketaan* may show briefly); the daemon log has `integration_sync outcome=resuming reason=all_changed`. If the agent deletes more than half of the files, sync still stops at *liian monta poistoa kerralla*.

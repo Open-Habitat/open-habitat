@@ -83,3 +83,7 @@ or couple the runtime to the release layout.
   approval in `~/src` anyway; revisit together with the daemon if wanted.
 - **`HOME` decides `~/src`** (Node's `os.homedir()`, which Pi also uses),
   where the daemon uses the account's home; they coincide in Habitat.
+
+## Live check
+
+Not yet performed. Needs a rebuilt runtime environment. In the Habitat terminal open a workspace that has `.agents/skills/…/SKILL.md` (or its worktree `~/src/<repo>__worktrees/…`) and run `pi`. Pi opens without the *Trust project folder?* question and the skill is listed; the same holds for a Taskfleet spinoff started in the workspace. Outside `~/src` the question still comes, and `false` saved in `trust.json` keeps the skills out.

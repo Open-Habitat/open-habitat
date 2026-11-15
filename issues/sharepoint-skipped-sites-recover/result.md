@@ -36,3 +36,7 @@ Local scratch reports: `history/review-sharepoint-recovery.md` and `history/asse
 ## Deployment check
 
 Not deployed by this worker. After the next upgrade, verify the recovered libraries and sync state as operator without asking Aino to reconnect. The existing KOKEILTAVAA line now says that explicitly. Live Graph entitlement and the original Contoso 404 cause remain unverified; synthetic tests establish the recovery behavior, not that the tenant grants access.
+
+## Live check
+
+Not yet performed. On a server whose users connected before the fix: after the update the SharePoint libraries are fetched automatically without reconnecting. When all previously offered roots were in sync (also OneDrive alone), the found libraries are included; they are not added to a narrowed selection but can be found in the current folder choice. As operator, confirm that the user does not have to make the choice again.

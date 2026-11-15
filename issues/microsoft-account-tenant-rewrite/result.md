@@ -100,3 +100,7 @@ Not covered: a real Entra tenant and real rclone/MSAL refreshes against it.
 7. **`invalid_client` (e.g. AADSTS700016, the app not found in the tenant)**
    reads `tenant_changed`, though it is an administrator mistake rather than
    the person's; the administrator's row cannot tell it from a valid GUID.
+
+## Live check
+
+Not yet performed. When the Microsoft 365 row is *Tarjolla* with a GUID tenant, open your own Asetukset › Integraatiot and press *Tarkista* on the organisation account's card (or wait for a daemon restart). The card does not ask you to sign in, OneDrive and SharePoint keep syncing, and the agent's Outlook tools work. If the card says *Kirjaudu uudelleen* with an explanation (the organisation did not accept the sign-in, the app changed, or the account is not in the organisation), note which one. After this the Entra registration can be switched to *Single tenant only* without breaking file sync.

@@ -68,3 +68,7 @@ Ei todennettu: oikea Google (peruminen, osittainen suostumus readonly-joukolla,
 `rclone sync` drive.readonly-tokenilla); vain synteettiset testit. `gog auth
 tokens export --out /dev/stdout` kokeiltiin käsin gog v0.39.1:llä
 kertakäyttöisessä kotihakemistossa.
+
+## Live check
+
+Not yet performed. Asetukset › Tiedot agenteille › Google › Yhdistä. Choose Täysi or Vain luku; Luonnokset, ei lähetystä is grey and says Google does not offer it. A Vain luku account's Drive is a mirror (`~/cloud/google-drive/<account>/`), and the card says Vain luku. Vaihda taso… says the old sign-in is revoked at Google before the new one; check in the Google account settings (third-party apps) that the old grant is gone and the new one is narrower. Switching from full to read-only syncs Drive once more in both directions. The server administrator also adds the `*.readonly` scopes to Google's Data Access list (guide step 3/5).

@@ -76,3 +76,7 @@ it is done again after the person writes.
 Review: `/llm-review` with gpt-6-astra as the finder and no verifier, then
 `/assess-findings`. It produced one finding, the 32 MiB limit above, which
 was dropped.
+
+## Live check
+
+Not yet performed. When the provider fails a turn (for example overload or an expired sign-in) and Pi stays open, the rail row is a red diamond and the hint says *Vuoro päättyi virheeseen*; when you write again, the row returns to working and then to done. A turn you stopped yourself is not red. Let a conversation's Taskfleet worker fail while the main conversation is not waiting for it: the main row is red (*Worker epäonnistui*) and stays under Käynnissä, even with Pi closed, until someone (the agent or you) writes to the conversation. If the main agent was waiting for the worker, it wakes and continues, and nothing turns red.

@@ -216,3 +216,7 @@ verifier claude-fable-5-1, then `/assess-findings`.
   when availability and send state change, and both change at the hand-off.
   What remains is the gap between the commit and the effect cleanup, which
   depends on React's scheduler.
+
+## Live check
+
+Not yet performed. On a slow connection and on a phone: type right after pressing + and keep typing while the conversation opens; the cursor, an open command or attachment picker and, on a phone, the keyboard stay. A message sent with Enter into a loading conversation stays as a pending bubble and is sent when the conversation is ready, or returns to the field with a reason. Typing into a resting conversation while it loads wakes the agent.

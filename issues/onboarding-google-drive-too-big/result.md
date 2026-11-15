@@ -110,3 +110,7 @@ suodatin drive-taustalla), vain synteettiset testit.
   `initial_sync_incomplete`.
 - **Ohitusta ei tarjota uusinnassa** (eikä daemon salli sitä, kun tiedostot
   jo synkronoituvat), koska se ei pysäytä olemassa olevaa synkronointia.
+
+## Live check
+
+Not yet performed. Sign in to Google with an account whose Drive is larger than the free space in the home directory. Before Google opens, the sign-in dialog says in a highlighted box that the browser will end on an error page and that its address is to be copied. In the folder step *Koko Google Drive* shows an estimate (*noin X Gt*) and is not selected, a note above says it does not fit, and below are the Drive's top-level folders, whose size changes from *Lasketaan kokoa…* to a number while the dialog is open (a large Drive can take minutes). Choose folders that fit (only they sync) or *Jatka ilman tiedostoja*: Gmail, calendar and contacts work, the Drive row says *Ei synkronoida*, and onboarding continues. If the quota still rejects the choice, the other services show their real state, not *Tilaa ei saatu selville*.

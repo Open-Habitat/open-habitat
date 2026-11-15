@@ -72,3 +72,7 @@ kumottiin.
   listataan GitLabin kloonina ilman yhteyttä.
 - Tunnuksen vaihto tarkistaa saman käyttäjänimen (glab ei tallenna
   käyttäjän id:tä).
+
+## Live check
+
+Not yet performed. With your own account (gitlab.com or a self-hosted GitLab): Asetukset › Koodipalvelut › GitLab *Yhdistä…*. The address is prefilled with `https://gitlab.com`, and *Luo tunnus GitLabissa* opens the token page prefilled (`read_api`, `write_repository`). Connect with that token: the card shows *Push toimii* and the expiry date. Uusi työtila: nested group projects are under a section of their full namespace (Koko polku), with the group path and Push in the details. Clone one from deep in a group, make a change and push it with the agent or in the terminal; `glab mr list` works with the same token. Also try a token with only `read_api` (*Vain luku*, push is rejected), and disconnect at the end. The server needs `glab` installed first.

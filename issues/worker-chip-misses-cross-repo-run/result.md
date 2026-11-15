@@ -46,3 +46,7 @@ Birch: focused web (775 unit), `./internal/daemon` Go, `spinoffs.spec.ts`
 default ports): 396 passed, 3 failed in untouched `attachment-documents` and
 `browser-editor-concurrent`, both green when rerun alone, so load timing
 rather than a defect.
+
+## Live check
+
+Not yet performed. When Taskfleet doubts the supervisor of a running run (state ”Tila ei tiedossa”, for example after a clock jump on the host, or after a conversation restart cut the wait), the closed Workerit chip still has a dim mark and the panel legend says ”muu tila”. A run in another repository shows as before.

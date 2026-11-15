@@ -59,3 +59,7 @@ access tokenin enintään sen elinajan) on olemassa jo ennestään ja jätettiin
 
 Ei todennettu: oikean tenantin käytös `.default`-pyynnöllä osittaisen
 hyväksynnän kanssa (vain synteettinen Entra).
+
+## Live check
+
+Not yet performed. Connect a Google account and leave Drive (or Gmail) out on the consent page. The account still connects; the card says *Kirjautuessa jäi myöntämättä: Google Drive*, the Drive row says *Ei käytössä*, and no folder choice is offered. *Myönnetyt oikeudet* lists the scopes by Google's names, the missing ones marked *pyydettiin, ei myönnetty*. *Kirjaudu uudelleen* and granting everything brings Drive and the folder choice back. The top of the page has a *mitä myöntö ei estä* note. A Microsoft account connects even when the organisation has approved less (for example without Mail.Send: mail shows at the *Luonnokset* level).

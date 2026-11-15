@@ -140,3 +140,7 @@ but the session, and no native text, token or remote URL is returned.
 - **`ssh://git@github.com/…` origins are not parsed** (shared
   `githubRepoName`). Their PR state is *unknown* and the panel note says gh
   did not answer. `git@github.com:` and `https://github.com/` origins work.
+
+## Live check
+
+Not yet performed. Check on a worker row: a PR (*PR #… luonnos tarkistukset käynnissä* and the strip's *Avaa PR #…*), a landed worker without figures, a `gh` outage (one notice at the top of the panel), the rail's *1 commit* for a worktree conversation (a Habitat worktree conversation, not a headless worker), and the phone.

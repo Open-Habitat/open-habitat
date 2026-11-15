@@ -41,3 +41,7 @@ synkronointisilmukkatesteissä.
   synkronoinnin ristiriitoja, joten `agent-text.md`:tä ei tarvittu.
 - **`--conflict-loser pathname` hylätty**, koska tutkimuksessa paikallinen
   voittaja palasi vasta seuraavalla kierroksella.
+
+## Live check
+
+Not yet performed. Have the agent edit a file in a synced library (OneDrive, SharePoint, Google Drive or Dropbox) and edit the same file in the cloud before the next sync (they run every minute). In the cloud the file keeps its name and the colleague's content, and the agent's version appears beside it as `Name.habitat-YYYY-MM-DD-1.docx`, which opens normally; the same shows under `~/cloud/…`.

@@ -81,3 +81,7 @@
    browser's 16 KiB read and shows as uncertain.
 8. **Withdrawn people are not listed or reached**: the broker no longer routes
    them; their copy stays until the key is revoked at the provider.
+
+## Live check
+
+Not yet performed. Palvelimen ylläpito › AI-avain › *Jo liittyneet* lists the people who have joined and what the site has given each. *Anna avain liittyneille…* checks each from their own service and answers with one word (*Ei Anthropic-tunnusta*, *Sivuston aiempi avain*, *On jo tämä avain*, *Oma Anthropic-tunnus*, *Ei vastausta*). Only those that can be written to are preselected; a row with an own key or a Claude subscription says *Ei koskaan korvata*. Write to one test person who has no key: their Asetukset › Yhteydet row shows *Sivuston avain*, and their Käyttäjät ja pääsy row says *AI-avain annettu*. Then change the site key: the notice names the people whose copy was replaced, and your own key is unchanged. The removal dialog names those who keep a copy. As root, `open-habitat admin ai-key seed --github-id ID --dry-run --json` reports the same word without writing anything.

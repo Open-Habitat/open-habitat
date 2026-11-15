@@ -49,3 +49,7 @@
   luottamuskehotteensa (havaittu tmuxissa). Jarin päätös koski daemonin
   käynnistyksiä; valvomaton worker voi jäädä kehotteeseen. Kirjattu intakeen
   (`wholly-awesome-sisters`).
+
+## Live check
+
+Not yet performed. Add `.agents/skills/kokeilu/SKILL.md` to a workspace (for example `~/src/demo`) and start a new conversation on an account that has no `~/.pi/agent/trust.json`. The skill is in the composer's `/` list before the first message and the agent finds it; the same works in a worktree. Once `trust.json` holds `false` for the workspace, the skill is gone from the next conversation.

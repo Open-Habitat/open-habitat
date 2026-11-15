@@ -43,3 +43,7 @@ schema forbids `state`); filed as `command-changed-state-pending-dead-code`.
   Alternatives: `requestAnimationFrame` (stops in hidden tabs) or a microtask
   (would not coalesce events arriving in separate SSE tasks). Chosen because
   it was the measured variant and keeps background tabs current.
+
+## Live check
+
+Not yet performed. Run a long, tool-heavy turn on a weak device or a loaded machine: the composer shows working at once, and acknowledgements and Pysäytä respond in time. Reading position and scrolling to the bottom behave as before.

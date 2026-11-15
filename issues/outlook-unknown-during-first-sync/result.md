@@ -66,3 +66,7 @@ väitettiin ensimmäiseksi synkronoinniksi), korjattu.
   lisäkentän. Kortti sanoo saman yleisemmin, ja tila on harvinainen.
 - **Ei varoitusväriä, kellokuvake.** Odottaminen ei ole vika; `unknown`
   pitää varoituksensa.
+
+## Live check
+
+Not yet performed. Connect a Microsoft 365 account and choose OneDrive. While the first sync runs (including the size count), Outlook mail, calendar and Yhteystiedot say *Tarkistetaan ensimmäisen synkronoinnin jälkeen* with a clock icon, not *Tilaa ei saatu selville*, and show no check time; once the run ends, Tarkista shows their real state. The same holds for Google's Gmail, Kalenteri and Yhteystiedot.

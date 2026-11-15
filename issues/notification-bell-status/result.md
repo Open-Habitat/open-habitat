@@ -51,3 +51,9 @@ server read for a non-administrator), plus the rewritten
 - **On a phone the pill's words are cut at 92 px.** In single-workspace mode
   on a phone the workspace name then shrinks to its icon while something
   serious holds.
+
+## Live check
+
+Partly performed (see the observation below). An expired GitHub connection shows in the top-bar bell in red with *Yhdistä uudelleen* (the warning also stays above the composer). Also try *Myöhemmin*, the phone's top row, the single-workspace state and the dark theme.
+
+Observed on the test server 14.11.2026: the administrator's *Kiintiöt ylittävät palvelimen levyn* (112 GiB / 97.87 GiB) showed in the bell, the *Palvelin › Levytila* link led to the right page, the figures matched the server's `statfs`/`quotactl` readings, and when the sum was lowered below the disk size the warning and the bell mark disappeared on save.

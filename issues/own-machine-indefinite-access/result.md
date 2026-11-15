@@ -26,3 +26,7 @@ keep their dates.
 
 Independent `/llm-review` (finder gpt-6-astra, verifier claude-fable-5-1 on
 the grant-duration boundary): no confirmed findings.
+
+## Live check
+
+Not yet performed. Asetukset › Omat koneet › *Lisää kone*: *Toistaiseksi* is first and preselected (*Pääsy on voimassa, kunnes perut sen koneellasi.*), *Pelkkä rivi* has no `expiry-time=`, and the card says *Pääsy: voimassa, kunnes perut*. 30 days gives `expiry-time=` and a date as before; on Windows, OpenSSH 8.2 is mentioned only with a dated duration.

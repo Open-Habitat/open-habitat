@@ -55,3 +55,7 @@ reshare revives the same link, Settings, administrator delete).
   the administrator only.
 - **Dialog wording** now says sharing again revives the same link, because
   the old "removing the link" promise is no longer true.
+
+## Live check
+
+Not yet performed. The old *Jaa linkillä* dialog now shares the view's one address. Share a view, stop sharing and share again: the same link works again. *Vaihda sisältö* and *Uusi osoite* are gone, and a new agent export is a view of its own. The administrator's *Poista* ends the link for good. The update resets all earlier shared links once; if Habitat starts with an old file without the reset that `host upgrade` does, sharing is off.

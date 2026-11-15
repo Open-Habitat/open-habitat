@@ -31,3 +31,7 @@ contract, the gateway and the broker are unchanged.
   test and covers found, duplicate, organisation and not-found lines.
 - Review: focused self-review (UI only; no daemon, contract, session or
   authority change).
+
+## Live check
+
+Not yet performed. Asetukset › Käyttäjät ja pääsy: type several names separated by commas, spaces or line breaks (Shift+Enter makes a new line) and press *Tarkista*. Each name is checked separately and gets its own row: allowable, *On jo sallittu* / *On jo käyttäjä*, *GitHub-käyttäjää ei löydy*, an organisation or a bot (*Tunnus ei ole henkilön GitHub-tili*), or malformed. *Salli N* adds the valid ones one at a time, and each row says *Lisätty*, *Palautettu* or the reason for the refusal. A single name works as before.

@@ -39,3 +39,7 @@ Tested working diff on base `0d5ce3296a9624a9946177763d52803b301ec021` (the impl
 - Independent `/llm-review` with claude-fable-5-1, two calls (one context follow-up), local `/assess-findings`: no remaining confirmed defects. Removed a proposed endsTurn change to preserve retry grouping; checked recorded absence of text deltas against a speculative live-tail concern. A formatter failure during review was repaired; final web checks pass. Reports under ignored `history/review-ai-sign-in.md` and `history/assessment-ai-sign-in.{json,md}`. No review issues filed.
 
 Initial multi-`--spec` invocation only selected the final spec; reran all named specs individually. Exploratory searches for nonexistent dist/component paths were corrected. Full gate/whole browser suite deliberately not run. Evidence is native invalid-credential/provider behavior plus host-backed synthetic browser behavior, not live installation acceptance or UID isolation. General partial-text streaming followed by an unrelated provider error was not reproduced in this task.
+
+## Live check
+
+Not yet performed. A turn that ended on an expired AI sign-in or a rejected key shows as failed, not as a finished answer, also after a reload. The ended error turn leaves the Käynnissä list but keeps its error mark under Hiljaiset.

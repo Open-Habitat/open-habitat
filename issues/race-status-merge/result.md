@@ -156,3 +156,7 @@ and the clear is skipped, which is existing behaviour.
   cannot-reproduce (Jari 2.11.) while this ran; it stays so, with a note
   that the fitting mechanism (an unordered refresh read) is fixed here and
   pinned in Vitest.
+
+## Live check
+
+Not yet performed. On a slow or loaded connection: send a message, type a new draft at once and switch to another conversation before the agent acknowledges; on return the draft is unchanged and the sent message is on its way or delivered. Steering sent while the agent works stays in the queue and does not flash in the field, and Pysäytä pressed right after it waits for the steering to arrive and returns it to the field. Pysäytä does not stay visible after the turn has ended when a late older status arrives after a newer one.

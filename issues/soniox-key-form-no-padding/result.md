@@ -48,3 +48,7 @@ bottom gap inside the row).
   indent their content the same way.
 - Tallenna/Peruuta right-aligned (`s-actions`) as in Git-identiteetti,
   instead of left as before.
+
+## Live check
+
+Not yet performed. Asetukset › Sanelu without a key (and Palvelimen ylläpito › Saneluavain): the Soniox-avain row's title and state sit beside the microphone icon, and the key field, help text and Tallenna are inside the card at the title's indent, not against the card's edges; Tallenna is on the right and does not touch the card's bottom edge. Check desktop and phone, light and dark.

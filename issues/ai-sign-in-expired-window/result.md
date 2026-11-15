@@ -70,3 +70,7 @@ Not experimental: it changes how an existing failure is shown and repaired.
   mid-turn replay, Claude cancel during in-flight write); 1 dropped as the
   trade-off above. No issues filed.
 - Not verified: real Claude/OpenAI providers, two live tabs, test-server install.
+
+## Live check
+
+Not yet performed. When Claude rejects the sign-in, the conversation has a short row, a warning above the field, and the message waits in the field. Edit the message, and send another in a second Claude conversation; press Kirjaudu uudelleen and sign in in the window: both messages are sent by themselves. Asetukset › Tekoäly says Hylätty, not Kirjautunut.

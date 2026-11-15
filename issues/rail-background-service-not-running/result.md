@@ -63,3 +63,9 @@ again at 10:28, 10:29, 10:31 and 10:47. With this change the process is
 5. **The row's mark** is a muted still ring (`.ah-nav-service`), not the accent
    ring used for *Odottaa taustatyötä*, so that it does not suggest work the
    person waits for.
+
+## Live check
+
+Partly performed (see the observation below). Ask the agent to start a background process that wakes it and stays running (for example a small file server), send one more message and let it answer. The conversation is under Sinun vuorosi, not Käynnissä, and the row ends with a small grey ring whose hint (and the row's description) says *Taustalla käynnissä: name*. This issue also expects that when the agent ends its turn waiting for the process it just started, the conversation stays under Käynnissä.
+
+Observed on the test server 14.11.2026: the agent started `sleep 120` with a wake (`notify` `turn`) and ended its turn waiting for it. The row went to Sinun vuorosi as unread, not to Käynnissä. That matches `rail-open-moves-turn-to-running` (an answer belongs to the person also during background work) but not the last expectation above. Which of the two is the goal is undecided.

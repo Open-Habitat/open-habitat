@@ -84,3 +84,7 @@ a pending invitation and a member removed from the team.
 11. **Known noise:** a sign-in by a non-member whose token GitHub refuses
     with a 403 sets the team's "GitHub did not answer" note until the next
     definite answer. It changes no one's access.
+
+## Live check
+
+Not yet performed. Type `<organisation>/<team>` into the Salli field on Asetukset › Käyttäjät ja pääsy (Tarkista, then Lisää tiimi). A team member can sign in without being allowed separately and gets an account as before; someone outside the team gets the general "no access" message, which does not name the team. The row chips tell the reasons (henkilönä, tiimi). When a member is removed from the team on GitHub, their next sign-in is blocked and a notice about them appears above the list (Salli henkilönä / Selvä); an open session continues, and Poista pääsy ends it at once. If the organisation has not approved the Open Habitat OAuth app, the member gets "Jäsenyyttäsi ei voitu tarkistaa" and the team row tells when GitHub did not answer.

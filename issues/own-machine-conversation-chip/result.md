@@ -114,3 +114,9 @@ sen `expiry-time`), oikea tailnet. Ne ovat KOKEILTAVAA-listalla.
    PowerShell 5.1:n `echo >`. Windowsin sshd ei lue sitä muutenkaan, joten
    tiedosto luetaan UTF-8:na (BOM tunnistetaan). Tunnistamaton UTF-16
    näkyy tarkistuksessa hylättynä avaimena.
+
+## Live check
+
+Not yet performed. Needs a machine connected as in `own-machine-access`. In a conversation ask the agent to look at something on your machine (for example its macOS version). The agent's `ssh <machine> …` row has a blue chip with the machine's name before the command (also inside a folded work step once you open it), and commands run on the server have no chip. During the work and after it the conversation's title row has a green dot and the machine's name (*Yhteys auki*). It disappears about 10 minutes after the last command (with at most half a minute's delay), and it does not show in other conversations. On a phone the mark is on the title's second row.
+
+A Windows machine, if you have one, can now be chosen. The remote-login step gives an administrator PowerShell command that installs the OpenSSH server. In the key-line step choose *Järjestelmänvalvoja* (the default; the command writes `C:\ProgramData\ssh\administrators_authorized_keys` and restricts its permissions; run it in a PowerShell opened as administrator) or *Tavallinen käyttäjä*. Check that `ssh -V` is at least 8.2 and that the agent's `ssh <machine> ver` works (cmd.exe). The card's *Näin katkaiset* gives PowerShell removal commands. Also check that the file's other lines containing non-ASCII letters survive.

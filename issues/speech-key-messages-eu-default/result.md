@@ -38,3 +38,9 @@ unchanged; in the daemon only the probe order changed.
   pasted.
 - **A mid-dictation 401/403 reads "ei enää hyväksy avainta"** rather than
   "hylkäsi avaimen", since the key worked when the dictation started.
+
+## Live check
+
+Not yet performed. Asetukset › Sanelu and Palvelimen ylläpito › Saneluavain do not ask for a region, and saving tries the EU first. EU project key: *Avain tallennettu. Soniox hyväksyi sen EU-alueella.* and state (EU). US project key: *…hyväksyi sen USA-alueella, ei oletuksena olevalla EU-alueella.* and state (USA). Made-up key: *Avainta ei tallennettu: Soniox ei tunne sitä EU- eikä USA-alueella, joten se on väärä tai peruttu. Hae uusi avain Soniox-konsolista.*; the link opens console.soniox.com and nothing is saved.
+
+A copy of an administrator's US key that was stored as EU before the update: the first dictation after the update starts without a notice, and Asetukset › Sanelu then shows (USA); the administrator's Saneluavain page shows (EU) until the key is saved there again. Dictation notices now say *Soniox ei hyväksy avainta – Avain on väärä tai peruttu…*, *Soniox-avaimen käyttöraja on täynnä* and *Soniox ei vastaa – Sanelu ei alkanut…*.

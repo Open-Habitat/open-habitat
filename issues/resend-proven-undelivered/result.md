@@ -98,3 +98,7 @@ identically on the base commit, and that failure is already filed as
   The record then stays a warning.
 - **Held messages** (sent while Pi was not running) have their own uncertain
   state and were left as they are. They never blocked the composer.
+
+## Live check
+
+Not yet performed. Send a message that is lost in a server restart before the agent gets it. When the agent is idle again and the conversation has not continued, the message is sent once more by itself and shows as an ordinary sent message; the notice goes away and the field empties. If something was written to the conversation from another tab in the meantime, the message is not sent, the text stays in the field and the notice says why.

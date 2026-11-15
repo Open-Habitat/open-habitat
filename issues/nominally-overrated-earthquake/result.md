@@ -89,3 +89,7 @@ saada yhteyttä*. The repin also carries the single-tenant adapter change
    permanently broken store forever.
 4. **`outside_tenant` in Check is `login_expired`** like a refusal. The reason
    text comes only from the tenant follow, as before.
+
+## Live check
+
+Not yet performed. Needs the host's integration profile rebuilt. Sign in with your Microsoft account at myaccount.microsoft.com › *Kirjaudu ulos kaikkialta* (or as administrator: Entra › the user › *Revoke sessions*). After that, *Tarkista* on the Asetukset › Integraatiot card shows Posti, Kalenteri and Yhteystiedot as *Kirjautuminen vanhentunut* and offers *Kirjaudu uudelleen*, not *Palvelimeen ei saada yhteyttä*. After signing in again all of them show *Toimii*.

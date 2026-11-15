@@ -149,3 +149,7 @@ observations were dropped as pre-existing or already guarded.
 - Not verified: Microsoft's own answers (a real search, a real fetch, and
   Entra issuing a token for the new scope set). That is the KOKEILTAVAA step
   with a real account on the test server.
+
+## Live check
+
+Not yet performed. Needs a rebuilt runtime environment. Connect a real Microsoft account (any level), or wait until an already connected account is registered again by the daemon's check (log: `integration_align outcome=aligned`). In a new conversation ask the agent to find a file you have not synced, for example from an unfollowed SharePoint site, a Teams team, or one shared with you. The agent searches with the `search-query` tool, fetches only the file it needs into `~/cloud/microsoft-fetched/<account>/<host>/<path>`, and does not grep all of `~/cloud/`. Ask it to edit the fetched file: the change stays local and the agent says where the copy is. Ask it to upload the file back or to delete it in the cloud: it has no tool for that at any level. The agent text in `agent-text.md` still awaits proofreading.

@@ -26,3 +26,7 @@
   API. The menu link and the agent's error explanation cover the pilot's case.
 - **No error-code mapping.** The error surfaces through gog to the agent, not
   through the daemon's catalog, so only the skill text changed.
+
+## Live check
+
+Not yet performed. As administrator: Asetukset › Palvelimen ylläpito › Palvelinintegraatiot › Google. The guide's first step now also lists the Google Sheets, Docs and Slides APIs, and the link enables all seven. Once credentials are set, *Tunnukset* › *Ota API:t käyttöön Google Cloudissa* opens the same enablement directly in the customer's own project (the project number shows in Google Cloud). If Sheets is still disabled, ask the agent to read a Google sheet: it should say that the administrator must enable the Sheets API (with the link), not that a permission is missing. The agent also knows the `gog sheets|docs|slides` commands.

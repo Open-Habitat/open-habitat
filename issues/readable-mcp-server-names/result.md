@@ -59,3 +59,7 @@ failed when both readable names were held by others.
   restart.
 - **Uppercase and non-ASCII** become lowercase / `-` (addresses are already
   lowercase ASCII by `ValidAddress`).
+
+## Live check
+
+Not yet performed. After the update an already connected Microsoft 365 account moves, at daemon start or at the next check, from the name `habitat-microsoft-706572…` to `habitat-microsoft-<address with dashes>` without a new sign-in; the log has `integration_align outcome=…`. Check `~/.pi/agent/mcp.json` and `~/.agents/skills/personal-data/SKILL.md`: both have the new name and not the old one, and in a new conversation the agent reads Outlook mail as before.
