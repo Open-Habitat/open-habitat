@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/rail-keyboard-nav
 lane: rail-keyboard-proto
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Keyboard shortcut to move between conversations in the rail
@@ -20,3 +20,9 @@ Jari 15.11.2026: there is no keyboard shortcut to move up and down the
 conversations in the left rail and switch to the previous/next one. It cannot
 be the browser's tab shortcuts, but something should exist. Jari wants
 prototypes of what the shortcut actually is.
+
+## Decisions
+
+### 2026-11-15T16:22:40Z · @jari
+
+Jari 15.11.2026: implement direction 1 Suoraan (Alt/⌥+Up/Down opens the previous/next conversation at once), but it steps through every conversation in the rail: Sinun vuorosi, Käynnissä and Hiljaiset too. Implementation is issue rail-keyboard-direct. The ⌘K/Ctrl+K switcher (direction 2) is wanted as well: next prototype round riffs on it, with a real full-text search across all agent conversations.
