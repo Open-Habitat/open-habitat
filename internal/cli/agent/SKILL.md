@@ -197,19 +197,25 @@ an uncertain write automatically when later versions add mutations.
 
 Always name the target explicitly with `--conversation pi:UUID`; mutations never
 infer it from `--current`, cwd, or history text. Start with `conversation list`
-(daemon-held conversations only; `--output FILE.jsonl` exports them). Each
+(the rail's native-history conversations, including archived ones, plus new
+conversations not yet written by Pi; `--output FILE.jsonl` exports them). Each
 `data.result.sessions[]` row includes a string `title`, matching the rail: Pi's native
 session name wins, then the first-message preview, then `Uusi keskustelu` for
 an unnamed conversation without a message. Manual names win over automatic
 titles because automatic naming preserves them; both live in Pi's native name.
-A name given before Pi writes its history is included too. Reading starts no Pi.
+A name given before Pi writes its history is included too. `lifecycle` is `live`
+(an observed running Pi), `resting` (no observed running Pi), or `archived`
+(archive takes precedence). `state` and `startup_choice` are present only while
+the daemon holds a handle; they are not lifecycle. Listing does not grant control
+of terminal-created history. Unavailable history or archive data, or failed/partial
+workspace discovery, fails explicitly, not as a shortened list. Reading starts no Pi.
 Find a named target without reading session files, for example:
 
     open-habitat agent conversation list --json | jq '.data.result.sessions[] | select(.title == "Planning")'
 
 Titles are not unique identifiers: inspect matches and use their `agent_id`. Use
-`conversation show --conversation pi:UUID` for full status, queues and pending
-questions. The older positional `conversation show pi:UUID` remains a minimal
+`conversation show --conversation pi:UUID` for a held handle's full status, queues
+and pending questions; native-only rows have no handle status until resumed. The older positional `conversation show pi:UUID` remains a minimal
 live-record read. Use `history list` for native histories, including terminal-created and ended sessions.
 
 Create with `conversation create --workspace ws_ID`, optionally `--provider`,

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-conversation-list.schema.json",
+  "title": "Agent rail conversation list",
+  "description": "Native-history conversations belonging to the rail's workspaces and places, including archived conversations and controller-only new conversations. Listing starts no Pi. History or archive read failure, or failed/partial workspace discovery, returns an error rather than a partial handle inventory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sessions"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"},
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["agent_id", "workspace_id", "title", "lifecycle"],
+        "properties": {
+          "agent_id": {"$ref": "common.schema.json#/$defs/agentId"},
+          "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+          "title": {"type": "string", "minLength": 1},
+          "lifecycle": {
+            "type": "string",
+            "enum": ["live", "resting", "archived"],
+            "description": "Archived takes precedence; otherwise live means a running Pi was observed, resting means none was observed. This observation grants no control authority."
+          },
+          "state": {"type": "string", "description": "Controller state, present only when a handle exists."},
+          "startup_choice": {
+            "type": ["object", "null"],
+            "description": "Controller startup choice, present only when a handle exists; null means native defaults.",
+            "additionalProperties": false,
+            "required": ["model"],
+            "properties": {
+              "provider": {"type": "string"},
+              "model": {"type": "string"},
+              "thinking": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -65,6 +65,7 @@ checks = {
     "agent-environment-not-in-use.json": "agent-environment.schema.json",
     "agent-workspaces.json": "agent-workspaces.schema.json",
     "agent-conversation.json": "agent-conversation.schema.json",
+    "agent-conversation-list.json": "agent-conversation-list.schema.json",
 
     "workspace-git.json": "workspace-git.schema.json",
     "workspace-icon-suggestions.json": "workspace-icon-suggestions.schema.json",
@@ -266,6 +267,13 @@ def must_reject(schema: str, instance: object) -> None:
     except ValidationError:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
+
+conversation_list = json.loads((BASE / "examples/agent-conversation-list.json").read_text())
+conversation_row = conversation_list["sessions"][0]
+for change in ({"lifecycle": "idle"}, {"lifecycle": None}, {"title": None}, {"uid": 123}):
+    must_reject("agent-conversation-list.schema.json", {**conversation_list, "sessions": [{**conversation_row, **change}]})
+for missing in ("title", "lifecycle", "agent_id", "workspace_id"):
+    must_reject("agent-conversation-list.schema.json", {**conversation_list, "sessions": [{k: v for k, v in conversation_row.items() if k != missing}]})
 
 # Change exactly one field of a valid reply, so a newly required field
 # cannot make every negative check pass for the wrong reason.

@@ -43,7 +43,7 @@ func (c *ConversationController) agentConversations(w http.ResponseWriter, r *ht
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			c.list(w)
+			c.listNativeConversations(w, r)
 		case "POST":
 			c.create(w, r)
 		default:

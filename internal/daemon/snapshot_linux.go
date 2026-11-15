@@ -190,41 +190,13 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		} else if taskfleetBinary(nativeHome) != "" {
 			taskRuns, taskRunsOK = listTaskfleetRuns(r.Context(), nativeHome)
 		}
-		if taskRunsOK {
-			observation.Entries = filterTaskfleetWorkspaces(nativeHome, observation.Entries, taskRuns)
-		}
 		diagnostic.Phase(r.Context(), "taskfleet", started)
 		// Worktree places (ADR 0025): every main checkout's registered
 		// worktrees. A directory under ~/src that holds only their checkouts
 		// is their container, not a workspace. A Taskfleet run's worktree
 		// is observed as its spinoff, not listed as a place.
 		started = time.Now()
-		placesOf := map[string][]worktreePlace{}
-		placeByPath := map[string]worktreePlace{}
-		var allPlaces []worktreePlace
-		for _, entry := range observation.Entries {
-			if entry.Kind != "git_main_worktree" || entry.Error != "" || entry.Metadata == "error" {
-				continue
-			}
-			found, _ := readWorktreePlaces(nativeHome, entry, workspaceIDOf(cfg, entry))
-			allPlaces = append(allPlaces, found...)
-			for _, p := range found {
-				if taskRunsOK && taskfleetOwned(taskRuns, p.Path) {
-					continue
-				}
-				placesOf[p.WorkspaceID] = append(placesOf[p.WorkspaceID], p)
-				placeByPath[p.Path] = p
-			}
-		}
-		if containers := worktreeContainers(nativeHome, observation.Entries, allPlaces); len(containers) > 0 {
-			kept := make([]Workspace, 0, len(observation.Entries))
-			for _, e := range observation.Entries {
-				if !containers[e.Name] {
-					kept = append(kept, e)
-				}
-			}
-			observation.Entries = kept
-		}
+		observation, placesOf, placeByPath := conversationPlaces(cfg, nativeHome, observation, taskRuns, taskRunsOK)
 		placeViews := map[string]map[string]any{}
 		diagnostic.Phase(r.Context(), "worktrees", started)
 		visibility, visibilityErr := loadVisibility(nativeHome)

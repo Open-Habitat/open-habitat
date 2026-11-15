@@ -11,7 +11,7 @@ import (
 )
 
 func TestConversationListTitleJSON(t *testing.T) {
-	wire := json.RawMessage(`{"schema_version":1,"sessions":[{"agent_id":"pi:00000000-0000-4000-8000-000000000001","title":"Planning"}]}`)
+	wire := json.RawMessage(`{"schema_version":1,"sessions":[{"agent_id":"pi:00000000-0000-4000-8000-000000000001","title":"Planning","lifecycle":"resting"}]}`)
 	exchange := func(method, path string, body []byte) (json.RawMessage, error) {
 		if method != "GET" || path != "/agent/v1/conversations" || len(body) != 0 {
 			t.Fatalf("unexpected request: %s %s %s", method, path, body)
@@ -60,8 +60,8 @@ func TestConversationListTitleJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if row["title"] != "Planning" {
-			t.Fatalf("title lost: %#v", row)
+		if row["title"] != "Planning" || row["lifecycle"] != "resting" {
+			t.Fatalf("title or lifecycle lost: %#v", row)
 		}
 	}
 }
