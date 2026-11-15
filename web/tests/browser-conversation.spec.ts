@@ -1219,6 +1219,13 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   ).toBeVisible();
   // Alt+Enter goes once the other way (after the turn); Enter steers.
   await editor.fill("jonoon yksi");
+  // Stop can appear while the first send is still settling. Keyboard presses
+  // do not auto-wait for the send control's pending/availability indicators.
+  const steer = page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="steer"]'));
+  await expect(steer).not.toHaveAttribute("aria-busy", "true");
+  await expect(steer).toBeEnabled();
   await editor.press("Alt+Enter");
   await expect(editor).toHaveValue("");
   await editor.fill("ohjaus kaksi");

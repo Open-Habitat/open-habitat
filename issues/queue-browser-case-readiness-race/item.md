@@ -2,7 +2,7 @@
 created: 2026-11-15
 updated: 2026-11-15
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: test-run
 source_ref: taskfleet:01m7g8zpt0wa8f1n7j13ettb0s/test-failure:queue-readiness
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-15
 ---
 
 # Queue browser case intermittently submits before readiness
@@ -34,6 +35,14 @@ npx playwright test tests/browser-conversation.spec.ts --grep 'steer, follow-up 
 ```
 
 Use the repository scratch/umask setup and a dedicated `OH_PORT_BASE`.
+
+## Acceptance Criteria
+
+- [x] Establish whether the early shortcut is visibly refused or silently lost;
+  record the trace evidence and chosen fix in `result.md`.
+- [x] Synchronize on product readiness without sleeps or increased timeouts.
+- [x] Pass 20 repetitions of the single case with the reported jitter and two
+  workers, preserving its queue and restored-text assertions.
 
 ## Impact and direction
 
