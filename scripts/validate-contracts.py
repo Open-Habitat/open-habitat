@@ -193,6 +193,9 @@ checks = {
     "file-offer.json": "file-offer.schema.json",
     "notice-file-offer.json": "notice.schema.json",
     "composer-start-page.json": "composer.schema.json",
+    "start-page-check-request.json": "start-page-check.schema.json",
+    "start-page-check-valid.json": "start-page-check.schema.json",
+    "start-page-check-invalid.json": "start-page-check.schema.json",
     "composer-commands.json": "composer.schema.json",
     "composer-start-page-unavailable.json": "composer.schema.json",
     "composer-files.json": "composer.schema.json",
@@ -411,6 +414,16 @@ must_reject("editor.schema.json", {"schema_version": 1, "token": "short", "origi
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
 # An unreadable authored page is distinct from absence, without native details.
 must_reject("composer.schema.json", {"schema_version": 1, "answered_by": "helper", "commands": [], "start_page": {"state": "needs_update", "reason": "private native error"}})
+for invalid in [
+    {"schema_version": 2, "valid": True, "page": {"title": "Example", "body": "", "goals": []}},
+    {"schema_version": 1, "valid": False, "problems": []},
+    {"schema_version": 1, "valid": False, "problems": [{"code": "native error", "path": ""}]},
+    {"schema_version": 1, "valid": False, "problems": [{"code": "invalid_goal_fields", "path": "goals[8].prompt"}]},
+    {"schema_version": 1, "workspace_id": "ws_example123", "content": "x" * 32769},
+    {"schema_version": 1, "workspace_id": "ws_example123", "content": "", "path": "other.md"},
+    {"schema_version": 1, "workspace_id": "ws_example123"},
+]:
+    must_reject("start-page-check.schema.json", invalid)
 # The composer names files relative to the workspace and lists commands
 # without their native source paths.
 must_reject("composer.schema.json", {"schema_version": 1, "workspace_id": "ws_example123", "path": "../secret", "kind": "text", "text": "", "truncated": False})

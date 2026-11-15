@@ -169,6 +169,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// rejects transfer encoding on body-less control and onboarding routes.
 	var body io.ReadCloser = http.NoBody
 	requestLimit := proxyRequestLimit
+	if r.URL.Path == workspaceStartPageCheckPath && r.Method == http.MethodPost {
+		requestLimit = 6*32*1024 + 1024
+	}
 	if r.URL.Path == editorFilesPrefix+"file" && r.Method == http.MethodPut {
 		requestLimit = 8 << 20
 	}

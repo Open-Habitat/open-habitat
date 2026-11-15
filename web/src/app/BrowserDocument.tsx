@@ -694,6 +694,8 @@ export default function BrowserDocument({
   return (
     <>
       <BrowserEditor
+        workspace={doc?.workspace_id ?? workspace}
+        csrf={csrf}
         toolbarActions={toolbarActions}
         engine={engine}
         document={

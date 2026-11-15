@@ -166,7 +166,7 @@ export default function FilePreview({
 }) {
   const name = path.split("/").pop() ?? path;
   return kind === "yaml" ? (
-    <YamlPreview text={text} />
+    <YamlPreview text={text} json={/\.json$/i.test(path)} />
   ) : kind === "table" ? (
     <TablePreview text={text} tabs={/\.tsv$/i.test(path)} />
   ) : kind === "image" ? (

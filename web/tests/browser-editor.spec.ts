@@ -852,7 +852,8 @@ async function openEntry(page: Page, path: string) {
     .and(page.locator(`[data-path="${path}"]`));
   await entry.click();
   await expect(entry).toHaveAttribute("aria-current", "page");
-  await expect(page.getByTestId("codemirror-editor")).toBeVisible();
+  // A known file can open in preview; its editor remains mounted underneath.
+  await expect(page.getByTestId("codemirror-editor")).toBeAttached();
   if (await page.getByTestId("editor-file-picker").isVisible())
     await page.getByTestId("editor-picker").click();
 }

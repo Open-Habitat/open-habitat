@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import "./YamlPreview.css";
 import { useText } from "../i18n";
 import { yamlPreviewText } from "../text/yamlPreview";
-import { parseYamlPreview, type YamlValue } from "./yamlPreview";
+import {
+  parseJsonPreview,
+  parseYamlPreview,
+  type YamlValue,
+} from "./yamlPreview";
 
 function NestedValue({
   value,
@@ -96,17 +100,22 @@ function NestedValue({
 export function YamlPreview({
   text,
   frontmatter = false,
+  json = false,
 }: {
   text: string;
   frontmatter?: boolean;
+  json?: boolean;
 }) {
   const t = useText(yamlPreviewText);
-  const parsed = useMemo(() => parseYamlPreview(text), [text]);
+  const parsed = useMemo(
+    () => (json ? parseJsonPreview(text) : parseYamlPreview(text)),
+    [text, json],
+  );
   return (
     <section
       className={`ah-yaml${frontmatter ? " ah-frontmatter" : ""}`}
       data-testid={frontmatter ? "markdown-frontmatter" : "yaml-preview"}
-      aria-label={t.label}
+      aria-label={json ? t.jsonLabel : t.label}
     >
       {parsed.ok ? (
         <NestedValue value={parsed.value} />
@@ -114,11 +123,13 @@ export function YamlPreview({
         <>
           <p role="status">
             {parsed.reason === "invalid"
-              ? t.invalid(
-                  parsed.line === undefined
-                    ? undefined
-                    : parsed.line + (frontmatter ? 1 : 0),
-                )
+              ? json
+                ? t.invalidJson
+                : t.invalid(
+                    parsed.line === undefined
+                      ? undefined
+                      : parsed.line + (frontmatter ? 1 : 0),
+                  )
               : t.unsupported}
           </p>
           <pre data-testid="markdown-frontmatter-raw">

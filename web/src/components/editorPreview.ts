@@ -8,7 +8,7 @@ export type FileView = {
 };
 const views: [RegExp, FileView][] = [
   [/\.(md|markdown)$/i, { kind: "markdown", icon: "eye" }],
-  [/\.ya?ml$/i, { kind: "yaml", icon: "eye" }],
+  [/\.(ya?ml|json)$/i, { kind: "yaml", icon: "eye" }],
   [/\.(csv|tsv)$/i, { kind: "table", icon: "table" }],
   [/\.svg$/i, { kind: "image", icon: "image" }],
   [/\.html?$/i, { kind: "page", icon: "eye" }],

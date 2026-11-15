@@ -155,8 +155,8 @@ func TestStartPageOldMonorepoNeedsUpdateAndRegeneratedPageWorks(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, reason := parseStartPageDocument([]byte(old))
-	if reason != "invalid_goal_fields" {
-		t.Fatalf("reason: %s", reason)
+	if reason == nil || reason.Code != "invalid_goal_fields" {
+		t.Fatalf("reason: %+v", reason)
 	}
 	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, nil))
 	if err := os.WriteFile(path, []byte(fixtureStartPage), 0600); err != nil {

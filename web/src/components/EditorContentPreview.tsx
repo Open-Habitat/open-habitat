@@ -1,24 +1,16 @@
 import { lazy } from "react";
 import type { FileView } from "./editorPreview";
-import { Markdown } from "./Markdown";
 
 export const loadFilePreview = () => import("./EditorFilePreview");
-const FilePreview = lazy(loadFilePreview);
+const Frame = lazy(() => import("./DocumentPreviewFrame"));
 
-/** The editor's renderer-selection boundary. A later file-specific renderer
- * can use path here without changing either generic YAML or Markdown rendering. */
-export function EditorContentPreview({
-  kind,
-  text,
-  path,
-}: {
+/** Single editor renderer-selection boundary; offers and attachments stay generic. */
+export function EditorContentPreview(props: {
   kind: FileView["kind"];
   text: string;
   path: string;
+  workspace?: string;
+  csrf?: string;
 }) {
-  return kind === "markdown" ? (
-    <Markdown text={text} document />
-  ) : (
-    <FilePreview kind={kind} text={text} path={path} />
-  );
+  return <Frame key={`${props.workspace}:${props.path}`} {...props} />;
 }

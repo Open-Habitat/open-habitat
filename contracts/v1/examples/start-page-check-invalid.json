@@ -1,0 +1,1 @@
+{"schema_version":1,"valid":false,"problems":[{"code":"invalid_goal_fields","path":"goals[1].prompt"}]}

@@ -25,6 +25,7 @@ import {
 import type { TreeDirectories } from "./editorTree";
 import type { FileRef } from "./fileRefs";
 import { Icon } from "./Icon";
+import { choosePreviewRenderer } from "./previewRegistry";
 import "./BrowserEditor.css";
 
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
@@ -69,6 +70,8 @@ export type DiskChanges =
     }
   | { kind: "undone"; source: MergeSource };
 export interface BrowserEditorProps {
+  workspace?: string;
+  csrf?: string;
   /** Workspace layout controls, alongside the document's own actions. */
   toolbarActions?: ReactNode;
   engine?: "codemirror6";
@@ -105,7 +108,15 @@ export interface BrowserEditorProps {
 // section; a table row carries its text line. A picture or page is one view.
 const top = (el: Element, from: Element) =>
   el.getBoundingClientRect().top - from.getBoundingClientRect().top;
-function markdownGeometry(preview: HTMLElement, text: string) {
+function markdownGeometry(
+  preview: HTMLElement,
+  text: string,
+): { base: number; args: [number, number[], number[], number] } | undefined {
+  if (preview.querySelector(".ah-start-page-preview"))
+    return {
+      base: 0,
+      args: [text.split("\n").length, [], [], preview.scrollHeight],
+    };
   const doc = preview.querySelector(".ah-markdown");
   if (!doc) return;
   const base = top(doc, preview) + preview.scrollTop;
@@ -120,7 +131,7 @@ function markdownGeometry(preview: HTMLElement, text: string) {
       headingLines(text),
       heights,
       doc.scrollHeight,
-    ] as const,
+    ],
   };
 }
 // A heading lands a little below the top edge rather than under it.
@@ -179,11 +190,16 @@ export function BrowserEditor(p: BrowserEditorProps) {
   const place = useRef<EditorPlaceApi | undefined>(undefined);
   const path = p.document?.path;
   const view = fileView(path);
-  // The preview belongs to the file it was opened on: another file opens as
-  // text. It is shown in place of the text, which stays mounted while
-  // hidden, so history and the cursor survive.
-  const [previewed, setPreviewed] = useState<string>();
-  const shown = !!view && previewed === path;
+  // A new file chooses its initial view afresh. Text stays mounted while
+  // hidden, so undo history and the cursor survive preview switches.
+  const special =
+    !!path && !!choosePreviewRenderer({ root: "workspace", path });
+  const [viewChoice, setViewChoice] = useState({ path, preview: special });
+  if (viewChoice.path !== path) setViewChoice({ path, preview: special });
+  const setPreviewed = (value: string | undefined) =>
+    setViewChoice({ path, preview: value !== undefined });
+  const shown =
+    !!view && (viewChoice.path === path ? viewChoice.preview : special);
   // The preview follows the buffer, not the file on disk; a large file
   // renders behind typing instead of on every keystroke.
   const [live, setLive] = useState({ revision: -1, text: "" });
@@ -268,8 +284,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
   // A link to a line asks for the text.
   const selection = p.document?.selection;
   useEffect(() => {
-    if (selection) setPreviewed(undefined);
-  }, [selection]);
+    if (selection?.line) setViewChoice({ path, preview: false });
+  }, [selection, path]);
   // A table, picture or page opens without waiting for its renderer.
   useEffect(() => {
     if (view && view.kind !== "markdown") void loadFilePreview();
@@ -501,6 +517,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
                   <Suspense fallback={<p role="status">{t.loadingPreview}</p>}>
                     <Mounted then={arrive}>
                       <EditorContentPreview
+                        workspace={p.workspace}
+                        csrf={p.csrf}
                         kind={view.kind}
                         text={rendered}
                         path={p.document.path}

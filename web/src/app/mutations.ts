@@ -82,6 +82,8 @@ export const mutationClasses = {
   "editor.handoff": "confirmed",
   "editor.open": "confirmed",
   "editor.save": "confirmed",
+  // Read-only validation uses a POST body, with the same CSRF transport.
+  "editor.checkStartPage": "confirmed",
   "account.preferences": "confirmed",
   "account.first_route": "confirmed",
   "account.keys": "confirmed",

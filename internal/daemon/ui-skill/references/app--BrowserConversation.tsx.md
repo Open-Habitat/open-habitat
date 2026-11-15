@@ -25,7 +25,6 @@ import {
   HeldStartFailure,
   InlineNotice,
   SendObservation,
-  UserMessage,
   WaitingMessage,
   WorkingProgress,
 } from "../components";
@@ -149,8 +148,14 @@ import {
   usePreparedField,
 } from "./goalGuide";
 import { ArchivedHelpers, HelperRestoreNote } from "./HelperArchiveFlow";
-import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
+import {
+  Entry,
+  type LiveTurnInput,
+  TurnText,
+  timelineItems,
+} from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
+import { useMessageIdentity } from "./messageIdentity";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
 import {
@@ -167,11 +172,12 @@ import {
 } from "./ownMachineUse";
 import {
   type Creation,
+  CreationEmpty,
   CreationNotice,
-  CreationStream,
+  CreationNotices,
   creationBlock,
   creationHeader,
-  LoadingStream,
+  LoadingNotice,
   loadingHeader,
   useCreation,
 } from "./PendingConversation";
@@ -185,7 +191,7 @@ import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
-import { useRewind, withRewind } from "./rewindView";
+import { RewindContext, useRewind } from "./rewindView";
 import { ServerBrowserDock } from "./ServerBrowser";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
@@ -317,6 +323,7 @@ function BrowserConversationContent({
   github,
   nextWaiting,
   creation,
+  viewKey,
 }: {
   /** A conversation this tab is creating, shown until it has an ID. */
   creation?: Creation;
@@ -435,6 +442,13 @@ function BrowserConversationContent({
   useEffect(() => {
     if (storagePressure.check) void refresh(true, true);
   }, [storagePressure.check, refresh]);
+  // A journal invalidation starts a status re-read, not an outage. Writes
+  // remain blocked by statusStale immediately; only its warning waits for
+  // the read so a normal first send does not flash an outage card.
+  const visibleStatusStale = useSettledWarning(
+    statusStale,
+    `${identity}/${id ?? ""}`,
+  );
   const visibleHistoryError = useSettledWarning(
     historyError,
     `${identity}/${id ?? ""}`,
@@ -2109,7 +2123,47 @@ function BrowserConversationContent({
       ? `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`
       : undefined,
   );
-  const timeline = withRewind(settled.timeline, rewind.controls);
+  const messageAliases = useMessageIdentity(
+    viewKey ?? `${identity}:${id ?? ""}`,
+    entries,
+    [
+      ...held.waiting.map((w) => ({
+        key: `held:${w.command_id}`,
+        text: w.text,
+        before: held.local.find((l) => l.command_id === w.command_id)
+          ?.preexisting,
+      })),
+      ...(ownMessage
+        ? [
+            {
+              key: `sent:${ownMessage.command}`,
+              text: ownMessage.text,
+              direct: true,
+            },
+          ]
+        : []),
+    ],
+    !id || (opened && !historyError && (entries.length > 0 || !next)),
+  );
+  const matchedMessages = new Set(messageAliases.values());
+  const timeline = settled.timeline.map((item) => ({
+    ...item,
+    id: messageAliases.get(item.id) ?? item.id,
+  }));
+  const pendingEntry = (
+    key: string,
+    text: string,
+    pending: ComponentProps<typeof Entry>["pending"],
+  ) => (
+    <Entry
+      entry={{
+        entry_key: key,
+        kind: "user",
+        content: { media_type: "text/plain", text, complete: true },
+      }}
+      pending={pending}
+    />
+  );
   const composer: ComponentProps<typeof Composer> =
     creating && creation
       ? {
@@ -2345,7 +2399,11 @@ function BrowserConversationContent({
   };
 
   return (
-    <section ref={section} className="ah-reading-view">
+    <section
+      ref={section}
+      className="ah-reading-view"
+      data-created-here={!!viewKey || undefined}
+    >
       {!view ? (
         <>
           <h2>{txt.conversations}</h2>
@@ -2812,72 +2870,69 @@ function BrowserConversationContent({
               }
             />
           ) : null}
-          {view === "opened" ? (
-            <ConversationStream
-              streamRef={feed}
-              onScroll={() => {
-                const el = feed.current;
-                if (!el || isReadingIntro(el)) return;
-                const move = scrolled(el);
-                if (move === "end") {
-                  wasAtBottom.current = true;
-                  setAwayFromLatest(false);
-                  readingAnchor.current = undefined;
-                  if (id) store.savePosition(id);
-                  setUnseen(0);
-                } else {
-                  if (move === "left") {
-                    wasAtBottom.current = false;
-                    setAwayFromLatest(
-                      el.scrollHeight - el.scrollTop - el.clientHeight > 120,
-                    );
-                  }
-                  captureAnchor();
+          <ConversationStream
+            streamRef={feed}
+            onScroll={() => {
+              const el = feed.current;
+              if (!el || isReadingIntro(el)) return;
+              const move = scrolled(el);
+              if (move === "end") {
+                wasAtBottom.current = true;
+                setAwayFromLatest(false);
+                readingAnchor.current = undefined;
+                if (id) store.savePosition(id);
+                setUnseen(0);
+              } else {
+                if (move === "left") {
+                  wasAtBottom.current = false;
+                  setAwayFromLatest(
+                    el.scrollHeight - el.scrollTop - el.clientHeight > 120,
+                  );
                 }
-              }}
-            >
-              {next ? (
-                <div className="ah-history-pager">
-                  <Button
-                    data-testid="older-history"
-                    size="row"
-                    label={txt.loadOlder}
-                    onPress={() => {
-                      captureAnchor();
-                      if (id) void store.older(id);
-                    }}
-                  />
-                </div>
-              ) : null}
-              {transientNotices.map((notice) => (
-                <NoticeEntry key={notice.notice_id} notice={notice} />
-              ))}
-              {storagePressure.full ? null : (
-                <UnpresentedEvents
-                  events={events}
-                  liveEvents={live?.fragments}
+                captureAnchor();
+              }
+            }}
+          >
+            {next ? (
+              <div className="ah-history-pager">
+                <Button
+                  data-testid="older-history"
+                  size="row"
+                  label={txt.loadOlder}
+                  onPress={() => {
+                    captureAnchor();
+                    if (id) void store.older(id);
+                  }}
                 />
-              )}
-              {cutOff && (
-                <WarningBanner
-                  data-testid="history-cut-off"
-                  tone="neutral"
-                  title={txt.cutOff}
-                  actions={
-                    <Button
-                      size="row"
-                      variant="secondary"
-                      label={txt.newConversation}
-                      onPress={() =>
-                        navigate(`/workspaces/${workspace.workspace_id}`)
-                      }
-                    />
-                  }
-                >
-                  {txt.cutOffDetail}
-                </WarningBanner>
-              )}
-              <TurnChangesRoot.Provider value={workspace.path}>
+              </div>
+            ) : null}
+            {transientNotices.map((notice) => (
+              <NoticeEntry key={notice.notice_id} notice={notice} />
+            ))}
+            {storagePressure.full ? null : (
+              <UnpresentedEvents events={events} liveEvents={live?.fragments} />
+            )}
+            {cutOff && (
+              <WarningBanner
+                data-testid="history-cut-off"
+                tone="neutral"
+                title={txt.cutOff}
+                actions={
+                  <Button
+                    size="row"
+                    variant="secondary"
+                    label={txt.newConversation}
+                    onPress={() =>
+                      navigate(`/workspaces/${workspace.workspace_id}`)
+                    }
+                  />
+                }
+              >
+                {txt.cutOffDetail}
+              </WarningBanner>
+            )}
+            <TurnChangesRoot.Provider value={workspace.path}>
+              <RewindContext.Provider value={rewind.controls}>
                 <ConversationTimeline
                   suppressProblem
                   problem={{
@@ -2885,7 +2940,31 @@ function BrowserConversationContent({
                     description: txt.historyUnavailableDetail,
                   }}
                   emptyLabel={
-                    controlled ? (
+                    creating && creation ? (
+                      <CreationEmpty
+                        workspace={workspace}
+                        creation={creation}
+                        waiting={held.waiting}
+                        draft={draft}
+                        guide={guide ?? ""}
+                        snapshot={recoverySnapshot}
+                        csrf={csrf}
+                        onChange={changeDraft}
+                        onPage={(read) =>
+                          setStartPage({ key: pageKey, page: read })
+                        }
+                        onGiveBack={creationView.giveBack}
+                        onSend={(text) => {
+                          if (creationBlock(creation)) return false;
+                          composer.onSendNow?.(text);
+                          return true;
+                        }}
+                      />
+                    ) : view === "loading" ? (
+                      problem ? null : (
+                        <LoadingNotice />
+                      )
+                    ) : controlled ? (
                       <StartPageRead
                         key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
                         workspaceId={runWorkspace}
@@ -2955,26 +3034,23 @@ function BrowserConversationContent({
                           },
                         ]
                       : []),
-                    ...(ownMessage
+                    ...(ownMessage &&
+                    !matchedMessages.has(`sent:${ownMessage.command}`)
                       ? [
                           {
                             id: `sent:${ownMessage.command}`,
                             kind: "user",
-                            content: (
-                              <UserMessage
-                                delivery={
-                                  ownMessage.pending ? "pending" : "accepted"
-                                }
-                                sourceText={ownMessage.text}
-                                deliveryState={
-                                  ownMessage.pending ? txt.sending : undefined
-                                }
-                                onCopy={() =>
-                                  void navigator.clipboard?.writeText(
-                                    ownMessage.text,
-                                  )
-                                }
-                              />
+                            content: pendingEntry(
+                              `sent:${ownMessage.command}`,
+                              ownMessage.text,
+                              {
+                                delivery: ownMessage.pending
+                                  ? "pending"
+                                  : "accepted",
+                                label: ownMessage.pending
+                                  ? txt.sending
+                                  : undefined,
+                              },
                             ),
                           },
                         ]
@@ -3007,19 +3083,17 @@ function BrowserConversationContent({
                             },
                           ]
                         : []),
-                    ...held.waiting.map((w) => ({
-                      id: `held:${w.command_id}`,
-                      kind: "user",
-                      content: (
-                        <WaitingMessage
-                          text={w.text}
-                          state={w.state}
-                          onCopy={() =>
-                            void navigator.clipboard?.writeText(w.text)
-                          }
-                        />
-                      ),
-                    })),
+                    ...held.waiting
+                      .filter(
+                        (w) => !matchedMessages.has(`held:${w.command_id}`),
+                      )
+                      .map((w) => ({
+                        id: `held:${w.command_id}`,
+                        kind: "user",
+                        content: pendingEntry(`held:${w.command_id}`, w.text, {
+                          waiting: creation?.problem ? "failed" : w.state,
+                        }),
+                      })),
                     ...keptItems.map((k) => ({
                       id: `kept:${k.id}`,
                       kind: "user",
@@ -3140,117 +3214,107 @@ function BrowserConversationContent({
                     setUnseen(0);
                   }}
                 />
-              </TurnChangesRoot.Provider>
-              {compactionState ? (
-                <CompactionNotice notice={compactionState} />
-              ) : null}
-              {(!current?.pending_question || statusStale) &&
-              questionOutcome ? (
-                <WarningBanner subject="question" tone="neutral">
-                  {questionOutcome === "stale"
-                    ? txt.questionStale
-                    : txt.questionUncertain}
-                </WarningBanner>
-              ) : null}
-              {/* Normal progress belongs to the turn header, not a second row
+              </RewindContext.Provider>
+            </TurnChangesRoot.Provider>
+            {compactionState ? (
+              <CompactionNotice notice={compactionState} />
+            ) : null}
+            {(!current?.pending_question || statusStale) && questionOutcome ? (
+              <WarningBanner subject="question" tone="neutral">
+                {questionOutcome === "stale"
+                  ? txt.questionStale
+                  : txt.questionUncertain}
+              </WarningBanner>
+            ) : null}
+            {/* Normal progress belongs to the turn header, not a second row
                 that mounts/unmounts beneath streaming content. */}
-              {current?.state === "stopping" ||
-              current?.state === "uncertain" ? (
-                <WorkingProgress state={current.state} events={events} />
-              ) : current?.state === "stopped" &&
-                current.interrupted &&
-                !held.waiting.length ? (
-                <WorkingProgress state="uncertain" events={events} />
-              ) : null}
-              {statusStale && !serverUnavailable ? (
-                <WarningBanner
-                  data-testid="conversation-stale"
-                  title={txt.stale}
-                  tone="neutral"
-                  actions={
-                    <Button
-                      size="row"
-                      variant="secondary"
-                      label={txt.check}
-                      onPress={() => {
-                        if (
-                          continuation &&
-                          continuation !== "uncertain" &&
-                          continuation !== "pending"
-                        )
-                          setContinuation(undefined);
-                        void refresh(true, true);
-                      }}
-                    />
-                  }
-                >
-                  {txt.staleDetail}
-                </WarningBanner>
-              ) : null}
-              {journalOffline && !statusStale && !serverUnavailable ? (
-                <WarningBanner
-                  subject="connection"
-                  title={txt.journalLost}
-                  tone="neutral"
-                >
-                  {txt.journalLostDetail}
-                </WarningBanner>
-              ) : null}
-              {!statusStale &&
-              !serverUnavailable &&
-              showMissedEvents(!!live?.missed, current) ? (
-                <WarningBanner
-                  data-testid="event-gap"
-                  title={txt.missed}
-                  tone="neutral"
-                >
-                  {txt.missedDetail}
-                </WarningBanner>
-              ) : null}
-              {events.length && current?.native_history !== "present" ? (
-                <p role="status">{txt.eventsBeforeHistory}</p>
-              ) : null}
-              {replaceNotes.notes.map((note) => (
-                <EditorReplaceNote
-                  key={note.id}
-                  path={note.path}
-                  at={note.at}
-                  changes={note.changes}
-                  tellBlocked={tellBlocked}
-                  onTell={() => {
-                    tell(messageFor(note));
-                    closeReplaceNote(note.id);
-                  }}
-                  onDismiss={() => closeReplaceNote(note.id)}
-                />
-              ))}
-              {id ? <HelperRestoreNote agent={id} /> : null}
-            </ConversationStream>
-          ) : view === "loading" || !creation ? (
-            <LoadingStream
-              waiting={keptItems.map((k) => k.text)}
-              problem={problem || undefined}
-              onRetry={() => setOpenAttempt((n) => n + 1)}
-            />
-          ) : (
-            <CreationStream
-              workspace={workspace}
-              creation={creation}
-              waiting={held.waiting}
-              draft={draft}
-              guide={guide ?? ""}
-              snapshot={recoverySnapshot}
-              csrf={csrf}
-              onChange={changeDraft}
-              onPage={(read) => setStartPage({ key: pageKey, page: read })}
-              onGiveBack={creationView.giveBack}
-              onSend={(text) => {
-                if (creationBlock(creation)) return false;
-                composer.onSendNow?.(text);
-                return true;
-              }}
-            />
-          )}
+            {current?.state === "stopping" || current?.state === "uncertain" ? (
+              <WorkingProgress state={current.state} events={events} />
+            ) : current?.state === "stopped" &&
+              current.interrupted &&
+              !held.waiting.length ? (
+              <WorkingProgress state="uncertain" events={events} />
+            ) : null}
+            {(visibleStatusStale || (statusStale && !!unknownSend)) &&
+            !serverUnavailable ? (
+              <WarningBanner
+                data-testid="conversation-stale"
+                title={txt.stale}
+                tone="neutral"
+                actions={
+                  <Button
+                    size="row"
+                    variant="secondary"
+                    label={txt.check}
+                    onPress={() => {
+                      if (
+                        continuation &&
+                        continuation !== "uncertain" &&
+                        continuation !== "pending"
+                      )
+                        setContinuation(undefined);
+                      void refresh(true, true);
+                    }}
+                  />
+                }
+              >
+                {txt.staleDetail}
+              </WarningBanner>
+            ) : null}
+            {journalOffline && !statusStale && !serverUnavailable ? (
+              <WarningBanner
+                subject="connection"
+                title={txt.journalLost}
+                tone="neutral"
+              >
+                {txt.journalLostDetail}
+              </WarningBanner>
+            ) : null}
+            {!statusStale &&
+            !serverUnavailable &&
+            showMissedEvents(!!live?.missed, current) ? (
+              <WarningBanner
+                data-testid="event-gap"
+                title={txt.missed}
+                tone="neutral"
+              >
+                {txt.missedDetail}
+              </WarningBanner>
+            ) : null}
+            {events.length && current?.native_history !== "present" ? (
+              <p role="status">{txt.eventsBeforeHistory}</p>
+            ) : null}
+            {replaceNotes.notes.map((note) => (
+              <EditorReplaceNote
+                key={note.id}
+                path={note.path}
+                at={note.at}
+                changes={note.changes}
+                tellBlocked={tellBlocked}
+                onTell={() => {
+                  tell(messageFor(note));
+                  closeReplaceNote(note.id);
+                }}
+                onDismiss={() => closeReplaceNote(note.id)}
+              />
+            ))}
+            {id ? <HelperRestoreNote agent={id} /> : null}
+            {creating && creation ? (
+              <CreationNotices
+                workspace={workspace}
+                creation={creation}
+                waiting={held.waiting}
+                snapshot={recoverySnapshot}
+                csrf={csrf}
+                onGiveBack={creationView.giveBack}
+              />
+            ) : view === "loading" && problem ? (
+              <LoadingNotice
+                problem={problem}
+                onRetry={() => setOpenAttempt((n) => n + 1)}
+              />
+            ) : null}
+          </ConversationStream>
           <div className="ah-composer-stack">
             <NoticeStack />
             {storagePressure.full ? (

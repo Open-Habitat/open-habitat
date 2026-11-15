@@ -83,6 +83,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(workspaceFileTreePath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(workspaceIconPath, s.auth.workspaceIcon)
 		mux.HandleFunc(workspaceIconSuggestionsPath, s.auth.workspaceIconSuggestions)
+		mux.HandleFunc(workspaceStartPageCheckPath, s.auth.workspaceStartPageCheck)
 		mux.HandleFunc(terminalsPath, s.auth.terminalList)
 		mux.HandleFunc(terminalClosePath, s.auth.terminalClose)
 		mux.HandleFunc(terminalPath, s.auth.terminal)

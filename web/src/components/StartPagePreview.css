@@ -1,0 +1,38 @@
+.ah-preview-check {
+  margin-bottom: var(--ah-s5);
+  padding-bottom: var(--ah-s4);
+  border-bottom: 1px solid var(--ah-line-soft);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+  overflow-wrap: anywhere;
+}
+.ah-start-page-preview .ah-workspace-intro > h2:not(.ah-start-heading) {
+  display: block;
+  font-size: var(--ah-size-h2);
+  color: var(--ah-ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.ah-start-page-guides {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--ah-s4);
+}
+.ah-start-page-guides > li {
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-lg);
+  padding: var(--ah-s4);
+  scroll-margin-top: var(--ah-s4);
+  overflow-wrap: anywhere;
+}
+.ah-start-page-guides > li[data-active] {
+  border-color: var(--ah-ink-2);
+}
+.ah-start-page-guides dt {
+  color: var(--ah-ink-2);
+}
+.ah-start-page-guides dd {
+  margin: 0 0 var(--ah-s3);
+  white-space: pre-wrap;
+}

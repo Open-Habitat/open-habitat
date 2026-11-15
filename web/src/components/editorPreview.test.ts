@@ -24,7 +24,8 @@ it("gives a preview to Markdown, YAML, tables, SVG and HTML", () => {
   ]);
   expect(fileView("config.yaml")?.kind).toBe("yaml");
   expect(fileView("workflow.YML")?.kind).toBe("yaml");
-  for (const path of ["a.json", "c.go", "d.txt", "csv", undefined])
+  expect(fileView("a.json")?.kind).toBe("yaml");
+  for (const path of ["c.go", "d.txt", "csv", undefined])
     expect(fileView(path)).toBeUndefined();
 });
 

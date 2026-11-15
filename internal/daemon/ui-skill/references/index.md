@@ -113,6 +113,7 @@ A label alone does not establish that a control is available to this person.
 - [text/dictationShortcut.ts](text--dictationShortcut.ts.md)
 - [text/documentPreview.ts](text--documentPreview.ts.md)
 - [text/editorConflict.ts](text--editorConflict.ts.md)
+- [text/editorContentPreview.ts](text--editorContentPreview.ts.md)
 - [text/editorFilePreview.ts](text--editorFilePreview.ts.md)
 - [text/editorFileTree.ts](text--editorFileTree.ts.md)
 - [text/editorHeader.ts](text--editorHeader.ts.md)

@@ -38,7 +38,10 @@ export function WorkspaceIntro({
   preparing,
   disabled,
   onCreatePage,
+  previewHint,
 }: {
+  /** Inert editor previews explain their goal navigation instead of starting a conversation. */
+  previewHint?: string;
   page?: StartPage | null;
   state: "loading" | "ready" | "error";
   onRetry: () => void;
@@ -81,6 +84,8 @@ export function WorkspaceIntro({
       </div>
     );
   const { first, more } = firstParagraph(page.body);
+  // A document preview can contain its author's top-level heading before goals.
+  const GoalsHeading = previewHint ? "h2" : "h3";
   return (
     <section
       className="ah-start ah-workspace-intro"
@@ -104,14 +109,16 @@ export function WorkspaceIntro({
       ) : null}
       {page.goals.length > 0 ? (
         <>
-          <h3 className="ah-start-heading">{t.whatToDo}</h3>
+          <GoalsHeading className="ah-start-heading">{t.whatToDo}</GoalsHeading>
           <StartGoals
             goals={page.goals}
             onGoal={onGoal}
             preparing={preparing}
             disabled={disabled}
           />
-          <p className="ah-start-hint">{t.introGoalHint(t.newHint)}</p>
+          <p className="ah-start-hint">
+            {previewHint ?? t.introGoalHint(t.newHint)}
+          </p>
         </>
       ) : null}
     </section>

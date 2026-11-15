@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/start-page-check.schema.json",
+  "title": "Start page buffer check",
+  "description": "POST /api/v1/workspaces/start_page/check. Checks only content for an admitted workspace, using the saved-page parser. No file read/write or skill resolution. Content is limited to 32768 UTF-8 bytes before parsing; maxLength is only the wire character ceiling. First validation problem is returned, with a zero-based field path where known; no native parser errors.",
+  "oneOf": [{"$ref":"#/$defs/request"}, {"$ref":"#/$defs/reply"}],
+  "$defs": {
+    "request": {
+      "type":"object", "additionalProperties":false,
+      "required":["schema_version","workspace_id","content"],
+      "properties": {
+        "schema_version":{"const":1},
+        "workspace_id":{"$ref":"common.schema.json#/$defs/workspaceId"},
+        "content":{"type":"string","maxLength":32768}
+      }
+    },
+    "reply": {
+      "oneOf":[
+        {"type":"object","additionalProperties":false,"required":["schema_version","valid","page"],"properties":{"schema_version":{"const":1},"valid":{"const":true},"page":{"$ref":"composer.schema.json#/$defs/startPage"}}},
+        {"type":"object","additionalProperties":false,"required":["schema_version","valid","problems"],"properties":{"schema_version":{"const":1},"valid":{"const":false},"problems":{"type":"array","minItems":1,"maxItems":1,"items":{"$ref":"#/$defs/problem"}}}}
+      ]
+    },
+    "problem": {
+      "type":"object","additionalProperties":false,"required":["code","path"],
+      "properties": {
+        "code":{"enum":["too_large","invalid_utf8","missing_frontmatter","missing_frontmatter_end","invalid_frontmatter","invalid_page_fields","invalid_goal_fields","invalid_step","invalid_skill"]},
+        "path":{"type":"string","maxLength":80,"pattern":"^(|title|body|goals|goals\\[[0-7]\\]\\.(title|when|what|prompt|steps|steps\\[[0-7]\\]|start|name|skill))$"}
+      }
+    }
+  }
+}

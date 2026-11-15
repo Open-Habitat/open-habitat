@@ -1487,9 +1487,30 @@ const fi = {
       lead: "Rajaa tiedostopuun kirjoittamasi nimen mukaan.",
     },
     D09: {
-      name: "YAML-esikatselu",
+      name: "YAML- ja JSON-esikatselu",
       lead: "Näyttää sisäkkäiset tiedot kokonaan auki, listat kortteina tai luetteloina.",
       know: "Esikatselu seuraa muokkauksiasi. Palaa Teksti-näkymään muokkaamaan; virheellinen sisältö näkyy lähteenä.",
+    },
+    D10: {
+      name: "Aloitussivun tarkistus",
+      lead: "Kertoo, voiko muokkaamasi sisällön näyttää aloitussivuna.",
+      know: "Virheen kohdalla näet korjattavan tiedon. Tarkistus ei tallenna sivua.",
+    },
+    D11: {
+      name: "Esikatselun esitystapa",
+      lead: "Vaihtaa aloitussivun ja tavallisen asiakirjan välillä muuttamatta sisältöä.",
+      try: "Vaihda esitystapaa",
+    },
+    D12: {
+      name: "Tavoitteen esikatselu",
+      lead: "Siirtyy tavoitteen ohjeeseen esikatselun alla.",
+      know: "Ei aloita keskustelua eikä lähetä pyyntöä.",
+      try: "Katso tavoitteen ohje",
+    },
+    D13: {
+      name: "Tavoitteiden ohjeet",
+      lead: "Näyttää tavoitteen vaiheet ja agentille tarkoitetun aloituspyynnön.",
+      know: "Muokkaa ohjetta Teksti-näkymässä. Esikatselu ei suorita sitä.",
     },
     D08: {
       name: "Ei tiedostoa auki",
@@ -3281,9 +3302,30 @@ export const explainModeText = catalog(fi, {
       lead: "Narrows the file tree to the name you type.",
     },
     D09: {
-      name: "YAML preview",
+      name: "YAML and JSON preview",
       lead: "Shows nested data fully open, with lists as cards or bullets.",
       know: "The preview follows your edits. Return to Text to edit; invalid content appears as source.",
+    },
+    D10: {
+      name: "Start page check",
+      lead: "Shows whether your edited content can be displayed as a start page.",
+      know: "An error names the field to correct. Checking does not save the page.",
+    },
+    D11: {
+      name: "Preview presentation",
+      lead: "Switches between the start page and a plain document without changing content.",
+      try: "Switch presentation",
+    },
+    D12: {
+      name: "Goal preview",
+      lead: "Moves to the goal's guide below the preview.",
+      know: "Does not start a conversation or send a request.",
+      try: "See the goal guide",
+    },
+    D13: {
+      name: "Goal guides",
+      lead: "Shows the goal's steps and the starting request intended for the agent.",
+      know: "Edit the guide in Text view. The preview does not run it.",
     },
     D08: {
       name: "No file open",

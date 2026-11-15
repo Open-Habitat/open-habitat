@@ -9,6 +9,32 @@ export type YamlValue =
   | YamlValue[]
   | Map<string, YamlValue>;
 
+export function parseJsonPreview(raw: string): YamlPreview {
+  if (new TextEncoder().encode(raw).byteLength > 1024 * 1024)
+    return { ok: false, reason: "unsupported" };
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "invalid" };
+  }
+  let remaining = 5000;
+  function convert(v: unknown, depth: number): YamlValue {
+    if (--remaining < 0 || depth > 100) throw new Error("limit");
+    if (Array.isArray(v)) return v.map((item) => convert(item, depth + 1));
+    if (v && typeof v === "object")
+      return new Map(
+        Object.entries(v).map(([key, item]) => [key, convert(item, depth + 1)]),
+      );
+    return v as null | string | number | boolean;
+  }
+  try {
+    return { ok: true, value: convert(value, 0) };
+  } catch {
+    return { ok: false, reason: "unsupported" };
+  }
+}
+
 export type YamlPreview =
   | { ok: true; value: YamlValue }
   | { ok: false; reason: "invalid" | "unsupported"; line?: number };
@@ -17,6 +43,8 @@ export type YamlPreview =
  * as __proto__ are data. Bound the expanded tree as well as alias expansion:
  * a valid YAML graph may be cyclic or too large to display as an open tree. */
 export function parseYamlPreview(raw: string): YamlPreview {
+  if (new TextEncoder().encode(raw).byteLength > 1024 * 1024)
+    return { ok: false, reason: "unsupported" };
   try {
     const lineCounter = new LineCounter();
     const doc = parseDocument(raw, {

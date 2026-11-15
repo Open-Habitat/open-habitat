@@ -148,7 +148,7 @@ func readStartPageFile(workspace string, ws *os.File, uid int) *startPageRead {
 	}
 	page, reason := parseStartPageDocument(data)
 	if page == nil {
-		return startPageUnavailable(workspace, reason)
+		return startPageUnavailable(workspace, reason.Code)
 	}
 	return &startPageRead{startPage: page}
 }
@@ -158,58 +158,85 @@ func parseStartPage(data []byte) *startPage {
 	return page
 }
 
-func parseStartPageDocument(data []byte) (*startPage, string) {
+func parseStartPageDocument(data []byte) (*startPage, *startPageProblem) {
+	fail := func(code, path string) (*startPage, *startPageProblem) {
+		return nil, &startPageProblem{Code: code, Path: path}
+	}
+	if len(data) > 32*1024 {
+		return fail("too_large", "")
+	}
 	if !utf8.Valid(data) {
-		return nil, "invalid_utf8"
+		return fail("invalid_utf8", "")
 	}
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	if !strings.HasPrefix(text, "---\n") {
-		return nil, "missing_frontmatter"
+		return fail("missing_frontmatter", "")
 	}
 	// A closing delimiter at EOF is valid too. Search with a virtual LF,
 	// but preserve the authored Markdown body exactly.
-	end := strings.Index(text[4:]+"\n", "\n---\n")
+	end := strings.Index(text[3:]+"\n", "\n---\n")
 	if end < 0 {
-		return nil, "missing_frontmatter_end"
+		return fail("missing_frontmatter_end", "")
 	}
 	var page startPage
-	decoder := yaml.NewDecoder(bytes.NewBufferString(text[4 : 4+end]))
+	front := ""
+	if end > 0 {
+		front = text[4 : 3+end]
+	}
+	decoder := yaml.NewDecoder(bytes.NewBufferString(front))
 	decoder.KnownFields(true)
 	if decoder.Decode(&page) != nil || decoder.Decode(new(any)) != io.EOF {
-		return nil, "invalid_frontmatter"
+		return fail("invalid_frontmatter", "")
 	}
 	valid := func(s string, max int, required bool) bool {
 		return len(s) <= max && (!required || strings.TrimSpace(s) != "")
 	}
-	if bodyOffset := 4 + end + 5; bodyOffset < len(text) {
+	if bodyOffset := 3 + end + 5; bodyOffset < len(text) {
 		page.Body = text[bodyOffset:]
 	}
 	if page.Goals == nil {
 		page.Goals = []startGoal{}
 	}
-	if !valid(page.Title, 256, true) || !valid(page.Body, 16384, false) || len(page.Goals) > 8 {
-		return nil, "invalid_page_fields"
+	if !valid(page.Title, 256, true) {
+		return fail("invalid_page_fields", "title")
 	}
-	for _, goal := range page.Goals {
-		if !valid(goal.Title, 256, true) || !valid(goal.When, 1024, true) || !valid(goal.What, 2048, true) || len(goal.Steps) < 1 || len(goal.Steps) > 8 || !valid(goal.Prompt, 2048, true) {
-			return nil, "invalid_goal_fields"
+	if !valid(page.Body, 16384, false) {
+		return fail("invalid_page_fields", "body")
+	}
+	if len(page.Goals) > 8 {
+		return fail("invalid_page_fields", "goals")
+	}
+	for i, goal := range page.Goals {
+		path := "goals[" + strconv.Itoa(i) + "]."
+		for _, field := range []struct {
+			name, value string
+			max         int
+		}{
+			{"title", goal.Title, 256}, {"when", goal.When, 1024}, {"what", goal.What, 2048}, {"prompt", goal.Prompt, 2048},
+		} {
+			if !valid(field.value, field.max, true) {
+				return fail("invalid_goal_fields", path+field.name)
+			}
 		}
-		for _, step := range goal.Steps {
+		if len(goal.Steps) < 1 || len(goal.Steps) > 8 {
+			return fail("invalid_goal_fields", path+"steps")
+		}
+		for j, step := range goal.Steps {
 			if !valid(step, 1024, true) {
-				return nil, "invalid_step"
+				return fail("invalid_step", path+"steps["+strconv.Itoa(j)+"]")
 			}
 		}
 		if goal.Start != "" && goal.Start != "immediate" {
-			return nil, "invalid_goal_fields"
+			return fail("invalid_goal_fields", path+"start")
 		}
 		if goal.Name != "" && !validTitle(goal.Name) {
-			return nil, "invalid_goal_fields"
+			return fail("invalid_goal_fields", path+"name")
 		}
 		if goal.Skill != "" && (!piCommandName.MatchString(goal.Skill) || len(goal.Skill) > 122 || strings.Contains(goal.Skill, ":")) {
-			return nil, "invalid_skill"
+			return fail("invalid_skill", path+"skill")
 		}
 	}
-	return &page, ""
+	return &page, nil
 }
 
 func installStartPageSkill(dir string) (string, error) {
