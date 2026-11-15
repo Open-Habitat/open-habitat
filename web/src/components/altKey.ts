@@ -4,6 +4,8 @@ const isMac =
 
 /** An Alt shortcut as the keyboard names it: ⌥↓ on a Mac, whose key is
  * Option, like the editor's ⌘⌥K, and Alt+↓ elsewhere. */
-export function altKey(key: string): string {
-  return isMac ? `⌥${key}` : `Alt+${key}`;
+export function altKey(key: string, shift = false): string {
+  return isMac
+    ? `⌥${shift ? "⇧" : ""}${key}`
+    : `Alt+${shift ? "Shift+" : ""}${key}`;
 }

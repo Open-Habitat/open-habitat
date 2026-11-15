@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { AgentNavModel } from "../components/Navigation";
 import { NextWaitingRow } from "../components/NextWaitingRow";
@@ -16,27 +15,10 @@ export function NextWaitingDock({
   open: boolean;
 }) {
   const navigate = useNavigate();
-  const others = next?.yours.filter((a) => a.agentId !== agentId) ?? [];
+  const yours = next?.yours ?? [];
+  const at = yours.findIndex((a) => a.agentId === agentId);
+  const others = [...yours.slice(at + 1), ...yours.slice(0, at < 0 ? 0 : at)];
   const first = open ? others[0] : undefined;
-  useEffect(() => {
-    if (!first) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (
-        !e.defaultPrevented &&
-        !e.isComposing &&
-        e.altKey &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.shiftKey &&
-        e.code === "ArrowDown"
-      ) {
-        e.preventDefault();
-        navigate(first.href);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [first, navigate]);
   if (!first) return null;
   return (
     <NextWaitingRow waiting={others} onStart={() => navigate(first.href)} />

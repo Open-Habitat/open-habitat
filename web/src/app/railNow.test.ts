@@ -7,6 +7,7 @@ import {
   ConversationStore,
 } from "./conversationStore";
 import type { Session, Status } from "./conversations";
+import { railKeyboardOrder } from "./railKeyboard";
 import { railNow } from "./railNow";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 
@@ -369,6 +370,17 @@ describe("rail Nyt groups", () => {
       attention: [["unread", "new"]] as [string, "new"][],
     };
     const before = run([...excluded, worktree, ...finished], options);
+    expect(
+      ids(
+        railKeyboardOrder(
+          before,
+          { sort: "newest", workspace: null },
+          [],
+          false,
+          false,
+        ),
+      ),
+    ).not.toContain("archived");
     expect(ids(before.quiet)).toEqual([
       "quiet-6",
       "quiet-5",

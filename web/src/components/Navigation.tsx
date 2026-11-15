@@ -10,6 +10,7 @@ import {
   archiveAction,
 } from "./ArchiveControls";
 import type { AgentPresentation } from "./agentPresentation";
+import { altKey } from "./altKey";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { ExplainToggle, useExplainEntry } from "./ExplainMode";
 import { HabitatMark, type MarkState } from "./HabitatMark";
@@ -1327,6 +1328,8 @@ export function WorkspaceRail({
     <nav
       data-testid="workspace-navigation"
       aria-label={t.railLabel}
+      title={t.keyboardHint(altKey("↑/↓"), altKey("↑/↓", true))}
+      aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
       tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >

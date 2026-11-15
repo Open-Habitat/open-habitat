@@ -137,7 +137,6 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   for (const draft of ["next thought", " "]) {
     await input.fill(draft);
     await expect(line(page)).toHaveCount(0);
-    await page.keyboard.press("Alt+ArrowDown");
     await expect(page).toHaveURL(currentURL);
     await expect(input).toHaveValue(draft);
     await input.fill("");
@@ -213,6 +212,77 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
   await writer.context().close();
 });
 
+test("@rail-keyboard composer shortcuts traverse all visible sections and Shift cycles waiting conversations", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const writer = await elsewhere(browser);
+  await page.request.get("/fixture/conversations-reset");
+  const { here } = await setup(page, writer);
+  const quietId = new URL(here).searchParams.get("conversation");
+  await send(page, "completed quiet turn");
+  const nav = page.getByTestId("workspace-navigation");
+  // The ready scenario also carries one legacy read-only history. Archive it
+  // so every destination here has a composer; its exclusion is exercised too.
+  const legacy = nav.getByTestId(
+    "agent-item-pi:11111111-1111-4111-8111-111111111111",
+  );
+  await legacy.getByTestId("rail-archive-conversation").click();
+  await expect(legacy).toHaveCount(0);
+  const quietRow = nav.getByTestId(`agent-item-${quietId}`);
+  await expect(quietRow.getByTestId("rail-not-now-conversation")).toBeVisible({
+    timeout: 30000,
+  });
+  await quietRow.getByTestId("rail-not-now-conversation").click();
+  await expect(
+    nav.getByTestId("rail-quiet").getByTestId(`agent-item-${quietId}`),
+  ).toBeVisible({ timeout: 30000 });
+  await create(page);
+  await hold(page);
+  await send(page, "keep working");
+  await expect(
+    nav.getByTestId("rail-running").getByTestId("agent-link"),
+  ).toHaveCount(1);
+  await expect(
+    nav.getByTestId("rail-yours").getByTestId("agent-link"),
+  ).toHaveCount(2);
+  const links = nav.getByTestId("agent-link");
+  const hrefs = await links.evaluateAll((els) =>
+    els.map((el) => el.getAttribute("href") ?? ""),
+  );
+  expect(hrefs).toHaveLength(4);
+  await links.first().click();
+  await expect(links.first()).toHaveAttribute("aria-current", "page");
+  const input = page.getByTestId("message-input");
+  await input.fill("draft stays here");
+  const currentId = () => new URL(page.url()).searchParams.get("conversation");
+  const id = (href: string) =>
+    new URL(href, hostOrigin).searchParams.get("conversation");
+  for (const href of hrefs.slice(1)) {
+    await input.focus();
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect.poll(currentId).toBe(id(href));
+    await expect(input).toBeFocused();
+  }
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect.poll(currentId).toBe(id(hrefs[3]));
+  await page.keyboard.press("Alt+Shift+ArrowDown");
+  await expect.poll(currentId).toBe(id(hrefs[0]));
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("draft stays here");
+  await page.keyboard.press("Alt+Shift+ArrowUp");
+  await expect.poll(currentId).toBe(id(hrefs[1]));
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect.poll(currentId).toBe(id(hrefs[0]));
+  await expect(input).toBeFocused();
+  await links.first().focus();
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect.poll(currentId).toBe(id(hrefs[1]));
+  await expect(input).toBeFocused();
+  await writer.context().close();
+});
+
 test("@next-waiting-row returning to a working conversation opens a window, but a later external send does not", async ({
   page,
   browser,
@@ -232,7 +302,7 @@ test("@next-waiting-row returning to a working conversation opens a window, but 
     "conversation",
   );
   await page.getByTestId("message-input").focus();
-  await page.keyboard.press("Alt+ArrowDown");
+  await page.keyboard.press("Alt+Shift+ArrowDown");
   await expect.poll(() => conversationNow(page)).toBe(firstId);
   await expect(line(page)).toHaveCount(0);
   await send(page, "answer here");

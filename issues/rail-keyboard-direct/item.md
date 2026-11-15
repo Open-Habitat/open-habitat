@@ -3,7 +3,7 @@ created: 2026-11-15
 updated: 2026-11-15
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/rail-keyboard-direct
@@ -11,6 +11,7 @@ lane: rail-keyboard-impl
 lane_seq: 1
 collision: [web/src/app/NextWaitingDock.tsx]
 preparation: ready
+closed: 2026-11-15
 ---
 
 # Alt+Up/Down moves through every conversation in the rail

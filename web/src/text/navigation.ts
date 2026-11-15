@@ -57,6 +57,8 @@ const fi = {
   nothingWaits: "Mikään ei odota sinua.",
   nothingRuns: "Mikään ei ole käynnissä.",
   railLabel: "Työtilat ja keskustelut",
+  keyboardHint: (step: string, waiting: string) =>
+    `${step}: edellinen/seuraava näkyvä keskustelu. ${waiting}: sinua odottavat.`,
   allWorkspaces: "Kaikki työtilat",
   workspaces: "Työtilat",
   newWorkspace: "Uusi työtila",
@@ -157,6 +159,8 @@ export const navigationText = catalog(fi, {
   nothingWaits: "Nothing is waiting for you.",
   nothingRuns: "Nothing is running.",
   railLabel: "Workspaces and conversations",
+  keyboardHint: (step: string, waiting: string) =>
+    `${step}: previous/next visible conversation. ${waiting}: conversations waiting for you.`,
   allWorkspaces: "All workspaces",
   workspaces: "Workspaces",
   newWorkspace: "New workspace",

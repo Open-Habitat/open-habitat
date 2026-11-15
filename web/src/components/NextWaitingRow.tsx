@@ -24,8 +24,8 @@ export function NextWaitingRow({
         type="button"
         className="ah-next-open"
         data-testid="next-open"
-        aria-keyshortcuts="Alt+ArrowDown"
-        title={`${txt.go} (${altKey("↓")})`}
+        aria-keyshortcuts="Alt+Shift+ArrowDown"
+        title={`${txt.go} (${altKey("↓", true)})`}
         onClick={onStart}
       >
         <span className="ah-next-label">{txt.meanwhile}</span>
@@ -35,7 +35,7 @@ export function NextWaitingRow({
           {waiting.map((a) => a.title).join(", ")}
         </span>
         <span className="ah-next-go">
-          {txt.go} <kbd>{altKey("↓")}</kbd>
+          {txt.go} <kbd>{altKey("↓", true)}</kbd>
         </span>
       </button>
     </div>

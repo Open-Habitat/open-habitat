@@ -859,6 +859,7 @@ function ExplainLayer({
       name: string;
       lead: string;
       know?: string;
+      keyboard?: string;
       try?: string;
       grey?: string;
       menu?: string;
@@ -922,6 +923,9 @@ function ExplainLayer({
         <h2>{text.name}</h2>
         <p>{text.lead}</p>
         {text.know ? <p className="ah-explain-know">{text.know}</p> : null}
+        {!touch && text.keyboard ? (
+          <p className="ah-explain-know">{text.keyboard}</p>
+        ) : null}
         {part.workerLegend ? <WorkerLegend /> : null}
         {disabled && text.grey ? (
           <p className="ah-explain-note">{text.grey}</p>

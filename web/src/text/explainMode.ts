@@ -1,3 +1,4 @@
+import { altKey } from "../components/altKey";
 import { catalog } from "../i18n";
 
 // The explain mode (components/ExplainMode.tsx, experimental): the bar, the
@@ -14,6 +15,7 @@ import { catalog } from "../i18n";
 // - know: the one thing worth knowing (what is kept, what does not happen,
 //   when it is grey, where it is on a phone); about 20 words; absent when
 //   there is nothing to say.
+// - keyboard: a desktop-only shortcut hint; omitted on touch screens.
 // - try: what a press does, as an imperative; only where a press is safe.
 //   Archive, delete and sign out tell how to undo instead.
 // - grey: shown only while the part is disabled; menu: shown only when the
@@ -326,6 +328,7 @@ const fi = {
       name: "Sinun vuorosi",
       lead: "Keskustelut, joissa agentti odottaa sinua: vastausta, päätöstä tai luettavaa.",
       know: "Keskustelu pysyy tässä, kunnes vastaat tai painat rivin Ei nyt -painiketta. Pelkkä lukeminen ei siirrä sitä pois.",
+      keyboard: `${altKey("↑/↓")}: edellinen/seuraava näkyvä keskustelu. ${altKey("↑/↓", true)}: sinua odottavat. Voit jatkaa kirjoittamista heti.`,
     },
     S06: {
       name: "Käynnissä",
@@ -2031,6 +2034,7 @@ export const explainModeText = catalog(fi, {
       name: "Your turn",
       lead: "Conversations where the agent waits for you: an answer, a decision or something to read.",
       know: "The conversation stays here until you reply or press Not now on its row. Reading it does not move it away.",
+      keyboard: `${altKey("↑/↓")}: previous/next visible conversation. ${altKey("↑/↓", true)}: conversations waiting for you. Keep typing straight away.`,
     },
     S06: {
       name: "Running",

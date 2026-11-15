@@ -27,6 +27,7 @@ import {
 } from "./conversationStore";
 import type { AccountProfile } from "./pi";
 import { setQuietFolded, useQuietFolded } from "./quietFold";
+import { railKeyboardOrder, useRailKeyboard } from "./railKeyboard";
 import { type RailNow, railNow } from "./railNow";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
@@ -211,6 +212,18 @@ export function WorkspaceRailView({
   const server = useServer(pathname);
   const quietFolded = useQuietFolded();
   const { search } = useLocation();
+  useRailKeyboard(
+    railKeyboardOrder(
+      now,
+      quietChoice,
+      snapshot.workspaces
+        .filter((w) => w.presence === "present" && w.visibility === "visible")
+        .map((w) => ({ id: w.workspace_id, name: w.display_name ?? w.name })),
+      quietFolded,
+      collapsed,
+    ),
+    now.yours,
+  );
   // With one workspace there is no filter field, so nothing filters.
   const term = only ? "" : filter.toLocaleLowerCase();
   const card = icons
