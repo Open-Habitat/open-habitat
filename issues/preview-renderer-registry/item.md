@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/renderer-registry
 lane: renderer-registry
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design: how special preview renderers are registered for particular files
