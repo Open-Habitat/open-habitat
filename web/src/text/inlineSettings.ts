@@ -9,20 +9,24 @@ const fi = {
   failed: (reason: string) =>
     `Ei tallennettu: ${reason} Teksti säilyi; yritä uudelleen Enterillä.`,
   invalid: (reason: string) => `Ei tallennettu: ${reason}`,
-  reauth:
-    "Kirjaudu ulos ja uudelleen GitHubilla ennen katkaisua (5 minuutin sisällä).",
+  reauth: "Vahvista ensin kirjautumalla GitHubilla. Palaat tähän ikkunaan.",
   stateUnknown: "Paikallisen valtuutuksen tilaa ei voitu vahvistaa.",
   disconnected:
-    "Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.",
+    "Yhteys katkaistu tältä palvelimelta. Lupa jäi GitHub-tilillesi.",
   uncertain:
     "Katkaisun tulos on epävarma tai osittainen. Tarkista tilanne uudelleen; älä toista automaattisesti.",
-  note: "Katkaisu poistaa tämän käyttäjän paikallisen gh-valtuutuksen, ei GitHubin OAuth-lupaa. Vaatii uuden kirjautumisen.",
-  check: "Tarkista katkaisu",
-  question: "Irrotetaanko GitHub-yhteys?",
+  note: "Open Habitatin lupa jää GitHub-tilillesi. Sen voi poistaa GitHubin asetuksista.",
+  grantSettings: "GitHubin asetukset",
+  verify: "Vahvista GitHubilla",
+  verified: "Kirjauduit juuri GitHubilla. Voit nyt katkaista yhteyden.",
+  checking: "Tarkistetaan…",
+  retry: "Tarkista uudelleen",
+  check: "Katkaise yhteys…",
+  question: "Katkaistaanko GitHub-yhteys?",
   effect:
-    "Paikallinen gh-valtuutus poistuu. Työtilat ja keskustelut säilyvät. GitHubin OAuth-lupaa ei peruta; uudelleen kirjautuminen palauttaa yhteyden.",
+    "Palvelin poistaa GitHub-valtuutuksesi. Sen jälkeen agentit eivät voi pushata eikä gh toimi. Työtilat ja keskustelut säilyvät, ja yhteyden saa takaisin kirjautumalla GitHubilla.",
   cancel: "Peruuta",
-  confirm: "Katkaise paikallinen GitHub-yhteys",
+  confirm: "Katkaise yhteys",
 };
 
 export const inlineSettingsText = catalog(
@@ -35,26 +39,28 @@ export const inlineSettingsText = catalog(
       `Not saved: ${reason} The text was kept; try again with Enter.`,
     invalid: (reason) => `Not saved: ${reason}`,
     reauth:
-      "Sign out and in again with GitHub before disconnecting (within 5 minutes).",
+      "First confirm by signing in with GitHub. You come back to this dialog.",
     stateUnknown: "The local authorization's state could not be confirmed.",
     disconnected:
-      "The local gh authorization was removed. GitHub's OAuth grant was not revoked.",
+      "Disconnected from this server. The grant stays on your GitHub account.",
     uncertain:
       "The result of disconnecting is uncertain or partial. Check the situation again; do not repeat it automatically.",
-    note: "Disconnecting removes this user's local gh authorization, not GitHub's OAuth grant. It needs a new sign-in.",
-    check: "Check the disconnection",
+    note: "Open Habitat’s grant stays on your GitHub account. You can remove it in GitHub’s settings.",
+    grantSettings: "GitHub settings",
+    verify: "Confirm with GitHub",
+    verified: "You just signed in with GitHub. You can disconnect now.",
+    checking: "Checking…",
+    retry: "Check again",
+    check: "Disconnect…",
     question: "Disconnect GitHub?",
     effect:
-      "The local gh authorization is removed. Workspaces and conversations stay. GitHub's OAuth grant is not revoked; signing in again restores the connection.",
+      "The server removes your GitHub authorization. After that agents cannot push and gh does not work. Workspaces and conversations stay, and signing in with GitHub brings the connection back.",
     cancel: "Cancel",
-    confirm: "Disconnect the local GitHub connection",
+    confirm: "Disconnect",
   },
   {
     stateUnknown: "The local authorisation's state could not be confirmed.",
-    disconnected:
-      "The local gh authorisation was removed. GitHub's OAuth grant was not revoked.",
-    note: "Disconnecting removes this user's local gh authorisation, not GitHub's OAuth grant. It needs a new sign-in.",
     effect:
-      "The local gh authorisation is removed. Workspaces and conversations stay. GitHub's OAuth grant is not revoked; signing in again restores the connection.",
+      "The server removes your GitHub authorisation. After that agents cannot push and gh does not work. Workspaces and conversations stay, and signing in with GitHub brings the connection back.",
   },
 );

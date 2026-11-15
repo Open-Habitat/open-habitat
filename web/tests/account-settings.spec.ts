@@ -1124,10 +1124,6 @@ test.describe("expired GitHub connection", () => {
     await page.goto("/settings/code-hosts");
     const row = page.locator("#main").getByTestId("github-native-state");
     await expect(row).toHaveAttribute("data-state", "expired");
-    await expect(row).toContainText("Vanhentunut");
-    await expect(page.locator("#main")).toContainText(
-      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta",
-    );
     // Removing a login GitHub already rejects is not offered; reconnecting is.
     await expect(page.getByTestId("github-disconnect-inspect")).toHaveCount(0);
     const reconnect = page

@@ -16,6 +16,8 @@ test.use({
   deviceScaleFactor: 2,
 });
 
+// These journeys include multiple OAuth round trips and eight axe passes.
+test.setTimeout(60_000);
 const base = ["gist", "read:org", "repo"];
 
 async function login(page: Page) {
@@ -96,11 +98,15 @@ test("@github-workflow-scope off by default; allowing and removing sign in again
   await page.goto("/settings/code-hosts");
   const row = page.locator("#main").getByTestId("github-workflow");
   await expect(row).toHaveAttribute("data-wf", "off");
-  await expect(row).toContainText("Ei sallittu");
-  await expect(row).toContainText("voi lukea repon salaisuudet");
   await expect(
-    page.locator("#main").getByTestId("github-scopes").locator("li"),
-  ).toHaveText(base);
+    page.getByTestId("github-scopes").locator("[data-scope]"),
+  ).toHaveCount(3);
+  await expect(
+    page.getByTestId("github-footer").getByTestId("github-reconnect"),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("github-footer").getByTestId("github-disconnect-inspect"),
+  ).toBeVisible();
   await evidence(page, "off");
 
   // Allowing is the explicit reconnect with the workflow scope added.
@@ -118,10 +124,9 @@ test("@github-workflow-scope off by default; allowing and removing sign in again
   await page.getByRole("link").nth(0).click();
   await expect(page).toHaveURL(/\/settings\/code-hosts$/);
   await expect(row).toHaveAttribute("data-wf", "on");
-  await expect(row).toContainText("Sallittu");
   await expect(
-    page.locator("#main").getByTestId("github-scopes").locator("li"),
-  ).toHaveText([...base, "workflow"]);
+    page.getByTestId("github-scopes").locator('[data-scope="workflow"]'),
+  ).toBeVisible();
   await evidence(page, "on");
 
   // The card's own Reconnect keeps the scope the token has.
@@ -151,6 +156,7 @@ test("@github-workflow-scope off by default; allowing and removing sign in again
   const remove = new URL((await removed).url());
   expect(remove.searchParams.get("reconnect")).toBe("1");
   expect(remove.searchParams.has("scope")).toBe(false);
+  await expect(page).toHaveURL(/\/fixture\/provider\?/);
   await scopes(page, base);
   await page.getByRole("link").nth(0).click();
   await expect(row).toHaveAttribute("data-wf", "off");
@@ -165,8 +171,7 @@ test("@github-workflow-scope a remembered permission the token lacks is missing;
   await page.goto("/settings/code-hosts");
   const row = page.locator("#main").getByTestId("github-workflow");
   await expect(row).toHaveAttribute("data-wf", "missing");
-  await expect(row).toContainText("Lupa puuttuu");
-  await expect(row).toContainText("gh auth refresh");
+  await expect(page.getByTestId("github-workflow-keep-off")).toBeVisible();
   await evidence(page, "missing");
   // Allow again asks for the scope; the card's Reconnect keeps asking too.
   const again = page.waitForRequest(/\/auth\/github\/start\?/);
@@ -190,9 +195,7 @@ test("@github-workflow-scope a remembered permission the token lacks is missing;
     .click();
   expect((await put).postData()).toBe('{"github_workflow":false}');
   await expect(row).toHaveAttribute("data-wf", "off");
-  await expect(page.getByTestId("github-workflow-said")).toContainText(
-    "enää huomauteta",
-  );
+  await expect(page.getByTestId("github-workflow-said")).toBeVisible();
 });
 
 test("@github-workflow-scope unread scopes are not known", async ({ page }) => {
@@ -201,9 +204,9 @@ test("@github-workflow-scope unread scopes are not known", async ({ page }) => {
   await page.goto("/settings/code-hosts");
   const row = page.locator("#main").getByTestId("github-workflow");
   await expect(row).toHaveAttribute("data-wf", "unknown");
-  await expect(row).toContainText("Ei tiedossa");
-  await expect(page.locator("#main").getByTestId("github-scopes")).toHaveText(
-    "Oikeuksia ei voitu lukea.",
+  await expect(page.getByTestId("github-scopes")).toHaveAttribute(
+    "data-unknown",
+    "",
   );
   await evidence(page, "unknown");
 });

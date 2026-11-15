@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { LetterMark } from "../components/Integrations";
@@ -125,7 +125,7 @@ function WorkflowMark({ s }: { s: WorkflowState }) {
   );
 }
 
-/** The token's scopes as chips under the GitHub row's words. */
+/** Describe only scopes actually observed on the token, never assumed grants. */
 function ScopeChips({ scopes }: { scopes: readonly string[] | null }) {
   if (scopes === null)
     return (
@@ -138,15 +138,16 @@ function ScopeChips({ scopes }: { scopes: readonly string[] | null }) {
       </span>
     );
   return (
-    <span className="s-scopes" data-testid="github-scopes">
-      <span className="s-desc">{txt.scopesLabel}</span>
-      <ul className="s-model-chips">
-        {scopes.map((s) => (
-          <li key={s} data-scope={s}>
-            <code>{s}</code>
-          </li>
-        ))}
-      </ul>
+    <span className="s-desc" data-testid="github-scopes">
+      {txt.scopesLabel}{" "}
+      {scopes.map((s, i) => (
+        <span key={s} data-scope={s}>
+          {i ? ", " : ""}
+          {Object.hasOwn(txt.scopeNames, s)
+            ? txt.scopeNames[s as keyof typeof txt.scopeNames]
+            : s}
+        </span>
+      ))}
     </span>
   );
 }
@@ -170,15 +171,8 @@ function GitHubWorkflowRow({
 }) {
   const prefs = useAccountPreferences(identity, csrf);
   const [pending, setPending] = useState(false);
-  // Back from GitHub through the browser's history: the page is restored
-  // as it was left, mid sign-in, though nothing is under way any more.
-  useEffect(() => {
-    const restored = (e: PageTransitionEvent) => {
-      if (e.persisted) setPending(false);
-    };
-    window.addEventListener("pageshow", restored);
-    return () => window.removeEventListener("pageshow", restored);
-  }, []);
+  // A history-restored page keeps the unfinished attempt visible, with
+  // explicit Retry and Cancel; only an OAuth return observes new scopes.
   const [said, setSaid] = useState("");
   const s = workflowState(scopes, prefs.github_workflow, pending);
   const busy = !prefs.loaded || !!prefs.busy || !onReconnect;
@@ -275,14 +269,25 @@ function GitHubWorkflowRow({
         ) : s === "pending" ? (
           // A page brought back from the browser's history, or a sign-in
           // the browser never left for, is not still signing in.
-          <ControlButton
-            data-testid="github-workflow-cancel"
-            size="row"
-            variant="quiet"
-            onPress={() => setPending(false)}
-          >
-            {txt.cancelSignIn}
-          </ControlButton>
+          <>
+            <ControlButton
+              data-testid="github-workflow-cancel"
+              size="row"
+              variant="quiet"
+              onPress={() => setPending(false)}
+            >
+              {txt.cancelSignIn}
+            </ControlButton>
+            <ControlButton
+              data-testid="github-workflow-allow"
+              size="row"
+              variant="secondary"
+              isDisabled={busy}
+              onPress={() => signIn(true)}
+            >
+              {txt.retry}
+            </ControlButton>
+          </>
         ) : (
           <ControlButton
             data-testid="github-workflow-allow"
@@ -292,7 +297,6 @@ function GitHubWorkflowRow({
             onPress={() => signIn(true)}
           >
             {txt.allow}
-            <Icon name="external" />
           </ControlButton>
         )}
       </div>
@@ -435,12 +439,10 @@ export function CodeHostSettings({
             <span
               className={`s-desc${nativeState === "expired" ? " s-bad" : ""}`}
             >
-              {nativeState === "connected" && nativeLogin
-                ? txt.signedInAs(nativeLogin)
-                : ""}
-              {state.description} {txt.logoutKeeps}
+              {nativeState === "connected"
+                ? nativeLogin && txt.signedInAs(nativeLogin)
+                : state.description}
             </span>
-            {connected && <ScopeChips scopes={nativeScopes ?? null} />}
           </div>
           <div
             className="s-val"
@@ -469,15 +471,11 @@ export function CodeHostSettings({
                 the same sign-in also connects a missing login. A working
                 login is replaced only by this explicit reconnect, for
                 example to swap an expiring token for a lasting one. */}
-            {(nativeState === "expired" ||
-              nativeState === "disconnected" ||
-              nativeState === "connected") &&
+            {(nativeState === "expired" || nativeState === "disconnected") &&
               onReconnect && (
                 <Button
                   size="row"
-                  variant={
-                    nativeState === "connected" ? "secondary" : "primary"
-                  }
+                  variant="primary"
                   data-testid="github-reconnect"
                   label={
                     nativeState === "disconnected" ? txt.connect : txt.reconnect
@@ -486,17 +484,6 @@ export function CodeHostSettings({
                 />
               )}
           </div>
-          {csrf && nativeState === "connected" && (
-            <div className="s-editor">
-              <NativeDisconnect
-                csrf={csrf}
-                onDisconnected={() => {
-                  setDisconnectNotice(true);
-                  onDisconnect?.();
-                }}
-              />
-            </div>
-          )}
           {disconnectNotice && (
             <p className="s-editor" role="status">
               {txt.disconnectedNotice}
@@ -510,6 +497,33 @@ export function CodeHostSettings({
             scopes={nativeScopes ?? null}
             onReconnect={onReconnect}
           />
+        )}
+        {nativeState === "connected" && (
+          <div className="s-row" data-testid="github-footer">
+            <ScopeChips scopes={nativeScopes ?? null} />
+            <div className="s-val">
+              {onReconnect && (
+                <Button
+                  size="row"
+                  variant="quiet"
+                  data-testid="github-reconnect"
+                  label={txt.reconnect}
+                  onPress={() => onReconnect()}
+                />
+              )}
+              {csrf && (
+                <NativeDisconnect
+                  key={identity}
+                  identity={identity}
+                  csrf={csrf}
+                  onDisconnected={() => {
+                    setDisconnectNotice(true);
+                    onDisconnect?.();
+                  }}
+                />
+              )}
+            </div>
+          </div>
         )}
       </div>
       {/* Gitea's and GitLab's own rows carry their row ids. */}

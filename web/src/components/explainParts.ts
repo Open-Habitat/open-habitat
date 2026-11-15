@@ -25,6 +25,27 @@ const gs = (section: string) => `.ah-gs-sec[data-section="${section}"]`;
 const H = ".ah-agent-header";
 
 export const parts: Record<CardId, Part> = {
+  GH01: { kind: "info", sel: '[data-testid="github-native-state"]' },
+  GH02: { kind: "info", sel: '[data-testid="github-scopes"]' },
+  GH03: { kind: "once", sel: '[data-testid="github-reconnect"]' },
+  GH04: {
+    kind: "panel",
+    sel: '[data-testid="github-disconnect-inspect"]',
+    opens: true,
+  },
+  GH05: { kind: "once", sel: '[data-testid="github-disconnect-reauth"]' },
+  GH06: { kind: "once", sel: '[data-testid="github-disconnect-confirm"]' },
+  GH07: { kind: "info", sel: '[data-testid="github-workflow"]' },
+  GH08: { kind: "once", sel: '[data-testid="github-workflow-allow"]' },
+  GH09: { kind: "once", sel: '[data-testid="github-workflow-remove"]' },
+  GH10: { kind: "once", sel: '[data-testid="github-workflow-keep-off"]' },
+  GH11: { kind: "once", sel: '[data-testid="github-workflow-cancel"]' },
+  GH12: {
+    kind: "nav",
+    sel: '[data-testid="github-grant-settings"]',
+    opens: true,
+  },
+  GH13: { kind: "once", sel: '[data-testid="github-disconnect-retry"]' },
   J01: {
     kind: "nav",
     sel: '[data-testid="rail-shares"], [data-testid="shares-back"]',
@@ -657,6 +678,12 @@ export const parts: Record<CardId, Part> = {
  * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "GH03",
+  "GH05",
+  "GH06",
+  "GH08",
+  "GH09",
+  "GH10",
   "J08",
   "J09",
   "L13",

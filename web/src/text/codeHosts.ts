@@ -3,14 +3,13 @@ import { catalog } from "../i18n";
 // Settings › Koodipalvelut: GitHub's row and the imported workspaces
 // (app/CodeHostSettings.tsx).
 const fi = {
-  connected: "Yhdistetty",
+  connected: "Toimii",
   connectedDesc: "Git ja gh toimivat työtiloissa.",
   disconnected: "Ei yhdistetty",
-  disconnectedDesc:
-    "GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.",
-  expired: "Vanhentunut",
+  disconnectedDesc: "Agentit eivät voi pushata GitHubiin eikä gh toimi.",
+  expired: "Ei toimi",
   expiredDesc:
-    "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.",
+    "GitHub ei enää hyväksy palvelimen valtuutusta. Agentit eivät voi pushata eikä gh toimi.",
   pending: "Yhdistäminen kesken",
   pendingDesc:
     "GitHub-yhteyttä valmistellaan. Odota ennen Git-toimintojen käyttöä.",
@@ -44,12 +43,12 @@ const fi = {
   gitlabTrouble: (host: string) =>
     `Pull ja push eivät onnistu ennen kuin GitLab-yhteys palvelimelle ${host} on kunnossa. Paikallinen työ jatkuu.`,
   intro: "Palvelut, joista työtilat kloonataan ja joihin agentit pushaavat.",
-  signedInAs: (login: string) => `Kirjautunut käyttäjänä ${login}. `,
+  signedInAs: (login: string) => `Tunnus ${login}`,
   logoutKeeps: "Selaimesta uloskirjautuminen ei poista palvelimen valtuutusta.",
   connect: "Yhdistä GitHub",
-  reconnect: "Yhdistä GitHub uudelleen",
+  reconnect: "Kirjaudu uudelleen GitHubilla",
   disconnectedNotice:
-    "Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.",
+    "Yhteys katkaistu tältä palvelimelta. Lupa jäi GitHub-tilillesi.",
   imported: "Tuodut työtilat",
   importedNote:
     "Työtilat avataan ja poistetaan sivupalkista. Täällä näkyy, minkä palvelun tunnuksella kukin synkronoi.",
@@ -59,20 +58,19 @@ const fi = {
   // The GitHub card's workflow permission (github-workflow-scope, A Rivi).
   wfTitle: "GitHub Actions -työnkulut",
   wfExplain:
-    "Agentit voivat lisätä ja muuttaa repojen työnkulkuja (.github/workflows). Työnkulku ajetaan GitHubissa, ja se voi lukea repon salaisuudet, kuten julkaisuavaimet. Salli vain, jos agenttien pitää tehdä CI-muutoksia.",
+    "Agentit eivät voi muuttaa työnkulkuja. Salli vain CI-työhön: työnkulut voivat lukea repon salaisuudet.",
   wfShort:
     "Agentit voivat muuttaa GitHub Actions -työnkulkuja, jotka voivat lukea repon salaisuudet.",
   wfOff: "Ei sallittu",
   wfOn: "Sallittu",
   wfMissing: "Lupa puuttuu",
   wfUnknown: "Ei tiedossa",
-  wfPending: "Kirjautuminen kesken",
+  wfPending: "Kesken",
   wfOnDesc:
-    "Agentit voivat lisätä ja muuttaa työnkulkuja. Työnkulut voivat lukea repon salaisuudet.",
-  wfPendingDesc:
-    "Siirrytään GitHubiin kirjautumaan workflow-oikeuden kanssa. Kortti päivittyy, kun palaat.",
+    "Agentit voivat muuttaa työnkulkuja, ja työnkulut voivat lukea repon salaisuudet.",
+  wfPendingDesc: "GitHub-kirjautuminen jäi kesken. Lupaa ei muutettu.",
   wfMissingDesc:
-    "Olit sallinut työnkulut, mutta palvelimen gh:lla on nyt valtuutus ilman workflow-oikeutta. Valtuutus on vaihtunut sen jälkeen: vanhentuneen tilalle tavallisella kirjautumisella tai päätteessä gh auth login- tai gh auth refresh -komennolla. Push, joka muuttaa työnkulkua, ei onnistu.",
+    "Sallit työnkulut, mutta nykyinen valtuutus on ilman lupaa. Työnkulkua muuttava push epäonnistuu.",
   wfUnknownDesc:
     "Valtuutuksen oikeuksia ei voitu lukea, joten ei tiedetä, onko lupa voimassa. gh auth status päätteessä kertoo ne.",
   allow: "Salli GitHubissa",
@@ -80,6 +78,13 @@ const fi = {
   keepOff: "Älä salli",
   removePerm: "Poista lupa",
   cancelSignIn: "Peru",
+  retry: "Yritä uudelleen",
+  scopeNames: {
+    repo: "repot",
+    "read:org": "organisaatiot (luku)",
+    gist: "gistit",
+    workflow: "työnkulkujen muutokset",
+  },
   scopesLabel: "Oikeudet:",
   scopesUnknown: "Oikeuksia ei voitu lukea.",
   saidKeptOff:
@@ -90,14 +95,13 @@ const fi = {
 export const codeHostsText = catalog(
   fi,
   {
-    connected: "Connected",
+    connected: "Works",
     connectedDesc: "Git and gh work in the workspaces.",
     disconnected: "Not connected",
-    disconnectedDesc:
-      "No GitHub connection was found, so git push and gh do not work. Connect by signing in with GitHub.",
-    expired: "Expired",
+    disconnectedDesc: "Agents cannot push to GitHub and gh does not work.",
+    expired: "Not working",
     expiredDesc:
-      "GitHub no longer accepts the authorization saved on the server, so git push and gh do not work. Reconnect by signing in with GitHub.",
+      "GitHub no longer accepts the server’s authorization. Agents cannot push and gh does not work.",
     pending: "Connecting",
     pendingDesc:
       "The GitHub connection is being prepared. Wait before using Git actions.",
@@ -132,13 +136,13 @@ export const codeHostsText = catalog(
     gitlabTrouble: (host) =>
       `Pull and push do not work until the GitLab connection to ${host} is in order. Local work continues.`,
     intro: "The services workspaces are cloned from and that agents push to.",
-    signedInAs: (login) => `Signed in as ${login}. `,
+    signedInAs: (login) => `Account ${login}`,
     logoutKeeps:
       "Signing out of the browser does not remove the server's authorization.",
     connect: "Connect GitHub",
-    reconnect: "Reconnect GitHub",
+    reconnect: "Sign in with GitHub again",
     disconnectedNotice:
-      "The local gh authorization was removed. GitHub's OAuth grant was not revoked.",
+      "Disconnected from this server. The grant stays on your GitHub account.",
     imported: "Imported workspaces",
     importedNote:
       "Workspaces are opened and removed from the sidebar. Here you see which service's credentials each synchronizes with.",
@@ -147,20 +151,20 @@ export const codeHostsText = catalog(
     newWorkspace: "New workspace…",
     wfTitle: "GitHub Actions workflows",
     wfExplain:
-      "Agents can add and change the repositories’ workflows (.github/workflows). A workflow runs on GitHub and can read the repository’s secrets, such as release keys. Allow it only if agents need to make CI changes.",
+      "Agents cannot change workflows. Allow only for CI work: workflows can read the repository’s secrets.",
     wfShort:
       "Agents can change GitHub Actions workflows, which can read the repository’s secrets.",
     wfOff: "Not allowed",
     wfOn: "Allowed",
     wfMissing: "Permission missing",
     wfUnknown: "Not known",
-    wfPending: "Signing in",
+    wfPending: "Unfinished",
     wfOnDesc:
-      "Agents can add and change workflows. Workflows can read the repository’s secrets.",
+      "Agents can change workflows, and workflows can read the repository’s secrets.",
     wfPendingDesc:
-      "Going to GitHub to sign in with the workflow scope. The card updates when you come back.",
+      "The GitHub sign-in was left unfinished. The permission did not change.",
     wfMissingDesc:
-      "You had allowed workflows, but the server’s gh now holds an authorization without the workflow scope. The authorization has changed since: an ordinary sign-in replaced an expired one, or gh auth login or gh auth refresh ran in a terminal. A push that changes a workflow will fail.",
+      "You allowed workflows, but the current authorization lacks the permission. A push that changes a workflow fails.",
     wfUnknownDesc:
       "The authorization’s permissions could not be read, so it is not known whether the permission holds. gh auth status in a terminal tells them.",
     allow: "Allow on GitHub",
@@ -168,6 +172,13 @@ export const codeHostsText = catalog(
     keepOff: "Don’t allow",
     removePerm: "Remove permission",
     cancelSignIn: "Cancel",
+    retry: "Try again",
+    scopeNames: {
+      repo: "repositories",
+      "read:org": "organizations (read)",
+      gist: "gists",
+      workflow: "workflow changes",
+    },
     scopesLabel: "Permissions:",
     scopesUnknown: "Permissions could not be read.",
     saidKeptOff:
@@ -176,17 +187,21 @@ export const codeHostsText = catalog(
   },
   {
     expiredDesc:
-      "GitHub no longer accepts the authorisation saved on the server, so git push and gh do not work. Reconnect by signing in with GitHub.",
+      "GitHub no longer accepts the server’s authorisation. Agents cannot push and gh does not work.",
     unreachableDesc:
       "The server could not reach GitHub. The authorisation is kept; the server tries again by itself.",
     verifyingDesc:
       "GitHub refused the authorisation once. The server checks it again.",
     logoutKeeps:
       "Signing out of the browser does not remove the server's authorisation.",
-    disconnectedNotice:
-      "The local gh authorisation was removed. GitHub's OAuth grant was not revoked.",
+    scopeNames: {
+      repo: "repositories",
+      "read:org": "organisations (read)",
+      gist: "gists",
+      workflow: "workflow changes",
+    },
     wfMissingDesc:
-      "You had allowed workflows, but the server’s gh now holds an authorisation without the workflow scope. The authorisation has changed since: an ordinary sign-in replaced an expired one, or gh auth login or gh auth refresh ran in a terminal. A push that changes a workflow will fail.",
+      "You allowed workflows, but the current authorisation lacks the permission. A push that changes a workflow fails.",
     wfUnknownDesc:
       "The authorisation’s permissions could not be read, so it is not known whether the permission holds. gh auth status in a terminal tells them.",
   },

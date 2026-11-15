@@ -97,6 +97,71 @@ const fi = {
     page: "Asetussivu",
   },
   cards: {
+    GH01: {
+      name: "GitHub-yhteys",
+      lead: "Näyttää, toimiiko agenttien GitHub-yhteys tällä palvelimella.",
+      know: "Tunnus on palvelimen käyttämä GitHub-tili. Tuntematon tila ei tarkoita katkennutta yhteyttä.",
+    },
+    GH02: {
+      name: "Oikeudet",
+      lead: "Näyttää palvelimen nykyisen GitHub-valtuutuksen oikeudet.",
+    },
+    GH03: {
+      name: "Kirjaudu uudelleen GitHubilla",
+      lead: "Uusii palvelimelle tallennetun GitHub-valtuutuksen.",
+      know: "Avaa GitHub-kirjautumisen samassa välilehdessä. Sallittu työnkulkujen lupa säilytetään.",
+    },
+    GH04: {
+      name: "Katkaise yhteys…",
+      lead: "Avaa ikkunan palvelimen GitHub-yhteyden katkaisemiseksi.",
+      know: "Pelkkä ikkunan avaaminen ei poista valtuutusta. Selaimesta uloskirjautuminenkaan ei poista sitä.",
+      try: "Avaa katkaisuikkuna",
+    },
+    GH05: {
+      name: "Vahvista GitHubilla",
+      lead: "Vahvistaa GitHubissa, että saat katkaista yhteyden.",
+      know: "Palaat samaan ikkunaan. Katkaisu vaatii vielä oman painalluksensa.",
+    },
+    GH06: {
+      name: "Katkaise yhteys",
+      lead: "Poistaa GitHub-valtuutuksesi tältä palvelimelta.",
+      know: "Työtilat ja keskustelut säilyvät. Yhteyden saa takaisin kirjautumalla GitHubilla; lupa jää GitHub-tilillesi.",
+    },
+    GH07: {
+      name: "GitHub Actions -työnkulut",
+      lead: "Näyttää, saavatko agentit muuttaa GitHubin työnkulkuja.",
+      know: "Työnkulut voivat lukea repon salaisuudet. Puuttuva lupa estää työnkulkua muuttavan pushin.",
+    },
+    GH08: {
+      name: "Salli GitHubissa",
+      lead: "Pyytää GitHubilta luvan työnkulkujen muuttamiseen.",
+      know: "Kirjautuminen avautuu samassa välilehdessä. Keskeneräisen kirjautumisen voi yrittää uudelleen.",
+    },
+    GH09: {
+      name: "Poista lupa",
+      lead: "Kirjaa valinnan pois ja avaa GitHub-kirjautumisen ilman työnkulkujen lupaa.",
+      know: "Aiempi valtuutus ei peruunnu GitHubissa.",
+    },
+    GH10: {
+      name: "Älä salli",
+      lead: "Unohtaa toiveen sallia työnkulut, kun nykyisestä valtuutuksesta puuttuu lupa.",
+      know: "Ei avaa GitHubia eikä muuta nykyistä valtuutusta.",
+    },
+    GH11: {
+      name: "Peru",
+      lead: "Poistaa keskeneräisen kirjautumisen merkinnän tältä kortilta.",
+      know: "GitHubin oikeudet eivät muutu.",
+    },
+    GH12: {
+      name: "GitHubin asetukset",
+      lead: "Avaa GitHubin sovellusluvat uuteen välilehteen.",
+      know: "Voit poistaa Open Habitatin luvan siellä itse.",
+    },
+    GH13: {
+      name: "Tarkista uudelleen",
+      lead: "Tarkistaa, voiko yhteyden nyt katkaista.",
+      know: "Ei katkaise yhteyttä. Katkaisu vaatii erillisen painalluksen.",
+    },
     J01: {
       name: "Jaetut",
       lead: "Avaa näkymien ja tiedostojen osoitteet keskusteluittain.",
@@ -1832,6 +1897,71 @@ export const explainModeText = catalog(fi, {
     page: "Settings page",
   },
   cards: {
+    GH01: {
+      name: "GitHub connection",
+      lead: "Shows whether the agents’ GitHub connection works on this server.",
+      know: "The account is the GitHub account used by the server. Unknown does not mean disconnected.",
+    },
+    GH02: {
+      name: "Permissions",
+      lead: "Shows the permissions of the server’s current GitHub grant.",
+    },
+    GH03: {
+      name: "Sign in with GitHub again",
+      lead: "Renews the GitHub grant saved on the server.",
+      know: "Opens GitHub sign-in in the same tab. Allowed workflow permission is retained.",
+    },
+    GH04: {
+      name: "Disconnect…",
+      lead: "Opens a dialog for disconnecting the server from GitHub.",
+      know: "Opening the dialog does not remove the grant. Signing out of the browser does not remove it either.",
+      try: "Open the disconnect dialog",
+    },
+    GH05: {
+      name: "Confirm with GitHub",
+      lead: "Confirms on GitHub that you may disconnect.",
+      know: "You return to the same dialog. Disconnecting still needs a separate press.",
+    },
+    GH06: {
+      name: "Disconnect",
+      lead: "Removes your GitHub grant from this server.",
+      know: "Workspaces and conversations stay. Sign in with GitHub to reconnect; the grant stays on your GitHub account.",
+    },
+    GH07: {
+      name: "GitHub Actions workflows",
+      lead: "Shows whether agents may change GitHub workflows.",
+      know: "Workflows can read repository secrets. A missing permission blocks pushes that change workflows.",
+    },
+    GH08: {
+      name: "Allow on GitHub",
+      lead: "Asks GitHub for permission to change workflows.",
+      know: "Sign-in opens in the same tab. You can retry an unfinished sign-in.",
+    },
+    GH09: {
+      name: "Remove permission",
+      lead: "Clears the choice and opens GitHub sign-in without workflow permission.",
+      know: "The previous grant is not revoked on GitHub.",
+    },
+    GH10: {
+      name: "Don’t allow",
+      lead: "Forgets the wish to allow workflows when the current grant lacks permission.",
+      know: "Does not open GitHub or change the current grant.",
+    },
+    GH11: {
+      name: "Cancel",
+      lead: "Clears this card’s unfinished sign-in mark.",
+      know: "GitHub permissions do not change.",
+    },
+    GH12: {
+      name: "GitHub settings",
+      lead: "Opens GitHub’s application grants in a new tab.",
+      know: "You can remove Open Habitat’s grant there yourself.",
+    },
+    GH13: {
+      name: "Check again",
+      lead: "Checks whether the connection can now be removed.",
+      know: "Does not disconnect. Disconnecting needs a separate press.",
+    },
     J01: {
       name: "Shares",
       lead: "Opens view and file addresses grouped by conversation.",

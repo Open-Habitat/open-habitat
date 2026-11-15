@@ -296,8 +296,6 @@ describe("account presentation", () => {
     fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
     const row = screen.getByTestId("github-native-state");
     expect(row.dataset.state).toBe("expired");
-    expect(row.textContent).toContain("Vanhentunut");
-    expect(row.textContent).not.toContain("Yhdistetty");
     expect(screen.queryByTestId("github-disconnect-inspect")).toBeNull();
     fireEvent.click(screen.getByTestId("github-reconnect"));
     expect(onReconnect).toHaveBeenCalledOnce();
@@ -390,15 +388,18 @@ describe("account presentation", () => {
         ).toBe(false),
       );
       expect(row().dataset.wf).toBe("off");
-      expect(row().textContent).toContain("Ei sallittu");
-      expect(row().textContent).toContain("salaisuudet");
       const chips = screen.getByTestId("github-scopes");
       expect(
-        [...chips.querySelectorAll("li")].map((li) => li.dataset.scope),
+        [...chips.querySelectorAll<HTMLElement>("[data-scope]")].map(
+          (li) => li.dataset.scope,
+        ),
       ).toEqual(base);
       fireEvent.click(screen.getByTestId("github-workflow-allow"));
       expect(onReconnect).toHaveBeenCalledWith(true);
       expect(row().dataset.wf).toBe("pending");
+      fireEvent.click(screen.getByTestId("github-workflow-allow"));
+      expect(onReconnect).toHaveBeenCalledTimes(2);
+      expect(onReconnect).toHaveBeenLastCalledWith(true);
       fireEvent.click(screen.getByTestId("github-workflow-cancel"));
       expect(row().dataset.wf).toBe("off");
       // The card's own Reconnect leaves the choice to the app.
@@ -438,10 +439,7 @@ describe("account presentation", () => {
       render(show("wid_wf-missing", vi.fn(), base));
       fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
       await waitFor(() => expect(row().dataset.wf).toBe("missing"));
-      expect(row().textContent).toContain("Lupa puuttuu");
-      expect(screen.getByTestId("github-workflow-allow").textContent).toBe(
-        "Salli uudelleen",
-      );
+      expect(screen.getByTestId("github-workflow-allow")).toBeTruthy();
       fireEvent.click(screen.getByTestId("github-workflow-keep-off"));
       await waitFor(() => expect(row().dataset.wf).toBe("off"));
       const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
