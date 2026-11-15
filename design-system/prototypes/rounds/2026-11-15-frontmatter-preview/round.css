@@ -1,0 +1,186 @@
+/* Review chrome above the production shell, as in the recent rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.fmp-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.fmp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.fmp-bar strong { font-weight: 600; }
+.fmp-bar select { font: inherit; }
+.fmp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.fmp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.fmp-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .fmp-bar { padding: 6px 10px; }
+  .fmp-controls > strong { display: none; }
+  .fmp-lines li:not([aria-current]), .fmp-recommend { display: none; }
+}
+.fmp-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.fmp-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .fmp-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+
+/* ---- Shared value pieces (all directions) ---------------------------- */
+.fmx {
+  margin: 0 0 var(--ah-s5);
+  padding: var(--ah-s3) var(--ah-s4);
+  background: var(--ah-sunken);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-meta);
+  line-height: var(--ah-lh-ui);
+}
+/* A plain YAML file is the whole document: no box around it. */
+.fmx[data-yaml] { background: none; border: 0; padding: 0; font-size: var(--ah-size-ui); }
+.fmx :is(dl, ul, ol, blockquote) { margin: 0; }
+.fmv-empty { color: var(--ah-muted); font-style: italic; }
+.fmv-lit, .fmv-id {
+  font-family: var(--ah-mono); font-size: var(--ah-size-code);
+  overflow-wrap: anywhere; background: none; padding: 0;
+}
+.fmv-lit { color: var(--ah-syntax-number); }
+.fmv-text { overflow-wrap: anywhere; }
+.fmv-block {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  padding: var(--ah-s1) 0 var(--ah-s1) var(--ah-s3);
+  border-left: 3px solid var(--ah-line-strong);
+  color: var(--ah-ink);
+}
+.fmv-chips { display: flex; flex-wrap: wrap; gap: var(--ah-s1); padding: 0; list-style: none; }
+.fmv-chips li, .fmv-row > * {
+  padding: 0 var(--ah-s2); border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill);
+  background: var(--ah-surface); font-size: var(--ah-size-meta);
+}
+.fmv-row { display: inline-flex; flex-wrap: wrap; gap: var(--ah-s1); }
+.fmv-index {
+  display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em;
+  border-radius: var(--ah-r-pill); background: var(--ah-surface-2); color: var(--ah-ink-2);
+  font: 600 var(--ah-size-label)/1 var(--ah-mono);
+}
+
+/* ---- 1 Nested: a definition list all the way down -------------------- */
+.fmv-map {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--ah-s2) var(--ah-s4);
+}
+.fmv-map > div { display: contents; }
+.fmv-map dt {
+  max-width: 14rem; color: var(--ah-muted);
+  font-family: var(--ah-mono); font-size: var(--ah-size-code);
+}
+.fmv-map dd { margin: 0; min-width: 0; }
+/* A nested level steps in under a quiet rule, so its depth reads at a glance. */
+.fmv-map .fmv-map, .fmv-map .fmv-list { padding-left: var(--ah-s3); border-left: 1px solid var(--ah-line); }
+/* Past the fourth level the indent stops growing; the rule still shows. */
+.fmv-map[data-depth="5"] .fmv-map, .fmv-map[data-depth="6"] .fmv-map { padding-left: var(--ah-s2); }
+.fmv-list { padding-left: var(--ah-s4); }
+.fmv-list > li + li { margin-top: var(--ah-s1); }
+.fmv-cards { display: grid; gap: var(--ah-s2); padding: 0; list-style: none; }
+.fmv-card {
+  padding: var(--ah-s2) var(--ah-s3);
+  background: var(--ah-surface); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+}
+.fmv-card > header { display: flex; align-items: baseline; gap: var(--ah-s2); margin-bottom: var(--ah-s2); }
+.fmv-card > header:only-child { margin-bottom: 0; }
+.fmv-card > header strong { font-weight: 600; font-size: var(--ah-size-ui); }
+.fmv-card .fmv-map { border-left: 0; padding-left: 0; }
+.fmv-card .fmv-cards .fmv-card { background: var(--ah-sunken); }
+@media (max-width: 600px) {
+  /* A key above its value, as production's phone layout does today. */
+  .fmv-map { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+  .fmv-map > div > dd { margin-bottom: var(--ah-s2); }
+  .fmv-map .fmv-map { padding-left: var(--ah-s2); }
+}
+
+/* ---- 2 Tree: folded rows and a table for uniform lists --------------- */
+.fmt-tools { display: flex; gap: var(--ah-s2); justify-content: flex-end; margin-bottom: var(--ah-s2); }
+.fmt-tools button {
+  font: inherit; font-size: var(--ah-size-meta); color: var(--ah-accent-ink);
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.fmt-tools button:hover { text-decoration: underline; }
+.fmt-list { list-style: none; padding: 0; }
+.fmt-list .fmt-list { padding-left: var(--ah-s4); border-left: 1px solid var(--ah-line); margin-left: 9px; }
+.fmt-line { display: flex; align-items: baseline; gap: var(--ah-s2); min-height: 24px; padding: 1px 0; }
+.fmt-gap { flex: 0 0 18px; }
+.fmt-toggle {
+  flex: 0 0 18px; height: 18px; display: inline-grid; place-items: center; align-self: center;
+  padding: 0; border: 0; border-radius: var(--ah-r-sm); background: none; color: var(--ah-muted); cursor: pointer;
+}
+.fmt-toggle:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.fmt-toggle svg { width: 12px; height: 12px; }
+.fmt-key { flex: 0 0 auto; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-code); }
+.fmt-row[data-open] > .fmt-line > .fmt-key { color: var(--ah-ink-2); }
+.fmt-value { min-width: 0; flex: 1 1 auto; }
+.fmt-value .fmv-block { margin-top: 2px; }
+.fmt-count { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.fmt-table-wrap { overflow-x: auto; margin: var(--ah-s1) 0 var(--ah-s2) var(--ah-s4); }
+.fmt-table { border-collapse: collapse; width: 100%; font-size: var(--ah-size-meta); }
+.fmt-table th {
+  text-align: left; font: 500 var(--ah-size-code) var(--ah-mono); color: var(--ah-muted);
+  padding: var(--ah-s1) var(--ah-s2); border-bottom: 1px solid var(--ah-line);
+}
+.fmt-table td { overflow-wrap: normal; word-break: normal; padding: var(--ah-s1) var(--ah-s2); border-bottom: 1px solid var(--ah-line-soft); vertical-align: top; }
+.fmt-table tr[data-open] td { border-bottom-color: transparent; background: var(--ah-surface); }
+.fmt-detail td { background: var(--ah-surface); }
+.fmt-rowhead { white-space: nowrap; width: 1%; }
+.fmt-rowhead .fmt-toggle { display: inline-grid; vertical-align: middle; margin-right: 2px; }
+
+/* ---- 3 As page: the start page as the workspace page shows it -------- */
+.fm3 { display: grid; gap: var(--ah-s3); }
+.fm3-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s3); font-size: var(--ah-size-meta); }
+.fm3-head p { flex: 1 0 100%; margin: 0; color: var(--ah-muted); }
+.fm3-kind { display: inline-flex; align-items: center; gap: var(--ah-s1); font-weight: 600; color: var(--ah-ink); }
+.fm3-status { display: inline-flex; align-items: center; gap: var(--ah-s1); color: var(--ah-err); }
+.fm3-status[data-ok] { color: var(--ah-ok); }
+.fm3 svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.fm3-surface {
+  padding: var(--ah-s4) var(--ah-s5);
+  background: var(--ah-bg); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg);
+}
+.fm3-surface .ah-workspace-intro { margin: 0; }
+.fm3-section { margin: var(--ah-s3) 0 0; font-size: var(--ah-size-ui); }
+.fm3-note { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.fm3-guides { display: grid; gap: var(--ah-s3); padding: 0; list-style: none; margin: 0; }
+.fm3-guide {
+  padding: var(--ah-s3) var(--ah-s4); scroll-margin-top: var(--ah-s3);
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.fm3-guide[data-active] { border-color: var(--ah-accent-line); box-shadow: 0 0 0 1px var(--ah-accent-line); }
+.fm3-guide[data-problem] { border-color: var(--ah-err-line); }
+.fm3-guide > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ah-s2); }
+.fm3-guide > header strong { font-size: var(--ah-size-ui); font-weight: 600; }
+.fm3-badges { display: inline-flex; flex-wrap: wrap; gap: var(--ah-s1); margin-left: auto; }
+.fm3-skill { font: var(--ah-size-code) var(--ah-mono); color: var(--ah-accent-ink); background: var(--ah-accent-soft); padding: 0 var(--ah-s2); border-radius: var(--ah-r-pill); }
+.fm3-badge { font-size: var(--ah-size-meta); color: var(--ah-ink-2); border: 1px solid var(--ah-line); padding: 0 var(--ah-s2); border-radius: var(--ah-r-pill); }
+.fm3-problem {
+  display: flex; align-items: center; gap: var(--ah-s1); margin: var(--ah-s2) 0 0;
+  color: var(--ah-err); font-size: var(--ah-size-meta);
+}
+.fm3-fields {
+  display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--ah-s1) var(--ah-s3); margin: var(--ah-s3) 0 0; font-size: var(--ah-size-meta);
+}
+.fm3-fields > div { display: contents; }
+.fm3-fields dt { color: var(--ah-muted); }
+.fm3-fields dd { margin: 0; }
+.fm3-guide h4 { margin: var(--ah-s3) 0 var(--ah-s1); font-size: var(--ah-size-meta); color: var(--ah-muted); font-weight: 600; }
+.fm3-steps { margin: 0; padding-left: var(--ah-s5); font-size: var(--ah-size-meta); }
+.fm3-guide .fmv-block { font-size: var(--ah-size-meta); }
+.fm3-placeholder { background: var(--ah-accent-soft); color: var(--ah-accent-ink); border-radius: var(--ah-r-sm); padding: 0 2px; }
+@media (max-width: 600px) {
+  .fm3-surface { padding: var(--ah-s3); }
+  .fm3-guide { padding: var(--ah-s3); }
+  .fm3-fields { grid-template-columns: minmax(0, 1fr); }
+  .fm3-fields dd { margin-bottom: var(--ah-s1); }
+}
+.fmt-table td .fmv-text, .fmt-table td .fmv-id { overflow-wrap: normal; }
+.fmt-table th { white-space: nowrap; }

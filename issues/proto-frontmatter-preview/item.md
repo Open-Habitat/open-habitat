@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/frontmatter-preview
 lane: frontmatter-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Preview renders nested YAML front matter poorly
