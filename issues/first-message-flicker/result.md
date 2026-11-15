@@ -73,7 +73,7 @@ Both widths mounted three distinct user-content nodes. The composer **text field
 - Earlier malformed-status/logout setup flakes passed on rerun. A lost-send regression exposed by the warning delay was repaired by keeping uncertain-send warnings immediate; its focused rerun passed.
 - No Go/contracts changed. No whole suite, clean gate, live installation, real provider or separate-UID isolation claim.
 
-Paired synthetic screenshots and offline HTML: `desktop.png` / `desktop.html`, `phone.png` / `phone.html`. Reviewed at both widths. Full repeat traces, frame measurements and baseline output are retained locally under `/var/tmp/agent-keep/first-message-flicker` for diagnosis; they are not published in git.
+Paired synthetic screenshots and offline HTML: kept locally with the traces. Reviewed at both widths. Full repeat traces, frame measurements and baseline output are retained locally under `/var/tmp/agent-keep/first-message-flicker` for diagnosis; they are not published in git.
 
 ## Decisions for later review
 
