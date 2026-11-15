@@ -1,3 +1,124 @@
+# Prototype round 2: the ⌘K switcher with real search across all conversations (15.11.2026)
+
+**Yhteenveto.** Kierros vastaa Jarin kysymykseen, voisiko ⌘K-vaihtajassa
+olla aito haku kaikkiin agenttikeskusteluihin. Voi, ja se on hostilla
+halpaa. Yhden aktiivisen käyttäjän kahden kuukauden Pi-historia vie 237 Mt,
+mutta ihmisen ja agentin varsinaista tekstiä siinä on vain noin 6 Mt.
+Loppu on työkalujen tulosteita ja JSONia. Henkilön oman daemonin SQLite
+FTS5 -indeksi tälle tekstille rakentuu 0,14 sekunnissa ja vastaa noin
+millisekunnissa. Kierros näyttää kolme tapaa sijoittaa nimet ja
+viestiosumat vaihtajaan, oikeilla tuotannon komponenteilla ja toimivalla
+haulla. **Suositus on 2 Esikatselu**: leveä haku, jossa osumat ovat
+keskusteluittain ja suodattimet kentän alla. Oikealla näkyy valitun viestin
+ympäristö ennen hyppyä, ja Enter avaa keskustelun juuri siitä viestistä.
+**Näppäin on Macilla ⌘K ja Windowsilla ja Linuxilla Ctrl+K**: sivu ottaa
+sen selaimen osoiterivin haulta kuten GitHub ja Slack, mutta ei koskaan
+päätteestä. Toinen ovi on `/` tekstikenttien ulkopuolella. Indeksi on uusi
+johdettu tallenne henkilön daemonissa, ja se on arkkitehtuuripäätös, jonka
+Jari tekee ennen toteutusta (alla).
+
+Round `design-system/prototypes/rounds/2026-11-15-switcher-search/`. Its
+`NOTES.md` has the key table per platform, the host research with
+measurements, and the recommended search design. The axis is **how name
+matches and message matches share the switcher**. The view is the
+production rail and conversation at 1440 with the switcher over it,
+keyboard-live and searching for real. There are three themes, Finnish and
+English (example query *kartta* / *map*), a "still building" toggle, Mac /
+Windows-Linux key labels, and a 390 touch view where the rail's new
+"Hae keskusteluista" door opens a full-screen sheet.
+
+- **1 Lista**: a narrow list. Names first, then message hits with the
+  matching sentence highlighted, at most two per conversation and then a
+  count. No filters.
+- **2 Esikatselu**: the same search as a wide dialog. Hits are grouped by
+  conversation. Filter chips sit under the field: who said it, workspace,
+  when, archived included, tool output. Tab reaches them. A preview pane
+  shows the selected message with its neighbours, and on a narrow screen it
+  becomes direction 1's list.
+- **3 Hakusivu**: ⌘K jumps by name only, as in round 1. Its last row,
+  "Hae kaikista keskusteluista" (⌘↵), opens a search page in place of the
+  conversation, with filters in a column and each hit shown with the
+  message before it. A conversation opened from a hit has a band back to
+  the results.
+
+In all three, an empty query lists recently opened conversations with the
+previous one chosen, so ⌘K Enter still swaps between two. A
+"Continue search" row brings back the last query. Enter on a hit opens the
+conversation at that message, centred and outlined, with the words marked
+inside the production message. A band names the query. Archived
+conversations are included and labelled. While the index builds, every name
+is found at once and messages arrive newest first.
+
+**Recommendation: 2 Esikatselu.** Search and choice stay in one
+keyboard-driven dialog. The preview answers "is this the place?" before a
+whole history loads. Filters are there without a second view to maintain,
+and the narrow form is direction 1. Direction 1 is the cheapest, but with a
+dozen hits for a common word it leaves the person guessing which
+conversation is right. Direction 3 suits long research sessions, but it
+adds a route and a mode, and ⌘K alone would no longer search text, which
+is what Jari asked for.
+
+**Host search (research, `NOTES.md`):** a per-person incremental SQLite
+FTS5 index in the daemon over the person's and the agent's messages, titles
+and workspace names. Tool output and thinking are left out by default.
+Words are matched with a trigram tokenizer for substrings and compounds,
+plus a light Finnish ending strip on query words of five letters or more
+(*kartan* → *kart*). A new read-only `GET /api/v1/search` returns name and
+message hits with entry ids. The history query needs a page *around* an
+entry so the browser can jump to it. Nothing changes in who acts as whom:
+the index lives and is queried only inside the person's own daemon.
+
+Checks: `check.mjs`, 226 checks, clean console. It covers every direction
+at 1440 in Päivä/Yö/Kontrasti and at 390 touch in Päivä/Yö, including the
+rail's door and the full-screen sheet. Then from the keyboard: Esc, Ctrl+K
+and `/`, recents and the ⌘K Enter swap, inflected and compound matches,
+archived included, tool output excluded, arrows to a hit and Enter to the
+message with band and highlight, Continue search, the empty result,
+direction 2's filters and Tab, direction 3's page, Ctrl+Enter, filters and
+back from a hit, the building state in all three, ⌘K on a Mac and English.
+The review was a focused self-review: nothing in the daemon, contract,
+session state or an authority path changed. The page and screenshots are in
+the run's worker-results directory.
+
+Live check: nothing changed on the test server. Open the round page
+(`offline.html`). In 1 and 2, press Esc, then Ctrl+K (⌘K on a Mac) and
+Enter to swap, then type *kartan* and open the agent's question in
+Saavutettavuuskorjaukset. In 2, try the filter chips. In 3, press Enter on a
+hit and use the band to go back to the results.
+
+## Decisions for later review (round 2)
+
+- **The index is an architecture decision for Jari.** A derived,
+  rebuildable SQLite file in the person's daemon is a new local store and a
+  new major dependency (no SQLite in the module today), which the project
+  rules leave to the maintainer. The alternative without an index is an
+  on-demand parse streamed newest first, about 0.4 s on this history and
+  growing with it. Recommendation in `NOTES.md`. If chosen, record it as an
+  ADR or issue before code.
+- **Ctrl+K on Windows/Linux, not a free key.** Alternatives were
+  Ctrl+Shift+F (free but two modifiers, and it suggests "search in files")
+  and Ctrl+E (also the address bar). Ctrl+K is the convention on the sites
+  people already use, the address bar stays at Ctrl+L / Alt+D, and `/`
+  adds a one-key door.
+- **⌘K opens empty after a jump** so that ⌘K Enter keeps swapping, with
+  "Continue search" in the recents. Alternative: reopen with the last query
+  selected (VS Code). That breaks the swap Jari already approved in round 1.
+- **Archived conversations are searched by default** and labelled.
+  Alternative: excluded unless asked for. Search is where old work is
+  looked for, and archive only hides a row.
+- **Tool output and thinking are not searched by default.** Tool output is
+  five times the index and mostly noise. Thinking is hidden in the
+  conversation, so a hit inside it could not be shown. Direction 2 and 3
+  offer tool output as a filter.
+- **The index builds newest first, and names never wait.** Names come from
+  the snapshot the browser already has.
+- **The touch entry is a "Hae keskusteluista" door at the top of the rail**
+  (one tap to open the rail, one to search). Alternative: an icon in the
+  mobile header, which is one tap but adds a header control on every view.
+  The desktop door also teaches the key by showing its cap.
+- **Not built in this round:** search in Explain mode, and recent searches
+  beyond the last one.
+
 # Prototype round 1 — keyboard shortcut for moving between conversations (15.11.2026)
 
 **Yhteenveto.** Kierros näyttää kolme näppäinvaihtoehtoa oikeilla

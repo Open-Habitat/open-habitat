@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-15/rail-keyboard-nav
 lane: rail-keyboard-proto
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Keyboard shortcut to move between conversations in the rail
