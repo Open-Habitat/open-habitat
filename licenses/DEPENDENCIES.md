@@ -1,6 +1,12 @@
 # Dependency and license boundary
 
-Open Habitat has no third-party Go module in the foundation. Browser
+The Go modules are pinned in `go.mod`/`go.sum`. Conversation search
+(ADR 0036) uses `modernc.org/sqlite` (BSD-3-Clause; SQLite itself is in the
+public domain), pure Go so the release builds without cgo, with its
+`modernc.org/libc`, `modernc.org/mathutil` and `modernc.org/memory`
+(BSD-3-Clause), `github.com/dustin/go-humanize`, `github.com/mattn/go-isatty`,
+`github.com/ncruces/go-strftime` (MIT), `github.com/google/uuid` and
+`github.com/remyoudompheng/bigfft` (BSD-3-Clause). Browser
 runtime and build dependencies are exact pins in `web/package-lock.json`.
 `scripts/check-licenses.py` requires every direct package to declare license
 metadata and rejects AGPL/GPL dependencies. Transitive notices remain available

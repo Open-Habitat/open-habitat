@@ -151,6 +151,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
+	mux.Handle(SearchPath, SearchHandler(cfg, server.TrustedPeer))
 	mux.Handle(ContextDetailPattern, ContextDetailHandler(cfg, server.TrustedPeer, pi))
 	catalog := newIntegrations(ctx, cfg, integrationEnv, forges)
 	// A recovery, migration or login cancelled at shutdown finishes its step

@@ -116,6 +116,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/onboarding/github/checkout", s.auth.githubObserve)
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", s.auth.piAttempt)
 		mux.HandleFunc("/api/v1/agents/", s.auth.history)
+		mux.HandleFunc(searchPath, s.auth.search)
 		mux.HandleFunc(integrationsPath, s.auth.integrations)
 		mux.HandleFunc(integrationAccountsPath, s.auth.integrations)
 		mux.HandleFunc(integrationLoginPath, s.auth.integrations)

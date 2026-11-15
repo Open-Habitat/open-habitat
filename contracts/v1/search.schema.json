@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/search.schema.json",
+  "title": "Search across the person's conversations",
+  "description": "The reply to GET /api/v1/search?q=, answered by the person's daemon from its derived index of the person's and the agent's message text (ADR 0036). It carries only what the switcher's list shows. Conversation names are not here: the browser matches them against its snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "terms", "index", "conversations"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"},
+    "terms": {
+      "description": "The lower-case stems the query matched. A message matches when it contains every one as a substring; the browser marks the words that contain one. Empty when the query had no word of two letters.",
+      "type": "array",
+      "maxItems": 8,
+      "items": {"type": "string", "minLength": 2, "maxLength": 200}
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "indexed", "total"],
+      "properties": {
+        "state": {
+          "description": "building: the index is still reading conversations, newest first, and the result covers those already read; ready: every conversation the daemon found is indexed.",
+          "enum": ["building", "ready"]
+        },
+        "indexed": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 0}
+      }
+    },
+    "conversations": {
+      "description": "Conversations with matching messages, newest hit first.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/conversation"}
+    }
+  },
+  "$defs": {
+    "conversation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_id", "hit_count", "hits"],
+      "properties": {
+        "agent_id": {"$ref": "common.schema.json#/$defs/agentId"},
+        "hit_count": {"description": "How many of the conversation's messages match; hits may hold fewer.", "type": "integer", "minimum": 1},
+        "hits": {
+          "description": "The hit that best stands for the conversation first (its newest hit where a term starts a word, else its newest hit), then the rest newest first.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/hit"}
+        }
+      }
+    },
+    "hit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_key", "role", "at", "snippet"],
+      "properties": {
+        "entry_key": {"description": "The native entry id: the history page's entry_key of the message.", "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
+        "role": {"description": "user: the person's message; assistant: the agent's text answer.", "enum": ["user", "assistant"]},
+        "at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "snippet": {"description": "The sentence of the message that holds a match, cut around it.", "type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    }
+  }
+}

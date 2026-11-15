@@ -49,6 +49,8 @@ checks = {
     "account-keys-none.json": "account-keys.schema.json",
     "own-machines.json": "own-machines.schema.json",
     "own-machines-off.json": "own-machines.schema.json",
+    "search.json": "search.schema.json",
+    "search-building.json": "search.schema.json",
     "first-route.json": "first-route.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
@@ -297,6 +299,20 @@ must_reject("browser.schema.json", {**browser, "windows": [{**browser["windows"]
 must_reject("browser.schema.json", {**browser, "windows": [{**browser["windows"][0], "url": "https://login.example.invalid/"}]})
 must_reject("browser.schema.json", {**browser, "pointer": {**browser["pointer"], "x": 1.5}})
 must_reject("browser.schema.json", {"schema_version": 1, "state": "running", "agent_connected": False, "windows": [], "cdp_endpoint": "ws://127.0.0.1:9222/devtools/browser"})
+search = json.loads((BASE / "examples" / "search.json").read_text())
+search_hit = search["conversations"][0]["hits"][0]
+# Only what the list shows: no message text beyond the snippet, no path, no title.
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "title": "Karttatiilet"}]})
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "hits": [{**search_hit, "text": "whole message"}]}]})
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "cwd": "/home/example/ws"}]})
+# Tool output and thinking are never hits.
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "hits": [{**search_hit, "role": "toolResult"}]}]})
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "agent_id": "11111111-1111-4111-8111-111111111111"}]})
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "hits": []}]})
+must_reject("search.schema.json", {**search, "conversations": [{**search["conversations"][0], "hits": [{**search_hit, "entry_key": "../x"}]}]})
+must_reject("search.schema.json", {**search, "index": {"state": "stale", "indexed": 1, "total": 1}})
+must_reject("search.schema.json", {k: v for k, v in search.items() if k != "terms"})
+must_reject("search.schema.json", {**search, "schema_version": 2})
 machines = json.loads((BASE / "examples" / "own-machines.json").read_text())
 must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://evil.example/a/x"}})
 must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://login.tailscale.com/a/x?next=https://evil.example"}})
