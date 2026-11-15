@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  chainAtMs,
+  chainLatestMs,
   Dictation,
   type DictationDeps,
   type DictationView,
   stopAtMs,
+  warnAtMs,
 } from "./dictation";
 import { SpeechError, type SpeechSession } from "./speech";
 
@@ -40,7 +43,9 @@ class FakeSocket {
   }
 }
 
-function harness(mints: (SpeechSession | SpeechError)[]) {
+function harness(
+  mints: (SpeechSession | SpeechError | Promise<SpeechSession>)[],
+) {
   let clock = 1_000;
   const sockets: FakeSocket[] = [];
   let frame: ((pcm: Int16Array, level: number) => void) | null = null;
@@ -76,6 +81,11 @@ function harness(mints: (SpeechSession | SpeechError)[]) {
     sockets,
     views,
     mintCount: () => minted,
+    socket: (n: number) => {
+      const socket = sockets[n];
+      if (!socket) throw new Error(`Socket ${n} has not opened`);
+      return socket;
+    },
     audio: (level = 0.5) => frame?.(new Int16Array(4800), level),
     advance: (ms: number) => {
       clock += ms;
@@ -93,6 +103,8 @@ const session = (n: number): SpeechSession => ({
 });
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
+
+afterEach(() => vi.useRealTimers());
 
 describe("Dictation", () => {
   it("streams with the temporary key, keeps the guess apart and starts a paragraph after a long pause", async () => {
@@ -135,9 +147,9 @@ describe("Dictation", () => {
     const h = harness([session(1)]);
     await h.d.start();
     h.sockets[0]?.open();
-    h.advance(10_000);
+    h.advance(5_000);
     expect(h.sockets[0]?.texts()).toHaveLength(1);
-    h.advance(10_000);
+    h.advance(5_000);
     expect(JSON.parse(h.sockets[0]?.texts()[1] ?? "{}")).toEqual({
       type: "keepalive",
     });
@@ -186,15 +198,13 @@ describe("Dictation", () => {
     expect(h.d.view).toMatchObject({ ended: "dropped", final: "Sana" });
   });
 
-  it("stops before the ten-minute ceiling and waits for Soniox's last words", async () => {
+  it("stops at the hour and waits for Soniox's last words", async () => {
     const h = harness([session(1)]);
     await h.d.start();
     const ws = h.sockets[0];
     ws?.open();
     ws?.reply({ tokens: [{ text: " Alku", is_final: true }] });
-    h.advance(stopAtMs - 1_000);
-    expect(h.d.view.phase).toBe("live");
-    h.advance(1_000);
+    h.advance(stopAtMs);
     expect(h.d.view.phase).toBe("finishing");
     // The empty text frame ends the stream.
     expect(ws?.texts().at(-1)).toBe("");
@@ -208,6 +218,209 @@ describe("Dictation", () => {
       ended: "ceiling",
       final: "Alku loppu.",
     });
+  });
+
+  it("chains only at a pause or the deadline, routes every frame once, and finalizes old tokens before opening the next stream", async () => {
+    vi.useFakeTimers();
+    const h = harness([session(1), session(2), session(3)]);
+    await h.d.start();
+    const first = h.socket(0);
+    first.open();
+    first.reply({
+      tokens: [
+        { text: "First", is_final: true },
+        { text: " wor", is_final: false },
+      ],
+    });
+    h.advance(chainAtMs - 100);
+    h.audio();
+    h.advance(100);
+    expect(first.texts()).not.toContain("");
+    h.advance(300);
+    expect(first.texts().at(-1)).toBe("");
+    const firstFrames = first.sent.filter(
+      (x) => x instanceof ArrayBuffer,
+    ).length;
+    h.audio();
+    h.audio();
+    expect(first.sent.filter((x) => x instanceof ArrayBuffer)).toHaveLength(
+      firstFrames,
+    );
+    expect(h.mintCount()).toBe(1);
+    first.reply({
+      tokens: [{ text: " word.", is_final: true }],
+      finished: true,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const second = h.socket(1);
+    second.open();
+    expect(second.sent.filter((x) => x instanceof ArrayBuffer)).toHaveLength(2);
+    second.reply({ tokens: [{ text: "Next", is_final: true }] });
+    // Late callbacks from the retired socket cannot duplicate its words.
+    first.reply({
+      tokens: [{ text: " word.", is_final: true }],
+      finished: true,
+    });
+    expect(h.d.view.final).toBe("First word. Next");
+    h.advance(chainLatestMs - 100);
+    h.audio();
+    h.advance(100);
+    expect(second.texts().at(-1)).toBe("");
+    h.d.cancel();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.mintCount()).toBe(2);
+  });
+
+  it("stopping during a chain flushes captured seam audio before returning text", async () => {
+    vi.useFakeTimers();
+    const h = harness([session(1), session(2)]);
+    await h.d.start();
+    const first = h.socket(0);
+    first.open();
+    h.advance(chainAtMs);
+    h.audio();
+    const stopped = h.d.stop();
+    first.reply({ tokens: [{ text: "Old", is_final: true }], finished: true });
+    await vi.advanceTimersByTimeAsync(0);
+    const second = h.socket(1);
+    second.open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(second.sent.filter((x) => x instanceof ArrayBuffer)).toHaveLength(1);
+    expect(second.texts().at(-1)).toBe("");
+    second.reply({ tokens: [{ text: "new", is_final: true }], finished: true });
+    await expect(stopped).resolves.toBe("Old new");
+    expect(h.d.view.ended).toBe("stopped");
+  });
+
+  it.each(["timeout", "close"])(
+    "a chain %s recovers as a drop, keeping the best transcript and unsent audio",
+    async (failure) => {
+      vi.useFakeTimers();
+      const h = harness([session(1), session(2)]);
+      await h.d.start();
+      const first = h.socket(0);
+      first.open();
+      first.reply({
+        tokens: [
+          { text: "Kept", is_final: true },
+          { text: " guess", is_final: false },
+        ],
+      });
+      h.advance(chainAtMs);
+      h.audio();
+      if (failure === "close") first.drop();
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(h.d.view).toMatchObject({
+        phase: "reconnecting",
+        final: "Kept guess",
+      });
+      expect(h.mintCount()).toBe(2);
+      h.sockets[1]?.open();
+      expect(
+        h.sockets[1]?.sent.filter((x) => x instanceof ArrayBuffer),
+      ).toHaveLength(1);
+      h.d.cancel();
+    },
+  );
+
+  it("does not mint a new key when stopped during a drain with no buffered audio", async () => {
+    vi.useFakeTimers();
+    const h = harness([session(1)]);
+    await h.d.start();
+    h.sockets[0]?.open();
+    h.advance(chainAtMs);
+    const stopped = h.d.stop();
+    h.sockets[0]?.reply({
+      tokens: [{ text: "Done", is_final: true }],
+      finished: true,
+    });
+    await expect(stopped).resolves.toBe("Done");
+    expect(h.mintCount()).toBe(1);
+  });
+
+  it("a stop bounds a stalled chain mint and keeps the transcript with a drop notice", async () => {
+    vi.useFakeTimers();
+    let mint: (session: SpeechSession) => void = () => {};
+    const h = harness([
+      session(1),
+      new Promise<SpeechSession>((resolve) => {
+        mint = resolve;
+      }),
+    ]);
+    await h.d.start();
+    h.sockets[0]?.open();
+    h.advance(chainAtMs);
+    h.audio();
+    h.sockets[0]?.reply({
+      tokens: [{ text: "Kept", is_final: true }],
+      finished: true,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const stopped = h.d.stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(stopped).resolves.toBe("Kept");
+    expect(h.d.view.ended).toBe("dropped");
+    mint(session(2));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.sockets).toHaveLength(1);
+  });
+
+  it("carries a paragraph pause across provider timestamp resets", async () => {
+    vi.useFakeTimers();
+    const h = harness([session(1), session(2)]);
+    await h.d.start();
+    h.sockets[0]?.open();
+    h.audio();
+    h.sockets[0]?.reply({
+      tokens: [{ text: "Paragraph.", end_ms: 40, is_final: true }],
+    });
+    h.advance(chainAtMs);
+    h.sockets[0]?.reply({ finished: true });
+    await vi.advanceTimersByTimeAsync(0);
+    h.sockets[1]?.open();
+    h.sockets[1]?.reply({
+      tokens: [{ text: "New", start_ms: 6000, end_ms: 6300, is_final: true }],
+    });
+    expect(h.d.view.final).toBe("Paragraph.\n\nNew");
+    h.d.cancel();
+  });
+
+  it("warns once per threshold across a complete hour of chained streams", async () => {
+    vi.useFakeTimers();
+    const h = harness(Array.from({ length: 7 }, (_, n) => session(n)));
+    await h.d.start();
+    h.socket(0).open();
+    let at = 0;
+    // Six rollovers, with time for the final reply at every boundary.
+    for (let n = 0; n < 6; n++) {
+      h.advance(chainLatestMs);
+      at += chainLatestMs;
+      h.socket(n).reply({
+        tokens: [{ text: ` ${n}`, is_final: true }],
+        finished: true,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      h.socket(n + 1).open();
+    }
+    expect(at).toBe(warnAtMs);
+    h.advance(50_000);
+    h.advance(500);
+    h.advance(9500);
+    expect(h.d.view.phase).toBe("finishing");
+    h.socket(6).reply({
+      tokens: [{ text: " end", is_final: true }],
+      finished: true,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const transitions = h.views
+      .filter((v, i) => v.warning && v.warning !== h.views[i - 1]?.warning)
+      .map((v) => v.warning);
+    expect(transitions).toEqual(["minute", "ten-seconds", "limit"]);
+    expect(h.d.view).toMatchObject({
+      ended: "ceiling",
+      final: "0 1 2 3 4 5 end",
+    });
+    expect(h.mintCount()).toBe(7);
   });
 
   it("reports a refused key or a stream refused at its start as a failed start", async () => {

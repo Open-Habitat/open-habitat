@@ -593,7 +593,9 @@ test("@speech a key is saved in the region Soniox takes it in, refused when none
   await openConversation(page);
   await mic(page).click();
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
-  expect((await soniox(page)).asked.slice(-2)).toEqual(["us", "eu"]);
+  await expect
+    .poll(async () => (await soniox(page)).asked.slice(-2))
+    .toEqual(["us", "eu"]);
   await expect(notice(page)).toHaveCount(0);
   await page.getByTestId("dictation-stop").click();
   await page.goto("/settings/speech");
@@ -629,11 +631,21 @@ test("@speech the administrator's key is saved in its region and refused when So
   );
 });
 
-test("@speech the dictation warns a minute before the ten-minute ceiling and ends there with the text", async ({
+test("@speech the dictation warns at the hour limit and ends with the text", async ({
   page,
 }) => {
   test.setTimeout(90_000);
   await page.clock.install();
+  await page.addInitScript(() => {
+    const cues: number[] = [];
+    (window as unknown as { dictationCues: number[] }).dictationCues = cues;
+    const start = OscillatorNode.prototype.start;
+    OscillatorNode.prototype.start = function (when) {
+      if ([660, 784, 523].includes(this.frequency.value))
+        cues.push(this.frequency.value);
+      return start.call(this, when);
+    };
+  });
   await signIn(page);
   await page.goto("/settings/speech");
   await page.getByTestId("speech-key-input").fill(ownKey);
@@ -646,17 +658,108 @@ test("@speech the dictation warns a minute before the ten-minute ceiling and end
   await mic(page).click();
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await say(page, [{ text: "Pitkä sanelu", is_final: true }]);
+  const initialMints = (await soniox(page)).minted;
   await expect(page.getByTestId("dictation-final")).toHaveText("Pitkä sanelu");
-  // The 250 ms tick reads the clock, so jumping reaches the same states as
-  // replaying the ten minutes tick by tick (which took 50 s).
-  await page.clock.fastForward("08:50");
-  await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
-  await page.clock.fastForward("00:20");
+  // Compress wall time, not the production key or dictation ceilings.
+  for (let n = 0; n < 6; n++) {
+    await page.clock.fastForward("09:50");
+    await expect
+      .poll(async () => (await soniox(page)).minted)
+      .toBe(initialMints + n + 1);
+    await expect.poll(async () => (await soniox(page)).open).toBe(1);
+    if (n < 5)
+      await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
+  }
   await expect(page.getByTestId("dictation-ceiling")).toBeVisible();
-  await page.clock.fastForward("01:00");
+  const announcement = page.getByTestId("dictation-announcement");
+  const minute = await announcement.textContent();
+  await page.clock.fastForward("00:10");
+  expect(await announcement.textContent()).toBe(minute);
+  await page.clock.fastForward("00:40");
+  const seconds = await announcement.textContent();
+  expect(seconds).not.toBe(minute);
+  await page.clock.fastForward("00:10");
   await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
   await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
-  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+  expect(await announcement.textContent()).not.toBe(seconds);
+  await expect.poll(async () => (await soniox(page)).ended).toBe(7);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { dictationCues: number[] }).dictationCues,
+    ),
+  ).toEqual([660, 660, 660, 784, 523]);
+});
+
+test("@speech a scripted seam finalizes old tokens before new ones and the hour keeps both in the composer", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.clock.install();
+  let streams = 0;
+  let draining = false;
+  let finishOld = () => {};
+  let newAudio = 0;
+  await page.routeWebSocket("**/fixture/soniox/ws", (socket) => {
+    const stream = ++streams;
+    socket.onMessage((message) => {
+      if (typeof message !== "string") {
+        if (stream === 2) newAudio++;
+        return;
+      }
+      if (message === "") {
+        if (stream === 1) {
+          draining = true;
+          finishOld = () =>
+            socket.send(
+              JSON.stringify({
+                tokens: [{ text: " word.", is_final: true }],
+                finished: true,
+              }),
+            );
+        } else
+          socket.send(
+            JSON.stringify({
+              tokens: [{ text: " end.", is_final: true }],
+              finished: true,
+            }),
+          );
+      } else if (message.includes('"model"')) {
+        socket.send(
+          JSON.stringify({
+            tokens:
+              stream === 1
+                ? [
+                    { text: "First", is_final: true },
+                    { text: " wor", is_final: false },
+                  ]
+                : [{ text: "Next", is_final: true }],
+          }),
+        );
+      }
+    });
+  });
+  await signIn(page);
+  await saveOwnKey(page);
+  await openConversation(page);
+  await page.getByTestId("message-input").fill("Prefix");
+  await mic(page).click();
+  await expect(page.getByTestId("dictation-interim")).toHaveText(" wor");
+  const initialMints = (await soniox(page)).minted;
+  await page.clock.fastForward("09:50");
+  await expect.poll(() => draining).toBe(true);
+  expect(streams).toBe(1);
+  finishOld();
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "First word. Next",
+  );
+  await expect.poll(() => newAudio).toBeGreaterThan(0);
+  // Jump to the overall limit; a ceiling takes priority over another chain.
+  await page.clock.fastForward("50:10");
+  await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Prefix First word. Next end.",
+  );
+  expect((await soniox(page)).minted).toBe(initialMints + 1);
 });
 
 test("@speech a new conversation dictates before it exists and keeps what was said once created", async ({

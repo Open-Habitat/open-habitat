@@ -423,6 +423,7 @@ export const parts: Record<CardId, Part> = {
     sel: '[data-testid="attachment-progress"], [data-testid="attachment-progress-ring"]',
   },
   V37: { kind: "once", sel: '[data-testid="attachment-cancel"]' },
+  V38: { kind: "info", sel: ".ah-dictation-time.countdown" },
   B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
   B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
   B03: {

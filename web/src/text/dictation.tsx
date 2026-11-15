@@ -7,8 +7,13 @@ import { catalog } from "../i18n";
 const fi = {
   /** "Enter, Esc tai ⌘§": a list of keys the way a hint reads it. */
   or: (first: string, last: string) => `${first} tai ${last}`,
-  ceilingTitle: "Sanelu päättyi 10 minuutin kattoon",
-  ceilingText: "Kaikki sanottu on kentässä.",
+  ceilingTitle: "Tunti täynnä · Teksti on tallessa",
+  ceilingText: "Mikrofoni on kiinni. Voit jatkaa sanelua tekstin perään.",
+  minuteWarning:
+    "Sanelu päättyy minuutin kuluttua. Kaikki sanottu jää kenttään.",
+  secondsWarning: "Sanelu päättyy kymmenen sekunnin kuluttua.",
+  limitWarning: "Tunti täynnä. Mikrofoni on kiinni. Teksti jää kenttään.",
+  remaining: (time: string) => `${time} jäljellä`,
   droppedKey: "Sanelu katkesi: Soniox ei enää hyväksy avainta",
   droppedLimit: "Sanelu katkesi: Soniox-avaimen käyttöraja täyttyi",
   droppedConnection: "Sanelu katkesi: yhteys Sonioxiin ei palannut",
@@ -62,8 +67,15 @@ const fi = {
 
 export const dictationText = catalog(fi, {
   or: (first, last) => `${first} or ${last}`,
-  ceilingTitle: "Dictation stopped at the 10-minute limit",
-  ceilingText: "Everything you said is in the field.",
+  ceilingTitle: "One hour reached · Your text is kept",
+  ceilingText:
+    "The microphone is off. You can continue dictating after the text.",
+  minuteWarning:
+    "Dictation ends in one minute. Everything you said stays in the field.",
+  secondsWarning: "Dictation ends in ten seconds.",
+  limitWarning:
+    "One hour reached. The microphone is off. Your text stays in the field.",
+  remaining: (time) => `${time} left`,
   droppedKey: "Dictation cut off: Soniox no longer accepts the key",
   droppedLimit: "Dictation cut off: the Soniox key reached its usage limit",
   droppedConnection:

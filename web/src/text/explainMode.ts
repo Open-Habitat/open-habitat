@@ -973,6 +973,11 @@ const fi = {
       know: "Kirjoita @ kentässä tai paina Ctrl+P, niin sama kansiopuu aukeaa kentän sisään. Tab merkitsee tiedostoja, Enter lisää merkityt.",
       try: "Avaa tiedostot",
     },
+    V38: {
+      name: "Saneluaikaa jäljellä",
+      lead: "Näyttää viimeisellä minuutilla, kauanko mikrofoni vielä kuuntelee.",
+      know: "Äänimerkki kuuluu minuutti ja kymmenen sekuntia ennen tunnin rajaa sekä rajalla. Teksti jää kenttään; voit jatkaa sen perään.",
+    },
     V05: {
       name: "Sanele",
       lead: "Kirjoittaa puheesi viestikenttään; napauta aloittaaksesi tai pidä pohjassa puhuessasi.",
@@ -2672,6 +2677,11 @@ export const explainModeText = catalog(fi, {
       lead: "Adds a reference to a workspace file, so the agent knows what you mean.",
       know: "Type @ in the field or press Ctrl+P to open the same folder tree inside the field. Tab marks files; Enter adds the marked files.",
       try: "Open files",
+    },
+    V38: {
+      name: "Dictation time left",
+      lead: "Shows how much longer the microphone listens during the final minute.",
+      know: "A tone sounds one minute and ten seconds before the hour limit, and at the limit. Your text stays; you can continue after it.",
     },
     V05: {
       name: "Dictate",

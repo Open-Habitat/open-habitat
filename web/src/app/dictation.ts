@@ -5,8 +5,8 @@ import { SpeechError } from "./speech";
  * the browser captures the microphone as 16-bit PCM and streams it straight
  * to Soniox with a temporary key from the person's own daemon. Confirmed
  * text and Soniox's still-changing guess are kept apart; a dropped
- * connection is reopened once with a new key; the dictation ends at a fixed
- * ten-minute ceiling, which Soniox also enforces on the key. */
+ * connection is reopened once with a new key. Ten-minute provider streams
+ * are drained in order while microphone audio waits for the next stream. */
 
 export type DictationPhase =
   | "idle"
@@ -37,19 +37,21 @@ export type DictationView = {
   quietMs: number;
   ended?: DictationEnd;
   failure?: SpeechFailure;
+  warning?: "minute" | "ten-seconds" | "limit";
 };
 
-/** The key's session ceiling; the daemon mints with the same number. */
-export const ceilingMs = 600_000;
+/** Dictation-wide limit, separate from each key's ten-minute stream. */
+export const ceilingMs = 3_600_000;
+export const chainAtMs = 570_000;
+export const chainLatestMs = 590_000;
 /** The note above the field appears a minute before the end. */
 export const warnAtMs = ceilingMs - 60_000;
-/** The browser ends a little early, so the last words are finalised before
- * Soniox closes the stream itself. */
-export const stopAtMs = ceilingMs - 2_000;
+/** The microphone stops at the hour; final replies may arrive afterwards. */
+export const stopAtMs = ceilingMs;
 /** A longer pause in speech starts a new paragraph. */
 export const paragraphGapMs = 4_000;
-/** Soniox closes a stream that hears nothing for 60 s. */
-const keepaliveMs = 20_000;
+/** Keep below Soniox's 20 s inactivity timeout, even between PCM frames. */
+const keepaliveMs = 10_000;
 /** Audio kept while the connection is reopened. */
 const bufferedSeconds = 30;
 /** How long a stop waits for Soniox's last words. */
@@ -91,6 +93,7 @@ const idle: DictationView = {
   elapsedMs: 0,
   level: 0,
   quietMs: 0,
+  warning: undefined,
 };
 
 export class Dictation {
@@ -122,6 +125,12 @@ export class Dictation {
   private tick: number | null = null;
   private finished: (() => void) | null = null;
   private finishing: Promise<void> | null = null;
+  private chaining: Promise<void> | null = null;
+  private draining = false;
+  private streamAt: number | null = null;
+  private streamFinished = false;
+  private streamAudioMs = 0;
+  private joinStream = false;
 
   constructor(deps: DictationDeps, onChange: (view: DictationView) => void) {
     this.deps = deps;
@@ -147,6 +156,10 @@ export class Dictation {
     const abort = new AbortController();
     this.abort = abort;
     this.reconnected = false;
+    this.draining = false;
+    this.chaining = null;
+    this.streamAt = null;
+    this.joinStream = false;
     this.openedAt = null;
     this.startedAt = null;
     this.lastFinalEnd = null;
@@ -230,6 +243,7 @@ export class Dictation {
     this.ws = ws;
     this.wsReady = false;
     this.accepted = false;
+    this.streamFinished = false;
     ws.onopen = () => {
       if (run !== this.run || this.ws !== ws) return;
       ws.send(
@@ -244,6 +258,8 @@ export class Dictation {
       this.wsReady = true;
       this.lastSent = this.deps.now();
       this.openedAt ??= this.deps.now();
+      this.streamAt = this.deps.now();
+      this.streamAudioMs = (this.pendingBytes / 2 / this.sampleRate) * 1000;
       for (const chunk of this.pending) ws.send(chunk);
       this.pending = [];
       this.pendingBytes = 0;
@@ -285,7 +301,12 @@ export class Dictation {
           : reply.error_code === 429
             ? "speech_limit_reached"
             : null;
-      if (!this.accepted && !this.reconnected) {
+      if (
+        !this.accepted &&
+        !this.reconnected &&
+        !this.view.final &&
+        !this.draining
+      ) {
         // Refused at the start: Soniox heard nothing yet.
         this.fail(run, new SpeechError(definite ?? "speech_unavailable"));
       } else if (definite) this.end(run, "dropped", definite);
@@ -309,32 +330,60 @@ export class Dictation {
       if (!final) final = token.text.trimStart();
       else if (gap > paragraphGapMs)
         final = `${final.trimEnd()}\n\n${token.text.trimStart()}`;
-      else final += token.text;
+      else {
+        // A fresh recognizer may omit the leading space. Its first word
+        // still follows the old stream, rather than joining its last word.
+        if (
+          this.joinStream &&
+          !/^[\s.,;:!?]/.test(token.text) &&
+          !/\s$/.test(final)
+        )
+          final += " ";
+        final += token.text;
+      }
+      this.joinStream = false;
       if (typeof token.end_ms === "number") this.lastFinalEnd = token.end_ms;
     }
     let guess = interim.join("");
     if (!final) guess = guess.trimStart();
+    else if (
+      this.joinStream &&
+      guess &&
+      !/^[\s.,;:!?]/.test(guess) &&
+      !/\s$/.test(final)
+    )
+      guess = ` ${guess}`;
     this.set({ final, interim: guess });
-    if (reply.finished && this.finished) this.finished();
+    if (reply.finished) {
+      this.streamFinished = true;
+      this.finished?.();
+    }
   }
 
   private frame(run: number, pcm: Int16Array, level: number) {
-    if (run !== this.run || !this.active) return;
+    if (run !== this.run || !this.active || this.view.phase === "finishing")
+      return;
     const now = this.deps.now();
+    this.checkCeiling(run, now);
+    if (run !== this.run || !this.capture) return;
     if (level > quietLevel) this.lastVoice = now;
     const buffer = pcm.buffer.slice(
       pcm.byteOffset,
       pcm.byteOffset + pcm.byteLength,
     ) as ArrayBuffer;
-    if (this.ws && this.wsReady) {
+    if (this.ws && this.wsReady && !this.draining) {
       this.ws.send(buffer);
+      this.streamAudioMs += (pcm.length / this.sampleRate) * 1000;
       this.lastSent = now;
-    } else if (this.view.phase !== "finishing" && this.capture) {
+    } else if (this.capture) {
       // Kept while the stream opens or reopens, so no words are lost.
       this.pending.push(buffer);
       this.pendingBytes += buffer.byteLength;
-      while (this.pendingBytes > this.capture.sampleRate * 2 * bufferedSeconds)
-        this.pendingBytes -= this.pending.shift()?.byteLength ?? 0;
+      // Never silently evict speech at a seam or during a stalled open.
+      if (this.pendingBytes > this.capture.sampleRate * 2 * bufferedSeconds) {
+        this.end(run, "dropped");
+        return;
+      }
     }
     this.set({ level, quietMs: now - this.lastVoice });
     this.checkCeiling(run, now);
@@ -343,7 +392,12 @@ export class Dictation {
   private onTick(run: number) {
     if (run !== this.run || !this.active) return;
     const now = this.deps.now();
-    if (this.ws && this.wsReady && now - this.lastSent >= keepaliveMs) {
+    if (
+      this.ws &&
+      this.wsReady &&
+      !this.draining &&
+      now - this.lastSent >= keepaliveMs
+    ) {
       this.ws.send(JSON.stringify({ type: "keepalive" }));
       this.lastSent = now;
     }
@@ -354,15 +408,100 @@ export class Dictation {
     this.checkCeiling(run, now);
   }
 
-  // Counted from the first sound kept, which is never later than Soniox's
-  // own clock starts, so the browser still ends first.
   private checkCeiling(run: number, now: number) {
-    if (
-      this.startedAt !== null &&
-      now - this.startedAt >= stopAtMs &&
-      (this.view.phase === "live" || this.view.phase === "reconnecting")
-    )
+    if (this.startedAt === null || this.view.phase === "finishing") return;
+    const elapsedMs = now - this.startedAt;
+    const warning =
+      elapsedMs >= stopAtMs
+        ? "limit"
+        : elapsedMs >= stopAtMs - 10_000
+          ? "ten-seconds"
+          : elapsedMs >= warnAtMs
+            ? "minute"
+            : undefined;
+    if (warning !== this.view.warning) this.set({ warning, elapsedMs });
+    if (elapsedMs >= stopAtMs) {
       void this.finish(run, "ceiling");
+      return;
+    }
+    if (
+      this.streamAt === null ||
+      !this.wsReady ||
+      this.chaining ||
+      this.view.phase !== "live"
+    )
+      return;
+    const age = now - this.streamAt;
+    if (
+      age >= chainLatestMs ||
+      (age >= chainAtMs && now - this.lastVoice >= 300)
+    ) {
+      const chaining = this.chain(run).finally(() => {
+        if (this.chaining === chaining) this.chaining = null;
+      });
+      this.chaining = chaining;
+    }
+  }
+
+  /** Stop routing frames to the old socket, but keep capturing them. Only
+   * a finished reply releases that stream's final tokens; no interim guess
+   * is committed as if final at a planned seam. Sequential opening avoids
+   * a second token queue and gives every PCM frame exactly one owner. */
+  private async chain(run: number) {
+    const old = this.ws;
+    if (!old) return;
+    this.draining = true;
+    await new Promise<void>((done) => {
+      const timer = window.setTimeout(done, finishWaitMs);
+      this.finished = () => {
+        window.clearTimeout(timer);
+        done();
+      };
+      old.send("");
+    });
+    if (run !== this.run) return;
+    this.finished = null;
+    if (!this.streamFinished) {
+      // A lost terminal reply is a network drop, not a successful seam.
+      // Keep the best known words and send only unsent audio to the retry.
+      if (this.reconnected) {
+        this.end(run, "dropped");
+        return;
+      }
+      this.reconnected = true;
+      this.commitInterim();
+      this.lastFinalEnd = null;
+      if (this.view.phase !== "finishing") this.set({ phase: "reconnecting" });
+    } else {
+      this.reconnected = false;
+      // Provider timestamps restart at zero; preserve the silence on both
+      // sides of the seam so a thinking pause still makes a paragraph.
+      if (this.lastFinalEnd !== null) this.lastFinalEnd -= this.streamAudioMs;
+    }
+    this.ws = null;
+    this.wsReady = false;
+    old.close();
+    if (this.view.phase === "finishing" && !this.pending.length) return;
+    this.joinStream = true;
+    this.draining = false;
+    // The drain, not the mint, owns the chaining promise. A stop can now
+    // bound its wait for opening instead of hanging on a lost mint reply.
+    void this.openNext(run);
+  }
+
+  private async openNext(run: number) {
+    this.connecting = true;
+    try {
+      // Mint only when needed: the key's minute-long start window cannot
+      // expire while waiting for the old stream's final reply.
+      const session = await this.deps.mint(
+        this.abort?.signal ?? new AbortController().signal,
+      );
+      if (run !== this.run) return;
+      this.open(run, session);
+    } catch {
+      if (run === this.run) this.end(run, "dropped");
+    }
   }
 
   /** The stream dropped: reopen it once with a new key, else end with
@@ -382,25 +521,9 @@ export class Dictation {
     // become text, and the new stream starts after them.
     this.commitInterim();
     this.lastFinalEnd = null;
+    this.joinStream = true;
     this.set({ phase: "reconnecting" });
-    this.connecting = true;
-    try {
-      const session = await this.deps.mint(
-        this.abort?.signal ?? new AbortController().signal,
-      );
-      // A stop while the key was minted still sends what was kept meanwhile.
-      const phase = this.view.phase as DictationPhase;
-      if (
-        run !== this.run ||
-        (phase !== "reconnecting" && phase !== "finishing")
-      )
-        return;
-      this.open(run, session);
-    } catch {
-      if (run !== this.run) return;
-      this.settled();
-      this.end(run, "dropped");
-    }
+    await this.openNext(run);
   }
 
   private commitInterim() {
@@ -441,6 +564,10 @@ export class Dictation {
     this.capture = null;
     for (const track of this.stream?.getTracks() ?? []) track.stop();
     this.stream = null;
+    // A stop at a seam first drains the old stream, then sends the audio
+    // captured during that drain through the new one before finishing it.
+    if (this.chaining) await this.chaining;
+    if (run !== this.run) return;
     if (!this.wsReady && this.connecting && this.pending.length)
       await new Promise<void>((done) => {
         const timer = window.setTimeout(done, openWaitMs);
@@ -450,6 +577,10 @@ export class Dictation {
         };
       });
     if (run !== this.run) return;
+    if (!this.wsReady && this.pending.length) {
+      this.end(run, "dropped");
+      return;
+    }
     const ws = this.ws;
     if (ws && this.wsReady) {
       await new Promise<void>((done) => {
@@ -477,6 +608,7 @@ export class Dictation {
       elapsedMs: this.view.elapsedMs,
       ended: why,
       failure,
+      warning: this.view.warning,
     });
   }
 
@@ -497,6 +629,7 @@ export class Dictation {
   }
 
   private release() {
+    this.finished?.();
     this.finished = null;
     this.settled();
     this.abort?.abort();

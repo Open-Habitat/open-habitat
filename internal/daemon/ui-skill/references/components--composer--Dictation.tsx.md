@@ -43,6 +43,40 @@ export type ComposerSpeech = {
 
 const holdMs = 500;
 
+/** Quiet Web Audio tones; reduced motion does not disable an audible cue. */
+function playDictationCue(
+  context: AudioContext | null,
+  warning: NonNullable<DictationView["warning"]>,
+) {
+  if (context?.state !== "running") return;
+  try {
+    const notes =
+      warning === "minute"
+        ? [660]
+        : warning === "ten-seconds"
+          ? [660, 660]
+          : [784, 523];
+    for (const [i, frequency] of notes.entries()) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const at = context.currentTime + i * 0.24;
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(0.16, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, at + 0.2);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+      };
+      oscillator.start(at);
+      oscillator.stop(at + 0.22);
+    }
+  } catch {
+    /* Audio output is optional, never a reason to lose dictation. */
+  }
+}
+
 const txt = liveText(dictationText);
 type Text = typeof dictationText.fi;
 
@@ -118,7 +152,7 @@ function mmss(ms: number) {
 /** Its words are read when it shows, in the language of that moment. */
 export type DictationNotice = {
   id: SpeechFailure | "ceiling" | "dropped";
-  tone: "info" | "danger";
+  tone: "info" | "danger" | "success";
   /** Why a dropped dictation was cut off. */
   failure?: SpeechFailure;
   /** How far a dropped dictation got. */
@@ -171,7 +205,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
   if (view.ended === "ceiling")
     return {
       id: "ceiling",
-      tone: "info",
+      tone: "success",
       actions: ["resume"],
     };
   if (view.ended === "dropped")
@@ -238,6 +272,7 @@ export function useDictation(
   const [notice, setNotice] = useState<DictationNotice | null>(null);
   const [holding, setHolding] = useState(false);
   const engine = useRef<Dictation | null>(null);
+  const cueContext = useRef<AudioContext | null>(null);
   const around = useRef({ before: "", after: "" });
   const ending = useRef(onEnd);
   ending.current = onEnd;
@@ -246,9 +281,15 @@ export function useDictation(
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new session or microphone makes a new engine.
   useEffect(() => {
     if (!speech || !csrf) return;
+    let warning: DictationView["warning"];
     const d = new Dictation(
       deps ?? browserDictationDeps((signal) => mintSpeechSession(csrf, signal)),
       (next) => {
+        if (next.warning && next.warning !== warning)
+          playDictationCue(cueContext.current, next.warning);
+        else if (next.ended === "dropped")
+          playDictationCue(cueContext.current, "limit");
+        warning = next.warning;
         setView(next);
         if (next.phase === "idle" && next.ended) {
           if (next.final) {
@@ -262,6 +303,8 @@ export function useDictation(
     engine.current = d;
     return () => {
       d.dispose();
+      void cueContext.current?.close().catch(() => {});
+      cueContext.current = null;
       engine.current = null;
       setView(null);
     };
@@ -270,6 +313,14 @@ export function useDictation(
   const start = useCallback((text: string, caret?: Caret) => {
     const d = engine.current;
     if (!d || d.active) return;
+    // Unlock output on the user's gesture, not an hour later. Output goes
+    // through the page's audio destination, so browser tab muting applies.
+    try {
+      cueContext.current ??= new AudioContext();
+      void cueContext.current.resume().catch(() => {});
+    } catch {
+      /* Visual and spoken warnings still work without audio. */
+    }
     // Dictation writes at the caret, or in place of the selection.
     around.current = aroundCaret(text, caret);
     setNotice(null);
@@ -545,7 +596,7 @@ export function DictationControl({
           />
         ))}
       </span>
-      <span className="ah-dictation-time">{mmss(view.elapsedMs)}</span>
+      <DictationTime view={view} />
       <span className="ah-dictation-state">{label}</span>
       <span className="ah-dictation-done">
         <Icon name="check" />
@@ -609,7 +660,7 @@ export function DictationBar({
         <Icon name="cross" />
       </TooltipButton>
       <span className="ah-dictation-dot" aria-hidden="true" />
-      <span className="ah-dictation-time">{mmss(view.elapsedMs)}</span>
+      <DictationTime view={view} />
       <span className="ah-dictation-state">{stateLabel(view, holding)}</span>
       <span className="ah-dictation-wave" aria-hidden="true">
         {wave.map((h, i) => (
@@ -723,28 +774,59 @@ export function DictationLive({ dictation }: { dictation: DictationState }) {
   );
 }
 
-/** Above the field: the ceiling approaching. */
-export function DictationCeiling({ view }: { view: DictationView | null }) {
+/** The ticking display is not a live region. Only threshold changes speak. */
+function DictationTime({ view }: { view: DictationView }) {
   const t = useText(dictationText);
-  if (
-    !view ||
-    (view.phase !== "live" && view.phase !== "reconnecting") ||
-    view.elapsedMs < warnAtMs
-  )
-    return null;
+  if (view.elapsedMs < warnAtMs) return null;
   const left = stopAtMs - view.elapsedMs;
   return (
-    <div
-      data-testid="dictation-ceiling"
-      className={`ah-dictation-note${left <= 20_000 ? " urgent" : ""}`}
-      role="status"
+    <span
+      className={`ah-dictation-time countdown${left <= 10_000 ? " urgent" : ""}`}
     >
-      <Icon name="clock" />
-      <span>
-        <strong>{t.endsIn(mmss(left))}</strong>{" "}
-        <span className="ah-dictation-sub">{t.allStays}</span>
+      {t.remaining(mmss(left))}
+    </span>
+  );
+}
+
+/** Always mounted, including before the first announcement. */
+export function DictationCeiling({ view }: { view: DictationView | null }) {
+  const t = useText(dictationText);
+  if (!view) return null;
+  const warning = view.warning;
+  const visible =
+    view &&
+    (view.phase === "live" || view.phase === "reconnecting") &&
+    view.elapsedMs >= warnAtMs;
+  const left = stopAtMs - (view?.elapsedMs ?? 0);
+  return (
+    <>
+      <span
+        className="ah-sr-only"
+        role="status"
+        aria-atomic="true"
+        data-testid="dictation-announcement"
+      >
+        {warning === "minute"
+          ? t.minuteWarning
+          : warning === "ten-seconds"
+            ? t.secondsWarning
+            : warning === "limit"
+              ? t.limitWarning
+              : ""}
       </span>
-    </div>
+      {visible ? (
+        <div
+          data-testid="dictation-ceiling"
+          className={`ah-dictation-note${left <= 10_000 ? " urgent" : ""}`}
+        >
+          <Icon name="clock" />
+          <span>
+            <strong>{t.endsIn(mmss(left))}</strong>{" "}
+            <span className="ah-dictation-sub">{t.allStays}</span>
+          </span>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -770,9 +852,23 @@ export function DictationNoticeView({
       data-testid="dictation-notice"
       data-notice={n.id}
       className={`ah-dictation-notice ${n.tone}`}
-      role={n.tone === "danger" ? "alert" : "status"}
+      role={
+        n.id === "ceiling"
+          ? undefined
+          : n.tone === "danger"
+            ? "alert"
+            : "status"
+      }
     >
-      <Icon name={n.tone === "danger" ? "warning" : "info"} />
+      <Icon
+        name={
+          n.tone === "danger"
+            ? "warning"
+            : n.tone === "success"
+              ? "check"
+              : "info"
+        }
+      />
       <div className="ah-dictation-notice-body">
         <strong>{words.title}</strong>
         {words.text ? <p>{words.text}</p> : null}

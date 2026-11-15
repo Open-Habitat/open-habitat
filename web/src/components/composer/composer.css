@@ -1093,6 +1093,23 @@
   font: 500 12px var(--ah-mono);
   font-variant-numeric: tabular-nums;
 }
+.ah-dictation-time.countdown {
+  padding: 3px 7px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface-2);
+  white-space: nowrap;
+}
+.ah-dictation-time.urgent {
+  color: var(--ah-err);
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-dictation-notice.success {
+  --ah-dictation-icon: var(--ah-ok);
+  border-color: var(--ah-ok);
+  background: var(--ah-ok-soft);
+}
 .ah-dictation-state {
   min-width: 0;
   overflow: hidden;
@@ -1551,8 +1568,7 @@
     gap: 7px;
     padding-right: 10px;
   }
-  .ah-dictation-bar .ah-dictation-state,
-  .ah-crow-busy .ah-dictation-bar .ah-dictation-time {
+  .ah-dictation-bar .ah-dictation-state {
     display: none;
   }
   .ah-crow .ah-dictation-cancel {
