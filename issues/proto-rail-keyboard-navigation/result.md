@@ -1,3 +1,97 @@
+# Prototype round 3: how the ⌘K list presents its results (15.11.2026)
+
+**Yhteenveto.** Kierros pitää kierroksen 2 kapean listan, näppäimen ja
+haun ja vaihtaa vain sen, mitä listan yksi rivi on. **Suositus on
+1 Keskustelut**: yksi järjestetty lista ilman osioita. Jokainen rivi on
+keskustelu, ja rivin sisällä näkyy sen paras osuva lause korostettuna.
+Nimiosuma on samanlainen rivi ylimpänä. Keskustelun muut osumat ovat
+määränä ”+4 osumaa →”: → avaa ne rivin alle ja ← sulkee. Enter avaa
+keskustelun juuri näkyvän lauseen kohdalta. Vaihtoehdot ovat 2 Viestit
+(rivi on yksi viesti, keskustelun nimi pienenä tunnisteena) ja
+3 Kaksi vaihetta (ensin vain keskustelut osumamäärineen, → avaa yhden
+keskustelun osumat). Tyhjällä haulla ⌘K Enter vaihtaa yhä kahden
+keskustelun välillä.
+
+Round `design-system/prototypes/rounds/2026-11-15-switcher-list/` (its
+`NOTES.md` has the rules). The axis is **what one row of the list is, and
+where the rest of the hits go**. The view is round 2's: the production rail
+and conversation at 1440 with the narrow list over it, and the 390
+full-screen sheet opened from the rail's door. It has three themes, Finnish
+and English, Mac and Windows/Linux labels, and is keyboard-live with real
+search over the synthetic conversations. A review-bar "Tilanne" select
+switches between the cases: empty query, many hits (*kartta*), a title
+match (*sanasto*) and no hits (*laskutus*).
+
+- **1 Keskustelut**: a row is a conversation, and its second line is its
+  best matching sentence. A title match is the same kind of row, ranked
+  first. Other hits are a count; → expands them indented under the row,
+  ← folds them. Enter opens at the sentence shown, or at a chosen sub-row.
+  With no query, or a title-only match, the second line is the latest
+  message, muted.
+- **2 Viestit**: a row is one matching message, with its conversation as
+  a small label. A conversation gets a row of its own only when the query
+  matches its name, tagged "nimessä"; Enter there opens it at the latest
+  message. → shows the message before it inline, ← hides it.
+- **3 Kaksi vaihetta**: while typing, only conversations with "N osumaa ›".
+  → opens that conversation's hits as a second list under a
+  "← Keskustelut" heading, and ← returns to the same row. Enter on a
+  conversation opens its newest hit.
+
+In all three, → and ← stay with the field's caret unless the list has
+something to open or close (→ only at the end of the text). On touch the
+count (1) and the chevron (3) are buttons. "Continue search" and the empty
+result work as in round 2, and the jump band and in-message highlight are
+round 2's.
+
+**Recommendation: 1 Keskustelut.** It fixes what confused: nothing is in
+two places and nothing sits under a heading. One row answers "which
+conversation", and the sentence inside it says why, so a common word gives
+one row per conversation rather than a dozen sentences. Direction 2 is the
+most exact when the sentence is what you remember, but a common word floods
+it with near-identical rows from the same conversation, and the
+conversation is the thing you open. Direction 3 is the tidiest list, but
+without a sentence the person cannot tell which conversation is right
+without stepping in, which costs a key press every time.
+
+Checks: `check.mjs`, 330 checks, clean console. Every direction at 1440 in
+Päivä/Yö/Kontrasti and at 390 touch in Päivä/Yö shows its own row shape on
+*kartta*, without overflow. At 390 the door opens the sheet, and tapping
+the count (1) and the chevron (3) works. Then per direction from the
+keyboard: the four cases, Esc, Ctrl+K and `/`, the ⌘K Enter swap, → / ←
+(expand, context, drill) and the caret mid-text, Enter to the right message
+with band and highlight, Continue search, the title match and the empty
+result. Last come ⌘K on a Mac and English. Review: focused self-review, since nothing in the
+daemon, contract, session state or an authority path changed. The page
+(`offline.html`) and screenshots are in the run's worker-results directory.
+
+Live check: nothing changed on the test server. Open the round page
+(`offline.html`). In each direction, try the "Tilanne" select, then type
+*kartta* and press → and ← on Karttatiilten välimuisti, and Enter on a hit.
+Then Esc, and Ctrl+K Enter (⌘K on a Mac) to swap.
+
+## Decisions for later review (round 3)
+
+- **Title matches rank first, archived last within each group, then the
+  newest hit, then the number of hits.** Alternatives: recency only, or a
+  score that mixes them. A name is what people jump by, so a title match is
+  the strongest signal, and old archived work should not push today's
+  aside.
+- **A conversation's "best" sentence is its newest hit where the word
+  starts a word, otherwise its newest hit.** Alternative: the hit with the
+  most query words, or the oldest. Newest matches how people remember
+  recent work, and a word-start hit reads as a real match rather than a
+  compound fragment.
+- **→ acts only at the end of the field's text, and ← only when something
+  is open.** Otherwise both keys move the caret. Alternative: → and ← always
+  belong to the list (Raycast). Editing a query is common, and a key that
+  sometimes moves the caret and sometimes opens rows is predictable only
+  with this rule.
+- **The empty query in direction 1 shows the latest message under each
+  recent conversation**, which makes the empty list two lines per row.
+  Alternative: one line, as in 2 and 3. The same row shape for typed and
+  empty states keeps direction 1 one list.
+- **The narrow list keeps round 2's 640 px width.**
+
 # Prototype round 2: the ⌘K switcher with real search across all conversations (15.11.2026)
 
 **Yhteenveto.** Kierros vastaa Jarin kysymykseen, voisiko ⌘K-vaihtajassa
