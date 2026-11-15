@@ -1,5 +1,6 @@
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-editor-files.schema.json";
+import type { FileEntry } from "../components/editorTree";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
@@ -28,7 +29,7 @@ export interface EditorDocument {
 export interface EditorListing {
   workspace_id: string;
   path: string;
-  entries: { name: string; kind: "file" | "directory" | "unsupported" }[];
+  entries: FileEntry[];
   truncated: boolean;
 }
 export class EditorReadError extends Error {

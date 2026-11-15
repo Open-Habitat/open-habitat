@@ -1,4 +1,12 @@
-import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readlink,
+  rename,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
@@ -103,6 +111,58 @@ test("@browser-editor external file creation, rename and removal refresh the ope
   await expect(entry("agent-folder")).toBeVisible();
   await expect(page.getByTestId("editor-document")).toContainText(
     "unsaved personal text",
+  );
+});
+
+test("@browser-editor symlinks show their targets, browse and save without replacing the link", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const root = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  ).path;
+  await symlink("cmd/main.go", join(root, "main-link.go"));
+  await symlink("cmd", join(root, "folder-link"));
+  await symlink("absent", join(root, "broken-link"));
+  await symlink("/etc/passwd", join(root, "outside-link"));
+  if (!(await page.getByTestId("editor-file-picker").isVisible()))
+    await page.getByTestId("editor-picker").click();
+  const entry = (path: string) =>
+    page
+      .getByTestId("editor-file-entry")
+      .and(page.locator(`[data-path="${path}"]`));
+  await expect(entry("main-link.go").getByTestId("editor-symlink")).toHaveText(
+    "↗ cmd/main.go",
+  );
+  await expect(entry("broken-link")).toBeDisabled();
+  await expect(entry("broken-link")).toContainText("Linkin kohdetta ei löydy.");
+  await expect(entry("outside-link")).toBeDisabled();
+  await expect(entry("outside-link")).toContainText(
+    "Kohde on työtilan ulkopuolella tai eri levyllä.",
+  );
+  await entry("main-link.go").click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    'println("hei")',
+  );
+  await edit(page, "saved through the link\n");
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes("/workspaces/editor/file") &&
+      response.request().method() === "PUT",
+  );
+  await page.getByTestId("editor-save").click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByTestId("editor-save")).toBeDisabled();
+  expect(await readlink(join(root, "main-link.go"))).toBe("cmd/main.go");
+  expect(await readFile(join(root, "cmd/main.go"), "utf8")).toBe(
+    "saved through the link\n",
+  );
+  await entry("folder-link").click();
+  await expect(entry("folder-link/main.go")).toBeVisible();
+  await entry("folder-link/main.go").click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "saved through the link",
   );
 });
 

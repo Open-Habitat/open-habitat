@@ -1,6 +1,12 @@
 export type FileEntry = {
   name: string;
   kind: "file" | "directory" | "unsupported";
+  symlink_target?: string;
+  unavailable_reason?:
+    | "outside_workspace"
+    | "broken_link"
+    | "symlink_loop"
+    | "file_unavailable";
 };
 export interface TreeDirectory {
   entries?: FileEntry[];
@@ -14,6 +20,8 @@ export interface TreeRow {
   path: string;
   label: string;
   kind: FileEntry["kind"];
+  symlink_target?: FileEntry["symlink_target"];
+  unavailable_reason?: FileEntry["unavailable_reason"];
   depth: number;
   position: number;
   size: number;
@@ -36,7 +44,7 @@ export function treeRows(
           .filter((entry) => entry.kind !== "directory")
           .map((entry) => {
             const path = join(parent, entry.name);
-            return { key: path, path, label: path, kind: entry.kind, depth: 0 };
+            return { ...entry, key: path, path, label: path, depth: 0 };
           }),
       )
       .filter((row) => row.path.toLocaleLowerCase().includes(query))
@@ -54,14 +62,15 @@ export function treeRows(
       const key = join(directory, entry.name);
       let path = key;
       let label = entry.name;
-      if (entry.kind === "directory") {
+      if (entry.kind === "directory" && !entry.symlink_target) {
         let listing = directories[path];
         while (
           listing?.entries?.length === 1 &&
           !listing.truncated &&
           !listing.error &&
           !listing.loading &&
-          listing.entries[0].kind === "directory"
+          listing.entries[0].kind === "directory" &&
+          !listing.entries[0].symlink_target
         ) {
           const child = listing.entries[0].name;
           path = join(path, child);
@@ -70,6 +79,7 @@ export function treeRows(
         }
       }
       rows.push({
+        ...entry,
         key,
         path,
         label,

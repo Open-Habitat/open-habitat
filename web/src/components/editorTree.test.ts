@@ -31,6 +31,39 @@ it("compacts proven chains but preserves real paths, hierarchy and collapsed des
     "readme",
   ]);
 });
+it("preserves link details in filtered rows and never compacts away a directory link", () => {
+  const linked: TreeDirectories = {
+    "": {
+      entries: [
+        { name: "outer", kind: "directory" },
+        {
+          name: "broken",
+          kind: "unsupported",
+          symlink_target: "absent",
+          unavailable_reason: "broken_link",
+        },
+      ],
+    },
+    outer: {
+      entries: [
+        { name: "link", kind: "directory", symlink_target: "../target" },
+      ],
+    },
+    "outer/link": { entries: [{ name: "child", kind: "directory" }] },
+  };
+  const rows = treeRows(linked, new Set(["outer", "outer/link"]), "");
+  expect(rows.map((row) => row.path)).toEqual([
+    "outer",
+    "outer/link",
+    "outer/link/child",
+    "broken",
+  ]);
+  expect(rows[1].symlink_target).toBe("../target");
+  expect(treeRows(linked, new Set(), "broken")[0]).toMatchObject({
+    symlink_target: "absent",
+    unavailable_reason: "broken_link",
+  });
+});
 it.each([{ truncated: true }, { error: true }, { loading: true }])(
   "never infers a chain from an incomplete observation %j",
   (state) => {

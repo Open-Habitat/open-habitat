@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/workspace-editor-files.schema.json",
   "title": "Confined workspace text editing",
-  "description": "GET file/list/stat under /api/v1/workspaces/editor/ takes exactly workspace_id and path; PUT file takes saveRequest with no query. Paths are UTF-8 relative (1024 bytes, 64 components of 255 bytes), never normalized: no empty, dot, dotdot, backslash, control, .git or .agent-host components. Empty is allowed only for stat/list. Contents are Unicode text without CR/NUL/lone surrogates; newline none forbids LF. On-disk reconstructed text is capped at 1 MiB; wire at 8 MiB. Errors: 400 invalid_request, 403 cross_user_denied, 404 workspace_unavailable/file_unavailable, 409 file_changed, 413 file_too_large, 415 file_unsupported, 503 file_busy/file_io_failed. A 5xx/lost save reply is uncertain; never retry automatically. No-store.",
+  "description": "GET file/list/stat under /api/v1/workspaces/editor/ takes exactly workspace_id and path; PUT file takes saveRequest with no query. Paths are UTF-8 relative (1024 bytes, 64 components of 255 bytes), never normalized: no empty, dot, dotdot, backslash, control, .git or .agent-host components. Empty is allowed only for stat/list. Contents are Unicode text without CR/NUL/lone surrogates; newline none forbids LF. On-disk reconstructed text is capped at 1 MiB; wire at 8 MiB. Errors: 400 invalid_request, 403 cross_user_denied, 404 workspace_unavailable/file_unavailable/outside_workspace/symlink_loop, 409 file_changed, 413 file_too_large, 415 file_unsupported, 503 file_busy/file_io_failed. A 5xx/lost save reply is uncertain; never retry automatically. No-store.",
   "oneOf": [
     {
       "$ref": "#/$defs/saveRequest"
@@ -205,6 +205,14 @@
                   "directory",
                   "unsupported"
                 ]
+              },
+              "symlink_target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "unavailable_reason": {
+                "enum": ["outside_workspace", "broken_link", "symlink_loop", "file_unavailable"]
               }
             }
           }

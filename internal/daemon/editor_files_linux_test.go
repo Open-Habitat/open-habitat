@@ -115,7 +115,7 @@ func TestEditorFilesPathsAndSpecialFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer socket.Close()
-	for _, name := range []string{"../secret", "/etc/passwd", "a//b", "./text", "a/../text", "a\\b", ".git/config", ".agent-host/workspace.json", "link/secret", "inside", "fifo", "socket", "a\x00b"} {
+	for _, name := range []string{"../secret", "/etc/passwd", "a//b", "./text", "a/../text", "a\\b", ".git/config", ".agent-host/workspace.json", "link/secret", "fifo", "socket", "a\x00b"} {
 		status, out := editorCall(h, "GET", "file", id, name, nil)
 		if status == 200 {
 			t.Fatalf("admitted %q %#v", name, out)

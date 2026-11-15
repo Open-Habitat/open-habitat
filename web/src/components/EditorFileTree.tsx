@@ -221,10 +221,28 @@ export function EditorFileTree({
                   />
                 )}
                 <Icon name={folder ? "folder" : "file"} />
-                <code>{row.label}</code>
-                {row.kind === "unsupported" && (
-                  <span className="ah-tree-state">{t.unsupported}</span>
-                )}
+                <span className="ah-tree-label">
+                  <code>{row.label}</code>
+                  {row.symlink_target && (
+                    <span
+                      className="ah-tree-link"
+                      data-testid="editor-symlink"
+                      title={row.symlink_target}
+                    >
+                      <span role="img" aria-label={t.symbolicLink}>
+                        ↗
+                      </span>{" "}
+                      <code>{row.symlink_target}</code>
+                    </span>
+                  )}
+                  {row.kind === "unsupported" && (
+                    <span className="ah-tree-unavailable">
+                      {row.unavailable_reason
+                        ? t.linkUnavailable[row.unavailable_reason]
+                        : t.unsupported}
+                    </span>
+                  )}
+                </span>
                 {current && (
                   <span
                     className="ah-tree-state"

@@ -128,7 +128,7 @@ func editorJSONUnicode(b []byte) bool {
 
 // Open each component with the same kernel resolver, including intermediate
 // directories: a foreign-owned directory is not an inherited-access shortcut.
-func editorOpen(root int, p string, uid uint32, flags int) (*os.File, error) {
+func editorOpenStrict(root int, p string, uid uint32, flags int) (*os.File, error) {
 	base, e := unix.Dup(root)
 	if e != nil {
 		return nil, e
@@ -164,6 +164,115 @@ func editorOpen(root int, p string, uid uint32, flags int) (*os.File, error) {
 		base = fd
 	}
 	return nil, fileError(404, "file_unavailable")
+}
+
+// The kernel resolves the requested path beneath the workspace. The second,
+// no-follow walk only narrows that authority: it checks ownership and excluded
+// components (including those hidden inside link targets), and finds the entry
+// an atomic save must replace. It never authorizes a path the kernel refused.
+func editorResolve(root int, p string, uid uint32) (string, error) {
+	requested := p
+	if requested == "" {
+		requested = "."
+	}
+	how := &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV}
+	fd, err := unix.Openat2(root, requested, how)
+	// BENEATH may return EAGAIN when a rename races a ".." traversal.
+	// Retry only the lookup, never the save transaction or weaker flags.
+	for retry := 0; errors.Is(err, unix.EAGAIN) && retry < 8; retry++ {
+		fd, err = unix.Openat2(root, requested, how)
+	}
+	if errors.Is(err, unix.EAGAIN) {
+		return "", fileError(503, "file_busy")
+	}
+	if err != nil {
+		code := "file_unavailable"
+		switch {
+		case errors.Is(err, unix.EXDEV):
+			code = "outside_workspace"
+		case errors.Is(err, unix.ENOENT):
+			code = "file_missing"
+		case errors.Is(err, unix.ELOOP):
+			code = "symlink_loop"
+		}
+		return "", fileError(404, code)
+	}
+	defer unix.Close(fd)
+	want, err := stat(fd)
+	if err != nil {
+		return "", err
+	}
+	parts := []string{}
+	pending := strings.Split(p, "/")
+	links := 0
+	for len(pending) > 0 {
+		part := pending[0]
+		pending = pending[1:]
+		switch part {
+		case "", ".":
+			continue
+		case "..":
+			if len(parts) == 0 {
+				return "", fileError(404, "outside_workspace")
+			}
+			parts = parts[:len(parts)-1]
+			continue
+		}
+		candidate := strings.Join(append(append([]string{}, parts...), part), "/")
+		if !validEditorPath(candidate, false) {
+			return "", fileError(404, "file_unavailable")
+		}
+		// O_PATH|O_NOFOLLOW pins the link itself; readlinkat cannot race a
+		// replacement of its directory entry.
+		child, err := unix.Openat2(root, candidate, &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC | unix.O_NOFOLLOW, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+		if err != nil {
+			return "", fileError(404, "file_unavailable")
+		}
+		s, err := stat(child)
+		if err != nil || s.Uid != uid {
+			unix.Close(child)
+			return "", fileError(404, "file_unavailable")
+		}
+		if s.Mode&unix.S_IFMT == unix.S_IFLNK {
+			buf := make([]byte, 4096)
+			n, err := unix.Readlinkat(child, "", buf)
+			unix.Close(child)
+			links++
+			if err != nil || n == len(buf) || links > 40 {
+				return "", fileError(404, "file_unavailable")
+			}
+			target := string(buf[:n])
+			if strings.HasPrefix(target, "/") {
+				return "", fileError(404, "outside_workspace")
+			}
+			pending = append(strings.Split(target, "/"), pending...)
+			continue
+		}
+		unix.Close(child)
+		if s.Mode&unix.S_IFMT != unix.S_IFDIR && (len(pending) > 0 || s.Mode&unix.S_IFMT != unix.S_IFREG) {
+			return "", fileError(404, "file_unavailable")
+		}
+		parts = append(parts, part)
+	}
+	resolved := strings.Join(parts, "/")
+	checked, err := editorOpenStrict(root, resolved, uid, unix.O_PATH)
+	if err != nil {
+		return "", err
+	}
+	defer checked.Close()
+	got, err := stat(int(checked.Fd()))
+	if err != nil || !same(want, got) {
+		return "", fileError(409, "file_changed")
+	}
+	return resolved, nil
+}
+
+func editorOpen(root int, p string, uid uint32, flags int) (*os.File, error) {
+	resolved, err := editorResolve(root, p, uid)
+	if err != nil {
+		return nil, err
+	}
+	return editorOpenStrict(root, resolved, uid, flags)
 }
 
 type editorObservation struct {
@@ -360,7 +469,12 @@ func (c *ConversationController) EditorFiles() http.Handler {
 		fail := func(e error) {
 			var typed *editorFileError
 			if errors.As(e, &typed) {
-				snapshotError(w, typed.status, typed.code)
+				code := typed.code
+				// Only a listing that has observed a link can call it broken.
+				if code == "file_missing" {
+					code = "file_unavailable"
+				}
+				snapshotError(w, typed.status, code)
 			} else {
 				snapshotError(w, 503, "file_io_failed")
 			}
@@ -510,7 +624,11 @@ func (c *ConversationController) editorSave(ctx context.Context, ws *os.File, cw
 	if o.version != in.Base {
 		return nil, fileError(409, "file_changed")
 	}
-	parentPath, name := path.Split(in.Path)
+	resolved, e := editorResolve(int(ws.Fd()), in.Path, uint32(c.cfg.UID))
+	if e != nil {
+		return nil, e
+	}
+	parentPath, name := path.Split(resolved)
 	parentPath = strings.TrimSuffix(parentPath, "/")
 	parent, e := editorOpen(int(ws.Fd()), parentPath, uint32(c.cfg.UID), unix.O_RDONLY|unix.O_DIRECTORY)
 	if e != nil {
@@ -580,6 +698,10 @@ func (c *ConversationController) editorSave(ctx context.Context, ws *os.File, cw
 	if ea != nil || eb != nil || !same(a, b) || !c.editorAdmitted(ws, cwd) {
 		return nil, fileError(409, "file_changed")
 	}
+	var target unix.Stat_t
+	if e = unix.Fstatat(int(parent.Fd()), name, &target, unix.AT_SYMLINK_NOFOLLOW); e != nil || !same(target, fresh.stat) {
+		return nil, fileError(409, "file_changed")
+	}
 	if ctx.Err() != nil {
 		return nil, fileError(503, "file_busy")
 	}
@@ -605,8 +727,10 @@ func (c *ConversationController) editorSave(ctx context.Context, ws *os.File, cw
 }
 
 type editorEntry struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+	Name              string `json:"name"`
+	Kind              string `json:"kind"`
+	SymlinkTarget     string `json:"symlink_target,omitempty"`
+	UnavailableReason string `json:"unavailable_reason,omitempty"`
 }
 
 func (c *ConversationController) editorList(ctx context.Context, ws *os.File, p string, out map[string]any) error {
@@ -648,7 +772,30 @@ func (c *ConversationController) editorList(ctx context.Context, ws *os.File, p 
 				}
 			}
 		}
-		result = append(result, editorEntry{entry.Name(), kind})
+		item := editorEntry{Name: entry.Name(), Kind: kind}
+		link, err := unix.Openat2(int(f.Fd()), entry.Name(), &unix.OpenHow{Flags: unix.O_PATH | unix.O_NOFOLLOW | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+		if err == nil {
+			s, err := stat(link)
+			if err == nil && s.Uid == uint32(c.cfg.UID) && s.Mode&unix.S_IFMT == unix.S_IFLNK {
+				buf := make([]byte, 4096)
+				n, err := unix.Readlinkat(link, "", buf)
+				if err == nil && n < len(buf) {
+					item.SymlinkTarget = string(buf[:n])
+					if e != nil {
+						item.UnavailableReason = "file_unavailable"
+						var typed *editorFileError
+						if errors.As(e, &typed) && typed.status == 404 {
+							item.UnavailableReason = typed.code
+							if typed.code == "file_missing" {
+								item.UnavailableReason = "broken_link"
+							}
+						}
+					}
+				}
+			}
+			unix.Close(link)
+		}
+		result = append(result, item)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	if len(result) > 500 {
