@@ -4,6 +4,7 @@ Generated from web/src/components/HeaderShortening.tsx; do not edit.
 
 ```tsx
 import { type RefObject, useEffect, useLayoutEffect, useState } from "react";
+import type { MarkState } from "./HabitatMark";
 import type { StatusKind } from "./Status";
 import { StatusMark } from "./Status";
 
@@ -145,13 +146,13 @@ export function useHeaderShortening(
 export function HeaderActivity({
   label,
   detail,
-  animated,
+  mark,
   kind,
 }: {
   label: string;
   /** The turn's phase and duration, "Ajattelee · 2 min 14 s". */
   detail?: string;
-  animated: boolean;
+  mark: MarkState;
   kind: StatusKind;
 }) {
   const [open, setOpen] = useState(false);
@@ -181,12 +182,7 @@ export function HeaderActivity({
         if (event.key === "Escape") setOpen(false);
       }}
     >
-      <StatusMark
-        label={label}
-        tone="info"
-        animated={animated ? "running" : false}
-        kind={kind}
-      />
+      <StatusMark label={label} tone="info" kind={kind} mark={mark} />
       <span className="ah-header-tip" aria-hidden="true">
         {text}
       </span>

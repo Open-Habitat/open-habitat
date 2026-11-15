@@ -61,6 +61,7 @@ import { textNow, useLanguage, useText } from "../i18n";
 import { accountText } from "../text/account";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
+import { ChoiceMenu } from "./ChoiceMenu";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
 import { useExplainEntry } from "./ExplainMode";
@@ -169,11 +170,12 @@ export function AccountShelf({
   const themes: {
     id: ThemeChoice;
     label: string;
-    icon: "system" | "sun" | "moon";
+    icon: "system" | "sun" | "moon" | "contrast";
   }[] = [
     { id: "system", label: t.themeSystem, icon: "system" },
     { id: "light", label: t.themeLight, icon: "sun" },
     { id: "dark", label: t.themeDark, icon: "moon" },
+    { id: "contrast", label: t.themeContrast, icon: "contrast" },
   ];
   return (
     <div className="ah-account-shelf" data-account-controls>
@@ -272,6 +274,7 @@ export function AccountSettings({
   nativeState,
   nativeReason,
   nativeLogin,
+  nativeScopes,
   onPiSignIn,
   modelSelector,
   onClose,
@@ -286,19 +289,24 @@ export function AccountSettings({
   onNavigate,
   workspaces,
   onNewWorkspace,
+  onAskAgent,
 }: {
   editorIdentity?: string;
   profile?: AccountProfile;
   name?: string;
   csrf?: string;
   onDisconnect?: () => void;
-  /** Sign in with GitHub again; the sign-in replaces an expired gh login. */
-  onReconnect?: () => void;
+  /** Sign in with GitHub again; the sign-in replaces an expired gh login.
+   * workflow asks for, or drops, the workflow scope; without it the app
+   * keeps what the person has. */
+  onReconnect?: (workflow?: boolean) => void;
   /** A workspace came back from the Trash: read the snapshot again. */
   onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
   nativeReason?: NativeUnknownReason;
   nativeLogin?: string;
+  /** The token's scopes with a working login: null when unread. */
+  nativeScopes?: readonly string[] | null;
   onPiSignIn?: () => void;
   modelSelector?: React.ReactNode;
   /** Closes Settings: the X in the corner, or Esc outside a field. */
@@ -312,6 +320,9 @@ export function AccountSettings({
   /** The snapshot's workspaces, for Koodipalvelut's imported list. */
   workspaces?: readonly Workspace[];
   onNewWorkspace?: () => void;
+  /** Opens a new conversation in the workspace with text in its field,
+   * unsent: Storage's clean-up request. */
+  onAskAgent?: (workspaceId: string, text: string) => boolean;
 }) {
   const theme = useThemeChoice();
   const language = useLanguage();
@@ -928,10 +939,12 @@ export function AccountSettings({
         )}
         {section === "koodipalvelut" && (
           <CodeHostSettings
+            identity={editorIdentity}
             csrf={csrf}
             nativeState={nativeState}
             nativeReason={nativeReason}
             nativeLogin={nativeLogin}
+            nativeScopes={nativeScopes}
             onReconnect={onReconnect}
             onDisconnect={onDisconnect}
             workspaces={workspaces}
@@ -961,14 +974,14 @@ export function AccountSettings({
                 <span className="s-desc">{t.themeDesc}</span>
               </div>
               <div className="s-val">
-                <Segmented
-                  size="row"
+                <ChoiceMenu
                   data-testid="theme-choice"
                   label={t.theme}
                   options={[
                     { id: "system", label: t.themeSystem },
                     { id: "light", label: t.themeLight },
                     { id: "dark", label: t.themeDark },
+                    { id: "contrast", label: t.themeContrast },
                   ]}
                   value={theme}
                   onChange={setThemeChoice}
@@ -982,6 +995,8 @@ export function AccountSettings({
           <PersonalStorage
             csrf={csrf}
             onWorkspacesChanged={onWorkspacesChanged}
+            workspaces={workspaces?.filter((w) => !w.place)}
+            onAskAgent={onAskAgent}
           />
         )}
         {adminSections.some(({ id }) => id === section) &&

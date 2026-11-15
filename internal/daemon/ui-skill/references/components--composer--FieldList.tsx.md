@@ -70,6 +70,7 @@ export function FieldList({
   const flat = flatChoices(groups);
   const previewElement = useRef<HTMLElement>(null);
   const choice = flat[selected];
+  const runsNow = choice?.type === "command" && !!choice.run;
   const previewKey =
     !choice || choice.type === "status"
       ? undefined
@@ -202,8 +203,9 @@ export function FieldList({
         ) : from === "caret" && !files ? (
           <>
             {k("↑")}
-            {k("↓")} {t.keySelect} · {k("Tab")} {t.keyAddTop} · {k("Enter")}{" "}
-            {t.keyInsert} · {k("Esc")} {t.keyClose}
+            {k("↓")} {t.keySelect} · {k("Tab")}{" "}
+            {runsNow ? t.keyRun : t.keyAddTop} · {k("Enter")}{" "}
+            {runsNow ? t.keyRun : t.keyInsert} · {k("Esc")} {t.keyClose}
           </>
         ) : files ? (
           <>
@@ -225,7 +227,8 @@ export function FieldList({
         ) : (
           <>
             {k("↑")}
-            {k("↓")} {t.keySelect} · {k("Enter")} {t.keyAddToStart} · {k("Esc")}{" "}
+            {k("↓")} {t.keySelect} · {k("Enter")}{" "}
+            {runsNow ? t.keyRun : t.keyAddToStart} · {k("Esc")}{" "}
             {t.keyBackToText}
           </>
         )}

@@ -157,7 +157,10 @@ export function backgroundFacts({
     const live = ["working", "idle", "waiting_parent", "unknown"].includes(
       run.state,
     );
-    const wait = waits.find((p) => p.run_ids.includes(run.run_id));
+    const matching = waits.filter((p) => p.run_ids.includes(run.run_id));
+    // An earlier non-waking observer must not hide a newly started waking
+    // wait (or put Stop on that older observer instead).
+    const wait = matching.find(waking) ?? matching[0];
     return {
       run,
       live,
@@ -538,7 +541,9 @@ export function BackgroundStrip({
         ? interrupted.length
           ? String(interrupted.length)
           : "?"
-        : String(kind === "spin" ? facts.spin.working : facts.proc.live.length);
+        : String(
+            kind === "spin" ? facts.spin.items.length : facts.proc.live.length,
+          );
   const askButton = (
     runs: Spinoff[],
     label: string,

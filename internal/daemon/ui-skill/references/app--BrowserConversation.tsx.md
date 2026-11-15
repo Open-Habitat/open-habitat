@@ -52,8 +52,10 @@ import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
 import { ModelChip, modelSummary } from "../components/ModelChip";
+import { activityMark } from "../components/markState";
 import { NoticeStack, NoticeStackProvider } from "../components/NoticeStack";
 import {
   ProcessAwareToolUse,
@@ -99,6 +101,7 @@ import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { compactionNotice } from "./compactionNotice";
 import { useCompaction } from "./compactionView";
+import { conversationBuiltins } from "./composerBuiltins";
 import {
   readCommands,
   readFiles,
@@ -1659,7 +1662,7 @@ function BrowserConversationContent({
       : undefined;
   const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
-  const composerSources = useMemo(
+  const composerReads = useMemo(
     () => ({
       commands: (signal: AbortSignal) =>
         readCommands(
@@ -1710,6 +1713,27 @@ function BrowserConversationContent({
     waitingOn: archive?.waiting_on,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
+  // The header's mark: a stop in progress, then the live turn's phase where
+  // it is known, then a failure the rail would show too, then the activity.
+  // As railNow: a failed turn, a crash, or a turn cut off (a daemon restart,
+  // say) that nobody has continued; a stop the person asked for is not one.
+  const snapshotRest = archive?.rest;
+  const failedTurn =
+    presentation.activity !== "working" &&
+    !statusStale &&
+    (archive?.failure !== undefined ||
+      (!!snapshotRest &&
+        !snapshotRest.awake &&
+        (snapshotRest.cause === "crash" ||
+          (snapshotRest.cause !== "person" && !!archive?.interrupted_turn))));
+  const headerMark: MarkState =
+    current?.state === "stopping"
+      ? "stopping"
+      : failedTurn
+        ? "error"
+        : !statusStale && current?.pending_question
+          ? "waiting"
+          : activityMark(presentation.activity);
   useEditorActivity(
     presentation.activity === "working",
     presentation.activityShortLabel,
@@ -1968,13 +1992,22 @@ function BrowserConversationContent({
   const compaction = useCompaction({
     id,
     csrf,
-    enabled: contextViewOn && controlled,
+    enabled: controlled,
     busy: controlled && turnUnderway(current?.state, current?.run_active),
     stopped: notStarted,
     workspaceId: runWorkspace,
     onLogin,
     onSettled: () => setContextRead((n) => n + 1),
   });
+  const composerSources = {
+    ...composerReads,
+    browserActions:
+      id && (!opened || controlled)
+        ? conversationBuiltins(compaction, () =>
+            navigate(`/workspaces/${workspace.workspace_id}`),
+          )
+        : [],
+  };
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
@@ -2028,6 +2061,7 @@ function BrowserConversationContent({
     id ? (callId) => store.toolExpansion(id, callId) : undefined,
     liveTurn,
     rewind.target,
+    archive?.rest?.cause === "restart" && !!archive.interrupted_turn,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
@@ -2565,6 +2599,15 @@ function BrowserConversationContent({
                     ? "unknown"
                     : "neutral"
               }
+              activityMark={
+                // The resident breathes while Pi thinks (live turn activity).
+                headerMark === "working" &&
+                liveWorking &&
+                !activeToolName &&
+                last?.kind === "thinking"
+                  ? "thinking"
+                  : headerMark
+              }
               settings={nativeSettings}
               emptyConversation={emptyConversation}
               contextIndicator={
@@ -2818,7 +2861,7 @@ function BrowserConversationContent({
                         onPage={(read) =>
                           setStartPage({ key: pageKey, page: read })
                         }
-                        onStarted={(started, title, prepared) => {
+                        onStarted={(started, title, prepared, immediate) => {
                           // A goal names the conversation it starts, until the
                           // person renames it.
                           const name = goalConversationName(started);
@@ -2831,7 +2874,10 @@ function BrowserConversationContent({
                             ).catch(() => {
                               /* The automatic title then stands. */
                             });
-                          if (!guide) return;
+                          const sending =
+                            immediate && (canSend || sendWhenReady);
+                          if (sending) composer.onSendNow?.(prepared.text);
+                          if (!guide) return sending;
                           prepareField(guide, {
                             text: prepared.text,
                             start: prepared.selectionStart,
@@ -2842,6 +2888,7 @@ function BrowserConversationContent({
                             page: title,
                             open: guideOpensItself(),
                           });
+                          return sending;
                         }}
                       />
                     ) : undefined
@@ -3162,6 +3209,11 @@ function BrowserConversationContent({
               onChange={changeDraft}
               onPage={(read) => setStartPage({ key: pageKey, page: read })}
               onGiveBack={creationView.giveBack}
+              onSend={(text) => {
+                if (creationBlock(creation)) return false;
+                composer.onSendNow?.(text);
+                return true;
+              }}
             />
           )}
           <div className="ah-composer-stack">

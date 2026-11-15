@@ -34,6 +34,10 @@ const fi = {
       title: "Palvelin päivitettiin",
       detail: "Lataa sivu uudelleen; luonnokset säilyvät.",
     },
+    "part-failed": {
+      title: "Osa sivusta ei latautunut",
+      detail: "Lataa sivu uudelleen; luonnokset säilyvät.",
+    },
     "authentication-required": {
       title: "Istunto puuttuu tai on vanhentunut",
       detail: "Kirjaudu uudelleen jatkaaksesi.",
@@ -186,6 +190,10 @@ export const statusText = catalog(fi, {
     },
     "version-changed": {
       title: "The server was updated",
+      detail: "Reload the page; drafts are kept.",
+    },
+    "part-failed": {
+      title: "Part of the page did not load",
       detail: "Reload the page; drafts are kept.",
     },
     "authentication-required": {

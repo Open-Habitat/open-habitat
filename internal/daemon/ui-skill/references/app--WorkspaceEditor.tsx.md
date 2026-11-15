@@ -8,6 +8,7 @@ Generated from web/src/app/WorkspaceEditor.tsx; do not edit.
 // controller owns the frame, its hand-off, the layout state and the one key
 // the app keeps while the editor has focus (Ctrl+Alt+K). Live documents and
 // layout are per tab; the engine choice comes from the person's configuration.
+
 import {
   createContext,
   lazy,
@@ -25,6 +26,7 @@ import { ControlButton } from "../components/ControlElements";
 import { EditorHeader, EditorHeaderActions } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
+import { HabitatMark } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
 import { WarningBanner } from "../components/WarningBanner";
 import { liveText } from "../i18n";
@@ -596,7 +598,7 @@ function WorkspaceEditorInner({
       <div className="ah-editor-overlay" role="status">
         <div>
           <strong>
-            <span aria-hidden="true" className="ah-status-dot ah-running" />{" "}
+            <HabitatMark state="loading" size={16} />{" "}
             {phase === "loading" ? txt.loadingInterface : txt.startingVSCode}
           </strong>
           <span>{txt.firstOpenSlow}</span>

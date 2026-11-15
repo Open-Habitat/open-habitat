@@ -76,7 +76,7 @@ export const parts: Record<CardId, Part> = {
   },
   Y06: {
     kind: "menu",
-    sel: '[data-testid="conversation-model"], [data-testid="menu-fact-model"]',
+    sel: '[data-testid="conversation-model"], [data-testid="worker-model"], [data-testid="menu-fact-model"]',
   },
   Y07: {
     kind: "panel",
@@ -134,8 +134,15 @@ export const parts: Record<CardId, Part> = {
   S07: { kind: "list", sel: '[data-testid="rail-quiet-fold"]' },
   S08: { kind: "menu", sel: '[data-testid="rail-quiet-menu"]' },
   S09: { kind: "nav", sel: '.ah-rail [data-testid="agent-link"]' },
-  S10: { kind: "info", sel: ".ah-rail .ah-ball" },
-  S11: { kind: "info", sel: ".ah-rail .ah-worker-rail", workerLegend: true },
+  S10: {
+    kind: "info",
+    sel: ".ah-rail .ah-row-mark, .ah-rail .ah-now-dot-ring",
+  },
+  S11: {
+    kind: "info",
+    sel: ".ah-rail .oh-orbit, .ah-rail .oh-mark-count",
+    workerLegend: true,
+  },
   S12: { kind: "once", sel: '[data-testid="rail-rename-conversation"]' },
   S13: { kind: "once", sel: '[data-testid="rail-archive-conversation"]' },
   S14: { kind: "list", sel: '[data-testid="workspace-summary"]' },
@@ -393,6 +400,16 @@ export const parts: Record<CardId, Part> = {
   },
   V30: { kind: "once", sel: '[data-testid="ended-runs"]' },
   V31: { kind: "once", sel: '[data-testid="ask-agent"]' },
+  M83: {
+    kind: "nav",
+    sel: '[data-testid="cleanup-ask"], [data-testid="cleanup-warning-ask"]',
+    opens: true,
+  },
+  M84: {
+    kind: "panel",
+    sel: '[data-testid="storage-breakdown"] [data-testid^="more-"]',
+    opens: true,
+  },
   V32: { kind: "once", sel: '[data-testid="attachment-refusal-dismiss"]' },
   V33: {
     kind: "panel",
@@ -435,7 +452,7 @@ export const parts: Record<CardId, Part> = {
   L02: { kind: "list", sel: '[data-testid^="composer-command-skill:"]' },
   L03: {
     kind: "list",
-    sel: '[data-testid^="composer-command-"]:not([data-testid^="composer-command-skill:"])',
+    sel: '[data-testid^="composer-command-"]:not([data-testid^="composer-command-skill:"]):not([data-testid="composer-command-compact"]):not([data-testid="composer-command-new"])',
   },
   L04: { kind: "list", sel: '[data-testid="composer-file-choice"]' },
   L05: { kind: "info", sel: '[data-testid="file-git-mark"]' },
@@ -459,6 +476,12 @@ export const parts: Record<CardId, Part> = {
   },
   L11: { kind: "once", sel: '[data-testid="model-commit"]' },
   L12: { kind: "nav", sel: '[data-testid="settings-claude"]' },
+  L13: { kind: "once", sel: '[data-testid="composer-command-compact"]' },
+  L14: {
+    kind: "nav",
+    sel: '[data-testid="composer-command-new"]',
+    opens: true,
+  },
   P01: {
     kind: "panel",
     sel: '[data-testid="git-dialog"] .ah-gs-top, [data-testid="workspace-git-dialog"] > h2',
@@ -636,6 +659,7 @@ export const parts: Record<CardId, Part> = {
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "J08",
   "J09",
+  "L13",
   "M72",
   "M73",
   "M75",

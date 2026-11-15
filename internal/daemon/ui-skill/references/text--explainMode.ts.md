@@ -355,14 +355,14 @@ const fi = {
       know: "Auki olevan keskustelun rivillä on kehys.",
     },
     S10: {
-      name: "Tilapallo",
-      lead: "Keskustelun tila yhdellä merkillä: sykkivä työskentelee, täysi pallo odottaa sinua tai on valmis.",
-      know: "Salmiakki tarkoittaa, että vuoro epäonnistui, ja tyhjä rengas, ettei tilaa juuri nyt tiedetä.",
+      name: "Tilamerkki",
+      lead: "Keskustelun tila Open Habitatin merkillä: kehä on agentin koti, piste agentti ja aukko ovi. Kun ovi kiertää kehää, agentti työskentelee; kun piste koputtaa ovella keltaisena, on sinun vuorosi.",
+      know: "Suljettu kehä on valmis, ontto piste virheen värillä epäonnistunut ja katkoviivakehä tuntematon. Ontto piste ovella: olet lukenut vastauksen. Kapeassa palkissa kehä on työtilan kuvakkeen ympärillä.",
     },
     S11: {
-      name: "Workerin merkki",
-      lead: "Keskustelu on antanut työtä workerille. Haaran päässä oleva pallo kertoo workerin tilan.",
-      know: "Useasta workerista näkyy keltainen, jos joku odottaa sinua. Kehä pallon ympärillä: agentti odottaa workeria. Workerit avautuvat keskustelun Workerit-sirusta.",
+      name: "Workerit merkissä",
+      lead: "Keskustelu on antanut työtä workereille. Jokainen worker on pieni piste agentin ympärillä; yli kolmesta näkyy luku merkin vieressä.",
+      know: "Keltainen piste odottaa sinua. Workerit avautuvat keskustelun Workerit-sirusta.",
     },
     S12: {
       name: "Nimeä uudelleen",
@@ -472,8 +472,8 @@ const fi = {
     },
     S33: {
       name: "Ei nyt",
-      lead: "Siirtää vastausta odottavan keskustelun Hiljaisiin, kun et ehdi siihen nyt.",
-      know: "Keskustelu säilyy ennallaan. Nosta tuo sen takaisin Sinun vuoroosi.",
+      lead: "Siirtää keskustelun pois Sinun vuorosi -listasta, kun et ehdi vastata.",
+      know: "Taustatyö jatkuu Käynnissä-listalla; muuten keskustelu siirtyy Hiljaisiin. Uusi vastaus tuo sen takaisin Sinun vuoroosi.",
     },
     E01: {
       name: "Työtilat",
@@ -1211,6 +1211,17 @@ const fi = {
       name: "Tekoäly-asetukset",
       lead: "Avaa asetukset, joissa kirjaudut mallipalveluun tai lisäät avaimen.",
     },
+    L13: {
+      name: "/compact",
+      lead: "Tiivistää aiemmat viestit yhteenvedoksi ja vapauttaa tilaa keskusteluun.",
+      know: "Toimii vain agentin odottaessa viestiäsi. Aiemmat viestit säilyvät historiassa.",
+    },
+    L14: {
+      name: "/new",
+      lead: "Avaa uuden keskustelun samassa työtilassa.",
+      know: "Nykyinen keskustelu säilyy. Käynnissä oleva työ ei pysähdy.",
+      try: "Avaa uusi keskustelu",
+    },
     P01: {
       name: "Git-tila",
       lead: "Työtilan haara verrattuna etärepoon ja pohjahaaraan, sekä muuttuneet tiedostot.",
@@ -1502,6 +1513,18 @@ const fi = {
     M24: {
       name: "Muokkaa Git-identiteettiä",
       lead: "Asettaa nimen ja sähköpostin, jotka tulevat agentin ja sinun commiteihisi.",
+    },
+    M83: {
+      name: "Pyydä agenttia siivoamaan",
+      lead: "Avaa valinnoistasi tehdyn pyynnön uuden keskustelun kirjoituskenttään.",
+      know: "Voit muokata pyyntöä ennen lähettämistä. Mitään ei siivota vielä.",
+      try: "Avaa pyyntö",
+    },
+    M84: {
+      name: "Näytä tarkemmin",
+      lead: "Näyttää ryhmän kansiot ja niiden koot.",
+      know: "Välimuisteista ja käännöstiedostoista voit valita yksittäisiä kansioita. Muut ryhmät ovat vain katseltavissa.",
+      try: "Näytä tai piilota kansiot",
     },
     M25: {
       name: "Versio",
@@ -2037,14 +2060,14 @@ export const explainModeText = catalog(fi, {
       know: "The open conversation's row has a frame around it.",
     },
     S10: {
-      name: "State ball",
-      lead: "The conversation's state in one mark: pulsing is working, a full ball waits for you or is done.",
-      know: "A diamond means the turn failed, and an empty ring that the state is not known right now.",
+      name: "State mark",
+      lead: "The conversation's state as the Open Habitat mark: the ring is the agent's home, the dot the agent and the gap its door. A door travelling round the ring means working; a yellow dot knocking at the door means it is your turn.",
+      know: "A closed ring is done, a hollow dot in the error colour failed and a dashed ring unknown. A hollow dot at the door: you have read the reply. In the narrow rail the ring goes round the workspace icon.",
     },
     S11: {
-      name: "Worker mark",
-      lead: "The conversation has handed work to a worker. The ball at the branch's end shows its state.",
-      know: "With several workers, yellow shows if any of them waits for you. A ring around the ball: the agent waits for the worker. Open them from the conversation's Workers badge.",
+      name: "Workers in the mark",
+      lead: "The conversation has handed work to workers. Each worker is a small dot around the agent; with more than three a number shows beside the mark.",
+      know: "A yellow dot waits for you. Open them from the conversation's Workers badge.",
     },
     S12: {
       name: "Rename",
@@ -2154,8 +2177,8 @@ export const explainModeText = catalog(fi, {
     },
     S33: {
       name: "Not now",
-      lead: "Moves a conversation waiting for your reply to Quiet when you cannot get to it now.",
-      know: "The conversation stays as it is. Raise brings it back to Your turn.",
+      lead: "Moves the conversation out of Your turn when you cannot reply now.",
+      know: "Background work stays in Running; otherwise the conversation moves to Quiet. A new reply brings it back to Your turn.",
     },
     E01: {
       name: "Workspaces",
@@ -2887,6 +2910,17 @@ export const explainModeText = catalog(fi, {
       name: "AI settings",
       lead: "Opens the settings where you sign in to a model service or add a key.",
     },
+    L13: {
+      name: "/compact",
+      lead: "Turns earlier messages into a summary to free space in the conversation.",
+      know: "Runs immediately while the agent waits for your message. Earlier messages stay in history.",
+    },
+    L14: {
+      name: "/new",
+      lead: "Opens a new conversation in the same workspace.",
+      know: "The current conversation is kept. Work in progress does not stop.",
+      try: "Open a new conversation",
+    },
     P01: {
       name: "Git state",
       lead: "The workspace's branch compared with the remote and the base branch, and the changed files.",
@@ -3175,6 +3209,18 @@ export const explainModeText = catalog(fi, {
     M24: {
       name: "Edit Git identity",
       lead: "Sets the name and email that go into your and your agents' commits.",
+    },
+    M83: {
+      name: "Ask an agent to clean up",
+      lead: "Opens a request built from your selections in a new conversation's composer.",
+      know: "You can edit the request before sending it. Nothing is cleaned up yet.",
+      try: "Open the request",
+    },
+    M84: {
+      name: "Show details",
+      lead: "Shows the group's folders and their sizes.",
+      know: "You can select individual cache and build folders. Other groups are read-only.",
+      try: "Show or hide folders",
     },
     M25: {
       name: "Version",

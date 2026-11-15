@@ -37,7 +37,7 @@ const fi = {
     `${used} / ${bound} · ${pct} %`,
   diskOf: (used: string, bound: string, pct: number) =>
     `Levyllä ${used} / ${bound} · ${pct} %`,
-  yourShare: (own: string) => `Sinun tiedostosi: ${own}`,
+  yourShare: (own: string) => `Mitattu kotihakemistostasi: ${own}`,
   warnLine: "Varoitus 85 %",
   barLabel: (now: string, after: string, bound: string) =>
     `Nyt ${now}, valinnan jälkeen ${after} / ${bound}`,
@@ -46,8 +46,8 @@ const fi = {
   nothingChosen: "Mitään ei ole valittu.",
   freesUp: (n: string) => `Vapauttaa ${n}`,
   legend: {
-    others: "Muiden käyttäjien tiedostot",
-    kept: "Projektit ja muut tiedostot",
+    others: "Muut tiedostot levyllä",
+    kept: "Muut tiedostot",
     trash: "Roskakori",
     live: "Käynnissä oleva työ",
     freeable: "Vapautettavissa, ei valittu",
@@ -62,6 +62,13 @@ const fi = {
   remeasure: "Mittaa uudelleen",
   freeable: "Vapautettavissa",
   groups: {
+    dropbox: "Dropbox",
+    onedrive: "OneDrive",
+    drive: "Google Drive",
+    sharepoint: "SharePoint",
+    offered: "Tarjotut tiedostot",
+    history: "Agenttien historia",
+    workspaces: "Työtilat",
     caches: "Ohjelmointityökalujen välimuistit",
     finished: "Valmiiden töiden jäljet",
     own: "Omien projektien käännöstiedostot",
@@ -82,6 +89,13 @@ const fi = {
   less: "Piilota tarkemmat",
   detailsNote: "Kansiot, joista ryhmä koostuu. Voit valita ne myös yksitellen.",
   items: {
+    dropbox: "Dropbox",
+    onedrive: "OneDrive",
+    drive: "Google Drive",
+    sharepoint: "SharePoint",
+    offered: "Tarjotut tiedostot",
+    history: "Agenttien historia",
+    workspace: "Työtila",
     "go-build": "Go-käännösvälimuisti",
     "go-mod": "Go-moduulit",
     npm: "npm-välimuisti",
@@ -101,16 +115,8 @@ const fi = {
   emptyTrashBelow: "Tyhjennä alempana",
   askAgent: "Pyydä agenttia siivoamaan…",
   askAgentSelected: (n: string) => `Pyydä agenttia siivoamaan valitut (${n})…`,
-  dialogTitle: "Pyydä agenttia siivoamaan",
-  dialogNote:
-    "Pyyntö avautuu uuden keskustelun kenttään. Se lähtee agentille vasta, kun lähetät sen.",
-  convIn: "Työtila",
-  convInNote:
-    "Agentti siivoaa koko kotihakemistosta. Työtila on vain paikka, jossa keskustelu näkyy.",
-  request: "Pyyntö",
-  open: "Avaa keskustelu",
-  cancel: "Peru",
-  cannotOpen: "Uutta keskustelua ei voitu aloittaa tästä työtilasta.",
+  cannotOpen:
+    "Keskustelua ei voitu vielä aloittaa. Pyyntö odottaa työtilan uuden keskustelun kentässä.",
   noWorkspace: "Keskustelu tarvitsee työtilan. Lisää ensin työtila.",
   requestText: (r: CleanupRequest) => {
     const head = r.shared
@@ -147,7 +153,7 @@ export const storageBreakdownText = catalog(fi, {
   afterShort: "After the selection",
   ofBound: (used, bound, pct) => `${used} / ${bound} · ${pct} %`,
   diskOf: (used, bound, pct) => `On the disk ${used} / ${bound} · ${pct} %`,
-  yourShare: (own) => `Your files: ${own}`,
+  yourShare: (own) => `Measured in your home: ${own}`,
   warnLine: "Warning 85 %",
   barLabel: (now, after, bound) =>
     `Now ${now}, after the selection ${after} / ${bound}`,
@@ -156,8 +162,8 @@ export const storageBreakdownText = catalog(fi, {
   nothingChosen: "Nothing is selected.",
   freesUp: (n) => `Frees ${n}`,
   legend: {
-    others: "Other users' files",
-    kept: "Projects and other files",
+    others: "Other files on the disk",
+    kept: "Other files",
     trash: "Trash",
     live: "Work in progress",
     freeable: "Freeable, not selected",
@@ -173,6 +179,13 @@ export const storageBreakdownText = catalog(fi, {
   remeasure: "Measure again",
   freeable: "Freeable",
   groups: {
+    dropbox: "Dropbox",
+    onedrive: "OneDrive",
+    drive: "Google Drive",
+    sharepoint: "SharePoint",
+    offered: "Offered files",
+    history: "Agent histories",
+    workspaces: "Workspaces",
     caches: "Programming tools' caches",
     finished: "Leftovers from finished work",
     own: "Build files in your projects",
@@ -194,6 +207,13 @@ export const storageBreakdownText = catalog(fi, {
   detailsNote:
     "The folders this group is made of. You can also select them one by one.",
   items: {
+    dropbox: "Dropbox",
+    onedrive: "OneDrive",
+    drive: "Google Drive",
+    sharepoint: "SharePoint",
+    offered: "Offered files",
+    history: "Agent histories",
+    workspace: "Workspace",
     "go-build": "Go build cache",
     "go-mod": "Go modules",
     npm: "npm cache",
@@ -212,16 +232,8 @@ export const storageBreakdownText = catalog(fi, {
   emptyTrashBelow: "Empty below",
   askAgent: "Ask an agent to clean up…",
   askAgentSelected: (n) => `Ask an agent to clean up the selected (${n})…`,
-  dialogTitle: "Ask an agent to clean up",
-  dialogNote:
-    "The request opens in a new conversation's field. It goes to the agent only when you send it.",
-  convIn: "Workspace",
-  convInNote:
-    "The agent cleans up across your home directory. The workspace is only where the conversation shows.",
-  request: "Request",
-  open: "Open the conversation",
-  cancel: "Cancel",
-  cannotOpen: "A new conversation could not be started in this workspace.",
+  cannotOpen:
+    "The conversation could not start yet. The request waits in the workspace's new conversation field.",
   noWorkspace: "A conversation needs a workspace. Add a workspace first.",
   requestText: (r) => {
     const head = r.shared

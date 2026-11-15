@@ -26,13 +26,16 @@ import {
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { archiveAction } from "../components/ArchiveControls";
 import { attachmentsIn, messageText } from "../components/AttachmentChips";
+import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { ArchivedFoot } from "../components/ConversationArchive";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
+import { activityMark } from "../components/markState";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
@@ -115,7 +118,9 @@ function ReadableBlock({
   plainText = false,
   hasImage = false,
   part,
+  loadMissingPreview = false,
 }: {
+  loadMissingPreview?: boolean;
   hasImage?: boolean;
   part?: "skill_arguments";
   plainText?: boolean | "user" | "command";
@@ -221,6 +226,21 @@ function ReadableBlock({
       setPending(false);
     }
   };
+  // Thinking can consume the entry's entire preview budget. A saved reply
+  // still needs its first page, not an empty card or a hidden stage. Read once
+  // per source; failures retain the ordinary explicit retry control.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: more changes with loading state; only a new source/preview should start an automatic read.
+  useEffect(() => {
+    if (loadMissingPreview && block.readable && !block.text?.trim())
+      void more();
+  }, [
+    loadMissingPreview,
+    source,
+    block.readable,
+    block.text,
+    agentId,
+    revision,
+  ]);
   const control =
     block.readable && agentId && revision && !loaded?.complete ? (
       <Button
@@ -555,7 +575,7 @@ function FileUse({
 export function TurnText(props: Parameters<typeof ReadableBlock>[0]) {
   return (
     <div className="ah-ordered-blocks" data-reply-entry={props.entryKey}>
-      <ReadableBlock {...props} />
+      <ReadableBlock {...props} loadMissingPreview />
     </div>
   );
 }
@@ -1156,6 +1176,45 @@ export type LiveTool = {
   failureCause?: BashFailure;
 };
 
+/**
+ * The aborted replies a server restart cut rather than the person. Pi saves
+ * both alike; the host tells them apart. The catch-up Habitat gave the agent
+ * after a restart says whether the turn Pi was working on never finished
+ * (interrupted_turn). That turn is the one the catch-up's run continues: the
+ * turn before the person's message that woke it, or the turn just before an
+ * automatic wake. While the conversation still rests, the snapshot says the
+ * same of its latest turn. Either way the cut turn is named only when it
+ * ended in an aborted reply; a prompt Pi never answered has no stop to show.
+ */
+function restartCutReplies(entries: HistoryEntry[], lastCut?: boolean) {
+  const cut = new Set<string>();
+  // The current turn's aborted reply, the previous turn's, and whether the
+  // newest conversation message is the person's.
+  let current: string | undefined;
+  let previous: string | undefined;
+  let afterPerson = false;
+  for (const entry of entries) {
+    if (entry.kind === "user") {
+      previous = current;
+      current = undefined;
+      afterPerson = true;
+    } else if (entry.kind === "assistant") {
+      current = entry.stop_reason === "aborted" ? entry.entry_key : undefined;
+      afterPerson = false;
+    } else if (entry.restart) {
+      const continued = afterPerson ? previous : current;
+      if (
+        continued &&
+        entry.restart.interrupted_turn &&
+        entry.restart.stopped?.cause === "restart"
+      )
+        cut.add(continued);
+    }
+  }
+  if (lastCut && !afterPerson && current) cut.add(current);
+  return cut;
+}
+
 export function timelineItems(
   entries: HistoryEntry[],
   onLogin?: () => void,
@@ -1170,7 +1229,11 @@ export function timelineItems(
   /** Palaa tähän's chosen message: it and what follows dim while the
    * sheet is open. */
   dimFrom?: string,
+  /** The host says the conversation rests after a server restart cut its
+   * latest turn (snapshot rest cause restart with interrupted_turn). */
+  restartCut?: boolean,
 ) {
+  const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
   for (const entry of entries)
@@ -1231,6 +1294,7 @@ export function timelineItems(
           kind: "text",
           key,
           text: block.text ?? "",
+          readable: block.readable,
           at,
           node: (
             <TurnText
@@ -1294,7 +1358,12 @@ export function timelineItems(
           failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
-              ? { at: savedAt(group[group.length - 1]) }
+              ? {
+                  at: savedAt(group[group.length - 1]),
+                  by: cutByRestart.has(group[group.length - 1].entry_key)
+                    ? "restart"
+                    : undefined,
+                }
               : undefined
           }
           steps={[
@@ -1544,6 +1613,28 @@ function HistoryViewContent({
       : (eligibility?.process ?? "unknown");
   const mayWrite =
     process === "not_observed" && !!csrf && agent.history === "readable";
+  // The header's mark from what the snapshot says of the agent, as the rail
+  // draws it: a writer elsewhere may be working, waiting or have failed, and
+  // a history nobody writes rests.
+  const historyMark: MarkState =
+    process === "writer_present"
+      ? agent.failure !== undefined && !agent.run_active
+        ? "error"
+        : agent.pending_question
+          ? "waiting"
+          : activityMark(
+              agentPresentation({
+                process: "terminal_observed_live",
+                runActive: agent.run_active,
+                waitingOn: agent.waiting_on,
+                pendingQuestion: !!agent.pending_question,
+              }).activity,
+            )
+      : process === "not_observed"
+        ? agent.failure !== undefined
+          ? "error"
+          : "done"
+        : "unknown";
   const blockedReason =
     process === "writer_present" ? txt.writerRunning : txt.processUnconfirmed;
   const [busy, setBusy] = useState(false);
@@ -1716,6 +1807,7 @@ function HistoryViewContent({
               ? "working"
               : "unknown"
         }
+        activityMark={historyMark}
         controlKind="read-only"
         controlLabel={txt.readOnly}
         settings={settings}
@@ -1873,6 +1965,11 @@ function HistoryViewContent({
               onLogin,
               agent.agent_id,
               window?.revision,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              agent.rest?.cause === "restart" && !!agent.interrupted_turn,
             )}
             historyMode="pagedAccessible"
             emptyLabel={txt.empty}

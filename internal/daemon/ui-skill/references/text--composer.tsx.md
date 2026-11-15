@@ -35,6 +35,10 @@ const fi = {
     temporary: "istunto",
   } as Record<string, string>,
   browserGroup: "Selain · ajetaan heti",
+  commandAlone: (name: string) =>
+    name === "compact"
+      ? "Suorita /compact ilman liitteitä."
+      : `Suorita /${name} ilman liitteitä tai muuta tekstiä.`,
   browserTag: "Selain",
   agentAtStart: "Agentti · lisätään viestin alkuun, ajetaan lähetettäessä",
   agentMention: "Agentti · mainitaan tekstinä",
@@ -139,6 +143,10 @@ export const composerText = catalog(fi, {
     temporary: "session",
   },
   browserGroup: "Browser · runs at once",
+  commandAlone: (name: string) =>
+    name === "compact"
+      ? "Run /compact without attachments."
+      : `Run /${name} without attachments or other text.`,
   browserTag: "Browser",
   agentAtStart:
     "Agent · added at the start of the message, runs when it is sent",

@@ -5,6 +5,7 @@ Generated from web/src/components/EditorSplit.tsx; do not edit.
 ```tsx
 import { useText } from "../i18n";
 import { editorSplitText } from "../text/editorSplit";
+import { HabitatMark } from "./HabitatMark";
 import "./EditorSplit.css";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -149,9 +150,13 @@ export function EditorSplit({
           title={t.showConversation}
           onClick={onShowConversation}
         >
-          <span
-            aria-hidden="true"
-            className={`ah-status-dot${strip.working ? " ah-running" : ""}${strip.unread ? " ah-editor-unread" : ""}`}
+          <HabitatMark
+            state={
+              // The strip knows only work and an unread reply; otherwise the
+              // resting logo, which claims no outcome.
+              strip.unread ? "waiting" : strip.working ? "working" : "idle"
+            }
+            size={14}
           />
           <span className="ah-editor-strip-label">{t.conversation}</span>
         </button>

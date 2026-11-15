@@ -126,7 +126,10 @@ const other = (m: Mode): Mode => (m === "steer" ? "follow_up" : "steer");
 export type BrowserAction = {
   name: string;
   description: string;
-  run: () => void;
+  run: (argumentsText: string) => void;
+  availability?: Availability;
+  acceptsArguments?: boolean;
+  validateArguments?: (argumentsText: string) => string | undefined;
 };
 
 /** What the field's lists read. The composer asks when a list opens. */
@@ -274,13 +277,15 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
   // The in-field list browses the tree without a search.
   const fileQuery = open && kind === "file" && open.query ? open.query : null;
   const wantCommands = kind === "cmd";
+  const commandSource = sources?.commands;
+  const fileSource = sources?.files;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reread only when a command list opens.
   useEffect(() => {
-    if (!sources || !wantCommands) return;
+    if (!commandSource || !wantCommands) return;
     if (commands.at && Date.now() - commands.at < 30000) return;
     const abort = new AbortController();
     setCommands((c) => ({ ...c, state: c.list ? c.state : "loading" }));
-    sources.commands(abort.signal).then(
+    commandSource(abort.signal).then(
       (list) => setCommands({ state: "ready", list, at: Date.now() }),
       () => {
         if (!abort.signal.aborted)
@@ -288,13 +293,13 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
       },
     );
     return () => abort.abort();
-  }, [sources, wantCommands]);
+  }, [commandSource, wantCommands]);
   useEffect(() => {
-    if (!sources || fileQuery === null) return;
+    if (!fileSource || fileQuery === null) return;
     const abort = new AbortController();
     setFiles((f) => ({ ...f, state: "loading" }));
     const timer = window.setTimeout(() => {
-      sources.files(fileQuery, abort.signal, "name").then(
+      fileSource(fileQuery, abort.signal, "name").then(
         (list) => setFiles({ state: "ready", query: fileQuery, list }),
         () => {
           if (!abort.signal.aborted)
@@ -306,7 +311,7 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
       window.clearTimeout(timer);
       abort.abort();
     };
-  }, [sources, fileQuery]);
+  }, [fileSource, fileQuery]);
 
   // The tree lives while the in-field file list is open; it is read the
   // first time the list browses, and forgotten when the list closes.
@@ -426,6 +431,7 @@ function commandGroups(
             tag: t.browserTag,
             tone: "browser",
             run: a.run,
+            availability: a.availability,
           }),
         ),
     });
@@ -452,7 +458,13 @@ function commandGroups(
   // known terminal dialogs out of every composer entry point (including
   // search), rather than offering disabled commands among runnable ones.
   const choices = state.list.commands
-    .filter((c) => !c.terminal_only)
+    .filter(
+      (c) =>
+        !c.terminal_only &&
+        !(
+          runsAtStart && sources?.browserActions?.some((a) => a.name === c.name)
+        ),
+    )
     .map((c) => ({
       c,
       s: Math.max(
@@ -685,7 +697,7 @@ export function Composer({
   useEffect(
     () => () => resolution.current?.abort(),
     [
-      sources,
+      sources?.commands,
       value,
       csrf,
       availability.state,
@@ -1122,8 +1134,15 @@ export function Composer({
     setOpen(null);
     if (first.type === "command") {
       if (first.run) {
+        const reason =
+          first.availability && unavailableReason(first.availability);
+        if (reason) {
+          setNotice(reason);
+          return;
+        }
+        setNotice("");
         if (o.place === "caret") replaceRange(o.start, o.end, "");
-        first.run();
+        first.run("");
         return;
       }
       if (o.place === "caret" && o.atStart)
@@ -1318,6 +1337,26 @@ export function Composer({
     }
     const parts = splitAttachments(content);
     const selected = splitGoal(parts.text, goals).goal;
+    const command = /^\/([^\s]+)(?:\s+([\s\S]*))?$/.exec(parts.text.trim());
+    const action =
+      !selected && command
+        ? sources?.browserActions?.find((a) => a.name === command[1])
+        : undefined;
+    if (action && command) {
+      const args = command[2]?.trim() ?? "";
+      const reason =
+        (action.availability && unavailableReason(action.availability)) ||
+        action.validateArguments?.(args);
+      if (reason) setNotice(reason);
+      else if (parts.attachments.length || (args && !action.acceptsArguments))
+        setNotice(t.commandAlone(action.name));
+      else {
+        setOpen(null);
+        setText("", false);
+        action.run(args);
+      }
+      return;
+    }
     const cut = cutPreparedPlaceholder(
       parts.text,
       selected?.placeholder ?? preparedPlaceholder,
@@ -1402,7 +1441,10 @@ export function Composer({
       }
     }
     if (open?.place === "caret") {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (
+        (e.key === "ArrowDown" || e.key === "ArrowUp") &&
+        flat.some(pickable)
+      ) {
         e.preventDefault();
         return move(e.key === "ArrowDown" ? 1 : -1);
       }
@@ -1411,8 +1453,11 @@ export function Composer({
         return setOpen(null);
       }
       if (
-        (e.key === "Enter" && !e.shiftKey && !e.altKey && sel >= 0) ||
-        (e.key === "Tab" && !e.shiftKey)
+        (e.key === "Enter" &&
+          !e.shiftKey &&
+          !e.altKey &&
+          pickable(flat[sel])) ||
+        (e.key === "Tab" && !e.shiftKey && flat.some(pickable))
       ) {
         e.preventDefault();
         return accept(sel < 0 ? Math.max(0, flat.findIndex(pickable)) : sel);
