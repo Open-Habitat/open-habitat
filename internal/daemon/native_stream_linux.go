@@ -183,37 +183,38 @@ func nativeStill(path string, stamp fileStamp) bool {
 // still meanwhile. Its stamp is the cheap revision a caller compares again
 // later: Pi only appends, and any write changes size or times. Presentation
 // and naming need no more; continuation, which hands the whole file to Pi,
-// proves every record (reconciledNativeTail).
-func nativeTailProof(path string, uid int, id, cwd string) (stamp fileStamp, cutOff bool, ok bool) {
+// proves every record (reconciledNativeTail). Damaged means a malformed end
+// in a file that stood still, not an unavailable or changing observation.
+func nativeTailProof(path string, uid int, id, cwd string) (stamp fileStamp, cutOff bool, ok bool, damaged bool) {
 	f, _, ok := openNative(path, uid)
 	if !ok {
-		return fileStamp{}, false, false
+		return fileStamp{}, false, false, false
 	}
 	defer f.Close()
 	// Both ends are read at the stamped size, so an append after the open
 	// can only make the final stamp differ, never go unexamined.
 	stamp, err := stampOfFile(f)
 	if err != nil {
-		return fileStamp{}, false, false
+		return fileStamp{}, false, false, false
 	}
 	line, err := bufio.NewReader(io.NewSectionReader(f, 0, 16385)).ReadBytes('\n')
 	var h nativeHeader
 	if err != nil || len(line) > 16384 || json.Unmarshal(line, &h) != nil || h.Type != "session" || h.Version != 3 || h.ID != id || h.Cwd != cwd {
-		return fileStamp{}, false, false
+		return fileStamp{}, false, false, false
 	}
 	size := int64(stamp.size)
 	end, err := lastNativeNewline(f, size)
 	if err != nil || end == 0 {
-		return fileStamp{}, false, false
+		return fileStamp{}, false, false, false
 	}
 	if end < size {
 		fragment := make([]byte, size-end)
 		if _, err := f.ReadAt(fragment, end); err != nil {
-			return fileStamp{}, false, false
+			return fileStamp{}, false, false, false
 		}
 		var value any
 		if err := json.Unmarshal(fragment, &value); err == nil || err.Error() != "unexpected end of JSON input" {
-			return fileStamp{}, false, false
+			return stamp, false, false, err != nil && nativeStill(path, stamp)
 		}
 		cutOff = true
 	}
@@ -225,11 +226,11 @@ func nativeTailProof(path string, uid int, id, cwd string) (stamp fileStamp, cut
 		}
 		valid = json.Unmarshal(line, &e) == nil && (e.Type == "session" && e.ID == id || e.Type != "session" && entryIDPattern.MatchString(e.ID))
 		return false
-	}); err != nil || !valid {
-		return fileStamp{}, false, false
+	}); err != nil {
+		return fileStamp{}, false, false, false
 	}
 	if !nativeStill(path, stamp) {
-		return fileStamp{}, false, false
+		return fileStamp{}, false, false, false
 	}
-	return stamp, cutOff, true
+	return stamp, cutOff, valid, !valid
 }

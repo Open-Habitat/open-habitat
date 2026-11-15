@@ -203,8 +203,33 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	c.mu.Lock()
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
 	c.mu.Unlock()
-	if got := request(true, corruptToken); got != http.StatusConflict {
-		t.Fatalf("corrupt history archived: %d", got)
+	if status, code := requestDetail(true, corruptToken); status != http.StatusConflict || code != "history_damaged" {
+		t.Fatalf("corrupt history archive reason: %d %s", status, code)
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	archiveWhenAbsent("before damage")
+	damaged := append(bytes.Clone(original), []byte("{broken\n")...)
+	if err := os.WriteFile(path, damaged, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if status, code := requestDetail(false, token); status != http.StatusConflict || code != "history_damaged" {
+		t.Fatalf("damaged history restore reason: %d %s", status, code)
+	}
+	state, err = loadVisibility(home)
+	if err != nil || archiveFact(state, nil, "pi:"+id) != "archived" {
+		t.Fatalf("refused restore changed archive: %v %v", state, err)
+	}
+	data, err = os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, damaged) {
+		t.Fatal("refused restore changed damaged history")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if status, code := requestDetail(false, token); status != http.StatusConflict || code != "control_uncertain" {
+		t.Fatalf("missing history mislabeled as damage: %d %s", status, code)
 	}
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)

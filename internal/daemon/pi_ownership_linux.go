@@ -88,8 +88,8 @@ func (o *piOwnership) release() error {
 // stamp, which any write changes. A cut-off tail is left to continuation,
 // which repairs it before Pi appends.
 func reconciledNativeHistory(path string, uid int, id, cwd string) (string, error) {
-	a, aCut, aOK := nativeTailProof(path, uid, id, cwd)
-	b, bCut, bOK := nativeTailProof(path, uid, id, cwd)
+	a, aCut, aOK, _ := nativeTailProof(path, uid, id, cwd)
+	b, bCut, bOK, _ := nativeTailProof(path, uid, id, cwd)
 	if !aOK || !bOK || aCut || bCut || a != b {
 		return "", errors.New("native Pi history unsettled or unavailable")
 	}

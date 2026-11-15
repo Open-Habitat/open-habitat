@@ -632,8 +632,41 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	if damagedReply.Code != http.StatusConflict || !strings.Contains(damagedReply.Body.String(), "history_damaged") {
 		t.Fatalf("damaged continuation: %d %s", damagedReply.Code, damagedReply.Body.String())
 	}
+	c.mu.Lock()
+	s.state = "stopped"
+	s.commands = map[string]bool{}
+	s.receipts = map[string]string{}
+	c.mu.Unlock()
+	sendReply := httptest.NewRecorder()
+	sendRequest := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(`{"message":"keep this draft","command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
+	sendRequest.Header.Set("Content-Type", "application/json")
+	c.send(sendReply, sendRequest, id)
+	if sendReply.Code != http.StatusOK || !strings.Contains(sendReply.Body.String(), "held") {
+		t.Fatalf("damaged resting send: %d %s", sendReply.Code, sendReply.Body.String())
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		c.mu.Lock()
+		failed := s.state == "start_failed"
+		problem := s.startProblem
+		held := len(s.held) == 1 && s.held[0].text == "keep this draft"
+		c.mu.Unlock()
+		if failed {
+			if problem != "history_damaged" || !held {
+				t.Fatalf("damaged resting send lost reason or message: %s held=%v", problem, held)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("damaged resting send did not settle")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	c.mu.Lock()
+	s.state = "uncertain"
+	c.mu.Unlock()
 	if data, _ := os.ReadFile(path); string(data) != damaged {
-		t.Fatal("continuation changed damaged history")
+		t.Fatal("continuation or send changed damaged history")
 	}
 	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
 		t.Fatal(err)

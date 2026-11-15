@@ -111,6 +111,7 @@ test("rail titles have no field outline at rest, selected, hovered or focused", 
 test("a rail conversation archives from its row on hover or by keyboard, without opening it, and comes back from the notice", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
@@ -257,6 +258,39 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   answer();
   await expect(notice.getByTestId("archive-error")).toBeVisible();
   await expect(page.getByTestId("archive-error")).toHaveCount(1);
+
+  // Settings overlays the current view. A refusal arriving while it is
+  // open must remain available when the person returns to the view.
+  await notice.getByTestId("notice-close").click();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await expect(notice).toHaveCount(0);
+  await page.unroute("**/api/v1/workspaces");
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (route.request().postDataJSON()?.action !== "conversation_archive")
+      return route.continue();
+    await delayed;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "control_uncertain" } }),
+    });
+  });
+  await archive.click();
+  await page.getByTestId("account-menu-trigger").click();
+  await page.getByTestId("menu-settings").click();
+  await expect(page).toHaveURL(/\/settings$/);
+  release();
+  await expect(notice.getByTestId("archive-error")).toBeVisible();
+  await page.getByTestId("settings-close").click();
+  await notice.getByTestId("notice-close").click();
+  await expect(notice).toHaveCount(0);
 });
 
 test.describe("on a touch screen", () => {

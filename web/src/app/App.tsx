@@ -202,13 +202,6 @@ const CatalogPreview =
 
 /** A redirect of the view under Settings waits until Settings closes, so
  * work that finishes meanwhile does not take the person out of Settings. */
-// A close refusal in either language: the problem is kept as the text shown
-// when it happened, and the language may have changed since.
-const closeRefusal = (problem: string) =>
-  [appText.fi, appText.en].some((t) =>
-    problem.startsWith(t.closeRefused("").split(":")[0]),
-  );
-
 function Redirect({ held, ...props }: NavigateProps & { held: boolean }) {
   return held ? null : <Navigate {...props} />;
 }
@@ -366,7 +359,6 @@ export function App() {
     return () => query.removeEventListener("change", change);
   }, []);
   const [logoutError, setLogoutError] = useState(false);
-  const [archiveProblem, setArchiveProblem] = useState("");
   const archiveFocusPending = useRef<string | undefined>(undefined);
   // Leaving the editor saved its text: the notice offers Kumoa to the person
   // and session that saved it, and to no one after them.
@@ -378,10 +370,17 @@ export function App() {
     id: string;
     title: string;
     route: string;
+    scopeRoute: string;
     problem?: string;
     /** What went with it: its named workers (Avustajat). */
     detail?: string;
   }>();
+  useEffect(() => {
+    const route = `${location.pathname}${location.search}`;
+    setArchiveNotice((notice) =>
+      notice?.scopeRoute === route ? notice : undefined,
+    );
+  }, [location.pathname, location.search]);
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
@@ -412,6 +411,10 @@ export function App() {
   // them out of Settings.
   const currentRoute = useRef(route);
   currentRoute.current = route;
+  // Settings overlays the view; opening it must not discard that view's
+  // pending archive result, and its rail actions belong to the view too.
+  const currentViewRoute = useRef("");
+  currentViewRoute.current = `${location.pathname}${location.search}`;
   const [newChoiceWorkspace, setNewChoiceWorkspace] = useState<string>();
   const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
@@ -1543,7 +1546,6 @@ export function App() {
       return false;
     const token = csrf;
     const route = `${location.pathname}${location.search}`;
-    setArchiveProblem("");
     if (origin !== "home")
       navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
     const result = await mutations.run({
@@ -1742,13 +1744,17 @@ export function App() {
       )
         return false;
     }
-    setArchiveProblem("");
     const fromRoute = `${currentRoute.current.pathname}${currentRoute.current.search}`;
+    const scopeRoute =
+      archived && origin === "conversation"
+        ? `/workspaces/${agent.workspace_id}`
+        : currentViewRoute.current;
     if (archived) {
       setArchiveNotice({
         id: agent.agent_id,
         title: agentTitle(agent.title),
         route: fromRoute,
+        scopeRoute,
         detail: helperDetail,
       });
       if (origin === "conversation") {
@@ -1812,17 +1818,18 @@ export function App() {
     if (result.outcome === "uncertain") refresh();
     // The notice, if any, stays and says why; the conversation is back. A
     // home card shows its own refusal.
-    if (result.outcome === "refused" && origin !== "home") {
-      if (archived || archiveNotice?.id === agent.agent_id) {
-        // A late refusal must still be seen if its pending notice was
-        // dismissed or replaced by another archive in the meantime.
-        setArchiveNotice({
-          id: agent.agent_id,
-          title: agentTitle(agent.title),
-          route: fromRoute,
-          problem: result.text,
-        });
-      } else setArchiveProblem(result.text);
+    if (
+      result.outcome === "refused" &&
+      origin !== "home" &&
+      currentViewRoute.current === scopeRoute
+    ) {
+      setArchiveNotice({
+        id: agent.agent_id,
+        title: agentTitle(agent.title),
+        route: fromRoute,
+        scopeRoute,
+        problem: result.text,
+      });
     }
     return result.outcome !== "refused" && result.outcome !== "login";
   };
@@ -2643,40 +2650,25 @@ export function App() {
         to={`/workspaces/${agentWorkspace.workspace_id}?conversation=${selectedAgent.agent_id}`}
       />
     ) : selectedAgent && agentWorkspace && conversationStore ? (
-      <>
-        {/* An open archive notice carries the problem itself. */}
-        {archiveProblem && !archiveNotice && (
-          <PageNotice
-            data-testid="archive-error"
-            title={
-              closeRefusal(archiveProblem)
-                ? t.app.closeFailed
-                : t.app.archiveChangeFailed
-            }
-            description={archiveProblem}
-            tone="danger"
-          />
-        )}
-        <HistoryView
-          onLogin={onCurrentLogin}
-          store={conversationStore}
-          agent={selectedAgent}
-          restoreAvailable={
-            !!csrf &&
-            phase === "authenticated" &&
-            selectedAgent.history === "readable" &&
-            !!selectedAgent.observation_token
-          }
-          onRestore={() => void changeArchive(selectedAgent, false)}
-          onArchive={() => void changeArchive(selectedAgent, true)}
-          onTitleComplete={refresh}
-          onRename={railRename.save}
-          csrf={phase === "authenticated" ? csrf : undefined}
-          workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
-          workspacePath={agentWorkspace.path}
-          workspaceId={agentWorkspace.workspace_id}
-        />
-      </>
+      <HistoryView
+        onLogin={onCurrentLogin}
+        store={conversationStore}
+        agent={selectedAgent}
+        restoreAvailable={
+          !!csrf &&
+          phase === "authenticated" &&
+          selectedAgent.history === "readable" &&
+          !!selectedAgent.observation_token
+        }
+        onRestore={() => void changeArchive(selectedAgent, false)}
+        onArchive={() => void changeArchive(selectedAgent, true)}
+        onTitleComplete={refresh}
+        onRename={railRename.save}
+        csrf={phase === "authenticated" ? csrf : undefined}
+        workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
+        workspacePath={agentWorkspace.path}
+        workspaceId={agentWorkspace.workspace_id}
+      />
     ) : selectedAgentId ? (
       <>
         <h1
@@ -2758,20 +2750,6 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation")
           ? workspacePage(selected)
           : null}
-        {new URLSearchParams(location.search).has("conversation") &&
-          archiveProblem &&
-          !archiveNotice && (
-            <PageNotice
-              data-testid="archive-error"
-              title={
-                closeRefusal(archiveProblem)
-                  ? t.app.closeFailed
-                  : t.app.archiveChangeFailed
-              }
-              description={archiveProblem}
-              tone="danger"
-            />
-          )}
         {new URLSearchParams(location.search).has("conversation") &&
         !syntheticDemo &&
         identity &&
@@ -2997,90 +2975,73 @@ export function App() {
             })()
           : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
-          <>
-            {/* An open archive notice carries the problem itself. */}
-            {archiveProblem && !archiveNotice && (
-              <PageNotice
-                data-testid="archive-error"
-                title={
-                  closeRefusal(archiveProblem)
-                    ? t.app.closeFailed
-                    : t.app.archiveChangeFailed
-                }
-                description={archiveProblem}
-                tone="danger"
-              />
-            )}
-            <details
-              className="ah-workspace-archive"
-              open={helperArchiveOpen}
-              onToggle={(event) =>
-                setHelperArchiveOpen(event.currentTarget.open)
-              }
-            >
-              <summary>
-                {t.app.archive} ·{" "}
-                {snapshot?.sources.find((f) => f.source === "annotation")
-                  ?.state !== "confirmed" ||
-                snapshot?.sources.find((f) => f.source === "pi_history")
-                  ?.state !== "confirmed"
-                  ? "?"
-                  : archivedHere.length}
-              </summary>
+          <details
+            className="ah-workspace-archive"
+            open={helperArchiveOpen}
+            onToggle={(event) => setHelperArchiveOpen(event.currentTarget.open)}
+          >
+            <summary>
+              {t.app.archive} ·{" "}
               {snapshot?.sources.find((f) => f.source === "annotation")
-                ?.state !== "confirmed" ? (
-                <section
-                  data-testid="workspace-archive-panel"
-                  aria-label={t.app.workspaceArchive}
-                >
-                  <h2 data-testid="archive-title">{t.app.archive}</h2>
-                  <p data-testid="archive-metadata-unavailable">
-                    {t.app.archiveMarksUnreadRefresh}
-                  </p>
-                </section>
-              ) : (
-                <WorkspaceArchive
-                  binding={csrf}
-                  open={helperArchiveOpen}
-                  helpers={helpersOn}
-                  count={
-                    snapshot.sources.find((f) => f.source === "pi_history")
-                      ?.state !== "confirmed"
-                      ? "?"
-                      : archivedHere.length
-                  }
-                  entries={archivedHere.map((a) => ({
-                    id: a.agent_id,
-                    title: agentTitle(a.title),
-                    href: browserOwned(a, daemonSessions)
-                      ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                      : `/agents/${a.agent_id}`,
-                    archivedAt: a.archived_at,
-                    note:
-                      a.history !== "readable"
-                        ? t.app.historyUnreadable
+                ?.state !== "confirmed" ||
+              snapshot?.sources.find((f) => f.source === "pi_history")
+                ?.state !== "confirmed"
+                ? "?"
+                : archivedHere.length}
+            </summary>
+            {snapshot?.sources.find((f) => f.source === "annotation")?.state !==
+            "confirmed" ? (
+              <section
+                data-testid="workspace-archive-panel"
+                aria-label={t.app.workspaceArchive}
+              >
+                <h2 data-testid="archive-title">{t.app.archive}</h2>
+                <p data-testid="archive-metadata-unavailable">
+                  {t.app.archiveMarksUnreadRefresh}
+                </p>
+              </section>
+            ) : (
+              <WorkspaceArchive
+                binding={csrf}
+                open={helperArchiveOpen}
+                helpers={helpersOn}
+                count={
+                  snapshot.sources.find((f) => f.source === "pi_history")
+                    ?.state !== "confirmed"
+                    ? "?"
+                    : archivedHere.length
+                }
+                entries={archivedHere.map((a) => ({
+                  id: a.agent_id,
+                  title: agentTitle(a.title),
+                  href: browserOwned(a, daemonSessions)
+                    ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                    : `/agents/${a.agent_id}`,
+                  archivedAt: a.archived_at,
+                  note:
+                    a.history !== "readable"
+                      ? t.app.historyUnreadable
+                      : undefined,
+                  restoreReason:
+                    a.history !== "readable"
+                      ? t.app.historyUnconfirmed
+                      : !csrf || phase !== "authenticated"
+                        ? t.app.restoreNeedsConnection
                         : undefined,
-                    restoreReason:
-                      a.history !== "readable"
-                        ? t.app.historyUnconfirmed
-                        : !csrf || phase !== "authenticated"
-                          ? t.app.restoreNeedsConnection
-                          : undefined,
-                  }))}
-                  onRestore={(agentId, confirmed) => {
-                    const a = archivedHere.find((x) => x.agent_id === agentId);
-                    if (a)
-                      void changeArchive(a, false, "conversation", confirmed);
-                  }}
-                >
-                  {snapshot.sources.find((f) => f.source === "pi_history")
-                    ?.state !== "confirmed" && (
-                    <p role="status">{t.app.archiveMaybeIncomplete}</p>
-                  )}
-                </WorkspaceArchive>
-              )}
-            </details>
-          </>
+                }))}
+                onRestore={(agentId, confirmed) => {
+                  const a = archivedHere.find((x) => x.agent_id === agentId);
+                  if (a)
+                    void changeArchive(a, false, "conversation", confirmed);
+                }}
+              >
+                {snapshot.sources.find((f) => f.source === "pi_history")
+                  ?.state !== "confirmed" && (
+                  <p role="status">{t.app.archiveMaybeIncomplete}</p>
+                )}
+              </WorkspaceArchive>
+            )}
+          </details>
         ) : null}
         {source !== "confirmed" ? (
           <PageNotice
@@ -3457,7 +3418,8 @@ export function App() {
                       onClose={() => setEditorSave(undefined)}
                     />
                   ) : null}
-                  {archiveNotice ? (
+                  {archiveNotice?.scopeRoute ===
+                  `${location.pathname}${location.search}` ? (
                     <ArchiveNotice
                       kind="archive"
                       key={archiveNotice.id}
@@ -3479,7 +3441,6 @@ export function App() {
                       problem={archiveNotice.problem}
                       onClose={() => {
                         setArchiveNotice(undefined);
-                        setArchiveProblem("");
                       }}
                       onRestore={
                         archiveNotice.problem
