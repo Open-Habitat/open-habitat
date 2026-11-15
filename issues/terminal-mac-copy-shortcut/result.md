@@ -13,6 +13,8 @@ Finnish and English Explain hints use platform-specific copy and paste labels. R
 - UI reference tests: all three passed; regeneration drift check and diff whitespace check passed.
 - Explain text was reviewed in both languages in source; responsive rendered-card visual inspection was not performed. No layout or card mapping changed.
 
+The copy-notices removal landed before this change. Rebased onto it, kept the removal in both Explain languages, regenerated references, and reran the focused web checks, four browser cases, and three reference tests successfully.
+
 The first browser attempt stopped because the fresh worktree lacked the Pi SDK fixture; installing the pinned fixture dependencies resolved it. The first reference test run exposed a missing optional platform-source fixture; conditional discovery and a regression assertion resolved it.
 
 ## Decisions for later review
