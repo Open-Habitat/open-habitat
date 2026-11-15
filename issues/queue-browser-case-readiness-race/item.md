@@ -2,12 +2,15 @@
 created: 2026-11-15
 updated: 2026-11-15
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: test-run
 source_ref: taskfleet:01m7g8zpt0wa8f1n7j13ettb0s/test-failure:queue-readiness
 originating_run: 01m7g8zpt0wa8f1n7j13ettb0s
 originating_run_kind: spinoff
+lane: unlaned
+lane_seq: 1
+preparation: ready
 ---
 
 # Queue browser case intermittently submits before readiness
