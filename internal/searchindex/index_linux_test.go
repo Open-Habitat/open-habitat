@@ -242,8 +242,23 @@ func TestBranchShrinkReplaceAndRemovalReindex(t *testing.T) {
 		t.Fatalf("after replace = %v", got)
 	}
 
-	syncAll(t, x)
+	// A same-size rewrite in place (same inode) is not an append.
+	b, _ := os.ReadFile(a.path)
+	f, _ := os.OpenFile(a.path, os.O_WRONLY, 0)
+	f.WriteAt([]byte(strings.Replace(string(b), "korvattu kartta", "korvattu laatta", 1)), 0)
+	f.Close()
+	future := time.Now().Add(time.Minute)
+	os.Chtimes(a.path, future, future)
+	syncAll(t, x, a.session())
 	if got := search(t, x, "kartta"); len(got.Conversations) != 0 {
+		t.Fatalf("stale text after rewrite: %+v", got)
+	}
+	if got := search(t, x, "laatta"); len(got.Conversations) != 1 {
+		t.Fatalf("rewrite not indexed: %+v", got)
+	}
+
+	syncAll(t, x)
+	if got := search(t, x, "laatta"); len(got.Conversations) != 0 {
 		t.Fatalf("after removal = %+v", got)
 	}
 }
@@ -322,6 +337,15 @@ func TestSentence(t *testing.T) {
 	got := Sentence(text, []string{"kart"}, 60)
 	if !strings.HasPrefix(got, "…") || !strings.HasSuffix(got, "…") || !strings.Contains(got, "kartta") || len([]rune(got)) > 70 {
 		t.Fatalf("Sentence = %q", got)
+	}
+	// A run without spaces is cut, so a snippet stays within the contract.
+	for _, long := range []string{strings.Repeat("a", 2000), "kartta " + strings.Repeat("x", 1600), strings.Repeat("y", 1600) + "kartta" + strings.Repeat("z", 1600)} {
+		if got := Sentence(long, []string{"kart", "aa"}, 160); len([]rune(got)) > 210 {
+			t.Fatalf("Sentence over bound: %d runes", len([]rune(got)))
+		}
+	}
+	if got := Sentence(strings.Repeat("y", 1600)+"kartta"+strings.Repeat("z", 1600), []string{"kart"}, 160); !strings.Contains(got, "kartta") {
+		t.Fatalf("match cut away: %q", got)
 	}
 	if got := Sentence("```\ncode\n```\nKoodi kartta.", []string{"kart"}, 60); got != "code Koodi kartta." {
 		t.Fatalf("fences = %q", got)

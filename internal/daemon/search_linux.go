@@ -65,6 +65,9 @@ func searchHandlerWith(cfg transport.Config, trusted func(*http.Request) bool, s
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
+		// A first read of a very long history can outlast the socket's
+		// five-second write deadline, as a history read can.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(historyReadWait))
 		body, ok := s.search(r.Context(), text)
 		if !ok {
 			diagnostic.Reason(r.Context(), "search_index_failed")

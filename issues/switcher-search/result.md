@@ -69,6 +69,22 @@ selaimen snapshotista heti, myös indeksin vielä rakentuessa.
   pages back (centred, outlined, highlighted, band), close, Continue search,
   Esc, `/`, the empty result; the 390 sheet from the rail door; a hit in a
   browser-started conversation opening the live view with focus in the field.
+  Neighbouring specs (rail-now, rail-groups, native-history,
+  browser-conversation, history-first-page): 107 passed.
+
+## Review
+
+Independent `/llm-review` (finder gpt-6-astra, verifier claude-fable-5-2,
+two calls) and `/assess-findings`: six confirmed findings, all fixed here.
+A new person signing in within the same tab no longer sees the previous
+person's "Continue search" query. A snippet is capped, since a long URL made
+it exceed the contract and fail the whole reply. The jump ends as "not found"
+when older pages stop changing instead of searching forever. An agent reply
+deep in a tall turn is centred on itself, not on its turn. A file that changes
+without growing is reindexed. The index lock is no longer held while a history
+is read, and the route extends the socket's write deadline as history does.
+Known limitation: a word that occurs only past a long message's 16 KB
+history preview is outlined but not marked.
 
 ## Live check
 

@@ -53,9 +53,19 @@ let opened: string[] = [];
 /** The query that last led to a hit, offered as "Continue search". */
 let lastQuery = "";
 
-export function resetSwitcherForTests() {
+/** Whose openings and query these are: a new person in the same tab starts
+ * with neither (the app resets per-person state on a new identity). */
+let owner: string | undefined;
+
+function resetFor(identity: string | undefined) {
+  owner = identity;
   opened = [];
   lastQuery = "";
+  clearSearchJump();
+}
+
+export function resetSwitcherForTests() {
+  resetFor(undefined);
 }
 
 const debounce = 120;
@@ -90,6 +100,13 @@ export function SwitcherHost({
   const returnTo = useRef<HTMLElement | null>(null);
 
   // Remember openings in this tab; the one before the current is previous.
+  const identity = snapshot?.identity.web_identity_id;
+  useEffect(() => {
+    if (identity && identity !== owner) {
+      resetFor(identity);
+      setOpen(false);
+    }
+  }, [identity]);
   // A jump belongs to the conversation it opened: leaving it ends the band.
   useEffect(() => {
     if (!current) return;

@@ -83,17 +83,25 @@ export function useJumpToHit({
   feed: RefObject<HTMLElement | null>;
   hold: (anchor: { key: string; offset: number }) => void;
 }): JumpState | undefined {
+  const latest = useRef(entries);
+  latest.current = entries;
   const [state, setState] = useState<JumpState>();
   const pages = useRef(0);
   const loading = useRef(false);
   const shown = useRef<number | undefined>(undefined);
+  // A page read that changes nothing (a failure, a cut, a read already in
+  // flight) asks again a moment later; three in a row end the search.
+  const stalls = useRef(0);
+  const [retry, setRetry] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new jump starts again.
   useEffect(() => {
     pages.current = 0;
+    stalls.current = 0;
     shown.current = undefined;
     setState(jump ? "searching" : undefined);
   }, [jump?.serial]);
   useEffect(() => {
+    void retry;
     if (!jump || shown.current === jump.serial) return;
     const found = entries.some((e) => e.entry_key === jump.entryKey);
     if (!found) {
@@ -101,18 +109,28 @@ export function useJumpToHit({
         if (entries.length) setState("missing");
         return;
       }
-      if (loading.current || pages.current >= maxPages) {
-        if (pages.current >= maxPages) setState("missing");
+      if (loading.current) return;
+      if (pages.current >= maxPages || stalls.current >= 3) {
+        setState("missing");
         return;
       }
       loading.current = true;
       pages.current++;
+      const before = entries;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       void Promise.resolve(older())
-        .catch(() => setState("missing"))
+        .catch(() => {})
         .finally(() => {
           loading.current = false;
+          timer = setTimeout(() => {
+            if (latest.current === before) stalls.current++;
+            else stalls.current = 0;
+            setRetry((n) => n + 1);
+          }, 250);
         });
-      return;
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
     }
     const viewport = feed.current;
     if (!viewport) return;
@@ -124,15 +142,18 @@ export function useJumpToHit({
       row.querySelector<HTMLElement>(
         `[data-reply-entry="${CSS.escape(jump.entryKey)}"]`,
       ) ?? row;
-    const height = target.getBoundingClientRect().height;
-    const offset = Math.max(16, (viewport.clientHeight - height) / 2);
-    hold({ key: jump.entryKey, offset });
+    // The anchor holds the row; the message may sit lower inside it (a
+    // reply after its turn's tool steps), so centre the message itself.
+    const box = target.getBoundingClientRect();
+    const within = box.top - row.getBoundingClientRect().top;
+    const offset = Math.max(16, (viewport.clientHeight - box.height) / 2);
+    hold({ key: jump.entryKey, offset: offset - within });
     for (const old of viewport.querySelectorAll(".ah-search-target"))
       old.classList.remove("ah-search-target");
     target.classList.add("ah-search-target");
     markTerms(target, jump.terms);
     setState("shown");
-  }, [jump, entries, next, older, feed, hold]);
+  }, [jump, entries, next, older, feed, hold, retry]);
   // The marks belong to this jump only.
   useEffect(
     () => () => {

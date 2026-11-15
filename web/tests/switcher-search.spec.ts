@@ -163,8 +163,9 @@ test("@switcher-search a hit in a browser conversation opens it at the message",
   await switcherKey(page);
   await page.getByTestId("switcher-input").fill("sanaston");
   const row = page.getByTestId(`switcher-row-c-${conversation}`);
-  // The index may still be reading; the list asks again until it has it.
-  await expect(row).toContainText("sanaston", { timeout: 15000 });
+  // The title matches at once; the index may still be reading, and the list
+  // asks again until the agent's sentence is in the row.
+  await expect(row).toContainText("Kysyit", { timeout: 15000 });
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`conversation=${conversation}`));
   await expect(page.getByTestId("jump-band")).toContainText(

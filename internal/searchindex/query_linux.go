@@ -255,10 +255,12 @@ func Sentence(text string, terms []string, room int) string {
 		at = 0
 	}
 	from := lastSpace(r, max(0, at-room/3))
-	if at-from > room/2 {
+	if at-from > room/2 || from == 0 && at > room/2 {
 		from = at
 	}
-	end := nextSpace(r, from+room)
+	// A word boundary is looked for only a little past the room: a long
+	// run without spaces (a URL, minified code) is cut where it is.
+	end := min(nextSpace(r, from+room), from+room+room/4, len(r))
 	out := strings.TrimSpace(string(r[from:end]))
 	if from > 0 {
 		out = "…" + out

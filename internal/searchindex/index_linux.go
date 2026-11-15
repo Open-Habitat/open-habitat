@@ -170,7 +170,8 @@ type fileRow struct {
 // Sync brings the index in line with sessions: files no longer listed are
 // forgotten, new and grown files are read from where the index stopped, and a
 // file that was replaced, shrank or branched is read again whole. Sessions
-// are taken newest first, one transaction each.
+// are taken newest first, one transaction each. Sync must not run beside
+// another Sync of the same index; searches may run beside it.
 func (x *Index) Sync(ctx context.Context, sessions []Session) error {
 	ordered := append([]Session(nil), sessions...)
 	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Changed.After(ordered[j].Changed) })
@@ -258,10 +259,12 @@ func (x *Index) syncOne(s Session) error {
 		return nil
 	}
 	cur := fileRow{path: s.Path, dev: uint64(st.Dev), ino: st.Ino, size: info.Size(), mtime: info.ModTime().UnixNano()}
-	x.mu.Lock()
-	defer x.mu.Unlock()
+	// The lock is held for database work only, never while a file is read:
+	// a search must not wait for a long history to be parsed.
 	var old fileRow
+	x.mu.Lock()
 	err := x.db.QueryRow("SELECT path, dev, ino, size, mtime, offset, leaf FROM files WHERE session = ?", s.ID).Scan(&old.path, &old.dev, &old.ino, &old.size, &old.mtime, &old.start, &old.leaf)
+	x.mu.Unlock()
 	known := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
@@ -269,7 +272,9 @@ func (x *Index) syncOne(s Session) error {
 	if known && old.path == cur.path && old.dev == cur.dev && old.ino == cur.ino && old.size == cur.size && old.mtime == cur.mtime {
 		return nil
 	}
-	if known && old.path == cur.path && old.dev == cur.dev && old.ino == cur.ino && cur.size >= old.start && old.start > 0 {
+	// Only growth is an append: Pi appends, and a file that changed without
+	// growing was rewritten and is read again whole.
+	if known && old.path == cur.path && old.dev == cur.dev && old.ino == cur.ino && cur.size > old.size && old.start > 0 {
 		ok, err := x.appendFrom(f, s.ID, old, cur)
 		if err != nil || ok {
 			return err
@@ -438,6 +443,8 @@ func (x *Index) reindex(f *os.File, id string, cur fileRow) error {
 	if err != nil || !valid {
 		// Not a history this index can read now: forget its words rather
 		// than show hits the conversation cannot open.
+		x.mu.Lock()
+		defer x.mu.Unlock()
 		return x.dropSession(x.db, id)
 	}
 	if leaf != "" && parents[leaf] != nil {
@@ -463,6 +470,8 @@ func (x *Index) reindex(f *os.File, id string, cur fileRow) error {
 }
 
 func (x *Index) store(id string, cur fileRow, found []message, replace bool) error {
+	x.mu.Lock()
+	defer x.mu.Unlock()
 	tx, err := x.db.Begin()
 	if err != nil {
 		return err

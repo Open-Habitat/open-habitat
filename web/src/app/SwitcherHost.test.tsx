@@ -34,6 +34,7 @@ const agent = (agent_id: string, title: string, changed_at: string) => ({
 });
 
 const snapshot = {
+  identity: { web_identity_id: "wid_example-a", display_name: "Alice" },
   workspaces: [
     {
       workspace_id: "ws_example123",
@@ -234,4 +235,36 @@ it("offers Continue search after a jump, and an empty query swaps two", async ()
   expect(screen.getByTestId("switcher-row-continue").textContent).toContain(
     "kartta",
   );
+});
+
+it("forgets the previous person's query and openings on a new identity", async () => {
+  const view = mount(A);
+  fireEvent.keyDown(window, { code: "KeyK", key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByTestId("switcher-input"), {
+    target: { value: "kartta" },
+  });
+  await waitFor(() =>
+    expect(screen.getByTestId(`switcher-row-c-${B}`)).toBeTruthy(),
+  );
+  await act(async () => {
+    fireEvent.keyDown(screen.getByTestId("switcher-input"), { key: "Enter" });
+  });
+  const next = {
+    ...snapshot,
+    identity: { web_identity_id: "wid_example-b", display_name: "Bob" },
+  } as Snapshot;
+  view.rerender(
+    <MemoryRouter initialEntries={["/workspaces"]}>
+      <SwitcherHost
+        snapshot={next}
+        daemonSessions={[]}
+        now={now}
+        onLogin={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  expect(searchJumpNow()).toBeUndefined();
+  fireEvent.keyDown(window, { code: "KeyK", key: "k", ctrlKey: true });
+  expect(screen.queryByTestId("switcher-row-continue")).toBeNull();
+  expect(screen.queryByText("edellinen")).toBeNull();
 });

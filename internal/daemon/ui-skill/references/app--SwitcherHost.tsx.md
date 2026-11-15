@@ -12,7 +12,7 @@ import { switcherText } from "../text/switcher";
 import { agentTitle } from "./agentTitle";
 import type { RailNow } from "./railNow";
 import { type SearchReply, searchConversations } from "./search";
-import { clearSearchJump, setSearchJump } from "./searchJump";
+import { clearSearchJump, searchJumpNow, setSearchJump } from "./searchJump";
 import { browserOwned, type Snapshot } from "./snapshot";
 import {
   daysAgo,
@@ -58,9 +58,19 @@ let opened: string[] = [];
 /** The query that last led to a hit, offered as "Continue search". */
 let lastQuery = "";
 
-export function resetSwitcherForTests() {
+/** Whose openings and query these are: a new person in the same tab starts
+ * with neither (the app resets per-person state on a new identity). */
+let owner: string | undefined;
+
+function resetFor(identity: string | undefined) {
+  owner = identity;
   opened = [];
   lastQuery = "";
+  clearSearchJump();
+}
+
+export function resetSwitcherForTests() {
+  resetFor(undefined);
 }
 
 const debounce = 120;
@@ -95,8 +105,18 @@ export function SwitcherHost({
   const returnTo = useRef<HTMLElement | null>(null);
 
   // Remember openings in this tab; the one before the current is previous.
+  const identity = snapshot?.identity.web_identity_id;
+  useEffect(() => {
+    if (identity && identity !== owner) {
+      resetFor(identity);
+      setOpen(false);
+    }
+  }, [identity]);
+  // A jump belongs to the conversation it opened: leaving it ends the band.
   useEffect(() => {
     if (!current) return;
+    const jump = searchJumpNow();
+    if (jump && jump.agentId !== current) clearSearchJump();
     opened = [current, ...opened.filter((id) => id !== current)].slice(0, 20);
   }, [current]);
 
