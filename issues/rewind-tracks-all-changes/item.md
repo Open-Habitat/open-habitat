@@ -30,3 +30,9 @@ is told about changes it cannot restore.
 Today: a Pi extension (better-pi-rewind's, `internal/daemon/rewind_linux.go`,
 `rewind-extension.mjs`) copies the files the edit and write tools touch
 before they change; bash tool calls are only listed.
+
+## Decisions
+
+### 2026-11-15T17:52:57Z · @jari
+
+Jari 15.11.2026: sent the snapshot proposal to the maintainer of better-pi-rewind; he would prefer the model to live in that extension upstream so it is maintained there. Wait for the reply before building phase 1 in the product.
