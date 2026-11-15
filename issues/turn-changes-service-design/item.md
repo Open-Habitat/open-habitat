@@ -7,8 +7,8 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/turn-changes-service
-lane: rewind-all-changes
-lane_seq: 2
+lane: turn-changes-service
+lane_seq: 1
 preparation: ready
 ---
 
