@@ -3,13 +3,15 @@ created: 2026-11-16
 updated: 2026-11-16
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-16/gate-flakes-under-load-v013
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-16
+closed_by: claude
 ---
 
 # Clean gate flakes under host load: editor conflict typing, pinned Pi bridge wake
@@ -22,3 +24,9 @@ Third clean gate on main 8729089f (staging installation, 16.11.2026; load averag
 - internal/daemon TestProcessPinnedPiBridgeAndWake (process_native_linux_test.go:106): missing native notify join.
 
 Log: /var/tmp/agent-keep/gate-v013/v013-3.json (private host path). Each of the three gate runs today failed on different load-sensitive cases; see also browser-conversation-repeat-flakes.
+
+## Resolution
+
+### 2026-11-16T08:56:34Z · @claude
+
+Both were test defects; causes and evidence in result.md.

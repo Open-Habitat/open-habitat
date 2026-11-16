@@ -57,6 +57,28 @@ async function typeOnPrintln(page: Page, text: string) {
   await page.keyboard.press("End");
   await page.keyboard.type(text);
 }
+/** Double-clicks the word's own glyphs, as a person aims at it. A text
+ * locator resolves to the whole full-width line until the lazily loaded
+ * grammar splits it into tokens; its centre then lies past the line's end,
+ * where a double-click selects the closing `")` instead. */
+async function dblclickWord(page: Page, word: string) {
+  const doc = page.getByTestId("editor-document");
+  await expect(doc).toContainText(word);
+  const box = await doc.evaluate((root, word) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.textContent?.indexOf(word) ?? -1;
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + word.length);
+      const { x, y, width, height } = range.getBoundingClientRect();
+      return { x: x + width / 2, y: y + height / 2 };
+    }
+    throw new Error(`no text node holds ${word}`);
+  }, word);
+  await page.mouse.dblclick(box.x, box.y);
+}
 const AGENT = "// Agentin kommentti";
 
 for (const [width, theme] of [
@@ -172,8 +194,9 @@ for (const width of [1366, 390])
       if (request.method() === "PUT" && request.url().includes("/editor/file"))
         writes++;
     });
-    await page.getByTestId("editor-document").getByText("hei").dblclick();
+    await dblclickWord(page, "hei");
     await page.keyboard.type("minun");
+    await expect(doc).toContainText('println("minun")');
     await send(page, "muokkaa samaa riviä");
     await expect(page.getByTestId("editor-changes")).toHaveAttribute(
       "data-changes",
