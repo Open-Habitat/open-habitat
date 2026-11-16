@@ -3,13 +3,18 @@ created: 2026-11-16
 updated: 2026-11-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-16/atlassian-signin-stuck-starting
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-16
+closed_by: claude
+commits:
+- hash: 94658cb3
+  summary: relay Atlassian's server-specific MCP callback and fail an unrelayable sign-in at once
 ---
 
 # Atlassian sign-in stays on 'Starting the sign-in…' and fails after five minutes
