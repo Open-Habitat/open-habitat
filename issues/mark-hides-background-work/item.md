@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/mark-hides-background-work
-preparation: ready
+preparation: pending
 lane: rail-mark
 lane_seq: 1
 ---

@@ -1,0 +1,147 @@
+/* Review chrome above the production shell, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]) { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  /* The phone's drawer opens below the review bar and above the picker. */
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+
+/* The story beside the rail: what each agent declared and the events. */
+.ra-main { height: 100%; overflow: auto; color: var(--ah-ink); font: var(--ah-size-body)/1.5 var(--ah-font); }
+.ra-story { max-width: 720px; padding: var(--ah-s5) var(--ah-s5) 96px; }
+.ra-story h1 { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-title); font-weight: 600; }
+.ra-story h2 { margin: var(--ah-s5) 0 var(--ah-s2); font-size: var(--ah-size-body); font-weight: 600; }
+.ra-lead { margin: 0 0 var(--ah-s4); color: var(--ah-ink-2); }
+.ra-cards { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--ah-s2); }
+.ra-cards li {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px var(--ah-s3);
+  padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ra-cards code {
+  grid-column: 1 / -1; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.4 var(--ah-mono); color: var(--ah-ink-2);
+}
+.ra-ws { color: var(--ah-muted); font: var(--ah-size-meta)/1.6 var(--ah-mono); }
+.ra-status { grid-column: 1 / -1; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.ra-events { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+.ra-events button {
+  font: inherit; font-size: var(--ah-size-meta); padding: 6px 12px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-phone-hint { display: none; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+@media (max-width: 800px) {
+  .ra-story { padding: var(--ah-s4) var(--ah-s3) 96px; }
+  .ra-phone-hint { display: block; }
+}
+.ra-host { grid-column: 1 / -1; font-size: var(--ah-size-meta); color: var(--ah-muted); font-style: italic; }
+.ra-host[data-host="shown"] { color: var(--ah-ok); font-style: normal; }
+.ra-phone { color: var(--ah-ink-2); max-width: 60ch; }
+
+/* The review's Liike: vähennetty stands in for prefers-reduced-motion, with
+   production's still frames (HabitatMark.css). */
+.ra-still .oh-mark *,
+.ra-still .oh-orbit,
+.ra-still .ah-row-mark-hit::before,
+.ra-still .ah-row-mark-hit::after {
+  animation: none !important;
+}
+.ra-still .oh-mark:not([data-variant="ring"]):is([data-state="waiting"], [data-state="read"]) .oh-dot {
+  transform: translate(var(--tx), var(--ty));
+}
+.ra-still .oh-mark:is([data-state="thinking"], [data-state="awaited"]) .oh-dot {
+  transform: scale(0.6);
+}
+
+/* ---------- The directions' sign on the production mark ----------
+   The production row's mark is a 20 px svg after a 6 px margin inside
+   .ah-row-mark-hit; its ring spans 8.5–23.5 px across and 2.5–17.5 px
+   down that box. The signs use ink-2, not a state colour, so they read the
+   same beside every state's colour. */
+.ra-review[data-direction] li[data-bg] .ah-row-mark-hit { position: relative; }
+
+/* 1 Lamppu: a lamp just outside the ring's lower-right corner. The still
+   frames put the door at the upper right (logo, your turn, read) or the
+   lower left (working, background), so the lower right is free in every
+   state. Still in every state; the end dot goes. */
+.ra-review[data-direction="1"] .ah-nav-service { display: none; }
+.ra-review[data-direction="1"] li[data-bg] .ah-row-mark-hit::after {
+  content: "";
+  position: absolute;
+  left: 21.5px;
+  top: calc(50% + 4.5px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ah-ink-2);
+  box-shadow: 0 0 0 1.5px var(--ah-rail);
+  pointer-events: none;
+}
+/* The halo separates the lamp from the ring, so it takes the row's own
+   surface: the open conversation's row is --ah-current, not the rail. */
+.ra-review[data-direction="1"] li[data-bg]
+  .ah-now-row:has(.ah-nav-link[aria-current="page"]) .ah-row-mark-hit::after {
+  box-shadow: 0 0 0 1.5px var(--ah-current);
+}
+
+/* 2 Vaeltava ovi: the door of the ring travels slowly in any state, as the
+   production background state's does; a done conversation's door stands
+   ajar. Still, the door rests a quarter turn on, at the lower right. */
+.ra-review[data-direction="2"] li[data-bg]
+  .oh-mark:not([data-state="working"], [data-state="background"], [data-state="awaited"])
+  .oh-ring {
+  stroke-dasharray: 81.3 18.7;
+  stroke-dashoffset: -25;
+  animation: oh-drift 6s linear infinite;
+}
+
+/* 3 Takahuone: a second room behind the habitat, offset to the lower
+   right, drawn as the two edges that show outside the ring. */
+.ra-review[data-direction="3"] li[data-bg] .ah-row-mark-hit::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: calc(50% - 4.5px);
+  width: 14.5px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 0 solid var(--ah-ink-2);
+  border-right-width: 1.6px;
+  border-bottom-width: 1.6px;
+  border-bottom-right-radius: 5px;
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .ra-review[data-direction="1"] li[data-bg] .ah-row-mark-hit::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+    box-shadow: 0 0 0 1.5px Canvas;
+  }
+  .ra-review[data-direction="3"] li[data-bg] .ah-row-mark-hit::before {
+    border-color: CanvasText;
+  }
+}
