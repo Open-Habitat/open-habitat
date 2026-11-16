@@ -3,12 +3,13 @@ created: 2026-11-16
 updated: 2026-11-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 related: ['@conversation-live-glitches', '@first-message-flicker']
 lane: conversation-live
 collision: [web/src/app/BrowserConversation.tsx]
 preparation: ready
+closed: 2026-11-16
 ---
 
 # Conversation UI jitters when the agent's reply completes
@@ -23,7 +24,7 @@ Likely the turn-end handover: the live stream ending, the saved native message r
 
 ## Acceptance Criteria
 
-- [ ] Reproduce the end-of-turn transition in the lab on desktop and phone, measuring layout shift, remounts of the assistant message, and status/composer changes, and identify the cause before changing code.
-- [ ] The finished reply stays in place with no remount, flash or jump when the saved message replaces the stream; status and composer change once.
-- [ ] Repeated runs under CPU throttling and API jitter pass with total layout shift below 0.05; evidence in result.md.
+- [x] Reproduce the end-of-turn transition in the lab on desktop and phone, measuring layout shift, remounts of the assistant message, and status/composer changes, and identify the cause before changing code.
+- [x] The finished reply stays in place with no remount, flash or jump when the saved message replaces the stream; status and composer change once.
+- [x] Repeated runs under CPU throttling and API jitter pass with total layout shift below 0.05; evidence in result.md.
 - [ ] Live check on the next release asks Jari whether the end-of-turn movement is gone, describing what was changed.

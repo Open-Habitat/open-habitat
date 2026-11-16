@@ -151,6 +151,7 @@ function Message({
   stateAnimated = false,
   stateKind = "neutral",
   replyComplete = false,
+  replying = false,
   interim = false,
   delivery,
   waiting,
@@ -167,6 +168,9 @@ function Message({
   person?: boolean;
   interim?: boolean;
   replyComplete?: boolean;
+  /** A reply still streaming. It keeps the completed reply's card geometry,
+   * so the card does not reflow when the reply completes (turn end jolt). */
+  replying?: boolean;
   children: ReactNode;
   time?: string;
   state?: string;
@@ -194,7 +198,7 @@ function Message({
       data-interim={interim || undefined}
       data-delivery={delivery}
       data-voice={voice === "person" ? undefined : voice}
-      className={`ah-message${waiting ? ` ah-waiting-message ah-waiting-${waiting}` : ""}${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${!waiting && (stateTone === "danger" || stateTone === "warning" || stateAnimated) ? " ah-message-alert" : ""}`}
+      className={`ah-message${waiting ? ` ah-waiting-message ah-waiting-${waiting}` : ""}${replyComplete ? " ah-message-reply" : ""}${replying ? " ah-message-replying" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${!waiting && (stateTone === "danger" || stateTone === "warning") ? " ah-message-alert" : ""}`}
     >
       <header>
         <strong>
@@ -335,6 +339,7 @@ export function AssistantMessage({
             : txt.agent
       }
       replyComplete={streamState === "complete"}
+      replying={streamState === "streaming"}
       time={time}
       state={
         streamState && streamState !== "complete" && streamState !== "streaming"

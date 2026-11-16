@@ -82,3 +82,27 @@ Paired synthetic screenshots and offline HTML: kept locally with the traces. Rev
 - **Measure shifts during the recent-input exemption too.** Standard CLS alone can conceal this exact bug; the test uses the stricter sum, while allowing small header/rail metadata changes below 0.05.
 
 Live check: create a conversation and immediately send its first message, then try again after creation has settled. On desktop and phone, the message should appear once near the top and stay there while the first reply arrives; the input stays focused. Also try a slow-start message followed by Stop: its text should return as before.
+
+## Follow-up 16.11.2026: the activity line dropped away under the first message
+
+Jari still saw "the next bar drop away and come back" on the first send (on an installation without the fix above). Re-measured on main at `6c716217` with the same lab spec, extended to watch the bars below the message through the whole first turn: the composer and its stack, the background strip (`beforeField`), the Stop/Send control and the turn's activity line. Conditions: desktop and phone, creation held and already opened, CPU 4×, API jitter 0–250 ms.
+
+- The composer, its stack, the field and the Stop/Send control never remounted or collapsed. The fix above holds.
+- **The turn's activity line ("Näytä työ · Agentti työskentelee") disappeared while the turn was still running.** In all four cases it vanished 140–300 ms before Stop turned back into Send. In the creating case it had been visible for only 300–450 ms. Cause: on a first send, history does not yet contain the message, so the running turn is drawn as a separate live row. When history arrived already holding the saved final reply, the turn was drawn finished, but the status still said the run was active. On a real host the gap is one status read and can be longer. This is the same handover as `turn-end-jitter`, and it is fixed there: a turn drawn as running (including a live row beside a readable history window) stays running until the run's status ends it, so the activity line goes in the same frame as Stop→Send.
+- The background strip (the views/files chip row above the field) appears once when the new conversation opens: +35 px desktop, +41 px phone, growing upward above the field. The field does not move, and it is an appearance, not a drop and return. Not changed.
+- The activity line also moves down once, under the first interim message when that arrives (it belongs to the current stage). The new element appears in the same frame and the line is never missing.
+
+`lab-first-message-flicker.spec.ts` now also asserts:
+- no remount of the composer, its stack, the field or the Stop/Send control;
+- once the activity line is shown, it is present in every frame while Stop is shown and goes in the same frame as Send.
+
+Before the fix 4/4 cases failed. In one of those runs (desktop, already opened) the user message also mounted twice; that was not seen in any of the 9 fixed runs. After the fix: 3 repetitions × 4 cases green, twice, with 2 workers.
+
+| Width / first send | Total shift range (3 runs, fixed) | User-content mounts |
+| --- | ---: | ---: |
+| Desktop / while creating | 0.00578–0.02383 | 1 each |
+| Desktop / already opened | 0.00528–0.02532 | 1 each |
+| Phone / while creating | 0.01599–0.02298 | 1 each |
+| Phone / already opened | 0.00086–0.01635 | 1 each |
+
+Live check (adds to the one above): on the first send in a new conversation, watch the row under your message. "Näytä työ · Agentti työskentelee" should appear and stay until the reply is done, then go at the same moment Stop turns into Send. The input bar should not drop away or jump.

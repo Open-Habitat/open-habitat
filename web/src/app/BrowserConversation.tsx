@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -2082,6 +2083,17 @@ function BrowserConversationContent({
       </ol>
     ),
   });
+  // A history window that can be compared with: a new conversation's, or
+  // the latest page of one read without error.
+  const historyReadable =
+    !id || (opened && !historyError && (entries.length > 0 || !next));
+  // The running turn as the last commit drew it: a turn of saved history
+  // carrying the live tail, or a live row beside a readable history window,
+  // when any turn that window did not show is this one. (Before the first
+  // read, an unseen turn may be an earlier one, as under a native wake.)
+  const runningTurn = useRef<
+    { id?: string; liveRow: boolean; known: Set<string> } | undefined
+  >(undefined);
   const savedTimeline = timelineItems(
     entries,
     onLogin,
@@ -2106,9 +2118,28 @@ function BrowserConversationContent({
     liveTurn,
     rewind.target,
     archive?.rest?.cause === "restart" && !!archive.interrupted_turn,
+    liveWorking
+      ? (turn) => {
+          const drawn = runningTurn.current;
+          return (
+            !!drawn &&
+            (drawn.id === turn || (drawn.liveRow && !drawn.known.has(turn)))
+          );
+        }
+      : undefined,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
+  // Committed, not written during a speculative render.
+  useLayoutEffect(() => {
+    runningTurn.current = liveWorking
+      ? {
+          id: savedTimeline.find((item) => item.live)?.id,
+          liveRow: liveRow && historyReadable,
+          known: new Set(savedTimeline.map((item) => item.id)),
+        }
+      : undefined;
+  });
   // The first provisional block may be retired when native history catches
   // up; it is not the identity of the turn.
   const settled = useTurnIdentity(
@@ -2138,7 +2169,7 @@ function BrowserConversationContent({
           ]
         : []),
     ],
-    !id || (opened && !historyError && (entries.length > 0 || !next)),
+    historyReadable,
   );
   const matchedMessages = new Set(messageAliases.values());
   const timeline = settled.timeline.map((item) => ({

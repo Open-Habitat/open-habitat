@@ -1238,6 +1238,8 @@ export function timelineItems(
   /** The host says the conversation rests after a server restart cut its
    * latest turn (snapshot rest cause restart with interrupted_turn). */
   restartCut?: boolean,
+  /** Whether the last commit drew this turn as the running turn. */
+  wasRunning?: (id: string) => boolean,
 ) {
   const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
@@ -1341,12 +1343,20 @@ export function timelineItems(
     const id = turnId ?? group[0].entry_key;
     const startedAt = turnStart;
     turnId = turnStart = undefined;
+    const ended = endsTurn(group.at(-1));
+    // Pi saves the final reply before its run settles, and the browser may
+    // read it before the status that says so. The turn drawn as running
+    // stays running until the run's status ends it, so the reply, the turn's
+    // working row and the composer's Stop change in one commit instead of
+    // a status read apart (turn end jolt). Its streamed text is the saved
+    // reply now, so only the saved steps are drawn.
+    const holding = ended && !!live?.working && !!wasRunning?.(id);
     // The saved part of the running turn and its live tail are one turn.
     const merged =
       last &&
       !!live &&
       group.at(-1)?.stop_reason !== "error" &&
-      !endsTurn(group.at(-1));
+      (!ended || holding);
     // A refused sign-in is one short row: the warning above the field says
     // the rest, and the provider's own words stay in native history.
     const refusedBy =
@@ -1374,7 +1384,7 @@ export function timelineItems(
           }
           steps={[
             ...(refusedBy ? group.slice(0, -1) : group).flatMap(steps),
-            ...(merged && live ? live.steps : []),
+            ...(merged && live && !ended ? live.steps : []),
           ]}
           working={merged && live?.working}
           activity={merged ? live?.activity : undefined}

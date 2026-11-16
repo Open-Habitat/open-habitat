@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Entry, TurnText, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
@@ -986,6 +992,65 @@ it("continues the saved part of a running turn with its live tail", () => {
     live,
   );
   expect(closed.some((item) => item.live)).toBe(false);
+  // Pi saved the final reply but the run's status still says it runs. The
+  // turn drawn as running stays running, showing only the saved reply (its
+  // streamed copy is that reply), so it and Stop end in the same commit.
+  const finished = [
+    user,
+    saved,
+    {
+      ...entry,
+      entry_key: "a2",
+      kind: "assistant",
+      blocks: [{ type: "text", text: "Valmis." }],
+    } as HistoryEntry,
+  ];
+  const held = timelineItems(
+    finished,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    live,
+    undefined,
+    undefined,
+    (id) => id === "turn:u",
+  );
+  expect(held.map((item) => [item.id, !!item.live])).toEqual([
+    ["u", false],
+    ["turn:u", true],
+  ]);
+  const holding = render(held[1].content);
+  const turn = within(holding.container);
+  expect(turn.getByRole("status")).toBeTruthy();
+  expect(turn.getAllByText("Valmis.")).toHaveLength(1);
+  expect(turn.queryByText("Kirjoitan")).toBeNull();
+  expect(
+    holding.container.querySelector(
+      ".ah-message-reply:not(.ah-message-interim)",
+    ),
+  ).toBeNull();
+  // A turn that was not running (the previous one, while a new turn's saved
+  // message is still unread) is not revived, nor is any once the run ends.
+  for (const [wasRunning, working] of [
+    [() => false, true],
+    [() => true, false],
+  ] as const)
+    expect(
+      timelineItems(
+        finished,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { ...live, working },
+        undefined,
+        undefined,
+        wasRunning,
+      ).some((item) => item.live),
+    ).toBe(false);
 });
 
 it("shows the real pi-processes XML content as text, not discarded HTML", async () => {

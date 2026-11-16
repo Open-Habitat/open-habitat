@@ -19,6 +19,11 @@ type Frame = {
   users: (number[] | null)[];
   empty: boolean;
   loading: boolean;
+  stack: number[] | null;
+  bar: number[] | null;
+  strip: number[] | null;
+  progress: number[] | null;
+  mode: string | null;
 };
 type Measurement = {
   frames: Frame[];
@@ -29,6 +34,8 @@ type Measurement = {
     sources: string[];
   }[];
   mounts: number;
+  bars: Record<string, number>;
+  removed: { t: number; what: string }[];
   stop: () => void;
 };
 declare global {
@@ -82,6 +89,8 @@ for (const width of [1440, 390]) {
             frames: [],
             shifts: [],
             mounts: 0,
+            bars: {},
+            removed: [],
             stop: () => {},
           };
           window.firstMessageMeasurement = m;
@@ -116,8 +125,48 @@ for (const width of [1440, 390]) {
               }
             }
           };
+          // The bars below the message: the composer and its stack, the
+          // Stop/Send control, the background strip and the activity line.
+          const bars = {
+            stack: ".ah-composer-stack",
+            composer: ".ah-composer",
+            box: ".ah-cbox",
+            send: '[data-testid="send"]',
+            strip: '[data-testid="background-work"]',
+            progress: '[data-testid="turn-progress"]',
+          };
+          const barSeen = new WeakSet<Element>();
+          const countBars = (count: boolean) => {
+            for (const [name, selector] of Object.entries(bars)) {
+              m.bars[name] ??= 0;
+              for (const node of document.querySelectorAll(selector))
+                if (!barSeen.has(node)) {
+                  barSeen.add(node);
+                  if (count) m.bars[name]++;
+                }
+            }
+          };
+          countBars(false);
           // Mutation observation also catches replacements between animation frames.
-          const mutations = new MutationObserver(countMounts);
+          const mutations = new MutationObserver((records) => {
+            const t = performance.now() - start;
+            for (const r of records)
+              for (const n of r.removedNodes)
+                if (
+                  n instanceof Element &&
+                  (n.matches(Object.values(bars).join(",")) ||
+                    n.querySelector(Object.values(bars).join(",")))
+                )
+                  m.removed.push({
+                    t,
+                    what:
+                      n.getAttribute("data-testid") ??
+                      n.getAttribute("class") ??
+                      n.nodeName,
+                  });
+            countMounts();
+            countBars(true);
+          });
           mutations.observe(
             document.querySelector(".ah-conversation-frame") as Element,
             { childList: true, subtree: true },
@@ -143,6 +192,18 @@ for (const width of [1440, 390]) {
               loading: !!document.querySelector(
                 '[data-testid="conversation-loading"]',
               ),
+              stack: rect(document.querySelector(".ah-composer-stack")),
+              bar: rect(document.querySelector(".ah-composer")),
+              strip: rect(
+                document.querySelector('[data-testid="background-work"]'),
+              ),
+              progress: rect(
+                document.querySelector('[data-testid="turn-progress"]'),
+              ),
+              mode:
+                document
+                  .querySelector('[data-testid="send"]')
+                  ?.getAttribute("data-mode") ?? null,
             };
             const json = JSON.stringify(state);
             if (json !== previous)
@@ -177,10 +238,22 @@ for (const width of [1440, 390]) {
         await expect(page.getByTestId("stage-reply").last()).toBeVisible({
           timeout: 20000,
         });
+        // ...and the rest of that first turn, so the bars below the message
+        // are watched until the composer offers Send again.
+        await expect(
+          page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+        ).toBeVisible({ timeout: 20000 });
+        await page.waitForTimeout(1000);
         const measurement = await page.evaluate(() => {
           const m = window.firstMessageMeasurement;
           m.stop();
-          return { frames: m.frames, shifts: m.shifts, mounts: m.mounts };
+          return {
+            frames: m.frames,
+            shifts: m.shifts,
+            mounts: m.mounts,
+            bars: m.bars,
+            removed: m.removed,
+          };
         });
         writeFileSync(
           info.outputPath("measurement.json"),
@@ -205,12 +278,35 @@ for (const width of [1440, 390]) {
         expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(1);
         const fieldYs = measurement.frames.map((f) => f.composer?.[1] ?? -1);
         expect(Math.max(...fieldYs) - Math.min(...fieldYs)).toBeLessThan(1);
+        // The bars below the message never remount.
+        expect(measurement.bars).toMatchObject({
+          stack: 0,
+          composer: 0,
+          box: 0,
+          send: 0,
+        });
+        // The turn's activity line does not drop away while the turn runs:
+        // once shown it stays until Stop turns back into Send, and goes in
+        // the same frame.
+        const shown = measurement.frames.findIndex((f) => f.progress);
+        expect(shown).toBeGreaterThanOrEqual(0);
+        expect(
+          measurement.frames
+            .slice(shown)
+            .every((f) => !!f.progress === (f.mode === "steer")),
+        ).toBe(true);
         // Stricter than web-vital CLS: count shifts even during the 500ms
         // recent-input exemption, where the original flicker often hid.
         const shift = measurement.shifts.reduce((sum, s) => sum + s.value, 0);
         expect(shift).toBeLessThan(0.05);
         console.log(
-          JSON.stringify({ width, phase, mounts: measurement.mounts, shift }),
+          JSON.stringify({
+            width,
+            phase,
+            mounts: measurement.mounts,
+            bars: measurement.bars,
+            shift,
+          }),
         );
       } finally {
         release();

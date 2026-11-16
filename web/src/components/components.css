@@ -2931,9 +2931,12 @@ details[open] > summary:not([class])::before {
 .ah-turn-strip {
   color: var(--ah-muted);
 }
+/* The working row is exactly as tall as the stage summary row that replaces
+   it when the turn ends, so the reply under it does not move then. */
 .ah-turn-working {
   align-items: center;
   grid-template-columns: 18px minmax(0, 1fr);
+  min-height: 24px;
 }
 /* Näytä työ: the primitive's inline pill in the work's accent; a fixed
    minimum width keeps it under the pointer while the timer runs. */
@@ -2961,6 +2964,7 @@ details[open] > summary:not([class])::before {
   gap: 8px;
   width: 100%;
   min-width: 0;
+  padding-block: 2px;
   padding-left: 116px;
   color: var(--ah-accent-ink);
   font-size: var(--ah-size-meta);
@@ -3090,22 +3094,24 @@ details[open] > summary:not([class])::before {
   background: var(--ah-surface-2);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Reply header intentionally overrides the generic message header. */
-.ah-message-reply header strong {
+:is(.ah-message-reply, .ah-message-replying) header strong {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   text-transform: none;
   letter-spacing: 0;
 }
-.ah-message-reply header strong svg {
+:is(.ah-message-reply, .ah-message-replying) header strong svg {
   width: 14px;
   height: 14px;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Reply controls use their own order. */
-.ah-message-reply header [data-ah-primitive="button"] {
+:is(.ah-message-reply, .ah-message-replying)
+  header
+  [data-ah-primitive="button"] {
   margin-inline-start: 0;
 }
-.ah-message-reply header time {
+:is(.ah-message-reply, .ah-message-replying) header time {
   margin-inline-start: auto;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Interim header colour overrides the generic message header. */
