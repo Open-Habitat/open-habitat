@@ -3,7 +3,7 @@ created: 2026-11-16
 updated: 2026-11-16
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-16/google-personal-accounts
