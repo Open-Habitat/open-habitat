@@ -1,10 +1,10 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-16
 type: improvement
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: sync-consent
 lane_seq: 1
 ---
@@ -40,3 +40,7 @@ Jari 14.11.2026: direction accepted; next action a prototype round of the stop n
 ### 2026-11-14T12:54:31Z · @jari
 
 Jari 14.11.2026 on round 1: a person will not find this in Settings. The stop and the consent belong where the agent started the work and caused the change (the conversation), not the integrations card. Round 2 explores that.
+
+### 2026-11-16T05:50:34Z · @jari
+
+Jari 16.11.2026 on round 2: (1) Direction A Kortti. (2) No separate agent dialog: the agent may bring Habitat's card into the conversation with a command (proposal: `open-habitat agent sync request-consent`) and explain in its own words, but consent is only ever the card's button, bound to the count; a plain 'yes' to the agent is never consent. Same pattern is a candidate for worker-asks-parent. (3) Bell and Settings card are enough when no conversation caused the stop. (5) The 'too many deletions' stop gets the same card and consent. (4) Still open: residual seconds between the count check and the forced pass (recommendation: a no-delete pass when the count had no deletions); to be explained in round 3. Next action: prototype round 3 of the chosen card, since the design is still being worked out.
