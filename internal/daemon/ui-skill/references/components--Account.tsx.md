@@ -683,6 +683,8 @@ export function AccountSettings({
     });
   return (
     <section
+      // "/" finds a setting here; the switcher leaves the key to this page.
+      data-owns-slash=""
       className={`ah-account-settings s-page${inServerArea ? " s-server-area" : ""}${detail ? " detail" : ""}${
         // Käyttöönotto puts the route beside the step's settings.
         section === "kayttoonotto" && admin ? " wide" : ""

@@ -261,6 +261,13 @@ for (const held of [false, true]) {
       );
       await page.reload();
       await expect(page.getByTestId("waiting-message")).toBeVisible();
+    } else {
+      // The rhythm is measured on a transcript that sits on the composer. A
+      // conversation started in this view grows down from its first message
+      // instead (first-message-flicker), so reopen it as the held case does.
+      await expect(page).toHaveURL(/conversation=pi:/);
+      await page.reload();
+      await expect(page.getByTestId("message-input")).toBeEnabled();
     }
     await send(page, "tiivistä konteksti 250000");
     const notice = page.getByTestId("compaction-notice");

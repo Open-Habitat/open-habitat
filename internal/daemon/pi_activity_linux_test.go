@@ -256,6 +256,9 @@ func TestArchiveStopsIdlePiButNotBackgroundWork(t *testing.T) {
 	working := h.create(c)
 	h.converse(c, working, "Käynnistä käännös taustalle", activityCommand(2))
 	h.setFile("background", "")
+	// Only background work may keep it: the finished turn's history and
+	// title are published before the check, or "turn" would answer for it.
+	h.quiescent(c, working)
 	h.archive(c, working)
 	c.stopIfIdle(context.Background(), working) // what archive started, done synchronously
 	busy := c.busySessions(context.Background(), filepath.Join(h.root, "src", "project"))

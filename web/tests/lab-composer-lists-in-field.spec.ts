@@ -226,8 +226,17 @@ test("@lab command preview starts at the top for each selection", async ({
   await page.getByTestId("command-palette").click();
   const search = page.getByTestId("command-search");
   const preview = list(page).locator(".ah-pal-prev");
-  await expect(list(page).getByRole("option")).toHaveCount(2);
-  await search.press("Home");
+  // The built-ins (compact, new) are listed before the two skills; step down
+  // to the first skill.
+  const options = list(page).getByRole("option");
+  await expect(
+    options.and(page.getByTestId(/^composer-command-skill:/)),
+  ).toHaveCount(2);
+  const alpha = options.and(page.getByTestId("composer-command-skill:alpha"));
+  for (let i = await options.count(); i > 0; i--) {
+    if ((await alpha.getAttribute("aria-selected")) === "true") break;
+    await search.press("ArrowDown");
+  }
   await expect(preview.locator("h2")).toHaveText("/skill:alpha");
   await preview.evaluate((el) => {
     el.scrollTop = el.scrollHeight;

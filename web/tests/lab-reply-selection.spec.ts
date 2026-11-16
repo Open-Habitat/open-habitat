@@ -69,6 +69,12 @@ test("@lab a selection in a live and in a settled reply survives updates and set
   await expect
     .poll(() => turn.textContent(), { timeout: 20000 })
     .toMatch(/sana5 /);
+  // While the reader is at the end the view follows the growing reply, so a
+  // line measured now may have moved by the time the pointer presses it.
+  // Scroll back like a reader, which stops following, before aiming.
+  await turn.hover();
+  await page.mouse.wheel(0, -200);
+  await expect(page.getByTestId("jump-latest")).toBeVisible();
   const live = await selectLine(page);
   // The turn and the reply holding the selection are marked while live;
   // settling must keep both elements.

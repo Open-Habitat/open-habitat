@@ -9,7 +9,10 @@ test.use({
 
 // Alhaalta (Jari 16.10.2026): a short conversation sits on the composer and
 // grows upwards, while a thread taller than the view still scrolls to its
-// first line (an auto top margin, not justify-content: flex-end).
+// first line (an auto top margin, not justify-content: flex-end). A
+// conversation started in this view is the exception (first-message-flicker,
+// 15.11.2026): it grows down from its first message, so status rows and the
+// first reply do not move it; reopened, it sits on the composer again.
 test("@thread-fill a short conversation sits on the composer and a tall thread scrolls to its first line", async ({
   page,
 }) => {
@@ -28,7 +31,6 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   await nav.getByTestId("workspace-ordinary-dir").click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const stream = page.locator(".ah-conversation-stream");
-  // Empty: the invitation is at the bottom, next to the composer.
   const gapBelow = (selector: string) =>
     stream.evaluate((el, s) => {
       // An item that renders nothing takes no space and is not the last one.
@@ -40,9 +42,19 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
         el.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom
       );
     }, selector);
+  const gapAbove = (selector: string) =>
+    stream.evaluate((el, s) => {
+      const first = [...el.querySelectorAll(s)].find(
+        (item) => item.getBoundingClientRect().height > 0,
+      );
+      if (!first) return Number.NaN;
+      return first.getBoundingClientRect().top - el.getBoundingClientRect().top;
+    }, selector);
+  // Created here and empty: the invitation is at the top, where the first
+  // message will appear.
   await expect(stream.getByTestId("conversation-empty")).toBeVisible();
   await expect
-    .poll(() => gapBelow('[data-testid="conversation-empty"]'))
+    .poll(() => gapAbove('[data-testid="conversation-empty"]'))
     .toBeLessThan(80);
   await page.getByTestId("message-input").fill("ensimmäinen");
   await page
@@ -52,15 +64,23 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   await expectNativeContent(stream, 'Selvä. Kysyit: "ensimmäinen".', {
     timeout: 20000,
   });
-  expect(await gapBelow(".ah-feed > li")).toBeLessThan(80);
-  const freeAbove = await stream.evaluate(
-    (el) =>
-      (el.querySelector(".ah-feed > li")?.getBoundingClientRect().top ?? 0) -
-      el.getBoundingClientRect().top,
+  // The spare space is below the feed while the conversation is new.
+  expect(await gapAbove(".ah-feed > li")).toBeLessThan(80);
+  expect(await gapBelow(".ah-feed > li")).toBeGreaterThan(
+    await gapAbove(".ah-feed > li"),
   );
+
+  // Reopened, the same short conversation sits on the composer.
+  await page.reload();
+  await expectNativeContent(stream, 'Selvä. Kysyit: "ensimmäinen".', {
+    timeout: 20000,
+  });
+  await expect.poll(() => gapBelow(".ah-feed > li")).toBeLessThan(80);
   // Bottom alignment means the spare space is above, not below the feed;
   // its amount varies with the composer/model controls and font metrics.
-  expect(freeAbove).toBeGreaterThan(await gapBelow(".ah-feed > li"));
+  expect(await gapAbove(".ah-feed > li")).toBeGreaterThan(
+    await gapBelow(".ah-feed > li"),
+  );
   // Below the last message is only the stream's own padding (Jari
   // 29.10.2026): no list margin, and no empty item under a running turn.
   const spareBelow = () =>
@@ -76,7 +96,7 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
         Number.parseFloat(getComputedStyle(el, "::after").height)
       );
     });
-  expect(Math.abs(await spareBelow())).toBeLessThan(1);
+  await expect.poll(async () => Math.abs(await spareBelow())).toBeLessThan(1);
   await page.getByTestId("message-input").fill("hidas toinen");
   await page
     .getByTestId("send")

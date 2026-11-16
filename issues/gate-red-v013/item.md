@@ -3,13 +3,14 @@ created: 2026-11-16
 updated: 2026-11-16
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-16/gate-red-v013
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-16
 ---
 
 # Clean gate before v0.1.3 red: one Go test and 14 browser specs

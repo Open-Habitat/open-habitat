@@ -163,6 +163,11 @@ for (const width of [1440, 1024, 800, 390]) {
         await page.getByTestId("attachment-remove").click();
       });
       await measure("idle");
+      // The transcript's last row meets the stack only in a conversation that
+      // sits on the composer. One started in this view grows down from its
+      // first message instead (first-message-flicker), so reopen it.
+      await page.reload();
+      await expect(page.getByTestId("message-input")).toBeEnabled();
       await page.request.get("/fixture/scenario?value=pi-visual-hold");
       await send(page, "Hold the turn");
       await expect(page.getByTestId("next-waiting")).toBeVisible();

@@ -375,10 +375,13 @@ export function App() {
     /** What went with it: its named workers (Avustajat). */
     detail?: string;
   }>();
+  // An undo offer travels with the person into the next view's top bar until
+  // it expires; a refusal belongs to the view it was raised in, and leaving
+  // that view clears it.
   useEffect(() => {
     const route = `${location.pathname}${location.search}`;
     setArchiveNotice((notice) =>
-      notice?.scopeRoute === route ? notice : undefined,
+      !notice?.problem || notice.scopeRoute === route ? notice : undefined,
     );
   }, [location.pathname, location.search]);
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
@@ -1818,18 +1821,22 @@ export function App() {
     if (result.outcome === "uncertain") refresh();
     // The notice, if any, stays and says why; the conversation is back. A
     // home card shows its own refusal.
-    if (
-      result.outcome === "refused" &&
-      origin !== "home" &&
-      currentViewRoute.current === scopeRoute
-    ) {
-      setArchiveNotice({
-        id: agent.agent_id,
-        title: agentTitle(agent.title),
-        route: fromRoute,
-        scopeRoute,
-        problem: result.text,
-      });
+    // A refusal shows in the view that asked, or where this conversation's
+    // undo offer has travelled; it never raises a banner in another view.
+    if (result.outcome === "refused" && origin !== "home") {
+      const view = currentViewRoute.current;
+      setArchiveNotice((notice) =>
+        view === scopeRoute ||
+        (notice?.id === agent.agent_id && !notice.problem)
+          ? {
+              id: agent.agent_id,
+              title: agentTitle(agent.title),
+              route: fromRoute,
+              scopeRoute: view,
+              problem: result.text,
+            }
+          : notice,
+      );
     }
     return result.outcome !== "refused" && result.outcome !== "login";
   };
@@ -3418,8 +3425,10 @@ export function App() {
                       onClose={() => setEditorSave(undefined)}
                     />
                   ) : null}
-                  {archiveNotice?.scopeRoute ===
-                  `${location.pathname}${location.search}` ? (
+                  {archiveNotice &&
+                  (!archiveNotice.problem ||
+                    archiveNotice.scopeRoute ===
+                      `${location.pathname}${location.search}`) ? (
                     <ArchiveNotice
                       kind="archive"
                       key={archiveNotice.id}

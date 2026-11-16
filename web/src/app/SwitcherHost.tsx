@@ -190,7 +190,10 @@ export function SwitcherHost({
         !e.ctrlKey &&
         !e.metaKey &&
         !e.altKey &&
-        !editable(document.activeElement);
+        !editable(document.activeElement) &&
+        // A page with its own search (Settings) keeps "/" for it; ⌘K and
+        // Ctrl+K still open the switcher there.
+        !document.querySelector("[data-owns-slash]");
       if (!key && !slash) return;
       if (state.current.open) {
         if (!key) return;
