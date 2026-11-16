@@ -280,6 +280,20 @@ export function App() {
   const outside = useRef<Location | undefined>(undefined);
   if (!isSettingsRoute(route.pathname) && route.pathname !== "/administration")
     outside.current = route;
+  // The view the person is in, read from the address bar rather than from
+  // the last render: the router commits a navigation as a transition, so
+  // under load a write's reply can arrive while App still renders the view it
+  // just left, and a refusal scoped to that view would vanish when the
+  // navigation lands. Settings lies over the view without changing it, so a
+  // pending archive result still belongs to the view under it.
+  const currentView = () => {
+    const under = isSettingsRoute(window.location.pathname)
+      ? outside.current
+      : undefined;
+    return under
+      ? `${under.pathname}${under.search}`
+      : `${window.location.pathname}${window.location.search}`;
+  };
   const defaultSettingsOpen = isSettingsRoute(route.pathname);
   const piSignInOpen = new URLSearchParams(route.search).has("pi_sign_in");
   const {
@@ -414,10 +428,6 @@ export function App() {
   // them out of Settings.
   const currentRoute = useRef(route);
   currentRoute.current = route;
-  // Settings overlays the view; opening it must not discard that view's
-  // pending archive result, and its rail actions belong to the view too.
-  const currentViewRoute = useRef("");
-  currentViewRoute.current = `${location.pathname}${location.search}`;
   const [newChoiceWorkspace, setNewChoiceWorkspace] = useState<string>();
   const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
@@ -1751,7 +1761,7 @@ export function App() {
     const scopeRoute =
       archived && origin === "conversation"
         ? `/workspaces/${agent.workspace_id}`
-        : currentViewRoute.current;
+        : currentView();
     if (archived) {
       setArchiveNotice({
         id: agent.agent_id,
@@ -1824,7 +1834,7 @@ export function App() {
     // A refusal shows in the view that asked, or where this conversation's
     // undo offer has travelled; it never raises a banner in another view.
     if (result.outcome === "refused" && origin !== "home") {
-      const view = currentViewRoute.current;
+      const view = currentView();
       setArchiveNotice((notice) =>
         view === scopeRoute ||
         (notice?.id === agent.agent_id && !notice.problem)
