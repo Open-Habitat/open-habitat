@@ -1,6 +1,6 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-16
 type: improvement
 reporter: Jari Mustonen
 status: open
@@ -10,6 +10,8 @@ source_ref: taskfleet:01m7dndj5tkgpnew9syvxrkc00/upload-animation-uses-mark
 originating_run: 01m7dndj5tkgpnew9syvxrkc00
 originating_run_kind: spinoff
 preparation: pending
+lane: upload-mark-proto
+lane_seq: 1
 ---
 
 # Attachment upload animation uses the Open Habitat mark
