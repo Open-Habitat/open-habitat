@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/mark-hides-background-work
-preparation: pending
+preparation: ready
 lane: rail-mark
 lane_seq: 1
 ---
@@ -40,3 +40,7 @@ background process be visible in the rail at all, and where.
 ### 2026-11-16T13:05:51Z · @jari
 
 Jari 16.11.2026: the small background-service dot at the end of the rail row is fine as it is. Next action: a prototype round exploring whether background work could be shown in the Open Habitat mark at the start of the row (the mark that already animates the conversation's state) instead of, or alongside, the dot.
+
+### 2026-11-16T13:27:09Z · @jari
+
+Jari 16.11.2026 on round 1: direction 2 Vaeltava ovi — the door drifts slowly in every state that does not already move when a background process runs ('taas liikkuva kehä… tällä mennään'). The end-of-row dot stays (he said earlier it is fine). Hiljaiset heading gets no extra count (recommendation, unanswered). Next action: implement direction 2, experimental by default.
