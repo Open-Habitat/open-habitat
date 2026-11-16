@@ -3,10 +3,13 @@ created: 2026-11-16
 updated: 2026-11-16
 type: bug
 reporter: conductor
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-16/gate-flakes-under-load-v013
+lane: unlaned
+lane_seq: 1
+preparation: ready
 ---
 
 # Clean gate flakes under host load: editor conflict typing, pinned Pi bridge wake
