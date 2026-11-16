@@ -1,264 +1,281 @@
-# Sync stop and consent: where the prototype rounds stand (14.11.2026)
+# Sync stop and consent: the card, round 3 (16.11.2026)
 
-> **Saatesanat.** Tämä kokoaa kahden prototyyppikierroksen tuloksen: mitä
-> ihminen näkee, kun pilvikansion synkronointi pysähtyy, koska agentti muutti
-> kansion jokaista tiedostoa, ja miten hän antaa luvan jatkaa.
-> Sinulta kysytään viisi asiaa (kohta "Questions for Jari"): pysähdyksen
-> paikka keskustelussa, saako agentti koskaan jatkaa synkronointia ihmisen
-> "kyllä"-vastauksella, riittävätkö kello ja Asetukset, kun mikään keskustelu
-> ei aiheuttanut pysähdystä, muutaman sekunnin jäännösriski ja se, koskeeko
-> sama lupa myös "liikaa poistoja" -pysähdystä.
-> Suositus: **A Kortti**. Habitatin oma kortti tulee keskusteluun heti sen
-> vuoron jälkeen, jonka muutokset pysäyttivät synkronoinnin. Kortti näyttää,
-> mitä jatkaminen tekisi, ja lupa annetaan kortin painikkeella, ei agentille.
-> Lopun "Erottelu" kertoo, mikä tästä on sinun päättämääsi ja mikä ehdotusta.
-
-## The problem
-
-When an agent edits every file in a synced cloud folder, two-way sync stops:
-it cannot tell such an edit from a mistake that would overwrite everything on
-the other side. Today Habitat checks that the stop is not a mass deletion and
-then continues by itself with a forced pass. The person sees nothing, and a
-mass deletion that arrives between the check and the forced pass goes through
-to the other side. This has not been observed; it is a known gap.
+> **Saatesanat.** Valitsit kierroksella 2 suunnan A Kortti: Habitatin oma
+> kortti tulee keskusteluun sen vuoron jälkeen, jonka muutokset pysäyttivät
+> synkronoinnin, ja lupa annetaan vain kortin painikkeella. Tämä kierros
+> tekee kortista niin konkreettisen, että sen voi kirjoittaa speksiksi.
+> Kortista on kolme muotoa, ja suosittelen muotoa **B Valmiina**: kortti
+> tulee valmiin laskelman kanssa ja sanoo heti, poistaako jatkaminen
+> jotain. Painike sanoo, mitä tapahtuu, esimerkiksi "Vie 16 tiedostoa
+> OneDriveen". Samalla sivulla näkyvät agentin tuoma kortti, liikaa poistoja
+> -pysähdys ja kysymys 4 esimerkin kanssa. Kysymys 4 on selitetty alla
+> tavallisella suomella omassa kohdassaan.
+> Sinulta kysytään neljä asiaa (kohta "Questions for Jari"): kortin muoto,
+> valintaruudun paikka, saako Habitat liittää pysähdyksen keskusteluun
+> pelkän komentorivikomennon perusteella, ja kierroksen 2 avoin kysymys 4.
+> Jokaisessa on suositus. Viimeinen kohta erottelee, mitä olet päättänyt
+> ja mikä on ehdotusta.
 
 ## What Jari has decided
 
-- Sync stops and does not continue by itself. The person is told that it
-  stopped and why, sees what continuing would do (how many files would
-  change and be deleted), and gives a separate consent to one forced pass.
-  (Verdict 14.11.2026 on `decisions-review-after-31-10` item 1; "direction
-  accepted" in this issue's Decisions, 11:42Z.)
-- The stop and the consent belong in the conversation where the agent did
-  the work that caused the change, not on the integrations card in Settings,
-  where a person will not find them. (Decisions, 12:54Z, on round 1.)
+- Sync stops and does not continue by itself. The person sees why and
+  what continuing would do, and gives a separate consent to one forced
+  pass. (14.11.)
+- The stop belongs in the conversation where the agent caused the change,
+  not in Settings. (14.11., on round 1.)
+- On round 2 (16.11.): direction **A Kortti**. Consent is only ever the
+  card's button, bound to the count. There is no separate agent dialog:
+  the agent may bring the same card into the conversation with a command
+  (proposed name `open-habitat agent sync request-consent`) after
+  explaining in its own words, but it never consents, and a "yes" typed to
+  the agent is not consent. When no conversation caused the stop, the bell
+  and the Settings card are enough. The "too many deletions" stop gets the
+  same card and consent. Question 4 stays open and is explained here.
 
-Today and decided, side by side:
+## Round 3: three forms of the card
 
-```mermaid
-flowchart TD
-    E["Agent edits every file in the folder"] --> S["Sync stops"]
-    S --> T["Today: Habitat checks for mass deletion"]
-    T --> TF["Habitat forces one pass by itself"]
-    S --> D["Decided: sync stays stopped"]
-    D --> DS["Person sees why, and what continuing would do"]
-    DS --> DC{"Person consents?"}
-    DC -- yes --> DF["One forced pass"]
-    DC -- no --> DW["Sync stays stopped"]
-```
+Round: `design-system/prototypes/rounds/2026-11-16-sync-consent-3/`. Its
+`NOTES.md` says how to build and check it and what the host would have to
+provide. Built page: `design-system/prototypes/dist/sync-consent-3/offline.html`.
 
-Everything below is a proposal built on those two decisions.
+The axis is how the card gets from the stop to the consent. The content,
+the stop kinds and who brings the card are the same in all three.
 
-## Round 2: three places in the conversation
+- **A Pyynnöstä** (on request). The card says that sync stopped, why, and
+  which edits caused it. *Katso, mitä jatkaminen tekisi* makes the count
+  and fills it into the card with a table, and *Jatka kerran* consents.
+  When it is done, the card folds to one receipt line with *Näytä*, which
+  opens the table again. After *Älä jatka* the card stays open, because
+  sync is still stopped.
+- **B Valmiina** (ready). The card arrives with the count already made at
+  the moment of the stop. It gives one sentence ("Jatkaminen vie
+  OneDriveen 14 muuttunutta ja 2 uutta tiedostoa. Mitään ei poisteta.")
+  and a button that names the action ("Vie 16 tiedostoa OneDriveen"). The
+  table is behind *Näytä erittely*. If the files changed after the count,
+  Habitat does nothing and shows the new count and button in the same
+  card. Done and cancelled both fold to one line.
+- **C Nimeltä** (by name). Count on request, as in A, but the card lists
+  the files by name in groups (deletions first, five per group, the rest
+  on request). The done receipt opens the file list.
 
-Round: `design-system/prototypes/rounds/2026-11-14-sync-consent-2/`; its
-`NOTES.md` says how to build it and what the host would have to provide.
+**Recommendation: B.** It puts the deciding fact, whether anything gets
+deleted, in front of the person without a press, and consent is one press
+whose label says what happens. Counting at the stop costs nothing in
+safety, because Habitat counts again at the moment of consent and refuses
+if anything changed, so a stale count cannot let anything through. A's
+extra press buys no safety. C's names help recognise the edits in the
+small case, but with 212 moved files the card becomes a list to scroll,
+not help to decide. If names are wanted, they fit inside B's *Näytä
+erittely*. One cost of B: the dry run is made at every stop even if
+nobody looks. Stops are rare and a dry run only lists both sides.
 
-The three directions differ in where the stop sits. In all of them the rail
-marks the conversation that caused the stop and the bell shows it for the
-whole account.
+## The agent brings the card
 
-- **A Kortti.** Habitat's own card appears in the timeline right after the
-  turn whose edits stopped sync, and names those edits. *Katso, mitä
-  jatkaminen tekisi* fills the count and the consent button into the card.
-  *Kysy agentilta* drafts a message that the person may send.
-- **B Agentti kertoo.** Habitat tells the agent about the stop. The agent
-  explains in its own words what it did and runs the count; Habitat's
-  consent card sits under its reply.
-- **C Kentän yllä.** A fixed line above the message field, outside the
-  timeline. The count and the consent open in a dialog.
+Shown in every direction with *Kortin tuo: Agentti komennolla* or preset 2.
+The person asks in the conversation whether the bell's stop was caused by
+the agent's work. The agent runs `open-habitat agent sync status`, explains
+in its own words what it did, and runs `open-habitat agent sync
+request-consent onedrive --current`. The same card then appears under its
+reply, marked *agentin pyynnöstä*. Because the agent brought it, the card
+does not claim the cause itself ("synkronointi pysähtyi, koska kaikki
+kansion tiedostot muuttuivat kerralla") and leaves the explanation to the
+agent above it.
 
-**Recommendation: A.** The card is where the person reads the agent's
-result, and it says which edits caused the stop. Consent needs no agent
-turn, so A also works when the agent has moved on or is not running. B
-explains best, but it starts a turn the person did not ask for, and the
-agent's account of what it did can be wrong; A's *Kysy agentilta* gives the
-same explanation when the person wants it. C is detached from its cause and
-takes space from the message field on a phone.
+With *Agentti, ihminen vastasi kyllä*, the person types "Kyllä, jatka
+vaan." The agent answers that a message is not consent, runs the command
+again, and the card moves under that reply. There is only ever one card
+per stop.
 
-**When no conversation caused the stop** (the change came from another
-device, the cloud's own web interface or a terminal), there is no card and
-no rail mark. The bell item explains the stop and opens the count and
-consent in a dialog, and the Microsoft 365 card in Settings shows a notice
-with the same dialog. This is what remains of round 1.
+`--current` identifies the conversation the same way as the existing
+`open-habitat agent conversation show --current`, through the context the
+daemon gives the Pi it launches. No authority moves.
 
-Where the person meets the stop, as proposed:
+## The "too many deletions" stop
 
-```mermaid
-flowchart TD
-    S["Sync stops"] --> Q{"Did one conversation surely cause it?"}
-    Q -- yes --> C["Card in that conversation (A)"]
-    Q -- yes --> R["Mark on the conversation in the rail"]
-    Q -- no --> F["Notice on the Settings card"]
-    S --> B["Bell item for the whole account"]
-    C --> K["Count and consent"]
-    B --> K
-    F --> K
-```
+Shown with *Pysähdys: Liikaa poistoja* or preset 3. An agent moved 212 of
+240 reports to an archive folder. OneDrive sees the move as 212 deletions
+and 212 new files, more than half, so sync stops on its deletion guard
+before anything else. The card is the same. The differences:
 
-## Proposals that the directions share
+- The lead already names the number: "Synkronointi pysähtyi, koska tämän
+  keskustelun muutosten jälkeen se olisi poistanut OneDrivesta 212
+  tiedostoa 240:stä."
+- The count carries a strong warning that explains the move, the checkbox
+  *Poistot ovat tarkoituksellisia*, and a danger button *Poista 212 ja
+  jatka* that stays disabled until the box is ticked.
 
-None of these has been decided. They are what the prototype shows, and the
-mechanisms are described in the two rounds' `NOTES.md`.
+A third case, *Kaikki muuttuivat, 3 poistoa*, shows an ordinary
+all-files-changed stop with a few deletions. The deletions are named in a
+line and in the button ("Poista 3 ja jatka"), without the checkbox.
 
-What the count and consent go through, in every direction:
+## Kysymys 4 selkokielellä
 
-```mermaid
-stateDiagram-v2
-    [*] --> Stopped
-    Stopped --> Counting: person asks what continuing would do
-    Counting --> Counted: count shown
-    Counting --> Failed: count fails
-    Counted --> Stopped: person cancels
-    Counted --> Running: person consents to this count
-    Counted --> Refused: files changed after the count
-    Refused --> Counting: person looks again
-    Running --> Done: forced pass finishes
-    Running --> Failed: forced pass fails
-    Failed --> Stopped
-    Done --> [*]
-```
+Kun painat kortin painiketta, Habitat tekee kaksi asiaa peräkkäin:
 
-- **The count is made when the person asks for it**, not at the moment of
-  the stop, so that it is fresh when they read it.
-- **Consent covers exactly the count shown.** If any file changed after the
-  count, continuing is refused and the person looks again. This is what
-  closes the gap described under "The problem". A window of a few seconds
-  remains on the cloud side (question 4).
-- **A count that contains deletions gets a strong warning and a checkbox**,
-  and the button names the number. The prototype's example is an agent that
-  moved 212 files; the cloud sees a move as 212 deletions and 212 new files.
-- **A stop is tied to a conversation only when that is sure enough**: the
-  agent's file edits inside the folder are certain, shell commands are only
-  probable. Otherwise the fallback above is used, because a card in the
-  wrong conversation would tell the person a wrong cause.
-- **The agent can count and explain but cannot continue the sync.** Round 1
-  let the agent continue after a yes in the conversation; round 2 removed
-  that (question 2). This is how the product asks, not a security boundary:
-  the agent runs as the same Unix user and could run the sync tool itself.
-  No authority moves between gateway, daemon and provision.
-- **The card is Habitat's own state, not part of the conversation's
-  history.** It shows while the stop lasts, and afterwards as a one-line
-  receipt until the conversation is reopened. Nothing new is stored; after
-  a restart the next pass stops again and the card returns.
-- **In B, Habitat wakes an idle agent once per stop.** If the agent is not
-  running, B behaves as A.
+1. Se tarkistaa, onko laskelma yhä totta: muuttuiko jokin sen jälkeen,
+   kun luit kortin. Jos muuttui, mitään ei tehdä ja saat uuden laskelman.
+2. Se ajaa yhden pakotetun synkronoinnin.
 
-Two faults in today's Settings card came up while building round 1, and
-both hold on main: for this stop the card offers *Kirjaudu uudelleen*,
-which would resync the whole folder, and it shows the storage-quota help
-under the row.
+Näiden kahden välissä on muutama sekunti. Jos joku poistaa juuri silloin
+OneDrivesta tiedostoja, vaikkapa toisella laitteella tai vahingossa
+OneDriven selainkäytössä, tarkistus ei ehdi nähdä sitä. Pakotettu ajo
+ohittaa synkronoinnin omat turvarajat, joten poistot tulisivat sen mukana
+Habitatiin, vaikka kortti lupasi "Mitään ei poisteta". Tätä ei ole
+koskaan havaittu, mutta se on mahdollista.
 
-## Questions for Jari
+**Suositus:** kun laskelmassa ei ollut yhtään poistoa, pakotettu ajo
+tehdään tilassa, jossa se ei voi poistaa mitään. Olet hyväksynyt ajon,
+joka ei poista, joten se ei myöskään voi poistaa. Jos joku poisti jotain
+sillä välin, poisto odottaa seuraavaa tavallista synkronointia. Se on
+tavallinen ajo turvarajoineen: pieni poisto menee läpi kuten aina, ja suuri
+pysäyttää synkronoinnin uudelleen ja kysyy erikseen.
 
-1. Direction: A, or another?
-2. May the agent ever continue the sync after the person says yes in the
-   conversation? The direction you accepted mentions "asking the agent" as
-   one way to consent. Round 2 says no, citing you ("a real button, not the
-   agent's word"), but that sentence is not in the recorded decisions.
-   Recommendation: no. A yes in a conversation is not tied to a count, and
-   the agent's instructions already tell it not to force a stopped sync.
-3. When no conversation caused the stop, are the bell and the Settings card
-   enough, or should the stop also show as a notice on the start page?
-4. After the count is checked there are still a few seconds in which a
-   deletion in the cloud could slip into the forced pass. Is that
-   acceptable, or should a forced pass whose count had no deletions run in
-   a mode that cannot delete at all?
-5. The prototype's large example (212 of 240 files moved) would in practice
-   probably stop for a different reason, "too many deletions", which Habitat
-   never continues by itself and which this issue does not cover. Should
-   that stop get the same card and consent, or stay as it is?
+Mitä näet eri tavalla:
+
+- Tavallisesti melkein ei mitään. Kortin lause muuttuu lupaukseksi:
+  "Mitään ei poisteta: tämä ajo ei voi poistaa tiedostoja." Käynnissä
+  oleva ajo sanoo saman.
+- Harvinaisessa tapauksessa (preset 4, tai simulaatio "pilvessä
+  poistetaan 150 juuri ennen ajoa") ero on suuri. Suojan kanssa kuittaus
+  kertoo, että 150 poistoa jäi odottamaan, ja kello näyttää uuden
+  pysähdyksen "olisi poistanut Habitatista 150 tiedostoa 240:stä". Ilman
+  suojaa kuittaus kertoo punaisella, että ajo poisti Habitatista 150
+  tiedostoa, joita lupasi ei koskenut.
+
+Suoja ei auta, kun laskelmassa oli poistoja (esimerkiksi siirron 212
+poistoa), koska silloin ajon on saatava poistaa. Siinä tapauksessa
+muutaman sekunnin ikkuna jää, ja kortti kertoo rehellisesti, jos ajo
+poisti enemmän kuin laskelma sanoi. Toteutustapa on vielä tarkistamatta
+oikealla rclonella. `NOTES.md` kertoo kaksi vaihtoehtoa.
+
+## States the card goes through
+
+Same in all directions, unchanged from round 2 except where noted: stopped,
+counting, counted, running, done (folded receipt), cancelled (A and C stay
+open, B folds), refused because the files changed after the count (B
+recounts and asks again in place), failed, another conversation open (bell
+and rail mark open the right conversation), and no conversation behind the
+stop (the bell opens the same card in a dialog, and the Settings card
+shows the same notice).
 
 ## Decisions for later review
 
-Made in this rewrite (14.11.2026):
+Made in this round by best judgement (16.11.2026):
 
-- **The two rounds are told as one document, with round 1 reduced to what
-  still holds.** Alternative: keep both round reports one after the other.
-  Why: round 1's axis (where on the Settings card) and its recommendation
-  were answered by Jari's verdict, and a reader had to work out which half
-  still applied.
-- **Round 1's rule "any deletion is unexpected here" is not carried over as
-  a reason.** Round 2's own example shows an ordinary move producing
-  hundreds of deletions. The warning and checkbox stay as a proposal.
-- **The agent's permission is put to Jari as a question** instead of being
-  stated as his decision, because the quoted sentence has no recorded
-  source.
+- **Axis: how the card leads to consent.** Alternatives: card size or tone
+  only, or where the count shows (inline or dialog). Why: whether the
+  count is fetched automatically, how much it lists and how the card
+  folds are the open choices that change what the person does. Placement
+  was decided.
+- **Habitat's own card names the cause, the agent-brought card does
+  not.** Alternative: the same lead in both. Why: the agent brings the
+  card mainly when Habitat could not tie the stop to the conversation with
+  certainty, so Habitat should not claim a cause it did not establish. The
+  agent's own explanation sits right above.
+- ***Kysy agentilta* only on Habitat's own card.** When the agent brought
+  the card, the agent has already explained.
+- **One card per stop.** It moves under the latest `request-consent`.
+  Alternative: a new card each time. Why: two consent buttons for one stop
+  would make it unclear which one counts.
+- **The checkbox only for the too-many-deletions stop.** A few deletions in
+  an all-files-changed stop are named in the sentence and the button.
+  Alternative: round 2's checkbox for any deletion. Why: a checkbox for
+  three deliberate deletions trains people to tick it without reading.
+  This is question 2.
+- **The too-many-deletions card states the number at the stop.** This
+  assumes rclone's abort reports the counts. Not verified; otherwise the
+  lead says "more than half" and the count gives the number.
+- **The command takes `--current` and prints the CLI's JSON envelope**,
+  following `open-habitat agent conversation show --current` and the
+  AI-first CLI canon. A companion `open-habitat agent sync status` lets the
+  agent see the stop without the browser.
+- **The fallback's dialog shows the same card body** as the conversation,
+  so there is one card design, not two.
+- **B's cancelled card folds to one line** with *Näytä laskelma*, because
+  B's count is ready anyway. A and C stay open.
 
 ## Live check
 
-Nothing on the test server yet; this is an offline prototype. Build round 2
-with the command in its `NOTES.md` and open `offline.html`. In A, press
-*Katso, mitä jatkaminen tekisi*, then *Jatka kerran*. Switch Keskustelu to
-*Arkistointi* for the 212-deletions case and its checkbox. Choose *Toinen
-keskustelu auki* and click the marked conversation in the rail. Choose
-*Varapaikka* and open the bell.
+Nothing on the test server; this is an offline prototype. Build with the
+command in the round's `NOTES.md` and open `offline.html`. The four *Näytä*
+buttons at the top lead to the four things shown: Habitat's card, the
+agent bringing it, too many deletions, and question 4. Switch the picker
+at the bottom between A, B and C in each. For question 4, press preset 4,
+then switch *Kysymys 4* to *Ajo voi poistaa* and compare the receipt and
+the bell.
+
+## Questions for Jari
+
+1. **Which form of the card: A, B or C?** Recommendation: B. The count is
+   in the card from the start and the button says what happens. It is no
+   less safe, because Habitat counts again at the moment of consent.
+2. **Should only the "too many deletions" stop require the checkbox, with
+   a few deletions only named in the sentence and the button?**
+   Recommendation: yes. Round 2 required the checkbox for any deletion.
+3. **When a stop is explained only by a shell command (the `mv` of 212
+   reports), should Habitat still put its own card in that conversation?**
+   Round 2's rule says no, because a shell command can write anywhere and
+   a card in the wrong conversation names a wrong cause. Then the bell and
+   Settings would show the move case, and the agent would bring the card
+   when asked. Recommendation: keep round 2's rule, because the agent's
+   command now covers this case. The prototype shows Habitat's card for
+   the move case too, so that all combinations can be compared.
+4. **Question 4 (open since round 2): when the count had no deletions,
+   may the forced pass run in a mode that cannot delete anything?**
+   Recommendation: yes, provided the implementation finds a way to do it
+   with rclone (to be tested first). Any deletion made in the window then goes to the next normal
+   sync, which stops again if it is large. For counts that did include
+   deletions, the few-second window remains, and the receipt reports what
+   was actually deleted.
 
 ## Erottelu
 
-Mistä tämän ja kierroksen 2 `NOTES.md`:n väitteet ovat peräisin. Lähteet:
-issuen Decisions-merkinnät, `decisions-review-after-31-10`:n merkintä,
-tiedostojen git-historia ja nykyinen koodi.
+Lähteet: tämän issuen Decisions-merkinnät (14.11. 11:42Z ja 12:54Z,
+16.11. 05:50Z), kierrosten 1–3 `NOTES.md` ja nykyinen koodi
+(`internal/daemon/integrations/passes_linux.go`, `skill_linux.go`,
+`internal/cli/agent_linux.go`).
 
-**Pidetty päätettynä**
+**Jarin päättämää**
 
-- Synkronointi pysähtyy eikä jatka itse; ihminen näkee syyn ja sen, mitä
-  jatkaminen tekisi, ja antaa erillisen luvan yhteen ajoon. Lähde: Jarin
-  ratkaisu 14.11. (`decisions-review-after-31-10`, 11:38Z) ja "direction
-  accepted" (tämä issue, 11:42Z).
-- Paikka on keskustelu, jossa agentti aiheutti muutoksen, ei Asetukset.
-  Lähde: tämä issue, 12:54Z.
+- Synkronointi pysähtyy eikä jatka itse. Ihminen näkee syyn ja sen, mitä
+  jatkaminen tekisi, ja antaa erillisen luvan yhteen ajoon. (14.11.)
+- Paikka on keskustelu, jossa agentti aiheutti muutoksen. (14.11.)
+- Suunta A Kortti: Habitatin oma kortti heti aiheuttaneen vuoron jälkeen.
+  (16.11.)
+- Lupa on vain kortin painike ja sidottu laskelmaan. Erillistä
+  agenttidialogia ei ole. Agentti saa tuoda kortin komennolla ja selittää
+  omin sanoin, mutta ei anna lupaa, eikä agentille kirjoitettu "kyllä" ole
+  lupa. Komennon nimi `open-habitat agent sync request-consent` on Jarin
+  ehdotus, ei lopullinen. (16.11.)
+- Kun mikään keskustelu ei aiheuttanut pysähdystä, kello ja Asetusten
+  kortti riittävät, ei etusivun ilmoitusta. (16.11.)
+- Liikaa poistoja -pysähdys saa saman kortin ja luvan. (16.11.)
 
-**Muutettu ehdotuksiksi** (aiemmin kirjoitettu päätösten sävyyn; kukaan ei
-ole päättänyt näitä)
+**Ehdotusta** (kukaan ei ole päättänyt näitä)
 
-- Laskelma tehdään pyynnöstä eikä heti pysähdyksessä.
-- Lupa sidotaan laskelmaan ja torjutaan, jos tiedostot muuttuivat; samoin
-  toteutuksen yksityiskohdat (kertakäyttöinen tunniste, 15 minuutin
-  vanheneminen, komentojen ja kenttien nimet), jotka ovat nyt vain
-  NOTES-tiedostoissa.
-- Poistoja sisältävä laskelma vaatii varoituksen ja valintaruudun.
-- Milloin pysähdys liitetään keskusteluun ja milloin ei.
-- Sivupalkin merkki, kello joka tapauksessa, kortin kuittausrivi, ei uutta
-  tallennetta.
-- Varapaikka: kello ja Asetusten kortti.
+- Kortin muoto (A, B tai C) ja kaikki sen yksityiskohdat: tekstit, painikkeiden
+  nimet, taittuminen kuittausriviksi, *Kysy agentilta*.
+- Laskelma pysähdyshetkellä (B) tai pyynnöstä (A, C). Uudelleenlaskenta
+  luvan hetkellä ja torjunta, jos jokin muuttui. Kierroksen 1 sitominen on
+  yhä ehdotus.
+- Varoitus ja valintaruutu vain liikaa poistoja -pysähdyksessä (kysymys 2).
+- Kysymys 4:n ajo, joka ei voi poistaa, ja sen toteutustapa.
+- Yksi kortti pysähdystä kohden, ja kortin siirtyminen uusimman pyynnön
+  alle.
+- Komennon muoto: `--current`, JSON-tuloste ja rinnakkainen `status`.
+- Milloin Habitat liittää pysähdyksen keskusteluun itse (kysymys 3 ja
+  kierroksen 2 sääntö).
+- Varapaikan ikkuna, jossa on sama kortti.
+- Ehdotus agentin ohjeen lisäyksestä (`skill_linux.go`): selitys kuuluu
+  agentille ja lupa kortille.
 
-**Pudotettu**
+**Ristiriidat aiemman tekstin kanssa**
 
-- Kierroksen 1 kolme suuntaa (Rivi, Ilmoitus, Paneeli), niiden suositus ja
-  kysymys "B vai muu": Jarin ratkaisu vastasi niihin. Ne ovat
-  git-historiassa ja kierroksen 1 hakemistossa.
-- Tilaluettelot, kielimaininnat ja toistot ("kuten kierroksella 1"), sekä
-  maininnat siitä, mitä kierros ei muuttanut.
-- Huomio palvelun nimen kirjoitusasusta ("OneDrive ja SharePoint" vastaan
-  "OneDrive"): kuuluu toteutuksen teksteihin.
-
-**Ristiriidat myöhemmän päätöksen kanssa**
-
-1. **Paikka.** `item.md`:n Direction-kappale sanoo yhä "e.g. *Jatka silti*
-   in the account's card". Jarin myöhempi päätös (12:54Z) siirsi paikan
-   keskusteluun. Sama vanha oletus on kierroksen 1 `NOTES.md`:ssä
-   (`design-system/prototypes/rounds/2026-11-14-sync-consent/`), joka kuvaa
-   koko ratkaisun Asetusten korttiin. `item.md`:tä ja kierrosta 1 ei tässä
-   ajossa muutettu.
-2. **Agentin lupa jatkaa.** Kolme tekstiä sanoo kolme eri asiaa: `item.md`
-   ("or asking the agent"), kierroksen 1 `NOTES.md` (agentti saa pyytää
-   pakotetun ajon ihmisen kyllä-vastauksen jälkeen) ja kierros 2 (ei
-   koskaan). Tuotannon nykyinen agenttiohje
-   (`internal/daemon/integrations/skill_linux.go`) on kierroksen 2 kannalla:
-   pysähdyksen ratkaisu kuuluu ihmiselle. Kierroksen 2 Jari-sitaatille ei
-   löydy kirjattua lähdettä, joten tämä on kysymys 2.
-3. **Issuen tila.** `item.md` sanoo "Awaiting Jari's confirmation of the
-   concrete shape (`preparation: pending`)", vaikka suunta hyväksyttiin
-   11:42Z ja kaksi kierrosta on tehty. Rivi on vanhentunut.
-4. **Esimerkki ja issuen rajaus.** Prototyypin "paljon poistoja" -tapaus
-   (212/240) pysähtyisi koodin mukaan todennäköisesti eri syystä
-   (`delete_limit`: yli puolet poistuisi, ja poistot tarkistetaan ennen
-   muutoksia). Issue koskee vain "kaikki tiedostot muuttuivat" -pysähdystä.
-   Tätä ei ole kokeiltu oikealla synkronoinnilla; kysymys 5.
-5. **Perustelu poistoista.** Kierros 1 perusteli valintaruudun sillä, että
-   agentin muokkaus ei poista mitään, joten jokainen poisto on yllätys.
-   Kierroksen 2 oma esimerkki (siirto näkyy poistoina) kumoaa perustelun.
-
-**Kysymykset, joista en ollut varma** ovat kohdan "Questions for Jari"
-numerot 2 ja 5.
+- `item.md`:n Direction-kappale mainitsee yhä "e.g. *Jatka silti* in the
+  account's card, or asking the agent". Myöhemmät päätökset (12:54Z ja
+  16.11.) korvasivat molemmat: paikka on keskustelun kortti, ja agentilta
+  pyytäminen tarkoittaa vain, että agentti tuo kortin. Kappaletta ei
+  muutettu tässä ajossa.
+- Kierroksen 2 suositus perusteli A:ta sillä, että laskelma tehdään
+  pyynnöstä, jotta se on tuore. Tämän kierroksen suositus B laskee heti ja
+  luottaa uudelleenlaskentaan luvan hetkellä. Molemmat ovat ehdotuksia.
