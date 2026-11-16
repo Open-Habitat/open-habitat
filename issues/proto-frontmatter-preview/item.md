@@ -1,15 +1,16 @@
 ---
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-16
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/frontmatter-preview
 lane: frontmatter-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-16
 ---
 
 # Preview renders nested YAML front matter poorly

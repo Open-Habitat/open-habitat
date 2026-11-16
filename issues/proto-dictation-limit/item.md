@@ -1,15 +1,16 @@
 ---
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/dictation-limit
 lane: dictation-limit-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-16
 ---
 
 # Dictation limit: warn before it, keep what was said after it

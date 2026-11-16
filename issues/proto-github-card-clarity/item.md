@@ -1,15 +1,16 @@
 ---
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-16
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/github-card
 lane: github-card-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-16
 ---
 
 # GitHub card in Settings is confusing; prototype again

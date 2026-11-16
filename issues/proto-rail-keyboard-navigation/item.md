@@ -1,15 +1,16 @@
 ---
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/rail-keyboard-nav
 lane: rail-keyboard-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-16
 ---
 
 # Keyboard shortcut to move between conversations in the rail
