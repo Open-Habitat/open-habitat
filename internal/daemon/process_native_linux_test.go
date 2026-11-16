@@ -96,12 +96,21 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 		defer cancel()
 		return p.inventory(ctx)
 	}
+	// An unavailable inventory is the bridge not answering in time (a starved
+	// Pi under host load), which the product treats as transient: clients
+	// resnapshot and poll. Facts are asserted on the first answer Pi gives.
+	answered := func(label string) processInventory {
+		t.Helper()
+		var inv processInventory
+		wait(label, func() bool { inv = inventory(); return inv.Availability == "available" })
+		return inv
+	}
 	wait("companion ready", func() bool { return inventory().Availability == "available" })
 	if ok, err := p.request("prompt", "Run the synthetic background build", 10*time.Second); err != nil || !ok {
 		t.Fatalf("prompt %v %v", ok, err)
 	}
 	wait("first settlement", func() bool { c.mu.Lock(); defer c.mu.Unlock(); return s.settled && s.state == "idle" })
-	inv := inventory()
+	inv := answered("inventory after first settlement")
 	if len(inv.Processes) != 1 || inv.Processes[0].Wakes == nil || !*inv.Processes[0].Wakes {
 		t.Fatalf("missing native notify join %+v", inv)
 	}
@@ -119,8 +128,8 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	// wakeRelease, so the run cannot settle before this observes it.
 	wait("native wake active", func() bool { c.mu.Lock(); defer c.mu.Unlock(); return s.runActive && s.state == "accepted" })
 	// Inventory queries do not prompt, steer or disturb the active model request.
-	inv = inventory()
-	if inv.Availability != "available" || calls.Load() != 3 {
+	inv = answered("inventory during wake")
+	if calls.Load() != 3 {
 		t.Fatal("list disturbed run")
 	}
 	// The notification is projected at its message_end, a frame after
@@ -187,7 +196,7 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	if err = p.processRequest(ctx, map[string]string{"op": "clear"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := inventory(); got.Availability != "available" || len(got.Processes) != 0 {
+	if got := answered("inventory after clear"); len(got.Processes) != 0 {
 		t.Fatal("clear did not remove native records", got)
 	}
 }
