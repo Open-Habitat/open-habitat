@@ -21,13 +21,13 @@ const pi = '<a href="https://github.com/earendil-works/pi">Pi</a>';
 
 const t = {
   en: {
-    title: 'Your team’s AI agents on one Linux server',
+    title: 'Coding-grade AI agents for your whole team',
     description:
-      'Open Habitat: each person works as their own Unix user, reachable from any browser. Open source, version 0.1.0 pre-release.',
-    heroTitle: 'Your team’s AI agents on <em>one Linux server</em>.',
-    tagline: `Each person works as their own Unix user, reachable from any browser. Sign in from a laptop or phone, talk to your ${pi} agent, close the tab, and it keeps working.`,
-    status: 'Version 0.1.0 · early pre-release · open source (MIT)',
-    tryIt: 'How to try it',
+      'Open Habitat gives everyone on your team a real coding agent with its own Linux account, in a browser tab. Open source, early pre-release.',
+    heroTitle: 'Coding-grade AI agents for <em>your whole team</em>. No terminal required.',
+    tagline: `Everyone on your team gets a real ${pi} agent with its own Linux account, in a browser tab. One person sets up one server. Everyone else signs in and gets to work, with nothing to install.`,
+    status: 'Version 0.1 · early pre-release · open source (MIT)',
+    tryIt: 'Install on your server',
     compareCta: 'How it differs',
     diagram: {
       laptop: 'laptop',
@@ -45,14 +45,34 @@ const t = {
       'The conversation is Pi’s own session in your home directory, so the files, Git repositories and history are the ones you would find over SSH. Open Habitat adds a browser, not a second place where your work lives.',
     whatTitle: 'What you get',
     whatLede:
-      'For small teams, schools and households that already have, or can rent, one Linux server.',
+      'For a team with one person who can run a Linux server. Nobody else needs to be technical.',
     cards: [
-      ['One server, many people', 'Everyone who signs in with GitHub gets their own Linux account, home directory, credentials and agent daemon. The administrator decides who is admitted; nobody picks a Unix user in the browser.'],
-      ['Native tools keep the truth', 'Pi stores its own history, <code>git</code> and <code>gh</code> keep their own logins, and workspaces are ordinary directories under <code>~/src</code>. No workspace registry, no copied history, no vendor database.'],
-      ['Work outlives the browser', 'Agents run under your daemon on the server. Steer a running agent, queue the next message, answer its questions or stop it, from a desktop or a phone.'],
-      ['The rest of the workbench', 'A browser terminal on the same tmux sessions, a Git worktree per agent, a VS Code editor running as you, and your own connections to GitHub, Gitea, GitLab, Google, Microsoft 365 and Dropbox.'],
-      ['Your own model account', 'Each person connects their own provider sign-in through Pi, for example a ChatGPT or Claude subscription, or uses a key the server provides. Nobody shares a personal API key.'],
-      ['Nothing phones home', 'No telemetry, no relay, no Open Habitat account between your browser and your server. The interface works in English and Finnish, light and dark.'],
+      ['A real agent, not a chatbot', 'Each person’s agent works in their own Linux account on your server, with a shell, files, Git and the command line. It does the work and shows you the result.'],
+      ['Nothing to install', 'Open the address, sign in, and talk to your agent. It works the same on a laptop and on a phone. No terminal, no SSH key, no setup on your own computer.'],
+      ['Close the tab, the work goes on', 'Agents run on the server, not in your browser. Come back later from any device: the sidebar shows what is still running and what is waiting for your answer.'],
+      ['Steer it while it works', 'Add an instruction in the middle of the work, queue the next message, answer the agent’s questions or stop it. You do not have to wait for it to finish to change its direction.'],
+      ['Workers, out of the box', 'The worker infrastructure is built in. Hand over a big task and the agent splits it between workers, each in its own Git worktree, and brings their results back.'],
+      ['Your mail, calendar and files', 'Connect Google, Microsoft 365, Dropbox or an ordinary mail account, and the agent works with your own mail, calendars, contacts and documents.'],
+      ['Results you can open', 'Agents hand back reports, charts and small web pages as views you open beside the conversation, and files you download with one click.'],
+      ['Build your own on top', 'It is an ordinary Linux server that you run. Add your own tools and services for the agents, or have the agents build them. Nothing about the server is closed to you.'],
+      ['Everyone has their own', 'Every person is a separate Linux user with their own files, credentials and agents. The operating system keeps people apart, not rules inside a web app.'],
+      ['Bring your own AI subscription', 'Each person connects their own ChatGPT or Claude subscription or an API key, or the server provides a key for everyone. Nobody shares a personal login.'],
+      ['Nothing hidden from the technical', 'A browser terminal on the same tmux sessions, a VS Code editor running as you, and plain SSH. A conversation is Pi’s own session file in your home directory, so the browser and the terminal show the same work.'],
+      ['Yours alone', 'You install it on a server you run. There is no Open Habitat account, cloud or relay: the browser talks to your server.'],
+    ],
+    whyTitle: 'Why',
+    why: [
+      'The agents that programmers use are the most capable AI tools there are, because they run on a real operating system. They have a shell, a filesystem, Git and every command-line tool there is, and they add the ones they are missing. That is what lets them finish work instead of describing it.',
+      'Almost nobody outside engineering gets to use one, because it starts with a terminal. Open Habitat removes that step. The agent keeps its full Linux account, and the person gets a browser interface that is simple and pleasant to use.',
+      '<b>It is a starting point, and you are in control.</b> This is your Linux server, not somebody’s platform. The agents can write code, so whatever your team needs next, they can build it right there: a script, a scheduled job, an internal tool, a service of your own that every agent on the server can use. Go wild with it. Your team still just opens a browser.',
+    ],
+    alsoTitle: 'Also in the box',
+    also: [
+      ['Dictation.', 'Talk instead of typing.'],
+      ['Recaps.', 'A short summary of where a conversation stands, made when you ask or after the work has been quiet for a while.'],
+      ['GitHub, Gitea and GitLab.', 'Clone repositories into workspaces and let the agent work with them as you.'],
+      ['Your own machines.', 'Connect your own computers for the agent over Tailscale.'],
+      ['English and Finnish.', 'In light, dark and high-contrast themes.'],
     ],
     compareTitle: 'How it differs',
     compareLede: 'Plenty of tools put coding agents in a window. These are the differences that matter when you choose.',
@@ -83,7 +103,7 @@ const t = {
     vuln: `Found a vulnerability? Use GitHub’s <a href="${repo}/security/advisories/new">private vulnerability reporting</a>, not a public issue.`,
     tryTitle: 'Try it',
     tryStatus:
-      `<b>Status: version 0.1.0, an early pre-release.</b> Open Habitat is in use on multi-person installations. Version 0.1.0 is published as pilot pre-releases (<code>v0.1.0-pilot.N</code>) on <a href="${repo}/releases">GitHub Releases</a>. It is not stable: formats and interfaces may still change from one pre-release to the next, there is no migration guarantee between them, and an installation assumes an administrator who runs the server.`,
+      `<b>Status: version 0.1, an early pre-release.</b> Open Habitat is in use on multi-person installations. Releases are published as pre-releases (<code>v0.1.N</code>) on <a href="${repo}/releases">GitHub Releases</a>. It is not stable: formats and interfaces may still change from one release to the next, and an installation assumes an administrator who runs the server. Install a named release and read its notes before you upgrade.`,
     need: 'You need:',
     reqs: [
       'a Linux server you administer: Ubuntu 24.04 LTS with systemd, amd64 or arm64',
@@ -110,13 +130,13 @@ const t = {
     ],
   },
   fi: {
-    title: 'Tiimin AI-agentit yhdellä Linux-palvelimella',
+    title: 'Koodaavat AI-agentit koko tiimille',
     description:
-      'Open Habitat: jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Avointa lähdekoodia, version 0.1.0 esijulkaisu.',
-    heroTitle: 'Tiimin AI-agentit <em>yhdellä Linux-palvelimella</em>.',
-    tagline: `Jokainen työskentelee omana Unix-käyttäjänään, mistä tahansa selaimesta. Kirjaudu läppäriltä tai puhelimelta, keskustele ${pi}-agenttisi kanssa, sulje välilehti, ja työ jatkuu.`,
-    status: 'Versio 0.1.0 · varhainen esijulkaisu · avoin lähdekoodi (MIT)',
-    tryIt: 'Näin kokeilet',
+      'Open Habitat antaa jokaiselle tiimissäsi oikean koodaavan agentin, jolla on oma Linux-tunnus, selaimen välilehdessä. Avointa lähdekoodia, varhainen esijulkaisu.',
+    heroTitle: 'Koodaavat AI-agentit <em>koko tiimille</em>. Ilman terminaalia.',
+    tagline: `Jokainen tiimissäsi saa oikean ${pi}-agentin, jolla on oma Linux-tunnus, selaimen välilehteen. Yksi ihminen pystyttää yhden palvelimen. Muut kirjautuvat ja alkavat töihin asentamatta mitään.`,
+    status: 'Versio 0.1 · varhainen esijulkaisu · avoin lähdekoodi (MIT)',
+    tryIt: 'Asenna omalle palvelimelle',
     compareCta: 'Miten se eroaa',
     diagram: {
       laptop: 'läppäri',
@@ -134,14 +154,34 @@ const t = {
       'Keskustelu on Pi:n oma istunto kotihakemistossasi, joten tiedostot, Git-repot ja historia ovat samat, jotka löydät SSH:lla. Open Habitat tuo selaimen, ei toista paikkaa, jossa työsi asuu.',
     whatTitle: 'Mitä saat',
     whatLede:
-      'Pienille tiimeille, kouluille ja kotitalouksille, joilla on yksi Linux-palvelin tai jotka voivat vuokrata sellaisen.',
+      'Tiimille, jossa yksi ihminen osaa ylläpitää Linux-palvelinta. Muiden ei tarvitse olla teknisiä.',
     cards: [
-      ['Yksi palvelin, monta ihmistä', 'Jokainen GitHubilla kirjautuva saa oman Linux-tunnuksen, kotihakemiston, kirjautumistiedot ja agenttidaemonin. Ylläpitäjä päättää, kuka pääsee sisään; selaimessa kukaan ei valitse Unix-käyttäjää.'],
-      ['Natiivit työkalut pitävät totuuden', 'Pi tallentaa oman historiansa, <code>git</code> ja <code>gh</code> omat kirjautumisensa, ja työtilat ovat tavallisia hakemistoja <code>~/src</code>-hakemistossa. Ei työtilarekisteriä, kopioitua historiaa eikä toimittajan tietokantaa.'],
-      ['Työ jatkuu ilman selainta', 'Agentit ajetaan omistajansa daemonin alla palvelimella. Ohjaa käynnissä olevaa agenttia, jonota seuraava viesti, vastaa sen kysymyksiin tai pysäytä se, työpöydältä tai puhelimelta.'],
-      ['Muu työpenkki', 'Selainterminaali samoihin tmux-istuntoihin, oma Git-worktree agentille, sinuna ajettava VS Code -editori sekä omat yhteydet GitHubiin, Giteaan, GitLabiin, Googleen, Microsoft 365:een ja Dropboxiin.'],
-      ['Oma mallitili', 'Jokainen yhdistää oman palveluntarjoajansa kirjautumisen Pi:n kautta, esimerkiksi ChatGPT- tai Claude-tilauksen, tai käyttää palvelimen tarjoamaa avainta. Kenenkään ei tarvitse jakaa omaa API-avaintaan.'],
-      ['Ei kotiinsoittoa', 'Ei telemetriaa, ei välityspalvelinta eikä Open Habitat -tiliä selaimesi ja palvelimesi välissä. Käyttöliittymä toimii suomeksi ja englanniksi, vaaleana ja tummana.'],
+      ['Oikea agentti, ei chatbot', 'Jokaisen agentti työskentelee omalla Linux-tunnuksellaan palvelimellasi: shell, tiedostot, Git ja komentorivi. Se tekee työn ja näyttää tuloksen.'],
+      ['Ei mitään asennettavaa', 'Avaa osoite, kirjaudu ja puhu agentillesi. Se toimii samoin läppärillä ja puhelimella. Ei terminaalia, ei SSH-avainta, ei asennuksia omalle koneelle.'],
+      ['Sulje välilehti, työ jatkuu', 'Agentit toimivat palvelimella, eivät selaimessasi. Palaa myöhemmin miltä tahansa laitteelta: sivupalkki näyttää, mikä on yhä käynnissä ja mikä odottaa vastaustasi.'],
+      ['Ohjaa kesken työn', 'Lisää ohje kesken työn, jonota seuraava viesti, vastaa agentin kysymyksiin tai pysäytä se. Suunnan muuttamiseksi ei tarvitse odottaa, että se saa valmista.'],
+      ['Workerit valmiina', 'Worker-infrastruktuuri on mukana. Anna iso tehtävä, ja agentti jakaa sen workereille, kullekin omaan Git-worktreehen, ja tuo tulokset takaisin.'],
+      ['Oma posti, kalenteri ja tiedostot', 'Yhdistä Google, Microsoft 365, Dropbox tai tavallinen sähköpostitili, ja agentti työskentelee omien viestiesi, kalentereidesi, yhteystietojesi ja dokumenttiesi kanssa.'],
+      ['Tulokset, jotka voi avata', 'Agentit palauttavat raportit, kaaviot ja pienet verkkosivut näkyminä, jotka avaat keskustelun viereen, ja tiedostoina, jotka lataat yhdellä napsautuksella.'],
+      ['Rakenna omaa päälle', 'Se on tavallinen Linux-palvelin, jota itse ylläpidät. Lisää agenteille omia työkaluja ja palveluita tai anna agenttien rakentaa ne. Mikään palvelimessa ei ole sinulta suljettu.'],
+      ['Jokaisella omansa', 'Jokainen ihminen on erillinen Linux-käyttäjä, jolla on omat tiedostot, tunnukset ja agentit. Ihmiset pitää erillään käyttöjärjestelmä, eivät verkkosovelluksen säännöt.'],
+      ['Oma AI-tilaus', 'Jokainen yhdistää oman ChatGPT- tai Claude-tilauksensa tai API-avaimen, tai palvelin tarjoaa avaimen kaikille. Kukaan ei jaa henkilökohtaista kirjautumistaan.'],
+      ['Teknisiltä ei piiloteta mitään', 'Selainterminaali samoihin tmux-istuntoihin, sinuna ajettava VS Code -editori ja tavallinen SSH. Keskustelu on Pi:n oma istuntotiedosto kotihakemistossasi, joten selain ja terminaali näyttävät saman työn.'],
+      ['Vain sinun', 'Asennat sen palvelimelle, jota itse ylläpidät. Open Habitat -tiliä, -pilveä tai välityspalvelinta ei ole: selain puhuu sinun palvelimesi kanssa.'],
+    ],
+    whyTitle: 'Miksi',
+    why: [
+      'Ohjelmoijien käyttämät agentit ovat kyvykkäimpiä AI-työkaluja, koska ne toimivat oikean käyttöjärjestelmän päällä. Niillä on shell, tiedostojärjestelmä, Git ja kaikki komentorivityökalut, ja puuttuvat ne lisäävät itse. Siksi ne saavat työn valmiiksi eivätkä vain kuvaile sitä.',
+      'Juuri kukaan ohjelmistokehityksen ulkopuolella ei pääse käyttämään sellaista, koska kaikki alkaa terminaalista. Open Habitat poistaa sen askeleen. Agentti pitää täyden Linux-tunnuksensa, ja ihminen saa selainkäyttöliittymän, joka on yksinkertainen ja miellyttävä käyttää.',
+      '<b>Se on lähtöpiste, ja ohjat ovat sinulla.</b> Tämä on sinun Linux-palvelimesi, ei jonkun toisen alusta. Agentit osaavat koodata, joten ne rakentavat paikan päällä sen, mitä tiimisi seuraavaksi tarvitsee: skriptin, ajastetun työn, sisäisen työkalun tai oman palvelun, jota jokainen palvelimen agentti voi käyttää. Anna mennä. Tiimisi avaa edelleen vain selaimen.',
+    ],
+    alsoTitle: 'Lisäksi mukana',
+    also: [
+      ['Sanelu.', 'Puhu kirjoittamisen sijaan.'],
+      ['Yhteenvedot.', 'Lyhyt tiivistelmä siitä, missä keskustelu on, pyynnöstä tai kun työ on ollut hetken hiljaa.'],
+      ['GitHub, Gitea ja GitLab.', 'Kloonaa repot työtiloiksi ja anna agentin työskennellä niissä sinuna.'],
+      ['Omat koneet.', 'Yhdistä omat tietokoneesi agentin käyttöön Tailscalella.'],
+      ['Suomi ja englanti.', 'Vaalea, tumma ja korkean kontrastin teema.'],
     ],
     compareTitle: 'Miten se eroaa',
     compareLede: 'Agentteja saa ikkunaan monella työkalulla. Nämä erot ratkaisevat, kun valitset.',
@@ -172,7 +212,7 @@ const t = {
     vuln: `Löysitkö haavoittuvuuden? Käytä GitHubin <a href="${repo}/security/advisories/new">yksityistä haavoittuvuusraportointia</a>, älä julkista issueta.`,
     tryTitle: 'Kokeile',
     tryStatus:
-      `<b>Tila: versio 0.1.0, varhainen esijulkaisu.</b> Open Habitat on käytössä monen ihmisen asennuksissa. Versio 0.1.0 julkaistaan pilottiesijulkaisuina (<code>v0.1.0-pilot.N</code>) <a href="${repo}/releases">GitHub Releases</a> -sivulla. Se ei ole vakaa: formaatit ja rajapinnat voivat vielä muuttua esijulkaisusta toiseen, niiden välillä ei luvata siirtoa, ja asennus olettaa ylläpitäjän, joka hoitaa palvelinta.`,
+      `<b>Tila: versio 0.1, varhainen esijulkaisu.</b> Open Habitat on käytössä monen ihmisen asennuksissa. Julkaisut ilmestyvät esijulkaisuina (<code>v0.1.N</code>) <a href="${repo}/releases">GitHub Releases</a> -sivulla. Se ei ole vakaa: formaatit ja rajapinnat voivat vielä muuttua julkaisusta toiseen, ja asennus olettaa ylläpitäjän, joka hoitaa palvelinta. Asenna nimetty julkaisu ja lue sen julkaisutiedot ennen päivitystä.`,
     need: 'Tarvitset:',
     reqs: [
       'Linux-palvelimen, jota ylläpidät: Ubuntu 24.04 LTS ja systemd, amd64 tai arm64',
@@ -270,6 +310,11 @@ const states = `
       <p class="oh-same">{t.sameWork}</p>
     </div>
 
+    <section id="why" class="oh-why" aria-labelledby="oh-why">
+      <h2 id="oh-why">{t.whyTitle}</h2>
+      {t.why.map((p) => <p set:html={p} />)}
+    </section>
+
     <section id="what" aria-labelledby="oh-what">
       <h2 id="oh-what">{t.whatTitle}</h2>
       <p class="oh-lede">{t.whatLede}</p>
@@ -283,6 +328,16 @@ const states = `
           ))
         }
       </div>
+      <h3 class="oh-h3">{t.alsoTitle}</h3>
+      <ul class="oh-plain">
+        {
+          t.also.map(([b, rest]) => (
+            <li>
+              <b>{b}</b> {rest}
+            </li>
+          ))
+        }
+      </ul>
     </section>
 
     <section id="compare" aria-labelledby="oh-compare">
@@ -605,6 +660,9 @@ const states = `
     margin: 0;
     color: var(--ah-muted);
     font-size: 18px;
+  }
+  .oh-why p {
+    max-width: 68ch;
   }
   .oh-lede {
     max-width: 44rem;

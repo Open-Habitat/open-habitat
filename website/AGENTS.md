@@ -44,10 +44,9 @@ before the mark's states in reading order.
   reader. When the root README's positioning changes, change the landing
   page with it.
 - **Maturity is stated as the release line.** The page names the current
-  version (0.1.0, published as `v0.1.0-pilot.N` pre-releases on GitHub
-  Releases) and keeps its caveats beside it: formats and interfaces may
-  change, no migration guarantee, an administrator is assumed. It never
-  claims stability.
+  line (0.1, published as `v0.1.N` pre-releases on GitHub Releases) and
+  keeps its caveats beside it: formats and interfaces may change, an
+  administrator is assumed. It never claims stability.
 - **Other tools only where a claim can be checked.** Differences are written
   as short paragraphs that lead with Open Habitat's difference, not as a
   feature table. Another tool is named only where it makes the point
