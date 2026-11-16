@@ -2,10 +2,10 @@
 created: 2026-11-14
 updated: 2026-11-16
 type: improvement
-status: open
+status: wontfix
 priority: normal
 preparation: pending
-lane: sync-consent
+closed: 2026-11-16
 lane_seq: 1
 ---
 
