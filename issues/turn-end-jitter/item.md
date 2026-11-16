@@ -8,6 +8,7 @@ priority: normal
 related: ['@conversation-live-glitches', '@first-message-flicker']
 lane: conversation-live
 collision: [web/src/app/BrowserConversation.tsx]
+preparation: ready
 ---
 
 # Conversation UI jitters when the agent's reply completes
