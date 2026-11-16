@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,12 +23,30 @@ func TestPiOAuthBuiltRuntime(t *testing.T) {
 	if pi == "" {
 		t.Skip("set OH_INTEGRATIONS_PI to the built profile's bin/pi")
 	}
+	// Registration is the older path; a Client ID Metadata Document without
+	// RFC 9207 issuer responses is what Atlassian's server takes, and makes Pi
+	// return to a server-specific /callback/<id>.
+	for _, cimd := range []bool{false, true} {
+		name := "registration"
+		if cimd {
+			name = "client_metadata_document"
+		}
+		t.Run(name, func(t *testing.T) { piOAuthBuiltRuntime(t, pi, cimd) })
+	}
+}
+
+func piOAuthBuiltRuntime(t *testing.T, pi string, cimd bool) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/metadata":
-			json.NewEncoder(w).Encode(map[string]any{"issuer": server.URL, "authorization_endpoint": "https://auth.atlassian.com/authorize", "token_endpoint": server.URL + "/token", "registration_endpoint": server.URL + "/register", "response_types_supported": []string{"code"}, "code_challenge_methods_supported": []string{"S256"}})
+			metadata := map[string]any{"issuer": server.URL, "authorization_endpoint": "https://auth.atlassian.com/authorize", "token_endpoint": server.URL + "/token", "registration_endpoint": server.URL + "/register", "response_types_supported": []string{"code"}, "code_challenge_methods_supported": []string{"S256"}}
+			if cimd {
+				metadata["client_id_metadata_document_supported"] = true
+				metadata["token_endpoint_auth_methods_supported"] = []string{"none"}
+			}
+			json.NewEncoder(w).Encode(metadata)
 		case "/register":
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(map[string]any{"client_id": "fixture-client", "redirect_uris": []string{"http://127.0.0.1/callback"}})
@@ -58,5 +77,8 @@ func TestPiOAuthBuiltRuntime(t *testing.T) {
 	prompt, err := login.Prompt(ctx)
 	if err != nil || !validPrompt(PastedRedirect, prompt) {
 		t.Fatalf("real Pi did not relay /mcp login: %+v %v", prompt, err)
+	}
+	if u, _ := url.Parse(prompt.RedirectPrefix); cimd == (u.Path == "/callback") {
+		t.Fatalf("redirect %s does not exercise the expected callback shape", prompt.RedirectPrefix)
 	}
 }

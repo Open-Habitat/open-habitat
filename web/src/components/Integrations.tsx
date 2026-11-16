@@ -1941,6 +1941,20 @@ function FailedStep({
           {restart}
         </>
       );
+    case "authorization_unavailable":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-authorization-unavailable"
+          >
+            <Icon name="warning" />
+            <span>{txt.authorizationUnavailable(copy.gen)}</span>
+          </p>
+          {restart}
+        </>
+      );
     case "redirect_rejected":
       return (
         <>
@@ -2595,7 +2609,7 @@ export function ConnectDialog({
       ? txt.titleLevel(copy.name)
       : relogin
         ? txt.titleRelogin(copy.name)
-        : txt.titleConnect(provider.id, copy.name);
+        : txt.titleConnect(copy.name);
   let body: ReactNode = null;
   switch (stage.stage) {
     case "intro":

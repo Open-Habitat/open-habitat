@@ -6,9 +6,40 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+)
+
+// piOAuthStartWindow bounds how long a sign-in may take to show its
+// authorization step. Pi bounds each request to the authorization server at
+// 15 seconds, so discovery and registration end well within it; without a
+// bound, a step Habitat cannot relay leaves the person watching a spinner
+// until Pi's own five-minute callback wait gives up.
+var piOAuthStartWindow = 90 * time.Second
+
+// piOAuthUnavailable is a sign-in whose authorization step never reached the
+// browser. class names, without native text, what Pi showed instead, so the
+// host log says which assumption about the helper's output broke.
+type piOAuthUnavailable struct{ class string }
+
+func (piOAuthUnavailable) Error() string       { return string(AuthorizationUnavailable) }
+func (piOAuthUnavailable) Unwrap() error       { return AuthorizationUnavailable }
+func (e piOAuthUnavailable) diagnostic() []any { return []any{"detail", e.class} }
+
+const (
+	// piOAuthNoStep: Pi showed no authorization address at all.
+	piOAuthNoStep = "no_authorization_step"
+	// piOAuthHost: the address was not Atlassian's authorization page.
+	piOAuthHost = "authorization_host_unexpected"
+	// piOAuthRedirect: the address returned to a loopback callback of a
+	// shape Habitat does not relay.
+	piOAuthRedirect = "redirect_unexpected"
+	// piOAuthHelperError: Pi reported an error before the step.
+	piOAuthHelperError = "helper_error"
+	// piOAuthHelperExited: Pi ended before the step.
+	piOAuthHelperExited = "helper_exited"
 )
 
 // piOAuthLogin relays only the built-in MCP command's OAuth UI. It never
@@ -68,14 +99,33 @@ func (l *piOAuthLogin) read(ctx context.Context) {
 	}
 	started, announced := false, false
 	var authorization string
+	// refused is why the last authorization address Pi showed was not
+	// relayed; a step that never arrives fails with it.
+	refused := piOAuthNoStep
+	unavailable := func() error {
+		if announced {
+			return ToolFailed
+		}
+		return piOAuthUnavailable{refused}
+	}
+	window := time.NewTimer(piOAuthStartWindow)
+	defer window.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			finish(ctx.Err())
 			return
+		case <-window.C:
+			if !announced {
+				finish(piOAuthUnavailable{refused})
+				return
+			}
 		case raw, ok := <-l.tool.Lines():
 			if !ok {
-				finish(ToolFailed)
+				if !announced && refused == piOAuthNoStep {
+					refused = piOAuthHelperExited
+				}
+				finish(unavailable())
 				return
 			}
 			var e struct {
@@ -123,7 +173,10 @@ func (l *piOAuthLogin) read(ctx context.Context) {
 				}
 				if e.NotifyType == "error" {
 					l.mu.Unlock()
-					finish(ToolFailed)
+					if !announced && refused == piOAuthNoStep {
+						refused = piOAuthHelperError
+					}
+					finish(unavailable())
 					return
 				}
 				// Pi's native message ends with the authorization URL. Only Atlassian's
@@ -138,8 +191,20 @@ func (l *piOAuthLogin) read(ctx context.Context) {
 					p := Prompt{AuthorizationURL: candidate, RedirectPrefix: redirect, ExpiresAt: time.Now().Add(5 * time.Minute)}
 					if state != "" && validPiOAuthPrompt(p) {
 						authorization, l.prefix, l.state = candidate, redirect, state
+					} else {
+						refused = piOAuthRedirect
 					}
+				} else if err == nil && u.Scheme == "https" && authorization == "" {
+					refused = piOAuthHost
 				}
+			}
+			// Pi shows the authorization address before it waits for the
+			// pasted redirect. Waiting with nothing relayable to show would
+			// leave the person at "Starting the sign-in…" for five minutes.
+			if !announced && authorization == "" && l.input != "" {
+				l.mu.Unlock()
+				finish(piOAuthUnavailable{refused})
+				return
 			}
 			if !announced && authorization != "" && l.input != "" {
 				announced = true
@@ -150,11 +215,18 @@ func (l *piOAuthLogin) read(ctx context.Context) {
 	}
 }
 
-// Unlike Google's root redirect, native MCP uses exactly /callback with an
-// allocated port. Do not broaden this into arbitrary loopback HTTP forwarding.
+// piOAuthCallbackPath is native MCP's loopback callback: /callback, or
+// /callback/<id> when Pi identifies itself with a Client ID Metadata Document
+// to an authorization server without RFC 9207 issuer responses, as
+// Atlassian's does. The id is a base64url digest of the MCP server URL.
+var piOAuthCallbackPath = regexp.MustCompile(`^/callback(/[A-Za-z0-9_-]{1,32})?$`)
+
+// Unlike Google's root redirect, native MCP uses only its callback path with
+// an allocated port. Do not broaden this into arbitrary loopback HTTP
+// forwarding.
 func validPiOAuthPrompt(p Prompt) bool {
 	u, err := url.Parse(p.RedirectPrefix)
-	return err == nil && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "" && u.Path == "/callback" && u.RawPath == "" && u.RawQuery == "" && u.Fragment == "" && u.User == nil && !strings.ContainsAny(p.RedirectPrefix, " \t\r\n")
+	return err == nil && u.Scheme == "http" && u.Hostname() == "127.0.0.1" && u.Port() != "" && piOAuthCallbackPath.MatchString(u.Path) && u.RawPath == "" && u.RawQuery == "" && u.Fragment == "" && u.User == nil && !strings.ContainsAny(p.RedirectPrefix, " \t\r\n")
 }
 func (l *piOAuthLogin) Prompt(ctx context.Context) (Prompt, error) {
 	select {

@@ -37,10 +37,18 @@ if mode in ('immediate','fail'):
  print(json.dumps({'type':'extension_ui_request','method':'notify','notifyType':'error' if mode=='fail' else 'info','message':'failure' if mode=='fail' else 'Signed in to MCP server "open_habitat_atlassian".'}),flush=True)
  for _ in sys.stdin: pass
  sys.exit(0)
-url='https://auth.atlassian.com/authorize?'+urllib.parse.urlencode({'redirect_uri':'http://127.0.0.1:45678/callback','state':'fixture-state','scope':'read:jira:agent-interface'})
-print(json.dumps({'type':'extension_ui_request','method':'notify','message':'Sign in:\n'+url}),flush=True)
+if mode=='silent':
+ for _ in sys.stdin: pass
+ sys.exit(0)
+# Pi 1.5 identifies itself to Atlassian with a Client ID Metadata Document
+# and then returns to a server-specific /callback/<id>, as the real one does.
+cb={'cimd':'/callback/FZ_rk_LkRBC3','foreign':'/elsewhere'}.get(mode,'/callback')
+host='auth.example.test' if mode=='otherhost' else 'auth.atlassian.com'
+url='https://'+host+'/authorize?'+urllib.parse.urlencode({'redirect_uri':'http://127.0.0.1:45678'+cb,'state':'fixture-state','scope':'read:jira:agent-interface'})
+print(json.dumps({'type':'extension_ui_request','method':'notify','message':'Sign in to MCP server "open_habitat_atlassian" in your browser:\n'+url}),flush=True)
 print(json.dumps({'type':'extension_ui_request','method':'input','id':'fixture-input'}),flush=True)
 reply=json.loads(input()) if mode!='loopback' else {'type':'extension_ui_response','id':'fixture-input','value':'http://127.0.0.1:45678/callback?state=fixture-state&code=fixture-code'}
+assert urllib.parse.urlparse(reply['value']).path==cb
 assert reply['type']=='extension_ui_response' and reply['id']=='fixture-input'
 query=urllib.parse.parse_qs(urllib.parse.urlparse(reply['value']).query)
 assert query['state']==['fixture-state']
@@ -187,5 +195,80 @@ func TestAtlassianRefusesForeignNativeConfig(t *testing.T) {
 	after, _ := os.ReadFile(path)
 	if string(after) != string(original) {
 		t.Fatal("changed unrelated native state")
+	}
+}
+
+// Atlassian's authorization server takes Client ID Metadata Documents and
+// sends no RFC 9207 issuer, so Pi returns to /callback/<id>. That step is
+// relayed and the pasted redirect on it completes the sign-in.
+func TestAtlassianServerSpecificCallback(t *testing.T) {
+	env := atlassianFixture(t)
+	if err := os.WriteFile(filepath.Join(env.Home, "mode"), []byte("cimd"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	a := &atlassian{}
+	login, err := a.StartLevelLogin(ctx, env, "", LevelRead)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer login.Cancel()
+	p, err := login.Prompt(ctx)
+	if err != nil || !validPrompt(PastedRedirect, p) || p.RedirectPrefix != "http://127.0.0.1:45678/callback/FZ_rk_LkRBC3" {
+		t.Fatal(p, err)
+	}
+	for _, bad := range []string{
+		"http://127.0.0.1:45678/callback?state=fixture-state&code=fixture-code",
+		"http://127.0.0.1:45678/callback/other?state=fixture-state&code=fixture-code",
+	} {
+		if !errors.Is(login.Redirect(ctx, bad), RedirectRejected) {
+			t.Fatalf("accepted %s", bad)
+		}
+	}
+	if err := login.Redirect(ctx, p.RedirectPrefix+"?state=fixture-state&code=fixture-code"); err != nil {
+		t.Fatal(err)
+	}
+	if address, err := login.Wait(ctx); err != nil || address != atlassianServer {
+		t.Fatal(address, err)
+	}
+}
+
+// A step Habitat cannot relay ends the sign-in as soon as Pi starts waiting
+// for the pasted redirect, instead of leaving the person at "Starting the
+// sign-in…" until Pi's five-minute callback wait gives up. Pi showing
+// nothing at all ends it when the start window closes.
+func TestPiOAuthUnrelayableStepFailsPromptly(t *testing.T) {
+	window := piOAuthStartWindow
+	piOAuthStartWindow = 500 * time.Millisecond
+	t.Cleanup(func() { piOAuthStartWindow = window })
+	for mode, class := range map[string]string{
+		"foreign":   piOAuthRedirect,
+		"otherhost": piOAuthHost,
+		"silent":    piOAuthNoStep,
+		"fail":      piOAuthHelperError,
+	} {
+		t.Run(mode, func(t *testing.T) {
+			env := atlassianFixture(t)
+			if err := os.WriteFile(filepath.Join(env.Home, "mode"), []byte(mode), 0600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			login, err := (&atlassian{}).StartLevelLogin(ctx, env, "", LevelRead)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer login.Cancel()
+			started := time.Now()
+			_, err = login.Prompt(ctx)
+			var unavailable piOAuthUnavailable
+			if !errors.As(err, &unavailable) || unavailable.class != class || loginFailure(err) != "authorization_unavailable" {
+				t.Fatal(err)
+			}
+			if took := time.Since(started); took > 5*time.Second {
+				t.Fatal("sign-in failed only after", took)
+			}
+		})
 	}
 }

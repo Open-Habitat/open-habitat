@@ -83,3 +83,34 @@ it.each([
     expect(view.getByTestId("integration-redirect-input")).toBeTruthy();
   },
 );
+it("says the sign-in page could not be prepared when the host found no authorization step", () => {
+  const view = render(
+    <ConnectDialog
+      provider={provider}
+      stage={{
+        stage: "login",
+        view: {
+          schema_version: 1,
+          state: "failed",
+          provider: "atlassian",
+          attempt_id: "20261109T100000.000000001",
+          failure: "authorization_unavailable",
+        },
+      }}
+      onContinue={noop}
+      onPassword={noop}
+      onPaste={noop}
+      onFolders={noop}
+      onRestart={noop}
+      onClose={noop}
+    />,
+  );
+  expect(
+    view.getByTestId("integration-authorization-unavailable").textContent,
+  ).toMatch(/Atlassian/);
+  // The title names the provider without an article that only fits some names.
+  expect(document.body.textContent).toMatch(
+    /Connect an account: Atlassian|Yhdistä tili: Atlassian/,
+  );
+  expect(document.body.textContent).not.toMatch(/a Atlassian/);
+});

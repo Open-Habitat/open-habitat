@@ -349,6 +349,9 @@ const (
 	// AlreadyConnected is a new connection to an account already here at
 	// another level, which only a level change of that account may make.
 	AlreadyConnected Failure = "already_connected"
+	// AuthorizationUnavailable is a sign-in whose native tool did not show
+	// an authorization step Habitat can relay; nothing was connected.
+	AuthorizationUnavailable Failure = "authorization_unavailable"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the

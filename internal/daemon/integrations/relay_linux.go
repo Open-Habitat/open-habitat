@@ -247,7 +247,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, PermissionRefused, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected:
+		case Expired, PermissionRefused, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected, AuthorizationUnavailable:
 			return string(f)
 		}
 	}
@@ -525,6 +525,10 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 		var discovery microsoftDiscoveryError
 		if errors.As(err, &discovery) {
 			attrs = append(attrs, discovery.diagnostic()...)
+		}
+		var unavailable piOAuthUnavailable
+		if errors.As(err, &unavailable) {
+			attrs = append(attrs, unavailable.diagnostic()...)
 		}
 		var short quotaShortfall
 		if errors.As(err, &short) {

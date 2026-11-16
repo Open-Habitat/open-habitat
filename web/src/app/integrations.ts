@@ -192,7 +192,8 @@ export type LoginFailure =
   | "nothing_granted"
   | "final_sync_failed"
   | "revoke_failed"
-  | "already_connected";
+  | "already_connected"
+  | "authorization_unavailable";
 export type LoginView = {
   schema_version: 1;
   state:
