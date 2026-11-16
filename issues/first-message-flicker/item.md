@@ -1,6 +1,6 @@
 ---
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-16
 type: bug
 reporter: jari
 status: fixed
@@ -28,3 +28,9 @@ Likely the hand-over from the new-conversation composer (no Pi session yet, hist
 - [x] Preserve the frame, stream, input and sent-message element through first native-history takeover on desktop and phone, without an empty-state flash.
 - [x] Five repetitions per viewport and send phase pass under CPU/reply-delay load, with total layout shift below 0.05.
 - [x] Verify held/queued/recovery journeys and complete targeted independent review; record evidence and limitations in result.md.
+
+## Comments
+
+### 2026-11-16T06:31:41Z · @agent
+
+Jari 16.11.2026 on the staging installation still sees flicker on the first send: the next bar seems to drop away and come back. It runs v0.1.2 (commit ca6e1966, 14.11.), which does not contain the fix e2367697, so this is expected until v0.1.3 is installed. At the post-release live check, ask specifically about the bar below the message (composer/status) dropping away and returning; reopen if it persists.
