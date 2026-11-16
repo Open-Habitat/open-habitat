@@ -44,3 +44,7 @@ Jari 14.11.2026 on round 1: a person will not find this in Settings. The stop an
 ### 2026-11-16T05:50:34Z · @jari
 
 Jari 16.11.2026 on round 2: (1) Direction A Kortti. (2) No separate agent dialog: the agent may bring Habitat's card into the conversation with a command (proposal: `open-habitat agent sync request-consent`) and explain in its own words, but consent is only ever the card's button, bound to the count; a plain 'yes' to the agent is never consent. Same pattern is a candidate for worker-asks-parent. (3) Bell and Settings card are enough when no conversation caused the stop. (5) The 'too many deletions' stop gets the same card and consent. (4) Still open: residual seconds between the count check and the forced pass (recommendation: a no-delete pass when the count had no deletions); to be explained in round 3. Next action: prototype round 3 of the chosen card, since the design is still being worked out.
+
+### 2026-11-16T13:05:45Z · @jari
+
+Jari 16.11.2026: the consent feature is dropped. Sync keeps continuing by itself after the mass-deletion check, as today: the agent's edits are the normal case, and OneDrive/SharePoint version history and recycle bin cover the residual window. The 'too many deletions' stop stays as it is (never continues by itself). Rounds 1-3 go to history.

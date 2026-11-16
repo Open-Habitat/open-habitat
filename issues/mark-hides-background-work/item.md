@@ -1,13 +1,15 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-16
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/mark-hides-background-work
-preparation: pending
+preparation: ready
+lane: rail-mark
+lane_seq: 1
 ---
 
 # The read mark hides background work; a non-waking process is visible nowhere
@@ -32,3 +34,9 @@ process is visible nowhere in the rail.
 Decisions for Jari: should the read mark also show background work (dimmed
 resident, wandering door) or is the hint enough; and should a non-waking
 background process be visible in the rail at all, and where.
+
+## Decisions
+
+### 2026-11-16T13:05:51Z · @jari
+
+Jari 16.11.2026: the small background-service dot at the end of the rail row is fine as it is. Next action: a prototype round exploring whether background work could be shown in the Open Habitat mark at the start of the row (the mark that already animates the conversation's state) instead of, or alongside, the dot.
