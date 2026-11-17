@@ -24,9 +24,10 @@ async function open(
   page: Page,
   preferences: Record<string, unknown>,
   signedIn = false,
+  mode = "turn-changes",
 ): Promise<void> {
   expect(
-    (await page.request.get("/fixture/history?mode=turn-changes")).status(),
+    (await page.request.get(`/fixture/history?mode=${mode}`)).status(),
   ).toBe(204);
   await page.goto("/workspaces");
   if (!signedIn) {
@@ -55,6 +56,7 @@ async function open(
       ).ok(),
     ).toBe(true);
   await page.goto(`/agents/${agent}`);
+  if (mode !== "turn-changes") return;
   // Both turns' final replies are on screen.
   await expect(
     page.locator('[data-testid="stage-reply"][data-reply-role="final"]'),
@@ -349,4 +351,151 @@ test("@turn-changes evidence screenshots", async ({ page }) => {
           .scrollIntoViewIfNeeded();
         await shot(page, `${name}-3-timeline`);
       }
+});
+
+// Jari 17.11.2026: the card showed only under the newest reply. Every turn
+// that changed files shows its card, on the first page, on the older pages
+// read on scroll-up and after a warm return; a turn that changed nothing
+// shows none. The fixture's turn n writes src/t<n>.ts with n+1 lines when n
+// is even and only lists files when n is odd.
+test("@turn-changes every editing turn shows its card, older pages and a warm return too", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await open(
+    page,
+    { experimental: { "turn-changes": true } },
+    false,
+    "turn-changes-many",
+  );
+  const total = 140;
+  const reply = (n: number) =>
+    turns(page).filter({
+      has: page
+        .locator('[data-testid="stage-reply"][data-reply-role="final"]')
+        .getByText(`Vastaus ${n}.`, { exact: true }),
+    });
+  await expect(reply(total - 1)).toHaveCount(1);
+  const stream = page.locator(".ah-conversation-stream");
+  // Scroll up as a reader, reading the older pages, until the first turn.
+  const older = page.getByRole("button").and(page.getByTestId("older-history"));
+  await stream.hover();
+  await expect(async () => {
+    await page.mouse.wheel(0, -4000);
+    if (await older.isVisible()) await older.click();
+    await expect(reply(0)).toHaveCount(1, { timeout: 500 });
+  }).toPass({ timeout: 60_000 });
+  const check = async (n: number) => {
+    const turn = reply(n);
+    await turn.scrollIntoViewIfNeeded();
+    if (n % 2) {
+      // The reads of a turn that changed nothing end with no card.
+      await expect(turn.getByTestId("turn-changes")).toHaveCount(0);
+      return;
+    }
+    await expect(turn.getByTestId("turn-changes")).toBeVisible();
+    await expect(turn.locator(".ah-tc-meta .ah-tc-add")).toHaveText(
+      `+${n + 1}`,
+    );
+  };
+  for (let n = 0; n < total; n++) await check(n);
+  // A warm return: away to the workspace in the app and back.
+  await page
+    .locator(".ah-agent-header")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await expect(page).not.toHaveURL(/\/agents\//);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/agents\//);
+  await expect(reply(total - 1)).toHaveCount(1);
+  for (const n of [total - 1, total - 2, total - 4, total - 10, total - 30])
+    await check(n);
+});
+
+// The same in a conversation that goes on live: turns that were not on
+// screen when it was opened are read after later turns have changed the
+// native file, and every turn's card stays after the next turns.
+test("@turn-changes every live turn that changed files keeps its card", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  expect((await page.request.get("/fixture/reset-clock")).status()).toBe(204);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const session = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { experimental: { "turn-changes": true } },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.reload();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  // Long replies ("pitkä") keep the earlier turns off screen.
+  const prompts = [
+    "kirjoita tiedosto alku pitkä",
+    "kerro mitä teit pitkä",
+    "kirjoita tiedosto keski pitkä",
+    "kirjoita tiedosto loppu",
+    "kirjoita tiedosto vielä",
+  ];
+  const turn = (prompt: string) =>
+    turns(page).filter({
+      has: page
+        .locator('[data-testid="stage-reply"][data-reply-role="final"]')
+        .getByText(`Kysyit: "${prompt}"`),
+    });
+  const check = async (prompt: string) => {
+    const name = /kirjoita tiedosto (\S+)/.exec(prompt)?.[1];
+    await turn(prompt).scrollIntoViewIfNeeded();
+    const changes = turn(prompt).getByTestId("turn-changes");
+    if (!name) {
+      await expect(changes).toHaveCount(0);
+      return;
+    }
+    await expect(changes).toBeVisible();
+    await expect(changes.locator(".ah-tc-meta")).toContainText(`${name}.ts`);
+  };
+  const send = async (prompt: string) => {
+    const input = page.getByTestId("message-input");
+    await expect(input).toBeEnabled();
+    await input.fill(prompt);
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expect(turn(prompt)).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+    ).toBeVisible();
+  };
+  for (const [i, prompt] of prompts.slice(0, 3).entries()) {
+    await send(prompt);
+    for (const earlier of prompts.slice(0, i + 1)) await check(earlier);
+  }
+  // Opened again cold, at the newest turn: the earlier ones are read only
+  // when scrolled to, after newer turns have been saved.
+  await page.reload();
+  await expect(turn(prompts[2])).toHaveCount(1);
+  await send(prompts[3]);
+  await send(prompts[4]);
+  for (const prompt of prompts.toReversed()) await check(prompt);
 });

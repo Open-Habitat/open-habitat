@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { FileLinkContext } from "../components/fileRefs";
-import { TurnChanges } from "../components/TurnChanges";
+import { TurnChanges, TurnChangesUnread } from "../components/TurnChanges";
 import { useExperimentalFeature } from "./accountPreferences";
 import { fullTextBlock, type HistoryEntry } from "./history";
 import {
@@ -20,7 +20,8 @@ type Call = {
   tool: string;
   entryKey: string;
   index: number;
-  revision?: string;
+  /** The revisions to read at: the entry's own, then the conversation's. */
+  revisions: string[];
   readable: boolean;
   at?: number;
   result?: HistoryEntry;
@@ -34,23 +35,45 @@ const savedAt = (entry?: HistoryEntry) => {
 // Arguments are not in a history page: each is read from native history by
 // its block. A saved entry does not change, so a read is kept across
 // revisions; the cache holds the latest reads only.
+//
+// A block read names the whole native file's revision, which every append
+// replaces. An entry the stream delivered carries the revision it was saved
+// at, and a turn far up the view is read only once the person scrolls to it,
+// often after later turns have been saved: that revision is gone by then, so
+// the read falls back to the conversation's newest one.
 const cache = new Map<string, Promise<string>>();
+async function readAt(
+  agentId: string,
+  revisions: string[],
+  entryKey: string,
+  index: number,
+): Promise<string> {
+  let failure: unknown = new Error("no revision");
+  for (const revision of revisions) {
+    try {
+      return await fullTextBlock(
+        agentId,
+        revision,
+        entryKey,
+        index,
+        new AbortController().signal,
+      );
+    } catch (error) {
+      failure = error;
+    }
+  }
+  throw failure;
+}
 function blockText(
   agentId: string,
-  revision: string,
+  revisions: string[],
   entryKey: string,
   index: number,
 ): Promise<string> {
   const key = `${agentId}\n${entryKey}\n${index}`;
   let text = cache.get(key);
   if (!text) {
-    text = fullTextBlock(
-      agentId,
-      revision,
-      entryKey,
-      index,
-      new AbortController().signal,
-    );
+    text = readAt(agentId, revisions, entryKey, index);
     text.catch(() => cache.delete(key));
     cache.set(key, text);
     if (cache.size > 400) cache.delete(cache.keys().next().value as string);
@@ -73,8 +96,8 @@ async function readSteps(
 ): Promise<ToolStep[]> {
   const args = await Promise.all(
     calls.map((c) =>
-      c.readable && c.revision
-        ? blockText(agentId, c.revision, c.entryKey, c.index)
+      c.readable && c.revisions.length
+        ? blockText(agentId, c.revisions, c.entryKey, c.index)
         : Promise.resolve(""),
     ),
   );
@@ -102,9 +125,9 @@ async function readSteps(
       const index =
         c.result.blocks?.findIndex((b) => b.type === "text" && b.readable) ??
         -1;
-      const revision = c.result.native_revision ?? c.revision;
-      return index >= 0 && revision
-        ? blockText(agentId, revision, c.result.entry_key, index)
+      const revisions = revisionsOf(c.result.native_revision, c.revisions);
+      return index >= 0 && revisions.length
+        ? blockText(agentId, revisions, c.result.entry_key, index)
         : resultText(c.result);
     }),
   );
@@ -119,8 +142,25 @@ async function readSteps(
   }));
 }
 
+const revisionsOf = (own: string | undefined, rest: string[]) =>
+  [...new Set([own, ...rest])].filter((r): r is string => !!r);
+
+/** The element the conversation scrolls in, or none for the page. */
+function scroller(place: Element): Element | null {
+  for (let at = place.parentElement; at; at = at.parentElement) {
+    const { overflowY } = getComputedStyle(at);
+    if (overflowY === "auto" || overflowY === "scroll") return at;
+  }
+  return null;
+}
+
 /** Starts the reads once the turn comes near the view. The place mounts
- * only once the feature is known to be on, so it is a callback ref. */
+ * only once the feature is known to be on, so it is a callback ref.
+ *
+ * The margin is measured from the conversation's own scroll area: against
+ * the page, the area clips the place first and a margin never applies, so a
+ * turn was read only when its last pixel was scrolled into sight, and a turn
+ * a jump or a restored position passed over showed nothing. */
 function useNear() {
   const [place, setPlace] = useState<HTMLSpanElement | null>(null);
   const [near, setNear] = useState(
@@ -132,7 +172,7 @@ function useNear() {
       (seen) => {
         if (seen.some((e) => e.isIntersecting)) setNear(true);
       },
-      { rootMargin: "800px 0px" },
+      { root: scroller(place), rootMargin: "800px 0px" },
     );
     observer.observe(place);
     return () => observer.disconnect();
@@ -177,7 +217,7 @@ export function TurnChangesSource({
           tool: block.tool_name ?? "",
           entryKey: entry.entry_key,
           index,
-          revision: entry.native_revision ?? revision,
+          revisions: revisionsOf(entry.native_revision, [revision ?? ""]),
           readable: !!block.readable,
           at: savedAt(result) ?? savedAt(entry),
           result,
@@ -202,12 +242,16 @@ export function TurnChangesSource({
     )
     .join(",");
   const [near, ref] = useNear();
-  const [read, setRead] = useState<{ key: string; files: FileChange[] }>();
+  const [read, setRead] = useState<{
+    key: string;
+    files?: FileChange[];
+  }>();
+  const [attempt, setAttempt] = useState(0);
   const latest = useRef({ calls, root });
   latest.current = { calls, root };
-  // A read that failed (the file moved on under it) is tried again with the
-  // next revision; one that succeeded is not repeated.
-  const retry = read?.key === key ? "" : revision;
+  // A read that failed is tried again with the next revision or on request;
+  // one that succeeded is not repeated.
+  const retry = read?.key === key && read.files ? "" : `${revision}/${attempt}`;
   useEffect(() => {
     if (!on || !near || !agentId || !key || retry === "") return;
     let current = true;
@@ -216,8 +260,11 @@ export function TurnChangesSource({
       .then((steps) => {
         if (current) setRead({ key, files: turnChanges(steps, root) });
       })
-      // A turn whose calls cannot be read shows no card rather than a wrong one.
-      .catch(() => {});
+      // A turn whose calls cannot be read shows no card rather than a wrong
+      // one; an earlier result stays.
+      .catch(() => {
+        if (current) setRead((was) => (was?.files ? was : { key }));
+      });
     return () => {
       current = false;
     };
@@ -226,6 +273,12 @@ export function TurnChangesSource({
   // A newer revision is read in place; the earlier result stays meanwhile.
   if (!read)
     return <span ref={ref} className="ah-tc-sentinel" aria-hidden="true" />;
+  if (!read.files)
+    // Only a turn that edited or wrote a file says it could not be read: a
+    // turn of reads and commands most likely changed nothing.
+    return calls.some((c) => c.tool === "edit" || c.tool === "write") ? (
+      <TurnChangesUnread onRetry={() => setAttempt((n) => n + 1)} />
+    ) : null;
   return (
     <TurnChanges
       files={read.files}

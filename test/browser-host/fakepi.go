@@ -827,6 +827,15 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": call.name}))
 		}
 	}
+	if _, name, ok := strings.Cut(prompt, "kirjoita tiedosto "); ok {
+		// A turn that writes its own new file, for Muutokset under every
+		// live turn that changed files.
+		name = strings.Fields(name + " x")[0]
+		id := fmt.Sprintf("write-%d", time.Now().UnixNano())
+		args := map[string]any{"path": "src/" + name + ".ts", "content": "export const " + name + " = 1;\n"}
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "write", "id": id, "arguments": args}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Successfully wrote to src/" + name + ".ts"}}, map[string]any{"toolCallId": id, "toolName": "write"}))
+	}
 	if change := fakeFileChange(prompt); change != nil {
 		// The agent changes cmd/main.go while the person may be editing it in
 		// the browser: a real write in the workspace, announced the way Pi

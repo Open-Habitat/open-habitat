@@ -3,13 +3,14 @@ created: 2026-11-17
 updated: 2026-11-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/turn-changes-only-latest-turn
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-17
 ---
 
 # Changes block shows only under the latest reply, not after every turn that changed files

@@ -359,6 +359,27 @@ function Timeline({
   );
 }
 
+/** A finished turn that edited files whose calls could not be read: one
+ * short line in the card's place, rather than nothing or a partial card. */
+export function TurnChangesUnread({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <p className="ah-tc-unread" data-testid="turn-changes-unread">
+      <Icon name="file" aria-hidden="true" />
+      <span>{txt.unread}</span>
+      {onRetry ? (
+        <button
+          type="button"
+          className="ah-tc-unread-retry"
+          data-testid="turn-changes-retry"
+          onClick={onRetry}
+        >
+          {txt.retry}
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
 export function TurnChanges({
   files,
   start,

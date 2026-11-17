@@ -33,6 +33,8 @@ const fi = {
     `${path}: muutos ${i} kohdassa ${time}`,
   finalOf: (path: string) => `${path}: lopputulos`,
   steps: "Muutokset ja lopputulos",
+  unread: "Vuoron muutoksia ei voitu lukea.",
+  retry: "Yritä uudelleen",
 };
 
 export const turnChangesText = catalog(fi, {
@@ -64,4 +66,6 @@ export const turnChangesText = catalog(fi, {
   marker: (path, i, time) => `${path}: change ${i} at ${time}`,
   finalOf: (path) => `${path}: result`,
   steps: "Changes and result",
+  unread: "The turn's changes could not be read.",
+  retry: "Try again",
 });

@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,4 +105,36 @@ func writeRows(path string, rows []map[string]any) error {
 		}
 	}
 	return f.Sync()
+}
+
+// seedTurnChangesManyHistory writes a long native session for Muutokset: turn
+// n writes src/t<n>.ts with n+1 lines when n is even and only lists files
+// when n is odd, so every other turn has a change of its own and the older
+// turns are on history pages read later, on scroll-up.
+func seedTurnChangesManyHistory(path, cwd string, turns int) error {
+	start := time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC)
+	rows := []map[string]any{{"type": "session", "version": 3, "id": "11111111-1111-4111-8111-111111111111", "cwd": cwd, "timestamp": start.Format(time.RFC3339Nano)}}
+	var parent any
+	seconds := 0
+	add := func(id string, message map[string]any) {
+		seconds += 3
+		at := start.Add(time.Duration(seconds) * time.Second)
+		message["timestamp"] = at.UnixMilli()
+		rows = append(rows, map[string]any{"type": "message", "id": id, "parentId": parent, "timestamp": at.Format(time.RFC3339Nano), "message": message})
+		parent = id
+	}
+	for n := 0; n < turns; n++ {
+		id := fmt.Sprintf("tcm%03d", n)
+		add(id+"-user", map[string]any{"role": "user", "content": fmt.Sprintf("Pyyntö %d", n)})
+		name, args, out := "bash", map[string]any{"command": "ls src"}, "haku.ts\n"
+		if n%2 == 0 {
+			name = "write"
+			args = map[string]any{"path": fmt.Sprintf("src/t%d.ts", n), "content": strings.Repeat("export {};\n", n+1)}
+			out = fmt.Sprintf("Successfully wrote to src/t%d.ts", n)
+		}
+		add(id+"-call", map[string]any{"role": "assistant", "stopReason": "toolUse", "content": []any{map[string]any{"type": "toolCall", "id": id + "-tool", "name": name, "arguments": args}}})
+		add(id+"-result", map[string]any{"role": "toolResult", "toolCallId": id + "-tool", "toolName": name, "isError": false, "content": []any{map[string]any{"type": "text", "text": out}}})
+		add(id+"-reply", map[string]any{"role": "assistant", "stopReason": "stop", "content": []any{map[string]any{"type": "text", "text": fmt.Sprintf("Vastaus %d.", n)}}})
+	}
+	return writeRows(path, rows)
 }
