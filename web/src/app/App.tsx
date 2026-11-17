@@ -1463,6 +1463,10 @@ export function App() {
     identity,
     csrf,
   });
+  const backgroundDoor = useExperimentalFeature("rail-background-door", {
+    identity,
+    csrf,
+  });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   keepWorkflow.current =
     confirmedPreferences.github_workflow ||
@@ -1472,6 +1476,7 @@ export function App() {
     [snapshot],
   );
   const now = useRailNow({
+    backgroundDoor,
     creations: Object.entries(creationViews).flatMap(([workspaceId, view]) => {
       if (view.rechecked) return [];
       if (

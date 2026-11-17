@@ -183,6 +183,9 @@ export interface Agent {
    * the conversation last changed. */
   failure?: "turn_error" | "worker_failed";
   waiting_on?: import("../components/agentPresentation").WaitingOn[];
+  /** Running processes whose end does not wake the agent: not waited for,
+   * so never in waiting_on. */
+  non_waking_processes?: { process_id: string; name: string }[];
   capabilities?: Record<string, { state: string; reason_code: string }>;
 }
 /** The browser started this conversation: it opens with a composer and its Pi

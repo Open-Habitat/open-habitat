@@ -45,9 +45,14 @@ export function HabitatMark({
   className,
   title,
   variant = "mark",
+  drifting = false,
   "data-testid": testId,
 }: {
   state?: MarkState;
+  /** A process of the conversation runs: the door drifts slowly whatever
+   * the state, keeping its colour and resident (markState.markDrifts says
+   * when). */
+  drifting?: boolean;
   /** "ring" draws only the habitat around something else (the narrow
    * rail's workspace icon), with the resident at the door when it is the
    * person's turn or something went wrong. */
@@ -72,6 +77,7 @@ export function HabitatMark({
       className={`oh-mark${className && !(subs.length && !dots) ? ` ${className}` : ""}`}
       data-state={state}
       data-variant={variant === "ring" ? "ring" : undefined}
+      data-drift={drifting && variant === "mark" ? "" : undefined}
       data-testid={subs.length && !dots ? undefined : testId}
       viewBox="-12 -12 24 24"
       width={size}

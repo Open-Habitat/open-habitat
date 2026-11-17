@@ -134,3 +134,59 @@ daemon's existing per-user inventory query; no authority moves.
 3. Hiljaiset: a quiet row with a lit lamp stays in place. Is that enough,
    or should Hiljaiset's heading also count lit lamps (for example "2 ·
    1 käynnissä taustalla")?
+
+# Implementation: 2 Vaeltava ovi (experimental)
+
+Settings › Kokeelliset ominaisuudet › **Taustatyö merkissä**
+(`rail-background-door`, off by default). With it on, the rail row's mark
+gets a drifting door (`data-drift` on `HabitatMark`, production's `oh-drift`,
+6 s) whenever a process of the conversation runs: a waited process, a service
+left running behind an ended turn, or a process that does not wake the agent.
+The state is kept (`agentMark` is unchanged; `markDrifts(state, running)`
+adds the drift), so a read reply with `vite` behind it stays read and its
+door drifts. A done door stands ajar. The end-of-row dot stays; Hiljaiset's
+heading gets no count.
+
+Host: the snapshot carries a new optional `non_waking_processes`
+(`[{process_id, name}]`) beside `waiting_on`, from the same per-snapshot
+inventory query (no new authority, no store). `waiting_on` keeps its meaning,
+so archive gating, the background strip and the background state are
+untouched. With the experiment on, the rail also names a non-waking process
+in the row's description and dot ("Taustalla käynnissä: sleep 900"); the row
+stays in Hiljaiset.
+
+## Decisions for later review
+
+- **Separate `non_waking_processes` rather than `wakes: false` in
+  `waiting_on`.** Alternative: the round's first option, a flag on the
+  waiting entry. Why: several consumers treat a non-empty `waiting_on` as
+  "the agent waits" (archive refusal "wait for background work", the
+  conversation's wait text, the background state); a separate list cannot
+  change them by accident.
+- **A process whose wake is unknown (`wakes_agent: null`) is in neither
+  list.** Alternative: count it as non-waking. Why: it is today's rule for
+  `waiting_on`; unknown should not claim anything.
+- **No sign during a running turn or a pending question.** The host still
+  reads processes only when no turn runs and no question waits. Working
+  already moves its door, so the sign cannot flicker there; a pending
+  question with a dev server behind it shows no drift. Alternative: read the
+  inventory during turns too (one more socket call per snapshot per running
+  conversation). Left for a follow-up if the question case matters.
+- **States that keep their own ring:** working, background, awaited,
+  stopping, loading, intro and **unknown**. The prototype's selector
+  excluded only the first three (the others do not occur in its rows);
+  unknown's dashed ring is the state itself, so drifting it would turn it
+  into a solid ring and hide that the state is not known.
+- **Reduced motion** follows the prototype: the door rests a quarter turn on
+  (`stroke-dashoffset: -25`, the lower right), ajar for done. It is subtle at
+  20 px, as the round noted; the dot stays as the precise hint.
+- **The non-waking name in the row's description and dot is behind the
+  experiment too**, so the shipped rail does not change until it is on.
+
+Checks: `markState.test.tsx` (state × drift table, ring variant),
+`railNow.test.ts` (flag on/off, read row, non-waking in Hiljaiset, stale),
+Go `inventoryNonWaking`, lab `lab-rail-background-door.spec.ts` (drift per
+state in light and dark, colours kept, read keeps drift, sleep ending shuts
+the door, reduced motion, off by default; 3× green),
+`settings-experimental.spec.ts` 3× green, `test-web-fast.sh`, contracts and
+`./internal/daemon` focused checks.

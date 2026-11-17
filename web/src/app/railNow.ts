@@ -58,6 +58,7 @@ export function railNow({
   search = "",
   icons,
   creations = [],
+  backgroundDoor = false,
 }: {
   agents: Agent[];
   /** This tab's in-flight creations bridge the interval before the catalog
@@ -78,6 +79,10 @@ export function railNow({
   search?: string;
   /** Workspace icons by workspace_id (workspace-icons, experimental). */
   icons?: ReadonlyMap<string, WorkspaceIconModel>;
+  /** The mark's door drifts while a process of the conversation runs, and
+   * processes that do not wake the agent are named too
+   * (rail-background-door, experimental). */
+  backgroundDoor?: boolean;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -246,10 +251,25 @@ export function railNow({
         : "";
     // A process the agent left running behind an ended turn does not keep
     // the conversation in Käynnissä; the row still says it runs.
+    // With the background door, a process that does not wake the agent is
+    // one too: it runs on the server whether or not anyone waits for it.
     const services =
       phase === "stale" || !observed.running
         ? []
-        : backgroundServices(a.waiting_on).map(waitingName);
+        : [
+            ...backgroundServices(a.waiting_on).map(waitingName),
+            ...(backgroundDoor
+              ? (a.non_waking_processes ?? []).map((p) => p.name)
+              : []),
+          ];
+    // Something of the conversation still runs: a wait, a service left
+    // running or a process that does not wake the agent. The row stays in
+    // its own section; only its mark's door drifts.
+    const backgroundRunning =
+      backgroundDoor &&
+      phase !== "stale" &&
+      observed.running &&
+      (!!a.waiting_on?.length || !!a.non_waking_processes?.length);
     const servicesClause = services.length
       ? txt.rail.backgroundService(services.join(", "))
       : "";
@@ -318,6 +338,7 @@ export function railNow({
             }
           : undefined,
       backgroundService: services.length ? services.join(", ") : undefined,
+      backgroundRunning: backgroundRunning || undefined,
       spinoffWaited:
         phase !== "stale" &&
         observed.activity === "waiting_background" &&

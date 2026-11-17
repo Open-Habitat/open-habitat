@@ -124,6 +124,17 @@
     stroke-dashoffset: -125;
   }
 }
+/* drift: a process of the conversation runs (rail-background-door). The
+   state keeps its colour and resident; only the door travels, as the
+   background state's does. A done conversation's door stands ajar rather
+   than shut. Still (reduced motion), the door rests a quarter turn on, at
+   the lower right. Set only on states whose ring does not already move
+   (markState.markDrifts). */
+.oh-mark[data-drift] .oh-ring {
+  stroke-dasharray: 81.3 18.7;
+  stroke-dashoffset: -25;
+  animation: oh-drift 6s linear infinite;
+}
 /* awaited: a sub-agent its main agent waits for. It works, and its resident
    breathes as it does. */
 .oh-mark[data-state="awaited"] .oh-ring {

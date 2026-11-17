@@ -21,7 +21,7 @@ import { ExplainToggle, useExplainEntry } from "./ExplainMode";
 import { HabitatMark, type MarkState } from "./HabitatMark";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
-import { agentMark, subMarks } from "./markState";
+import { agentMark, markDrifts, subMarks } from "./markState";
 import { NameEditor } from "./NameEditor";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
@@ -516,6 +516,10 @@ export interface AgentNavModel {
   /** Processes the agent left running behind an ended turn (a file server,
    * a watcher): they run on, but the conversation does not wait for them. */
   backgroundService?: string;
+  /** A process of the conversation runs (waited for, left running or not
+   * waking the agent): the mark's door drifts in a state whose mark does not
+   * already move (rail-background-door, experimental). */
+  backgroundRunning?: boolean;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
@@ -619,10 +623,12 @@ function RowMark({
 }: {
   agent: Parameters<typeof agentMark>[0] & {
     spinoffCounts?: AgentNavModel["spinoffCounts"];
+    backgroundRunning?: boolean;
   };
   size: number;
 }) {
   const state = agentMark(agent);
+  const drifting = markDrifts(state, agent.backgroundRunning);
   return (
     // The mark stands before the workspace icon, outside the row's link; a
     // press on it opens the row as a press on the title does. Keyboard and
@@ -644,6 +650,7 @@ function RowMark({
         className="ah-row-mark"
         data-testid="rail-mark"
         state={state}
+        drifting={drifting}
         size={size}
         subs={subMarks(agent.spinoffCounts)}
       />
@@ -684,6 +691,7 @@ export function AgentNavItem({
   spinoffWaited = false,
   spinoffCounts,
   backgroundService,
+  backgroundRunning = false,
   pendingLabel,
   worktree,
   question = false,
@@ -777,6 +785,7 @@ export function AgentNavItem({
                 spinoffWorking,
                 spinoffIdle,
                 spinoffCounts,
+                backgroundRunning,
               }}
             />
             {workspaceIcon && workspaceId ? (

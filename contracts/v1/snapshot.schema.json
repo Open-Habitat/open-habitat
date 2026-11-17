@@ -775,6 +775,32 @@
           "minimum": 1,
           "maximum": 10000
         },
+        "non_waking_processes": {
+          "description": "Processes the conversation's Pi runs now whose end does not wake the agent (notify ignore). The agent does not wait for them, so they are not in waiting_on and never make the conversation wait on background work; they only tell that something of the conversation still runs. Read on the same occasions as waiting_on. Absent when none.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "process_id",
+              "name"
+            ],
+            "properties": {
+              "process_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        },
         "waiting_on": {
           "type": "array",
           "maxItems": 200,

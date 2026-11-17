@@ -288,6 +288,37 @@ func inventoryWaiting(inv processInventory) []waitingProcess {
 	return waiting
 }
 
+// nonWakingProcess is a running process whose end does not wake the agent
+// (notify ignore). The agent does not wait for it, so it is never in
+// waiting_on; the rail shows only that something of the conversation runs.
+type nonWakingProcess struct {
+	ID   string `json:"process_id"`
+	Name string `json:"name"`
+}
+
+// inventoryNonWaking lists the running processes that say they do not wake the
+// agent. A process whose wake is unknown (context) is in neither list.
+func inventoryNonWaking(inv processInventory) []nonWakingProcess {
+	running := []nonWakingProcess{}
+	if inv.Availability != "available" {
+		return running
+	}
+	for _, p := range inv.Processes {
+		if p.Status != "running" || p.Wakes == nil || *p.Wakes || p.ID == "" || p.Name == "" {
+			continue
+		}
+		running = append(running, nonWakingProcess{ID: p.ID, Name: p.Name})
+	}
+	return running
+}
+
+// processViews is one conversation's running processes as the snapshot tells
+// them: the ones the agent waits on, and the ones that do not wake it.
+type processViews struct {
+	waiting   []waitingProcess
+	nonWaking []nonWakingProcess
+}
+
 // processRoutes is called only after the controller's mapped-user check. Its
 // browser-controlled inputs choose a record, never a socket, PID or filesystem.
 func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Request, parts []string) {
@@ -477,7 +508,7 @@ func (c *ConversationController) interruptedFor(id, path, cwd string, before int
 
 // Per-snapshot observation only. No registry/cache, and no controller lock held
 // across socket I/O. One short deadline bounds absent or starting companions.
-func (c *ConversationController) processWaitingViews(parent context.Context) map[string][]waitingProcess {
+func (c *ConversationController) processWaitingViews(parent context.Context) map[string]processViews {
 	c.mu.Lock()
 	owners := map[string]*piRPC{}
 	for id, s := range c.sessions {
@@ -488,7 +519,7 @@ func (c *ConversationController) processWaitingViews(parent context.Context) map
 	c.mu.Unlock()
 	ctx, cancel := context.WithTimeout(parent, 600*time.Millisecond)
 	defer cancel()
-	result := map[string][]waitingProcess{}
+	result := map[string]processViews{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for id, p := range owners {
@@ -498,7 +529,7 @@ func (c *ConversationController) processWaitingViews(parent context.Context) map
 			inv := p.inventory(ctx)
 			if inv.Availability == "available" {
 				mu.Lock()
-				result[id] = inventoryWaiting(inv)
+				result[id] = processViews{inventoryWaiting(inv), inventoryNonWaking(inv)}
 				mu.Unlock()
 			}
 		}(id, p)

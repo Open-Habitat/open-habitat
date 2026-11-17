@@ -46,7 +46,9 @@ function run(
     phase = "authenticated",
     catalog = agents,
     selectedAgentId,
+    backgroundDoor,
   }: {
+    backgroundDoor?: boolean;
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
@@ -69,6 +71,7 @@ function run(
     daemonSessions: sessions,
     selectedAgentId,
     phase,
+    backgroundDoor,
   });
 }
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
@@ -550,6 +553,88 @@ describe("rail Nyt groups", () => {
     expect(both.yours[0]).toMatchObject({
       backgroundService: "hilla-dell-script-review",
     });
+  });
+
+  it("marks a running process in the row only with the background door", () => {
+    // mark-hides-background-work: a read reply with a service behind it,
+    // and a quiet conversation whose process does not wake the agent.
+    const at = new Date(Date.UTC(2026, 10, 12, 10, 48)).toISOString();
+    const sessions: Session[] = [
+      { agent_id: "served", workspace_id: "ws_example00", state: "live" },
+      { agent_id: "sleeper", workspace_id: "ws_example00", state: "live" },
+      { agent_id: "plain", workspace_id: "ws_example00", state: "live" },
+    ];
+    const served = agent("served", {
+      process: "daemon_managed_live",
+      run_active: false,
+      last_reply: { id: "r1", at },
+      waiting_on: [
+        {
+          process_id: "proc_6b7c",
+          name: "vite --port 5174",
+          kind: "process",
+          run_ids: [],
+          before_turn: true,
+        },
+      ],
+    });
+    const sleeper = agent("sleeper", {
+      process: "daemon_managed_live",
+      run_active: false,
+      waiting_on: [],
+      non_waking_processes: [{ process_id: "proc_9a8b", name: "sleep 900" }],
+    });
+    const plain = agent("plain", {
+      process: "daemon_managed_live",
+      run_active: false,
+      waiting_on: [],
+    });
+    const options = {
+      sessions,
+      attention: [["served", "seen"]] as [string, "seen"][],
+    };
+    const off = run([served, sleeper, plain], options);
+    expect(off.yours[0].backgroundRunning).toBeUndefined();
+    // Without the experiment a non-waking process stays unsaid, as before.
+    const offSleeper = off.quiet.find((r) => r.agentId === "sleeper");
+    expect(offSleeper?.backgroundService).toBeUndefined();
+    expect(offSleeper?.backgroundRunning).toBeUndefined();
+
+    const on = run([served, sleeper, plain], {
+      ...options,
+      backgroundDoor: true,
+    });
+    // The read row keeps its place and its read mark; its door drifts.
+    expect(ids(on.yours)).toEqual(["served"]);
+    expect(on.yours[0]).toMatchObject({
+      turnMark: "read",
+      backgroundRunning: true,
+      backgroundService: "vite --port 5174",
+    });
+    expect(agentMark(on.yours[0])).toBe("read");
+    // The non-waking process does not pull its row out of Hiljaiset, but the
+    // row says it runs.
+    expect(ids(on.running)).toEqual([]);
+    const onSleeper = on.quiet.find((r) => r.agentId === "sleeper");
+    expect(onSleeper).toMatchObject({
+      backgroundRunning: true,
+      backgroundService: "sleep 900",
+    });
+    expect(onSleeper?.detail).toContain("Taustalla käynnissä: sleep 900");
+    expect(on.quiet.find((r) => r.agentId === "plain")?.backgroundRunning).toBe(
+      undefined,
+    );
+    // A lost connection does not claim a process still runs.
+    const stale = run([served, sleeper], {
+      ...options,
+      backgroundDoor: true,
+      phase: "stale",
+    });
+    expect(
+      [...stale.yours, ...stale.running, ...stale.quiet].some(
+        (r) => r.backgroundRunning,
+      ),
+    ).toBe(false);
   });
 
   it("keeps a worker waiting at its own prompt in sight without pulsing", () => {

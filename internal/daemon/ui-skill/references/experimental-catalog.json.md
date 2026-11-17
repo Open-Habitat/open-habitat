@@ -56,6 +56,10 @@ Generated from internal/experimental/catalog.json; do not edit.
     {
       "id": "storage-breakdown",
       "landed": true
+    },
+    {
+      "id": "rail-background-door",
+      "landed": true
     }
   ],
   "fi": {
@@ -195,6 +199,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Palkin, joka näyttää valinnan vaikutuksen rajaan ja 85 %:n varoitusrajaan, ryhmät kokoineen ja Näytä tarkemmin -kohdan takana kansiot polkuineen. Agentin käynnissä olevien töiden tiedostoja ei voi valita. Painike avaa uuden keskustelun, jonka kentässä on valinnasta koottu siivouspyyntö; se lähtee vasta, kun lähetät sen.",
         "needs": "Ei muuta. Ensimmäinen mittaus voi kestää minuutin, ja tulos mitataan uudelleen, kun se on yli 15 minuuttia vanha.",
         "caption": "Tallennustila"
+      },
+      "rail-background-door": {
+        "name": "Taustatyö merkissä",
+        "desc": "Kun keskustelun taustalla pyörii prosessi, esimerkiksi esikatselupalvelin tai ajastettu komento, sivupalkin rivin merkin ovi kiertää hitaasti. Merkki pitää muuten keskustelun tilan ja värin.",
+        "where": "Sivupalkin keskustelurivien merkeissä, myös Hiljaisissa.",
+        "shows": "Hitaasti kiertävän oven kaikissa tiloissa, joiden merkki ei jo liiku. Valmiin keskustelun ovi on raollaan eikä kiinni. Myös prosessi, joka ei herätä agenttia, näkyy merkissä ja rivin kuvauksessa. Liike vähennettynä ovi on paikallaan oikeassa alakulmassa.",
+        "needs": "Ei muuta. Rivin lopun piste kertoo yhä prosessin nimen.",
+        "caption": "Taustatyö"
       }
     },
     "picture": {
@@ -357,6 +369,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "A bar showing what the selection does against the limit and the 85 % warning line, the groups with their sizes and, behind Show details, the folders with their paths. Files of the agent's work in progress cannot be selected. The button opens a new conversation with a clean-up request built from the selection in its field; it goes only when you send it.",
         "needs": "Nothing else. The first measurement can take a minute, and the result is measured again when it is over 15 minutes old.",
         "caption": "Storage"
+      },
+      "rail-background-door": {
+        "name": "Background work in the mark",
+        "desc": "When a process runs behind a conversation, such as a preview server or a scheduled command, the door of the row's mark in the sidebar travels slowly. The mark otherwise keeps the conversation's state and colour.",
+        "where": "In the marks of the sidebar's conversation rows, Quiet included.",
+        "shows": "A slowly travelling door in every state whose mark does not already move. A done conversation's door stands ajar rather than shut. A process that does not wake the agent also shows in the mark and in the row's description. With reduced motion the door rests still at the lower right.",
+        "needs": "Nothing else. The dot at the row's end still names the process.",
+        "caption": "Background work"
       }
     },
     "picture": {

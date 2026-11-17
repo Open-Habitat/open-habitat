@@ -1,7 +1,13 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { HabitatMark } from "./HabitatMark";
-import { activityMark, agentMark, subMarks, workerMark } from "./markState";
+import {
+  activityMark,
+  agentMark,
+  markDrifts,
+  subMarks,
+  workerMark,
+} from "./markState";
 
 // The product-state to mark-state table of brand-themes-and-state-mark.
 describe("mark state mapping", () => {
@@ -48,6 +54,54 @@ describe("mark state mapping", () => {
       "working",
     ]);
     expect(subMarks()).toEqual([]);
+  });
+});
+
+// mark-hides-background-work, direction 2 Vaeltava ovi: a running process
+// adds a drifting door to the state without replacing it.
+describe("background process on the mark", () => {
+  it("keeps the state and drifts the door where the ring does not move", () => {
+    const cases: [Parameters<typeof agentMark>[0], string, boolean][] = [
+      [{ turnMark: "read", activity: "waiting" }, "read", true],
+      [{ turnMark: "read", activity: "waiting_background" }, "read", true],
+      [
+        { attentionLabel: "Uusi vastaus", activity: "waiting" },
+        "waiting",
+        true,
+      ],
+      [{ question: true }, "waiting", true],
+      [{ activity: "waiting" }, "done", true],
+      [{ turnMark: "raised", activity: "waiting" }, "done", true],
+      [{ failed: true, activity: "waiting" }, "error", true],
+      [{ spinoffIdle: true, activity: "waiting" }, "waiting", true],
+      // Its ring already moves: working turns it, background drifts it.
+      [{ activity: "working" }, "working", false],
+      [{ activity: "waiting_background" }, "background", false],
+      [{ spinoffWorking: true, activity: "waiting" }, "working", false],
+      // The dashed ring is the unknown state itself.
+      [{ activity: "unknown" }, "unknown", false],
+    ];
+    for (const [agent, state, drifts] of cases) {
+      const mark = agentMark(agent);
+      expect(mark, JSON.stringify(agent)).toBe(state);
+      expect(markDrifts(mark, true), JSON.stringify(agent)).toBe(drifts);
+      expect(markDrifts(mark, false)).toBe(false);
+      expect(markDrifts(mark, undefined)).toBe(false);
+    }
+  });
+  it("draws the drift on the mark only, never on the ring variant", () => {
+    const { container } = render(
+      <>
+        <HabitatMark state="done" drifting data-testid="mark" />
+        <HabitatMark state="done" data-testid="still" />
+        <HabitatMark state="read" variant="ring" drifting />
+      </>,
+    );
+    const marks = container.querySelectorAll("svg.oh-mark");
+    expect(marks[0].hasAttribute("data-drift")).toBe(true);
+    expect(marks[0].getAttribute("data-state")).toBe("done");
+    expect(marks[1].hasAttribute("data-drift")).toBe(false);
+    expect(marks[2].hasAttribute("data-drift")).toBe(false);
   });
 });
 

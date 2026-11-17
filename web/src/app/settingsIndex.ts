@@ -728,6 +728,21 @@ export const settingsSections = [
         ],
         desc: "Mikä tilasi täyttää ja mitä voi vapauttaa, ja siivouspyyntö agentille.",
       },
+      {
+        id: "rail-background-door",
+        label: "Taustatyö merkissä",
+        kw: [
+          "tausta",
+          "background",
+          "prosessi",
+          "process",
+          "palvelin",
+          "server",
+          "merkki",
+          "mark",
+        ],
+        desc: "Rivin merkin ovi kiertää, kun keskustelun taustalla pyörii prosessi.",
+      },
     ],
   },
   {

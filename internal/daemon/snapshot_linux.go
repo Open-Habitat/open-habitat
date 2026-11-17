@@ -158,7 +158,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			diagnostic.Phase(r.Context(), "github", started)
 			ghDone <- obs
 		}()
-		var waitingViews map[string][]waitingProcess
+		var waitingViews map[string]processViews
 		waitingDone := make(chan struct{})
 		go func() {
 			defer close(waitingDone)
@@ -506,8 +506,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					agent["run_active"] = active.runActive
 					agent["pending_question"] = active.question
 					if !active.runActive && active.questionID == "" {
-						if waiting, ok := waitingViews[id]; ok {
-							agent["waiting_on"] = waiting
+						if views, ok := waitingViews[id]; ok {
+							agent["waiting_on"] = views.waiting
+							if len(views.nonWaking) > 0 {
+								agent["non_waking_processes"] = views.nonWaking
+							}
 						}
 					}
 				}

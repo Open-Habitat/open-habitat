@@ -106,6 +106,15 @@ ei tiedetä, esitetään tuntematon tila. Vain luku näkyy omana katkoviivatagin
 tai kentän katkoviivareunana. Palveluvirhe näytetään vain raportoidun virheen
 perusteella.
 
+Kokeiluna (Taustatyö merkissä, Jari 16.11.2026) sivupalkin rivin merkin ovi
+kiertää hitaasti kuten Odottaa taustatyötä -tilassa aina, kun keskustelun
+prosessi on käynnissä, myös silloin kun se ei herätä agenttia. Merkki pitää
+tilansa värin ja asukkaan; valmiin keskustelun ovi on raollaan. Tilat, joiden
+rengas jo liikkuu tai joiden rengas on itse tila (työskentelee, odottaa
+taustatyötä, tuntematon), eivät muutu. Liike vähennettynä ovi on paikallaan
+neljänneskierroksen päässä, oikeassa alakulmassa. Rivin lopun piste nimeää
+prosessin edelleen, eikä rivi siirry osiosta toiseen.
+
 Nykyinen navigaatiokohde erottuu neutraalilla pinnalla. Hover ja painallus
 syventävät toiminnon sävyä, jotta niitä ei sekoiteta valintaan. Estetty
 kontrolli säilyy luettavana. Epäselvän eston, kuten yhteyskatkon tai

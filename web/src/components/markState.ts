@@ -27,6 +27,31 @@ export function agentMark(agent: {
   return activityMark(agent.activity);
 }
 
+/** The mark's states whose ring already moves or whose ring is the state
+ * itself (the dashed unknown). A background process adds nothing to them. */
+const RING_OWNS: ReadonlySet<MarkState> = new Set<MarkState>([
+  "working",
+  "background",
+  "awaited",
+  "stopping",
+  "loading",
+  "intro",
+  "unknown",
+]);
+
+/** Whether the mark's door drifts because a process of the conversation
+ * runs (rail-background-door). The state is kept: its colour and resident
+ * stay, and only the door travels as the background state's does, so a
+ * read reply with a dev server behind it still reads as read. A done door
+ * stands ajar while it drifts. A state whose ring already moves keeps its
+ * own motion. */
+export function markDrifts(
+  state: MarkState,
+  backgroundRunning: boolean | undefined,
+): boolean {
+  return !!backgroundRunning && !RING_OWNS.has(state);
+}
+
 /** An agent's observed activity alone. */
 export function activityMark(
   activity: AgentPresentation["activity"] | undefined,

@@ -29,6 +29,7 @@ const features = [
   "terminal-copy-on-select",
   "terminal-open-urls",
   "storage-breakdown",
+  "rail-background-door",
 ];
 
 async function signIn(page: Page) {

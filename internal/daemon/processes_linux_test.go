@@ -226,6 +226,33 @@ func TestProcessWaitingIgnoresContextUnknownAndFinished(t *testing.T) {
 	}
 }
 
+// A process that says it does not wake the agent is listed apart from the
+// waits; one whose wake is unknown or that has ended is in neither list.
+func TestProcessNonWakingListsOnlyRunningNotifyIgnore(t *testing.T) {
+	yes, no := true, false
+	inv := processInventory{Availability: "available", Processes: []processRecord{
+		{ID: "a", Name: "sleep 900", Status: "running", Wakes: &no},
+		{ID: "b", Name: "unknown", Status: "running"},
+		{ID: "c", Name: "done", Status: "exited", Wakes: &no},
+		{ID: "d", Name: "test", Status: "running", Wakes: &yes, RunIDs: []string{}},
+	}}
+	got := inventoryNonWaking(inv)
+	if len(got) != 1 || got[0].ID != "a" || got[0].Name != "sleep 900" {
+		t.Fatal(got)
+	}
+	if waits := inventoryWaiting(inv); len(waits) != 1 || waits[0].ID != "d" {
+		t.Fatal(waits)
+	}
+	raw, _ := json.Marshal(got)
+	if string(raw) != `[{"process_id":"a","name":"sleep 900"}]` {
+		t.Fatal(string(raw))
+	}
+	inv.Availability = "unavailable"
+	if got := inventoryNonWaking(inv); len(got) != 0 {
+		t.Fatal(got)
+	}
+}
+
 func TestProcessToolProjectionJoinsWithoutPrivateFields(t *testing.T) {
 	raw := json.RawMessage(`{"role":"toolResult","toolName":"process","toolCallId":"call1","content":[{"type":"text","text":"Started with pid 123, log /private/log"}],"details":{"action":"start","process":{"id":"proc_abcd","name":"test","startTime":12345,"command":"TOKEN=secret sleep 5","cwd":"/private","pid":123}}}`)
 	entry := nativeBlocks(nativeEntry{ID: "e", Type: "message", Message: raw})
