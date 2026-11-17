@@ -1,14 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-clean=false;json=false;no_reuse=false
+clean=false;json=false;no_reuse=false;cleanup_only=false;dry_run=false
 while (($#));do case "$1" in
---clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
+--clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;
+--cleanup)cleanup_only=true;shift;;--dry-run)dry_run=true;shift;;
+--help)echo 'Usage: ci-local.sh [--clean] [--no-reuse] [--json] | --cleanup [--dry-run] [--json]
+--clean removes checkout-local caches as well as build outputs on exit.
+--cleanup removes finished gate outputs and private caches, preserving receipts and failure evidence.
+Do not run other builds in this checkout concurrently. Shared caches are never removed.';exit 0;;
+*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
+if { $cleanup_only && { $clean || $no_reuse; }; } || { $dry_run && ! $cleanup_only; };then
+  echo 'error: --cleanup cannot combine with --clean/--no-reuse; --dry-run requires --cleanup' >&2;exit 1
+fi
 cd "$repo"
 umask 077
 # `git bisect run` and hooks export GIT_DIR; a fixture's `git init` inheriting
 # it rewrites this repository (bare, from a linked worktree), not its scratch.
 unset $(git rev-parse --local-env-vars)
+# A checkout's installed dependencies and outputs cannot be cleaned while another
+# gate uses them. Linked worktrees have separate git dirs and separate outputs.
+git_dir=$(git rev-parse --absolute-git-dir)
+gate_python=$(command -v python3)
+exec {gate_lock}>"$git_dir/open-habitat-gate.lock"
+flock -n "$gate_lock" || { echo 'error: a gate or cleanup is already using this checkout' >&2;exit 1; }
+if $cleanup_only;then
+  args=()
+  if $json;then args+=(--json);fi
+  if $dry_run;then args+=(--dry-run);fi
+  exec python3 scripts/gate-storage.py "${args[@]}"
+fi
+# Refuse unsafe output paths before any tools write through them.
+python3 scripts/gate-storage.py --dry-run --success >/dev/null
 # Every checkout and worker shares the common config; a test that rewrites its
 # core section breaks all of them, so the gate fails on any change. Branch and
 # worktree entries are left out: parallel workers add them legitimately.
@@ -41,10 +64,13 @@ source "$repo/scripts/scratch.sh"
 oh_short_scratch_dir tmp ohc
 trap 'rm -rf "$tmp"' EXIT
 export TMPDIR=$tmp
-# Content-addressed build/download caches are disposable, but survive consecutive
-# runs in this checkout. HOME and the Python/tool installs remain private per run.
+# Non-clean development runs retain checkout-local caches for reuse. A clean
+# release gate removes them at exit: disposable clones must not each keep GBs.
+# Caller/shared caches outside the checkout are never cleanup targets.
 export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"
-export CI=1
+# Do not let inherited XDG paths send synthetic tools into the person's home.
+export XDG_CACHE_HOME="$HOME/.cache" XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_STATE_HOME="$HOME/.local/state"
+export CI=1 PYTHONDONTWRITEBYTECODE=1
 # Bound concurrent native phases; respect caller/backend budgets.
 # The browser suites run side by side, ordinary with OH_BROWSER_WORKERS and lab
 # with OH_LAB_WORKERS; 6 + 3 kept an 8-core test host just short of saturation, where
@@ -64,8 +90,12 @@ phase(){
   phase_name=$1
   phase_start=$now
 }
+# Keep foreground failures too (npm/check/build), not just background phase logs.
+exec 3>&1 4>&2
+exec > >(trap '' INT TERM; exec tee "$tmp/gate.stdout.log"); stdout_log_pid=$!
+exec 2> >(trap '' INT TERM; exec tee "$tmp/gate.stderr.log" >&4); stderr_log_pid=$!
 cleanup(){
-  local rc=$? now
+  local rc=$1 now
   now=$(date +%s)
   printf 'ci-local phase %s: %ss (exit %s)\n' "$phase_name" "$((now-phase_start))" "$rc" >&2
   # On an early web/setup failure, do not abandon the independent Go checks.
@@ -77,11 +107,37 @@ cleanup(){
     wait "$packaging_pid" || true
     cat "$tmp/packaging.log"
   fi
+  if [[ -n ${browser_pid-} ]]; then
+    wait "$browser_pid" || true
+  fi
+  shared_core_unchanged || rc=1
+  local args=()
+  if ! $clean;then args+=(--keep-caches);fi
+  if ((rc == 0));then args+=(--success);fi
+  "$gate_python" scripts/gate-storage.py "${args[@]}" >&2 || rc=1
+  # Close tee's writers before waiting and copying the completed logs. Keep only
+  # the latest failed run in this checkout; receipts live in a separate directory.
+  exec 1>&3 2>&4
+  wait "$stdout_log_pid" "$stderr_log_pid" || { if ((rc == 0));then rc=1;fi; }
+  if ((rc != 0));then
+    local logs="$git_dir/open-habitat-gate-failure"
+    mkdir -p "$logs"
+    for log in "$logs"/*.log;do
+      if [[ -f $log ]];then rm -- "$log";fi
+    done
+    for log in "$tmp"/*.log;do
+      [[ -f $log ]] && cp "$log" "$logs/"
+    done
+    printf 'exit=%s phase=%s\n' "$rc" "$phase_name" >"$logs/status"
+    echo "ci-local failure logs: $logs" >&2
+  fi
   chmod -R u+w "$tmp" 2>/dev/null || true
   rm -rf "$tmp"
-  shared_core_unchanged || exit 1
+  return "$rc"
 }
-trap cleanup EXIT
+trap 'rc=$?; trap - EXIT; cleanup "$rc"; exit $?' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
@@ -143,6 +199,7 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/test-project-scripts.py
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py
+    "$PYTHON" scripts/test-gate-storage.py
     "$PYTHON" scripts/test-browser-hosts.py
     "$PYTHON" scripts/test-test-focused.py
     "$PYTHON" scripts/test-cloud-qualify.py
@@ -277,10 +334,13 @@ git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
 if $heavy_failed;then echo 'error: gate failed; no receipt written' >&2;exit 1;fi
 shared_core_unchanged || exit 1
+# Cleanup must succeed before publishing a passing receipt or JSON result.
+trap - EXIT
+cleanup 0
 if $clean;then
   receipt_args=()
   if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi
-  python3 scripts/gate-receipt.py record "${receipt_args[@]}" >&2
+  "$gate_python" scripts/gate-receipt.py record "${receipt_args[@]}" >&2
 fi
 if $json;then
   reused_json='[]'

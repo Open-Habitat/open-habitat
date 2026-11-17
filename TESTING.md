@@ -176,6 +176,53 @@ gate before a gated release. Receipts are local evidence, not signed attestation
 keep them on the machine where the gate ran. The gate prints its JSON envelope
 on the final stdout line and the receipt path on stderr.
 
+### Gate storage and finished-clone cleanup
+
+The gate removes its installed web/Pi fixture dependencies, production web build,
+Storybook output, browser-host binary and test release archives on success or
+failure. `--clean` also removes **checkout-local** Go build/module, npm, pip,
+issuectl-download and Playwright-browser caches. Ordinary runs retain those
+caches for repeated development checks. No shared cache outside the checkout
+is a deletion target. A disposable release clone therefore does not retain a
+separate multi-gigabyte cache; the trade-off is downloading/building again when
+running another clean gate in that clone.
+
+The private `HOME`, Python environment, temporary downloads, Go build scratch
+and child `TMPDIR` are removed on exit, including INT/TERM. XDG cache/config/data/
+state paths are private too. Synthetic browser hosts still own their short
+`/tmp/oh-browser-*` homes and remove them at shutdown; the gate does not sweep
+other hosts' directories or kill their processes. SIGKILL or machine loss cannot
+run exit traps: inspect that run's leftovers before removing them, not all of
+`/tmp` or `/var/tmp`. The host-wide browser-suite lock file is persistent and tiny.
+
+On success, Playwright outputs are removed as well. On failure,
+`web/test-results`, `web/test-results-lab` and `web/playwright-report` remain for
+diagnosis, and the latest failure's console and phase logs are kept in
+`<git dir>/open-habitat-gate-failure/`. Repeated failures replace these logs rather
+than accumulating run directories; copy evidence you want to retain before the
+next run. Receipts remain under `<git common dir>/open-habitat-gate-receipts/`;
+cleanup does not change them or invent a passing receipt. Source, Git history,
+unrelated ignored files and tool caches such as `.tools/` remain untouched.
+
+For a finished gate clone, run **from that clone**:
+
+```sh
+./scripts/ci-local.sh --cleanup --dry-run --json
+./scripts/ci-local.sh --cleanup --json
+```
+
+This removes only the named gate outputs and private caches, preserving receipts
+and failure evidence. It refuses tracked outputs and symlinked output paths,
+and shares a per-checkout lock with the gate so it cannot clean a running gate.
+Do not run other builds or focused tests in that checkout concurrently. This is
+not `git clean -fdx`, and it does not delete the clone itself. If the operator
+later deletes the whole clone, first retain its receipt (and needed failure logs)
+outside it; deleting a standalone clone also deletes its `.git` receipts.
+
+`python3 scripts/test-gate-storage.py` exercises the deletion boundary, dry-run,
+repeated cleanup, locking, failure/signal cleanup and receipt publication with
+synthetic phase commands. It does not run the clean gate or qualify a release.
+
 `scripts/prepare-release.sh` prepares a release package from a clean,
 committed tree that is pushed to the explicitly named remote branch. With
 `--gate ungated` it does not require the clean gate; the package's
