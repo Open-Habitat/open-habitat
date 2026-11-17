@@ -214,3 +214,30 @@ func TestWorkspaceDeleteAtRealFullQuota(t *testing.T) {
 		t.Fatalf("outright delete at a real full quota: %d %v", code, body)
 	}
 }
+
+// A directory swapped in during an unrecorded move that cannot be put back
+// stays whole in the Trash, and the reply says it cannot be restored there.
+func TestWorkspaceDeleteAtFullQuotaSwappedSaysNoRestore(t *testing.T) {
+	f := newTrashFixture(t)
+	f.pushedClone("work")
+	original := inode(t, f.src("work"))
+	trashHook = fullAtInfo(syscall.EDQUOT)
+	real := renameNoReplace
+	calls := 0
+	renameNoReplace = func(a int, an string, b int, bn string) error {
+		if calls++; calls == 1 {
+			os.Rename(f.src("work"), f.src("work-original"))
+			os.Mkdir(f.src("work"), 0700)
+			return real(a, an, b, bn)
+		}
+		return syscall.EEXIST
+	}
+	code, body := f.remove("work", "trash")
+	renameNoReplace = real
+	if code != 200 || body["state"] != "replaced" || body["entry"] != "work" || body["restore"] != "unavailable" {
+		t.Fatalf("unrecorded swap: %d %v", code, body)
+	}
+	if !exists(f.trash("files", "work")) || inode(t, f.src("work-original")) != original || len(trashNames(t, f, "info")) != 0 {
+		t.Fatal("the swapped directory is not whole in the Trash without an info file")
+	}
+}

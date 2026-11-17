@@ -202,3 +202,27 @@ it("empties only by the listing token and rejects an unlisted reply shape", asyn
     code: "trash_changed",
   });
 });
+
+// A move at a full quota has no Trash record; the reply says so and must
+// still pass the contract, or the person's way out reads as a broken reply.
+it("accepts a move the Trash could not record", async () => {
+  const reply = {
+    schema_version: 1,
+    state: "trashed",
+    workspace_id: workspace.workspace_id,
+    entry: "example",
+    processes_inside: [],
+    restore: "unavailable",
+  };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(reply)));
+  await expect(
+    deleteWorkspace(workspace, "trash", "csrf"),
+  ).resolves.toMatchObject({ restore: "unavailable" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(json({ ...reply, restore: "available" })),
+  );
+  await expect(
+    deleteWorkspace(workspace, "trash", "csrf"),
+  ).rejects.toMatchObject({ code: "invalid_reply" });
+});

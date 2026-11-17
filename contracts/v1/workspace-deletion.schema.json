@@ -467,6 +467,10 @@
         "remaining": {
           "type": "integer",
           "minimum": 1
+        },
+        "restore": {
+          "description": "unavailable: the quota or the disk was full, so the move into the Trash has no info file. The entry can be deleted from the Trash but not restored there.",
+          "const": "unavailable"
         }
       }
     },

@@ -73,7 +73,9 @@ export function TrashNotice({
     result.state === "partial"
       ? txt.partial
       : result.state === "replaced"
-        ? txt.replaced(entry ?? "")
+        ? result.restore
+          ? txt.replacedUnrecorded(entry ?? "")
+          : txt.replaced(entry ?? "")
         : result.kept_reason
           ? txt.kept[result.kept_reason]
           : result.restore

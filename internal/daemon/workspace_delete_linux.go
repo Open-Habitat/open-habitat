@@ -304,7 +304,11 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	case errors.Is(e, errWorkspaceSwapped) && entry != "":
 		// Not the observed directory, and it could not be put back. It is
 		// whole in the Trash and the person can restore it there.
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "replaced", "workspace_id": in.WorkspaceID, "entry": entry})
+		replaced := map[string]any{"schema_version": 1, "state": "replaced", "workspace_id": in.WorkspaceID, "entry": entry}
+		if unlabelled {
+			replaced["restore"] = "unavailable"
+		}
+		historyJSON(w, replaced)
 		return
 	case errors.Is(e, errWorkspaceSwapped):
 		snapshotError(w, 409, "workspace_changed")

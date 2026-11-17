@@ -14,6 +14,8 @@ const fi = {
   partial: "osa jäi roskakoriin; poista se sieltä uudelleen",
   replaced: (entry: string) =>
     `roskakoriin siirtyi eri hakemisto (${entry}); palauta se sieltä`,
+  replacedUnrecorded: (entry: string) =>
+    `roskakoriin siirtyi eri hakemisto (${entry}), eikä sitä voi palauttaa täältä, koska tallennustila oli täynnä`,
   stillInside: (process: string) => `${process} on yhä sen hakemistossa`,
   unrecorded:
     "tallennustila oli täynnä, joten roskakori ei voinut kirjata siirtoa eikä sitä voi palauttaa täältä. Tila vapautuu, kun poistat sen roskakorista.",
@@ -33,6 +35,8 @@ export const trashNoticeText = catalog(fi, {
   partial: "part of it stayed in the Trash; delete it there again",
   replaced: (entry) =>
     `a different directory (${entry}) went to the Trash; restore it from there`,
+  replacedUnrecorded: (entry) =>
+    `a different directory (${entry}) went to the Trash, and it cannot be restored from here because storage was full`,
   stillInside: (process) => `${process} is still in its directory`,
   unrecorded:
     "storage was full, so the Trash could not record the move and it cannot be restored from here. The space is freed when you delete it from the Trash.",
