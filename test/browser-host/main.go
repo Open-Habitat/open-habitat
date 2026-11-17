@@ -173,6 +173,9 @@ func main() {
 	if len(os.Args) >= 4 && os.Args[1] == "--input-type=module" && os.Args[2] == "-e" && strings.HasPrefix(os.Args[3], "// open-habitat icon suggestions") {
 		os.Exit(runFakeIconModel())
 	}
+	if len(os.Args) >= 4 && os.Args[1] == "--input-type=module" && os.Args[2] == "-e" && strings.HasPrefix(os.Args[3], "// Executed by the mapped user's daemon with the selected Pi installation.") {
+		os.Exit(runFakeTitleModel())
+	}
 	guardLifetime(isFakePi(os.Args))
 	if isFakePi(os.Args) {
 		runFakePi(os.Args)
@@ -827,6 +830,18 @@ esac
 				w.(http.Flusher).Flush()
 				edge.apply(mode, r.RemoteAddr, time.Duration(ms)*time.Millisecond)
 				return
+			case "/fixture/edge-silence-streams":
+				streamSilence.Add(1)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			case "/fixture/title-model":
+				// The synthetic title model's next answers; empty makes it unavailable.
+				if err := os.WriteFile(filepath.Join(tmp, "fakepi-title"), []byte(r.URL.Query().Get("value")), 0600); err != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			case "/fixture/edge-hold-head":
 				edgeHoldHead.Store(true)
 				w.WriteHeader(http.StatusNoContent)
@@ -876,6 +891,10 @@ esac
 			case "/fixture/conversations-reset":
 				// Each browser case starts from Pi's native unset default.
 				if err := os.Remove(filepath.Join(tmp, "fakepi-ai-refused")); err != nil && !os.IsNotExist(err) {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				if err := os.Remove(filepath.Join(tmp, "fakepi-title")); err != nil && !os.IsNotExist(err) {
 					http.Error(w, "fixture failed", 500)
 					return
 				}
@@ -1584,6 +1603,10 @@ esac
 			w = &headHoldingWriter{ResponseWriter: w}
 		}
 		if !delayReply(w, r) {
+			return
+		}
+		if r.URL.Path == "/api/v1/events" {
+			serveSilenceable(w, r, product)
 			return
 		}
 		product.ServeHTTP(w, r)

@@ -70,6 +70,9 @@ func (c *ConversationController) generateTitle(text string, model *piStartupChoi
 	cmd := exec.CommandContext(ctx, c.runtime.Node, args...)
 	cmd.Env = []string{"HOME=" + c.home, "PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}
 	cmd.Dir = filepath.Dir(c.runtime.Entry)
+	if c.fixture {
+		cmd.Dir = c.home // the synthetic runtime's entry has no directory
+	}
 	cmd.Stdin = strings.NewReader(text)
 	var output bytes.Buffer
 	cmd.Stdout = &output
