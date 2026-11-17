@@ -85,6 +85,9 @@ export type DeletionResult =
       workspace_id: string;
       entry?: string;
       kept_reason?: "changed_after_check" | "process_inside" | "fetch_failed";
+      /** Moved at a full quota or disk without the Trash's record of where
+       * it came from: it can be deleted from the Trash, not restored. */
+      restore?: "unavailable";
       processes_inside?: { pid: number; comm?: string }[];
       remaining?: number;
     };
@@ -153,6 +156,11 @@ export const refusalCodes = [
   "trash_destination_unavailable",
   "trash_entry_missing",
   "trash_changed",
+  // 507: the quota or the disk is full and even the move into the Trash,
+  // which needs no new space, failed; or an outright deletion could not be
+  // verified and was put back. Nothing moved.
+  "quota_full",
+  "storage_full",
 ] as const;
 const refusals = new Set<string>(refusalCodes);
 export class WorkspaceTrashError extends Error {
@@ -185,17 +193,22 @@ async function post(
   if (response.status === 401) throw new WorkspaceTrashError("identity_lost");
   const value = await readBounded(response);
   if (!response.ok) {
-    const code =
-      response.status === 409 &&
+    const named =
       value &&
       typeof value === "object" &&
       "error" in value &&
       value.error &&
       typeof value.error === "object" &&
       "code" in value.error &&
-      typeof value.error.code === "string" &&
-      refusals.has(value.error.code)
+      typeof value.error.code === "string"
         ? value.error.code
+        : "";
+    // Refusals are 409; a full quota or disk is 507 and only that.
+    const storage = named === "quota_full" || named === "storage_full";
+    const code =
+      refusals.has(named) &&
+      (storage ? response.status === 507 : response.status === 409)
+        ? named
         : "unavailable";
     throw new WorkspaceTrashError(code);
   }

@@ -204,3 +204,53 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   });
   expect(forged).toBe(403);
 });
+
+test("@workspace-trash at a full quota the conversation leads to the Trash, which empties without the agent", async ({
+  page,
+}) => {
+  await signIn(page);
+  expect(
+    (await page.request.get("/fixture/taskfleet?status=empty")).status(),
+  ).toBe(204);
+  // Something in the Trash, moved while there was still room.
+  await openWorkspace(page, "muistiinpanot");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("trash-workspace"))
+    .click();
+  await expect(page.getByTestId("archive-notice")).toBeVisible();
+  // Then the quota fills: the agent cannot save a conversation, so the
+  // conversation says where the person frees space themselves.
+  await page.route("**/api/v1/account/storage", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        usage_bytes: 100 * 1024 ** 2,
+        limit_bytes: 100 * 1024 ** 2,
+      },
+    }),
+  );
+  await openWorkspace(page, "reseptikirja");
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page
+    .getByTestId("storage-full-notice")
+    .getByRole("button")
+    .and(page.getByTestId("storage-full-open"))
+    .click();
+  await expect(page).toHaveURL(/settings\/storage/);
+  await expect(trashRow(page, "muistiinpanot")).toBeVisible();
+  await accessible(page);
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("open-empty-trash"))
+    .click();
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("empty-trash"))
+    .click();
+  await expect(page.getByTestId("trash-empty")).toBeVisible();
+});

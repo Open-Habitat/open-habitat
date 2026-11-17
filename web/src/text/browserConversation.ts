@@ -7,7 +7,8 @@ const fi = {
   dismissNotice: "Sulje",
   storageFull: "Tallennustila on täynnä",
   storageFullDetail:
-    "Vapauta tilaa ennen työn jatkamista. Pyydä tarvittaessa palvelimen ylläpitäjältä apua.",
+    "Agentti ei pysty työskentelemään, koska se ei voi tallentaa keskustelua. Vapauta tilaa itse: tyhjennä roskakori tai poista työtila ja sitten roskakorista. Sen jälkeen agentti voi siivota loput.",
+  storageOpen: "Tallennustila ja roskakori",
   modelUnknown: "Malli ei tiedossa",
   attention: (title: string) => `Agentti tarvitsee huomiota · ${title}`,
   resting: "Agentti lepää. Kirjoittaminen herättää sen.",
@@ -155,7 +156,8 @@ export const browserConversationText = catalog(fi, {
   dismissNotice: "Close",
   storageFull: "Storage is full",
   storageFullDetail:
-    "Free up space before continuing. Ask the server's administrator for help if needed.",
+    "The agent cannot work, because it cannot save the conversation. Free space yourself: empty the Trash, or delete a workspace and then delete it from the Trash. After that the agent can clean up the rest.",
+  storageOpen: "Storage and Trash",
   modelUnknown: "Model unknown",
   attention: (title) => `Agent needs attention · ${title}`,
   resting: "The agent is resting. Typing wakes it.",

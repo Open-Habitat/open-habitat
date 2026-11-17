@@ -82,6 +82,10 @@ const fi = {
     trash_destination_unavailable:
       "Palautuskansiota ei voitu avata turvallisesti. Tarkista polku ja oikeudet.",
     trash_unavailable: "Roskakoria ei voitu käyttää. Mitään ei siirretty.",
+    quota_full:
+      "Tallennustilasi on täynnä, eikä työtilaa voitu poistaa. Mitään ei siirretty eikä poistettu. Siirrä se roskakoriin ja poista se sieltä, tai tyhjennä ensin roskakori kohdassa Asetukset › Tallennustila.",
+    storage_full:
+      "Palvelimen levy on täynnä, eikä työtilaa voitu poistaa. Mitään ei siirretty eikä poistettu. Siirrä se roskakoriin ja poista se sieltä, tai tyhjennä ensin roskakori kohdassa Asetukset › Tallennustila.",
     trash_entry_missing: "Tätä kohdetta ei ole enää roskakorissa.",
     trash_changed:
       "Roskakori muuttui sillä välin. Mitään ei poistettu; katso lista ja vahvista uudelleen.",
@@ -312,6 +316,10 @@ export const trashText = catalog(fi, {
     trash_destination_unavailable:
       "The folder to restore into could not be opened safely. Check the path and permissions.",
     trash_unavailable: "The Trash could not be used. Nothing was moved.",
+    quota_full:
+      "Your storage is full, and the workspace could not be deleted. Nothing was moved or deleted. Move it to the Trash and delete it there, or empty the Trash first under Settings › Storage.",
+    storage_full:
+      "The server's disk is full, and the workspace could not be deleted. Nothing was moved or deleted. Move it to the Trash and delete it there, or empty the Trash first under Settings › Storage.",
     trash_entry_missing: "This item is no longer in the Trash.",
     trash_changed:
       "The Trash changed meanwhile. Nothing was deleted; look at the list and confirm again.",

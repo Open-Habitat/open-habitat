@@ -226,15 +226,18 @@ export function StorageBreakdown({
         }
       >
         <p>
-          {!measured
-            ? t.warnBodyUnmeasured
-            : shared
-              ? t.warnBodyShared(
-                  bytes(total(pickable.filter((i) => i.group !== "own"))),
-                )
-              : t.warnBody(
-                  bytes(total(pickable.filter((i) => i.group !== "own"))),
-                )}
+          {bound - used < 4096
+            ? // ext4 allocates whole blocks (StoragePressure.tsx): full.
+              t.warnBodyFull
+            : !measured
+              ? t.warnBodyUnmeasured
+              : shared
+                ? t.warnBodyShared(
+                    bytes(total(pickable.filter((i) => i.group !== "own"))),
+                  )
+                : t.warnBody(
+                    bytes(total(pickable.filter((i) => i.group !== "own"))),
+                  )}
         </p>
       </WarningBannerView>
     ) : null;

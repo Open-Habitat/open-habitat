@@ -8,9 +8,9 @@ const fi = {
   historyDamaged:
     "Keskustelun historiatiedostossa on vioittunut rivi, joten Habitat ei näytä historiaa eikä käynnistä agenttia sen päälle. Tiedosto on tallella muuttamattomana kotihakemistosi .pi/agent/sessions-kansiossa; jatka uudessa keskustelussa tai pyydä agenttia tarkistamaan tiedosto toisessa keskustelussa.",
   quotaFull:
-    "Tallennustilasi on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.",
+    "Tallennustilasi on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa itse kohdassa Asetukset › Tallennustila (tyhjennä roskakori tai poista työtila ja sitten roskakorista) ja yritä uudelleen.",
   storageFull:
-    "Palvelimen levy on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.",
+    "Palvelimen levy on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa itse kohdassa Asetukset › Tallennustila (tyhjennä roskakori tai poista työtila ja sitten roskakorista) ja yritä uudelleen.",
   writerPresent: "Keskustelua kirjoittaa toinen Pi, esimerkiksi päätteessä.",
   readOnlyStart:
     "Keskustelua ei aloitettu selaimesta, joten se on vain luettavissa.",
@@ -62,9 +62,9 @@ export const refusalsText = catalog(fi, {
   historyDamaged:
     "The conversation's history file has a damaged line, so Habitat does not show the history or start an agent on top of it. The file is kept unchanged in the .pi/agent/sessions folder of your home directory; continue in a new conversation or ask an agent to check the file in another conversation.",
   quotaFull:
-    "Your storage is full, and the unfinished history line could not be set aside. Free some space and try again.",
+    "Your storage is full, and the unfinished history line could not be set aside. Free space yourself under Settings › Storage (empty the Trash, or delete a workspace and then delete it from the Trash) and try again.",
   storageFull:
-    "The server's disk is full, and the unfinished history line could not be set aside. Free some space and try again.",
+    "The server's disk is full, and the unfinished history line could not be set aside. Free space yourself under Settings › Storage (empty the Trash, or delete a workspace and then delete it from the Trash) and try again.",
   writerPresent:
     "Another Pi is writing the conversation, for example in a terminal.",
   readOnlyStart:

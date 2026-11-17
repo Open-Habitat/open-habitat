@@ -87,7 +87,7 @@ const fi = {
     full: boolean,
     unavailable: boolean,
   ) =>
-    `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}${critical ? "Kun tila loppuu, tallennukset katkeavat kesken, myös agenttien kirjoittamat keskusteluhistoriat. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja, esimerkiksi käännösvälimuistit ja vanhat worktreet. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
+    `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}${critical ? "Kun tila loppuu, tallennukset katkeavat kesken, myös agenttien kirjoittamat keskusteluhistoriat. " : ""}${full ? "Agentti ei pysty työskentelemään täydellä tallennustilalla, koska se ei voi tallentaa keskustelua. Vapauta tilaa itse kohdassa Tallennustila ja roskakori: tyhjennä roskakori tai poista työtila ja sitten roskakorista. Sen jälkeen agentti voi siivota loput. Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : "Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja, esimerkiksi käännösvälimuistit ja vanhat worktreet. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä."}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
   storageOpen: "Tallennustila ja roskakori",
   recheckStorage: "Tarkista vapautettu tila",
   allGood: "Kaikki kunnossa. Kello katoaa, kun suljet tämän.",
@@ -238,7 +238,7 @@ export const statusText = catalog(fi, {
   nearTitle: (what, critical, percent) =>
     `${what} is ${critical ? "almost" : "nearly"} full (${percent} %)`,
   storageBody: (shared, critical, full, unavailable) =>
-    `${shared ? "The disk is shared by all users; others' files fill it too. " : ""}${critical ? "When space runs out, saves break off midway, including the conversation histories agents write. " : ""}Free space from the Trash or ask an agent to clean up unneeded files, for example build caches and old worktrees. Moving to the Trash does not free space until it is emptied.${full ? " A save may have failed. Messages are not sent again automatically." : ""}${unavailable ? " The storage could not be checked; this is the latest information." : ""}`,
+    `${shared ? "The disk is shared by all users; others' files fill it too. " : ""}${critical ? "When space runs out, saves break off midway, including the conversation histories agents write. " : ""}${full ? "An agent cannot work while storage is full, because it cannot save the conversation. Free space yourself under Storage and Trash: empty the Trash, or delete a workspace and then delete it from the Trash. After that an agent can clean up the rest. A save may have failed. Messages are not sent again automatically." : "Free space from the Trash or ask an agent to clean up unneeded files, for example build caches and old worktrees. Moving to the Trash does not free space until it is emptied."}${unavailable ? " The storage could not be checked; this is the latest information." : ""}`,
   storageOpen: "Storage and Trash",
   recheckStorage: "Check the freed space",
   allGood: "All is well. The bell disappears when you close this.",

@@ -92,6 +92,18 @@ func openTrash(home string, create bool) (trashDirs, error) {
 	return trashDirs{files: files, info: info, dev: uint64(fs.Dev)}, nil
 }
 
+// ensureTrash creates the Trash directories while there is still room. At a
+// full quota or disk a missing directory cannot be created, and every
+// browser deletion of a workspace first moves it into Trash/files, the
+// outright one too; without this a person who never trashed anything could
+// not free space without the agent. Failure is not fatal: the deletion
+// creates the Trash again and reports what stops it.
+func ensureTrash(home string) {
+	if t, e := openTrash(home, true); e == nil {
+		t.close()
+	}
+}
+
 func trashLevel(parent int, name string, create bool) (int, error) {
 	if create {
 		if e := unix.Mkdirat(parent, name, 0700); e != nil && !errors.Is(e, unix.EEXIST) {
@@ -301,7 +313,11 @@ func writeTrashInfo(t trashDirs, name, path string, now time.Time) (string, erro
 			continue
 		}
 		f := os.NewFile(uintptr(fd), entry)
-		_, e = f.WriteString(body)
+		// A full quota or disk fails here: creating the name takes no block,
+		// its content does (trashHook stands in for that in tests).
+		if e = trashHook("info_opened"); e == nil {
+			_, e = f.WriteString(body)
+		}
 		if e == nil {
 			e = f.Sync()
 		}
@@ -353,6 +369,62 @@ func moveToTrashFrom(src int, name, original string, expected unix.Stat_t, t tra
 		removeTrashInfo(t, entry)
 		return "", -1, e
 	}
+	return verifyTrashMove(src, name, entry, expected, t, true)
+}
+
+// moveToTrashUnlabelled is the move for an outright deletion when the info
+// file cannot be written because the quota or the disk is full: a rename
+// needs no new space, and removing what is moved is how the space comes back
+// (Jari 16.11.2026: a person must always get out of a full quota). An entry
+// without an info file lists as unlabelled and can be deleted again there, so
+// an interrupted removal is still visible and finishable. The name is new to
+// both files and info, so no other deletion's record describes it.
+func moveToTrashUnlabelled(src int, name string, expected unix.Stat_t, t trashDirs) (string, int, error) {
+	base := name
+	for len(base) > 230 {
+		_, size := utf8.DecodeLastRuneInString(base)
+		base = base[:len(base)-size]
+	}
+	for i := 1; i <= 1000; i++ {
+		entry := base
+		if i > 1 {
+			entry = base + "." + strconv.Itoa(i)
+		}
+		if !validTrashEntry(entry) {
+			return "", -1, errors.New("trash name unavailable")
+		}
+		var s unix.Stat_t
+		if unix.Fstatat(t.info, entry+".trashinfo", &s, unix.AT_SYMLINK_NOFOLLOW) == nil {
+			continue
+		}
+		e := renameNoReplace(src, name, t.files, entry)
+		if errors.Is(e, unix.EEXIST) || errors.Is(e, unix.ENOTEMPTY) {
+			continue
+		}
+		if e != nil {
+			return "", -1, e
+		}
+		return verifyTrashMove(src, name, entry, expected, t, false)
+	}
+	return "", -1, errors.New("trash name unavailable")
+}
+
+// putBackUnlabelled returns an unlabelled entry to its name. It is used when
+// an outright deletion at full storage keeps the directory after all: without
+// an info file the Trash could not offer to restore it.
+func putBackUnlabelled(src int, name, entry string, t trashDirs) bool {
+	if renameNoReplace(t.files, entry, src, name) != nil {
+		return false
+	}
+	unix.Fsync(src)
+	unix.Fsync(t.files)
+	return true
+}
+
+// verifyTrashMove checks that the moved inode is the one observed. A
+// directory swapped in meanwhile is put back with RENAME_NOREPLACE; if that
+// fails, it stays whole in the Trash.
+func verifyTrashMove(src int, name, entry string, expected unix.Stat_t, t trashDirs, labelled bool) (string, int, error) {
 	unix.Fsync(src)
 	unix.Fsync(t.files)
 	moved, e := dir(unix.Openat2, t.files, entry, true)
@@ -367,7 +439,9 @@ func moveToTrashFrom(src int, name, original string, expected unix.Stat_t, t tra
 		if renameNoReplace(t.files, entry, src, name) == nil {
 			unix.Fsync(src)
 			unix.Fsync(t.files)
-			removeTrashInfo(t, entry)
+			if labelled {
+				removeTrashInfo(t, entry)
+			}
 			return "", -1, errWorkspaceSwapped
 		}
 		return entry, -1, errWorkspaceSwapped

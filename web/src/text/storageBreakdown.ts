@@ -24,6 +24,8 @@ const fi = {
     `Noin ${free} voidaan vapauttaa ilman, että mitään tärkeää katoaa. Valitse alta, mitä siivotaan, ja pyydä agenttia tekemään se.`,
   warnBodyShared: (free: string) =>
     `Levy on kaikkien käyttäjien yhteinen. Omista tiedostoistasi voidaan vapauttaa noin ${free}.`,
+  warnBodyFull:
+    "Agentti ei pysty työskentelemään täydellä tallennustilalla, koska se ei voi tallentaa keskustelua. Vapauta ensin tilaa itse: tyhjennä roskakori alempana tai poista työtila ja sitten roskakorista. Sen jälkeen agentti voi siivota loput.",
   warnBodyUnmeasured:
     "Erittelyä mitataan vielä. Agentti voi jo nyt etsiä ja siivota uudelleen luotavat tiedostot.",
   now: "Nyt",
@@ -142,6 +144,8 @@ export const storageBreakdownText = catalog(fi, {
     `About ${free} can be freed without losing anything important. Choose below what to clean up and ask an agent to do it.`,
   warnBodyShared: (free) =>
     `The disk is shared by all users. About ${free} of your own files can be freed.`,
+  warnBodyFull:
+    "An agent cannot work while storage is full, because it cannot save the conversation. First free space yourself: empty the Trash below, or delete a workspace and then delete it from the Trash. After that an agent can clean up the rest.",
   warnBodyUnmeasured:
     "The breakdown is still being measured. An agent can already find and clean up regenerable files.",
   now: "Now",

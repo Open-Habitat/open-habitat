@@ -3348,6 +3348,18 @@ function BrowserConversationContent({
                 data-testid="storage-full-notice"
                 tone="danger"
                 title={txt.storageFull}
+                actions={
+                  // The agent cannot clean up at a full quota; this is
+                  // where the person frees space themselves.
+                  <ControlButton
+                    data-testid="storage-full-open"
+                    size="row"
+                    variant="primary"
+                    onPress={() => navigate(settingsHref("tila"))}
+                  >
+                    {txt.storageOpen}
+                  </ControlButton>
+                }
               >
                 {txt.storageFullDetail}
               </WarningBanner>

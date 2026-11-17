@@ -35,7 +35,7 @@ export function TrashNotice({
     },
   };
   const restore =
-    entry && csrf && result.state === "trashed"
+    entry && csrf && result.state === "trashed" && !result.restore
       ? () => {
           setBusy(true);
           setProblem("");
@@ -76,11 +76,14 @@ export function TrashNotice({
         ? txt.replaced(entry ?? "")
         : result.kept_reason
           ? txt.kept[result.kept_reason]
-          : inside
-            ? txt.stillInside(inside.comm ?? `PID ${inside.pid}`)
-            : undefined;
+          : result.restore
+            ? txt.unrecorded
+            : inside
+              ? txt.stillInside(inside.comm ?? `PID ${inside.pid}`)
+              : undefined;
   // Something did not go as asked: the notice stays until closed.
-  const sticky = result.state !== "trashed" || !!result.kept_reason;
+  const sticky =
+    result.state !== "trashed" || !!result.kept_reason || !!result.restore;
   return (
     <ArchiveNotice
       kind="trash"

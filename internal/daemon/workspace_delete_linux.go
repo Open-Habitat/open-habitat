@@ -263,6 +263,12 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		return
 	}
 	t, e := openTrash(cfg.Home, true)
+	if reason := storageFailure(e); reason != "" {
+		// A missing Trash directory could not be created: nothing moved.
+		logStorageFailure("workspace_delete", e)
+		snapshotError(w, 507, reason)
+		return
+	}
 	if e != nil {
 		snapshotError(w, 503, "trash_unavailable")
 		return
@@ -277,6 +283,23 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		return
 	}
 	entry, moved, e := moveToTrash(src, target.Name, initial, cfg.Home, t)
+	// At a full quota or disk the info file cannot be written, and a person
+	// must still be able to free space without the agent (Jari 16.11.2026).
+	// A rename needs no new space, so the move goes ahead without the info
+	// file: an outright deletion then removes what it moved, and a move to
+	// the Trash leaves an entry the person can delete from there, the only
+	// way out for a workspace that cannot be deleted outright. Such an entry
+	// cannot be restored from the browser, and the reply says so.
+	full := storageFailure(e)
+	unlabelled := full != ""
+	if unlabelled {
+		logStorageFailure("workspace_delete", e)
+		entry, moved, e = moveToTrashUnlabelled(src, target.Name, initial, t)
+		if reason := storageFailure(e); reason != "" {
+			snapshotError(w, 507, reason)
+			return
+		}
+	}
 	switch {
 	case errors.Is(e, errWorkspaceSwapped) && entry != "":
 		// Not the observed directory, and it could not be put back. It is
@@ -300,6 +323,9 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		inside = []workspaceProcess{}
 	}
 	result := map[string]any{"schema_version": 1, "state": "trashed", "workspace_id": in.WorkspaceID, "entry": entry, "processes_inside": inside}
+	if unlabelled {
+		result["restore"] = "unavailable"
+	}
 	if in.Disposal == "permanent" {
 		// Check the moved inode once more: nothing can reach it by its old
 		// name now, so what is verified here is what is removed. A fetch
@@ -321,6 +347,14 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		}
 		if mounts, ok := mountsBelow(deletionMountInfo, entryPath); kept == "" && (!ok || len(mounts) > 0) {
 			kept = "changed_after_check"
+		}
+		if kept != "" && unlabelled {
+			// Without an info file the Trash could not restore it: put it
+			// back where it was and say the storage is full.
+			if putBackUnlabelled(src, target.Name, entry, t) {
+				snapshotError(w, 507, full)
+				return
+			}
 		}
 		if kept != "" {
 			result["kept_reason"] = kept

@@ -133,6 +133,22 @@ it("exposes only known refusal codes, never the host's text", async () => {
   await expect(restoreTrashEntry("example", "csrf")).rejects.toMatchObject({
     code: "unavailable",
   });
+  // A full quota is 507 with a storage code; only those two are named.
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(refusal("quota_full", 507)));
+  await expect(
+    deleteWorkspace(workspace, "trash", "csrf"),
+  ).rejects.toMatchObject({ code: "quota_full" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(refusal("workspace_busy", 507)),
+  );
+  await expect(
+    deleteWorkspace(workspace, "trash", "csrf"),
+  ).rejects.toMatchObject({ code: "unavailable" });
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(refusal("quota_full")));
+  await expect(
+    deleteWorkspace(workspace, "trash", "csrf"),
+  ).rejects.toMatchObject({ code: "unavailable" });
   vi.stubGlobal(
     "fetch",
     vi.fn().mockResolvedValue(new Response("", { status: 401 })),
