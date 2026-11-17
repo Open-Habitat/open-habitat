@@ -1,10 +1,10 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-17
 type: feature
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: rail-agent-state
 lane_seq: 1
 ---
@@ -35,3 +35,7 @@ existing rail rules (`rail-background-service-not-running`).
 ### 2026-11-14T18:38:02Z · @jari
 
 Jari 14.11.2026: the agent only decides its conversation's section through an open-habitat command, in practice whether it is in Sinun vuorosi or Käynnissä. No agent-written text on the row. (Answers the round-1 prototype: none of its text directions; the rail looks as today.)
+
+### 2026-11-17T06:08:44Z · @jari
+
+Jari 17.11.2026: (1) The agent can put its conversation in any of the three sections: Sinun vuorosi, Käynnissä and Hiljaiset (command proposal: open-habitat agent section update --section yours|running|quiet). Hiljaiset is important: Jari has an idea for a new feature that builds on it. (2) This is only about the agent choosing, after writing its reply, where its own conversation sits according to how it judges its own state. No worker-specific logic, no worker questions, no deadlines in Habitat for this. The combined design with worker-asks-parent mixed two things and is replaced for this issue by this decision. Next action: implement part 1 with the three sections.

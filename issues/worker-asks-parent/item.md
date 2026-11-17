@@ -1,6 +1,6 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-17
 type: feature
 status: open
 priority: normal
@@ -48,3 +48,7 @@ Jari 14.11.2026: the question goes to the parent agent, which answers it and ask
 ### 2026-11-14T18:38:02Z · @jari
 
 Jari 14.11.2026 (on agent-sets-rail-state): the agent's own rail control is only the section, Sinun vuorosi or Käynnissä, set with an open-habitat command; no agent text on the row.
+
+### 2026-11-17T06:08:44Z · @jari
+
+Jari 17.11.2026: a worker's question to its parent agent is behind the scenes. The person talks only to the main agent, which talks to the worker. The worker never interacts with the person directly: no worker question on the Workers panel, no person-answer path from the panel, no Habitat deadlines or safety-net section moves for worker questions. Waking: the agent decides itself whether to wake (e.g. by waiting on its worker); Habitat needs no special logic. What remains, if anything, is Taskfleet's own ask/answer between worker and parent; Habitat's parts of the 15.11. design are dropped.
