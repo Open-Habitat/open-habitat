@@ -2,7 +2,10 @@
 import net from 'node:net';
 import { open, opendir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { chmodSync, readFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, closeSync, fstatSync, openSync, readFileSync, readSync, realpathSync, renameSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
+import { basename, join } from 'node:path';
 
 const live = p => ['running', 'terminating', 'terminate_timeout'].includes(p.status);
 const token = p => `pt_${p.startTime}`;
@@ -394,6 +397,135 @@ export function waitReminder(uncovered, reminded) {
     details: { schema_version: 1, runs: uncovered.map(r => r.run_id), titles: uncovered.map(r => r.title) },
   };
 }
+
+// The Claude bridge (pi-claude-bridge, pinned upstream) mirrors a Pi
+// conversation into a Claude Code transcript of its own and reads it back
+// strictly on every rebuild: every newline-terminated line must parse. Claude
+// Code appends that file and does not start an append on a fresh line, so a
+// write a full disk cut short gets the next record glued onto it, and from then
+// on every turn fails at once with a JSON parse error, even after space is
+// freed. Neither program is ours, so the companion checks the transcript before
+// each run on the bridge and repairs what it safely can:
+//   - a complete final record without its newline gets the newline, so the
+//     next append starts on its own line;
+//   - a torn final line, or a terminated line that does not parse, sets the
+//     whole file aside unchanged beside it (`.jsonl.damaged-<UTC>`, which
+//     neither Claude Code nor the bridge reads). The bridge then finds no
+//     transcript and rebuilds it from Pi's history, which it treats as the
+//     authority (its missing-transcript path). Nothing is dropped: Pi's
+//     history holds the conversation and the set-aside file holds every byte.
+// A file written within the last moments may be mid-append by a Claude Code
+// child still exiting, so the check waits for it to be quiet and leaves it
+// alone if it does not settle. Each decision is a custom entry in the Pi
+// session (bridgeTranscriptType), which neither the model nor the browser sees.
+export const bridgeTranscriptType = 'oh-bridge-transcript';
+const bridgeProvider = 'claude-bridge';
+const bridgeQuietMs = 2000;
+const bridgeStateMax = 64 << 20;
+const ccSessionPattern = /^[0-9a-fA-F-]{36}$/;
+// pi-claude-bridge session-store.ts and cc-session-io paths.ts, as pinned; the
+// device test compares the result with cc-session-io's own getSessionPath.
+function piAgentDir(env, home) {
+  const dir = env.PI_CODING_AGENT_DIR;
+  if (!dir) return join(home, '.pi', 'agent');
+  if (dir === '~') return home;
+  return dir.startsWith('~/') ? join(home, dir.slice(2)) : dir;
+}
+export function ccProjectHash(projectPath) {
+  const sanitized = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+  if (sanitized.length <= 200) return sanitized;
+  let h = 0;
+  for (let i = 0; i < projectPath.length; i++) h = (h << 5) - h + projectPath.charCodeAt(i) | 0;
+  return `${sanitized.slice(0, 200)}-${Math.abs(h).toString(36)}`;
+}
+export function bridgeTranscriptPath(sessionId, { env = process.env, home = homedir() } = {}) {
+  if (typeof sessionId !== 'string' || !sessionId) return null;
+  const hash = createHash('sha256').update(sessionId, 'utf16le').digest('hex');
+  const statePath = join(piAgentDir(env, home), 'claude-bridge', 'sessions', `s-${hash}.json`);
+  let state;
+  try {
+    if (statSync(statePath).size > bridgeStateMax) return null;
+    state = JSON.parse(readFileSync(statePath, 'utf8'));
+  } catch { return null; }
+  if (state?.version !== 1 || typeof state.ccSessionId !== 'string' || !ccSessionPattern.test(state.ccSessionId) || typeof state.cwd !== 'string' || !state.cwd.startsWith('/')) return null;
+  let project;
+  try { project = realpathSync(state.cwd).normalize('NFC'); } catch { project = state.cwd.normalize('NFC'); }
+  const claudeDir = env.CLAUDE_CONFIG_DIR ?? join(home, '.claude');
+  return join(claudeDir, 'projects', ccProjectHash(project), `${state.ccSessionId}.jsonl`);
+}
+const parses = line => { try { JSON.parse(line); return true; } catch { return false; } };
+// The bridge's readTranscript rule. `text` starts at a line start; `base` is
+// the byte offset of `text` in the file. Returns the damage and the byte offset
+// up to which every line is verified intact.
+export function transcriptDamage(text, base = 0) {
+  const end = text.lastIndexOf('\n') + 1;
+  let at = 0, line = 0;
+  while (at < end) {
+    const next = text.indexOf('\n', at);
+    const piece = text.slice(at, next);
+    line++;
+    if (piece.trim() && !parses(piece)) return { damage: 'interior', line, verified: base + Buffer.byteLength(text.slice(0, at)) };
+    at = next + 1;
+  }
+  const verified = base + Buffer.byteLength(text.slice(0, end));
+  const tail = text.slice(end);
+  if (!tail.trim()) return { damage: null, verified };
+  return { damage: parses(tail) ? 'unterminated' : 'torn', line: line + 1, verified };
+}
+const sameFile = (a, b) => a.ino === b.ino && a.dev === b.dev && a.size === b.size && a.mtimeMs === b.mtimeMs;
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+// verified: per transcript path, the inode and byte offset already checked, so
+// a long conversation is not parsed whole before every run. Claude Code only
+// appends; a new inode or a shorter file is checked from the start again.
+export async function guardBridgeTranscript(path, { verified = new Map(), now = () => Date.now(), wait = pause, quietMs = bridgeQuietMs } = {}) {
+  let st;
+  try { st = statSync(path); } catch { return null; }
+  const known = verified.get(path);
+  const from = known && known.ino === st.ino && known.dev === st.dev && known.offset <= st.size ? known.offset : 0;
+  const read = () => {
+    const fd = openSync(path, 'r');
+    try {
+      const at = fstatSync(fd);
+      const buf = Buffer.allocUnsafe(at.size - from);
+      let got = 0;
+      while (got < buf.length) {
+        const n = readSync(fd, buf, got, buf.length - got, from + got);
+        if (!n) break;
+        got += n;
+      }
+      return { at, text: buf.subarray(0, got).toString('utf8') };
+    } finally { closeSync(fd); }
+  };
+  let { at, text } = read();
+  let found = transcriptDamage(text, from);
+  verified.set(path, { ino: at.ino, dev: at.dev, offset: found.verified });
+  if (!found.damage) return null;
+  // Damage only counts once nobody is appending: wait for a quiet file.
+  for (let waited = 0; now() - at.mtimeMs < quietMs; waited += 250) {
+    if (waited >= quietMs + 1000) return { action: 'busy', damage: found.damage, line: found.line, transcript: path };
+    await wait(250);
+    const again = read();
+    if (!sameFile(again.at, at)) {
+      ({ at, text } = again);
+      found = transcriptDamage(text, from);
+      verified.set(path, { ino: at.ino, dev: at.dev, offset: found.verified });
+      if (!found.damage) return null;
+    }
+  }
+  try { if (!sameFile(statSync(path), at)) return { action: 'busy', damage: found.damage, line: found.line, transcript: path }; }
+  catch { return null; }
+  if (found.damage === 'unterminated') {
+    try { appendFileSync(path, '\n'); }
+    catch (e) { return { action: 'failed', damage: found.damage, line: found.line, transcript: path, error: e.code ?? 'error' }; }
+    verified.set(path, { ino: at.ino, dev: at.dev, offset: at.size + 1 });
+    return { action: 'newline', damage: found.damage, line: found.line, transcript: path };
+  }
+  const kept = `${path}.damaged-${new Date(now()).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}`;
+  try { renameSync(path, kept); }
+  catch (e) { return { action: 'failed', damage: found.damage, line: found.line, transcript: path, error: e.code ?? 'error' }; }
+  verified.delete(path);
+  return { action: 'set_aside', damage: found.damage, line: found.line, transcript: path, kept: basename(kept), bytes: at.size };
+}
 export default function (pi) {
   let server, context, extensionVersion = null, shuttingDown = false;
   const launchedAt = Date.now();
@@ -617,6 +749,21 @@ export default function (pi) {
       return { processes, spinoffs: read(), read, at: Date.now(), stopped, turnCut: facts.turnCut };
     } catch { return null; }
   }
+  // Before the bridge reads its transcript for this run (see guardBridgeTranscript).
+  const verifiedTranscripts = new Map();
+  pi.on('before_agent_start', async (_event, ctx) => {
+    const c = ctx ?? context;
+    if (shuttingDown || c?.model?.provider !== bridgeProvider) return;
+    const path = bridgeTranscriptPath(c.sessionManager?.getSessionId?.());
+    if (!path) return;
+    let decision;
+    try { decision = await guardBridgeTranscript(path, { verified: verifiedTranscripts }); }
+    catch (e) { decision = { action: 'failed', transcript: path, error: e?.code ?? 'error' }; }
+    if (!decision) return;
+    console.error(`open-habitat: claude-bridge transcript ${decision.action}: ${JSON.stringify(decision)}`);
+    // A full disk can refuse this too; the stderr line above remains.
+    try { pi.appendEntry(bridgeTranscriptType, decision); } catch {}
+  });
   pi.on('before_agent_start', async () => {
     const pending = catchUp;
     catchUp = null;
