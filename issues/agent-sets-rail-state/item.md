@@ -2,11 +2,12 @@
 created: 2026-11-14
 updated: 2026-11-17
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: rail-agent-state
 lane_seq: 1
+closed: 2026-11-17
 ---
 
 # Let the agent set its conversation's place in the rail through the agent CLI
@@ -43,3 +44,9 @@ Jari 17.11.2026: (1) The agent can put its conversation in any of the three sect
 ### 2026-11-17T06:12:21Z · @jari
 
 Jari 17.11.2026: the guidance the agent gets is what matters. Hiljaiset only when there is a reason, e.g. the person asked for it; not on the agent's own judgement that nothing is pending.
+
+## Resolution
+
+### 2026-11-17T06:42:42Z · @issuectl
+
+Implemented: open-habitat agent section update --current --section yours|running|quiet; guidance in host context and agent skill; decisions in result.md.
