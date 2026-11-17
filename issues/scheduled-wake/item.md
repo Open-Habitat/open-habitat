@@ -9,7 +9,6 @@ provenance: chat
 source_ref: chat:2026-11-17/scheduled-wake
 lane: scheduled-wake
 lane_seq: 1
-blocked_by: ['@agent-sets-rail-state']
 preparation: ready
 ---
 
