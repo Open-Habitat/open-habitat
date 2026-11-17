@@ -2,7 +2,7 @@
 import net from 'node:net';
 import { open, opendir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { appendFileSync, chmodSync, closeSync, fstatSync, openSync, readFileSync, readSync, realpathSync, renameSync, statSync } from 'node:fs';
+import { appendFileSync, chmodSync, closeSync, fstatSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -414,10 +414,17 @@ export function waitReminder(uncovered, reminded) {
 //     transcript and rebuilds it from Pi's history, which it treats as the
 //     authority (its missing-transcript path). Nothing is dropped: Pi's
 //     history holds the conversation and the set-aside file holds every byte.
-// A file written within the last moments may be mid-append by a Claude Code
-// child still exiting, so the check waits for it to be quiet and leaves it
-// alone if it does not settle. Each decision is a custom entry in the Pi
-// session (bridgeTranscriptType), which neither the model nor the browser sees.
+// A Claude Code child from the previous run may still be exiting and
+// appending (Claude Code opens the file by name for each append), and renaming
+// the file under it would leave it writing a fragment at the old name. So the
+// guard first waits, bounded, for the exit the bridge itself waits for before
+// it reads (its registry's writers), and then changes nothing while a process
+// of this user still names the session in its arguments (the SDK starts Claude
+// Code with --resume=<id> or --session-id=<id>; a parked healthy query is such
+// a process) or while the file was written in the last moments. If that does
+// not settle, the file is left alone. No new child for this conversation
+// starts before this hook returns: the bridge's query begins after it. Each decision is a custom entry in the Pi session
+// (bridgeTranscriptType), which neither the model nor the browser sees.
 export const bridgeTranscriptType = 'oh-bridge-transcript';
 const bridgeProvider = 'claude-bridge';
 const bridgeQuietMs = 2000;
@@ -438,6 +445,12 @@ export function ccProjectHash(projectPath) {
   for (let i = 0; i < projectPath.length; i++) h = (h << 5) - h + projectPath.charCodeAt(i) | 0;
   return `${sanitized.slice(0, 200)}-${Math.abs(h).toString(36)}`;
 }
+function ccProjectDir(cwd, env, home) {
+  let project;
+  try { project = realpathSync(cwd).normalize('NFC'); } catch { project = cwd.normalize('NFC'); }
+  return join(env.CLAUDE_CONFIG_DIR ?? join(home, '.claude'), 'projects', ccProjectHash(project));
+}
+// The transcript the bridge's saved pointer names for this Pi session.
 export function bridgeTranscriptPath(sessionId, { env = process.env, home = homedir() } = {}) {
   if (typeof sessionId !== 'string' || !sessionId) return null;
   const hash = createHash('sha256').update(sessionId, 'utf16le').digest('hex');
@@ -448,10 +461,42 @@ export function bridgeTranscriptPath(sessionId, { env = process.env, home = home
     state = JSON.parse(readFileSync(statePath, 'utf8'));
   } catch { return null; }
   if (state?.version !== 1 || typeof state.ccSessionId !== 'string' || !ccSessionPattern.test(state.ccSessionId) || typeof state.cwd !== 'string' || !state.cwd.startsWith('/')) return null;
-  let project;
-  try { project = realpathSync(state.cwd).normalize('NFC'); } catch { project = state.cwd.normalize('NFC'); }
-  const claudeDir = env.CLAUDE_CONFIG_DIR ?? join(home, '.claude');
-  return join(claudeDir, 'projects', ccProjectHash(project), `${state.ccSessionId}.jsonl`);
+  return join(ccProjectDir(state.cwd, env, home), `${state.ccSessionId}.jsonl`);
+}
+// The transcript the bridge will read for this Pi session. The bridge's
+// memory is authoritative once it has loaded a session: the saved pointer lags
+// it (after a restart the first run rebuilds into a new transcript, and the
+// pointer is saved only after the run's child exits with progress; a fork
+// inherits its parent's pointer in memory only). The bridge keeps that memory
+// in a process-wide registry (pi-claude-bridge index.ts SESSION_REGISTRY_KEY)
+// so its own module instances agree; the companion runs in the same Pi
+// process and reads it the same way. Before the bridge has loaded the session,
+// the saved pointer is what it will load.
+const bridgeRegistryKey = Symbol.for('claude-bridge:sessionRegistry');
+export function bridgeTranscriptFor(sessionId, { registry = globalThis[bridgeRegistryKey], env = process.env, home = homedir() } = {}) {
+  if (typeof sessionId !== 'string' || !sessionId) return null;
+  if (registry?.loaded instanceof Set && registry.states instanceof Map && registry.loaded.has(sessionId)) {
+    const state = registry.states.get(sessionId);
+    if (!state || typeof state.ccSessionId !== 'string' || !ccSessionPattern.test(state.ccSessionId) || typeof state.cwd !== 'string' || !state.cwd.startsWith('/')) return null;
+    return join(ccProjectDir(state.cwd, env, home), `${state.ccSessionId}.jsonl`);
+  }
+  return bridgeTranscriptPath(sessionId, { env, home });
+}
+// A live process of this user (other than this Pi) that names the Claude
+// Code session in its arguments: the child that writes its transcript.
+export function sessionWriterAlive(ccSessionId, { procRoot = '/proc', uid = process.getuid?.(), self = process.pid } = {}) {
+  let pids;
+  try { pids = readdirSync(procRoot); } catch { return false; }
+  for (const pid of pids) {
+    if (!/^[0-9]+$/.test(pid) || Number(pid) === self) continue;
+    try {
+      if (uid !== undefined && statSync(join(procRoot, pid)).uid !== uid) continue;
+      // The SDK passes --resume=<id> and --session-id=<id>.
+      const argv = readFileSync(join(procRoot, pid, 'cmdline'), 'utf8').split('\0');
+      if (argv.some(a => a === ccSessionId || a.endsWith(`=${ccSessionId}`))) return true;
+    } catch {}
+  }
+  return false;
 }
 const parses = line => { try { JSON.parse(line); return true; } catch { return false; } };
 // The bridge's readTranscript rule. `text` starts at a line start; `base` is
@@ -477,7 +522,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // verified: per transcript path, the inode and byte offset already checked, so
 // a long conversation is not parsed whole before every run. Claude Code only
 // appends; a new inode or a shorter file is checked from the start again.
-export async function guardBridgeTranscript(path, { verified = new Map(), now = () => Date.now(), wait = pause, quietMs = bridgeQuietMs } = {}) {
+export async function guardBridgeTranscript(path, { verified = new Map(), now = () => Date.now(), wait = pause, quietMs = bridgeQuietMs, writerAlive = sessionWriterAlive, writers = globalThis[bridgeRegistryKey]?.writers } = {}) {
   let st;
   try { st = statSync(path); } catch { return null; }
   const known = verified.get(path);
@@ -500,9 +545,22 @@ export async function guardBridgeTranscript(path, { verified = new Map(), now = 
   let found = transcriptDamage(text, from);
   verified.set(path, { ino: at.ino, dev: at.dev, offset: found.verified });
   if (!found.damage) return null;
-  // Damage only counts once nobody is appending: wait for a quiet file.
-  for (let waited = 0; now() - at.mtimeMs < quietMs; waited += 250) {
-    if (waited >= quietMs + 1000) return { action: 'busy', damage: found.damage, line: found.line, transcript: path };
+  // Damage only counts once nobody is appending: wait for the writer to exit
+  // and the file to go quiet.
+  const ccSessionId = basename(path, '.jsonl');
+  const exiting = writers instanceof Map ? writers.get(ccSessionId) : undefined;
+  if (exiting) {
+    let timer;
+    const exited = await Promise.race([Promise.resolve(exiting).then(() => true, () => true), new Promise(resolve => { timer = setTimeout(() => resolve(false), quietMs + 3000); })]);
+    clearTimeout(timer);
+    if (!exited) return { action: 'busy', damage: found.damage, line: found.line, transcript: path };
+    ({ at, text } = read());
+    found = transcriptDamage(text, from);
+    verified.set(path, { ino: at.ino, dev: at.dev, offset: found.verified });
+    if (!found.damage) return null;
+  }
+  for (let waited = 0; now() - at.mtimeMs < quietMs || writerAlive(ccSessionId); waited += 250) {
+    if (waited >= quietMs + 3000) return { action: 'busy', damage: found.damage, line: found.line, transcript: path };
     await wait(250);
     const again = read();
     if (!sameFile(again.at, at)) {
@@ -754,7 +812,7 @@ export default function (pi) {
   pi.on('before_agent_start', async (_event, ctx) => {
     const c = ctx ?? context;
     if (shuttingDown || c?.model?.provider !== bridgeProvider) return;
-    const path = bridgeTranscriptPath(c.sessionManager?.getSessionId?.());
+    const path = bridgeTranscriptFor(c.sessionManager?.getSessionId?.());
     if (!path) return;
     let decision;
     try { decision = await guardBridgeTranscript(path, { verified: verifiedTranscripts }); }

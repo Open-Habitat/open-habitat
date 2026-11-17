@@ -5,7 +5,9 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, utimes, writeFile } from '
 import os from 'node:os';
 import path from 'node:path';
 import { getSessionPath, parseJsonl } from 'cc-session-io';
-import companion, { bridgeTranscriptPath, bridgeTranscriptType, guardBridgeTranscript, transcriptDamage } from '../process-extension.mjs';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { spawn } from 'node:child_process';
+import companion, { bridgeTranscriptFor, bridgeTranscriptPath, bridgeTranscriptType, guardBridgeTranscript, sessionWriterAlive, transcriptDamage } from '../process-extension.mjs';
 
 // A Claude Code transcript as the full-disk incident left it: a record cut
 // mid-JSON, the next record appended straight after it, then later records.
@@ -144,4 +146,79 @@ test('before a run on the bridge the companion repairs and records its decision;
     }
     await rm(f.home, { recursive: true, force: true });
   }
+});
+
+test('a damaged transcript is not touched while its Claude Code child is still alive', async () => {
+  const f = await fixture(glued);
+  try {
+    let alive = 3;
+    const clock = { t: Date.now() };
+    const exited = await guardBridgeTranscript(f.file, { now: () => clock.t, wait: async () => { clock.t += 250; }, writerAlive: id => { assert.equal(id, ccSession); return alive-- > 0; } });
+    assert.equal(exited.action, 'set_aside', 'acts once the writer has exited');
+    await writeFile(f.file, glued);
+    const old = new Date(Date.now() - 60_000);
+    await utimes(f.file, old, old);
+    const stuck = await guardBridgeTranscript(f.file, { now: () => clock.t, wait: async () => { clock.t += 250; }, writerAlive: () => true });
+    assert.equal(stuck.action, 'busy');
+    assert.equal(await readFile(f.file, 'utf8'), glued);
+  } finally { await rm(f.home, { recursive: true, force: true }); }
+});
+
+// The arguments the pinned SDK gives the Claude Code child it starts.
+async function childArgs(options) {
+  let seen;
+  const q = query({ prompt: (async function* () {})(), options: { cwd: process.cwd(), ...options, spawnClaudeCodeProcess: o => { seen = o.args; return spawn('true', [], { stdio: ['pipe', 'pipe', 'pipe'] }); } } });
+  try { for await (const _ of q) {} } catch {}
+  return seen;
+}
+
+test('the writer is found by the session id the pinned SDK puts in its child\'s arguments', async () => {
+  const proc = await mkdtemp(path.join(os.tmpdir(), 'oh-proc-'));
+  try {
+    for (const [pid, options] of [['4242', { resume: ccSession }], ['4243', { sessionId: ccSession }]]) {
+      const args = await childArgs(options);
+      assert.ok(Array.isArray(args), 'the SDK started a child');
+      await mkdir(path.join(proc, pid));
+      await writeFile(path.join(proc, pid, 'cmdline'), ['node', 'cli.js', ...args, ''].join('\0'));
+      assert.equal(sessionWriterAlive(ccSession, { procRoot: proc }), true, JSON.stringify(options));
+      assert.equal(sessionWriterAlive('33333333-3333-4333-8333-333333333333', { procRoot: proc }), false);
+      await rm(path.join(proc, pid), { recursive: true });
+    }
+    await mkdir(path.join(proc, 'self'));
+    assert.equal(sessionWriterAlive(ccSession, { procRoot: proc }), false);
+  } finally { await rm(proc, { recursive: true, force: true }); }
+});
+
+test('the transcript is the one in the bridge\'s memory once it has loaded the session, else the saved one', async () => {
+  const f = await fixture(intact);
+  try {
+    const opts = registry => ({ registry, env: f.env, home: f.home });
+    assert.equal(bridgeTranscriptFor(piSession, opts(undefined)), f.file);
+    const newer = '44444444-4444-4444-8444-444444444444';
+    const registry = { states: new Map([[piSession, { ccSessionId: newer, cwd: f.cwd }]]), loaded: new Set([piSession]), known: new Set(), writers: new Map() };
+    assert.equal(bridgeTranscriptFor(piSession, opts(registry)), getSessionPath(newer, f.cwd, f.env.CLAUDE_CONFIG_DIR));
+    registry.states.delete(piSession);
+    assert.equal(bridgeTranscriptFor(piSession, opts(registry)), null, 'no mirror in memory: the bridge imports Pi history');
+    registry.loaded.clear();
+    assert.equal(bridgeTranscriptFor(piSession, opts(registry)), f.file);
+  } finally { await rm(f.home, { recursive: true, force: true }); }
+});
+
+test('the guard waits for the exit the bridge itself waits for', async () => {
+  const f = await fixture(glued);
+  try {
+    let exit;
+    const writers = new Map([[ccSession, new Promise(resolve => { exit = resolve; })]]);
+    const pending = guardBridgeTranscript(f.file, { writers, writerAlive: () => false });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(await readFile(f.file, 'utf8'), glued, 'untouched while the child runs');
+    exit();
+    assert.equal((await pending).action, 'set_aside');
+    await writeFile(f.file, glued);
+    const old = new Date(Date.now() - 60_000);
+    await utimes(f.file, old, old);
+    const never = new Map([[ccSession, new Promise(() => {})]]);
+    assert.equal((await guardBridgeTranscript(f.file, { writers: never, writerAlive: () => false, quietMs: 10 })).action, 'busy');
+    assert.equal(await readFile(f.file, 'utf8'), glued);
+  } finally { await rm(f.home, { recursive: true, force: true }); }
 });

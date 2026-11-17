@@ -404,13 +404,14 @@ func piStopReason(reason, message string) string {
 
 // bridgeTranscriptFailure: the Claude bridge could not read its own Claude
 // Code transcript of the conversation. pi-claude-bridge passes the reader's
-// exception text through as Pi's errorMessage: V8's JSON.parse wording for a
-// line that does not parse (a write cut short by a full disk, with the next
-// record glued on), or its own words for a transcript that lost records. The
-// companion sets such a transcript aside before the next run
-// (process-extension.mjs guardBridgeTranscript), so sending again rebuilds it.
+// exception text through as Pi's errorMessage, here V8's JSON.parse wording
+// for a line that does not parse (a write cut short by a full disk, with the
+// next record glued on). The companion sets such a transcript aside before
+// the next run (process-extension.mjs guardBridgeTranscript), so sending again
+// rebuilds it. The bridge's own errors for a well-formed transcript that lost
+// records are not named: nothing repairs those, so the advice would be false.
 func bridgeTranscriptFailure(text string) bool {
-	for _, s := range []string{"in JSON at position", "is not valid JSON", "Unexpected end of JSON input", "is absent from the transcript", "is not on the primary parent chain", "Cycle in session parent chain"} {
+	for _, s := range []string{"in JSON at position", "is not valid JSON", "Unexpected end of JSON input"} {
 		if strings.Contains(text, s) {
 			return true
 		}
