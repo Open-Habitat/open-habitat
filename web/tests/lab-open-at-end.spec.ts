@@ -7,7 +7,7 @@ test.use({
   viewport: { width: 1280, height: 720 },
 });
 
-test("@lab opening from home and workspace always lands at latest", async ({
+test("@lab a conversation left at its end opens at latest from home and workspace", async ({
   page,
 }) => {
   await page.request.get("/fixture/open-at-end");
@@ -37,6 +37,16 @@ test("@lab opening from home and workspace always lands at latest", async ({
           .evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight),
       )
       .toBeGreaterThan(100);
+    // Back at the end before leaving: the earlier reading place must not
+    // outlive it (a place left mid-history is restored on return).
+    await page.mouse.wheel(0, 8000);
+    await expect
+      .poll(() =>
+        page
+          .locator(".ah-conversation-stream")
+          .evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight),
+      )
+      .toBeLessThan(2);
     await page.getByTestId("home-link").filter({ visible: true }).click();
   };
   const card = (
@@ -95,7 +105,7 @@ test("@lab native extension messages keep process summaries and omit empty cards
   );
 });
 
-test("@lab a controlled conversation reopens at latest instead of its old reading anchor", async ({
+test("@lab a controlled conversation left at its end reopens at latest, not an earlier reading place", async ({
   page,
 }) => {
   await page.goto("/workspaces");
@@ -135,6 +145,14 @@ test("@lab a controlled conversation reopens at latest instead of its old readin
         ),
       )
       .toBeGreaterThan(100);
+    await page.mouse.wheel(0, 8000);
+    await expect
+      .poll(() =>
+        stream.evaluate(
+          (el) => el.scrollHeight - el.scrollTop - el.clientHeight,
+        ),
+      )
+      .toBeLessThan(2);
     await page.getByTestId("home-link").filter({ visible: true }).click();
     if (from === "home") {
       await (

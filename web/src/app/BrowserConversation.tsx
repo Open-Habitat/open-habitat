@@ -204,6 +204,7 @@ import {
   isReadingIntro,
   useFollowLatest,
   useReadingPositionLayout,
+  useReturnToPlace,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
 import { GuideHeaderControl, NoticeEntry, useAssetsControl } from "./ViewHost";
@@ -395,6 +396,7 @@ function BrowserConversationContent({
     setAwayFromLatest,
     captureAnchor,
     restoreAnchor,
+    adoptPlace,
     ambiguous,
     alive,
     generation,
@@ -672,6 +674,15 @@ function BrowserConversationContent({
     older: olderForJump,
     feed,
     hold: holdForJump,
+  });
+  useReturnToPlace({
+    id,
+    store,
+    entries,
+    next,
+    feed,
+    skip: !!searchJump,
+    adopt: adoptPlace,
   });
   const { scrolled } = useFollowLatest({
     feed,

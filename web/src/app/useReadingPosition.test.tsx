@@ -1,6 +1,6 @@
 import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { showMissedEvents } from "./BrowserConversation";
 import { ConversationStore } from "./conversationStore";
 import { HistoryView } from "./HistoryView";
@@ -10,7 +10,11 @@ import {
   useFollowLatest,
   useReadingPosition,
   useReadingPositionLayout,
+  useReturnToPlace,
 } from "./useReadingPosition";
+
+// Reading places persist in session storage; each case starts without them.
+afterEach(() => sessionStorage.clear());
 
 const entry = (key: string): HistoryEntry => ({
   entry_key: key,
@@ -52,10 +56,20 @@ function Reader({
     restoreAnchor: position.restoreAnchor,
     setUnseen: position.setUnseen,
   });
+  useReturnToPlace({
+    id,
+    store,
+    entries,
+    next: undefined,
+    feed: position.feed,
+    skip: false,
+    adopt: position.adoptPlace,
+  });
   return (
     <div
       ref={position.feed as React.Ref<HTMLDivElement>}
       className="viewport"
+      data-unseen={position.unseen}
       onScroll={() => {
         const viewport = position.feed.current;
         if (!viewport) return;
@@ -199,7 +213,7 @@ for (const gesture of ["pointerDown", "focusIn"] as const) {
       // Browser scroll-into-view need not be preceded by a wheel gesture.
       viewport.scrollTop = 47;
       fireEvent[gesture](view.getAllByRole("button")[1]);
-      expect(store.position("controlled")).toEqual({
+      expect(store.position("controlled")).toMatchObject({
         key: "reply-0",
         offset: -47,
       });
@@ -303,10 +317,10 @@ for (const { row, offset } of [
   { row: 0, offset: 0 },
   { row: 12, offset: 47 },
 ]) {
-  it(`keeps older-page reply ${row + 1} at viewport offset ${offset} while paging, but opens latest on return`, () => {
+  it(`keeps older-page reply ${row + 1} at viewport offset ${offset} while paging and on return`, () => {
     const restore = geometry();
     try {
-      const store = new ConversationStore("reader");
+      const store = new ConversationStore("reader-paging");
       const tail = Array.from({ length: 25 }, (_, n) =>
         entry(`reply-${n + 26}`),
       );
@@ -328,15 +342,21 @@ for (const { row, offset } of [
       expect(store.position("controlled")).toEqual({
         key: `reply-${row + 1}`,
         offset: offset ? -offset : 0,
+        tail: "reply-50",
       });
       view.unmount(); // Home removes the controlled route entirely
+      // A reply arrived while the reader was away; the place still wins.
       const returned = render(
-        <Reader id="controlled" entries={[...older, ...tail]} store={store} />,
+        <Reader
+          id="controlled"
+          entries={[...older, ...tail, entry("reply-51")]}
+          store={store}
+        />,
       );
       const feed = returned.container.querySelector<HTMLElement>(".viewport");
       if (!feed) throw new Error("missing viewport");
-      expect(feed.scrollTop).toBe(feed.scrollHeight);
-      expect(feed.querySelector(".ah-feed > li")?.textContent).toBe("reply-1");
+      expect(feed.scrollTop).toBe(row * 100 + offset);
+      expect(feed.dataset.unseen).toBe("1");
       returned.unmount();
     } finally {
       restore();
@@ -344,10 +364,66 @@ for (const { row, offset } of [
   });
 }
 
-it("opens latest rather than a stored anchor on a read-only history return", () => {
+it("returns to latest, still following, when the reader left at the end", () => {
   const restore = geometry();
   try {
-    const store = new ConversationStore("reader");
+    const store = new ConversationStore("reader-end");
+    const pages = Array.from({ length: 10 }, (_, i) => entry(`reply-${i}`));
+    const view = render(
+      <Reader id="controlled" entries={pages} store={store} />,
+    );
+    const viewport = view.container.querySelector<HTMLElement>(".viewport");
+    if (!viewport) throw new Error("missing viewport");
+    viewport.scrollTop = 200; // read mid-history, then back to the end
+    fireEvent.scroll(viewport);
+    viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight;
+    fireEvent.scroll(viewport);
+    expect(store.position("controlled")).toBeUndefined();
+    view.unmount();
+    const more = [...pages, entry("reply-10")];
+    const returned = render(
+      <Reader id="controlled" entries={more} store={store} />,
+    );
+    const feed = returned.container.querySelector<HTMLElement>(".viewport");
+    if (!feed) throw new Error("missing viewport");
+    expect(feed.scrollTop).toBe(feed.scrollHeight);
+    feed.scrollTop = feed.scrollHeight - feed.clientHeight; // a browser clamps
+    returned.rerender(
+      <Reader
+        id="controlled"
+        entries={[...more, entry("reply-11")]}
+        store={store}
+      />,
+    );
+    expect(feed.scrollTop).toBe(feed.scrollHeight);
+    returned.unmount();
+  } finally {
+    restore();
+  }
+});
+
+it("keeps a reading place across a reload in the same tab, not across identities", () => {
+  const store = new ConversationStore("reload-reader");
+  store.savePosition("pi:a", { key: "k", offset: -12, tail: "t" });
+  store.dispose();
+  expect(new ConversationStore("reload-reader").position("pi:a")).toEqual({
+    key: "k",
+    offset: -12,
+    tail: "t",
+  });
+  expect(
+    new ConversationStore("someone-else").position("pi:a"),
+  ).toBeUndefined();
+  sessionStorage.setItem("nah:reload-reader:place:pi:b", '{"key":1}');
+  expect(
+    new ConversationStore("reload-reader").position("pi:b"),
+  ).toBeUndefined();
+});
+
+it("returns to a stored place on a read-only history return", () => {
+  const restore = geometry();
+  try {
+    const store = new ConversationStore("reader-archive");
     const agent: Agent = {
       agent_id: "pi:readonly",
       workspace_id: "ws",
@@ -385,7 +461,7 @@ it("opens latest rather than a stored anchor on a read-only history return", () 
     fireEvent.wheel(viewport, { deltaY: -100 });
     viewport.scrollTop = 47;
     fireEvent.scroll(viewport);
-    expect(store.position(agent.agent_id)).toEqual({
+    expect(store.position(agent.agent_id)).toMatchObject({
       key: "reply-1",
       offset: -47,
     });
@@ -394,7 +470,7 @@ it("opens latest rather than a stored anchor on a read-only history return", () 
     const feed = returned.container.querySelector<HTMLElement>(
       ".ah-conversation-stream",
     );
-    expect(feed?.scrollTop).toBe(feed?.scrollHeight);
+    expect(feed?.scrollTop).toBe(47);
     returned.unmount();
   } finally {
     restore();

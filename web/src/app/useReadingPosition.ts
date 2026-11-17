@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { LiveTurn } from "./conversationEvents";
-import type { ConversationStore } from "./conversationStore";
+import type { ConversationStore, ReadingPlace } from "./conversationStore";
 import type { HistoryEntry } from "./history";
 import { hiddenSessionEntry, sessionMarkers } from "./sessionSettings";
 
@@ -154,24 +154,15 @@ export function useReadingPosition(
       (entry) => entry.entry_key === previous.key,
     );
     if (index < 0) return;
-    const replies = entries
-      .slice(index + 1)
-      .filter(
-        (entry) =>
-          entry.kind === "assistant" &&
-          (entry.blocks?.some(
-            (block) => block.type === "text" && !!block.text,
-          ) ||
-            (!entry.blocks?.length && !!entry.content.text)),
-      );
+    const replies = newReplies(entries.slice(index + 1));
     for (const reply of replies) unseenReplies.current.add(reply.entry_key);
     if (replies.length) updateUnseen(unseenReplies.current.size);
   }, [id, entries]);
   const feed = useRef<HTMLElement>(null);
   const latest = useRef({ entries, next, unseen });
   latest.current = { entries, next, unseen };
-  // A route opening always starts at latest. Anchors belong to the current
-  // reading visit (paging/layout changes), not a later navigation back here.
+  // A route opening starts at latest; a return to a place left mid-history
+  // is brought back by useReturnToPlace, which hands it to adoptPlace.
   const readingAnchor = useRef<Anchor | undefined>(undefined);
   const followingPress = useRef<Element | undefined>(undefined);
   const selected = useRef(id);
@@ -233,7 +224,11 @@ export function useReadingPosition(
           key: keys[i],
           offset: rect.top - top,
         };
-        if (id) store.savePosition(id, readingAnchor.current);
+        if (id)
+          store.savePosition(id, {
+            ...readingAnchor.current,
+            tail: latest.current.entries.at(-1)?.entry_key,
+          });
         return;
       }
     }
@@ -260,6 +255,36 @@ export function useReadingPosition(
     },
     [],
   );
+  /** A returning reader takes back the place they left. Replies that
+   * arrived after it are new to them: the jump-to-latest control counts
+   * them until they are seen. */
+  const adoptPlace = useCallback((place: ReadingPlace) => {
+    const pages = latest.current.entries;
+    const viewport = feed.current;
+    const row =
+      viewport?.querySelectorAll<HTMLElement>(".ah-feed > li")[
+        rowIndexOf(pages, place.key)
+      ];
+    // Until its row is laid out the view stays an ordinary opening.
+    if (!viewport || !row) return false;
+    const tail = place.tail
+      ? pages.findIndex((entry) => entry.entry_key === place.tail)
+      : -1;
+    if (tail >= 0)
+      for (const reply of newReplies(pages.slice(tail + 1)))
+        unseenReplies.current.add(reply.entry_key);
+    wasAtBottom.current = false;
+    readingAnchor.current = { key: place.key, offset: place.offset };
+    updateUnseen(unseenReplies.current.size);
+    setAwayFromLatest(true);
+    // Unlike restoreAnchor, an opening is no reader gesture to protect:
+    // the view may still sit past its end where the opening put it.
+    viewport.scrollTop +=
+      row.getBoundingClientRect().top -
+      viewport.getBoundingClientRect().top -
+      place.offset;
+    return true;
+  }, []);
   // Protect every pointer press from host renders/resizes until activation.
   // A following view only lends its anchor until click: scroll-into-view may
   // already have moved it from the bottom, but expanding output must still
@@ -353,7 +378,120 @@ export function useReadingPosition(
     setAwayFromLatest,
     captureAnchor,
     restoreAnchor,
+    adoptPlace,
   };
+}
+
+/** Native replies with text, not tool results or empty assistant steps. */
+function newReplies(entries: HistoryEntry[]) {
+  return entries.filter(
+    (entry) =>
+      entry.kind === "assistant" &&
+      (entry.blocks?.some((block) => block.type === "text" && !!block.text) ||
+        (!entry.blocks?.length && !!entry.content.text)),
+  );
+}
+
+/** How far back a return reads for its place, as a search hit does. */
+const maxReturnPages = 60;
+
+/**
+ * Brings a conversation back to where its reader left it when they return
+ * to it, reading older pages first if the place is no longer in the window.
+ * A conversation left at its end has no place and opens at latest, still
+ * following. An explicit target (a search hit) wins: `skip` holds it.
+ * While the place is being read back the view behaves as a fresh opening;
+ * the reader's own scroll in that time cancels the return.
+ */
+export function useReturnToPlace({
+  id,
+  store,
+  entries,
+  next,
+  feed,
+  skip,
+  adopt,
+}: {
+  id: string | undefined;
+  store: ConversationStore;
+  entries: HistoryEntry[];
+  next: string | undefined;
+  feed: RefObject<HTMLElement | null>;
+  skip: boolean;
+  /** Takes the place as the view's reading anchor; false if its row is not
+   * laid out yet. */
+  adopt: (place: ReadingPlace) => boolean;
+}) {
+  const pending = useRef<
+    | { id: string; place: ReadingPlace; pages: number; stalls: number }
+    | undefined
+  >(undefined);
+  const opened = useRef<string | undefined>(undefined);
+  const loading = useRef(false);
+  const [retry, setRetry] = useState(0);
+  const latestEntries = useRef(entries);
+  latestEntries.current = entries;
+  // Read on every opening of a conversation, including this view's mount.
+  useLayoutEffect(() => {
+    if (opened.current === id) return;
+    opened.current = id;
+    const place = id && !skip ? store.position(id) : undefined;
+    pending.current =
+      id && place ? { id, place, pages: 0, stalls: 0 } : undefined;
+  }, [id, skip, store]);
+  useLayoutEffect(() => {
+    if (skip) pending.current = undefined;
+  }, [skip]);
+  useLayoutEffect(() => {
+    void retry;
+    const wanted = pending.current;
+    if (!wanted || wanted.id !== id || !entries.length) return;
+    if (rowIndexOf(entries, wanted.place.key) >= 0) {
+      if (adopt(wanted.place)) pending.current = undefined;
+      return;
+    }
+    if (!next || wanted.pages >= maxReturnPages || wanted.stalls >= 3) {
+      // The place is gone (a rewritten or cut history): open at latest.
+      pending.current = undefined;
+      store.savePosition(wanted.id);
+      return;
+    }
+    if (loading.current) return;
+    loading.current = true;
+    wanted.pages++;
+    const before = entries;
+    void store
+      .older(wanted.id)
+      .catch(() => {})
+      .finally(() => {
+        loading.current = false;
+        // A read that changed nothing (one already in flight, a failure)
+        // asks again shortly; three in a row end the return.
+        window.setTimeout(() => {
+          if (pending.current !== wanted) return;
+          if (latestEntries.current === before) wanted.stalls++;
+          else wanted.stalls = 0;
+          setRetry((n) => n + 1);
+        }, 250);
+      });
+  }, [id, entries, next, adopt, store, retry]);
+  // The reader's own scroll while the place is read back is their choice.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries binds when history mounts the stream.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport || !pending.current) return;
+    const cancel = () => {
+      pending.current = undefined;
+    };
+    viewport.addEventListener("wheel", cancel, { passive: true });
+    viewport.addEventListener("touchmove", cancel, { passive: true });
+    viewport.addEventListener("keydown", cancel);
+    return () => {
+      viewport.removeEventListener("wheel", cancel);
+      viewport.removeEventListener("touchmove", cancel);
+      viewport.removeEventListener("keydown", cancel);
+    };
+  }, [feed, id, entries]);
 }
 
 export function useReadingPositionLayout({

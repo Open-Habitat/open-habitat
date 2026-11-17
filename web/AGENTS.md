@@ -10,7 +10,8 @@ application and session state and the facts the host synchronizes;
 conversation metadata and opened history windows live in the separate
 in-memory store in `src/app/` that components subscribe to per conversation,
 so a streaming answer rerenders only its own view; session storage keeps
-per-tab drafts and outstanding command markers; ephemeral things such as focus
+per-tab drafts, outstanding command markers and each conversation's reading
+place (a native entry key and offset, never content); ephemeral things such as focus
 and open menus stay in the owning component. History is never persisted in
 browser storage, and no database library is added. The UI is in Finnish and
 English (below) and desktop-first. Keyboard shortcuts must work on a Finnish keyboard, the one its

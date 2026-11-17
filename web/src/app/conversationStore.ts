@@ -22,6 +22,43 @@ import {
 } from "./replySeen";
 import type { Agent, Snapshot } from "./snapshot";
 
+/** A reading position as native identity, not pixels: the first visible
+ * row, its offset from the top of the view, and the newest entry the reader
+ * had when it was taken (replies after it are new to them on return). */
+export type ReadingPlace = { key: string; offset: number; tail?: string };
+
+const placeKey = (identity: string, id: string) =>
+  `nah:${identity}:place:${id}`;
+
+function readStoredPlace(
+  identity: string,
+  id: string,
+): ReadingPlace | undefined {
+  try {
+    const value: unknown = JSON.parse(
+      sessionStorage.getItem(placeKey(identity, id)) ?? "null",
+    );
+    if (!value || typeof value !== "object") return undefined;
+    const { key, offset, tail } = value as Record<string, unknown>;
+    if (typeof key !== "string" || !key) return undefined;
+    if (typeof offset !== "number" || !Number.isFinite(offset))
+      return undefined;
+    return typeof tail === "string" ? { key, offset, tail } : { key, offset };
+  } catch {
+    return undefined;
+  }
+}
+
+function storePlace(identity: string, id: string, place?: ReadingPlace) {
+  try {
+    if (place)
+      sessionStorage.setItem(placeKey(identity, id), JSON.stringify(place));
+    else sessionStorage.removeItem(placeKey(identity, id));
+  } catch {
+    /* A full or unavailable storage keeps the place for this page only. */
+  }
+}
+
 export type WindowView = Readonly<{
   entries: HistoryEntry[];
   cutOff?: boolean;
@@ -144,7 +181,7 @@ export class ConversationStore {
   }
   private readonly pager: ConversationPager;
   private windows = new Map<string, WindowRecord>();
-  private positions = new Map<string, { key: string; offset: number }>();
+  private positions = new Map<string, ReadingPlace>();
   private toolExpansions = new Map<string, Map<string, boolean>>();
   private metadata: Metadata = {
     agents: new Map(),
@@ -341,7 +378,17 @@ export class ConversationStore {
     });
   }
   statusStale = (id: string): boolean => this.metadata.staleStatuses.has(id);
-  position = (id: string) => this.positions.get(id);
+  /** Where the reader left this conversation, if not at its end. The place
+   * outlives the cached window (a return reads back to it) and, through
+   * this tab's session storage, a reload. It holds native identifiers only,
+   * never history content. */
+  position = (id: string): ReadingPlace | undefined => {
+    if (!this.positions.has(id)) {
+      const stored = readStoredPlace(this.identity, id);
+      if (stored) this.positions.set(id, stored);
+    }
+    return this.positions.get(id);
+  };
   toolExpansion = (id: string, callId: string) => ({
     get: () => this.toolExpansions.get(id)?.get(callId),
     set: (value: boolean) => {
@@ -353,9 +400,10 @@ export class ConversationStore {
       calls.set(callId, value);
     },
   });
-  savePosition = (id: string, value?: { key: string; offset: number }) => {
+  savePosition = (id: string, value?: ReadingPlace) => {
     if (value) this.positions.set(id, value);
     else this.positions.delete(id);
+    storePlace(this.identity, id, value);
   };
   subscribeMetadata = (listener: () => void) => {
     this.metaListeners.add(listener);
@@ -686,7 +734,6 @@ export class ConversationStore {
       if (oldest) {
         oldest[1].startPage?.abort.abort();
         this.windows.delete(oldest[0]);
-        this.positions.delete(oldest[0]);
         this.toolExpansions.delete(oldest[0]);
       }
     }

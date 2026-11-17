@@ -93,6 +93,7 @@ import { TurnChangesRoot, TurnChangesSource } from "./TurnChangesSource";
 import {
   rowIndexOf,
   scrollToEnd,
+  useReturnToPlace,
   visibleEntryKeys,
 } from "./useReadingPosition";
 import { NoticeEntry, useAssetsControl } from "./ViewHost";
@@ -1719,6 +1720,7 @@ function HistoryViewContent({
     ) {
       following.current = true;
       anchor.current = undefined;
+      store.savePosition(agent.agent_id);
       return;
     }
     if (!paging && following.current) return;
@@ -1730,7 +1732,10 @@ function HistoryViewContent({
       const rect = rows[i].getBoundingClientRect();
       if (rect.bottom > top && keys[i]) {
         anchor.current = { key: keys[i], offset: rect.top - top };
-        store.savePosition(agent.agent_id, anchor.current);
+        store.savePosition(agent.agent_id, {
+          ...anchor.current,
+          tail: entries.at(-1)?.entry_key,
+        });
         break;
       }
     }
@@ -1800,24 +1805,33 @@ function HistoryViewContent({
     () => store.older(agent.agent_id),
     [store, agent.agent_id],
   );
-  const holdForJump = useCallback(
+  const hold = useCallback(
     (held: { key: string; offset: number }) => {
       const viewport = stream.current;
-      following.current = false;
-      anchor.current = held;
-      store.savePosition(agent.agent_id, held);
-      if (!viewport) return;
       const row =
-        viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[
+        viewport?.querySelectorAll<HTMLElement>(".ah-feed > li")[
           rowIndexOf(entries, held.key)
         ];
-      if (!row) return;
+      if (!viewport || !row) return false;
+      following.current = false;
+      anchor.current = { key: held.key, offset: held.offset };
       viewport.scrollTop +=
         row.getBoundingClientRect().top -
         viewport.getBoundingClientRect().top -
         held.offset;
+      return true;
     },
-    [store, agent.agent_id, entries],
+    [entries],
+  );
+  const holdForJump = useCallback(
+    (held: { key: string; offset: number }) => {
+      // The hit holds the view even before its row is laid out.
+      following.current = false;
+      anchor.current = { key: held.key, offset: held.offset };
+      store.savePosition(agent.agent_id, held);
+      hold(held);
+    },
+    [store, agent.agent_id, hold],
   );
   const jumpState = useJumpToHit({
     jump: searchJump,
@@ -1826,6 +1840,15 @@ function HistoryViewContent({
     older: olderForJump,
     feed: stream,
     hold: holdForJump,
+  });
+  useReturnToPlace({
+    id: agent.agent_id,
+    store,
+    entries,
+    next: window?.next,
+    feed: stream,
+    skip: !!searchJump,
+    adopt: hold,
   });
   const state =
     agent.history !== "readable" ? "error" : (window?.state ?? "loading");
