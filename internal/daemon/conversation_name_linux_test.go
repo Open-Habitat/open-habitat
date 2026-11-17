@@ -361,3 +361,52 @@ func TestTitleLostInRestartIsWrittenAfterContinuation(t *testing.T) {
 		t.Fatalf("a named history was retitled: %q %q", prompts, h.nativeName(id))
 	}
 }
+
+// A Pi started after the restart only for a recap owes the title too, but
+// generates it only once the person takes that same handle over.
+func TestOwedTitleWaitsForRecapStartedHandleToBeTakenOver(t *testing.T) {
+	h := newHeldHarness(t)
+	namingFakePi(t, h)
+	first, stopFirst := h.daemon()
+	first.mu.Lock()
+	first.titleGenerator = func(string) (string, error) { return "", titleModelUnavailable }
+	first.mu.Unlock()
+	id := h.create(first)
+	if w := h.send(first, id, "Siivoa levy", heldA); w.Code != 200 {
+		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("first turn settled untitled", func() bool {
+		first.mu.Lock()
+		defer first.mu.Unlock()
+		s := first.sessions[id]
+		return s.settled && s.automaticFirst && !s.naming
+	})
+	stopFirst()
+	h.eventually("first incarnation's Pi reaped", func() bool {
+		first.mu.Lock()
+		defer first.mu.Unlock()
+		return first.sessions[id].dead
+	})
+
+	second, stopSecond := h.daemon()
+	defer stopSecond()
+	var calls atomic.Int32
+	second.mu.Lock()
+	second.titleGenerator = func(string) (string, error) { calls.Add(1); return "Levyn siivous", nil }
+	second.mu.Unlock()
+	if _, problem := second.resume(id, nil, startRecap); problem != "" {
+		t.Fatalf("recap start: %s", problem)
+	}
+	h.eventually("recap Pi idle", func() bool { _, v := h.status(second, id); return v.State == "idle" })
+	time.Sleep(300 * time.Millisecond)
+	if calls.Load() != 0 {
+		t.Fatal("a recap-only Pi generated a title")
+	}
+	if w := h.send(second, id, "Jatka", heldB); w.Code != 200 {
+		t.Fatalf("send to recap Pi: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("taken-over conversation named", func() bool { return h.nativeName(id) == "Levyn siivous" })
+	if calls.Load() != 1 {
+		t.Fatalf("title model calls: %d", calls.Load())
+	}
+}

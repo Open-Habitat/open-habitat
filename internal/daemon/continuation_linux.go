@@ -327,7 +327,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		old.held, old.heldChoice, old.bash = nil, nil, nil
 	}
 	s.wokeFrom = woke
-	s.titleOwed = s.firstText != "" && kind != startRecap
+	s.titleOwed = s.firstText != ""
 	if kind != startHeldSend {
 		s.lazy = false
 	}

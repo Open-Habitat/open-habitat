@@ -242,9 +242,10 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 		s.automaticFirst = true
 		c.beginNaming(s)
 		go c.nameConversation(s, s.firstText, false)
-	} else if s.titleOwed && s.settled && !s.automaticFirst {
+	} else if s.titleOwed && !s.recapOnly && s.settled && !s.automaticFirst {
 		// A continued handle: the daemon that ran the first turn may have
 		// stopped before its title was written, and that job went with it.
+		// A recap-only Pi waits until the person takes it over.
 		// nameConversation leaves any existing name alone, so a history
 		// named before the restart costs one native read and no model call.
 		s.titleOwed = false

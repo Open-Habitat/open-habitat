@@ -81,6 +81,7 @@ export class ConversationJournal {
   private recoverAt = 0;
   private failures = 0;
   private invalidation = 0;
+  private reconcileOwed = false;
   private offline = false;
   private agentSnapshotAt = Number.NEGATIVE_INFINITY;
   // Whether every invalidation since the last discharging snapshot was an
@@ -119,7 +120,9 @@ export class ConversationJournal {
       // Another daemon instance's sequence numbers are unordered against
       // this one's, and its snapshot answers everything the old one owed.
       // Kept, an old invalidation would read each new snapshot as stale and
-      // request another until the new daemon's sequence passed it.
+      // request another until the new daemon's sequence passed it. The
+      // stale windows it left are still reconciled with that snapshot.
+      if (this.invalidation) this.reconcileOwed = true;
       this.invalidation = 0;
       this.agentOnlyInvalidation = false;
     }
@@ -205,7 +208,8 @@ export class ConversationJournal {
       if (this.agentOnlyInvalidation) this.agentSnapshot();
       else this.snapshotNow();
     else {
-      if (this.invalidation) this.store.reconcileStale();
+      if (this.invalidation || this.reconcileOwed) this.store.reconcileStale();
+      this.reconcileOwed = false;
       this.invalidation = 0;
       this.agentOnlyInvalidation = false;
     }

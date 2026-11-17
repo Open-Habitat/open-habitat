@@ -664,7 +664,10 @@ describe("one tab-wide journal", () => {
       // instance's sequence starts low and its snapshot is the truth.
       journal.resume(snapshot(3, other));
       expect(store.reseed).toHaveBeenCalled();
+      // The windows the old invalidation left stale are reconciled once.
+      expect(store.reconcileStale).toHaveBeenCalledTimes(1);
       journal.resume(snapshot(3, other));
+      expect(store.reconcileStale).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(5000);
       expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
       journal.stop();
