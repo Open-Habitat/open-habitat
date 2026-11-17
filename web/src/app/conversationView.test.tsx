@@ -235,6 +235,67 @@ describe("the conversation view while it becomes ready", () => {
     expect(sent).toEqual([]);
   });
 
+  it("waits with the gap notice for the native read that closes the gap", async () => {
+    // A new conversation's first snapshot often trails the event stream on
+    // a loaded host: the gap is marked and its read starts at once.
+    const reads: ((value: { pages: never[]; met: boolean }) => void)[] = [];
+    store.dispose();
+    store = new ConversationStore(
+      "person",
+      {
+        tail: vi.fn(() => new Promise(() => {})),
+        older: vi.fn(),
+        reconnect: vi.fn(
+          () =>
+            new Promise((resolve) => {
+              reads.push(resolve);
+            }),
+        ),
+        cancelAll: vi.fn(),
+      } as unknown as ConversationPager,
+      50,
+      () => new Promise(() => {}),
+    );
+    vi.mocked(conversations.status).mockImplementation(() =>
+      transport.reply(
+        "status",
+        status({
+          state: "working",
+          run_active: true,
+          native_history: "present",
+        }),
+      ),
+    );
+    render(view({ id: agent }));
+    await act(() => transport.deliver("status"));
+    const gap = () =>
+      act(() => {
+        store.setLive(agent, {
+          cursor: `ev1:${life}:0`,
+          instance: life,
+          sequence: 0,
+          fragments: [],
+          truncated: false,
+        });
+        store.routeEvent({
+          resource: { agent_id: agent },
+          kind: "assistant.delta",
+          payload: { text: "missed" },
+          cursor: `ev1:${life}:2`,
+          server_instance_id: life,
+          sequence: 2,
+          event_id: "gap",
+        } as never);
+      });
+    await gap();
+    expect(store.read(agent)?.live?.missed).toBe(true);
+    expect(screen.queryByTestId("event-gap")).toBeNull();
+    // A gap the read does not close soon is said.
+    expect(
+      await screen.findByTestId("event-gap", undefined, { timeout: 2000 }),
+    ).toBeTruthy();
+  });
+
   it("wakes a resting agent for what was typed before the view knew it rests", async () => {
     vi.mocked(conversations.status).mockImplementation(() =>
       transport.reply("status", status({ state: "stopped" })),
