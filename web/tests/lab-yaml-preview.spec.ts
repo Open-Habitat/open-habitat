@@ -47,10 +47,9 @@ for (const width of [1440, 390]) {
         .getByTestId("editor-file-entry")
         .and(page.locator('[data-path="preview.yml"]'))
         .click();
-      await expect(page.getByTestId("editor-document")).toBeVisible();
+      await expect(page.getByTestId("editor-preview")).toBeVisible();
       if (await page.getByTestId("editor-file-picker").isVisible())
         await page.getByTestId("editor-picker").click();
-      await page.getByTestId("editor-preview-toggle").click();
       const preview = page.getByTestId("yaml-preview");
       await expect(preview).toBeVisible();
       await preview.getByText("Example", { exact: true }).hover();

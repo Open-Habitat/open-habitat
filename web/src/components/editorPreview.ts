@@ -16,6 +16,10 @@ const views: [RegExp, FileView][] = [
 export const fileView = (path?: string): FileView | undefined =>
   path ? views.find(([pattern]) => pattern.test(path))?.[1] : undefined;
 
+/** Line-addressed links ask for source, even for a previewable file. */
+export const initialPreview = (path?: string, line?: number): boolean =>
+  !!fileView(path) && !line;
+
 /** The 0-based lines of a Markdown text's ATX headings outside fences and
  * frontmatter, in the order the rendered document shows them. */
 export function headingLines(text: string): number[] {

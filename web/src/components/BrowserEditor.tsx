@@ -20,12 +20,12 @@ import {
   fileView,
   headingLines,
   heightToLine,
+  initialPreview,
   lineToHeight,
 } from "./editorPreview";
 import type { TreeDirectories } from "./editorTree";
 import type { FileRef } from "./fileRefs";
 import { Icon } from "./Icon";
-import { choosePreviewRenderer } from "./previewRegistry";
 import "./BrowserEditor.css";
 
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
@@ -192,14 +192,24 @@ export function BrowserEditor(p: BrowserEditorProps) {
   const view = fileView(path);
   // A new file chooses its initial view afresh. Text stays mounted while
   // hidden, so undo history and the cursor survive preview switches.
-  const special =
-    !!path && !!choosePreviewRenderer({ root: "workspace", path });
-  const [viewChoice, setViewChoice] = useState({ path, preview: special });
-  if (viewChoice.path !== path) setViewChoice({ path, preview: special });
+  const selection = p.document?.selection;
+  const initial = initialPreview(path, selection?.line);
+  const [viewChoice, setViewChoice] = useState({
+    path,
+    selection,
+    preview: initial,
+  });
+  // Reveal source before the engine's selection effect scrolls and focuses it.
+  // Record the request so later preview choices survive while this file is open.
+  if (
+    viewChoice.path !== path ||
+    (selection?.line && viewChoice.selection !== selection)
+  )
+    setViewChoice({ path, selection, preview: initial });
   const setPreviewed = (value: string | undefined) =>
-    setViewChoice({ path, preview: value !== undefined });
+    setViewChoice({ path, selection, preview: value !== undefined });
   const shown =
-    !!view && (viewChoice.path === path ? viewChoice.preview : special);
+    !!view && (viewChoice.path === path ? viewChoice.preview : initial);
   // The preview follows the buffer, not the file on disk; a large file
   // renders behind typing instead of on every keystroke.
   const [live, setLive] = useState({ revision: -1, text: "" });
@@ -281,11 +291,6 @@ export function BrowserEditor(p: BrowserEditorProps) {
     el.addEventListener("keydown", onKey, true);
     return () => el.removeEventListener("keydown", onKey, true);
   }, [previewable]);
-  // A link to a line asks for the text.
-  const selection = p.document?.selection;
-  useEffect(() => {
-    if (selection?.line) setViewChoice({ path, preview: false });
-  }, [selection, path]);
   // A table, picture or page opens without waiting for its renderer.
   useEffect(() => {
     if (view && view.kind !== "markdown") void loadFilePreview();

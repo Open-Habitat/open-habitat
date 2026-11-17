@@ -907,7 +907,6 @@ for (const width of [1366, 390])
         .and(page.locator('[data-path=".agents"]'));
       await agents.click();
       await openEntry(page, ".agents/start-page.md");
-      await page.getByTestId("editor-preview-toggle").click();
       const preview = page.getByTestId("editor-preview");
       await expect(preview.locator(".ah-yaml-card header")).toContainText(
         "Plan work",
@@ -931,7 +930,6 @@ for (const width of [1366, 390])
           { labOrigin: hostOrigin },
         );
       await openEntry(page, "workflow.yml");
-      await page.getByTestId("editor-preview-toggle").click();
       await expect(preview).toHaveAttribute("data-kind", "yaml");
       await expect(preview.getByText("on", { exact: true })).toBeVisible();
       await expect(preview.locator(".ah-yaml-card header")).toContainText(
@@ -961,6 +959,49 @@ for (const width of [1366, 390])
       );
     });
 
+    test(`@browser-editor preview-first line links and reopen ${width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await openFile(page, width === 390);
+      const state = await (await page.request.get("/api/v1/snapshot")).json();
+      const root = state.workspaces.find(
+        (w: { name: string }) => w.name === "git-project",
+      ).path;
+      await writeFile(
+        join(root, "cmd/notes.md"),
+        [
+          "`cmd/notes.md:42`",
+          "",
+          ...Array.from({ length: 60 }, (_, i) => `source line ${i + 3}`),
+        ].join("\n"),
+      );
+      await openEntry(page, "cmd/notes.md");
+      const preview = page.getByTestId("editor-preview");
+      await expect(preview).toBeVisible();
+      // Uses the same FileRef route as a line link in an agent answer.
+      await preview.locator('a[href="#cmd%2Fnotes.md%3A42"]').click();
+      const doc = page.getByTestId("editor-document");
+      await expect(doc).toBeVisible();
+      await expect(doc).toBeFocused();
+      await expect
+        .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+        .toBe("source line 42");
+      await expect(
+        doc.locator(".cm-line").filter({ hasText: /^source line 42$/ }),
+      ).toBeInViewport();
+      // An explicit choice wins over the opening line once it has been handled.
+      await page.getByTestId("editor-preview-toggle").click();
+      await page.getByTestId("editor-picker").click();
+      await page.getByTestId("editor-picker").click();
+      await expect(preview).toBeVisible();
+      await page.getByTestId("editor-text-toggle").click();
+      await openEntry(page, "cmd/main.go");
+      await expect(doc).toBeVisible();
+      await openEntry(page, "cmd/notes.md");
+      await expect(preview).toBeVisible();
+    });
+
     test(`@browser-editor @a11y markdown preview and heading folds ${width}`, async ({
       page,
     }) => {
@@ -974,6 +1015,16 @@ for (const width of [1366, 390])
       await expect(preview).toHaveCount(0);
       await expect(doc).toBeFocused();
       await openEntry(page, "cmd/notes.md");
+      await expect(preview).toBeVisible();
+      await expect(page.getByTestId("editor-preview-toggle")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await page.getByTestId("editor-text-toggle").click();
+      // Opening and closing the picker must not reset an explicit choice.
+      await page.getByTestId("editor-picker").click();
+      await page.getByTestId("editor-picker").click();
+      await expect(preview).toHaveCount(0);
       const line = (text: string) =>
         doc.locator(".cm-line").filter({ hasText: new RegExp(`^${text}$`) });
       // A folded heading ends in its placeholder.
@@ -1086,6 +1137,8 @@ for (const width of [1366, 390])
       // A CSV opens as a table on the line the text showed, numbered by
       // text line, and returns to the line the table showed.
       await openEntry(page, "cmd/taulu.csv");
+      await expect(preview.getByTestId("editor-preview-table")).toBeVisible();
+      await page.getByTestId("editor-text-toggle").click();
       // Focus first: a click scrolls the text to its cursor.
       await doc.click();
       await page
@@ -1142,9 +1195,8 @@ for (const width of [1366, 390])
       await openEntry(page, "cmd/tunnus.svg");
       await expect(page.getByTestId("editor-preview-toggle")).toHaveAttribute(
         "aria-pressed",
-        "false",
+        "true",
       );
-      await doc.press("Control+Shift+V");
       const image = preview.getByTestId("editor-preview-image");
       await expect(image).toBeVisible();
       await expect
@@ -1157,7 +1209,6 @@ for (const width of [1366, 390])
 
       // HTML shows in a sandboxed frame without scripts or network.
       await openEntry(page, "cmd/sivu.html");
-      await page.getByTestId("editor-preview-toggle").click();
       const frame = preview.getByTestId("editor-preview-page");
       await expect(frame).toBeVisible();
       await expect(frame).toHaveAttribute("sandbox", "");

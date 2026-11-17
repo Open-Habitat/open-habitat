@@ -5,6 +5,7 @@ import {
   fileView,
   headingLines,
   heightToLine,
+  initialPreview,
   lineToHeight,
 } from "./editorPreview";
 
@@ -27,6 +28,34 @@ it("gives a preview to Markdown, YAML, tables, SVG and HTML", () => {
   expect(fileView("a.json")?.kind).toBe("yaml");
   for (const path of ["c.go", "d.txt", "csv", undefined])
     expect(fileView(path)).toBeUndefined();
+});
+
+describe("initial view", () => {
+  it.each([
+    "notes.md",
+    "notes.MARKDOWN",
+    ".agents/start-page.md",
+    "config.yaml",
+    "workflow.yml",
+    "data.json",
+    "data.csv",
+    "data.tsv",
+    "image.svg",
+    "page.html",
+    "page.htm",
+  ])("previews %s unless opened at a source line", (path) => {
+    expect(initialPreview(path)).toBe(true);
+    expect(initialPreview(path, 1)).toBe(false);
+    expect(initialPreview(path, 42)).toBe(false);
+  });
+
+  it.each([undefined, "main.go", "notes.txt", "README"])(
+    "opens %s without a preview as source",
+    (path) => {
+      expect(initialPreview(path)).toBe(false);
+      expect(initialPreview(path, 42)).toBe(false);
+    },
+  );
 });
 
 describe("same place in text and preview", () => {
