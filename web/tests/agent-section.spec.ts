@@ -53,8 +53,10 @@ test("@agent-section the agent's quiet choice holds its reply in Hiljaiset until
   await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
     timeout: 60000,
   });
-  // Without the choice a finished reply waits in Sinun vuorosi.
-  await expect(row(page, "rail-quiet", id)).toBeVisible();
+  // Without the choice a finished reply waits in Sinun vuorosi. The rail
+  // learns of the turn's end from its own status, which may trail the
+  // composer.
+  await expect(row(page, "rail-quiet", id)).toBeVisible({ timeout: 30000 });
   await expect(row(page, "rail-yours", id)).toHaveCount(0);
   // It stays there through a reload: the person's daemon keeps the choice.
   await page.reload();

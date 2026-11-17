@@ -1,86 +1,110 @@
-# Design result (14.11.2026, rewritten the same evening)
+# Result (17.11.2026): the agent chooses its conversation's rail section
 
-The design is in [worker-asks-parent/design.md](../worker-asks-parent/design.md),
-together with the worker-question flow. Its part 1 covers this issue and was
-rewritten to Jari's decision: the agent chooses only its conversation's
-section, *Käynnissä* or *Sinun vuorosi*, with an `open-habitat` command, and
-writes no text on the row. It says when the choice holds and ends, what
-Habitat still observes and always wins, and how it would be built. This issue
-is the first slice and needs nothing from Taskfleet.
+Implemented as Jari decided on 17.11.: after its reply the agent can place its
+own conversation in any of the three sections with
 
-Nothing is implemented. The issue stays open with preparation pending until
-Jari has read the design and answered its questions. What was kept as
-decided, what became a proposal and what was dropped is listed under
-"Erottelu" in [worker-asks-parent/result.md](../worker-asks-parent/result.md).
+    open-habitat agent section update --current --section yours|running|quiet --json
 
-Live check: no test-server behaviour changed; there is no section command to
-try yet.
+No text appears on the row and the rail looks as before. Without a choice
+nothing changes.
 
-## Prototype round 1 — the rail (14.11.2026)
+## How it behaves
 
-Round `design-system/prototypes/rounds/2026-11-14-rail-agent-state/`.
-It follows the design above (commands, sections, expiry, labels), and its
-`NOTES.md` says what each direction needs from that model beyond it. The
-axis is **how the agent's declared state shows next to what Habitat
-observes**. All directions place rows by the design's rules. The picker
-also offers **Nyt**, today's rail for the same conversations.
+- **yours** (Sinun vuorosi): same as no choice; the reply claims the person's
+  turn.
+- **running** (Käynnissä): the reply does not claim the person's turn while
+  Habitat sees the conversation's work going on (a worker working, or a process
+  the agent waits on). When that work ends without a new turn, the reply moves
+  to Sinun vuorosi like any reply.
+- **quiet** (Hiljaiset): the reply does not claim the person's turn. If work is
+  still going on, the row stays in Käynnissä until it ends, then goes to
+  Hiljaiset.
+- **The choice belongs to one turn.** The next turn (the person writes, or a
+  worker's completion wakes the agent), an accepted message and an archive
+  remove it.
+- **What wins over it:** the person's Nosta and Ei nyt, a native Pi question, a
+  running turn, a crash or cut turn, and a turn that ended in an error.
 
-- **1 Agentin rivi**: the agent's words appear under the title as a second
-  line ("Odottaa kahta workeria", the question). A worker's open question
-  shows on the parent row ("Korkeusdata kysyy agentilta"). A
-  `waiting_workers` that lapsed after a restart stays visible as muted
-  italics ("Odotti kahta workeria · niitä ei enää näy") while its reply
-  waits. Observed rows keep one line, so a declaration looks different
-  from an observation.
-- **2 Sama kieli**: rows stay one line and a declaration looks like an
-  observation. Only `needs_answer` gets a second line, its text. A lapsed
-  handoff disappears without a trace, as in the design.
-- **3 Kysymysrivi**: rows as in 2, but each open question is its own
-  indented row under its conversation. It sits in Käynnissä while the
-  agent handles it and moves to Sinun vuorosi with the conversation when
-  the agent escalates.
+## The guidance the agent gets (Jari 17.11.: the most important part)
 
-**Recommendation: 1 Agentin rivi.** You can read why a conversation is
-where it is without opening it. The question is visible as words where the
-person decides whether to answer now. A lapsed declaration says so instead
-of the row silently changing its reason. Direction 2 is almost invisible
-in Käynnissä, because the mark alone does not tell "waiting for workers"
-from "working". Direction 3 makes the most of the worker question, but
-adds rows to a rail kept to one line per conversation, and on a phone the
-question row has room for only a few words.
+The text is in the Habitat host context, which every browser conversation's Pi
+reads (`internal/daemon/host-context.md`, section Conversations), and in more
+detail in the agent skill (`internal/cli/agent/SKILL.md`). In short:
 
-The checks covered every direction at 1440 and 390 px in Päivä, Yö and
-Kontrasti, plus English (`check.mjs`, 457 checks, clean console). They
-also clicked the events: escalation, the person writing, and the workers
-finishing.
+- **yours** when it needs or offers something to the person: a question, a
+  decision or a result to read. This is the default after every reply, so the
+  agent seldom needs to say it.
+- **running** when it has work in flight that it will report on itself
+  (workers it started, a wait or job), and the reply asks nothing yet: "I
+  started the workers and will report back".
+- **quiet** only when there is a reason, usually that the person asked for it
+  ("laita tämä hiljaisiin"). Never on its own judgement that nothing seems
+  pending; a finished answer belongs in Sinun vuorosi.
 
-### Decisions for later review (round 1)
+## Decisions for later review
 
-- **The waiting row counts the workers** ("Odottaa kahta workeria"), where
-  the design's label is *Odottaa workereita*. Alternative: the design's
-  fixed label. Reason: `spinoffs_working` already gives the count, and it
-  tells the person how much is still outstanding.
-- **A lapsed `waiting_workers` is shown as lapsed in direction 1.** The
-  design places the row by observation without a trace. Alternative: the
-  design as it is (directions 2 and 3). Reason: when a row jumps from
-  Käynnissä to Sinun vuorosi with no new reply, the person deserves to
-  know why. The cost is that the snapshot or railNow keeps the lapsed
-  handoff visible until its reply is opened.
-- **In direction 1 the question line shows the question itself, without
-  the *Kysyy sinulta* prefix.** Alternative: the design's full label on
-  the line. Reason: at rail width the prefix leaves room for two words of
-  the question. The section heading and the mark already say it is the
-  person's turn, and the prefix stays in the row's description for
-  assistive technology.
+- **Command shape.** `agent section update --current --section …`, with no
+  `--conversation` and no `show`. Alternatives: an explicit conversation ID, a
+  read command. Why: the agent places only its own conversation; the snapshot
+  already shows the stored choice to the browser. `--dry-run` is refused as
+  `dry_run_unsupported`, because the only effect is a per-turn choice and a
+  repeat reports no change.
+- **Only during the conversation's own running turn.** The daemon refuses
+  with `conversation_not_running` outside one and with `current_context_stale`
+  for an older launch. Alternative: allow it any time. Why: the choice
+  describes the reply of the turn it is made in, and a leftover background
+  script should not re-place a conversation that has moved on.
+- **What the choice binds to: the turn, not a reply ID.** The daemon clears it
+  at Pi's next `agent_start`, at a message Pi accepts (choices made before the
+  message was sent), and on archive. Alternative: bind it to the reply ID
+  written at turn end. Why: Pi writes the final reply after the agent's last
+  tool call, so the reply ID is not known when the command runs; Pi's own
+  turn start covers wakes the daemon did not send. A steer accepted mid-turn
+  clears only choices made before it was sent; a choice made just after it
+  stays until the next turn. A conversation continued in a terminal Pi
+  outside the daemon keeps the choice until the daemon next sees a turn.
+- **running when nothing runs.** It falls back to Sinun vuorosi at once, with
+  no timer. Alternatives: hold it until the next reply or for a fixed time.
+  Why: a forgotten or wrong `running` can then never hide a reply longer than
+  the observed work, and the rail needs no clock. Work Habitat cannot see
+  (an external CI) therefore does not keep the row in Käynnissä.
+- **A worker waiting at its own prompt does not count as work** for
+  `running`, since it waits for a person.
+- **Where it is stored.** Beside the person's turn marks in
+  `~/.config/open-habitat/turn-marks.json`, as a separate `sections` map
+  (section and time only), so that neither replaces the other. Up to 256
+  choices; under the file's byte bound the choices give way before the
+  person's marks. The record is deliberately just *section + time*, so the
+  planned scheduled wake can later move a conversation from Hiljaiset to
+  Sinun vuorosi by writing or replacing the same kind of choice. Nothing of the
+  scheduling is implemented.
+- **A failed turn ignores the choice.** The snapshot leaves the choice out
+  when the branch ends in an error turn, and railNow ignores it whenever a
+  failure is shown. Why: the choice describes a reply, and a failed turn has
+  none.
 
-### Questions for Jari
+## Checks
 
-1. Should a lapsed waiting-for-workers declaration be shown at all
-   (direction 1), or dropped as the design proposes (directions 2 and 3)?
-2. Direction 3's question rows: is a second row per question worth it in a
-   rail kept to one line per conversation?
+- Contracts: `./scripts/test-focused.sh --area contracts` (new
+  `agent-section.schema.json`, snapshot field, negative cases).
+- Go: `./scripts/test-focused.sh --area go --go-package ./internal/daemon` and
+  `./internal/cli` passed: validation and authority refusals, storage beside
+  the person's mark, idempotent repeat, supersession at turn start, at an
+  accepted message and with a late receipt, the byte bound, the failed turn in
+  the snapshot.
+- Web: `railNow.test.ts` covers each choice with and without running work, a
+  background wait, the person's marks, a question, a running turn and a failed
+  turn.
+- Browser: `web/tests/agent-section.spec.ts` (the quiet choice moves the row to
+  Hiljaiset, holds through a reload, Nosta wins, the next turn claims Sinun
+  vuorosi), with `raise-to-your-turn`, `worker-badges` and
+  `rail-interrupted-turn`, `--repeat-each 3`, 2 workers: 15 passed.
+- Review: an independent `/llm-review` (gpt-6-astra finder, claude-fable-5-2
+  verifier) and `/assess-findings`. All four findings were fixed (repeat lost
+  to a pending clear, a late receipt clearing the new choice, choices crowding
+  out marks, quiet hiding a failed turn), plus the verifier's two residuals.
 
-Live check: nothing changed on the test server. Open the round's offline
-page (worker-results copy) and compare 1/2/3 against Nyt. Then press
-*Agentti kysyy sinulta workerin kysymyksen* and *Kirjoitat
-Julkaisutiedotteeseen*.
+Live check: on the test server, ask the agent in a conversation to put it in
+Hiljaiset ("laita tämä hiljaisiin"); after its reply the row is in Hiljaiset.
+Ask it to start a long background job and report back; the row stays in
+Käynnissä while the job runs.

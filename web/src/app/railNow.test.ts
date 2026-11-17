@@ -1080,6 +1080,12 @@ describe("the agent's own section choice", () => {
       ...choose("quiet"),
     });
     expect(section(run([asks]), "c")).toBe("yours");
+    // A turn that ended in an error claims the person's turn as without the
+    // choice.
+    const failed = { ...quiet, failure: "turn_error" as const };
+    expect(section(run([failed], { attention: [["c", "new"]] }), "c")).toBe(
+      "yours",
+    );
     // A new turn is working until it ends, whatever the last choice said.
     const working = agent("c", {
       run_active: true,

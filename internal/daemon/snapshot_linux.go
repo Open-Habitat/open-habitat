@@ -570,8 +570,14 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if ok {
 				scans = append(scans, scan)
 			}
-			if ok && live && scan.turnError {
-				agent["failure"] = "turn_error"
+			if ok && scan.turnError {
+				// The agent's section choice describes a reply; a turn that
+				// ended in an error has none, and it is not hidden by a choice
+				// once Pi stops and the failure is no longer read.
+				delete(agent, "agent_section")
+				if live {
+					agent["failure"] = "turn_error"
+				}
 			}
 			// Also while typing has woken Pi and the person's message has not
 			// reached it: the cut turn is still the last thing in history.

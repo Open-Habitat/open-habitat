@@ -199,6 +199,18 @@ func setTurnMark(home, key string, mark *turnMark) (bool, error) {
 		}
 		at := func(k string) time.Time { t, _ := time.Parse(time.RFC3339Nano, value.Marks[k].At); return t }
 		sort.Slice(keys, func(i, j int) bool { return at(keys[i]).Before(at(keys[j])) })
+		// Under byte pressure the agents' section choices, which last only
+		// a turn, give way before the person's own marks.
+		for len(value.Sections) > 0 && len(encodeTurnMarks(value)) > maxTurnMarksSize {
+			oldest, oldestAt := "", time.Time{}
+			for k, v := range value.Sections {
+				at, _ := time.Parse(time.RFC3339Nano, v.At)
+				if oldest == "" || at.Before(oldestAt) {
+					oldest, oldestAt = k, at
+				}
+			}
+			delete(value.Sections, oldest)
+		}
 		for len(keys) > 0 && (len(value.Marks) > maxTurnMarks || len(encodeTurnMarks(value)) > maxTurnMarksSize) {
 			delete(value.Marks, keys[0])
 			keys = keys[1:]

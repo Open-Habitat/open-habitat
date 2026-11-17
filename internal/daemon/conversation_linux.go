@@ -1070,6 +1070,10 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	}
 	var accepted bool
 	var err error
+	// The agent's section choice made before this message was sent belongs
+	// to the reply the person answers; one made after it, while Pi already
+	// works on the message, stands even if Pi's receipt arrives later.
+	sentAt := time.Now()
 	expanded, images, attachmentErr := promptAttachments(c.home, message, true)
 	// A file removed since admission is a definite rejection: Pi received
 	// nothing. Do not turn this local pre-send failure into an uncertain write.
@@ -1103,7 +1107,7 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	if err == nil && accepted {
 		// The person replied: a raise or Ei nyt has served its purpose, and
 		// so has the agent's choice for the reply they answered.
-		c.supersedeAgentSection(s.id, time.Now())
+		c.supersedeAgentSection(s.id, sentAt)
 		go func() {
 			if c.clearTurnMark(s.id) && c.journal != nil {
 				c.journal.appendInvalidation("pi:" + s.id)

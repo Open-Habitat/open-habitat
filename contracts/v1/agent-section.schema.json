@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/agent-section.schema.json",
   "title": "The agent's own choice of its conversation's rail section",
-  "description": "Root: the reply of POST /agent/v1/section on the person's agent socket (open-habitat agent section update --current). The agent places its own conversation after its reply: yours (Sinun vuorosi, as without a choice), running (Käynnissä while Habitat sees its work going on) or quiet (Hiljaiset). The person's daemon keeps one choice per conversation beside the person's turn marks, which win over it. The daemon removes the choice when the conversation's next turn starts, when Pi accepts the person's next message and when the conversation is archived. changed is false when the same section was already chosen; the stored choice, and its at, are then unchanged.",
+  "description": "Root: the reply of POST /agent/v1/section on the person's agent socket (open-habitat agent section update --current). The agent places its own conversation after its reply: yours (Sinun vuorosi, as without a choice), running (Käynnissä while Habitat sees its work going on) or quiet (Hiljaiset). The person's daemon keeps one choice per conversation beside the person's turn marks, which win over it. The daemon removes the choice when the conversation's next turn starts, when Pi accepts the person's next message and when the conversation is archived. changed is false when the same section was already chosen; the choice is then only stamped with the new at, so it belongs to the latest turn, and no change is published.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "agent_id", "agent_section", "changed"],

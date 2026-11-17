@@ -84,8 +84,8 @@ person's own Nosta or Ei nyt always wins over it. Choose again in a later turn
 if it still applies. Only the current conversation can be placed, and only
 during its running turn: outside one the daemon refuses with
 `conversation_not_running`, and an ended or replaced launch is
-`current_context_stale`. Repeating the same section is a no-op
-(`changed: false`); nothing appears on the row and no text is sent.
+`current_context_stale`. Repeating the same section changes nothing
+visible (`changed: false`); nothing appears on the row and no text is sent.
 
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):

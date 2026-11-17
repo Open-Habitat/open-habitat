@@ -457,6 +457,22 @@ func TestSnapshotFailureFollowsAnErrorTurn(t *testing.T) {
 	if got := agentFailure(f.snapshot(), id); got != "" {
 		t.Fatalf("closed conversation: failure %q", got)
 	}
+	// The agent chose quiet before the turn failed: a failed turn has no
+	// reply for the choice to describe, so it never hides the failure.
+	if _, _, err := setAgentSection(f.home, "pi:"+id, "quiet", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	section := func(doc map[string]any) any {
+		for _, raw := range doc["agents"].([]any) {
+			if a := raw.(map[string]any); a["agent_id"] == "pi:"+id {
+				return a["agent_section"]
+			}
+		}
+		return nil
+	}
+	if section(f.snapshot()) == nil {
+		t.Fatal("the stored choice is missing from the snapshot")
+	}
 	// A writer holding the session file open is a Pi that runs.
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
 	if err != nil {
@@ -472,6 +488,9 @@ func TestSnapshotFailureFollowsAnErrorTurn(t *testing.T) {
 	doc := f.snapshot()
 	if got := agentFailure(doc, id); got != "turn_error" {
 		t.Fatalf("running Pi with a failed reply: failure %q, agents %v", got, doc["agents"])
+	}
+	if got := section(doc); got != nil {
+		t.Fatalf("failed turn carries the agent's choice %v", got)
 	}
 	if _, err := file.WriteString(`{"type":"message","id":"m3","parentId":"m2","timestamp":"2026-10-16T10:01:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Uudestaan"}]}}` + "\n"); err != nil {
 		t.Fatal(err)

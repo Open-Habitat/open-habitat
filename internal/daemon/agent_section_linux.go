@@ -40,9 +40,10 @@ func (s agentSection) valid() bool {
 	return err == nil && validSection(s.Section)
 }
 
-// setAgentSection stores the conversation's choice and returns the choice
-// that now stands and whether anything changed. Choosing the section that
-// already stands keeps its time, so a repeated command is a no-op.
+// setAgentSection stores the conversation's choice, stamped now, and says
+// whether the section changed. A repeat is stamped anew too, so that a clear
+// still pending for an earlier turn or message cannot take it; it reports no
+// change and publishes nothing.
 func setAgentSection(home, key, section string, now time.Time) (agentSection, bool, error) {
 	turnMarksLock.Lock()
 	defer turnMarksLock.Unlock()
@@ -50,9 +51,8 @@ func setAgentSection(home, key, section string, now time.Time) (agentSection, bo
 	if err != nil {
 		return agentSection{}, false, err
 	}
-	if old, had := value.Sections[key]; had && old.Section == section {
-		return old, false, nil
-	}
+	old, had := value.Sections[key]
+	changed := !had || old.Section != section
 	choice := agentSection{Section: section, At: now.UTC().Format(time.RFC3339Nano)}
 	if value.Sections == nil {
 		value.Sections = map[string]agentSection{}
@@ -72,7 +72,7 @@ func setAgentSection(home, key, section string, now time.Time) (agentSection, bo
 		delete(value.Sections, keys[0])
 		keys = keys[1:]
 	}
-	return choice, true, saveTurnMarks(home, value)
+	return choice, changed, saveTurnMarks(home, value)
 }
 
 // clearAgentSection removes the conversation's choice when it was made
@@ -112,11 +112,13 @@ func (c *ConversationController) supersedeAgentSection(id string, before time.Ti
 	}()
 }
 
-// agentSectionUpdate is POST /agent/v1/section?<current context>. Only the
-// conversation's own daemon-launched Pi may choose, and only while its turn
-// runs: a worker or leftover script that inherited the context cannot re-place
-// a conversation that has moved on, and the choice always follows a turn
-// whose reply it describes.
+// agentSectionUpdate is POST /agent/v1/section?<current context>. Only a
+// caller holding the conversation's live launch context (workspace and
+// launch generation) may choose, and only while a turn runs, so the choice
+// follows a turn whose reply it describes. The socket admits only the
+// person's own Unix user, who can already message and stop this
+// conversation; a same-user process that inherited the context can choose
+// too, which is weaker than either.
 func (c *ConversationController) agentSectionUpdate(w http.ResponseWriter, r *http.Request) {
 	q, bad := parseAgentConversation(r)
 	if bad || !q.current {

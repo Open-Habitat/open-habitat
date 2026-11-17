@@ -158,10 +158,12 @@ export function railNow({
     // quiet keeps its reply from claiming the person's turn, and so does
     // running while Habitat sees its work going on (a worker waiting for a
     // person does not count). Once the work ends, the reply claims the turn
-    // as any reply does. The person's marks, a question and failures win.
-    const choice = replyCanClaimTurn
-      ? (current ?? a).agent_section?.section
-      : undefined;
+    // as any reply does. The person's marks, a question and a failed turn or
+    // worker win.
+    const choice =
+      replyCanClaimTurn && !a.failure
+        ? (current ?? a).agent_section?.section
+        : undefined;
     const agentHeld =
       choice === "quiet" ||
       (choice === "running" &&
