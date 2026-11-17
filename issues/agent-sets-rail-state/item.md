@@ -39,3 +39,7 @@ Jari 14.11.2026: the agent only decides its conversation's section through an op
 ### 2026-11-17T06:08:44Z · @jari
 
 Jari 17.11.2026: (1) The agent can put its conversation in any of the three sections: Sinun vuorosi, Käynnissä and Hiljaiset (command proposal: open-habitat agent section update --section yours|running|quiet). Hiljaiset is important: Jari has an idea for a new feature that builds on it. (2) This is only about the agent choosing, after writing its reply, where its own conversation sits according to how it judges its own state. No worker-specific logic, no worker questions, no deadlines in Habitat for this. The combined design with worker-asks-parent mixed two things and is replaced for this issue by this decision. Next action: implement part 1 with the three sections.
+
+### 2026-11-17T06:12:21Z · @jari
+
+Jari 17.11.2026: the guidance the agent gets is what matters. Hiljaiset only when there is a reason, e.g. the person asked for it; not on the agent's own judgement that nothing is pending.
