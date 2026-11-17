@@ -1,3 +1,4 @@
+import agentSection from "../../../contracts/v1/agent-section.schema.json";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -32,6 +33,7 @@ for (const definition of [
   operation,
   schema,
   turnMark,
+  agentSection,
   workspaceChange,
   workspaceIconSuggestions,
 ])
@@ -178,6 +180,9 @@ export interface Agent {
   last_reply?: { id: string; at: string };
   /** The person's own Nosta or Ei nyt, kept by their daemon. */
   turn_mark?: TurnMark;
+  /** The agent's own choice of section for its latest turn, kept by the
+   * person's daemon until the next turn or the person's message. */
+  agent_section?: { section: "yours" | "running" | "quiet"; at: string };
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */

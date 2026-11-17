@@ -55,6 +55,38 @@ key to retry the same notice; the same key/text can recover a persisted outcome.
 Lists cover the latest 200 notices on the current native branch; use
 `--output FILE.jsonl` for a file export, which refuses overwrite.
 
+To place your own conversation in the person's rail after your reply:
+
+    open-habitat agent section update --current --section yours|running|quiet --json
+
+The rail has three sections: *Sinun vuorosi* (the person's turn), *Käynnissä*
+(work going on) and *Hiljaiset* (quiet). Without a choice a new reply waits in
+Sinun vuorosi. Choose as the last step of your turn, once you know what your
+reply says:
+
+- `yours`: you need or offer something to the person (a question, a decision,
+  a result to read). This is also the default, so say it only to take back an
+  earlier choice in the same turn.
+- `running`: you have work in flight that you will report on yourself, such as
+  workers you started or a wait or background job, and the reply asks nothing
+  of the person yet ("I started the workers and will report back"). It holds
+  only while Habitat sees that work running (a worker working, a process you
+  wait on); when the work ends without a new turn, the reply moves to Sinun
+  vuorosi like any reply.
+- `quiet`: only when there is a reason, usually that the person asked for it
+  ("laita tämä hiljaisiin", "put this in quiet"). Never drop the conversation
+  there on your own judgement that nothing is pending; a finished answer
+  belongs in Sinun vuorosi.
+
+The choice belongs to the turn it was made in: the person's next message or
+the next turn (a worker's completion waking you, say) removes it, and the
+person's own Nosta or Ei nyt always wins over it. Choose again in a later turn
+if it still applies. Only the current conversation can be placed, and only
+during its running turn: outside one the daemon refuses with
+`conversation_not_running`, and an ended or replaced launch is
+`current_context_stale`. Repeating the same section is a no-op
+(`changed: false`); nothing appears on the row and no text is sent.
+
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):
 

@@ -982,3 +982,112 @@ describe("raise and Ei nyt", () => {
     ).toBeUndefined();
   });
 });
+
+describe("the agent's own section choice", () => {
+  const at = (minute: number) =>
+    new Date(Date.UTC(2026, 10, 17, 9, minute)).toISOString();
+  const reply = { id: "r1", at: at(5) };
+  const choose = (section: "yours" | "running" | "quiet") => ({
+    agent_section: { section, at: at(4) },
+  });
+  const section = (now: ReturnType<typeof run>, id: string) =>
+    (["yours", "running", "quiet"] as const).find((key) =>
+      ids(now[key]).includes(id),
+    );
+  const worker = { spinoffs_working: 1 };
+  const waits = {
+    process: "daemon_managed_live" as const,
+    control: "writable" as const,
+    run_active: false,
+    waiting_on: [
+      {
+        process_id: "proc_wait",
+        name: "taskfleet run wait",
+        kind: "process" as const,
+        run_ids: [],
+      },
+    ],
+  };
+
+  it.each([
+    ["no choice", {}, "yours", "yours"],
+    ["yours", choose("yours"), "yours", "yours"],
+    ["running", choose("running"), "running", "yours"],
+    ["quiet", choose("quiet"), "running", "quiet"],
+  ] satisfies [string, Partial<Agent>, string, string][])(
+    "places a new reply with %s: %s while a worker works, %s once nothing runs",
+    (_name, extra, withWork, idle) => {
+      for (const attention of ["new", "seen"] as const) {
+        const working = agent("c", { last_reply: reply, ...worker, ...extra });
+        const done = agent("c", {
+          process: "confirmed_exited",
+          run_active: false,
+          last_reply: reply,
+          ...extra,
+        });
+        expect(
+          section(run([working], { attention: [["c", attention]] }), "c"),
+        ).toBe(withWork);
+        expect(
+          section(run([done], { attention: [["c", attention]] }), "c"),
+        ).toBe(idle);
+      }
+    },
+  );
+
+  it("keeps a running choice in Käynnissä while the agent waits on background work", () => {
+    const sessions = [
+      { agent_id: "c", workspace_id: "ws_example00" } as Session,
+    ];
+    const plain = agent("c", { last_reply: reply, ...waits });
+    const chosen = { ...plain, ...choose("running") };
+    expect(
+      section(run([plain], { attention: [["c", "new"]], sessions }), "c"),
+    ).toBe("yours");
+    const now = run([chosen], { attention: [["c", "new"]], sessions });
+    expect(section(now, "c")).toBe("running");
+    expect(now.running[0].attentionLabel).toBeUndefined();
+  });
+
+  it("lets the person's marks, a question and a running turn win over the choice", () => {
+    const quiet = agent("c", {
+      process: "confirmed_exited",
+      run_active: false,
+      last_reply: reply,
+      ...choose("quiet"),
+    });
+    // Nosta brings the agent's quiet choice back to Sinun vuorosi.
+    const raised = {
+      ...quiet,
+      turn_mark: { state: "raised" as const, at: at(6) },
+    };
+    expect(section(run([raised], { attention: [["c", "new"]] }), "c")).toBe(
+      "yours",
+    );
+    // Ei nyt holds against the agent's yours.
+    const dismissed = {
+      ...quiet,
+      ...choose("yours"),
+      turn_mark: { state: "not_now" as const, at: at(6), reply_id: "r1" },
+    };
+    expect(section(run([dismissed], { attention: [["c", "new"]] }), "c")).toBe(
+      "quiet",
+    );
+    // A native question is the person's turn whatever the agent chose.
+    const asks = agent("c", {
+      last_reply: reply,
+      pending_question: { id: "q1" } as never,
+      ...choose("quiet"),
+    });
+    expect(section(run([asks]), "c")).toBe("yours");
+    // A new turn is working until it ends, whatever the last choice said.
+    const working = agent("c", {
+      run_active: true,
+      last_reply: reply,
+      ...choose("quiet"),
+    });
+    expect(section(run([working], { attention: [["c", "new"]] }), "c")).toBe(
+      "running",
+    );
+  });
+});

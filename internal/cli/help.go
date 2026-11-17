@@ -122,6 +122,7 @@ var helpSpecs = []helpSpec{
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
 	{"agent notice create", "Send an agent notice through the native conversation writer; persistence is explicit", "agent notice create --current --text Blocked --idempotency-key 00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--current", "--text", "--text-file", "--idempotency-key", "--dry-run"}},
+	{"agent section update", "Place your own conversation in the person's rail after your reply: yours (Sinun vuorosi, the default), running (Käynnissä while your workers or waits run) or quiet (Hiljaiset, only when the person asked); holds until the next turn or the person's message, and the person's own Nosta or Ei nyt wins; idempotent", "agent section update --current --section running --json", []string{"--current", "--section"}},
 	{"agent notice list", "Read the latest 200 native conversation notices", "agent notice list --current --json", []string{"--conversation", "--current", "--output"}},
 	{"agent view offer", "Offer a readable HTML file, or a directory with --entry-file, as a frozen view the person opens in a side panel or own tab; publishes a card in the --current or --conversation conversation, never opens anything; refused with views_unavailable where the site has no view origin", "agent view offer --current --source /var/tmp/report.html --title Quarterly-results --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--workspace", "--source", "--entry-file", "--title", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
 	{"agent view list", "List the person's frozen views, newest first", "agent view list --json", []string{"--output"}},
@@ -390,6 +391,9 @@ func helpFlag(name string) map[string]any {
 	case "--target":
 		v["description"] = "Skill installation base directory"
 		v["default"] = "."
+	case "--section":
+		v["description"] = "Required rail section for your own conversation"
+		v["possible_values"] = []string{"yours", "running", "quiet"}
 	case "--current":
 		v["description"] = "Resolve inherited OPEN_HABITAT_CONVERSATION_ID, OPEN_HABITAT_WORKSPACE_ID and OPEN_HABITAT_LAUNCH_GENERATION against the daemon"
 	case "--administrator":

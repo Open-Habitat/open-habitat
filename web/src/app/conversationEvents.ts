@@ -1,3 +1,4 @@
+import agentSection from "../../../contracts/v1/agent-section.schema.json";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -36,6 +37,7 @@ for (const schema of [
   historySchema,
   snapshotSchema,
   turnMark,
+  agentSection,
   workspaceChangeSchema,
 ])
   ajv.addSchema(schema);

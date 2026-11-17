@@ -102,7 +102,7 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 			controller.agentConversations(w, r)
 			return
 		}
-		if (r.Method != "GET" && !(r.Method == "POST" && (r.URL.Path == AgentNoticesPath || r.URL.Path == AgentModelsPath))) || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() {
+		if (r.Method != "GET" && !(r.Method == "POST" && (r.URL.Path == AgentNoticesPath || r.URL.Path == AgentModelsPath || r.URL.Path == AgentSectionPath))) || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() {
 			snapshotError(w, 404, "route_not_found")
 			return
 		}
@@ -115,6 +115,12 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 			servePiModels(w, r, pi)
 		case AgentNoticesPath:
 			controller.agentNotices(w, r)
+		case AgentSectionPath:
+			if r.Method != "POST" {
+				snapshotError(w, 404, "route_not_found")
+				return
+			}
+			controller.agentSectionUpdate(w, r)
 		case AgentEnvironmentPath:
 			if r.URL.RawQuery != "" {
 				snapshotError(w, 400, "invalid_arguments")

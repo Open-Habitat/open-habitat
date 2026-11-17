@@ -204,8 +204,8 @@ func TestTurnMarksStayReadableWithLongReplyIDs(t *testing.T) {
 	}
 }
 
-// The person's reply ends a raise: when Pi accepts their message the mark
-// goes, and the change is published.
+// The person's reply ends a raise and the agent's section choice: when Pi
+// accepts their message both go, and the change is published.
 func TestAcceptedMessageClearsTurnMark(t *testing.T) {
 	home := t.TempDir()
 	script := filepath.Join(home, "pi")
@@ -230,6 +230,10 @@ for line in sys.stdin:
 	if _, err := setTurnMark(home, "pi:"+turnTestID, &mark); err != nil {
 		t.Fatal(err)
 	}
+	// The agent's section choice was for the reply the person now answers.
+	if _, _, err := setAgentSection(home, "pi:"+turnTestID, "quiet", time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	req := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(`{"message":"vastaus","command_id":"0b6f2a4e-7d1c-4c3a-9f6e-2a1b3c4d5e60"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -242,11 +246,13 @@ for line in sys.stdin:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := marks.Marks["pi:"+turnTestID]; !ok {
+		_, marked := marks.Marks["pi:"+turnTestID]
+		_, chosen := marks.Sections["pi:"+turnTestID]
+		if !marked && !chosen {
 			break
 		}
 		if time.Now().After(end) {
-			t.Fatal("accepted message left the raise")
+			t.Fatal("accepted message left the raise or the agent's choice")
 		}
 	}
 }

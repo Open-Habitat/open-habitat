@@ -82,6 +82,7 @@ checks = {
     "pi-held.json": "pi-held.schema.json",
     "turn-mark.json": "turn-mark.schema.json",
     "turn-mark-not-now.json": "turn-mark.schema.json",
+    "agent-section.json": "agent-section.schema.json",
     "process-inventory.json": "process.schema.json",
     "process-output.json": "process.schema.json",
     "process-stop.json": "process-control.schema.json",
@@ -346,6 +347,11 @@ turn = json.loads((BASE / "examples" / "turn-mark.json").read_text())
 for mark in ({"state": "raised", "at": "2026-11-06T09:20:00Z", "reply_id": "a1"}, {"state": "seen", "at": "2026-11-06T09:20:00Z"}, {"state": "raised"}, {"state": "not_now", "at": "2026-11-06T09:20:00Z", "reply_id": ""}):
     must_reject("turn-mark.schema.json", {**turn, "turn_mark": mark})
 must_reject("turn-mark.schema.json", {**turn, "agent_id": "ws_example123"})
+# The agent's section choice names one of the three rail sections.
+section = json.loads((BASE / "examples" / "agent-section.json").read_text())
+for choice in ({"section": "hidden", "at": "2026-11-17T09:20:00Z"}, {"section": "quiet"}, {"section": "quiet", "at": "2026-11-17T09:20:00Z", "reply_id": "a1"}):
+    must_reject("agent-section.schema.json", {**section, "agent_section": choice})
+must_reject("agent-section.schema.json", {k: v for k, v in section.items() if k != "changed"})
 turn_request = Draft202012Validator({"$ref": schemas["turn-mark.schema.json"]["$id"] + "#/$defs/request"}, registry=registry)
 for good in ({"mark": "raised"}, {"mark": "not_now"}, {"mark": "not_now", "reply_id": "a1b2c3d4"}):
     turn_request.validate(good)

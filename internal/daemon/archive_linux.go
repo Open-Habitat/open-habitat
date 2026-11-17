@@ -219,6 +219,9 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		// An archived conversation is put away: it neither waits raised nor
 		// comes back raised when restored.
 		c.clearTurnMark(id)
+		if c.home != "" {
+			clearAgentSection(c.home, "pi:"+id, time.Now().Add(time.Second))
+		}
 	}
 	cursor := ""
 	if c.journal != nil {

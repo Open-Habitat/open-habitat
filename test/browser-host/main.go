@@ -1117,6 +1117,15 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/agent-section":
+				// As the conversation's Pi running open-habitat agent section
+				// update --current during its turn.
+				if status := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureAgentSection(r.URL.Query().Get("id"), r.URL.Query().Get("section")); status != 204 {
+					http.Error(w, "fixture failed", status)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {
 					http.Error(w, "fixture failed", 400)

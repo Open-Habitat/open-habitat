@@ -139,7 +139,6 @@ export function railNow({
     // Starting a new turn supersedes its previous reply, even while the
     // snapshot still names it. Reading alone never changes turn ownership.
     const replyCanClaimTurn = observed.activity !== "working";
-    const attention = replyCanClaimTurn && facts.attention === "new";
     // A live process whose turn state is not known still runs, and so does
     // an agent whose worker works on after the agent's own turn ended.
     const workerBusy = (a.spinoffs_working ?? 0) > 0;
@@ -155,6 +154,23 @@ export function railNow({
         observed.activity !== "waiting") ||
       workerBusy ||
       workerIdle;
+    // The agent's own choice for its settled turn (agent section update):
+    // quiet keeps its reply from claiming the person's turn, and so does
+    // running while Habitat sees its work going on (a worker waiting for a
+    // person does not count). Once the work ends, the reply claims the turn
+    // as any reply does. The person's marks, a question and failures win.
+    const choice = replyCanClaimTurn
+      ? (current ?? a).agent_section?.section
+      : undefined;
+    const agentHeld =
+      choice === "quiet" ||
+      (choice === "running" &&
+        ((observed.running &&
+          observed.activity !== "closed" &&
+          observed.activity !== "waiting") ||
+          workerBusy));
+    const attention =
+      replyCanClaimTurn && facts.attention === "new" && !agentHeld;
     // Raise and Ei nyt: the person's own mark, kept by their
     // daemon, decides with the replies. Opening a reply no longer answers
     // it; it waits, read, until the person replies or says Ei nyt, which
@@ -171,7 +187,11 @@ export function railNow({
     // Read means a reply the snapshot still names: a stale entry of a reply
     // that is gone (its turn was cut, say) does not wait.
     const read =
-      replyCanClaimTurn && !!reply && facts.attention === "seen" && !dismissed;
+      replyCanClaimTurn &&
+      !!reply &&
+      facts.attention === "seen" &&
+      !dismissed &&
+      !agentHeld;
     // A conversation opened with + waits for the person until its first
     // message is written, as a reply does (Jari 7.11.2026): Pi has written
     // no history yet. Ei nyt, which has no reply to name, moves it to
@@ -181,6 +201,7 @@ export function railNow({
       !live &&
       !reply &&
       !dismissed &&
+      !agentHeld &&
       !facts.pendingQuestion &&
       !a.failure &&
       !(a.rest?.cause === "crash" && !a.rest.awake);

@@ -47,3 +47,34 @@ func TestNoticeExportDoesNotOverwrite(t *testing.T) {
 		t.Fatal(string(after))
 	}
 }
+
+// The section command refuses before reaching the socket anything but the
+// current conversation and exactly one of the three sections.
+func TestSectionArgumentsRefuseBeforeSocket(t *testing.T) {
+	t.Setenv("OPEN_HABITAT_CONVERSATION_ID", "")
+	for _, args := range [][]string{
+		{},
+		{"show", "--current"},
+		{"update", "--section", "quiet"},
+		{"update", "--current"},
+		{"update", "--current", "--section", "hidden"},
+		{"update", "--current", "--section", "Quiet"},
+		{"update", "--current", "--section"},
+		{"update", "--current", "--current", "--section", "quiet"},
+		{"update", "--current", "--section", "quiet", "--section", "yours"},
+		{"update", "--conversation", "pi:11111111-1111-4111-8111-111111111111", "--section", "quiet"},
+	} {
+		_, err := agentSectionCommand(args)
+		if e, ok := err.(*cliError); !ok || e.code != "invalid_arguments" {
+			t.Fatalf("%q: %v", args, err)
+		}
+	}
+	if _, err := agentSectionCommand([]string{"update", "--current", "--section", "quiet", "--dry-run"}); err == nil || err.(*cliError).code != "dry_run_unsupported" {
+		t.Fatalf("dry run: %v", err)
+	}
+	// A valid request outside a daemon launch is no current context.
+	_, err := agentSectionCommand([]string{"update", "--current", "--section", "quiet"})
+	if e, ok := err.(*cliError); !ok || e.code != "current_context_unavailable" {
+		t.Fatalf("outside launch: %v", err)
+	}
+}

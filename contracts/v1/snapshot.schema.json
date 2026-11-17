@@ -756,6 +756,10 @@
           "description": "The person's own mark on the conversation's place in Sinun vuorosi (Nosta or Ei nyt), kept by their daemon so that every device shows the same. Absent when there is none or the daemon cannot read its marks.",
           "$ref": "turn-mark.schema.json#/$defs/mark"
         },
+        "agent_section": {
+          "description": "The section the agent chose for its own conversation after its latest turn (open-habitat agent section update), kept by the person's daemon beside the turn marks. The person's turn mark, a native question, a failure and a running turn win over it; running holds only while Habitat sees the conversation's work going on. Absent when there is none or the daemon cannot read it.",
+          "$ref": "agent-section.schema.json#/$defs/choice"
+        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [

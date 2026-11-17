@@ -1101,7 +1101,9 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		s.told = true
 	}
 	if err == nil && accepted {
-		// The person replied: a raise or Ei nyt has served its purpose.
+		// The person replied: a raise or Ei nyt has served its purpose, and
+		// so has the agent's choice for the reply they answered.
+		c.supersedeAgentSection(s.id, time.Now())
 		go func() {
 			if c.clearTurnMark(s.id) && c.journal != nil {
 				c.journal.appendInvalidation("pi:" + s.id)

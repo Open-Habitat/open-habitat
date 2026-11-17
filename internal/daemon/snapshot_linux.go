@@ -434,6 +434,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if mark, ok := marks.Marks[agent["agent_id"].(string)]; ok {
 				agent["turn_mark"] = mark
 			}
+			if choice, ok := marks.Sections[agent["agent_id"].(string)]; ok {
+				agent["agent_section"] = choice
+			}
 		}
 		<-waitingDone
 		if controller != nil {
@@ -478,6 +481,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					}
 					if mark, ok := marks.Marks[id]; ok {
 						agent["turn_mark"] = mark
+					}
+					if choice, ok := marks.Sections[id]; ok {
+						agent["agent_section"] = choice
 					}
 					agents = append(agents, agent)
 				}

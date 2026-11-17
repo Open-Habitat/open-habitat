@@ -409,6 +409,9 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 
 		if frame.Type == "agent_start" {
+			// A new turn's reply is judged afresh: the agent's section choice
+			// belonged to the turn before it.
+			c.supersedeAgentSection(s.id, time.Now())
 			s.waking = false // the wake's turn, or another, has begun
 			s.runActive = true
 			s.runInitial = s.state != "pending" && s.state != "accepted"

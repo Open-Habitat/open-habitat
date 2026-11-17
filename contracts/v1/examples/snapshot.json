@@ -121,7 +121,8 @@
       "presence": "present",
       "activity": "idle",
       "pending_question": null,
-      "live_tail": []
+      "live_tail": [],
+      "agent_section": { "section": "quiet", "at": "2026-09-22T14:00:00Z" }
     },
     {
       "agent_id": "pi:44444444-4444-4444-8444-444444444444",

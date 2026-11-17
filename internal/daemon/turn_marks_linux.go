@@ -36,6 +36,9 @@ type turnMark struct {
 type turnMarks struct {
 	SchemaVersion int                 `json:"schema_version"`
 	Marks         map[string]turnMark `json:"marks"`
+	// Sections are the agents' own choices (agent section update), kept
+	// apart from the person's marks so that neither replaces the other.
+	Sections map[string]agentSection `json:"sections,omitempty"`
 }
 
 // maxTurnMarks bounds the file. Marks of conversations that are gone are
@@ -102,8 +105,13 @@ func readTurnMarks(home string) (turnMarks, error) {
 	var value turnMarks
 	dec := json.NewDecoder(io.LimitReader(f, maxTurnMarksSize+1))
 	dec.DisallowUnknownFields()
-	if err = dec.Decode(&value); err != nil || dec.Decode(new(any)) != io.EOF || value.SchemaVersion != 1 || len(value.Marks) > maxTurnMarks {
+	if err = dec.Decode(&value); err != nil || dec.Decode(new(any)) != io.EOF || value.SchemaVersion != 1 || len(value.Marks) > maxTurnMarks || len(value.Sections) > maxAgentSections {
 		return result, errors.New("invalid turn marks")
+	}
+	for key, choice := range value.Sections {
+		if !validTurnMarkKey(key) || !choice.valid() {
+			return result, errors.New("invalid turn marks")
+		}
 	}
 	for key, mark := range value.Marks {
 		if !validTurnMarkKey(key) || !mark.valid() {

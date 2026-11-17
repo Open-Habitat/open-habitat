@@ -73,6 +73,30 @@ For other inputs, consult `open-habitat agent notice create --help` or the agent
 skill. Notices appear now and can be dismissed in the browser; they are not
 scheduled alarms. Do not promise future delivery or claim the person saw it.
 
+The person's rail sorts conversations into *Sinun vuorosi* (their turn),
+*Käynnissä* (work going on) and *Hiljaiset* (quiet). After your reply the
+conversation waits in Sinun vuorosi. You can place it yourself as the last step
+of your turn, once you know what the reply says:
+
+```sh
+open-habitat agent section update --current --section running --json
+```
+
+- `yours` (Sinun vuorosi): you need or offer something to the person, such as
+  a question, a decision or a result to read. It is the default after every
+  reply, so you seldom need to say it.
+- `running` (Käynnissä): you have work in flight that you will report on
+  yourself, such as workers you started or a wait or job you are running, and
+  the reply asks nothing yet ("I started the workers and will report back").
+  It holds while Habitat sees that work running; when the work ends, the reply
+  moves to Sinun vuorosi.
+- `quiet` (Hiljaiset): only when there is a reason, usually that the person
+  asked for it ("laita tämä hiljaisiin"). Never choose it on your own because
+  nothing seems pending; a finished answer belongs in Sinun vuorosi.
+
+The choice belongs to this turn: the next turn starts afresh, and the person's
+own Nosta or Ei nyt wins over it. Outside your running turn it is refused.
+
 Starting another conversation or closing the browser does not cancel your
 running process-tool work. Habitat can stop an idle Pi after ten minutes without
 work or browser presence, or sooner to make room for another conversation;
