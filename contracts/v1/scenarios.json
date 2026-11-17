@@ -130,7 +130,8 @@
     ],
     "then": [
       "HTTP 409 cursor_expired or cursor_instance_mismatch is returned before SSE starts",
-      "client disables writes and atomically replaces state with a fresh snapshot"
+      "client disables writes and atomically replaces state with a fresh snapshot",
+      "an open stream carries a named heartbeat event without an id at least every 20 s; it is not a journal event and moves no cursor, and a client that has received neither an event nor a heartbeat for longer than several heartbeat intervals reopens the stream at its validated cursor, so a stream a proxy left open after its upstream vanished (a host restart) cannot keep the page silently stale"
     ]
   },
   {

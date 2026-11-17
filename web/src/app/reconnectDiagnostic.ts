@@ -4,7 +4,7 @@ type Diagnostic =
   | { event: "manual-retry" | "retry-stopped" | "recover" | "revive" }
   | {
       event: "stream";
-      outcome: "connecting" | "open" | "error" | "timeout";
+      outcome: "connecting" | "open" | "error" | "timeout" | "silent";
       path: "/api/v1/events";
     }
   | {

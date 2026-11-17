@@ -33,6 +33,14 @@ const statusKinds = new Set([
 // then at most this often, so a refresh chain can finish before the next one
 // replaces it, and the last state of a burst still arrives within this time.
 export const agentSnapshotInterval = 1000;
+// The daemon sends a heartbeat event every 20 s on an open stream. A proxy
+// whose upstream vanished (a host restart) can keep the browser's stream open
+// and silent with no error, while every other request works; the page would
+// then stop following the host without notice. Missing three heartbeats
+// reopens the stream at the validated cursor, which a healthy daemon answers
+// at once and a restarted one with 409 and a fresh snapshot.
+export const streamSilenceLimit = 65000;
+const silenceCheckInterval = 5000;
 const cursorParts = (cursor: string) => {
   const match =
     /^ev1:([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}):(0|[1-9][0-9]*)$/.exec(
@@ -63,6 +71,8 @@ export class ConversationJournal {
   private openSource?: EventSource;
   private timer?: number;
   private connectTimer?: ReturnType<typeof setTimeout>;
+  private silenceTimer?: ReturnType<typeof setInterval>;
+  private heardAt = 0;
   private probe?: AbortController;
   private generation = 0;
   private stopped = true;
@@ -105,6 +115,14 @@ export class ConversationJournal {
   }
   private reset(snapshot: Snapshot) {
     const { instance, sequence } = cursorParts(snapshot.event_cursor);
+    if (instance !== this.instance) {
+      // Another daemon instance's sequence numbers are unordered against
+      // this one's, and its snapshot answers everything the old one owed.
+      // Kept, an old invalidation would read each new snapshot as stale and
+      // request another until the new daemon's sequence passed it.
+      this.invalidation = 0;
+      this.agentOnlyInvalidation = false;
+    }
     this.cursor = snapshot.event_cursor;
     this.instance = instance;
     this.sequence = sequence;
@@ -170,6 +188,7 @@ export class ConversationJournal {
     ) {
       // Snapshot has passed the current replay point (or a daemon restarted).
       this.source?.close();
+      clearInterval(this.silenceTimer);
       if (this.timer !== undefined) clearTimeout(this.timer);
       this.timer = undefined;
       this.probe?.abort();
@@ -379,6 +398,7 @@ export class ConversationJournal {
     this.source?.close();
     this.source = undefined;
     clearTimeout(this.connectTimer);
+    clearInterval(this.silenceTimer);
     ++this.generation;
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
@@ -408,6 +428,7 @@ export class ConversationJournal {
       opened = true;
       this.openSource = source;
       clearTimeout(this.connectTimer);
+      this.watchSilence(source, epoch);
       reconnectDiagnostic({
         event: "stream",
         path: "/api/v1/events",
@@ -417,9 +438,13 @@ export class ConversationJournal {
       this.setOffline(false);
       this.callbacks.onConnection?.("online");
     };
+    source.addEventListener("heartbeat", () => {
+      if (epoch === this.generation) this.heardAt = Date.now();
+    });
     for (const kind of kinds)
       source.addEventListener(kind, (message) => {
         if (this.stopped || epoch !== this.generation) return;
+        this.heardAt = Date.now();
         try {
           const frame = message as MessageEvent;
           const event = parseConversationEvent(frame.data);
@@ -440,6 +465,7 @@ export class ConversationJournal {
       });
       source.close();
       this.source = undefined;
+      clearInterval(this.silenceTimer);
       // A stream that had opened and then dropped is announced only once
       // the probe shows the host unreachable or refusing. A reconnect the
       // probe clears would otherwise flash the offline banner for one round
@@ -510,6 +536,25 @@ export class ConversationJournal {
       source.onerror?.(new Event("error"));
     }, 8000);
   }
+  /** Reopen an open stream that has carried nothing for too long. */
+  private watchSilence(source: EventSource, epoch: number) {
+    clearInterval(this.silenceTimer);
+    this.heardAt = Date.now();
+    this.silenceTimer = setInterval(() => {
+      if (this.stopped || epoch !== this.generation || this.source !== source) {
+        clearInterval(this.silenceTimer);
+        return;
+      }
+      if (Date.now() - this.heardAt <= streamSilenceLimit) return;
+      reconnectDiagnostic({
+        event: "stream",
+        path: "/api/v1/events",
+        outcome: "silent",
+      });
+      this.drop();
+      this.connect();
+    }, silenceCheckInterval);
+  }
   /**
    * Whether the event stream is open now and following the daemon. Then the
    * host is reachable and live facts keep arriving, so a failed snapshot read
@@ -533,6 +578,7 @@ export class ConversationJournal {
     this.source?.close();
     this.source = undefined;
     clearTimeout(this.connectTimer);
+    clearInterval(this.silenceTimer);
     ++this.generation;
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
@@ -573,6 +619,7 @@ export class ConversationJournal {
   stop() {
     this.stopped = true;
     clearTimeout(this.connectTimer);
+    clearInterval(this.silenceTimer);
     clearTimeout(this.agentSnapshotTimer);
     this.agentSnapshotTimer = undefined;
     ++this.generation;

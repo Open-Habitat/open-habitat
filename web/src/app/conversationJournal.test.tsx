@@ -35,14 +35,16 @@ class FakeSource {
   onerror?: () => void;
   closed = false;
   listeners: string[] = [];
+  handlers = new Map<string, (event: MessageEvent) => void>();
   constructor(public url: string) {
     FakeSource.all.push(this);
   }
   close() {
     this.closed = true;
   }
-  addEventListener(kind: string, _listener: (event: MessageEvent) => void) {
+  addEventListener(kind: string, listener: (event: MessageEvent) => void) {
     this.listeners.push(kind);
+    this.handlers.set(kind, listener);
   }
 }
 const setup = (
@@ -198,8 +200,9 @@ describe("one tab-wide journal", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal } = setup();
     journal.start(snapshot(0));
+    // The heartbeat is a liveness signal outside the journal's sequence.
     expect(FakeSource.all[0].listeners.sort()).toEqual(
-      [...eventSchema.properties.kind.enum].sort(),
+      [...eventSchema.properties.kind.enum, "heartbeat"].sort(),
     );
     journal.stop();
   });
@@ -614,6 +617,56 @@ describe("one tab-wide journal", () => {
       await vi.advanceTimersByTimeAsync(30000);
       expect(FakeSource.all).toHaveLength(2);
       expect(onConnection).toHaveBeenLastCalledWith("online");
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("reopens an open stream that stays silent, never one that carries heartbeats", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded } = setup();
+      journal.start(snapshot(0));
+      FakeSource.all[0].onopen?.();
+      journal.route(event(1) as never);
+      // A quiet daemon: only heartbeats, for five minutes.
+      for (let i = 0; i < 15; i++) {
+        await vi.advanceTimersByTimeAsync(20000);
+        FakeSource.all[0].handlers.get("heartbeat")?.(new MessageEvent("x"));
+      }
+      expect(FakeSource.all).toHaveLength(1);
+      // A proxy keeps the stream open after its upstream vanished.
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(FakeSource.all).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(15000);
+      expect(FakeSource.all[0].closed).toBe(true);
+      expect(FakeSource.all).toHaveLength(2);
+      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(1)));
+      // Reopening at the validated cursor is not a recovery.
+      expect(onSnapshotNeeded).not.toHaveBeenCalled();
+      journal.stop();
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(FakeSource.all).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("lets a restarted daemon's snapshot answer the old instance's invalidation", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded, store } = setup();
+      journal.start(snapshot(499));
+      journal.route(event(500, "title.changed", instance, {}) as never);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+      // The daemon restarts before the snapshot for 500 is read; the new
+      // instance's sequence starts low and its snapshot is the truth.
+      journal.resume(snapshot(3, other));
+      expect(store.reseed).toHaveBeenCalled();
+      journal.resume(snapshot(3, other));
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
       journal.stop();
     } finally {
       vi.useRealTimers();

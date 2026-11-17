@@ -563,6 +563,11 @@ func (j *eventJournal) parse(cursor string) (uint64, string) {
 	}
 	return seq, ""
 }
+
+// eventHeartbeatInterval paces the stream's heartbeat event; the browser
+// reopens a stream that stays silent for several of them.
+var eventHeartbeatInterval = 20 * time.Second
+
 func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func() bool) {
 	if r.Method != "GET" || r.URL.Path != "/api/v1/events" || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) > 0 || len(r.Header.Values("Last-Event-ID")) > 1 || len(r.URL.Query()["after"]) != 1 || len(r.URL.Query()) != 1 {
 		snapshotError(w, 400, "invalid_request")
@@ -609,7 +614,7 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 	deadline := time.Now().Add(10 * time.Minute)
 	end := time.NewTimer(time.Until(deadline))
 	defer end.Stop()
-	heartbeat := time.NewTicker(20 * time.Second)
+	heartbeat := time.NewTicker(eventHeartbeatInterval)
 	defer heartbeat.Stop()
 	for {
 		if r.Context().Err() != nil || !time.Now().Before(deadline) {
@@ -643,7 +648,11 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		select {
 		case <-changed:
 		case <-heartbeat.C:
-			if _, err := io.WriteString(w, ": heartbeat\n\n"); err != nil {
+			// A named event the browser can see, outside the journal sequence
+			// (no id, so the replay cursor stays put). A proxy whose upstream
+			// vanished keeps the browser's stream open and silent; missing
+			// heartbeats are how the page learns to reopen it.
+			if _, err := io.WriteString(w, "event: heartbeat\ndata: {}\n\n"); err != nil {
 				return
 			}
 			flusher.Flush()

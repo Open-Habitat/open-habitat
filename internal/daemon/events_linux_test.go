@@ -185,6 +185,36 @@ func TestEventStreamOpensBeforeFirstHeartbeat(t *testing.T) {
 	}
 }
 
+// The heartbeat is an event the browser can see, so a stream left open and
+// silent by a proxy is detectable; without an id it moves no replay cursor.
+func TestEventStreamHeartbeatIsNamedAndOutsideTheJournal(t *testing.T) {
+	previous := eventHeartbeatInterval
+	eventHeartbeatInterval = 50 * time.Millisecond
+	defer func() { eventHeartbeatInterval = previous }()
+	j := newEventJournal()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		j.stream(w, r, func() bool { return true })
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/api/v1/events?after="+j.cursor(0), nil)
+	req.Host = "unix"
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	want := ": open\n\nevent: heartbeat\ndata: {}\n\nevent: heartbeat\ndata: {}\n\n"
+	got := make([]byte, len(want))
+	if _, err := io.ReadFull(res.Body, got); err != nil || string(got) != want {
+		t.Fatalf("heartbeats: %q %v", got, err)
+	}
+	if cursor, _ := j.watermark(); cursor != j.cursor(0) {
+		t.Fatalf("a heartbeat moved the journal: %s", cursor)
+	}
+}
+
 func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
 	j := newEventJournal()
 	zero, _ := j.watermark()
