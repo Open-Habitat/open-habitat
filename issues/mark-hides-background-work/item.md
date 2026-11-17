@@ -1,15 +1,17 @@
 ---
 created: 2026-11-14
-updated: 2026-11-16
+updated: 2026-11-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/mark-hides-background-work
 preparation: ready
 lane: rail-mark
 lane_seq: 1
+closed: 2026-11-17
+closed_by: agent
 ---
 
 # The read mark hides background work; a non-waking process is visible nowhere
@@ -44,3 +46,9 @@ Jari 16.11.2026: the small background-service dot at the end of the rail row is 
 ### 2026-11-16T13:27:09Z · @jari
 
 Jari 16.11.2026 on round 1: direction 2 Vaeltava ovi — the door drifts slowly in every state that does not already move when a background process runs ('taas liikkuva kehä… tällä mennään'). The end-of-row dot stays (he said earlier it is fine). Hiljaiset heading gets no extra count (recommendation, unanswered). Next action: implement direction 2, experimental by default.
+
+## Resolution
+
+### 2026-11-17T06:08:33Z · @agent
+
+Direction 2 Vaeltava ovi shipped behind the experiment Taustatyö merkissä (rail-background-door), off by default; non-waking processes reach the rail through the snapshot's non_waking_processes. Decisions for later review are in result.md.
