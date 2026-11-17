@@ -137,7 +137,7 @@ type conversation struct {
 	turnGeneration                                          uint64            // increments on each new prompt, fences slow native settlement reads
 	acceptedMessages                                        uint64
 	naming, automaticFirst, automaticRefined, refinementDue bool
-	automaticRetried                                        bool
+	automaticRetried, titleOwed                             bool // titleOwed: continued, maybe never named (startAutomaticTitle)
 	titleRetryAfter                                         uint64
 	recapping                                               bool
 	rewinding                                               bool // a Palaa tähän is in flight (rewind_linux.go)

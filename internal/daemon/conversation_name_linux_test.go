@@ -10,8 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -265,5 +267,97 @@ func TestGivenNameSurvivesFreshRelaunch(t *testing.T) {
 	h.eventually("turn settled", func() bool { return h.receipt(c, id, heldB) == "accepted" && h.nativeName(id) != "" })
 	if name := h.nativeName(id); name != "Käsin annettu" {
 		t.Fatalf("native name after relaunch: %q", name)
+	}
+}
+
+// A daemon that stops while the first title is being generated loses that
+// job with its handle. The continued conversation is still owed its title:
+// its first settled turn after the restart names it, once, and a history
+// that already has a name is left alone without a model call.
+func TestTitleLostInRestartIsWrittenAfterContinuation(t *testing.T) {
+	h := newHeldHarness(t)
+	namingFakePi(t, h)
+	first, stopFirst := h.daemon()
+	entered := make(chan struct{}, 1)
+	first.mu.Lock()
+	first.titleGenerator = func(string) (string, error) {
+		entered <- struct{}{}
+		time.Sleep(2 * time.Second) // still generating when the daemon stops
+		return "Liian myöhään", nil
+	}
+	first.mu.Unlock()
+	id := h.create(first)
+	if w := h.send(first, id, "Tutki lokit", heldA); w.Code != 200 {
+		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
+	}
+	<-entered
+	stopFirst()
+	h.eventually("first incarnation's Pi reaped", func() bool {
+		first.mu.Lock()
+		defer first.mu.Unlock()
+		return first.sessions[id].dead
+	})
+	if name := h.nativeName(id); name != "" {
+		t.Fatalf("a stopped daemon's title job wrote %q", name)
+	}
+
+	second, stopSecond := h.daemon()
+	defer stopSecond()
+	var prompts []string
+	var mu sync.Mutex
+	second.mu.Lock()
+	second.titleGenerator = func(text string) (string, error) {
+		mu.Lock()
+		prompts = append(prompts, text)
+		mu.Unlock()
+		return "Lokien tutkinta", nil
+	}
+	second.mu.Unlock()
+	if w := h.send(second, id, "Jatka", heldB); w.Code != 200 {
+		t.Fatalf("resume send: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("continued conversation named", func() bool { return h.nativeName(id) == "Lokien tutkinta" })
+	if title, source := h.snapshotTitle(second, id); title != "Lokien tutkinta" || source != "native_session" {
+		t.Fatalf("snapshot title: %q %q", title, source)
+	}
+	mu.Lock()
+	if len(prompts) != 1 || !strings.Contains(prompts[0], "Tutki lokit") {
+		t.Fatalf("title model input: %q", prompts)
+	}
+	mu.Unlock()
+	// Owed once: later turns of the same handle do not rename it.
+	if w := h.send(second, id, "Vielä yksi", heldC); w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	h.eventually("third turn settled", func() bool {
+		_, v := h.status(second, id)
+		return v.State == "idle" && h.receipt(second, id, heldC) == "accepted"
+	})
+	stopSecond()
+
+	// A history named before the restart needs no model call.
+	third, stopThird := h.daemon()
+	defer stopThird()
+	third.mu.Lock()
+	third.titleGenerator = func(string) (string, error) {
+		mu.Lock()
+		prompts = append(prompts, "unexpected")
+		mu.Unlock()
+		return "Väärä", nil
+	}
+	third.mu.Unlock()
+	if w := h.send(third, id, "Jatka taas", heldD); w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	h.eventually("named history continued", func() bool {
+		third.mu.Lock()
+		defer third.mu.Unlock()
+		s := third.sessions[id]
+		return s != nil && s.settled && s.automaticFirst && !s.naming
+	})
+	mu.Lock()
+	defer mu.Unlock()
+	if len(prompts) != 1 || h.nativeName(id) != "Lokien tutkinta" {
+		t.Fatalf("a named history was retitled: %q %q", prompts, h.nativeName(id))
 	}
 }
