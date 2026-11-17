@@ -3,13 +3,17 @@ created: 2026-11-17
 updated: 2026-11-17
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-17/first-message-shift-phone-gate
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-17
+commits:
+- hash: 2931420e
+  summary: event-gap card waits for its read; turn hold covers a loading view created here
 ---
 
 # Clean gate before v0.1.4: first message layout shift 0.079 at 390 px while the conversation is being created
