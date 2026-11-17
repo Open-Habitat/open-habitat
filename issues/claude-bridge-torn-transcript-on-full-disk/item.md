@@ -3,7 +3,7 @@ created: 2026-11-17
 updated: 2026-11-17
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: high
 provenance: chat
 source_ref: chat:2026-11-16/claude-bridge-torn-transcript
