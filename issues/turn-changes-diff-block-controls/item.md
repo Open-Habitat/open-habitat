@@ -3,13 +3,14 @@ created: 2026-11-17
 updated: 2026-11-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/turn-changes-diff-block-controls
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-17
 ---
 
 # Turn changes block: diff lacks the code block's wrap control, and a single file needs an extra click

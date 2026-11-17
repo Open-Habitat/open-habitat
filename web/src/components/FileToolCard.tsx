@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { liveText } from "../i18n";
 import { fileToolCardText } from "../text/fileToolCard";
-import { IconButton } from "./ControlElements";
-import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";
 import { SyntaxCode } from "./SyntaxCode";
 
@@ -233,65 +231,59 @@ export function FileToolCard({
     });
   }
   const replacements = args?.edits?.map((e) => e.newText);
+  const lang = language(args?.path);
+  // The diff is a code block like a reply's (Jari 17.11.2026): the same box,
+  // views, wrap toggle and copy rail, its rows keeping their diff colouring.
+  const sign = (type: " " | "-" | "+") => (type === "-" ? "−" : type);
+  const row = ({ type, text, pair }: (typeof rows)[number], i: number) => (
+    <span
+      className={`ah-diff-line ah-diff-${type === " " ? "context" : type === "-" ? "remove" : "add"}`}
+      key={i}
+    >
+      <span className="ah-diff-sign" aria-hidden="true">
+        {sign(type)}
+      </span>
+      <span className="ah-diff-text">
+        {type === "-" ? (
+          <span data-testid="diff-deletion-label" className="ah-sr-only">
+            {txt.removed}
+          </span>
+        ) : type === "+" ? (
+          <span data-testid="diff-addition-label" className="ah-sr-only">
+            {txt.added}
+          </span>
+        ) : null}
+        {pair !== undefined ? (
+          type === "-" ? (
+            marked(text, pair, "-")
+          ) : (
+            marked(pair, text, "+")
+          )
+        ) : (
+          <SyntaxCode text={text || " "} language={lang} />
+        )}
+      </span>
+    </span>
+  );
   return (
     <div className="ah-file-diff-box">
-      {language(args?.path) ? (
-        <small className="ah-output-meta">{language(args?.path)}</small>
-      ) : null}
-      <pre className="ah-file-diff">
-        {rows.map(({ type, text, pair }, i) => (
-          <span
-            className={`ah-diff-line ah-diff-${type === " " ? "context" : type === "-" ? "remove" : "add"}`}
-            // biome-ignore lint/suspicious/noArrayIndexKey: Position in immutable diff sequence.
-            key={i}
-          >
-            <span className="ah-diff-sign" aria-hidden="true">
-              {type === "-" ? "−" : type}
-            </span>
-            <span>
-              {type === "-" ? (
-                <span data-testid="diff-deletion-label" className="ah-sr-only">
-                  {txt.removed}
-                </span>
-              ) : type === "+" ? (
-                <span data-testid="diff-addition-label" className="ah-sr-only">
-                  {txt.added}
-                </span>
-              ) : null}
-              {pair !== undefined ? (
-                type === "-" ? (
-                  marked(text, pair, "-")
-                ) : (
-                  marked(pair, text, "+")
-                )
-              ) : (
-                <SyntaxCode
-                  text={text || " "}
-                  language={language(args?.path)}
-                />
-              )}
-            </span>
+      <OutputBox
+        text={rows.map(({ type, text }) => `${sign(type)} ${text}`).join("\n")}
+        language={lang}
+        renderLines={(from, to) => (
+          <span className="ah-diff-rows">
+            {rows.slice(from, to).map((r, i) => row(r, from + i))}
           </span>
-        ))}
-      </pre>
-      <IconButton
-        size="inline"
-        variant="quiet"
-        aria-label={
+        )}
+        copyLabel={
           replacements?.length
             ? replacements.length === 1
               ? txt.copyNewText
               : txt.copyNewTexts
             : txt.copyDiff
         }
-        onPress={() =>
-          void navigator.clipboard.writeText(
-            replacements?.join("\n\n") ?? output ?? "",
-          )
-        }
-      >
-        <Icon name="copy" />
-      </IconButton>
+        copyText={replacements?.join("\n\n") ?? output ?? ""}
+      />
     </div>
   );
 }

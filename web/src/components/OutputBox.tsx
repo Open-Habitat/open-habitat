@@ -30,6 +30,8 @@ export function OutputBox({
   onCopy,
   actions,
   rendered,
+  renderLines,
+  copyText,
 }: {
   text: string;
   language?: string;
@@ -40,6 +42,11 @@ export function OutputBox({
   onCopy?: () => void;
   actions?: ReactNode;
   rendered?: ReactNode;
+  /** Renders lines [start, end) of `text` in place of syntax-coloured code
+   *  (a diff's rows), keeping the box's views, wrap and copy controls. */
+  renderLines?: (start: number, end: number) => ReactNode;
+  /** What copy places on the clipboard when it is not `text` itself. */
+  copyText?: string;
 }) {
   const lines = text.replace(/\n$/, "").split("\n");
   const long = lines.length > 10;
@@ -152,7 +159,7 @@ export function OutputBox({
   const copy = async () => {
     try {
       if (onCopy) onCopy();
-      else await navigator.clipboard.writeText(text);
+      else await navigator.clipboard.writeText(copyText ?? text);
       setCopied(true);
     } catch {
       setCopied(false);
@@ -192,16 +199,20 @@ export function OutputBox({
       <Icon name={icon} />
     </IconButton>
   );
-  const content = (section: string[]) => (
-    <SyntaxCode
-      text={`${section.join("\n")}\n`}
-      language={language}
-      complete={complete}
-      detect={detect}
-    />
-  );
+  const content = (section: string[], start: number) =>
+    renderLines ? (
+      renderLines(start, start + section.length)
+    ) : (
+      <SyntaxCode
+        text={`${section.join("\n")}\n`}
+        language={language}
+        complete={complete}
+        detect={detect}
+      />
+    );
   const pre = (
     section: string[],
+    start: number,
     className: string,
     ref?: React.Ref<HTMLPreElement>,
   ) => {
@@ -229,7 +240,7 @@ export function OutputBox({
           update(target);
         }}
       >
-        {content(section)}
+        {content(section, start)}
         {running && className === "ah-output-scroll" ? (
           <span className="ah-bash-caret" aria-hidden="true">
             ▏
@@ -253,7 +264,7 @@ export function OutputBox({
         {rendered ??
           (view === "edges" ? (
             <div className="ah-output-edges">
-              {pre(lines.slice(0, 3), "ah-bash-head", head)}
+              {pre(lines.slice(0, 3), 0, "ah-bash-head", head)}
               <ControlButton
                 variant="quiet"
                 size="inline"
@@ -263,11 +274,12 @@ export function OutputBox({
               >
                 {txt.hiddenLines(lines.length - 10)}
               </ControlButton>
-              {pre(lines.slice(-7), "ah-bash-tail", tail)}
+              {pre(lines.slice(-7), lines.length - 7, "ah-bash-tail", tail)}
             </div>
           ) : (
             pre(
               lines,
+              0,
               view === "scroll" ? "ah-output-scroll" : "ah-output-all",
               view === "scroll" ? viewport : all,
             )
@@ -382,12 +394,16 @@ export function OutputBox({
               {lines.map((_, i) => `${i + 1}\n`).join("")}
             </pre>
             <pre>
-              <SyntaxCode
-                text={text}
-                language={language}
-                complete={complete}
-                detect={detect}
-              />
+              {renderLines ? (
+                renderLines(0, lines.length)
+              ) : (
+                <SyntaxCode
+                  text={text}
+                  language={language}
+                  complete={complete}
+                  detect={detect}
+                />
+              )}
             </pre>
           </div>
         </dialog>

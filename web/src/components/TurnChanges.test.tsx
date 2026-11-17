@@ -103,6 +103,24 @@ it("the timeline replaces the list and a mark opens that one change", () => {
   expect(screen.getAllByTestId("turn-changes-file")).toHaveLength(2);
 });
 
+it("a turn that changed one file opens straight to its diff, which its row still folds", () => {
+  const one = files.filter((f) => f.path === "src/haku.ts");
+  render(<TurnChanges files={one} />);
+  expect(screen.queryByTestId("turn-changes-diff")).toBeNull();
+  fireEvent.click(toggle());
+  const row = screen.getByTestId("turn-changes-file");
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+  expect(
+    screen.getByTestId("turn-changes-diff").querySelectorAll(".ah-diff-add"),
+  ).toHaveLength(2);
+  fireEvent.click(row);
+  expect(screen.queryByTestId("turn-changes-diff")).toBeNull();
+  // Closing and reopening the block keeps the person's choice.
+  fireEvent.click(toggle());
+  fireEvent.click(toggle());
+  expect(screen.queryByTestId("turn-changes-diff")).toBeNull();
+});
+
 it("shows nothing for a turn that changed no files", () => {
   const view = render(<TurnChanges files={[]} />);
   expect(view.container.firstChild).toBeNull();

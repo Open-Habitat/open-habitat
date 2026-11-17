@@ -1190,6 +1190,11 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				} else if mode == "turn-changes-one" {
+					if e := seedTurnChangesOneHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				} else if mode == "search" {
 					cwd := filepath.Join(tmp, "alice", "src", "ordinary-dir")
 					if e := seedSearchHistory(path, cwd); e != nil {

@@ -4080,9 +4080,7 @@ details[open] > summary:not([class])::before {
 }
 /* A code label stays put under the pointer and on touch; it gives way only
    to output scrolled up beneath it. */
-.ah-bash-window.ah-output-scrolled > .ah-output-meta,
-.ah-file-diff-box:hover > .ah-output-meta,
-.ah-file-diff-box:focus-within > .ah-output-meta {
+.ah-bash-window.ah-output-scrolled > .ah-output-meta {
   opacity: 0;
 }
 .ah-bash-window:has(> .ah-output-meta) .ah-output-viewport.ah-output-all,
@@ -4144,31 +4142,29 @@ details[open] > summary:not([class])::before {
   color: var(--ah-muted);
 }
 .ah-file-diff-box {
-  --ah-output-rail-width: 28px;
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--ah-output-rail-width);
-  gap: var(--ah-s2);
   min-width: 0;
 }
-.ah-file-diff {
-  margin: 0;
-  padding: 8px 0;
-  overflow: auto;
-  max-height: 24em;
-  background: var(--ah-sunken);
-  font: 400 var(--ah-size-code) / 1.55 var(--ah-mono);
-  font-variant-ligatures: none;
-  border: 1px solid var(--ah-line-soft);
-  border-radius: 8px;
+/* A diff's rows fill the code block edge to edge, so their colour reaches the
+   border; unwrapped, every row is as wide as the longest. */
+.ah-bash-window .ah-output-viewport:has(> .ah-diff-rows) {
+  padding-inline: 0;
 }
-.ah-file-diff-box:has(> .ah-output-meta) .ah-file-diff {
-  padding-top: calc(2 * var(--ah-s4));
+.ah-diff-rows {
+  display: block;
+  min-width: max-content;
+}
+.ah-output-wrap > .ah-diff-rows {
+  min-width: 0;
 }
 .ah-diff-line {
   display: flex;
-  min-width: max-content;
   padding-right: 12px;
+}
+.ah-diff-text {
+  min-width: 0;
+}
+.ah-output-wrap .ah-diff-text {
+  overflow-wrap: anywhere;
 }
 .ah-diff-sign {
   flex: none;
@@ -4188,11 +4184,11 @@ details[open] > summary:not([class])::before {
 .ah-diff-remove .ah-diff-sign {
   color: var(--ah-err);
 }
-.ah-file-diff ins {
+.ah-diff-rows ins {
   text-decoration: none;
   background: color-mix(in srgb, var(--ah-ok) 26%, transparent);
 }
-.ah-file-diff del {
+.ah-diff-rows del {
   text-decoration: none;
   background: color-mix(in srgb, var(--ah-err) 24%, transparent);
 }

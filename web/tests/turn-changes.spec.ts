@@ -204,6 +204,113 @@ test("@turn-changes on a phone the card fits the width and the timeline keeps it
   await expect(changes.getByTestId("turn-changes-timeline-row")).toHaveCount(3);
 });
 
+// A turn's diff is a reply's code block (Jari 17.11.2026): the same box and
+// control rail, so a line wider than the conversation wraps on request
+// instead of being cut off; and a turn that changed one file opens straight
+// to that file's diff. The host serves a session whose only turn edits one
+// file with a very long line.
+const oneEvidence = process.env.OH_VISUAL_CAPTURE_DIR;
+
+async function openOne(page: Page) {
+  expect(
+    (await page.request.get("/fixture/history?mode=turn-changes-one")).status(),
+  ).toBe(204);
+  await page.goto("/workspaces");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const session = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { experimental: { "turn-changes": true } },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.goto(`/agents/${agent}`);
+  const changes = card(page);
+  await expect(changes).toHaveCount(1);
+  return changes;
+}
+
+for (const [width, height, device] of [
+  [1440, 900, "desktop"],
+  [390, 844, "phone"],
+] as const)
+  test(`@turn-changes on a ${device} one changed file opens to its diff, which wraps on request`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    const changes = await openOne(page);
+    await changes.scrollIntoViewIfNeeded();
+    await changes.getByTestId("turn-changes-toggle").click();
+    // The only file is open at once; its row still folds it away.
+    const row = changes.getByTestId("turn-changes-file");
+    await expect(row).toHaveAttribute("aria-expanded", "true");
+    const diff = changes.getByTestId("turn-changes-diff");
+    await expect(diff.locator(".ah-diff-add")).toHaveCount(1);
+    await expect(diff.locator(".ah-diff-remove")).toHaveCount(1);
+
+    // The copy control is on the code block's rail, inside the card.
+    const block = diff.locator(".ah-bash-window");
+    const copy = block.getByTestId("output-copy");
+    await expect(copy).toBeVisible();
+    const [blockBox, copyBox, cardBox] = await Promise.all([
+      block.boundingBox(),
+      copy.boundingBox(),
+      changes.boundingBox(),
+    ]);
+    expect(copyBox && blockBox && cardBox).toBeTruthy();
+    if (!copyBox || !blockBox || !cardBox) return;
+    expect(copyBox.x + copyBox.width).toBeLessThanOrEqual(
+      blockBox.x + blockBox.width + 0.5,
+    );
+    expect(blockBox.x + blockBox.width).toBeLessThanOrEqual(
+      cardBox.x + cardBox.width + 0.5,
+    );
+
+    // The long line overflows, so the wrap toggle is offered; wrapped, the
+    // whole line is in view and the rows keep their diff colouring.
+    const viewport = block.locator(".ah-output-viewport");
+    const fits = () =>
+      viewport.evaluate((pre) => pre.scrollWidth <= pre.clientWidth + 1);
+    expect(await fits()).toBe(false);
+    if (oneEvidence)
+      await page.screenshot({ path: `${oneEvidence}/${device}-nowrap.png` });
+    const wrap = block.getByTestId("output-wrap");
+    await expect(wrap).toHaveAttribute("aria-pressed", "false");
+    await wrap.click();
+    await expect(wrap).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(fits).toBe(true);
+    const added = viewport.locator(".ah-diff-add");
+    const line = await added.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+      background: getComputedStyle(el).backgroundColor,
+    }));
+    expect(line.height).toBeGreaterThan(line.lineHeight * 1.5);
+    expect(line.background).not.toBe("rgba(0, 0, 0, 0)");
+    if (oneEvidence) {
+      await page.screenshot({ path: `${oneEvidence}/${device}-wrap.png` });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.screenshot({ path: `${oneEvidence}/${device}-wrap-dark.png` });
+      await page.emulateMedia({ colorScheme: "light" });
+    }
+    expect(
+      (await new AxeBuilder({ page }).include(".ah-turn-changes").analyze())
+        .violations,
+    ).toEqual([]);
+
+    await row.click();
+    await expect(diff).toHaveCount(0);
+  });
+
 // Review screenshots for Jari: light and dark, Finnish and English, desktop
 // and phone. Runs only with OH_VISUAL_CAPTURE.
 test("@turn-changes evidence screenshots", async ({ page }) => {

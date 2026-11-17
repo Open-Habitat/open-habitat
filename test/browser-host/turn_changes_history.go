@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,18 @@ import (
 // one, removes one with git rm, fails an edit and answers with an interim
 // reply between. Every entry has its moment, a second apart or more.
 func seedTurnChangesHistory(path, cwd string) error {
+	return seedTurnChanges(path, cwd, false)
+}
+
+// seedTurnChangesOneHistory writes a native session whose only turn edits one
+// file, replacing a short line with one far wider than a phone or a desktop
+// conversation: a single-file change that opens straight to its diff, whose
+// code block offers the wrap toggle.
+func seedTurnChangesOneHistory(path, cwd string) error {
+	return seedTurnChanges(path, cwd, true)
+}
+
+func seedTurnChanges(path, cwd string, one bool) error {
 	start := time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC)
 	rows := []map[string]any{{"type": "session", "version": 3, "id": "11111111-1111-4111-8111-111111111111", "cwd": cwd, "timestamp": start.Format(time.RFC3339Nano)}}
 	var parent any
@@ -39,6 +52,13 @@ func seedTurnChangesHistory(path, cwd string) error {
 		add(id, seconds, map[string]any{"role": "assistant", "stopReason": "stop", "content": []any{map[string]any{"type": "text", "text": text}}})
 	}
 
+	if one {
+		add("tc-user-1", 0, map[string]any{"role": "user", "content": "Kuvaa oletus tarkemmin."})
+		call("tc-edit", 5, "edit", map[string]any{"path": "src/haku.ts", "edits": []any{map[string]any{"oldText": "export const oletus = 10;", "newText": "export const oletus = 10; // " + strings.Repeat("hakutulosten oletusmäärä ", 12)}}}, "")
+		result("tc-edit", 6, "edit", "Successfully replaced 1 block(s) in src/haku.ts.", false)
+		reply("tc-reply-1", 10, "Oletus on nyt kuvattu.")
+		return writeRows(path, rows)
+	}
 	add("tc-user-1", 0, map[string]any{"role": "user", "content": "Mitä tiedostoja on?"})
 	call("tc-ls", 2, "bash", map[string]any{"command": "ls src"}, "")
 	result("tc-ls", 3, "bash", "haku.ts\nvanha.ts\n", false)
@@ -68,6 +88,10 @@ func seedTurnChangesHistory(path, cwd string) error {
 	if e := os.WriteFile(filepath.Join(cwd, "src", "haku.ts"), []byte(after), 0600); e != nil {
 		return e
 	}
+	return writeRows(path, rows)
+}
+
+func writeRows(path string, rows []map[string]any) error {
 	f, e := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if e != nil {
 		return e

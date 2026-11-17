@@ -67,20 +67,16 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   await expect(tool("read").getByTestId("output-copy")).toBeVisible();
   await expectNativeContent(tool("write"), "typescript", {});
   // The label is inside the surface, above its first line and left of the rail.
-  // Over that reserved space a code label stays put under the pointer; the
-  // diff card's label gives way on hover.
+  // Over that reserved space a code label stays put under the pointer, the
+  // diff's too: it is the same code block (Jari 17.11.2026).
   for (const name of ["read", "write", "edit"]) {
-    const box = tool(name).locator(
-      name === "edit" ? ".ah-file-diff-box" : ".ah-output-box",
-    );
+    const box = tool(name).locator(".ah-output-box");
     const label = box.locator(".ah-output-meta");
     await expect(label).toHaveCount(1);
-    const layout = await box.evaluate((node, name) => {
+    const layout = await box.evaluate((node) => {
       const surface = node.querySelector("pre");
       const caption = node.querySelector(".ah-output-meta");
-      const rail = node.querySelector(
-        name === "edit" ? "button" : ".ah-bash-rail",
-      );
+      const rail = node.querySelector(".ah-bash-rail");
       if (!surface || !caption || !rail) return null;
       const firstLineTop =
         surface.getBoundingClientRect().top +
@@ -92,11 +88,10 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
           c.bottom < firstLineTop,
         clearRail: c.right < rail.getBoundingClientRect().left,
       };
-    }, name);
+    });
     expect(layout).toEqual({ inside: true, clearRail: true });
     await box.hover();
-    if (name === "edit") await expect(label).toHaveCSS("opacity", "0");
-    else await expect(label).not.toHaveCSS("opacity", "0");
+    await expect(label).not.toHaveCSS("opacity", "0");
   }
   await expect(async () => {
     const toggle = tool("edit").locator("button").first();

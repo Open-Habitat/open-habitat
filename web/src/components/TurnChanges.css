@@ -190,10 +190,6 @@
   min-width: 0;
   padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
 }
-.ah-tc-diff :is(.ah-file-diff-box, .ah-output-box) {
-  max-height: 520px;
-  overflow: auto;
-}
 .ah-tc-actions {
   display: flex;
   justify-content: flex-end;

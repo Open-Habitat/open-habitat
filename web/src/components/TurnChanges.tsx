@@ -20,7 +20,8 @@ const txt = liveText(turnChangesText);
 // with Aikajana on the line, Jari 11.11.2026): one collapsed line under a
 // finished turn's reply. It opens in place to the turn's files, each opening
 // its whole change; the timeline button shows the same files on the turn's
-// clock instead of the list. Every diff is the conversation's FileToolCard.
+// clock instead of the list. Every diff is the conversation's FileToolCard,
+// which shows it in a reply's code block.
 
 export type TurnChangesProps = {
   files: FileChange[];
@@ -435,7 +436,9 @@ export function TurnChanges({
           ) : (
             <ul className="ah-tc-list">
               {files.map((f) => {
-                const expanded = !!rows[f.path];
+                // A turn that changed one file opens straight to its diff
+                // (Jari 17.11.2026); the row still folds it away.
+                const expanded = rows[f.path] ?? !!one;
                 return (
                   <li key={f.path} data-path={f.path}>
                     <button

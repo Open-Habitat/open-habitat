@@ -96,3 +96,55 @@ it("pairs changed edit lines and marks changed words, with accessible line label
   fireEvent.click(screen.getByRole("button"));
   expect(writeText).toHaveBeenCalledWith("const name = new;\nkeep");
 });
+it("shows a long diff in the code block's views with each row in its place, and copies the new text", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  const old = Array.from({ length: 12 }, (_, i) => `rivi ${i}`);
+  const args = JSON.stringify({
+    path: "pitka.ts",
+    edits: [
+      {
+        oldText: old.join("\n"),
+        newText: [...old.slice(0, 11), "rivi 11 uusi"].join("\n"),
+      },
+    ],
+  });
+  const { container } = render(
+    <FileToolCard name="edit" argumentsText={args} />,
+  );
+  // 11 context rows, one removed and one added: the edges view shows the
+  // first three and the last seven, the change among the last.
+  const head = container.querySelector(".ah-bash-head");
+  const tail = container.querySelector(".ah-bash-tail");
+  const rows = (pre: Element | null) =>
+    Array.from(pre?.querySelectorAll(".ah-diff-line") ?? [], (r) =>
+      r.classList.contains("ah-diff-context")
+        ? r.textContent
+        : r.classList.contains("ah-diff-add")
+          ? "+"
+          : "-",
+    );
+  expect(rows(head)).toEqual([" rivi 0", " rivi 1", " rivi 2"]);
+  expect(rows(tail)).toEqual([
+    " rivi 6",
+    " rivi 7",
+    " rivi 8",
+    " rivi 9",
+    " rivi 10",
+    "-",
+    "+",
+  ]);
+  fireEvent.click(screen.getByTestId("output-expand"));
+  expect(
+    container.querySelectorAll(".ah-output-all .ah-diff-line"),
+  ).toHaveLength(13);
+  fireEvent.click(screen.getByTestId("output-copy"));
+  await vi.waitFor(() =>
+    expect(writeText).toHaveBeenCalledWith(
+      [...old.slice(0, 11), "rivi 11 uusi"].join("\n"),
+    ),
+  );
+});
