@@ -20,12 +20,37 @@ describe("file references in messages", () => {
     expect(parseFileRef("./go.mod:3:7")).toEqual({ path: "go.mod", line: 3 });
     expect(parseFileRef("README.md")).toEqual({ path: "README.md" });
   });
+  it.each([
+    ".agents/skills/create-presentation/SKILL.md",
+    ".github/workflows/x.yml",
+    ".pi/settings.json",
+    "src/.hidden/file.ts",
+    ".env.example",
+    ".env",
+    "config/.env",
+  ])("recognises hidden paths and line suffixes: %s", (path) => {
+    expect(parseFileRef(path)).toEqual({ path });
+    expect(parseFileRef(`./${path}`)).toEqual({ path });
+    expect(parseFileRef(`${path}:42`)).toEqual({ path, line: 42 });
+    expect(parseFileRef(`${path}:42-48`)).toEqual({ path, line: 42, end: 48 });
+  });
   it("leaves everything that is not a path inside the workspace as text", () => {
     for (const text of [
       "/etc/passwd",
       "~/notes.md",
       "../secret.txt",
       "a/../../b.go",
+      ".agents/../secret.md",
+      "./.agents/../../secret.md:42-48",
+      ".agents/./SKILL.md",
+      ".agents//SKILL.md",
+      ".agents/..",
+      ".agents/%2e%2e/secret.md",
+      ".agents/\\..\\secret.md",
+      "/.agents/SKILL.md",
+      "~/.env.example",
+      ".env.example:0",
+      ".env.example:1-0",
       "https://example.com/a.js",
       "git diff",
       "1.2.3",
@@ -40,9 +65,16 @@ describe("file references in messages", () => {
       path: "src/components/",
     });
     expect(parseFileRef("./src/")).toEqual({ path: "src/" });
+    expect(parseFileRef(".agents/skills/")).toEqual({
+      path: ".agents/skills/",
+    });
+    expect(parseFileRef("./.pi/")).toEqual({ path: ".pi/" });
     for (const text of [
       "../src/",
       "src/../private/",
+      ".agents/../private/",
+      "./.agents/../../private/",
+      ".agents/./skills/",
       "/src/",
       "~/src/",
       "//host/src/",

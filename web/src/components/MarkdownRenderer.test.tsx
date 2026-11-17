@@ -9,6 +9,12 @@ afterEach(cleanup);
 const samples = [
   ["See docs/asennus.md.", "docs/asennus.md", { path: "docs/asennus.md" }],
   ["See `notes.txt`.", "notes.txt", { path: "notes.txt" }],
+  [
+    "See `.agents/skills/create-presentation/SKILL.md:3-4`.",
+    ".agents/skills/create-presentation/SKILL.md:3-4",
+    { path: ".agents/skills/create-presentation/SKILL.md", line: 3, end: 4 },
+  ],
+  ["See `.env.example`.", ".env.example", { path: ".env.example" }],
   ["See `./example.com`.", "./example.com", { path: "example.com" }],
   ["See [folder](./src/components/).", "folder", { path: "src/components/" }],
   ["See `src/components/`.", "src/components/", { path: "src/components/" }],

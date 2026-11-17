@@ -3,13 +3,14 @@ created: 2026-11-17
 updated: 2026-11-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/file-link-dot-paths
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-17
 ---
 
 # File references whose path starts with a dot (.agents/…) are not turned into editor links

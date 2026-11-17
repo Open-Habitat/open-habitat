@@ -12,9 +12,9 @@ export interface FileRef {
 // paths that climb out (..) stay text: the browser never names anything
 // outside the workspace, and the daemon checks again.
 const token =
-  /^(?:\.\/)?((?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)*[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::([1-9][0-9]{0,6})(?:([-:])([1-9][0-9]{0,6}))?)?$/;
+  /^(?:\.\/)?((?:[A-Za-z0-9_.@+-]+\/)*[A-Za-z0-9_.@+-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::([1-9][0-9]{0,6})(?:([-:])([1-9][0-9]{0,6}))?)?$/;
 
-const directoryToken = /^(?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)+$/;
+const directoryToken = /^(?:[A-Za-z0-9_.@+-]+\/)+$/;
 
 /** Bare addresses are ambiguous with filenames. Recognise common web suffixes;
  * an explicit ./ always means a workspace path (including e.g. ./example.com).
@@ -34,6 +34,9 @@ export function webAddress(text: string): string | null {
 export function parseFileRef(text: string): FileRef | null {
   if (webAddress(text.trim())) return null;
   const directory = text.trim().replace(/^\.\//, "");
+  // A leading ./ is allowed, but dot segments are not path components.
+  if (directory.split("/").some((part) => part === "." || part === ".."))
+    return null;
   if (directory.length <= 1024 && directoryToken.test(directory))
     return { path: directory };
   // GitHub-style Markdown anchors are another common model output form.

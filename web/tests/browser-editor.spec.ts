@@ -76,6 +76,54 @@ async function openFile(page: Page, phone: boolean) {
     true,
   );
 }
+test("@browser-editor @dot-file-link hidden reply paths open existing files and remain browsable", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const root = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  ).path;
+  const path = ".agents/skills/create-presentation/SKILL.md";
+  await mkdir(join(root, ".agents/skills/create-presentation"), {
+    recursive: true,
+  });
+  await writeFile(
+    join(root, path),
+    "# Presentation skill\n\nHidden workspace file\n",
+  );
+  // Synthetic Pi echoes the prompt in its reply through native history.
+  await page
+    .getByTestId("message-input")
+    .fill(`Open \`${path}:3\` and \`.agents/missing.md\`.`);
+  await page.getByTestId("send").click();
+  const reply = page.locator('li[data-kind="assistant"]').last();
+  const link = reply
+    .getByRole("link")
+    .and(page.locator(`a[href="#${encodeURIComponent(`${path}:3`)}"]`));
+  await expect(link).toBeVisible({ timeout: 20000 });
+  await link.click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "Hidden workspace file",
+  );
+  await expect(link).toHaveClass(/ah-file-link-opened/);
+  if (!(await page.getByTestId("editor-file-picker").isVisible()))
+    await page.getByTestId("editor-picker").click();
+  await expect(
+    page.getByTestId("editor-file-entry").filter({
+      has: page.locator("code", { hasText: /^SKILL\.md$/ }),
+    }),
+  ).toBeVisible();
+  await reply
+    .getByRole("link")
+    .and(page.locator('a[href="#.agents%2Fmissing.md"]'))
+    .click();
+  await expect(page.getByTestId("editor-problem")).toBeVisible();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "Hidden workspace file",
+  );
+});
+
 test("@browser-editor external file creation, rename and removal refresh the open tree without losing edits", async ({
   page,
 }) => {
