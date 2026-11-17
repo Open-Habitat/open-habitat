@@ -696,6 +696,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.RefusedBy != "" {
 		payload["refused_by"] = entry.RefusedBy
 	}
+	if entry.TurnFailure != "" {
+		payload["turn_failure"] = entry.TurnFailure
+	}
 	if entry.Model != "" {
 		payload["model"] = entry.Model
 	}

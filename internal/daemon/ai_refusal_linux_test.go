@@ -118,3 +118,20 @@ func TestHistoryNamesTheRefusingProvider(t *testing.T) {
 		}
 	}
 }
+
+// The Claude bridge's failure to read its own transcript is named, so the
+// browser can say what happened instead of an empty failed turn; the same
+// parse error from another provider, or another bridge error, is not.
+func TestHistoryNamesADamagedBridgeTranscript(t *testing.T) {
+	for _, tc := range []struct{ message, want string }{
+		{`{"role":"assistant","provider":"claude-bridge","stopReason":"error","errorMessage":"Expected ',' or '}' after property value in JSON at position 130 (line 1 column 131)","content":[]}`, "provider_transcript_damaged"},
+		{`{"role":"assistant","provider":"claude-bridge","stopReason":"error","errorMessage":"Session boundary 00000000-0000-4000-8000-000000000001 is absent from the transcript","content":[]}`, "provider_transcript_damaged"},
+		{`{"role":"assistant","provider":"claude-bridge","stopReason":"error","errorMessage":"529 overloaded","content":[]}`, ""},
+		{`{"role":"assistant","provider":"openai","stopReason":"error","errorMessage":"Unexpected end of JSON input","content":[]}`, ""},
+		{`{"role":"assistant","provider":"claude-bridge","stopReason":"stop","errorMessage":"in JSON at position 3","content":[]}`, ""},
+	} {
+		if got := nativeBlocks(nativeEntry{ID: "e1", Type: "message", Message: []byte(tc.message)}).TurnFailure; got != tc.want {
+			t.Errorf("%s: turn_failure %q, want %q", tc.message, got, tc.want)
+		}
+	}
+}

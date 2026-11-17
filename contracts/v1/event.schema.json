@@ -234,6 +234,10 @@
                 "description": "On a failed assistant reply: the AI provider that refused the person's sign-in or API key, classified by the daemon from Pi's error. The provider's own text stays in native history.",
                 "enum": ["claude-bridge", "openai-codex", "openai", "anthropic", "deepseek"]
               },
+              "turn_failure": {
+                "description": "On a failed assistant reply: why it failed, when the daemon can name it from Pi's error. provider_transcript_damaged: the Claude bridge could not read its own copy of the conversation (a write cut short, for example by a full disk); sending again rebuilds it from the native history. The provider's own text stays in native history.",
+                "enum": ["provider_transcript_damaged"]
+              },
               "model": {
                 "type": "string",
                 "maxLength": 200

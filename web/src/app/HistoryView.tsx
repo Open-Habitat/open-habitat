@@ -99,6 +99,15 @@ import { NoticeEntry, useAssetsControl } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 const txt = liveText(historyViewText);
+
+/** A failed reply's short row, when the host named why: a refused sign-in
+ * (the warning above the field says the rest) or a failure it classified
+ * (history entry turn_failure). The provider's own words stay in native
+ * history; otherwise the failed state alone is shown. */
+export function failedTurnLine(entry: HistoryEntry): string | undefined {
+  if (entry.refused_by) return refusedTurnLine(entry.refused_by);
+  return entry.turn_failure ? txt.turnFailures[entry.turn_failure] : undefined;
+}
 const sizes = liveText(largeContentText);
 
 // A tab-local preference changes presentation only, never the native block.
@@ -958,9 +967,10 @@ export function Entry({
           onCopy={copy}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.stop_reason === "error" && entry.refused_by ? (
+          {entry.stop_reason === "error" &&
+          (entry.refused_by || entry.turn_failure) ? (
             <p className="ah-turn-short" data-testid="turn-short">
-              {refusedTurnLine(entry.refused_by)}
+              {failedTurnLine(entry)}
             </p>
           ) : entry.blocks ? (
             <OrderedBlocks
@@ -1358,11 +1368,11 @@ export function timelineItems(
       group.at(-1)?.stop_reason !== "error" &&
       (!ended || holding);
     // A refused sign-in is one short row: the warning above the field says
-    // the rest, and the provider's own words stay in native history.
-    const refusedBy =
-      group.at(-1)?.stop_reason === "error"
-        ? group.at(-1)?.refused_by
-        : undefined;
+    // the rest, and the provider's own words stay in native history. A
+    // failure the host could name otherwise says what it was and what to do.
+    const lastEntry = group[group.length - 1];
+    const failure =
+      lastEntry.stop_reason === "error" ? failedTurnLine(lastEntry) : undefined;
     items.push({
       id,
       kind: "assistant",
@@ -1371,7 +1381,7 @@ export function timelineItems(
         <AgentTurn
           startedAt={startedAt}
           failed={group.at(-1)?.stop_reason === "error"}
-          failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
+          failure={failure}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
               ? {
@@ -1383,7 +1393,7 @@ export function timelineItems(
               : undefined
           }
           steps={[
-            ...(refusedBy ? group.slice(0, -1) : group).flatMap(steps),
+            ...(failure ? group.slice(0, -1) : group).flatMap(steps),
             ...(merged && live && !ended ? live.steps : []),
           ]}
           working={merged && live?.working}

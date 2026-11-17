@@ -1241,6 +1241,34 @@ it("says a refused sign-in in one short row, without the provider's words", () =
   expect(view.container.textContent).not.toContain("OAuth session");
 });
 
+it("names a damaged bridge transcript in a failed turn instead of an empty failure", () => {
+  const failed: HistoryEntry = {
+    ...entry,
+    kind: "assistant",
+    stop_reason: "error",
+    turn_failure: "provider_transcript_damaged",
+    content: { media_type: "text/plain", text: "", complete: true },
+  };
+  const view = render(
+    timelineItems([failed]).map((item) => (
+      <div key={item.id}>{item.content}</div>
+    )),
+  );
+  expect(view.getByTestId("turn-short").textContent).toContain(
+    "Claude-yhteyden oma kopio keskustelusta oli vioittunut",
+  );
+  expect(view.getByTestId("turn-short").textContent).toContain(
+    "Lähetä se uudelleen",
+  );
+  view.unmount();
+  render(
+    <Entry agentId="pi:11111111-1111-4111-8111-111111111111" entry={failed} />,
+  );
+  expect(screen.getByTestId("turn-short").textContent).toContain(
+    "Viestiäsi ei käsitelty.",
+  );
+});
+
 it("folds many large pictures into one row until the person opens them", () => {
   const picture = {
     type: "image" as const,

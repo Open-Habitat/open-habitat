@@ -80,6 +80,8 @@ export interface HistoryEntry {
   stop_reason?: string;
   /** On a failed reply: the AI provider that refused the sign-in. */
   refused_by?: AIProvider;
+  /** On a failed reply: why, when the host could name it. */
+  turn_failure?: "provider_transcript_damaged";
   model?: string;
   /** Context size Pi recorded with this assistant reply. */
   context_tokens?: number;

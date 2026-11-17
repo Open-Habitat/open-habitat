@@ -3,6 +3,11 @@ import { catalog } from "../i18n";
 // A conversation read from native history (app/HistoryView.tsx): its
 // blocks, tool uses, markers, the read-only header and footer.
 const fi = {
+  /** A failed turn the host could name (history entry turn_failure). */
+  turnFailures: {
+    provider_transcript_damaged:
+      "Claude-yhteyden oma kopio keskustelusta oli vioittunut, esimerkiksi koska levy täyttyi kesken kirjoituksen. Viestiäsi ei käsitelty. Lähetä se uudelleen: kopio rakennetaan keskusteluhistoriasta, joka on tallessa.",
+  },
   loading: "Ladataan…",
   loadMoreBlock: "Lataa lisää lohkoa",
   loadBlock: "Lataa lohkon sisältö",
@@ -85,6 +90,10 @@ const fi = {
 };
 
 export const historyViewText = catalog(fi, {
+  turnFailures: {
+    provider_transcript_damaged:
+      "The Claude connection's own copy of the conversation was damaged, for example because the disk filled up during a write. Your message was not handled. Send it again: the copy is rebuilt from the conversation history, which is intact.",
+  },
   loading: "Loading…",
   loadMoreBlock: "Load more of the block",
   loadBlock: "Load the block's content",

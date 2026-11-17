@@ -177,6 +177,7 @@ export function applyTurnEvent(
       failure_cause: payload.failure_cause as BashFailure | undefined,
       stop_reason: payload.stop_reason as string | undefined,
       refused_by: payload.refused_by as HistoryEntry["refused_by"],
+      turn_failure: payload.turn_failure as HistoryEntry["turn_failure"],
       model: payload.model as string | undefined,
       context_tokens: payload.context_tokens as number | undefined,
       entry_type: payload.entry_type as HistoryEntry["entry_type"],

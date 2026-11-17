@@ -226,6 +226,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		if out.StopReason == "error" && aiProviders[m.Provider] && modelAuthFailure(m.ErrorMessage) {
 			out.RefusedBy = m.Provider
 		}
+		if out.StopReason == "error" && m.Provider == "claude-bridge" && bridgeTranscriptFailure(m.ErrorMessage) {
+			out.TurnFailure = "provider_transcript_damaged"
+		}
 		if len(m.Model) <= 200 {
 			out.Model = m.Model
 		}
@@ -397,4 +400,20 @@ func piStopReason(reason, message string) string {
 		return "aborted"
 	}
 	return reason
+}
+
+// bridgeTranscriptFailure: the Claude bridge could not read its own Claude
+// Code transcript of the conversation. pi-claude-bridge passes the reader's
+// exception text through as Pi's errorMessage: V8's JSON.parse wording for a
+// line that does not parse (a write cut short by a full disk, with the next
+// record glued on), or its own words for a transcript that lost records. The
+// companion sets such a transcript aside before the next run
+// (process-extension.mjs guardBridgeTranscript), so sending again rebuilds it.
+func bridgeTranscriptFailure(text string) bool {
+	for _, s := range []string{"in JSON at position", "is not valid JSON", "Unexpected end of JSON input", "is absent from the transcript", "is not on the primary parent chain", "Cycle in session parent chain"} {
+		if strings.Contains(text, s) {
+			return true
+		}
+	}
+	return false
 }
