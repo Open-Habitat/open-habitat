@@ -1,0 +1,161 @@
+/* Review chrome above the production shell, as in earlier rail rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rs-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rs-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rs-bar strong { font-weight: 600; }
+.rs-bar select { font: inherit; }
+.rs-try { color: var(--ah-accent-ink); }
+.rs-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rs-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rs-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 1100px) {
+  .rs-lines li:not([aria-current]) { display: none; }
+}
+@media (max-width: 600px) {
+  .rs-bar { padding: 6px 10px; }
+  .rs-controls > strong, .rs-try, .rs-recommend { display: none; }
+  .rs-controls { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; }
+  .rs-lines { line-height: 1.3; }
+}
+
+/* The production shell under the bar and above the picker. A simulated
+   height (700 / 560 px) makes the shell that tall, so a short window can be
+   seen on any screen. */
+.rs-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+html[data-rs-sim] .rs-stage .ah-app-shell { height: var(--rs-sim); bottom: auto; }
+html[data-rs-sim] body { min-height: calc(var(--review-h, 0px) + var(--rs-sim) + 60px); }
+@media (max-width: 800px) {
+  .rs-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+  html[data-rs-sim] .rs-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { bottom: auto; height: var(--rs-sim); }
+}
+.rs-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rs-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* ---------- The rail's regions ----------
+   Production today: .ah-rail-content scrolls everything below the head.
+   .rs-convs is the round's wrapper round Sinun vuorosi, Käynnissä and
+   Hiljaiset. All three directions stop the whole-rail scroll: the content
+   box becomes a column of regions, and each direction says which of them
+   scroll. */
+.rs-stage .ah-rail-content { overflow: clip; container-type: size; }
+/* clip, not hidden: a hidden box still scrolls under scrollIntoView. */
+.rs-convs { display: flex; flex-direction: column; min-height: 0; }
+/* Työtilat's floor is its heading, its filter and about three rows of its
+   list, whatever the row height (desktop or touch). */
+.rs-stage .ah-rail-workspaces {
+  display: flex; flex-direction: column; min-height: 11rem;
+  border-top: 1px solid var(--ah-line-soft); padding-top: var(--ah-s2);
+}
+@media (pointer: coarse) { .rs-stage .ah-rail-workspaces { min-height: 13.5rem; } }
+.rs-stage .ah-rail-workspaces > .ah-rail-section-head,
+.rs-stage .ah-rail-workspaces > .ah-rail-filter { flex: none; }
+.rs-stage .ah-workspace-list {
+  flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  align-content: start;
+}
+
+/* 1 Työtilat omana alueenaan: the conversations take what they need, and
+   everything but Työtilat's floor; past that they scroll in their own region. Työtilat takes the
+   rest. */
+[data-direction="0"] .rs-convs {
+  flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+}
+[data-direction="0"] .ah-rail-workspaces { flex: 1 1 0; }
+
+/* 2 Osiot laatikoissa: every section has its own box with a cap and its own
+   scroll, and its heading stays at the top of the box. */
+/* When even the smallest boxes do not fit (a 560 px window), the boxes'
+   column scrolls as well: boxes inside a scroller, the direction's cost. */
+[data-direction="1"] .rs-convs { flex: 0 1 auto; overflow: auto; overscroll-behavior: contain; }
+[data-direction="1"] .rs-convs > .ah-now {
+  flex: 0 1 auto; min-height: 4.5rem; overflow: auto; overscroll-behavior: contain;
+  align-content: start; scroll-padding-top: 1.75rem;
+}
+[data-direction="1"] .rs-convs > [data-testid="rail-yours"] { max-height: 25cqh; }
+[data-direction="1"] .rs-convs > [data-testid="rail-running"] { max-height: 19cqh; }
+[data-direction="1"] .rs-convs > [data-testid="rail-quiet"] { max-height: 22cqh; }
+[data-direction="1"] .rs-convs > [data-testid="rail-quiet"][data-folded] { min-height: 0; }
+[data-direction="1"] .rs-convs > .ah-now > .ah-rail-section-head {
+  position: sticky; top: 0; z-index: 1; background: var(--ah-rail);
+  padding-block: 2px;
+}
+[data-direction="1"] .ah-rail-workspaces { flex: 1 1 0; }
+
+/* 3 Katto ja Näytä kaikki: no scroll in the sections; the cap hides rows,
+   Show all opens them in place (and the conversations' region scrolls only
+   when what was opened does not fit). */
+[data-direction="2"] .rs-convs {
+  flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+}
+[data-direction="2"] .ah-rail-workspaces { flex: 1 1 0; }
+li[data-rs-capped] { display: none; }
+.rs-show-all {
+  justify-self: start; margin: 1px 0 0; padding: 3px 8px 3px 30px;
+  border: 0; border-radius: var(--ah-r-md); background: transparent;
+  color: var(--ah-accent-ink); font: inherit; font-size: 12px; cursor: pointer;
+}
+.rs-show-all:hover { background: var(--ah-surface-hover); }
+.rs-show-all:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: -2px; }
+
+/* ---------- Scroll edge cue ----------
+   A soft shade inside the edge that hides rows, drawn by the region itself
+   (scroll-attached gradients), plus a hairline when rows hide above. The
+   attributes come from updateEdges() in round.tsx. */
+[data-rs-region] { --rs-shade: color-mix(in srgb, var(--ah-ink) 30%, transparent); background-color: var(--ah-rail); }
+/* On a dark rail a light ink would glow; the shade stays a shadow. */
+:is([data-theme="dark"], [data-theme="contrast"]) [data-rs-region] { --rs-shade: color-mix(in srgb, #000 70%, transparent); }
+[data-rs-region][data-above] {
+  background-image: radial-gradient(farthest-side at 50% 0, var(--rs-shade), transparent);
+  background-size: 100% 12px; background-repeat: no-repeat; background-position: top;
+  box-shadow: inset 0 1px 0 var(--ah-line-soft);
+}
+[data-rs-region][data-below] {
+  background-image: radial-gradient(farthest-side at 50% 100%, var(--rs-shade), transparent);
+  background-size: 100% 12px; background-repeat: no-repeat; background-position: bottom;
+}
+[data-rs-region][data-above][data-below] {
+  background-image:
+    radial-gradient(farthest-side at 50% 0, var(--rs-shade), transparent),
+    radial-gradient(farthest-side at 50% 100%, var(--rs-shade), transparent);
+  background-position: top, bottom;
+}
+/* A sticky heading must cover the shade under it. */
+[data-direction="1"] [data-rs-region][data-above] > .ah-rail-section-head {
+  box-shadow: 0 1px 0 var(--ah-line-soft);
+}
+
+/* Direction 1: the sections with rows further down, named at the foot of
+   the conversations' region; a name scrolls to its section. */
+.rs-beyond {
+  /* Fixed height and a negative margin: the foot overlays the rows instead
+     of taking room, so its coming and going never moves them. */
+  position: sticky; z-index: 2; box-sizing: border-box; height: 26px; flex: none;
+  display: flex; flex-wrap: nowrap; overflow: hidden; align-items: center; gap: 4px;
+  padding: 0 6px 0 10px; white-space: nowrap;
+  background: var(--ah-rail); color: var(--ah-muted); font-size: 11.5px;
+}
+.rs-beyond[data-edge="below"] {
+  bottom: 0; margin-top: -26px; border-top: 1px solid var(--ah-line-soft);
+  box-shadow: 0 -6px 10px -6px var(--rs-shade, transparent);
+}
+.rs-beyond[data-edge="above"] {
+  top: 0; margin-bottom: -26px; border-bottom: 1px solid var(--ah-line-soft);
+  box-shadow: 0 6px 10px -6px var(--rs-shade, transparent);
+}
+.rs-beyond button {
+  flex: none; padding: 0 6px; line-height: 18px; border: 1px solid var(--ah-line); border-radius: 999px;
+  background: var(--ah-surface); color: var(--ah-ink); font: inherit; cursor: pointer;
+}
+.rs-beyond button:hover { background: var(--ah-surface-hover); }
+.rs-beyond b { font-weight: 600; }
+/* Always, so a row or heading brought into sight lands clear of a cue that
+   appears only after the scroll. */
+[data-direction="0"] .rs-convs { scroll-padding-block: 30px; }

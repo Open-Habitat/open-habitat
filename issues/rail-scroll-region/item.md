@@ -1,6 +1,6 @@
 ---
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-17
 type: improvement
 reporter: jari
 status: open
@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-16/rail-scroll-region
 lane: rail-scroll
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Rail scrolls as a whole, so the conversation sections scroll out of sight; the workspace section should scroll instead
