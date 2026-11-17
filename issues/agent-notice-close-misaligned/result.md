@@ -12,7 +12,7 @@ Tested the implementation in this issue's fixing commit:
 - `./scripts/test-web-fast.sh`: passed; **229 files / 1809 tests** plus static checks.
 - All test commands ran with umask 077, scratch lease and timeouts. Initial browser startup needed the documented Pi SDK fixture dependency installation; reruns passed. An intermediate implementation failed the left-edge check by 26 px; adding only a gutter then overflowed the phone viewport, which led to the row wrapper.
 
-Synthetic lab PNG/static HTML pairs are in `evidence/` for 390 and 1920 px dark theme; both screenshots were inspected. Browser tests establish synthetic layout and interaction behavior, not live-server deployment or native-user isolation. No live deployment was performed.
+Synthetic lab PNG/static HTML pairs for 390 and 1920 px dark theme are kept outside the repository (conductor host, agent-keep); both screenshots were inspected. Browser tests establish synthetic layout and interaction behavior, not live-server deployment or native-user isolation. No live deployment was performed.
 
 ## Review
 
