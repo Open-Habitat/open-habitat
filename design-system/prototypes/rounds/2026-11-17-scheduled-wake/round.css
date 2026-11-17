@@ -1,0 +1,133 @@
+/* Review chrome above the production shell, as in earlier rail rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-clock { font-variant-numeric: tabular-nums; }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-event:disabled { color: var(--ah-muted); cursor: default; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong, .ra-clock { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.sw-main { height: 100%; min-width: 0; }
+.sw-main .ah-conversation-frame, .sw-main > * { height: 100%; }
+
+/* ---------- The wake on the row (1 and 2): the time where the age is ----------
+   The production end slot keeps its place; the round swaps the age's words
+   for the wake time and leads it with a clock. */
+time.ah-nav-time[data-wake] { font-size: 0; display: inline-flex; align-items: center; gap: 3px; }
+time.ah-nav-time[data-wake]::before {
+  content: ""; width: 11px; height: 11px; flex: none;
+  background: currentColor;
+  -webkit-mask: var(--sw-clock) center / contain no-repeat;
+  mask: var(--sw-clock) center / contain no-repeat;
+}
+time.ah-nav-time[data-wake]::after {
+  content: attr(data-wake);
+  font-size: var(--ah-size-meta);
+  font-variant-numeric: tabular-nums;
+}
+time.ah-nav-time[data-wake]:not([data-woke]) { color: var(--ah-accent-ink); }
+/* A woken reply not yet read says what woke it, in the your-turn colour. */
+time.ah-nav-time[data-woke] { color: var(--ah-turn); }
+:root {
+  --sw-clock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='6' cy='6' r='4.9' fill='none' stroke='black' stroke-width='1.4'/%3E%3Cpath d='M6 3.2V6l2 1.3' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* 2: the Herätykset section's heading carries the clock. */
+.sw-wakes-icon { width: 13px; height: 13px; margin-right: 4px; vertical-align: -2px; }
+
+/* ---------- 3 Kello merkissä: the resident becomes the clock's hands ----------
+   The production row's mark is a 20 px svg after a 6 px margin inside
+   .ah-row-mark-hit; the ring's centre is 16 px across and at the box's
+   middle. The ring takes the logo's colour while it waits for its time. */
+.ra-review[data-direction="3"] li[data-wake-clock] .oh-mark { color: var(--ah-accent); }
+.ra-review[data-direction="3"] li[data-wake-clock] .oh-dot { display: none; }
+.ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit { position: relative; }
+.ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::before,
+.ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::after {
+  content: ""; position: absolute; background: var(--ah-accent);
+  border-radius: 1px; pointer-events: none;
+}
+/* Hour hand up, minute hand to the right. */
+.ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::before {
+  left: 15.2px; top: calc(50% - 4.6px); width: 1.6px; height: 5.4px;
+}
+.ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::after {
+  left: 15.2px; top: calc(50% - 0.8px); width: 4.4px; height: 1.6px;
+}
+@media (forced-colors: active) {
+  .ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::before,
+  .ra-review[data-direction="3"] li[data-wake-clock] .ah-row-mark-hit::after {
+    forced-color-adjust: none; background: CanvasText;
+  }
+}
+
+/* ---------- The conversation's wake pieces ---------- */
+.sw-line {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--ah-s2);
+  margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  color: var(--ah-ink-2); font: var(--ah-size-meta)/1.5 var(--ah-font);
+  border-left: 2px solid var(--ah-line-strong, var(--ah-line));
+}
+.sw-line .oh-mark { align-self: center; }
+.sw-line-who { font-weight: 600; color: var(--ah-ink); }
+.sw-line[data-tone="late"] { border-left-color: var(--ah-turn-line); }
+.sw-pending, .sw-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3);
+  color: var(--ah-ink); font: var(--ah-size-meta)/1.5 var(--ah-font);
+}
+.sw-pending {
+  margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.sw-bar {
+  position: sticky; bottom: 0; z-index: 2;
+  margin: var(--ah-s3) 0 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.sw-pending-what { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sw-pending-icon { width: 14px; height: 14px; color: var(--ah-accent-ink); }
+.sw-pending-what strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sw-pending-by { color: var(--ah-ink-2); }
+.sw-pending-actions { display: inline-flex; gap: var(--ah-s2); margin-left: auto; }
+.sw-editor {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2);
+  font: var(--ah-size-meta)/1.5 var(--ah-font); color: var(--ah-ink);
+}
+.sw-editor input {
+  font: inherit; color: var(--ah-ink); background: var(--ah-bg);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-sm, 4px);
+  padding: 3px 6px; color-scheme: light dark;
+}
+.sw-header-editor {
+  margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.sw-header-wake { display: inline-flex; margin-left: var(--ah-s2); }
+.sw-header-chip { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.sw-header-chip svg { width: 13px; height: 13px; }

@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-17/scheduled-wake
 lane: scheduled-wake
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Scheduled wake: the agent waits in Hiljaiset and is woken into Sinun vuorosi at a set time
