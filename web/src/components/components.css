@@ -2601,6 +2601,15 @@ details[open] > summary:not([class])::before {
   font-size: var(--ah-size-meta);
   font-weight: 600;
 }
+/* The conversation column owns notice width, just as it owns reply width. */
+.ah-agent-notice {
+  min-width: 0;
+  max-width: none;
+}
+/* Leave the same rail gutter as the neighbouring turn's reply card. */
+.ah-reading-view .ah-agent-notice {
+  margin-inline-start: calc(18px + var(--ah-turn-column-gap));
+}
 .ah-agent-notice-header {
   display: flex;
   align-items: center;

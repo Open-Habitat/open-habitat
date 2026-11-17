@@ -18,8 +18,13 @@ test("@lab @a11y notice can be dismissed by keyboard at desktop and phone sizes"
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
   const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  await page.getByTestId("message-input").fill("Tarkista testit.");
+  await page.getByTestId("send").click();
+  const reply = page.locator(".ah-turn-reply > .ah-message").last();
+  await expect(reply).toBeVisible();
+  await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send");
   const card = page.getByTestId("agent-notice");
-  for (const width of [1280, 390]) {
+  for (const width of [390, 800, 1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ["light", "dark"]) {
       await page.evaluate(
@@ -35,7 +40,33 @@ test("@lab @a11y notice can be dismissed by keyboard at desktop and phone sizes"
       ).toBe(204);
       await expect(card).toBeVisible();
       const box = await card.boundingBox();
-      expect(box && box.x >= 0 && box.x + box.width <= width).toBeTruthy();
+      expect(
+        box && box.x >= 0 && box.x + box.width <= width,
+        JSON.stringify({ width, theme, box }),
+      ).toBeTruthy();
+      const replyBox = await reply.boundingBox();
+      expect(box).not.toBeNull();
+      expect(replyBox).not.toBeNull();
+      if (!box || !replyBox)
+        throw new Error("Missing conversation card bounds");
+      expect(Math.abs(box.x - replyBox.x)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(box.x + box.width - replyBox.x - replyBox.width),
+      ).toBeLessThanOrEqual(1);
+      const closeRightInset = await card.evaluate((element) => {
+        const close = element.querySelector(
+          '[data-testid="agent-notice-dismiss"]',
+        );
+        if (!close) throw new Error("Missing dismiss button");
+        const style = getComputedStyle(element);
+        return (
+          element.getBoundingClientRect().right -
+          close.getBoundingClientRect().right -
+          Number.parseFloat(style.paddingRight) -
+          Number.parseFloat(style.borderRightWidth)
+        );
+      });
+      expect(Math.abs(closeRightInset)).toBeLessThanOrEqual(1);
       expect(
         (
           await new AxeBuilder({ page })
@@ -43,9 +74,11 @@ test("@lab @a11y notice can be dismissed by keyboard at desktop and phone sizes"
             .analyze()
         ).violations,
       ).toEqual([]);
-      await snapshot(page, info.outputPath(`notice-${width}-${theme}`), {
-        labOrigin: new URL(page.url()).origin,
-      });
+      if (process.env.OH_VISUAL_CAPTURE === "1") {
+        await snapshot(page, info.outputPath(`notice-${width}-${theme}`), {
+          labOrigin: new URL(page.url()).origin,
+        });
+      }
       const dismiss = card.getByTestId("agent-notice-dismiss");
       await dismiss.focus();
       await page.keyboard.press("Enter");

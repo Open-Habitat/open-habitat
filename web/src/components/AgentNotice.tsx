@@ -24,43 +24,45 @@ export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
   const [dismissed, setDismissed] = useState<string | null>(null);
   if (dismissed === notice.notice_id) return null;
   return (
-    <aside
-      className="ah-pi-extension"
-      role="note"
-      data-testid="agent-notice"
-      data-persistence={notice.persistence}
-    >
-      <header className="ah-agent-notice-header">
-        <span className="ah-agent-notice-label">
-          {t.label} ·{" "}
-          <time dateTime={notice.timestamp}>
-            {formatDate(new Date(notice.timestamp), {
-              dateStyle: "short",
-              timeStyle: "medium",
-            })}
-          </time>
-        </span>
-        <ControlButton
-          size="row"
-          variant="quiet"
-          aria-label={t.close}
-          data-testid="agent-notice-dismiss"
-          onPress={() => setDismissed(notice.notice_id)}
-        >
-          ×
-        </ControlButton>
-      </header>
-      <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-        {notice.text}
-      </p>
-      {notice.persistence !== "persisted" ? (
-        <p>
-          {notice.persistence === "not_persisted"
-            ? t.notPersisted
-            : t.persistenceUnknown}{" "}
-          {t.temporary}
+    <div className="ah-agent-notice-row">
+      <aside
+        className="ah-pi-extension ah-agent-notice"
+        role="note"
+        data-testid="agent-notice"
+        data-persistence={notice.persistence}
+      >
+        <header className="ah-agent-notice-header">
+          <span className="ah-agent-notice-label">
+            {t.label} ·{" "}
+            <time dateTime={notice.timestamp}>
+              {formatDate(new Date(notice.timestamp), {
+                dateStyle: "short",
+                timeStyle: "medium",
+              })}
+            </time>
+          </span>
+          <ControlButton
+            size="row"
+            variant="quiet"
+            aria-label={t.close}
+            data-testid="agent-notice-dismiss"
+            onPress={() => setDismissed(notice.notice_id)}
+          >
+            ×
+          </ControlButton>
+        </header>
+        <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+          {notice.text}
         </p>
-      ) : null}
-    </aside>
+        {notice.persistence !== "persisted" ? (
+          <p>
+            {notice.persistence === "not_persisted"
+              ? t.notPersisted
+              : t.persistenceUnknown}{" "}
+            {t.temporary}
+          </p>
+        ) : null}
+      </aside>
+    </div>
   );
 }
