@@ -1,6 +1,6 @@
 ---
 created: 2026-11-16
-updated: 2026-11-17
+updated: 2026-11-18
 type: feature
 reporter: jari
 status: in-progress
@@ -25,3 +25,9 @@ Decided by Jari:
 Next actions: (1) research: verify Google's current rules for an External, in-production, unverified OAuth app with restricted scopes (gmail.modify, drive) and sensitive scopes (calendar, contacts): user cap, warning screen and its wording, refresh-token lifetime, Workspace admins blocking unverified apps and how they trust one, what changes when switching Internal→External for existing connections, and whether narrower scopes would avoid restricted-scope limits. (2) two prototype rounds, one per view: admin setup guide and person's connect flow.
 
 Alternative considered: Gmail via IMAP app password (mail only); a centrally verified Open Habitat client (CASA assessment yearly) — not chosen now.
+
+## Comments
+
+### 2026-11-18T14:12:39Z · @jari
+
+Jari 18.11.2026: the External switch was tried on the pilot installation (not the staging one) and it worked.
