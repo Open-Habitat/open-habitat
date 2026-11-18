@@ -665,6 +665,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if rewindScenario(os.Getenv("HOME")) {
 		s.rewindCheckpoint(prompt)
 	}
+	// The README story's scripted English turns (readme_story.go).
+	if storyActive(os.Getenv("HOME")) && s.storyTurn(prompt, run, emit) {
+		return
+	}
 	if strings.Contains(prompt, "pitkä ajo") {
 		s.longRun(run, emit)
 		return

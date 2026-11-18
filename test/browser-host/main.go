@@ -208,6 +208,9 @@ func main() {
 	// Lab mode adds richer synthetic history and workspaces; both modes run
 	// the real conversation controller against the fake Pi child.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
+	// The README story (readme_story.go) gives Alice's lab home an English
+	// studio and the fake Pi its scripted turns.
+	story := lab && os.Getenv("BROWSER_HOST_LAB_STORY") == "readme"
 	// Editor mode serves the app and the workspace editor on two sibling host
 	// names, with a stand-in code-server unless BROWSER_HOST_CODE_SERVER names
 	// a real one.
@@ -286,6 +289,11 @@ esac
 	var scenario atomic.Value
 	scenario.Store("ready")
 	fakePiScenario := filepath.Join(tmp, "fakepi-scenario")
+	if story {
+		if e := os.WriteFile(filepath.Join(tmp, storyFile), []byte("readme"), 0600); e != nil {
+			log.Fatal(e)
+		}
+	}
 	var clock atomic.Int64
 	paths := map[string]string{}
 	histories := map[string]string{}
@@ -412,7 +420,11 @@ esac
 			log.Fatal(e)
 		}
 		if lab {
-			if e := seedLab(home); e != nil {
+			seed := seedLab
+			if story && m.Username == "alice" {
+				seed = seedReadmeStory
+			}
+			if e := seed(home); e != nil {
 				log.Fatal(e)
 			}
 		}
@@ -464,7 +476,7 @@ if [ "$2" = --include ]; then
   esac
   exit 0
 fi
-case "$4" in
+` + storyGitHub(story, m.Subject, m.Username) + `case "$4" in
  /user) printf '{"id":` + m.Subject + `,"login":"fixture","name":"Fixture Person"}\n' ;;
  /user/emails*) exit 1 ;;
  /user/repos*)
@@ -747,6 +759,11 @@ esac
 			domain = d // for browsers that resolve *.localhost differently
 		}
 		origin = "https://app." + domain + ":" + strconv.Itoa(port)
+		if story {
+			// The README story's pages show an installation's address: the
+			// capture maps the standard port to this listener.
+			origin = "https://app." + domain
+		}
 		if editorMode {
 			editorOrigin = "https://oh-code-*." + domain
 		}
@@ -757,7 +774,11 @@ esac
 	sonioxBase.Store(&origin)
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")
-	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
+	siteName := "Synthetic lab"
+	if story {
+		siteName = "Example Studio"
+	}
+	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"`+siteName+`","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
 		log.Fatal(err)
 	}
 	broker := &fixtureBroker{identities: identities, created: map[string]bool{}, access: newFixtureAccess()}
@@ -794,6 +815,39 @@ esac
 		}
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
+			case "/fixture/story-hold":
+				// The README story's held steps wait while this is on.
+				if !story {
+					http.NotFound(w, r)
+					return
+				}
+				hold := filepath.Join(tmp, storyHoldFile)
+				var e error
+				if r.URL.Query().Get("on") == "1" {
+					e = os.WriteFile(hold, nil, 0600)
+				} else if e = os.Remove(hold); errors.Is(e, os.ErrNotExist) {
+					e = nil
+				}
+				if e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/story-view":
+				// The sales report the story's agent built, offered as its view.
+				if !story {
+					http.NotFound(w, r)
+					return
+				}
+				id, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureViewOf(r.URL.Query().Get("target"), "sales-report", "report", "october.html", "October 2026 sales")
+				if !ok {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"view_id":%q}`, id)
+				return
 			case "/fixture/lab-marker":
 				if !lab {
 					http.NotFound(w, r)
@@ -1846,7 +1900,7 @@ dir="$TASKFLEET_HOME"
 case "$1 $2" in
  "version --output") printf '%s\n' '{"schema_version":1,"data":{"version":"0.15.0"}}' ;;
  "run list") test -f "$dir/fixture-list.json" && cat "$dir/fixture-list.json" || exit 1 ;;
- "run show") test -f "$dir/fixture-show.json" && cat "$dir/fixture-show.json" || exit 1 ;;
+ "run show") if [ -f "$dir/runs/$3/show.json" ]; then cat "$dir/runs/$3/show.json"; else test -f "$dir/fixture-show.json" && cat "$dir/fixture-show.json" || exit 1; fi ;;
  *) exit 1 ;;
 esac
 `

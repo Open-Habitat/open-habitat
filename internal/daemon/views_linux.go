@@ -1130,18 +1130,33 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 			return "", false
 		}
 	}
-	root, err := unix.Open(filepath.Join(home, "src", "view-fixture"), unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "site", "index.html", "Synteettinen näkymä")
+}
+
+// FixtureViewOf offers a page already in one of the synthetic home's
+// workspaces, as an agent's offer of that folder would (the lab's README
+// story). Fixture-only, like FixtureView.
+func (c *ConversationController) FixtureViewOf(target, workspace, dir, entry, title string) (string, bool) {
+	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) || !validViewTitle(title) || strings.Contains(workspace, "/") || workspace == "" || workspace == ".." {
+		return "", false
+	}
+	return c.fixtureOffer(target, filepath.Join(c.viewCfg().Home, "src", workspace), dir, entry, title)
+}
+
+func (c *ConversationController) fixtureOffer(target, workspace, dir, entry, title string) (string, bool) {
+	home := c.viewCfg().Home
+	root, err := unix.Open(workspace, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return "", false
 	}
 	defer unix.Close(root)
 	key, _ := uuid()
-	req := viewRequest{Key: key, WorkspaceID: "ws_viewfixture", Path: "site", Entry: "index.html"}
+	req := viewRequest{Key: key, WorkspaceID: "ws_viewfixture", Path: dir, Entry: entry}
 	plan, err := planView(root, req)
 	if err != nil {
 		return "", false
 	}
-	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: target, Source: offeredSource(root, req.Path)}
+	summary := viewSummary{Title: title, Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: target, Source: offeredSource(root, req.Path)}
 	if summary.ID, err = newViewID(); err != nil || exportView(home, root, req, plan, summary) != nil {
 		return "", false
 	}

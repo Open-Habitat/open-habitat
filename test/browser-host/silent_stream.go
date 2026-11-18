@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -52,6 +53,15 @@ func serveSilenceable(w http.ResponseWriter, r *http.Request, next http.Handler)
 // title it is unavailable, as before, so cases that do not ask for one keep
 // the first-message fallback; nothing contacts a real model.
 func runFakeTitleModel() int {
+	if storyActive(os.Getenv("HOME")) {
+		// The README story names its conversations by their first prompt.
+		text, _ := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
+		if title := storyTitle(string(text)); title != "" {
+			b, _ := json.Marshal(map[string]string{"title": title, "model": "synthetic/title"})
+			_, _ = os.Stdout.Write(b)
+			return 0
+		}
+	}
 	title, err := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-title"))
 	if err != nil || strings.TrimSpace(string(title)) == "" {
 		_, _ = os.Stdout.WriteString(`{"failure":"model_unavailable"}`)
