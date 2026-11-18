@@ -59,8 +59,12 @@ export async function snapshot(
   // its marker still has to answer.
   if (new URL(page.url()).origin !== lab)
     throw new Error("Snapshot refused: page is outside the synthetic lab");
-  const marker = await page.request.get(`${lab}/fixture/lab-marker`);
-  if (marker.status() !== 204)
+  // Asked from the page, so a lab on mapped host names (--host-resolver-rules)
+  // answers the same as one on 127.0.0.1.
+  const marker = await page.evaluate(
+    async () => (await fetch("/fixture/lab-marker")).status,
+  );
+  if (marker !== 204)
     throw new Error("Snapshot refused: host is not the synthetic lab");
   await page.evaluate(() => document.fonts.ready);
   await mkdir(dirname(outBase), { recursive: true });
@@ -228,6 +232,11 @@ export async function snapshot(
       "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline' data:; form-action 'none'; navigate-to 'none'",
     );
     root.querySelector("head").prepend(meta);
+    // The file is written as UTF-8; opened from disk without this, a
+    // browser reads it in its legacy default encoding.
+    const charset = document.createElement("meta");
+    charset.setAttribute("charset", "utf-8");
+    root.querySelector("head").prepend(charset);
     return `<!doctype html>\n${root.outerHTML}`;
   }, region);
   // Captures also run from source exports without Git metadata. The caller
