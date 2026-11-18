@@ -246,16 +246,18 @@ credentials or agents is a product defect.
   screenshots or names from a real installation.
 - **Vulnerabilities:** GitHub's
   [private vulnerability reporting](https://github.com/Open-Habitat/open-habitat/security/advisories/new),
-  never a public issue.
+  never a public issue. [SECURITY.md](SECURITY.md) says what counts.
+- **What changed:** [CHANGELOG.md](CHANGELOG.md).
 
 ## Developing
 
 Bug fixes and documentation fixes are welcome as pull requests. A change to
 architecture (which component holds which authority, the security model, the
 browser/host contract in `contracts/v1/`, or a major dependency) starts as an
-issue or a Discussion before code is written. [AGENTS.md](AGENTS.md) holds
-the project's rules for people and agents alike, and [TESTING.md](TESTING.md)
-says how to build it and which checks to run.
+issue or a Discussion before code is written.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the details, [AGENTS.md](AGENTS.md)
+holds the project's rules for people and agents alike, and
+[TESTING.md](TESTING.md) says which checks prove what.
 
 ## License
 <!-- shipshape-readme:license-start -->
