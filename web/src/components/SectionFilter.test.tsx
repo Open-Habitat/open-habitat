@@ -137,6 +137,15 @@ describe("NowSections workspace filter", () => {
     expect(chosen).toEqual([null]);
   });
 
+  it("says beside Näytä kaikki when clearing was not saved", () => {
+    const view = render(
+      ui(choice(), choice({ workspace: "ws_gamma", error: true })),
+    );
+    expect(view.getByTestId("rail-running-show-all-error").textContent).toBe(
+      "Valintaa ei tallennettu. Yritä uudelleen.",
+    );
+  });
+
   it("keeps the open conversation in sight outside the narrowing", () => {
     const view = render(
       ui(choice({ workspace: "ws_beta" }), choice(), {

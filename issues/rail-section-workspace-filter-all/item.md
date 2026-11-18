@@ -3,13 +3,14 @@ created: 2026-11-18
 updated: 2026-11-18
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-18/rail-section-workspace-filter-all
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-18
 ---
 
 # Sinun vuorosi and Käynnissä get the same workspace filter as the Hiljaiset heading

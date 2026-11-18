@@ -285,6 +285,15 @@ export function NarrowedEmpty({
       >
         {t.showAll(total)}
       </button>
+      {choice.error ? (
+        <span
+          role="alert"
+          className="ah-section-not-saved"
+          data-testid={`${testId}-show-all-error`}
+        >
+          {t.notSaved}
+        </span>
+      ) : null}
     </p>
   );
 }

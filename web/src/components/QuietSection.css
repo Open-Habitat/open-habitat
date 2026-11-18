@@ -328,6 +328,10 @@ h2.ah-section-filter-head .ah-quiet-menu-button {
   text-underline-offset: 2px;
   cursor: pointer;
 }
+.ah-section-not-saved {
+  flex-basis: 100%;
+  color: var(--ah-err);
+}
 .ah-section-show-all:disabled {
   cursor: progress;
 }

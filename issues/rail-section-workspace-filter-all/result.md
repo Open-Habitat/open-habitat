@@ -67,3 +67,17 @@ leaves them out when they mean every workspace.
   `rail-now.spec.ts`.
 - Lab `lab-explain-coverage.spec.ts`: green (12 passed).
 - Storybook: `Production/Sidebar v2` has FilteredLight and FilteredDark.
+
+## Review
+
+Level: an independent `/llm-review` plus `/assess-findings`, because the
+account preferences contract and the daemon's stored state changed. Finder
+gpt-6-astra, verifier claude-fable-5-2 (one focused question on the daemon
+write boundary). One confirmed should-fix: a failed "Näytä kaikki" left the
+section narrowed with no message, since the error showed only inside the
+closed menu. It is fixed: the "not saved" line now appears beside the button,
+covered by a component test. The verifier found no defect in write
+decoding, stored-file readability, panics or reply validity. Noted, and
+accepted under the pre-release rule: once a new key is stored, rolling back
+to an older binary makes the preferences file unreadable until the key is
+removed.
