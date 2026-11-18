@@ -44,4 +44,6 @@ Pi in their Unix account.
 Use GitHub's
 [private vulnerability reporting](https://github.com/Open-Habitat/open-habitat/security/advisories/new),
 not a public issue, so that people running a server can close the hole before
-it is described to everyone.
+it is described to everyone. The repository's
+[security policy](https://github.com/Open-Habitat/open-habitat/blob/main/SECURITY.md) says what to include, what is
+in scope and what to expect.

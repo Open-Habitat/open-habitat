@@ -44,4 +44,6 @@ omansa, Pi:n tallentamana hänen Unix-tunnuksessaan.
 Käytä GitHubin
 [yksityistä haavoittuvuusraportointia](https://github.com/Open-Habitat/open-habitat/security/advisories/new),
 älä julkista issueta, jotta palvelimia ylläpitävät ehtivät korjata aukon
-ennen kuin se kerrotaan kaikille.
+ennen kuin se kerrotaan kaikille. Repon
+[tietoturvakäytäntö](https://github.com/Open-Habitat/open-habitat/blob/main/SECURITY.md) (englanniksi) kertoo, mitä
+raporttiin kuuluu, mikä on sen piirissä ja mitä voit odottaa.
