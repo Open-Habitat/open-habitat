@@ -381,7 +381,7 @@ describe("rail Nyt groups", () => {
           [],
           false,
           false,
-        ),
+        ).rows,
       ),
     ).not.toContain("archived");
     expect(ids(before.quiet)).toEqual([

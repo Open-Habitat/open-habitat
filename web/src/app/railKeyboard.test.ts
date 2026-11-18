@@ -28,7 +28,7 @@ const now = {
   hints: new Map(),
 };
 const choice = { sort: "name" as const, workspace: null };
-const order = () => railKeyboardOrder(now, choice, [], false, false);
+const order = () => railKeyboardOrder(now, choice, [], false, false).rows;
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -43,14 +43,56 @@ describe("rail keyboard", () => {
         [],
         false,
         false,
-      ).map((r) => r.agentId),
+      ).rows.map((r) => r.agentId),
     ).toEqual(["a", "b", "c", "z", "d"]);
     expect(
-      railKeyboardOrder(now, choice, [], true, false).map((r) => r.agentId),
+      railKeyboardOrder(now, choice, [], true, false).rows.map(
+        (r) => r.agentId,
+      ),
     ).toEqual(["a", "b", "c", "d"]);
     expect(
-      railKeyboardOrder(now, choice, [], false, true).map((r) => r.agentId),
+      railKeyboardOrder(now, choice, [], false, true).rows.map(
+        (r) => r.agentId,
+      ),
     ).toEqual(["a", "b", "c"]);
+  });
+  it("Sinun vuorosi and Käynnissä walk only their narrowed rows, the open one kept; the narrow rail walks all", () => {
+    const mixed = {
+      ...now,
+      yours: [
+        row("y1", { workspaceId: "one" }),
+        row("y2", { workspaceId: "two" }),
+        row("y3", { workspaceId: "one", selected: true }),
+      ],
+      running: [
+        row("r1", { workspaceId: "two" }),
+        row("r2", { workspaceId: "one" }),
+      ],
+      quiet: [],
+    };
+    const narrowed = railKeyboardOrder(mixed, choice, [], false, false, {
+      yours: "two",
+      running: "one",
+    });
+    expect(narrowed.rows.map((r) => r.agentId)).toEqual(["y2", "y3", "r2"]);
+    expect(narrowed.yours.map((r) => r.agentId)).toEqual(["y2", "y3"]);
+    expect(narrowed.yours[1].kept).toBe(true);
+    // Shift's cycle stays inside the narrowing.
+    expect(
+      railKeyboardTarget(narrowed.rows, "/agents/y3", 1, true, narrowed.yours)
+        ?.agentId,
+    ).toBe("y2");
+    const narrow = railKeyboardOrder(mixed, choice, [], false, true, {
+      yours: "two",
+      running: "one",
+    });
+    expect(narrow.rows.map((r) => r.agentId)).toEqual([
+      "y1",
+      "y2",
+      "y3",
+      "r1",
+      "r2",
+    ]);
   });
   it("steps both ways across sections and stops at the ends", () => {
     expect(

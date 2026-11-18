@@ -14,6 +14,7 @@ import { RailClones } from "../components/ClonePage";
 import { LinkRow } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { type QuietChoice, QuietSection } from "../components/QuietSection";
+import type { SectionChoice } from "../components/SectionFilter";
 import { SearchDoor } from "../components/Switcher";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
@@ -153,6 +154,7 @@ export function WorkspaceRailView({
   turnConversation,
   icons,
   quietChoice,
+  sectionChoices,
   resources,
   shares,
   browser,
@@ -167,6 +169,9 @@ export function WorkspaceRailView({
   turnConversation?: RailTurn;
   /** Hiljaiset's order and workspace from the account preferences. */
   quietChoice: QuietChoice;
+  /** Sinun vuorosi's and Käynnissä's own workspaces from the account
+   * preferences; absent where the sections offer no filter. */
+  sectionChoices?: { yours: SectionChoice; running: SectionChoice };
   /** The conversation rows' rename; absent where none is offered. */
   renameConversation?: RailRename;
   /** Workspace icons by workspace_id while the experimental feature is on. */
@@ -217,18 +222,25 @@ export function WorkspaceRailView({
   const server = useServer(pathname);
   const quietFolded = useQuietFolded();
   const { search } = useLocation();
-  useRailKeyboard(
-    railKeyboardOrder(
-      now,
-      quietChoice,
-      snapshot.workspaces
-        .filter((w) => w.presence === "present" && w.visibility === "visible")
-        .map((w) => ({ id: w.workspace_id, name: w.display_name ?? w.name })),
-      quietFolded,
-      collapsed,
-    ),
-    now.yours,
+  const listed = snapshot.workspaces
+    .filter((w) => w.presence === "present" && w.visibility === "visible")
+    .map((w) => ({
+      id: w.workspace_id,
+      name: w.display_name ?? w.name,
+      icon: icons?.get(w.workspace_id),
+    }));
+  const keyboard = railKeyboardOrder(
+    now,
+    quietChoice,
+    listed,
+    quietFolded,
+    collapsed,
+    {
+      yours: sectionChoices?.yours.workspace ?? null,
+      running: sectionChoices?.running.workspace ?? null,
+    },
   );
+  useRailKeyboard(keyboard.rows, keyboard.yours);
   // With one workspace there is no filter field, so nothing filters.
   const term = only ? "" : filter.toLocaleLowerCase();
   const card = icons
@@ -303,16 +315,7 @@ export function WorkspaceRailView({
             quiet={
               <QuietSection
                 rows={now.quiet}
-                workspaces={snapshot.workspaces
-                  .filter(
-                    (w) =>
-                      w.presence === "present" && w.visibility === "visible",
-                  )
-                  .map((w) => ({
-                    id: w.workspace_id,
-                    name: w.display_name ?? w.name,
-                    icon: icons?.get(w.workspace_id),
-                  }))}
+                workspaces={listed}
                 choice={quietChoice}
                 folded={quietFolded}
                 onFold={setQuietFolded}
@@ -323,6 +326,9 @@ export function WorkspaceRailView({
               />
             }
             collapsed={collapsed}
+            yoursChoice={sectionChoices?.yours}
+            runningChoice={sectionChoices?.running}
+            workspaces={listed}
             archive={archiveConversation}
             rename={renameConversation}
             turn={turnConversation}

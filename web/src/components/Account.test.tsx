@@ -349,6 +349,8 @@ describe("account presentation", () => {
           language: "system",
           quiet_sort: "newest",
           quiet_workspace: null,
+          yours_workspace: null,
+          running_workspace: null,
           github_workflow: workflow,
           experimental: {},
         }),

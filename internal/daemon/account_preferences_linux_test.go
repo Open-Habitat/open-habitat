@@ -113,6 +113,9 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		{"PUT", "", `{"quiet_workspace":""}`, 400}, {"PUT", "", `{"quiet_workspace":"ws_short"}`, 400},
 		{"PUT", "", `{"quiet_workspace":"ws_../../etc"}`, 400}, {"PUT", "", `{"quiet_workspace":"wx_example123"}`, 400},
 		{"PUT", "", `{"quiet_workspace":5}`, 400}, {"PUT", "", `{"recent_count":5}`, 400},
+		{"PUT", "", `{"yours_workspace":"ws_example123"}`, 200}, {"PUT", "", `{"running_workspace":null}`, 200},
+		{"PUT", "", `{"yours_workspace":"ws_short"}`, 400}, {"PUT", "", `{"running_workspace":true}`, 400},
+		{"PUT", "", `{"Yours_workspace":"ws_example123"}`, 400}, {"PUT", "", `{"yours_workspace":null,"running_workspace":null}`, 400},
 		{"GET", "", "", 200}, {"PUT", "", `{"engine":"vscode"}`, 200},
 		{"GET", "?uid=123", "", 400}, {"POST", "", `{"engine":"vscode"}`, 400},
 		{"PUT", "", `{"engine":"monaco"}`, 400}, {"PUT", "", `{"engine":"vscode","uid":123}`, 400},
@@ -202,6 +205,21 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 		t.Fatalf("every workspace: %v", reply)
 	}
 	if raw, _ = os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json")); strings.Contains(string(raw), "quiet_workspace") {
+		t.Fatalf("every workspace stored a key: %s", raw)
+	}
+	// Sinun vuorosi and Käynnissä keep a narrowing each, apart from Hiljaiset.
+	if reply := put(`{"engine":"vscode"}`); reply["yours_workspace"] != nil || reply["running_workspace"] != nil {
+		t.Fatalf("unchosen section workspaces are not null: %v", reply)
+	}
+	put(`{"yours_workspace":"ws_example123"}`)
+	if reply = put(`{"running_workspace":"ws_example456"}`); reply["yours_workspace"] != "ws_example123" || reply["running_workspace"] != "ws_example456" || reply["quiet_workspace"] != nil {
+		t.Fatalf("section workspaces: %v", reply)
+	}
+	put(`{"yours_workspace":null}`)
+	if reply = put(`{"running_workspace":null}`); reply["yours_workspace"] != nil || reply["running_workspace"] != nil {
+		t.Fatalf("section every workspace: %v", reply)
+	}
+	if raw, _ = os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json")); strings.Contains(string(raw), "_workspace") {
 		t.Fatalf("every workspace stored a key: %s", raw)
 	}
 	// System is stored as no choice, so the file keeps only what was chosen.

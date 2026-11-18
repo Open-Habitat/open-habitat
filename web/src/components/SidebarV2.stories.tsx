@@ -17,12 +17,22 @@ const meta = {
 } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
+// Sinun vuorosi and Käynnissä narrowed each on its own: Sinun vuorosi to
+// kotisivu, Käynnissä to a workspace with nothing running right now.
+const listed = [
+  { id: "ws_asiakas", name: "asiakasportaali" },
+  { id: "ws_budjetti", name: "budjetti-2027" },
+  { id: "ws_kirjasto", name: "kirjasto-api" },
+  { id: "ws_kotisivu", name: "kotisivu" },
+];
 function Example({
   theme,
   collapsed,
+  filtered = false,
 }: {
   theme: "light" | "dark";
   collapsed: boolean;
+  filtered?: boolean;
 }) {
   return (
     <MemoryRouter initialEntries={["/workspaces"]}>
@@ -75,6 +85,15 @@ function Example({
               now={
                 <NowSections
                   collapsed={collapsed}
+                  workspaces={listed}
+                  yoursChoice={{
+                    workspace: filtered ? "ws_kotisivu" : null,
+                    onWorkspace: noop,
+                  }}
+                  runningChoice={{
+                    workspace: filtered ? "ws_budjetti" : null,
+                    onWorkspace: noop,
+                  }}
                   yours={[
                     {
                       agentId: "pi:asks",
@@ -83,6 +102,7 @@ function Example({
                       activityLabel: "Kysyy sinulta",
                       controlLabel: "",
                       question: true,
+                      workspaceId: "ws_kotisivu",
                       workspaceName: "kotisivu",
                       detail: "kotisivu · Kysyy sinulta",
                     },
@@ -93,6 +113,7 @@ function Example({
                       activityLabel: "Uusi vastaus",
                       controlLabel: "",
                       attentionLabel: "Uusi",
+                      workspaceId: "ws_budjetti",
                       workspaceName: "budjetti-2027",
                       detail: "budjetti-2027 · Uusi vastaus",
                     },
@@ -136,6 +157,7 @@ function Example({
                       activityLabel: "Odottaa taustatyötä",
                       controlLabel: "",
                       spinoffWorking: true,
+                      workspaceId: "ws_kirjasto",
                       workspaceName: "kirjasto-api",
                       detail:
                         "kirjasto-api · Odottaa taustatyötä · Muistutusten sähköpostipohja",
@@ -147,6 +169,7 @@ function Example({
                       activity: "working",
                       activityLabel: "Työskentelee",
                       controlLabel: "",
+                      workspaceId: "ws_asiakas",
                       workspaceName: "asiakasportaali",
                       detail: "asiakasportaali · Työskentelee",
                     },
@@ -186,4 +209,10 @@ export const CollapsedLight: Story = {
 };
 export const CollapsedDark: Story = {
   render: () => <Example theme="dark" collapsed />,
+};
+export const FilteredLight: Story = {
+  render: () => <Example theme="light" collapsed={false} filtered />,
+};
+export const FilteredDark: Story = {
+  render: () => <Example theme="dark" collapsed={false} filtered />,
 };

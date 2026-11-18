@@ -302,3 +302,36 @@ h2.ah-rail-section-head.ah-quiet-head {
     padding: 9px 3px 7px;
   }
 }
+
+/* Sinun vuorosi and Käynnissä carry the same workspace filter at the
+   heading's end (rail-section-workspace-filter-all). */
+h2.ah-section-filter-head {
+  padding-inline-end: 2px;
+}
+h2.ah-section-filter-head .ah-quiet-menu-button {
+  margin-inline-start: auto;
+}
+/* A narrowing with nothing in it says so and offers every workspace back. */
+.ah-now-empty.ah-section-narrowed-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+.ah-section-show-all {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ah-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ah-section-show-all:disabled {
+  cursor: progress;
+}
+.ah-section-show-all:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}

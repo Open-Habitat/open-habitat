@@ -33,6 +33,13 @@
         {"type": "null"}
       ]
     },
+    "section_workspace": {
+      "description": "The one workspace the rail's Sinun vuorosi (yours_workspace) or Käynnissä (running_workspace) section is narrowed to, or null for every workspace. Each section keeps its own, apart from Hiljaiset's quiet_workspace. A workspace that no longer exists reads as null.",
+      "oneOf": [
+        {"$ref": "common.schema.json#/$defs/workspaceId"},
+        {"type": "null"}
+      ]
+    },
     "github_workflow": {
       "description": "Whether the person allowed agents to change GitHub Actions workflows: the opt-in behind the GitHub sign-in's workflow scope. It records what the person wants, not what gh's token holds (native_github.scopes in the snapshot). The person's explicit GitHub reconnect sets it when the installed token has the workflow scope and never clears it; a write sets it directly, as Remove permission and Don't allow do with false. When it is true and the token lacks the scope, the page says the permission is missing.",
       "type": "boolean"
@@ -43,7 +50,7 @@
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the GitHub workflow opt-in, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the Sinun vuorosi or Käynnissä workspace, the GitHub workflow opt-in, or one experimental feature's switch. The daemon merges it into the stored document.",
       "oneOf": [
         {
           "type": "object",
@@ -56,6 +63,18 @@
           "additionalProperties": false,
           "required": ["quiet_workspace"],
           "properties": {"quiet_workspace": {"$ref": "#/$defs/quiet_workspace"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["yours_workspace"],
+          "properties": {"yours_workspace": {"$ref": "#/$defs/section_workspace"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["running_workspace"],
+          "properties": {"running_workspace": {"$ref": "#/$defs/section_workspace"}}
         },
         {
           "type": "object",
@@ -119,6 +138,8 @@
         "language",
         "quiet_sort",
         "quiet_workspace",
+        "yours_workspace",
+        "running_workspace",
         "github_workflow",
         "experimental"
       ],
@@ -126,6 +147,8 @@
         "github_workflow": {"$ref": "#/$defs/github_workflow"},
         "quiet_sort": {"$ref": "#/$defs/quiet_sort"},
         "quiet_workspace": {"$ref": "#/$defs/quiet_workspace"},
+        "yours_workspace": {"$ref": "#/$defs/section_workspace"},
+        "running_workspace": {"$ref": "#/$defs/section_workspace"},
         "schema_version": {
           "const": 1
         },

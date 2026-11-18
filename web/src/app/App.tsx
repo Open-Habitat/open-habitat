@@ -34,6 +34,7 @@ import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
 import { PageNotice } from "../components/PageNotice";
 import type { ReturnConversation } from "../components/ReturnView";
+import type { SectionChoice } from "../components/SectionFilter";
 import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
@@ -48,7 +49,9 @@ import {
   AccountPreferencesProvider,
   chooseQuietSort,
   chooseQuietWorkspace,
+  chooseSectionWorkspace,
   type QuietSort,
+  type RailSection,
   useConfirmedPreferences,
   useExperimentalFeature,
 } from "./accountPreferences";
@@ -1520,6 +1523,22 @@ export function App() {
             void chooseQuietWorkspace(identity, id, csrf),
         }
       : {}),
+  };
+  // Sinun vuorosi and Käynnissä each keep a narrowing of their own.
+  const sectionChoice = (section: RailSection): SectionChoice => ({
+    workspace: confirmedPreferences[`${section}_workspace`],
+    busy: !confirmedPreferences.loaded || !!confirmedPreferences.busy,
+    error: confirmedPreferences.error === `${section}_workspace`,
+    ...(identity && csrf
+      ? {
+          onWorkspace: (id: string | null) =>
+            void chooseSectionWorkspace(identity, section, id, csrf),
+        }
+      : {}),
+  });
+  const sectionChoices = {
+    yours: sectionChoice("yours"),
+    running: sectionChoice("running"),
   };
   // With one visible workspace the rail names it instead of listing it
   // (Jari 31.10.2026); hidden workspaces do not count, and an
@@ -3365,6 +3384,7 @@ export function App() {
                     collapsed={railCompact && !mobileLayout}
                     now={now}
                     quietChoice={quietChoice}
+                    sectionChoices={sectionChoices}
                     matches={matches}
                     archived={archivedWorkspaces}
                     onRestoreWorkspace={

@@ -521,8 +521,8 @@ const fi = {
     },
     S28: {
       name: "Työtilan ruutu",
-      lead: "Näyttää Hiljaisissa vain tämän työtilan keskustelut; Kaikki palauttaa koko listan.",
-      know: "Luku kertoo, montako hiljaista keskustelua työtilassa on.",
+      lead: "Näyttää listassa vain tämän työtilan keskustelut; Kaikki palauttaa koko listan.",
+      know: "Luku kertoo, montako keskustelua työtilalla on tässä listassa.",
     },
     S29: {
       name: "Valmis",
@@ -560,6 +560,16 @@ const fi = {
       know: "Nimiosumat ovat ylimpinä ja arkistoidut viimeisinä. Keskustelun muut osumat ovat määränä, jonka → avaa rivin alle ja ← sulkee.",
       keyboard:
         "↑↓ valitsee, → ja ← avaavat ja sulkevat osumat, Enter avaa ja Esc sulkee.",
+    },
+    S36: {
+      name: "Rajaa työtilan mukaan",
+      lead: "Näyttää Sinun vuorosi- tai Käynnissä-listassa vain yhden työtilan keskustelut.",
+      know: `Kumpikin lista ja Hiljaiset rajataan erikseen, ja valinta säilyy kaikilla laitteillasi. Rajattuna otsikon luku on muotoa näkyvät/kaikki. Auki oleva keskustelu jää näkyviin rajauksen ulkopuoleltakin, ja ${altKey("↑/↓")} kulkee vain näkyvien läpi.`,
+      try: "Avaa rajaus",
+    },
+    S37: {
+      name: "Näytä kaikki",
+      lead: "Poistaa listan rajauksen, kun valitussa työtilassa ei ole juuri nyt mitään.",
     },
     E01: {
       name: "Työtilat",
@@ -2342,8 +2352,8 @@ export const explainModeText = catalog(fi, {
     },
     S28: {
       name: "Workspace tile",
-      lead: "Shows only this workspace's conversations in Quiet; All brings back the whole list.",
-      know: "The number is how many quiet conversations the workspace has.",
+      lead: "Shows only this workspace's conversations in the list; All brings back the whole list.",
+      know: "The number is how many of the list's conversations belong to the workspace.",
     },
     S29: {
       name: "Done",
@@ -2381,6 +2391,16 @@ export const explainModeText = catalog(fi, {
       know: "Name matches come first and archived conversations last. A conversation's other hits are a count that → opens under the row and ← closes.",
       keyboard:
         "↑↓ choose, → and ← open and close the hits, Enter opens and Esc closes.",
+    },
+    S36: {
+      name: "Filter by workspace",
+      lead: "Shows only one workspace's conversations in Your turn or Running.",
+      know: `Each list and Quiet keep their own filter, and your choice follows you to every device. While filtered, the heading's number reads shown/total. The open conversation stays in view even outside the filter, and ${altKey("↑/↓")} steps only through what is shown.`,
+      try: "Open the filter",
+    },
+    S37: {
+      name: "Show all",
+      lead: "Removes the list's filter when the chosen workspace has nothing in it right now.",
     },
     E01: {
       name: "Workspaces",

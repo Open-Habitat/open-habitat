@@ -11,21 +11,34 @@ import {
   type QuietWorkspace,
   quietView,
 } from "../components/QuietSection";
+import { sectionView } from "../components/SectionFilter";
 import type { RailNow } from "./railNow";
 
-/** Share Quiet's ordering/filtering, including its pinned open row. Hidden
- * rows are not keyboard destinations, just as they are not click targets. */
+/** Share each section's ordering and workspace narrowing, including its
+ * pinned open row. Hidden rows are not keyboard destinations, just as they
+ * are not click targets; that holds for Shift's cycle through Sinun vuorosi
+ * too. The narrow rail shows every waiting and running row, unnarrowed. */
 export function railKeyboardOrder(
   now: RailNow,
   choice: QuietChoice,
   workspaces: QuietWorkspace[],
   folded: boolean,
   collapsed: boolean,
+  sections: { yours: string | null; running: string | null } = {
+    yours: null,
+    running: null,
+  },
 ) {
   const quiet = quietView(now.quiet, choice, workspaces);
-  return [
-    ...now.yours,
-    ...now.running,
+  const yours = collapsed
+    ? now.yours
+    : sectionView(now.yours, sections.yours, workspaces).shown;
+  const running = collapsed
+    ? now.running
+    : sectionView(now.running, sections.running, workspaces).shown;
+  const rows = [
+    ...yours,
+    ...running,
     ...(collapsed
       ? []
       : folded
@@ -34,6 +47,7 @@ export function railKeyboardOrder(
           : []
         : quiet.shown),
   ];
+  return { rows, yours };
 }
 
 export function railKeyboardTarget(

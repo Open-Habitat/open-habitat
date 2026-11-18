@@ -8,6 +8,7 @@ import { Input, Label, TextField } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
 import { textNow, useText } from "../i18n";
 import { navigationText } from "../text/navigation";
+import { sectionFilterText } from "../text/sectionFilter";
 import { statusText } from "../text/status";
 import {
   ArchiveControls,
@@ -33,6 +34,16 @@ import {
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { TooltipSide } from "./QuickTooltip";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
+import {
+  keptDetail,
+  NarrowedEmpty,
+  type SectionChoice,
+  SectionCount,
+  SectionFilterMenu,
+  type SectionView,
+  type SectionWorkspace,
+  sectionView,
+} from "./SectionFilter";
 import type { StatusKind } from "./Status";
 import { Badge, kindMark, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
@@ -500,7 +511,8 @@ export interface AgentNavModel {
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
   selected?: boolean;
-  /** Shown although Hiljaiset's narrowing hides it, because it is open. */
+  /** Shown although its section's workspace narrowing hides it, because it
+   * is open. */
   kept?: boolean;
   priority?: number; // caller ranks native state; navigation only presents it
   finished?: boolean;
@@ -1171,6 +1183,18 @@ function RunningGroups({
     </>
   );
 }
+/** A section offers its workspace filter when its rows come from more than
+ * one workspace, and while it is narrowed, so a narrowing never hides rows
+ * without its control in sight. */
+function filterable(
+  rows: AgentNavModel[],
+  view: SectionView,
+  choice: SectionChoice | undefined,
+): choice is SectionChoice {
+  return (
+    !!choice && rows.length > 0 && (view.places.length > 1 || !!view.workspace)
+  );
+}
 /** What needs the person and what runs now, across every workspace (the
  * accepted Nyt sidebar), then Hiljaiset. Workers are listed as themselves,
  * not nested. */
@@ -1179,6 +1203,9 @@ export function NowSections({
   running,
   quiet,
   collapsed = false,
+  yoursChoice,
+  runningChoice,
+  workspaces,
   archive,
   rename,
   turn,
@@ -1186,6 +1213,14 @@ export function NowSections({
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
+  /** Each section's own workspace narrowing, as Hiljaiset's; absent where
+   * the section offers none (a story). The narrow rail shows every row:
+   * it has no heading to show the narrowing in. */
+  yoursChoice?: SectionChoice;
+  runningChoice?: SectionChoice;
+  /** The listed workspaces, so a chosen one with nothing in the section
+   * right now stays chosen. */
+  workspaces?: readonly SectionWorkspace[];
   /** Hiljaiset (QuietSection), under Käynnissä; the narrow rail leaves it
    * out. */
   quiet?: ReactNode;
@@ -1200,10 +1235,27 @@ export function NowSections({
   card?: WorkspaceCardActions;
 }) {
   const t = useText(navigationText);
+  const shared = useText(sectionFilterText);
   const yoursId = useId();
   const runningId = useId();
+  const yoursHead = useRef<HTMLHeadingElement>(null);
+  const runningHead = useRef<HTMLHeadingElement>(null);
   const now = useMinuteNow();
   const iconed = [...yours, ...running].some((a) => a.workspaceIcon);
+  const yoursView = sectionView(
+    yours,
+    yoursChoice?.workspace ?? null,
+    workspaces,
+  );
+  const runningView = sectionView(
+    running,
+    runningChoice?.workspace ?? null,
+    workspaces,
+  );
+  const withKept = (rows: AgentNavModel[]) =>
+    rows.map((agent) =>
+      agent.kept ? { ...agent, detail: keptDetail(agent, shared.kept) } : agent,
+    );
   if (collapsed)
     return (
       <div className="ah-now-dots">
@@ -1228,17 +1280,39 @@ export function NowSections({
         data-testid="rail-yours"
         aria-labelledby={yoursId}
       >
-        <h2 className="ah-rail-section-head" id={yoursId}>
-          {t.yourTurn}
-          {yours.length ? (
-            <span className="ah-rail-count ah-rail-count-attention">
-              {yours.length}
-            </span>
+        <h2
+          className="ah-rail-section-head ah-section-filter-head"
+          ref={yoursHead}
+        >
+          <span id={yoursId}>{t.yourTurn}</span>
+          <SectionCount
+            testId="rail-yours-count"
+            view={yoursView}
+            total={yours.length}
+            className="ah-rail-count ah-rail-count-attention"
+          />
+          {filterable(yours, yoursView, yoursChoice) ? (
+            <SectionFilterMenu
+              testId="rail-yours"
+              label={shared.menu.yours}
+              head={yoursHead}
+              view={yoursView}
+              total={yours.length}
+              choice={yoursChoice}
+            />
           ) : null}
         </h2>
-        {yours.length ? (
+        {yoursChoice ? (
+          <NarrowedEmpty
+            testId="rail-yours"
+            view={yoursView}
+            total={yours.length}
+            choice={yoursChoice}
+          />
+        ) : null}
+        {yoursView.shown.length ? (
           <ul>
-            {yours.map((agent) => (
+            {withKept(yoursView.shown).map((agent) => (
               <AgentNavItem
                 key={agent.agentId}
                 {...agent}
@@ -1250,7 +1324,7 @@ export function NowSections({
               />
             ))}
           </ul>
-        ) : (
+        ) : yours.length ? null : (
           <p className="ah-now-empty">{t.nothingWaits}</p>
         )}
       </section>
@@ -1259,22 +1333,45 @@ export function NowSections({
         data-testid="rail-running"
         aria-labelledby={runningId}
       >
-        <h2 className="ah-rail-section-head" id={runningId}>
-          {t.running}
-          {running.length ? (
-            <span className="ah-rail-count">{running.length}</span>
+        <h2
+          className="ah-rail-section-head ah-section-filter-head"
+          ref={runningHead}
+        >
+          <span id={runningId}>{t.running}</span>
+          <SectionCount
+            testId="rail-running-count"
+            view={runningView}
+            total={running.length}
+          />
+          {filterable(running, runningView, runningChoice) ? (
+            <SectionFilterMenu
+              testId="rail-running"
+              label={shared.menu.running}
+              head={runningHead}
+              view={runningView}
+              total={running.length}
+              choice={runningChoice}
+            />
           ) : null}
         </h2>
-        {running.length ? (
+        {runningChoice ? (
+          <NarrowedEmpty
+            testId="rail-running"
+            view={runningView}
+            total={running.length}
+            choice={runningChoice}
+          />
+        ) : null}
+        {runningView.shown.length ? (
           <RunningGroups
-            running={running}
+            running={withKept(runningView.shown)}
             iconed={iconed}
             now={now}
             archive={archive}
             rename={rename}
             card={card}
           />
-        ) : (
+        ) : running.length ? null : (
           <p className="ah-now-empty">{t.nothingRuns}</p>
         )}
       </section>

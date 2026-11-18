@@ -34,6 +34,8 @@ type Reply = {
   language: LanguageChoice;
   quiet_sort: QuietSort;
   quiet_workspace: string | null;
+  yours_workspace: string | null;
+  running_workspace: string | null;
   github_workflow: boolean;
   experimental: Record<string, true>;
 };
@@ -48,13 +50,17 @@ const url = "/api/v1/account/preferences";
 /** What the daemon last confirmed, and the one write in flight. `loaded`
  * says the first read has finished, either way. `busy` and `error` name what
  * they concern: "engine", "language", "quiet_sort", "quiet_workspace",
- * "github_workflow", a feature id, or "read". */
+ * "yours_workspace", "running_workspace", "github_workflow", a feature id, or "read". */
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
   quiet_sort: QuietSort;
   /** The one workspace Hiljaiset is narrowed to; null for every one. */
   quiet_workspace: string | null;
+  /** The workspaces Sinun vuorosi and Käynnissä are narrowed to, each its
+   * own; null for every one. */
+  yours_workspace: string | null;
+  running_workspace: string | null;
   /** The person allowed agents to change GitHub Actions workflows: the
    * opt-in behind the sign-in's workflow scope, not what the token holds. */
   github_workflow: boolean;
@@ -68,6 +74,8 @@ const initial: Preferences = {
   language: "system",
   quiet_sort: "newest",
   quiet_workspace: null,
+  yours_workspace: null,
+  running_workspace: null,
   github_workflow: false,
   experimental: {},
   loaded: false,
@@ -128,6 +136,8 @@ async function readReply(response: Response, identity: string) {
     language: result.language,
     quiet_sort: result.quiet_sort,
     quiet_workspace: result.quiet_workspace,
+    yours_workspace: result.yours_workspace,
+    running_workspace: result.running_workspace,
     github_workflow: result.github_workflow,
     experimental: result.experimental,
   };
@@ -212,6 +222,21 @@ export function chooseQuietWorkspace(
   return write(identity, csrf, "quiet_workspace", {
     quiet_workspace: workspaceId,
   });
+}
+
+/** The rail sections other than Hiljaiset that keep a workspace of their own. */
+export type RailSection = "yours" | "running";
+
+/** Narrows Sinun vuorosi or Käynnissä to one workspace, or with null shows
+ * every one. */
+export function chooseSectionWorkspace(
+  identity: string,
+  section: RailSection,
+  workspaceId: string | null,
+  csrf: string,
+) {
+  const what = `${section}_workspace` as const;
+  return write(identity, csrf, what, { [what]: workspaceId });
 }
 
 export function chooseLanguage(

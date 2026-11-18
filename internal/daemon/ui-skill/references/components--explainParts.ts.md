@@ -186,8 +186,14 @@ export const parts: Record<CardId, Part> = {
     sel: '[data-testid="menu-logout"], [data-testid="logout-open"]',
   },
   S27: { kind: "menu", sel: '[data-testid="rail-quiet-sort"]' },
-  S28: { kind: "menu", sel: '[data-testid^="rail-quiet-tile-"]' },
-  S29: { kind: "once", sel: '[data-testid="rail-quiet-done"]' },
+  S28: {
+    kind: "menu",
+    sel: '[data-testid^="rail-quiet-tile-"], [data-testid^="rail-yours-tile-"], [data-testid^="rail-running-tile-"]',
+  },
+  S29: {
+    kind: "once",
+    sel: '[data-testid="rail-quiet-done"], [data-testid="rail-yours-done"], [data-testid="rail-running-done"]',
+  },
   S30: {
     kind: "panel",
     sel: '[data-testid="workspace-icon-button"], [data-testid="workspace-card"]',
@@ -198,6 +204,14 @@ export const parts: Record<CardId, Part> = {
   S33: { kind: "once", sel: '[data-testid="rail-not-now-conversation"]' },
   S34: { kind: "list", sel: '[data-testid="search-door"]', opens: true },
   S35: { kind: "list", sel: '[data-testid="switcher"]' },
+  S36: {
+    kind: "menu",
+    sel: '[data-testid="rail-yours-menu"], [data-testid="rail-running-menu"]',
+  },
+  S37: {
+    kind: "menu",
+    sel: '[data-testid="rail-yours-show-all"], [data-testid="rail-running-show-all"], [data-testid="rail-quiet-show-all"]',
+  },
   E01: { kind: "info", sel: '[data-testid="workspaces-title"]' },
   E02: { kind: "list", sel: ".ah-home-workspace-head" },
   E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },

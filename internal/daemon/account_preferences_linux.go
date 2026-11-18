@@ -24,17 +24,22 @@ const AccountPreferencesPath = "/api/v1/account/preferences"
 // accountPreferences is the person's small account-wide settings in one
 // document, ~/.config/open-habitat/preferences.json: the desktop editor, the
 // interface language, the order and workspace of the rail's Hiljaiset section,
+// the workspaces its Sinun vuorosi and Käynnissä sections are narrowed to,
 // and experimental features they turned on. Only enabled features are kept, so
 // a feature that graduates or is removed leaves at most one stale key. A value
 // never chosen is absent: a language reads as "system", which leaves the
 // choice to the server default and the browser, the order as "newest", and
 // the workspace as every workspace.
 type accountPreferences struct {
-	Engine         string          `json:"engine"`
-	Language       string          `json:"language,omitempty"`
-	QuietSort      string          `json:"quiet_sort,omitempty"`
-	QuietWorkspace string          `json:"quiet_workspace,omitempty"`
-	Experimental   map[string]bool `json:"experimental"`
+	Engine         string `json:"engine"`
+	Language       string `json:"language,omitempty"`
+	QuietSort      string `json:"quiet_sort,omitempty"`
+	QuietWorkspace string `json:"quiet_workspace,omitempty"`
+	// YoursWorkspace and RunningWorkspace narrow Sinun vuorosi and Käynnissä
+	// each on its own, as QuietWorkspace narrows Hiljaiset.
+	YoursWorkspace   string          `json:"yours_workspace,omitempty"`
+	RunningWorkspace string          `json:"running_workspace,omitempty"`
+	Experimental     map[string]bool `json:"experimental"`
 	// GitHubWorkflow is the person's opt-in to the GitHub sign-in's
 	// workflow scope: what they want, beside what gh's token holds, so a
 	// later sign-in that drops the scope shows as a missing permission.
@@ -49,10 +54,28 @@ type accountPreferences struct {
 type preferencesWrite struct {
 	QuietSort      *string
 	QuietWorkspace *string
+	// Workspace narrows one section: the key names it, "" is every workspace.
+	Workspace      *sectionWorkspace
 	Engine         *string
 	Language       *string
 	GitHubWorkflow *bool
 	Experimental   map[string]bool
+}
+
+type sectionWorkspace struct{ key, id string }
+
+// sectionWorkspaceKeys are the rail sections other than Hiljaiset that keep a
+// workspace narrowing of their own.
+var sectionWorkspaceKeys = []string{"yours_workspace", "running_workspace"}
+
+func (p *accountPreferences) sectionWorkspace(key string) *string {
+	switch key {
+	case "yours_workspace":
+		return &p.YoursWorkspace
+	case "running_workspace":
+		return &p.RunningWorkspace
+	}
+	return nil
 }
 
 const maxExperimentalFeatures = 32
@@ -105,6 +128,11 @@ func (p accountPreferences) valid() bool {
 	if p.QuietSort != "" && !validQuietSort(p.QuietSort) || p.QuietWorkspace != "" && !validWorkspaceID(p.QuietWorkspace) {
 		return false
 	}
+	for _, key := range sectionWorkspaceKeys {
+		if id := *p.sectionWorkspace(key); id != "" && !validWorkspaceID(id) {
+			return false
+		}
+	}
 	if !validEditorEngine(p.Engine) || p.Language != "" && !validLanguage(p.Language) || len(p.Experimental) > maxExperimentalFeatures {
 		return false
 	}
@@ -118,7 +146,8 @@ func (p accountPreferences) valid() bool {
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
 // one object with exactly one key: "engine", "language", "quiet_sort",
-// "quiet_workspace" (a workspace or null), "github_workflow" (a boolean),
+// "quiet_workspace", "yours_workspace" or "running_workspace" (a workspace
+// or null), "github_workflow" (a boolean),
 // or "experimental" naming one
 // feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
@@ -147,6 +176,21 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 			id = new(string)
 		}
 		change.QuietWorkspace = id
+		return change, true
+	}
+	for _, key := range sectionWorkspaceKeys {
+		raw, ok := outer[key]
+		if !ok {
+			continue
+		}
+		var id *string
+		if json.Unmarshal(raw, &id) != nil || id != nil && !validWorkspaceID(*id) {
+			return change, false
+		}
+		change.Workspace = &sectionWorkspace{key: key}
+		if id != nil {
+			change.Workspace.id = *id
+		}
 		return change, true
 	}
 	if raw, ok := outer["engine"]; ok {
@@ -319,6 +363,9 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 	if change.QuietWorkspace != nil {
 		value.QuietWorkspace = *change.QuietWorkspace
 	}
+	if change.Workspace != nil {
+		*value.sectionWorkspace(change.Workspace.key) = change.Workspace.id
+	}
 	if change.Engine != nil {
 		value.Engine = *change.Engine
 	}
@@ -399,6 +446,13 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 		if value.QuietWorkspace != "" {
 			workspace = value.QuietWorkspace
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "quiet_sort": sort, "quiet_workspace": workspace, "github_workflow": value.GitHubWorkflow, "experimental": value.Experimental})
+		reply := map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "quiet_sort": sort, "quiet_workspace": workspace, "github_workflow": value.GitHubWorkflow, "experimental": value.Experimental}
+		for _, key := range sectionWorkspaceKeys {
+			reply[key] = nil
+			if id := *value.sectionWorkspace(key); id != "" {
+				reply[key] = id
+			}
+		}
+		historyJSON(w, reply)
 	})
 }
