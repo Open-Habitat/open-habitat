@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/Open-Habitat/open-habitat/discussions
+    about: Ask how something works or propose a direction in Discussions.
+  - name: Security vulnerability
+    url: https://github.com/Open-Habitat/open-habitat/security/advisories/new
+    about: Report a vulnerability privately. Never open a public issue for one.

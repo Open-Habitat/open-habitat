@@ -1,0 +1,27 @@
+name: Feature request
+description: Something Open Habitat should let a person or an operator do.
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Do not include details of a real installation or its people.
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+      description: The situation and who is in it, not the solution yet.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What happens today
+      description: How you do it now, or why you cannot.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: Optional. A proposal for how it could work.
