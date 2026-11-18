@@ -45,6 +45,9 @@ this way.
 4. **Launch timing.** The repository is public and releases from `v0.1.0`
    on are published in it. Announcing the project is a separate step Jari
    decides on its own.
+5. **No code of conduct.** The project does not have one and will not add
+   one (Jari, 18.11.2026). A readiness audit's `code-of-conduct` gap is
+   therefore expected, and no tool or contributor should restore the file.
 
 ## Rationale
 
