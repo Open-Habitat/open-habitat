@@ -11,6 +11,15 @@ ylläpitäjän, joka hoitaa palvelinta. Asenna nimetty julkaisu ja lue sen
 tiedot [muutoslokista](https://github.com/Open-Habitat/open-habitat/blob/main/CHANGELOG.md) (englanniksi) ennen
 päivitystä.
 
+**Anna agenttisi tehdä se.** [Ylläpito-opas](/fi/docs/operations/) on
+kirjoitettu AI-agentin luettavaksi. Anna koodaavalle agentillesi tämä linkki
+ja pyydä sitä asentamaan Open Habitat palvelimellesi:
+
+`https://raw.githubusercontent.com/Open-Habitat/open-habitat/main/docs/operations.md`
+
+Se kysyy sinulta sen, minkä vain sinä voit antaa, ja näyttää jokaisen
+suunnitelman ennen kuin muuttaa mitään.
+
 ## Mitä tarvitset
 
 - Linux-palvelimen, jota ylläpidät: Ubuntu 24.04 LTS ja systemd, amd64 tai

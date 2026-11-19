@@ -11,6 +11,15 @@ installation assumes an administrator who runs the server. Install a named
 release, and read its notes in the
 [changelog](https://github.com/Open-Habitat/open-habitat/blob/main/CHANGELOG.md) before you upgrade.
 
+**Let your agent do it.** The [operator guide](/docs/operations/) is written
+for an AI agent to read. Give your coding agent this link and ask it to
+install Open Habitat on your server:
+
+`https://raw.githubusercontent.com/Open-Habitat/open-habitat/main/docs/operations.md`
+
+It asks you for what only you can supply and shows you each plan before it
+changes anything.
+
 ## What you need
 
 - A Linux server you administer: Ubuntu 24.04 LTS with systemd, on amd64 or

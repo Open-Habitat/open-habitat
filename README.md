@@ -245,10 +245,19 @@ Then, on the server:
 
 4. Send your team the address.
 
-This is a server installation, not a one-line script: the
-**[operator guide](docs/operations.md)** has every step, including first-time
-preparation, the storage choice you cannot change later, upgrades and
-recovery.
+> [!TIP]
+> **Let your agent do it.** The [operator guide](docs/operations.md) is
+> written for an AI agent to read. Give your coding agent this link and ask
+> it to install Open Habitat on your server:
+>
+> `https://raw.githubusercontent.com/Open-Habitat/open-habitat/main/docs/operations.md`
+>
+> It asks you for what only you can supply and shows you each plan before it
+> changes anything.
+
+This is a server installation, not a one-line script: the guide has every
+step, including first-time preparation, the storage choice you cannot change
+later, upgrades and recovery.
 
 ---
 

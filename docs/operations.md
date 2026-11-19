@@ -1,5 +1,62 @@
 # Install and operate Open Habitat
 
+> **This guide is written for an AI agent to read.**
+>
+> **You do not need to read it yourself. Give your coding agent this link and
+> ask it to install Open Habitat on your server:**
+>
+> **`https://raw.githubusercontent.com/Open-Habitat/open-habitat/main/docs/operations.md`**
+>
+> The agent reads the guide, asks you for what only you can supply, and shows
+> you each plan before it changes the server.
+
+## If you are the agent
+
+The person who gave you this page administers a Linux server and wants Open
+Habitat on it. They may know little about Linux. You do the installation, on
+that server as root; they make the decisions and do the few things only they
+can.
+
+Start by finding out what exists: whether you are on the server or reach it
+over SSH, its distribution, architecture and `/home` filesystem, and whether
+Open Habitat is already installed, in which case this is an upgrade and
+[Named-release upgrade](#named-release-upgrade) applies instead. Then tell
+the person in plain words what the installation needs from them and in what
+order, before you begin.
+
+Only the person can supply these, so ask for them instead of guessing:
+
+- the DNS name people will use, and how HTTPS reaches the server
+  (certificate, ingress or tunnel);
+- a GitHub OAuth app, which they register in GitHub's settings in their
+  browser; give them the exact callback address and the option to turn off;
+- who may sign in and who administers: GitHub accounts or a team;
+- the storage mode, explained below. It cannot be changed after the first
+  preparation, so explain the two choices and let them choose.
+
+Secrets never pass through the conversation. A client secret or a private
+key pasted into a chat stays in its history and reaches the model provider.
+Have the person put each secret straight into its protected file on the
+server, or create it there with a command, and refer to it by path.
+
+Nothing here is changed on a guess. `host check`, `host plan` and every
+`--dry-run` are read-only: run them freely and read their results. Show the
+person each plan and wait for their yes before the command that carries
+`--approved-plan`. `host prepare` restarts login and session services and
+interrupts everyone's running sessions on that server, so agree a time for
+it. A command that ends without a terminal record has an unknown outcome:
+inspect it with `host operation show` before doing anything else, and do not
+run it again to see what happens.
+
+Once the product package is extracted, `./bin/open-habitat skill print
+operator` prints the same procedure in a compact form that matches that
+release exactly. This page follows the main branch and can be ahead of the
+release you downloaded; where the two differ, the release's own text is
+right for that release.
+
+You are done when the person has signed in through their own browser and
+sees their workspaces, not when `host apply` returns.
+
 ## Supported fresh installation
 
 Use Ubuntu 24.04 LTS on amd64 or arm64 with systemd and `/home` on an ext4 filesystem.

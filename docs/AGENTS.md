@@ -13,7 +13,9 @@ implementation status is a second description of the code and goes stale
 without anyone noticing. Visual design lives in `design-system/design.md`.
 
 `operations.md` is the guide for an operator installing the host on their own
-server. It describes what the release ships and what the installer must
+server, and its first reader is the operator's AI agent: the banner tells a
+person to hand the page to their agent, and "If you are the agent" tells that
+agent what only the person can supply and what needs their approval. It describes what the release ships and what the installer must
 supply; when a release changes an operator step, the guide changes in the
 same commit.
 
