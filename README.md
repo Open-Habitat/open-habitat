@@ -18,6 +18,10 @@
 
 <h3 align="center"><a href="#install"><ins>Install on your server</ins></a></h3>
 
+<p align="center">
+  <img src="docs/assets/readme/hero.png" alt="A conversation with an agent in Open Habitat on a desktop browser, with running and waiting conversations in the sidebar, and the same conversation on a phone" width="960" />
+</p>
+
 ## Why
 
 The agents that programmers use are the most capable AI tools there are,
@@ -41,7 +45,7 @@ use. Go wild with it. Your team still just opens a browser.
 
 <table>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### A real agent, not a chatbot
 
@@ -50,7 +54,12 @@ shell, files, Git and the command line. It does the work and shows you the
 result.
 
 </td>
-<td width="50%" valign="top">
+<td width="50%">
+  <img src="docs/assets/readme/agent-at-work.png" alt="An agent running commands and editing files in a conversation, with its progress shown step by step" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle">
 
 ### Nothing to install
 
@@ -59,9 +68,12 @@ laptop and on a phone. No terminal, no SSH key, no setup on your own
 computer.
 
 </td>
+<td width="50%">
+  <img src="docs/assets/readme/first-use.png" alt="Getting started in the browser: sign in, choose repositories, connect an AI account" width="100%" />
+</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### Close the tab, the work goes on
 
@@ -70,7 +82,12 @@ device: the sidebar shows what is still running and what is waiting for your
 answer.
 
 </td>
-<td width="50%" valign="top">
+<td width="50%">
+  <img src="docs/assets/readme/your-turn.png" alt="The sidebar with conversations under Your turn and Running" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle">
 
 ### Steer it while it works
 
@@ -79,9 +96,12 @@ the agent's questions or stop it. You do not have to wait for it to finish
 to change its direction.
 
 </td>
+<td width="50%">
+  <img src="docs/assets/readme/steer.png" alt="A steering message and a queued follow-up above the message field while the agent works" width="100%" />
+</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### Workers, out of the box
 
@@ -90,7 +110,12 @@ splits it between workers, each in its own Git worktree, and brings their
 results back. You follow every worker from the same sidebar.
 
 </td>
-<td width="50%" valign="top">
+<td width="50%">
+  <img src="docs/assets/readme/workers.png" alt="A main agent with three workers, each showing its own Git branch and state" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle">
 
 ### Your mail, calendar and files
 
@@ -98,9 +123,12 @@ Connect Google, Microsoft 365, Dropbox or an ordinary mail account, and the
 agent works with your own mail, calendars, contacts and documents.
 
 </td>
+<td width="50%">
+  <img src="docs/assets/readme/connections.png" alt="Data connections in settings, with a Google and a Microsoft 365 account connected" width="100%" />
+</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### Results you can open
 
@@ -108,7 +136,12 @@ Agents hand back reports, charts and small web pages as views you open
 beside the conversation, and files you download with one click.
 
 </td>
-<td width="50%" valign="top">
+<td width="50%">
+  <img src="docs/assets/readme/view.png" alt="An HTML report the agent made, open in a panel beside the conversation" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle">
 
 ### Build your own on top
 
@@ -117,9 +150,12 @@ services for the agents, or have the agents build them. Nothing about the
 server is closed to you.
 
 </td>
+<td width="50%">
+  <img src="docs/assets/readme/build-on-top.png" alt="An agent building and starting a small internal service on the server" width="100%" />
+</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### Everyone has their own
 
@@ -127,7 +163,12 @@ Every person is a separate Linux user with their own files, credentials and
 agents. The operating system keeps people apart, not rules inside a web app.
 
 </td>
-<td width="50%" valign="top">
+<td width="50%">
+  <img src="docs/assets/readme/people.png" alt="One server with a separate home for each of three people" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle">
 
 ### Bring your own AI subscription
 
@@ -135,9 +176,12 @@ Each person connects their own ChatGPT or Claude subscription or an API key,
 or the server provides a key for everyone. Nobody shares a personal login.
 
 </td>
+<td width="50%">
+  <img src="docs/assets/readme/ai-account.png" alt="Connecting an AI account in the browser with a sign-in link and a code" width="100%" />
+</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="middle">
 
 ### Nothing hidden from the technical
 
@@ -146,7 +190,9 @@ you, and plain SSH. A conversation is the agent's own session file in your
 home directory, so the browser and the terminal show the same work.
 
 </td>
-<td width="50%"></td>
+<td width="50%">
+  <img src="docs/assets/readme/terminal-editor.png" alt="The browser terminal and the editor next to a conversation" width="100%" />
+</td>
 </tr>
 </table>
 
