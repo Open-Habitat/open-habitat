@@ -9,6 +9,23 @@
 // the product, each caption restating a claim the page already makes.
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import { mark, type MarkState } from './mark';
+import { Image } from 'astro:assets';
+import heroShot from '../../../docs/assets/readme/hero.png';
+import shotAgentAtWork from '../../../docs/assets/readme/agent-at-work.png';
+import shotFirstUse from '../../../docs/assets/readme/first-use.png';
+import shotYourTurn from '../../../docs/assets/readme/your-turn.png';
+import shotSteer from '../../../docs/assets/readme/steer.png';
+import shotWorkers from '../../../docs/assets/readme/workers.png';
+import shotConnections from '../../../docs/assets/readme/connections.png';
+import shotView from '../../../docs/assets/readme/view.png';
+import shotBuildOnTop from '../../../docs/assets/readme/build-on-top.png';
+import shotAiAccount from '../../../docs/assets/readme/ai-account.png';
+import shotTerminalEditor from '../../../docs/assets/readme/terminal-editor.png';
+
+// One image per feature card, in the cards' order: the README's images,
+// captured from the synthetic lab (web/lab/capture-readme.mjs). The card
+// without one shows the one-server diagram instead.
+const shots = [shotAgentAtWork, shotFirstUse, shotYourTurn, shotSteer, shotWorkers, shotConnections, shotView, shotBuildOnTop, null, shotAiAccount, shotTerminalEditor];
 
 interface Props {
   lang: 'en' | 'fi';
@@ -41,8 +58,6 @@ const t = {
       tasks: ['Refactor the sign-in flow', 'Weekly status report', 'Nightly data import'],
       caption: 'One server, a home per person. Chen closed the browser; the agent did not stop.',
     },
-    sameWork:
-      'The conversation is Pi’s own session in your home directory, so the files, Git repositories and history are the ones you would find over SSH. Open Habitat adds a browser, not a second place where your work lives.',
     whatTitle: 'What you get',
     whatLede:
       'For a team with one person who can run a Linux server. Nobody else needs to be technical.',
@@ -58,7 +73,6 @@ const t = {
       ['Everyone has their own', 'Every person is a separate Linux user with their own files, credentials and agents. The operating system keeps people apart, not rules inside a web app.'],
       ['Bring your own AI subscription', 'Each person connects their own ChatGPT or Claude subscription or an API key, or the server provides a key for everyone. Nobody shares a personal login.'],
       ['Nothing hidden from the technical', 'A browser terminal on the same tmux sessions, a VS Code editor running as you, and plain SSH. A conversation is Pi’s own session file in your home directory, so the browser and the terminal show the same work.'],
-      ['Yours alone', 'You install it on a server you run. There is no Open Habitat account, cloud or relay: the browser talks to your server.'],
     ],
     whyTitle: 'Why',
     why: [
@@ -67,12 +81,27 @@ const t = {
       '<b>It is a starting point, and you are in control.</b> This is your Linux server, not somebody’s platform. The agents can write code, so whatever your team needs next, they can build it right there: a script, a scheduled job, an internal tool, a service of your own that every agent on the server can use. Go wild with it. Your team still just opens a browser.',
     ],
     alsoTitle: 'Also in the box',
+    alts: [
+      'An agent running commands and writing a report step by step in a conversation',
+      'Getting started in the browser: signed in with GitHub, choosing repositories',
+      'The sidebar with conversations under Your turn and Running',
+      'A steering message and a queued follow-up while the agent works',
+      'A main agent with three workers, each on its own branch',
+      'Connected Google and Microsoft 365 accounts in settings',
+      'A sales report the agent made, open beside the conversation',
+      'An agent building, testing and starting a small booking service',
+      '',
+      'Connecting a ChatGPT subscription with a code and a sign-in link',
+      'The VS Code editor and the browser terminal side by side',
+    ],
+    heroAlt: 'A conversation with an agent in Open Habitat on a desktop browser, with running and waiting conversations in the sidebar, and the same conversation on a phone',
     also: [
       ['Dictation.', 'Talk instead of typing.'],
       ['Recaps.', 'A short summary of where a conversation stands, made when you ask or after the work has been quiet for a while.'],
       ['GitHub, Gitea and GitLab.', 'Clone repositories into workspaces and let the agent work with them as you.'],
       ['Your own machines.', 'Connect your own computers for the agent over Tailscale.'],
       ['English and Finnish.', 'In light, dark and high-contrast themes.'],
+      ['Yours alone.', 'You install it on a server you run. There is no Open Habitat account, cloud or relay: the browser talks to your server.'],
     ],
     compareTitle: 'How it differs',
     compareLede: 'Plenty of tools put coding agents in a window. These are the differences that matter when you choose.',
@@ -150,8 +179,6 @@ const t = {
       tasks: ['Kirjautumisen refaktorointi', 'Viikkoraportti', 'Yöllinen datatuonti'],
       caption: 'Yksi palvelin, oma koti jokaiselle. Chen sulki selaimen; agentti ei pysähtynyt.',
     },
-    sameWork:
-      'Keskustelu on Pi:n oma istunto kotihakemistossasi, joten tiedostot, Git-repot ja historia ovat samat, jotka löydät SSH:lla. Open Habitat tuo selaimen, ei toista paikkaa, jossa työsi asuu.',
     whatTitle: 'Mitä saat',
     whatLede:
       'Tiimille, jossa yksi ihminen osaa ylläpitää Linux-palvelinta. Muiden ei tarvitse olla teknisiä.',
@@ -167,7 +194,6 @@ const t = {
       ['Jokaisella omansa', 'Jokainen ihminen on erillinen Linux-käyttäjä, jolla on omat tiedostot, tunnukset ja agentit. Ihmiset pitää erillään käyttöjärjestelmä, eivät verkkosovelluksen säännöt.'],
       ['Oma AI-tilaus', 'Jokainen yhdistää oman ChatGPT- tai Claude-tilauksensa tai API-avaimen, tai palvelin tarjoaa avaimen kaikille. Kukaan ei jaa henkilökohtaista kirjautumistaan.'],
       ['Teknisiltä ei piiloteta mitään', 'Selainterminaali samoihin tmux-istuntoihin, sinuna ajettava VS Code -editori ja tavallinen SSH. Keskustelu on Pi:n oma istuntotiedosto kotihakemistossasi, joten selain ja terminaali näyttävät saman työn.'],
-      ['Vain sinun', 'Asennat sen palvelimelle, jota itse ylläpidät. Open Habitat -tiliä, -pilveä tai välityspalvelinta ei ole: selain puhuu sinun palvelimesi kanssa.'],
     ],
     whyTitle: 'Miksi',
     why: [
@@ -176,12 +202,27 @@ const t = {
       '<b>Se on lähtöpiste, ja ohjat ovat sinulla.</b> Tämä on sinun Linux-palvelimesi, ei jonkun toisen alusta. Agentit osaavat koodata, joten ne rakentavat paikan päällä sen, mitä tiimisi seuraavaksi tarvitsee: skriptin, ajastetun työn, sisäisen työkalun tai oman palvelun, jota jokainen palvelimen agentti voi käyttää. Anna mennä. Tiimisi avaa edelleen vain selaimen.',
     ],
     alsoTitle: 'Lisäksi mukana',
+    alts: [
+      'Agentti ajaa komentoja ja kirjoittaa raporttia vaihe vaiheelta keskustelussa',
+      'Aloitus selaimessa: kirjauduttu GitHubilla, repojen valinta',
+      'Sivupalkki, jossa keskusteluja kohdissa Sinun vuorosi ja Käynnissä',
+      'Ohjausviesti ja jonossa oleva jatkoviesti agentin työskennellessä',
+      'Pääagentti ja kolme workeria, kukin omassa haarassaan',
+      'Yhdistetyt Google- ja Microsoft 365 -tilit asetuksissa',
+      'Agentin tekemä myyntiraportti auki keskustelun vieressä',
+      'Agentti rakentaa, testaa ja käynnistää pienen varauspalvelun',
+      '',
+      'ChatGPT-tilauksen yhdistäminen koodilla ja kirjautumislinkillä',
+      'VS Code -editori ja selainterminaali vierekkäin',
+    ],
+    heroAlt: 'Keskustelu agentin kanssa Open Habitatissa työpöytäselaimessa, sivupalkissa käynnissä olevat ja odottavat keskustelut, ja sama keskustelu puhelimessa',
     also: [
       ['Sanelu.', 'Puhu kirjoittamisen sijaan.'],
       ['Yhteenvedot.', 'Lyhyt tiivistelmä siitä, missä keskustelu on, pyynnöstä tai kun työ on ollut hetken hiljaa.'],
       ['GitHub, Gitea ja GitLab.', 'Kloonaa repot työtiloiksi ja anna agentin työskennellä niissä sinuna.'],
       ['Omat koneet.', 'Yhdistä omat tietokoneesi agentin käyttöön Tailscalella.'],
       ['Suomi ja englanti.', 'Vaalea, tumma ja korkean kontrastin teema.'],
+      ['Vain sinun.', 'Asennat sen palvelimelle, jota itse ylläpidät. Open Habitat -tiliä, -pilveä tai välityspalvelinta ei ole: selain puhuu sinun palvelimesi kanssa.'],
     ],
     compareTitle: 'Miten se eroaa',
     compareLede: 'Agentteja saa ikkunaan monella työkalulla. Nämä erot ratkaisevat, kun valitset.',
@@ -305,10 +346,7 @@ const states = `
   }}
 >
   <div class="not-content oh-landing">
-    <div class="oh-two oh-fig-row">
-      <Fragment set:html={diagram} />
-      <p class="oh-same">{t.sameWork}</p>
-    </div>
+    <Image class="oh-hero-shot" src={heroShot} alt={t.heroAlt} widths={[760, 1140, 1520, 2280]} sizes="(min-width: 76rem) 72rem, 100vw" loading="eager" />
 
     <section id="why" class="oh-why" aria-labelledby="oh-why">
       <h2 id="oh-why">{t.whyTitle}</h2>
@@ -318,12 +356,21 @@ const states = `
     <section id="what" aria-labelledby="oh-what">
       <h2 id="oh-what">{t.whatTitle}</h2>
       <p class="oh-lede">{t.whatLede}</p>
-      <div class="oh-grid">
+      <div class="oh-feats">
         {
-          t.cards.map(([title, body]) => (
-            <div class="oh-card">
-              <h3>{title}</h3>
-              <p set:html={body} />
+          t.cards.map(([title, body], i) => (
+            <div class="oh-feat">
+              <div class="oh-feat-text">
+                <h3>{title}</h3>
+                <p set:html={body} />
+              </div>
+              <div class="oh-feat-shot">
+                {shots[i] ? (
+                  <Image src={shots[i]} alt={t.alts[i]} widths={[480, 720, 1080]} sizes="(min-width: 45rem) 36rem, 100vw" />
+                ) : (
+                  <Fragment set:html={diagram} />
+                )}
+              </div>
             </div>
           ))
         }
@@ -653,14 +700,6 @@ const states = `
     padding: 1px 4px;
     border-radius: 4px;
   }
-  .oh-fig-row {
-    align-items: center;
-  }
-  .oh-landing .oh-same {
-    margin: 0;
-    color: var(--ah-muted);
-    font-size: 18px;
-  }
   .oh-why p {
     max-width: 68ch;
   }
@@ -670,19 +709,47 @@ const states = `
     font-size: 1.05rem;
     margin-bottom: 1.5rem !important;
   }
-  .oh-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-  }
-  .oh-card {
-    padding: 20px;
+  .oh-hero-shot {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 18px;
     border: 1px solid var(--ah-line-strong);
-    border-radius: 12px;
-    background: var(--ah-surface);
   }
-  .oh-card p {
+  .oh-feats {
+    display: grid;
+    gap: 4rem;
+    margin-bottom: 3.5rem;
+  }
+  .oh-feat {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 3rem;
+    align-items: center;
+  }
+  .oh-feat:nth-child(even) {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+  .oh-feat:nth-child(even) .oh-feat-text {
+    order: 2;
+  }
+  .oh-feat-text h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.6rem;
+  }
+  .oh-feat-text p {
     margin: 0;
+    font-size: 1.05rem;
+  }
+  .oh-feat-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 36rem;
+    object-fit: cover;
+    object-position: top;
+    border: 1px solid var(--ah-line-strong);
+    border-radius: 14px;
   }
   .oh-diffs {
     display: grid;
@@ -769,19 +836,26 @@ const states = `
     font-weight: 600;
   }
 
-  @media (max-width: 60rem) {
-    .oh-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
   @media (max-width: 45rem) {
-    .oh-grid,
+    .oh-feat,
     .oh-diffs,
     .oh-two {
       grid-template-columns: 1fr;
     }
     .oh-two {
       gap: 4.5rem;
+    }
+    .oh-feat {
+      gap: 1.25rem;
+    }
+    .oh-feats {
+      gap: 3rem;
+    }
+    .oh-feat:nth-child(even) {
+      grid-template-columns: 1fr;
+    }
+    .oh-feat:nth-child(even) .oh-feat-text {
+      order: 0;
     }
     .oh-landing h2 {
       font-size: 1.5rem;

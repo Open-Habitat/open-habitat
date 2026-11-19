@@ -11,6 +11,12 @@ own pages under `/fi/`. The landing page is `src/components/Landing.astro`,
 with both languages' text side by side in one object, so a wording change is
 two changes and nothing checks that the pair agrees: look at both.
 
+The landing page's screenshots are the root README's images, imported from
+`docs/assets/readme/` and resized at build time, never copied here. They are
+captured from the synthetic lab (`web/lab/capture-readme.mjs`) in English and
+the light theme, so both languages and both themes show the same images; the
+alt texts are translated.
+
 The documentation collection (`docs.mjs`) is the site's own pages under
 `src/content/docs/` plus the repository's `docs/product.md` and
 `docs/operations.md`, rendered in place at build time. Those two are never
