@@ -191,7 +191,7 @@ home directory, so the browser and the terminal show the same work.
 
 </td>
 <td width="50%">
-  <img src="docs/assets/readme/terminal-editor.png" alt="The browser terminal and the editor next to a conversation" width="100%" />
+  <img src="docs/assets/readme/terminal-editor.png" alt="The VS Code editor and the browser terminal side by side" width="100%" />
 </td>
 </tr>
 </table>
