@@ -5,11 +5,23 @@
 // fake Pi answers with scripted turns. Start a fresh lab for it, from the
 // repository root:
 //   BROWSER_HOST_LAB_STORY=readme BROWSER_HOST_VIEWS=1 \
-//   BROWSER_HOST_EDITOR_DOMAIN=habitat.example.org scripts/lab.sh start
+//   BROWSER_HOST_EDITOR_DOMAIN=habitat.example.org \
+//   BROWSER_HOST_EDITOR=1 BROWSER_HOST_CODE_SERVER=<code-server> \
+//     scripts/lab.sh start
 //   PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" \
 //     node web/lab/capture-readme.mjs <out-dir> [--website <dist>]
-// The run uses the story up (it starts every conversation once), so restart
-// the lab before running it again. --website names a built website (`npm run
+// lab.sh binds the lab to the shell that ran it, so run both in one shell.
+// <code-server> is a real code-server binary, run read-only: an installed
+// host's /opt/open-habitat/current/payloads/editor/runtime/bin/code-server
+// will do. With it terminal-editor.png shows VS Code (Alice's settings in
+// readme_story.go keep it light and free of first-run surfaces) beside the
+// maximized browser terminal, cropped to the two; without the two editor
+// variables it shows the built-in editor, terminal and conversation in a
+// 1440 px window instead. The editor's stand-in (BROWSER_HOST_EDITOR=1
+// alone) is refused. VS Code shows things the stand-in does not, so read
+// that image at full size for strings that are not the story's. The run
+// uses the story up (it starts every conversation once), so restart the lab
+// before running it again. --website names a built website (`npm run
 // build` in website/ makes website/dist) for people.png, the landing page's
 // one-server diagram; without it that image is skipped. Each image is
 // <name>.png beside its static HTML twin <name>.html (the whole page, where
@@ -395,26 +407,134 @@ await page.waitForTimeout(3000);
   });
 }
 
-// The browser terminal and the editor beside the website conversation.
-await page.setViewportSize({ width: 1440, height: 900 });
-await visit(page, websiteFix);
-await page.getByRole("button").and(page.getByTestId("toggle-editor")).click();
-await page
-  .getByTestId("editor-file-entry")
-  .and(page.locator('[data-path="contact.html"]'))
-  .click();
-await page.getByTestId("editor-text-toggle").click();
-await page.getByTestId("editor-document").waitFor();
-await page
-  .getByTestId("editor-file-picker")
-  .getByRole("button", { name: "Close" })
-  .click()
-  .catch(() => {});
-await page.getByRole("button").and(page.getByTestId("toggle-terminal")).click();
-await page.waitForTimeout(2500);
-await page.keyboard.type("git log --oneline\n");
-await page.waitForTimeout(1500);
-await shot(page, "terminal-editor");
+// The browser terminal and the editor beside the website conversation:
+// VS Code where the lab runs a real code-server, else the built-in editor.
+if (await editorOrigin(page)) await vscodeShot(page, websiteFix);
+else await builtinEditorShot(page, websiteFix);
+
+async function editorOrigin(page) {
+  return await page.evaluate(
+    async () => (await fetch("/api/v1/editor")).status === 200,
+  );
+}
+
+async function csrfFetch(page, method, path, body) {
+  return await page.evaluate(
+    async ({ method, path, body }) => {
+      const { csrf } = await (await fetch("/auth/session")).json();
+      const r = await fetch(path, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify(body),
+      });
+      return r.status;
+    },
+    { method, path, body },
+  );
+}
+
+// VS Code and the terminal, cropped to them: in a 1000 px window the
+// conversation column holds the maximized terminal, and the explorer is
+// narrowed so that the code keeps its width.
+async function vscodeShot(page, conversation) {
+  if (
+    (await csrfFetch(page, "PUT", "/api/v1/account/preferences", {
+      engine: "vscode",
+    })) !== 200
+  )
+    throw new Error("could not choose VS Code");
+  await page.evaluate(() =>
+    localStorage.setItem("oh-editor-conversation-width", "360"),
+  );
+  await page.setViewportSize({ width: 1000, height: 680 });
+  await visit(page, conversation);
+  await page.getByRole("button").and(page.getByTestId("toggle-editor")).click();
+  const vscode = page
+    .frameLocator('[data-testid="workspace-editor"]')
+    .frameLocator("#editor");
+  await vscode
+    .locator(".monaco-workbench, .fake-workbench")
+    .first()
+    .waitFor({ timeout: 90000 });
+  if (!(await vscode.locator(".monaco-workbench").count()))
+    throw new Error(
+      "the lab's editor is the stand-in: set BROWSER_HOST_CODE_SERVER",
+    );
+  const workspace = await page.evaluate(
+    async () =>
+      (await (await fetch("/api/v1/snapshot")).json()).workspaces.find(
+        (w) => w.name === "website",
+      ).workspace_id,
+  );
+  if (
+    (await csrfFetch(page, "POST", "/api/v1/editor/open", {
+      workspace_id: workspace,
+      path: "contact.html",
+    })) !== 200
+  )
+    throw new Error("VS Code did not open contact.html");
+  await vscode
+    .locator(".tabs-container .tab")
+    .filter({ hasText: "contact.html" })
+    .waitFor();
+  {
+    const side = await vscode.locator(".part.sidebar").boundingBox();
+    const code = await vscode.locator(".part.editor").boundingBox();
+    await page.mouse.move(code.x - 2, side.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(side.x + 150, side.y + 200, { steps: 8 });
+    await page.mouse.up();
+  }
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
+  await page.waitForTimeout(2500);
+  // The maximized terminal has room for the change itself as well.
+  await page.keyboard.type("git log --oneline\n");
+  await page.waitForTimeout(800);
+  await page.keyboard.type("git diff --stat HEAD~1\n");
+  await page.waitForTimeout(1500);
+  await page.getByTestId("maximize-terminal").click();
+  await page.mouse.move(500, 679);
+  await page.waitForTimeout(2000);
+  const view = page.viewportSize();
+  const left = (await page.getByTestId("workspace-editor").boundingBox()).x;
+  await shot(page, "terminal-editor", {
+    x: left,
+    y: 0,
+    width: view.width - left,
+    height: view.height,
+  });
+}
+
+async function builtinEditorShot(page, conversation) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await visit(page, conversation);
+  await page.getByRole("button").and(page.getByTestId("toggle-editor")).click();
+  await page
+    .getByTestId("editor-file-entry")
+    .and(page.locator('[data-path="contact.html"]'))
+    .click();
+  await page.getByTestId("editor-text-toggle").click();
+  await page.getByTestId("editor-document").waitFor();
+  await page
+    .getByTestId("editor-file-picker")
+    .getByRole("button", { name: "Close" })
+    .click()
+    .catch(() => {});
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
+  await page.waitForTimeout(2500);
+  await page.keyboard.type("git log --oneline\n");
+  await page.waitForTimeout(1500);
+  await shot(page, "terminal-editor");
+}
 
 // Getting started, as Bob's first sign-in: the repositories step, then the
 // AI account's sign-in link and code.

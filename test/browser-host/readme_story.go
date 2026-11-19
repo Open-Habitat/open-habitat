@@ -412,6 +412,18 @@ func seedReadmeStory(home string) error {
 	if e := os.WriteFile(filepath.Join(home, ".bash_profile"), []byte("PS1='\\[\\e[1;32m\\]alice@habitat\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '\nexport HISTFILE=/dev/null\n"), 0600); e != nil {
 		return e
 	}
+	// A real code-server (BROWSER_HOST_CODE_SERVER) reads Alice's settings
+	// from her home: a settled editor in the light theme, without VS Code's
+	// first-run surfaces or AI chat, and narrow enough for the README's
+	// capture (no minimap, wrapped lines; the opening hours' en dashes are
+	// not flagged as look-alike characters).
+	vscode := filepath.Join(home, ".local", "share", "code-server", "User")
+	if e := os.MkdirAll(vscode, 0700); e != nil {
+		return e
+	}
+	if e := os.WriteFile(filepath.Join(vscode, "settings.json"), []byte(storyEditorSettings), 0600); e != nil {
+		return e
+	}
 	handbook := map[string]string{}
 	for _, page := range []string{"01-welcome", "02-who-we-are", "03-first-week", "04-working-hours", "05-remote-work", "06-equipment", "07-holidays", "08-sick-leave", "09-travel", "10-booking-travel", "11-per-diems", "12-expenses", "13-receipts", "14-tools", "15-email-and-chat", "16-security", "17-wellbeing", "18-contacts"} {
 		handbook["pages/"+page+".md"] = storyHandbookPage("pages/" + page + ".md")
@@ -543,6 +555,27 @@ func seedReadmeStory(home string) error {
 	}
 	return nil
 }
+
+const storyEditorSettings = `{
+  "workbench.colorTheme": "Light Modern",
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+  "workbench.welcomePage.walkthroughs.openOnInstall": false,
+  "workbench.activity.showAccounts": false,
+  "workbench.layoutControl.enabled": false,
+  "workbench.secondarySideBar.defaultVisibility": "hidden",
+  "security.workspace.trust.enabled": false,
+  "telemetry.telemetryLevel": "off",
+  "update.showReleaseNotes": false,
+  "extensions.ignoreRecommendations": true,
+  "chat.disableAIFeatures": true,
+  "chat.commandCenter.enabled": false,
+  "git.openRepositoryInParentFolders": "never",
+  "editor.minimap.enabled": false,
+  "editor.wordWrap": "on",
+  "editor.unicodeHighlight.ambiguousCharacters": false
+}
+`
 
 // storySales is an invented month of one channel's sales.
 func storySales(channel string) string {
