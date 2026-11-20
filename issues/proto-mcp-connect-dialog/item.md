@@ -1,0 +1,121 @@
+---
+created: 2026-11-20
+updated: 2026-11-20
+type: task
+reporter: jari
+status: open
+priority: normal
+lane_seq: 1
+provenance: chat
+source_ref: chat:2026-11-20/proto-mcp-connect-dialog
+lane: mcp-connect-proto
+---
+
+# Prototype: Atlassian and Trello connect dialog and re-consent
+
+## Description
+
+Jari 20.11.2026: Atlassianin (Jira, Confluence) ja Trellon
+yhdistämisdialogi on sekava ja ruma, ja Trellon yhteyden Workspacea tai
+oikeuksia ei pysty korjaamaan, jos kirjautuessa valitsi väärin.
+Prototypoidaan kunnolla AGENTS-WORKFLOW.md:n mukaan: dialogi ja
+tilikortin jälkitila samassa kierroksessa, koska korjaus kulkee saman
+dialogin kautta.
+
+### 1. Dialogi (Asetukset › Tiedot agenteille › Yhdistä tili: Trello / Atlassian)
+
+`Intro` + `LevelWarning` + `ApprovalRequest` in
+`web/src/components/Integrations.tsx`, tekstit `web/src/text/trello.ts`,
+`atlassian.ts` ja `integrations.tsx` (`levels.trello`, `levels.atlassian`).
+Havainnot nykyisestä dialogista:
+
+- **Sama teksti kahdesti.** MCP-palvelun `LevelWarning` näyttää valitun
+  tason `sum`-tekstin, joka on jo valitun tasokortin kuvaus. Vain luku
+  -tasolla koko kappale ("Pyydä vain lukuoikeuksia. Pi pyytää lupaa…")
+  toistuu heti kortin alla punaisessa laatikossa.
+- **Varoitussävy väärässä paikassa.** Punainen laatikko näkyy turvallisimmalla
+  valinnalla (vain luku), ja sen sisältö on tasokuvaus, ei varoitus.
+- **Ylläpitäjän pyyntö näkyy heti, kaikille.** "Jos kirjautuminen odottaa
+  ylläpitäjän hyväksyntää" ja sen pitkä pyyntöteksti (loopback-osoite
+  `http://127.0.0.1:*/**`, IP-sallintalista, Connectors-polku) on dialogin
+  suurin osa jo ennen kuin mitään on yritetty. Kierroksen
+  2026-11-02-atlassian-trello suositus oli näyttää pyyntö odotustilassa,
+  ei aloitusnäkymässä. Pyyntö toistuu vielä paluuosoitteen liittämisvaiheessa.
+- **Tekstiä on liikaa ja se on teknistä**: "Pi pyytää lupaa, mutta ei voi
+  rajata sitä", "Atlassianin MCP-asetukset", "natiivi loopback-paluuosoite".
+  Tavallinen käyttäjä tarvitsee kolme asiaa: mitä agentit saavat tehdä, mitä
+  Trello/Atlassian kysyy seuraavaksi (Workspace, oikeudet) ja että lopuksi
+  aukeava virhesivu on odotettu.
+
+### 2. Workspacen tai oikeuksien korjaaminen jälkikäteen
+
+Trellon suostumussivulla valitaan Workspace (yksi per yhteys) ja
+hyväksyttävät oikeudet. Trellon ohje: jos haluaa muuttaa valintaa,
+"disconnect Trello MCP and reconnect it". Habitatissa tähän ei ole polkua:
+
+- *Kirjaudu uudelleen* (`integration-reauth`) näkyy tilikortilla vain, kun
+  kirjautuminen on vanhentunut, tai Googlella myöntämättä jääneille
+  oikeuksille.
+- *Vaihda tasoa* ei salli samaa tasoa (`Intro`:n jatkopainike on pois
+  käytöstä, kun `level === current`), joten väärän Workspacen voi korjata
+  vain poistamalla yhteyden ja lisäämällä uuden, eikä sitä kerrota missään.
+- Tarkistettava: Pi käyttää oletuksena vakaata asiakastunnusta (Client ID
+  Metadata Document, `https://pi.dev/oauth/…/client.json`), joten
+  Atlassian saattaa muistaa aiemman suostumuksen ja ohittaa
+  Workspace-valinnan uudelleenkirjautumisessa. Jos näin on, uudelleenvalinta
+  vaatii myös suostumuksen perumisen Atlassian-tililtä, ja ohjeen pitää
+  sanoa se.
+
+Sama koskee Atlassiania (Jira/Confluence-sivuston valinta).
+
+### 3. Pyydetty kirjoitus, myönnetty vain luku
+
+Kokeillessa valittiin Trellolle *Luku ja muokkaus*, mutta yhteys näytti
+*Vain luku*. Selvitys 20.11.:
+
+- Habitat pyytää kirjoitustasolla kirjoitusscopet
+  (`trelloWriteScopes` in `internal/daemon/integrations/trello_linux.go`
+  → Pi:n `mcp.json` `oauth.scope`), ja kirjautuminen alkaa puhtaalta
+  pöydältä (`pi mcp logout` ennen uutta lupaa). Pi lähettää konfiguroidun
+  scopen authorize-pyynnössä (`pi-mcp` `sign-in.js` `mergeScopes`).
+- *Vain luku* luetaan Trellon tokenivastauksen `scope`-kentästä: siinä ei
+  ollut yhtään `write:`-scopea. Trello siis myönsi vähemmän kuin pyydettiin.
+  Syitä on kaksi tunnettua: suostumussivulla jätettiin kirjoitus
+  hyväksymättä (Trello antaa valita oikeudet), tai organisaation
+  Enterprise-ylläpitäjä on estänyt `write_trello`-oikeuden (Connectors ›
+  Atlassian MCP server › Permissions).
+- Tilikortin *Myönnetyt oikeudet* -lista erottaa tapaukset: jos
+  `write:board:trello` näkyy rivillä "pyydettiin, ei myönnetty", pyyntö
+  oli oikea ja Trello rajasi. Jos se puuttuu listasta kokonaan, pyyntö
+  lähti lukutasolla ja vika on meillä.
+
+Käyttöliittymä ei kuitenkaan auta tässä:
+
+- Trellolle näytetään `narrowedSelf`-ilmoitus, jonka teksti puhuu Google
+  Workspacen ylläpitäjästä ja kehottaa kirjautumaan uudelleen, mutta
+  Trellon kortilla ei ole *Kirjaudu uudelleen* -painiketta.
+- Ilmoitus ei kerro Trellon kahta todellista syytä (oma valinta
+  suostumussivulla tai organisaation esto) eikä sitä, että korjaus on uusi
+  suostumus (kohta 2).
+
+## Prototyypin rajaus
+
+Yksi kierros: Asetukset › Tiedot agenteille, Trello- ja Atlassian-yhteyden
+kulku dialogista tilikortin jälkitilaan. Tilat vähintään: uusi yhteys
+(molemmat tasot), paluuosoitteen liittäminen, odottaa ylläpitäjää,
+yhdistetty pyydetyllä tasolla, yhdistetty kapeammalla luvalla kuin
+pyydettiin, väärä Workspace / valinnan korjaus. Synteettinen henkilö,
+sivusto ja Workspacet. Suunnat erottuvat oletusnäkymässä.
+
+## Acceptance Criteria
+
+- [ ] Prototyyppikierros, jossa dialogi ei toista tasokuvausta, ylläpitäjän
+      pyyntö näkyy vasta kun sitä tarvitaan, ja teksti on tavallisen
+      käyttäjän kieltä.
+- [ ] Prototyypissä on polku Workspacen ja oikeuksien uudelleenvalintaan
+      samalla tasolla, ja se kertoo, mitä Trello/Atlassian kysyy.
+- [ ] Prototyypissä kapeampi myönnetty lupa kerrotaan Trellon ja
+      Atlassianin omin syin, ja siinä on toimiva korjauspolku.
+- [ ] Tarkistettu, ohittaako Atlassian Workspace-valinnan
+      uudelleenkirjautumisessa saman Pi-asiakkaan kanssa; tulos kirjattu
+      tähän.
