@@ -59,12 +59,10 @@ hyväksyttävät oikeudet. Trellon ohje: jos haluaa muuttaa valintaa,
 - *Vaihda tasoa* ei salli samaa tasoa (`Intro`:n jatkopainike on pois
   käytöstä, kun `level === current`), joten väärän Workspacen voi korjata
   vain poistamalla yhteyden ja lisäämällä uuden, eikä sitä kerrota missään.
-- Tarkistettava: Pi käyttää oletuksena vakaata asiakastunnusta (Client ID
-  Metadata Document, `https://pi.dev/oauth/…/client.json`), joten
-  Atlassian saattaa muistaa aiemman suostumuksen ja ohittaa
-  Workspace-valinnan uudelleenkirjautumisessa. Jos näin on, uudelleenvalinta
-  vaatii myös suostumuksen perumisen Atlassian-tililtä, ja ohjeen pitää
-  sanoa se.
+- Pi käyttää vakaata asiakastunnusta (Client ID Metadata Document,
+  `https://pi.dev/oauth/…/client.json`), mutta sen authorize-pyynnössä on
+  `prompt=consent`, joten Atlassianin pitäisi näyttää suostumussivu ja
+  Workspace-valinta joka kerta. Tämä varmistetaan oikealla tilillä.
 
 Sama koskee Atlassiania (Jira/Confluence-sivuston valinta).
 
@@ -84,10 +82,18 @@ Kokeillessa valittiin Trellolle *Luku ja muokkaus*, mutta yhteys näytti
   hyväksymättä (Trello antaa valita oikeudet), tai organisaation
   Enterprise-ylläpitäjä on estänyt `write_trello`-oikeuden (Connectors ›
   Atlassian MCP server › Permissions).
-- Tilikortin *Myönnetyt oikeudet* -lista erottaa tapaukset: jos
-  `write:board:trello` näkyy rivillä "pyydettiin, ei myönnetty", pyyntö
-  oli oikea ja Trello rajasi. Jos se puuttuu listasta kokonaan, pyyntö
-  lähti lukutasolla ja vika on meillä.
+- Tarkistettu oikealta asennukselta 20.11.: yhteyden `mcp.json`-scopessa
+  oli kaikki kolme kirjoitusscopea, ja Pi:n authorize-osoitteessa ne ovat
+  mukana (`scope=…write:board:trello+write:member.inbox:trello+
+  write:member.planner:trello`, `prompt=consent`). Myönnetyssä tokenissa
+  oli vain lukuscopet. Saman henkilön Atlassian-yhteys (Jira, Confluence)
+  sai kirjoitusscopet, joten kirjoitusta ei ole estetty kokonaan.
+  Pyyntö oli siis oikea, ja rajaus tapahtui Trellon suostumuksessa tai
+  Trellon tuotekohtaisessa ylläpitoasetuksessa.
+- Tilikortin *Myönnetyt oikeudet* -lista (kortin alareunan avattava
+  kohta) näyttää tämän: kirjoitusscopet näkyvät siinä merkinnällä
+  "pyydettiin, ei myönnetty". Kohta on niin huomaamaton, ettei sitä
+  löytänyt.
 
 Käyttöliittymä ei kuitenkaan auta tässä:
 
@@ -116,6 +122,6 @@ sivusto ja Workspacet. Suunnat erottuvat oletusnäkymässä.
       samalla tasolla, ja se kertoo, mitä Trello/Atlassian kysyy.
 - [ ] Prototyypissä kapeampi myönnetty lupa kerrotaan Trellon ja
       Atlassianin omin syin, ja siinä on toimiva korjauspolku.
-- [ ] Tarkistettu, ohittaako Atlassian Workspace-valinnan
-      uudelleenkirjautumisessa saman Pi-asiakkaan kanssa; tulos kirjattu
-      tähän.
+- [ ] Tarkistettu oikealla tilillä, mitä Trellon suostumussivu näyttää
+      kirjoitusoikeudesta (onko se oletuksena pois) ja kysyykö se Workspacen
+      uudelleen; tulos kirjattu tähän.
