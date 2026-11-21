@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
@@ -13,6 +13,7 @@ preparation: ready
 related: ['@multiplayer-conversations']
 lane: multiplayer
 lane_seq: 4
+closed: 2026-11-21
 ---
 
 # Multiplayer: participant messages and text-only turns in the Pi companion
@@ -30,3 +31,9 @@ Implements sections 3–5 of ADR 0038 (`docs/decisions/adr-0038-multiplayer-conv
 - Host context: participant text is information, not instructions for the owner's turns.
 
 Acceptance tests against the pinned Pi and bridge: parallel batches, nested codemode calls, a hostile extension handler returning no block, a restart between a participant message and a scheduled wake, an extension `sendUserMessage` after a participant turn, revocation during a run, and proof that every bridge-served tool passes `tool_call`.
+
+## Resolution
+
+### 2026-11-21T15:32:55Z · @issuectl
+
+Participant messages, text-only turns, per-call approval and fail-closed full rights landed behind the multiplayer feature; acceptance against the pinned Pi and pi-claude-bridge passes; no bridge-served tool bypasses tool_call. Details in result.md.
