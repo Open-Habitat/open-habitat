@@ -1,6 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";
+
+answeringTaskfleet(test);
 
 async function openWorkspace(
   page: import("@playwright/test").Page,

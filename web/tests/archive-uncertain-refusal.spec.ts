@@ -1,8 +1,10 @@
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { expect, test } from "./worker-host";
 
 const agent = "pi:11111111-1111-4111-8111-111111111111";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+answeringTaskfleet(test);
 
 // Archiving from a conversation's own view leaves for its workspace at once.
 // The host's refusal can arrive before that navigation has rendered (the

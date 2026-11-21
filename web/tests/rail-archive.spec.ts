@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { openedConversation } from "./conversation-view";
 import { createHostTest, expect } from "./worker-host";
 
@@ -12,6 +13,7 @@ test.use({
   ignoreHTTPSErrors: true,
   deviceScaleFactor: 2,
 });
+answeringTaskfleet(test);
 
 test("rail titles have no field outline at rest, selected, hovered or focused", async ({
   page,

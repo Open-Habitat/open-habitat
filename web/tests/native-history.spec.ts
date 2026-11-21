@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Route } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./worker-host";
 
@@ -11,6 +12,7 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 720 },
 });
+answeringTaskfleet(test);
 async function fixture(page: import("@playwright/test").Page, mode: string) {
   expect(
     (await page.request.get(`/fixture/history?mode=${mode}`)).status(),

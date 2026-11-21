@@ -1,11 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./worker-host";
 
 const agent = "pi:11111111-1111-4111-8111-111111111111";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+answeringTaskfleet(test);
 
 for (const width of [390, 1280]) {
   for (const colorScheme of ["light", "dark"] as const) {

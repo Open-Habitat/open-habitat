@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Browser } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { expect, type Page, test } from "./worker-host";
 
 test.use({
@@ -8,6 +9,7 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
 });
+answeringTaskfleet(test);
 const conversationNow = (page: Page) =>
   new URL(page.url()).searchParams.get("conversation");
 const line = (page: Page) => page.getByTestId("next-waiting");

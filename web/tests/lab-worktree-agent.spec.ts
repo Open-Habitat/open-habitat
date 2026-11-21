@@ -1,8 +1,11 @@
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";
+
+answeringTaskfleet(test);
 
 // A worktree agent (ADR 0025) through the real gateway, daemon and native
 // Git on the lab's synthetic home: the first message makes the branch and
