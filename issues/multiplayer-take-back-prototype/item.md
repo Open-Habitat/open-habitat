@@ -24,3 +24,9 @@ Täydet oikeudet lends the owner's whole Unix user to a participant through the 
 ### 2026-11-21T15:33:47Z · @jari
 
 Jari 21.11.2026: direction 1 Heti. The participant's run in progress continues as text only. The participant's processes: offer stopping (not automatic) — prototype that.
+
+## Agent Runs
+
+### 2026-11-21T15:48:26Z · @agent
+
+Round 2 (offering to stop the participant's processes): directions 1 Kortti, 2 Merkit, 3 Kysymys in design-system/prototypes/rounds/2026-11-21-take-back-processes/; recommendation 1 Kortti; five questions for Jari in result-2.md.
