@@ -1431,8 +1431,13 @@ test("@browser-conversation one Enter queues a steer with an attachment once", a
       }),
     );
   });
+  // The chip is drawn while the picture is still uploading, and a message
+  // cannot go before its attachment has; wait for the stored one.
   await expect(
-    page.locator(".ah-composer").getByTestId("attachment-chip"),
+    page
+      .locator(".ah-composer")
+      .getByTestId("attachment-chip")
+      .and(page.locator("[data-attachment-url]")),
   ).toHaveCount(1);
   await editor.fill("ohjaus liitteellä");
   const posts: string[] = [];
