@@ -2,13 +2,14 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: untriaged
+status: done
 priority: normal
 provenance: other
 provenance_detail: research run measurement
 source_ref: taskfleet:01m7yk0n7jprp9pdkvf539ybt1/finding:microsoft-server-name-hashes-tool-names
 originating_run: 01m7yk0n7jprp9pdkvf539ybt1
 originating_run_kind: research
+closed: 2026-11-21
 ---
 
 # Microsoft MCP server name makes Pi hash 92 of 100 tool names, hiding them from tool search
@@ -49,3 +50,9 @@ the address in the entry's `description`, which Pi shows in the
 `mcp_servers` system-prompt section and in `describeNamespace()`. The
 topic-area design in `issues/agent-account-instructions-clarity/research-topics.md`
 already assumes such names; this item stands on its own if that design waits.
+
+## Resolution
+
+### 2026-11-21T14:46:36Z · @issuectl
+
+Fixed by 1eb971e6: Microsoft areas are named ms-<area>, so tool names are no longer hashed.
