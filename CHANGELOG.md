@@ -19,10 +19,31 @@ it carries. To upgrade, deliver the successor release and change only
 
 ### Changed
 
-- Microsoft connections use a small relay process to reduce memory per open conversation. Releases now include `bin/open-habitat-mcp-relay`; custom installers must keep it beside the real `open-habitat` executable, root-owned and mode 0755, and include it in package verification. `host apply` and `host upgrade` handle this automatically.
-
 ### Fixed
 <!-- oss-changelog:unreleased-end -->
+
+## [0.1.4] - 2026-11-21
+
+- After its reply the agent can place its conversation in the sidebar's Sinun vuorosi, Käynnissä or Hiljaiset section; the person's own choice, questions, failures and running turns still take precedence.
+- Twelve experimental features are now on for everyone: links in the terminal as URL cards, the storage breakdown, the background-work mark, the agent's scheduled wake, explain mode, per-turn changes, the context view with compaction, the agent resources view, Jira and Confluence, Trello, helpers, and the shared-items page, now called Outputs (Tuotokset) and listing private items too.
+- Terminal: copy on select was removed; select and copy explicitly.
+- Microsoft: each person has one shared Microsoft process with five topic areas instead of one per open conversation. Before deleting, sending or sharing a calendar, the agent asks for permission with a question that takes the composer's place.
+- Microsoft relays use much less memory: each open conversation runs a small relay instead of a copy of the host binary.
+- A Pi session line torn by an interrupted write is undone instead of being glued to the next entry, so the conversation stays readable.
+- A message sent or steered while the conversation's status is being re-read is kept instead of lost.
+- Upgrades reuse an unchanged runtime payload set from the previous release, which makes them much faster.
+- A conversation reopens where you left it, and a Changes card appears under every turn that changed files.
+- The editor opens previewable files in preview first and keeps workspace files out of browser caches.
+- Sinun vuorosi and Käynnissä can be filtered by workspace; only the workspace list scrolls in the sidebar.
+- At a full disk quota, space can be freed without the agent, and a move that cannot be restored says so.
+- A reply ends once and stays put; conversations a restart left untitled get their title; silent event streams reopen.
+- Google personal accounts are documented in the admin guide and offered in the connect flow.
+- Experimental: multiplayer conversations: invite another person into a conversation, with participant messages, text-only turns, and a card that lets the owner see which participant turn started a process and stop it or leave it running.
+- Experimental: an editor for the agent's instructions, in onboarding and Settings.
+- Experimental: attention sounds. Choose a sound for when the agent needs you in Settings › Sounds (Äänet), or per workspace, and mute them from the account menu.
+- Workspace icon suggestions offer your other workspaces' logos, image files in the workspace and images attached to the request.
+- Operators: releases now include `bin/open-habitat-mcp-relay`; custom installers must keep it beside the real `open-habitat` executable, root-owned and mode 0755, and include it in package verification. `host apply` and `host upgrade` handle this automatically.
+
 
 ## [0.1.3] - 2026-11-16
 
