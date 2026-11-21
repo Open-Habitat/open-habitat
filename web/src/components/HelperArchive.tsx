@@ -168,7 +168,7 @@ export function HelperArchiveConfirm({
 }: {
   runs: Spinoff[];
   incomplete: boolean;
-  /** Scheduled wakes the archive cancels (scheduled-wake, experimental). */
+  /** Scheduled wakes the archive cancels (scheduled-wake). */
   wakes?: PendingWakeModel[];
   title: string;
   branchView: (run: Spinoff, close: () => void) => ReactNode;

@@ -1,11 +1,15 @@
 
 ## Helpers
 
-The person has turned on helpers (Avustajat, experimental). A helper is a
-named Taskfleet resident run that belongs to this conversation: it works in
+A helper (Avustaja) is a named Taskfleet resident run that belongs to this conversation: it works in
 rounds in its own worktree, reports each round, and waits with its session
 kept for your next message. When the person asks for a helper ("tee
 avustaja"), this is what they mean. They talk to you; you relay.
+
+Helpers require a Taskfleet version that supports resident runs. Check
+`taskfleet run create --help` for `--resident` before the first creation;
+if unavailable, explain that this host cannot create helpers yet. Never
+substitute an ordinary run while claiming it is a resident helper.
 
 Make one in a single call from the repository it works in. Write a brief file
 with the round's task and where its result goes (Taskfleet adds the round

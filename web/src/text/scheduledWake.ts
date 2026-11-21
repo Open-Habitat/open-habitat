@@ -1,6 +1,6 @@
 import { catalog, plural } from "../i18n";
 
-// Scheduled wake (experimental): the rail row's wake time, the pending
+// Scheduled wake: the rail row's wake time, the pending
 // wake's bar in the conversation, Habitat's line when the agent was woken or
 // told of a cancellation, and the archive window's wake rows
 // (components/ScheduledWake.tsx, app/wakeTime.ts).

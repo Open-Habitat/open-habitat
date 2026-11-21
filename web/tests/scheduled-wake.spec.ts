@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Scheduled wake (experimental): the agent's wake (here created by the
+// Scheduled wake: the agent's wake (here created by the
 // fixture as the conversation's Pi would run agent wake create --current
 // during its turn) holds the conversation in Hiljaiset with the wake time at
 // the row's end, the bar lets the person move or cancel it, and archiving
@@ -29,7 +29,7 @@ async function start(page: Page): Promise<string> {
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": session.csrf,
         },
-        data: { experimental: { "scheduled-wake": true } },
+        data: { experimental: { "scheduled-wake": false } },
       })
     ).ok(),
   ).toBe(true);

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { ViewSummary } from "../components/ViewOffer";
-import { groupShares, shareCategory } from "./shares";
+import { groupShares, outputID, shareCategory } from "./shares";
 import type { Agent } from "./snapshot";
 import type { ViewAddress } from "./viewLinks";
 
@@ -62,12 +62,24 @@ it("keeps a recently active archived conversation ahead of newer shares and remo
     "no-session",
     "removed",
   ]);
-  expect(result[0].rows.map((s) => s.address.address_id)).toEqual([
+  expect(result[0].rows.map((s) => s.address?.address_id)).toEqual([
     "old",
     "older",
   ]);
-  expect(result[2].changed).toBe("2026-02-02");
+  expect(result[2].changed).toBe("2026-01-01T00:00:00Z");
   expect(shareCategory(result[3].rows[0])).toBe("past");
+});
+it("includes native outputs without addresses and keeps their identity when shared", () => {
+  const item = view("private-output", "active");
+  const native = groupShares([], [item], { agents: [agent("active")] });
+  expect(native[0].rows).toHaveLength(1);
+  expect(shareCategory(native[0].rows[0])).toBe("private");
+  expect(native[0].rows[0].address).toBeUndefined();
+  const shared = groupShares([address(item.view_id, "2026-03-01")], [item], {
+    agents: [agent("active")],
+  });
+  expect(shared[0].rows).toHaveLength(1);
+  expect(outputID(shared[0].rows[0])).toBe(outputID(native[0].rows[0]));
 });
 it("does not present an elapsed public address as public before the next host read", () => {
   const a = {

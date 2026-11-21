@@ -605,6 +605,33 @@ func listFileOffers(home, conversation string) ([]fileOfferHead, error) {
 	return out, nil
 }
 
+// fileOfferListQuery uses the same newest-first time/ID cursor as views.
+// It selects a position only; all reads still belong to the authenticated UID.
+func fileOfferListQuery(q url.Values) (conversation string, after *fileOfferSummary, ok bool) {
+	for key, values := range q {
+		if len(values) != 1 {
+			return "", nil, false
+		}
+		switch key {
+		case "conversation_id":
+			conversation = values[0]
+			if !viewConversationPattern.MatchString(conversation) {
+				return "", nil, false
+			}
+		case "cursor":
+			at, id, found := strings.Cut(values[0], "_")
+			t, err := time.Parse(time.RFC3339Nano, at)
+			if !found || err != nil || t.IsZero() || !fileOfferIDPattern.MatchString(id) {
+				return "", nil, false
+			}
+			after = &fileOfferSummary{ID: id, CreatedAt: at}
+		default:
+			return "", nil, false
+		}
+	}
+	return conversation, after, true
+}
+
 // removeFileOffer renames the offer out of the readable namespace before
 // removing it, so the read routes never serve a half-removed offer.
 func removeFileOffer(home, id string) error {
@@ -655,15 +682,12 @@ func FileOffersHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		// Only the list takes a query: one conversation's offers.
-		conversation := ""
-		if r.URL.RawQuery != "" {
-			q, err := url.ParseQuery(r.URL.RawQuery)
-			conversation = q.Get("conversation_id")
-			if err != nil || r.URL.Path != FileOffersPath || len(q) != 1 || len(q["conversation_id"]) != 1 || !viewConversationPattern.MatchString(conversation) {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
+		// Only the list takes a query: conversation and/or a page cursor.
+		q, err := url.ParseQuery(r.URL.RawQuery)
+		conversation, after, valid := fileOfferListQuery(q)
+		if err != nil || !valid || r.URL.RawQuery != "" && r.URL.Path != FileOffersPath {
+			snapshotError(w, 400, "invalid_request")
+			return
 		}
 		if r.URL.Path == FileOffersPath {
 			list, err := listFileOffers(cfg.Home, conversation)
@@ -671,14 +695,24 @@ func FileOffersHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 				snapshotError(w, 503, "file_store_unavailable")
 				return
 			}
-			offers := make([]fileOfferSummary, 0, len(list))
+			offers := make([]fileOfferSummary, 0, maxViewList)
+			next := ""
 			for _, m := range list {
+				if after != nil && (m.CreatedAt > after.CreatedAt || m.CreatedAt == after.CreatedAt && m.ID <= after.ID) {
+					continue
+				}
 				if len(offers) == maxViewList {
+					last := offers[len(offers)-1]
+					next = last.CreatedAt + "_" + last.ID
 					break
 				}
 				offers = append(offers, m.fileOfferSummary)
 			}
-			historyJSON(w, map[string]any{"schema_version": 1, "offers": offers})
+			body := map[string]any{"schema_version": 1, "offers": offers}
+			if next != "" {
+				body["next_cursor"] = next
+			}
+			historyJSON(w, body)
 			return
 		}
 		rest, ok := strings.CutPrefix(r.URL.Path, FileOffersPath+"/")

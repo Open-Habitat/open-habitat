@@ -51,7 +51,7 @@ export interface HistoryEntry {
   notice?: AgentNotice;
   restart?: RestartNotice;
   wait_reminder?: WaitReminder;
-  /** Habitat's line on a scheduled wake (scheduled-wake, experimental). */
+  /** Habitat's line on a scheduled wake (scheduled-wake). */
   scheduled_wake?: WakeLine;
   entry_key: string;
   timestamp?: string;

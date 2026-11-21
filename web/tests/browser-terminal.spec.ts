@@ -350,7 +350,7 @@ test("@browser-shell an address a program opens is offered and opens only on a p
     .route("https://example.test/**", (route) =>
       route.fulfill({ contentType: "text/plain", body: "synthetic" }),
     );
-  await signIn(page, { "terminal-open-urls": true });
+  await signIn(page, {});
   await openShell(page);
   const offer = page
     .getByRole("region")

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import {
-  StorageUsage,
   TrashEmptyDialog,
   TrashList,
   TrashPurgeDialog,
@@ -9,7 +8,6 @@ import {
 } from "../components/WorkspaceTrash";
 import { liveText } from "../i18n";
 import { trashText } from "../text/trash";
-import { useExperimentalFeature } from "./accountPreferences";
 import { type CleanupWorkspace, StorageBreakdown } from "./StorageBreakdown";
 import { type OwnStorage, ownStorage } from "./storageQuota";
 import { blockerText, bytes, refusalText } from "./trashText";
@@ -53,11 +51,9 @@ export function PersonalStorage({
   /** Opens a new conversation with text in its field, unsent. */
   onAskAgent?: (workspaceId: string, text: string) => boolean;
 }) {
-  const breakdown = useExperimentalFeature("storage-breakdown");
   const [quota, setQuota] = useState<OwnStorage>();
   const [error, setError] = useState(false);
   const [quotaRead, setQuotaRead] = useState(0);
-  const [trashBytes, setTrashBytes] = useState<number>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: quotaRead asks again after the Trash freed space.
   useEffect(() => {
     const controller = new AbortController();
@@ -72,7 +68,7 @@ export function PersonalStorage({
   }, [quotaRead]);
   return (
     <>
-      {breakdown && quota ? (
+      {quota ? (
         <StorageBreakdown
           quota={quota}
           csrf={csrf}
@@ -86,22 +82,7 @@ export function PersonalStorage({
             data-settings-row="usage"
             tabIndex={-1}
           >
-            {quota?.limits === "not_in_use" ? (
-              <SharedDisk
-                capacity={quota.filesystem.capacity_bytes}
-                free={quota.filesystem.free_bytes}
-              />
-            ) : quota ? (
-              <StorageUsage
-                usage={quota.usage_bytes}
-                limit={quota.limit_bytes}
-                trash={trashBytes}
-              />
-            ) : error ? (
-              <p>{txt.usageFailed}</p>
-            ) : (
-              <p>{txt.usageLoading}</p>
-            )}
+            {error ? <p>{txt.usageFailed}</p> : <p>{txt.usageLoading}</p>}
           </section>
         </div>
       )}
@@ -117,7 +98,6 @@ export function PersonalStorage({
       {csrf ? (
         <TrashSettings
           csrf={csrf}
-          onTotal={setTrashBytes}
           onFreed={() => setQuotaRead((n) => n + 1)}
           onRestored={onWorkspacesChanged}
         />
@@ -126,24 +106,12 @@ export function PersonalStorage({
   );
 }
 
-// Without per-user limits the only bound is the disk everyone's homes share.
-function SharedDisk({ capacity, free }: { capacity: number; free: number }) {
-  return (
-    <div data-testid="storage-limits-not-in-use">
-      <p>{txt.sharedFree(<strong>{bytes(free)}</strong>, bytes(capacity))}</p>
-      <p className="ah-trash-intro">{txt.sharedNote}</p>
-    </div>
-  );
-}
-
 function TrashSettings({
   csrf,
-  onTotal,
   onFreed,
   onRestored,
 }: {
   csrf: string;
-  onTotal: (bytes: number | undefined) => void;
   onFreed: () => void;
   onRestored?: () => void;
 }) {
@@ -159,7 +127,6 @@ function TrashSettings({
   const [purgeProblem, setPurgeProblem] = useState("");
   const [emptyOpen, setEmptyOpen] = useState(false);
   const reload = useCallback(() => setRead((n) => n + 1), []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: read explicitly asks for a fresh listing.
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -172,7 +139,6 @@ function TrashSettings({
         setListing(value);
         setListed(read);
         setLoadProblem("");
-        onTotal(value.entries.reduce((sum, e) => sum + (e.size_bytes ?? 0), 0));
         for (const e of value.entries.slice(0, inspectLimit)) {
           if (signal.aborted) return;
           try {
@@ -187,7 +153,6 @@ function TrashSettings({
       (e) => {
         if (signal.aborted) return;
         setLoadProblem(problemOf(e));
-        onTotal(undefined);
       },
     );
     return () => controller.abort();

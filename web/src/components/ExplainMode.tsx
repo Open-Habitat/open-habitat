@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useExperimentalFeature } from "../app/accountPreferences";
 import { useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { ControlButton } from "./ControlElements";
@@ -150,23 +149,19 @@ type Mode = {
   showState: () => void;
 };
 
-/** The mode for an entry point: undefined while the feature is off. */
-export function useExplainMode(): Mode | undefined {
-  const available = useExperimentalFeature("explain-mode");
+/** The mode shared by every entry point. */
+export function useExplainMode(): Mode {
   const state = useExplainState();
   return useMemo(
-    () =>
-      available
-        ? {
-            on: state.on,
-            start,
-            stop,
-            toggle,
-            stateShown: state.on && state.stateShown,
-            showState,
-          }
-        : undefined,
-    [available, state],
+    () => ({
+      on: state.on,
+      start,
+      stop,
+      toggle,
+      stateShown: state.on && state.stateShown,
+      showState,
+    }),
+    [state],
   );
 }
 

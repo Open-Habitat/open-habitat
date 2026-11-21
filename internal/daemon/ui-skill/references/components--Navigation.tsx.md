@@ -511,7 +511,7 @@ export interface AgentNavModel {
   /** When the conversation last changed (the host's changed_at), Unix ms. */
   changedAt?: number;
   /** The next pending scheduled wake, Unix ms: the row's end shows a clock
-   * and the time instead of the age (scheduled-wake, experimental). */
+   * and the time instead of the age (scheduled-wake). */
   wakeAt?: number;
   /** An unread reply a scheduled wake started: when it was woken, in the
    * same place, so the reply explains itself before it is opened. */
@@ -539,7 +539,7 @@ export interface AgentNavModel {
   backgroundService?: string;
   /** A process of the conversation runs (waited for, left running or not
    * waking the agent): the mark's door drifts in a state whose mark does not
-   * already move (rail-background-door, experimental). */
+   * already move (rail-background-door). */
   backgroundRunning?: boolean;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;

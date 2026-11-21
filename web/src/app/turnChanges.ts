@@ -5,7 +5,7 @@ import {
   readContent,
 } from "../components/FileToolCard";
 
-// What the agent changed in one turn (turn-changes, experimental), computed
+// What the agent changed in one turn (turn-changes), computed
 // in the browser from the turn's own tool calls: Pi's edit and write
 // arguments, the reads that show a file as it was, and the files a command
 // names. Nothing here reads the disk or Git, so a command's effect is known

@@ -163,13 +163,9 @@ export function WorkspaceRailView({
   icons,
   quietChoice,
   sectionChoices,
-  resources,
   shares,
   browser,
 }: {
-  /** Agentin käytössä's row under Etusivu (agent-resources-view,
-   * experimental). */
-  resources?: boolean;
   shares?: ReactNode;
   /** The person's server browser's row (remote-browser, experimental). */
   browser?: ReactNode;
@@ -287,29 +283,25 @@ export function WorkspaceRailView({
       }
       homeCurrent={pathname === "/workspaces"}
       pages={
-        resources || browser || shares ? (
-          <>
-            {shares}
-            {browser}
-            {resources ? (
-              <div className="ah-rail-home-row">
-                <LinkRow
-                  href="/resources"
-                  data-testid="rail-resources"
-                  kind="home"
-                  current={pathname === "/resources"}
-                  className="ah-rail-home ar-rail-link"
-                  aria-label={collapsed ? resourcesText.railLabel : undefined}
-                >
-                  <Icon name="shield" />
-                  <span className="ah-rail-home-label">
-                    {resourcesText.railLabel}
-                  </span>
-                </LinkRow>
-              </div>
-            ) : null}
-          </>
-        ) : undefined
+        <>
+          {shares}
+          {browser}
+          <div className="ah-rail-home-row">
+            <LinkRow
+              href="/resources"
+              data-testid="rail-resources"
+              kind="home"
+              current={pathname === "/resources"}
+              className="ah-rail-home ar-rail-link"
+              aria-label={collapsed ? resourcesText.railLabel : undefined}
+            >
+              <Icon name="shield" />
+              <span className="ah-rail-home-label">
+                {resourcesText.railLabel}
+              </span>
+            </LinkRow>
+          </div>
+        </>
       }
       search={
         collapsed ? null : (

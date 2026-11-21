@@ -715,7 +715,7 @@ it("keeps consecutive native replies as separate foldable threads", () => {
   expect(screen.getAllByTestId("agent-turn")).toHaveLength(2);
 });
 
-it("reads a call's arguments only when its stage and row are opened", async () => {
+it("shows a call's arguments when its stage and row are opened", async () => {
   const agentId = "pi:11111111-1111-4111-8111-111111111111";
   const response = {
     schema_version: 1,
@@ -752,9 +752,10 @@ it("reads a call's arguments only when its stage and row are opened", async () =
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
-  // A closed stage names no command, so it reads nothing.
+  // Turn changes may read the tool facts, but a closed stage does not
+  // expose the command's argument panel.
   const row = screen.getByTestId("history-stage-toggle");
-  expect(fetch).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("history-tool-toggle")).toBeNull();
   fireEvent.click(row);
   fireEvent.click(screen.getByTestId("history-tool-toggle"));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();

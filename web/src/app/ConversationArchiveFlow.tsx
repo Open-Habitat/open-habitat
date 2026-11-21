@@ -49,7 +49,6 @@ export function WorkspaceArchive({
   count,
   binding,
   open,
-  helpers,
   onRestore,
   children,
 }: {
@@ -59,8 +58,6 @@ export function WorkspaceArchive({
   binding: string | undefined;
   /** The archive is open: only then are its runs read. */
   open: boolean;
-  /** Named helpers are on: their marks show. */
-  helpers: boolean;
   /** Restores the conversation; `confirmed` runs once the host confirms. */
   onRestore: (id: string, confirmed: () => void) => void;
   children?: ReactNode;
@@ -76,7 +73,7 @@ export function WorkspaceArchive({
   }, []);
   const rows = entries.map((e) => ({
     ...e,
-    traces: archiveTraces(runs.get(e.id) ?? [], helpers, t),
+    traces: archiveTraces(runs.get(e.id) ?? [], t),
   }));
   return (
     <ConversationArchiveList

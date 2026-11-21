@@ -46,11 +46,7 @@ function run(
     phase = "authenticated",
     catalog = agents,
     selectedAgentId,
-    backgroundDoor,
-    wakes,
   }: {
-    backgroundDoor?: boolean;
-    wakes?: boolean;
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
@@ -73,8 +69,6 @@ function run(
     daemonSessions: sessions,
     selectedAgentId,
     phase,
-    backgroundDoor,
-    wakes,
   });
 }
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
@@ -558,7 +552,7 @@ describe("rail Nyt groups", () => {
     });
   });
 
-  it("marks a running process in the row only with the background door", () => {
+  it("marks a running process in the row", () => {
     // mark-hides-background-work: a read reply with a service behind it,
     // and a quiet conversation whose process does not wake the agent.
     const at = new Date(Date.UTC(2026, 10, 12, 10, 48)).toISOString();
@@ -596,17 +590,7 @@ describe("rail Nyt groups", () => {
       sessions,
       attention: [["served", "seen"]] as [string, "seen"][],
     };
-    const off = run([served, sleeper, plain], options);
-    expect(off.yours[0].backgroundRunning).toBeUndefined();
-    // Without the experiment a non-waking process stays unsaid, as before.
-    const offSleeper = off.quiet.find((r) => r.agentId === "sleeper");
-    expect(offSleeper?.backgroundService).toBeUndefined();
-    expect(offSleeper?.backgroundRunning).toBeUndefined();
-
-    const on = run([served, sleeper, plain], {
-      ...options,
-      backgroundDoor: true,
-    });
+    const on = run([served, sleeper, plain], options);
     // The read row keeps its place and its read mark; its door drifts.
     expect(ids(on.yours)).toEqual(["served"]);
     expect(on.yours[0]).toMatchObject({
@@ -630,7 +614,6 @@ describe("rail Nyt groups", () => {
     // A lost connection does not claim a process still runs.
     const stale = run([served, sleeper], {
       ...options,
-      backgroundDoor: true,
       phase: "stale",
     });
     expect(
@@ -1116,7 +1099,7 @@ describe("scheduled wake on the row", () => {
   const row = (now: ReturnType<typeof run>, id: string) =>
     [...now.yours, ...now.running, ...now.quiet].find((r) => r.agentId === id);
 
-  it("a waiting conversation shows its next wake, not its age, only with the feature on", () => {
+  it("a waiting conversation shows its next wake, not its age", () => {
     const waiting = agent("w", {
       ...done,
       changed_at: at(1),
@@ -1124,12 +1107,10 @@ describe("scheduled wake on the row", () => {
       agent_section: { section: "quiet", at: at(1) },
       wakes: [pending, later],
     });
-    const on = run([waiting], { attention: [["w", "new"]], wakes: true });
+    const on = run([waiting], { attention: [["w", "new"]] });
     expect(ids(on.quiet)).toEqual(["w"]);
     expect(row(on, "w")?.wakeAt).toBe(Date.parse(pending.at));
     expect(row(on, "w")?.wokeAt).toBeUndefined();
-    const off = run([waiting], { attention: [["w", "new"]] });
-    expect(row(off, "w")?.wakeAt).toBeUndefined();
   });
 
   it.each([
@@ -1145,7 +1126,7 @@ describe("scheduled wake on the row", () => {
         last_reply: { id: "r2", at: replyAt },
         last_wake: { at: at(7), fired_at: fired },
       });
-      const now = run([woken], { attention: [["v", attention]], wakes: true });
+      const now = run([woken], { attention: [["v", attention]] });
       expect(row(now, "v")?.wokeAt).toBe(shows ? Date.parse(fired) : undefined);
       if (shows) expect(ids(now.yours)).toEqual(["v"]);
     },
@@ -1158,7 +1139,7 @@ describe("scheduled wake on the row", () => {
       last_wake: { at: at(7), fired_at: at(8) },
       wakes: [later],
     });
-    const now = run([both], { attention: [["b", "new"]], wakes: true });
+    const now = run([both], { attention: [["b", "new"]] });
     expect(row(now, "b")?.wakeAt).toBe(Date.parse(later.at));
     expect(row(now, "b")?.wokeAt).toBeUndefined();
   });

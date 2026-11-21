@@ -52,8 +52,8 @@ const fileOfferCSP = "sandbox; default-src 'none'; img-src 'self'; media-src 'se
 // facts go through the ordinary bounded proxy, file bytes and the zip through
 // fileRelay.
 func (a *Auth) fileOffers(w http.ResponseWriter, r *http.Request) {
-	// Only the list takes one query: the conversation whose offers it lists.
-	list := r.URL.Path == fileOffersPath && a.exact(r, fileOffersPath, "conversation_id")
+	// Only the list takes queries: the conversation and/or next-page cursor.
+	list := r.URL.Path == fileOffersPath && (a.exact(r, fileOffersPath, "conversation_id") || a.exact(r, fileOffersPath, "cursor") || a.exact(r, fileOffersPath, "conversation_id", "cursor"))
 	if r.Method != http.MethodGet && r.Method != http.MethodHead || !list && !a.exact(r, r.URL.Path) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
 		return

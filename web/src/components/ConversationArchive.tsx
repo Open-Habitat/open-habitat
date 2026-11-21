@@ -83,12 +83,12 @@ export function byArchivedAt(a: { archivedAt?: string }, b: typeof a) {
 /** A conversation's helpers and workers as row marks: each helper by name,
  * workers counted by how they ended. The exact state and the branch are
  * where the conversation is read. */
-export function archiveTraces(runs: Spinoff[], helpers: boolean, t: Text) {
+export function archiveTraces(runs: Spinoff[], t: Text) {
   const out: ArchiveTrace[] = [];
   for (const run of runs) {
     const r = run.resident;
     // An ended helper's run is counted with the workers below.
-    if (!r || !helpers || !liveHelper(run)) continue;
+    if (!r || !liveHelper(run)) continue;
     const working = r.round_state === "working";
     const unknown = run.state === "unknown";
     const open = working || !!r.unlanded || r.rounds > (r.landed_round ?? 0);

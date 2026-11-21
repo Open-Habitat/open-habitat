@@ -209,13 +209,17 @@ test("anyone with the link opens the view without a session while it is public",
   await reader.goto(content);
   await expect(body).toHaveAttribute("data-script", "yes");
 
-  // The person's own list in Settings has it too.
-  await page.goto("/settings/account");
-  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
-  await expect(page.getByTestId("view-address-row")).toHaveAttribute(
-    "data-public",
-    "true",
-  );
+  // Outputs includes the second, private view without reserving an address.
+  await page.goto("/shares");
+  await expect(page.getByTestId("shares-row")).toHaveCount(2);
+  await expect(
+    page.locator('[data-testid="shares-row"][data-address-id]'),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .locator('[data-testid="shares-row"][data-address-id]')
+      .getByTestId("shares-state"),
+  ).toHaveAttribute("data-state", "public");
 
   // The administrator sees who shares what, never the address, and deletes
   // it for good.
@@ -326,13 +330,16 @@ test("the stable address frames the view for its owner and redirects while publi
   ).toHaveAttribute("data-script", "yes");
   expect(leaks).toEqual([]);
 
-  // Deleted for good in Settings, the address never opens the view again,
+  // Deleted for good in Outputs, the address never opens the view again,
   // even for its owner; the view's next own tab gets a new address.
   const settings = await context.newPage();
-  await settings.goto("/settings/account");
-  await settings.getByTestId("view-address-remove").click();
+  await settings.goto("/shares");
+  await settings.getByTestId("shares-remove").click();
   await settings.getByTestId("view-address-remove-confirm").click();
-  await expect(settings.getByTestId("view-address-row")).toHaveCount(0);
+  await expect(settings.getByTestId("shares-row")).toHaveCount(1);
+  await expect(
+    settings.locator('[data-testid="shares-row"][data-address-id]'),
+  ).toHaveCount(0);
   await settings.close();
   await reader.goto(entry);
   await expect(reader.getByTestId("view-open-page")).toBeVisible();
@@ -437,28 +444,31 @@ test("a file offer and a folder are public at their own addresses like a view", 
   expect(await recipient.cookies()).toEqual([]);
   expect(sent.every((c) => c === "")).toBe(true);
 
-  // Private again ends anonymous reads; Settings lists both with views.
+  // Private again ends anonymous reads; Outputs lists both with views.
   await table.hover();
   await table.getByTestId("view-public").click();
   await expect(table).toHaveAttribute("data-public", "false");
   expect((await reader.goto(tableContent))?.status()).toBe(404);
-  await page.goto("/settings/account");
-  await expect(page.getByTestId("view-address-row")).toHaveCount(2);
+  await page.goto("/shares");
   await expect(
-    page.locator('[data-testid="view-address-row"][data-public="true"]'),
-  ).toHaveCount(1);
+    page.locator('[data-testid="shares-row"][data-address-id]'),
+  ).toHaveCount(2);
+  const publicRow = page
+    .getByTestId("shares-row")
+    .filter({ has: page.locator('[data-state="public"]') });
+  await expect(publicRow).toHaveCount(1);
   // Deleted for good, the folder's address is gone too.
-  await page
-    .locator('[data-testid="view-address-row"][data-public="true"]')
-    .getByTestId("view-address-remove")
-    .click();
+  await publicRow.click();
+  await page.getByTestId("shares-remove").click();
   await page.getByTestId("view-address-remove-confirm").click();
-  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="shares-row"][data-address-id]'),
+  ).toHaveCount(1);
   expect((await reader.goto(packContent))?.status()).toBe(404);
   await recipient.close();
 });
 
-test("shares experiment orders by conversation activity and copies the shown address", async ({
+test("Outputs orders by conversation activity and copies the shown address", async ({
   page,
   context,
 }) => {
@@ -474,7 +484,7 @@ test("shares experiment orders by conversation activity and copies the shown add
   await firstCard.hover();
   await firstCard.getByTestId("view-public").click();
   await expect(firstCard).toHaveAttribute("data-public", "true");
-  await expect(page.getByTestId("rail-shares")).toHaveCount(0);
+  await expect(page.getByTestId("rail-shares")).toBeVisible();
   await page.goto(workspaceRoute);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
@@ -496,16 +506,6 @@ test("shares experiment orders by conversation activity and copies the shown add
     .and(page.locator('[data-mode="send"]'))
     .click();
   await expect(page.getByTestId("message-input")).toHaveValue("");
-  await page.goto("/settings/experimental");
-  await page
-    .getByTestId("experimental-shares-page-choice")
-    .getByTestId("segment-on")
-    .click();
-  await expect(
-    page
-      .getByTestId("experimental-shares-page-choice")
-      .getByTestId("segment-on"),
-  ).toHaveAttribute("aria-pressed", "true");
   await page.goto("/workspaces");
   await expect(page.getByTestId("rail-shares")).toBeVisible();
   await page.getByTestId("rail-shares").click();
@@ -540,7 +540,7 @@ test("shares experiment orders by conversation activity and copies the shown add
         }, theme);
         await snapshot(
           page,
-          `../issues/shares-page-implement/evidence/shares-${width}-${theme}`,
+          `../issues/graduate-experimental-features-1121/evidence/outputs-${width}-${theme}`,
           { labOrigin: app },
         );
         if (width === 390) {
@@ -553,7 +553,7 @@ test("shares experiment orders by conversation activity and copies the shown add
           ).toBeVisible();
           await snapshot(
             page,
-            `../issues/shares-page-implement/evidence/share-${width}-${theme}`,
+            `../issues/graduate-experimental-features-1121/evidence/output-${width}-${theme}`,
             { labOrigin: app },
           );
           await page.getByTestId("shares-back").click();
@@ -572,14 +572,17 @@ test("shares experiment orders by conversation activity and copies the shown add
       await page.getByTestId("menu-explain").click();
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 });
-        await page.getByTestId("shares-conversation-heading").first().hover();
+        await page
+          .getByTestId("shares-page")
+          .getByRole("heading", { level: 1 })
+          .hover();
         await expect(page.getByTestId("explain-card")).toHaveAttribute(
           "data-card",
-          "J03",
+          "J02",
         );
         await snapshot(
           page,
-          `../issues/shares-page-implement/evidence/explain-${language}-${width}`,
+          `../issues/graduate-experimental-features-1121/evidence/explain-${language}-${width}`,
           { labOrigin: app },
         );
       }
@@ -600,24 +603,22 @@ test("shares experiment orders by conversation activity and copies the shown add
   await page.keyboard.press("Escape");
   await page.getByTestId("shares-remove").click();
   await page.getByTestId("view-address-remove-confirm").click();
-  await expect(page.getByTestId("shares-row")).toHaveCount(1);
+  await expect(page.getByTestId("shares-row")).toHaveCount(2);
+  await expect(
+    page.locator('[data-testid="shares-row"][data-address-id]'),
+  ).toHaveCount(1);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/shares");
-  await expect(page.getByTestId("shares-row")).toBeVisible();
+  await expect(page.getByTestId("shares-row")).toHaveCount(2);
   await expect(page.getByTestId("shares-copy")).toHaveCount(0);
-  await page.getByTestId("shares-row").click();
+  await page.locator('[data-testid="shares-row"][data-address-id]').click();
   await expect(page.getByTestId("shares-copy")).toBeVisible();
   await page.getByTestId("shares-back").click();
-  await expect(page.getByTestId("shares-row")).toBeVisible();
+  await expect(page.getByTestId("shares-row")).toHaveCount(2);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/settings/experimental");
-  await page
-    .getByTestId("experimental-shares-page-choice")
-    .getByTestId("segment-off")
-    .click();
-  await expect(page.getByTestId("rail-shares")).toHaveCount(0);
   await page.goto("/settings/account");
-  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
+  await expect(page.getByTestId("rail-shares")).toBeVisible();
+  await expect(page.getByTestId("view-links")).toHaveCount(0);
 });
 
 test("a file offer's own tab opens at its stable address", async ({

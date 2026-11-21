@@ -9,9 +9,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "./history";
 import { TurnChangesSource } from "./TurnChangesSource";
 
-vi.mock("./accountPreferences", () => ({
-  useExperimentalFeature: () => true,
-}));
 type Read = (
   agentId: string,
   revision: string,

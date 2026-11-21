@@ -3,7 +3,7 @@ import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
 // mark-hides-background-work, direction 2 Vaeltava ovi
-// (rail-background-door, experimental): while a process of the conversation
+// (rail-background-door): while a process of the conversation
 // runs, the rail mark's door drifts in every state whose ring does not
 // already move, keeping the state. The lab's conversations are rewritten on
 // the wire into live ones with synthetic processes.
@@ -83,6 +83,11 @@ async function open(page: Page, door: boolean, world: World = { sleep: true }) {
     await route.fulfill({ response, json: body });
   });
   await page.reload();
+  // The permanent Outputs and Resources entries can make Quiet fold.
+  const quiet = page.getByTestId("rail-quiet-fold");
+  await expect(quiet).toBeVisible();
+  if ((await quiet.getAttribute("aria-expanded")) === "false")
+    await quiet.click();
   await expect(row(page, QUIET_SLEEP)).toBeVisible();
 }
 
@@ -204,17 +209,10 @@ test.describe("reduced motion", () => {
   });
 });
 
-test("@rail-background-door off by default: no mark drifts and a non-waking process stays unsaid", async ({
+test("@rail-background-door works without an experimental choice", async ({
   page,
 }) => {
   await open(page, false);
-  await expectMarks(
-    page,
-    expected.map(([id, state]) => [id, state, false]),
-    "full",
-  );
-  await expect(row(page, QUIET_SLEEP)).not.toHaveAttribute(
-    "title",
-    /sleep 900/,
-  );
+  await expectMarks(page, expected, "full");
+  await expect(row(page, QUIET_SLEEP)).toHaveAttribute("title", /sleep 900/);
 });

@@ -24,7 +24,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Scheduled wake (experimental): the agent asks to be woken at a time, the
+// Scheduled wake: the agent asks to be woken at a time, the
 // conversation waits in Hiljaiset meanwhile, and at that time Habitat starts
 // its Pi if it has stopped and gives the agent a turn with the wake's note.
 // The reply then rises to Sinun vuorosi like any reply. The person never sets
@@ -49,8 +49,7 @@ import (
 // No authority moves: the daemon already runs as the person and already
 // writes their user units (Omat koneet).
 const (
-	ScheduledWakeFeature = "scheduled-wake"
-	AgentWakesPath       = "/agent/v1/wakes"
+	AgentWakesPath = "/agent/v1/wakes"
 	// One generous guard against a runaway agent (Jari 21.11.2026).
 	maxPendingWakes = 100
 	maxWakeNote     = 1000
@@ -383,11 +382,6 @@ func (c *ConversationController) wakeNow() time.Time {
 	return time.Now()
 }
 
-func wakesEnabled(home string) bool {
-	p, err := readPreferences(home)
-	return err == nil && p.Experimental[ScheduledWakeFeature]
-}
-
 // agentWakes serves /agent/v1/wakes and /agent/v1/wakes/<id>|due. The socket
 // admits only the person's own Unix user. Creating, changing and deleting
 // need the conversation's live launch context, so an agent touches only its
@@ -536,9 +530,6 @@ func (c *ConversationController) createWake(q agentConversationQuery, at, note, 
 	when, ok := parseWakeTime(at)
 	if !ok || !validWakeNote(note) || key != "" && !sessionIDPattern.MatchString(key) {
 		return nil, 400, "invalid_arguments"
-	}
-	if !wakesEnabled(c.home) {
-		return nil, 409, "feature_disabled"
 	}
 	now := c.wakeNow()
 	if !when.After(now) {

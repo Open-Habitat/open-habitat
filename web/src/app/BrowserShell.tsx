@@ -171,7 +171,6 @@ export function useBrowserShell({
   const [selection, setSelection] = useState<TerminalSelection>();
   const [urlOffer, setUrlOffer] = useState<string>();
   const copyOnSelect = useExperimentalFeature("terminal-copy-on-select");
-  const openUrls = useExperimentalFeature("terminal-open-urls");
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
@@ -638,7 +637,7 @@ export function useBrowserShell({
         feedback={eventNotice}
         paste={paste}
         selection={selection}
-        urlOffer={openUrls ? urlOffer : undefined}
+        urlOffer={urlOffer}
         onDismissUrl={() => {
           setUrlOffer(undefined);
           focusTerminal();
@@ -750,7 +749,7 @@ export function useBrowserShell({
             onSelection={setSelection}
             onPasteRequest={askPaste}
             copyOnSelect={copyOnSelect}
-            onOpenUrl={openUrls ? setUrlOffer : undefined}
+            onOpenUrl={setUrlOffer}
             onOpen={() => {
               if (focusOnOpen.current) {
                 focusOnOpen.current = false;

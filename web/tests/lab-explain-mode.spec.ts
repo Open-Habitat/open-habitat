@@ -4,7 +4,7 @@ import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-// Selitystila (experimental, explain-mode): the screen dims and the part
+// Selitystila (explain-mode): the screen dims and the part
 // under the pointer explains itself, through the real gateway and daemon
 // with the synthetic Pi. Cards are found by their part's id, never by
 // wording.
@@ -30,7 +30,7 @@ async function signIn(page: Page) {
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": session.csrf,
         },
-        data: { experimental: { "explain-mode": true } },
+        data: { experimental: { "explain-mode": false } },
       })
     ).ok(),
   ).toBe(true);
@@ -201,7 +201,13 @@ for (const width of [1440, 390]) {
         if (width === 390) {
           await page.getByTestId("explain-close").tap();
           await action.tap();
-        } else await action.hover();
+        } else {
+          // Leave the initial state card via another explained control;
+          // it can overlap this first rail row at desktop dimensions.
+          await page.getByTestId("composer-model-picker").hover();
+          await expect(card(page)).toHaveAttribute("data-card", "A05");
+          await action.hover();
+        }
         await expect(card(page)).toHaveAttribute("data-card", "S33");
         await expect(card(page)).toContainText(
           locale === "fi-FI"

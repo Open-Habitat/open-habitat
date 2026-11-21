@@ -16,14 +16,6 @@ import (
 	"time"
 )
 
-// wakesOn turns the experimental feature on in the synthetic account.
-func (h *heldHarness) wakesOn() {
-	h.t.Helper()
-	if err := savePreferences(h.root, accountPreferences{Engine: "codemirror6", Experimental: map[string]bool{ScheduledWakeFeature: true}}); err != nil {
-		h.t.Fatal(err)
-	}
-}
-
 // current is the conversation's live launch, as its Pi's --current names it.
 func (h *heldHarness) current(c *ConversationController, id string) string {
 	h.t.Helper()
@@ -84,10 +76,6 @@ func TestAgentWakeCommandsAndTheCap(t *testing.T) {
 		b, _ := json.Marshal(map[string]string{"at": at, "note": note, "idempotency_key": key})
 		return strings.Replace(string(b), `,"idempotency_key":""`, "", 1)
 	}
-	if code, out := h.agentWake(c, "POST", "", cur, body(future(time.Hour), "muistuta", "")); code != 409 || errCode(out) != "feature_disabled" {
-		t.Fatalf("feature off: %d %v", code, out)
-	}
-	h.wakesOn()
 	for _, bad := range []string{
 		body("2026-11-19T09:00:00", "muistuta", ""), // no offset: the zone would be guessed
 		body(future(time.Hour), " ", ""),
@@ -260,7 +248,6 @@ func TestOverdueWakeFiresOnceAfterARestartAndSaysLate(t *testing.T) {
 	h := newHeldHarness(t)
 	h.setFile("background", "1")
 	h.setFile("background-state", "finished")
-	h.wakesOn()
 	c, stop := h.daemon()
 	id := h.create(c)
 	h.converse(c, id, "Muistuta huomenna", heldA)
@@ -323,7 +310,6 @@ func TestDueWakeFiresIntoTheLivePi(t *testing.T) {
 	h := newHeldHarness(t)
 	h.setFile("background", "1")
 	h.setFile("background-state", "finished")
-	h.wakesOn()
 	c, stop := h.daemon()
 	defer stop()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -355,7 +341,6 @@ func TestArchiveCancelsWakesUndoRestoresLaterRestoreTells(t *testing.T) {
 	h := newHeldHarness(t)
 	h.setFile("background", "1")
 	h.setFile("background-state", "finished")
-	h.wakesOn()
 	c, stop := h.daemon()
 	defer stop()
 	id := h.create(c)

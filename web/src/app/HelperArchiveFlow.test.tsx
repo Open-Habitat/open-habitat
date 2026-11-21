@@ -222,10 +222,8 @@ it("a person who moves on keeps focus where they put it", async () => {
   moved.remove();
 });
 
-// Scheduled wake round 2 (Ikkuna): with Avustajat off the window still asks
-// when the archive would cancel wakes, names every one, reads no helpers,
-// and starts on the archive action, so Enter archives.
-it("asks before cancelling wakes without reading helpers, with focus on archive", async () => {
+it("asks before cancelling wakes even without helpers, with focus on archive", async () => {
+  vi.mocked(readSpinoffs).mockResolvedValue(reply("available"));
   const wakes = [
     {
       id: "wk_0123456789abcdef",
@@ -238,7 +236,6 @@ it("asks before cancelling wakes without reading helpers, with focus on archive"
   let request!: Promise<boolean>;
   act(() => {
     request = result.current.confirm("parent", "Varakopio", undefined, {
-      helpers: false,
       wakes,
     });
   });
@@ -247,7 +244,7 @@ it("asks before cancelling wakes without reading helpers, with focus on archive"
     view.rerender(result.current.dialog);
     expect(screen.getAllByTestId("wake-archive-row")).toHaveLength(2);
   });
-  expect(readSpinoffs).not.toHaveBeenCalled();
+  expect(readSpinoffs).toHaveBeenCalled();
   expect(document.activeElement).toBe(
     screen.getByTestId("helper-archive-accept"),
   );
@@ -256,14 +253,14 @@ it("asks before cancelling wakes without reading helpers, with focus on archive"
 });
 
 it("archives at once when neither helpers nor wakes go with it", async () => {
+  vi.mocked(readSpinoffs).mockResolvedValue(reply("available"));
   const { result } = renderHook(() => useHelperArchiveConfirmation("session"));
   let request!: Promise<boolean>;
   act(() => {
     request = result.current.confirm("parent", "", undefined, {
-      helpers: false,
       wakes: [],
     });
   });
   expect(await request).toBe(true);
-  expect(readSpinoffs).not.toHaveBeenCalled();
+  expect(readSpinoffs).toHaveBeenCalled();
 });

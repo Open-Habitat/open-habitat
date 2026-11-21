@@ -72,7 +72,7 @@ test("helpers confirm before archive, stay discoverable, and return without star
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": csrf,
         },
-        data: { experimental: { "named-workers": true } },
+        data: { experimental: { "named-workers": false } },
       })
     ).ok(),
   ).toBeTruthy();

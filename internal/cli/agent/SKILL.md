@@ -87,8 +87,7 @@ during its running turn: outside one the daemon refuses with
 `current_context_stale`. Repeating the same section changes nothing
 visible (`changed: false`); nothing appears on the row and no text is sent.
 
-To be woken later in your own conversation (experimental *Ajastettu herätys*;
-the person turns it on in Settings):
+To be woken later in your own conversation (*Ajastettu herätys*):
 
     open-habitat agent wake create --current --at 2026-11-19T09:00:00+02:00 --note "Remind the person to remove backup-2024" --idempotency-key <UUID> --json
 
@@ -115,8 +114,9 @@ wake when you wake. Tell the person when you set a wake and for when.
 conversation made moot. The person can move or cancel a wake too; you hear of
 a move in the wake message and of a cancel with their next message. Archiving
 the conversation cancels its wakes. At most 100 wakes are pending per person:
-`wake_limit_reached` means nothing was set. `feature_disabled` means the
-person has not turned the feature on; say so instead of promising a reminder.
+`wake_limit_reached` means nothing was set. A working user manager is
+required to schedule wakes; if scheduling is unavailable, inspect `wake list`
+and do not promise a reminder that the command did not confirm.
 Repeat a create with the same `--idempotency-key` after a lost reply; it
 returns the stored wake (`replayed: true`) instead of setting a second one.
 
@@ -231,7 +231,7 @@ Experimental features (Settings → Kokeelliset ominaisuudet) are readable and
 changeable for this person only:
 
     open-habitat agent experimental list --json
-    open-habitat agent experimental update explain-mode --on --json
+    open-habitat agent experimental update rewind-conversation --on --json
 
 `data.result.features` lists this release's ids, Finnish and English titles and
 descriptions, `landed` availability and `enabled` saved switches, in Settings

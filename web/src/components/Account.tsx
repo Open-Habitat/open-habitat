@@ -51,7 +51,6 @@ import {
 } from "../app/settingsIndex";
 import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
-import { ViewLinkSettings } from "../app/ViewLinkSettings";
 import { textNow, useLanguage, useText } from "../i18n";
 import { accountText } from "../text/account";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
@@ -815,7 +814,6 @@ export function AccountSettings({
               </div>
             </div>
             <GitIdentity csrf={csrf} />
-            <ViewLinkSettings csrf={csrf} />
           </div>
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}

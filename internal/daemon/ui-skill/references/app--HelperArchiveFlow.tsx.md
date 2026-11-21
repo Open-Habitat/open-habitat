@@ -96,7 +96,7 @@ export function ArchivedHelpers({
       className={restored ? "ah-helper-restore" : undefined}
       data-testid={restored ? "helper-restore-note" : "archived-helpers"}
     >
-      {restored ? (
+      {restored && result.runs.length > 0 ? (
         <p>
           <Icon name="restore" /> {t.restored}
         </p>
@@ -221,12 +221,8 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       agent: string,
       title = "",
       onAccepted?: (runs: Spinoff[]) => void,
-      // What the archive takes with it: the named workers when Avustajat
-      // is on, and the scheduled wakes it cancels.
-      {
-        helpers = true,
-        wakes = [],
-      }: { helpers?: boolean; wakes?: PendingWakeModel[] } = {},
+      // What the archive cancels besides the named workers.
+      { wakes = [] }: { wakes?: PendingWakeModel[] } = {},
     ): Promise<boolean> => {
       if (active.current) return false;
       const focused = document.activeElement;
@@ -241,20 +237,18 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       active.current = operation;
       setReading(binding);
       try {
-        const reply = helpers
-          ? await readSpinoffs(
-              agent,
-              null,
-              AbortSignal.any([
-                operation.controller.signal,
-                AbortSignal.timeout(10000),
-              ]),
-            ).catch(() => undefined)
-          : undefined;
+        const reply = await readSpinoffs(
+          agent,
+          null,
+          AbortSignal.any([
+            operation.controller.signal,
+            AbortSignal.timeout(10000),
+          ]),
+        ).catch(() => undefined);
         if (operation.controller.signal.aborted) return false;
         setReading(undefined);
         const runs = reply?.runs.filter(liveHelper) ?? [];
-        const incomplete = helpers && reply?.availability !== "available";
+        const incomplete = reply?.availability !== "available";
         if (!incomplete && !runs.length && !wakes.length) {
           onAccepted?.(runs);
           return true;

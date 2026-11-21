@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Muutokset (turn-changes, experimental) against the synthetic host: the
+// Muutokset (turn-changes) against the synthetic host: the
 // daemon serves a seeded native session (test/browser-host's turn-changes
 // history) and its block reads, and the browser computes the turn's changes
 // from the tool calls. Same-UID synthetic evidence: it proves the history
@@ -73,12 +73,12 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${evidence}/${name}.png` });
 }
 
-test("@turn-changes off by default: no turn shows a Muutokset line", async ({
+test("@turn-changes is available without an experimental choice", async ({
   page,
 }) => {
   await open(page, {});
   await expect(turns(page)).toHaveCount(2);
-  await expect(page.getByTestId("turn-changes")).toHaveCount(0);
+  await expect(page.getByTestId("turn-changes")).toHaveCount(1);
 });
 
 test("@turn-changes a finished turn's changes open in place, file by file and on the timeline", async ({

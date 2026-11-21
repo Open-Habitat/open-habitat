@@ -98,8 +98,7 @@ The choice belongs to this turn: the next turn starts afresh, and the person's
 own Nosta or Ei nyt wins over it. Outside your running turn it is refused.
 
 When the person asks you to remind them or to come back to something later,
-and the experimental scheduled wake is on, set a wake instead of promising to
-remember:
+set a wake instead of promising to remember:
 
 ```sh
 open-habitat agent wake create --current --at 2026-11-19T09:00:00+02:00 --note "what to do then" --json
@@ -107,9 +106,9 @@ open-habitat agent wake create --current --at 2026-11-19T09:00:00+02:00 --note "
 
 The conversation then waits in Hiljaiset; at that time Habitat wakes you
 (starting Pi if it stopped) with the note, and your reply rises to Sinun
-vuorosi. `--at` needs an explicit offset. `feature_disabled` means the
-feature is off: tell the person you cannot remind them. The agent skill has
-the details (`wake list`, `update`, `delete`).
+vuorosi. `--at` needs an explicit offset. A working user manager is required;
+if the command cannot confirm the wake, do not promise a reminder. The
+agent skill has the details (`wake list`, `update`, `delete`).
 
 Starting another conversation or closing the browser does not cancel your
 running process-tool work. Habitat can stop an idle Pi after ten minutes without

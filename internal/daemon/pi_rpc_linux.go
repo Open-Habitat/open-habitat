@@ -27,9 +27,7 @@ import (
 //go:embed host-context.md
 var hostContext string
 
-// helpersContext is the helper recipe, given only to a conversation whose
-// person turned helpers on: without the switch nothing shows a helper, and
-// the recipe would only invite runs the browser keeps quiet about.
+// helpersContext is the helper recipe for conversation launches.
 //
 //go:embed helpers-context.md
 var helpersContext string
@@ -41,20 +39,14 @@ var helpersContext string
 var multiplayerContext string
 
 // launchContext is the Open Habitat prompt section for a launch. Only a
-// conversation launch (create, resume, held) gets the helper recipe; the
-// switch is read when Pi starts, so turning it on reaches the next launch.
+// conversation launch (create, resume, held) gets the helper recipe.
 func launchContext(home, launchWorkspace string) string {
 	if launchWorkspace == "" {
 		return hostContext
 	}
-	text := hostContext
-	if p, err := readPreferences(home); err == nil {
-		if p.Experimental[HelpersFeature] {
-			text += helpersContext
-		}
-		if p.Experimental[MultiplayerFeature] {
-			text += multiplayerContext
-		}
+	text := hostContext + helpersContext
+	if p, err := readPreferences(home); err == nil && p.Experimental[MultiplayerFeature] {
+		text += multiplayerContext
 	}
 	return text
 }

@@ -151,7 +151,7 @@ describe("archiveTraces", () => {
       run({ run_id: "m2", state: "merged" }),
       run({ run_id: "u1", state: "unmerged", title: "Päivitä lista" }),
     ];
-    const traces = archiveTraces(runs, true, fi);
+    const traces = archiveTraces(runs, fi);
     expect(traces.map((x) => [x.short, x.attention])).toEqual([
       ["avustaja testaaja", true],
       ["työ haarassa", true],
@@ -183,17 +183,11 @@ describe("archiveTraces", () => {
           },
         }),
       ],
-      true,
       fi,
     );
     expect(later.map((x) => [x.mark, x.short, x.detail])).toEqual([
       ["working", "avustaja testaaja", "Avustaja testaaja tekee kierrosta"],
       ["failed", "työ epäonnistui", "Testaaja"],
-    ]);
-    // Without named helpers only the workers show.
-    expect(archiveTraces(runs, false, fi).map((x) => x.short)).toEqual([
-      "työ haarassa",
-      "2 työtä yhdistetty",
     ]);
   });
 });

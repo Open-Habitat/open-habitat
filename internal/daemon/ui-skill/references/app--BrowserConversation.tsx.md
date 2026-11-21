@@ -2081,8 +2081,6 @@ function BrowserConversationContent({
       : undefined;
   // Palaa tähän (experimental): the own messages' menu, the sheet above the
   // composer and the rows a return leaves.
-  // The context view (experimental): the page's list and Tiivistä nyt.
-  const contextViewOn = useExperimentalFeature("conversation-context-view");
   const compaction = useCompaction({
     id,
     csrf,
@@ -2105,7 +2103,6 @@ function BrowserConversationContent({
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
-  const helpersOn = useExperimentalFeature("named-workers");
   const rewind = useRewind({
     id,
     csrf,
@@ -2940,17 +2937,13 @@ function BrowserConversationContent({
               usage={contextState}
               title={title ?? txt.conversation}
               onClose={toggleContext}
-              view={
-                contextViewOn
-                  ? (detail) => (
-                      <ContextView
-                        detail={detail}
-                        usage={contextState}
-                        compaction={compaction}
-                      />
-                    )
-                  : undefined
-              }
+              view={(detail) => (
+                <ContextView
+                  detail={detail}
+                  usage={contextState}
+                  compaction={compaction}
+                />
+              )}
             />
           ) : null}
           <ConversationStream
@@ -3704,7 +3697,7 @@ function BrowserConversationContent({
                 onRestore={() => void onArchive?.(archive, false, "foot")}
                 notice={archiveNotice}
               >
-                {helpersOn && id ? <ArchivedHelpers agent={id} /> : null}
+                {id ? <ArchivedHelpers agent={id} /> : null}
               </ArchivedFoot>
             ) : view !== "opened" || controlled ? (
               <>

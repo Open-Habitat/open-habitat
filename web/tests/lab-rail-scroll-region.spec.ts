@@ -186,8 +186,11 @@ async function shoot(page: Page, name: string) {
 
 test.use({ reducedMotion: "reduce" });
 
-test.describe("crowded 1440 × 900", () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
+// Outputs and Resources now occupy two permanent navigation rows. Give
+// this fixture enough room for its eleven active rows; the 700px case below
+// separately proves conversation overflow and its edge controls.
+test.describe("crowded 1440 × 1000", () => {
+  test.use({ viewport: { width: 1440, height: 1000 } });
   test("@rail-scroll-region only Työtilat scrolls and Hiljaiset folds itself", async ({
     page,
   }) => {
@@ -228,7 +231,7 @@ test.describe("crowded 1440 × 900", () => {
     await expect(last).toBeInViewport({ ratio: 1 });
     expect(await rowTops(page)).toEqual(before);
     await railStill(page);
-    await shoot(page, "crowded-900");
+    await shoot(page, "crowded-1000");
   });
 });
 

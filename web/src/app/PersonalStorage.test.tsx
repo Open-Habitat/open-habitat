@@ -49,6 +49,7 @@ it("closes stale confirmation and waits for a fresh listing before another delet
   expect(screen.getByTestId("open-empty-trash").hasAttribute("disabled")).toBe(
     true,
   );
+  await waitFor(() => expect(trashAPI.listTrash).toHaveBeenCalledTimes(2));
   resolveListing({ ...listing, listing_token: "b".repeat(64) });
   await waitFor(() =>
     expect(screen.getByTestId("purge-trash").hasAttribute("disabled")).toBe(
@@ -95,7 +96,11 @@ it("says when the installation has no per-user limits", async () => {
     ),
   );
   render(<PersonalStorage />);
-  const shared = await screen.findByTestId("storage-limits-not-in-use");
-  expect(shared.textContent).toContain("ei ole käyttäjäkohtaisia");
-  expect(screen.queryByRole("img")).toBeNull();
+  const breakdown = await screen.findByTestId("storage-breakdown");
+  // Without per-user quotas the bound is the whole filesystem, not an
+  // invented personal limit. 48 GiB of the 64 GiB shared disk is occupied.
+  expect(
+    breakdown.querySelector<HTMLElement>('[data-testid="usage-bar"] span')
+      ?.style.width,
+  ).toBe("75%");
 });

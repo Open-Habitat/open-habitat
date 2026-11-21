@@ -259,22 +259,15 @@ describe("named workers (Avustajat)", () => {
       reason: null,
       failed: false,
       agentIdle: true,
-      helpers: true,
       seen,
     });
-  it("moves live named workers to their own chip only while the feature is on", () => {
+  it("moves live named workers to their own chip", () => {
     const runs = [run({}), helper("waiting")];
     const on = withHelpers(runs);
     expect(on.spin.items.map((i) => i.run.title)).toEqual(["README"]);
     expect(on.help.items.map((i) => i.run.resident?.name)).toEqual([
       "proto-m365",
     ]);
-    const off = facts(runs, []);
-    expect(off.help.present).toBe(false);
-    expect(off.spin.items).toHaveLength(2);
-    // Off, a waiting helper is a worker waiting for the main agent, not one
-    // waiting at its terminal.
-    expect(stateWord(off.spin.items[1]).text).toBe("odottaa pääagenttia");
   });
   it("leaves an ended named worker to the Workers pill and its requests", () => {
     const ended = helper("waiting", { state: "unmerged", preserved: true });

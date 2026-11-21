@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Agentin käytössä (agent-resources-view, experimental) against the
+// Agentin käytössä (agent-resources-view) against the
 // synthetic host: the real gateway and daemon handlers, the stand-in
 // Microsoft entry with its OneDrive seeded through /fixture/agent-files, and
 // the daemon's folder read of the synced folder as the person. Same-UID
@@ -193,12 +193,12 @@ test("@agent-resources on a phone the list comes first and a source opens on its
   await expect(page.getByTestId("resource-list")).toBeVisible();
 });
 
-test("@agent-resources stays out of the way while the feature is off", async ({
+test("@agent-resources is available without an experimental choice", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signIn(page, false);
-  await expect(page.getByTestId("rail-resources")).toHaveCount(0);
+  await expect(page.getByTestId("rail-resources")).toBeVisible();
   await page.goto("/resources");
-  await expect(page.getByTestId("agent-resources")).toHaveCount(0);
+  await expect(page.getByTestId("agent-resources")).toBeVisible();
 });

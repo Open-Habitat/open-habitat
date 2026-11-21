@@ -1,6 +1,6 @@
 import { catalog } from "../i18n";
 
-// The context view (components/ContextView.tsx, experimental): every fact
+// The context view (components/ContextView.tsx): every fact
 // and button says in plain words what it is and what pressing it does.
 // Numbers and clock times arrive already formatted for the language.
 

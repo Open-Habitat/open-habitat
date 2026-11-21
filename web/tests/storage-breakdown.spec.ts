@@ -255,12 +255,9 @@ test("@storage-breakdown the daemon measures the home and the selection becomes 
   expect(measured.measured_at).toBeTruthy();
   for (const item of measured.items) expect(item.path).toMatch(/^~\//);
 
-  // Off: Storage is as before.
+  // New accounts need no experimental choice.
   await page.goto("/settings/storage");
-  await expect(page.getByTestId("storage-usage")).toBeVisible();
-  await expect(page.getByTestId("storage-breakdown")).toHaveCount(0);
-
-  await setFeature(page, true);
+  await expect(page.getByTestId("storage-breakdown")).toBeVisible();
   await page.route("**/api/v1/account/storage", (route) =>
     route.fulfill({
       json: { schema_version: 1, usage_bytes: 115 * G, limit_bytes: 128 * G },

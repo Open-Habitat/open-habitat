@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// The context view (experimental) through the real gateway and daemon: the
+// The context view through the real gateway and daemon: the
 // list comes from Pi's own reading of the synthetic Pi's session (the
 // daemon's helper over the pinned Pi), and Tiivistä nyt goes through the
 // daemon's compact route to the synthetic Pi's RPC compact, its progress and
@@ -48,7 +48,7 @@ test("@context-view lists what fills the context, opens a file by its name and c
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": session.csrf,
         },
-        data: { experimental: { "conversation-context-view": true } },
+        data: { experimental: { "conversation-context-view": false } },
       })
     ).ok(),
   ).toBe(true);

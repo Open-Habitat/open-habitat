@@ -16,8 +16,7 @@ import (
 
 var wakeIDArg = regexp.MustCompile(`^wk_[0-9a-f]{16}$`)
 
-// agentWakeCommand schedules the agent's own wakes (experimental
-// scheduled-wake): agent wake create|list|update|delete --current, and
+// agentWakeCommand schedules the agent's own wakes: agent wake create|list|update|delete --current, and
 // `due`, which the person's own systemd timer runs to fire what is due.
 // Only the current conversation's wakes can be changed; there is no
 // --conversation.
@@ -185,7 +184,6 @@ func currentQuery() (string, error) {
 // wakeError explains the daemon's refusals of a wake command to the agent.
 func wakeError(code string) error {
 	messages := map[string]string{
-		"feature_disabled":      "scheduled wakes are an experimental feature the person has not turned on (Settings › Kokeelliset ominaisuudet › Ajastettu herätys); tell the person you cannot set a reminder until they turn it on",
 		"wake_limit_reached":    "the person already has 100 pending wakes, the limit; nothing was set; delete wakes that are no longer needed (wake list --all) or tell the person",
 		"wake_time_past":        "the wake time is not in the future; nothing was set",
 		"idempotency_conflict":  "this --idempotency-key already names a wake with another time or note; use a new key for a new wake",

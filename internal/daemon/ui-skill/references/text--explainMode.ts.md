@@ -10,7 +10,7 @@ import {
 } from "../components/terminalKeyboard";
 import { catalog } from "../i18n";
 
-// The explain mode (components/ExplainMode.tsx, experimental): the bar, the
+// The explain mode (components/ExplainMode.tsx): the bar, the
 // card each part of the screen shows while the mode is on, and the state
 // card of a conversation. The cards are also the agent's description of the
 // interface: each card's id names a part in components/explainParts.ts,
@@ -163,32 +163,32 @@ const fi = {
       know: "Ei katkaise yhteyttä. Katkaisu vaatii erillisen painalluksen.",
     },
     J01: {
-      name: "Jaetut",
-      lead: "Avaa näkymien ja tiedostojen osoitteet keskusteluittain.",
-      know: "Sivupalkin luku kertoo julkisten osoitteiden määrän.",
-      try: "Avaa Jaetut",
+      name: "Tuotokset",
+      lead: "Avaa agentin antamat näkymät ja tiedostot keskusteluittain.",
+      know: "Mukana ovat yksityiset ja linkillä jaetut tuotokset. Sivupalkin luku kertoo julkisten osoitteiden määrän.",
+      try: "Avaa Tuotokset",
     },
     J02: {
-      name: "Jaetut",
-      lead: "Näyttää jaot, niiden julkisuuden ja valitun kohteen sisällön.",
-      know: "Keskustelut ovat uusimman toiminnan mukaisessa järjestyksessä. Puhelimella avaat ensin jaon listasta.",
+      name: "Tuotokset",
+      lead: "Näyttää agentin antamat näkymät ja tiedostot sekä valitun tuotoksen sisällön.",
+      know: "Tuotos voi olla vain sinulle tai jaettu linkillä. Keskustelut ovat uusimman toiminnan mukaisessa järjestyksessä.",
     },
     J03: {
       name: "Keskustelu",
-      lead: "Avaa keskustelun, josta nämä jaot ovat peräisin.",
+      lead: "Avaa keskustelun, josta nämä tuotokset ovat peräisin.",
       know: "Päivä kertoo keskustelun viimeisimmän toiminnan, ei jaon päivää.",
       try: "Avaa keskustelu",
     },
     J04: {
-      name: "Jakojen suodatin",
-      lead: "Rajaa listan julkisiin, yksityisiin tai päättyneisiin jakoihin.",
+      name: "Tuotosten suodatin",
+      lead: "Rajaa listan julkisiin, yksityisiin tai päättyneisiin tuotoksiin.",
       know: "Päättyneissä ovat myös osoitteet, joiden kohde on poistettu.",
     },
     J05: {
-      name: "Jako",
-      lead: "Avaa jaon sisällön, osoitteen ja julkisuuden ohjaimet.",
-      know: "Jaettu-päivä kertoo osoitteen luomisen. Uudelleenjulkaisu ei muuta sitä.",
-      try: "Avaa jako",
+      name: "Tuotos",
+      lead: "Avaa tuotoksen sisällön ja mahdollisen linkkijaon ohjaimet.",
+      know: "Luotu-päivä kertoo tuotoksen luomisen. Linkin julkaiseminen ei muuta sitä.",
+      try: "Avaa tuotos",
     },
     J06: {
       name: "Jaon tila",
@@ -1715,11 +1715,6 @@ const fi = {
       lead: "Kopioi koko pyyntö ja toimita se ylläpitäjällesi.",
       know: "Habitat ei lähetä mitään. Odottaminen ei yksin tarkoita, että ylläpitäjä käsittelee pyyntöä.",
     },
-    M72: {
-      name: "Jira ja Confluence",
-      lead: "Näyttää Atlassian-yhteyden kokeellisena ominaisuutena asetuksissa.",
-      know: "Valinta ei yhdistä tiliä eikä katkaise jo tehtyä yhteyttä.",
-    },
     M73: {
       name: "Kirjautuminen Atlassianiin",
       lead: "Aloittaa kirjautumisen tai viimeistelee sen liittämälläsi paluuosoitteella.",
@@ -1749,11 +1744,6 @@ const fi = {
       name: "Pyyntö ylläpitäjälle",
       lead: "Kopioi koko pyyntö ja toimita se ylläpitäjällesi.",
       know: "Habitat ei lähetä mitään. Vain ylläpitäjä voi rajata Trellon varmasti pelkkään lukuun.",
-    },
-    M79: {
-      name: "Trello",
-      lead: "Näyttää Trello-yhteyden kokeellisena ominaisuutena asetuksissa.",
-      know: "Valinta ei yhdistä tiliä eikä katkaise jo tehtyjä yhteyksiä.",
     },
     M80: {
       name: "Kirjautuminen Trelloon",
@@ -2024,32 +2014,32 @@ export const explainModeText = catalog(fi, {
       know: "Does not disconnect. Disconnecting needs a separate press.",
     },
     J01: {
-      name: "Shares",
-      lead: "Opens view and file addresses grouped by conversation.",
-      know: "The sidebar count shows how many addresses are public.",
-      try: "Open Shares",
+      name: "Outputs",
+      lead: "Opens views and files the agent gave you, grouped by conversation.",
+      know: "Includes private outputs and those shared by link. The sidebar count shows how many addresses are public.",
+      try: "Open Outputs",
     },
     J02: {
-      name: "Shares",
-      lead: "Shows shares, their visibility and the selected item's content.",
-      know: "Conversations follow latest activity. On a phone, open a share from the list first.",
+      name: "Outputs",
+      lead: "Shows views and files the agent gave you and the selected output's content.",
+      know: "An output may be private or shared by link. Conversations follow latest activity.",
     },
     J03: {
       name: "Conversation",
-      lead: "Opens the conversation these shares came from.",
+      lead: "Opens the conversation these outputs came from.",
       know: "The date is the conversation's latest activity, not when it was shared.",
       try: "Open conversation",
     },
     J04: {
-      name: "Share filter",
-      lead: "Narrows the list to public, private or expired shares.",
+      name: "Output filter",
+      lead: "Narrows the list to public, private or expired outputs.",
       know: "Expired also includes addresses whose item has been removed.",
     },
     J05: {
-      name: "Share",
-      lead: "Opens the share's content, address and publication controls.",
-      know: "The shared date records address creation. Publishing again does not change it.",
-      try: "Open share",
+      name: "Output",
+      lead: "Opens the output's content and controls for sharing it by link.",
+      know: "The created date records the output's creation. Publishing a link does not change it.",
+      try: "Open output",
     },
     J06: {
       name: "Share status",
@@ -3567,11 +3557,6 @@ export const explainModeText = catalog(fi, {
       lead: "Copy the full request and give it to your administrator.",
       know: "Habitat sends nothing. Waiting alone does not mean an administrator is reviewing the request.",
     },
-    M72: {
-      name: "Jira and Confluence",
-      lead: "Shows the experimental Atlassian connection in settings.",
-      know: "This choice neither connects an account nor disconnects an existing one.",
-    },
     M73: {
       name: "Atlassian sign-in",
       lead: "Starts sign-in or completes it with the return URL you pasted.",
@@ -3601,11 +3586,6 @@ export const explainModeText = catalog(fi, {
       name: "Request for your administrator",
       lead: "Copy the full request and give it to your administrator.",
       know: "Habitat sends nothing. Only an administrator can reliably limit Trello to reading.",
-    },
-    M79: {
-      name: "Trello",
-      lead: "Shows the experimental Trello connection in settings.",
-      know: "This choice neither connects an account nor disconnects existing ones.",
     },
     M80: {
       name: "Trello sign-in",

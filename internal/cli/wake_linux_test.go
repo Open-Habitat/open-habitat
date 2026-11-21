@@ -57,9 +57,9 @@ func TestWakeArgumentsRefuseBeforeSocket(t *testing.T) {
 }
 
 // The daemon's refusals reach the agent with a reason it can act on; the
-// limit and a disabled feature in particular say nothing was set.
+// limit in particular says nothing was set.
 func TestWakeRefusalsExplainThemselves(t *testing.T) {
-	for _, code := range []string{"feature_disabled", "wake_limit_reached", "wake_time_past", "idempotency_conflict"} {
+	for _, code := range []string{"wake_limit_reached", "wake_time_past", "idempotency_conflict"} {
 		err := agentResponseError("POST", "/agent/v1/wakes?current=true", 409, code)
 		e, ok := err.(*cliError)
 		if !ok || e.code != code || e.exit != 1 {

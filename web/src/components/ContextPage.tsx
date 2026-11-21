@@ -550,7 +550,7 @@ export function ContextPage({
   usage?: ContextUsage;
   title: string;
   onClose: () => void;
-  /** The experimental context view, in place of Pi's technical figures. */
+  /** The context view, in place of Pi's technical figures. */
   view?: (detail: ContextDetail) => ReactNode;
 }) {
   useLanguage();

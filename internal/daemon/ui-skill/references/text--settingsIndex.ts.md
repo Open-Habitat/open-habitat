@@ -32,10 +32,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Git identity",
         desc: "The author of commits. Saved in the global ~/.gitconfig file.",
       },
-      "view-links": {
-        label: "View and file addresses",
-        desc: "Your views' and files' addresses: open, copy, make private or remove them for good.",
-      },
     },
   },
   laitteet: {
@@ -184,11 +180,11 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       google: { label: "Google", desc: "Gmail, Calendar, Contacts and Drive." },
       atlassian: {
         label: "Atlassian",
-        desc: "Jira and Confluence. Enable the experimental feature first.",
+        desc: "Jira and Confluence for your agents to use.",
       },
       trello: {
         label: "Trello",
-        desc: "Trello boards and cards. Enable the experimental feature first.",
+        desc: "Trello boards and cards for your agents to use.",
       },
       microsoft: {
         label: "Microsoft 365",
@@ -272,65 +268,21 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "Unfinished features you can already try. The choices apply to all your devices.",
     rows: {
-      "explain-mode": {
-        label: "Explain mode",
-        desc: "Dim the screen and see what any part of it does.",
-      },
       "rewind-conversation": {
         label: "Go back here",
         desc: "Go back to an earlier message of yours in the same conversation and, if you want, restore the files the agent changed.",
-      },
-      "shares-page": {
-        label: "Shares",
-        desc: "View and file addresses on their own page, grouped by conversation.",
-      },
-      "agent-resources-view": {
-        label: "Agent resources",
-        desc: "Browse everything your agents use, by kind: what is included, what is not and what the agent may do.",
       },
       "remote-browser": {
         label: "Your own server browser",
         desc: "Your own browser on the server: sign in to a service, and the agent uses the same browser, which you see live.",
       },
-      "conversation-context-view": {
-        label: "Context view and compaction",
-        desc: "See what fills the conversation's context and compact the conversation with your own instruction.",
-      },
-      "atlassian-connect": {
-        label: "Atlassian connection",
-        desc: "Connect Jira and Confluence for your agents to use.",
-      },
-      "trello-connect": {
-        label: "Trello connection",
-        desc: "Connect Trello for your agents to use.",
-      },
-      "named-workers": {
-        label: "Helpers",
-        desc: "Named workers work in rounds and wait for the main agent's next message.",
-      },
-      "turn-changes": {
-        label: "Turn changes",
-        desc: "A line under a finished turn about which files the agent changed.",
-      },
       "terminal-copy-on-select": {
         label: "Copy on select in the terminal",
         desc: "Text selected in the terminal goes straight to the clipboard.",
       },
-      "terminal-open-urls": {
-        label: "Terminal addresses in the browser",
-        desc: "An address a program in the terminal opens shows in Habitat and opens in a new tab.",
-      },
-      "storage-breakdown": {
-        label: "Storage breakdown",
-        desc: "What fills your space and what can be freed, and a clean-up request for an agent.",
-      },
-      "rail-background-door": {
-        label: "Background work in the mark",
-        desc: "The door of a row's mark travels while a process runs behind the conversation.",
-      },
-      "scheduled-wake": {
-        label: "Scheduled wake",
-        desc: "The agent wakes at an agreed time and the conversation rises to Your turn.",
+      multiplayer: {
+        label: "Other people in a conversation",
+        desc: "Invite another person on this server into your conversation with the agent.",
       },
     },
   },

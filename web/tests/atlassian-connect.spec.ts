@@ -16,7 +16,7 @@ test("experimental Atlassian uses the native RPC relay and shows the grant, not 
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.goto("/settings/agent-data");
   await expect(page.getByTestId("integrations-loading")).toHaveCount(0);
-  await expect(page.getByTestId("integration-tile-atlassian")).toHaveCount(0);
+  await expect(page.getByTestId("integration-tile-atlassian")).toBeVisible();
   const session = await (await page.request.get("/auth/session")).json();
   expect(
     (
@@ -25,7 +25,7 @@ test("experimental Atlassian uses the native RPC relay and shows the grant, not 
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": session.csrf,
         },
-        data: { experimental: { "atlassian-connect": true } },
+        data: { experimental: { "atlassian-connect": false } },
       })
     ).ok(),
   ).toBe(true);

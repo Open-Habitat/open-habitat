@@ -16,12 +16,12 @@ func TestAgentExperimentalRequest(t *testing.T) {
 		t.Fatalf("%s %s %v", method, body, err)
 	}
 	for _, flag := range []string{"--on", "--off"} {
-		method, body, err = agentExperimentalRequest([]string{"update", "explain-mode", flag})
+		method, body, err = agentExperimentalRequest([]string{"update", "rewind-conversation", flag})
 		var got struct {
 			ID      string `json:"id"`
 			Enabled bool   `json:"enabled"`
 		}
-		if err != nil || method != "PUT" || json.Unmarshal(body, &got) != nil || got.ID != "explain-mode" || got.Enabled != (flag == "--on") {
+		if err != nil || method != "PUT" || json.Unmarshal(body, &got) != nil || got.ID != "rewind-conversation" || got.Enabled != (flag == "--on") {
 			t.Fatalf("%s %s %v", method, body, err)
 		}
 	}
@@ -48,7 +48,7 @@ func TestAgentExperimentalInvalidBeforeConnection(t *testing.T) {
 			t.Fatalf("%v: %d %s", args, code, message)
 		}
 	}
-	code, _, message := call(t, "agent", "experimental", "update", "explain-mode", "--on", "--dry-run", "--json")
+	code, _, message := call(t, "agent", "experimental", "update", "rewind-conversation", "--on", "--dry-run", "--json")
 	if code != 1 || !strings.Contains(message, "dry_run_unsupported") {
 		t.Fatalf("%d %s", code, message)
 	}

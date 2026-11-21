@@ -34,6 +34,8 @@ it("retains the non-destructive private action while site sharing is paused", as
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "/api/v1/file-offers")
+        return json({ schema_version: 1, offers: [] });
       if (url === "/api/v1/view-addresses")
         return json({ schema_version: 1, max_days: 0, addresses: [address] });
       if (url.startsWith("/api/v1/views"))

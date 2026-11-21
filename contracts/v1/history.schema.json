@@ -494,7 +494,7 @@
       }
     },
     "scheduledWake": {
-      "description": "Habitat's line on a scheduled wake (experimental scheduled-wake). fired: the wake that started this turn, with when it was set and fired, how late when more than two minutes, and moved_from when the person moved it. cancelled: the cancellations told to the agent with the person's message that follows (reason person or archived). The agent's context carries its own English text; this is the person's presentation of it.",
+      "description": "Habitat's line on a scheduled wake (scheduled-wake). fired: the wake that started this turn, with when it was set and fired, how late when more than two minutes, and moved_from when the person moved it. cancelled: the cancellations told to the agent with the person's message that follows (reason person or archived). The agent's context carries its own English text; this is the person's presentation of it.",
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "wakes"],

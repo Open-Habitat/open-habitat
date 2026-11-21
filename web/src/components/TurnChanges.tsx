@@ -16,7 +16,7 @@ import "./TurnChanges.css";
 
 const txt = liveText(turnChangesText);
 
-// Muutokset (turn-changes, experimental; proto-turn-changes round 2, Tiivis
+// Muutokset (turn-changes; proto-turn-changes round 2, Tiivis
 // with Aikajana on the line, Jari 11.11.2026): one collapsed line under a
 // finished turn's reply. It opens in place to the turn's files, each opening
 // its whole change; the timeline button shows the same files on the turn's

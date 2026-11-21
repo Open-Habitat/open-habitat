@@ -53,7 +53,6 @@ import {
   type QuietSort,
   type RailSection,
   useConfirmedPreferences,
-  useExperimentalFeature,
 } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
 import { BrowserConversation } from "./BrowserConversation";
@@ -1459,20 +1458,6 @@ export function App() {
                   )
                 ? "filtered-empty"
                 : "ready";
-  const sharesOn = useExperimentalFeature("shares-page", { identity, csrf });
-  const resourcesOn = useExperimentalFeature("agent-resources-view", {
-    identity,
-    csrf,
-  });
-  const helpersOn = useExperimentalFeature("named-workers", {
-    identity,
-    csrf,
-  });
-  const backgroundDoor = useExperimentalFeature("rail-background-door", {
-    identity,
-    csrf,
-  });
-  const wakesOn = useExperimentalFeature("scheduled-wake", { identity, csrf });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   keepWorkflow.current =
     confirmedPreferences.github_workflow ||
@@ -1482,8 +1467,6 @@ export function App() {
     [snapshot],
   );
   const now = useRailNow({
-    backgroundDoor,
-    wakes: wakesOn,
     creations: Object.entries(creationViews).flatMap(([workspaceId, view]) => {
       if (view.rechecked) return [];
       if (
@@ -1783,21 +1766,18 @@ export function App() {
     let helperDetail: string | undefined;
     // Archiving cancels the conversation's pending wakes: the same window
     // asks first and names each of them (scheduled-wake round 2, Ikkuna).
-    const wakes = archived && wakesOn ? pendingWakeModels(agent, snapshot) : [];
-    if (archived && (helpersOn || wakes.length)) {
+    const wakes = archived ? pendingWakeModels(agent, snapshot) : [];
+    if (archived) {
       const accepted = await helperConfirmation.confirm(
         agent.agent_id,
         agentTitle(agent.title),
         (runs) => {
           helperDetail =
-            [
-              helpersOn ? helpersArchiveDetail(runs) : undefined,
-              wakesArchiveDetail(wakes),
-            ]
+            [helpersArchiveDetail(runs), wakesArchiveDetail(wakes)]
               .filter(Boolean)
               .join(" · ") || undefined;
         },
-        { helpers: helpersOn, wakes },
+        { wakes },
       );
       // The card's boolean is error feedback, not the archive state. A
       // cancelled question is not a failed write; native state stays put.
@@ -1861,7 +1841,6 @@ export function App() {
           }),
         );
         if (
-          helpersOn &&
           generation === identityGeneration.current &&
           sessionBinding.current === writeCSRF
         ) {
@@ -2820,12 +2799,10 @@ export function App() {
         </LinkRow>
       </>
     ) : location.pathname === "/shares" &&
-      sharesOn &&
       snapshot &&
       (phase === "authenticated" || phase === "stale") ? (
       <SharesPage key={identity} snapshot={snapshot} csrf={csrf} />
     ) : location.pathname === "/resources" &&
-      resourcesOn &&
       (phase === "authenticated" || phase === "stale") ? (
       <AgentResourcesPage
         key={identity}
@@ -3137,7 +3114,6 @@ export function App() {
               <WorkspaceArchive
                 binding={csrf}
                 open={helperArchiveOpen}
-                helpers={helpersOn}
                 count={
                   snapshot.sources.find((f) => f.source === "pi_history")
                     ?.state !== "confirmed"
@@ -3380,9 +3356,9 @@ export function App() {
                   : undefined) ??
                 (isSettingsRoute(location.pathname)
                   ? t.app.settings
-                  : location.pathname === "/shares" && sharesOn
+                  : location.pathname === "/shares"
                     ? sharesText[language].title
-                    : location.pathname === "/resources" && resourcesOn
+                    : location.pathname === "/resources"
                       ? resourcesTitle.title
                       : location.pathname === "/workspaces/new"
                         ? t.app.newWorkspace
@@ -3454,14 +3430,11 @@ export function App() {
                 !landing.show ? (
                   <WorkspaceRailView
                     shares={
-                      sharesOn ? (
-                        <SharesRail
-                          current={location.pathname === "/shares"}
-                          collapsed={railCompact && !mobileLayout}
-                        />
-                      ) : undefined
+                      <SharesRail
+                        current={location.pathname === "/shares"}
+                        collapsed={railCompact && !mobileLayout}
+                      />
                     }
-                    resources={resourcesOn}
                     browser={
                       railCompact && !mobileLayout ? undefined : (
                         <ServerBrowserRail identity={identity} csrf={csrf} />
@@ -3615,7 +3588,7 @@ export function App() {
                           >
                             <HelperRestoreContext.Provider
                               value={
-                                helpersOn && helperRestores.binding === csrf
+                                helperRestores.binding === csrf
                                   ? helperRestores.ids
                                   : new Set()
                               }

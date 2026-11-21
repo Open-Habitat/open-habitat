@@ -185,7 +185,7 @@ export interface Agent {
   /** The agent's own choice of section for its latest turn, kept by the
    * person's daemon until the next turn or the person's message. */
   agent_section?: { section: "yours" | "running" | "quiet"; at: string };
-  /** Pending scheduled wakes in time order (scheduled-wake, experimental). */
+  /** Pending scheduled wakes in time order (scheduled-wake). */
   wakes?: PendingWake[];
   /** The latest scheduled wake that fired. */
   last_wake?: { at: string; fired_at: string; late_seconds?: number };

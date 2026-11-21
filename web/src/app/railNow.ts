@@ -62,8 +62,6 @@ export function railNow({
   search = "",
   icons,
   creations = [],
-  backgroundDoor = false,
-  wakes = false,
 }: {
   agents: Agent[];
   /** This tab's in-flight creations bridge the interval before the catalog
@@ -84,13 +82,6 @@ export function railNow({
   search?: string;
   /** Workspace icons by workspace_id (workspace-icons, experimental). */
   icons?: ReadonlyMap<string, WorkspaceIconModel>;
-  /** The mark's door drifts while a process of the conversation runs, and
-   * processes that do not wake the agent are named too
-   * (rail-background-door, experimental). */
-  backgroundDoor?: boolean;
-  /** Pending and fired scheduled wakes show at the row's end
-   * (scheduled-wake, experimental). */
-  wakes?: boolean;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -289,15 +280,12 @@ export function railNow({
         ? []
         : [
             ...backgroundServices(a.waiting_on).map(waitingName),
-            ...(backgroundDoor
-              ? (a.non_waking_processes ?? []).map((p) => p.name)
-              : []),
+            ...(a.non_waking_processes ?? []).map((p) => p.name),
           ];
     // Something of the conversation still runs: a wait, a service left
     // running or a process that does not wake the agent. The row stays in
     // its own section; only its mark's door drifts.
     const backgroundRunning =
-      backgroundDoor &&
       phase !== "stale" &&
       observed.running &&
       (!!a.waiting_on?.length || !!a.non_waking_processes?.length);
@@ -306,9 +294,9 @@ export function railNow({
       : "";
     // Scheduled wake: a waiting conversation shows when it wakes; an unread
     // reply its wake started shows when it was woken.
-    const nextWake = wakes ? (current ?? a).wakes?.[0] : undefined;
+    const nextWake = (current ?? a).wakes?.[0];
     const wakeAt = nextWake ? Date.parse(nextWake.at) : Number.NaN;
-    const lastWake = wakes ? (current ?? a).last_wake : undefined;
+    const lastWake = (current ?? a).last_wake;
     const firedAt = lastWake ? Date.parse(lastWake.fired_at) : Number.NaN;
     const wokeAt =
       attention &&

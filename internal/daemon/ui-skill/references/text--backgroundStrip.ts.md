@@ -45,7 +45,7 @@ const fi = {
   },
   workers: "Workerit",
   processes: "Prosessit",
-  // Avustajat (named workers, experimental): the chip beside the Workers
+  // Avustajat (named workers): the chip beside the Workers
   // pill and its tab. A helper's name is Taskfleet's; its task is the title.
   helpers: "Avustajat",
   help: {

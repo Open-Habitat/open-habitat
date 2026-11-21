@@ -22,7 +22,6 @@ import {
 } from "../components/Integrations";
 import { liveText } from "../i18n";
 import { integrationsSettingsText } from "../text/integrationsSettings";
-import { useExperimentalFeature } from "./accountPreferences";
 import {
   connectGitea,
   type GiteaCheck,
@@ -136,15 +135,6 @@ export function IntegrationsSettings({
   /** Opens Uusi työtila, offered once a code host is connected. */
   onNewWorkspace?: () => void;
 }) {
-  const atlassianEnabled = useExperimentalFeature("atlassian-connect");
-  const trelloEnabled = useExperimentalFeature("trello-connect");
-  // Experimental providers stay out of sight, sign-in included, until enabled.
-  const hidden = useCallback(
-    (id: ProviderId) =>
-      (id === "atlassian" && !atlassianEnabled) ||
-      (id === "trello" && !trelloEnabled),
-    [atlassianEnabled, trelloEnabled],
-  );
   const [list, setList] = useState<IntegrationList | undefined>(initial);
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState<Set<string> | "all">(
@@ -316,8 +306,7 @@ export function IntegrationsSettings({
         // A page resumes only the sign-in of a provider it shows.
         if (
           view.provider &&
-          (hidden(view.provider) ||
-            (only && !only.includes(view.provider)) ||
+          ((only && !only.includes(view.provider)) ||
             except?.includes(view.provider))
         )
           return;
@@ -328,7 +317,7 @@ export function IntegrationsSettings({
         });
       })
       .catch(() => {});
-  }, [load, only, except, hidden]);
+  }, [load, only, except]);
 
   // While the tool waits, ask the daemon how far it got.
   // A failed read schedules the next one: a lost poll must not strand the
@@ -872,7 +861,7 @@ export function IntegrationsSettings({
   };
 
   const shows = (id: ProviderId) =>
-    !hidden(id) && (!only || only.includes(id)) && !except?.includes(id);
+    (!only || only.includes(id)) && !except?.includes(id);
   if (!list)
     return failed ? (
       <p role="alert">{txt.listFailed}</p>
@@ -893,7 +882,7 @@ export function IntegrationsSettings({
       <IntegrationsOverview
         compact={compact}
         list={
-          only || except || !atlassianEnabled || !trelloEnabled
+          only || except
             ? {
                 ...list,
                 providers: list.providers.filter((p) => shows(p.id)),

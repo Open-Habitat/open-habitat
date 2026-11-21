@@ -114,11 +114,9 @@ export function backgroundFacts({
   failed,
   agentIdle,
   piNotRunning = false,
-  helpers = false,
   seen,
 }: {
   /** Avustajat is on: live named workers leave the Workers pill for theirs. */
-  helpers?: boolean;
   /** Rounds of each named worker the person has seen, by run id. */
   seen?: ReadonlyMap<string, number>;
   runs: Spinoff[];
@@ -175,9 +173,9 @@ export function backgroundFacts({
   // Avustajat (proto-named-workers): a named worker that still works in
   // rounds has its own chip. One that ended is an ordinary ended worker:
   // what is left of it is a branch for the Workers pill's requests.
-  const spin = all.filter((i) => !helpers || !liveHelper(i.run));
+  const spin = all.filter((i) => !liveHelper(i.run));
   const help = all
-    .filter((i) => helpers && liveHelper(i.run))
+    .filter((i) => liveHelper(i.run))
     .map((i) => {
       const r = i.run.resident;
       return {
@@ -292,7 +290,6 @@ export function BackgroundStrip({
     failed: !!view?.failed,
     agentIdle: !!agentIdle,
     piNotRunning: !!piNotRunning,
-    helpers: !!spinoffs?.helpers,
     seen: spinoffs?.helpersSeen,
   });
   const now = Date.now();
@@ -312,7 +309,7 @@ export function BackgroundStrip({
       (i) => i.run.run_id === r.run_id,
     );
   // A named worker that leaves says so under its own chip: stopped.
-  const asHelper = (r: Spinoff) => !!spinoffs?.helpers && !!r.resident;
+  const asHelper = (r: Spinoff) => !!r.resident;
   const allLeaving = leaving.map((l) => l.run).filter((r) => !back(r));
   const shownLeaving = allLeaving.filter((r) => !asHelper(r));
   const helpLeaving = allLeaving.filter(asHelper);

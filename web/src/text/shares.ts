@@ -1,7 +1,7 @@
 import { catalog, formatNumber, plural } from "../i18n";
 
 const fi = {
-  title: "Jaetut",
+  title: "Tuotokset",
   summary: (pub: number, own: number, past: number) =>
     `${formatNumber(pub)} ${plural("fi", pub, { one: "julkinen", other: "julkista" })}, ${formatNumber(own)} vain sinulle, ${formatNumber(past)} ${plural("fi", past, { one: "päättynyt tai poistettu", other: "päättynyttä tai poistettua" })}`,
   filters: {
@@ -10,26 +10,26 @@ const fi = {
     private: "Vain sinä",
     past: "Päättyneet",
   },
-  empty: "Et ole jakanut vielä mitään",
+  empty: "Ei vielä tuotoksia",
   emptyHelp:
-    "Jaa näkymä tai tiedosto keskustelun kortin maapallosta. Löydät sen jälkeen osoitteen täältä.",
-  loading: "Luetaan jakoja…",
-  failed: "Jakoja ei voitu lukea.",
+    "Agentin antamat näkymät ja tiedostot löytyvät täältä, olivatpa ne vain sinulle tai jaettu linkillä.",
+  loading: "Luetaan tuotoksia…",
+  failed: "Tuotoksia ei voitu lukea.",
   retry: "Yritä uudelleen",
   gone: "Kohde poistettu",
   unknown: "Keskustelu ei ole saatavilla",
   archived: "arkistoitu",
   count: (n: number) =>
-    `${formatNumber(n)} ${plural("fi", n, { one: "jako", other: "jakoa" })}`,
-  shared: (date: string) => `jaettu ${date}`,
+    `${formatNumber(n)} ${plural("fi", n, { one: "tuotos", other: "tuotosta" })}`,
+  shared: (date: string) => `luotu ${date}`,
   from: "Keskustelusta",
   ended: (date: string) => `Julkisuus päättyi ${date}`,
   hint: "Kuka tahansa, jolla on osoite, voi avata kohteen julkisuuden päättymiseen asti.",
   address: "Jaon osoite",
-  noMatches: "Ei jakoja tässä ryhmässä.",
+  noMatches: "Ei tuotoksia tässä ryhmässä.",
 };
 export const sharesText = catalog(fi, {
-  title: "Shares",
+  title: "Outputs",
   summary: (pub: number, own: number, past: number) =>
     `${formatNumber(pub)} public, ${formatNumber(own)} only for you, ${formatNumber(past)} expired or removed`,
   filters: {
@@ -38,21 +38,21 @@ export const sharesText = catalog(fi, {
     private: "Only you",
     past: "Expired",
   },
-  empty: "You have not shared anything yet",
+  empty: "No outputs yet",
   emptyHelp:
-    "Share a view or file using the globe on its conversation card. Its address will then appear here.",
-  loading: "Loading shares…",
-  failed: "Shares could not be loaded.",
+    "Views and files the agent gives you appear here, whether private or shared by link.",
+  loading: "Loading outputs…",
+  failed: "Outputs could not be loaded.",
   retry: "Try again",
   gone: "Item removed",
   unknown: "Conversation unavailable",
   archived: "archived",
   count: (n: number) =>
-    `${formatNumber(n)} ${plural("en-US", n, { one: "share", other: "shares" })}`,
-  shared: (date: string) => `shared ${date}`,
+    `${formatNumber(n)} ${plural("en-US", n, { one: "output", other: "outputs" })}`,
+  shared: (date: string) => `created ${date}`,
   from: "From conversation",
   ended: (date: string) => `Publication ended ${date}`,
   hint: "Anyone with the address can open the item until its publication ends.",
   address: "Share address",
-  noMatches: "No shares in this group.",
+  noMatches: "No outputs in this group.",
 });

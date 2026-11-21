@@ -78,7 +78,7 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, body := range []string{
-		`{"id":"unknown-feature","enabled":true}`, `{"id":"explain-mode","enabled":null}`,
+		`{"id":"unknown-feature","enabled":true}`, `{"id":"explain-mode","enabled":true}`, `{"id":"explain-mode","enabled":null}`,
 		`{"id":"explain-mode","enabled":true,"uid":99999}`, `{"id":"explain-mode","enabled":true,"home":"/other"}`,
 		`{"id":"explain-mode","enabled":true,"enabled":false}`, `{"ID":"explain-mode","enabled":true}`,
 		`{"id":"explain-mode","enabled":true} {}`, `{"id":"explain-mode","enabled":"true"}`,
@@ -94,17 +94,17 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 		t.Fatal("rejection wrote", err)
 	}
 	for _, on := range []bool{true, true, false} {
-		body, _ := json.Marshal(map[string]any{"id": "explain-mode", "enabled": on})
+		body, _ := json.Marshal(map[string]any{"id": "rewind-conversation", "enabled": on})
 		data = call("PUT", AgentExperimentalPath, string(body), 200)
 		if json.Unmarshal(data, &reply) != nil {
 			t.Fatal(string(data))
 		}
 		found := false
 		for _, f := range reply.Features {
-			if f.ID == "retired-feature" {
+			if f.ID == "retired-feature" || f.ID == "shares-page" || f.ID == "explain-mode" {
 				t.Fatal("stale choice offered")
 			}
-			if f.ID == "explain-mode" {
+			if f.ID == "rewind-conversation" {
 				found = true
 				if f.Enabled != on {
 					t.Fatal("wrong confirmation")
@@ -115,7 +115,7 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 			t.Fatal("missing feature")
 		}
 		stored, err = readPreferences(home)
-		if err != nil || stored.Experimental["explain-mode"] != on || !stored.Experimental["shares-page"] || !stored.Experimental["retired-feature"] || stored.Engine != "vscode" || stored.Language != "en-GB" {
+		if err != nil || stored.Experimental["rewind-conversation"] != on || !stored.Experimental["shares-page"] || !stored.Experimental["retired-feature"] || stored.Engine != "vscode" || stored.Language != "en-GB" {
 			t.Fatalf("lost preference: %+v %v", stored, err)
 		}
 		// The browser reads the very same preference, not an agent-only store.
@@ -129,7 +129,7 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 		var browser struct {
 			Experimental map[string]bool `json:"experimental"`
 		}
-		if json.Unmarshal(w.Body.Bytes(), &browser) != nil || browser.Experimental["explain-mode"] != on {
+		if json.Unmarshal(w.Body.Bytes(), &browser) != nil || browser.Experimental["rewind-conversation"] != on {
 			t.Fatal(w.Body.String())
 		}
 	}
@@ -147,5 +147,5 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	call("GET", AgentExperimentalPath, "", 503)
-	call("PUT", AgentExperimentalPath, `{"id":"explain-mode","enabled":true}`, 503)
+	call("PUT", AgentExperimentalPath, `{"id":"rewind-conversation","enabled":true}`, 503)
 }

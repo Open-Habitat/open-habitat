@@ -227,6 +227,34 @@ const lists = new Map<string, ListState>();
 const listPending = new Map<string, { epoch: number; again: boolean }>();
 const listLimit = 200;
 
+/** The person's native outputs, without reserving or publishing addresses. */
+export async function listFileOffers(
+  signal?: AbortSignal,
+): Promise<FileOfferSummary[]> {
+  const offers: FileOfferSummary[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const response = await fetch(
+      cursor ? `${base}?${new URLSearchParams({ cursor })}` : base,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal,
+      },
+    );
+    if (!response.ok) throw new Error("file offers unavailable");
+    const value = await boundedJSON(response, 1 << 20);
+    if (!validList(value)) throw new Error("unexpected reply");
+    const page = value as { offers: FileOfferSummary[]; next_cursor?: string };
+    offers.push(...page.offers);
+    cursor = page.next_cursor;
+    if (cursor && seen.has(cursor)) throw new Error("repeated offer cursor");
+    if (cursor) seen.add(cursor);
+  } while (cursor);
+  return offers;
+}
+
 async function fetchList(conversationId: string) {
   const running = listPending.get(conversationId);
   if (running?.epoch === epoch) {

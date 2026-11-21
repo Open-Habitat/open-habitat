@@ -69,13 +69,14 @@
       }
     },
     "list": {
-      "description": "GET /api/v1/file-offers[?conversation_id=pi:UUID]: the person's offers, or one conversation's, newest first, at most 200.",
+      "description": "GET /api/v1/file-offers[?conversation_id=pi:UUID][&cursor=…]: one page of the person's offers, or one conversation's, newest first then by ID. At most 200 per page; next_cursor, when present, selects the next page.",
       "type": "object",
       "additionalProperties": false,
       "required": ["schema_version", "offers"],
       "properties": {
         "schema_version": {"const": 1},
-        "offers": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/offer"}}
+        "offers": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/offer"}},
+        "next_cursor": {"type": "string", "maxLength": 100, "pattern": "^[0-9T:.+Z-]+_f[a-z2-7]{26}$"}
       }
     },
     "manifest": {

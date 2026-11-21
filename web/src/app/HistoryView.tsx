@@ -48,7 +48,6 @@ import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { largeContentText } from "../text/largeContent";
-import { useExperimentalFeature } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
 import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
@@ -1583,7 +1582,6 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const openMachines = useOpenMachines();
-  const helpersOn = useExperimentalFeature("named-workers");
   const window = useWindow(store, agent.agent_id);
   const storagePressure = useStoragePressure();
   useEffect(() => {
@@ -2108,7 +2106,7 @@ function HistoryViewContent({
           onRestore={() => onRestore?.("foot")}
           notice={archiveNotice}
         >
-          {helpersOn ? <ArchivedHelpers agent={agent.agent_id} /> : null}
+          <ArchivedHelpers agent={agent.agent_id} />
         </ArchivedFoot>
       ) : (
         <div className="ah-read-only-footer">

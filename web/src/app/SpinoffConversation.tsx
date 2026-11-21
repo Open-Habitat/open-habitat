@@ -17,7 +17,6 @@ import {
 import { textNow, useText } from "../i18n";
 import { spinoffConversationText } from "../text/spinoffConversation";
 import { spinoffsText } from "../text/spinoffs";
-import { useExperimentalFeature } from "./accountPreferences";
 import { contextUsage } from "./contextUsage";
 import type { timelineItems } from "./HistoryView";
 import { readHelpersSeen, writeHelperSeen } from "./helpersSeen";
@@ -140,7 +139,6 @@ export function SpinoffProvider({
     navigate(`${location.pathname}?${q}`);
   };
   const selected = data?.runs.find((r) => r.run_id === run);
-  const helpers = useExperimentalFeature("named-workers");
   const [helpersSeen, setHelpersSeen] = useState(readHelpersSeen);
   // Opening a named worker's own conversation shows its report: the
   // chip's unseen mark clears (proto-named-workers round 2).
@@ -150,9 +148,8 @@ export function SpinoffProvider({
       ? (selected?.resident?.rounds ?? 0)
       : 0;
   useEffect(() => {
-    if (helpers && run && seenRounds > 0)
-      setHelpersSeen(writeHelperSeen(run, seenRounds));
-  }, [helpers, run, seenRounds]);
+    if (run && seenRounds > 0) setHelpersSeen(writeHelperSeen(run, seenRounds));
+  }, [run, seenRounds]);
   return (
     <SpinoffContext.Provider
       value={{
@@ -163,7 +160,6 @@ export function SpinoffProvider({
         setRequest,
         work: work && new Map(work.runs.map((w) => [w.run_id, w])),
         workNote: work && workNote(work, place.githubState),
-        helpers,
         helpersSeen,
       }}
     >

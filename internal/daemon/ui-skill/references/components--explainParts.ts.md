@@ -643,10 +643,6 @@ export const parts: Record<CardId, Part> = {
     sel: '[data-testid="integration-tile-atlassian"], [data-testid="integration-account-atlassian"]',
   },
   M71: { kind: "panel", sel: '[data-testid="atlassian-approval-request"]' },
-  M72: {
-    kind: "menu",
-    sel: '[data-testid="experimental-atlassian-connect-choice"]',
-  },
   M73: {
     kind: "once",
     sel: '[data-provider="atlassian"] [data-testid="integration-continue"], [data-provider="atlassian"] [data-testid="integration-connect"]',
@@ -666,10 +662,6 @@ export const parts: Record<CardId, Part> = {
     opens: true,
   },
   M78: { kind: "panel", sel: '[data-testid="trello-approval-request"]' },
-  M79: {
-    kind: "menu",
-    sel: '[data-testid="experimental-trello-connect-choice"]',
-  },
   M80: {
     kind: "once",
     sel: '[data-provider="trello"] [data-testid="integration-continue"], [data-provider="trello"] [data-testid="integration-connect"]',
@@ -725,10 +717,8 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "J08",
   "J09",
   "L13",
-  "M72",
   "M73",
   "M75",
-  "M79",
   "M80",
   "M82",
   "Y11",

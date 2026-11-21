@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { FileLinkContext } from "../components/fileRefs";
 import { TurnChanges, TurnChangesUnread } from "../components/TurnChanges";
-import { useExperimentalFeature } from "./accountPreferences";
 import { fullTextBlock, type HistoryEntry } from "./history";
 import {
   type FileChange,
@@ -154,8 +153,7 @@ function scroller(place: Element): Element | null {
   return null;
 }
 
-/** Starts the reads once the turn comes near the view. The place mounts
- * only once the feature is known to be on, so it is a callback ref.
+/** Starts the reads once the turn comes near the view.
  *
  * The margin is measured from the conversation's own scroll area: against
  * the page, the area clips the place first and a margin never applies, so a
@@ -181,8 +179,7 @@ function useNear() {
 }
 
 /**
- * Muutokset for one finished turn, when the person has turned the
- * experimental feature on. Its source is the turn's own tool calls in native
+ * Muutokset for one finished turn. Its source is the turn's own tool calls in native
  * history, read through the history block reads the conversation already
  * uses; nothing is stored.
  */
@@ -199,7 +196,6 @@ export function TurnChangesSource({
   revision?: string;
   startedAt?: number;
 }) {
-  const on = useExperimentalFeature("turn-changes");
   const root = useContext(TurnChangesRoot);
   const links = useContext(FileLinkContext);
   const calls: Call[] = entries.flatMap((entry) =>
@@ -253,7 +249,7 @@ export function TurnChangesSource({
   // one that succeeded is not repeated.
   const retry = read?.key === key && read.files ? "" : `${revision}/${attempt}`;
   useEffect(() => {
-    if (!on || !near || !agentId || !key || retry === "") return;
+    if (!near || !agentId || !key || retry === "") return;
     let current = true;
     const { calls, root } = latest.current;
     readSteps(agentId, calls, root)
@@ -268,8 +264,8 @@ export function TurnChangesSource({
     return () => {
       current = false;
     };
-  }, [on, near, agentId, key, retry]);
-  if (!on || !key) return null;
+  }, [near, agentId, key, retry]);
+  if (!key) return null;
   // A newer revision is read in place; the earlier result stays meanwhile.
   if (!read)
     return <span ref={ref} className="ah-tc-sentinel" aria-hidden="true" />;

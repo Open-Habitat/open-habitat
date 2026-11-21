@@ -277,8 +277,12 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			Version string `json:"version"`
 		} `json:"data"`
 	}
-	supported := taskfleetRead(ctx, cfg.Home, []string{"version", "--output", "json"}, &version) && version.Schema == 1 && taskfleetSpinoffVersion(version.Data.Version)
-	if !supported || !taskfleetRead(ctx, cfg.Home, []string{"run", "list", "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
+	absent := taskfleetAbsent(cfg.Home)
+	supported := !absent && taskfleetRead(ctx, cfg.Home, []string{"version", "--output", "json"}, &version) && version.Schema == 1 && taskfleetSpinoffVersion(version.Data.Version)
+	if absent {
+		// Without Taskfleet there are no current workers or helpers to ask
+		// about. A broken installed tool remains unavailable, not empty.
+	} else if !supported || !taskfleetRead(ctx, cfg.Home, []string{"run", "list", "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
 		availability = "unavailable"
 	} else {
 		if len(reply.Warnings) > 0 {
@@ -488,6 +492,17 @@ func taskfleetSpinoffVersion(v string) bool {
 		return false
 	}
 	return major > 0 || major == 0 && minor >= 15
+}
+
+// Absence is stronger than no runnable binary: a broken symlink, missing
+// execute permission or unreadable directory cannot prove an empty inventory.
+func taskfleetAbsent(home string) bool {
+	for _, dir := range filepath.SplitList(strings.TrimPrefix(agentPath(home), "PATH=")) {
+		if _, err := os.Lstat(filepath.Join(dir, "taskfleet")); !os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
 
 func taskfleetBinary(home string) string {

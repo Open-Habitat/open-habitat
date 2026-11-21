@@ -42,17 +42,7 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
     id === "rewind-conversation" ||
-    id === "explain-mode" ||
-    id === "agent-resources-view" ||
-    id === "shares-page" ||
-    id === "conversation-context-view" ||
-    id === "named-workers" ||
-    id === "turn-changes" ||
     id === "terminal-copy-on-select" ||
-    id === "terminal-open-urls" ||
-    id === "storage-breakdown" ||
-    id === "rail-background-door" ||
-    id === "scheduled-wake" ||
     id === "multiplayer"
   )
     body = (

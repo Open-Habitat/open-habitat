@@ -14,7 +14,7 @@ const fi = {
   tooMany:
     "Sinulla on jo enimmäismäärä julkisia näkymiä ja tiedostoja. Tee jokin niistä yksityiseksi ensin.",
   tooManyAddresses:
-    "Sinulla on jo enimmäismäärä osoitteita. Poista vanhoja asetusten kohdasta Näkymien ja tiedostojen osoitteet.",
+    "Sinulla on jo enimmäismäärä osoitteita. Poista vanhoja Tuotokset-sivulta.",
   notPublic: "Kohde ei ole enää julkinen.",
   unavailable: "Tällä palvelimella ei voi nyt jakaa näkymiä eikä tiedostoja.",
   saveFailed: "Muutosta ei voitu tallentaa. Yritä uudelleen.",
@@ -61,7 +61,7 @@ export const viewLinksText = catalog(fi, {
   tooMany:
     "You already have the maximum number of public views and files. Make one of them private first.",
   tooManyAddresses:
-    "You already have the maximum number of addresses. Remove old ones in the settings under View and file addresses.",
+    "You already have the maximum number of addresses. Remove old ones on the Outputs page.",
   notPublic: "The item is no longer public.",
   unavailable: "Views and files cannot be shared on this server now.",
   saveFailed: "The change could not be saved. Try again.",

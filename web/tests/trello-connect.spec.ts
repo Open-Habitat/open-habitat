@@ -13,7 +13,7 @@ type Native = {
   }[];
 };
 
-test("experimental Trello adds separate native connections, each with its own grant", async ({
+test("Trello adds separate native connections, each with its own grant", async ({
   page,
   context,
 }) => {
@@ -25,7 +25,7 @@ test("experimental Trello adds separate native connections, each with its own gr
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.goto("/settings/agent-data");
   await expect(page.getByTestId("integrations-loading")).toHaveCount(0);
-  await expect(page.getByTestId("integration-tile-trello")).toHaveCount(0);
+  await expect(page.getByTestId("integration-tile-trello")).toBeVisible();
   const session = await (await page.request.get("/auth/session")).json();
   expect(
     (
@@ -34,7 +34,7 @@ test("experimental Trello adds separate native connections, each with its own gr
           Origin: new URL(page.url()).origin,
           "X-Agent-Host-CSRF": session.csrf,
         },
-        data: { experimental: { "trello-connect": true } },
+        data: { experimental: { "trello-connect": false } },
       })
     ).ok(),
   ).toBe(true);

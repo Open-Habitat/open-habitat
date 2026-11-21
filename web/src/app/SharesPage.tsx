@@ -24,14 +24,22 @@ import { viewLinksText } from "../text/viewLinks";
 import { agentTitle } from "./agentTitle";
 import {
   type FileOfferSummary,
+  listFileOffers,
   offerTabPath,
   useFileOffer,
   useFileOffers,
 } from "./fileOffers";
-import { groupShares, type Share, shareCategory } from "./shares";
+import {
+  groupShares,
+  outputCreated,
+  outputID,
+  outputItemID,
+  outputTitle,
+  type Share,
+  shareCategory,
+} from "./shares";
 import type { Snapshot } from "./snapshot";
 import {
-  addressItem,
   defaultExpiry,
   deleteViewAddressForGood,
   formatExpiry,
@@ -114,18 +122,24 @@ export function SharesPage({
   const [loadedViews, setViews] = useState<{
     key: string;
     views: ViewSummary[];
+    offers: FileOfferSummary[];
   }>();
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
   const addresses =
     links && typeof links === "object" ? links.addresses : undefined;
   const ids = useMemo(
-    () => addresses?.flatMap((a) => (a.offer_id ? [a.offer_id] : [])) ?? [],
-    [addresses],
+    () => [
+      ...new Set([
+        ...(addresses?.flatMap((a) => (a.offer_id ? [a.offer_id] : [])) ?? []),
+        ...(loadedViews?.offers.map((o) => o.offer_id) ?? []),
+      ]),
+    ],
+    [addresses, loadedViews],
   );
   const offers = useFileOffers(ids, retry);
-  const viewKey = addresses
-    ?.flatMap((a) => (a.view_id ? [a.view_id] : []))
+  const viewKey = (addresses ?? [])
+    .flatMap((a) => (a.view_id ? [a.view_id] : []))
     .sort()
     .join(",");
   const views = loadedViews?.views;
@@ -137,15 +151,15 @@ export function SharesPage({
   }, [retry]);
   useEffect(() => {
     void retry;
-    if (viewKey === undefined) return;
     const abort = new AbortController();
     setFailed(false);
-    void (
-      viewKey ? conversationViews(undefined, abort.signal) : Promise.resolve([])
-    )
-      .then((values) => {
+    void Promise.all([
+      conversationViews(undefined, abort.signal),
+      listFileOffers(abort.signal),
+    ])
+      .then(([values, offers]) => {
         if (!abort.signal.aborted)
-          setViews({ key: viewKey, views: values ?? [] });
+          setViews({ key: viewKey, views: values ?? [], offers });
       })
       .catch(() => {
         if (!abort.signal.aborted) setFailed(true);
@@ -154,19 +168,22 @@ export function SharesPage({
   }, [viewKey, retry]);
   const items: (ViewSummary | FileOfferSummary)[] = [
     ...(views ?? []),
+    ...(loadedViews?.offers ?? []),
     ...offers.flatMap((o) => (o.state === "ready" ? [o.manifest.offer] : [])),
   ];
   // A newly observed address is not proof its target is gone. Keep known
   // rows mounted while reading the facts of additions in the background.
   const knownViews = new Set(loadedViews?.key.split(",") ?? []);
-  const shownAddresses = addresses?.filter((a) => {
-    if (a.view_id) return knownViews.has(a.view_id);
+  const shownAddresses = (addresses ?? []).filter((a) => {
+    if (a.view_id)
+      return (
+        knownViews.has(a.view_id) ||
+        !!views?.some((v) => v.view_id === a.view_id)
+      );
     const state = offers[ids.indexOf(a.offer_id ?? "")]?.state;
     return state === "ready" || state === "removed";
   });
-  const groups = shownAddresses
-    ? groupShares(shownAddresses, items, snapshot)
-    : [];
+  const groups = groupShares(shownAddresses, items, snapshot);
   const rows = groups.flatMap((g) => g.rows);
   const counts = { all: rows.length, public: 0, private: 0, past: 0 };
   for (const row of rows) counts[shareCategory(row)]++;
@@ -186,12 +203,13 @@ export function SharesPage({
   const selected = params.get("share")
     ? filtered
         .flatMap((g) => g.rows)
-        .find((s) => s.address.address_id === params.get("share"))
+        .find((s) => outputID(s) === params.get("share"))
     : filtered[0]?.rows[0];
   const explicit =
     !!params.get("share") &&
-    selected?.address.address_id === params.get("share");
-  const loading = !failed && (links === undefined || (addresses && !views));
+    !!selected &&
+    outputID(selected) === params.get("share");
+  const loading = !failed && (links === undefined || !views);
   const unavailable =
     failed ||
     links === "unavailable" ||
@@ -200,7 +218,7 @@ export function SharesPage({
     <section className="sh-page" data-testid="shares-page">
       {loading ? (
         <p role="status">{t.loading}</p>
-      ) : unavailable && !views ? (
+      ) : unavailable && (!views || links === "unavailable") ? (
         <div role="alert">
           <p>{t.failed}</p>
           <ControlButton size="row" onPress={() => setRetry((n) => n + 1)}>
@@ -246,7 +264,7 @@ export function SharesPage({
                 }
               />
             )}
-            {addresses?.length === 0 || links === "off" ? (
+            {rows.length === 0 ? (
               <div className="sh-empty">
                 <Icon name="globe" />
                 <h2>{t.empty}</h2>
@@ -304,17 +322,17 @@ export function SharesPage({
                       </header>
                       <ul className="sh-rows">
                         {g.rows.map((s) => (
-                          <li key={s.address.address_id}>
+                          <li key={outputID(s)}>
                             <button
                               type="button"
                               data-testid="shares-row"
-                              data-address-id={s.address.address_id}
+                              data-address-id={s.address?.address_id}
                               className="sh-row"
                               aria-current={selected === s ? "true" : undefined}
                               onClick={() =>
                                 setParams({
                                   ...(filter !== "all" ? { filter } : {}),
-                                  share: s.address.address_id,
+                                  share: outputID(s),
                                 })
                               }
                             >
@@ -323,11 +341,11 @@ export function SharesPage({
                                 <strong
                                   className={!s.item ? "sh-gone" : undefined}
                                 >
-                                  {s.address.title}
+                                  {outputTitle(s)}
                                 </strong>
                                 <span className="sh-meta">
                                   {t.shared(
-                                    formatDate(new Date(s.address.created_at), {
+                                    formatDate(new Date(outputCreated(s)), {
                                       weekday: "short",
                                       day: "numeric",
                                       month: "numeric",
@@ -353,7 +371,7 @@ export function SharesPage({
           {selected && (!narrow || explicit) && (
             <div className="sh-detail">
               <ShareDetail
-                key={selected.address.address_id}
+                key={outputItemID(selected)}
                 share={selected}
                 csrf={csrf}
                 maxDays={links && typeof links === "object" ? links.maxDays : 0}
@@ -373,7 +391,7 @@ function ShareFacts({
   share: Share;
   short?: boolean;
 }) {
-  const offer = useFileOffer(share.address.offer_id ?? "");
+  const offer = useFileOffer(outputItemID(share));
   if (!share.item) return null;
   return (
     <>
@@ -387,7 +405,7 @@ function ShareFacts({
   );
 }
 function ShareThumb({ share }: { share: Share }) {
-  const offer = useFileOffer(share.address.offer_id ?? "");
+  const offer = useFileOffer(outputItemID(share));
   const item = offer.state === "ready" ? offer.manifest.items[0] : undefined;
   return (
     <span className="sh-thumb">
@@ -429,10 +447,10 @@ function ShareState({ share }: { share: Share }) {
           ? t.gone
           : category === "public"
             ? (sharing ? l.publicUntil : l.paused)(
-                formatExpiry(share.address.public_until ?? ""),
+                formatExpiry(share.address?.public_until ?? ""),
               )
             : category === "past"
-              ? t.ended(formatExpiry(share.address.public_until ?? ""))
+              ? t.ended(formatExpiry(share.address?.public_until ?? ""))
               : l.isPrivate}
     </span>
   );
@@ -450,7 +468,7 @@ function ShareDetail({
 }) {
   const t = useText(sharesText);
   const l = useText(viewLinksText);
-  const id = addressItem(share.address);
+  const id = outputItemID(share);
   const mark = useViewAddressMark(id);
   const unknown = useViewLinksUnknown();
   const [error, setError] = useState("");
@@ -462,7 +480,7 @@ function ShareDetail({
       present.current = false;
     };
   }, []);
-  const pub = isPublic(share.address);
+  const pub = !!share.address && isPublic(share.address);
   const act = (write: Promise<void>) => {
     setError("");
     void write.catch((error: Error) =>
@@ -489,15 +507,15 @@ function ShareDetail({
         </div>
       )}
       <header>
-        <h2>{share.address.title}</h2>
+        <h2>{outputTitle(share)}</h2>
         <div className="sh-meta">
           <ShareFacts share={share} /> ·{" "}
-          {t.shared(fullDate(share.address.created_at))}
+          {t.shared(fullDate(outputCreated(share)))}
         </div>
       </header>
       <div className="sh-publication">
         <ShareState share={share} />
-        {pub && maxDays > 0 && !unknown && share.item && (
+        {pub && maxDays > 0 && !unknown && share.item && share.address && (
           <div className="sh-url" data-testid="shares-address">
             <input aria-label={t.address} readOnly value={share.address.url} />
             <CopyButton
@@ -509,12 +527,12 @@ function ShareDetail({
         )}
         <div className="sh-actions">
           <OfferActions
-            label={share.address.title}
+            label={outputTitle(share)}
             publish={
               share.item && maxDays > 0
                 ? {
                     public: pub,
-                    until: pub ? share.address.public_until : undefined,
+                    until: pub ? share.address?.public_until : undefined,
                     maxDays,
                     pending: mark === "busy" || !csrf,
                     unknown: unknown || mark === "uncertain",
@@ -534,7 +552,7 @@ function ShareDetail({
               share.item
                 ? () =>
                     window.open(
-                      share.address.view_id
+                      share.item && "view_id" in share.item
                         ? viewTabPath(id)
                         : offerTabPath(id),
                       "_blank",
@@ -552,24 +570,27 @@ function ShareDetail({
                 aria-label={l.stop}
                 isDisabled={!csrf || mark === "busy"}
                 onPress={() => {
-                  if (csrf) act(stopViewSharing(csrf, share.address));
+                  if (csrf && share.address)
+                    act(stopViewSharing(csrf, share.address));
                 }}
               >
                 <Icon name="lock" />
               </ControlButton>
             )}
-            <ControlButton
-              className="ah-offer-ib"
-              data-testid="shares-remove"
-              aria-label={l.remove}
-              title={l.remove}
-              variant="quiet"
-              size="row"
-              isDisabled={!csrf || mark === "busy"}
-              onPress={() => setRemoving(true)}
-            >
-              <Icon name="trash" />
-            </ControlButton>
+            {share.address && (
+              <ControlButton
+                className="ah-offer-ib"
+                data-testid="shares-remove"
+                aria-label={l.remove}
+                title={l.remove}
+                variant="quiet"
+                size="row"
+                isDisabled={!csrf || mark === "busy"}
+                onPress={() => setRemoving(true)}
+              >
+                <Icon name="trash" />
+              </ControlButton>
+            )}
           </OfferActions>
         </div>
         {pub && maxDays > 0 && <p className="sh-hint">{t.hint}</p>}
@@ -590,7 +611,7 @@ function ShareDetail({
             aria-label={l.removeTitle}
           >
             <Heading slot="title">{l.removeTitle}</Heading>
-            <p>{l.removeDesc(share.address.title)}</p>
+            <p>{l.removeDesc(outputTitle(share))}</p>
             <div className="ah-dialog-actions">
               <ControlButton
                 size="page"
@@ -606,7 +627,7 @@ function ShareDetail({
                 variant="danger"
                 onPress={() => {
                   setRemoving(false);
-                  if (csrf)
+                  if (csrf && share.address)
                     act(
                       deleteViewAddressForGood(csrf, share.address).then(() => {
                         if (present.current) onBack();
@@ -625,11 +646,12 @@ function ShareDetail({
 }
 function SharePreview({ share, csrf }: { share: Share; csrf?: string }) {
   const t = useText(sharesText);
-  const offer = useFileOffer(share.address.offer_id ?? "");
+  const offer = useFileOffer(outputItemID(share));
   const [src, setSrc] = useState<string>();
   const [failed, setFailed] = useState(false);
   const [path, setPath] = useState<string>();
-  const id = share.address.view_id;
+  const id =
+    share.item && "view_id" in share.item ? share.item.view_id : undefined;
   useEffect(() => {
     if (!id || !csrf) return;
     let current = true;
@@ -646,7 +668,7 @@ function SharePreview({ share, csrf }: { share: Share; csrf?: string }) {
   }, [id, csrf]);
   if (id)
     return src ? (
-      <ViewFrame src={src} title={share.address.title} />
+      <ViewFrame src={src} title={outputTitle(share)} />
     ) : (
       <p role="status">{failed ? t.failed : t.loading}</p>
     );

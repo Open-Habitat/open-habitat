@@ -134,6 +134,9 @@ func TestFileOfferBytesArePresentedByTheGateway(t *testing.T) {
 		{"GET", "/api/v1/file-offers/fzz/zip"},
 		{"POST", base + "/zip"},
 		{"GET", base + "/zip?x=1"},
+		{"GET", base + "?cursor=anything"},
+		{"GET", fileOffersPath + "?cursor=a&cursor=b"},
+		{"GET", fileOffersPath + "?cursor=a&unknown=b"},
 	} {
 		if res := d.do(tc.method, "host.test", tc.path, "", appWrite); res.StatusCode < 400 {
 			t.Fatalf("%s %s: %d", tc.method, tc.path, res.StatusCode)
@@ -149,11 +152,12 @@ func TestFileOfferBytesArePresentedByTheGateway(t *testing.T) {
 		t.Fatalf("missing: %d", res.StatusCode)
 	}
 	// The list and one offer's facts are ordinary JSON reads; only the list
-	// takes its one query.
+	// takes conversation and page queries.
 	if res := d.do("GET", "host.test", base+"?conversation_id=pi:11111111-1111-4111-8111-111111111111", "", appCookie); res.StatusCode != 400 {
 		t.Fatalf("query on an offer: %d", res.StatusCode)
 	}
-	for _, path := range []string{"/api/v1/file-offers", "/api/v1/file-offers?conversation_id=pi:11111111-1111-4111-8111-111111111111", base} {
+	cursor := "2026-01-01T00:00:00Z_" + offerTestA
+	for _, path := range []string{"/api/v1/file-offers", "/api/v1/file-offers?conversation_id=pi:11111111-1111-4111-8111-111111111111", "/api/v1/file-offers?cursor=" + cursor, "/api/v1/file-offers?conversation_id=pi:11111111-1111-4111-8111-111111111111&cursor=" + cursor, base} {
 		if res := d.do("GET", "host.test", path, "", appCookie); res.StatusCode != 200 {
 			t.Fatalf("%s: %d", path, res.StatusCode)
 		}
