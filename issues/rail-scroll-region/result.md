@@ -1,4 +1,93 @@
-# Rail scroll region: prototype round 1
+# Rail scroll region: direction 1 Työtilat, implemented
+
+Jari chose direction 1 on 21.11.2026 and called the edge chips especially
+good. It is built into production without an experimental flag.
+
+## What changed
+
+- The wide rail no longer scrolls as a whole. `.ah-rail-content` is clipped
+  (`ah-rail-regions`). The search door stays fixed. Sinun vuorosi, Käynnissä
+  and Hiljaiset share one region (`rail-conversations`), which takes what it
+  needs and all the height except Työtilat's floor, and scrolls only past
+  that. Työtilat's heading, its new-workspace button and its filter stay
+  put, and its list (clones, rows and archived) scrolls in its own region
+  (`rail-workspace-scroll`). The narrow rail keeps its single scroll.
+- Edge chips: when the conversations' region hides rows, its edges name the
+  sections with rows wholly out of sight, with how many (↑ Sinun vuorosi 4,
+  ↓ Käynnissä 3 · Hiljaiset 30). A chip scrolls to its section and moves
+  focus into it. Each chip has its own accessible name. Both scrolling
+  regions shade an edge that hides rows. There is an explain card for the
+  chips (S38).
+- When the open conversation changes (⌥↑/⌥↓, a click or a route), its row is
+  brought into sight inside its own region, clear of the chips. The page and
+  the rail do not move. The same happens when the window's height changes,
+  and for the selected workspace row in Työtilat.
+- Hiljaiset folds itself while the rail is crowded, as long as the person has
+  not folded or opened it on this device (`nah:rail-quiet-folded` is now
+  `1` folded / `0` open / absent auto). The keyboard order follows the fold
+  actually shown.
+- Code: `web/src/components/railRegions.tsx` (measurement, chips, reveal,
+  crowding), `WorkspaceRail` in `Navigation.tsx`, `components.css`,
+  `app/quietFold.ts`, `app/WorkspaceRailView.tsx`. `railNow.ts` is
+  unchanged.
+
+## Tests run
+
+- `web/tests/lab-rail-scroll-region.spec.ts` (new, 6 cases). The snapshot is
+  rewritten on the wire into the prototype's crowded world (6 / 5 / 30 and
+  40 workspaces) and ordinary world (2 / 1 / 5 and 24). Crowded at 900 px:
+  only Työtilat scrolls, Hiljaiset folded itself without storing a choice,
+  scrolling Työtilat to its end moves no conversation, and the rail stays at
+  0. Crowded at 700 px, fi light and en dark: the conversations' region
+  scrolls, the ↓ chip names Hiljaiset with 30, the chip jumps there and the
+  ↑ chip then names Sinun vuorosi. Keyboard at 700 px with Hiljaiset opened
+  by the person: ⌥↓ through all 41 rows and ⌥↑ back, each opened row in
+  sight in its region. Ordinary at 900 px: nothing but Työtilat scrolls and
+  Hiljaiset stays open. Phone drawer: the regions hold.
+  Green 3× in a row (and in two more runs).
+- Rail specs (ordinary suite): rail-now, rail-icons-quiet,
+  rail-section-filter, quiet-work, rail-groups, workspace-count-rail,
+  rail-archive, rail-hover-marks, rail-unread, rail-turn-returns,
+  cross-workspace-agents and browser-shell all passed (38 cases). Lab:
+  lab-rail-keyboard-help, lab-rail-background-door, lab-explain-coverage
+  and lab-worker-row-sentence passed.
+- `./scripts/test-web-fast.sh` green (1870 unit tests, biome, catalogs).
+- Captures (not committed): `/var/tmp/agent-keep/rail-scroll-region/`
+  (`crowded-900`, `crowded-700-*`, `crowded-700-jumped-*`, `ordinary-900`,
+  `crowded-phone`).
+
+## Decisions for later review
+
+- **Työtilat's floor is three rows in a crowd** (heading, filter and about
+  three rows: 11 rem, 13.5 rem on touch). This is the conductor's default,
+  since Jari did not answer the question explicitly. Alternative: a third
+  of the rail. The prototype found that a share left the ordinary 700 px
+  case scrolling.
+- **Hiljaiset folds itself when the rail is crowded.** This is also the
+  conductor's default. "Crowded" means that the conversations with
+  Hiljaiset open would need more room than the rail gives above Työtilat's
+  floor. The estimate is the same folded or open, with a 24 px margin
+  before it opens again, so it never flips by itself. A press on the
+  heading is the person's choice on this device and wins over the
+  automatic fold either way. Alternatives: fold only on the phone, or never
+  fold by itself. Existing devices that never pressed the heading get the
+  automatic fold. A device that had unfolded once before stored nothing,
+  so it gets it too.
+- **The chips count only rows wholly out of sight.** A folded Hiljaiset whose
+  heading is out of sight says all its rows (the prototype's choice).
+- **A chip moves focus into its section** (its first link or button), because
+  the chip itself may disappear with the scroll. The prototype only
+  scrolled.
+- **The selected workspace row is revealed in Työtilat** in the same way as
+  the open conversation. The prototype revealed only conversation rows.
+- **The workspace scroller holds the clone rows and Arkistoidut too.** In
+  production these are inside Työtilat. Kept outside the scroller, they
+  would have eaten the floor.
+
+---
+
+# Prototype round 1 (16.11.)
+
 
 ## Saatesanat
 

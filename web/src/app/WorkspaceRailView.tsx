@@ -13,7 +13,11 @@ import {
 import { RailClones } from "../components/ClonePage";
 import { LinkRow } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
-import { type QuietChoice, QuietSection } from "../components/QuietSection";
+import {
+  type QuietChoice,
+  QuietSection,
+  quietView,
+} from "../components/QuietSection";
 import type { SectionChoice } from "../components/SectionFilter";
 import { SearchDoor } from "../components/Switcher";
 import type { Tone } from "../components/types";
@@ -29,7 +33,11 @@ import {
   useConversationMetadata,
 } from "./conversationStore";
 import type { AccountProfile } from "./pi";
-import { setQuietFolded, useQuietFolded } from "./quietFold";
+import {
+  quietFolded as foldedBy,
+  setQuietFolded,
+  useQuietFoldChoice,
+} from "./quietFold";
 import { railKeyboardOrder, useRailKeyboard } from "./railKeyboard";
 import { type RailNow, railNow } from "./railNow";
 import { openSwitcher } from "./SwitcherHost";
@@ -220,7 +228,10 @@ export function WorkspaceRailView({
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
-  const quietFolded = useQuietFolded();
+  // Hiljaiset folds itself while the rail is crowded, until the person
+  // folds or opens it on this device (rail-scroll-region).
+  const [crowded, setCrowded] = useState(false);
+  const quietFolded = foldedBy(useQuietFoldChoice(), crowded);
   const { search } = useLocation();
   const listed = snapshot.workspaces
     .filter((w) => w.presence === "present" && w.visibility === "visible")
@@ -300,41 +311,45 @@ export function WorkspaceRailView({
           </>
         ) : undefined
       }
-      now={
-        <>
-          {collapsed ? null : (
-            <SearchDoor
-              label={searchText.door}
-              keyHint={switcherKey}
-              onOpen={openSwitcher}
-            />
-          )}
-          <NowSections
-            yours={now.yours}
-            running={now.running}
-            quiet={
-              <QuietSection
-                rows={now.quiet}
-                workspaces={listed}
-                choice={quietChoice}
-                folded={quietFolded}
-                onFold={setQuietFolded}
-                archive={archiveConversation}
-                rename={renameConversation}
-                turn={turnConversation}
-                card={card}
-              />
-            }
-            collapsed={collapsed}
-            yoursChoice={sectionChoices?.yours}
-            runningChoice={sectionChoices?.running}
-            workspaces={listed}
-            archive={archiveConversation}
-            rename={renameConversation}
-            turn={turnConversation}
-            card={card}
+      search={
+        collapsed ? null : (
+          <SearchDoor
+            label={searchText.door}
+            keyHint={switcherKey}
+            onOpen={openSwitcher}
           />
-        </>
+        )
+      }
+      crowding={{
+        quietRows: quietView(now.quiet, quietChoice, listed).shown.length,
+        onChange: setCrowded,
+      }}
+      now={
+        <NowSections
+          yours={now.yours}
+          running={now.running}
+          quiet={
+            <QuietSection
+              rows={now.quiet}
+              workspaces={listed}
+              choice={quietChoice}
+              folded={quietFolded}
+              onFold={setQuietFolded}
+              archive={archiveConversation}
+              rename={renameConversation}
+              turn={turnConversation}
+              card={card}
+            />
+          }
+          collapsed={collapsed}
+          yoursChoice={sectionChoices?.yours}
+          runningChoice={sectionChoices?.running}
+          workspaces={listed}
+          archive={archiveConversation}
+          rename={renameConversation}
+          turn={turnConversation}
+          card={card}
+        />
       }
       filterValue={filter}
       resultSummary={

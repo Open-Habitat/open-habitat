@@ -4988,6 +4988,156 @@ h2.ah-rail-section-head {
 .ah-workspace-link .ah-rail-count-attention {
   flex: none;
 }
+/* The wide rail's regions (rail-scroll-region, direction 1 Työtilat,
+   Jari 21.11.2026). The rail never scrolls as a whole: that hid every
+   conversation once the workspaces were scrolled to. The conversation
+   sections share one region, which takes what it needs and everything but
+   Työtilat's floor, and scrolls only past that; Työtilat's list scrolls in
+   its own region. clip, not hidden: a hidden box still scrolls under
+   scrollIntoView. The narrow rail keeps its single scroll. */
+.ah-rail-regions {
+  overflow: clip;
+}
+.ah-rail-convs {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  /* Room for the rows' focus rings inside the scroller's clip. */
+  margin-inline: -4px;
+  padding-inline: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Always, so a row brought into sight lands clear of an edge chip that
+     appears only after the scroll. */
+  scroll-padding-block: 30px;
+}
+/* Työtilat's floor: its heading, its filter and about three rows. */
+.ah-rail-workspaces {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 11rem;
+  padding-top: var(--ah-s2);
+  border-top: 1px solid var(--ah-line-soft);
+}
+@media (pointer: coarse) {
+  .ah-rail-workspaces {
+    min-height: 13.5rem;
+  }
+}
+.ah-rail-workspaces > .ah-rail-section-head,
+.ah-rail-workspaces > .ah-rail-filter {
+  flex: none;
+}
+.ah-rail-ws-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 2px;
+  min-height: 0;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+/* The edge cue: a soft shade inside an edge that hides rows, drawn by the
+   region itself, with a hairline when rows hide above. railRegions.tsx
+   marks the edges. */
+.ah-rail-convs,
+.ah-rail-ws-scroll {
+  --ah-rail-shade: color-mix(in srgb, var(--ah-ink) 30%, transparent);
+  background-color: var(--ah-rail);
+  background-repeat: no-repeat;
+  background-size: 100% 12px;
+}
+:is([data-theme="dark"], [data-theme="contrast"])
+  :is(.ah-rail-convs, .ah-rail-ws-scroll) {
+  /* On a dark rail a light ink would glow; the shade stays a shadow. */
+  --ah-rail-shade: color-mix(in srgb, #000 70%, transparent);
+}
+:is(.ah-rail-convs, .ah-rail-ws-scroll)[data-above] {
+  background-image: radial-gradient(
+    farthest-side at 50% 0,
+    var(--ah-rail-shade),
+    transparent
+  );
+  background-position: top;
+  box-shadow: inset 0 1px 0 var(--ah-line-soft);
+}
+:is(.ah-rail-convs, .ah-rail-ws-scroll)[data-below] {
+  background-image: radial-gradient(
+    farthest-side at 50% 100%,
+    var(--ah-rail-shade),
+    transparent
+  );
+  background-position: bottom;
+}
+:is(.ah-rail-convs, .ah-rail-ws-scroll)[data-above][data-below] {
+  background-image:
+    radial-gradient(farthest-side at 50% 0, var(--ah-rail-shade), transparent),
+    radial-gradient(
+      farthest-side at 50% 100%,
+      var(--ah-rail-shade),
+      transparent
+    );
+  background-position: top, bottom;
+}
+/* The sections with rows out of sight, named at that edge of the
+   conversations' region (Jari: especially good). Fixed height and a
+   negative margin: the chips overlay the edge row instead of taking room,
+   so their coming and going never moves the rows. */
+.ah-rail-beyond {
+  position: sticky;
+  z-index: 2;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 6px 0 10px;
+  overflow: hidden;
+  background: var(--ah-rail);
+  color: var(--ah-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.ah-rail-beyond[data-edge="below"] {
+  bottom: 0;
+  margin-top: -26px;
+  border-top: 1px solid var(--ah-line-soft);
+  box-shadow: 0 -6px 10px -6px var(--ah-rail-shade, transparent);
+}
+.ah-rail-beyond[data-edge="above"] {
+  top: 0;
+  margin-bottom: -26px;
+  border-bottom: 1px solid var(--ah-line-soft);
+  box-shadow: 0 6px 10px -6px var(--ah-rail-shade, transparent);
+}
+.ah-rail-beyond-chip {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+  line-height: 18px;
+  cursor: pointer;
+}
+.ah-rail-beyond-chip:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-rail-beyond-chip:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: -2px;
+}
+.ah-rail-beyond-chip b {
+  font-weight: 600;
+}
 /* The narrow rail: the Nyt rows as workspace initials with their marks, then
    one button that widens the rail to the workspaces. */
 .ah-rail-collapsed .ah-rail-content {

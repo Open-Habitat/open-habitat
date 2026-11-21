@@ -131,6 +131,8 @@ export function QuietSection({
       className={`ah-now ah-quiet${iconed ? " ah-now-iconed" : ""}`}
       data-testid="rail-quiet"
       data-folded={folded || undefined}
+      // What a folded Hiljaiset out of sight hides (the rail's edge chips).
+      data-rows={view.shown.length}
       aria-labelledby={headId}
     >
       <h2 className="ah-rail-section-head ah-quiet-head" ref={head}>
