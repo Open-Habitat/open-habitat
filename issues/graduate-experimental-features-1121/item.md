@@ -21,3 +21,7 @@ Stay experimental: `rewind-conversation`, `remote-browser`, `multiplayer`. `term
 ## Decisions
 
 - Jari 21.11.2026: the list above. Explain mode graduates, and he wants feedback from it (`explain-mode-feedback`). The name "Jaetut" needs a better title (decided separately).
+
+### 2026-11-21T14:50:07Z · @jari
+
+Jari 21.11.2026: Jaetut is renamed Tuotokset.
