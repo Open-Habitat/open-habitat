@@ -29,14 +29,14 @@ with tarfile.open(archive, 'r:gz') as tar:
             '..' in p.parts or '.' in p.parts or p.parts[0] != root or
             not (m.isfile() or m.isdir())):
             sys.exit('error: unsafe or duplicate archive entry')
-        expected_mode = 0o755 if m.isdir() or m.name in (root + '/bin/open-habitat', root + '/bin/runtime-release') else 0o644
+        expected_mode = 0o755 if m.isdir() or m.name in (root + '/bin/open-habitat', root + '/bin/runtime-release', root + '/bin/open-habitat-mcp-relay') else 0o644
         if m.mode != expected_mode:
             sys.exit('error: archive entry has noncanonical permissions')
         seen.add(m.name)
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat bin/runtime-release web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-guest@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/open-habitat-binding@.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat bin/runtime-release bin/open-habitat-mcp-relay web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-guest@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/open-habitat-binding@.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -54,7 +54,7 @@ for line in manifest.read_text().splitlines():
     expected[name] = digest
 if actual != set(expected) | {'MANIFEST.sha256'}:
     sys.exit('error: package inventory differs from manifest')
-allowed = {'bin/open-habitat', 'bin/runtime-release', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
+allowed = {'bin/open-habitat', 'bin/runtime-release', 'bin/open-habitat-mcp-relay', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
            'site/schema.json', 'site/example.json', 'operator/SKILL.md',
            'systemd/open-habitat-gateway.service', 'systemd/open-habitat-revoke.socket',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
@@ -70,7 +70,7 @@ for name, digest in expected.items():
     if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
         sys.exit('error: package checksum mismatch: ' + name)
 PY
-# The package name promises an architecture; both executables must keep it.
+# The package name promises an architecture; every executable must keep it.
 python3 - "$root" <<'PY'
 import pathlib, re, struct, sys
 root = pathlib.Path(sys.argv[1])
@@ -78,7 +78,7 @@ match = re.fullmatch(r'open-habitat-.+-linux-(amd64|arm64)', root.name)
 if not match:
     sys.exit('error: package name lacks a supported linux target')
 machine = {'amd64': 62, 'arm64': 183}[match.group(1)]
-for name in ('bin/open-habitat', 'bin/runtime-release'):
+for name in ('bin/open-habitat', 'bin/runtime-release', 'bin/open-habitat-mcp-relay'):
     head = (root / name).read_bytes()[:20]
     if len(head) < 20 or head[:6] != b'\x7fELF\x02\x01' or struct.unpack('<H', head[18:20])[0] != machine:
         sys.exit(f'error: {name} is not a 64-bit little-endian linux-{match.group(1)} executable')

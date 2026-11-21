@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Offline regression: re-signed unsafe packages must still fail verification.
 set -euo pipefail
-export TMPDIR=/var/tmp
+export TMPDIR=${TMPDIR:-/var/tmp}
 [[ $# -eq 1 && -f $1 ]] || { echo 'usage: test-package-socket.sh <release.tar.gz>' >&2; exit 1; }
 repo=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
@@ -91,8 +91,8 @@ for mode in storage-rate-limited binding-rate-limited binding-default-deps bindi
   fi
 done
 echo 'Package socket regression passed (re-signed unsafe units/inventories rejected)'
-# Both authenticated operator executables need canonical public execute modes.
-for executable in open-habitat runtime-release; do
+# Every shipped executable needs canonical public execute modes.
+for executable in open-habitat runtime-release open-habitat-mcp-relay; do
   stage="$tmp/private-$executable/stage"
   mkdir -p "$stage"
   tar --same-permissions -xzf "$archive" -C "$stage"
@@ -105,6 +105,38 @@ for executable in open-habitat runtime-release; do
     echo "error: verifier accepted a private $executable mode" >&2; exit 1
   fi
   grep -q 'noncanonical permissions' "$tmp/private-$executable/err"
+done
+# A relay omitted, modified without its manifest hash, or for another target
+# must be refused even when the outer archive checksum was recomputed.
+for mode in relay-missing relay-corrupt relay-arch; do
+  stage="$tmp/$mode/stage"
+  mkdir -p "$stage"
+  tar --same-permissions -xzf "$archive" -C "$stage"
+  root=$(find "$stage" -mindepth 1 -maxdepth 1 -type d)
+  case $mode in
+    relay-missing) rm "$root/bin/open-habitat-mcp-relay" ;;
+    relay-corrupt) printf 'changed' >> "$root/bin/open-habitat-mcp-relay" ;;
+    relay-arch)
+      python3 - "$root/bin/open-habitat-mcp-relay" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+b = bytearray(p.read_bytes())
+b[18:20] = (183 if int.from_bytes(b[18:20], 'little') == 62 else 62).to_bytes(2, 'little')
+p.write_bytes(b)
+PY
+      (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256) ;;
+  esac
+  unsafe="$tmp/$mode/unsafe.tar.gz"
+  tar -czf "$unsafe" -C "$stage" "$(basename "$root")"
+  (cd "$(dirname "$unsafe")"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+  if "$repo/scripts/verify-release.sh" --archive "$unsafe" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
+    echo "error: verifier accepted $mode" >&2; exit 1
+  fi
+  case $mode in
+    relay-missing) grep -q 'package missing bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
+    relay-corrupt) grep -q 'package checksum mismatch: bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
+    relay-arch) grep -q 'bin/open-habitat-mcp-relay is not a 64-bit little-endian' "$tmp/$mode/err" ;;
+  esac
 done
 # A re-signed package renamed to the other architecture must not pass as one.
 stage="$tmp/foreign-arch/stage"

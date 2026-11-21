@@ -1324,6 +1324,16 @@ the next check, without a new sign-in. Before an agent deletes, sends or
 shares a calendar through these tools, the person's browser asks them.
 There is nothing to configure.
 
+Keep `bin/open-habitat-mcp-relay` with the product executable. The public
+`open-habitat mcp-relay` command replaces itself with this small transport
+process, resolved beside the real executable (not through `PATH`). `host apply`
+and `host upgrade` stage both into the same generation. A manually maintained
+installation must likewise keep both files together, root-owned and mode 0755;
+copying only `open-habitat` makes Microsoft tools unavailable. External package
+inspectors must accept and verify the additional executable and map its
+installed manifest path `open-habitat-mcp-relay` to the archive path
+`bin/open-habitat-mcp-relay`, just as they do for the main executable.
+
 Connecting offers no choice of folders and copies no files: agents reach
 Microsoft 365 files by search and fetch only what they need, as above. A new
 account therefore has no `~/cloud/onedrive` or `~/cloud/sharepoint`

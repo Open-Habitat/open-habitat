@@ -794,11 +794,13 @@ refusal, both uncertain paths and strict flags.
 `mcp-relay microsoft --account ADDRESS --area AREA` is the command of one
 Microsoft area entry in Pi's `mcp.json` (ADR 0039). Pi runs it as an MCP
 stdio server, so MCP's stdio transport, not the canon's resource surface, is
-its contract, and only for this leaf:
+its contract, and only for this leaf. The entry replaces itself with the
+same generation's `open-habitat-mcp-relay`; that private transport executable
+has no separate operator surface and shares this exception:
 
 | § | Status | Evidence and limits |
 |---|---|---|
-| 1 | pass | Exactly `microsoft --account ADDRESS --area mail|calendar|contacts|files|admin`; anything else exits 1 before connecting (`mcpRelayCommand`). |
+| 1 | pass | Exactly `microsoft --account ADDRESS --area mail|calendar|contacts|files|admin`; anything else exits 1 before connecting (`msmcp.Command`). |
 | 2, 4 | exception | Exit 0 when Pi closes the entry; 1 for malformed arguments; 2 when the person's daemon cannot be reached, with one fixed stderr line, never a path or native error. |
 | 3 | pass | Never prompts or reads a terminal. When nothing listens it starts the person's daemon once through the socket-activated own-user agent socket, then waits at most 20 seconds. |
 | 5, 9 | exception | Stdout is MCP (newline-delimited JSON-RPC from the daemon), not a JSON result envelope; global `--json` does not change it. |

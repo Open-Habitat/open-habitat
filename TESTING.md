@@ -856,10 +856,15 @@ An unprivileged test cannot connect as another kernel UID, so the foreign-UID
 case replaces the accepted peer's UID; the 0700 directory is what keeps other
 accounts out on a host. `TestMicrosoftFootprintLab` measures the whole
 MCP-side memory with four real Pi conversations when given `OH_LAB_EVIDENCE`,
-`OH_LAB_RELAY` (a built binary), `OH_LAB_MICROSOFT` and the core runtime's
+`OH_LAB_RELAY` (the built `open-habitat` with `open-habitat-mcp-relay` beside
+it), `OH_LAB_MICROSOFT` and the core runtime's
 `OH_LAB_PI_NODE`/`OH_LAB_PI_CLI`; it reports, it does not judge.
 `internal/daemon/pi-device-test/microsoft-permission.test.mjs` covers the
-permission hook's questions, lookups and blocks.
+permission hook's questions, lookups and blocks. `TestUpgradeProductRelay`
+runs in the root host-initialization container and checks the sibling's digest,
+mode, ownership, symlink/missing-file refusal and manifest membership in both
+archive and installed-generation layouts; it does not stage a generation or
+qualify a live upgrade.
 
 
 `./scripts/test-gateway-bind.sh` exercises a nonroot gateway-like process with

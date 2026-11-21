@@ -40,8 +40,20 @@ func productInputs() (string, string, fileIdentity, error) {
 	if _, e = trustedBytes(web+"/index.html", MaxSiteBytes); e != nil {
 		return "", "", fileIdentity{}, e
 	}
+	if _, e = productRelayDigest(exe); e != nil {
+		return "", "", fileIdentity{}, e
+	}
 	id := fileIdentity{st.Dev, st.Ino, st.Uid, st.Gid, st.Mode, st.Size, st.Mtim, st.Ctim}
 	return exe, web, id, nil
+}
+
+func productRelayDigest(exe string) (string, error) {
+	path := filepath.Join(filepath.Dir(exe), "open-habitat-mcp-relay")
+	st, err := os.Lstat(path)
+	if err != nil || !st.Mode().IsRegular() || st.Mode().Perm() != 0755 {
+		return "", ErrTrust
+	}
+	return trustedFileDigest(path)
 }
 
 func trustedFileDigest(path string) (string, error) {

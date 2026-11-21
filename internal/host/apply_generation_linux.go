@@ -250,6 +250,9 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e = copyOne(exe, stage+"/open-habitat", "open-habitat", 0755); e != nil {
 		return e
 	}
+	if e = copyOne(filepath.Join(filepath.Dir(exe), "open-habitat-mcp-relay"), stage+"/open-habitat-mcp-relay", "open-habitat-mcp-relay", 0755); e != nil {
+		return e
+	}
 	e = filepath.WalkDir(sourceWeb, func(path string, d fs.DirEntry, e error) error {
 		if e != nil {
 			return e

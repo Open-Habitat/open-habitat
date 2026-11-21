@@ -27,7 +27,7 @@ import (
 // with
 //
 //	OH_LAB_EVIDENCE  a directory for the JSON result
-//	OH_LAB_RELAY     a built open-habitat binary (the relay)
+//	OH_LAB_RELAY     a built open-habitat binary (with its sibling relay)
 //	OH_LAB_MICROSOFT the pinned integrations runtime (bin/ms-365-mcp-server)
 //	OH_LAB_PI_NODE, OH_LAB_PI_CLI  the core runtime's node and Pi cli.js
 //
@@ -137,8 +137,8 @@ func TestMicrosoftFootprintLab(t *testing.T) {
 		r.EndpointRSSDelta = memory(os.Getpid()).rss - selfBefore.rss
 		r.MCPTotalRSS = r.NativeRSS + r.RelaysRSS + r.EndpointRSSDelta
 		r.MCPTotalPSS = r.NativePSS + r.RelaysPSS + r.EndpointRSSDelta
-		if r.NativeProcesses < 1 {
-			t.Fatal("no native process")
+		if r.NativeProcesses != 1 || r.Relays != 5*n {
+			t.Fatalf("conversation %d: native processes %d, relay processes %d; want 1 and %d", n, r.NativeProcesses, r.Relays, 5*n)
 		}
 		rows = append(rows, r)
 	}
@@ -218,7 +218,10 @@ func relaysOf(relay string, pis []*exec.Cmd) []int {
 		for _, pid := range descendants(p.Process.Pid) {
 			cmdline, _ := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/cmdline")
 			args := strings.Split(string(cmdline), "\x00")
-			if len(args) > 1 && args[0] == relay && args[1] == "mcp-relay" {
+			// Also recognize the exec-replaced minimal relay. Keeping the old
+			// entry lets this same lab measure a pre-change binary for comparison.
+			if len(args) > 1 && ((args[0] == relay && args[1] == "mcp-relay") ||
+				(args[0] == filepath.Join(filepath.Dir(relay), "open-habitat-mcp-relay") && args[1] == "microsoft")) {
 				out = append(out, pid)
 			}
 		}

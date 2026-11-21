@@ -26,8 +26,8 @@ from pathlib import Path
 MACHINES = {'amd64': 62, 'arm64': 183}
 
 
-def package_files(path, arch):
-    """Product files the upgrade authenticates: the executable and the web assets."""
+def package_files(path, arch, *, require_relay=False):
+    """Product files the upgrade authenticates: executables and web assets."""
     files, top = [], None
     with tarfile.open(path, 'r:gz') as tar:
         for member in tar.getmembers():
@@ -35,18 +35,20 @@ def package_files(path, arch):
             top = top or head
             if not member.isfile():
                 continue
-            if rel == 'bin/open-habitat':
+            if rel in ('bin/open-habitat', 'bin/open-habitat-mcp-relay'):
                 data = tar.extractfile(member).read()
                 # The name is only a label; the upgrade must execute on the predecessor's host.
                 if data[:6] != b'\x7fELF\x02\x01' or int.from_bytes(data[18:20], 'little') != MACHINES[arch]:
-                    sys.exit(f'error: {path} bin/open-habitat is not a linux-{arch} executable')
+                    sys.exit(f'error: {path} {rel} is not a linux-{arch} executable')
                 digest = hashlib.sha256(data).hexdigest()
-                files.append({'path': 'open-habitat', 'sha256': digest, 'mode': 0o755})
+                files.append({'path': rel.removeprefix('bin/'), 'sha256': digest, 'mode': 0o755})
             elif rel.startswith('web/'):
                 digest = hashlib.sha256(tar.extractfile(member).read()).hexdigest()
                 files.append({'path': rel, 'sha256': digest, 'mode': 0o644})
     if not any(f['path'] == 'open-habitat' for f in files):
         sys.exit(f'error: {path} lacks bin/open-habitat')
+    if require_relay and not any(f['path'] == 'open-habitat-mcp-relay' for f in files):
+        sys.exit(f'error: {path} lacks bin/open-habitat-mcp-relay')
     files.sort(key=lambda f: (f['path'] != 'open-habitat', f['path']))
     return files
 
@@ -78,7 +80,7 @@ def main(argv=None):
     previous = next(f for f in package_files(packages[0], arch) if f['path'] == 'open-habitat')
     upgrade = {'protocol': 1, 'predecessor_binary_sha256': previous['sha256'],
                'predecessor': {'version': manifest['version'], 'manifest_sha256': hashlib.sha256(raw).hexdigest()},
-               'product': package_files(args.package, arch)}
+               'product': package_files(args.package, arch, require_relay=True)}
     for name, doc in (('artifacts.json', manifest['artifacts']), ('upgrade.json', upgrade)):
         with open(out / name, 'x') as f:
             json.dump(doc, f)

@@ -21,8 +21,9 @@ Two ideas shape everything here:
 
 ## Where authority lives
 
-The product is one Go binary plus the browser package in `web/`. Three
-authorities stay apart: `internal/gateway` authenticates the browser and picks
+The product is the main Go binary, a minimal MCP stdio relay, and the browser
+package in `web/`. The relay stays separate so each open conversation does not
+retain the main binary's package initialization. Three authorities stay apart: `internal/gateway` authenticates the browser and picks
 the Unix user, `internal/daemon` runs as that user and trusts no identity claim
 from the browser or the gateway, and `internal/provision` is the root-only
 broker that only creates an account on first approved login. Kept apart, a bug

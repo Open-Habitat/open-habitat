@@ -19,6 +19,8 @@ it carries. To upgrade, deliver the successor release and change only
 
 ### Changed
 
+- Microsoft connections use a small relay process to reduce memory per open conversation. Releases now include `bin/open-habitat-mcp-relay`; custom installers must keep it beside the real `open-habitat` executable, root-owned and mode 0755, and include it in package verification. `host apply` and `host upgrade` handle this automatically.
+
 ### Fixed
 <!-- oss-changelog:unreleased-end -->
 

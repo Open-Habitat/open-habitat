@@ -236,13 +236,18 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	if _, e := integrationsPolicy(); e != nil {
 		set("installation.integrations_config", "fail", "integrations_config_invalid")
 	}
-	if _, _, id, e := productInputs(); e != nil {
+	if exe, _, id, e := productInputs(); e != nil {
 		set("installation.product", "fail", "unsafe_product_input")
 	} else {
 		set("installation.product", "pass", "trusted_product_input")
 		b, _ := json.Marshal(id)
 		h := sha256.Sum256(b)
 		r.Inputs["product_observation"] = hex.EncodeToString(h[:])
+		if digest, err := productRelayDigest(exe); err != nil {
+			set("installation.product", "fail", "unsafe_product_input")
+		} else {
+			r.Inputs["product_relay_digest"] = digest
+		}
 	}
 	if e := gatewayAncestorSafe("/etc/open-habitat", 0); e != nil {
 		set("installation.parents", "fail", "gateway_parent_requires_root_0711_or_0755_no_acl")

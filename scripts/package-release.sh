@@ -26,6 +26,7 @@ ln -s "$repo/web/src" "$build_repo/web/src"
 python3 "$build_repo/scripts/generate-ui-reference.py"
 (cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/open-habitat/open-habitat/internal/cli.version=$version -X github.com/open-habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" ./cmd/open-habitat)
 (cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o "$root/bin/runtime-release" ./cmd/runtime-release)
+(cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o "$root/bin/open-habitat-mcp-relay" ./cmd/open-habitat-mcp-relay)
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.
@@ -42,7 +43,7 @@ cp "$repo/site/schema.json" "$repo/site/example.json" "$root/site/"
 # Canonical public package modes must not inherit the build shell's umask.
 find "$root" -type d -exec chmod 0755 {} +
 find "$root" -type f -exec chmod 0644 {} +
-chmod 0755 "$root/bin/open-habitat" "$root/bin/runtime-release"
+chmod 0755 "$root/bin/open-habitat" "$root/bin/runtime-release" "$root/bin/open-habitat-mcp-relay"
 ( cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
 chmod 0644 "$root/MANIFEST.sha256"
 archive="$output/$name.tar.gz"; tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -C "$stage" -cf - "$name" | gzip -n > "$archive"

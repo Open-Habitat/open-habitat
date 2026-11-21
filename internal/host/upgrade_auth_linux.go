@@ -26,8 +26,13 @@ func verifyUpgradeProduct(ctx context.Context, r AuthenticatedRelease) error {
 	if e != nil {
 		return e
 	}
+	return verifyUpgradeProductFiles(ctx, exe, web, r.manifest.Upgrade.Product)
+}
+
+func verifyUpgradeProductFiles(ctx context.Context, exe, web string, product []ProductFile) error {
+	var e error
 	expected := map[string]ProductFile{}
-	for _, f := range r.manifest.Upgrade.Product {
+	for _, f := range product {
 		expected[f.Path] = f
 	}
 	verify := func(path, name string) error {
@@ -50,6 +55,9 @@ func verifyUpgradeProduct(ctx context.Context, r AuthenticatedRelease) error {
 		return nil
 	}
 	if e = verify(exe, "open-habitat"); e != nil {
+		return e
+	}
+	if e = verify(filepath.Join(filepath.Dir(exe), "open-habitat-mcp-relay"), "open-habitat-mcp-relay"); e != nil {
 		return e
 	}
 	e = filepath.WalkDir(web, func(path string, d fs.DirEntry, err error) error {

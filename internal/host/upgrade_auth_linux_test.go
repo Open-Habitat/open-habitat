@@ -15,6 +15,11 @@ import (
 
 func TestUpgradeReleaseAuthentication(t *testing.T) {
 	m := ReleaseManifest{SchemaVersion: 2, Version: "2.0.0", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: []ReleaseArtifact{{Profile: "core", Archive: "core.tar.gz", SHA256: strings.Repeat("a", 64), Size: 1, ExpandedSize: 1024, Entries: 1, Requires: []string{}, Packages: []RuntimePackage{}}}, Upgrade: &ReleaseUpgrade{Protocol: 1, PredecessorBinarySHA256: strings.Repeat("e", 64), Predecessor: Release{"1.0.0", strings.Repeat("b", 64)}, Product: []ProductFile{{"open-habitat", strings.Repeat("c", 64), 0755}, {"web/index.html", strings.Repeat("d", 64), 0644}}}}
+	// A retained predecessor from before the relay split remains readable.
+	if _, e := EncodeRelease(m); e != nil {
+		t.Fatal(e)
+	}
+	m.Upgrade.Product = append(m.Upgrade.Product, ProductFile{"open-habitat-mcp-relay", strings.Repeat("9", 64), 0755})
 	b, e := EncodeRelease(m)
 	if e != nil {
 		t.Fatal(e)
@@ -25,7 +30,7 @@ func TestUpgradeReleaseAuthentication(t *testing.T) {
 		t.Fatal(e)
 	}
 	// The predecessor and product bytes are both covered by the pinned digest.
-	for _, change := range []func(*ReleaseManifest){func(m *ReleaseManifest) { m.Upgrade.Predecessor.ManifestSHA256 = strings.Repeat("e", 64) }, func(m *ReleaseManifest) { m.Upgrade.Product[0].SHA256 = strings.Repeat("f", 64) }} {
+	for _, change := range []func(*ReleaseManifest){func(m *ReleaseManifest) { m.Upgrade.Predecessor.ManifestSHA256 = strings.Repeat("e", 64) }, func(m *ReleaseManifest) { m.Upgrade.Product[0].SHA256 = strings.Repeat("f", 64) }, func(m *ReleaseManifest) { m.Upgrade.Product[2].SHA256 = strings.Repeat("f", 64) }} {
 		var altered ReleaseManifest
 		if e = json.Unmarshal(b, &altered); e != nil {
 			t.Fatal(e)
@@ -41,6 +46,8 @@ func TestUpgradeReleaseAuthentication(t *testing.T) {
 		func(m *ReleaseManifest) { m.Upgrade.Predecessor.Version = m.Version },
 		func(m *ReleaseManifest) { m.Upgrade.Product[0].Path = "../open-habitat" },
 		func(m *ReleaseManifest) { m.Upgrade.Product[0].Mode = 0777 },
+		func(m *ReleaseManifest) { m.Upgrade.Product[2].Mode = 0644 },
+		func(m *ReleaseManifest) { m.Upgrade.Product[2].Path = "other-helper" },
 		func(m *ReleaseManifest) { m.Upgrade.Product = append(m.Upgrade.Product, m.Upgrade.Product[0]) },
 	} {
 		var bad ReleaseManifest

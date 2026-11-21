@@ -366,7 +366,9 @@ func validUpgrade(u *ReleaseUpgrade, version string) bool {
 		if !fs.ValidPath(f.Path) || seen[f.Path] || !digestRE.MatchString(f.SHA256) {
 			return false
 		}
-		if f.Path == "open-habitat" {
+		// Older predecessor manifests need not contain the relay; the executing
+		// successor requires and authenticates it in verifyUpgradeProduct.
+		if f.Path == "open-habitat" || f.Path == "open-habitat-mcp-relay" {
 			if f.Mode != 0755 {
 				return false
 			}

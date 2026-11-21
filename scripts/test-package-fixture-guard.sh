@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Both entrypoints must reject synthetic content, even with valid checksums.
 set -euo pipefail
-export TMPDIR=/var/tmp
+export TMPDIR=${TMPDIR:-/var/tmp}
 [[ $# == 1 && -f $1 ]] || { echo 'usage: test-package-fixture-guard.sh <release.tar.gz>' >&2; exit 1; }
 repo=$(cd "$(dirname "$0")/.." && pwd)
 archive=$(realpath "$1")
