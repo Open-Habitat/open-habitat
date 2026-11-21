@@ -72,36 +72,29 @@ Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i2-*.log`.
 ## Review
 
 This changes product behaviour, so it got a targeted `/llm-review`: one finder,
-gpt-6-astra, with every candidate checked locally. Both candidates were real
-and are fixed in a follow-up commit, with a store test that fails without the
-fix:
+gpt-6-astra, with every candidate checked locally, plus one follow-up on the
+same thread.
 
-1. A status read by `useConversation.refresh` *before* the invalidating event
-   cleared the stale mark while the store's own re-read was still in flight.
-   A kept message could then have gone on that older knowledge. A manual press
-   could already do the same before this change. Now only the store's own
-   re-read clears the mark.
-2. A superseded failed re-read could mark a fresh status lost. Now only a
-   still-stale status is marked lost.
+1. **A superseded failed re-read marked a fresh status lost**, which refused
+   and gave back kept messages. Fixed: only a still-stale status is marked
+   lost. A store test covers it.
+2. **A status another reader sampled before the invalidating event can clear
+   the stale mark**, and a kept message then goes on it. The mechanism is real,
+   but it predates this change: a person pressing send at that moment acted on
+   the same status before. I tried keeping the mark until the store's own
+   re-read returned. That needed two more repairs: an older re-read that never
+   settled the mark after a daemon restart, and an epoch-dropped re-read that
+   stranded it. It also made the "status out of date" warning flash for
+   100–500 ms at the end of a turn under load, which the first-message lab
+   spec caught as layout shift (9–32 of 20–60 runs at CPU 6×). The attempt was
+   reverted. Draining a kept message on such a status is no riskier than the
+   manual press, and the daemon judges every write against its real state.
+   Closing it properly needs an invalidation generation that every status
+   reader carries, which is beyond this issue.
 
-The whole-file run at `OH_CPU_THROTTLE=4` then caught a hole in fix 1. After a
-daemon restart, another reader applied a newer status while the store's
-re-read was in flight. The re-read came back older than that status and was
-dropped without settling the stale mark, so "status out of date" stayed and
-the lost send was never re-sent. A store re-read is taken after the
-invalidating event, so any status already held that is newer than it is fresh.
-Now an older re-read settles the mark. The new store test fails without this
-fix.
+## Decisions for later review (continued)
 
-A follow-up review of the final store state (same thread) found one more
-stranding path. A store re-read that outlived an epoch change, from snapshot
-reconciliation or a stream from a new daemon life, returned without applying or
-reading again. Under the in-flight rule nothing else cleared the mark. Such a
-read now triggers a fresh read, and a store test covers it.
-
-It also raised a gap that predates this change and is not widened by it: a
-status another reader *sampled* before the invalidating event, but delivered
-after the store's re-read failed, clears the mark. Closing it would need every
-status reader to carry an invalidation generation. Writes stay under the
-daemon's authority, so a client that is wrong here sends a command the daemon
-judges against its real state. Recorded here, not filed.
+- **Gap 2 above is left open.** A kept message may go on a status sampled just
+  before an invalidating event, as a manual press already could. The fix that
+  was tried and reverted shows the cost: a flashing outage warning on every
+  loaded turn end.

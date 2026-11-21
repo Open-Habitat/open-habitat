@@ -634,21 +634,9 @@ export class ConversationStore {
   }
   /** Applies a status unless it is older than the one held (see
    * statusPositions); returns whether it was applied. */
-  applyStatus(id: string, status: Status, ownRead = false): boolean {
+  applyStatus(id: string, status: Status): boolean {
     if (this.disposed || status.agent_id !== id) return false;
-    if (this.olderStatus(id, status)) {
-      // The re-read was taken after the invalidating event, so a status
-      // already held that is newer than it is fresh too.
-      if (ownRead) this.settleStale(id);
-      return false;
-    }
-    // Another reader's status may have been read before the event that made
-    // this one stale; only the re-read that event started settles it. A
-    // message kept meanwhile would otherwise go on the older knowledge.
-    const stillStale =
-      !ownRead &&
-      this.statusRequests.has(id) &&
-      this.metadata.staleStatuses.has(id);
+    if (this.olderStatus(id, status)) return false;
     const at = this.statusPosition(status);
     if (at) this.statusPositions.set(id, at);
     else this.statusPositions.delete(id);
@@ -658,9 +646,9 @@ export class ConversationStore {
     this.metadata = {
       ...this.metadata,
       statuses: new Map(this.metadata.statuses).set(id, status),
-      staleStatuses: stillStale
-        ? this.metadata.staleStatuses
-        : new Set([...this.metadata.staleStatuses].filter((key) => key !== id)),
+      staleStatuses: new Set(
+        [...this.metadata.staleStatuses].filter((key) => key !== id),
+      ),
       lostStatuses: new Set(
         [...this.metadata.lostStatuses].filter((key) => key !== id),
       ),
@@ -1127,33 +1115,23 @@ export class ConversationStore {
     if (this.statusRequests.has(id)) return;
     this.markStatusLost(id, false);
     const epoch = this.epoch;
-    // A read from before an epoch change says nothing now, but the status it
-    // was to settle is still stale: read again rather than leave it so.
-    const readAgain = () => {
-      if (this.disposed || this.epoch === epoch) return false;
-      if (this.statusRequests.get(id) === request) {
-        this.statusRequests.delete(id);
-        this.notifyStatus(id);
-      }
-      return true;
-    };
     const fetchStatus = async () => {
       try {
         const value = await this.statusReader(id);
-        if (this.disposed || readAgain()) return;
+        if (this.disposed || this.epoch !== epoch) return;
         if (this.statusVersions.get(id) !== version) {
           // A notification crossed the read. Take one fresh observation.
           this.statusRequests.delete(id);
           this.notifyStatus(id);
           return;
         }
-        this.applyStatus(id, value, true);
+        this.applyStatus(id, value);
       } catch {
         // Keep the cached status explicitly stale; an explicit check can retry.
         // A failure a successful status has since replaced loses nothing.
         if (
           !this.disposed &&
-          !readAgain() &&
+          this.epoch === epoch &&
           this.metadata.staleStatuses.has(id)
         )
           this.markStatusLost(id, true);
@@ -1164,23 +1142,6 @@ export class ConversationStore {
     };
     const request = fetchStatus();
     this.statusRequests.set(id, request);
-  }
-  private settleStale(id: string) {
-    if (
-      !this.metadata.staleStatuses.has(id) &&
-      !this.metadata.lostStatuses.has(id)
-    )
-      return;
-    const without = (set: ReadonlySet<string>) =>
-      new Set([...set].filter((key) => key !== id));
-    this.metadata = {
-      ...this.metadata,
-      staleStatuses: without(this.metadata.staleStatuses),
-      lostStatuses: without(this.metadata.lostStatuses),
-    };
-    this.metaListeners.forEach((listener) => {
-      listener();
-    });
   }
   /** A stale status is either being read again, and a write can wait for it,
    * or its read failed, and a write is refused until a check reads again. */
