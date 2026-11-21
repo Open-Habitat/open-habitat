@@ -39,3 +39,7 @@ Jari 21.11.2026 on round 4: Kulho and Lasit end naturally now; character kept an
 ### 2026-11-21T12:45:50Z · @jari
 
 Jari 21.11.2026 on round 5: final set is ten sounds — the nine kept ones (Kalimba default, Marimba, Vibrafoni, Tunnus puu, Pisara, Lasit, Tuulikello, Kuplat, Kulho) plus Jääpuikot. Sävelrumpu, Harppu, Kitara and Kivi lampeen are dropped. The person chooses short or long sounds (one setting for all sounds). Next: a prototype round riffing the B Renkaat tile iconography so every one of the ten sounds has its own visual, on a page that also shows the other sound choices.
+
+### 2026-11-21T13:06:56Z · @jari
+
+Jari 21.11.2026 on round 6: emblem direction B Väreilyn muoto is best. Next: riff every one of the ten emblems into three variants, each set of three following a stated idea; all are fairly nice already, Kalimba and Kulho need the most. Lyhyet (short sounds) is the default. Workspace sounds get their own prototype round: in Settings or in the workspace itself — probably both; the picker pop-up could show the emblems too.
