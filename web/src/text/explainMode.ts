@@ -571,6 +571,18 @@ const fi = {
       lead: "Kertoo, missä osioissa on keskusteluja ylempänä tai alempana ja kuinka monta. Napautus vierittää osioon.",
       know: "Keskustelut vierivät omassa alueessaan vain, kun ne eivät mahdu näkyviin. Työtilat vierivät aina omassaan, joten niitä selatessa keskustelut pysyvät paikallaan. Kun sivupalkki on täynnä, Hiljaiset taittuu itsestään, kunnes avaat tai taitat sen itse.",
     },
+    S39: {
+      name: "Agentin käytössä",
+      lead: "Avaa luettelon palveluista ja kansioista, joita agenttisi käyttävät, lajeittain.",
+      know: "Kunkin kohdalla lukee, mitä on mukana ja mitä agentti saa tehdä. Kaikki tehdään sinun tunnuksillasi.",
+      try: "Avaa Agentin käytössä",
+    },
+    S40: {
+      name: "Työtilan ruutu",
+      lead: "Avaa taitetut Hiljaiset ja näyttää niistä vain tämän työtilan keskustelut.",
+      know: "Luku kertoo, montako hiljaista keskustelua työtilassa on. Rajaus säilyy kaikilla laitteillasi.",
+      try: "Avaa työtilan Hiljaiset",
+    },
     E01: {
       name: "Työtilat",
       lead: "Etusivu kokoaa kaikki työtilasi ja niiden avoimen työn yhdelle sivulle.",
@@ -2515,6 +2527,18 @@ export const explainModeText = catalog(fi, {
       name: "Conversations out of sight",
       lead: "Says which sections have conversations further up or down, and how many. A press scrolls to the section.",
       know: "The conversations scroll in their own area only when they do not fit. Workspaces always scroll in theirs, so browsing them never moves a conversation. When the rail is full, Quiet folds itself until you open or fold it yourself.",
+    },
+    S39: {
+      name: "Agent resources",
+      lead: "Opens the services and folders your agents use, by kind.",
+      know: "Each one says what is included and what the agent may do. Everything is done with your own accounts.",
+      try: "Open Agent resources",
+    },
+    S40: {
+      name: "Workspace tile",
+      lead: "Opens the folded Quiet list showing only this workspace's conversations.",
+      know: "The number is how many quiet conversations the workspace has. The choice stays on all your devices.",
+      try: "Open this workspace's Quiet",
     },
     E01: {
       name: "Workspaces",
