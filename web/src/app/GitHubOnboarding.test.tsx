@@ -22,6 +22,9 @@ import { piStatus } from "./pi";
 vi.mock("./pi", () => ({
   sessionCSRF: vi.fn(async () => "c".repeat(43)),
   piStatus: vi.fn(async () => "usable"),
+  // No readable session for the preferences: the agent note stays off the
+  // route, as the experimental feature is for a new account.
+  accountSession: vi.fn(async () => "login"),
 }));
 vi.mock("./firstRoute", () => ({ finishFirstRoute: vi.fn(async () => {}) }));
 vi.mock("./github", async (actual) => ({
