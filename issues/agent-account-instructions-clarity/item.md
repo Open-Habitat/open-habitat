@@ -60,6 +60,10 @@ Jari 21.11.2026 on research-topics: confirmation for deletes and calendar sharin
 
 Jari 21.11.2026: permission question direction 2 Kenttä (the question takes the composer's place, so the person must answer). Microsoft areas: one shared Microsoft MCP server per person is required, and he asks whether one server entry can serve all areas instead of five; a technical decision verifies the single-process design before implementation.
 
+### 2026-11-21T12:50:20Z · @jari
+
+Jari 21.11.2026: one Microsoft MCP server process per person is an absolute requirement (not per area, not per conversation). Also try: one entry, the agent always writes the category into its tool search.
+
 ## Agent Runs
 
 ### 2026-11-21T10:15:13Z · @agent
