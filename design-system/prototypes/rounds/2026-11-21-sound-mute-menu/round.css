@@ -1,0 +1,74 @@
+/* Review chrome above the production shell (as in the sibling rounds). */
+html, body { margin: 0; background: var(--ah-bg); }
+.sm-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.sm-bar strong { font-weight: 600; }
+.sm-bar select, .sm-bar button { font: inherit; max-width: 100%; }
+.sm-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.sm-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.sm-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.sm-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .sm-bar { padding: 6px 10px; gap: 2px 10px; }
+  .sm-round, .sm-lines, .sm-recommend { font-size: 11px; line-height: 1.3; }
+  .sm-round, .sm-recommend { display: none; }
+  .sm-lines li:not([aria-current]) { display: none; }
+}
+.sm-stage .ah-app-shell { top: var(--review-h, 0px); height: calc(100dvh - var(--review-h, 0px) - 60px); }
+.sm-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .sm-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.sm-toast {
+  position: fixed; z-index: 60; left: 50%; bottom: 72px; transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+
+/* Review aid in the main area (not product UI). */
+.sm-main { padding: calc(var(--ah-s6) + 8px) var(--ah-s5); }
+.sm-aid {
+  max-width: 520px; margin: 0 auto; display: grid; gap: var(--ah-s3);
+  padding: var(--ah-s4) var(--ah-s5); border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md);
+  color: var(--ah-ink); font-size: var(--ah-size-meta, 13px);
+}
+.sm-aid h2 { margin: 0; font-size: 14px; }
+.sm-aid-desc { margin: 0; color: var(--ah-ink-2); }
+.sm-aid dl { margin: 0; display: grid; gap: 4px; }
+.sm-aid dl > div { display: flex; justify-content: space-between; gap: var(--ah-s3); }
+.sm-aid dt { color: var(--ah-ink-2); }
+.sm-aid dd { margin: 0; font-weight: 600; }
+.sm-aid dl > div[data-plays] dd { color: var(--ah-accent-ink); }
+.sm-aid p[role="status"] { margin: 0; }
+.sm-aid .ah-button { justify-self: start; }
+
+/* The round's pieces in production's account shelf and menu. */
+.sm-trigger { position: relative; }
+.sm-badge {
+  position: absolute; left: 17px; top: -3px; display: inline-grid; place-items: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--ah-surface); border: 1px solid var(--ah-line); color: var(--ah-ink);
+}
+.sm-badge .sm-speaker { width: 11px; height: 11px; }
+.sm-speaker { flex: none; }
+.sm-speaker-button[data-status="device"] { color: var(--ah-ink); background: var(--ah-surface-2); }
+.sm-night { position: relative; display: inline-grid; }
+.sm-night svg:last-child { position: absolute; right: -5px; top: -5px; width: 9px; height: 9px; }
+.sm-sound { border-top: 1px solid var(--ah-line-soft); margin-top: 4px; padding-top: 4px; }
+.sm-c-actions { margin-left: auto; display: inline-flex; gap: 4px; }
+.sm-state {
+  display: flex; align-items: flex-start; gap: 6px; margin: 0 6px 4px 10px;
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta, 12px); line-height: 1.4; max-width: 17rem;
+}
+.sm-state > svg { margin-top: 1px; width: 14px; height: 14px; flex: none; }
+.sm-state[data-status="device"], .sm-state[data-status="snooze"] { color: var(--ah-ink); }
+.sm-why { color: var(--ah-ink-2); }
+.sm-link {
+  padding: 0; border: 0; background: none; font: inherit; color: var(--ah-accent-ink);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.sm-menu { max-width: min(92vw, 20rem); }
