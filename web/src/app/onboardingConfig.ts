@@ -6,9 +6,10 @@ import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
 import { liveText } from "../i18n";
 import { onboardingSettingsText } from "../text/onboardingSettings";
-import { bounded, type IntegrationList, type ProviderId } from "./integrations";
+import type { IntegrationList, ProviderId } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 const txt = liveText(onboardingSettingsText);
 

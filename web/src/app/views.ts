@@ -7,6 +7,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { ViewSummary } from "../components/ViewOffer";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
+import { readJSON } from "./readJSON";
 
 const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
@@ -19,13 +20,9 @@ export const viewIdPattern = /^v[a-z2-7]{26}$/;
 const limit = 1 << 20;
 
 async function boundedJSON(response: Response, max: number): Promise<unknown> {
-  if (
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
+  return readJSON(response, max).catch(() => {
     throw new Error("unexpected view reply");
-  const text = await response.text();
-  if (text.length > max) throw new Error("unexpected view reply");
-  return JSON.parse(text);
+  });
 }
 
 export type ViewPage = { views: ViewSummary[]; next?: string };

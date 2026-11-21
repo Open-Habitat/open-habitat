@@ -1,10 +1,10 @@
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
-import { bounded } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 import type { KeyProvider, SiteKey } from "./onboardingConfig";
+import { readJSON as bounded } from "./readJSON";
 
 // Giving the site AI key to people who joined before it (ADR 0030; Jari
 // 2026-10-24). The gateway's own record says which key it gave whom; a

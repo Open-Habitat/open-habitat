@@ -1,8 +1,8 @@
 import schema from "../../../contracts/v1/first-route.schema.json";
-import { bounded } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
 import { readSiteOnboarding } from "./onboardingConfig";
+import { readJSON as bounded } from "./readJSON";
 
 // The first-login route ends when Pi is usable, except for a person whose
 // account-creating sign-in seeded the site AI key: their Pi was usable before

@@ -1,9 +1,10 @@
 import changeSchema from "../../../contracts/v1/gitea-connection-change.schema.json";
 import reposSchema from "../../../contracts/v1/gitea-repos.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
-import { bounded, Refused } from "./integrations";
+import { Refused } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 // Gitea connections are tea's own logins in the person's home (ADR 0031):
 // the page sends an address and a personal access token once, to the

@@ -2,9 +2,9 @@ import schema from "../../../contracts/v1/server-integrations.schema.json";
 import { liveText } from "../i18n";
 import { serverIntegrationsText } from "../text/serverIntegrations";
 import type { Level, ProviderId } from "./integrations";
-import { bounded } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 const txt = liveText(serverIntegrationsText);
 

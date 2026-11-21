@@ -14,6 +14,7 @@ import { formatDate, liveText } from "../i18n";
 import { viewLinksText } from "../text/viewLinks";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite, writeOutcome } from "./mutations";
+import { readJSON } from "./readJSON";
 
 const txt = liveText(viewLinksText);
 
@@ -126,13 +127,9 @@ export function resetViewLinks() {
 }
 
 async function boundedJSON(response: Response, max: number): Promise<unknown> {
-  if (
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
+  return readJSON(response, max).catch(() => {
     throw new Error("unexpected address reply");
-  const text = await response.text();
-  if (text.length > max) throw new Error("unexpected address reply");
-  return JSON.parse(text);
+  });
 }
 
 /** The entry address is this app's own; the content address never is. */

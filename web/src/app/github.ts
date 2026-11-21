@@ -8,6 +8,7 @@ import { liveText } from "../i18n";
 import { appMessagesText } from "../text/appMessages";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
+import { readJSON } from "./readJSON";
 
 const ajv = new LazyAjv({ strict: false, addFormats: true });
 // A Gitea or GitLab job names its connection with the integrations
@@ -142,38 +143,8 @@ export class GitHubError extends Error {
   }
 }
 async function bounded(response: Response, max: number): Promise<unknown> {
-  if (
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
-    throw new GitHubError("unavailable");
-  const reader = response.body?.getReader();
-  if (!reader) throw new GitHubError("unavailable");
-  const chunks: Uint8Array[] = [];
-  let size = 0;
   try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > max) {
-        await reader.cancel();
-        throw new GitHubError("unavailable");
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  try {
-    return JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(bytes),
-    ) as unknown;
+    return await readJSON(response, max);
   } catch {
     throw new GitHubError("unavailable");
   }

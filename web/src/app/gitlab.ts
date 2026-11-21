@@ -4,9 +4,10 @@ import tokensSchema from "../../../contracts/v1/gitlab-tokens.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
 import { formatDate } from "../i18n";
 import type { GiteaGit } from "./gitea";
-import { bounded, Refused } from "./integrations";
+import { Refused } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 // GitLab connections are glab's own host logins in the person's home
 // (research gitlab-integration, recommendation A): the page sends an address

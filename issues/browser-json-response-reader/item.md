@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:browser-json-reader
@@ -18,6 +18,7 @@ size: M
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Extract the browser's repeated JSON response reader
@@ -42,3 +43,9 @@ Size: M (one utility, focused reader tests, several small caller changes). Test 
 ## Assessment
 
 CONFIRMED; recommendation SPIN_OFF; severity medium (maintenance); confidence high. Confirmed by reading the implementations and their live call sites, not by treating analyzer export warnings as defects. No observed service outage or exploitable input is claimed. This is a shared implementation seam, not a change to browser/daemon authority.
+
+## Resolution
+
+### 2026-11-21T10:29:49Z · @issuectl
+
+Implementation and focused verification completed; see result.md. Preserved in the worker branch: the combined run is blocked from merging by the independently reproduced existing scroll-spacing failure. The schema reserves fixed for bugs, so this improvement is closed as done.

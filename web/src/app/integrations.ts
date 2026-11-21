@@ -7,6 +7,7 @@ import type { GiteaConnections } from "./gitea";
 import type { GitLabConnections } from "./gitlab";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 // Asetukset › Tiedot agenteille reads and writes through the person's daemon
 // (ADR 0026). Every reply is validated against the contract before the page
@@ -231,37 +232,6 @@ export type LoginView = {
   failure?: LoginFailure;
   consent_url?: string;
 };
-
-export async function bounded(
-  response: Response,
-  limit: number,
-): Promise<unknown> {
-  if (
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
-    throw Error("unavailable");
-  const reader = response.body?.getReader();
-  if (!reader) throw Error("invalid");
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  let text = "";
-  let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        await reader.cancel();
-        throw Error("invalid");
-      }
-      text += decoder.decode(value, { stream: true });
-    }
-    text += decoder.decode();
-  } finally {
-    reader.releaseLock();
-  }
-  return JSON.parse(text);
-}
 
 /** A refusal the host gave with a fixed code; nothing was written. */
 export class Refused extends Error {

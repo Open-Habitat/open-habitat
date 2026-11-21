@@ -14,7 +14,6 @@ import type { GitLabConnection } from "./gitlab";
 import {
   type Access,
   type Account,
-  bounded,
   type IntegrationList,
   type Level,
   type ProviderId,
@@ -25,6 +24,7 @@ import {
 } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { machineState, type OwnMachines } from "./ownMachines";
+import { readJSON as bounded } from "./readJSON";
 import { settingsHref } from "./settingsRoute";
 
 // Agentin käytössä (experimental): everything the person's agents use, by

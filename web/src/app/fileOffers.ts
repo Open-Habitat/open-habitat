@@ -9,6 +9,7 @@ import schema from "../../../contracts/v1/file-offer.schema.json";
 import { liveText } from "../i18n";
 import { appMessagesText } from "../text/appMessages";
 import { LazyAjv } from "./lazyAjv";
+import { readJSON } from "./readJSON";
 
 const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
@@ -75,13 +76,9 @@ export const fileOfferIdPattern = /^f[a-z2-7]{26}$/;
 const base = "/api/v1/file-offers";
 
 async function boundedJSON(response: Response, max: number): Promise<unknown> {
-  if (
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
+  return readJSON(response, max).catch(() => {
     throw new Error("unexpected file offer reply");
-  const text = await response.text();
-  if (text.length > max) throw new Error("unexpected file offer reply");
-  return JSON.parse(text);
+  });
 }
 
 const encodePath = (path: string) =>

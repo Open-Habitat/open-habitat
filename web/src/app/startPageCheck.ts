@@ -2,9 +2,9 @@ import common from "../../../contracts/v1/common.schema.json";
 import composer from "../../../contracts/v1/composer.schema.json";
 import schema from "../../../contracts/v1/start-page-check.schema.json";
 import type { StartPage } from "./composerReads";
-import { bounded } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 export type StartPageProblem = {
   code:

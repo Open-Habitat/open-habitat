@@ -1,9 +1,9 @@
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import { liveText } from "../i18n";
 import { serverAccessText } from "../text/serverAccess";
-import { bounded } from "./integrations";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
+import { readJSON as bounded } from "./readJSON";
 
 const txt = liveText(serverAccessText);
 

@@ -10,6 +10,7 @@ import { LazyAjv } from "./lazyAjv";
 import { hostRequest } from "./mutations";
 import { modelsLine } from "./PiCredentials";
 import { usePiModels } from "./PiModels";
+import { readJSON } from "./readJSON";
 
 const txt = liveText(claudeSignInText);
 
@@ -27,32 +28,8 @@ type Login = {
   verification_uri?: string;
 };
 export const read = async (response: Response): Promise<Login> => {
-  if (
-    !response.ok ||
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
-    throw Error("unavailable");
-  const reader = response.body?.getReader();
-  if (!reader) throw Error("invalid");
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  let text = "",
-    size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 8192) {
-        await reader.cancel();
-        throw Error("invalid");
-      }
-      text += decoder.decode(value, { stream: true });
-    }
-    text += decoder.decode();
-  } finally {
-    reader.releaseLock();
-  }
-  const value: unknown = JSON.parse(text);
+  if (!response.ok) throw Error("unavailable");
+  const value = await readJSON(response, 8192);
   if (!valid(value)) throw Error("invalid");
   return value as Login;
 };
