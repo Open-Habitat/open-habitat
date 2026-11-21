@@ -205,10 +205,14 @@ export function useNotice(
   kind: NoticeKind,
   undo: boolean,
   onClose: () => void,
+  inline = false,
 ) {
-  const area = useContext(NoticeContext);
-  const [element] = useState(() =>
-    area ? document.createElement("div") : undefined,
+  const context = useContext(NoticeContext);
+  const area = inline ? null : context;
+  const inArea = !!area;
+  const element = useMemo(
+    () => (inArea ? document.createElement("div") : undefined),
+    [inArea],
   );
   const id = useId();
   const close = useRef(onClose);

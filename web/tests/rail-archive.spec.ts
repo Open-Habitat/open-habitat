@@ -206,6 +206,9 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   expect(page.url()).toBe(here);
   const notice = page.getByTestId("archive-notice");
   await expect(notice).toBeVisible();
+  await expect(
+    page.getByTestId("notice-area").getByTestId("archive-notice"),
+  ).toBeVisible();
   await expect(notice.getByTestId("restore-notice")).toBeEnabled();
   await notice.getByTestId("restore-notice").click();
   await expect(row).toBeVisible();
@@ -228,6 +231,9 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await archive.click();
   await expect(page.getByTestId("archive-error")).toHaveCount(1);
   await expect(notice.getByTestId("archive-error")).toBeVisible();
+  await expect(
+    page.getByTestId("notice-area").getByTestId("archive-notice"),
+  ).toBeVisible();
   await expect(notice.getByTestId("restore-notice")).toHaveCount(0);
   await expect(row).toBeVisible();
   await page.mouse.move(0, 0);

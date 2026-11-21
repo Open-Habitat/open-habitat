@@ -131,14 +131,9 @@ test("@native-history unwritten terminal session can archive and restore", async
           .and(page.locator('[data-archive-state="archived"]')),
       ),
   ).toBeEnabled();
-  await bar
-    .getByTestId("restore-conversation")
-    .or(
-      bar
-        .getByTestId("archive-conversation")
-        .and(page.locator('[data-archive-state="archived"]')),
-    )
-    .click();
+  await page.getByTestId("archived-foot-restore").click();
+  await expect(page.getByTestId("archived-foot")).toHaveCount(0);
+  await expect(page.getByTestId("archive-error")).toHaveCount(0);
   // Eligibility is re-probed every 5 s. A transient unknown after restore
   // must get another observation before the assertion's deadline.
   await expect(

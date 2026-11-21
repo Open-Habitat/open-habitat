@@ -3,13 +3,14 @@ created: 2026-11-16
 updated: 2026-11-21
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-16/archive-restore-notice-near-button
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Archive restore failure notice appears at the top, far from the restore button

@@ -270,11 +270,13 @@ export function ArchivedFoot({
   archivedAt,
   restoreReason,
   onRestore,
+  notice,
   children,
 }: {
   archivedAt?: string;
   restoreReason?: string;
   onRestore: () => void;
+  notice?: ReactNode;
   /** The conversation's helpers, as their own rows. */
   children?: ReactNode;
 }) {
@@ -283,6 +285,7 @@ export function ArchivedFoot({
   const at = archivedAt ? Date.parse(archivedAt) : Number.NaN;
   return (
     <footer className="ah-archived-foot" data-testid="archived-foot">
+      {notice}
       <p>
         <Icon name="archive" />{" "}
         <span>

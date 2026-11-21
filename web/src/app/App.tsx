@@ -388,6 +388,7 @@ export function App() {
     title: string;
     route: string;
     scopeRoute: string;
+    placement?: "foot";
     problem?: string;
     /** What went with it: its named workers (Avustajat). */
     detail?: string;
@@ -1729,7 +1730,7 @@ export function App() {
   const changeArchive = async (
     agent: Agent,
     archived: boolean,
-    origin: "conversation" | "home" | "rail" = "conversation",
+    origin: "conversation" | "home" | "rail" | "foot" = "conversation",
     // Called once the host confirms the change, not on a lost reply.
     onConfirmed?: () => void,
   ) => {
@@ -1748,7 +1749,7 @@ export function App() {
     agent: Agent,
     archived: boolean,
     // The rail archives in place unless the conversation is the open one.
-    origin: "conversation" | "home" | "rail" = "conversation",
+    origin: "conversation" | "home" | "rail" | "foot" = "conversation",
     onConfirmed?: () => void,
   ) => {
     const token = agent.observation_token;
@@ -1867,6 +1868,7 @@ export function App() {
               title: agentTitle(agent.title),
               route: fromRoute,
               scopeRoute: view,
+              placement: origin === "foot" ? "foot" : undefined,
               problem: result.text,
             }
           : notice,
@@ -2565,6 +2567,41 @@ export function App() {
       view.scrollTop = top;
     };
   }, [settingsLayer]);
+  const archiveFeedback =
+    archiveNotice &&
+    (!archiveNotice.problem ||
+      archiveNotice.scopeRoute === `${location.pathname}${location.search}`) ? (
+      <ArchiveNotice
+        kind="archive"
+        inline={archiveNotice.placement === "foot"}
+        key={archiveNotice.id}
+        title={archiveNotice.title}
+        message={archiveNotice.problem ? t.app.archiveChangeFailed : undefined}
+        detail={archiveNotice.problem ? undefined : archiveNotice.detail}
+        busy={
+          !archiveNotice.problem &&
+          snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
+            ?.archive !== "archived"
+        }
+        problem={archiveNotice.problem}
+        onClose={() => setArchiveNotice(undefined)}
+        onRestore={
+          archiveNotice.problem
+            ? undefined
+            : () => {
+                const agent = snapshot?.agents.find(
+                  (a) => a.agent_id === archiveNotice.id,
+                );
+                if (!agent) return;
+                void changeArchive(agent, false).then((restored) => {
+                  if (!restored) return;
+                  navigate(archiveNotice.route);
+                  setArchiveNotice(undefined);
+                });
+              }
+        }
+      />
+    ) : null;
   const main =
     landing.show && phase !== "daemon_unavailable" ? (
       <Landing
@@ -2701,7 +2738,10 @@ export function App() {
           selectedAgent.history === "readable" &&
           !!selectedAgent.observation_token
         }
-        onRestore={() => void changeArchive(selectedAgent, false)}
+        archiveNotice={
+          archiveNotice?.placement === "foot" ? archiveFeedback : null
+        }
+        onRestore={(origin) => void changeArchive(selectedAgent, false, origin)}
         onArchive={() => void changeArchive(selectedAgent, true)}
         onTitleComplete={refresh}
         onRename={railRename.save}
@@ -2989,6 +3029,11 @@ export function App() {
                         : undefined
                     }
                     onArchive={changeArchive}
+                    archiveNotice={
+                      archiveNotice?.placement === "foot"
+                        ? archiveFeedback
+                        : null
+                    }
                     onClose={closeConversation}
                     onRename={railRename.save}
                     closeBusy={closing.has(id ?? "")}
@@ -3460,51 +3505,7 @@ export function App() {
                       onClose={() => setEditorSave(undefined)}
                     />
                   ) : null}
-                  {archiveNotice &&
-                  (!archiveNotice.problem ||
-                    archiveNotice.scopeRoute ===
-                      `${location.pathname}${location.search}`) ? (
-                    <ArchiveNotice
-                      kind="archive"
-                      key={archiveNotice.id}
-                      title={archiveNotice.title}
-                      message={
-                        archiveNotice.problem
-                          ? t.app.archiveChangeFailed
-                          : undefined
-                      }
-                      detail={
-                        archiveNotice.problem ? undefined : archiveNotice.detail
-                      }
-                      busy={
-                        !archiveNotice.problem &&
-                        snapshot?.agents.find(
-                          (a) => a.agent_id === archiveNotice.id,
-                        )?.archive !== "archived"
-                      }
-                      problem={archiveNotice.problem}
-                      onClose={() => {
-                        setArchiveNotice(undefined);
-                      }}
-                      onRestore={
-                        archiveNotice.problem
-                          ? undefined
-                          : () => {
-                              const agent = snapshot?.agents.find(
-                                (a) => a.agent_id === archiveNotice.id,
-                              );
-                              if (!agent) return;
-                              void changeArchive(agent, false).then(
-                                (restored) => {
-                                  if (!restored) return;
-                                  navigate(archiveNotice.route);
-                                  setArchiveNotice(undefined);
-                                },
-                              );
-                            }
-                      }
-                    />
-                  ) : null}
+                  {archiveNotice?.placement !== "foot" ? archiveFeedback : null}
                   <AccountLogoutDialog
                     open={
                       logoutPrompt &&

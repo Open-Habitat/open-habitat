@@ -44,6 +44,36 @@ const visible = () =>
 afterEach(() => vi.useRealTimers());
 
 describe("NoticeArea", () => {
+  it("keeps a control-local refusal out of the shared area's replacement and folding", () => {
+    const close = vi.fn();
+    render(
+      <NoticeAreaProvider>
+        <NoticeSlot />
+        <ArchiveNotice busy={false} onRestore={() => {}} onClose={close} />
+        <footer data-testid="foot">
+          <ArchiveNotice
+            inline
+            busy={false}
+            problem="refused"
+            onClose={() => {}}
+          />
+        </footer>
+      </NoticeAreaProvider>,
+    );
+    expect(close).not.toHaveBeenCalled();
+    expect(
+      screen
+        .getByTestId("notice-area")
+        .querySelectorAll('[data-testid="archive-notice"]'),
+    ).toHaveLength(1);
+    const local = screen
+      .getByTestId("foot")
+      .querySelector('[data-testid="archive-notice"]');
+    expect(local).not.toBeNull();
+    expect(local?.hasAttribute("hidden")).toBe(false);
+    expect(screen.queryByTestId("notice-more")).toBeNull();
+  });
+
   it("replaces an older notice of the same kind and stacks other kinds", () => {
     render(
       <Harness
