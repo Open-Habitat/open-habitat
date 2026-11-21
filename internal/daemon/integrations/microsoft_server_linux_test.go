@@ -381,3 +381,32 @@ func TestMicrosoftUnregister(t *testing.T) {
 		t.Fatalf("%v", servers)
 	}
 }
+
+// Repairing an account whose prefix is kept never overwrites a name, or a
+// name Pi folds onto one, that another entry holds.
+func TestMicrosoftRegisterKeepsForeignEntryUnderItsPrefix(t *testing.T) {
+	address := "person@example.test"
+	for _, foreignName := range []string{"ms-files", "ms_files"} {
+		env := microsoftEnv(t)
+		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read"); err != nil {
+			t.Fatal(err)
+		}
+		root, servers := readPiMCP(t, env)
+		foreign := json.RawMessage(`{"url":"https://mcp.example.test"}`)
+		if foreignName == "ms-files" {
+			servers["ms-files"] = foreign
+		} else {
+			delete(servers, "ms-files")
+			servers["ms_files"] = foreign
+		}
+		root["mcpServers"], _ = json.Marshal(servers)
+		data, _ := json.Marshal(root)
+		os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), data, 0600)
+		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read"); err == nil {
+			t.Fatalf("%s: repair overwrote a foreign entry", foreignName)
+		}
+		if after, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json")); !bytes.Equal(after, data) {
+			t.Fatalf("%s: refused repair still wrote", foreignName)
+		}
+	}
+}

@@ -338,6 +338,17 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	if s.index == 0 {
 		return ToolFailed
 	}
+	// A kept prefix is checked again: any of its five names, or a name Pi
+	// folds onto one of them, that is not the account's own is never
+	// overwritten.
+	for _, area := range msmcp.AreaNames() {
+		want := microsoftAreaEntryName(s.index, area)
+		for name, raw := range servers {
+			if folded(name) == folded(want) && !microsoftOwnsServer(env, raw, address) {
+				return ToolFailed
+			}
+		}
+	}
 	for _, name := range s.names() {
 		delete(servers, name)
 	}

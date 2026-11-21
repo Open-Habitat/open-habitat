@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -99,6 +100,7 @@ func fakeServer(dir string) {
 					Delay int    `json:"delay"`
 					Crash bool   `json:"crash"`
 					Hang  bool   `json:"hang"`
+					Huge  int    `json:"huge"`
 					Tag   string `json:"tag"`
 				} `json:"arguments"`
 				Meta struct {
@@ -109,6 +111,13 @@ func fakeServer(dir string) {
 			appendLine(filepath.Join(dir, "calls"), account+" "+p.Name+" "+p.Arguments.Tag)
 			if p.Arguments.Crash {
 				os.Exit(3)
+			}
+			if p.Arguments.Huge > 0 {
+				// An answer past the bridge's line bound, written while
+				// nobody may read it; ignore SIGPIPE like Node does.
+				signal.Ignore(syscall.SIGPIPE)
+				write(map[string]any{"jsonrpc": "2.0", "id": msg.ID, "result": map[string]any{"content": []any{map[string]any{"type": "text", "text": strings.Repeat("x", p.Arguments.Huge)}}}})
+				time.Sleep(time.Hour)
 			}
 			done := make(chan struct{})
 			cmu.Lock()
@@ -661,4 +670,106 @@ func TestShutdownReaps(t *testing.T) {
 		t.Fatalf("native process %d survived shutdown", pid)
 	}
 	_ = strconv.Itoa
+}
+
+// An answer past the line bound fails its call as of unknown outcome, the
+// child is stopped and reaped even though it is stuck writing, and the next
+// call gets a fresh child.
+func TestOversizedAnswerDoesNotWedgeTheSlot(t *testing.T) {
+	h := newHarness(t, Options{MaxLine: 256 << 10})
+	c := h.dial("a@example.test", "files")
+	if m := c.call(1, "search-query", map[string]any{"huge": 1 << 20}); errMessage(m) != errUpstream.Message {
+		t.Fatalf("oversized answer: %s", m)
+	}
+	if got := text(t, c.call(2, "search-query", map[string]any{"tag": "after"})); got != "a@example.test:search-query:after" {
+		t.Fatalf("after: %q", got)
+	}
+	if overlap := h.lines("overlap"); len(overlap) != 0 {
+		t.Fatalf("overlap: %v", overlap)
+	}
+}
+
+// A child that starts while the server shuts down is stopped, not awaited.
+func TestShutdownStopsAStartingChild(t *testing.T) {
+	release := make(chan struct{})
+	var once sync.Once
+	opt := Options{started: func(Binding) { once.Do(func() { <-release }) }}
+	h := newHarness(t, opt)
+	c := h.dial("a@example.test", "files")
+	c.request(1, "tools/list", map[string]any{})
+	for deadline := time.Now().Add(5 * time.Second); len(h.lines("starts")) == 0; {
+		if time.Now().After(deadline) {
+			t.Fatal("never started")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	h.stop()
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	select {
+	case <-h.done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("shutdown waited forever on a starting child")
+	}
+	lock, _ := os.OpenFile(filepath.Join(h.dir, "running.lock"), os.O_RDWR, 0600)
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Fatal("native process survived shutdown")
+	}
+}
+
+// A call that waited while its account's binding changed is failed, never
+// sent to the old child; removal fails what was queued for the account.
+func TestQueuedCallsDoNotOutliveTheirBinding(t *testing.T) {
+	h := newHarness(t, Options{})
+	a := h.dial("a@example.test", "files")
+	b := h.dial("b@example.test", "files")
+	a.request(1, "tools/list", map[string]any{})
+	a.next(10 * time.Second)
+	a.request(2, "tools/call", map[string]any{"name": "search-query", "arguments": map[string]any{"delay": 400, "tag": "running"}})
+	time.Sleep(100 * time.Millisecond)
+	b.request(1, "tools/call", map[string]any{"name": "search-query", "arguments": map[string]any{"tag": "b"}})
+	time.Sleep(50 * time.Millisecond)
+	a.request(3, "tools/call", map[string]any{"name": "search-query", "arguments": map[string]any{"tag": "queued"}})
+	time.Sleep(50 * time.Millisecond)
+	h.mu.Lock()
+	h.accounts["a@example.test"] = "+downgraded"
+	h.mu.Unlock()
+	b.send(map[string]any{"jsonrpc": "2.0", "method": "notifications/cancelled", "params": map[string]any{"requestId": 1}})
+	got := map[string]string{}
+	for i := 0; i < 2; i++ {
+		m := a.next(10 * time.Second)
+		if m["error"] != nil {
+			got[string(m["id"])] = errMessage(m)
+		} else {
+			got[string(m["id"])] = text(t, m)
+		}
+	}
+	if got["2"] != "a@example.test:search-query:running" || got["3"] != errChanged.Message {
+		t.Fatalf("answers: %v", got)
+	}
+	for _, call := range h.lines("calls") {
+		if strings.HasSuffix(call, "queued") {
+			t.Fatalf("stale call sent: %v", h.lines("calls"))
+		}
+	}
+}
+
+// A request of a client that is gone is never dispatched.
+func TestGoneClientIsNotAdmitted(t *testing.T) {
+	h := newHarness(t, Options{})
+	c := h.dial("a@example.test", "files")
+	text(t, c.call(1, "search-query", map[string]any{}))
+	b, _ := h.srv.resolve("a@example.test")
+	gone := &client{s: h.srv, closed: true, out: make(chan []byte, 1), outstanding: map[string]bool{"9": true}, withdrawn: map[string]bool{}}
+	h.srv.submit(&call{c: gone, id: json.RawMessage("9"), method: "tools/call", params: json.RawMessage(`{"name":"search-query","arguments":{"tag":"ghost"}}`), binding: b})
+	time.Sleep(200 * time.Millisecond)
+	for _, call := range h.lines("calls") {
+		if strings.HasSuffix(call, "ghost") {
+			t.Fatal("a gone client's call was sent")
+		}
+	}
+	if len(gone.outstanding) != 0 {
+		t.Fatal("refused request kept its slot")
+	}
 }

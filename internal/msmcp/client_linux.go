@@ -142,10 +142,11 @@ func (c *client) errorReply(id json.RawMessage, e *rpcError) {
 	c.finish(id)
 }
 
+// cancelled says the request was withdrawn or its client is gone.
 func (c *client) cancelled(id json.RawMessage) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.withdrawn[string(id)]
+	return c.closed || c.withdrawn[string(id)]
 }
 
 func (c *client) finish(id json.RawMessage) {
@@ -235,6 +236,12 @@ func (c *client) request(id json.RawMessage, method string, params json.RawMessa
 	m, e := c.s.metaFor(c.ctx, c, b)
 	if e != nil {
 		c.errorReply(id, e)
+		return
+	}
+	// Starting the child may have taken a while: the call runs only under
+	// the binding the account has now.
+	if fresh, err := c.s.resolve(c.hello.Account); err != nil || fresh.Key != b.Key {
+		c.errorReply(id, errChanged)
 		return
 	}
 	switch method {

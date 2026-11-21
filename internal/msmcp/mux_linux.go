@@ -55,7 +55,9 @@ type Options struct {
 	Queue int
 	// PerClient bounds one connection's outstanding requests.
 	PerClient int
-	Log       *slog.Logger
+	// MaxLine bounds one message from the native server.
+	MaxLine int
+	Log     *slog.Logger
 	// started, when set, observes every child start (tests).
 	started func(Binding)
 }
@@ -96,6 +98,9 @@ func NewServer(resolve Resolver, opt Options) *Server {
 	}
 	if opt.Queue <= 0 {
 		opt.Queue = 64
+	}
+	if opt.MaxLine <= 0 {
+		opt.MaxLine = 64 << 20
 	}
 	if opt.PerClient <= 0 {
 		opt.PerClient = 32
@@ -189,7 +194,20 @@ func (s *Server) shutdown() {
 func (s *Server) Release(account string) {
 	s.mu.Lock()
 	ch := s.child
+	var dropped []*call
+	kept := s.queue[:0]
+	for _, c := range s.queue {
+		if c.binding.Account == account {
+			dropped = append(dropped, c)
+		} else {
+			kept = append(kept, c)
+		}
+	}
+	s.queue = kept
 	s.mu.Unlock()
+	for _, c := range dropped {
+		c.fail(errAccount)
+	}
 	if ch != nil && ch.account == account {
 		s.stopChild(ch)
 	}
@@ -222,6 +240,7 @@ var (
 	errTooMany     = &rpcError{-32000, "Too many Microsoft requests are already waiting from this conversation."}
 	errShutdown    = &rpcError{-32000, "Habitat's Microsoft connection is stopping; the call was not made."}
 	errAccount     = &rpcError{-32000, "This Microsoft account is not connected in Habitat; the person can connect it in Settings → Integrations."}
+	errChanged     = &rpcError{-32000, "The Microsoft account's connection changed or was removed while this call waited; the call was not made."}
 	errUnknownTool = &rpcError{-32602, "That tool is not in this area. describeNamespace on the area lists its tools; another area of the same account may have it."}
 )
 
@@ -307,16 +326,24 @@ func (s *Server) run() {
 	for {
 		s.mu.Lock()
 		if s.closed {
-			ch := s.child
+			// A child started while shutdown looked (or its predecessor)
+			// is stopped here, not merely awaited.
+			left := []*child{s.child, s.prev}
 			s.mu.Unlock()
-			if ch != nil {
-				<-ch.reaped
+			for _, ch := range left {
+				if ch != nil {
+					s.stopChild(ch)
+				}
 			}
 			return
 		}
 		s.pruneQueue()
 		if len(s.queue) == 0 {
 			var idle <-chan time.Time
+			if ch := s.child; ch != nil {
+				ch.drainBy = time.Time{}
+			}
+			s.switching = false
 			if ch := s.child; ch != nil && ch.ready && len(ch.inflight) == 0 {
 				left := s.opt.Idle - time.Since(ch.lastUse)
 				if left <= 0 {
@@ -334,9 +361,28 @@ func (s *Server) run() {
 			continue
 		}
 		head := s.queue[0]
+		// The binding was resolved when the call arrived; the account may
+		// have been removed or changed level while it waited. Unsent calls
+		// of an obsolete binding fail, they are never run under it.
+		s.mu.Unlock()
+		fresh, err := s.resolve(head.binding.Account)
+		s.mu.Lock()
+		if s.closed || len(s.queue) == 0 || s.queue[0] != head {
+			s.mu.Unlock()
+			continue
+		}
+		if err != nil || fresh.Key != head.binding.Key {
+			stale := s.takeKeyLocked(head.binding.Key)
+			s.mu.Unlock()
+			for _, c := range stale {
+				c.fail(errChanged)
+			}
+			continue
+		}
 		ch := s.child
 		if ch != nil && ch.ready && ch.binding.Key == head.binding.Key {
 			s.switching = false
+			ch.drainBy = time.Time{}
 			n := 0
 			for n < len(s.queue) && s.queue[n].binding.Key == ch.binding.Key {
 				n++
@@ -375,6 +421,24 @@ func (s *Server) run() {
 		}
 		s.startChild(head.binding)
 	}
+}
+
+// takeKeyLocked removes and returns the queued calls of one binding.
+func (s *Server) takeKeyLocked(key string) []*call {
+	var taken []*call
+	kept := s.queue[:0]
+	for _, c := range s.queue {
+		if c.binding.Key == key {
+			taken = append(taken, c)
+		} else {
+			kept = append(kept, c)
+		}
+	}
+	for i := len(kept); i < len(s.queue); i++ {
+		s.queue[i] = nil
+	}
+	s.queue = kept
+	return taken
 }
 
 // pruneQueue drops calls whose client went away.
@@ -583,7 +647,7 @@ func (s *Server) dispatchLocked(ch *child, c *call) {
 func (s *Server) read(ch *child, out io.Reader) {
 	r := bufio.NewReaderSize(out, 64<<10)
 	for {
-		line, err := readLine(r, 64<<20)
+		line, err := readLine(r, s.opt.MaxLine)
 		if err != nil {
 			break
 		}
@@ -613,6 +677,12 @@ func (s *Server) read(ch *child, out io.Reader) {
 		}
 	}
 	close(ch.exited)
+	// The child may be blocked writing what was not read (an answer over
+	// the line bound): close its output and stop it, so Wait can return.
+	if c, ok := out.(io.Closer); ok {
+		_ = c.Close()
+	}
+	s.terminate(ch)
 	// Every call still in flight has an unknown outcome. It is failed, not
 	// sent again.
 	s.mu.Lock()
@@ -660,7 +730,11 @@ func (s *Server) routeResponse(ch *child, rawID json.RawMessage, line []byte) {
 		c.result <- line
 		return
 	}
-	if c.c == nil || c.c.cancelled(c.id) {
+	if c.c == nil {
+		return
+	}
+	if c.c.cancelled(c.id) {
+		c.c.finish(c.id)
 		return
 	}
 	var resp map[string]json.RawMessage
@@ -705,6 +779,14 @@ func (s *Server) stopChild(ch *child) {
 		s.child = nil
 	}
 	s.mu.Unlock()
+	s.terminate(ch)
+	<-ch.reaped
+	s.signal()
+}
+
+// terminate closes the child's input once, then SIGTERMs and SIGKILLs its
+// group if it has not been reaped within the stop interval each time.
+func (s *Server) terminate(ch *child) {
 	ch.quitOnce.Do(func() {
 		close(ch.quit)
 		go func() {
@@ -718,8 +800,6 @@ func (s *Server) stopChild(ch *child) {
 			}
 		}()
 	})
-	<-ch.reaped
-	s.signal()
 }
 
 // submit queues a call, or dispatches it at once when the slot runs its
@@ -729,6 +809,14 @@ func (s *Server) submit(c *call) {
 	if s.closed {
 		s.mu.Unlock()
 		c.fail(errShutdown)
+		return
+	}
+	// Checked under the slot's lock: a cancellation marks the request
+	// before it looks for it here, so it is either refused now or found
+	// queued or in flight by that cancellation.
+	if c.c != nil && c.id != nil && (c.c.gone() || c.c.cancelled(c.id)) {
+		s.mu.Unlock()
+		c.c.finish(c.id)
 		return
 	}
 	if ch := s.child; ch != nil && ch.ready && !ch.stopping && !s.switching && len(s.queue) == 0 && ch.binding.Key == c.binding.Key {
