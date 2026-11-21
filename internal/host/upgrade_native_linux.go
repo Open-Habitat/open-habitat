@@ -716,16 +716,21 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 // whole native-history catalog, not just the daemon's handles, so most rows
 // are history that no process holds.
 //
-// Stopping the daemon cuts only its own Pi children (KillMode=mixed); native
-// SSH, tmux and Taskfleet Pi keep running on their generation. A daemon child
-// always has a controller handle, and the list reports a handle's state, so a
-// row's state decides; an empty or unfamiliar state counts as active. A row
-// without state has no handle: lifecycle resting or archived is history, and
-// live means a Pi outside the daemon was observed writing it, which the
+// Stopping the daemon cuts its own children (KillMode=mixed); native SSH, tmux
+// and Taskfleet Pi keep running on their generation. A conversation the
+// daemon runs has a controller handle, and the list reports a handle's state,
+// so a row's state decides; an empty or unfamiliar state counts as active. A
+// row without state has no handle: lifecycle resting or archived is history,
+// and live means a Pi outside the daemon was observed writing it, which the
 // upgrade does not cut. Archive visibility overrides lifecycle and can hide
 // such a writer, which is why no stateless row is read as a writer census
 // either way. A lifecycle this release does not know, a missing one, or a
-// reply that does not have the list's shape counts as active or unobservable.
+// reply without the list's schema counts as active or unobservable.
+//
+// The count is the quiet-window hint, not consent: interruptionRequired asks
+// consent for every live daemon. The list is all a published predecessor
+// offers, and it cannot see daemon work that leaves a handle idle (a bash
+// command, a title, Pi's background processes) or runs without one.
 func activeTurns(data []byte) (int, bool) {
 	var reply struct {
 		Data struct {

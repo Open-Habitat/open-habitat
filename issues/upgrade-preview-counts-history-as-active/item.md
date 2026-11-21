@@ -1,8 +1,8 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed during a published-release pilot installation
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: release-runtime
 lane_seq: 3
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Upgrade preview counts native history rows without state as active turns
