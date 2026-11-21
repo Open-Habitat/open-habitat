@@ -1,0 +1,226 @@
+/* Workspace strip, round 5 (A Yksi rivi, all three buttons working). Emblem round 7's round.css is
+   imported first and gives the review bar, the emblem strokes and ripples. The sound picker and the
+   strip's A layout are strip round 4's; B and C are dropped. */
+/* Emblem sizes. The emblem is shown large; 32 px in the pop-up's default row
+   and the Settings rows is the smallest, and nothing goes below it. */
+.wq-emblem { display: inline-grid; place-items: center; flex: 0 0 auto; color: var(--ah-accent-ink); }
+.wq-emblem .rq-emblem { color: inherit; }
+.wq-emblem-tile .rq-emblem { width: 52px; height: 52px; }
+.wq-emblem-small .rq-emblem { width: 32px; height: 32px; }
+
+/* A value as wide as the widest value it can take: every candidate sits in
+   the same grid cell, only the current one visible. */
+.wq-stable { display: inline-grid; text-align: start; }
+.wq-stable > * { grid-area: 1 / 1; white-space: nowrap; }
+.wq-stable-ghost { visibility: hidden; }
+
+/* ---- The pop-up ---- */
+.ah-popover.wq-popover {
+  width: 500px; max-width: calc(100vw - 24px); max-height: min(640px, 82vh); overflow: auto;
+  padding: 14px; border-radius: var(--ah-r-lg);
+}
+.wq-dialog, .wq-dialog:focus, .wq-dialog:focus-visible { outline: 0; }
+.wq-picker { display: grid; gap: 10px; }
+.wq-picker-top { display: flex; align-items: center; gap: 8px; }
+.wq-picker-top h2 { flex: 1; display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13.5px; font-weight: 600; }
+.wq-picker-top h2 svg { width: 16px; height: 16px; color: var(--ah-ink-2); }
+.wq-picker-top h2 code { font: 500 13px/1.3 var(--ah-mono); color: var(--ah-ink-2); }
+.wq-picker-help { margin: 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); line-height: 1.45; }
+.wq-picker .rq-note { margin: 0; }
+.wq-options { display: grid; gap: 8px; }
+
+/* An option is a card: the press area chooses, the ▶ in its corner listens. */
+.wq-default-row, .wq-card {
+  position: relative; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.wq-default-row:hover, .wq-card:hover { background: var(--ah-hover); }
+.wq-default-row[data-checked], .wq-card[data-checked] {
+  border-color: var(--ah-accent); box-shadow: inset 0 0 0 1px var(--ah-accent); background: var(--ah-accent-soft);
+}
+.wq-default-row[data-playing], .wq-card[data-playing] { background: var(--ah-accent-soft); }
+.wq-default, .wq-tile {
+  width: 100%; border: 0; border-radius: inherit; background: transparent; color: var(--ah-ink);
+  font: inherit; cursor: pointer;
+}
+.wq-default { display: flex; align-items: center; gap: 10px; padding: 8px 48px 8px 10px; text-align: left; }
+.wq-default .wq-emblem { color: var(--ah-ink-2); }
+.wq-default-row[data-checked] .wq-emblem { color: var(--ah-accent-ink); }
+.wq-default-text { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.wq-default-text small { color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+/* A fixed width, so Valittu, Soi or nothing never rewraps the text beside it. */
+.wq-default-state { flex: 0 0 7em; display: flex; justify-content: flex-end; }
+.wq-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.wq-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 10px 2px 6px; text-align: center; }
+.wq-tile-name { font-size: 12.5px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.wq-tile-foot { min-height: 16px; display: flex; align-items: center; }
+.wq-tile .rq-secs, .wq-tile .rq-tile-state { font-size: 11.5px; }
+.wq-tile .rq-tile-state svg { width: 12px; height: 12px; }
+.wq-card[data-checked] .rq-e-ring { opacity: 0.95; }
+.wq-default:focus-visible, .wq-tile:focus-visible, .wq-preview:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; }
+.wq-preview {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center;
+  width: 26px; height: 26px; padding: 0; border: 1px solid var(--ah-line); border-radius: 50%;
+  background: var(--ah-surface); color: var(--ah-ink-2); cursor: pointer;
+}
+.wq-default-row .wq-preview { top: 50%; right: 10px; transform: translateY(-50%); width: 30px; height: 30px; }
+.wq-preview svg { width: 12px; height: 12px; fill: currentColor; stroke: none; margin-left: 2px; }
+.wq-preview:hover { color: var(--ah-ink); border-color: var(--ah-accent); }
+.wq-preview[data-playing] { color: var(--ah-accent-ink); border-color: var(--ah-accent); }
+.wq-picker-foot { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid var(--ah-line-soft); }
+.wq-picker-foot p { flex: 1; display: flex; gap: 6px; align-items: flex-start; margin: 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); line-height: 1.4; }
+.wq-picker-foot p svg { width: 14px; height: 14px; margin-top: 2px; flex: 0 0 auto; }
+[data-theme="contrast"] .wq-default-row[data-checked], [data-theme="contrast"] .wq-card[data-checked] { box-shadow: inset 0 0 0 2px var(--ah-accent); background: var(--ah-surface); }
+/* ---- The settings strip under the head ----
+   Two kinds of button: a square (Kuvake, Ääni) and a flat one (Nimi). The
+   kind sets the size in each variant, never the value, so a new value moves
+   nothing. Each button holds a box (the picture, or the name) and a caption
+   (label and value); the variants place them. */
+.wq-page .ah-workspace-page-head + .wq-strip { margin-top: calc(var(--ah-s6) * -0.5); }
+.wq-strip-item {
+  position: relative; min-width: 0; padding: 0; overflow: hidden;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+  color: var(--ah-ink); font: inherit; text-align: left; cursor: pointer;
+}
+.wq-strip-item[data-hovered] { background: var(--ah-hover); border-color: var(--ah-accent); }
+.wq-strip-item[data-focus-visible] { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; z-index: 1; }
+.wq-strip-item[aria-expanded="true"] { border-color: var(--ah-accent); box-shadow: inset 0 0 0 1px var(--ah-accent); }
+.wq-strip-box { display: grid; place-items: center; min-width: 0; }
+.wq-strip-caption { display: grid; min-width: 0; align-content: start; }
+.wq-strip-label { display: flex; align-items: center; gap: 5px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 16px; white-space: nowrap; }
+.wq-strip-label svg { width: 14px; height: 14px; flex: none; }
+.wq-strip-box .wq-emblem { color: var(--ah-ink-2); }
+[data-own] .wq-strip-box .wq-emblem { color: var(--ah-accent-ink); }
+.wq-letter {
+  display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 21px/1 var(--ah-mono);
+}
+.wq-strip-value { display: block; min-width: 0; font-size: 14px; font-weight: 600; line-height: 18px; overflow-wrap: anywhere; }
+.wq-v-name { white-space: nowrap; }
+.wq-v-suffix { white-space: nowrap; color: var(--ah-ink-2); font-weight: 500; }
+/* The name is the flat button's picture: large, left-aligned, wrapping
+   (never cut) inside a fixed two-line box. */
+.wq-name-value { display: block; width: 100%; font: 600 19px/24px var(--ah-mono); color: var(--ah-ink); overflow-wrap: anywhere; text-align: start; }
+
+/* A Yksi rivi: Kuvake–Nimi–Ääni in one row of one height. The squares are
+   as high as Nimi; label on top, picture, value in a two-line box. */
+.wq-strip-line .wq-strip-items .wq-strip-item { flex: none; }
+.wq-strip-line .wq-strip-items { display: flex; gap: 10px; align-items: flex-start; }
+.wq-strip-line .wq-strip-items .wq-strip-square { width: 128px; height: 128px; display: grid; grid-template-rows: 16px 1fr 36px; padding: 10px 8px 10px; gap: 4px; }
+.wq-strip-line .wq-strip-items .wq-strip-square .wq-strip-caption { display: contents; }
+.wq-strip-line .wq-strip-items .wq-strip-square .wq-strip-label { grid-row: 1; padding-left: 2px; }
+.wq-strip-line .wq-strip-items .wq-strip-square .wq-strip-box { grid-row: 2; }
+.wq-strip-line .wq-strip-items .wq-strip-square .wq-strip-value { grid-row: 3; align-self: center; text-align: center; }
+.wq-strip-line .wq-strip-items .wq-strip-flat { width: 300px; height: 128px; display: grid; grid-template-rows: 16px 1fr; padding: 10px 14px 12px; gap: 4px; }
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-strip-caption { grid-row: 1; padding-left: 2px; }
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-strip-box { grid-row: 2; align-self: center; height: 56px; place-items: center start; }
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-value { font-size: 22px; line-height: 28px; }
+/* The name wraps (never cut mid-identifier) inside its fixed box; a name
+   longer than the box holds ends in an ellipsis, the whole name in the
+   title and in the editor. */
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-value:not(input) {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word;
+}
+
+/* ---- Kuvake: production's icon picker trigger stretched over the square ----
+   The square is a plain box; the real trigger covers it, and the label and
+   value sit on top without taking presses, so a press anywhere opens the
+   real editor and its pop-up anchors to the whole square. */
+.wq-icon-square { position: relative; cursor: pointer; }
+.wq-icon-square > .wq-strip-label, .wq-icon-square > .wq-strip-value { position: relative; z-index: 1; pointer-events: none; }
+.wq-icon-square > .wq-strip-box { position: static; }
+.wq-strip .wq-icon-square .ah-wsip-head.ah-button {
+  position: absolute; inset: -1px; z-index: 0; display: grid; place-items: center;
+  width: auto; height: auto; min-width: 0; min-height: 0; margin: 0; padding: 0 0 6px;
+  border: 0; border-radius: inherit; background: transparent;
+}
+.wq-strip .wq-icon-square .ah-wsip-pen { display: none; }
+.wq-strip .wq-icon-square .ah-wsi[data-size="l"] { width: 52px; height: 52px; font-size: 40px; }
+.wq-strip .wq-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] { border-radius: 12px; font-size: 20px; }
+.wq-icon-square:has(.ah-wsip-head[data-hovered]) { background: var(--ah-hover); border-color: var(--ah-accent); }
+.wq-icon-square:has(.ah-wsip-head[data-focus-visible]) { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; z-index: 1; }
+.wq-icon-square:has(.ah-wsip-head[aria-expanded="true"]) { border-color: var(--ah-accent); box-shadow: inset 0 0 0 1px var(--ah-accent); }
+[data-theme="contrast"] .wq-icon-square:has(.ah-wsip-head[aria-expanded="true"]) { box-shadow: inset 0 0 0 2px var(--ah-accent); }
+
+/* The head shows the icon too, as production's head does, but only as a
+   picture: the strip is the one place to change it. */
+.wq-head-icon { flex: none; display: grid; place-items: center; padding: 3px; margin-top: -2px; }
+
+/* ---- Nimi A: the rename pop-up ---- */
+.ah-popover.wq-name-popover { width: 380px; max-width: calc(100vw - 24px); padding: 14px; border-radius: var(--ah-r-lg); }
+.wq-rename { display: grid; gap: 12px; }
+.wq-rename .ah-field input { font-family: var(--ah-mono); }
+.wq-rename-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---- Nimi B: the field in Nimi's own box ---- */
+.wq-name-editing { cursor: text; border-color: var(--ah-accent); box-shadow: inset 0 0 0 1px var(--ah-accent); }
+[data-theme="contrast"] .wq-name-editing { box-shadow: inset 0 0 0 2px var(--ah-accent); }
+.wq-name-editing .wq-strip-label { width: 100%; }
+.wq-name-editing .wq-strip-label label { flex: 1; }
+.wq-inline-actions { display: flex; gap: 4px; margin: -4px -6px -4px 0; }
+.wq-inline-button {
+  display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 1px solid var(--ah-line); border-radius: 50%; background: var(--ah-surface); color: var(--ah-ink-2); cursor: pointer;
+}
+.wq-inline-button:hover { color: var(--ah-ink); border-color: var(--ah-accent); }
+.wq-inline-button[type="submit"] { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-accent-on, #fff); }
+.wq-inline-button:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 2px; }
+.wq-inline-button svg { width: 12px; height: 12px; }
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-input {
+  box-sizing: border-box; width: 100%; height: 44px; margin: 0; padding: 0 8px;
+  border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface);
+  color: var(--ah-ink); font-size: 20px; outline: 0;
+}
+.wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-input:focus-visible { border-color: var(--ah-focus, var(--ah-accent)); box-shadow: 0 0 0 1px var(--ah-focus, var(--ah-accent)); }
+
+[data-theme="contrast"] .wq-strip-item[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--ah-accent); }
+
+/* ---- The synthetic workspace page ---- */
+.wq-page { padding-bottom: 80px; }
+.wq-convs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 720px; }
+.wq-convs li {
+  display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface);
+}
+.wq-convs span { color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+
+/* Narrow heads: one row, the squares a little smaller and Nimi taking the rest. */
+@container (max-width: 600px) {
+  .wq-strip-line .wq-strip-items { gap: 6px; }
+  .wq-strip-line .wq-strip-items .wq-strip-square { width: 104px; height: 104px; grid-template-rows: 16px 1fr 32px; padding: 6px 4px; gap: 2px; }
+  .wq-strip-line .wq-strip-items .wq-strip-flat { flex: 1 1 0; width: auto; height: 104px; padding: 6px 10px 8px; }
+  .wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-value { font-size: 14px; line-height: 20px; }
+  .wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-value:not(input) { -webkit-line-clamp: 3; }
+  .wq-strip-line .wq-strip-items .wq-emblem-tile .rq-emblem { width: 40px; height: 40px; }
+  .wq-strip .wq-icon-square .ah-wsi[data-size="l"] { width: 40px; height: 40px; font-size: 30px; }
+  .wq-strip .wq-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] { font-size: 16px; border-radius: 10px; }
+  .wq-strip-line .wq-strip-items .wq-strip-value { font-size: 12.5px; line-height: 16px; }
+  .wq-strip-line .wq-strip-items .wq-strip-flat .wq-strip-box { height: 66px; }
+  .wq-strip-line .wq-strip-items .wq-strip-flat .wq-name-input { height: 40px; font-size: 15px; padding: 0 6px; }
+}
+
+/* On a phone every pop-up is a sheet from the bottom edge, like production's
+   icon picker; the sound cards become a two-column list. */
+@media (max-width: 800px) {
+  .ah-popover.wq-popover, .ah-popover.wq-name-popover {
+    /* React Aria places the popover with inline styles; the sheet must outrank them. */
+    position: fixed !important; inset: auto 0 0 0 !important; width: auto; max-width: none;
+    max-height: 86vh !important; padding: 14px 14px 84px; /* clear of the review picker */ border-radius: 16px 16px 0 0;
+  }
+  /* Production's icon sheet, cleared of the review picker in this page only. */
+  .ah-popover.ah-wsip-popover { padding-bottom: 84px; }
+  .wq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wq-tile { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 0; align-items: center; padding: 6px 40px 6px 8px; text-align: left; }
+  .wq-tile .wq-emblem { grid-row: 1 / 3; }
+  .wq-tile .wq-emblem-tile .rq-emblem { width: 36px; height: 36px; }
+  .wq-tile-foot { min-height: 0; }
+  .wq-card .wq-preview { top: 50%; transform: translateY(-50%); width: 30px; height: 30px; }
+  .wq-picker-foot { flex-wrap: wrap; }
+  .wq-picker-foot .ah-button { width: 100%; }
+  .wq-rename-actions .ah-button { flex: 1; }
+}
+
+/* The field never widens Nimi: its column is the box's width, not the
+   input's intrinsic size. */
+.wq-strip-line .wq-strip-items .wq-name-editing { grid-template-columns: minmax(0, 1fr); }
+.wq-strip-line .wq-strip-items .wq-name-editing .wq-name-input { min-width: 0; }
+.wq-name-editing .wq-strip-label label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
