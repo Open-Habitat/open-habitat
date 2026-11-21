@@ -27,13 +27,15 @@ All checks ran with restrictive umask and the shared scratch lease. These are fo
 
 An intermediate daemon run exposed a bad conversation ID in the new pagination test and an idle-resume timeout; the fixture was corrected and the complete final daemon run passed. Browser failures exposed a real phone sidebar fold/unfold loop: the folded-row estimate differed from the actual phone row height. Both now use the same CSS dimension. Browser fixtures were adjusted for two additional permanent navigation rows and the desktop Explain state card; all selected cases subsequently passed.
 
+After rebasing onto the newer source branch, combined its multiplayer launch context with unconditional helper context without graduating multiplayer. Regenerated both contract packages, added an explicit multiplayer-off launch assertion, and reran focused launch/wake/helper/pagination/experimental Go tests, the CLI package, contracts, all 1,934 web tests, and the 12 settings/Outputs/helper/wake browser cases: all passed. The source branch's rename decision was preserved in the issue.
+
 No live OAuth consent, installed systemd wake/restart, customer upgrade, whole browser suite, packaging or full green gate was run.
 
 ## Independent review
 
 Required daemon/state/contract review completed with claude-fable-5-2 as finder and gpt-6-astra as independent verifier, followed by host assessment. Eight confirmed findings were repaired: missing-tool helper presentation, initial unknown address state, newly published-address visibility, obsolete wake guidance, obsolete settings guidance, file pagination, the gateway cursor whitelist, and broken-tool absence detection. Targeted regression tests cover the behavioral repairs. The verifier found no cross-UID access or unsolicited publication in the reviewed changes.
 
-Assessment: seven FIX, one FIX WITH CARE (paging across the existing contract), no deferred finding or product decision. Local review/assessment artifacts are under `history/`; raw logs and model scores are retained under `/var/tmp/agent-keep/graduate-features`. Model-corpus publication was not invoked because it pushes, outside this task's no-push authorization.
+Assessment: seven FIX, one FIX WITH CARE (paging across the existing contract), no deferred finding or product decision. Review/assessment copies, raw logs and model scores are retained under `/var/tmp/agent-keep/graduate-features`. Model-corpus publication was not invoked because it pushes, outside this task's no-push authorization.
 
 ## Live check
 
