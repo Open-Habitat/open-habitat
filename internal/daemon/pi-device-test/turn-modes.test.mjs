@@ -366,7 +366,7 @@ test('web tools follow the grant as tool calls do, also when the revoke message 
   const { default: load } = await import('../process-extension.mjs');
   load({ on: (name, h) => { (handlers[name] ??= []).push(h); }, appendEntry() {}, registerTool() {}, registerCommand() {}, sendMessage() {}, events: { on() {}, emit() {} } });
   assert.equal(process.env.OPEN_HABITAT_MEMBERS_RECORD, undefined, 'the record path is not left for tools');
-  const ctx = { sessionManager: { getBranch: () => [], getSessionId: () => f.sessionId }, cwd: f.cwd };
+  const ctx = { sessionManager: { _persist() {}, getBranch: () => [], getSessionId: () => f.sessionId }, cwd: f.cwd };
   const saved2 = process.env.OH_PROCESS_SOCKET;
   delete process.env.OH_PROCESS_SOCKET; // no bridge socket here
   for (const h of handlers.session_start) await h({}, ctx);

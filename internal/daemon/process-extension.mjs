@@ -2,7 +2,7 @@
 import net from 'node:net';
 import { open, opendir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { appendFileSync, chmodSync, closeSync, fstatSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, statSync } from 'node:fs';
+import { appendFileSync, chmodSync, closeSync, fstatSync, ftruncateSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -908,11 +908,91 @@ export const turnReasons = {
   stopped: 'The turn was stopped, so the call was not made.',
 };
 
+// Pi 1.5.2 rolls a failed _persist back in memory but not on disk: a write
+// cut short at a full quota leaves part of the entry, and the next successful
+// append lands on the same line, which then parses as nothing (the entry is
+// lost on reload and Habitat refuses the history as damaged). The guard makes
+// the disk follow Pi's own rollback: it removes exactly the bytes the failed
+// call wrote, after proving they are a prefix of what that call meant to
+// write, so the file is again what it was and Pi carries on natively once
+// there is room. Shrinking a file needs no space, so this works at a full
+// quota. When the bytes cannot be proven ours, nothing is removed: every later
+// append is refused so none can glue onto them, and Pi is stopped, after which
+// the daemon's owner-fenced readyNativeTail quarantines and cuts the tail.
+// A turn hook would be too late (notices and several messages append per
+// turn), so this wraps the private _persist seam of the pinned SDK; the device
+// tests drive the real SessionManager, so a pin that changes it fails there.
+const sessionWriteGuard = Symbol.for('open-habitat:session-write-guard');
+export function guardSessionWrites(manager, onFailure) {
+  if (manager[sessionWriteGuard]) {
+    manager[sessionWriteGuard].onFailure = onFailure;
+    return; // /reload must not clear a failed writer's latch
+  }
+  if (typeof manager._persist !== 'function') throw new Error('session_write_guard_unavailable');
+  const persist = manager._persist;
+  const state = { failed: false, error: undefined, onFailure };
+  manager._persist = function (entry, ...rest) {
+    if (state.failed) throw state.error;
+    const file = this.persist ? this.sessionFile : undefined;
+    let before; // size before the call, -1 when absent, undefined when unknown
+    if (file) try { before = statSync(file).size; } catch (e) { if (e?.code === 'ENOENT') before = -1; }
+    try { return persist.call(this, entry, ...rest); }
+    catch (error) {
+      // _appendEntry has not popped the entry yet, and a failed first write
+      // leaves flushed false: this is exactly what the native call wrote.
+      if (file && rollBackFailedWrite(file, before, error, () => this.flushed
+        ? `${JSON.stringify(entry)}\n`
+        : this.fileEntries.map(e => `${JSON.stringify(e)}\n`).join(''))) throw error;
+      state.failed = true;
+      state.error = error;
+      // Let _appendEntry finish its rollback before abort/shutdown callbacks.
+      queueMicrotask(() => { try { state.onFailure(); } catch {} });
+      throw error;
+    }
+  };
+  manager[sessionWriteGuard] = state;
+}
+
+// True when the file is proven back to its size before the failed call: the
+// bytes after it are a prefix of what the call meant to write, and are cut
+// (or the file it created is removed). Anything else touches nothing.
+// A terminal Pi on the same session takes no lock, and Node cannot take the
+// write lease the daemon's repair uses, so an append of its landing between
+// the last check and the cut would be cut with it. That record would sit on
+// the fragment's line and be unreadable anyway; the checks are repeated just
+// before the cut so the window is adjacent syscalls. Stopping Pi on every
+// failed write instead was judged the worse cost.
+function rollBackFailedWrite(file, before, error, intended) {
+  if (before === undefined) return false;
+  // 'wx' refused: someone else created the file, so nothing here is ours.
+  if (before === -1 && error?.code === 'EEXIST') return false;
+  let fd;
+  try { fd = openSync(file, 'r+'); }
+  catch (e) { return e?.code === 'ENOENT' && before === -1; }
+  try {
+    const { size, ino } = fstatSync(fd), start = Math.max(before, 0);
+    if (size === before) return true;
+    const want = Buffer.from(intended());
+    if (size < start || size - start > want.length) return false;
+    const got = Buffer.alloc(size - start);
+    if (readSync(fd, got, 0, got.length, start) !== got.length || !got.equals(want.subarray(0, got.length))) return false;
+    if (before === -1) {
+      if (statSync(file).ino !== ino || fstatSync(fd).size !== size) return false;
+      unlinkSync(file);
+    } else {
+      if (fstatSync(fd).size !== size) return false;
+      ftruncateSync(fd, before);
+    }
+    return true;
+  } catch { return false; }
+  finally { closeSync(fd); }
+}
+
 export default function (pi) {
   // Registered at load, so a hook in an extension loaded before or after this
   // one finds it when its first tool call comes.
   globalThis[permissionApiKey] = Object.freeze({ ask: askPermission, block: permissionBlock });
-  let server, context, extensionVersion = null, shuttingDown = false;
+  let server, context, extensionVersion = null, shuttingDown = false, writeStop;
   const launchedAt = Date.now();
   const foregroundTools = new Set();
   // The rest belongs to this launch only. Left in the environment it would
@@ -1324,6 +1404,25 @@ export default function (pi) {
   // place: the mode is rebuilt from it.
   pi.on('session_tree', (_event, ctx) => { rebuildTurn(ctx ?? context); });
   pi.on('session_start', async (_event, ctx) => {
+    guardSessionWrites(ctx.sessionManager, () => {
+      shuttingDown = true;
+      // Never try to record this failure in the failed session itself.
+      console.error(JSON.stringify({ component: 'companion', event: 'session_write_failed', outcome: 'stopping' }));
+      // Pi's graceful shutdown waits for an idle session, and its run
+      // finalizer can throw on the refused writer before it settles the run.
+      // Pi's own signal handler kills its tracked children on each signal and
+      // exits on the second, so two late SIGTERMs bound the wait. They stay
+      // armed until the process ends: session_shutdown runs inside dispose(),
+      // before later handlers and credential writes, which can hang too.
+      writeStop ??= setTimeout(() => {
+        process.kill(process.pid, 'SIGTERM');
+        writeStop = setTimeout(() => process.kill(process.pid, 'SIGTERM'), 5000);
+        writeStop.unref?.();
+      }, 10000);
+      writeStop.unref?.();
+      try { Promise.resolve(ctx.abort()).catch(() => {}); } catch {}
+      try { ctx.shutdown(); } catch {}
+    });
     context = ctx;
     rebuildTurn(ctx);
     catchUp = prepareCatchUp(ctx);

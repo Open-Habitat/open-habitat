@@ -2,7 +2,7 @@
 created: 2026-11-17
 updated: 2026-11-21
 type: bug
-status: open
+status: testing
 priority: normal
 provenance: other
 provenance_detail: agent code reading during taskfleet run

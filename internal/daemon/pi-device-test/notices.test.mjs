@@ -43,7 +43,7 @@ test('notice bridge exposes native write failure without processes or model call
     socket.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
   });
   try {
-    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [], getSessionId: () => activeSessionId } });
+    await hooks.get('session_start')({}, { sessionManager: { _persist() {}, getBranch: () => [], getSessionId: () => activeSessionId } });
     const notice = { notice_id: '22222222-2222-4222-8222-222222222222', origin: 'agent', timestamp: '2026-10-21T10:00:00Z', text: 'Quota full <script>data</script>', persistence: 'unknown' };
     const failed = await request({ op: 'notice', notice, session_id: sessionId, generation });
     assert.deepEqual(failed, { ok: true, data: { written: false, reason: 'native_write_failed' } });

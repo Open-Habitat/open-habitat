@@ -50,7 +50,7 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
   records = [{ id: 'proc_abcd', name: 'fixture', command: 'taskfleet run wait 01m531x6y92ggdqcmb1exzmn10', startTime: now, status: 'running' }];
   const branch = [{ message: { role: 'toolResult', toolName: 'process', details: { action: 'start', process: records[0], notify: { onSuccess: 'turn', onFailure: 'context' } } } }];
   try {
-    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => branch } });
+    await hooks.get('session_start')({}, { sessionManager: { _persist() {}, getBranch: () => branch } });
     assert.equal((await stat(path)).mode & 0o777, 0o600);
     const list = await request(path, { op: 'list' });
     assert.equal(list.data.records[0].wakes_agent, true);
@@ -143,7 +143,7 @@ for (const idle of [false, true]) test(`a restart's shutdown ${idle ? 'leaves an
   companion(api);
   api.events.on('processes:request:list', q => q.reply([]));
   try {
-    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [] }, isIdle: () => idle });
+    await hooks.get('session_start')({}, { sessionManager: { _persist() {}, getBranch: () => [] }, isIdle: () => idle });
     assert.equal((await request(path, { op: 'shutdown', person: false, restart: true })).data.result, 'stopped');
     assert.deepEqual(appended, idle ? [] : [['oh-restart-stop', { schema_version: 1 }]]);
   } finally {
@@ -164,7 +164,7 @@ test('foreground bash pipeline exposes expanded waits without inventing a backgr
   } });
   const id = '01m531x6y92ggdqcmb1exzmn10';
   try {
-    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [] } });
+    await hooks.get('session_start')({}, { sessionManager: { _persist() {}, getBranch: () => [] } });
     await writeFile(join(directory, 'wait.c'), '#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n');
     execFileSync('cc', [join(directory, 'wait.c'), '-o', join(directory, 'taskfleet')]);
     await writeFile(join(directory, 'active.txt'), `${id}\n`);
@@ -204,7 +204,7 @@ test('missing owner is unavailable, not an empty inventory', async () => {
   const hooks = new Map();
   companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} } });
   try {
-    await hooks.get('session_start')({}, { sessionManager: { getBranch: () => [] } });
+    await hooks.get('session_start')({}, { sessionManager: { _persist() {}, getBranch: () => [] } });
     assert.equal((await request(path, { op: 'list' })).error, 'extension_missing');
   } finally {
     hooks.get('session_shutdown')();

@@ -96,7 +96,7 @@ test('the first run after Pi starts gets one context message, and only when ther
   const hooks = new Map();
   {
     companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} } });
-    const ctx = branch => ({ cwd: '/nonexistent-oh-test', sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } });
+    const ctx = branch => ({ cwd: '/nonexistent-oh-test', sessionManager: { _persist() {}, getBranch: () => branch, getSessionId: () => 's1' } });
     await hooks.get('session_start')({}, ctx([start('proc_aaaa', 1), ended('proc_aaaa')]));
     assert.equal(await hooks.get('before_agent_start')({}), undefined);
     await hooks.get('session_start')({}, ctx([start('proc_bbbb', 1, 'npm run dev')]));
@@ -116,7 +116,7 @@ test('the stop the daemon passed is this launch\'s alone: its first session take
   assert.equal(process.env.OPEN_HABITAT_STOP_DETAIL, undefined);
   const said = (role, extra = {}) => ({ type: 'message', message: { role, ...extra } });
   const cut = [said('user'), said('assistant', { stopReason: 'toolUse' })];
-  const ctx = branch => ({ cwd: undefined, sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } });
+  const ctx = branch => ({ cwd: undefined, sessionManager: { _persist() {}, getBranch: () => branch, getSessionId: () => 's1' } });
   await hooks.get('session_start')({}, ctx(cut));
   const first = await hooks.get('before_agent_start')({});
   assert.deepEqual(first.message.details.stopped, { cause: 'crash', at: '2026-10-28T07:03:43Z', detail: 'Pi exited with status 1; Habitat had not closed its input' });
@@ -143,7 +143,7 @@ test('Habitat\'s own wake gives the agent its catch-up as a turn, once, and neve
     await withLaunchEnv({ OH_PROCESS_SOCKET: path, OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T19:26:55Z', OPEN_HABITAT_CONVERSATION_ID: 'pi:s1', OPEN_HABITAT_LAUNCH_GENERATION: 'g1' }, async () => {
       const hooks = new Map(), sent = [];
       companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} }, sendMessage: (m, o) => sent.push([m, o]) });
-      const ctx = { cwd: undefined, sessionManager: { getBranch: () => [start('proc_aaaa', 1, `taskfleet run wait ${ids.own} --output json`)], getSessionId: () => 's1' } };
+      const ctx = { cwd: undefined, sessionManager: { _persist() {}, getBranch: () => [start('proc_aaaa', 1, `taskfleet run wait ${ids.own} --output json`)], getSessionId: () => 's1' } };
       await hooks.get('session_start')({}, ctx);
       const wake = (extra = {}) => ask(path, { op: 'wake', session_id: 's1', generation: 'g1', reason: 'settled', ...extra });
       assert.equal((await wake({ reason: 'later' })).error, 'invalid_request', 'only the daemon\'s fixed reasons');

@@ -145,7 +145,7 @@ test('agent_before_settle: reminds once, not when covered, not on Taskfleet erro
     let records = [];
     api.events.on('processes:request:list', q => q.reply(records));
     const branch = [];
-    const ctx = { cwd: directory, sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } };
+    const ctx = { cwd: directory, sessionManager: { _persist() {}, getBranch: () => branch, getSessionId: () => 's1' } };
     await hooks.get('session_start')({}, ctx);
     // An ordinary end: the last message is the assistant's, so Pi cannot continue yet.
     const settle = (extra = {}) => hooks.get('agent_before_settle')({ type: 'agent_before_settle', outcome: 'completed', continue: false, entries: [], context: { canContinue: false }, ...extra }, ctx);
