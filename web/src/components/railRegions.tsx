@@ -98,14 +98,28 @@ function revealIn(region: HTMLElement, el: HTMLElement) {
     );
 }
 
+/** A conversation row's height as drawn, a Hiljaiset row first; none
+ * while no row shows (Hiljaiset folded and nothing else listed). */
+function rowHeight(region: HTMLElement) {
+  const quiet = region.querySelector(`[data-testid="${SECTIONS.quiet}"]`);
+  const row =
+    quiet?.querySelector<HTMLElement>(ROW) ??
+    region.querySelector<HTMLElement>(ROW);
+  return row?.getBoundingClientRect().height || undefined;
+}
+
 /** Whether the conversations with Hiljaiset open would need more room than
  * the rail can give them above Työtilat's floor. Worked out the same way
- * folded or open, so folding never changes the answer by itself. */
+ * folded or open, so folding never changes the answer by itself: a folded
+ * Hiljaiset counts its rows at the height they had when last drawn, since
+ * a guess from the stylesheet can differ by more than SLACK and fold and
+ * open it in turn without end. */
 function crowdedNow(
   content: HTMLElement,
   region: HTMLElement,
   quietRows: number,
   was: boolean,
+  drawn: number | undefined,
 ) {
   const quiet = region.querySelector<HTMLElement>(
     `[data-testid="${SECTIONS.quiet}"]`,
@@ -113,7 +127,7 @@ function crowdedNow(
   const head = quiet?.querySelector<HTMLElement>("h2");
   if (!quiet || !head || !quietRows) return false;
   const row =
-    region.querySelector<HTMLElement>(ROW)?.getBoundingClientRect().height ??
+    drawn ??
     (Number.parseFloat(
       getComputedStyle(region).getPropertyValue("--ah-conversation-row-height"),
     ) ||
@@ -169,7 +183,13 @@ export function useRailRegions({
   onCrowded?: (crowded: boolean) => void;
 }) {
   const [beyond, setBeyond] = useState<RailBeyond>(NONE);
-  const live = useRef({ beyond, quietRows, onCrowded, crowded: false });
+  const live = useRef<{
+    beyond: RailBeyond;
+    quietRows: number;
+    onCrowded?: (crowded: boolean) => void;
+    crowded: boolean;
+    row?: number;
+  }>({ beyond, quietRows, onCrowded, crowded: false });
   live.current.beyond = beyond;
   live.current.quietRows = quietRows;
   live.current.onCrowded = onCrowded;
@@ -206,6 +226,7 @@ export function useRailRegions({
       below: rowsBeyond(r, "below"),
     };
     if (!same(next, live.current.beyond)) setBeyond(next);
+    live.current.row = rowHeight(r) ?? live.current.row;
     const report = live.current.onCrowded;
     if (report) {
       const crowded = crowdedNow(
@@ -213,6 +234,7 @@ export function useRailRegions({
         r,
         live.current.quietRows,
         live.current.crowded,
+        live.current.row,
       );
       if (crowded !== live.current.crowded) {
         live.current.crowded = crowded;
