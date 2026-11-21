@@ -31,6 +31,7 @@ it carries. To upgrade, deliver the successor release and change only
 - Microsoft relays use much less memory: each open conversation runs a small relay instead of a copy of the host binary.
 - A Pi session line torn by an interrupted write is undone instead of being glued to the next entry, so the conversation stays readable.
 - A message sent or steered while the conversation's status is being re-read is kept instead of lost.
+- Text typed over a message whose delivery was uncertain is no longer cleared when that message turns out to have arrived.
 - Upgrades reuse an unchanged runtime payload set from the previous release, which makes them much faster.
 - A conversation reopens where you left it, and a Changes card appears under every turn that changed files.
 - The editor opens previewable files in preview first and keeps workspace files out of browser caches.
@@ -38,10 +39,12 @@ it carries. To upgrade, deliver the successor release and change only
 - At a full disk quota, space can be freed without the agent, and a move that cannot be restored says so.
 - A reply ends once and stays put; conversations a restart left untitled get their title; silent event streams reopen.
 - Google personal accounts are documented in the admin guide and offered in the connect flow.
+- On a window or phone too short for the sidebar's regions, the whole sidebar scrolls so every conversation and workspace stays reachable.
+- Turning on explain mode on a workspace page no longer crashes the page when the Hiljaiset section folds.
+- Workspace icon suggestions offer your other workspaces' logos, image files in the workspace and images attached to the request.
 - Experimental: multiplayer conversations: invite another person into a conversation, with participant messages, text-only turns, and a card that lets the owner see which participant turn started a process and stop it or leave it running.
 - Experimental: an editor for the agent's instructions, in onboarding and Settings.
 - Experimental: attention sounds. Choose a sound for when the agent needs you in Settings › Sounds (Äänet), or per workspace, and mute them from the account menu.
-- Workspace icon suggestions offer your other workspaces' logos, image files in the workspace and images attached to the request.
 - Operators: releases now include `bin/open-habitat-mcp-relay`; custom installers must keep it beside the real `open-habitat` executable, root-owned and mode 0755, and include it in package verification. `host apply` and `host upgrade` handle this automatically.
 
 
