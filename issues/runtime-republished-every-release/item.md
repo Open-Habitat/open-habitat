@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: open
+status: testing
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7z7zq68c0zjn6rzp5d700d6/runtime-install-time
