@@ -2,13 +2,16 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by a worker running the focused web check
 source_ref: taskfleet:01m7zbxs4sc2a2kmjkfb4dpxeh/observed:finnish-scan-language-settings
 originating_run: 01m7zbxs4sc2a2kmjkfb4dpxeh
 originating_run_kind: spinoff
+lane: gate-red
+lane_seq: 1
+preparation: ready
 ---
 
 # Fast web check fails: finnishScan flags the language menu's own name Suomi

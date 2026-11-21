@@ -2,13 +2,16 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: flaky test observed during a focused check in a taskfleet run
 source_ref: taskfleet:01m7zc3ems89k12d01tkmqy6f8/flake:workspace-delete-snapshot-git-comm
 originating_run: 01m7zc3ems89k12d01tkmqy6f8
 originating_run_kind: spinoff
+lane: gate-red
+lane_seq: 3
+preparation: ready
 ---
 
 # Workspace delete test races git's exec: person's git is seen as daemon.test under load
