@@ -2,11 +2,13 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: agent-instructions
 lane_seq: 1
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Clearer agent instructions and a smaller tool surface for connected accounts
@@ -77,3 +79,9 @@ Jari 21.11.2026 accepted ADR 0039: every person has one Microsoft process (sever
 ### 2026-11-21T10:15:13Z · @agent
 
 Permission prototype round 2026-11-21-account-action-permission: three placements of the question (recommended 1 Kortti) and five icon candidates (recommended shield with question); see result-permission.md. Open host piece: the card needs a typed permission question in contracts/v1.
+
+## Resolution
+
+### 2026-11-21T14:45:39Z · @agent
+
+Recommendations 1-4 implemented with microsoft-single-process-per-person (five areas, area instruction in the account text, sign-in tools hidden, permission hook before the 19 calls); recommendation 5 (asking Pi upstream) is an external publication left undone.

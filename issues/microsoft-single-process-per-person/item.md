@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Technical decision requested by the maintainer
@@ -12,6 +12,8 @@ originating_run_kind: technical-decision
 lane: microsoft
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Share one Microsoft MCP process across a person's conversations
@@ -42,3 +44,9 @@ Retain native per-account cache, application, expected-identity and permission b
 See issues/agent-account-instructions-clarity/result-single-server.md, single-server-evidence.md and docs/decisions/adr-0039-one-microsoft-process-per-person.md. The networkless lab demonstrated a single native child behind four Pi processes, filtered discovery, concurrent listing/ping, conversation-close survival and filesystem denial to another UID. It blocked every upstream tool call. It does not establish production write routing, account switching, cancellation, signed-in behavior or installed-host isolation.
 
 Born unlaned for the later human scheduling decision; this is implementation work, unlike the original issue's proposal deliverable.
+
+## Resolution
+
+### 2026-11-21T14:45:39Z · @agent
+
+Implemented: one daemon-owned Microsoft process per person, five area entries with relays, migration, permission hook; see result.md.
