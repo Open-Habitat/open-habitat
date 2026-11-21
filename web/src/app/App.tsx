@@ -51,7 +51,7 @@ import {
   chooseQuietSort,
   chooseQuietWorkspace,
   chooseSectionWorkspace,
-  chooseWorkspaceSound,
+  moveWorkspaceSound,
   type QuietSort,
   type RailSection,
   useConfirmedPreferences,
@@ -1722,16 +1722,8 @@ export function App() {
         else refresh();
         // The first rename gives the workspace its durable ID; its own
         // sound moves with it.
-        const ownSound = confirmedPreferences.sound.workspaces[id];
-        if (reply.workspace_id !== id && ownSound && identity)
-          void chooseWorkspaceSound(
-            identity,
-            reply.workspace_id,
-            ownSound,
-            writeCSRF,
-          ).then((moved) => {
-            if (moved) void chooseWorkspaceSound(identity, id, null, writeCSRF);
-          });
+        if (reply.workspace_id !== id && identity)
+          void moveWorkspaceSound(identity, id, reply.workspace_id, writeCSRF);
         if (
           reply.workspace_id !== id &&
           currentRoute.current.pathname === `/workspaces/${id}`

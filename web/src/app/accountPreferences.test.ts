@@ -10,7 +10,9 @@ import {
   AccountPreferencesProvider,
   chooseEditor,
   chooseLanguage,
+  chooseWorkspaceSound,
   loadAccountPreferences,
+  moveWorkspaceSound,
   setExperimentalFeature,
   useEditorChoice,
   useExperimentalFeature,
@@ -303,4 +305,79 @@ it("puts the interface in the person's confirmed language and back to the server
   expect(currentLanguage()).toBe("fi");
   expect(document.documentElement.lang).toBe("fi");
   resetLanguageForTests("fi");
+});
+
+const soundReply = (identity: string, workspaces: Record<string, string>) =>
+  new Response(
+    JSON.stringify({
+      schema_version: 1,
+      web_identity_id: identity,
+      engine: "codemirror6",
+      language: "system",
+      quiet_sort: "newest",
+      quiet_workspace: null,
+      yours_workspace: null,
+      running_workspace: null,
+      github_workflow: false,
+      sound: {
+        enabled: true,
+        default: "kalimba",
+        length: "short",
+        in_view: "quiet",
+        night: true,
+        workspaces,
+      },
+      experimental: {},
+    }),
+    { headers: { "Content-Type": "application/json" } },
+  );
+const bodies = (fetch: ReturnType<typeof vi.fn>) =>
+  fetch.mock.calls
+    .filter(([, init]) => init?.method === "PUT")
+    .map(([, init]) => JSON.parse(init.body));
+
+it("a workspace sound chosen while another write is in flight waits for it, and a move frees the old id first", async () => {
+  let release!: (response: Response) => void;
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(soundReply("wid_sound", { ws_example123: "lasit" }))
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(soundReply("wid_sound", { ws_example123: "kulho" }));
+  vi.stubGlobal("fetch", fetch);
+  await loadAccountPreferences("wid_sound", "s");
+  const first = chooseWorkspaceSound(
+    "wid_sound",
+    "ws_example123",
+    "pisara",
+    "s",
+  );
+  const second = chooseWorkspaceSound(
+    "wid_sound",
+    "ws_example123",
+    "kulho",
+    "s",
+  );
+  await waitFor(() => expect(bodies(fetch)).toHaveLength(1));
+  release(soundReply("wid_sound", { ws_example123: "pisara" }));
+  expect(await first).toBe(true);
+  expect(await second).toBe(true);
+  expect(bodies(fetch)).toEqual([
+    { workspace_sound: { ws_example123: "pisara" } },
+    { workspace_sound: { ws_example123: "kulho" } },
+  ]);
+
+  // At the bound the new id has no room until the old one is gone.
+  fetch
+    .mockResolvedValueOnce(soundReply("wid_sound", {}))
+    .mockResolvedValueOnce(soundReply("wid_sound", { ws_example456: "kulho" }));
+  await moveWorkspaceSound("wid_sound", "ws_example123", "ws_example456", "s");
+  expect(bodies(fetch).slice(2)).toEqual([
+    { workspace_sound: { ws_example123: null } },
+    { workspace_sound: { ws_example456: "kulho" } },
+  ]);
 });

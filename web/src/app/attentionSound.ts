@@ -302,6 +302,10 @@ export function useAttentionSound({
   const seen = useRef<Set<string>>(new Set());
   const settleUntil = useRef(0);
   const owner = useRef<string | undefined>(undefined);
+  // The page was loading, signed out, off or disconnected at the last
+  // observation: the first one after it is the baseline, and the settle
+  // window starts there, however long the gap was.
+  const blocked = useRef(true);
   useEffect(() => {
     if (!enabled) return;
     const unlock = () => unlockAudio();
@@ -315,8 +319,17 @@ export function useAttentionSound({
   const now = readyRows(yours);
   useEffect(() => {
     const at = Date.now();
-    if (owner.current !== identity || !enabled || !loaded || stale) {
+    if (owner.current !== identity) {
       owner.current = identity;
+      blocked.current = true;
+    }
+    if (!enabled || !loaded || stale) {
+      seen.current = new Set(now.keys());
+      blocked.current = true;
+      return;
+    }
+    if (blocked.current) {
+      blocked.current = false;
       seen.current = new Set(now.keys());
       settleUntil.current = at + settleMs;
       return;

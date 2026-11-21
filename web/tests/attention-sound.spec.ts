@@ -103,9 +103,9 @@ test("@attention-sound off, nothing shows; on, the strip replaces the head's ico
   );
   // The first rename gives the workspace its durable id: the page comes back
   // under it, with the strip where it was.
-  await expect(strip.getByTestId("strip-name")).toBeVisible();
-  const after = await strip.getByTestId("strip-name").boundingBox();
-  expect(after).toEqual(before);
+  await expect
+    .poll(() => strip.getByTestId("strip-name").boundingBox())
+    .toEqual(before);
 
   // Ääni: the picker chooses on a press; ▶ listens without choosing.
   // The first rename gives the workspace its durable id, so its sound is

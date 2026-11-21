@@ -302,14 +302,24 @@ export function chooseSound(
   });
 }
 
-/** Gives a workspace its own sound, or with null the default again.
- * Resolves to whether the daemon confirmed it. */
-export function chooseWorkspaceSound(
+/** Resolves on the next change of any session's preferences. */
+const nextChange = () =>
+  new Promise<void>((resolve) =>
+    events.addEventListener("change", () => resolve(), { once: true }),
+  );
+
+/** Gives a workspace its own sound, or with null the default again. A
+ * choice made while another write is in flight waits for it rather than
+ * being dropped (the strip's picker stays usable meanwhile). Resolves to
+ * whether the daemon confirmed it. */
+export async function chooseWorkspaceSound(
   identity: string,
   workspaceId: string,
   sound: SoundId | null,
   csrf: string,
 ) {
+  // Checked and written in one step, so two waiting choices go in turn.
+  while (states.get(key(identity, csrf))?.busy) await nextChange();
   return write(identity, csrf, `workspace_sound:${workspaceId}`, {
     workspace_sound: { [workspaceId]: sound },
   }).then(
@@ -317,6 +327,21 @@ export function chooseWorkspaceSound(
       (states.get(key(identity, csrf))?.sound.workspaces[workspaceId] ??
         null) === sound,
   );
+}
+
+/** Moves a workspace's own sound to its new id (its first rename gives it a
+ * durable one). The old entry goes first, so a full map never needs a
+ * place for both. */
+export async function moveWorkspaceSound(
+  identity: string,
+  from: string,
+  to: string,
+  csrf: string,
+) {
+  const sound = states.get(key(identity, csrf))?.sound.workspaces[from];
+  if (!sound || from === to) return;
+  if (await chooseWorkspaceSound(identity, from, null, csrf))
+    await chooseWorkspaceSound(identity, to, sound, csrf);
 }
 
 export function setExperimentalFeature(

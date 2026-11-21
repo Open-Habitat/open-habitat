@@ -148,8 +148,15 @@ describe("useAttentionSound", () => {
     const hook = mount();
     now += 5000;
     hook.rerender({ yours: [row("a", "reply:r1")], stale: true });
+    // However long the connection was lost, the rows it brings back are
+    // the baseline, and the settle window starts at the recovery.
+    now += 60_000;
+    hook.rerender({ yours: [row("a", "reply:r1")] });
     hook.rerender({ yours: [row("a", "reply:r5"), row("b", "reply:r6")] });
     expect(plays).toHaveLength(0);
+    now += 5000;
+    hook.rerender({ yours: [row("a", "reply:r8"), row("b", "reply:r6")] });
+    expect(plays).toHaveLength(1);
   });
 
   it("another tab of this browser that just played claims the burst", () => {
