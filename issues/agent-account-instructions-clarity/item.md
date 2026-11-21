@@ -64,6 +64,10 @@ Jari 21.11.2026: permission question direction 2 Kenttä (the question takes the
 
 Jari 21.11.2026: one Microsoft MCP server process per person is an absolute requirement (not per area, not per conversation). Also try: one entry, the agent always writes the category into its tool search.
 
+### 2026-11-21T13:09:31Z · @jari
+
+Jari's further direction during the single-server decision: if category-prefixed searches do not separate file searches adequately, choose a shared HTTP or stdio-multiplexer design restricted to the own Unix user. Waiting for Pi upstream is only a later improvement, never the plan.
+
 ## Agent Runs
 
 ### 2026-11-21T10:15:13Z · @agent

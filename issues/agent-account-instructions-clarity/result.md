@@ -1,9 +1,10 @@
 # Result: proposal for Jari, nothing shipped
 
-Read `summary.md` first (Finnish, one screen). Since Jari's decision of
-21.11.2026 the proposal is `research-topics.md`: the Microsoft tools as
-topic areas, with `topic-areas.py` recounting the area mapping. The texts
-below are the earlier proposal it supersedes for the tool surface:
+Read `result-single-server.md` for the latest Finnish recommendation and
+ADR 0039 for the proposed single-process architecture. It supersedes the
+five-process recommendation in `research-topics.md`; that research and
+`topic-areas.py` still supply the area mapping. The texts below are earlier
+proposals, not permission to ship multiple Microsoft processes:
 
 - `agent-text.md`: the text the agent would read about connected accounts,
   and nothing else.
@@ -119,5 +120,51 @@ authority changed.
 6. **Sending in one step stays available** (in the mail area, confirmed),
    since Jari asked to keep all useful tools. This reverses the earlier
    proposal's "send only through a draft".
-7. **The five-process cost is put to Jari** rather than decided, because it
-   multiplies with open conversations on a shared host.
+7. **The five-process cost was put to Jari** rather than decided. His later
+   answer requires one process per person; five processes are not a fallback.
+
+## Single-process decision research of 21.11.2026
+
+`result-single-server.md` is the Finnish summary; `single-server-evidence.md`
+records the experiments and limitations; ADR 0039 recommends a daemon-side
+stdio multiplexer behind an own-UID Unix endpoint. Production code is untouched.
+Jari's follow-up explicitly fixes endpoint access to the person's own Unix
+user; no broader principal is proposed. ADR acceptance precedes implementation.
+The issue remains open for the other instruction/permission work as well.
+
+Evidence: `/var/tmp/agent-keep/ms-single-server/`. The final networkless lab
+(`lab8.json`) passed with four Pi processes, twenty relays, one Microsoft child,
+exact namespace sets, concurrent discovery and foreign-UID denial. Six live
+category-in-search runs completed with every Microsoft call blocked: 11/11
+searches followed the prefix, but actual Pi output still showed mail-folder
+deletion once. Microsoft-only replay showed it three times, a separate count.
+
+### Decisions for later review
+
+1. **Share stdio through the existing daemon rather than adapt native HTTP.**
+   This retains the native cache and local file tools without a network port.
+   ADR 0039 states the reachability consequence within Jari's explicit own-UID
+   constraint. No foreign-user, gateway or browser access is proposed.
+2. **Keep five area entries but make them lightweight relays.** The category
+   instruction alone improves ranking but does not exclude the unrelated delete.
+   Pi upstream grouping is later work, not a dependency or waiting plan.
+3. **Keep one upstream slot even across accounts.** Drain/reap/restart on an
+   account/configuration switch rather than pool children or silently combine
+   native credentials and permission levels. This scheduler is a proposed
+   implementation choice, not measured multi-account behavior.
+4. **Do not promise the prototype's memory as the production footprint.** Four
+   conversations used 176.6 MiB in the Microsoft child and 477.4 MiB including
+   the experimental mux and relays; Pi itself was another 609.0 MiB. The proposed
+   integrated daemon/Go relay has not been measured.
+
+### Validation
+
+Source-grounded self-review is proportionate to a documentation/research-only
+diff. No product session, contract or authorization behavior was changed; no
+independent model review is claimed. Final checks passed: Python `py_compile`
+for the two new Python fixtures (private scratch bytecode), Node `--check` for
+all new JS fixtures, `issuectl doctor --json` (no findings),
+`python3 scripts/validate-project-view.py` (16 pages), and `git diff --check`.
+No browser or Go suite was run: there is no production change. Implementation
+was filed as `microsoft-single-process-per-person`, unlaned/untriaged with the
+exact originating run identity; it awaits architecture acceptance and triage.
