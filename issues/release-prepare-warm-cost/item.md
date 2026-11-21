@@ -2,12 +2,15 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7zdezyyd3d4t7fskf7gzmvw/remaining-warm-release-cost
 originating_run: 01m7zdezyyd3d4t7fskf7gzmvw
 originating_run_kind: spinoff
+lane: release-runtime
+lane_seq: 2
+preparation: ready
 ---
 
 # Cache unchanged release preparation inputs and measure remaining warm-update cost
