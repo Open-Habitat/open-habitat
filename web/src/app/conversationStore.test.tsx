@@ -1338,6 +1338,46 @@ describe("recent conversation windows", () => {
     expect(store.statusStale(agent)).toBe(false);
     expect(store.readMetadata().lostStatuses.has(agent)).toBe(false);
   });
+  it("keeps a status stale until the re-read its event started returns", async () => {
+    // Another reader's status may predate the event; a kept message must not
+    // go on it.
+    const agent = id(1);
+    let finish!: (status: unknown) => void;
+    const statusReader = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, { agent_id: agent, state: "idle" } as never);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: {},
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "settle",
+    } as never);
+    expect(store.statusStale(agent)).toBe(true);
+    store.applyStatus(agent, { agent_id: agent, state: "idle" } as never);
+    expect(store.statusStale(agent)).toBe(true);
+    // The other reader's status crossed this read, so one more is taken.
+    finish({ agent_id: agent, state: "accepted" });
+    await flush();
+    expect(statusReader).toHaveBeenCalledTimes(2);
+    finish({ agent_id: agent, state: "accepted" });
+    await flush();
+    expect(store.statusStale(agent)).toBe(false);
+    expect(store.status(agent)?.state).toBe("accepted");
+  });
   it("keeps a nested recovery read owning the loading flag after the original tail settles", async () => {
     const agent = id(1);
     let finishTail!: (p: HistoryPage) => void;

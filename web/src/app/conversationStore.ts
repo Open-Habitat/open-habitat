@@ -634,9 +634,16 @@ export class ConversationStore {
   }
   /** Applies a status unless it is older than the one held (see
    * statusPositions); returns whether it was applied. */
-  applyStatus(id: string, status: Status): boolean {
+  applyStatus(id: string, status: Status, ownRead = false): boolean {
     if (this.disposed || status.agent_id !== id) return false;
     if (this.olderStatus(id, status)) return false;
+    // Another reader's status may have been read before the event that made
+    // this one stale; only the re-read that event started settles it. A
+    // message kept meanwhile would otherwise go on the older knowledge.
+    const stillStale =
+      !ownRead &&
+      this.statusRequests.has(id) &&
+      this.metadata.staleStatuses.has(id);
     const at = this.statusPosition(status);
     if (at) this.statusPositions.set(id, at);
     else this.statusPositions.delete(id);
@@ -646,9 +653,9 @@ export class ConversationStore {
     this.metadata = {
       ...this.metadata,
       statuses: new Map(this.metadata.statuses).set(id, status),
-      staleStatuses: new Set(
-        [...this.metadata.staleStatuses].filter((key) => key !== id),
-      ),
+      staleStatuses: stillStale
+        ? this.metadata.staleStatuses
+        : new Set([...this.metadata.staleStatuses].filter((key) => key !== id)),
       lostStatuses: new Set(
         [...this.metadata.lostStatuses].filter((key) => key !== id),
       ),
@@ -1125,10 +1132,15 @@ export class ConversationStore {
           this.notifyStatus(id);
           return;
         }
-        this.applyStatus(id, value);
+        this.applyStatus(id, value, true);
       } catch {
         // Keep the cached status explicitly stale; an explicit check can retry.
-        if (!this.disposed && this.epoch === epoch)
+        // A failure a successful status has since replaced loses nothing.
+        if (
+          !this.disposed &&
+          this.epoch === epoch &&
+          this.metadata.staleStatuses.has(id)
+        )
           this.markStatusLost(id, true);
       } finally {
         if (this.statusRequests.get(id) === request)
