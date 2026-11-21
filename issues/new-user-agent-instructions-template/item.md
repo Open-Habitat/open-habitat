@@ -31,3 +31,9 @@ Jari 21.11.2026 on round 1: wrong direction. It must be part of the onboarding c
 ### 2026-11-21T10:04:59Z · @jari
 
 Jari 21.11.2026 on round 2: direction A Keskustelu, but riff on what the person is told: today's text is long and technical. After the conversation the file itself is shown. The conversation is archived or similar — note that it has no meaningful repository, so it may not even need archiving (decide). Existing accounts: can continue this in any conversation, and a Settings view (Tili › Ohjeet agentille) is needed — prototype it. Structured choices from the agent (quick replies) accepted (recommendation).
+
+## Agent Runs
+
+### 2026-11-21T10:16:00Z · @claude-opus-5-5
+
+Round 3 (run 01m7ys440yp9cdt0dga8tsyyq9): direction A reworded in three variants (A1 Lyhyesti, A2 Muistilappu, A3 Esittely), file revealed before Save; recommendation A2; the step's conversation is never shown in the rail (home-directory sessions belong to no workspace). Result: result-3.md.
