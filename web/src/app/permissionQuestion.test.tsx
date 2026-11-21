@@ -32,7 +32,6 @@ const props = (
   runActive,
   refresh: vi.fn(async () => {}),
   onLogin: vi.fn(),
-  onOutcome: vi.fn(),
 });
 
 beforeEach(() => {
@@ -94,4 +93,36 @@ it("a generic question is not a permission question", () => {
   });
   expect(result.current.open).toBeUndefined();
   expect(result.current.lines).toEqual([]);
+});
+
+it("a refused answer reopens the question; an uncertain one says so and is not resent", async () => {
+  const { NotAdmitted } = await import("./conversations");
+  respond.mockRejectedValueOnce(new NotAdmitted("control_uncertain"));
+  const { result, rerender } = renderHook((p) => usePermissionQuestion(p), {
+    initialProps: props(question("q1")),
+  });
+  await act(() => result.current.answer("allow"));
+  expect(result.current.open?.action).toBe("Poista q1");
+  expect(result.current.lines[0].decision).toBeUndefined();
+  expect(result.current.notice).toBeUndefined();
+
+  respond.mockRejectedValueOnce(new Error("network"));
+  await act(() => result.current.answer("deny"));
+  expect(result.current.notice).toBe("uncertain");
+  expect(result.current.open).toBeUndefined();
+  expect(result.current.lines[0].decision).toBe("deny");
+  expect(respond).toHaveBeenCalledTimes(2);
+  // The notice belongs to q1: the next question starts clean.
+  rerender(props(question("q2")));
+  expect(result.current.notice).toBeUndefined();
+  expect(result.current.open?.action).toBe("Poista q2");
+});
+
+it("after a reload an answer Pi has not taken yet is reported uncertain", () => {
+  sessionStorage.setItem(`nah:person:question:${agent}:q1`, "allow");
+  const { result } = renderHook((p) => usePermissionQuestion(p), {
+    initialProps: props(question("q1")),
+  });
+  expect(result.current.notice).toBe("uncertain");
+  expect(result.current.open).toBeUndefined();
 });

@@ -22,7 +22,7 @@ import (
 func TestPermissionRequestDecodesOnlyTheTypedShape(t *testing.T) {
 	good := `{"action":"Delete the folder","consequence":"It is removed.","account":{"provider":"Microsoft","address":"person@example.test"},"call":{"area":"ms-admin","tool":"delete-mail-folder","arguments":"{\"id\":\"x\"}"}}`
 	is, view := permissionRequest("confirm", permissionPrefix+good)
-	if !is || view == nil || view.Action != "Delete the folder" || view.Account == nil || view.Account.Provider != "Microsoft" || view.Call.Arguments != `{"id":"x"}` {
+	if !is || view == nil || view.Action != "Delete the folder" || view.Account == nil || view.Account.Provider != "Microsoft" || *view.Call.Arguments != `{"id":"x"}` {
 		t.Fatalf("good question: %v %+v", is, view)
 	}
 	if is, view := permissionRequest("confirm", permissionPrefix+`{"action":"a","consequence":"c","call":{"area":"x","tool":"y","arguments":""}}`); !is || view == nil || view.Account != nil {
@@ -39,6 +39,11 @@ func TestPermissionRequestDecodesOnlyTheTypedShape(t *testing.T) {
 		``,
 		`not json`,
 		good + `{}`,
+		good + `]`,
+		good + `}`,
+		good + ` x`,
+		`{"action":"a","consequence":"c","call":{"area":"x","tool":"y"}}`,
+		`{"action":"a","consequence":"c","call":{"area":"x","tool":"y","arguments":null}}`,
 		`{"action":"a","consequence":"c","call":{"area":"x","tool":"y","arguments":""},"html":"<b>"}`,
 		`{"action":"","consequence":"c","call":{"area":"x","tool":"y","arguments":""}}`,
 		`{"action":"   ","consequence":"c","call":{"area":"x","tool":"y","arguments":""}}`,

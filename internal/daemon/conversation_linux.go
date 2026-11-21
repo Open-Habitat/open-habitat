@@ -1509,10 +1509,10 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
 	c.mu.Unlock()
-	if err := s.rpc.respondUI(body.RequestID, kind, value, body.Action == "cancel"); err != nil {
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
+	// The request is spent: a failed write may still have reached Pi in
+	// part or whole, so the answer is uncertain, never refused (a refusal
+	// tells the browser nothing was written and it may answer again).
+	_ = s.rpc.respondUI(body.RequestID, kind, value, body.Action == "cancel")
 	historyJSON(w, map[string]any{"schema_version": 1, "request_id": body.RequestID, "state": "uncertain"})
 }
 

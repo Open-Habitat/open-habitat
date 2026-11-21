@@ -898,6 +898,7 @@ export function Composer({
     };
     const drop = (event: DragEvent) => {
       if (!event.dataTransfer?.files.length) return;
+      if (box.current?.closest("[hidden]")) return;
       event.preventDefault();
       void addFiles(
         Array.from(event.dataTransfer.files),
@@ -1014,6 +1015,8 @@ export function Composer({
     box,
   );
   const dictating = dictation.active;
+  const dictatingNow = useRef(dictating);
+  dictatingNow.current = dictating;
   // Focus once the field shows again with the text in it. A frame scheduled
   // from the end could run before that render on a busy machine, find the
   // field still hidden and leave the focus nowhere.
@@ -1550,6 +1553,8 @@ export function Composer({
         return;
       const target = e.target as HTMLElement | null;
       if (target?.closest?.(".ah-choice-in")) return;
+      // A composer held hidden under a question keeps its keys to itself.
+      if (box.current?.closest("[hidden]")) return;
       if (
         target &&
         target !== field.current &&
@@ -1581,6 +1586,8 @@ export function Composer({
     const onKey = (e: KeyboardEvent) => {
       if (!shortcutMatches.current(e) || e.defaultPrevented) return;
       const run = dictationKey.current;
+      // Held hidden, the shortcut only ends a dictation already under way.
+      if (box.current?.closest("[hidden]") && !dictatingNow.current) return;
       const target = e.target as HTMLElement | null;
       // A dialog or list over the conversation keeps its own keys.
       const over = target?.closest?.('dialog, [role="dialog"], .ah-choice-in');

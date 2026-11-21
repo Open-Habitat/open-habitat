@@ -32,12 +32,14 @@ const states = (narrow = false) => (
       decision="deny"
     />
     <PermissionQuestion
+      requestId="story-1"
       permission={permission}
       available
       onAnswer={noop}
       onStop={noop}
     />
     <PermissionQuestion
+      requestId="story-2"
       permission={{ ...permission, account: undefined }}
       available={false}
       onAnswer={noop}

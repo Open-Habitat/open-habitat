@@ -755,7 +755,6 @@ function BrowserConversationContent({
     runActive: statusStale ? undefined : current?.run_active,
     refresh,
     onLogin,
-    onOutcome: setQuestionOutcome,
   });
   const [titleActionState, setTitleActionState] = useState<{
     key: string;
@@ -3320,6 +3319,14 @@ function BrowserConversationContent({
                   ? txt.questionStale
                   : txt.questionUncertain}
               </WarningBanner>
+            ) : permission.notice ? (
+              // An answered permission question has no card of its own to
+              // say its answer's delivery is in doubt; the banner says it.
+              <WarningBanner subject="question" tone="neutral">
+                {permission.notice === "stale"
+                  ? txt.questionStale
+                  : txt.questionUncertain}
+              </WarningBanner>
             ) : null}
             {/* Normal progress belongs to the turn header, not a second row
                 that mounts/unmounts beneath streaming content. */}
@@ -3705,6 +3712,7 @@ function BrowserConversationContent({
                 <WakeDock agent={archive} csrf={csrf} />
                 {view === "opened" && permission.open ? (
                   <PermissionQuestion
+                    requestId={permission.requestId ?? ""}
                     permission={permission.open}
                     available={!!csrf}
                     onAnswer={(decision) => void permission.answer(decision)}

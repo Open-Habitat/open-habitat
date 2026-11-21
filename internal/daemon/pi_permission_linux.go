@@ -5,6 +5,7 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -29,9 +30,9 @@ type permissionAccount struct {
 }
 
 type permissionCall struct {
-	Area      string `json:"area"`
-	Tool      string `json:"tool"`
-	Arguments string `json:"arguments"`
+	Area      string  `json:"area"`
+	Tool      string  `json:"tool"`
+	Arguments *string `json:"arguments"` // required, may be empty
 }
 
 type permissionView struct {
@@ -56,12 +57,13 @@ func permissionRequest(method, title string) (bool, *permissionView) {
 	decoder := json.NewDecoder(bytes.NewReader([]byte(raw)))
 	decoder.DisallowUnknownFields()
 	var view permissionView
-	if decoder.Decode(&view) != nil || decoder.More() {
+	var rest json.RawMessage
+	if decoder.Decode(&view) != nil || decoder.Decode(&rest) != io.EOF || view.Call.Arguments == nil {
 		return true, nil
 	}
 	ok := permissionLine(view.Action, 300) && permissionLine(view.Consequence, 600) &&
 		permissionLine(view.Call.Area, 80) && permissionLine(view.Call.Tool, 120) &&
-		permissionArguments(view.Call.Arguments)
+		permissionArguments(*view.Call.Arguments)
 	if view.Account != nil {
 		ok = ok && permissionLine(view.Account.Provider, 60) && permissionLine(view.Account.Address, 320)
 	}
@@ -103,7 +105,7 @@ func (v *permissionView) wire() map[string]any {
 	out := map[string]any{
 		"action":      v.Action,
 		"consequence": v.Consequence,
-		"call":        map[string]any{"area": v.Call.Area, "tool": v.Call.Tool, "arguments": v.Call.Arguments},
+		"call":        map[string]any{"area": v.Call.Area, "tool": v.Call.Tool, "arguments": *v.Call.Arguments},
 	}
 	if v.Account != nil {
 		out["account"] = map[string]any{"provider": v.Account.Provider, "address": v.Account.Address}

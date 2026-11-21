@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useText } from "../i18n";
 import { permissionQuestionText } from "../text/permissionQuestion";
 import { ControlButton } from "./ControlElements";
@@ -12,6 +13,8 @@ export type Permission = {
   call: { area: string; tool: string; arguments: string };
 };
 export type PermissionDecision = "allow" | "deny";
+
+const armDelayMs = 400;
 
 function Technical({ call }: { call: Permission["call"] }) {
   const t = useText(permissionQuestionText);
@@ -36,12 +39,16 @@ function Technical({ call }: { call: Permission["call"] }) {
  * answer (the person just asked for the action), so it is the primary one.
  * Stop stays: the turn is running. */
 export function PermissionQuestion({
+  requestId,
   permission,
   available,
   onAnswer,
   onStop,
   stopDisabled,
 }: {
+  /** A new question waits a moment before it can be answered, so the second
+   * press of a double-click meant for the previous one cannot answer it. */
+  requestId: string;
   permission: Permission;
   /** Without control the question shows, and the buttons say why not. */
   available: boolean;
@@ -50,6 +57,12 @@ export function PermissionQuestion({
   stopDisabled?: boolean;
 }) {
   const t = useText(permissionQuestionText);
+  const [armed, setArmed] = useState<string>();
+  useEffect(() => {
+    const timer = setTimeout(() => setArmed(requestId), armDelayMs);
+    return () => clearTimeout(timer);
+  }, [requestId]);
+  const ready = available && armed === requestId;
   return (
     <div className="ah-permission-dock" data-testid="permission-dock">
       <section
@@ -99,7 +112,7 @@ export function PermissionQuestion({
               size="page"
               variant="secondary"
               data-testid="permission-deny"
-              isDisabled={!available}
+              isDisabled={!ready}
               title={available ? undefined : t.unavailable}
               onPress={() => onAnswer("deny")}
             >
@@ -109,7 +122,7 @@ export function PermissionQuestion({
               size="page"
               variant="primary"
               data-testid="permission-allow"
-              isDisabled={!available}
+              isDisabled={!ready}
               title={available ? undefined : t.unavailable}
               onPress={() => onAnswer("allow")}
             >
