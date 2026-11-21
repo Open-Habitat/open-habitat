@@ -88,11 +88,51 @@ type memberRecord struct {
 // memberLine is one change told in the conversation as an
 // oh-conversation-line (process-extension.mjs memberLineMessage).
 type memberLine struct {
-	ID          string `json:"line_id"`
-	Event       string `json:"event"` // joined, full_rights_given, full_rights_taken, removed
+	ID string `json:"line_id"`
+	// Kind is empty for a membership change, or process_stopped: the owner
+	// stopped a process the agent started for this person's request.
+	Kind        string `json:"kind,omitempty"`
+	Event       string `json:"event,omitempty"` // joined, full_rights_given, full_rights_taken, removed
+	Command     string `json:"command,omitempty"`
 	Subject     string `json:"subject"`
 	DisplayName string `json:"display_name"`
 	At          string `json:"at"`
+}
+
+// valid says the line is one the companion accepts (validMemberLine).
+func (l memberLine) valid() bool {
+	switch {
+	case l.Kind == "" && memberLineEvent(l.Event) && l.Command == "":
+	case l.Kind == "process_stopped" && l.Event == "" && validLineCommand(l.Command):
+	default:
+		return false
+	}
+	return sessionIDPattern.MatchString(l.ID) && memberSubjectPattern.MatchString(l.Subject) && validMemberName(l.DisplayName) && validStamp(l.At)
+}
+
+// validLineCommand accepts a command preview (commandPreview) as a line
+// quotes it: one line of text, at most 1000 bytes.
+func validLineCommand(s string) bool {
+	if s == "" || len(s) > 1000 || !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// wire is the line as the companion's conversation_line op takes it.
+func (l memberLine) wire() map[string]any {
+	line := map[string]any{"line_id": l.ID, "kind": "membership", "subject": l.Subject, "display_name": l.DisplayName, "at": l.At}
+	if l.Kind == "process_stopped" {
+		line["kind"], line["command"] = l.Kind, l.Command
+	} else {
+		line["event"] = l.Event
+	}
+	return line
 }
 
 // guestParticipant is who the gateway says is speaking on the guest socket.
@@ -171,7 +211,7 @@ func (m membershipRecord) valid() bool {
 			seen[x.Subject] = true
 		}
 		for _, l := range conv.Lines {
-			if !sessionIDPattern.MatchString(l.ID) || !memberLineEvent(l.Event) || !memberSubjectPattern.MatchString(l.Subject) || !validMemberName(l.DisplayName) || !validStamp(l.At) {
+			if !l.valid() {
 				return false
 			}
 		}
@@ -220,10 +260,46 @@ func (s *membershipSettings) addLine(event string, x memberRecord, at string) {
 	if !ok {
 		return // a line is information; the change itself still holds
 	}
-	s.Lines = append(s.Lines, memberLine{ID: id, Event: event, Subject: x.Subject, DisplayName: x.DisplayName, At: at})
+	s.pushLine(memberLine{ID: id, Event: event, Subject: x.Subject, DisplayName: x.DisplayName, At: at})
+}
+
+func (s *membershipSettings) pushLine(l memberLine) {
+	s.Lines = append(s.Lines, l)
 	if len(s.Lines) > maxPendingLines {
 		s.Lines = append([]memberLine(nil), s.Lines[len(s.Lines)-maxPendingLines:]...)
 	}
+}
+
+// addProcessStopLine queues the Habitat line that says the owner stopped a
+// process the agent started for a participant's request (the take-back card).
+// The owner's browser names the person, from its reading of the conversation;
+// the record supplies their name and the daemon's own inventory the command,
+// so the line repeats nothing the browser made up. Someone the record no
+// longer names reads nothing of the conversation and gets no line.
+func (c *ConversationController) addProcessStopLine(id, subject, command string) bool {
+	if !validLineCommand(command) {
+		return false
+	}
+	lineID, ok := uuid()
+	if !ok {
+		return false
+	}
+	c.memberMu.Lock()
+	defer c.memberMu.Unlock()
+	record, err := loadMembership(c.home)
+	if err != nil {
+		return false
+	}
+	conv := record.Conversations["pi:"+id]
+	if conv == nil {
+		return false
+	}
+	at := conv.member(subject)
+	if at < 0 || conv.Members[at].State != stateJoined {
+		return false
+	}
+	conv.pushLine(memberLine{ID: lineID, Kind: "process_stopped", Command: command, Subject: subject, DisplayName: conv.Members[at].DisplayName, At: time.Now().UTC().Format(time.RFC3339Nano)})
+	return saveMembership(c.home, record) == nil
 }
 
 func multiplayerEnabled(home string) bool {
@@ -753,7 +829,7 @@ func (c *ConversationController) deliverMemberLines(s *conversation) {
 			Written bool   `json:"written"`
 			Reason  string `json:"reason"`
 		}
-		err := s.rpc.processRequest(ctx, map[string]any{"op": "conversation_line", "session_id": s.id, "generation": s.rpc.processGeneration, "line": map[string]any{"line_id": line.ID, "kind": "membership", "event": line.Event, "subject": line.Subject, "display_name": line.DisplayName, "at": line.At}}, &outcome)
+		err := s.rpc.processRequest(ctx, map[string]any{"op": "conversation_line", "session_id": s.id, "generation": s.rpc.processGeneration, "line": line.wire()}, &outcome)
 		cancel()
 		if err != nil || !outcome.Written {
 			return

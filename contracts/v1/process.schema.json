@@ -161,6 +161,15 @@
               },
               "spinoff": {
                 "$ref": "process-event.schema.json#/$defs/spinoff"
+              },
+              "last_output_at": {
+                "description": "When the process last wrote output, as the running Pi's companion saw it; null when it has not seen any.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 8640000000000000
               }
             }
           }

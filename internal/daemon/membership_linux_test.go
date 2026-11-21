@@ -6,12 +6,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 const memberConv = "11111111-2222-4333-8444-555555555555"
@@ -388,5 +391,107 @@ func TestArchiveRefusedWhenMembershipsCannotEnd(t *testing.T) {
 	visibility, err := loadVisibility(c.home)
 	if err != nil || archiveFact(visibility, nil, "pi:"+memberConv) != "active" {
 		t.Fatalf("archive state after refusal: %v %v", archiveFact(visibility, nil, "pi:"+memberConv), err)
+	}
+}
+
+// The take-back card's stop names the participant whose request started the
+// process; the daemon writes the Habitat line from its own inventory and
+// record, and only for someone the record still names.
+func TestProcessStopForParticipantWritesTheLine(t *testing.T) {
+	c, _ := membershipFixture(t)
+	var mu sync.Mutex
+	var lines []map[string]any
+	stops := 0
+	p := testProcessPeer(t, os.Getpid(), func(conn net.Conn) {
+		var q map[string]any
+		if json.NewDecoder(conn).Decode(&q) != nil {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		reply := map[string]any{"ok": true}
+		switch q["op"] {
+		case "grant":
+			reply["data"] = map[string]any{"told": true}
+		case "list":
+			reply["data"] = map[string]any{"protocol": 1, "records": []any{
+				map[string]any{"id": "proc_abcd", "name": "preview", "command": "TOKEN=secret npm run preview", "startTime": 1000, "endTime": nil, "status": "running", "exitCode": nil, "signal": nil, "endReason": nil, "wakes_agent": false, "run_ids": []string{}, "last_output_at": 1500},
+				map[string]any{"id": "proc_beef", "name": "w", "command": "w", "startTime": 2000, "endTime": nil, "status": "running", "exitCode": nil, "signal": nil, "endReason": nil, "wakes_agent": false, "run_ids": []string{}, "last_output_at": 10},
+			}}
+		case "stop":
+			stops++
+			reply["data"] = map[string]any{"result": "killed"}
+		case "conversation_line":
+			lines = append(lines, q["line"].(map[string]any))
+			reply["data"] = map[string]any{"written": true}
+		}
+		_ = json.NewEncoder(conn).Encode(reply)
+	})
+	c.sessions[memberConv] = &conversation{id: memberConv, rpc: p, state: "idle"}
+	memberCall(t, c, "POST", control("invite", ville.Subject, "Example Participant"))
+	if _, ok := c.joinMember(memberConv, ville); !ok {
+		t.Fatal("join failed")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	inv := p.inventory(ctx)
+	if inv.Processes[0].LastOutput == nil || *inv.Processes[0].LastOutput != 1500 || inv.Processes[1].LastOutput != nil {
+		t.Fatalf("last output: %+v", inv.Processes)
+	}
+
+	stop := func(path, body string) int {
+		req := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+memberConv+"/processes/"+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RequestURI = req.URL.RequestURI()
+		w := httptest.NewRecorder()
+		c.processRoutes(w, req, append([]string{memberConv, "processes"}, strings.Split(path, "/")...))
+		return w.Code
+	}
+	body := func(who string) string {
+		return fmt.Sprintf(`{"owner_generation":%q,"process_token":"pt_1000","force":false,"for_participant":%q}`, p.processGeneration, who)
+	}
+	if code := stop("proc_abcd/stop", body("someone")); code != 400 {
+		t.Fatalf("malformed participant: %d", code)
+	}
+	if code := stop("clear-finished", fmt.Sprintf(`{"owner_generation":%q,"for_participant":%q}`, p.processGeneration, ville.Subject)); code != 400 {
+		t.Fatalf("clearing names nobody: %d", code)
+	}
+	// Someone the record does not name: the stop happens, no line.
+	if code := stop("proc_abcd/stop", body("github:9999")); code != 200 {
+		t.Fatalf("stop for a stranger: %d", code)
+	}
+	if code := stop("proc_abcd/stop", body(ville.Subject)); code != 200 {
+		t.Fatalf("stop: %d", code)
+	}
+	var got map[string]any
+	deadline := time.Now().Add(3 * time.Second)
+	for got == nil && time.Now().Before(deadline) {
+		mu.Lock()
+		for _, l := range lines {
+			if l["kind"] == "process_stopped" {
+				got = l
+			}
+		}
+		mu.Unlock()
+		time.Sleep(10 * time.Millisecond)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if stops != 2 || got == nil {
+		t.Fatalf("stops %d, lines %v", stops, lines)
+	}
+	// The command is the daemon's redacted preview, the name the record's.
+	if got["command"] != "TOKEN=••• npm run preview" || got["display_name"] != "Example Participant" || got["subject"] != ville.Subject || got["event"] != nil {
+		t.Fatalf("line: %v", got)
+	}
+	n := 0
+	for _, l := range lines {
+		if l["kind"] == "process_stopped" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("lines for the stranger too: %v", lines)
 	}
 }

@@ -133,3 +133,150 @@ check's 100 screenshots, all directions, 1440 and 390 px, Päivä, Yö,
 Kontrasti, English).
 
 Check: `check.mjs` passed 967 checks with a clean console.
+
+# Implementation: the take-back card (1 Kortti) in the browser
+
+Jari accepted round 2's **1 Kortti** on 21.11.2026. It replaces the plain
+process list on `multiplayer-browser`'s take-back card and stays behind the
+experimental `multiplayer` switch.
+
+## What exists now
+
+- **Attribution** (`web/src/app/takeBack.ts`): the process registry's
+  `run_ids` turned out to be Taskfleet run IDs, not agent runs, so the join
+  that rounds 1 and 2 assumed does not exist. The owner's browser instead
+  reads its loaded history. It finds the `process` start call whose result
+  names the process, then the message that opened that turn: the owner's own
+  message or a participant's (`participant_message`). If the start call is not
+  loaded, it falls back to the turn that was open at the process's start time.
+  A process that started before the loaded history begins is *unknown*. It is
+  offered in its own group and never counted as the owner's.
+- **The card** (`MultiplayerOwner.tsx TakeBackCard`), for each person whose
+  rights were taken back or who was removed. It lists the processes their
+  turns started. Each row shows the command, "Hänen viestistään klo 14.20"
+  with the message quoted and **Näytä viesti** (scrolls to the message and
+  highlights it), the start time and how long ago it was, and whether the
+  process still prints ("Tulostaa · viimeksi 2 s sitten", or "Ei uutta
+  tulostetta 6 min"). **Näytä tuloste** opens the existing process window.
+  The card has **Pysäytä** per row, **Pysäytä kaikki N** when more than one
+  runs, and **Jätä käyntiin**, which folds the card into "Jätit käyntiin: …"
+  with **Näytä**. A stopped or self-ended row stays struck through until
+  nothing runs; then the card resolves. Other running processes are counted
+  in one line. **Pysäytä ajo** stays as before, only for the run of this
+  tab's take-back.
+- **Lifetime**: the card comes from this tab's action, or from history's
+  `full_rights_taken`/`removed` line while something of that person's still
+  runs. So it comes back after a reload and on another device until the
+  processes end. Giving full rights again ends it.
+- **Band reminder**: "Bob Example: 2 prosessia käynnissä" in the people row
+  as long as the person's processes run, also after Jätä käyntiin. Pressing
+  it reopens the card and scrolls to it.
+- **Stop lines for everybody**: the stop sends `for_participant` with the
+  process control request (`process-control.schema.json`). After a `killed`
+  result the owner's daemon queues a `process_stopped` Habitat line. It takes
+  the command from its own inventory (the redacted preview) and the name from
+  the membership record, and writes the line only for someone the record
+  still names as joined. The browser asserts only *who* started the
+  process. The line goes through the existing pending-lines path and the
+  companion's `conversation_line` op (`validMemberLine`, which now quotes the
+  command as data). The owner reads "Pysäytit prosessin ”npm run preview”,
+  jonka agentti käynnisti pyynnöstä. Pyytäjä: Bob Example.", the participant
+  reads "Alice Example pysäytti prosessin ”…”, jonka agentti käynnisti
+  pyynnöstäsi.", and other participants read the owner's name and "Pyytäjä:".
+- **`last_output_at`** per process (`process.schema.json`): the companion
+  notes the time of each `processes:output_changed` event per process ID and
+  reports it in `list`. The daemon passes it on, dropping a value before the
+  start. It is null when this Pi has seen no output.
+- **Browser host**: the fake Pi's bridge answers `list`, `stop` and
+  `output` from a small registry. A full-rights participant's "esikatselu"
+  makes the agent start a preview that keeps printing and a quiet test
+  watcher with the `process` tool. Process-stopped lines are written like
+  membership lines.
+
+## Decisions for later review
+
+1. **Attribution is read from the browser's loaded history, not from a new
+   daemon fact.** Alternative: the daemon attributes processes from its
+   hidden `oh-turn-mode` marks, which say precisely whose run was going. The
+   history join needs no contract or daemon state and covers the usual case
+   (a recent take-back). Its limit is honest: what lies beyond the loaded
+   pages is *unknown* and still offered.
+2. **A process whose origin is unknown is offered, in its own group**, on
+   the newest take-back's card. Alternative: treat it as the owner's and
+   hide it. A participant's process wrongly hidden is worse than one extra
+   row the owner can leave running.
+3. **Answers to round 2's questions:** ignored offer = the card stays, with
+   the band reminder (Q2, as recommended). The participant sees the stop
+   lines (Q3). `last_output_at` is worth a small companion fact (Q4), and
+   the last output line is not fetched; **Näytä tuloste** opens the process
+   window instead, which avoids an output request per row per poll. Jätä
+   käyntiin stays silent (Q5).
+4. **Jätä käyntiin is remembered per tab (session storage) and person,
+   by time**, so a later take-back opens the card again. Alternative: a
+   Habitat line, which round 2 argued against (Q5). Another tab or device
+   shows the card open, which is a reminder, not a loss.
+5. **No line when a process ends by itself.** Round 2 suggested one. The
+   row says "Päättyi itsestään", and Pi's own process notification already
+   tells the conversation when the agent asked to be told.
+6. **No stop line for a removed person.** The record no longer names them,
+   so the daemon has no name it trusts, and they cannot read the
+   conversation anyway. The owner still sees the row struck through.
+7. **The stop line uses the nominative** ("Pyytäjä: Bob Example") and
+   typographic quotes rather than code formatting, as the catalog's other
+   lines do. The browser cannot inflect names.
+8. **"Still printing" means output within the last 30 seconds.**
+9. **The card comes back from history only while something runs** (a
+   known process of that person's or one of unknown origin). A resolved
+   card from an earlier session would otherwise sit at the end of the
+   conversation until Pi clears finished processes.
+10. **Known limit: a user message an extension sends during a participant's
+    turn reads as the owner's.** The companion keeps the participant's
+    turn for such a message (its hidden `oh-turn-mode` marks), but the
+    browser's history does not carry that distinction. A process started
+    after one would be counted among "other processes" rather than offered.
+    The owner still sees and stops it in the process tray. Closing it means
+    projecting the daemon's turn attribution into history, the same daemon
+    fact as decision 1's alternative.
+11. **Only the start call attributes a process.** A later `write` or
+    `rename` of the same process from another turn does not move it. A
+    continue line attributes the run it starts to the person it names (with
+    their message quoted when it is loaded).
+12. **An inventory that could not be read keeps the last one read.** Before
+    the first read the card says the processes could not be read, rather
+    than that nothing runs. A Pi that is not running has no processes.
+
+## Review
+
+Critical rigor, because this concerns the owner's control over processes
+started for another person, a new daemon write path and the contract.
+Independent `/llm-review` used gpt-6-astra as finder and claude-fable-5-2 as
+verifier (two calls), followed by `/assess-findings`. All seven candidates
+survived. Six were fixed: start-only attribution, continue lines, offers
+with only unknown-origin processes after a reload, an unreadable inventory
+read as "nothing runs", stop buttons that dropped clicks while a stop was
+pending, and a stale take-back after rights were given again. One was
+dropped as rare and recorded as a known limit (decision 10).
+
+## Checks
+
+- `./scripts/test-focused.sh --area web`: 1962 passed. That includes the
+  new `takeBack.test.ts`, with nine cases on attribution and offers.
+- `./scripts/test-focused.sh --area go --go-package ./internal/daemon`:
+  passed, including `TestProcessStopForParticipantWritesTheLine` (rejects a
+  malformed subject and a subject on clear; writes no line for someone the
+  record does not name; the line carries the redacted preview and the
+  record's name) and `last_output_at`. `go vet ./test/browser-host` is
+  clean.
+- Companion: `node --test internal/daemon/pi-device-test/membership-line.test.mjs`
+  passed, 4 tests.
+- `./scripts/test-focused.sh --area contracts`: valid, generation clean.
+- Browser with `OH_BROWSER_WORKERS=2`: `multiplayer.spec.ts` passed. It
+  covers the take-back card end to end through the real daemon and the fake
+  bridge: two rows with the quoted message, printing state, one stop, the
+  line in both views, leave running, the reminder, and the resolved card.
+  `multiplayer.spec.ts` with `process-tray.spec.ts` passed with
+  `--repeat-each 3` (24 cases) before the review fixes and with
+  `--repeat-each 2` (16 cases) after them, and `multiplayer.spec.ts` passed
+  once more after the final edit.
+- Not run: a live host or the real Pi companion with the browser. No
+  screenshots were captured.

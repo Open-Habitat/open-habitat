@@ -31,10 +31,12 @@ export type ParticipantMessageFact = {
 };
 export type ConversationLineFact = {
   line_id: string;
-  kind: "membership" | "continue" | "declined";
+  kind: "membership" | "continue" | "declined" | "process_stopped";
   event?: "joined" | "full_rights_given" | "full_rights_taken" | "removed";
   mode?: "tools" | "approve_each";
   request?: string;
+  /** process_stopped: the stopped process's command, as the daemon has it. */
+  command?: string;
   subject: string;
   display_name: string;
 };
@@ -93,6 +95,7 @@ export function ParticipantMessage({
       className="ah-mp-message"
       data-testid="participant-message"
       data-subject={fact.subject}
+      data-message-id={fact.message_id}
       style={{ "--ah-mp-hue": personHue(fact.subject) } as React.CSSProperties}
     >
       <header>
@@ -112,17 +115,24 @@ export function ParticipantMessage({
 
 export function ConversationLine({ fact }: { fact: ConversationLineFact }) {
   const t = useText(multiplayerText);
+  const viewer = useContext(SharedViewer);
   const name = fact.display_name;
   const text =
-    fact.kind === "membership"
-      ? fact.event
-        ? t.lines[fact.event](name)
-        : ""
-      : fact.kind === "declined"
-        ? t.lines.declined(name)
-        : fact.mode === "approve_each"
-          ? t.lines.continueEach(name)
-          : t.lines.continueTools(name);
+    fact.kind === "process_stopped"
+      ? !viewer
+        ? t.lines.processStopped(fact.command ?? "", name)
+        : viewer.subject === fact.subject
+          ? t.lines.processStoppedYours(viewer.owner, fact.command ?? "")
+          : t.lines.processStoppedOther(viewer.owner, fact.command ?? "", name)
+      : fact.kind === "membership"
+        ? fact.event
+          ? t.lines[fact.event](name)
+          : ""
+        : fact.kind === "declined"
+          ? t.lines.declined(name)
+          : fact.mode === "approve_each"
+            ? t.lines.continueEach(name)
+            : t.lines.continueTools(name);
   return (
     <p
       className="ah-mp-line"
@@ -145,6 +155,8 @@ export function SharedCard({
   children,
   actions,
   tone = "neutral",
+  subject,
+  state,
 }: {
   testId: string;
   title: string;
@@ -152,12 +164,17 @@ export function SharedCard({
   children?: ReactNode;
   actions?: ReactNode;
   tone?: "neutral" | "attention";
+  /** The person the card is about. */
+  subject?: string;
+  state?: string;
 }) {
   return (
     <section
       className="ah-mp-card"
       data-testid={testId}
       data-tone={tone}
+      data-subject={subject}
+      data-state={state}
       aria-label={title}
     >
       <h3>{title}</h3>

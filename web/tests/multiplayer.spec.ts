@@ -209,7 +209,17 @@ test("@multiplayer full rights name what is lent, are taken back at once, and re
     { timeout: 20000 },
   );
 
-  // Taking the rights back is one press; the card offers stopping, nothing
+  // With full rights, Bob's message has the agent start two background
+  // processes as Alice's user (the fake Pi's process tool and registry).
+  await bob.getByTestId("message-input").fill("Käynnistä esikatselu");
+  await bob.getByTestId("send").click();
+  await expect(bob.getByTestId("shared-feed")).toContainText(
+    "Käynnistin esikatselun",
+    { timeout: 20000 },
+  );
+
+  // Taking the rights back is one press. The card lists the processes his
+  // turn started, each identified by its command and his message; nothing
   // is stopped by itself.
   await alice.getByTestId("people-band-open").click();
   await panel
@@ -218,16 +228,56 @@ test("@multiplayer full rights name what is lent, are taken back at once, and re
     .getByTestId("people-take-back")
     .click();
   const takeBack = alice.getByTestId("take-back-card");
-  await expect(takeBack).toContainText(
-    "Otit täydet oikeudet pois henkilöltä Bob Example",
+  await expect(takeBack).toHaveAttribute("data-state", "open");
+  const rows = takeBack.getByTestId("take-back-process");
+  await expect(rows).toHaveCount(2, { timeout: 20000 });
+  const preview = rows.filter({ hasText: "npm run preview" });
+  const watcher = rows.filter({ hasText: "npm test -- --watch" });
+  // His own words are quoted as the turn's origin.
+  await expect(preview.locator("q")).toHaveText("Käynnistä esikatselu");
+  await expect(preview.getByTestId("take-back-output")).toHaveAttribute(
+    "data-printing",
+    "true",
   );
-  await expect(takeBack).toContainText("Käynnissä olevat prosessit");
   await expect(bob.getByTestId("shared-strip")).toHaveAttribute(
     "data-mode",
     "text_only",
     { timeout: 20000 },
   );
+  // Participants never see the offer.
+  await expect(bob.getByTestId("take-back-card")).toHaveCount(0);
+
+  // Stop one: the row stays struck through, and everybody reads the line.
+  await preview.getByTestId("take-back-process-stop").click();
+  await expect(preview).toHaveAttribute("data-state", "stopped", {
+    timeout: 20000,
+  });
+  await expect(watcher).toHaveAttribute("data-state", "live");
+  const stopLine = '[data-testid="habitat-line"][data-kind="process_stopped"]';
+  await expect(alice.locator(stopLine)).toContainText("npm run preview", {
+    timeout: 20000,
+  });
+  await expect(bob.locator(stopLine)).toContainText("npm run preview", {
+    timeout: 20000,
+  });
+
+  // Leaving the rest running folds the card; the band keeps reminding and
+  // brings the card back.
+  const reminder = alice.getByTestId("take-back-reminder");
+  await expect(reminder).toBeVisible();
+  await takeBack.getByTestId("take-back-leave").click();
+  await expect(takeBack).toHaveAttribute("data-state", "left");
+  await expect(takeBack).toContainText("npm test -- --watch");
+  await expect(reminder).toBeVisible();
+  await reminder.click();
+  await expect(takeBack).toHaveAttribute("data-state", "open");
+  await watcher.getByTestId("take-back-process-stop").click();
+  await expect(takeBack).toHaveAttribute("data-state", "resolved", {
+    timeout: 20000,
+  });
+  await expect(reminder).toHaveCount(0);
   await takeBack.getByTestId("take-back-close").click();
+  await expect(alice.getByTestId("take-back-card")).toHaveCount(0);
 
   // Removal: Bob's open view ends and the share leaves his rail.
   await alice.getByTestId("people-band-open").click();

@@ -3,12 +3,13 @@ created: 2026-11-21
 updated: 2026-11-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@multiplayer-membership']
 lane: multiplayer-take-back
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Prototype: taking back a participant's full rights
@@ -34,3 +35,7 @@ Jari 21.11.2026 on round 2: direction 1 Kortti.
 ### 2026-11-21T15:48:26Z · @agent
 
 Round 2 (offering to stop the participant's processes): directions 1 Kortti, 2 Merkit, 3 Kysymys in design-system/prototypes/rounds/2026-11-21-take-back-processes/; recommendation 1 Kortti; five questions for Jari in result-2.md.
+
+### 2026-11-21T19:18:05Z · @agent
+
+Implemented 1 Kortti in the browser behind multiplayer: attribution read from history, stop lines through for_participant and a process_stopped Habitat line, last_output_at per process; decisions in result.md.

@@ -23,6 +23,11 @@
         },
         "force": {
           "type": "boolean"
+        },
+        "for_participant": {
+          "description": "In a shared conversation: the participant whose request started the process. After a stop the owner's daemon writes a Habitat line naming the command and that person, if the membership record still names them.",
+          "type": "string",
+          "pattern": "^github:[0-9]{1,20}$"
         }
       }
     },

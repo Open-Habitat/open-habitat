@@ -29,6 +29,17 @@ type fakeBridge struct {
 	idle    func() bool
 	mu      sync.Mutex
 	written map[string]bool
+	// procs are the background processes the fake agent started, as the
+	// companion's list, stop and output ops report them.
+	procs []*fakeProc
+}
+
+type fakeProc struct {
+	id, name, command string
+	start             int64
+	end               *int64
+	status            string
+	lastOutput        int64
 }
 
 // multiplayerOn reads the person's own experimental switch, as the daemon
@@ -76,12 +87,23 @@ func (b *fakeBridge) handle(conn net.Conn) {
 		Op      string         `json:"op"`
 		Message map[string]any `json:"message"`
 		Line    map[string]any `json:"line"`
+		ID      string         `json:"id"`
+		Token   string         `json:"token"`
 	}
 	if json.Unmarshal(scanner.Bytes(), &q) != nil {
 		return
 	}
 	var data map[string]any
 	switch q.Op {
+	case "list":
+		data = b.list()
+	case "stop", "output":
+		var ok bool
+		if data, ok = b.control(q.Op, q.ID, q.Token); !ok {
+			reply, _ := json.Marshal(map[string]any{"ok": false, "error": "stale_process"})
+			_, _ = conn.Write(append(reply, '\n'))
+			return
+		}
 	case "grant":
 		data = map[string]any{"told": true}
 	case "conversation_line":
@@ -137,11 +159,80 @@ func (b *fakeBridge) memberLine(l map[string]any) map[string]any {
 	if !b.once(id) {
 		return map[string]any{"written": true}
 	}
-	b.custom(fmt.Sprintf("[Open Habitat] %q: %s.", bridgeText(l, "display_name"), bridgeText(l, "event")), map[string]any{
+	details := map[string]any{
 		"customType": "oh-conversation-line", "line_id": id, "kind": "membership", "event": l["event"],
 		"subject": l["subject"], "display_name": l["display_name"], "at": l["at"],
-	})
+	}
+	if bridgeText(l, "kind") == "process_stopped" {
+		delete(details, "event")
+		details["kind"], details["command"] = "process_stopped", l["command"]
+	}
+	b.custom(fmt.Sprintf("[Open Habitat] %q: %s%s.", bridgeText(l, "display_name"), bridgeText(l, "event"), bridgeText(l, "command")), details)
 	return map[string]any{"written": true}
+}
+
+// list answers the companion's list op from the processes started so far.
+// The preview keeps printing; the watcher went quiet.
+func (b *fakeBridge) list() map[string]any {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	records := []map[string]any{}
+	now := time.Now().UnixMilli()
+	for _, p := range b.procs {
+		last := p.lastOutput
+		if p.status == "running" && p.name == "preview" {
+			last = now - 2000
+		}
+		records = append(records, map[string]any{
+			"id": p.id, "name": p.name, "command": p.command, "startTime": p.start, "endTime": p.end,
+			"status": p.status, "exitCode": nil, "signal": nil, "endReason": nil, "wakes_agent": false,
+			"run_ids": []string{}, "last_output_at": last,
+		})
+	}
+	return map[string]any{"records": records, "protocol": 1, "foreground_run_ids": []string{}}
+}
+
+func (b *fakeBridge) control(op, id, token string) (map[string]any, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, p := range b.procs {
+		if p.id != id || token != fmt.Sprintf("pt_%d", p.start) {
+			continue
+		}
+		if op == "output" {
+			return map[string]any{"lines": []map[string]any{{"stream": "stdout", "text": "ready on port 4173"}}, "omitted_before": nil, "retention_restarted": nil}, true
+		}
+		if p.status != "running" {
+			return map[string]any{"result": "not_found"}, true
+		}
+		end := time.Now().UnixMilli()
+		p.status, p.end = "killed", &end
+		return map[string]any{"result": "killed"}, true
+	}
+	return nil, false
+}
+
+// startProcesses makes the agent start two background processes with the
+// process tool, as a full-rights participant's "esikatselu" asks: a preview
+// that keeps printing and a test watcher that has gone quiet.
+func (b *fakeBridge) startProcesses(run chan struct{}) {
+	for i, p := range []struct{ name, command string }{{"preview", "npm run preview"}, {"tests", "npm test -- --watch"}} {
+		callID := fmt.Sprintf("call_mp_proc_%d_%d", i, time.Now().UnixNano())
+		args := map[string]any{"action": "start", "name": p.name, "command": p.command}
+		b.s.append(message("assistant", []map[string]any{{"type": "toolCall", "id": callID, "name": "process", "arguments": args}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
+		b.emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "toolUse"}})
+		start := time.Now().UnixMilli()
+		b.mu.Lock()
+		proc := &fakeProc{id: fmt.Sprintf("proc_%04x", (start+int64(i))&0xffff), name: p.name, command: p.command, start: start, status: "running", lastOutput: start}
+		b.procs = append(b.procs, proc)
+		b.mu.Unlock()
+		raw, _ := json.Marshal(map[string]any{"action": "start", "process": map[string]any{"id": proc.id, "name": p.name, "command": p.command, "startTime": start}})
+		b.emit(map[string]any{"type": "tool_execution_start", "toolName": "process", "toolCallId": callID, "args": args})
+		b.s.append(message("toolResult", []map[string]any{{"type": "text", "text": string(raw)}}, map[string]any{"toolCallId": callID, "toolName": "process", "isError": false}))
+		b.emit(map[string]any{"type": "tool_execution_end", "toolName": "process", "toolCallId": callID, "isError": false, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": string(raw)}}}})
+		time.Sleep(5 * time.Millisecond)
+	}
+	b.s.reply(b.emit, "Käynnistin esikatselun ja testien vahtitilan.")
 }
 
 func (b *fakeBridge) participant(m map[string]any) map[string]any {
@@ -164,6 +255,10 @@ func (b *fakeBridge) participant(m map[string]any) map[string]any {
 			"customType": "oh-participant-message", "message_id": id, "subject": m["subject"], "display_name": m["display_name"],
 			"role": role, "generation": m["generation"], "at": m["at"],
 		})
+		if role == "full_rights" && strings.Contains(words, "esikatselu") {
+			b.startProcesses(run)
+			return
+		}
 		if role == "full_rights" {
 			b.s.toolCall(run, b.emit, "", "", "Ajoin komennon ls osallistujan pyynnöstä.")
 			return

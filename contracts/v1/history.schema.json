@@ -25,16 +25,17 @@
       }
     },
     "conversationLine": {
-      "description": "On an oh-conversation-line entry: what Habitat's line says happened. membership: event says who joined, got or lost full rights, or was removed. continue: the owner let the agent continue the waiting request named by request, with all tools (mode tools) or approving each call (approve_each). declined: the owner declined that request. subject and display_name name the person the line is about.",
+      "description": "On an oh-conversation-line entry: what Habitat's line says happened. membership: event says who joined, got or lost full rights, or was removed. continue: the owner let the agent continue the waiting request named by request, with all tools (mode tools) or approving each call (approve_each). declined: the owner declined that request. process_stopped: the owner stopped the process whose command is command, which the agent started for a request of the person named. subject and display_name name the person the line is about.",
       "type": "object",
       "additionalProperties": false,
       "required": ["line_id", "kind", "subject", "display_name"],
       "properties": {
         "line_id": { "$ref": "common.schema.json#/$defs/uuid" },
-        "kind": { "enum": ["membership", "continue", "declined"] },
+        "kind": { "enum": ["membership", "continue", "declined", "process_stopped"] },
         "event": { "enum": ["joined", "full_rights_given", "full_rights_taken", "removed"] },
         "mode": { "enum": ["tools", "approve_each"] },
         "request": { "$ref": "common.schema.json#/$defs/uuid" },
+        "command": { "type": "string", "minLength": 1, "maxLength": 1000 },
         "subject": { "type": "string", "pattern": "^github:[0-9]{1,20}$" },
         "display_name": { "type": "string", "minLength": 1, "maxLength": 100 }
       }

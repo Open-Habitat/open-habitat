@@ -403,10 +403,20 @@ const memberEvents = {
   removed: n => `The owner removed ${n} from the conversation.`,
 };
 const validMemberName = v => typeof v === 'string' && v.length > 0 && v === v.trim() && [...v].length <= 100 && !/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(v);
+// A process_stopped line quotes the daemon's command preview: one line, at
+// most 1000 bytes (commandPreview, processes_linux.go).
+const validLineCommand = v => typeof v === 'string' && v.length > 0 && Buffer.byteLength(v) <= 1000 && !/\p{Cc}/u.test(v);
 export function validMemberLine(l) {
-  return !!l && /^[0-9a-fA-F-]{36}$/.test(l.line_id ?? '') && l.kind === 'membership' && Object.hasOwn(memberEvents, l.event ?? '') && memberSubject.test(l.subject ?? '') && validMemberName(l.display_name) && isStamp(l.at);
+  if (!l || !/^[0-9a-fA-F-]{36}$/.test(l.line_id ?? '') || !memberSubject.test(l.subject ?? '') || !validMemberName(l.display_name) || !isStamp(l.at)) return false;
+  if (l.kind === 'process_stopped') return l.event === undefined && validLineCommand(l.command);
+  return l.kind === 'membership' && Object.hasOwn(memberEvents, l.event ?? '') && l.command === undefined;
 }
 export function memberLineMessage(l) {
+  if (l.kind === 'process_stopped') return {
+    customType: conversationLineType, display: true,
+    content: `[Open Habitat] The owner stopped the background process ${JSON.stringify(l.command)}, which you started for ${JSON.stringify(l.display_name)}'s request.`,
+    details: { schema_version: 1, line_id: l.line_id, kind: 'process_stopped', command: l.command, subject: l.subject, display_name: l.display_name, at: l.at },
+  };
   return {
     customType: conversationLineType, display: true, content: `[Open Habitat] ${memberEvents[l.event](JSON.stringify(l.display_name))}`,
     details: { schema_version: 1, line_id: l.line_id, kind: 'membership', event: l.event, subject: l.subject, display_name: l.display_name, at: l.at },
@@ -1005,6 +1015,10 @@ export default function (pi) {
   const sockets = new Set();
   const watchers = new Set();
   const outputLeases = new Map();
+  // When each process last wrote output, as this companion saw it: a view can
+  // then say whether a process still prints without reading its output.
+  // Bounded by the process ID space (proc_ plus four hex digits).
+  const lastOutput = new Map();
   let catchUp = null; // this Pi's first run learns what happened while it was stopped
   const sentWakes = new Set(); // scheduled wakes this Pi has sent
   const grants = new Map(); // subject -> newest { role, generation } the daemon told this Pi
@@ -1273,6 +1287,7 @@ export default function (pi) {
         startTime: p.startTime, endTime: p.endTime, status: p.status,
         exitCode: p.exitCode, signal: p.signal, endReason: p.endReason,
         wakes_agent: wakes(p, branch), run_ids: runIDs[i],
+        last_output_at: lastOutput.get(p.id) >= p.startTime ? lastOutput.get(p.id) : null,
       })), protocol: 1, extension_version: extensionVersion };
     }
     if (q.op === 'clear') { await ask('command:clear'); return { result: 'cleared' }; }
@@ -1399,7 +1414,10 @@ export default function (pi) {
     foregroundTools.delete(event.toolCallId);
   });
   pi.events.on('processes:changed', () => hint('process.changed'));
-  pi.events.on('processes:output_changed', e => hint('process.output', e.id));
+  pi.events.on('processes:output_changed', e => {
+    if (typeof e?.id === 'string') lastOutput.set(e.id, Date.now());
+    hint('process.output', e.id);
+  });
   // A tree navigation (a rewind, a branch switch) puts another history in
   // place: the mode is rebuilt from it.
   pi.on('session_tree', (_event, ctx) => { rebuildTurn(ctx ?? context); });

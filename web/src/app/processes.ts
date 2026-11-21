@@ -50,6 +50,8 @@ export interface ProcessRecord {
   end_reason: string | null;
   wakes_agent: boolean | null;
   run_ids: string[];
+  /** When the process last wrote output, as the running Pi saw it. */
+  last_output_at?: number | null;
 }
 export interface ProcessEvent {
   summary?: string;
@@ -213,6 +215,9 @@ export async function controlProcess(
   csrf: string,
   process?: ProcessRecord,
   force = false,
+  /** A shared conversation's participant whose request started it: the
+   * daemon then tells the conversation the owner stopped it. */
+  forParticipant?: string,
 ) {
   const reply = await read(
     await mutationFetch(
@@ -232,6 +237,7 @@ export async function controlProcess(
                 owner_generation: owner,
                 process_token: process.process_token,
                 force,
+                ...(forParticipant ? { for_participant: forParticipant } : {}),
               }
             : { owner_generation: owner },
         ),

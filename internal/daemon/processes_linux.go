@@ -134,6 +134,8 @@ type nativeProcess struct {
 	EndReason *string  `json:"endReason"`
 	Wakes     *bool    `json:"wakes_agent"`
 	RunIDs    []string `json:"run_ids"`
+	// LastOutput is when the companion last saw the process write output.
+	LastOutput *int64 `json:"last_output_at"`
 }
 type processRecord struct {
 	Spinoff   []processSpinoff `json:"spinoff,omitempty"`
@@ -149,6 +151,8 @@ type processRecord struct {
 	EndReason *string          `json:"end_reason"`
 	Wakes     *bool            `json:"wakes_agent"`
 	RunIDs    []string         `json:"run_ids"`
+	// LastOutput says whether the process still prints (null: not seen).
+	LastOutput *int64 `json:"last_output_at"`
 }
 type processInventory struct {
 	ForegroundRunIDs []string        `json:"foreground_run_ids,omitempty"`
@@ -260,7 +264,11 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 		if ids == nil {
 			ids = []string{}
 		}
-		records = append(records, processRecord{nil, r.ID, prefixBytes(r.Name, 200), commandPreview(r.Command), "pt_" + strconv.FormatInt(r.Start, 10), r.Status, r.Start, r.End, r.ExitCode, signal, reason, r.Wakes, ids})
+		last := r.LastOutput
+		if last != nil && (*last < r.Start || *last > 8640000000000000) {
+			last = nil
+		}
+		records = append(records, processRecord{nil, r.ID, prefixBytes(r.Name, 200), commandPreview(r.Command), "pt_" + strconv.FormatInt(r.Start, 10), r.Status, r.Start, r.End, r.ExitCode, signal, reason, r.Wakes, ids, last})
 	}
 	home, env := processRunHome(p)
 	for i := range records {
@@ -364,6 +372,9 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 		Generation string `json:"owner_generation"`
 		Token      string `json:"process_token"`
 		Force      *bool  `json:"force"`
+		// ForParticipant: a shared conversation's participant whose request
+		// started the process; a stop then writes a Habitat line for them.
+		ForParticipant string `json:"for_participant"`
 	}
 	op, id := "", ""
 	if r.Method == http.MethodPost && r.URL.RawQuery == "" && (len(parts) == 3 && parts[2] == "clear-finished" || len(parts) == 4 && parts[3] == "stop" && processIDPattern.MatchString(parts[2])) {
@@ -372,13 +383,13 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 			return
 		}
 		if len(parts) == 3 {
-			if q.Token != "" || q.Force != nil {
+			if q.Token != "" || q.Force != nil || q.ForParticipant != "" {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
 			op = "clear"
 		} else {
-			if q.Token == "" || len(q.Token) > 200 || q.Force == nil {
+			if q.Token == "" || len(q.Token) > 200 || q.Force == nil || q.ForParticipant != "" && (!memberSubjectPattern.MatchString(q.ForParticipant) || !multiplayerEnabled(c.home)) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
@@ -417,6 +428,16 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
+	// The line quotes the command as the daemon's inventory has it, read
+	// before the stop ends the process.
+	stopped := ""
+	if op == "stop" && q.ForParticipant != "" {
+		for _, p := range s.rpc.inventory(ctx).Processes {
+			if p.ID == id && p.Token == q.Token {
+				stopped = p.Preview
+			}
+		}
+	}
 	var reply struct {
 		Result string `json:"result"`
 		Lines  []struct {
@@ -461,6 +482,9 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 			return
 		}
 		result["result"] = reply.Result
+		if reply.Result == "killed" && stopped != "" && c.addProcessStopLine(s.id, q.ForParticipant, stopped) {
+			c.deliverMemberLinesFor(s.id)
+		}
 	}
 	historyJSON(w, result)
 	if op != "output" && c.journal != nil {

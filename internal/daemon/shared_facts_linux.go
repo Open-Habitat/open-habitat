@@ -35,14 +35,16 @@ type participantMessageFact struct {
 	Text        string `json:"text"`
 }
 
-// conversationLineFact is what a Habitat line says: a membership change, or
-// the owner's release (continue) or decline of a waiting request.
+// conversationLineFact is what a Habitat line says: a membership change, the
+// owner's release (continue) or decline of a waiting request, or the owner's
+// stop of a process the agent started for the person's request.
 type conversationLineFact struct {
 	LineID      string `json:"line_id"`
 	Kind        string `json:"kind"`
 	Event       string `json:"event,omitempty"`
 	Mode        string `json:"mode,omitempty"`
 	Request     string `json:"request,omitempty"`
+	Command     string `json:"command,omitempty"`
 	Subject     string `json:"subject"`
 	DisplayName string `json:"display_name"`
 }
@@ -151,6 +153,7 @@ func sharedProjection(e nativeEntry, out *historyEntry) {
 				Event       string `json:"event"`
 				Mode        string `json:"mode"`
 				Request     string `json:"request"`
+				Command     string `json:"command"`
 				Subject     string `json:"subject"`
 				DisplayName string `json:"display_name"`
 			}
@@ -158,13 +161,14 @@ func sharedProjection(e nativeEntry, out *historyEntry) {
 				return
 			}
 			switch {
-			case d.Kind == "membership" && memberLineEvent(d.Event) && d.Mode == "" && d.Request == "":
-			case d.Kind == "continue" && (d.Mode == "tools" || d.Mode == "approve_each") && sessionIDPattern.MatchString(d.Request) && d.Event == "":
-			case d.Kind == "declined" && d.Mode == "" && sessionIDPattern.MatchString(d.Request) && d.Event == "":
+			case d.Kind == "membership" && memberLineEvent(d.Event) && d.Mode == "" && d.Request == "" && d.Command == "":
+			case d.Kind == "continue" && (d.Mode == "tools" || d.Mode == "approve_each") && sessionIDPattern.MatchString(d.Request) && d.Event == "" && d.Command == "":
+			case d.Kind == "declined" && d.Mode == "" && sessionIDPattern.MatchString(d.Request) && d.Event == "" && d.Command == "":
+			case d.Kind == "process_stopped" && validLineCommand(d.Command) && d.Event == "" && d.Mode == "" && d.Request == "":
 			default:
 				return
 			}
-			out.ConversationLine = &conversationLineFact{LineID: d.LineID, Kind: d.Kind, Event: d.Event, Mode: d.Mode, Request: d.Request, Subject: d.Subject, DisplayName: d.DisplayName}
+			out.ConversationLine = &conversationLineFact{LineID: d.LineID, Kind: d.Kind, Event: d.Event, Mode: d.Mode, Request: d.Request, Command: d.Command, Subject: d.Subject, DisplayName: d.DisplayName}
 		}
 	}
 }

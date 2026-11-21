@@ -71,10 +71,35 @@ const fi = {
     "Käynnissä olevaa ajoa ei tavoitettu. Pysäytä se, jos se toimii hänen pyynnöstään.",
   stopRun: "Pysäytä ajo",
   stopRunSent: "Pysäytys pyydetty",
-  processes: "Käynnissä olevat prosessit",
+  processes: "Hänen pyynnöistään käynnistetyt prosessit",
   processesNote:
-    "Agentti on voinut käynnistää näitä hänen pyynnöstään. Ne jatkuvat, kunnes pysäytät ne.",
-  noProcesses: "Ei käynnissä olevia prosesseja.",
+    "Agentti käynnisti nämä hänen viestiensä pohjalta. Ne toimivat sinun käyttäjänäsi, kunnes pysäytät ne.",
+  noProcesses: "Hänen pyynnöistään ei ole käynnissä prosesseja.",
+  processesUnread: "Prosesseja ei voitu lukea juuri nyt. Yritetään uudelleen.",
+  ended: "Hänen pyynnöistään käynnistetyt prosessit ovat päättyneet.",
+  unknownTitle: "Käynnissä, alkuperä ei näy",
+  unknownNote:
+    "Näiden käynnistystä ei löydy keskustelun ladatusta osasta, joten ne voivat olla hänen tai sinun.",
+  fromMessage: (time: string) => `Hänen viestistään klo ${time}`,
+  showMessage: "Näytä viesti",
+  showOutput: "Näytä tuloste",
+  started: (time: string, ago: string) => `Käynnistyi klo ${time} · ${ago}`,
+  printing: (ago: string) => `Tulostaa · viimeksi ${ago}`,
+  quiet: (span: string) => `Ei uutta tulostetta ${span}`,
+  ago: (span: string) => `${span} sitten`,
+  seconds: (n: number) => `${formatNumber(n)} s`,
+  minutes: (n: number) => `${formatNumber(n)} min`,
+  hours: (n: number) => `${formatNumber(n)} h`,
+  stopAll: (n: number) => `Pysäytä kaikki ${formatNumber(n)}`,
+  leaveRunning: "Jätä käyntiin",
+  stoppedRow: "Pysäytetty",
+  exitedRow: (label: string) => `Päättyi itsestään · ${label}`,
+  others: (n: number) =>
+    `Muut käynnissä olevat prosessit (${formatNumber(n)}) ovat sinun tai muiden pyynnöistä, eivätkä ne ole tässä listassa.`,
+  leftRunning: (commands: string) => `Jätit käyntiin: ${commands}`,
+  show: "Näytä",
+  reminder: (name: string, n: number) =>
+    `${name}: ${formatNumber(n)} ${plural("fi", n, { one: "prosessi", other: "prosessia" })} käynnissä`,
   stop: "Pysäytä",
   stopping: "Pysäytetään",
   // The card where the agent stopped.
@@ -114,6 +139,13 @@ const fi = {
       `Agentti jatkaa pyyntöä, ja jokainen työkalukutsu hyväksytään erikseen. Pyytäjä: ${name}.`,
     declined: (name: string) =>
       `Pyyntöä ei sallittu, joten agentti ei toimi sen pohjalta. Pyytäjä: ${name}.`,
+    // The owner stopped a process the agent started for someone's request.
+    processStopped: (command: string, name: string) =>
+      `Pysäytit prosessin ”${command}”, jonka agentti käynnisti pyynnöstä. Pyytäjä: ${name}.`,
+    processStoppedYours: (owner: string, command: string) =>
+      `${owner} pysäytti prosessin ”${command}”, jonka agentti käynnisti pyynnöstäsi.`,
+    processStoppedOther: (owner: string, command: string, name: string) =>
+      `${owner} pysäytti prosessin ”${command}”, jonka agentti käynnisti pyynnöstä. Pyytäjä: ${name}.`,
   },
   // The participant's side.
   sharedWithYou: "Jaettu kanssasi",
@@ -220,10 +252,35 @@ export const multiplayerText = catalog(
       "The run in progress could not be reached. Stop it if it acts on their request.",
     stopRun: "Stop the run",
     stopRunSent: "Stop requested",
-    processes: "Running processes",
+    processes: "Processes started at their request",
     processesNote:
-      "The agent may have started these at their request. They keep running until you stop them.",
-    noProcesses: "No running processes.",
+      "The agent started these based on their messages. They run as your user until you stop them.",
+    noProcesses: "Nothing started at their request is running.",
+    processesUnread: "The processes could not be read just now. Trying again.",
+    ended: "The processes started at their request have ended.",
+    unknownTitle: "Running, origin not shown",
+    unknownNote:
+      "Their start is not in the loaded part of the conversation, so they may be theirs or yours.",
+    fromMessage: (time) => `From their message at ${time}`,
+    showMessage: "Show message",
+    showOutput: "Show output",
+    started: (time, ago) => `Started at ${time} · ${ago}`,
+    printing: (ago) => `Printing · last ${ago}`,
+    quiet: (span) => `No new output for ${span}`,
+    ago: (span) => `${span} ago`,
+    seconds: (n) => `${formatNumber(n)} s`,
+    minutes: (n) => `${formatNumber(n)} min`,
+    hours: (n) => `${formatNumber(n)} h`,
+    stopAll: (n) => `Stop all ${formatNumber(n)}`,
+    leaveRunning: "Leave running",
+    stoppedRow: "Stopped",
+    exitedRow: (label) => `Ended by itself · ${label}`,
+    others: (n) =>
+      `Other running processes (${formatNumber(n)}) come from your requests or other people's and are not listed here.`,
+    leftRunning: (commands) => `You left running: ${commands}`,
+    show: "Show",
+    reminder: (name, n) =>
+      `${name}: ${formatNumber(n)} ${plural("en-US", n, { one: "process", other: "processes" })} running`,
     stop: "Stop",
     stopping: "Stopping",
     waitingTitle: "The agent stopped: the request needs tools",
@@ -261,6 +318,12 @@ export const multiplayerText = catalog(
         `The agent continues the request, and each tool call is approved separately. Requested by ${name}.`,
       declined: (name) =>
         `The request was not allowed, so the agent does not act on it. Requested by ${name}.`,
+      processStopped: (command, name) =>
+        `You stopped the process “${command}”, which the agent started on request. Requested by ${name}.`,
+      processStoppedYours: (owner, command) =>
+        `${owner} stopped the process “${command}”, which the agent started at your request.`,
+      processStoppedOther: (owner, command, name) =>
+        `${owner} stopped the process “${command}”, which the agent started on request. Requested by ${name}.`,
     },
     sharedWithYou: "Shared with you",
     inviteBadge: "Invite",

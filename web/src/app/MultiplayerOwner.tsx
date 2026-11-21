@@ -2,6 +2,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -14,9 +15,10 @@ import {
 import { Button } from "../components";
 import { PersonAvatar, SharedCard } from "../components/Multiplayer";
 import { useProcessView } from "../components/ProcessTray";
-import { useText } from "../i18n";
+import { formatDate, useText } from "../i18n";
 import { multiplayerText } from "../text/multiplayer";
 import { NotAdmitted, respondQuestion, type Status } from "./conversations";
+import type { HistoryEntry } from "./history";
 import {
   controlMember,
   type Member,
@@ -30,7 +32,14 @@ import {
   Unavailable,
   type WaitingRequest,
 } from "./multiplayer";
-import { processLabel, processLive } from "./processes";
+import { type ProcessRecord, processLabel, processLive } from "./processes";
+import {
+  type Offer,
+  type OfferRow,
+  processKey,
+  type TakeBack,
+  takeBackOffers,
+} from "./takeBack";
 
 // The owner's side of a shared conversation (ADR 0038): the people row
 // under the header and its panel, the invite picker, the confirmation that
@@ -42,13 +51,6 @@ import { processLabel, processLive } from "./processes";
 
 const pollMs = 4000;
 
-export type TakeBack = {
-  kind: "took" | "removed";
-  subject: string;
-  name: string;
-  revocation?: Members["revocation"];
-};
-
 export function useSharedOwner(
   id: string | undefined,
   csrf: string | undefined,
@@ -58,7 +60,8 @@ export function useSharedOwner(
 ) {
   const [members, setMembers] = useState<Members>();
   const [facts, setFacts] = useState<OwnerShared>();
-  const [takeBack, setTakeBack] = useState<TakeBack>();
+  // Take-backs made in this tab, newest per person, until dismissed.
+  const [takeBacks, setTakeBacks] = useState<TakeBack[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const current = useRef({ id, epoch: 0 });
@@ -74,6 +77,17 @@ export function useSharedOwner(
       const record = await readMembers(target);
       if (current.current.epoch !== epoch) return;
       setMembers(record);
+      // Full rights given again end this tab's take-back of that person, so
+      // a later take-back (from any tab) is a new one.
+      setTakeBacks((all) => {
+        const kept = all.filter(
+          (x) =>
+            !record.members.some(
+              (m) => m.subject === x.subject && m.role === "full_rights",
+            ),
+        );
+        return kept.length === all.length ? all : kept;
+      });
       if (record.members.length) factsWanted.current = true;
       if (factsWanted.current) {
         const read = await readOwnerShared(target);
@@ -100,7 +114,7 @@ export function useSharedOwner(
     factsWanted.current = true;
     setMembers(undefined);
     setFacts(undefined);
-    setTakeBack(undefined);
+    setTakeBacks([]);
     setNotice("");
     if (!id || !enabled) return;
     void refresh();
@@ -131,12 +145,16 @@ export function useSharedOwner(
           setMembers(next);
           if (next.members.length) factsWanted.current = true;
           if (action === "take_back" || action === "remove")
-            setTakeBack({
-              kind: action === "remove" ? "removed" : "took",
-              subject: person.subject,
-              name: person.display_name,
-              revocation: next.revocation,
-            });
+            setTakeBacks((all) => [
+              ...all.filter((x) => x.subject !== person.subject),
+              {
+                kind: action === "remove" ? "removed" : "took",
+                subject: person.subject,
+                name: person.display_name,
+                at: Date.now(),
+                revocation: next.revocation,
+              },
+            ]);
           return true;
         }
         setNotice(
@@ -154,8 +172,9 @@ export function useSharedOwner(
   return {
     members,
     facts,
-    takeBack,
-    dismissTakeBack: () => setTakeBack(undefined),
+    takeBacks,
+    dismissTakeBack: (subject: string) =>
+      setTakeBacks((all) => all.filter((x) => x.subject !== subject)),
     notice,
     busy,
     refresh,
@@ -218,9 +237,11 @@ function OwnerModal({
 export function OwnerPeopleBand({
   owner,
   agentId,
+  offers,
 }: {
   owner: SharedOwner;
   agentId: string;
+  offers?: TakeBackOffers;
 }) {
   const t = useText(multiplayerText);
   const [panel, setPanel] = useState(false);
@@ -280,6 +301,7 @@ export function OwnerPeopleBand({
         label={t.invite}
         onPress={() => setInviting(true)}
       />
+      {offers ? <TakeBackReminders offers={offers} /> : null}
       {owner.notice ? <span role="status">{owner.notice}</span> : null}
       <OwnerModal
         open={panel}
@@ -494,17 +516,239 @@ function InviteDialog({
   );
 }
 
-/** After taking full rights back or removing someone (Heti): the run in
- * progress continues as text only and can be stopped here; the running
- * processes are listed with a stop each. Nothing is stopped by itself. */
+// The take-back card (round 2, "Kortti"). Whether the owner left the
+// processes running is remembered per tab and person, so the card folds
+// into a line on reload too; the decision outlives no take-back after it.
+const leftKey = (agentId: string, subject: string) =>
+  `oh.take-back-left.${agentId}.${subject}`;
+function leftAt(agentId: string, subject: string): number {
+  try {
+    return Number(sessionStorage.getItem(leftKey(agentId, subject))) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** The offers to show, with leave-running and reopening. */
+export function useTakeBackOffers(
+  owner: SharedOwner,
+  agentId: string | undefined,
+  entries: readonly HistoryEntry[],
+) {
+  const processes = useProcessView();
+  const inventory = processes?.inventory;
+  const [, setTick] = useState(0);
+  // A failed or not yet read inventory says nothing about what runs: the
+  // last one read stands. A Pi that is not running has no processes.
+  const lastKnown = useRef<ProcessRecord[] | undefined>(undefined);
+  if (inventory?.availability === "available")
+    lastKnown.current = inventory.processes;
+  else if (inventory?.unavailable_reason === "pi_not_running")
+    lastKnown.current = [];
+  const known = lastKnown.current;
+  const offers = useMemo(
+    () =>
+      owner.members || owner.takeBacks.length
+        ? takeBackOffers(entries, owner.takeBacks, known ?? [], owner.members)
+        : [],
+    [entries, owner.takeBacks, known, owner.members],
+  );
+  const isLeft = useCallback(
+    (offer: Offer) =>
+      !!agentId && leftAt(agentId, offer.take.subject) >= offer.take.at,
+    [agentId],
+  );
+  const setLeft = useCallback(
+    (subject: string, left: boolean) => {
+      if (!agentId) return;
+      try {
+        if (left)
+          sessionStorage.setItem(leftKey(agentId, subject), String(Date.now()));
+        else sessionStorage.removeItem(leftKey(agentId, subject));
+      } catch {
+        /* Without storage the choice lasts until the view rerenders. */
+      }
+      setTick((n) => n + 1);
+    },
+    [agentId],
+  );
+  return { offers, isLeft, setLeft, known: known !== undefined };
+}
+export type TakeBackOffers = ReturnType<typeof useTakeBackOffers>;
+
+/** The people row's reminder: a person's processes still run as the owner,
+ * even after Jätä käyntiin. Pressing it opens the card and goes to it. */
+export function TakeBackReminders({ offers }: { offers: TakeBackOffers }) {
+  const t = useText(multiplayerText);
+  return offers.offers
+    .filter((o) => o.running > 0)
+    .map((o) => (
+      <button
+        key={o.take.subject}
+        type="button"
+        className="ah-mp-reminder"
+        data-testid="take-back-reminder"
+        data-subject={o.take.subject}
+        onClick={() => {
+          offers.setLeft(o.take.subject, false);
+          globalThis.requestAnimationFrame?.(() =>
+            document
+              .querySelector(
+                `[data-testid="take-back-card"][data-subject="${CSS.escape(o.take.subject)}"]`,
+              )
+              ?.scrollIntoView?.({ block: "center", behavior: "smooth" }),
+          );
+        }}
+      >
+        <span className="ah-mp-dot" data-state="live" aria-hidden="true" />
+        {t.reminder(o.take.name, o.running)}
+      </button>
+    ));
+}
+
+const time = (ms: number) =>
+  formatDate(ms, { hour: "2-digit", minute: "2-digit" });
+function span(t: (typeof multiplayerText)["fi"], ms: number) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return t.seconds(s);
+  if (s < 3600) return t.minutes(Math.floor(s / 60));
+  return t.hours(Math.floor(s / 3600));
+}
+/** Output newer than this reads as still printing. */
+const printingMs = 30_000;
+
+function showMessage(messageId: string) {
+  const target = document.querySelector<HTMLElement>(
+    `[data-message-id="${CSS.escape(messageId)}"]`,
+  );
+  if (!target) return;
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.dataset.highlight = "true";
+  globalThis.setTimeout(() => delete target.dataset.highlight, 2400);
+}
+
+function OfferProcess({
+  row,
+  now,
+  stopping,
+  canStop,
+  onStop,
+  onOpen,
+}: {
+  row: OfferRow;
+  now: number;
+  stopping: boolean;
+  canStop: boolean;
+  onStop: () => void;
+  onOpen: () => void;
+}) {
+  const t = useText(multiplayerText);
+  const p = row.process;
+  const running = processLive(p);
+  const state = running ? "live" : p.status === "killed" ? "stopped" : "exited";
+  return (
+    <li
+      className="ah-mp-proc"
+      data-testid="take-back-process"
+      data-state={state}
+      data-process={p.id}
+    >
+      <code className="ah-mp-proc-cmd">{p.command_preview || p.name}</code>
+      {row.origin.by === "participant" ? (
+        <div className="ah-mp-proc-origin">
+          <span>
+            {row.origin.at
+              ? t.fromMessage(time(Date.parse(row.origin.at)))
+              : t.fromMessage("–")}
+          </span>
+          {row.origin.text ? <q>{row.origin.text}</q> : null}
+          {row.origin.message_id ? (
+            <Button
+              data-testid="take-back-show-message"
+              size="row"
+              variant="quiet"
+              label={t.showMessage}
+              onPress={() =>
+                row.origin.by === "participant" &&
+                showMessage(row.origin.message_id)
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
+      <p className="ah-mp-card-sub">
+        {t.started(time(p.started_at), t.ago(span(t, now - p.started_at)))}
+      </p>
+      {running && p.last_output_at ? (
+        <p
+          className="ah-mp-card-sub"
+          data-testid="take-back-output"
+          data-printing={now - p.last_output_at < printingMs}
+        >
+          <span
+            className="ah-mp-dot"
+            data-state={now - p.last_output_at < printingMs ? "live" : "quiet"}
+            aria-hidden="true"
+          />
+          {now - p.last_output_at < printingMs
+            ? t.printing(t.ago(span(t, now - p.last_output_at)))
+            : t.quiet(span(t, now - p.last_output_at))}
+        </p>
+      ) : null}
+      <div className="ah-mp-proc-actions">
+        {running ? (
+          <Button
+            data-testid="take-back-process-stop"
+            size="row"
+            variant="danger-subtle"
+            label={stopping ? t.stopping : t.stop}
+            availability={
+              !canStop || stopping
+                ? { state: "disabled", reason: t.stopping }
+                : undefined
+            }
+            onPress={onStop}
+          />
+        ) : (
+          <span data-testid="take-back-process-ended">
+            {state === "stopped" ? t.stoppedRow : t.exitedRow(processLabel(p))}
+          </span>
+        )}
+        <Button
+          data-testid="take-back-process-output"
+          size="row"
+          variant="quiet"
+          label={t.showOutput}
+          onPress={onOpen}
+        />
+      </div>
+    </li>
+  );
+}
+
+/** After taking full rights back or removing someone: the run in progress
+ * continues as text only and can be stopped here (only a run of this tab's
+ * take-back), and each process the agent started on that person's turns is
+ * listed with what identifies it and a stop. Nothing is stopped by itself.
+ * The card stays until those processes end or the owner leaves them running;
+ * a stop writes a Habitat line everyone in the conversation sees. */
 export function TakeBackCard({
-  takeBack,
+  offer,
+  known,
+  left,
+  onLeave,
+  onReopen,
   running,
   turn,
   onStopRun,
   onClose,
 }: {
-  takeBack: TakeBack;
+  offer: Offer;
+  /** Whether the processes have been read at all. */
+  known: boolean;
+  left: boolean;
+  onLeave: () => void;
+  onReopen: () => void;
   running: boolean;
   /** The daemon's latest run decision: whose run is going. */
   turn?: OwnerShared["turn"];
@@ -515,39 +759,121 @@ export function TakeBackCard({
   const processes = useProcessView();
   const [stopping, setStopping] = useState<Set<string>>(new Set());
   const [runStop, setRunStop] = useState(false);
-  const live = (processes?.inventory?.processes ?? []).filter(processLive);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = globalThis.setInterval(() => setNow(Date.now()), 5000);
+    return () => globalThis.clearInterval(timer);
+  }, []);
+  const take = offer.take;
+  const liveRows = offer.rows.filter((r) => processLive(r.process));
+  const liveUnknown = offer.unknown.filter((r) => processLive(r.process));
+  const stop = async (rows: OfferRow[]) => {
+    const keys = rows.map((r) => processKey(r.process));
+    setStopping((s) => new Set([...s, ...keys]));
+    try {
+      for (const r of rows)
+        await processes?.control(
+          r.process,
+          false,
+          r.origin.by === "participant" ? r.origin.subject : undefined,
+        );
+    } finally {
+      setStopping((s) => {
+        const next = new Set(s);
+        for (const k of keys) next.delete(k);
+        return next;
+      });
+    }
+  };
+  const open = (p: ProcessRecord) => processes?.select(p);
+  // Only a run this person started loses its tools (the companion's rule);
+  // the owner's own run goes on as it was. When the running Pi could not be
+  // told, nobody knows, so stopping is offered.
+  const runPart =
+    offer.fromAction &&
+    running &&
+    (take.revocation === "failed" ||
+      ((turn?.by === "participant" || turn?.by === "revoked") &&
+        turn.subject === take.subject));
+  const title =
+    take.kind === "removed" ? t.removed(take.name) : t.tookBack(take.name);
+  const unresolved = !known || liveRows.length + liveUnknown.length > 0;
+  // One stop at a time goes to the process control.
+  const busy = !processes?.canControl || !!processes?.pending;
+  if (left && liveRows.length + liveUnknown.length > 0 && !runPart)
+    return (
+      <p
+        className="ah-mp-line ah-mp-folded"
+        data-testid="take-back-card"
+        data-subject={take.subject}
+        data-state="left"
+      >
+        <span className="ah-mp-line-mark" aria-hidden="true" />
+        <span>
+          {t.leftRunning(
+            [...liveRows, ...liveUnknown]
+              .map((r) => `”${r.process.command_preview || r.process.name}”`)
+              .join(", "),
+          )}
+        </span>
+        <Button
+          data-testid="take-back-reopen"
+          size="row"
+          variant="quiet"
+          label={t.show}
+          onPress={onReopen}
+        />
+      </p>
+    );
   return (
     <SharedCard
       testId="take-back-card"
-      tone="attention"
-      title={
-        takeBack.kind === "removed"
-          ? t.removed(takeBack.name)
-          : t.tookBack(takeBack.name)
-      }
-      subtitle={takeBack.kind === "removed" ? t.removedNote : undefined}
+      subject={take.subject}
+      state={unresolved ? "open" : "resolved"}
+      tone={unresolved ? "attention" : "neutral"}
+      title={title}
+      subtitle={take.kind === "removed" ? t.removedNote : undefined}
       actions={
-        <Button
-          data-testid="take-back-close"
-          size="row"
-          variant="quiet"
-          label={t.close}
-          onPress={onClose}
-        />
+        <>
+          {liveRows.length > 1 ? (
+            <Button
+              data-testid="take-back-stop-all"
+              size="row"
+              variant="danger-subtle"
+              label={t.stopAll(liveRows.length)}
+              availability={
+                busy ||
+                liveRows.some((r) => stopping.has(processKey(r.process)))
+                  ? { state: "disabled", reason: t.stopping }
+                  : undefined
+              }
+              onPress={() => void stop(liveRows)}
+            />
+          ) : null}
+          {liveRows.length + liveUnknown.length > 0 ? (
+            <Button
+              data-testid="take-back-leave"
+              size="row"
+              variant="quiet"
+              label={t.leaveRunning}
+              onPress={onLeave}
+            />
+          ) : offer.fromAction ? (
+            <Button
+              data-testid="take-back-close"
+              size="row"
+              variant="quiet"
+              label={t.close}
+              onPress={onClose}
+            />
+          ) : null}
+        </>
       }
     >
-      {/* Only a run this person started loses its tools (the companion's
-          rule); the owner's own run goes on as it was. When the running Pi
-          could not be told, nobody knows, so stopping is offered. */}
-      {running &&
-      (takeBack.revocation === "failed" ||
-        ((turn?.by === "participant" || turn?.by === "revoked") &&
-          turn.subject === takeBack.subject)) ? (
+      {runPart ? (
         <>
           <p>
-            {takeBack.revocation === "failed"
-              ? t.revocationFailed
-              : t.runContinues}
+            {take.revocation === "failed" ? t.revocationFailed : t.runContinues}
           </p>
           {onStopRun ? (
             <Button
@@ -569,36 +895,61 @@ export function TakeBackCard({
         </>
       ) : null}
       <h4>{t.processes}</h4>
-      {live.length ? (
+      {offer.rows.length ? (
         <>
-          <p className="ah-mp-card-sub">{t.processesNote}</p>
-          <ul className="ah-mp-rows">
-            {live.map((p) => (
-              <li key={p.id} data-testid="take-back-process">
-                <code>{p.command_preview || p.name}</code>
-                <span>{processLabel(p)}</span>
-                <Button
-                  data-testid="take-back-process-stop"
-                  size="row"
-                  variant="danger-subtle"
-                  label={stopping.has(p.id) ? t.stopping : t.stop}
-                  availability={
-                    !processes?.canControl || stopping.has(p.id)
-                      ? { state: "disabled", reason: t.stopping }
-                      : undefined
-                  }
-                  onPress={() => {
-                    setStopping((s) => new Set(s).add(p.id));
-                    void processes?.control(p);
-                  }}
-                />
-              </li>
+          {liveRows.length ? (
+            <p className="ah-mp-card-sub">{t.processesNote}</p>
+          ) : (
+            <p className="ah-mp-card-sub" data-testid="take-back-ended">
+              {t.ended}
+            </p>
+          )}
+          <ul className="ah-mp-procs">
+            {offer.rows.map((row) => (
+              <OfferProcess
+                key={processKey(row.process)}
+                row={row}
+                now={now}
+                stopping={stopping.has(processKey(row.process))}
+                canStop={!busy}
+                onStop={() => void stop([row])}
+                onOpen={() => open(row.process)}
+              />
             ))}
           </ul>
         </>
       ) : (
-        <p className="ah-mp-card-sub">{t.noProcesses}</p>
+        <p
+          className="ah-mp-card-sub"
+          data-testid={known ? "take-back-none" : "take-back-unread"}
+        >
+          {known ? t.noProcesses : t.processesUnread}
+        </p>
       )}
+      {offer.unknown.length ? (
+        <>
+          <h4>{t.unknownTitle}</h4>
+          <p className="ah-mp-card-sub">{t.unknownNote}</p>
+          <ul className="ah-mp-procs">
+            {offer.unknown.map((row) => (
+              <OfferProcess
+                key={processKey(row.process)}
+                row={row}
+                now={now}
+                stopping={stopping.has(processKey(row.process))}
+                canStop={!busy}
+                onStop={() => void stop([row])}
+                onOpen={() => open(row.process)}
+              />
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {offer.others ? (
+        <p className="ah-mp-card-sub" data-testid="take-back-others">
+          {t.others(offer.others)}
+        </p>
+      ) : null}
     </SharedCard>
   );
 }

@@ -51,7 +51,11 @@ interface ProcessView {
   panel: BackgroundKind | null;
   setPanel: (kind: BackgroundKind | null) => void;
   /** Stop one process (a wait stops only the wait), or clear finished ones. */
-  control: (p?: ProcessRecord, force?: boolean) => Promise<void>;
+  control: (
+    p?: ProcessRecord,
+    force?: boolean,
+    forParticipant?: string,
+  ) => Promise<void>;
   pending: boolean;
   canControl: boolean;
   notice: string;
@@ -162,13 +166,24 @@ export function ProcessProvider({
     [id, onStatusEvent, refresh],
   );
   const owner = inventory?.owner_generation;
-  const control = async (p?: ProcessRecord, force = false) => {
+  const control = async (
+    p?: ProcessRecord,
+    force = false,
+    forParticipant?: string,
+  ) => {
     if (!id || !owner || !csrf || pending) return;
     setPending(true);
     setNotice("");
     const txt = textNow(processTrayText).notice;
     try {
-      const result = await controlProcess(id, owner, csrf, p, force);
+      const result = await controlProcess(
+        id,
+        owner,
+        csrf,
+        p,
+        force,
+        forParticipant,
+      );
       if (!alive.current) return;
       setNotice(
         result === "error"

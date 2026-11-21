@@ -159,6 +159,7 @@ import {
   OwnerPeopleBand,
   TakeBackCard,
   useSharedOwner,
+  useTakeBackOffers,
   WaitingCard,
   withWaitingCards,
 } from "./MultiplayerOwner";
@@ -2119,6 +2120,7 @@ function BrowserConversationContent({
     multiplayerOn && !!id,
     `${entries.at(-1)?.entry_key ?? ""}:${current?.run_active ?? ""}:${current?.pending_question?.request_id ?? ""}`,
   );
+  const takeBackOffers = useTakeBackOffers(sharedOwner, id, entries);
   const rewind = useRewind({
     id,
     csrf,
@@ -2948,7 +2950,11 @@ function BrowserConversationContent({
             />
           )}
           {view === "opened" && id && multiplayerOn ? (
-            <OwnerPeopleBand owner={sharedOwner} agentId={id} />
+            <OwnerPeopleBand
+              owner={sharedOwner}
+              agentId={id}
+              offers={takeBackOffers}
+            />
           ) : null}
           {view === "opened" && contextOpen ? (
             <ContextPage
@@ -3134,23 +3140,29 @@ function BrowserConversationContent({
                           ),
                         )
                       : timeline),
-                    ...(sharedOwner.takeBack
-                      ? [
-                          {
-                            id: "take-back",
-                            kind: "question",
-                            content: (
-                              <TakeBackCard
-                                takeBack={sharedOwner.takeBack}
-                                running={!!current?.run_active}
-                                turn={sharedOwner.facts?.turn}
-                                onStopRun={composer.onInterrupt}
-                                onClose={sharedOwner.dismissTakeBack}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
+                    ...takeBackOffers.offers.map((offer) => ({
+                      id: `take-back:${offer.take.subject}`,
+                      kind: "question" as const,
+                      content: (
+                        <TakeBackCard
+                          offer={offer}
+                          known={takeBackOffers.known}
+                          left={takeBackOffers.isLeft(offer)}
+                          onLeave={() =>
+                            takeBackOffers.setLeft(offer.take.subject, true)
+                          }
+                          onReopen={() =>
+                            takeBackOffers.setLeft(offer.take.subject, false)
+                          }
+                          running={!!current?.run_active}
+                          turn={sharedOwner.facts?.turn}
+                          onStopRun={composer.onInterrupt}
+                          onClose={() =>
+                            sharedOwner.dismissTakeBack(offer.take.subject)
+                          }
+                        />
+                      ),
+                    })),
                     ...(restCard
                       ? [
                           {
