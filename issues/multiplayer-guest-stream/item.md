@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@multiplayer-conversations']
 lane: multiplayer
 lane_seq: 5
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Multiplayer: participant history read, filtered live stream and controls
@@ -26,3 +28,9 @@ Implements sections 6 and 8 of ADR 0038 (`docs/decisions/adr-0038-multiplayer-co
 - Daemon facts for the views: each run's mode and who started it, each message's author and role, waiting requests with their approval questions and answers, presence (in memory only).
 - Guest routes `send`, `abort` (anyone may stop any turn; it cancels an open approval question), cancel own held message, presence. `stop` and every other control stay owner-only.
 - Contract schemas for participant messages, turn modes and waiting requests.
+
+## Resolution
+
+### 2026-11-21T16:20:42Z · @agent
+
+Participant history read, filtered live stream and controls landed; decisions for later review in result.md.
