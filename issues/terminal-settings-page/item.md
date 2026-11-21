@@ -29,3 +29,7 @@ Jari 21.11.2026: C is right, but the terminal's gear should only open the Settin
 ### 2026-11-21T14:59:59Z · @claude
 
 Prototype round 1 (run 01m7z93caj8vp9epxz4fa3k0hw): round 2026-11-21-terminal-settings, directions A Osio / B Ratas / C Esikatselu, recommends C; see result.md. Waiting for Jari's choice.
+
+### 2026-11-21T15:48:38Z · @claude
+
+Prototype round 2 (run 01m7zbxvj99khkk454qywnff7b): round 2026-11-21-terminal-settings-2. One view, Settings › Pääte, with the gear only navigating. Text size variants: A slider, B stepper with ruler and columns, C presets. Recommends B; see result-2.md.
