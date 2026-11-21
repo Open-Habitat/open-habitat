@@ -11,6 +11,34 @@
     }
   ],
   "$defs": {
+    "participantMessage": {
+      "description": "On an oh-participant-message entry of a shared conversation (ADR 0038 section 3): its author as the owner's daemon recorded them when it delivered the message, and text, the participant's own words without Habitat's opening lines. role is the role at delivery.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id", "subject", "display_name", "role", "text"],
+      "properties": {
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "subject": { "type": "string", "pattern": "^github:[0-9]{1,20}$" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "role": { "enum": ["participant", "full_rights"] },
+        "text": { "type": "string", "minLength": 1, "maxLength": 16000 }
+      }
+    },
+    "conversationLine": {
+      "description": "On an oh-conversation-line entry: what Habitat's line says happened. membership: event says who joined, got or lost full rights, or was removed. continue: the owner let the agent continue the waiting request named by request, with all tools (mode tools) or approving each call (approve_each). declined: the owner declined that request. subject and display_name name the person the line is about.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line_id", "kind", "subject", "display_name"],
+      "properties": {
+        "line_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "kind": { "enum": ["membership", "continue", "declined"] },
+        "event": { "enum": ["joined", "full_rights_given", "full_rights_taken", "removed"] },
+        "mode": { "enum": ["tools", "approve_each"] },
+        "request": { "$ref": "common.schema.json#/$defs/uuid" },
+        "subject": { "type": "string", "pattern": "^github:[0-9]{1,20}$" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
     "historyPage": {
       "type": "object",
       "additionalProperties": false,
@@ -105,6 +133,12 @@
         },
         "skill": {
           "$ref": "#/$defs/recordedSkill"
+        },
+        "participant_message": {
+          "$ref": "#/$defs/participantMessage"
+        },
+        "conversation_line": {
+          "$ref": "#/$defs/conversationLine"
         },
         "recap": {
           "type": "object",

@@ -21,8 +21,10 @@ import (
 // approves the call that runs. Pi's request ID binds the answer to that one
 // call; the answer is one of the select's fixed choices.
 //
-// The arguments are the owner's: a participant's view of the conversation
-// must never carry them (the guest stream's allowlist).
+// The question is the owner's: a participant's view never carries it, only
+// that the owner is being asked (guestFrame, guestState). The call's
+// arguments are part of the conversation's tool rows, which a participant
+// reads as the owner's history read gives them (ADR 0038 section 6).
 const approvalPrefix = "oh-approval:"
 
 // The companion asks only about arguments it can show whole.

@@ -79,36 +79,44 @@ type recapData struct {
 }
 
 type historyEntry struct {
-	Skill              *recordedSkill `json:"skill,omitempty"`
-	Notice             *agentNotice   `json:"notice,omitempty"`
-	FailureCause       *bashFailure   `json:"failure_cause,omitempty"`
-	Recap              *recapData     `json:"recap,omitempty"`
-	Rewind             *rewindMarker  `json:"rewind,omitempty"`
-	Restart            *restartNotice `json:"restart,omitempty"`
-	WaitReminder       *waitReminder  `json:"wait_reminder,omitempty"`
-	ScheduledWake      *wakeLine      `json:"scheduled_wake,omitempty"`
-	Key                string         `json:"entry_key"`
-	Kind               string         `json:"kind"`
-	Content            historyContent `json:"content"`
-	Blocks             []historyBlock `json:"blocks,omitempty"`
-	ToolCallID         string         `json:"tool_call_id,omitempty"`
-	IsError            *bool          `json:"is_error,omitempty"`
-	StopReason         string         `json:"stop_reason,omitempty"`
-	RefusedBy          string         `json:"refused_by,omitempty"`
-	TurnFailure        string         `json:"turn_failure,omitempty"`
-	Model              string         `json:"model,omitempty"`
-	ContextTokens      int64          `json:"context_tokens,omitempty"`
-	EntryType          string         `json:"entry_type,omitempty"`
-	ExitCode           *int           `json:"exit_code,omitempty"`
-	Cancelled          bool           `json:"cancelled,omitempty"`
-	OutputTruncated    bool           `json:"output_truncated,omitempty"`
-	ExcludeFromContext bool           `json:"exclude_from_context,omitempty"`
-	TruncatedBlocks    bool           `json:"truncated_blocks,omitempty"`
-	NativeRevision     string         `json:"native_revision,omitempty"`
-	Timestamp          string         `json:"timestamp,omitempty"`
+	Skill         *recordedSkill `json:"skill,omitempty"`
+	Notice        *agentNotice   `json:"notice,omitempty"`
+	FailureCause  *bashFailure   `json:"failure_cause,omitempty"`
+	Recap         *recapData     `json:"recap,omitempty"`
+	Rewind        *rewindMarker  `json:"rewind,omitempty"`
+	Restart       *restartNotice `json:"restart,omitempty"`
+	WaitReminder  *waitReminder  `json:"wait_reminder,omitempty"`
+	ScheduledWake *wakeLine      `json:"scheduled_wake,omitempty"`
+	// A shared conversation's own entries (ADR 0038): who wrote a
+	// participant message, and what a Habitat line says happened.
+	ParticipantMessage *participantMessageFact `json:"participant_message,omitempty"`
+	ConversationLine   *conversationLineFact   `json:"conversation_line,omitempty"`
+	Key                string                  `json:"entry_key"`
+	Kind               string                  `json:"kind"`
+	Content            historyContent          `json:"content"`
+	Blocks             []historyBlock          `json:"blocks,omitempty"`
+	ToolCallID         string                  `json:"tool_call_id,omitempty"`
+	IsError            *bool                   `json:"is_error,omitempty"`
+	StopReason         string                  `json:"stop_reason,omitempty"`
+	RefusedBy          string                  `json:"refused_by,omitempty"`
+	TurnFailure        string                  `json:"turn_failure,omitempty"`
+	Model              string                  `json:"model,omitempty"`
+	ContextTokens      int64                   `json:"context_tokens,omitempty"`
+	EntryType          string                  `json:"entry_type,omitempty"`
+	ExitCode           *int                    `json:"exit_code,omitempty"`
+	Cancelled          bool                    `json:"cancelled,omitempty"`
+	OutputTruncated    bool                    `json:"output_truncated,omitempty"`
+	ExcludeFromContext bool                    `json:"exclude_from_context,omitempty"`
+	TruncatedBlocks    bool                    `json:"truncated_blocks,omitempty"`
+	NativeRevision     string                  `json:"native_revision,omitempty"`
+	Timestamp          string                  `json:"timestamp,omitempty"`
 	full               string
 	skillLocation      string
-	raw                json.RawMessage
+	// The companion's hidden turn-mode and approval records: never shown,
+	// read only for a shared conversation's facts (shared_facts_linux.go).
+	turnMark     *turnModeMark
+	approvalMark *approvalMark
+	raw          json.RawMessage
 }
 type historyBlock struct {
 	ProcessEvent *processEvent `json:"process_event,omitempty"`
@@ -642,6 +650,25 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 
 // historyHandlerWithBudget is an unexported test seam; runtime callers always use production budgets.
 func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error), pageBudget, blockBudget int) http.Handler {
+	return historyHandlerFor(cfg, trusted, sessionsReader, pageBudget, blockBudget, false)
+}
+
+// guestHidden is what a participant's read of the conversation leaves out
+// (ADR 0038 section 6): the owner's `!!` commands, which the owner kept out
+// of the agent's context and so out of the conversation.
+func guestHidden(e historyEntry) bool {
+	return e.ExcludeFromContext
+}
+
+// historyHandlerFor serves the history page and block reads. guest serves a
+// participant's read of one conversation (guest_routes_linux.go): only pages
+// and blocks, without the owner's process-run details or `!!` commands.
+func historyHandlerFor(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error), pageBudget, blockBudget int, guest bool) http.Handler {
+	enrich := func(ctx context.Context, home string, s nativeSession, e *historyEntry) {
+		if !guest {
+			enrichProcessEntry(ctx, home, s, e)
+		}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) || r.Method != "GET" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 403, "cross_user_denied")
@@ -662,10 +689,10 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			refuseHistory(w, r, "discovery_failed")
 			return
 		}
-		if serveSpinoffs(w, r, cfg, sessions) || serveSpinoffWork(w, r, cfg, sessions) {
+		if !guest && (serveSpinoffs(w, r, cfg, sessions) || serveSpinoffWork(w, r, cfg, sessions)) {
 			return
 		}
-		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/recap") {
+		if !guest && strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/recap") {
 			id := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v1/agents/"), "/recap")
 			if !strings.HasPrefix(id, "pi:") || !sessionIDPattern.MatchString(strings.TrimPrefix(id, "pi:")) || r.URL.RawQuery != "" || r.URL.Path != path {
 				snapshotError(w, 400, "invalid_request")
@@ -748,11 +775,26 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					return
 				}
 				entries := loaded.entries
+				// The oldest entry the page covers: with a participant's
+				// hidden entries left out, it still says where to go on.
+				oldest := ""
+				if len(entries) > 0 {
+					oldest = entries[0].Key
+				}
+				if guest {
+					kept := entries[:0]
+					for _, e := range entries {
+						if !guestHidden(e) {
+							kept = append(kept, e)
+						}
+					}
+					entries = kept
+				}
 				pageBytes := 0
 				start := len(entries)
 				for i := len(entries) - 1; i >= 0; i-- {
 					inline(&loaded, &entries[i])
-					enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &entries[i])
+					enrich(processProjectionCtx, cfg.Home, *s, &entries[i])
 					wire, err := json.Marshal(entries[i])
 					if err != nil {
 						refuseHistory(w, r, "encode_failed")
@@ -767,8 +809,11 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				}
 				entries = entries[start:]
 				body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": entries, "older_complete": loaded.olderComplete && start == 0, "boundary_found": true, "cut_off": loaded.cutOff}
-				if len(entries) > 0 && body["older_complete"] == false {
-					body["next_before"] = entries[0].Key
+				if body["older_complete"] == false && (len(entries) > 0 || oldest != "") {
+					if len(entries) > 0 {
+						oldest = entries[0].Key
+					}
+					body["next_before"] = oldest
 				}
 				historyJSON(w, body)
 				return
@@ -789,9 +834,18 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			}
 			entries := make([]historyEntry, 0, len(s.entries))
 			pageBytes := 0
+			// consumed counts the entries this page covers, hidden ones
+			// included, and last is the newest of them: the next page
+			// continues after it.
+			consumed, last := 0, ""
 			for _, e := range s.entries {
+				if guest && guestHidden(e) {
+					consumed++
+					last = e.Key
+					continue
+				}
 				inline(s, &e)
-				enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &e)
+				enrich(processProjectionCtx, cfg.Home, *s, &e)
 				wire, err := json.Marshal(e)
 				if err != nil {
 					refuseHistory(w, r, "encode_failed")
@@ -803,11 +857,13 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				pageBytes += len(wire)
 				e.full = ""
 				entries = append(entries, e)
+				consumed++
+				last = e.Key
 			}
-			complete := !more && len(entries) == len(s.entries)
+			complete := !more && consumed == len(s.entries)
 			body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": s.revision, "entries": entries, "complete": complete, "cut_off": s.cutOff}
 			if !complete {
-				body["next_after"] = entries[len(entries)-1].Key
+				body["next_after"] = last
 			}
 			historyJSON(w, body)
 			return
@@ -850,6 +906,10 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				for _, entry := range loaded.entries {
 					if entry.Key != key {
 						continue
+					}
+					if guest && guestHidden(entry) {
+						snapshotError(w, 404, "resource_not_found")
+						return
 					}
 					var chunk map[string]any
 					var ok bool

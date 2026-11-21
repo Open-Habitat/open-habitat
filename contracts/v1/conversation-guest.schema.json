@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/conversation-guest.schema.json",
+  "title": "Other people in a person's conversation: what a participant reads and does",
+  "description": "Root: the reply of GET /api/v1/shared/<share_id>/state (ADR 0038 sections 6 and 8), the facts a participant's view needs, reported by the owner's daemon so the browser infers none of them. The other participant operations are in $defs. Every operation is checked against the owner's membership record on the guest socket; anything it does not admit is resource_not_found. history and blocks/<entry_key>/<index> answer with history.schema.json's historyPage and blockChunk, without the owner's `!!` commands and process-run details; events is an SSE stream of event.schema.json frames of this conversation only, through the daemon's allowlist. The participant opens it at journal_cursor; frames of the owner's daemon that are not shown leave gaps in the sequence that say only that something else happened.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "agent_id", "title", "workspace_name", "you", "run", "turn", "waiting_requests", "release", "pending_question", "held", "members", "present", "journal_cursor", "live_tail"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+    "title": { "type": "string", "maxLength": 4096 },
+    "workspace_name": { "description": "The workspace's display name only, never a path or a link; empty when the conversation is outside the owner's workspaces.", "type": "string", "maxLength": 4096 },
+    "you": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "role"],
+      "properties": {
+        "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+        "role": { "enum": ["participant", "full_rights"] }
+      }
+    },
+    "run": {
+      "description": "The owner's Pi: running a turn, idle, starting, stopping or stopped. aborting: a stop was asked and Pi has not answered yet.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "aborting"],
+      "properties": {
+        "state": { "enum": ["running", "idle", "starting", "stopping", "stopped"] },
+        "aborting": { "type": "boolean" }
+      }
+    },
+    "turn": { "$ref": "#/$defs/turnOrNull" },
+    "waiting_requests": { "$ref": "#/$defs/waitingRequests" },
+    "release": { "$ref": "#/$defs/releaseOrNull" },
+    "pending_question": {
+      "description": "The owner is being asked something in Pi: only its kind, never the prompt or an approval's detail. Only the owner answers.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_kind"],
+          "properties": { "question_kind": { "type": "string", "maxLength": 40 } }
+        }
+      ]
+    },
+    "held": {
+      "description": "The participant's own messages the daemon holds until Pi is idle. delivering: handed to Pi, no longer cancellable. Nobody else's held text is shown.",
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["message_id", "text", "at", "state"],
+        "properties": {
+          "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+          "text": { "type": "string", "minLength": 1, "maxLength": 16000 },
+          "at": { "$ref": "common.schema.json#/$defs/timestamp" },
+          "state": { "enum": ["held", "delivering"] }
+        }
+      }
+    },
+    "members": {
+      "description": "The joined people of the conversation, besides its owner.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "display_name", "role"],
+        "properties": {
+          "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+          "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+          "role": { "enum": ["participant", "full_rights"] }
+        }
+      }
+    },
+    "present": { "$ref": "#/$defs/presentList" },
+    "journal_cursor": { "description": "Where the participant's event stream continues; empty when the daemon has no journal.", "type": "string", "maxLength": 100 },
+    "live_tail": {
+      "description": "The running turn's provisional frames up to journal_cursor, through the same allowlist as the stream.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "event.schema.json" }
+    }
+  },
+  "$defs": {
+    "turn": {
+      "description": "The latest run decision native history records. by: owner (the owner's input), participant (a participant's message; subject names them), continue (the owner's release of request), kept (a wake or an extension's run kept the mode), revoked (full rights were taken during the run), approved_all (Salli kaikki during a per-call run).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "by"],
+      "properties": {
+        "mode": { "enum": ["tools", "text_only", "approve_each"] },
+        "by": { "enum": ["owner", "participant", "continue", "kept", "revoked", "approved_all"] },
+        "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+        "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+        "request": { "$ref": "common.schema.json#/$defs/uuid" }
+      }
+    },
+    "turnOrNull": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/turn" }] },
+    "waitingRequests": {
+      "description": "A participant's message answered text-only that no release line or later owner message settled, oldest first (ADR 0038 section 5). request is the message's ID; entry_key is its history entry.",
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request", "subject", "display_name", "entry_key"],
+        "properties": {
+          "request": { "$ref": "common.schema.json#/$defs/uuid" },
+          "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+          "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+          "entry_key": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    },
+    "release": {
+      "description": "The newest release line (continue or declined) and, for a continue, the per-call answers given in its run, newest last (at most 200).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "subject", "display_name", "kind", "approvals"],
+      "properties": {
+        "request": { "$ref": "common.schema.json#/$defs/uuid" },
+        "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+        "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+        "kind": { "enum": ["continue", "declined"] },
+        "mode": { "enum": ["tools", "approve_each"] },
+        "approvals": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["call_id", "tool", "answer"],
+            "properties": {
+              "call_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "tool": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "answer": { "enum": ["allowed", "denied", "allow_all", "cancelled"] }
+            }
+          }
+        }
+      }
+    },
+    "releaseOrNull": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/release" }] },
+    "presentList": {
+      "description": "Participants present in the conversation now, by subject. Presence lives only in the owner's daemon's memory.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "display_name", "avatar_url", "typing"],
+        "properties": {
+          "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+          "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+          "avatar_url": { "$ref": "conversation-shares.schema.json#/$defs/avatarUrl" },
+          "typing": { "type": "boolean" }
+        }
+      }
+    },
+    "presenceChanged": {
+      "description": "The payload of a presence.changed event: the whole present list after the change.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present"],
+      "properties": { "present": { "$ref": "#/$defs/presentList" } }
+    },
+    "ownerShared": {
+      "description": "The reply of GET /api/v1/conversations/<id>/shared on the owner's own session: the facts the owner's card and strip need, read from native history as a participant's state is. Behind the experimental feature `multiplayer`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "turn", "waiting_requests", "release", "present"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "turn": { "$ref": "#/$defs/turnOrNull" },
+        "waiting_requests": { "$ref": "#/$defs/waitingRequests" },
+        "release": { "$ref": "#/$defs/releaseOrNull" },
+        "present": { "$ref": "#/$defs/presentList" }
+      }
+    },
+    "invite": {
+      "description": "The reply of GET /api/v1/shared/<share_id>/invite: what the invitation card shows before joining: the conversation's name, empty when it has none (an untitled conversation's first message is not shown). The one read an invited person may make.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "title", "role", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "title": { "type": "string", "maxLength": 4096 },
+        "role": { "enum": ["participant", "full_rights"] },
+        "state": { "enum": ["invited", "joined"] }
+      }
+    },
+    "send": {
+      "description": "The body of POST /api/v1/shared/<share_id>/send: text only (attachments are not part of this). The owner's daemon holds it until Pi is idle and checks the record again when it delivers it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 16000 } }
+    },
+    "sendReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "message_id", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "state": { "const": "held" }
+      }
+    },
+    "cancel": {
+      "description": "The body of POST /api/v1/shared/<share_id>/cancel: take one's own held message back before Pi has it. Another person's or a delivered message is not_held.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id"],
+      "properties": { "message_id": { "$ref": "common.schema.json#/$defs/uuid" } }
+    },
+    "cancelReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "message_id", "state", "text"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "state": { "const": "cancelled" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 16000 }
+      }
+    },
+    "abortReply": {
+      "description": "The reply of POST /api/v1/shared/<share_id>/abort (no body): anyone in the conversation may stop the running turn; an open approval question ends with it. not_running when no turn runs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "state": { "const": "pending" }
+      }
+    },
+    "presence": {
+      "description": "The body of POST /api/v1/shared/<share_id>/presence. present lasts 60 seconds and typing 8 unless said again; left ends it at once.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": { "state": { "enum": ["present", "typing", "left"] } }
+    },
+    "presenceReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "state": { "enum": ["present", "typing", "left"] }
+      }
+    }
+  }
+}

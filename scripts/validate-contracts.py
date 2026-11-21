@@ -84,6 +84,7 @@ checks = {
     "pi-held.json": "pi-held.schema.json",
     "conversation-members.json": "conversation-members.schema.json",
     "conversation-shares.json": "conversation-shares.schema.json",
+    "conversation-guest.json": "conversation-guest.schema.json",
     "turn-mark.json": "turn-mark.schema.json",
     "turn-mark-not-now.json": "turn-mark.schema.json",
     "agent-section.json": "agent-section.schema.json",

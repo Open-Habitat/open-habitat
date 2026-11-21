@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:00000000-0000-4000-8000-000000000001",
+  "title": "Example conversation",
+  "workspace_name": "example-workspace",
+  "you": { "subject": "github:1000002", "role": "participant" },
+  "run": { "state": "idle", "aborting": false },
+  "turn": { "mode": "text_only", "by": "participant", "subject": "github:1000002", "display_name": "Example Participant" },
+  "waiting_requests": [
+    { "request": "00000000-0000-4000-8000-000000000010", "subject": "github:1000002", "display_name": "Example Participant", "entry_key": "a1b2c3d4" }
+  ],
+  "release": null,
+  "pending_question": null,
+  "held": [
+    { "message_id": "00000000-0000-4000-8000-000000000011", "text": "One more thing.", "at": "2026-11-21T12:00:00Z", "state": "held" }
+  ],
+  "members": [
+    { "subject": "github:1000002", "display_name": "Example Participant", "role": "participant" }
+  ],
+  "present": [
+    { "subject": "github:1000002", "display_name": "Example Participant", "avatar_url": "https://avatars.githubusercontent.com/u/1000002?s=96", "typing": false }
+  ],
+  "journal_cursor": "ev1:00000000-0000-4000-8000-000000000099:42",
+  "live_tail": []
+}

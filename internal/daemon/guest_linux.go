@@ -39,12 +39,21 @@ const guestPrefix = "/guest/v1/conversations/"
 
 // guestOperations is the whole guest table. Each entry is one participant
 // operation of ADR 0038 section 6; a path that is not here is refused before
-// anything is read. The later issues of the multiplayer lane add their
-// routes here (send, abort, cancel_held, presence, history, events), each
-// checking authorizeGuest or admitGuestStream itself.
+// anything is read. Each handler checks authorizeGuest or admitGuestStream
+// itself (guest_routes_linux.go). invite and join are the only ones an
+// invited person may use; every other needs joined.
 func guestOperations(c *ConversationController, identify func(*http.Request) (guestParticipant, bool)) map[string]http.Handler {
 	return map[string]http.Handler{
-		"join": c.GuestJoinHandler(identify),
+		"join":     c.GuestJoinHandler(identify),
+		"invite":   guestRoute(identify, http.MethodGet, false, c.guestInvite),
+		"state":    guestRoute(identify, http.MethodGet, false, c.guestState),
+		"history":  guestRoute(identify, http.MethodGet, false, c.guestHistory),
+		"blocks":   guestRoute(identify, http.MethodGet, true, c.guestBlocks),
+		"events":   guestRoute(identify, http.MethodGet, false, c.guestEvents),
+		"send":     guestRoute(identify, http.MethodPost, false, c.guestSend),
+		"cancel":   guestRoute(identify, http.MethodPost, false, c.guestCancel),
+		"abort":    guestRoute(identify, http.MethodPost, false, c.guestAbort),
+		"presence": guestRoute(identify, http.MethodPost, false, c.guestPresence),
 	}
 }
 
@@ -69,7 +78,8 @@ func guestHandlerFor(c *ConversationController, peer func(*http.Request) bool) h
 		// Every refusal past the peer check is the same answer as an unknown
 		// conversation, so a guest learns nothing about what else exists.
 		rest, ok := strings.CutPrefix(r.URL.Path, guestPrefix)
-		id, op, _ := strings.Cut(rest, "/")
+		id, after, _ := strings.Cut(rest, "/")
+		op, _, _ := strings.Cut(after, "/")
 		handler := ops[op]
 		if !ok || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() || !sessionIDPattern.MatchString(id) || handler == nil {
 			snapshotError(w, 404, "resource_not_found")

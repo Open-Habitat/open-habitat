@@ -283,7 +283,14 @@ Identity and authority:
   metadata only and routes; a guest request passes only when the index and the
   owner's record both admit it, an unknown, removed or foreign share looks
   like a missing one, and withdrawing a person deletes their shares as owner
-  and as participant. The URL never selects a Unix user.
+  and as participant. The URL never selects a Unix user. Every guest handler
+  checks the record before reading its input. What a participant sees of the
+  owner's journal is an allowlist of kinds for that one conversation
+  (`guestFrame`): a new journal kind stays private until it is added there
+  deliberately, and the owner's queue and held texts, a question's prompt or
+  approval detail, `!!` commands and other conversations never cross. The
+  gateway forwards only its own table of guest operations, rebuilding each
+  query and body from that operation's grammar.
 - A person's own Tailscale node (Omat koneet) is theirs alone: a systemd
   user unit of their account, never a system `tailscaled`, never a host-wide
   tailnet and never a Habitat-owned tailnet, auth key or admin access to

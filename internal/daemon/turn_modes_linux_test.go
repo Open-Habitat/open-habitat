@@ -70,6 +70,23 @@ func newGuestTurnFixture(t *testing.T) *guestTurnFixture {
 	if _, ok := c.joinMember(memberConv, ville); !ok {
 		t.Fatal("join failed")
 	}
+	// The join's Habitat line is written by a background delivery that
+	// rewrites the record; let it finish so it cannot outlive the test.
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		c.memberMu.Lock()
+		record, err := loadMembership(c.home)
+		c.memberMu.Unlock()
+		if err == nil && (record.Conversations["pi:"+memberConv] == nil || len(record.Conversations["pi:"+memberConv].Lines) == 0) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the join's line was not delivered")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	c.memberLineMu.Lock()
+	c.memberLineMu.Unlock() //nolint:staticcheck // waits for the delivery to return
 	return f
 }
 

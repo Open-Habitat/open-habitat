@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "173cadaf2ec468a1b43934a8ff8d89aff98deded753ef8000e7bde0a18e15601"
+const V1SchemaFingerprint = "9bc39d2d68976e85bcc86781b87f704427bba0f9b8f2ca7275a1af9be80a7bfc"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -32,6 +32,7 @@ var V1SchemaFiles = []string{
 	"composer.schema.json",
 	"context-detail.schema.json",
 	"conversation-capacity.schema.json",
+	"conversation-guest.schema.json",
 	"conversation-members.schema.json",
 	"conversation-shares.schema.json",
 	"device-link.schema.json",
@@ -142,6 +143,7 @@ type Compaction = json.RawMessage
 type Composer = json.RawMessage
 type ContextDetail = json.RawMessage
 type ConversationCapacity = json.RawMessage
+type ConversationGuest = json.RawMessage
 type ConversationMembers = json.RawMessage
 type ConversationShares = json.RawMessage
 type DeviceLink = json.RawMessage

@@ -39,6 +39,11 @@ type ConversationController struct {
 	memberLineMu  sync.Mutex
 	guestMu       sync.Mutex // one delivery of a participant message or release at a time
 	memberStreams map[string]map[*guestStream]struct{}
+	// Participants' presence, in memory only (guest_routes_linux.go). Lock
+	// order: memberMu, then presenceMu.
+	presenceMu     sync.Mutex
+	presence       map[string]map[string]*presenceEntry
+	presenceTimers map[string]*time.Timer
 
 	mu       sync.Mutex
 	sessions map[string]*conversation
@@ -188,11 +193,11 @@ type conversation struct {
 	// Messages sent before Pi is ready. The daemon holds them in order, keyed by
 	// the browser's command ID, and gives Pi their joined text as one prompt.
 	// They live only in this daemon incarnation, like receipts.
-	held         []heldMessage
+	held []heldMessage
 	// Participants' messages and the owner's releases held for an idle Pi
 	// (turn_modes_linux.go), in one order with held.
-	guestHeld []guestHeld
-	heldSeq   uint64
+	guestHeld    []guestHeld
+	heldSeq      uint64
 	heldChoice   *piStartupChoice // first-message intent travelling with the held prompt
 	bash         *bashRun         // the one `!` command: held, running, or its last outcome (bash_linux.go)
 	startProblem string           // fixed code of the last failed start; held messages are kept
@@ -549,6 +554,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.closeEmpty(w, r, parts[0])
 	case (r.Method == http.MethodGet || r.Method == http.MethodPost) && parts[1] == "members":
 		c.members(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "shared":
+		c.sharedState(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "requests":
 		c.releaseRequest(w, r, parts[0])
 	default:

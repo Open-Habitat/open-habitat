@@ -558,7 +558,19 @@ func (j *eventJournal) parse(cursor string) (uint64, string) {
 var eventHeartbeatInterval = 20 * time.Second
 
 func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func() bool) {
-	if r.Method != "GET" || r.URL.Path != "/api/v1/events" || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) > 0 || len(r.Header.Values("Last-Event-ID")) > 1 || len(r.URL.Query()["after"]) != 1 || len(r.URL.Query()) != 1 {
+	if r.URL.Path != "/api/v1/events" {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	j.serve(w, r, valid, nil, nil)
+}
+
+// serve streams the journal from the request's cursor. filter, when set,
+// decides what of each frame this subscriber sees: it returns the frame to
+// send, or nil to skip it (the cursor still advances past it). alive is
+// asked at every heartbeat; the stream ends once it says no.
+func (j *eventJournal) serve(w http.ResponseWriter, r *http.Request, valid func() bool, filter func([]byte) []byte, alive func() bool) {
+	if r.Method != "GET" || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) > 0 || len(r.Header.Values("Last-Event-ID")) > 1 || len(r.URL.Query()["after"]) != 1 || len(r.URL.Query()) != 1 {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -605,9 +617,18 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 	defer end.Stop()
 	heartbeat := time.NewTicker(eventHeartbeatInterval)
 	defer heartbeat.Stop()
+	// alive is asked at least once per heartbeat interval also while the
+	// stream replays or the journal never goes quiet.
+	checked := time.Now()
 	for {
 		if r.Context().Err() != nil || !time.Now().Before(deadline) {
 			return
+		}
+		if alive != nil && time.Since(checked) >= eventHeartbeatInterval {
+			if !alive() {
+				return
+			}
+			checked = time.Now()
 		}
 		j.mu.Lock()
 		oldest := j.seq - uint64(len(j.frames))
@@ -622,6 +643,11 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		}
 		changed := j.changed
 		j.mu.Unlock()
+		if b != nil && filter != nil {
+			if b = filter(b); b == nil {
+				continue
+			}
+		}
 		if b != nil {
 			var event struct {
 				Cursor string `json:"cursor"`
@@ -637,6 +663,12 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		select {
 		case <-changed:
 		case <-heartbeat.C:
+			if alive != nil {
+				if !alive() {
+					return
+				}
+				checked = time.Now()
+			}
 			// A named event the browser can see, outside the journal sequence
 			// (no id, so the replay cursor stays put). A proxy whose upstream
 			// vanished keeps the browser's stream open and silent; missing
@@ -657,6 +689,12 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	payload := map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content}
 	if entry.Skill != nil {
 		payload["skill"] = entry.Skill
+	}
+	if entry.ParticipantMessage != nil {
+		payload["participant_message"] = entry.ParticipantMessage
+	}
+	if entry.ConversationLine != nil {
+		payload["conversation_line"] = entry.ConversationLine
 	}
 	if entry.Notice != nil {
 		payload["notice"] = entry.Notice

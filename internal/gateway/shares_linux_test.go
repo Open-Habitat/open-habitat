@@ -32,6 +32,10 @@ type fakeOwnerDaemon struct {
 	dials      []string
 	guests     []*http.Request
 	headers    []string
+	// guest answers the guest routes other than join when set; it runs
+	// without mu, so a stream can stay open.
+	guest  func(w http.ResponseWriter, r *http.Request, body []byte)
+	bodies []string
 }
 
 func (d *fakeOwnerDaemon) membersReply(w io.Writer) {
@@ -53,6 +57,15 @@ func (d *fakeOwnerDaemon) membersReply(w io.Writer) {
 
 func (d *fakeOwnerDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
+	if guest := d.guest; guest != nil && strings.HasPrefix(r.URL.Path, "/guest/v1/") && !strings.HasSuffix(r.URL.Path, "/join") {
+		body, _ := io.ReadAll(r.Body)
+		d.guests = append(d.guests, r)
+		d.headers = append(d.headers, r.Header.Get(guestParticipantHeader))
+		d.bodies = append(d.bodies, string(body))
+		d.mu.Unlock()
+		guest(w, r, body)
+		return
+	}
 	defer d.mu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
 	notFound := func() {

@@ -297,12 +297,13 @@ func (c *ConversationController) members(w http.ResponseWriter, r *http.Request,
 			return
 		}
 		c.memberMu.Lock()
-		defer c.memberMu.Unlock()
 		if _, _, err := c.shareableConversation(id); err != nil {
+			c.memberMu.Unlock()
 			memberSourceError(w, err)
 			return
 		}
 		record, err := loadMembership(c.home)
+		c.memberMu.Unlock()
 		if err != nil {
 			snapshotError(w, 503, "native_source_unavailable")
 			return
@@ -338,6 +339,49 @@ func (c *ConversationController) members(w http.ResponseWriter, r *http.Request,
 	}
 	c.deliverMemberLinesFor(id)
 	historyJSON(w, reply)
+}
+
+// sharedState serves GET /api/v1/conversations/<id>/shared on the owner's
+// daemon.sock: the facts the owner's card and strip need, the same a
+// participant's view reads (shared_facts_linux.go). A conversation never
+// shared is not read for them.
+func (c *ConversationController) sharedState(w http.ResponseWriter, r *http.Request, id string) {
+	if !multiplayerEnabled(c.cfg.Home) {
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.memberMu.Lock()
+	_, _, err := c.shareableConversation(id)
+	var record membershipRecord
+	if err == nil {
+		record, err = loadMembership(c.home)
+	}
+	c.memberMu.Unlock()
+	if err != nil {
+		memberSourceError(w, err)
+		return
+	}
+	facts := sharedFacts{Waiting: []waitingRequest{}}
+	if record.Conversations["pi:"+id] != nil {
+		// The whole branch is read, as a long history read is.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(historyReadWait))
+		source, err := c.noticeSource(id)
+		if err != nil || source == nil {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
+		read, ok := readSharedFacts(source.path, c.cfg.UID)
+		if !ok {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
+		facts = read
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "turn": facts.Turn, "waiting_requests": facts.Waiting, "release": facts.Release, "present": c.presentIn(id)})
 }
 
 func memberSourceError(w http.ResponseWriter, err error) {
@@ -460,6 +504,7 @@ func (c *ConversationController) changeMember(id string, in memberControl) (map[
 		// The record refuses the next guest request; streams already open
 		// end here, under the same lock that admits new ones.
 		c.endGuestStreamsLocked(key, in.Subject)
+		c.dropPresence(id, in.Subject)
 	}
 	return membersReply(id, record.Generation, record.Conversations[key]), tell, 0, ""
 }
@@ -622,6 +667,7 @@ func (c *ConversationController) endMemberships(match func(key string, conv *mem
 	}
 	for _, key := range ended {
 		c.endGuestStreamsLocked(key, "")
+		c.dropPresence(strings.TrimPrefix(key, "pi:"), "")
 	}
 	if len(ended) > 0 {
 		return saveMembership(c.home, record)

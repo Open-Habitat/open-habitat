@@ -10,7 +10,13 @@ import (
 // A bounded, explicitly selected projection of native message structure. Raw
 // provider metadata and extension details never enter the browser contract.
 // Image data and tool arguments are fetched only by explicit bounded block read.
-func nativeBlocks(e nativeEntry) (out historyEntry) {
+func nativeBlocks(e nativeEntry) historyEntry {
+	out := nativeBlocksBase(e)
+	sharedProjection(e, &out)
+	return out
+}
+
+func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 	if notification, ok := nativeProcessNotification(e); ok {
 		return notification
 	}

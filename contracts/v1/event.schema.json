@@ -66,7 +66,8 @@
         "process.changed",
         "process.output",
         "process.notification",
-        "notice.created"
+        "notice.created",
+        "presence.changed"
       ]
     },
     "resource": {
@@ -211,6 +212,12 @@
               },
               "skill": {
                 "$ref": "history.schema.json#/$defs/recordedSkill"
+              },
+              "participant_message": {
+                "$ref": "history.schema.json#/$defs/participantMessage"
+              },
+              "conversation_line": {
+                "$ref": "history.schema.json#/$defs/conversationLine"
               },
               "blocks": {
                 "type": "array",
@@ -1064,6 +1071,67 @@
             "properties": {
               "notice": {
                 "$ref": "notice.schema.json#/$defs/notice"
+              }
+            }
+          },
+          "resource": {
+            "required": [
+              "agent_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "presence.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "description": "The whole list of participants present in the conversation after the change (conversation-guest.schema.json $defs/presentList). Presence lives only in the owner's daemon's memory.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "present"
+            ],
+            "properties": {
+              "present": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "subject",
+                    "display_name",
+                    "avatar_url",
+                    "typing"
+                  ],
+                  "properties": {
+                    "subject": {
+                      "type": "string",
+                      "pattern": "^github:[0-9]{1,20}$"
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "avatar_url": {
+                      "type": "string",
+                      "maxLength": 1024,
+                      "pattern": "^(https://avatars\\.githubusercontent\\.com/.*)?$"
+                    },
+                    "typing": {
+                      "type": "boolean"
+                    }
+                  }
+                }
               }
             }
           },

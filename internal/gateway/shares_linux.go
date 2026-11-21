@@ -14,14 +14,17 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
@@ -402,19 +405,161 @@ type sharedItem struct {
 }
 
 // guestOperations are the participant operations the gateway forwards, by
-// method, to the fixed guest path of the same name. The owner's daemon has
-// its own default-deny table; this one keeps the gateway from forwarding
-// what was never meant to reach a guest socket. The later issues of the
-// multiplayer lane add their operations here.
+// method, to the fixed guest path of the same name (ADR 0038 section 6). The
+// owner's daemon has its own default-deny table; this one keeps the gateway
+// from forwarding what was never meant to reach a guest socket. Each
+// operation's query and body are read by guestCall, which rebuilds them:
+// nothing of the browser's request crosses unchecked.
 var guestOperations = map[string]string{
-	"join": http.MethodPost,
+	"join":     http.MethodPost,
+	"invite":   http.MethodGet,
+	"state":    http.MethodGet,
+	"history":  http.MethodGet,
+	"blocks":   http.MethodGet,
+	"events":   http.MethodGet,
+	"send":     http.MethodPost,
+	"cancel":   http.MethodPost,
+	"abort":    http.MethodPost,
+	"presence": http.MethodPost,
+}
+
+// guestCall is one participant request as the gateway rebuilt it.
+type guestCall struct {
+	op, tail, query string
+	body            []byte
+	lastEventID     string
+}
+
+var (
+	guestEntryKey  = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+	guestBlockPath = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}/[0-9]{1,3}$`)
+	guestNumber    = regexp.MustCompile(`^(0|[1-9][0-9]{0,8})$`)
+	guestRevision  = regexp.MustCompile(`^[A-Za-z0-9_-]{1,200}$`)
+	guestMessageID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+)
+
+// guestText bounds a participant's message as the owner's daemon does.
+const guestTextBytes = 16000
+
+// readGuestCall checks one operation's grammar and rebuilds its query and
+// body. A request that does not fit is refused like an unknown operation.
+func readGuestCall(r *http.Request, op, tail string) (guestCall, bool) {
+	call := guestCall{op: op, tail: tail}
+	if (tail != "") != (op == "blocks") || (op == "blocks" && !guestBlockPath.MatchString(tail)) {
+		return call, false
+	}
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return call, false
+	}
+	for _, values := range q {
+		if len(values) != 1 {
+			return call, false
+		}
+	}
+	rebuilt := url.Values{}
+	allow := func(key string, valid func(string) bool) bool {
+		if !q.Has(key) {
+			return true
+		}
+		if !valid(q.Get(key)) {
+			return false
+		}
+		rebuilt.Set(key, q.Get(key))
+		return true
+	}
+	known := map[string]bool{}
+	switch op {
+	case "history":
+		for _, k := range []string{"after", "before", "limit", "messages"} {
+			known[k] = true
+		}
+		if !allow("after", guestEntryKey.MatchString) || !allow("before", guestEntryKey.MatchString) || !allow("limit", guestNumber.MatchString) || !allow("messages", guestNumber.MatchString) {
+			return call, false
+		}
+	case "blocks":
+		for _, k := range []string{"revision", "offset", "limit_bytes", "part"} {
+			known[k] = true
+		}
+		if !q.Has("revision") || !q.Has("offset") || !q.Has("limit_bytes") || !allow("revision", guestRevision.MatchString) || !allow("offset", guestNumber.MatchString) || !allow("limit_bytes", guestNumber.MatchString) || !allow("part", func(v string) bool { return v == "skill_arguments" }) {
+			return call, false
+		}
+	case "events":
+		known["after"] = true
+		if !q.Has("after") || !allow("after", conversationStreamCursor.MatchString) {
+			return call, false
+		}
+		last := r.Header.Values("Last-Event-ID")
+		if len(last) > 1 || len(last) == 1 && last[0] != "" && !conversationStreamCursor.MatchString(last[0]) {
+			return call, false
+		}
+		if len(last) == 1 {
+			call.lastEventID = last[0]
+		}
+	}
+	for k := range q {
+		if !known[k] {
+			return call, false
+		}
+	}
+	call.query = rebuilt.Encode()
+	var body any
+	switch op {
+	case "send":
+		var in struct {
+			Text string `json:"text"`
+		}
+		if !readGuestBody(r, 6*guestTextBytes+64, &in) || in.Text == "" || len(in.Text) > guestTextBytes {
+			return call, false
+		}
+		body = in
+	case "cancel":
+		var in struct {
+			MessageID string `json:"message_id"`
+		}
+		if !readGuestBody(r, 256, &in) || !guestMessageID.MatchString(in.MessageID) {
+			return call, false
+		}
+		body = in
+	case "presence":
+		var in struct {
+			State string `json:"state"`
+		}
+		if !readGuestBody(r, 128, &in) || (in.State != "present" && in.State != "typing" && in.State != "left") {
+			return call, false
+		}
+		body = in
+	default:
+		if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+			return call, false
+		}
+	}
+	if body != nil {
+		call.body, _ = json.Marshal(body)
+	}
+	return call, true
+}
+
+// readGuestBody decodes a small JSON body strictly: one object, known
+// fields only, no duplicates.
+func readGuestBody(r *http.Request, limit int64, target any) bool {
+	if r.Header.Get("Content-Type") != "application/json" || len(r.TransferEncoding) != 0 || r.ContentLength <= 0 || r.ContentLength > limit {
+		return false
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, limit+1))
+	if err != nil || int64(len(raw)) > limit || !jsoncheck.NoDuplicates(raw) {
+		return false
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	return dec.Decode(target) == nil && dec.Decode(new(any)) == io.EOF
 }
 
 // shared serves GET /api/v1/shared (what is shared with the session's
 // person) and /api/v1/shared/<share_id>/<operation>.
 func (a *Auth) shared(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.EscapedPath()
-	if path != r.URL.Path || r.URL.RawQuery != "" {
+	if path != r.URL.Path {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -443,9 +588,15 @@ func (a *Auth) shared(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	rest := strings.TrimPrefix(path, sharedPrefix)
-	id, op, _ := strings.Cut(rest, "/")
+	id, after, _ := strings.Cut(rest, "/")
+	op, tail, _ := strings.Cut(after, "/")
 	method, known := guestOperations[op]
-	if !known || method != r.Method || !shareIDPattern.MatchString(id) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+	if !known || method != r.Method || !shareIDPattern.MatchString(id) || r.URL.Fragment != "" {
+		safe(w, 404, "resource_not_found")
+		return
+	}
+	call, ok := readGuestCall(r, op, tail)
+	if !ok {
 		safe(w, 404, "resource_not_found")
 		return
 	}
@@ -455,7 +606,11 @@ func (a *Auth) shared(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer release()
-	a.guestExchange(w, ctx, s, entry, op, method)
+	if op == "events" {
+		a.guestStream(w, ctx, s, entry, call)
+		return
+	}
+	a.guestExchange(w, ctx, s, entry, call, method)
 }
 
 func (a *Auth) listShared(w http.ResponseWriter, s session) {
@@ -514,9 +669,53 @@ func guestSocket(owner Identity) Identity {
 	return owner
 }
 
-// guestExchange makes one request the gateway built itself to the owner's
-// guest socket. Nothing of the browser's request crosses but the operation.
-func (a *Auth) guestExchange(w http.ResponseWriter, parent context.Context, s session, entry shareEntry, op, method string) {
+// guestRequest builds the request the gateway sends to the owner's guest
+// socket: the fixed guest path of this share's conversation, the rebuilt
+// query and body, and the participant named from the session alone.
+func guestRequest(ctx context.Context, s session, entry shareEntry, call guestCall, method string) (*http.Request, error) {
+	target := "http://unix/guest/v1/conversations/" + entry.Conversation + "/" + call.op
+	if call.tail != "" {
+		target += "/" + call.tail
+	}
+	if call.query != "" {
+		target += "?" + call.query
+	}
+	var body io.Reader = http.NoBody
+	if call.body != nil {
+		body = bytes.NewReader(call.body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target, body)
+	if err != nil {
+		return nil, err
+	}
+	if call.body != nil {
+		req.ContentLength = int64(len(call.body))
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if call.lastEventID != "" {
+		req.Header.Set("Last-Event-ID", call.lastEventID)
+	}
+	req.Header.Set(guestParticipantHeader, participantHeader(s))
+	return req, nil
+}
+
+func (a *Auth) guestTransport(target Identity, stream bool) *http.Transport {
+	return &http.Transport{
+		DisableKeepAlives:      true,
+		MaxResponseHeaderBytes: 16 << 10,
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			conn, err := a.dialDaemon(ctx, target)
+			if err != nil || !stream {
+				return conn, err
+			}
+			return idleReadConn{conn}, nil
+		},
+	}
+}
+
+// guestExchange makes one finite request the gateway built itself to the
+// owner's guest socket and relays the bounded reply.
+func (a *Auth) guestExchange(w http.ResponseWriter, parent context.Context, s session, entry shareEntry, call guestCall, method string) {
 	target := guestSocket(entry.Owner)
 	if a.snapshotDial == nil && udssecure.Guest(target.Socket, target.UID) != nil {
 		// The owner's daemon is not there (withdrawn, stopping, or never
@@ -524,30 +723,29 @@ func (a *Auth) guestExchange(w http.ResponseWriter, parent context.Context, s se
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
-	defer cancel()
-	transport := &http.Transport{
-		DisableKeepAlives:      true,
-		MaxResponseHeaderBytes: 16 << 10,
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return a.dialDaemon(ctx, target)
-		},
+	// A history read may wait for a long native file as the owner's does.
+	wait, limit := 15*time.Second, int64(64<<10)
+	switch call.op {
+	case "history", "blocks", "state":
+		wait, limit = 70*time.Second, 4<<20
 	}
+	ctx, cancel := context.WithTimeout(parent, wait)
+	defer cancel()
+	transport := a.guestTransport(target, false)
 	defer transport.CloseIdleConnections()
-	req, err := http.NewRequestWithContext(ctx, method, "http://unix/guest/v1/conversations/"+entry.Conversation+"/"+op, http.NoBody)
+	req, err := guestRequest(ctx, s, entry, call, method)
 	if err != nil {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	req.Header.Set(guestParticipantHeader, participantHeader(s))
 	res, err := transport.RoundTrip(req)
 	if err != nil {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
 	defer res.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 64<<10+1))
-	if err != nil || len(body) > 64<<10 {
+	body, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
+	if err != nil || int64(len(body)) > limit {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -555,11 +753,104 @@ func (a *Auth) guestExchange(w http.ResponseWriter, parent context.Context, s se
 		relayDaemonError(w, res.StatusCode, body)
 		return
 	}
-	switch op {
-	case "join":
+	if call.op == "join" {
 		a.joined(w, entry, body)
-	default:
+		return
+	}
+	if res.Header.Get("Content-Type") != "application/json" || !json.Valid(body) {
 		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(200)
+	_, _ = w.Write(body)
+}
+
+// guestStream relays the participant's filtered event stream from the
+// owner's guest socket. The relay is tied to the browser session and to the
+// share (shareRequest): removing the participant, withdrawing either person
+// or ending the session cancels it, and the owner's daemon ends its side
+// itself when the membership ends.
+func (a *Auth) guestStream(w http.ResponseWriter, ctx context.Context, s session, entry shareEntry, call guestCall) {
+	target := guestSocket(entry.Owner)
+	if a.snapshotDial == nil && udssecure.Guest(target.Socket, target.UID) != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	transport := a.guestTransport(target, true)
+	defer transport.CloseIdleConnections()
+	req, err := guestRequest(ctx, s, entry, call, http.MethodGet)
+	if err != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	res, err := transport.RoundTrip(req)
+	if err != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
+		relayDaemonError(w, res.StatusCode, body)
+		return
+	}
+	if res.Header.Get("Content-Type") != "text/event-stream" {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	controller := http.NewResponseController(w)
+	// As the owner's stream relay: a deadline bounds each write to a stalled
+	// browser and is cleared while the daemon is quiet.
+	armed := func() bool {
+		err := controller.SetWriteDeadline(time.Now().Add(streamWriteTimeout))
+		return err == nil || errors.Is(err, http.ErrNotSupported)
+	}
+	idle := func() bool {
+		err := controller.SetWriteDeadline(time.Time{})
+		return err == nil || errors.Is(err, http.ErrNotSupported)
+	}
+	if !armed() {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(200)
+	flusher.Flush()
+	if !idle() {
+		return
+	}
+	buf := make([]byte, 32<<10)
+	for {
+		n, readErr := res.Body.Read(buf)
+		if ctx.Err() != nil {
+			return
+		}
+		if n > 0 {
+			if !armed() {
+				return
+			}
+			if _, err := w.Write(buf[:n]); err != nil {
+				return
+			}
+			flusher.Flush()
+			if !idle() {
+				return
+			}
+		}
+		if readErr != nil {
+			return
+		}
 	}
 }
 
