@@ -1,0 +1,116 @@
+/* The note for the agent (AgentNoteStep.tsx). Tokens only. */
+.an-step {
+  display: grid;
+  gap: var(--ah-s4);
+  min-width: 0;
+  font: var(--ah-size-body, 1rem) / 1.5 var(--ah-font);
+}
+.an-chat {
+  display: grid;
+  gap: var(--ah-s3);
+  min-width: 0;
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-bg);
+}
+.an-thread {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+  max-height: 30rem;
+  overflow: auto;
+  padding-right: 2px;
+}
+.an-step[data-revealed="true"] .an-thread {
+  max-height: 14rem;
+}
+.an-thread blockquote {
+  margin: var(--ah-s2) 0;
+  padding-left: var(--ah-s3);
+  border-left: 2px solid var(--ah-accent-line);
+}
+.an-chips {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+}
+.an-own {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.an-own .ah-field {
+  min-width: 0;
+}
+.an-own textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.an-own-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ah-s2);
+}
+.an-reveal {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  scroll-margin-top: var(--ah-s3);
+}
+.an-reveal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ah-muted);
+}
+.an-reveal-label svg {
+  width: 14px;
+  height: 14px;
+}
+.an-where {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.an-where summary {
+  cursor: pointer;
+  color: var(--ah-accent-ink);
+}
+.an-where p {
+  margin: var(--ah-s2) 0 0;
+}
+.an-written {
+  margin: var(--ah-s2) 0 0;
+  max-height: 14rem;
+  overflow: auto;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  font: var(--ah-size-meta) / 1.5 var(--ah-mono, monospace);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ah-ink);
+}
+@media (max-width: 600px) {
+  .an-reveal {
+    padding: var(--ah-s3);
+  }
+}

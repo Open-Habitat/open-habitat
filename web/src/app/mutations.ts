@@ -87,6 +87,8 @@ export const mutationClasses = {
   "editor.checkStartPage": "confirmed",
   "account.preferences": "confirmed",
   "account.first_route": "confirmed",
+  // The person's own instructions file: a compare-and-swap the daemon answers.
+  "account.agent_instructions": "confirmed",
   "account.keys": "confirmed",
   "account.own_machines": "confirmed",
   // Asks the daemon to measure the home again; nothing is written.

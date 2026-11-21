@@ -6,7 +6,9 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { AccountKeys } from "../app/AccountKeys";
+import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
+import { useExperimentalFeature } from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
@@ -321,6 +323,7 @@ export function AccountSettings({
   const theme = useThemeChoice();
   const language = useLanguage();
   const t = accountText[language];
+  const instructionsOn = useExperimentalFeature("agent-instructions");
   const serverText = useText(serverSettingsText);
   const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
@@ -815,6 +818,17 @@ export function AccountSettings({
             </div>
             <GitIdentity csrf={csrf} />
           </div>
+        )}
+        {section === "tili" && instructionsOn && (
+          <>
+            <h3 className="s-h3">{t.agentInstructions}</h3>
+            <div className="s-card">
+              <AgentInstructionsSettings
+                csrf={csrf}
+                name={person?.name ?? ""}
+              />
+            </div>
+          </>
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}
         {section === "avaimet" && <AccountKeys csrf={csrf} />}

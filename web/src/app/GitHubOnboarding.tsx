@@ -18,7 +18,13 @@ import {
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { liveText } from "../i18n";
+import { agentInstructionsText } from "../text/agentInstructions";
 import { githubOnboardingText } from "../text/githubOnboarding";
+import {
+  AgentInstructionsOnboarding,
+  type InstructionsOutcome,
+} from "./AgentInstructionsOnboarding";
+import { useAccountPreferences } from "./accountPreferences";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { finishFirstRoute } from "./firstRoute";
 import { GitIdentity } from "./GitIdentity";
@@ -37,9 +43,10 @@ import {
   type SiteOnboarding,
 } from "./onboardingConfig";
 import { PiOnboarding } from "./PiOnboarding";
-import { piStatus, sessionCSRF } from "./pi";
+import { accountSession, piStatus, sessionCSRF } from "./pi";
 
 const txt = liveText(githubOnboardingText);
+const instructionsText = liveText(agentInstructionsText);
 const marker = "nah:github-step";
 // The integration steps passed, connected or not, in this session.
 const integrationMarker = "nah:integration-steps";
@@ -96,8 +103,38 @@ export function GitHubOnboarding({
   const [exitOpen, setExitOpen] = useState(false);
   const cloneView = useCloneView(clones);
   const [step, setStep] = useState<
-    "loading" | "identity" | "github" | "integrations" | "pi"
+    "loading" | "identity" | "github" | "integrations" | "pi" | "instructions"
   >("loading");
+  // The note for the agent, the route's last step while the experimental
+  // agent-instructions feature is on. A sign-in from Settings is no route.
+  // The app's preferences know no identity before its first snapshot, which
+  // onboarding precedes, so the route reads this session's own.
+  const [prefsSession, setPrefsSession] = useState<{
+    identity: string;
+    csrf: string;
+  }>();
+  useEffect(() => {
+    if (skipChooser) return;
+    let alive = true;
+    void accountSession()
+      .then((s) => {
+        if (alive && s !== "login")
+          setPrefsSession({ identity: s.webIdentityId, csrf: s.csrf });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [skipChooser]);
+  const prefs = useAccountPreferences(
+    prefsSession?.identity,
+    prefsSession?.csrf,
+  );
+  const instructionsStep =
+    !skipChooser && prefs.experimental["agent-instructions"] === true;
+  const [instructionsOutcome, setInstructionsOutcome] =
+    useState<InstructionsOutcome>();
+  const signedInWith = useRef<"claude">(undefined);
   // This session's integration catalog: undefined until read, null when it
   // could not be read. The site's integrations whose provider it has ready
   // are steps; without it, none is.
@@ -432,7 +469,16 @@ export function GitHubOnboarding({
   // the route was walked; passing the route's last step finishes it in the
   // person's own state, so later loads go straight to the workspaces.
   const seeded = !skipChooser && site?.ai_key_seeded === true;
+  // Usable Pi ends the AI step; the note follows it when it is on the route.
   const finish = (signedIn?: "claude") => {
+    if (instructionsStep && step !== "instructions") {
+      signedInWith.current = signedIn;
+      setStep("instructions");
+      return;
+    }
+    finishRoute(signedIn);
+  };
+  const finishRoute = (signedIn?: "claude") => {
     const csrf = bound.current;
     if (!seeded || !csrf) return onUsable(signedIn);
     // A lost or refused mark shows the route again on the next load. A
@@ -610,6 +656,18 @@ export function GitHubOnboarding({
       };
     }),
     ...(seeded && !aiNeeded ? [] : [{ id: "ai" as const }]),
+    ...(instructionsStep
+      ? [
+          {
+            id: "instructions" as const,
+            note: instructionsOutcome
+              ? instructionsText.notes[instructionsOutcome]
+              : undefined,
+            skipped:
+              instructionsOutcome === "later" || instructionsOutcome === "kept",
+          },
+        ]
+      : []),
   ];
   const exit = (
     <>
@@ -633,7 +691,15 @@ export function GitHubOnboarding({
     </>
   );
   const content =
-    step === "pi" && seeded && !aiNeeded ? (
+    step === "instructions" ? (
+      <AgentInstructionsOnboarding
+        csrf={bound.current}
+        name={preferredName ?? ""}
+        languageChosen={prefs.loaded && prefs.language !== "system"}
+        onOutcome={setInstructionsOutcome}
+        onDone={() => finishRoute(signedInWith.current)}
+      />
+    ) : step === "pi" && seeded && !aiNeeded ? (
       <p role="status">{txt.finishing}</p>
     ) : step === "pi" ? (
       <PiOnboarding

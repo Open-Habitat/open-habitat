@@ -26,6 +26,7 @@ const fi = {
     "Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla ne saadaan.",
   agentWorkDesc: "Ajattelu ja työkalut keskustelussa oletuksena.",
   subscriptions: "Tilaukset",
+  agentInstructions: "Ohjeet agentille",
   chatgpt: "ChatGPT-tilaus",
   chatgptSignedIn: (models: string) => `Kirjautunut. ${models}`,
   chatgptRefused:
@@ -79,6 +80,7 @@ export const accountText = catalog(fi, {
     "The models your agents use, and the subscriptions or keys that provide them.",
   agentWorkDesc: "Thinking and tools in the conversation by default.",
   subscriptions: "Subscriptions",
+  agentInstructions: "Agent instructions",
   chatgpt: "ChatGPT subscription",
   chatgptSignedIn: (models) => `Signed in. ${models}`,
   chatgptRefused:

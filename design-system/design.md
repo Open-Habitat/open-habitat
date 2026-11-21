@@ -412,6 +412,28 @@ palveluntarjoajan sivulle. Koodin valmistuminen näkyy odotustilana.
 Käyttöönoton keskeyttäminen on rauhallinen toissijainen toiminto, jonka
 vahvistus kertoo uloskirjautumisen vaikutuksen.
 
+Kokeellisena (agent-instructions) reitin viimeinen vaihe on Ohjeet agentille
+(Jari 21.11.2026, A4.1 Keskustelu): lyhyt käsikirjoitettu keskustelu, jossa
+agentti kysyy ensin vastauskielen (oletus arvataan selaimen kielistä ja
+aikavyöhykkeestä), sitten vastaustyylin ja sen, mitä ei tehdä kysymättä, ja
+viimeisenä ihmisen omat sanat. Korjattua versiota omista sanoista tarjotaan
+erikseen, eikä sitä käytetä huomaamatta. Muistilappu näytetään kokonaisena
+jaetussa ohje-editorissa ennen tallennusta, eikä Tee myöhemmin kirjoita
+mitään. Keskustelu ei näy sivupalkissa.
+
+## Ohjeet agentille
+
+Asetukset › Tili › Ohjeet agentille (B1) ja käyttöönoton muistilappu
+käyttävät samaa editoria (`InstructionsEditor`): tavallinen Markdown-lohko,
+joka avautuu Esikatseluun, Muokkaa-välilehdellä raaka teksti ja Tallenna /
+Peru. Tallenna ei näy ennen muutosta. Jos tiedosto muuttui sillä välin,
+tallennus hylätään, editori yhdistää toisen muutoksen luonnokseen
+työtilaeditorin tavoin ja pyytää tallentamaan uudelleen; saman rivin
+ristiriidassa kortti näyttää molemmat rivit, koska tekstikenttä ei merkitse
+omaa riviä. Lähderivi kertoo tiedoston, muokkauspäivän ja sen, lukeeko Claude
+sen. Toissijainen Muokkaa agentin kanssa avaa saman muistilappukeskustelun
+kuin käyttöönotto; olemassa olevaan tekstiin se vain lisää.
+
 ## Toteutuksen lähteet
 
 Sovelluksen ja Storybookin yhteiset komponentit ovat

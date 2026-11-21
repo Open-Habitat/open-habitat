@@ -43,7 +43,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   if (
     id === "rewind-conversation" ||
     id === "terminal-copy-on-select" ||
-    id === "multiplayer"
+    id === "multiplayer" ||
+    id === "agent-instructions"
   )
     body = (
       <>

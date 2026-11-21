@@ -517,6 +517,18 @@ Identity and authority:
   the setting administrator's own daemon, which stores nothing from the
   check. A daemon may correct the region in its own key file when a mint
   succeeds only in the other region.
+- The person's own agent instructions (Jari, 2026-11-21) are
+  `~/.pi/agent/AGENTS.md`, which Pi reads natively; the daemon reads and
+  writes that one fixed file as the person and never a path from a request.
+  A write replaces the file only when the version the browser read still
+  matches, or creates it only while it is absent; it never forces, retries
+  or merges, and merging is the browser's. A link, a hard-linked or special
+  file, or anything but UTF-8 text without CR or NUL is refused, never
+  followed or rewritten. Claude's `~/.claude/CLAUDE.md` is created with the
+  one import line only together with a new instructions file and only where
+  it is absent; an existing Claude file is read, to say whether Claude reads
+  the instructions, and never changed. The host keeps no copy, history or
+  record of either file.
 - The browser shell runs as the person through the person's daemon, as Pi's
   bash already does; it grants nothing new. The gateway accepts its upgrade
   only from the exact app Origin, dials the daemon only after the session's

@@ -27,6 +27,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Git identity",
         desc: "The author of commits. Saved in the global ~/.gitconfig file.",
       },
+      instructions: {
+        label: "Agent instructions",
+        desc: "The note the agent reads at the start of every conversation. Pi and Claude read the same file.",
+      },
     },
   },
   laitteet: {
@@ -278,6 +282,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       multiplayer: {
         label: "Other people in a conversation",
         desc: "Invite another person on this server into your conversation with the agent.",
+      },
+      "agent-instructions": {
+        label: "Agent instructions",
+        desc: "The note the agent reads at the start of every conversation.",
       },
     },
   },

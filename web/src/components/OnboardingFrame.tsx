@@ -7,7 +7,12 @@ import { providerCopy } from "./Integrations";
 import styles from "./OnboardingFrame.module.css";
 
 /** The route's steps; an integration step is named by its provider. */
-export type OnboardingStepId = "github" | "repositories" | ProviderId | "ai";
+export type OnboardingStepId =
+  | "github"
+  | "repositories"
+  | ProviderId
+  | "ai"
+  | "instructions";
 
 /** One step of this person's route and, once passed, how it ended. */
 export type OnboardingRouteStep = {
@@ -30,7 +35,9 @@ const label = (id: OnboardingStepId) =>
       ? textNow(onboardingFrameText).repositories
       : id === "ai"
         ? textNow(onboardingFrameText).ai
-        : providerCopy[id].name;
+        : id === "instructions"
+          ? textNow(onboardingFrameText).instructions
+          : providerCopy[id].name;
 const plainRoute: OnboardingRouteStep[] = [
   { id: "github" },
   { id: "repositories" },

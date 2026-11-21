@@ -11,10 +11,14 @@ export type ConflictPick = "mine" | "theirs" | "both";
  * lines stay in the text below it, marked; the card shows the other side. */
 export function EditorConflict({
   theirs,
+  mine,
   source,
   onPick,
 }: {
   theirs: string[];
+  /** The person's lines, for an editor that cannot mark them in its text
+   * (the instructions editor's plain text field): the card shows both. */
+  mine?: string[];
   source: MergeSource;
   onPick: (pick: ConflictPick) => void;
 }) {
@@ -25,8 +29,14 @@ export function EditorConflict({
     <fieldset className="ah-merge-conflict" aria-label={title}>
       <p className="ah-merge-conflict-head">
         <strong>{title}</strong>
-        <span>{t.yoursBelow}</span>
+        <span>{mine ? t.chooseOne : t.yoursBelow}</span>
       </p>
+      {mine ? (
+        <pre className="ah-merge-theirs" data-testid="conflict-mine">
+          <small>{t.yours}</small>
+          {mine.join("\n") || t.lineDeleted}
+        </pre>
+      ) : null}
       <pre className="ah-merge-theirs" data-testid="conflict-theirs">
         <small>{them}</small>
         {theirs.join("\n") || t.lineDeleted}

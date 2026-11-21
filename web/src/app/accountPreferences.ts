@@ -369,3 +369,15 @@ export function useExperimentalFeature(
     () => !!(k && states.get(k)?.experimental[id]),
   );
 }
+
+/** Whether the person chose Habitat's language themselves rather than
+ * following the system, for the session `AccountPreferencesProvider` names
+ * (the note's answer-language guess, app/answerLanguage.ts). */
+export function useLanguageChosen(): boolean {
+  const { identity, csrf } = useContext(Session);
+  const k = identity && csrf ? key(identity, csrf) : undefined;
+  return useSyncExternalStore(subscribe, () => {
+    const state = k ? states.get(k) : undefined;
+    return !!state?.loaded && state.language !== "system";
+  });
+}

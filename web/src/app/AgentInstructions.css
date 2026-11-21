@@ -1,0 +1,19 @@
+/* Settings › Tili › Ohjeet agentille and the onboarding outcome. Tokens only. */
+.ai-settings {
+  display: grid;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.ai-settings .an-step {
+  gap: var(--ah-s3);
+}
+.ai-settings .an-step h1 {
+  font-size: var(--ah-size-h3, 1.1rem);
+  margin: 0;
+}
+.ai-source p {
+  margin: 0;
+}
+.ai-source code {
+  font-family: var(--ah-mono, monospace);
+}

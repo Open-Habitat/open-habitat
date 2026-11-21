@@ -12,6 +12,7 @@ const features = [
   "remote-browser",
   "terminal-copy-on-select",
   "multiplayer",
+  "agent-instructions",
 ];
 const graduated = [
   "terminal-open-urls",
