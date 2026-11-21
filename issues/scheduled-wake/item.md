@@ -27,3 +27,7 @@ Jari 21.11.2026 on round 1: direction 1 Aika rivillä — the rail row with the 
 ### 2026-11-21T06:53:43Z · @jari
 
 Jari 21.11.2026 on limits: a limit is fine as a guard against a runaway agent, but not as tight as round 1 proposed. Decision: one generous cap of 100 pending wakes per person with a clear error to the agent; no per-conversation or date limits; no recurrence in the first version (scope, not a limit).
+
+### 2026-11-21T07:42:12Z · @jari
+
+Jari 21.11.2026 on round 2: direction 2 Ikkuna; focus on the archive button (Enter archives; align production's helper window); the notice's Palauta also restores the wake. Nothing is sent to an archived agent; when the conversation is restored from the archive later, the cancellation of the wake is told to the agent with the first message after the restore. Next action: implement scheduled wake (round 1 direction 1 + round 2 direction 2, cap 100 per person).
