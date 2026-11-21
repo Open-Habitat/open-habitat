@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
@@ -13,6 +13,7 @@ preparation: ready
 related: ['@multiplayer-conversations']
 lane: multiplayer
 lane_seq: 2
+closed: 2026-11-21
 ---
 
 # Multiplayer: membership record, invitations, full rights and removal
@@ -27,3 +28,9 @@ Implements section 7 of ADR 0038 (`docs/decisions/adr-0038-multiplayer-conversat
 - Each change becomes a Habitat line (`oh-conversation-line`) through the companion; if Pi is not running it waits in the record until the next launch.
 - Archiving or deleting the conversation ends every membership in it.
 - Contract schemas in `contracts/v1/` for membership and shares.
+
+## Resolution
+
+### 2026-11-21T13:27:32Z · @issuectl
+
+Membership record, owner operations, join, take-back and removal landed behind experimental multiplayer; see result.md for decisions and the handoff to guest-routing, guest-stream and turn-modes.
