@@ -77,16 +77,38 @@ test("rail titles have no field outline at rest, selected, hovered or focused", 
             "solid",
           );
         }
-        for (const element of [link, row.locator(".ah-nav-label")]) {
-          for (const side of ["Top", "Right", "Bottom", "Left"]) {
-            await expect(element).toHaveCSS(
-              `border-${side.toLowerCase()}-width`,
-              "0px",
-            );
-          }
-          await expect(element).toHaveCSS("box-shadow", "none");
-          await expect(element).toHaveCSS("outline-style", "none");
-        }
+        // The title link and its label in one read per poll: asserting
+        // each property separately was some 200 round trips, which ran the
+        // case out of its time on a loaded host.
+        await expect
+          .poll(() =>
+            row.evaluate((item) =>
+              [
+                item.querySelector('[data-testid="agent-link"]'),
+                item.querySelector(".ah-nav-label"),
+              ].map((node) => {
+                if (!node) return null;
+                const style = getComputedStyle(node);
+                return {
+                  border: [
+                    style.borderTopWidth,
+                    style.borderRightWidth,
+                    style.borderBottomWidth,
+                    style.borderLeftWidth,
+                  ],
+                  shadow: style.boxShadow,
+                  outline: style.outlineStyle,
+                };
+              }),
+            ),
+          )
+          .toEqual(
+            Array(2).fill({
+              border: ["0px", "0px", "0px", "0px"],
+              shadow: "none",
+              outline: "none",
+            }),
+          );
       }
     }
     await link.click();
