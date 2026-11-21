@@ -1,5 +1,6 @@
 import paths from "../../internal/uiroutes/settings.json" with { type: "json" };
 import { snapshot } from "../lab/session.mjs";
+import { settingsSections } from "../src/app/settingsIndex";
 import { hostOrigin } from "../test-ports.mjs";
 import { createHostTest, expect } from "./worker-host";
 
@@ -43,6 +44,22 @@ for (const [section, path] of Object.entries(paths)) {
       .getByRole("link")
       .and(page.locator('a[href*="code=42"]'))
       .click();
+    // A section of an experimental feature exists only while the feature
+    // is on (Äänet, attention-sound): measure it with its feature on.
+    const entry = settingsSections.find((entry) => entry.id === section);
+    if (entry && "experimental" in entry) {
+      const feature = entry.experimental;
+      await expect(page.getByTestId("account-menu-trigger")).toBeAttached();
+      const session = await (await page.request.get("/auth/session")).json();
+      const put = await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { experimental: { [feature]: true } },
+      });
+      expect(put.ok()).toBe(true);
+    }
     await page.goto(`/settings/${path}`);
     await expect(page.getByTestId(`settings-section-${section}`)).toBeVisible();
     await page.evaluate(() => document.fonts.ready);

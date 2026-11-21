@@ -12,6 +12,7 @@ const features = [
   "remote-browser",
   "multiplayer",
   "agent-instructions",
+  "attention-sound",
 ];
 const retired = [
   "terminal-copy-on-select",
