@@ -63,6 +63,18 @@ const titlesOf = (rows: Locator) =>
 // hours before now, so the rows read as a working day.
 async function quietWorld(page: Page) {
   const ids: { first?: string; second?: string } = {};
+  // Nine quiet rows crowd the rail, and a crowded rail folds Hiljaiset by
+  // itself until the person chooses on this device (rail-scroll-region,
+  // covered by lab-rail-scroll-region.spec.ts). These cases are about the
+  // open list, so this device has opened it; a later fold is still kept.
+  await page.context().addInitScript(() => {
+    try {
+      if (localStorage.getItem("nah:rail-quiet-folded") === null)
+        localStorage.setItem("nah:rail-quiet-folded", "0");
+    } catch {
+      // An opaque origin (about:blank) has no storage and no rail.
+    }
+  });
   // On the context, so a second tab of the same person sees the same world.
   await page.context().route("**/api/v1/snapshot", async (route) => {
     // A tab closed mid-request has nothing left to answer.
