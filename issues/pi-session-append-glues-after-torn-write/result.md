@@ -77,7 +77,12 @@ Pinned `@earendil-works/pi-coding-agent` 1.5.2, Node 22. Base `main` at
   (138/138). Five existing tests' fake session managers gained a `_persist`
   stub, because a missing seam now fails setup.
 - `./scripts/test-focused.sh --area go --go-package ./internal/daemon`,
-  which launches the real Pi with the companion: passed.
+  which launches the real Pi with the companion: passed (254.9 s) before
+  the review fixes. The re-run after them failed only
+  `TestWorkspaceDeleteDuringSnapshotGitInspection`, a test-side fork/exec
+  race in workspace deletion (filed through intake as
+  `partially-godly-friends`). That test passed 3/3 on its own, and the
+  review fixes touch only the companion's failure path.
 
 Evidence (synthetic only) is under
 `/var/tmp/agent-keep/pi-session-append-glues-after-torn-write/`:
