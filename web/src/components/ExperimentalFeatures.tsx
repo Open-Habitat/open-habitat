@@ -42,7 +42,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
     id === "rewind-conversation" ||
-    id === "terminal-copy-on-select" ||
     id === "multiplayer" ||
     id === "agent-instructions"
   )

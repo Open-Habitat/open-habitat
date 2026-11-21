@@ -35,6 +35,11 @@ import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
+import {
+  ConversationLine,
+  ParticipantMessage,
+  SharedViewer,
+} from "../components/Multiplayer";
 import { activityMark } from "../components/markState";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
@@ -122,8 +127,8 @@ function ReadableBlock({
   block,
   index,
   entryKey,
-  agentId,
-  revision,
+  agentId: ownAgentId,
+  revision: ownRevision,
   onLogin,
   toolName,
   plainText = false,
@@ -143,6 +148,11 @@ function ReadableBlock({
   revision?: string;
   onLogin?: () => void;
 }) {
+  // A participant reads blocks through the share, with the conversation and
+  // revision its history page named; the owner's route is never used.
+  const shared = useContext(SharedViewer);
+  const agentId = shared ? shared.agentId : ownAgentId;
+  const revision = shared ? shared.revision : ownRevision;
   const [loaded, setLoaded] = useState<{
     text: string;
     offset: number;
@@ -179,6 +189,9 @@ function ReadableBlock({
   }, [edge, toolName, displayedText]);
   const more = async () => {
     if (!agentId || !revision || pending) return;
+    const base = shared
+      ? `/api/v1/shared/${encodeURIComponent(shared.share)}/blocks/${entryKey}/${index}`
+      : `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}`;
     setPending(true);
     setFailed(false);
     const controller = new AbortController();
@@ -191,7 +204,7 @@ function ReadableBlock({
       const batch = block.type === "image" ? 8 : 1;
       for (let page = 0; page < batch; page++) {
         const offset = next?.offset ?? 0;
-        const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
+        const url = `${base}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
         const response = await fetch(part ? `${url}&part=${part}` : url, {
           credentials: "same-origin",
           cache: "no-store",
@@ -1421,6 +1434,28 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    // A shared conversation's participant message starts a turn as the
+    // owner's message does; Habitat's line stands between turns.
+    if (entry.participant_message) {
+      flush();
+      turnId = `turn:${entry.entry_key}`;
+      turnStart = savedAt(entry);
+      items.push({
+        id: entry.entry_key,
+        kind: "participant",
+        content: <ParticipantMessage fact={entry.participant_message} />,
+      });
+      continue;
+    }
+    if (entry.conversation_line) {
+      flush();
+      items.push({
+        id: entry.entry_key,
+        kind: "habitat-line",
+        content: <ConversationLine fact={entry.conversation_line} />,
+      });
+      continue;
+    }
     if (entry.kind === "rewind") {
       flush();
       items.push({
@@ -1478,7 +1513,11 @@ export function timelineItems(
     }
   }
   if (turn.length) flush(true);
-  else if (live && items.at(-1)?.kind === "user" && turnId)
+  else if (
+    live &&
+    (items.at(-1)?.kind === "user" || items.at(-1)?.kind === "participant") &&
+    turnId
+  )
     // Pi has saved the person's message but nothing of its answer yet.
     items.push({
       id: turnId,

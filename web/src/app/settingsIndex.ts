@@ -592,21 +592,6 @@ export const settingsSections = [
         desc: "Oma selain palvelimella: kirjaudu palveluun, ja agentti käyttää samaa selainta, jonka näet livenä.",
       },
       {
-        id: "terminal-copy-on-select",
-        label: "Päätteen kopiointi valitsemalla",
-        kw: [
-          "pääte",
-          "terminal",
-          "kopioi",
-          "copy",
-          "valinta",
-          "selection",
-          "leikepöytä",
-          "clipboard",
-        ],
-        desc: "Päätteessä valittu teksti menee heti leikepöydälle.",
-      },
-      {
         id: "multiplayer",
         label: "Muut ihmiset keskustelussa",
         kw: [

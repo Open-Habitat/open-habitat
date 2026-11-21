@@ -255,7 +255,7 @@ test("@browser-shell a selection survives tmux's redraws; the wheel reads histor
   ).not.toHaveCount(0);
 });
 
-test("@browser-shell copy on select, the copy shortcut and tmux's own selection", async ({
+test("@browser-shell selections leave the clipboard alone despite a retired saved switch; explicit copy works", async ({
   page,
 }) => {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -266,15 +266,16 @@ test("@browser-shell copy on select, the copy shortcut and tmux's own selection"
   await expect(screen(page)).toContainText("tmux-56");
   await page.evaluate(() => navigator.clipboard.writeText(""));
   await shiftSelect(page, /^copy-42\s*$/);
-  await expect.poll(clipboard).toBe("copy-42");
   const chip = page.getByTestId("copy-selection");
+  await expect(chip).toBeVisible();
+  expect(await clipboard()).toBe("");
   await expect(chip).not.toHaveAttribute("data-copied");
   await expect(page.getByTestId("toast")).toHaveCount(0);
-  // Ctrl+Shift+C copies the selection whatever the setting.
+  // Ctrl+Shift+C remains an explicit copy action.
   await page.evaluate(() => navigator.clipboard.writeText(""));
   await page.keyboard.press("Control+Shift+C");
   await expect.poll(clipboard).toBe("copy-42");
-  // A plain drag is tmux's own selection; its copy reaches the clipboard.
+  // A plain drag offers tmux's own selection without writing the clipboard.
   await page.evaluate(() => navigator.clipboard.writeText(""));
   const row = rows(page)
     .filter({ hasText: /^tmux-56\s*$/ })
@@ -285,13 +286,15 @@ test("@browser-shell copy on select, the copy shortcut and tmux's own selection"
   await page.mouse.down();
   await page.mouse.move(box.x + 60, box.y + box.height / 2, { steps: 6 });
   await page.mouse.up();
+  await expect(chip).toBeVisible();
+  expect(await clipboard()).toBe("");
+  await chip.click();
   await expect.poll(clipboard).toMatch(/^tmux-5/);
-  await expect(chip).not.toHaveAttribute("data-copied");
   await expect(page.getByTestId("toast")).toHaveCount(0);
   if (shots) {
     // Resizing for the captures clears the selection; select once more.
     await shiftSelect(page, /^copy-42\s*$/);
-    await capture(page, "copy-on-select");
+    await capture(page, "explicit-copy");
   }
 });
 
@@ -311,7 +314,7 @@ test.describe("Mac clipboard shortcuts", () => {
     await page
       .context()
       .grantPermissions(["clipboard-read", "clipboard-write"]);
-    await signIn(page, { "terminal-copy-on-select": false });
+    await signIn(page, {});
     await openShell(page);
     const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
     await page.keyboard.type("echo copy-$((6*7)); echo tmux-$((7*8))\n");

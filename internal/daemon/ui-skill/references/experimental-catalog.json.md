@@ -7,8 +7,8 @@ Generated from internal/experimental/catalog.json; do not edit.
   "features": [
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
-    { "id": "terminal-copy-on-select", "landed": true },
-    { "id": "multiplayer", "landed": false }
+    { "id": "multiplayer", "landed": true },
+    { "id": "agent-instructions", "landed": true }
   ],
   "fi": {
     "features": {
@@ -28,14 +28,6 @@ Generated from internal/experimental/catalog.json; do not edit.
         "needs": "Palvelimen, jolle selain on asennettu. Agentti toimii selaimessa sinun tunnuksillasi: se saa käyttää kaikkea, mihin selain on kirjautunut. Selain sulkeutuu vuorokauden käyttämättömyyden jälkeen, ja kirjautumiset säilyvät.",
         "caption": "Selain kentän yllä"
       },
-      "terminal-copy-on-select": {
-        "name": "Päätteen kopiointi valitsemalla",
-        "desc": "Päätteessä valittu teksti menee leikepöydälle heti, kun päästät hiiren irti, kuten monessa päätteessä.",
-        "where": "Päätepaneelissa. Valinnan Kopioi-painike muuttuu Kopioiduksi, kun teksti on leikepöydällä.",
-        "shows": "Shift pohjassa vedetty valinta ja tmuxin oma hiirivalinta kopioituvat. Ctrl+Shift+C ja valinnan Kopioi-painike kopioivat myös silloin, kun tämä on pois päältä.",
-        "needs": "Selaimen luvan kirjoittaa leikepöydälle. Jos selain kieltää sen, valinta jää näkyviin ja Kopioi-painike toimii.",
-        "caption": "Pääte"
-      },
       "multiplayer": {
         "name": "Muut ihmiset keskustelussa",
         "desc": "Kutsu toinen tämän palvelimen käyttäjä mukaan keskusteluusi agentin kanssa. Agentti on sinun: sinun mallisi, kiintiösi ja yhteytesi.",
@@ -43,6 +35,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Osallistujan viestit tulevat keskusteluun hänen nimellään. Hänen viesteihinsä agentti vastaa ilman työkaluja, kunnes päästät sen jatkamaan tai annat hänelle Täydet oikeudet.",
         "needs": "Kutsuttavan pitää olla kirjautunut tälle palvelimelle.",
         "caption": "Muut mukana"
+      },
+      "agent-instructions": {
+        "name": "Ohjeet agentille",
+        "desc": "Muistilappu, jonka agentti lukee jokaisen keskustelun alussa: kuka olet, millä kielellä ja miten haluat vastauksia ja mitä ei tehdä kysymättä. Kirjoita se itse tai agentin kanssa.",
+        "where": "Asetukset › Tili › Ohjeet agentille. Käyttöönoton viimeisenä vaiheena AI-tilin jälkeen, kun käyt käyttöönoton läpi.",
+        "shows": "Muistilapun esikatseluna ja Markdown-tekstinä, tiedoston polun ja sen, lukeeko Claude sen. Jos tiedosto muuttui muokatessasi, tallennus ei kirjoita sen päälle vaan yhdistää muutokset ja pyytää tallentamaan uudelleen.",
+        "needs": "Ei muuta. Habitat kirjoittaa tiedoston ~/.pi/agent/AGENTS.md ja luo tiedoston ~/.claude/CLAUDE.md viittausrivillä vain, jos sitä ei vielä ole.",
+        "caption": "Muistilappu"
       }
     },
     "picture": {
@@ -86,14 +86,6 @@ Generated from internal/experimental/catalog.json; do not edit.
         "needs": "A server with the browser installed. The agent may use everything the browser is signed in to, in your name. The browser closes after a day unused, and sign-ins are kept.",
         "caption": "Browser above the field"
       },
-      "terminal-copy-on-select": {
-        "name": "Copy on select in the terminal",
-        "desc": "Text you select in the terminal goes to the clipboard as soon as you let go of the mouse, as in many terminals.",
-        "where": "In the terminal panel. The selection's Copy button turns into Copied once the text is on the clipboard.",
-        "shows": "A selection dragged with Shift held and tmux's own mouse selection are copied. Ctrl+Shift+C and the selection's Copy button copy even when this is off.",
-        "needs": "The browser's permission to write to the clipboard. If the browser refuses, the selection stays and the Copy button works.",
-        "caption": "Terminal"
-      },
       "multiplayer": {
         "name": "Other people in a conversation",
         "desc": "Invite another person on this server into your conversation with the agent. The agent stays yours: your model, quota and connections.",
@@ -101,6 +93,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "A participant's messages appear under their name. The agent answers them without tools until you let it continue or give them full rights.",
         "needs": "The invited person must have signed in to this server.",
         "caption": "Others in"
+      },
+      "agent-instructions": {
+        "name": "Agent instructions",
+        "desc": "A note the agent reads at the start of every conversation: who you are, which language and what kind of answers you want, and what it must not do without asking. Write it yourself or with the agent.",
+        "where": "Settings › Account › Agent instructions. As the last step of onboarding after the AI account, when you go through onboarding.",
+        "shows": "The note as a preview and as Markdown text, the file's path and whether Claude reads it. If the file changed while you edited it, saving doesn't write over it but merges the changes and asks you to save again.",
+        "needs": "Nothing else. Habitat writes ~/.pi/agent/AGENTS.md and creates ~/.claude/CLAUDE.md with a reference line only if it doesn't exist yet.",
+        "caption": "Note"
       }
     },
     "picture": {

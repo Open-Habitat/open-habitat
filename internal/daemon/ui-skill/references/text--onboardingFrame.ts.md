@@ -8,6 +8,7 @@ import { catalog } from "../i18n";
 const fi = {
   repositories: "Repot",
   ai: "AI-tili",
+  instructions: "Ohjeet agentille",
   steps: "Käyttöönoton vaiheet",
   route: "Oma reittisi",
   now: "Nyt",
@@ -20,6 +21,7 @@ const fi = {
 export const onboardingFrameText = catalog(fi, {
   repositories: "Repositories",
   ai: "AI account",
+  instructions: "Agent instructions",
   steps: "Getting started",
   route: "Your route",
   now: "Now",

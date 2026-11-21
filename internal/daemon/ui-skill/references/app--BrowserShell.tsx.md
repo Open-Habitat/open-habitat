@@ -30,7 +30,6 @@ import { isTerminalShortcut } from "../components/terminalShortcut";
 import { WarningBanner, WarningBannerView } from "../components/WarningBanner";
 import { liveText, useLanguage } from "../i18n";
 import { browserShellText } from "../text/browserShell";
-import { useExperimentalFeature } from "./accountPreferences";
 import { WriteRefused } from "./mutations";
 import {
   closeShell,
@@ -175,7 +174,6 @@ export function useBrowserShell({
   const [paste, setPaste] = useState<string[]>();
   const [selection, setSelection] = useState<TerminalSelection>();
   const [urlOffer, setUrlOffer] = useState<string>();
-  const copyOnSelect = useExperimentalFeature("terminal-copy-on-select");
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
@@ -753,7 +751,6 @@ export function useBrowserShell({
             }}
             onSelection={setSelection}
             onPasteRequest={askPaste}
-            copyOnSelect={copyOnSelect}
             onOpenUrl={setUrlOffer}
             onOpen={() => {
               if (focusOnOpen.current) {

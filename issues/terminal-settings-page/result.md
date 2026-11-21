@@ -1,137 +1,37 @@
-# Result: terminal settings page, prototype round 1
+# Terminal settings withdrawn; automatic copying removed
 
-## Saatesanat
+Jari's 2026-11-21 decision is implemented: no terminal settings view, no copy-on-select feature. The proposed settings view existed only in prototypes, not production routes. Both prototype rounds and their check scripts are retired to Git history:
 
-Tässä on päätteen asetussivu kolmena suuntana. Kopioi valitsemalla on nyt
-tavallinen asetus ja oletuksena pois päältä. Sen rinnalla on kolme halpaa
-ehdotusta, jotka on merkitty sivulla Ehdotukseksi: tekstin koko, kohdistimen
-muoto ja se, kysytäänkö ennen usean rivin liittämistä. Ne valitsin, koska
-jokainen on yksi xtermin asetus tai `BrowserShell`in jo olemassa oleva
-haara. Kaiken muun, mitä pääte jo tekee itsestään, sivu kertoo
-"Näin pääte toimii" -listassa eikä tee siitä asetusta: värit seuraavat
-teemaa, osoitteet tulevat korttiin, historia on tmuxin ja Shift valitsee.
+- `design-system/prototypes/rounds/2026-11-21-terminal-settings/`
+- `design-system/prototypes/rounds/2026-11-21-terminal-settings-2/`
 
-Suunnat eroavat siinä, missä sivu asuu. A on pelkkä osio Asetuksissa, B
-pelkkä ratas päätepaneelissa ja C molemmat: osio alkaa elävällä
-esikatselulla, ja paneelin ratas vie sinne. Suosittelen C:tä. Kokeile
-esikatselussa ensin valintaa Kopioi valitsemalla pois päältä ja sitten
-päällä, ja vaihda tekstin kokoa. Työtila ja pääte -näkymässä samat
-asetukset vaikuttavat paneelin päätteeseen.
+The experimental catalog/card, settings search entries, translations, feature reader and automatic clipboard writes are removed. Saved `terminal-copy-on-select` values remain readable but have no effect. Ctrl+Shift+C, macOS Cmd+C, browser copy events and the selection's Copy button remain explicit copying paths. The UI reference was regenerated from current sources; this also refreshes previously stale generated descriptions without changing their source behavior.
 
-## Axis and directions
+## Review
 
-Axis: **where the terminal settings live.** The content is identical in all
-three.
+Focused self-review, as authorized: traced canvas selection, tmux OSC 52 selection, mouse-release listener cleanup, explicit clipboard actions, catalog consumers and stale preferences. No session lifecycle, contract, daemon state or authorization boundary changes. The change removes behavior rather than adding an authority. No independent model review needed.
 
-- **A Osio** (Settings section): Settings › Pääte, an ordinary section after
-  Editori. Nothing new in the terminal panel. Default view: Settings ›
-  Pääte.
-- **B Ratas** (gear in the terminal): a gear in the panel's tool row opens
-  the settings over the terminal (a bottom sheet on a phone). A change shows
-  in the terminal behind at once. Settings › Pääte only points to the gear.
-  Default view: the workspace with the gear's dialog open.
-- **C Esikatselu** (section, preview and gear): Settings › Pääte as in A,
-  opening with a live preview terminal where selecting and text size can be
-  tried. The panel's gear navigates to this section; there is no second
-  settings UI. Default view: Settings › Pääte with the preview.
+The former automatic-copy browser case now verifies that an enabled retired switch cannot cause canvas or tmux selection to write the clipboard, then verifies the shortcut and Copy button. Experimental preference synchronization tests use a remaining feature. Prototype checks only exercised the rejected settings designs and were removed with them; production selection, clipboard, settings and accessibility checks remain.
 
-## Content (all directions)
+## Verification
 
-| Row | Values | Default | Status | Stored |
-| --- | --- | --- | --- | --- |
-| Kopioi valitsemalla | Pois / Päällä | Pois | exists (experimental `terminal-copy-on-select`) | account, all devices |
-| Tekstin koko | Pieni 11 / Normaali 12.5 / Iso 14 px (phone 10.5 / 12 / 13) | Normaali | proposal: xterm `fontSize`, today fixed | this browser |
-| Kohdistin | Laatikko / Alaviiva / Pystyviiva | Laatikko | proposal: xterm `cursorStyle`, today default block | account |
-| Usean rivin liittäminen | Kysy ensin / Liitä heti | Kysy ensin | proposal: today always asks (`askPaste`) | account |
+Base: `7b6b8d3803a03220c0741a869b1117e395038213`, with this change applied. Commands used `umask 077`, scratch leases, timeouts, and browser workers limited to 2.
 
-"Näin pääte toimii" (facts, not settings): colours follow the Appearance
-theme, with a link to Ulkoasu; a program opening a web address gets the
-address card (`terminal-open-urls`, graduating); the wheel scrolls tmux's
-history, whose length is tmux's own `history-limit`; hold Shift to select
-when a program uses the mouse.
+- `./scripts/test-focused.sh --area web`: passed (241 files, 1,953 tests, plus static checks). An initial formatting failure was fixed before the successful run.
+- `./scripts/test-focused.sh --area browser --spec browser-terminal.spec.ts --spec browser-shell.spec.ts --spec settings-experimental.spec.ts`: 20 passed, one unrelated long-draft layout case failed. Initial missing Pi SDK fixture dependency was installed before running.
+- All changed specs: `npx playwright test tests/browser-terminal.spec.ts tests/settings-experimental.spec.ts --repeat-each 3`, with `OH_REPLY_DELAY_MS=60`: 27 passed. Includes the experimental settings accessibility audit.
+- Relevant existing shell clipboard/paste/composer case: `npx playwright test tests/browser-shell.spec.ts --grep 'multi-line paste asks first' --repeat-each 3`: 3 passed, including refused and unavailable clipboard behavior.
+- `./scripts/test-focused.sh --area go --go-package ./internal/experimental`: compiled successfully; package has no tests.
+- The additional unchanged long-draft case also failed on unchanged main at the base revision with `./scripts/test-focused.sh --area browser --spec browser-shell.spec.ts --tag 'a long draft scrolls'`. Filed unlaned as `@browser-shell-long-draft-layout-check`; not chased as part of this removal.
+- `python3 scripts/generate-ui-reference.py --check`, `python3 scripts/validate-project-view.py`, `issuectl doctor --json` and `git diff --check`: passed.
 
-Settings search gains the section's four rows; Kokeelliset loses the copy
-on select and open-URLs rows.
-
-Considered and not offered:
-- **tmux mouse.** Habitat sets `mouse on` per session
-  (`internal/daemon/terminal_session_linux.go`), and wheel scrolling and
-  the history view depend on it. A switch would break them.
-- **Scrollback length.** xterm's 1000 lines do not matter, because the
-  history is tmux's. The native setting is `~/.tmux.conf`, and Habitat
-  should not keep a second one.
-- **Own terminal theme.** The terminal is on the design tokens and follows
-  the three themes. A separate palette would bypass the design system.
-- **Bell.** Today nothing happens on BEL, and there is nothing to configure
-  yet (see questions).
-- **Clickable links in output.** This needs `@xterm/addon-web-links`, a new
-  dependency, so it is listed as a question, not a row.
-- **Cursor blink.** It stays on; a fourth row for it did not earn its place.
-
-## Recommendation
-
-**C.** The settings get one home that the settings search finds and that
-sits where other per-person settings sit. The gear is where a person
-notices they want a different text size, and it costs one icon button that
-navigates. No second settings UI has to be kept in step. The preview lets a
-person judge size and cursor, and try copy on select, without leaving
-Settings. If the preview feels like too much, A plus C's gear is the cheaper
-fallback.
-
-B was the most direct to use: the change shows behind the dialog. But it
-makes the terminal panel the only door, the settings cannot be found by
-searching Settings, and the panel grows a second settings surface.
-
-## Host assumptions
-
-- Copy on select moves from `experimental` to an ordinary account preference
-  (`contracts/v1/account-preferences.schema.json` gains e.g.
-  `terminal_copy_on_select`, default false). The same goes for cursor and
-  paste if they are accepted. This is a contract change but no authority
-  change: the daemon already stores the person's own preferences.
-- Text size is stored in the browser (like the theme), not on the host.
-- `TerminalSurface` gains `fontSize` and `cursorStyle` props. C's preview
-  is a second `TerminalSurface` writing a fixed synthetic sample; it talks
-  to no host.
+Evidence logs: `/var/tmp/agent-keep/remove-copy-on-select-{web,browser,repeat,shell,go,main-baseline}.log`. These are synthetic host-backed checks, not live deployment or distinct-UID evidence. No full browser suite, clean gate, deployment or live check was requested or performed.
 
 ## Decisions for later review
 
-- **Text size stored per browser rather than per account.** The alternative
-  was per account. Screens differ (laptop vs. external display), and the
-  theme already sets the per-browser precedent.
-- **Three sizes rather than a slider or pixel field.** The alternative was a
-  number input. Three steps cover the real need and keep the row
-  consistent with other Segmented settings.
-- **The paste question stays on by default.** Several pasted lines can run
-  several commands. Turning the question off is the person's choice.
-- **The open-URLs card has no setting.** Jari graduated `terminal-open-urls`
-  to always on (`graduate-experimental-features-1121`), so the page only
-  explains it.
-- **The section sits after Editori, with the `terminal` icon.** The
-  alternative was inside Ulkoasu. The terminal has its own behaviour
-  (clipboard, paste), not just looks.
+- Close the settings proposal as obsolete, rather than delivered: the proposed page was explicitly withdrawn. The accompanying automatic-copy removal is delivered in the same commit.
+- Leave old saved values untouched rather than migrate/delete personal preferences: removing every reader makes them harmless, and browser coverage proves normal use and subsequent settings writes still work.
 
-## Questions for Jari
+## Live check
 
-1. C, A or B? And should C keep its preview, or should it be A plus the
-   gear?
-2. Are the three proposals (text size, cursor, paste question) welcome, or
-   should the page start with copy on select alone?
-3. Should text size follow you to every device instead of staying in one
-   browser?
-4. Clickable links in terminal output (Ctrl/⌘-click, through a new xterm
-   addon): worth a row or a separate issue?
-5. The bell: leave it silent, or offer a brief flash of the panel or the
-   tab as a proposal later?
-
-## Evidence and build
-
-- Round: `design-system/prototypes/rounds/2026-11-21-terminal-settings/`
-  (`NOTES.md` has the build and check commands).
-- Built page (kept outside the worktree):
-  `/var/tmp/agent-keep/terminal-settings-page/terminal-settings.html`.
-- `check.mjs`: 337 checks passed. It covers 1440 and 390 px in Päivä, Yö
-  and Kontrasti, the flows at 1440 Päivä, English, a phone flow in B, and a
-  clean console.
-- Screenshots: `/var/tmp/agent-keep/terminal-settings-page/check/`. None
-  are committed.
+After deployment, put a recognizable value on the clipboard. Select terminal output with Shift-drag and ordinary tmux drag: neither should replace it. Press Ctrl+Shift+C or the selection's Copy button: the selected text should now be copied. On macOS, also try Cmd+C. There should be no automatic-copy experiment or terminal settings page.

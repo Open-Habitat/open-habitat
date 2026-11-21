@@ -2,7 +2,6 @@
   "features": [
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
-    { "id": "terminal-copy-on-select", "landed": true },
     { "id": "multiplayer", "landed": true },
     { "id": "agent-instructions", "landed": true }
   ],
@@ -23,14 +22,6 @@
         "shows": "Ikkunat pieninä kuvina, agentin osoittimen ja klikkaukset. Ikkuna, joka tarvitsee sinua, nousee isoksi pyyntönsä viereen. Katselu ei vie ohjausta agentilta.",
         "needs": "Palvelimen, jolle selain on asennettu. Agentti toimii selaimessa sinun tunnuksillasi: se saa käyttää kaikkea, mihin selain on kirjautunut. Selain sulkeutuu vuorokauden käyttämättömyyden jälkeen, ja kirjautumiset säilyvät.",
         "caption": "Selain kentän yllä"
-      },
-      "terminal-copy-on-select": {
-        "name": "Päätteen kopiointi valitsemalla",
-        "desc": "Päätteessä valittu teksti menee leikepöydälle heti, kun päästät hiiren irti, kuten monessa päätteessä.",
-        "where": "Päätepaneelissa. Valinnan Kopioi-painike muuttuu Kopioiduksi, kun teksti on leikepöydällä.",
-        "shows": "Shift pohjassa vedetty valinta ja tmuxin oma hiirivalinta kopioituvat. Ctrl+Shift+C ja valinnan Kopioi-painike kopioivat myös silloin, kun tämä on pois päältä.",
-        "needs": "Selaimen luvan kirjoittaa leikepöydälle. Jos selain kieltää sen, valinta jää näkyviin ja Kopioi-painike toimii.",
-        "caption": "Pääte"
       },
       "multiplayer": {
         "name": "Muut ihmiset keskustelussa",
@@ -89,14 +80,6 @@
         "shows": "The windows as small pictures, the agent's pointer and clicks. A window that needs you grows large beside its request. Watching never takes control from the agent.",
         "needs": "A server with the browser installed. The agent may use everything the browser is signed in to, in your name. The browser closes after a day unused, and sign-ins are kept.",
         "caption": "Browser above the field"
-      },
-      "terminal-copy-on-select": {
-        "name": "Copy on select in the terminal",
-        "desc": "Text you select in the terminal goes to the clipboard as soon as you let go of the mouse, as in many terminals.",
-        "where": "In the terminal panel. The selection's Copy button turns into Copied once the text is on the clipboard.",
-        "shows": "A selection dragged with Shift held and tmux's own mouse selection are copied. Ctrl+Shift+C and the selection's Copy button copy even when this is off.",
-        "needs": "The browser's permission to write to the clipboard. If the browser refuses, the selection stays and the Copy button works.",
-        "caption": "Terminal"
       },
       "multiplayer": {
         "name": "Other people in a conversation",

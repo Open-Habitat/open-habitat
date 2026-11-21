@@ -3,11 +3,12 @@ created: 2026-11-21
 updated: 2026-11-21
 type: feature
 reporter: jari
-status: open
+status: obsolete
 priority: normal
 lane: terminal-settings
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Prototype: terminal settings page (copy on select off by default)
@@ -37,3 +38,9 @@ Prototype round 1 (run 01m7z93caj8vp9epxz4fa3k0hw): round 2026-11-21-terminal-se
 ### 2026-11-21T15:48:38Z · @claude
 
 Prototype round 2 (run 01m7zbxvj99khkk454qywnff7b): round 2026-11-21-terminal-settings-2. One view, Settings › Pääte, with the gear only navigating. Text size variants: A slider, B stepper with ruler and columns, C presets. Recommends B; see result-2.md.
+
+## Resolution
+
+### 2026-11-21T18:53:00Z · @issuectl
+
+Withdrawn by Jari on 2026-11-21: no terminal settings view for now. Both prototype rounds retired to Git history; automatic copy-on-select removed throughout the product, while explicit copying remains. See result.md for verification and the separately filed baseline layout failure.

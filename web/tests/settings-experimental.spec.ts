@@ -10,11 +10,11 @@ test.use({
 const features = [
   "rewind-conversation",
   "remote-browser",
-  "terminal-copy-on-select",
   "multiplayer",
   "agent-instructions",
 ];
-const graduated = [
+const retired = [
+  "terminal-copy-on-select",
   "terminal-open-urls",
   "storage-breakdown",
   "rail-background-door",
@@ -50,7 +50,7 @@ test("@settings-experimental only remaining experiments have switches; saved ret
 }) => {
   await signIn(page);
   const session = await (await page.request.get("/auth/session")).json();
-  for (const id of graduated) {
+  for (const id of retired) {
     const response = await page.request.put("/api/v1/account/preferences", {
       headers: {
         Origin: new URL(page.url()).origin,
@@ -68,7 +68,7 @@ test("@settings-experimental only remaining experiments have switches; saved ret
       "true",
     );
   }
-  for (const id of graduated) await expect(card(page, id)).toHaveCount(0);
+  for (const id of retired) await expect(card(page, id)).toHaveCount(0);
   await expect(
     page.getByTestId("experimental-features").getByRole("region"),
   ).toHaveCount(features.length);
@@ -81,11 +81,11 @@ test("@settings-experimental only remaining experiments have switches; saved ret
     (r) =>
       r.url().endsWith("/api/v1/account/preferences") && r.method() === "PUT",
   );
-  await segment(page, "terminal-copy-on-select", "on").click();
+  await segment(page, "remote-browser", "on").click();
   expect((await write).postDataJSON()).toEqual({
-    experimental: { "terminal-copy-on-select": true },
+    experimental: { "remote-browser": true },
   });
-  await expect(segment(page, "terminal-copy-on-select", "on")).toHaveAttribute(
+  await expect(segment(page, "remote-browser", "on")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -96,14 +96,15 @@ test("@settings-experimental only remaining experiments have switches; saved ret
   const other = await context.newPage();
   try {
     await other.goto("/settings/experimental");
-    await expect(
-      segment(other, "terminal-copy-on-select", "on"),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(segment(other, "remote-browser", "on")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   } finally {
     await other.close();
   }
-  await segment(page, "terminal-copy-on-select", "off").click();
-  await expect(segment(page, "terminal-copy-on-select", "off")).toHaveAttribute(
+  await segment(page, "remote-browser", "off").click();
+  await expect(segment(page, "remote-browser", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -115,13 +116,13 @@ test("@settings-experimental follows an own-user agent change without focus or r
   await signIn(page);
   await page.clock.install();
   await page.goto("/settings/experimental");
-  await expect(segment(page, "terminal-copy-on-select", "off")).toHaveAttribute(
+  await expect(segment(page, "remote-browser", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   for (const enabled of [true, false]) {
     const response = await page.request.put("/fixture/agent-experimental", {
-      data: { id: "terminal-copy-on-select", enabled },
+      data: { id: "remote-browser", enabled },
     });
     expect(response.status()).toBe(200);
     const observed = page.waitForResponse(
@@ -132,7 +133,7 @@ test("@settings-experimental follows an own-user agent change without focus or r
     await page.clock.runFor(5000);
     await observed;
     await expect(
-      segment(page, "terminal-copy-on-select", enabled ? "on" : "off"),
+      segment(page, "remote-browser", enabled ? "on" : "off"),
     ).toHaveAttribute("aria-pressed", "true");
   }
 });

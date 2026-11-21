@@ -14,8 +14,6 @@ originating_run_kind: spinoff
 
 ## Description
 
-## Description
-
 The existing browser-shell long-draft layout check fails on unchanged main at `7b6b8d3803a03220c0741a869b1117e395038213`. Its assertion that the conversation history is at least as tall as the composer never becomes true. This prevents the browser-shell spec from passing and may indicate the conversation loses its intended share of the screen with a long draft.
 
 ## Reproduction

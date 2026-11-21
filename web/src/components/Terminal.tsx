@@ -89,7 +89,6 @@ export function TerminalSurface({
   onSelection,
   onPasteRequest,
   onOpen,
-  copyOnSelect = false,
   onOpenUrl,
   ref,
 }: {
@@ -104,8 +103,6 @@ export function TerminalSurface({
   onPasteRequest: (text: string) => void;
   /** The surface is ready for output: anything held back can be written. */
   onOpen?: () => void;
-  /** A finished selection goes to the clipboard (experimental). */
-  copyOnSelect?: boolean;
   /** A program asked to open an http(s) address; absent when the person has
    * not turned the offer on. Nothing is opened here. */
   onOpenUrl?: (url: string) => void;
@@ -119,7 +116,6 @@ export function TerminalSurface({
     onSelection,
     onPasteRequest,
     onOpen,
-    copyOnSelect,
     onOpenUrl,
   });
   handlers.current = {
@@ -128,7 +124,6 @@ export function TerminalSurface({
     onSelection,
     onPasteRequest,
     onOpen,
-    copyOnSelect,
     onOpenUrl,
   };
   // What clearSelection and reset must also forget or restore.
@@ -331,20 +326,7 @@ export function TerminalSurface({
     // The text tmux last reported (OSC 52) after its own mouse selection:
     // the copy shortcut copies it when xterm.js has no selection of its own.
     let reported: string | undefined;
-    // tmux's copy is put on the clipboard only right after the person
-    // dragged in this terminal, once: a program's OSC 52 after a keypress or
-    // a click (possible when a person's tmux sets set-clipboard on) only
-    // offers its text.
     let pressedHere = false;
-    let dragged = false;
-    let dragEndedAt = Number.NEGATIVE_INFINITY;
-    const dragging = (event: MouseEvent) => {
-      if (pressedHere && event.buttons) dragged = true;
-    };
-    const copy = (text: string) => {
-      if (!handlers.current.copyOnSelect || !navigator.clipboard) return;
-      void navigator.clipboard.writeText(text).catch(() => {});
-    };
     const reportSelection = () => {
       const text = selectionText();
       if (!text.trim()) {
@@ -372,20 +354,11 @@ export function TerminalSurface({
     let selectionFrame = 0;
     const startPress = () => {
       pressedHere = true;
-      dragged = false;
     };
     el.addEventListener("mousedown", startPress, true);
-    window.addEventListener("mousemove", dragging, true);
     const finishSelection = () => {
       if (!pressedHere) return;
       pressedHere = false;
-      if (dragged) dragEndedAt = performance.now();
-      // Inside the release itself, which browsers count as the person's
-      // gesture for the clipboard.
-      if (xterm.hasSelection()) {
-        const text = selectionText();
-        if (text.trim()) copy(text);
-      }
       cancelAnimationFrame(selectionFrame);
       selectionFrame = requestAnimationFrame(() => {
         if (xterm.hasSelection()) reportSelection();
@@ -399,10 +372,6 @@ export function TerminalSurface({
       if (text?.trim()) {
         reported = text;
         handlers.current.onSelection({ text });
-        if (performance.now() - dragEndedAt < 2000) {
-          dragEndedAt = Number.NEGATIVE_INFINITY;
-          copy(text);
-        }
       }
       return true;
     });
@@ -467,7 +436,6 @@ export function TerminalSurface({
       cancelAnimationFrame(selectionFrame);
       window.removeEventListener("mouseup", finishSelection, true);
       el.removeEventListener("mousedown", startPress, true);
-      window.removeEventListener("mousemove", dragging, true);
       el.removeEventListener("copy", copyEvent, true);
       surface.current = undefined;
       modes.dispose();

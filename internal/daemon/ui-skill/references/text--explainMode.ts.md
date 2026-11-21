@@ -1745,6 +1745,65 @@ const fi = {
       lead: "Kopioi koko pyyntö ja toimita se ylläpitäjällesi.",
       know: "Habitat ei lähetä mitään. Vain ylläpitäjä voi rajata Trellon varmasti pelkkään lukuun.",
     },
+    MP01: {
+      name: "Keskustelun ihmiset",
+      lead: "Näyttää, ketkä ovat mukana keskustelussasi ja ketkä ovat paikalla. Avaa paneelin, jossa voit muuttaa heidän oikeuksiaan.",
+      know: "Agentti, malli, kiintiö ja yhteydet ovat sinun. Osallistujan viesteihin agentti vastaa ilman työkaluja, kunnes päästät sen jatkamaan.",
+    },
+    MP02: {
+      name: "Kutsu",
+      lead: "Kutsu keskusteluun joku, joka on kirjautunut tälle palvelimelle.",
+      know: "Kutsuttu näkee keskustelun vasta liityttyään. Valitsimessa näkyvät kaikki palvelimelle kirjautuneet.",
+    },
+    MP03: {
+      name: "Anna täydet oikeudet",
+      lead: "Hänen viesteihinsä agentti vastaa samoilla työkaluilla kuin sinun viesteihisi.",
+      know: "Agentti toimii silloin sinun käyttäjänäsi: tiedostosi, GitHub, yhdistetyt palvelut ja omat koneesi. Vahvistus luettelee, mitä lainaat.",
+    },
+    MP04: {
+      name: "Ota oikeudet pois",
+      lead: "Palauttaa hänet heti osallistujaksi. Käynnissä oleva ajo jatkuu vain tekstinä.",
+      know: "Prosesseja ei pysäytetä itsestään. Kortti näyttää ne pysäytettäviksi.",
+    },
+    MP05: {
+      name: "Poista keskustelusta",
+      lead: "Hän ei enää näe keskustelua eikä voi kirjoittaa siihen.",
+      know: "Odottava pyyntö jää sinulle päätettäväksi. Voit kutsua hänet uudelleen.",
+    },
+    MP06: {
+      name: "Pysähtynyt pyyntö",
+      lead: "Agentti vastasi osallistujalle vain tekstillä. Päätä, saako se jatkaa sinun työkaluillasi.",
+      know: "Salli kaikki päästää agentin jatkamaan, Hyväksy yksitellen kysyy jokaisesta työkalukutsusta ja Älä salli jättää pyynnön tekemättä.",
+    },
+    MP07: {
+      name: "Työkalukutsun hyväksyntä",
+      lead: "Näyttää kutsun kokonaan ennen kuin se ajetaan.",
+      know: "Salli ajaa tämän kutsun, Älä salli estää sen ja Salli kaikki päästää loput tämän ajon kutsut kysymättä.",
+    },
+    MP08: {
+      name: "Oikeudet otettu pois",
+      lead: "Näyttää käynnissä olevan ajon ja prosessit sen jälkeen, kun otit oikeudet pois tai poistit osallistujan.",
+      know: "Mitään ei pysäytetä itsestään. Pysäytä vain se, minkä tunnistat hänen pyynnökseen.",
+    },
+    MP09: {
+      name: "Jaettu kanssasi",
+      lead: "Keskustelut, joihin tämän palvelimen muut käyttäjät ovat kutsuneet sinut.",
+      know: "Kutsusta näet vain kutsujan ja keskustelun nimen, kunnes liityt.",
+    },
+    MP10: {
+      name: "Vuoron tila",
+      lead: "Kertoo, vastaako agentti sinulle vain tekstillä vai saako se käyttää työkaluja, ja mitkä pyyntösi odottavat omistajaa.",
+      know: "Tilan päättää omistajan palvelin. Odottavat viestisi voit perua ennen kuin agentti saa ne.",
+    },
+    MP11: {
+      name: "Liity",
+      lead: "Liityt keskusteluun ja näet sen kokonaan.",
+      know: "Agentti on kutsujan: hänen mallinsa, kiintiönsä ja yhteytensä.",
+    },
+    MP12: {
+      name: "Pysäytä vuoro",
+      lead: "Pysäyttää agentin käynnissä olevan vuoron, kenen tahansa aloittaman.",
+    },
     M80: {
       name: "Kirjautuminen Trelloon",
       lead: "Aloittaa kirjautumisen tai viimeistelee sen liittämälläsi paluuosoitteella.",
@@ -3586,6 +3645,65 @@ export const explainModeText = catalog(fi, {
       name: "Request for your administrator",
       lead: "Copy the full request and give it to your administrator.",
       know: "Habitat sends nothing. Only an administrator can reliably limit Trello to reading.",
+    },
+    MP01: {
+      name: "People in the conversation",
+      lead: "Shows who is in your conversation and who is here. Opens the panel where you change what they may do.",
+      know: "The agent, model, quota and connections are yours. The agent answers a participant without tools until you let it continue.",
+    },
+    MP02: {
+      name: "Invite",
+      lead: "Invite someone who has signed in to this server.",
+      know: "The person sees the conversation only after joining. The picker lists everyone who has signed in here.",
+    },
+    MP03: {
+      name: "Give full rights",
+      lead: "The agent answers their messages with the same tools as yours.",
+      know: "The agent then acts as your user: your files, GitHub, connected services and own machines. The confirmation lists what you lend.",
+    },
+    MP04: {
+      name: "Take rights back",
+      lead: "Makes them a participant again at once. A run in progress continues as text only.",
+      know: "Processes are not stopped by themselves. A card lists them for stopping.",
+    },
+    MP05: {
+      name: "Remove from conversation",
+      lead: "They no longer see the conversation or write in it.",
+      know: "A waiting request stays for you to decide. You can invite them again.",
+    },
+    MP06: {
+      name: "Stopped request",
+      lead: "The agent answered a participant with text only. Decide whether it may continue with your tools.",
+      know: "Allow all lets the agent continue, Approve one by one asks about each tool call, and Don't allow leaves the request undone.",
+    },
+    MP07: {
+      name: "Tool call approval",
+      lead: "Shows the whole call before it runs.",
+      know: "Allow runs this call, Don't allow blocks it, and Allow all lets the rest of this run's calls through without asking.",
+    },
+    MP08: {
+      name: "Rights taken back",
+      lead: "Shows the run in progress and the processes after you took rights back or removed a participant.",
+      know: "Nothing is stopped by itself. Stop only what you recognise as their request.",
+    },
+    MP09: {
+      name: "Shared with you",
+      lead: "Conversations other people on this server invited you to.",
+      know: "Until you join, an invitation shows only who invited you and the conversation's name.",
+    },
+    MP10: {
+      name: "Turn mode",
+      lead: "Says whether the agent answers you with text only or may use tools, and which of your requests wait for the owner.",
+      know: "The owner's server decides the mode. You can cancel your waiting messages before the agent gets them.",
+    },
+    MP11: {
+      name: "Join",
+      lead: "You join the conversation and see all of it.",
+      know: "The agent belongs to the person who invited you: their model, quota and connections.",
+    },
+    MP12: {
+      name: "Stop the turn",
+      lead: "Stops the agent's turn in progress, whoever started it.",
     },
     M80: {
       name: "Trello sign-in",

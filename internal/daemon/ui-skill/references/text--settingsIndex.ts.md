@@ -32,6 +32,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Git identity",
         desc: "The author of commits. Saved in the global ~/.gitconfig file.",
       },
+      instructions: {
+        label: "Agent instructions",
+        desc: "The note the agent reads at the start of every conversation. Pi and Claude read the same file.",
+      },
     },
   },
   laitteet: {
@@ -276,13 +280,13 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Your own server browser",
         desc: "Your own browser on the server: sign in to a service, and the agent uses the same browser, which you see live.",
       },
-      "terminal-copy-on-select": {
-        label: "Copy on select in the terminal",
-        desc: "Text selected in the terminal goes straight to the clipboard.",
-      },
       multiplayer: {
         label: "Other people in a conversation",
         desc: "Invite another person on this server into your conversation with the agent.",
+      },
+      "agent-instructions": {
+        label: "Agent instructions",
+        desc: "The note the agent reads at the start of every conversation.",
       },
     },
   },

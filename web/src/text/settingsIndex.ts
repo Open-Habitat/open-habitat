@@ -275,10 +275,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Your own server browser",
         desc: "Your own browser on the server: sign in to a service, and the agent uses the same browser, which you see live.",
       },
-      "terminal-copy-on-select": {
-        label: "Copy on select in the terminal",
-        desc: "Text selected in the terminal goes straight to the clipboard.",
-      },
       multiplayer: {
         label: "Other people in a conversation",
         desc: "Invite another person on this server into your conversation with the agent.",
