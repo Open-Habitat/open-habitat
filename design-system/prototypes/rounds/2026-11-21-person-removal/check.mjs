@@ -1,11 +1,12 @@
 // node check.mjs <offline.html> <out-dir> [--quick]
 // Authored synthetic component lab, not a host-backed acceptance test.
 // Walks the three directions at 1440 and 390 px in Päivä, Yö and Kontrasti
-// with reduced motion. The default view in each: the direction's own
-// confirmation open for @mikko-l over Käyttäjät ja pääsy, no overflow. Then,
-// in Päivä and Yö, each direction's flow: the stages on both lists, the sum
-// of limits on Levytila (128,5 → 102,7 → 88,5 GiB), the undo, the error
-// mid-removal and its retry. English last. Screenshots at device scale 2.
+// with reduced motion. The default view in each: the direction's first
+// dialog open for @mikko-l over Käyttäjät ja pääsy, no overflow. Then, in
+// Päivä and Yö, each direction's flow: the typed login, the stages on both
+// lists, the sum of limits on Levytila (128,5 → 102,7 → 88,5 GiB), cancel
+// leaving access withdrawn, the interrupted removal (files_remain) and its
+// retry. English last. Screenshots at device scale 2 into <out-dir>.
 import {createRequire} from 'node:module';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -21,8 +22,7 @@ const quick=flag==='--quick';
 mkdirSync(out,{recursive:true});
 const browser=await chromium.launch(process.env.PROTO_CHROMIUM?{executablePath:process.env.PROTO_CHROMIUM}:{});
 const html=readFileSync(input,'utf8');
-const names=['armonaika','luettelo','arkisto'];
-const dialogs=['grace-dialog','list-dialog','archive-dialog'];
+const names=['armonaika','heti','vaiheittain'];
 let checks=0;const errors=[];
 const ok=(v,m)=>{assert.ok(v,m);checks++;};
 const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
@@ -52,146 +52,175 @@ const has=async(page,id)=>(await page.getByTestId(id).count())>0;
 const text=async(page,id)=>(await page.getByTestId(id).first().textContent())??'';
 const view=async(page,v)=>{await page.getByTestId(`settings-${v}`).click();await page.getByTestId(`settings-section-${v}`).waitFor();await page.waitForTimeout(100);};
 const worst=page=>page.getByTestId('server-storage').getAttribute('data-worst');
-const mark=page=>text(page,'access-state-mikko');
+const mark=(page,id='mikko')=>text(page,`access-state-${id}`);
 const stage=(page,id='mikko')=>page.getByTestId(`access-row-${id}`).getAttribute('data-stage');
 async function until(page,id,want,ms=6000){
  await page.waitForFunction(([i,w])=>document.querySelector(`[data-testid="access-row-${i}"]`)?.dataset.stage===w,[id,want],{timeout:ms});
 }
 async function closeDialog(page){await page.keyboard.press('Escape');await page.waitForTimeout(200);ok(!(await page.locator('.ah-overlay').count()),'dialog closed');}
+/** The typed login gates the confirmation. */
+async function typeLogin(page,login,at){
+ ok(await page.getByTestId('remove-confirm').isDisabled(),`${at}: confirm waits for the login`);
+ await page.getByTestId('type-login').fill('mikko');
+ ok(await page.getByTestId('remove-confirm').isDisabled(),`${at}: a partial login does not confirm`);
+ await page.getByTestId('type-login').fill(login);
+ ok(await page.getByTestId('remove-confirm').isEnabled(),`${at}: the login confirms`);
+}
 
 async function defaultView(page,d,at){
- ok(await page.getByTestId(dialogs[d]).isVisible(),`${at}: the direction's confirmation is open`);
- for(const other of dialogs.filter((_,i)=>i!==d))eq(await page.getByTestId(other).count(),0,`${at}: not ${other}`);
+ const dialog=d===2?'access-dialog':'remove-dialog';
+ ok(await page.getByTestId(dialog).isVisible(),`${at}: the direction's dialog is open`);
  eq(await page.locator('.ra-lines li[aria-current]').count(),1,`${at}: its line is marked`);
- ok((await page.getByTestId(dialogs[d]).textContent()).includes('@mikko-l'),`${at}: names the person`);
+ ok((await page.getByTestId(dialog).textContent()).includes('@mikko-l'),`${at}: names the person`);
  if(d===0){
-  ok((await text(page,'grace-when')).includes('28.11.'),`${at}: says when the data goes`);
-  ok(await page.getByTestId('inventory-short').isVisible(),`${at}: short inventory`);
+  ok(await page.getByTestId('when-grace').isChecked(),`${at}: 14 days chosen`);
+  ok((await text(page,'home-line')).includes('5.12.'),`${at}: the home goes on 5.12.`);
+  eq(await text(page,'remove-confirm'),'Poista 5.12.',`${at}: the action names the day`);
  }
  if(d===1){
-  eq(await page.locator('[data-testid="inventory"] li').count(),6,`${at}: full inventory`);
-  ok((await text(page,'inventory')).includes('/home/mikko-l'),`${at}: the home's path`);
+  eq(await page.getByTestId('when').count(),0,`${at}: no choice`);
+  ok((await text(page,'home-line')).includes('heti'),`${at}: the home goes now`);
+  eq(await text(page,'remove-confirm'),'Poista pysyvästi',`${at}: permanent`);
  }
- if(d===2)ok((await text(page,'archive-path')).includes('mikko-l-2026-11-21.tar.zst'),`${at}: the archive's path`);
+ if(d===2)ok((await text(page,'access-stays')).includes('Poista henkilö'),`${at}: removal is the next step`);
+ if(d!==2){
+  const words=await text(page,'consequences');
+  for(const w of ['kotisivu','GitHub','Google','keskustelu'])ok(!words.includes(w),`${at}: nothing of the home is named (${w})`);
+  ok(words.includes('14,2 GiB'),`${at}: the home's size`);
+ }
  ok(await fits(page),`${at}: overflow with the dialog`);
 }
 
 async function startState(page,at){
  await closeDialog(page);
  eq(await mark(page),'Käyttäjä',`${at}: mikko a user`);
- eq(await text(page,'access-state-sanna'),'Ei pääsyä',`${at}: sanna no access`);
+ eq(await mark(page,'sanna'),'Ei pääsyä',`${at}: sanna no access`);
+ eq(await page.getByTestId('remove-aino').count(),0,`${at}: no removing oneself`);
  ok(await fits(page),`${at}: list overflow`);
  await view(page,'levy');
  eq(await worst(page),'128.50',`${at}: sum of limits at start`);
  ok(await has(page,'storage-over'),`${at}: overcommitted at start`);
- eq(await page.getByTestId('administration-user-sanna-v').getAttribute('data-stage'),'noaccess',`${at}: sanna on Levytila without access`);
+ eq(await page.getByTestId('administration-user-sanna-v').getAttribute('data-stage'),'noaccess',`${at}: sanna counted by use`);
  ok(await fits(page),`${at}: storage overflow`);
  await view(page,'kayttajat');
 }
 
-/** 1 Armonaika: grace, its countdown, undo on Levytila, the error at the end, retry. */
+/** 1 Armonaika: schedule, cancel to no access, schedule again, the error at the end, retry; Poista heti. */
 async function graceFlow(page,tag){
  const at=`armonaika ${tag}`;
  await page.getByTestId('remove-mikko').click();
- await page.getByTestId('grace-confirm').click();
+ await typeLogin(page,'@mikko-l',at);
+ await page.getByTestId('remove-confirm').click();
  await page.waitForTimeout(150);
- eq(await stage(page),'grace',`${at}: in grace`);
- eq(await mark(page),'Poistetaan 7 pv päästä',`${at}: the countdown mark`);
- ok(await page.getByTestId('undo-mikko').isVisible(),`${at}: Peru poisto on the row`);
- await shot(page,`0-${names[0]}-${tag}-access-grace`);
+ eq(await stage(page),'scheduled',`${at}: scheduled`);
+ eq(await mark(page),'Poistetaan 5.12.',`${at}: the row's mark`);
+ eq(await text(page,'access-days-mikko'),'14 pv jäljellä',`${at}: days left`);
+ ok(await page.getByTestId('cancel-mikko').isVisible(),`${at}: Peru poisto on the row`);
+ await shot(page,`0-${names[0]}-${tag}-access-scheduled`);
  await view(page,'levy');
  eq(await worst(page),'102.70',`${at}: the limit leaves the sum at once`);
  ok(!(await has(page,'storage-over')),`${at}: the warning clears`);
- ok(await page.getByTestId('storage-undo-mikko').isVisible(),`${at}: undo on Levytila`);
- ok(await fits(page),`${at}: storage overflow in grace`);
- await shot(page,`0-${names[0]}-${tag}-storage-grace`);
- await page.getByTestId('storage-undo-mikko').click();
- eq(await worst(page),'128.50',`${at}: undo restores the limit`);
+ ok(await fits(page),`${at}: storage overflow when scheduled`);
+ await shot(page,`0-${names[0]}-${tag}-storage-scheduled`);
+ await page.getByTestId('storage-cancel-mikko').click();
+ eq(await page.getByTestId('administration-user-mikko-l').getAttribute('data-stage'),'noaccess',`${at}: cancel leaves access withdrawn`);
+ eq(await worst(page),'102.70',`${at}: still counted by use`);
  await view(page,'kayttajat');
- eq(await mark(page),'Käyttäjä',`${at}: undo restores access`);
+ eq(await mark(page),'Ei pääsyä',`${at}: no access after cancel`);
+ eq(await page.getByTestId('withdraw-mikko').count(),0,`${at}: no withdrawal on a withdrawn row`);
  await page.getByTestId('remove-mikko').click();
- await page.getByTestId('grace-confirm').click();
+ ok((await text(page,'consequences')).includes('jo poistettu'),`${at}: says access is already gone`);
+ await page.getByTestId('type-login').fill('mikko-l');
+ await page.getByTestId('remove-confirm').click();
  await page.getByTestId('event-day').click();
- eq(await mark(page),'Poistetaan 6 pv päästä',`${at}: a day later`);
+ eq(await text(page,'access-days-mikko'),'13 pv jäljellä',`${at}: a day later`);
  await page.getByTestId('event-fail').check();
- await page.getByTestId('event-week').click();
+ await page.getByTestId('event-grace').click();
  await until(page,'mikko','failed');
- ok((await text(page,'access-failed-mikko')).includes('3 / 5'),`${at}: steps done`);
- eq(await page.locator('[data-testid="access-steps-mikko"] li[data-state="failed"]').getAttribute('data-step'),'home',`${at}: failed at home`);
+ ok((await text(page,'access-failed-mikko')).includes('files_remain'),`${at}: the fixed reason`);
+ ok((await text(page,'access-failed-mikko')).includes('4 / 6'),`${at}: steps done`);
+ eq(await page.locator('[data-testid="access-steps-mikko"] li[data-state="failed"]').getAttribute('data-step'),'space',`${at}: failed proving the space free`);
+ eq(await page.getByTestId('cancel-mikko').count(),0,`${at}: no cancel after the data stage began`);
  ok(await fits(page),`${at}: overflow when failed`);
  await shot(page,`0-${names[0]}-${tag}-access-failed`);
  await view(page,'levy');
- eq(await worst(page),'102.70',`${at}: nothing freed yet`);
+ eq(await worst(page),'88.80',`${at}: what is left still counts`);
  await shot(page,`0-${names[0]}-${tag}-storage-failed`);
  await page.getByTestId('storage-retry-mikko').click();
  await view(page,'kayttajat');
  await until(page,'mikko','removed');
  eq(await mark(page),'Poistettu',`${at}: removed`);
+ ok((await text(page,'services-mikko')).includes('1 peruttu'),`${at}: provider counts`);
  ok((await text(page,'access-filter')).includes('Poistetut 2'),`${at}: counted as removed`);
+ await shot(page,`0-${names[0]}-${tag}-access-removed`);
  await view(page,'levy');
  eq(await worst(page),'88.50',`${at}: sum after removal`);
  eq(await page.getByTestId('administration-user-mikko-l').count(),0,`${at}: off Levytila`);
- await shot(page,`0-${names[0]}-${tag}-storage-removed`);
+ await view(page,'kayttajat');
+ await page.getByTestId('remove-olli').click();
+ await page.getByTestId('when-now').check();
+ ok((await text(page,'home-line')).includes('heti'),`${at}: now says now`);
+ await page.getByTestId('type-login').fill('olli-p');
+ eq(await text(page,'remove-confirm'),'Poista heti',`${at}: remove now`);
+ await page.getByTestId('remove-confirm').click();
+ await until(page,'olli','removed');
+ await view(page,'levy');
+ eq(await worst(page),'58.50',`${at}: olli's limit gone`);
  await view(page,'kayttajat');
 }
 
-/** 2 Luettelo: two presses, progress in the window, error and retry; access only. */
-async function listFlow(page,tag){
- const at=`luettelo ${tag}`;
+/** 2 Heti: typed login, progress in the window, error and retry; no undo. */
+async function nowFlow(page,tag){
+ const at=`heti ${tag}`;
  await page.getByTestId('event-fail').check();
  await page.getByTestId('remove-mikko').click();
- await page.getByTestId('list-confirm').click();
- eq(await text(page,'list-confirm'),'Vahvista poisto',`${at}: armed`);
- ok((await text(page,'armed-note')).includes('uudelleen'),`${at}: says press again`);
- await shot(page,`1-${names[1]}-${tag}-armed`);
- await page.getByTestId('list-confirm').click();
+ await typeLogin(page,'MIKKO-L',at);
+ await page.getByTestId('remove-confirm').click();
  await page.getByTestId('dialog-retry').waitFor({timeout:6000});
- ok((await text(page,'list-dialog-title')).includes('poisto kesken'),`${at}: unfinished in the window`);
+ ok((await text(page,'remove-dialog-title')).includes('poisto kesken'),`${at}: unfinished in the window`);
  ok(await fits(page),`${at}: overflow when failed`);
  await shot(page,`1-${names[1]}-${tag}-failed`);
  await page.getByTestId('dialog-retry').click();
- await page.getByTestId('list-freed').waitFor({timeout:6000});
- ok((await text(page,'list-freed')).includes('14,2 GiB'),`${at}: freed`);
+ await page.getByTestId('dialog-freed').waitFor({timeout:6000});
+ ok((await text(page,'dialog-freed')).includes('14,2 GiB'),`${at}: freed`);
+ await shot(page,`1-${names[1]}-${tag}-done`);
  await page.getByTestId('dialog-close').click();
  eq(await stage(page),'removed',`${at}: removed`);
- eq(await page.getByTestId('undo-mikko').count(),0,`${at}: no undo`);
- await page.getByTestId('remove-olli').click();
- await page.getByTestId('access-only').click();
- eq(await text(page,'access-state-olli'),'Ei pääsyä',`${at}: access only`);
+ eq(await page.getByTestId('cancel-mikko').count(),0,`${at}: no undo`);
+ await page.getByTestId('withdraw-olli').click();
+ await page.getByTestId('access-confirm').click();
+ eq(await mark(page,'olli'),'Ei pääsyä',`${at}: withdrawal stays separate`);
  await view(page,'levy');
  eq(await worst(page),'76.40',`${at}: olli counted by use`);
  await shot(page,`1-${names[1]}-${tag}-storage`);
  await view(page,'kayttajat');
 }
 
-/** 3 Arkisto: archive then removal on the row, restore; no archive asks twice. */
-async function archiveFlow(page,tag){
- const at=`arkisto ${tag}`;
+/** 3 Vaiheittain: withdraw first, then removal from the withdrawn row. */
+async function stepsFlow(page,tag){
+ const at=`vaiheittain ${tag}`;
+ eq(await page.getByTestId('remove-olli').count(),0,`${at}: no removal on an admitted row`);
+ await page.getByTestId('withdraw-mikko').click();
+ await page.getByTestId('access-confirm').click();
+ eq(await mark(page),'Ei pääsyä',`${at}: withdrawn`);
+ ok(await page.getByTestId('remove-mikko').isVisible(),`${at}: removal now offered`);
+ await view(page,'levy');
+ eq(await worst(page),'102.70',`${at}: counted by use once withdrawn`);
+ await view(page,'kayttajat');
  await page.getByTestId('remove-mikko').click();
- await page.getByTestId('archive-confirm').click();
- await page.waitForTimeout(100);
- eq(await mark(page),'Arkistoidaan…',`${at}: archiving on the row`);
- await shot(page,`2-${names[2]}-${tag}-archiving`);
+ eq(await page.getByTestId('when').count(),0,`${at}: no choice`);
+ eq(await text(page,'remove-confirm'),'Poista 5.12.',`${at}: scheduled action`);
+ await page.getByTestId('type-login').fill('mikko-l');
+ await shot(page,`2-${names[2]}-${tag}-remove`);
+ await page.getByTestId('remove-confirm').click();
+ eq(await mark(page),'Poistetaan 5.12.',`${at}: scheduled`);
+ ok(await fits(page),`${at}: overflow when scheduled`);
+ await shot(page,`2-${names[2]}-${tag}-scheduled`);
+ await page.getByTestId('event-grace').click();
  await until(page,'mikko','removed');
- ok((await text(page,'archive-kept-mikko')).includes('21.12.'),`${at}: archive kept`);
- ok(await page.getByTestId('restore-mikko').isVisible(),`${at}: restore offered`);
- await shot(page,`2-${names[2]}-${tag}-removed`);
  await view(page,'levy');
  eq(await worst(page),'88.50',`${at}: sum after removal`);
- ok((await text(page,'archives-figure')).includes('11,4 GiB'),`${at}: archive on the disk`);
- ok(await fits(page),`${at}: storage overflow`);
- await shot(page,`2-${names[2]}-${tag}-storage`);
  await view(page,'kayttajat');
- await page.getByTestId('restore-mikko').click();
- eq(await mark(page),'Ei pääsyä',`${at}: restored without access`);
- await page.getByTestId('remove-sanna').click();
- await page.getByTestId('archive-toggle').uncheck();
- eq(await text(page,'archive-confirm'),'Poista ilman arkistoa',`${at}: no archive`);
- await page.getByTestId('archive-confirm').click();
- eq(await text(page,'archive-confirm'),'Vahvista poisto',`${at}: asks twice`);
- await page.getByTestId('archive-confirm').click();
- await until(page,'sanna','removed');
- eq(await page.getByTestId('archive-kept-sanna').count(),0,`${at}: no archive kept`);
 }
 
 try{
@@ -206,29 +235,30 @@ for(const width of quick?[1440]:[1440,390])for(const theme of quick?['light']:['
   await shot(page,`${d}-${names[d]}-${tag}`);
   if(theme!=='contrast'){
    await startState(page,`${names[d]} ${tag}`);
-   await [graceFlow,listFlow,archiveFlow][d](page,tag);
+   await [graceFlow,nowFlow,stepsFlow][d](page,tag);
   }
  }
  await page.close();
 }
 {
  const en=await open(1440,'light','en');
- ok((await en.getByTestId('grace-dialog').textContent()).includes('Remove @mikko-l?'),'English: question');
- eq(await en.getByTestId('grace-confirm').textContent(),'Remove in 7 days','English: action');
+ ok((await en.getByTestId('remove-dialog').textContent()).includes('Remove person @mikko-l?'),'English: question');
+ await en.getByTestId('type-login').fill('mikko-l');
+ eq(await en.getByTestId('remove-confirm').textContent(),'Remove on 5 Dec','English: action');
  await shot(en,'en-0-armonaika-1440-light');
- await en.getByTestId('grace-confirm').click();
- eq(await en.getByTestId('access-state-mikko').textContent(),'Deleted in 7 days','English: countdown');
+ await en.getByTestId('remove-confirm').click();
+ eq(await en.getByTestId('access-state-mikko').textContent(),'Removed on 5 Dec','English: the row');
+ eq(await en.getByTestId('access-days-mikko').textContent(),'14 days left','English: days left');
  await pick(en,1);
- eq(await en.locator('[data-testid="inventory"] li').count(),6,'English: inventory');
- ok((await en.getByTestId('list-dialog').textContent()).includes('Removal cannot be undone.'),'English: no undo');
- await shot(en,'en-1-luettelo-1440-light');
+ eq(await en.getByTestId('remove-confirm').textContent(),'Remove for good','English: permanent');
+ await shot(en,'en-1-heti-1440-light');
  await en.close();
  const enPhone=await open(390,'dark','en',2);
- ok((await enPhone.getByTestId('archive-dialog').textContent()).includes('only the server'),'English phone: who reaches the archive');
+ ok((await enPhone.getByTestId('access-dialog').textContent()).includes('Remove person'),'English phone: the next step');
  ok(await fits(enPhone),'English phone fits');
- await shot(enPhone,'en-2-arkisto-390-dark');
+ await shot(enPhone,'en-2-vaiheittain-390-dark');
  await enPhone.close();
 }
-}catch(e){console.log("errors:",errors);throw e;}finally{await browser.close();}
+}catch(e){console.log('errors:',errors);throw e;}finally{await browser.close();}
 assert.deepEqual(errors,[],'console errors');
 console.log(`${checks} checks passed`);

@@ -61,19 +61,22 @@ html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-fam
 /* ---------- Dialogs ---------- */
 .pr-dialog { max-width: 560px; }
 .pr-dialog code { font-family: var(--ah-mono); overflow-wrap: anywhere; }
-.pr-inv-h { margin: var(--ah-s3) 0 0; font: 600 var(--ah-size-meta) var(--ah-font); color: var(--ah-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
-.pr-short { margin: var(--ah-s2) 0 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
-.pr-warn { display: flex; align-items: center; gap: 6px; color: var(--ah-err); font-weight: 600; margin: var(--ah-s2) 0; }
-.pr-armed { min-height: 1.4em; margin: 0; font-size: var(--ah-size-meta); color: var(--ah-err); }
-.pr-actions-3 { flex-wrap: wrap; }
-.pr-actions-3 [data-testid="access-only"] { margin-right: auto; }
-.pr-archive {
-  display: grid; gap: 4px; margin: var(--ah-s3) 0; padding: var(--ah-s3);
-  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2, var(--ah-surface));
+.pr-actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.pr-when { margin: var(--ah-s3) 0 0; padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); display: grid; gap: 6px; }
+.pr-when legend { padding: 0 4px; font-weight: 600; }
+.pr-when label { display: flex; align-items: flex-start; gap: 8px; }
+.pr-when input { margin-top: 3px; }
+.pr-tell { display: flex; align-items: flex-start; gap: 6px; margin: var(--ah-s3) 0 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.pr-tell svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.pr-type { margin-top: var(--ah-s3); }
+.pr-dialog form .ah-dialog-actions { margin-top: var(--ah-s4); }
+.pr-type input {
+  font: var(--ah-size-ui) var(--ah-mono); padding: 6px 10px; min-height: 36px;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
 }
-.pr-archive:not([data-on]) .pr-archive-path, .pr-archive:not([data-on]) .sa-muted { opacity: 0.5; text-decoration: line-through; }
-.pr-check { display: inline-flex; align-items: center; gap: 8px; }
-.pr-archive-path { font-size: var(--ah-size-meta); }
+.pr-type input:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+.pr-dialog .sa-bad svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
 /* The dialog's overlay leaves the review bar and the picker reachable. */
 .ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
