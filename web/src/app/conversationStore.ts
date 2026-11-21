@@ -636,7 +636,12 @@ export class ConversationStore {
    * statusPositions); returns whether it was applied. */
   applyStatus(id: string, status: Status, ownRead = false): boolean {
     if (this.disposed || status.agent_id !== id) return false;
-    if (this.olderStatus(id, status)) return false;
+    if (this.olderStatus(id, status)) {
+      // The re-read was taken after the invalidating event, so a status
+      // already held that is newer than it is fresh too.
+      if (ownRead) this.settleStale(id);
+      return false;
+    }
     // Another reader's status may have been read before the event that made
     // this one stale; only the re-read that event started settles it. A
     // message kept meanwhile would otherwise go on the older knowledge.
@@ -1149,6 +1154,23 @@ export class ConversationStore {
     };
     const request = fetchStatus();
     this.statusRequests.set(id, request);
+  }
+  private settleStale(id: string) {
+    if (
+      !this.metadata.staleStatuses.has(id) &&
+      !this.metadata.lostStatuses.has(id)
+    )
+      return;
+    const without = (set: ReadonlySet<string>) =>
+      new Set([...set].filter((key) => key !== id));
+    this.metadata = {
+      ...this.metadata,
+      staleStatuses: without(this.metadata.staleStatuses),
+      lostStatuses: without(this.metadata.lostStatuses),
+    };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
   }
   /** A stale status is either being read again, and a write can wait for it,
    * or its read failed, and a write is refused until a check reads again. */

@@ -1378,6 +1378,54 @@ describe("recent conversation windows", () => {
     expect(store.statusStale(agent)).toBe(false);
     expect(store.status(agent)?.state).toBe("accepted");
   });
+  it("settles a stale status when its own re-read is older than one held since", async () => {
+    // A daemon restart's re-read crossed by a newer status from another
+    // reader: dropping the older read must not leave the status stale.
+    const agent = id(1);
+    const cursor = (n: number) =>
+      `ev1:11111111-1111-4111-8111-111111111111:${n}`;
+    let finish!: (status: unknown) => void;
+    const statusReader = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "idle",
+      journal_cursor: cursor(1),
+    } as never);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: {},
+      cursor: cursor(2),
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 2,
+      event_id: "settle",
+    } as never);
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "idle",
+      journal_cursor: cursor(4),
+    } as never);
+    expect(store.statusStale(agent)).toBe(true);
+    // The crossing makes the store read once more; that read is older still.
+    finish({ agent_id: agent, state: "idle", journal_cursor: cursor(3) });
+    await flush();
+    finish({ agent_id: agent, state: "idle", journal_cursor: cursor(3) });
+    await flush();
+    expect(store.statusStale(agent)).toBe(false);
+    expect(store.status(agent)?.journal_cursor).toBe(cursor(4));
+  });
   it("keeps a nested recovery read owning the loading flag after the original tail settles", async () => {
     const agent = id(1);
     let finishTail!: (p: HistoryPage) => void;

@@ -68,3 +68,27 @@ Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i2-*.log`.
   with a reason if the read then fails, or if the person leaves. On a slow read
   the person briefly sees the message waiting as a kept bubble instead of a
   refusal.
+
+## Review
+
+This changes product behaviour, so it got a targeted `/llm-review`: one finder,
+gpt-6-astra, with every candidate checked locally. Both candidates were real
+and are fixed in a follow-up commit, with a store test that fails without the
+fix:
+
+1. A status read by `useConversation.refresh` *before* the invalidating event
+   cleared the stale mark while the store's own re-read was still in flight.
+   A kept message could then have gone on that older knowledge. A manual press
+   could already do the same before this change. Now only the store's own
+   re-read clears the mark.
+2. A superseded failed re-read could mark a fresh status lost. Now only a
+   still-stale status is marked lost.
+
+The whole-file run at `OH_CPU_THROTTLE=4` then caught a hole in fix 1. After a
+daemon restart, another reader applied a newer status while the store's
+re-read was in flight. The re-read came back older than that status and was
+dropped without settling the stale mark, so "status out of date" stayed and
+the lost send was never re-sent. A store re-read is taken after the
+invalidating event, so any status already held that is newer than it is fresh.
+Now an older re-read settles the mark. The new store test fails without this
+fix.
