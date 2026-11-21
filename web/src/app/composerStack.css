@@ -23,6 +23,11 @@
   padding-block: 0;
   margin-block: 0;
 }
+.ah-state .ah-composer-stack > .ah-conversation-notices > *,
+.ah-state .ah-composer-stack > .ah-actionable-notices > *,
+.ah-state .ah-composer-stack > .ah-composer-hold > .ah-composer > * {
+  margin-block: 0;
+}
 .ah-composer-stack > .ah-composer-hold > .ah-composer > .ah-next-waiting,
 .ah-composer-stack > .ah-composer-hold > .ah-composer > .ah-bg-strip {
   padding: 0;
@@ -51,9 +56,4 @@
 .ah-composer-stack > .ah-conversation-notices:empty,
 .ah-composer-stack > .ah-actionable-notices:empty {
   display: none;
-}
-.ah-state .ah-composer-stack > .ah-conversation-notices > *,
-.ah-state .ah-composer-stack > .ah-actionable-notices > *,
-.ah-state .ah-composer-stack > .ah-composer-hold > .ah-composer > * {
-  margin-block: 0;
 }
