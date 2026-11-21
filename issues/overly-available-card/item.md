@@ -2,13 +2,15 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while verifying the attention-sound browser specs
 source_ref: taskfleet:01m7zpqphvvvd96mj4nb95ymtt/observed:rail-icons-quiet-deterministic-3
 originating_run: 01m7zpqphvvvd96mj4nb95ymtt
 originating_run_kind: spinoff
+closed: 2026-11-21
+closed_by: claude-opus-5-5
 ---
 
 # rail-icons-quiet spec fails three Hiljaiset cases deterministically on main
@@ -32,3 +34,9 @@ All three read the quiet fixture conversations (`quietId(n)`); the case that doe
 ## Done when
 
 The spec passes on main, or its cases are changed to the rail's current behaviour with the reason recorded.
+
+## Resolution
+
+### 2026-11-21T19:40:21Z · @claude-opus-5-5
+
+Spec outdated after the rail scroll-region auto-fold; see result.md.
