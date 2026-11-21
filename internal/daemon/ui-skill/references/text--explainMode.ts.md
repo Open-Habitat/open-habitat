@@ -1037,8 +1037,8 @@ const fi = {
     },
     V36: {
       name: "Liitteen eteneminen",
-      lead: "Rengas ja prosentti näyttävät, kuinka paljon tiedostosta on lähtenyt. Tallennetaan tarkoittaa, että se odottaa vielä vahvistusta.",
-      know: "Lähetä odottaa kaikkia liitteitä. Viesti lähtee vasta, kun painat sitä itse.",
+      lead: "Merkin rengas ja prosentti näyttävät, kuinka paljon tiedostosta on lähtenyt.",
+      know: "Suljettu ovi ja Tallessa: tiedosto on tallessa. Lähetä odottaa kaikkia liitteitä, ja viesti lähtee vasta, kun painat sitä.",
     },
     V37: {
       name: "Peru tiedoston liittäminen",
@@ -2867,8 +2867,8 @@ export const explainModeText = catalog(fi, {
     },
     V36: {
       name: "Attachment progress",
-      lead: "The ring and percentage show how much of the file has left your device. Saving means it still awaits confirmation.",
-      know: "Send waits for every attachment. The message leaves only when you press Send yourself.",
+      lead: "The mark's ring and percentage show how much of the file has left.",
+      know: "A shut door and Saved: the file is safe. Send waits for every attachment, and the message leaves only when you press it.",
     },
     V37: {
       name: "Cancel attaching a file",

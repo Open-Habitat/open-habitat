@@ -135,6 +135,8 @@ A label alone does not establish that a control is available to this person.
 - [text/githubRepoChooser.ts](text--githubRepoChooser.ts.md)
 - [text/gitlab.tsx](text--gitlab.tsx.md)
 - [text/goalChip.ts](text--goalChip.ts.md)
+- [text/googleConnect.ts](text--googleConnect.ts.md)
+- [text/googleGuide.tsx](text--googleGuide.tsx.md)
 - [text/guide.ts](text--guide.ts.md)
 - [text/heldMessages.ts](text--heldMessages.ts.md)
 - [text/helperArchive.ts](text--helperArchive.ts.md)

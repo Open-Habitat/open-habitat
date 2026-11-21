@@ -1564,6 +1564,7 @@ function HistoryViewContent({
   onLogin,
   store,
   onRestore,
+  archiveNotice,
   onArchive,
   onTitleComplete,
   onRename,
@@ -1577,7 +1578,8 @@ function HistoryViewContent({
   workspaceId: string;
   onLogin: () => void;
   store: ConversationStore;
-  onRestore?: () => void;
+  onRestore?: (origin?: "foot") => void;
+  archiveNotice?: React.ReactNode;
   onArchive?: () => void;
   onTitleComplete?: () => void;
   onRename?: (id: string, name: string) => Promise<void>;
@@ -2109,7 +2111,8 @@ function HistoryViewContent({
               onRestore: () => {},
             }).reason || undefined
           }
-          onRestore={() => onRestore?.()}
+          onRestore={() => onRestore?.("foot")}
+          notice={archiveNotice}
         >
           {helpersOn ? <ArchivedHelpers agent={agent.agent_id} /> : null}
         </ArchivedFoot>

@@ -31,6 +31,7 @@ const icons: Record<NoticeKind, IconName> = {
  * composer. */
 export function ArchiveNotice({
   kind = "archive",
+  inline = false,
   title,
   busy,
   problem,
@@ -42,6 +43,8 @@ export function ArchiveNotice({
   link,
 }: {
   kind?: NoticeKind;
+  /** Stay beside the initiating control instead of joining the top notice area. */
+  inline?: boolean;
   /** Bold after the message; absent when the message says it all. */
   title?: string;
   message?: string;
@@ -58,7 +61,7 @@ export function ArchiveNotice({
   link?: { label: string; onPress: () => void };
 }) {
   const t = useText(archiveNoticeText);
-  const notice = useNotice(kind, !!onRestore, onClose);
+  const notice = useNotice(kind, !!onRestore, onClose, inline);
   const row = useRef<HTMLElement>(null);
   const remaining = useRef(NOTICE_LIFETIME_MS);
   useEffect(() => {

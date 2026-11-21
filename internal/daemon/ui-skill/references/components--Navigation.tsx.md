@@ -594,7 +594,8 @@ export interface RailArchive {
   /** An unwritten conversation closes rather than entering the archive. */
   closes?: (agentId: string) => boolean;
   reason: (agentId: string) => string;
-  run: (agentId: string) => void;
+  /** leave moves the keyboard on, called when the row leaves the list. */
+  run: (agentId: string, leave?: () => void) => void;
 }
 /** The rail's state ball (research-workmux-sidebar round 3, Ryhmät tiiviinä):
  * working includes waiting on background work, your turn is a question or an
@@ -922,9 +923,12 @@ export function AgentNavItem({
                             ) ?? []),
                         ];
                         const here = rows.findIndex((r) => row?.contains(r));
-                        if (row?.contains(document.activeElement))
-                          (rows[here + 1] ?? rows[here - 1])?.focus();
-                        archive.run(agentId);
+                        const next = row?.contains(document.activeElement)
+                          ? (rows[here + 1] ?? rows[here - 1])
+                          : undefined;
+                        // Only once the row really leaves: an archive that
+                        // asks first keeps focus here until it is answered.
+                        archive.run(agentId, () => next?.focus());
                       }}
                     >
                       <Icon name={closes ? "cross" : "archive"} />

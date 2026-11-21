@@ -306,6 +306,7 @@ function BrowserConversationContent({
   workspace,
   archive,
   onArchive,
+  archiveNotice,
   onClose,
   onRename,
   archiveBusy,
@@ -339,7 +340,12 @@ function BrowserConversationContent({
   github?: ReactNode;
   workspace: Workspace;
   archive?: Agent;
-  onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
+  onArchive?: (
+    agent: Agent,
+    archived: boolean,
+    origin?: "foot",
+  ) => Promise<boolean>;
+  archiveNotice?: ReactNode;
   onClose?: (agent: Agent) => Promise<unknown>;
   onRename?: (id: string, name: string, workspaceId: string) => Promise<void>;
   archiveBusy?: boolean;
@@ -3657,7 +3663,8 @@ function BrowserConversationContent({
               <ArchivedFoot
                 archivedAt={archive.archived_at}
                 restoreReason={archiveAction(headerArchive).reason || undefined}
-                onRestore={headerArchive.onRestore}
+                onRestore={() => void onArchive?.(archive, false, "foot")}
+                notice={archiveNotice}
               >
                 {helpersOn && id ? <ArchivedHelpers agent={id} /> : null}
               </ArchivedFoot>
