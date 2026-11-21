@@ -3,7 +3,7 @@ created: 2026-11-14
 updated: 2026-11-21
 type: improvement
 reporter: Jari Mustonen
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m7dndj5tkgpnew9syvxrkc00/upload-animation-uses-mark
@@ -12,6 +12,10 @@ originating_run_kind: spinoff
 preparation: ready
 lane: upload-mark-proto
 lane_seq: 1
+closed: 2026-11-21
+commits:
+- hash: 1ee57d4b
+  summary: upload progress draws the Open Habitat mark
 ---
 
 # Attachment upload animation uses the Open Habitat mark
@@ -44,3 +48,9 @@ implementation.
 ### 2026-11-21T08:10:32Z · @jari
 
 Jari 21.11.2026: direction 1 Merkki täyttyy is ok, but the percentage and the file-name chip sat right against each other — give them proper spacing. The 'Tallessa' moment (closed door, ~1.2 s) before the chip turns into the file: yes. Next action: implement.
+
+## Resolution
+
+### 2026-11-21T08:31:48Z · @issuectl
+
+Direction 1 implemented in production; result.md has checks, evidence path and decisions for review.
