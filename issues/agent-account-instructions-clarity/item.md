@@ -55,3 +55,9 @@ Jari 21.11.2026: do not remove the mailbox-administration tools; they are useful
 ### 2026-11-21T10:04:59Z · @jari
 
 Jari 21.11.2026 on research-topics: confirmation for deletes and calendar sharing is ok; prototype the confirmation question and the iconography of its icon. Asked again why five areas cost about 750 MB (conductor explains; proposes one shared server per person).
+
+## Agent Runs
+
+### 2026-11-21T10:15:13Z · @agent
+
+Permission prototype round 2026-11-21-account-action-permission: three placements of the question (recommended 1 Kortti) and five icon candidates (recommended shield with question); see result-permission.md. Open host piece: the card needs a typed permission question in contracts/v1.
