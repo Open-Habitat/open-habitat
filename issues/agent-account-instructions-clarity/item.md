@@ -4,7 +4,7 @@ updated: 2026-11-21
 type: improvement
 status: open
 priority: normal
-preparation: pending
+preparation: ready
 lane: agent-instructions
 lane_seq: 1
 ---
@@ -67,6 +67,10 @@ Jari 21.11.2026: one Microsoft MCP server process per person is an absolute requ
 ### 2026-11-21T13:09:31Z · @jari
 
 Jari's further direction during the single-server decision: if category-prefixed searches do not separate file searches adequately, choose a shared HTTP or stdio-multiplexer design restricted to the own Unix user. Waiting for Pi upstream is only a later improvement, never the plan.
+
+### 2026-11-21T13:49:56Z · @jari
+
+Jari 21.11.2026 accepted ADR 0039: every person has one Microsoft process (several accounts share it through the drain-and-switch slot). Implementation goes ahead together with the five areas, the area instruction and the permission hook (deletions and calendar sharing) using the 2 Kenttä permission question.
 
 ## Agent Runs
 

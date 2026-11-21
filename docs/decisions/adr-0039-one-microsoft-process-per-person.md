@@ -1,6 +1,6 @@
 # ADR 0039: one Microsoft process per person, shared through the person's daemon
 
-- Status: Proposed
+- Status: Accepted 2026-11-21 (Jari: one Microsoft process per person)
 - Date: 2026-11-21
 - Decider: Jari Mustonen
 - Issue: `agent-account-instructions-clarity`

@@ -2,13 +2,16 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Technical decision requested by the maintainer
 source_ref: taskfleet:01m7z2ac7zah3xt86cnr1ydmt9/implementation:single-microsoft-process
 originating_run: 01m7z2ac7zah3xt86cnr1ydmt9
 originating_run_kind: technical-decision
+lane: microsoft
+lane_seq: 1
+preparation: ready
 ---
 
 # Share one Microsoft MCP process across a person's conversations
