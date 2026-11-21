@@ -20,6 +20,10 @@ A configuration page for the terminal. Jari 21.11.2026: copying on select (today
 
 - Jari 21.11.2026: prototype the terminal configuration page; copy on select is a setting, off by default.
 
+### 2026-11-21T15:33:47Z · @jari
+
+Jari 21.11.2026: C is right, but the terminal's gear should only open the Settings page. Text size needs a preview. Riff again.
+
 ## Agent Runs
 
 ### 2026-11-21T14:59:59Z · @claude

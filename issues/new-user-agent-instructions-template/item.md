@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/new-user-agent-instructions-template
-preparation: pending
+preparation: ready
 lane: agent-instructions
 lane_seq: 1
 ---
@@ -35,6 +35,10 @@ Jari 21.11.2026 on round 2: direction A Keskustelu, but riff on what the person 
 ### 2026-11-21T12:45:50Z · @jari
 
 Jari 21.11.2026: onboarding — A2 Muistilappu wording is best; A3 Esittely's field behaviour is best (the person can edit a free-form text themselves). Next round combines them, with a free-form step and a language choice. Settings › Tili › Ohjeet agentille — an ordinary Markdown block that opens in an Esikatselu (preview) tab, i.e. direction B Teksti modified; implies a daemon read plus a compare-and-swap write of the instructions file.
+
+### 2026-11-21T15:33:47Z · @jari
+
+Jari 21.11.2026: onboarding A4.1 (language first, own words last); Settings B1; architecture accepted (daemon read plus compare-and-swap write of the instructions file, also used by onboarding's Save). Languages: guess the default from the time zone, the computer's locale settings etc. Asks: where does the agent take its questions from, and can the administrator add questions?
 
 ## Agent Runs
 

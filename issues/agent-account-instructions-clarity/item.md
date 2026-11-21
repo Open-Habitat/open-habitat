@@ -74,6 +74,10 @@ Jari's further direction during the single-server decision: if category-prefixed
 
 Jari 21.11.2026 accepted ADR 0039: every person has one Microsoft process (several accounts share it through the drain-and-switch slot). Implementation goes ahead together with the five areas, the area instruction and the permission hook (deletions and calendar sharing) using the 2 Kenttä permission question.
 
+### 2026-11-21T15:33:47Z · @jari
+
+Jari 21.11.2026: keep send/reply/forward and meeting cancellation behind the permission question too (all 19). The Microsoft agent text is fine as is; no proofreading now.
+
 ## Agent Runs
 
 ### 2026-11-21T10:15:13Z · @agent

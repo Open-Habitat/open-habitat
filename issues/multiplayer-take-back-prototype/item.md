@@ -20,3 +20,7 @@ Täydet oikeudet lends the owner's whole Unix user to a participant through the 
 ## Decisions
 
 - Jari 21.11.2026: accepted that Täydet oikeudet means the owner's Unix user; asked for a prototype round on revoke/take-back ideas.
+
+### 2026-11-21T15:33:47Z · @jari
+
+Jari 21.11.2026: direction 1 Heti. The participant's run in progress continues as text only. The participant's processes: offer stopping (not automatic) — prototype that.

@@ -55,3 +55,7 @@ Jari 21.11.2026 on workspace sound round 2: try C Asetusnauha, riffed so all the
 ### 2026-11-21T14:45:59Z · @jari
 
 Jari 21.11.2026 on workspace strip round 3: B Leveät painikkeet is good; try variable-width buttons sized by what they need — square buttons for Kuvake and Ääni (icon and sound emblem), a flatter wider button for Nimi.
+
+### 2026-11-21T15:33:47Z · @jari
+
+Jari 21.11.2026 on emblems round 7: Tunnus puu current; Lasit: Lasin reuna; Kuplat current; Kulho: Huojunta; Jääpuikot: Helähdys; all others as recommended. Workspace strip round 4: A Yksi rivi; next round Kuvake and Nimi open their real editors.
