@@ -24,6 +24,10 @@ type Frame = {
   strip: number[] | null;
   progress: number[] | null;
   mode: string | null;
+  /** The turn's final reply is drawn. */
+  replied: boolean;
+  /** Agent turns drawn. */
+  turns: number;
 };
 type Measurement = {
   frames: Frame[];
@@ -204,6 +208,11 @@ for (const width of [1440, 390]) {
                 document
                   .querySelector('[data-testid="send"]')
                   ?.getAttribute("data-mode") ?? null,
+              replied: !!document.querySelector(
+                '[data-testid="stage-reply"][data-reply-role="final"]',
+              ),
+              turns: document.querySelectorAll('[data-testid="agent-turn"]')
+                .length,
             };
             const json = JSON.stringify(state);
             if (json !== previous)
@@ -289,12 +298,23 @@ for (const width of [1440, 390]) {
         // once shown it stays until Stop turns back into Send, and goes in
         // the same frame.
         const shown = measurement.frames.findIndex((f) => f.progress);
-        expect(shown).toBeGreaterThanOrEqual(0);
-        expect(
-          measurement.frames
-            .slice(shown)
-            .every((f) => !!f.progress === (f.mode === "steer")),
-        ).toBe(true);
+        // Under load the saved final reply can be read before any status
+        // says the run is active, or before any streamed part drew the turn:
+        // the turn is then drawn finished, and a status lagging behind it
+        // does not revive it (the turn-end hold holds only a turn drawn
+        // running), so it has no activity line. A turn drawn unfinished
+        // while the status says it runs always has one.
+        const drawnRunning = measurement.frames.some(
+          (f) => f.turns > 0 && !f.replied && f.mode === "steer",
+        );
+        if (drawnRunning) expect(shown).toBeGreaterThanOrEqual(0);
+        else expect(shown).toBe(-1);
+        if (shown >= 0)
+          expect(
+            measurement.frames
+              .slice(shown)
+              .every((f) => !!f.progress === (f.mode === "steer")),
+          ).toBe(true);
         // Stricter than web-vital CLS: count shifts even during the 500ms
         // recent-input exemption, where the original flicker often hid.
         const shift = measurement.shifts.reduce((sum, s) => sum + s.value, 0);

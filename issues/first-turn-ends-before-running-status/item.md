@@ -2,7 +2,7 @@
 created: 2026-11-17
 updated: 2026-11-21
 type: bug
-status: open
+status: fixed
 priority: low
 provenance: other
 provenance_detail: worker observation in lab stress
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: test-stability
 lane_seq: 5
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Activity line never shown when a first turn ends before its first running status (heavy-load lab)
@@ -27,3 +28,9 @@ What happens: the synthetic Pi turn finishes and its history (user message plus 
 The turn-end hold (`timelineItems` `wasRunning`) deliberately never revives a turn that was not drawn running. Options: accept this as correct (status lags a turn that has already ended) and make the spec's "shown" expectation conditional on a running frame existing before the saved final reply; or treat the newest turn after the person's own just-sent message as running while the status says so. The second option touches the authority rule `turn-end-jitter` chose.
 
 Reproduce: `OH_CPU_THROTTLE=6 OH_REPLY_DELAY_MS=250 OH_BROWSER_WORKERS=4 npx playwright test --config playwright.lab.config.ts tests/lab-first-message-flicker.spec.ts --grep "390 creating" --repeat-each 30` from `web/`.
+
+## Resolution
+
+### 2026-11-21T18:20:00Z · @issuectl
+
+Decided: a turn drawn finished before any running status gets no activity line; spec states that rule. See result.md.
