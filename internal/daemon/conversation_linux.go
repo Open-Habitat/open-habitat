@@ -1006,6 +1006,18 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		c.holdLocked(w, s, body.Message, body.CommandID, body.FirstChoice)
 		return
 	}
+	// A participant's message or a release still waits for this live Pi:
+	// the owner's send queues behind it, in arrival order, and is never
+	// joined with it (turn_modes_linux.go).
+	if kind == "send" && len(s.guestHeld) > 0 {
+		if archiveState != "active" || body.FirstChoice != nil {
+			c.mu.Unlock()
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+		c.holdBehindGuestLocked(w, s, body.Message, body.CommandID)
+		return
+	}
 	// A child whose input this daemon has closed (a cut-off write) is ending:
 	// a message now would reach no Pi.
 	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.rpc.inputEndCause() != "" || len(s.commands) >= maxConversationCommands {

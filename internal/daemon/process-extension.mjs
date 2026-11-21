@@ -798,24 +798,48 @@ export function releaseLineMessage(l) {
   };
 }
 const customOf = entry => (entry?.type === 'custom_message' ? entry : entry?.message?.role === 'custom' ? entry.message : null);
-const turnModeEntry = d => !!d && turnModes.includes(d.mode) && ['owner', 'participant', 'continue', 'kept', 'revoked', 'approved_all'].includes(d.by) && (d.covers === 0 || d.covers === 1);
+const turnModeEntry = d => !!d && turnModes.includes(d.mode) && ['owner', 'participant', 'continue', 'kept', 'revoked', 'approved_all'].includes(d.by) && (d.covers === 0 || d.covers === 1) && (d.steer === undefined || d.steer === true);
+const isTurnModeEntry = entry => entry?.type === 'custom' && entry.customType === turnModeType && turnModeEntry(entry.data);
+// Which user messages of the branch were the owner's input. A run's start
+// decision (covers: 1) is written just before its starting message and
+// covers only the next user message; a newer one replaces it, so a run that
+// never started leaves nothing to transfer. A queued steer or follow-up is
+// attributed once Pi has delivered it, by an entry right after it (steer:
+// true): one the owner cleared from the queue never reaches the branch, so it
+// can attribute nothing. A user message with neither is the owner's: a
+// terminal Pi loads no companion, and its turns are the owner's.
+function ownerInputs(branch) {
+  const owner = new Set();
+  let slot = null;
+  for (let i = 0; i < branch.length; i++) {
+    const entry = branch[i];
+    if (isTurnModeEntry(entry)) {
+      if (entry.data.covers === 1) slot = entry.data.by;
+      continue;
+    }
+    if (entry?.type !== 'message' || entry.message?.role !== 'user') continue;
+    let by = slot ?? 'owner';
+    slot = null;
+    const next = branch[i + 1];
+    if (isTurnModeEntry(next) && next.data.steer === true) by = next.data.by;
+    if (by === 'owner') owner.add(entry);
+  }
+  return owner;
+}
 // The mode a new Pi starts in, from the current branch (ADR 0038 section 4).
 // The latest owner input, participant message, release line or recorded
 // decision decides. A participant message always gives text_only, even from a
-// full-rights author, because the role may have changed since. A user
-// message is owner input unless the companion recorded that it covers it
-// (an extension's sendUserMessage keeps the mode it found); a terminal Pi
-// loads no companion, and its turns are the owner's. Compaction summaries
-// are not used: the entries stay in the branch.
+// full-rights author, because the role may have changed since. An
+// extension's sendUserMessage keeps the mode it found (ownerInputs).
+// Compaction summaries are not used: the entries stay in the branch.
 export function turnModeFromBranch(branch) {
   let mode = 'tools', shared = false;
-  const covering = [];
+  const owner = ownerInputs(branch);
   for (const entry of branch) {
-    if (entry?.type === 'custom' && entry.customType === turnModeType && turnModeEntry(entry.data)) {
+    if (isTurnModeEntry(entry)) {
       const d = entry.data;
       shared = true;
       mode = d.by === 'participant' ? 'text_only' : d.mode;
-      if (d.covers === 1) covering.push(d.by);
       continue;
     }
     const custom = customOf(entry);
@@ -825,10 +849,7 @@ export function turnModeFromBranch(branch) {
       if (custom.details?.kind === 'continue' && (custom.details.mode === 'tools' || custom.details.mode === 'approve_each')) mode = custom.details.mode;
       continue;
     }
-    if (entry?.type === 'message' && entry.message?.role === 'user') {
-      const by = covering.shift() ?? 'owner';
-      if (by === 'owner') mode = 'tools';
-    }
+    if (owner.has(entry)) mode = 'tools';
   }
   return { mode, shared };
 }
@@ -837,12 +858,8 @@ export function turnModeFromBranch(branch) {
 // settles the newest one; older ones stay open (ADR 0038 section 5).
 export function waitingRequests(branch) {
   const waiting = [];
-  const covering = [];
+  const owner = ownerInputs(branch);
   for (const entry of branch) {
-    if (entry?.type === 'custom' && entry.customType === turnModeType && turnModeEntry(entry.data)) {
-      if (entry.data.covers === 1) covering.push(entry.data.by);
-      continue;
-    }
     const custom = customOf(entry);
     if (custom?.customType === participantMessageType) {
       const d = custom.details;
@@ -854,7 +871,7 @@ export function waitingRequests(branch) {
       if (at >= 0) waiting.splice(at, 1);
       continue;
     }
-    if (entry?.type === 'message' && entry.message?.role === 'user' && (covering.shift() ?? 'owner') === 'owner') waiting.pop();
+    if (owner.has(entry)) waiting.pop();
   }
   return waiting;
 }
@@ -922,6 +939,8 @@ export default function (pi) {
   // Idle user input not yet started as a run: its source decides whether the
   // run is the owner's. Pruned by age; a failed prompt leaves its entry.
   const pendingInputs = [];
+  const queuedInputs = []; // steering and follow-ups queued during this run, until delivered
+  let startPending = false; // a user-started run's own message is the next user message
   let approvalChain = Promise.resolve();
   const ownerSource = s => s === 'rpc' || s === 'interactive';
   function conversationKey() {
@@ -930,12 +949,16 @@ export default function (pi) {
   }
   // Recorded only once other people are in the conversation, so an
   // ordinary conversation's history gains nothing.
-  function setTurn(next, covers = 0) {
+  // covers: 1 marks a run's start decision, written just before its
+  // starting message; steer marks the attribution of a delivered steer or
+  // follow-up, written right after it (ownerInputs).
+  function setTurn(next, { covers = 0, steer = false } = {}) {
     turn = { mode: next.mode, by: next.by, subject: next.subject ?? null, generation: next.generation ?? 0, request: next.request ?? null };
     if (turn.mode !== 'tools') shared = true;
     if (!shared) return;
-    try { pi.appendEntry(turnModeType, { schema_version: 1, mode: turn.mode, by: turn.by, covers, ...(turn.subject ? { subject: turn.subject } : {}), ...(turn.request ? { request: turn.request } : {}) }); } catch {}
+    try { pi.appendEntry(turnModeType, { schema_version: 1, mode: turn.mode, by: turn.by, covers, ...(steer ? { steer: true } : {}), ...(turn.subject ? { subject: turn.subject } : {}), ...(turn.request ? { request: turn.request } : {}) }); } catch {}
   }
+  const keptBy = () => (turn.by === 'participant' ? 'participant' : 'kept');
   function rebuildTurn(ctx) {
     let rebuilt;
     try { rebuilt = turnModeFromBranch(ctx.sessionManager.getBranch()); }
@@ -990,7 +1013,12 @@ export default function (pi) {
   // Claude bridge's built-in WebSearch and WebFetch run outside Pi's tool
   // dispatch, so they are off unless the run has all its tools. Read per
   // provider request and per bridge query.
-  globalThis[turnModeApiKey] = Object.freeze({ webTools: () => turn.mode === 'tools' });
+  globalThis[turnModeApiKey] = Object.freeze({ webTools: () => {
+    // The same recheck as a call: a revoke whose message was lost still
+    // takes the web tools of a full-rights run away.
+    if (turn.mode === 'tools' && grantLost()) setTurn({ ...turn, mode: 'text_only', by: 'revoked' });
+    return turn.mode === 'tools';
+  } });
   const ask =(channel, args = {}, allOwners = false) => new Promise((resolve, reject) => {
     let done = false;
     const replies = [];
@@ -1231,9 +1259,28 @@ export default function (pi) {
       if (pendingInputs.length < 32) pendingInputs.push({ owner: ownerSource(event?.source), at: now });
       return;
     }
-    if (ownerSource(event.source)) setTurn({ mode: 'tools', by: 'owner' }, 1);
-    else if (shared) setTurn({ ...turn, by: turn.by === 'participant' ? 'participant' : 'kept' }, 1);
+    // Who queued it is attributed when Pi delivers it (message_end): the
+    // owner may clear the queue before then.
+    if (queuedInputs.length < 64) queuedInputs.push({ owner: ownerSource(event.source), text: String(event.text ?? '') });
+    if (ownerSource(event.source)) setTurn({ mode: 'tools', by: 'owner' });
   });
+  // A delivered steer or follow-up is attributed right after it, matched to
+  // what was queued by its text; when that cannot tell, an extension's
+  // pending input wins (fail closed), and a user message nobody queued
+  // through the input event is not taken for the owner's.
+  pi.on('message_end', event => {
+    const m = event?.message;
+    if (m?.role !== 'user') return;
+    if (startPending) { startPending = false; return; }
+    const text = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.filter(b => b?.type === 'text').map(b => b.text).join('\n') : '';
+    let at = queuedInputs.findIndex(q => q.text === text);
+    if (at < 0) at = queuedInputs.findIndex(q => !q.owner);
+    if (at < 0 && queuedInputs.length) at = 0;
+    const source = at >= 0 ? queuedInputs.splice(at, 1)[0] : { owner: false };
+    if (source.owner) setTurn({ mode: 'tools', by: 'owner' }, { steer: true });
+    else if (shared) setTurn({ ...turn, by: keptBy() }, { steer: true });
+  });
+  pi.on('agent_settled', () => { queuedInputs.length = 0; startPending = false; });
   // The run's mode, from the message that starts it (ADR 0038 section 4).
   pi.on('before_agent_start', event => {
     if (event?.messageType === 'user') {
@@ -1241,9 +1288,10 @@ export default function (pi) {
       // keeps the mode it finds; while one is pending, so does a run that
       // cannot be told apart from it.
       const extension = pendingInputs.findIndex(p => !p.owner);
-      if (pendingInputs.length && extension < 0) { pendingInputs.shift(); setTurn({ mode: 'tools', by: 'owner' }, 1); return; }
+      startPending = true;
+      if (pendingInputs.length && extension < 0) { pendingInputs.shift(); setTurn({ mode: 'tools', by: 'owner' }, { covers: 1 }); return; }
       if (extension >= 0) pendingInputs.splice(extension, 1);
-      if (shared) setTurn({ ...turn, by: turn.by === 'participant' ? 'participant' : 'kept' }, 1);
+      if (shared) setTurn({ ...turn, by: keptBy() }, { covers: 1 });
       return;
     }
     const m = event?.message;
@@ -1261,7 +1309,7 @@ export default function (pi) {
     // A wake, a scheduled wake, a process notification: the mode stays, so a
     // process the owner's turn started that ends after a participant spoke
     // wakes the agent text-only.
-    if (shared) setTurn({ ...turn, by: turn.by === 'participant' ? 'participant' : 'kept' });
+    if (shared) setTurn({ ...turn, by: keptBy() });
   });
   pi.on('tool_execution_start', event => {
     if (event.toolName !== 'bash') return;
@@ -1291,7 +1339,9 @@ export default function (pi) {
       let input = '';
       socket.on('data', chunk => {
         input += chunk.toString('utf8');
-        if (Buffer.byteLength(input) > 32768) { socket.destroy(); return; }
+        // A participant message (16000 bytes) JSON-escaped at worst six
+        // bytes a byte, with its envelope.
+        if (Buffer.byteLength(input) > 131072) { socket.destroy(); return; }
         const n = input.indexOf('\n');
         if (n < 0) return;
         socket.removeAllListeners('data');

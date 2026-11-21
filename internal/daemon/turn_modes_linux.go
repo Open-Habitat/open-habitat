@@ -46,6 +46,9 @@ type guestHeld struct {
 	at          string
 	// A release: the request it names and the mode it continues in.
 	request, action string
+	// delivering: handed to the companion and not yet known undelivered;
+	// it can no longer be cancelled.
+	delivering bool
 }
 
 // nextHeldSeq orders owner and participant held items as they arrived.
@@ -104,6 +107,9 @@ func (c *ConversationController) cancelParticipantMessage(id string, p guestPart
 	}
 	for i, h := range s.guestHeld {
 		if h.kind == "participant" && h.id == messageID && h.subject == p.Subject {
+			if h.delivering {
+				return nil, 409, "not_held"
+			}
 			s.guestHeld = append(s.guestHeld[:i:i], s.guestHeld[i+1:]...)
 			if c.journal != nil {
 				c.journal.appendInvalidation("pi:" + id)
@@ -163,6 +169,30 @@ func (c *ConversationController) enqueueGuest(id string, item guestHeld) (int, s
 		go c.deliverGuest(s)
 	}
 	return 0, ""
+}
+
+// holdBehindGuestLocked holds the owner's send behind a participant's
+// message or release that still waits for a live Pi, and lets the shared
+// order deliver both. Caller holds c.mu; it is released here.
+func (c *ConversationController) holdBehindGuestLocked(w http.ResponseWriter, s *conversation, message, commandID string) {
+	size := len(message)
+	for _, h := range s.held {
+		size += len(h.text) + 2
+	}
+	if c.closed || s.state == "stopping" || len(s.commands) >= maxConversationCommands || len(s.held)+len(s.guestHeld) >= maxHeldMessages || size > maxHeldBytes {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	s.commands[commandID] = true
+	s.held = append(s.held, heldMessage{id: commandID, text: message, seq: s.nextHeldSeq()})
+	c.receipt(s, commandID, "held")
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
+	c.mu.Unlock()
+	go c.deliverHeld(s)
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": commandID, "state": "held"})
 }
 
 // releaseControl is the owner's answer on a waiting request's card.
@@ -250,12 +280,20 @@ func (c *ConversationController) deliverGuest(s *conversation) {
 			batch = append(batch, next.id)
 		}
 	}
+	for i := range s.guestHeld {
+		if containsString(batch, s.guestHeld[i].id) {
+			s.guestHeld[i].delivering = true
+		}
+	}
 	s.waking = true
 	generation := s.rpc.processGeneration
 	c.mu.Unlock()
 	release := func(drop bool) {
 		c.mu.Lock()
 		s.waking = false
+		for i := range s.guestHeld {
+			s.guestHeld[i].delivering = false
+		}
 		if drop {
 			kept := s.guestHeld[:0]
 			for _, h := range s.guestHeld {
@@ -322,10 +360,11 @@ func (c *ConversationController) deliverGuest(s *conversation) {
 	}
 	s.guestHeld = kept
 	s.lastUsed = time.Now()
-	declined := head.kind == "release" && head.action == "decline"
+	// A decline starts no run, and a retry that finds the item already in
+	// the branch starts none either: the next item may go at once.
+	noRun := head.kind == "release" && head.action == "decline" || outcome.Reason == "already_delivered"
 	c.mu.Unlock()
-	if declined {
-		// A decline starts no run: the next item may go at once.
+	if noRun {
 		release(false)
 		go c.deliverHeld(s)
 		return
@@ -343,6 +382,9 @@ func (c *ConversationController) deliverGuest(s *conversation) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	release(false)
+	// What waits behind it goes when Pi is free again: if the run already
+	// settled, no later settle will dispatch it.
+	go c.deliverHeld(s)
 }
 
 func containsString(list []string, v string) bool {

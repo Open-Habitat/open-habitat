@@ -28,6 +28,7 @@ type guestTurnFixture struct {
 	requests []map[string]any
 	busy     bool
 	reason   string // a refusal reason other than busy
+	already  bool   // the item is already in the branch (a retry after a lost reply)
 }
 
 func newGuestTurnFixture(t *testing.T) *guestTurnFixture {
@@ -54,6 +55,9 @@ func newGuestTurnFixture(t *testing.T) *guestTurnFixture {
 		case q["op"] == "participant_message" || q["op"] == "release":
 			f.requests = append(f.requests, q)
 			reply["data"] = map[string]any{"delivered": true}
+			if f.already {
+				reply["data"] = map[string]any{"delivered": true, "reason": "already_delivered"}
+			}
 		default:
 			reply["data"] = map[string]any{"written": true}
 		}
@@ -391,5 +395,69 @@ for line in sys.stdin:
 		if !strings.Contains(log, want) {
 			t.Fatalf("Pi did not receive %s:\n%s", want, log)
 		}
+	}
+}
+
+// A message being handed to the companion can no longer be taken back; an
+// owner's send queues behind a waiting participant message instead of
+// overtaking it; a retry that finds the message already delivered waits for
+// no run.
+func TestGuestDeliveryReservesOrdersAndDoesNotWaitForAnAlreadyDeliveredItem(t *testing.T) {
+	f := newGuestTurnFixture(t)
+	f.c.mu.Lock()
+	f.s.runActive = true
+	f.c.mu.Unlock()
+	reply, _, _ := f.c.holdParticipantMessage(memberConv, ville, "guest first")
+	id := reply["message_id"].(string)
+	f.c.mu.Lock()
+	f.s.guestHeld[0].delivering = true
+	f.c.mu.Unlock()
+	if _, status, code := f.c.cancelParticipantMessage(memberConv, ville, id); status != 409 || code != "not_held" {
+		t.Fatalf("cancel during delivery: %d %s", status, code)
+	}
+	f.c.mu.Lock()
+	f.s.guestHeld[0].delivering = false
+	f.s.runActive = false
+	f.s.waking = true // the delivery goroutine's hold, so nothing is sent meanwhile
+	f.c.mu.Unlock()
+	body, _ := json.Marshal(map[string]string{"message": "owner later", "command_id": "0f8fad5b-d9cb-469f-a165-70867728950f"})
+	req := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+memberConv+"/send", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	f.c.admitMessage(w, req, memberConv, "send", true)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"held"`) {
+		t.Fatalf("owner send while waking: %d %s", w.Code, w.Body.String())
+	}
+	f.c.mu.Lock()
+	f.s.waking = false
+	ownerSeq := f.s.held[0].seq
+	guestSeq := f.s.guestHeld[0].seq
+	first := participantFirst(f.s)
+	f.c.mu.Unlock()
+	if !first || ownerSeq < guestSeq {
+		t.Fatalf("order: owner %d, guest %d", ownerSeq, guestSeq)
+	}
+	// With Pi idle and nothing waking, an owner send still queues behind it.
+	w = httptest.NewRecorder()
+	body, _ = json.Marshal(map[string]string{"message": "owner again", "command_id": "0f8fad5b-d9cb-469f-a165-709999999999"})
+	req = httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+memberConv+"/send", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	f.mu.Lock()
+	f.busy = true // keep the guest item waiting in this step
+	f.mu.Unlock()
+	f.c.admitMessage(w, req, memberConv, "send", true)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"held"`) {
+		t.Fatalf("owner send behind a waiting participant message: %d %s", w.Code, w.Body.String())
+	}
+	f.mu.Lock()
+	f.busy, f.already = false, true
+	f.mu.Unlock()
+	started := time.Now()
+	f.c.deliverGuest(f.s) // no agent_start will come
+	if time.Since(started) > 2*time.Second {
+		t.Fatalf("waited %v for a run an already delivered message never starts", time.Since(started))
+	}
+	if len(f.held()) != 0 {
+		t.Fatal("the already delivered message stayed held")
 	}
 }

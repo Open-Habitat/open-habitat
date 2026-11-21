@@ -104,13 +104,17 @@ async function launch(t, f, { sessionId = randomUUID(), membersRecord } = {}) {
   // Settled runs so far; waitSettled waits for the next one.
   const settledCount = () => events.filter(e => e.type === 'agent_settled').length;
   const waitSettled = async (before) => until(() => settledCount() > before, 'agent_settled');
-  const bridge = request => new Promise((ok, fail) => {
+  // goEscape writes the request as Go's encoding/json does (<, > and & as
+  // \u003c and so on), the daemon's own encoding.
+  const bridge = (request, { goEscape = false } = {}) => new Promise((ok, fail) => {
     const c = net.createConnection(socket);
     let data = '';
     c.on('error', fail);
     c.on('data', d => { data += d; });
     c.on('end', () => { try { ok(JSON.parse(data)); } catch (e) { fail(e); } });
-    c.write(JSON.stringify({ session_id: sessionId, generation, ...request }) + '\n');
+    let line = JSON.stringify({ session_id: sessionId, generation, ...request });
+    if (goEscape) line = line.replace(/[<>&]/g, ch => `\\u00${ch.charCodeAt(0).toString(16)}`);
+    c.write(line + '\n');
   });
   await rpc({ type: 'get_state' });
   for (let i = 0; i < 100 && !existsSync(socket); i++) await new Promise(r => setTimeout(r, 50));
@@ -176,6 +180,16 @@ test('a participant\'s turn blocks a parallel batch and nested codemode calls, w
   assert.deepEqual(await marks(f), ['owner']);
 });
 
+test('the longest participant message reaches the companion even as Go escapes it', async t => {
+  const f = await fixture(t);
+  const pi = await launch(t, f);
+  f.provider.queue.push({ text: 'Read it.' });
+  const from = pi.settledCount();
+  const reply = await pi.bridge({ op: 'participant_message', message: message({ text: '<'.repeat(16000) }) }, { goEscape: true });
+  assert.deepEqual(reply.data, { delivered: true });
+  await pi.waitSettled(from);
+});
+
 test('an extension\'s sendUserMessage after a participant\'s turn keeps it text-only', async t => {
   const f = await fixture(t);
   const pi = await launch(t, f);
@@ -192,6 +206,41 @@ test('an extension\'s sendUserMessage after a participant\'s turn keeps it text-
   assert.ok(blocked?.isError && JSON.stringify(blocked.result).includes('no tools'), JSON.stringify(blocked));
   // The decision is in the branch, so a restart would read it the same way.
   assert.equal(turnModeFromBranch(branchOf(f, pi.sessionId)).mode, 'text_only');
+});
+
+test('a queued owner follow-up the owner cleared transfers nothing to a later extension message', async t => {
+  const f = await fixture(t);
+  const pi = await launch(t, f);
+  // A shared conversation: a participant spoke first.
+  f.provider.queue.push({ text: 'I would.' });
+  let from = pi.settledCount();
+  const request = message();
+  await pi.bridge({ op: 'participant_message', message: request });
+  await pi.waitSettled(from);
+  // The owner's run; during it they queue a follow-up and clear it again.
+  let go;
+  f.provider.queue.push({ text: 'Owner answer.', wait: new Promise(r => { go = r; }) });
+  from = pi.settledCount();
+  const mark = pi.events.length;
+  await pi.rpc({ type: 'prompt', message: 'owner writes' });
+  await pi.until(e => e.type === 'agent_start' && pi.events.indexOf(e) >= mark, 'owner run');
+  await pi.rpc({ type: 'follow_up', message: 'never mind' });
+  await pi.rpc({ type: 'clear_queue' });
+  go();
+  await pi.waitSettled(from);
+  // Another participant message, then an extension's user message.
+  f.provider.queue.push({ text: 'I would too.' });
+  from = pi.settledCount();
+  const second = message({ text: 'And the cache.' });
+  await pi.bridge({ op: 'participant_message', message: second });
+  await pi.waitSettled(from);
+  f.provider.queue.push({ text: 'Extension turn.' });
+  from = pi.settledCount();
+  await pi.rpc({ type: 'prompt', message: '/ext-send' });
+  await pi.waitSettled(from);
+  const branch = branchOf(f, pi.sessionId);
+  assert.equal(turnModeFromBranch(branch).mode, 'text_only', 'a restart now would give no tools');
+  assert.deepEqual(waitingRequests(branch).map(w => w.message_id), [second.message_id], 'the extension message settles no request');
 });
 
 test('a restart between a participant\'s message and a scheduled wake keeps the wake text-only', async t => {
@@ -304,6 +353,32 @@ test('a full-rights message gets tools only while the record gives them; the rec
   await pi.bridge({ op: 'participant_message', message: message({ role: 'full_rights', generation: 7 }) });
   await pi.waitSettled(from);
   assert.deepEqual(await marks(f), []);
+});
+
+test('web tools follow the grant as tool calls do, also when the revoke message was lost', async t => {
+  const f = await fixture(t);
+  f.sessionId = randomUUID();
+  const path = await record(f, 'full_rights', 5);
+  const handlers = {};
+  const saved = process.env.OPEN_HABITAT_MEMBERS_RECORD;
+  process.env.OPEN_HABITAT_MEMBERS_RECORD = path;
+  t.after(() => { if (saved === undefined) delete process.env.OPEN_HABITAT_MEMBERS_RECORD; else process.env.OPEN_HABITAT_MEMBERS_RECORD = saved; });
+  const { default: load } = await import('../process-extension.mjs');
+  load({ on: (name, h) => { (handlers[name] ??= []).push(h); }, appendEntry() {}, registerTool() {}, registerCommand() {}, sendMessage() {}, events: { on() {}, emit() {} } });
+  assert.equal(process.env.OPEN_HABITAT_MEMBERS_RECORD, undefined, 'the record path is not left for tools');
+  const ctx = { sessionManager: { getBranch: () => [], getSessionId: () => f.sessionId }, cwd: f.cwd };
+  const saved2 = process.env.OH_PROCESS_SOCKET;
+  delete process.env.OH_PROCESS_SOCKET; // no bridge socket here
+  for (const h of handlers.session_start) await h({}, ctx);
+  if (saved2 !== undefined) process.env.OH_PROCESS_SOCKET = saved2;
+  const api = globalThis[Symbol.for('open-habitat.turn-mode')];
+  const event = { messageType: 'custom', message: participantMessage(message({ role: 'full_rights', generation: 5 })) };
+  for (const h of handlers.before_agent_start) await h(event, ctx);
+  assert.equal(api.webTools(), true, 'a full-rights run has its web tools');
+  await record(f, 'participant', 6);
+  assert.equal(api.webTools(), false, 'the record took them away; no message was needed');
+  const verdict = await handlers.tool_call[0]({ toolName: 'mark', toolCallId: 'c1', input: {} }, ctx);
+  assert.ok(verdict?.block && verdict.terminate, 'and the next call is blocked');
 });
 
 test('pure rules: messages, release lines, branch rebuild, waiting requests and the grant check', () => {
