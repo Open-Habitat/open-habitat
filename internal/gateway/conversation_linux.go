@@ -22,6 +22,10 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		a.processConversation(w, r)
 		return
 	}
+	if m := conversationMembersPath.FindStringSubmatch(path); m != nil && path == r.URL.Path {
+		a.conversationMembers(w, r, m)
+		return
+	}
 	events := path == "/api/v1/events"
 	match := conversationPath.FindStringSubmatch(path)
 	if events {

@@ -52,7 +52,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "terminal-open-urls" ||
     id === "storage-breakdown" ||
     id === "rail-background-door" ||
-    id === "scheduled-wake"
+    id === "scheduled-wake" ||
+    id === "multiplayer"
   )
     body = (
       <>

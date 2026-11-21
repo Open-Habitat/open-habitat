@@ -59,6 +59,10 @@
     {
       "id": "scheduled-wake",
       "landed": true
+    },
+    {
+      "id": "multiplayer",
+      "landed": false
     }
   ],
   "fi": {
@@ -214,6 +218,14 @@
         "shows": "Herätyksen ajan, agentin muistiinpanon ja Open Habitatin rivin keskustelussa, kun agentti herätettiin, myös jos herätys myöhästyi palvelimen ollessa poissa. Arkistointi kysyy ensin ja perii odottavat herätykset; ilmoituksen Palauta tuo ne takaisin.",
         "needs": "Ei muuta. Herätyksen asettaa aina agentti, kun pyydät. Enintään 100 odottavaa herätystä, ei toistuvia.",
         "caption": "Herätys"
+      },
+      "multiplayer": {
+        "name": "Muut ihmiset keskustelussa",
+        "desc": "Kutsu toinen tämän palvelimen käyttäjä mukaan keskusteluusi agentin kanssa. Agentti on sinun: sinun mallisi, kiintiösi ja yhteytesi.",
+        "where": "Keskustelun ihmisrivillä Kutsu, ja kutsutulla Jaettu kanssasi -osiossa.",
+        "shows": "Osallistujan viestit tulevat keskusteluun hänen nimellään. Hänen viesteihinsä agentti vastaa ilman työkaluja, kunnes päästät sen jatkamaan tai annat hänelle Täydet oikeudet.",
+        "needs": "Kutsuttavan pitää olla kirjautunut tälle palvelimelle.",
+        "caption": "Muut mukana"
       }
     },
     "picture": {
@@ -392,6 +404,14 @@
         "shows": "The wake's time, the agent's note and Open Habitat's line in the conversation when the agent was woken, also when the wake was late because the server was down. Archiving asks first and cancels pending wakes; the notice's Undo brings them back.",
         "needs": "Nothing else. The agent always sets the wake when you ask. At most 100 pending wakes, none recurring.",
         "caption": "Wake"
+      },
+      "multiplayer": {
+        "name": "Other people in a conversation",
+        "desc": "Invite another person on this server into your conversation with the agent. The agent stays yours: your model, quota and connections.",
+        "where": "Invite on the conversation's people row, and Shared with you for the invited person.",
+        "shows": "A participant's messages appear under their name. The agent answers them without tools until you let it continue or give them full rights.",
+        "needs": "The invited person must have signed in to this server.",
+        "caption": "Others in"
       }
     },
     "picture": {

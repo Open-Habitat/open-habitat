@@ -138,18 +138,25 @@ func loadVisibility(home string) (workspaceVisibility, error) {
 	return state, nil
 }
 func saveVisibility(home string, s workspaceVisibility) error {
+	b, e := json.Marshal(s)
+	if e != nil {
+		return e
+	}
+	return writeStateFile(home, "user-state.json", b)
+}
+
+// writeStateFile replaces one 0600 file in the person's state directory
+// atomically: a fresh private temporary file, fsynced, renamed over the old
+// one, and the directory fsynced.
+func writeStateFile(home, name string, b []byte) error {
+	if len(b) > 1<<20 {
+		return errors.New("state exceeds readable bound")
+	}
 	d, e := stateDir(home, true)
 	if e != nil {
 		return e
 	}
 	defer unix.Close(d)
-	b, e := json.Marshal(s)
-	if e != nil {
-		return e
-	}
-	if len(b) > 1<<20 {
-		return errors.New("state exceeds readable bound")
-	}
 	id, e := newWorkspaceID()
 	if e != nil {
 		return e
@@ -172,7 +179,7 @@ func saveVisibility(home string, s workspaceVisibility) error {
 	if closeErr != nil {
 		return closeErr
 	}
-	if e = unix.Renameat(d, tmp, d, "user-state.json"); e != nil {
+	if e = unix.Renameat(d, tmp, d, name); e != nil {
 		return e
 	}
 	return unix.Fsync(d)

@@ -32,6 +32,12 @@ type ConversationController struct {
 	viewMu   sync.Mutex // serialize view offer idempotency observation and export
 	noticeMu sync.Mutex // serialize native notice idempotency observation and append
 	nameMu   sync.Mutex // order each name's final native check and its write (title_linux.go)
+	// Other people in a conversation (membership_linux.go): memberMu orders
+	// the record's read-modify-write with guest stream admission and its
+	// ending; memberLineMu keeps one writer of pending Habitat lines.
+	memberMu      sync.Mutex
+	memberLineMu  sync.Mutex
+	memberStreams map[string]map[*guestStream]struct{}
 
 	mu       sync.Mutex
 	sessions map[string]*conversation
@@ -535,6 +541,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.stop(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "close":
 		c.closeEmpty(w, r, parts[0])
+	case (r.Method == http.MethodGet || r.Method == http.MethodPost) && parts[1] == "members":
+		c.members(w, r, parts[0])
 	default:
 		snapshotError(w, 404, "resource_not_found")
 	}

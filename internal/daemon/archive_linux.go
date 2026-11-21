@@ -248,7 +248,9 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	}
 	if in.Archived {
 		// An archived conversation is put away: it neither waits raised nor
-		// comes back raised when restored.
+		// comes back raised when restored. Its participants' memberships end
+		// with it and do not come back on restore (ADR 0038 section 7).
+		c.endConversationMemberships(key)
 		c.clearTurnMark(id)
 		if c.home != "" {
 			clearAgentSection(c.home, "pi:"+id, time.Now().Add(time.Second))

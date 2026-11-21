@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/conversation-members.schema.json",
+  "title": "Other people in a person's conversation: the owner's membership record",
+  "description": "Root: the reply of GET and POST /api/v1/conversations/<id>/members (ADR 0038 section 7). The owner's daemon keeps the record; it alone decides who may read or write the conversation and in what role. People are named by provider subject and the display name the gateway shows, never by a Unix name. Behind the experimental feature `multiplayer`; with it off the route answers resource_not_found.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "agent_id", "generation", "members"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+    "generation": { "$ref": "#/$defs/generation" },
+    "members": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/member" }
+    },
+    "revocation": {
+      "description": "Only on take_back and remove: whether the running Pi was told before this reply (delivered), had nothing to be told because Pi is not running (not_running), or could not be told (failed).",
+      "enum": ["delivered", "not_running", "failed"]
+    }
+  },
+  "$defs": {
+    "generation": {
+      "description": "The record's change counter. A member's generation is the record's at that member's latest change, so a grant handed to a running Pi can be told apart from a later one.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "subject": {
+      "description": "The authenticated provider subject of a person on the same server.",
+      "type": "string",
+      "pattern": "^github:[0-9]{1,20}$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "member": {
+      "description": "invited: the person sees the invitation and may only join. joined: the person is in the conversation. full_rights (Täydet oikeudet) gives a joined person's messages tools as the owner's do; an invited person is always a participant.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "display_name", "role", "state", "generation", "invited_at", "updated_at"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/subject" },
+        "display_name": { "$ref": "#/$defs/displayName" },
+        "role": { "enum": ["participant", "full_rights"] },
+        "state": { "enum": ["invited", "joined"] },
+        "generation": { "type": "integer", "minimum": 1 },
+        "invited_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "updated_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+      }
+    },
+    "control": {
+      "description": "The body of POST /api/v1/conversations/<id>/members. invite adds an admitted, bound person as an invited participant (again: refreshes the name); full_rights gives a joined member Täydet oikeudet; take_back makes them a participant again at once; remove ends their membership and their open guest streams. The browser sends action and subject; the gateway checks an invitee against the server's admitted, bound people and adds display_name itself, and only for invite.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "subject"],
+      "properties": {
+        "action": { "enum": ["invite", "full_rights", "take_back", "remove"] },
+        "subject": { "$ref": "#/$defs/subject" },
+        "display_name": { "$ref": "#/$defs/displayName" }
+      }
+    },
+    "people": {
+      "description": "The reply of GET /api/v1/conversations/<id>/people, the invite picker. The gateway lists every other admitted person on the server whose account is bound, by display name and avatar, with their place in this conversation's record (none, invited, joined).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "people"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "people": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject", "display_name", "avatar_url", "membership"],
+            "properties": {
+              "subject": { "$ref": "#/$defs/subject" },
+              "display_name": { "$ref": "#/$defs/displayName" },
+              "avatar_url": { "type": "string", "maxLength": 1024, "pattern": "^(https://avatars\\.githubusercontent\\.com/.*)?$" },
+              "membership": { "enum": ["none", "invited", "joined"] }
+            }
+          }
+        }
+      }
+    },
+    "join": {
+      "description": "The reply of POST /guest/v1/conversations/<id>/join on the owner's guest socket: the one route an invited person may use. Every refusal is resource_not_found, the same as an unknown conversation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "subject", "role", "state", "generation"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "subject": { "$ref": "#/$defs/subject" },
+        "role": { "enum": ["participant", "full_rights"] },
+        "state": { "const": "joined" },
+        "generation": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

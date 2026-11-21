@@ -1,0 +1,38 @@
+# Result: membership record, invitations, full rights and removal
+
+Implemented ADR 0038 section 7 for the owner's daemon and the gateway's owner side, behind the experimental feature `multiplayer` (catalog entry `landed: false`, so its Settings card says the choice waits for the feature). No browser UI.
+
+## What exists now
+
+- **The record** (`internal/daemon/membership_linux.go`): `~/.local/state/open-habitat/conversation-members.json`, 0600, written atomically through the shared `writeStateFile`. Per conversation (`pi:<id>`): the native working directory at the first invitation, members (subject `github:<id>`, display name, role `participant`/`full_rights`, state `invited`/`joined`, generation, stamps) and pending Habitat lines. A record-wide generation increases with every change; a member's generation is the record's at their latest change. A damaged, foreign-mode or unknown-shape record is refused, never reset: guests are refused and owner changes answer 503.
+- **Owner operations** on `daemon.sock`: `GET|POST /api/v1/conversations/<id>/members` with `invite`, `full_rights`, `take_back`, `remove`. Inviting oneself is refused; full rights need `joined`; giving needs a readable, unarchived conversation in place, while taking back and removing work even after the workspace is gone.
+- **Join**: `ConversationController.GuestJoinHandler` serves `POST /guest/v1/conversations/<id>/join` for the guest listener, which `multiplayer-guest-routing` mounts with the header parser. Every refusal is `resource_not_found`.
+- **Authorization for later routes**: `authorizeGuest(id, participant, invitedToo)` checks the feature, the record, that the history is readable, that its cwd still exists and equals the recorded one, and that it is not archived. `admitGuestStream` registers a stream under `memberMu`, the lock that removal and archiving take, and returns a context that removal cancels.
+- **Take-back** is immediate: the role changes and the generation increases in the record, then the running Pi's companion gets bridge op `grant` (`{subject, role|removed, generation}`) before the owner's reply, which reports `revocation: delivered|not_running|failed`. The companion keeps the newest grant per subject in `grants` for the turn mode to consult.
+- **Habitat lines** (`joined`, `full_rights_given`, `full_rights_taken`, `removed`) wait in the record and are written by bridge op `conversation_line` as `oh-conversation-line` custom messages (`display: true`, `details.kind: "membership"`), only into an idle Pi, each once (`lineInBranch`). They go out after the change if Pi is idle, at the settle that ends a run, and after a launch with no held prompt.
+- **Archive and delete end memberships**: archiving deletes the conversation's record entry and ends its streams inside the archive's commit; a restore brings nothing back. Deleting a workspace ends memberships whose recorded cwd is in it.
+- **Gateway** (`internal/gateway/members_linux.go`): `GET .../members` proxies; `POST .../members` accepts only `{action, subject}` from the browser and rebuilds the daemon body itself. For `invite` it adds the display name and admits only an admitted, bound person who is not denied and is not the owner. `GET .../people` is the picker: it first reads the owner's record (feature and conversation check), then lists every other admitted (`joined` in the broker's access list), non-denied person with name and avatar.
+- **Contract** `contracts/v1/conversation-members.schema.json` (record reply, control body, people, join), with an example.
+
+## Decisions for later review
+
+1. **Membership lines enter the agent's context.** They are custom messages, not `appendEntry` entries, so the agent knows who is present and who has full rights. Alternative: invisible entries that only the browser renders. Chosen because the agent's answers depend on who it is talking to, and ADR section 5 already puts `oh-conversation-line` in context.
+2. **No line for an invitation, or for removing someone who never joined.** Nothing happened in the conversation itself. ADR lists joined, rights given or removed, and removed.
+3. **Archive ends memberships for good** and drops the archived conversation's pending lines. Alternative: suspend them and restore with the conversation. Jari: archived conversations cannot be opened by others; the ADR says archiving ends every membership, and restoring is a new decision to invite.
+4. **Full rights only for a joined member.** An invitee has no messages yet; giving rights before they see the invitation would lend the owner's user to someone who has not accepted. Alternative: allow on invite.
+5. **Display names.** The gateway takes the name from the person's newest live session profile, then their GitHub login, then "GitHub <id>". It keeps no directory of its own, so someone with no live session is shown by login. Avatars come from `avatars.githubusercontent.com/u/<id>`, so no avatar store is needed. A re-invite and a join refresh the name in the record.
+6. **A failed revocation is reported, not escalated.** If the bridge cannot be reached while Pi runs, the reply says `revocation: "failed"` and the record still refuses every later guest request. No run is aborted, because today only the owner can start runs and aborting their own turn would be wrong. **`multiplayer-turn-modes` must make the companion fail closed:** a run started by a full-rights participant should check its grant against the record at delivery, and the browser can offer Stop on `failed`.
+7. **Moved histories.** Sharing is bound to the cwd at the first invitation. A history whose cwd changed or disappeared admits nobody, and giving rights is refused (`conversation_moved`). Conversations in a workspace's worktrees end when that directory disappears (the cwd check), not through the deletion hook.
+8. **Limits**: 16 members per conversation, 256 shared conversations, 64 pending lines per conversation (the oldest go first). They are large enough for a conversation and keep the record well under its 1 MiB read bound.
+9. **Open-admission installations** list only people who are in the broker's access list. An installation that admits anyone has no list of bound people the gateway may read today, so its picker may be empty. Left for `multiplayer-guest-routing` or an administrator decision.
+10. **Lock order**: `c.mu` may be held while `memberMu` is taken (archive), never the reverse. Recorded in the file's comment.
+
+## For the later issues
+
+- `multiplayer-guest-routing`: mount `GuestJoinHandler` on the guest route table; build `guestParticipant` from `Open-Habitat-Participant`; the gateway writes the index entry after a successful invite reply and deletes it after `remove`. A share schema is still to add to `contracts/v1/` with the index.
+- `multiplayer-guest-stream`: use `admitGuestStream` for the guest event stream and `authorizeGuest` on every guest request.
+- `multiplayer-turn-modes`: read `grants` in the companion; send the role from the record in `participant_message`.
+
+## Checks
+
+- `./scripts/test-focused.sh --area contracts` green. Go: `./internal/daemon`, `./internal/gateway`, `./internal/experimental` (new tests: `membership_linux_test.go`, `members_linux_test.go`; race run of the membership tests). `node --test internal/daemon/pi-device-test/membership-line.test.mjs`. `--area web` green. Browser: `settings-experimental.spec.ts` green with `OH_BROWSER_WORKERS=2`.

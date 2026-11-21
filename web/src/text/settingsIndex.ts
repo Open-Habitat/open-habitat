@@ -327,6 +327,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Scheduled wake",
         desc: "The agent wakes at an agreed time and the conversation rises to Your turn.",
       },
+      multiplayer: {
+        label: "Other people in a conversation",
+        desc: "Invite another person on this server into your conversation with the agent.",
+      },
     },
   },
   palvelin: {

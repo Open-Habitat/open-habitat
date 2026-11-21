@@ -488,9 +488,14 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		// Messages held while a native run was active go out once it settles.
 		drain := settled && len(s.held) > 0 && s.state == "idle"
+		lines := settled && !drain && s.state == "idle"
 		c.mu.Unlock()
 		if drain {
 			go c.deliverHeld(s) // never block the event reader on a native write
+		}
+		if lines {
+			// Membership lines that waited for this run to end.
+			go c.deliverMemberLines(s)
 		}
 		if settled {
 			key := c.publishNativeHistoryForTurn(s, turn)

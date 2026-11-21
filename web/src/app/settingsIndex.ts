@@ -758,6 +758,21 @@ export const settingsSections = [
         ],
         desc: "Agentti herää sovittuna aikana, ja keskustelu nousee Sinun vuorosi -osioon.",
       },
+      {
+        id: "multiplayer",
+        label: "Muut ihmiset keskustelussa",
+        kw: [
+          "kutsu",
+          "invite",
+          "osallistuja",
+          "participant",
+          "jaettu",
+          "shared",
+          "täydet oikeudet",
+          "full rights",
+        ],
+        desc: "Kutsu toinen tämän palvelimen käyttäjä mukaan keskusteluusi agentin kanssa.",
+      },
     ],
   },
   {

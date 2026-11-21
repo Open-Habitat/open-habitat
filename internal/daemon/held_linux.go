@@ -314,6 +314,10 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	c.writePendingName(s)
 	if ok {
 		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled, batch.previousSettlement)
+	} else {
+		// Membership lines that waited for Pi; a held prompt's run takes
+		// them at its settle instead.
+		go c.deliverMemberLines(s)
 	}
 }
 

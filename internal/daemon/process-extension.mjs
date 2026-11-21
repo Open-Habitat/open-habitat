@@ -389,6 +389,40 @@ export function wakeInBranch(context, id) {
     return m?.customType === scheduledWakeType && m.details?.id === id;
   });
 }
+// Membership lines (membership_linux.go, ADR 0038 section 7): the daemon's
+// record of who is in the conversation changed, and the change is told in
+// the conversation as Habitat's line, written from the record's structured
+// fields. The name is the gateway's display name for the person, quoted as
+// data; it never carries a role.
+export const conversationLineType = 'oh-conversation-line';
+const memberSubject = /^github:[0-9]{1,20}$/;
+const memberEvents = {
+  joined: n => `${n} joined the conversation as a participant.`,
+  full_rights_given: n => `The owner gave ${n} full rights: from their next message on, their messages get tools as the owner's do.`,
+  full_rights_taken: n => `The owner took full rights back from ${n}: their messages get no tools.`,
+  removed: n => `The owner removed ${n} from the conversation.`,
+};
+const validMemberName = v => typeof v === 'string' && v.length > 0 && v === v.trim() && [...v].length <= 100 && !/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(v);
+export function validMemberLine(l) {
+  return !!l && /^[0-9a-fA-F-]{36}$/.test(l.line_id ?? '') && l.kind === 'membership' && Object.hasOwn(memberEvents, l.event ?? '') && memberSubject.test(l.subject ?? '') && validMemberName(l.display_name) && isStamp(l.at);
+}
+export function memberLineMessage(l) {
+  return {
+    customType: conversationLineType, display: true, content: `[Open Habitat] ${memberEvents[l.event](JSON.stringify(l.display_name))}`,
+    details: { schema_version: 1, line_id: l.line_id, kind: 'membership', event: l.event, subject: l.subject, display_name: l.display_name, at: l.at },
+  };
+}
+export function lineInBranch(context, id) {
+  let branch = [];
+  try { branch = context.sessionManager.getBranch?.() ?? []; } catch { return false; }
+  return branch.some(entry => {
+    const m = entry?.type === 'custom_message' ? entry : entry?.message?.role === 'custom' ? entry.message : null;
+    return m?.customType === conversationLineType && m.details?.line_id === id;
+  });
+}
+export function validGrant(g) {
+  return !!g && memberSubject.test(g.subject ?? '') && Number.isSafeInteger(g.generation) && g.generation > 0 && typeof g.removed === 'boolean' && (g.removed ? g.role === undefined : g.role === 'participant' || g.role === 'full_rights');
+}
 const reminderType = 'oh-wait-reminder';
 // A wait the agent is woken by whichever way it ends: `run wait` exits 0 when
 // the runs settle and non-zero on a check-in or timeout, and pi-processes
@@ -723,6 +757,7 @@ export default function (pi) {
   const outputLeases = new Map();
   let catchUp = null; // this Pi's first run learns what happened while it was stopped
   const sentWakes = new Set(); // scheduled wakes this Pi has sent
+  const grants = new Map(); // subject -> newest { role, generation } the daemon told this Pi
   const ask = (channel, args = {}, allOwners = false) => new Promise((resolve, reject) => {
     let done = false;
     const replies = [];
@@ -787,6 +822,25 @@ export default function (pi) {
       catchUp = null;
       pi.sendMessage(message, { triggerTurn: true });
       return { woken: true };
+    }
+    if (q.op === 'conversation_line' || q.op === 'grant') {
+      if (!context || shuttingDown || (q.op === 'grant' ? !validGrant(q.grant) : !validMemberLine(q.line))) throw new Error('invalid_request');
+      if (context.sessionManager.getSessionId?.() !== q.session_id || process.env.OPEN_HABITAT_CONVERSATION_ID !== `pi:${q.session_id}` || process.env.OPEN_HABITAT_LAUNCH_GENERATION !== q.generation) return { written: false, told: false, reason: 'conversation_mismatch' };
+      if (q.op === 'grant') {
+        // The newest grant per person, for the turn mode to consult: a run a
+        // person started keeps tools only while their grant does. An older
+        // generation never replaces a newer one.
+        const prior = grants.get(q.grant.subject);
+        if (!prior || prior.generation <= q.grant.generation) grants.set(q.grant.subject, { role: q.grant.removed ? null : q.grant.role, generation: q.grant.generation });
+        return { told: true };
+      }
+      // Written once: a retry after a lost reply finds it in the branch.
+      if (lineInBranch(context, q.line.line_id)) return { written: true, reason: 'already_written' };
+      // Only into an idle Pi: during a run Pi would hold it in memory until
+      // the turn ends, and a stop before then would lose it.
+      if (context.isIdle?.() === false) return { written: false, reason: 'busy' };
+      pi.sendMessage(memberLineMessage(q.line), { triggerTurn: false });
+      return { written: true };
     }
     if (q.op === 'scheduled_wake' || q.op === 'wake_tell') {
       if (!context || shuttingDown) throw new Error('invalid_request');

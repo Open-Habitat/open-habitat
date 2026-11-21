@@ -31,6 +31,7 @@ const features = [
   "storage-breakdown",
   "rail-background-door",
   "scheduled-wake",
+  "multiplayer",
 ];
 
 async function signIn(page: Page) {

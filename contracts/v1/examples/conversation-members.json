@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:00000000-0000-4000-8000-000000000001",
+  "generation": 3,
+  "members": [
+    {
+      "subject": "github:1001",
+      "display_name": "Example Participant",
+      "role": "full_rights",
+      "state": "joined",
+      "generation": 3,
+      "invited_at": "2026-11-21T10:00:00Z",
+      "updated_at": "2026-11-21T10:05:00Z"
+    },
+    {
+      "subject": "github:1002",
+      "display_name": "Example Invitee",
+      "role": "participant",
+      "state": "invited",
+      "generation": 1,
+      "invited_at": "2026-11-21T10:01:00Z",
+      "updated_at": "2026-11-21T10:01:00Z"
+    }
+  ],
+  "revocation": "not_running"
+}
