@@ -229,14 +229,6 @@ func (t *taskfleetRunFacts) list(ctx context.Context, home string) ([]nativeSpin
 	return runs, true
 }
 
-func (t *taskfleetRunFacts) exclude(ctx context.Context, home string, entries []Workspace) []Workspace {
-	runs, ok := t.list(ctx, home)
-	if !ok {
-		return entries
-	}
-	return filterTaskfleetWorkspaces(home, entries, runs)
-}
-
 // taskfleetStamp covers what the workspace filter reads from a run: kind,
 // owner, source and node worktrees, which Taskfleet keeps in each run's
 // manifest.json and nodes/. Supervisor heartbeats, event logs and agent logs

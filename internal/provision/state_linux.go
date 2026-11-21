@@ -400,12 +400,6 @@ func readState(dir string, owner uint32) (allowFile, ledgerFile, error) {
 	return a, l, nil
 }
 
-// Evaluate is a legacy policy-only probe, NOT a broker transport handler: it
-// does not lock, enforce the high-water mark, or verify host drift. Only
-// Writer.Handle may return a routable broker reply. A new ensure here returns
-// name_collision when its candidate is unsafe or occupied; otherwise denied.
-func (s Store) Evaluate(r Request) Reply { return evaluate(s.Dir, 0, r) }
-
 func evaluate(dir string, owner uint32, r Request) Reply {
 	fail := func(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 	if _, err := EncodeRequest(r); err != nil {

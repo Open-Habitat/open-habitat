@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:dead-runtime-helpers
@@ -18,6 +18,7 @@ size: S
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Remove unreachable legacy runtime entry points and helpers
@@ -45,3 +46,9 @@ Size: S (bounded deletion in six daemon files and one provision file; no wire or
 ## Assessment
 
 CONFIRMED; recommendation SPIN_OFF; severity low; confidence high. Evidence is the intersection of production/test-root deadcode and manual symbol/caller inspection, not all production-only deadcode output. Excludes fake-server helpers and the already filed `command-changed-state-pending-dead-code`.
+
+## Resolution
+
+### 2026-11-21T10:29:49Z · @issuectl
+
+Implementation and focused verification completed; see result.md. Preserved in the worker branch: the combined run is blocked from merging by the independently reproduced existing scroll-spacing failure. The schema reserves fixed for bugs, so this improvement is closed as done.

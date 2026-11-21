@@ -125,11 +125,6 @@ func RepoCatalogHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Re
 	})
 }
 
-// RepoLookupHandler answers one exact owner/repo, in the catalog or not.
-func RepoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	return repoLookupHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
-}
-
 func repoLookupHandlerNoting(cfg transport.Config, trusted func(*http.Request) bool, orgs *githubOrgs) http.Handler {
 	return repoLookupHandlerAt(cfg, trusted, orgs.run, RepoLookupPath, orgs)
 }
@@ -284,8 +279,7 @@ func repoCatalogHandlerAt(cfg transport.Config, trusted func(*http.Request) bool
 	})
 }
 
-// lookupName accepts exactly one canonical full_name query.
-func lookupName(r *http.Request) (string, bool) { return lookupNameAt(r, RepoLookupPath) }
+// lookupNameAt accepts exactly one canonical full_name query.
 func lookupNameAt(r *http.Request, path string) (string, bool) {
 	if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
 		return "", false

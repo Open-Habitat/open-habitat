@@ -867,15 +867,6 @@ func (c *ConversationController) receipt(s *conversation, id, outcome string) {
 	}
 }
 
-func (c *ConversationController) lookup(w http.ResponseWriter, id string) *conversation {
-	c.mu.Lock()
-	s := c.sessions[id]
-	c.mu.Unlock()
-	if s == nil {
-		snapshotError(w, 404, "resource_not_found")
-	}
-	return s
-}
 func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id string) {
 	c.sendKind(w, r, id, "send")
 }

@@ -19,10 +19,7 @@ import (
 
 const RepoObservePath = "/api/v1/onboarding/github/checkout"
 
-// observeName accepts only one canonical wire representation, with no aliases.
-func observeName(r *http.Request, host string) (string, bool) {
-	return observeNameAt(r, host, RepoObservePath)
-}
+// observeNameAt accepts only one canonical wire representation, with no aliases.
 func observeNameAt(r *http.Request, host, path string) (string, bool) {
 	if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.Host != host || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		return "", false
