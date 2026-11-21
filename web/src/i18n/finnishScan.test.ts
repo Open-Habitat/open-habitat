@@ -14,6 +14,10 @@ const allowed: Record<string, { texts: readonly string[] | "*"; why: string }> =
       texts: "*",
       why: "the Finnish half of the settings index (English in text/settingsIndex.ts) and its bilingual search words",
     },
+    "components/LanguageSettings.tsx": {
+      texts: ["Suomi"],
+      why: "language endonym stays recognisable in every interface language",
+    },
     "components/repoCatalog.ts": {
       texts: ["Omat", "Organisaatio", "Ryhmä", "Aliryhmä", "Yhteistyö"],
       why: "section kinds are identifiers; the clone page names them from its catalog",
