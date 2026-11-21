@@ -25,6 +25,8 @@ Tested worker changes based on `a58252461b2571ab2b770edd0cdb5e08595c8dff`; the c
 - The same three selected Playwright specs with `--repeat-each 3`, two workers and reply jitter — passed (12 cases). After the visual-only removal of a repeated attachment label, focused specs and web checks passed again; final repeat result is retained with the logs.
 - `node --check internal/daemon/icon-helper.mjs`, `git diff --check`, issue doctor and project-view validation — passed.
 
+Rebase verification: replayed onto `fc5b2dcd3d123cacced7b8797379632b30b949fa`; only the two generated schema fingerprints conflicted and were regenerated from the combined schemas. `git range-diff` showed only those fingerprint changes. Post-rebase web checks passed (244 files, 1995 tests), contracts passed, and the same three focused browser specs passed (4 cases). The Go implementation was unchanged by the replay.
+
 Development failures were corrected, not omitted: an escaped prompt apostrophe, missing Git initialization in the new unit fixture, the gateway test's expected forwarding count, and a new browser case that reloaded before the save confirmation. The browser now waits for the confirmation before testing persistence.
 
 ## Review and evidence
