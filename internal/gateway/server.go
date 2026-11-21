@@ -142,6 +142,8 @@ func (s *Server) routes() http.Handler {
 		}
 		mux.HandleFunc(adminPublicationsPath, s.auth.adminViewLinksHTTP)
 		mux.HandleFunc(adminPublicationsDelete, s.auth.adminViewLinksHTTP)
+		mux.HandleFunc(sharedPath, s.auth.shared)
+		mux.HandleFunc(sharedPrefix, s.auth.shared)
 		mux.HandleFunc(fileOffersPath, s.auth.fileOffers)
 		mux.HandleFunc(fileOffersPath+"/", s.auth.fileOffers)
 	}

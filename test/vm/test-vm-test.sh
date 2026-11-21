@@ -278,7 +278,7 @@ assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/open-habitat/'))
 # Production host prepare owns the boot-guarded units; a hand copy would
 # bypass the storage and binding gates the sockets require.
-assert not any(p.startswith('/etc/systemd/system/open-habitat-'+u) for u in ('broker','storage','binding','proc','daemon@.socket','agent@') for p in files)
+assert not any(p.startswith('/etc/systemd/system/open-habitat-'+u) for u in ('broker','storage','binding','proc','daemon@.socket','agent@','guest@') for p in files)
 assert '/etc/systemd/system/open-habitat-daemon@.service' in files and '/etc/open-habitat/site.json' in files
 # The routing guest explicitly uses a synthetic status adapter, not real Pi.
 selector=json.loads(base64.b64decode(files['/opt/open-habitat/pi-runtime.json']['content']))

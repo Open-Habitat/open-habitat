@@ -17,8 +17,12 @@ import (
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
+// AgentListener carries the listeners beside daemon.sock: the person's own
+// agent socket and the guest socket other people reach through the gateway
+// (ADR 0038). Each is served from its own default-deny route table.
 type AgentListener struct {
 	Listener        *net.UnixListener
+	Guest           *net.UnixListener
 	Version, Commit string
 }
 

@@ -38,7 +38,7 @@ func legacyApplyUnitPolicies() []policyFile {
 	}
 }
 
-var productUnitFragments = []string{"open-habitat-proc.service", "open-habitat-storage.service", "open-habitat-binding@.service", "open-habitat-broker.service", "open-habitat-broker.socket", "open-habitat-revoke.socket", "open-habitat-gateway.service", "open-habitat-daemon@.service", "open-habitat-daemon@.socket", "open-habitat-agent@.socket"}
+var productUnitFragments = []string{"open-habitat-proc.service", "open-habitat-storage.service", "open-habitat-binding@.service", "open-habitat-broker.service", "open-habitat-broker.socket", "open-habitat-revoke.socket", "open-habitat-gateway.service", "open-habitat-daemon@.service", "open-habitat-daemon@.socket", "open-habitat-agent@.socket", "open-habitat-guest@.socket"}
 
 func unitSearchPaths(ctx context.Context) ([]string, error) {
 	b, e := nativeCommand(ctx, "/usr/bin/systemd-analyze", "--system", "unit-paths")

@@ -1388,13 +1388,18 @@ fallback, not authorization. After proving the installed boot ordering, enable
 `open-habitat-broker.socket open-habitat-broker.service` together; the service
 restores committed admitted accounts without waiting for browser login. Leave
 individual socket instances under broker control. Restore and preflight
-both `open-habitat-daemon@<name>.socket` and `open-habitat-agent@<name>.socket`
-for every admitted account: `daemon.sock` stays owner:gateway 0660, while
-`agent.sock` is owner:owner 0600 in the same root-owned, non-owner-writable
-parent. Both units must be active before starting the daemon service, whichever
-listener triggers it; both named descriptors (`daemon` and `agent`) are required.
-The agent unit explicitly targets `open-habitat-daemon@<name>.service`.
-A deployment restoring only the old socket cannot start this release's daemon.
+`open-habitat-daemon@<name>.socket`, `open-habitat-agent@<name>.socket` and
+`open-habitat-guest@<name>.socket` for every admitted account: `daemon.sock`
+and `guest.sock` stay owner:gateway 0660, while `agent.sock` is owner:owner
+0600, all in the same root-owned, non-owner-writable parent. All three units
+must be active before starting the daemon service, whichever listener triggers
+it; all three named descriptors (`daemon`, `agent` and `guest`) are required.
+The agent and guest units explicitly target `open-habitat-daemon@<name>.service`.
+`guest.sock` is how other people on the server reach a person's shared
+conversations, through the gateway only; the daemon serves it from its own
+default-deny route table. A deployment that installs its units itself must
+install the guest socket template too, with the same directory and named ACL as
+`daemon.sock`, or this release's daemon cannot start.
 Verify a cold request on each listener, including the first queued request,
 after boot and after an upgrade. Run `open-habitat agent environment show --json`
 as the mapped user to prove native quota reads under the installed confinement;

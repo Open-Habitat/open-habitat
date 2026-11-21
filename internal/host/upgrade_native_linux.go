@@ -146,7 +146,7 @@ func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error
 	// Snapshot is durable before any daemon interruption. Only product system
 	// units stop; user managers, SSH sessions and their tmux are never signalled.
 	for _, u := range n.proof.Users {
-		units := []string{"open-habitat-daemon@" + u.Name + ".service", "open-habitat-daemon@" + u.Name + ".socket", "open-habitat-agent@" + u.Name + ".socket"}
+		units := append([]string{"open-habitat-daemon@" + u.Name + ".service"}, installedListenerSockets(u.Name)...)
 		if _, e := nativeCommand(ctx, "/usr/bin/systemctl", append([]string{"stop"}, units...)...); e != nil {
 			return e
 		}
@@ -206,7 +206,7 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 	// adoption. Socket activation starts no process until structural health asks.
 	for _, u := range n.proof.Users {
 		if u.Admitted {
-			if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", "open-habitat-daemon@"+u.Name+".socket", "open-habitat-agent@"+u.Name+".socket"); e != nil {
+			if _, e = nativeCommand(ctx, "/usr/bin/systemctl", append([]string{"start"}, listenerSockets(u.Name)...)...); e != nil {
 				return e
 			}
 			if u.Daemon {
@@ -397,7 +397,8 @@ func (n *nativeUpgrade) startAcceptedConsumers(ctx context.Context) error {
 	units := []string{"open-habitat-broker.service", "open-habitat-gateway.service"}
 	for _, i := range ids {
 		if state.Admits(i.ID()) {
-			units = append(units, "open-habitat-daemon@"+i.Username()+".socket", "open-habitat-agent@"+i.Username()+".socket", "open-habitat-daemon@"+i.Username()+".service")
+			units = append(units, listenerSockets(i.Username())...)
+			units = append(units, "open-habitat-daemon@"+i.Username()+".service")
 		}
 	}
 	for _, unit := range units {
@@ -658,7 +659,7 @@ func (n *nativeUpgrade) failureFence(ctx context.Context) error {
 		}
 	}
 	for _, u := range users {
-		units = append(units, "open-habitat-daemon@"+u.Name+".socket", "open-habitat-agent@"+u.Name+".socket")
+		units = append(units, installedListenerSockets(u.Name)...)
 		if n.proof.OperationID != "" {
 			units = append(units, "open-habitat-daemon@"+u.Name+".service")
 		}
@@ -743,4 +744,22 @@ func upgradePublicationsClear() error {
 		}
 	}
 	return nil
+}
+
+// listenerSockets are a person's three daemon sockets in this release.
+func listenerSockets(name string) []string {
+	return []string{"open-habitat-daemon@" + name + ".socket", "open-habitat-agent@" + name + ".socket", "open-habitat-guest@" + name + ".socket"}
+}
+
+// installedListenerSockets is what a stop may name. A predecessor release
+// installed no guest socket template, and systemctl refuses to stop an
+// instance of a template it cannot load; once the template is there, its
+// instance must stop with the others, or a connection to it would start the
+// daemon in the middle of the upgrade.
+func installedListenerSockets(name string) []string {
+	sockets := listenerSockets(name)
+	if _, err := os.Lstat("/etc/systemd/system/open-habitat-guest@.socket"); err != nil {
+		return sockets[:2]
+	}
+	return sockets
 }

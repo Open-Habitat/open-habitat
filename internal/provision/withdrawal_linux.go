@@ -148,17 +148,17 @@ func (w Writer) revokedBindings(ctx context.Context, id string) (revokedState, [
 }
 
 func listenerUnits(name string) []string {
-	return []string{"open-habitat-daemon@" + name + ".service", "open-habitat-daemon@" + name + ".socket", "open-habitat-agent@" + name + ".socket"}
+	return []string{"open-habitat-daemon@" + name + ".service", "open-habitat-daemon@" + name + ".socket", "open-habitat-agent@" + name + ".socket", "open-habitat-guest@" + name + ".socket"}
 }
 
 // StopListeners widens the broker's systemd authority by exactly the stop
-// of one committed person's daemon service and two sockets. It takes the
+// of one committed person's daemon service and three sockets. It takes the
 // name only from the committed binding and does not verify the account
 // first: ending a revoked person's daemon must not depend on their home
 // or NSS entry being intact. A stop that ran into the service's stop
 // timeout can leave a unit failed; resetting that lets a later restore and
 // the broker's startup see an ordinary inactive binding. The person counts
-// as stopped only when all three units are inactive.
+// as stopped only when all four units are inactive.
 func (e *LinuxHostExecutor) StopListeners(ctx context.Context, i ExecutorIdentity) error {
 	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
 		return ErrInvalid

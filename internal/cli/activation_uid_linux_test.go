@@ -31,14 +31,14 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 	switch os.Getenv("ACT_PAIR_ROLE") {
 	case "serve":
 		os.Setenv("LISTEN_PID", strconv.Itoa(os.Getpid()))
-		os.Setenv("LISTEN_FDS", "2")
-		os.Setenv("LISTEN_FDNAMES", "daemon:agent")
-		d, a, err := activatedSockets(cfg)
+		os.Setenv("LISTEN_FDS", "3")
+		os.Setenv("LISTEN_FDNAMES", "daemon:agent:guest")
+		listeners, err := activatedSockets(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer d.Close()
-		defer a.Close()
+		defer listeners.close()
+		d, a, g := listeners.daemon, listeners.agent, listeners.guest
 		server, err := transport.NewServer(cfg, func(context.Context, string, bool) (bool, error) { return false, nil })
 		if err != nil {
 			t.Fatal(err)
@@ -53,6 +53,12 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		go server.ServeMux(ctx, d, mux)
+		go transport.ServeGuest(ctx, g, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !transport.GuestPeer(r) || server.TrustedPeer(r) || transport.AgentPeer(r) {
+				t.Error("guest peer authority confused")
+			}
+			w.WriteHeader(204)
+		}))
 		if err := transport.ServeAgent(ctx, a, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !transport.AgentPeer(r) || server.TrustedPeer(r) {
 				t.Error("peer authority confused")
@@ -97,7 +103,7 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, trigger := range []string{"agent", "daemon", "simultaneous"} {
+	for _, trigger := range []string{"agent", "daemon", "guest", "simultaneous"} {
 		t.Run(trigger, func(t *testing.T) {
 			d, err := net.ListenUnix("unix", &net.UnixAddr{Name: cfg.Socket, Net: "unix"})
 			if err != nil {
@@ -109,6 +115,13 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer a.Close()
+			g, err := net.ListenUnix("unix", &net.UnixAddr{Name: dir + "/guest.sock", Net: "unix"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer g.Close()
+			os.Chown(dir+"/guest.sock", 21001, 21003)
+			os.Chmod(dir+"/guest.sock", 0660)
 			os.Chown(cfg.Socket, 21001, 21003)
 			os.Chmod(cfg.Socket, 0660)
 			os.Chown(dir+"/agent.sock", 21001, 21001)
@@ -117,7 +130,7 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 			for _, peer := range []struct {
 				name string
 				uid  uint32
-			}{{"agent", 21001}, {"daemon", 21003}} {
+			}{{"agent", 21001}, {"daemon", 21003}, {"guest", 21003}} {
 				if trigger != "simultaneous" && peer.name != trigger {
 					continue
 				}
@@ -147,12 +160,14 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 			}
 			df, _ := d.File()
 			af, _ := a.File()
+			gf, _ := g.File()
 			defer df.Close()
 			defer af.Close()
+			defer gf.Close()
 			child := exec.Command(os.Args[0], "-test.run=^TestAgentActivatedPairDistinctUIDs$")
 			child.Env = append(os.Environ(), "ACT_PAIR_ROLE=serve", "GORACE=atexit_sleep_ms=0")
 			child.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21001, Gid: 21001}}
-			child.ExtraFiles = []*os.File{df, af}
+			child.ExtraFiles = []*os.File{df, af, gf}
 			child.Stdout = os.Stdout
 			child.Stderr = os.Stderr
 			if err := child.Start(); err != nil {

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -69,7 +70,11 @@ type memberPerson struct {
 
 // invitablePeople lists every other admitted person whose account is bound,
 // by the name and avatar the gateway shows for them. Accepted for people on
-// the same server (ADR 0038 question 5).
+// the same server (ADR 0038 question 5; Jari: every signed-in person). The
+// broker's access list names the admitted people of an allowlist; a server
+// that admits anyone has no such list, so everyone who holds a session here
+// is listed too: a session exists only for a person whose binding the broker
+// authorized at sign-in, and withdrawal removes it.
 func (a *Auth) invitablePeople(ctx context.Context, self Identity) ([]memberPerson, error) {
 	broker, ok := a.accessBroker()
 	if !ok {
@@ -95,9 +100,42 @@ func (a *Auth) invitablePeople(ctx context.Context, self Identity) ([]memberPers
 		if name == "" {
 			name = "GitHub " + row.ID
 		}
-		people = append(people, memberPerson{Subject: "github:" + row.ID, DisplayName: memberName(name), AvatarURL: normalizeProfile(AccountProfile{AvatarURL: "https://avatars.githubusercontent.com/u/" + row.ID}).AvatarURL, Membership: "none"})
+		people = append(people, memberPerson{Subject: "github:" + row.ID, DisplayName: memberName(name), AvatarURL: githubAvatar(row.ID), Membership: "none"})
 	}
+	listed := map[string]bool{}
+	for _, p := range people {
+		listed[p.Subject] = true
+	}
+	for _, id := range a.signedInPeople() {
+		if id == self.Subject || listed["github:"+id] || slices.Contains(denied, id) || !numericSubject(id) {
+			continue
+		}
+		listed["github:"+id] = true
+		name := names[id]
+		if name == "" {
+			name = "GitHub " + id
+		}
+		people = append(people, memberPerson{Subject: "github:" + id, DisplayName: memberName(name), AvatarURL: githubAvatar(id), Membership: "none"})
+	}
+	sort.Slice(people, func(i, j int) bool { return people[i].Subject < people[j].Subject })
 	return people, nil
+}
+
+// signedInPeople are the GitHub subjects that hold an unexpired session.
+func (a *Auth) signedInPeople() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now := a.now()
+	seen := map[string]bool{}
+	out := []string{}
+	for _, s := range a.sessions {
+		if s.identity.Provider != "github" || !now.Before(s.idle) || !now.Before(s.absolute) || seen[s.identity.Subject] || a.deniedLocked(s.identity.Subject) {
+			continue
+		}
+		seen[s.identity.Subject] = true
+		out = append(out, s.identity.Subject)
+	}
+	return out
 }
 
 func numericSubject(id string) bool {
@@ -237,6 +275,15 @@ func (a *Auth) changeMember(w http.ResponseWriter, r *http.Request, s session, i
 	}
 	if status != 200 {
 		relayDaemonError(w, status, reply)
+		return
+	}
+	// The index follows the record: an invitation gets its share, a removal
+	// loses it and ends that participant's relays. The daemon's change
+	// already holds; if the index cannot follow, an invitation does not
+	// route yet (the owner invites again) and a removal is already refused
+	// by the owner's daemon.
+	if err := a.reconcileShare(s, id, in.Subject, reply); err != nil {
+		safe(w, 503, "shares_unavailable")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

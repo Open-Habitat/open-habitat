@@ -389,6 +389,7 @@ func preparePolicies(s Site) []policyFile {
 		{"/etc/systemd/system/open-habitat-broker.service", policy.BrokerService},
 		{"/etc/systemd/system/open-habitat-daemon@.socket", policy.DaemonSocket},
 		{"/etc/systemd/system/open-habitat-agent@.socket", policy.AgentSocket},
+		{"/etc/systemd/system/open-habitat-guest@.socket", policy.GuestSocket},
 		{"/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf", policy.LogindDropIn},
 		{"/etc/systemd/system/polkit.service.d/open-habitat-proc.conf", policy.PolkitDropIn},
 	}

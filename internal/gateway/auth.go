@@ -252,6 +252,9 @@ type Auth struct {
 	serial   uint64
 	revoked  map[string]uint64
 	live     map[string]map[*liveRelay]struct{}
+	// shareLive holds the relays of each conversation share by share ID
+	// (ADR 0038), so removing a participant ends theirs.
+	shareLive map[string]map[*liveRelay]struct{}
 	// terminals counts each session's relayed browser terminals (cap per session).
 	terminals        map[string]int
 	sessions         map[string]session
@@ -265,6 +268,8 @@ type Auth struct {
 	viewEntries      map[string]string      // viewEntryKey(entry) -> reservation ID
 	viewAddressFault string                 // why the address store is unusable
 	viewLinkTraffic  viewLinkTraffic
+	shares           map[string]shareEntry // participation index, keyed by share ID
+	shareFault       string                // why the participation index is unusable
 	sessionFile      string
 	adminFile        string
 	adminEstablished bool
@@ -352,6 +357,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 		return nil, err
 	}
 	a.loadViewLinks()
+	a.loadShares()
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.

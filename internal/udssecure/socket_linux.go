@@ -23,6 +23,16 @@ func Mapped(path string, uid int) error { return mapped(path, uid, "daemon.sock"
 // Agent validates the own-UID endpoint; no gateway group is granted access.
 func Agent(path string, uid int) error { return mapped(path, uid, "agent.sock", 0600, false) }
 
+// Guest validates the guest endpoint from the gateway's side: owned by the
+// mapped UID, in the gateway's group, behind root-controlled directories.
+func Guest(path string, uid int) error { return mapped(path, uid, "guest.sock", 0660, true) }
+
+// GuestListener validates the same endpoint from the daemon's side, which
+// cannot name the gateway's group and checks the connecting peer instead.
+func GuestListener(path string, uid int) error {
+	return mapped(path, uid, "guest.sock", 0660, false)
+}
+
 func mapped(path string, uid int, base string, mode os.FileMode, gateway bool) error {
 	if uid <= 0 || !strings.HasPrefix(path, "/run/open-habitat/users/") || filepath.Clean(path) != path || filepath.Base(path) != base {
 		return ErrUntrusted

@@ -45,7 +45,7 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered tmp-shared tmp-public tmp-unaged; do
+for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered guest-mode guest-group guest-route guest-unordered tmp-shared tmp-public tmp-unaged; do
   mkdir -p "$tmp/$mode/stage"
   tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
@@ -63,6 +63,10 @@ for mode in storage-rate-limited binding-rate-limited binding-default-deps bindi
     agent-mode) sed -i 's/SocketMode=0600/SocketMode=0666/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-route) sed -i 's/Service=open-habitat-daemon@%i.service/Service=other@%i.service/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-unordered) sed -i 's/ open-habitat-agent@%i.socket//' "$root/systemd/open-habitat-daemon@.service" ;;
+    guest-mode) sed -i 's/SocketMode=0660/SocketMode=0666/' "$root/systemd/open-habitat-guest@.socket" ;;
+    guest-group) sed -i 's/SocketGroup=open-habitat-gateway/SocketGroup=users/' "$root/systemd/open-habitat-guest@.socket" ;;
+    guest-route) sed -i 's/Service=open-habitat-daemon@%i.service/Service=other@%i.service/' "$root/systemd/open-habitat-guest@.socket" ;;
+    guest-unordered) sed -i 's/ open-habitat-guest@%i.socket//' "$root/systemd/open-habitat-daemon@.service" ;;
     tmp-shared) sed -i '/^BindPaths=/d' "$root/systemd/open-habitat-daemon@.service" ;;
     tmp-public) sed -i 's/^StateDirectoryMode=0700$/StateDirectoryMode=0755/' "$root/systemd/open-habitat-daemon@.service" ;;
     tmp-unaged) sed -i '/open-habitat-tmp/d' "$root/tmpfiles.d/open-habitat.conf" ;;

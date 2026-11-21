@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "shares": [
+    {
+      "share_id": "sabcdefghijklmnopqrstuvwxyz",
+      "owner": {
+        "display_name": "Example Owner",
+        "avatar_url": "https://avatars.githubusercontent.com/u/1000"
+      },
+      "state": "invited",
+      "invited_at": "2026-11-21T10:00:00Z"
+    }
+  ]
+}

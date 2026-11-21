@@ -347,12 +347,12 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	} else {
 		if cfg.Handoff != nil {
 			// No TCP fallback: activation and adapter preparation complete before Serve.
-			ln, agentListener, activationErr := activatedSockets(*cfg.Handoff)
+			listeners, activationErr := activatedSockets(*cfg.Handoff)
 			if activationErr != nil {
 				return nil, system("activation_failed", "invalid daemon socket activation")
 			}
-			defer ln.Close()
-			defer agentListener.Close()
+			defer listeners.close()
+			ln := listeners.daemon
 			_, adapter, adapterErr := daemon.NewNativeHandoff(*cfg.Handoff)
 			if adapterErr != nil {
 				return nil, system("native_adapter_unavailable", "native credential adapter unavailable")
@@ -366,7 +366,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 				return nil, system("native_runtime_unavailable", "invalid Pi runtime selector")
 			}
 			diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
-			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime, daemon.AgentListener{Listener: agentListener, Version: version, Commit: runningCommit()}); err != nil {
+			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime, daemon.AgentListener{Listener: listeners.agent, Guest: listeners.guest, Version: version, Commit: runningCommit()}); err != nil {
 				// The journal gets the refusing check's code, never the
 				// message: an operator repairs that check from it.
 				return nil, daemonServeFailure(err)

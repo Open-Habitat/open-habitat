@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/conversation-shares.schema.json",
+  "title": "Other people in a person's conversation: what is shared with me",
+  "description": "Root: the reply of GET /api/v1/shared (ADR 0038 section 7), the conversations other people on the server have invited the signed-in person into. It comes from the gateway's participation index: metadata only, never a message, a role or a permission, and never the owner's Unix name or the conversation's ID. A participant reaches a share only through /api/v1/shared/<share_id>/<operation>; the gateway routes that to the owner's guest socket, whose daemon decides from its own membership record. An unknown, removed or foreign share_id is resource_not_found, the same as a missing one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "shares"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "shares": {
+      "type": "array",
+      "maxItems": 32768,
+      "items": { "$ref": "#/$defs/share" }
+    }
+  },
+  "$defs": {
+    "shareId": {
+      "description": "An opaque random ID the gateway gave this invitation. It names no person, conversation or Unix user.",
+      "type": "string",
+      "pattern": "^s[a-z2-7]{26}$"
+    },
+    "avatarUrl": { "type": "string", "maxLength": 1024, "pattern": "^(https://avatars\\.githubusercontent\\.com/.*)?$" },
+    "share": {
+      "description": "invited: the person may only join (Liity); nothing of the conversation shows before. joined: the person is in the conversation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["share_id", "owner", "state", "invited_at"],
+      "properties": {
+        "share_id": { "$ref": "#/$defs/shareId" },
+        "owner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["display_name", "avatar_url"],
+          "properties": {
+            "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+            "avatar_url": { "$ref": "#/$defs/avatarUrl" }
+          }
+        },
+        "state": { "enum": ["invited", "joined"] },
+        "invited_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+      }
+    },
+    "join": {
+      "description": "The reply of POST /api/v1/shared/<share_id>/join, after the owner's daemon accepted the join on its guest socket.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "share_id", "role", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "share_id": { "$ref": "#/$defs/shareId" },
+        "role": { "enum": ["participant", "full_rights"] },
+        "state": { "const": "joined" }
+      }
+    },
+    "participant": {
+      "description": "The decoded value of the Open-Habitat-Participant header the gateway sends on the owner's guest socket, base64url without padding: who is speaking, from the authenticated session alone. It is identity, never permission; the daemon refuses it on every other socket.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "display_name", "avatar_url"],
+      "properties": {
+        "subject": { "$ref": "conversation-members.schema.json#/$defs/subject" },
+        "display_name": { "$ref": "conversation-members.schema.json#/$defs/displayName" },
+        "avatar_url": { "$ref": "#/$defs/avatarUrl" }
+      }
+    }
+  }
+}

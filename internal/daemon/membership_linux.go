@@ -100,6 +100,7 @@ type memberLine struct {
 type guestParticipant struct {
 	Subject     string
 	DisplayName string
+	AvatarURL   string
 }
 
 var errMembershipUnreadable = errors.New("membership record unreadable")
@@ -734,8 +735,8 @@ func (c *ConversationController) deliverMemberLines(s *conversation) {
 }
 
 // GuestJoinHandler serves POST /guest/v1/conversations/<id>/join for the
-// guest listener, which is mounted by the guest socket's own default-deny
-// route table. identify returns the participant the gateway named for this
+// guest listener, mounted by the guest socket's own default-deny route table
+// (guest_linux.go). identify returns the participant the gateway named for this
 // request, after the listener has checked the gateway's peer UID.
 func (c *ConversationController) GuestJoinHandler(identify func(*http.Request) (guestParticipant, bool)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

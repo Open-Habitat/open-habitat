@@ -19,6 +19,8 @@ const (
 	RefusalDaemonServeEnded   = "daemon_serve_ended"
 	RefusalAgentListener      = "agent_listener_refused"
 	RefusalAgentServeEnded    = "agent_serve_ended"
+	RefusalGuestListener      = "guest_listener_refused"
+	RefusalGuestServeEnded    = "guest_serve_ended"
 	RefusalUnclassified       = "unclassified"
 )
 

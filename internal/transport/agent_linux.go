@@ -36,15 +36,22 @@ func ValidateAgentListener(c Config, ln *net.UnixListener) error {
 	return probeAgentListener(c, ln)
 }
 func probeAgentListener(c Config, ln *net.UnixListener) error {
-	if ln == nil || ln.Addr().String() != AgentPath(c) {
+	return probeListener(ln, AgentPath(c), c.UID, "@oh-agent-probe-")
+}
+
+// probeListener connects to path from a random abstract address and accepts
+// until that probe arrives, keeping every connection from peer queued for
+// the server: a socket activation starts with the triggering request queued.
+func probeListener(ln *net.UnixListener, path string, peer int, prefix string) error {
+	if ln == nil || ln.Addr().String() != path {
 		return denied
 	}
 	var nonce [24]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return denied
 	}
-	name := "@oh-agent-probe-" + hex.EncodeToString(nonce[:])
-	probe, err := (&net.Dialer{Timeout: time.Second, LocalAddr: &net.UnixAddr{Name: name, Net: "unix"}}).Dial("unix", AgentPath(c))
+	name := prefix + hex.EncodeToString(nonce[:])
+	probe, err := (&net.Dialer{Timeout: time.Second, LocalAddr: &net.UnixAddr{Name: name, Net: "unix"}}).Dial("unix", path)
 	if err != nil {
 		return denied
 	}
@@ -65,7 +72,11 @@ func probeAgentListener(c Config, ln *net.UnixListener) error {
 		if err != nil {
 			return denied
 		}
-		if peerUID(conn) != c.UID {
+		if conn.RemoteAddr().String() == name && peerUID(conn) == os.Geteuid() {
+			conn.Close()
+			break
+		}
+		if peerUID(conn) != peer {
 			conn.Close()
 			continue
 		}

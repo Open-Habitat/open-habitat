@@ -59,7 +59,7 @@ func TestStoragePolicyExact(t *testing.T) {
 	}
 }
 func TestShippedStorageDependencies(t *testing.T) {
-	for name, content := range map[string]string{"broker": policy.BrokerService, "broker.socket": policy.BrokerSocket, "daemon": policy.DaemonSocket, "agent": policy.AgentSocket} {
+	for name, content := range map[string]string{"broker": policy.BrokerService, "broker.socket": policy.BrokerSocket, "daemon": policy.DaemonSocket, "agent": policy.AgentSocket, "guest": policy.GuestSocket} {
 		if !strings.Contains(content, "Requires=open-habitat-storage.service") || !strings.Contains(content, "After=open-habitat-storage.service") {
 			t.Fatalf("unguarded %s", name)
 		}

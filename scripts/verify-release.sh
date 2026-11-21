@@ -36,7 +36,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat bin/runtime-release web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/open-habitat-binding@.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat bin/runtime-release web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-guest@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/open-habitat-binding@.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -58,7 +58,7 @@ allowed = {'bin/open-habitat', 'bin/runtime-release', 'MANIFEST.sha256', 'licens
            'site/schema.json', 'site/example.json', 'operator/SKILL.md',
            'systemd/open-habitat-gateway.service', 'systemd/open-habitat-revoke.socket',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
-           'systemd/open-habitat-agent@.socket',
+           'systemd/open-habitat-agent@.socket', 'systemd/open-habitat-guest@.socket',
            'systemd/open-habitat-broker.service', 'systemd/open-habitat-broker.socket',
            'systemd/open-habitat-proc.service', 'systemd/open-habitat-storage.service', 'systemd/open-habitat-binding@.service',
            'systemd/polkit.service.d/open-habitat-proc.conf',
@@ -181,10 +181,19 @@ if unit('open-habitat-agent@.socket') != {
         'Service': 'open-habitat-daemon@%i.service', 'RemoveOnStop': 'yes'},
     '[Install]': {'WantedBy': 'sockets.target'}}:
     sys.exit('error: agent socket policy differs')
+if unit('open-habitat-guest@.socket') != {
+    '[Unit]': {'Description': 'Open Habitat guest socket for %i',
+        'Requires': 'open-habitat-storage.service open-habitat-binding@%i.service', 'After': 'open-habitat-storage.service open-habitat-binding@%i.service'},
+    '[Socket]': {'ListenStream': '/run/open-habitat/users/%i/guest.sock',
+        'SocketMode': '0660', 'SocketUser': '%i', 'SocketGroup': 'open-habitat-gateway',
+        'DirectoryMode': '0710', 'FileDescriptorName': 'guest',
+        'Service': 'open-habitat-daemon@%i.service', 'RemoveOnStop': 'yes'},
+    '[Install]': {'WantedBy': 'sockets.target'}}:
+    sys.exit('error: guest socket policy differs')
 daemon_deps = unit('open-habitat-daemon@.service')['[Unit]']
-for socket in ('open-habitat-daemon@%i.socket', 'open-habitat-agent@%i.socket'):
+for socket in ('open-habitat-daemon@%i.socket', 'open-habitat-agent@%i.socket', 'open-habitat-guest@%i.socket'):
     if socket not in daemon_deps.get('Requires', '').split() or socket not in daemon_deps.get('After', '').split():
-        sys.exit('error: daemon requires both ordered sockets')
+        sys.exit('error: daemon requires all three ordered sockets')
 # One OOM-killed agent build must not stop every conversation of the person.
 if unit('open-habitat-daemon@.service')['[Service]'].get('OOMPolicy') != 'continue':
     sys.exit('error: daemon unit must keep running when one of its processes is OOM-killed')

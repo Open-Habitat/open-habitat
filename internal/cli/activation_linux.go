@@ -58,46 +58,60 @@ func activatedFD(fd int, cfg transport.Config, path string, validate func(transp
 	return listener, nil
 }
 
-// Both listeners must be supplied regardless of which one triggered activation.
-func activatedSockets(cfg transport.Config) (*net.UnixListener, *net.UnixListener, error) {
-	return activatedSocketsWith(cfg, transport.ValidateListener, transport.ValidateAgentListener)
+// The three listeners are supplied together whichever one triggered
+// activation: daemon.sock (the gateway, as the owner), agent.sock (the
+// person's own agents) and guest.sock (other people, through the gateway).
+type activated struct{ daemon, agent, guest *net.UnixListener }
+
+func (a activated) close() {
+	for _, ln := range []*net.UnixListener{a.daemon, a.agent, a.guest} {
+		if ln != nil {
+			ln.Close()
+		}
+	}
 }
-func activatedSocketsWith(cfg transport.Config, gatewayCheck, agentCheck func(transport.Config, *net.UnixListener) error) (*net.UnixListener, *net.UnixListener, error) {
+
+func activatedSockets(cfg transport.Config) (activated, error) {
+	return activatedSocketsWith(cfg, transport.ValidateListener, transport.ValidateAgentListener, transport.ValidateGuestListener)
+}
+func activatedSocketsWith(cfg transport.Config, gatewayCheck, agentCheck, guestCheck func(transport.Config, *net.UnixListener) error) (activated, error) {
 	defer func() {
 		for _, k := range []string{"LISTEN_PID", "LISTEN_FDS", "LISTEN_FDNAMES"} {
 			os.Unsetenv(k)
 		}
 	}()
-	if os.Getenv("LISTEN_PID") != strconv.Itoa(os.Getpid()) || os.Getenv("LISTEN_FDS") != "2" {
-		return nil, nil, activationDenied
+	if os.Getenv("LISTEN_PID") != strconv.Itoa(os.Getpid()) || os.Getenv("LISTEN_FDS") != "3" {
+		return activated{}, activationDenied
 	}
 	names := strings.Split(os.Getenv("LISTEN_FDNAMES"), ":")
-	if len(names) != 2 || !((names[0] == "daemon" && names[1] == "agent") || (names[0] == "agent" && names[1] == "daemon")) {
-		return nil, nil, activationDenied
+	seen := map[string]bool{}
+	for _, name := range names {
+		if (name != "daemon" && name != "agent" && name != "guest") || seen[name] {
+			return activated{}, activationDenied
+		}
+		seen[name] = true
 	}
-	unix.CloseOnExec(3)
-	unix.CloseOnExec(4)
-	var daemon, agent *net.UnixListener
+	if len(names) != 3 {
+		return activated{}, activationDenied
+	}
+	for i := range names {
+		unix.CloseOnExec(3 + i)
+	}
+	var out activated
 	for i, name := range names {
-		path, validate := cfg.Socket, gatewayCheck
-		if name == "agent" {
-			path, validate = transport.AgentPath(cfg), agentCheck
+		path, validate, slot := cfg.Socket, gatewayCheck, &out.daemon
+		switch name {
+		case "agent":
+			path, validate, slot = transport.AgentPath(cfg), agentCheck, &out.agent
+		case "guest":
+			path, validate, slot = transport.GuestPath(cfg), guestCheck, &out.guest
 		}
 		ln, err := activatedFD(3+i, cfg, path, validate)
 		if err != nil {
-			if daemon != nil {
-				daemon.Close()
-			}
-			if agent != nil {
-				agent.Close()
-			}
-			return nil, nil, activationDenied
+			out.close()
+			return activated{}, activationDenied
 		}
-		if name == "daemon" {
-			daemon = ln
-		} else {
-			agent = ln
-		}
+		*slot = ln
 	}
-	return daemon, agent, nil
+	return out, nil
 }

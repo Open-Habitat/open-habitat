@@ -33,6 +33,14 @@ func (a *Auth) liveRequest(r *http.Request, authenticated session) (context.Cont
 // removing the session cancels it, and checks valid (under mu) every second
 // for expiry. Call under mu.
 func (a *Auth) registerLive(parent context.Context, key string, valid func() bool) (context.Context, func()) {
+	return a.registerRelay(parent, key, "", valid)
+}
+
+// registerRelay is registerLive for a relay that is also tied to a share of
+// a conversation (ADR 0038): removing the participant or withdrawing either
+// person cancels it under mu, the lock its registration was checked under.
+// Call under mu.
+func (a *Auth) registerRelay(parent context.Context, key, share string, valid func() bool) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(parent)
 	if a.live == nil {
 		a.live = make(map[string]map[*liveRelay]struct{})
@@ -42,6 +50,15 @@ func (a *Auth) registerLive(parent context.Context, key string, valid func() boo
 		a.live[key] = make(map[*liveRelay]struct{})
 	}
 	a.live[key][relay] = struct{}{}
+	if share != "" {
+		if a.shareLive == nil {
+			a.shareLive = make(map[string]map[*liveRelay]struct{})
+		}
+		if a.shareLive[share] == nil {
+			a.shareLive[share] = make(map[*liveRelay]struct{})
+		}
+		a.shareLive[share][relay] = struct{}{}
+	}
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -66,7 +83,21 @@ func (a *Auth) registerLive(parent context.Context, key string, valid func() boo
 		if len(a.live[key]) == 0 {
 			delete(a.live, key)
 		}
+		if share != "" {
+			delete(a.shareLive[share], relay)
+			if len(a.shareLive[share]) == 0 {
+				delete(a.shareLive, share)
+			}
+		}
 	}
+}
+
+// cancelShareRelaysLocked ends every relay of one share. Call under mu.
+func (a *Auth) cancelShareRelaysLocked(share string) {
+	for relay := range a.shareLive[share] {
+		relay.cancel()
+	}
+	delete(a.shareLive, share)
 }
 
 type liveRelay struct{ cancel context.CancelFunc }

@@ -32,6 +32,9 @@ var DaemonSocket string
 //go:embed systemd/open-habitat-agent@.socket
 var AgentSocket string
 
+//go:embed systemd/open-habitat-guest@.socket
+var GuestSocket string
+
 //go:embed systemd/open-habitat-binding@.service
 var BindingService string
 

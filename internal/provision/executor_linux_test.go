@@ -338,6 +338,23 @@ func TestAgentUnitEffectivePolicy(t *testing.T) {
 	}
 }
 
+func TestGuestUnitEffectivePolicy(t *testing.T) {
+	e := NewLinuxHostExecutor(21003, 21003)
+	i := ExecutorIdentity{username: "carol", uid: 21001}
+	good := "SocketMode=0660\nDirectoryMode=0710\nSocketUser=carol\nSocketGroup=open-habitat-gateway\nRemoveOnStop=yes\nFileDescriptorName=guest\nTriggers=open-habitat-daemon@carol.service\nListen=/run/open-habitat/users/carol/guest.sock (Stream)\n"
+	for _, b := range []string{good, strings.Replace(good, "0660", "0666", 1), strings.Replace(good, "SocketGroup=open-habitat-gateway", "SocketGroup=carol", 1), strings.Replace(good, "FileDescriptorName=guest", "FileDescriptorName=daemon", 1), strings.Replace(good, "Triggers=open-habitat-daemon@carol.service", "Triggers=other.service", 1), good + "SocketMode=0660\n", strings.Replace(good, "guest.sock (Stream)", "0.0.0.0:80 (Stream)", 1)} {
+		e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+			if path != systemctl || args[0] != "show" || args[1] != "open-habitat-guest@carol.socket" {
+				t.Fatalf("unexpected command %s %v", path, args)
+			}
+			return []byte(b), nil
+		}
+		if (e.guestUnit(context.Background(), i) == nil) != (b == good) {
+			t.Fatalf("wrong policy verdict %q", b)
+		}
+	}
+}
+
 func TestAgentSocketRouteDistinctUIDs(t *testing.T) {
 	if os.Getenv("AGENT_UID_CONTAINER") != "1" {
 		t.Skip("requires disposable scripts/test-agent-uids.sh namespace")
@@ -401,6 +418,20 @@ func TestAgentSocketRouteDistinctUIDs(t *testing.T) {
 		t.Fatal("started with unsafe agent mode")
 	}
 	os.Chmod(agentSocketFor(name), 0600)
+	if e.startOnActiveSocket(context.Background(), i) == nil || starts != 0 {
+		t.Fatal("started with missing guest socket")
+	}
+	g, err := net.ListenUnix("unix", &net.UnixAddr{Name: guestSocketFor(name), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer g.Close()
+	os.Chown(guestSocketFor(name), 21001, 21001)
+	os.Chmod(guestSocketFor(name), 0660)
+	if e.startOnActiveSocket(context.Background(), i) == nil || starts != 0 {
+		t.Fatal("started with a guest socket outside the gateway's group")
+	}
+	os.Chown(guestSocketFor(name), 21001, 21003)
 	if err := e.startOnActiveSocket(context.Background(), i); err != nil || starts != 1 {
 		t.Fatalf("safe pair refused: %v starts %d", err, starts)
 	}

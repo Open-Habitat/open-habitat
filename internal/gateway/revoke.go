@@ -69,5 +69,11 @@ func (a *Auth) revokeSessionsLocked(subject string) (int, error) {
 	if _, err := a.removeViewLinksLocked(subject); err != nil {
 		return 0, errors.New("view address store unavailable")
 	}
+	// Their conversation shares go too, as owner and as participant (ADR
+	// 0038): a person admitted again starts with none, so an old membership
+	// record in someone's daemon gives them nothing.
+	if err := a.removeSharesLocked(subject); err != nil {
+		return 0, errors.New("participation index unavailable")
+	}
 	return removed, nil
 }

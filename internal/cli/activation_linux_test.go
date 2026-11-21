@@ -22,16 +22,14 @@ func TestActivatedPair(t *testing.T) {
 		}
 		cfg := transport.Config{Socket: os.Getenv("PAIR_PATH")}
 		check := func(transport.Config, *net.UnixListener) error { return nil }
-		d, a, err := activatedSocketsWith(cfg, check, check)
+		listeners, err := activatedSocketsWith(cfg, check, check, check)
 		want := os.Getenv("PAIR_VALID") == "1"
 		if (err == nil) != want {
 			t.Fatalf("success=%v want=%v", err == nil, want)
 		}
-		if d != nil {
-			defer d.Close()
-		}
-		if a != nil {
-			defer a.Close()
+		defer listeners.close()
+		if err == nil && (listeners.daemon.Addr().String() != cfg.Socket || listeners.agent.Addr().String() != transport.AgentPath(cfg) || listeners.guest.Addr().String() != transport.GuestPath(cfg)) {
+			t.Fatal("listeners given the wrong names")
 		}
 		for _, key := range []string{"LISTEN_PID", "LISTEN_FDS", "LISTEN_FDNAMES"} {
 			if os.Getenv(key) != "" {
@@ -42,15 +40,20 @@ func TestActivatedPair(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name, names, count string
-		swap, valid        bool
+		order              []int // indexes into daemon, agent, guest
+		valid              bool
 	}{
-		{"gateway-first", "daemon:agent", "2", false, true},
-		{"agent-first", "agent:daemon", "2", true, true},
-		{"swapped", "agent:daemon", "2", false, false},
-		{"missing", "daemon", "1", false, false},
-		{"stale", "daemon:agent", "2", false, false},
-		{"extra", "daemon:agent:other", "3", false, false},
-		{"duplicate", "agent:agent", "2", false, false},
+		{"gateway-first", "daemon:agent:guest", "3", []int{0, 1, 2}, true},
+		{"agent-first", "agent:daemon:guest", "3", []int{1, 0, 2}, true},
+		{"guest-first", "guest:agent:daemon", "3", []int{2, 1, 0}, true},
+		{"swapped", "agent:daemon:guest", "3", []int{0, 1, 2}, false},
+		{"guest-swapped", "daemon:guest:agent", "3", []int{0, 1, 2}, false},
+		{"no-guest", "daemon:agent", "2", []int{0, 1}, false},
+		{"missing", "daemon", "1", []int{0}, false},
+		{"stale", "daemon:agent:guest", "3", []int{0, 1, 2}, false},
+		{"other", "daemon:agent:other", "3", []int{0, 1, 2}, false},
+		{"duplicate", "agent:agent:guest", "3", []int{1, 1, 2}, false},
+		{"extra", "daemon:agent:guest:guest", "4", []int{0, 1, 2, 2}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -65,13 +68,21 @@ func TestActivatedPair(t *testing.T) {
 				t.Fatal(e)
 			}
 			defer a.Close()
+			g, e := net.ListenUnix("unix", &net.UnixAddr{Name: filepath.Join(dir, "guest.sock"), Net: "unix"})
+			if e != nil {
+				t.Fatal(e)
+			}
+			defer g.Close()
 			df, _ := d.File()
 			af, _ := a.File()
+			gf, _ := g.File()
 			defer df.Close()
 			defer af.Close()
-			files := []*os.File{df, af}
-			if tc.swap {
-				files = []*os.File{af, df}
+			defer gf.Close()
+			all := []*os.File{df, af, gf}
+			var files []*os.File
+			for _, i := range tc.order {
+				files = append(files, all[i])
 			}
 			c := exec.Command(os.Args[0], "-test.run=^TestActivatedPair$")
 			c.ExtraFiles = files

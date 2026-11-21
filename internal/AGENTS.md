@@ -241,6 +241,22 @@ Identity and authority:
   notice text is data, never approval. The browser-confirmation set for personal
   operations is empty: explicit targets and existing safety proofs apply.
   Native git, gh, tmux and Taskfleet keep their own jobs and records.
+- The guest listener (`guest.sock`, ADR 0038) belongs to the gateway's UID
+  and serves other people on the server in one person's conversations. Its
+  route table is default-deny and separate from the browser mux and the agent
+  table: only participant operations under `/guest/v1/conversations/<id>/`,
+  never a workspace, file, editor, terminal, view, attachment, integration,
+  search, settings or membership route other than joining one's own
+  invitation. Its requests never satisfy `TrustedPeer`. The gateway names the
+  speaking person in `Open-Habitat-Participant` (provider subject, display
+  name, avatar; never a Unix name); the daemon takes that as who speaks, never
+  as permission, decides everything from the owner's membership record, and
+  refuses the header on `daemon.sock` and `agent.sock`. The gateway's
+  participation index (`shares_linux.go`, beside the view address store) holds
+  metadata only and routes; a guest request passes only when the index and the
+  owner's record both admit it, an unknown, removed or foreign share looks
+  like a missing one, and withdrawing a person deletes their shares as owner
+  and as participant. The URL never selects a Unix user.
 - A person's own Tailscale node (Omat koneet) is theirs alone: a systemd
   user unit of their account, never a system `tailscaled`, never a host-wide
   tailnet and never a Habitat-owned tailnet, auth key or admin access to

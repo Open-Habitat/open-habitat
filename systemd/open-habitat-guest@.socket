@@ -1,0 +1,20 @@
+[Unit]
+Requires=open-habitat-storage.service open-habitat-binding@%i.service
+After=open-habitat-storage.service open-habitat-binding@%i.service
+Description=Open Habitat guest socket for %i
+
+# Other people in this person's conversations reach the daemon here, through
+# the gateway only (ADR 0038). The daemon serves it from its own default-deny
+# route table and takes no permission from the gateway.
+[Socket]
+ListenStream=/run/open-habitat/users/%i/guest.sock
+SocketMode=0660
+SocketUser=%i
+SocketGroup=open-habitat-gateway
+DirectoryMode=0710
+FileDescriptorName=guest
+Service=open-habitat-daemon@%i.service
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

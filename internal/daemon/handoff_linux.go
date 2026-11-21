@@ -166,16 +166,16 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	}
 	// The handoff route that transport adds to outer logs its own outcome.
 	outer := http.NewServeMux()
-	outer.Handle("/", RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), server.TrustedPeer, mux))
+	outer.Handle("/", RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), server.TrustedPeer, refuseParticipantHeader(mux)))
 	// The editor relay is code-server's traffic, long-lived connections
 	// included, with paths that are not fixed routes: it is not logged per
 	// request.
-	outer.Handle(EditorRelayPrefix, editor)
+	outer.Handle(EditorRelayPrefix, refuseParticipantHeader(editor))
 	// View files are read per request like the editor relay, with paths that
 	// are the person's file names: not logged per request either.
-	outer.Handle(ViewExportPrefix, ViewExportHandler(cfg, server.TrustedPeer))
+	outer.Handle(ViewExportPrefix, refuseParticipantHeader(ViewExportHandler(cfg, server.TrustedPeer)))
 	// Offered files likewise: their paths are the person's file names.
-	offers := FileOffersHandler(cfg, server.TrustedPeer)
+	offers := refuseParticipantHeader(FileOffersHandler(cfg, server.TrustedPeer))
 	outer.Handle(FileOffersPath, offers)
 	outer.Handle(FileOffersPath+"/", offers)
 	// Share this controller, not the browser mux or its trusted-peer capability.
@@ -183,20 +183,31 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		agent := agents[0]
 		child, cancel := context.WithCancel(ctx)
 		defer cancel()
-		results := make(chan error, 2)
+		served := 2
+		results := make(chan error, 3)
 		go func() {
-			results <- listenerRefusal(RefusalAgentListener, RefusalAgentServeEnded, transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, speech, clones)))
+			results <- listenerRefusal(RefusalAgentListener, RefusalAgentServeEnded, transport.ServeAgent(child, agent.Listener, cfg, refuseParticipantHeader(agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, speech, clones))))
 		}()
 		go func() {
 			results <- listenerRefusal(RefusalDaemonListener, RefusalDaemonServeEnded, server.ServeMux(child, listener, outer))
 		}()
-		err := <-results
-		cancel()
-		other := <-results
-		if err != nil {
-			return err
+		if agent.Guest != nil {
+			served++
+			go func() {
+				results <- listenerRefusal(RefusalGuestListener, RefusalGuestServeEnded, transport.ServeGuest(child, agent.Guest, cfg, guestHandler(controller)))
+			}()
 		}
-		return other
+		// The first listener to stop ends the others; its error is the one
+		// reported.
+		var first error
+		for i := 0; i < served; i++ {
+			err := <-results
+			cancel()
+			if first == nil {
+				first = err
+			}
+		}
+		return first
 	}
 	return listenerRefusal(RefusalDaemonListener, RefusalDaemonServeEnded, server.ServeMux(ctx, listener, outer))
 }
