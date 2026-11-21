@@ -2,12 +2,15 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7z7zq68c0zjn6rzp5d700d6/runtime-install-time
 originating_run: 01m7z7zq68c0zjn6rzp5d700d6
 originating_run_kind: spinoff
+lane: release-runtime
+lane_seq: 1
+preparation: ready
 ---
 
 # Reuse unchanged authenticated runtime payloads across release identities
