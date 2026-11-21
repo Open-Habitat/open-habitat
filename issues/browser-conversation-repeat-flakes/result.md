@@ -54,3 +54,12 @@ and one that stuck after an epoch change. Both are fixed under
 once. The screenshot was taken while the clipped bubble had no fade. The cause
 was not established, and it did not recur in the 528 cases of the final
 runs or in a targeted `--repeat-each 30` of that case (30/30).
+
+After the store follow-ups were reverted, a final whole-file run failed 1 of
+264 at `changed snapshot identity discards late previous status`. This case
+has the same self-deadlock as the logout case under `altogether-wanting-children`:
+it held every status read before pressing the recheck, so a background read
+held first hid the button. It now uses `watchRecheck` too, and passes 20/20
+plain and 20/20 at `OH_CPU_THROTTLE=4`. The other cases that hold status reads
+(the cold-open and the reset/404 cases) hold them on purpose and do not press
+the recheck.

@@ -2729,7 +2729,11 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   const entered = new Promise<void>((resolve) => {
     started = resolve;
   });
+  // Hold only the check's own read: a background read held first would
+  // mark the status stale and hide the check this case presses.
+  const pressed = await watchRecheck(page);
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    if (!(await pressed())) return route.continue().catch(() => {});
     started();
     await held;
     await route.continue().catch(() => {});
