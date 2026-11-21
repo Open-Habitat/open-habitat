@@ -88,5 +88,36 @@
       "display_name": "Example",
       "visibility": "hidden"
     }
+  },
+  {
+    "schema_version": 1,
+    "event_id": "evt_example0047",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:47",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 47,
+    "emitted_at": "2026-09-22T14:00:06Z",
+    "kind": "question.requested",
+    "resource": {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333"
+    },
+    "payload": {
+      "request_id": "ui_example0047",
+      "question_kind": "permission",
+      "prompt": "Delete the mail folder 'Invoices 2024'",
+      "choices": [],
+      "permission": {
+        "action": "Delete the mail folder 'Invoices 2024'",
+        "consequence": "The folder and its 37 messages are removed from the mailbox.",
+        "account": {
+          "provider": "Microsoft",
+          "address": "person@example.test"
+        },
+        "call": {
+          "area": "ms-admin",
+          "tool": "delete-mail-folder",
+          "arguments": "{\"mailFolderId\":\"AAMkExample\"}"
+        }
+      }
+    }
   }
 ]

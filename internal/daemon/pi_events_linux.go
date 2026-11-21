@@ -327,6 +327,15 @@ func (c *ConversationController) drain(s *conversation) {
 				Options     []string `json:"options"`
 			}
 			if json.Unmarshal(raw, &q) == nil && len(q.ID) > 0 && len(q.ID) <= 200 && utf8.ValidString(q.ID) {
+				isPermission, permission := permissionRequest(q.Method, q.Title)
+				if isPermission {
+					// The typed parts replace the encoded title; the prompt is
+					// the action, for a view that shows only one line.
+					q.Title, q.Message = "", ""
+					if permission != nil {
+						q.Title = permission.Action
+					}
+				}
 				prompt := q.Title
 				for _, candidate := range []string{q.Message, q.StatusText, q.Text, q.Prefill, strings.Join(q.WidgetLines, "\n")} {
 					if prompt == "" && candidate != "" {
@@ -343,6 +352,9 @@ func (c *ConversationController) drain(s *conversation) {
 					kind := q.Method
 					if kind != "input" && kind != "confirm" && kind != "select" {
 						kind = "unknown"
+					}
+					if isPermission {
+						kind = "permission"
 					}
 					switch q.Method {
 					case "notify", "setStatus", "setWidget", "setTitle", "set_editor_text":
@@ -382,7 +394,14 @@ func (c *ConversationController) drain(s *conversation) {
 						if s.spentQuestions == nil {
 							s.spentQuestions = make(map[string]bool)
 						}
-						if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
+						if isPermission && permission == nil {
+							// Never shown: cancelling it makes the asking hook
+							// block its call with a reason.
+							if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
+								s.spentQuestions[q.ID] = true
+								go func(rpc *piRPC, id string) { _ = rpc.respondUI(id, "permission", nil, true) }(s.rpc, q.ID)
+							}
+						} else if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
 							duplicate := s.questionID == q.ID
 							for _, queued := range s.queuedQuestions {
 								if queued.id == q.ID {
@@ -390,7 +409,11 @@ func (c *ConversationController) drain(s *conversation) {
 								}
 							}
 							if !duplicate {
-								next := pendingQuestion{q.ID, kind, choices, map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}}
+								view := map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
+								if permission != nil {
+									view["permission"] = permission.wire()
+								}
+								next := pendingQuestion{q.ID, kind, choices, view}
 								if s.questionID == "" {
 									c.showQuestion(s, next)
 								} else if len(s.queuedQuestions) < 16 {

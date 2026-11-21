@@ -1096,6 +1096,7 @@
             "input",
             "confirm",
             "select",
+            "permission",
             "unknown"
           ]
         },
@@ -1114,8 +1115,106 @@
         },
         "cancellation": {
           "$ref": "common.schema.json#/$defs/capability"
+        },
+        "permission": {
+          "description": "A permission question that a Pi tool_call hook asks before it lets a call run. Its parts travel as separate fields so the browser never reads meaning out of free text. Only the daemon's own extension API produces it; the answer is a confirmation.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "consequence",
+            "call"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "The action in plain words, as the person would say it."
+            },
+            "consequence": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600,
+              "description": "What follows from allowing it."
+            },
+            "account": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "address"
+              ],
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60,
+                  "description": "The connected service's name, such as Microsoft."
+                },
+                "address": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 320,
+                  "description": "The account on that service the call acts on."
+                }
+              },
+              "description": "The connected account the call acts on; absent when the call acts on no account."
+            },
+            "call": {
+              "description": "The technical call, shown on request.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "area",
+                "tool",
+                "arguments"
+              ],
+              "properties": {
+                "area": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "tool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "arguments": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 2000,
+                  "description": "The call's arguments as JSON text, shown verbatim and never interpreted."
+                }
+              }
+            }
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "question_kind": {
+                "const": "permission"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "permission"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "permission"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -274,6 +274,22 @@ def must_reject(schema: str, instance: object) -> None:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
 
+# A permission question has its typed parts, and only a permission question does.
+permission_event = next(e for e in events if e["kind"] == "question.requested" and e["payload"]["question_kind"] == "permission")
+permission_payload = permission_event["payload"]
+for change in (
+    {"permission": None},
+    {"question_kind": "confirm"},
+    {"permission": {**permission_payload["permission"], "html": "<b>x</b>"}},
+    {"permission": {**permission_payload["permission"], "action": ""}},
+    {"permission": {**permission_payload["permission"], "call": {"area": "ms-admin", "tool": "delete-mail-folder", "arguments": {"id": "x"}}}},
+    {"permission": {**permission_payload["permission"], "account": {"provider": "Microsoft"}}},
+):
+    must_reject("event.schema.json", {**permission_event, "payload": {k: v for k, v in {**permission_payload, **change}.items() if v is not None}})
+must_reject("event.schema.json", {**permission_event, "payload": {k: v for k, v in permission_payload.items() if k != "permission"}})
+for missing in ("action", "consequence", "call"):
+    must_reject("event.schema.json", {**permission_event, "payload": {**permission_payload, "permission": {k: v for k, v in permission_payload["permission"].items() if k != missing}}})
+
 conversation_list = json.loads((BASE / "examples/agent-conversation-list.json").read_text())
 conversation_row = conversation_list["sessions"][0]
 for change in ({"lifecycle": "idle"}, {"lifecycle": None}, {"title": None}, {"uid": 123}):

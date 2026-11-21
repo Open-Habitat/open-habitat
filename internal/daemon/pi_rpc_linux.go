@@ -776,7 +776,7 @@ func (p *piRPC) respondUI(id, kind string, value any, cancel bool) error {
 	wire := map[string]any{"type": "extension_ui_response", "id": id}
 	if cancel {
 		wire["cancelled"] = true
-	} else if kind == "confirm" {
+	} else if kind == "confirm" || kind == "permission" {
 		wire["confirmed"] = value
 	} else {
 		wire["value"] = value

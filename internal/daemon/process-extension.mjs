@@ -631,7 +631,83 @@ export async function guardBridgeTranscript(path, { verified = new Map(), now = 
   verified.delete(path);
   return { action: 'set_aside', damage: found.damage, line: found.line, transcript: path, kept: basename(kept), bytes: at.size };
 }
+// The permission question (contracts/v1 event.schema.json $defs/question,
+// question_kind "permission"). A tool_call hook in any extension loaded into
+// this Pi asks it through the API registered under permissionApiKey:
+//
+//   const habitat = globalThis[Symbol.for('open-habitat.permission')];
+//   pi.on('tool_call', (event, ctx) => habitat
+//     ? habitat.block(ctx, { action, consequence, account, call })
+//     : { block: true, reason: 'No Habitat browser to ask.' });
+//
+// The question travels as one Pi confirm whose title is permissionPrefix and
+// the question's JSON; the daemon turns exactly that into the typed browser
+// question and answers it as a confirmation (pi_permission_linux.go). Only a
+// person's Salli allows the call: a refusal, Stop, a malformed question or a
+// Pi without UI all block it with a reason the agent reads.
+export const permissionPrefix = 'oh-permission:';
+export const permissionApiKey = Symbol.for('open-habitat.permission');
+const permissionControl = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+const permissionArgumentControl = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]/g;
+// Bounds in code points, as the schema counts them. A name a hook looked up
+// may be long; it is cut with an ellipsis rather than refused, so a long
+// folder name does not block a call the person would allow.
+function permissionText(value, max, pattern = permissionControl) {
+  if (typeof value !== 'string') return null;
+  const chars = [...value.replace(pattern, ' ').trim()];
+  if (chars.length === 0) return null;
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : chars.join('');
+}
+export function permissionQuestion(q) {
+  if (!q || typeof q !== 'object') return null;
+  const action = permissionText(q.action, 300);
+  const consequence = permissionText(q.consequence, 600);
+  const call = q.call && typeof q.call === 'object' ? q.call : null;
+  const area = permissionText(call?.area, 80);
+  const tool = permissionText(call?.tool, 120);
+  if (!action || !consequence || !area || !tool) return null;
+  let args = call.arguments ?? '';
+  if (typeof args !== 'string') {
+    try { args = JSON.stringify(args) ?? ''; } catch { return null; }
+  }
+  args = permissionText(args, 2000, permissionArgumentControl) ?? '';
+  const out = { action, consequence, call: { area, tool, arguments: args } };
+  if (q.account != null) {
+    const provider = permissionText(q.account?.provider, 60);
+    const address = permissionText(q.account?.address, 320);
+    if (!provider || !address) return null;
+    out.account = { provider, address };
+  }
+  return out;
+}
+export const permissionReasons = {
+  denied: 'The person did not allow this call, so it was not made.',
+  noBrowser: 'This call needs the person\'s permission, and there is no Habitat browser to ask them in, so it was not made.',
+  invalid: 'Habitat could not ask the person for permission for this call (the question was incomplete), so it was not made.',
+};
+export async function askPermission(ctx, question) {
+  const q = permissionQuestion(question);
+  if (!q) return { allowed: false, reason: permissionReasons.invalid };
+  if (!ctx?.hasUI || typeof ctx.ui?.confirm !== 'function') return { allowed: false, reason: permissionReasons.noBrowser };
+  let allowed = false;
+  try {
+    // The turn's signal: Stop resolves the question as not allowed.
+    allowed = (await ctx.ui.confirm(permissionPrefix + JSON.stringify(q), q.action, { signal: ctx.signal })) === true;
+  } catch {
+    allowed = false;
+  }
+  return allowed ? { allowed: true } : { allowed: false, reason: permissionReasons.denied };
+}
+// The tool_call hook's result: nothing when allowed, a block with its reason otherwise.
+export async function permissionBlock(ctx, question) {
+  const answer = await askPermission(ctx, question);
+  return answer.allowed ? undefined : { block: true, reason: answer.reason };
+}
+
 export default function (pi) {
+  // Registered at load, so a hook in an extension loaded before or after this
+  // one finds it when its first tool call comes.
+  globalThis[permissionApiKey] = Object.freeze({ ask: askPermission, block: permissionBlock });
   let server, context, extensionVersion = null, shuttingDown = false;
   const launchedAt = Date.now();
   const foregroundTools = new Set();

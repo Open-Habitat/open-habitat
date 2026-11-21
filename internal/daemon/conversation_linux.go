@@ -1463,7 +1463,7 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 		}
 	} else {
 		switch kind {
-		case "confirm":
+		case "confirm", "permission":
 			var b bool
 			if string(body.Value) != "true" && string(body.Value) != "false" {
 				c.mu.Unlock()

@@ -112,7 +112,8 @@
       "bounded coalesced assistant.delta and tool progress use daemon event IDs; the persisted assistant entry supersedes the turn tail rather than appending a duplicate",
       "turn.settled is observed only after Pi agent_settled, correlated to an assistant native JSONL key or marked unknown if unavailable, with a host observation timestamp",
       "extension_ui_request delivers bounded plain-text question ID, kind and choices even for unknown methods; no raw HTML is forwarded",
-      "non-dialog Pi extension UI notifications remain bounded unknown.native plain text without overwriting pending_question; only response-bearing requests become question.requested"
+      "non-dialog Pi extension UI notifications remain bounded unknown.native plain text without overwriting pending_question; only response-bearing requests become question.requested",
+      "a permission question carries its action, consequence, optional account and technical call as separate fields and is answered as a confirmation; only the daemon's own extension API produces it, a malformed one is cancelled so the asking hook blocks the call, and a generic confirm never becomes one"
     ]
   },
   {
