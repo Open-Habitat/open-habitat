@@ -5101,24 +5101,6 @@ h2.ah-rail-section-head {
   overflow: auto;
   overscroll-behavior: contain;
 }
-/* A window too short for the regions: Työtilat's floor alone would fill
-   the rail, leave the conversations no room and clip the workspaces out of
-   reach, since the regions' rail never scrolls. Below this height the rail
-   scrolls as a whole again, as the narrow rail does, so every row stays
-   reachable. 560 px still leaves the conversations about two rows over
-   Työtilat's floor under the rail's head. */
-@media (max-height: 560px) {
-  .ah-rail-regions {
-    overflow: auto;
-  }
-  .ah-rail-regions > .ah-rail-convs,
-  .ah-rail-regions > .ah-rail-workspaces,
-  .ah-rail-regions .ah-rail-ws-scroll {
-    flex: none;
-    min-height: auto;
-    overflow: visible;
-  }
-}
 /* The edge cue: a soft shade inside an edge that hides rows, drawn by the
    region itself, with a hairline when rows hide above. railRegions.tsx
    marks the edges. */
@@ -5217,8 +5199,9 @@ h2.ah-rail-section-head {
 /* Too short for the regions: under about 600 px the rail's head and foot
    leave less than Työtilat's floor plus a few rows, so the conversations'
    region shrank to nothing and the clip cut off the rest; a phone held
-   sideways could reach no conversation. Here the rail scrolls as a whole
-   again, as the narrow rail does. */
+   sideways could reach no conversation, and a 1280 × 360 window could not
+   open a workspace. Here the rail scrolls as a whole again, as the narrow
+   rail does, so every row stays reachable. */
 @media (max-height: 600px) {
   .ah-rail-regions {
     overflow: auto;
@@ -5227,7 +5210,7 @@ h2.ah-rail-section-head {
     flex: none;
     min-height: auto;
   }
-  .ah-rail-regions :is(.ah-rail-convs, .ah-rail-ws-scroll) {
+  .ah-rail-regions :is(.ah-rail-convs, .ah-rail-workspaces, .ah-rail-ws-scroll) {
     overflow: visible;
   }
 }
