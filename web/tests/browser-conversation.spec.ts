@@ -14,6 +14,16 @@ test.beforeEach(async ({ page }) => {
   expect(
     (await page.request.get("/fixture/conversations-reset")).status(),
   ).toBe(204);
+  // Every installation's core runtime ships a working Taskfleet. The host's
+  // default one cannot be read, and an unreadable helper state rightly asks
+  // before an archive; these cases archive a conversation without helpers.
+  expect(
+    (await page.request.get("/fixture/taskfleet?status=empty")).status(),
+  ).toBe(204);
+});
+// The worker's host outlives this spec: leave its default Taskfleet behind.
+test.afterEach(async ({ page }) => {
+  await page.request.get("/fixture/taskfleet?status=none");
 });
 test.use({
   baseURL: host,
