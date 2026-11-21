@@ -102,9 +102,11 @@ onboarding". Sitä ei ole rakennettu.
   välissä poistettu tiedosto), linkkien ja muun kuin tekstin hylkääminen sekä
   HTTP-raja. Vastaukset tarkistetaan skeemaa vasten.
 - Web: `--area web` ja uudet Vitest-testit (kielen arvaus, lapun teksti ja
-  korjaus, editorin yhdistäminen ja ristiriita). Nopean tarkistuksen ainoa
-  punainen kohta on `finnishScan`, joka on punainen myös mainissa
-  (`LanguageSettings.tsx`, "Suomi"). Se on kirjattu omaksi issuekseen.
+  korjaus, editorin yhdistäminen ja ristiriita). Nopeassa tarkistuksessa on kaksi punaista
+  kohtaa, jotka ovat punaisia myös mainissa ja koskevat koskemattomia
+  tiedostoja: `finnishScan` (`LanguageSettings.tsx`, "Suomi") ja kaksi
+  biomen huomautusta tiedostossa `conversationStore.test.tsx`. Molemmat on
+  kirjattu omiksi issueikseen.
 - Selain (`OH_BROWSER_WORKERS=2`): uusi `agent-instructions.spec.ts`
   (käyttöönoton vaihe oikealla daemonin käsittelijällä, Asetusten
   vertaa ja vaihda -kirjoitus, yhdistäminen ja Muokkaa agentin kanssa) myös
