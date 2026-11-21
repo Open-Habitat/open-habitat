@@ -1,128 +1,167 @@
-# Prototyyppikierros: käyttöönoton ensimmäinen keskustelu kirjoittaa omat ohjeet
+# Toteutus: ohjeet agentille käyttöönotossa ja Asetuksissa
 
 ## Saatesanat
 
-Jari, tässä on kolme tapaa, joilla uusi ihminen päätyy käyttöönoton lopuksi
-keskusteluun. Siinä agentti kirjoittaa hänen omat ohjeensa
-tiedostoon `~/.pi/agent/AGENTS.md`, ja Clauden `~/.claude/CLAUDE.md` tuo saman
-tiedoston yhdellä `@`-rivillä. Avaa sivu, valitse suunta alhaalta ja
-napsauta kulku läpi: pikavastaukset ja oma teksti toimivat, samoin luonnoksen
-muuttaminen, tallennus ja Asetukset-näkymä, jossa ohjeita voi myöhemmin lukea
-ja muokata. **Alkuun käyttöönoton lopusta** näyttää kulun alusta, eli
-käyttöönoton viimeisestä kortista. **Tili: Ohjeet jo olemassa** näyttää
-tilanteen, jossa tiedosto on jo olemassa: agentti ei kirjoita sen päälle vaan
-ehdottaa merkittyjä lisäyksiä. Tiedostoon ei tule mitään siitä, minkä
-Habitatin oma ympäristökuvaus jo kertoo, vain ihminen itse: nimi, kieli, mitä
-hän tekee, miten vastataan ja mitä ei tehdä kysymättä. Suosittelen suuntaa 2.
-Siinä agentti näyttää heti valmiin luonnoksen siitä, mitä se jo tietää, ja
-kysyy vain kaksi puuttuvaa asiaa.
+Jari, hyväksytyt prototyypit (käyttöönotto A4.1 ja Asetukset B1) ovat nyt
+tuotannossa kokeellisena ominaisuutena **Ohjeet agentille**
+(`agent-instructions`, Asetukset › Kokeelliset ominaisuudet). Kun kytket sen
+päälle, Asetukset › Tili -sivulle tulee kohta Ohjeet agentille. Siinä
+muistilappusi (`~/.pi/agent/AGENTS.md`) näkyy Esikatselussa, Muokkaa-välilehdellä
+on raaka teksti, ja painikkeet ovat Tallenna ja Peru. Toissijainen
+**Muokkaa agentin kanssa** (tai **Kirjoita agentin kanssa**, jos lappua ei vielä
+ole) avaa saman muistilappukeskustelun kuin käyttöönoton viimeinen vaihe.
+Käyttöönotossa vaihe tulee AI-tilin jälkeen, kun ominaisuus on päällä.
 
-## Sivu
+Tiedoston lukee ja kirjoittaa daemonisi sinun käyttäjänäsi, kuten hyväksyit.
+Tallennus on vertaa ja vaihda -kirjoitus: jos tiedosto on muuttunut sillä
+välin (esimerkiksi agentti on muokannut sitä toisessa keskustelussa),
+mitään ei kirjoiteta. Editori yhdistää toisen muutoksen tekstiisi kuten
+työtilaeditori ja pyytää tallentamaan uudelleen. Clauden `~/.claude/CLAUDE.md`
+luodaan viittausrivillä vain, jos sitä ei vielä ole. Olemassa olevaan Clauden
+tiedostoon ei kosketa.
 
-- Rakennettu sivu: `/var/tmp/agent-keep/new-user-agent-instructions-template/offline.html`
-  (fontit upotettuina) ja `index.html` (ilman upotettuja fontteja Glasspadia
-  varten).
-- Ruutukaappaukset (68 kpl, 1440 ja 390 px, Päivä, Yö ja Kontrasti, suomi ja
-  englanti): `/var/tmp/agent-keep/new-user-agent-instructions-template/shots/`.
-- Lähteet: `design-system/prototypes/rounds/2026-11-21-onboarding-instructions/`.
-  Rakennus: `node build.mjs <out>`, tarkistus: `node check.mjs <out>/offline.html <shots>`
-  (396 tarkistusta, konsoli puhdas). Lähdecommit `c57737cf`.
-- Kysymykset sanatarkasti, pohja ja hostin puoli: kierroksen `NOTES.md`.
+## Mistä agentin kysymykset tulevat, ja voiko ylläpitäjä lisätä niitä?
 
-## Akseli ja suunnat
+**Nyt kysymykset ovat tuotteen omaa tekstiä.** Ne on kirjoitettu
+käyttöliittymän tekstiluetteloon (`web/src/text/agentNote.ts`) suomeksi ja
+englanniksi, kuten muutkin käyttöliittymän tekstit. Kysymykset ovat
+prototyypistä: millä kielellä agentti vastaa, millaisia vastauksia haluat,
+mitä agentti ei saa tehdä kysymättä, ja viimeisenä omat sanasi.
+"Keskustelu" on käsikirjoitettu: kielimalli ei aja, eikä kysymyksiä haeta
+mistään mallista, taidosta tai pohjatiedostosta. Myös korjattu versio omista
+sanoista tehdään säännöillä: isot alkukirjaimet ja loppupiste, ei muuta.
 
-Akseli: **miten agentti saa tiedot ihmiseltä.**
+**Ylläpitäjä ei voi nyt lisätä kysymyksiä.** Palvelimen käyttöönoton asetukset
+(ADR 0030, Asetukset › Käyttöönotto) kattavat vain repot, integraatioiden
+vaiheet ja AI-tilin tarjouksen. Muistilapulle niissä ei ole kohtaa.
 
-- **1 Haastattelu**: kuusi lyhyttä kysymystä yksi kerrallaan (nimi, kieli,
-  mitä teet, vastaustyyli, kysy ensin, muuta). Jokaisessa on pikavastaukset,
-  Ohita ja vapaa teksti. Tuntuu eniten keskustelulta, mutta on pisin: kuusi
-  vuoroa ennen kuin ihminen näkee, mitä niistä syntyy.
-- **2 Luonnos ensin**: agentti kertoo, mitä se tietää ja mistä (nimi
-  GitHubista, kieli Habitatin kielestä, työ GitHub-kuvauksesta), ja sanoo
-  suoraan, ettei kirjoita yhdistettyjä tilejä tai työtiloja ohjeisiin, koska
-  näkee ne aina ajantasaisina. Luonnos näkyy heti. Puuttuvat kaksi asiaa
-  (vastaustyyli ja kysy ensin) kysytään pikavastauksina, ja jokainen vastaus
-  päivittää luonnoksen. Tallennus käy kortista tai vastauksella "Näyttää
-  hyvältä, tallenna".
-- **3 Lomake**: keskusteluun tulee lomakekortti, jossa ovat samat asiat
-  kenttinä. Se on nopein täyttää, mutta muistuttaa asetussivua eikä
-  keskustelua. Lähetetty lomake jää historiaan lukittuna, ja lähetys näkyy
-  ihmisen viestinä.
+**Yksinkertaisin tapa lisätä ne** olisi uusi valinnainen osa samoihin
+käyttöönoton asetuksiin: enintään viisi kysymystä, joista jokaisella on
+suomen- ja englanninkielinen kysymys, enintään neljä vastausvaihtoehtoa
+(painikkeen teksti ja lause, jonka se lisää lappuun) ja tieto siitä, saako
+vastata omin sanoin. Selain saa listan samasta osoitteesta kuin
+integraatioiden vaiheet (`GET /api/v1/onboarding/site`) ja kysyy ne
+sisäänrakennettujen kysymysten jälkeen ennen omia sanoja. Kotihakemistoon ei
+tule mitään uutta reittiä: lapun kirjoittaa edelleen sivu daemonin kautta, ja
+vasta kun ihminen on nähnyt koko tekstin editorissa ja painanut Tallenna.
+Ylläpitäjä muokkaisi kysymyksiä Asetukset › Käyttöönotto -sivulla muiden
+vaiheiden vieressä. Ehdotus on kirjattu omaksi issuekseen (intake, ilman
+kaistaa): "Administrator-defined questions for the person's agent note in
+onboarding". Sitä ei ole rakennettu.
 
-Kaikille yhteistä:
+## Mitä tehtiin
 
-- luonnoskortti: polku, Uusi tiedosto / Lisäys nykyiseen, Clauden viittaus,
-  "kirjoitan vain, jos tiedosto on yhä sama", Tallenna / Muuta vielä; vanha
-  luonnos merkitään korvatuksi
-- tallennus näkyy tuotannon tool-riveinä (`write` tai `edit` kummallekin
-  tiedostolle)
-- käyttöönoton loppurivi: Siirry työtiloihin / Näytä ohjeet asetuksissa
-- kentän yllä käyttöönoton kaista ja sen **Tee myöhemmin**, joka ei kirjoita
-  mitään ja jättää Työtilat-sivulle muistutuskortin
+- **Daemon ja rajapinta.** `GET`/`PUT /api/v1/account/agent-instructions`
+  (`contracts/v1/agent-instructions.schema.json`). Daemon lukee vain tiedostoa
+  `~/.pi/agent/AGENTS.md`, eikä pyyntö koskaan nimeä polkua. Kirjoitus joko
+  nimeää luetun version (`base_version`) tai luo tiedoston vain, jos sitä ei
+  ole (`create`, `renameat2 RENAME_NOREPLACE`). Väärä versio palauttaa
+  `409 file_changed`, eikä mitään kirjoiteta. Linkkiä, kovaa linkkiä,
+  erikoistiedostoa ja muuta kuin UTF-8-tekstiä ilman CR- ja NUL-merkkejä ei
+  näytetä eikä korvata. Gateway välittää pyynnön CSRF-tarkistuksen jälkeen.
+  Sääntö on kirjattu `internal/AGENTS.md`:hen.
+- **Jaettu editori** `web/src/components/InstructionsEditor.tsx`: Esikatselu ja
+  Muokkaa, Tallenna ja Peru, yhdistäminen työtilaeditorin `threeWay`-funktiolla
+  ja ristiriitakortti `EditorConflict`.
+- **Muistilappukeskustelu** `web/src/components/AgentNoteStep.tsx` (A4.1):
+  ensin kieli, sitten vastaustyyli ja se, mitä ei saa tehdä kysymättä, ja
+  viimeisenä omat sanat. Korjausta tarjotaan erikseen (Pidä omani / Käytä
+  korjattua). Lappu näytetään editorissa ennen tallennusta. Olemassa olevalle
+  lapulle kieltä ei kysytä, vanha teksti säilyy tavu tavulta (Ennallaan), ja
+  lisäys näkyy merkinnällä Uutta.
+- **Käyttöönotto**: vaihe Ohjeet agentille reitin viimeisenä, sen jälkeen yksi
+  selkokielinen lause ja Missä ohjeet ovat? -kohta. Tee myöhemmin ja Jätä
+  ennalleen eivät kirjoita mitään.
+- **Asetukset › Tili › Ohjeet agentille** (B1) ja asetushaun rivi.
+- **Kielen oletus** `web/src/app/answerLanguage.ts`. Sääntö on kirjattu
+  funktion kommenttiin ja alle.
 
-## Suositus
+### Kielen arvaussääntö
 
-**2 Luonnos ensin.** Ihminen näkee jo ensimmäisessä näkymässä, millainen
-tiedosto on ja mihin se tallentuu, joten "ohjeet agentille" muuttuu
-konkreettiseksi ennen yhtäkään kysymystä. Agentti kertoo myös, mistä kukin
-tieto tuli, joten se ei arvaa ihmisen puolesta. Kysymyksiä on kaksi, ja
-muutokset käyvät napilla tai omin sanoin. Jos agentti tietää vähän (ei
-GitHub-kuvausta), suunnan 2 kulku voi pudota suunnan 1 kysymyksiin
-puuttuvien kohtien osalta. Lomake (3) sopii paremmin Asetukset-näkymän
-"Muokkaa tekstinä" -toiminnon rinnalle kuin ensimmäiseen keskusteluun.
+1. Jos aikavyöhykkeellä on omat kielet (Helsinki: suomi ja ruotsi;
+   Maarianhamina ja Tukholma: ruotsi ja suomi), valitaan niistä ensimmäinen,
+   joka on selaimen kielilistassa. Helsinki ja `fi` antavat suomen,
+   suomenruotsalainen `sv-FI` antaa ruotsin, ja suomalainen Tukholmassa saa
+   suomen.
+2. Jos tällaisella vyöhykkeellä kumpaakaan ei ole selaimen listassa, valitaan
+   vyöhykkeen ensimmäinen kieli. Poikkeus: jos ihminen on itse valinnut
+   Habitatin kieleksi englannin, valitaan englanti. Monella suomalaisella on
+   englanninkielinen kone, mutta joka valitsee englannin myös täällä,
+   tarkoittaa sitä.
+3. Muualla valitaan ensimmäinen kolmesta kielestä, joka on selaimen
+   kielilistassa.
+4. Muuten valitaan Habitatin käyttöliittymän kieli.
 
-## Mitä host-tietoja näkymä olettaa
+## Tarkistukset
 
-- Käyttöönoton viimeinen kortti tulee AI-tilin jälkeen (`OnboardingFrame
-  step="done"`), ja Aloita keskustelu luo tavallisen selainkeskustelun
-  kotihakemistoon (`cwd = ~`). Keskustelu alkaa julkaisun mukana tulevalla
-  taidolla (esimerkiksi `/skill:open-habitat-instructions`), joka sisältää
-  kysymykset, pohjan ja kirjoitussäännöt.
-- Agentti kirjoittaa tiedostot omilla työkaluillaan ihmisen Unix-käyttäjänä.
-  Uutta valtuutta tai daemon-operaatiota keskustelukulku ei tarvitse.
-- Tiedoston olemassaolo luetaan tiedostosta. "Tehty tai myöhemmin" on
-  käyttöönoton merkintä samaan tapaan kuin `finishFirstRoute`.
-- Asetukset → Tili → Ohjeet agentille lukee tiedoston. Sen Muokkaa
-  tekstinä -toiminto tarvitsisi daemonilta uuden lukemis- ja
-  kirjoitusoperaation (ihmisen omana käyttäjänä, vertaa ja vaihda). Tämä on
-  kysymys alla.
+- Go: `./scripts/test-focused.sh --area go --go-package` paketeille
+  `./internal/daemon`, `./internal/gateway` ja `./internal/experimental`,
+  sekä `--area contracts`. Uusissa daemonin testeissä ovat
+  luonti vain puuttuvalle tiedostolle, Clauden tiedoston koskemattomuus,
+  vertaa ja vaihda -kirjoitus (vanhentunut versio, toisen kirjoittajan muutos,
+  välissä poistettu tiedosto), linkkien ja muun kuin tekstin hylkääminen sekä
+  HTTP-raja. Vastaukset tarkistetaan skeemaa vasten.
+- Web: `--area web` ja uudet Vitest-testit (kielen arvaus, lapun teksti ja
+  korjaus, editorin yhdistäminen ja ristiriita). Nopean tarkistuksen ainoa
+  punainen kohta on `finnishScan`, joka on punainen myös mainissa
+  (`LanguageSettings.tsx`, "Suomi"). Se on kirjattu omaksi issuekseen.
+- Selain (`OH_BROWSER_WORKERS=2`): uusi `agent-instructions.spec.ts`
+  (käyttöönoton vaihe oikealla daemonin käsittelijällä, Asetusten
+  vertaa ja vaihda -kirjoitus, yhdistäminen ja Muokkaa agentin kanssa) myös
+  `--repeat-each 3`, sekä `settings-experimental`, `settings-search`,
+  `github-first-onboarding`, `site-ai-key`, `onboarding-default-repos`,
+  `pi-onboarding-host`, `account-settings` ja `onboarding-notices`.
+- Riippumaton katselmointi (`/llm-review`: GPT-6 Astra etsi, Claude Fable 5.2
+  yritti kumota): kuusi löydöstä, kaikki selaimen tilankäsittelyssä ja kaikki
+  korjattu samassa työssä (`/assess-findings`: 6 × FIX). Tärkein niistä: jos
+  tiedosto muuttui käyttöönoton aikana, tallennus olisi korvannut vastaukset
+  toisella tekstillä. Daemonin kirjoituksesta tai rajapinnasta ei löytynyt
+  mitään.
+- Ruutukaappauksia ei otettu. Hyväksytyn prototyypin kuvat ovat
+  `/var/tmp/agent-keep/new-user-agent-instructions-template/`-hakemistossa.
 
 ## Päätökset myöhempää katselmointia varten
 
-- **Keskustelu kotihakemistossa (`~`), ei työtilassa.** Vaihtoehdot:
-  ensimmäinen kloonattu työtila tai oma piilotettu työtila. Ohjeet koskevat
-  koko tiliä eivätkä yhtä repoa. Uudella ihmisellä ei myöskään välttämättä
-  ole yhtään työtilaa.
-- **Kortti `step="done"`, ei neljäs reittivaihe.** Vaihtoehto: oma vaihe
-  "Ohjeet" reitille. Vaihe olisi pakollisen näköinen, vaikka tämä on
-  vapaaehtoinen. Reitin vaihetyyppi on myös suljettu (`OnboardingStepId`).
-- **Clauden viittaus `@~/.pi/agent/AGENTS.md`-tuontirivinä, ei symlinkkinä.**
-  Symlinkki korvaisi ihmisen oman `CLAUDE.md`:n. Tuontirivi säilyttää sen.
-- **Clauden tiedosto kirjoitetaan aina, vaikka ihminen ei olisi kirjautunut
-  Claudeen.** Rivi on pieni ja harmiton, ja myöhemmin kirjautuva saa
-  ohjeet heti. Vaihtoehtona olisi kirjoittaa se vasta Claude-kirjautumisen
-  yhteydessä.
-- **Tiedosto kirjoitetaan keskustelun kielellä.** Agentti lukee sen
-  kummallakin kielellä.
-- **Kaistan "kysymys n/N" on prototyypin oma.** Tuotannossa luku vaatisi
-  agentilta rakenteista tietoa. Vaihtoehto on jättää laskuri pois ja pitää
-  kaistassa vain "Käyttöönotto · Tee myöhemmin".
-- **Pikavastaukset ovat kierroksen oma osa.** Tuotannossa ne vaativat
-  tavan, jolla agentti tarjoaa vaihtoehtoja. Pi:n kysymystyökalu tai
-  vastaava on arkkitehtuurikysymys.
-
-## Kysymykset Jarille
-
-1. Kelpaako suunta 2 (luonnos ensin), ja pudotaanko siinä haastatteluun,
-   kun agentti tietää vähän?
-2. Tarvitaanko pikavastauksia tuotannossa? Ne vaativat keskusteluun uuden
-   "agentti tarjoaa vaihtoehdot" -osan (ehkä Pi:n kysymystyökalu). Ilman niitä
-   kulku toimii vapaalla tekstillä, mutta on raskaampi aloittelijalle.
-3. Saako Asetuksiin tulla "Muokkaa tekstinä" (daemon kirjoittaa
-   `~/.pi/agent/AGENTS.md`:n ihmisen omana käyttäjänä)? Vai riittääkö "Muuta
-   keskustelemalla" ja editori, joka ei nyt yllä kotihakemistoon?
-4. Mitä olemassa oleva tili näkee? Prototyypissä käyttöönotto tarjoaa samaa
-   keskustelua ja Asetukset näyttää tiedoston. Tarvitaanko vanhoille tileille
-   kertaluonteinen ilmoitus, vai riittääkö Asetukset?
-5. Pitäisikö keskustelun näkyä sivupalkissa omana työtilanaan (`~`) vai
-   arkistoitua tallennuksen jälkeen?
+- **Keskustelu on käsikirjoitettu, ja malli ei aja.** Vaihtoehto oli oikea
+  Pi-keskustelu. Hyväksytty prototyyppi oli käsikirjoitettu, kysymykset ja
+  vastausvaihtoehdot ovat kiinteät, ja lappu kirjoitetaan sivulta. Malli toisi
+  kustannuksen, viiveen ja vaihtelua ilman uutta sisältöä. Myös omien sanojen
+  korjaus tehdään säännöillä.
+- **GitHub-kuvauksen tarkistuskysymys jäi pois.** Selain tuntee GitHubista vain
+  nimen, sähköpostin ja kuvan. Kuvauksen lukeminen olisi uusi luku GitHubista.
+  Nimi tulee lappuun ("Olen …"), jos se on tiedossa.
+- **Muokkaa agentin kanssa avaa saman muistilappukeskustelun, ei
+  Pi-keskustelua kotihakemistossa.** Habitat ei tunne kotihakemistoa
+  työtilana (työtilat ovat vain `~/src`-hakemiston alla), joten oikea
+  keskustelu vaatisi uuden host-ominaisuuden. Keskustelu lisää vain uutta
+  olemassa olevan tekstin perään, kuten B1:ssä luvattiin.
+- **Käyttöönoton vaihe näkyy vain, kun kokeellinen ominaisuus on päällä.** Uusi
+  tili alkaa kaikki kokeelliset pois päältä, joten käytännössä vaiheen näkee
+  vain se, joka on kytkenyt ominaisuuden päälle ja kulkee reitin uudelleen.
+  Kokeilupaikka on siksi Asetukset › Tili, jonka Kirjoita agentin kanssa on
+  sama vaihe. Vaihtoehtona olisi palvelinkohtainen oletus kokeellisille
+  ominaisuuksille. Sitä ei ole.
+- **Linkitettyä `AGENTS.md`:tä ei seurata.** Esimerkiksi dotfiles-linkki
+  näytetään ilmoituksena "ei voi muokata täällä", eikä tekstiä näytetä.
+  Atominen korvaus korvaisi linkin tavallisella tiedostolla. Vaihtoehto olisi
+  kirjoittaa linkin kohteeseen, mutta se olisi uusi polku pyynnön ulkopuolelta.
+- **Kokoraja on 256 KiB, ei 1 MiB.** Lappu luetaan jokaisen keskustelun alussa,
+  ja isompi tiedosto on todennäköisemmin jotain muuta.
+- **Uusi tiedosto luodaan oikeuksilla 0600.** Korvaus säilyttää olemassa olevan
+  tiedoston oikeudet.
+- **Clauden tila voi olla myös `unknown`.** Tämä tarkoittaa, että tiedostoa ei
+  voitu lukea turvallisesti. Lähderivi sanoo silloin, ettei tiedetä, lukeeko
+  Claude ohjeita.
+- **Muokkaa-välilehti on tavallinen tekstikenttä, ei CodeMirror.** Koska
+  tekstikenttä ei merkitse omaa riviä punaisella, ristiriitakortti näyttää nyt
+  molemmat rivit (`EditorConflict`-komponentin uusi `mine`-ominaisuus), ja
+  lähteenä on "levy", koska muuttajaa ei tiedetä.
+- **Lappu kirjoitetaan käyttöliittymän kielellä**, ja vastauskieli on yksi
+  lause siinä. Kielet ovat suomi, englanti ja ruotsi.
+- **Kadonnut vastaus tallennukseen** luetaan uudelleen. Se lasketaan
+  tallennetuksi vain, jos tiedostossa on täsmälleen sama teksti. Muuten
+  editori pyytää lataamaan sivun ja tarkistamaan. Mitään ei lähetetä
+  uudelleen automaattisesti.
+- **Prototyyppikierrosten hakemistot poistettiin.** Niitä oli kuusi
+  (`2026-11-21-onboarding-instructions*` ja `2026-11-21-instructions-settings*`),
+  ja ne ovat Git-historiassa (`scripts/from-history.sh`).
