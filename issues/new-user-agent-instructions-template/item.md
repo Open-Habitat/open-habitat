@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/new-user-agent-instructions-template
-preparation: pending
+preparation: ready
 lane: agent-instructions
 lane_seq: 1
 ---
@@ -23,3 +23,7 @@ Jari 17.11.2026: when Open Habitat creates a new user, it could create a startin
 ### 2026-11-21T08:04:19Z · @jari
 
 Jari 21.11.2026: prototype it. The person lands in a first conversation that is part of onboarding, where the chat is held and the agent writes the person's own instructions. He wants to see what it looks like and what is asked; it must be tested. Conductor recommendations taken into the round: one shared file both harnesses read (Claude file points to it), nothing duplicated from Habitat's own environment block, existing accounts offered the same conversation without overwriting.
+
+### 2026-11-21T08:21:05Z · @jari
+
+Jari 21.11.2026 on round 1: wrong direction. It must be part of the onboarding chain itself, in that user interface where the person clicks through GitHub sign-in, model sign-in and so on — as the last step of that chain, not a separate conversation after onboarding (round 1 deliberately avoided a route step; reverse that). Next action: prototype round 2.
