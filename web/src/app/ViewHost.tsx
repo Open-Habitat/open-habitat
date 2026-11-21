@@ -732,10 +732,18 @@ export function NoticeEntry({ notice }: { notice: AgentNotice }) {
   const controls = useContext(OfferContext);
   const view = notice.view;
   if (notice.file_offer)
-    return <FileOfferEntry offer={notice.file_offer} controls={controls} />;
+    return (
+      <div className="ah-offer-row">
+        <FileOfferEntry offer={notice.file_offer} controls={controls} />
+      </div>
+    );
   if (!view) return <AgentNoticeCard notice={notice} />;
   if (!controls?.views) return null;
-  return <ViewOfferEntry view={view} controls={controls} />;
+  return (
+    <div className="ah-offer-row">
+      <ViewOfferEntry view={view} controls={controls} />
+    </div>
+  );
 }
 
 /** One view offer card. Every card of the same view shows the one address

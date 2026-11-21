@@ -17,6 +17,13 @@
   color: inherit;
   transition: box-shadow 0.4s;
 }
+/* Timeline offers share the reply column, including its rail gutter. */
+.ah-reading-view .ah-offer-row > .ah-offer {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin-inline-start: calc(18px + var(--ah-turn-column-gap));
+}
 .ah-offer-icons {
   display: flex;
   align-items: center;

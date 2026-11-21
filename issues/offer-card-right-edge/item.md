@@ -3,13 +3,14 @@ created: 2026-11-21
 updated: 2026-11-21
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-21/offer-card-right-edge
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # View/file offer card in a conversation: right edge not aligned with the replies
