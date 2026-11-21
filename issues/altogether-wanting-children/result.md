@@ -53,10 +53,11 @@ selected with `--grep`:
 | run | before | after |
 | --- | --- | --- |
 | `--repeat-each 6` | 23/30 (logout 3, steer 2, malformed 1, queue-clear 1 failed) | 30/30 |
-| `--repeat-each 20` | — | 100/100 on the final branch head, with all store follow-ups; 99/100 with the arm-before-click fixture |
-| `--repeat-each 20`, `OH_CPU_THROTTLE=4` | — | 100/100 (with the arm-before-click version of the logout and malformed fixtures) |
+| `--repeat-each 20` | — | 100/100 on the final code (after the store revert); 99/100 with the arm-before-click fixture |
+| `--repeat-each 20`, `OH_CPU_THROTTLE=4` | — | 100/100 (arm-before-click fixtures) |
+| daemon-restart cases `--repeat-each 6`, `OH_CPU_THROTTLE=4`, final code | — | 36/36 |
 
-Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i2-*.log`.
+Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i2-*.log` and `fin-*.log`.
 
 ## Decisions for later review
 
