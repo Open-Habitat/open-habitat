@@ -134,18 +134,55 @@ async function openConversation(page: Page, work = "hidden") {
   await page.getByTestId("message-input").waitFor();
 }
 
+// A send pressed while the composer is still blocked (the previous turn not
+// yet settled) is refused with a reason and keeps its draft; the next fill
+// would then overwrite it and the turn would silently be missing. Press only
+// a ready send and wait for the draft to be taken.
 async function send(page: Page, text: string) {
-  await page.getByTestId("message-input").fill(text);
+  const input = page.getByTestId("message-input");
+  await input.fill(text);
   await page
     .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
+    .and(page.locator('[data-mode="send"]:not([aria-disabled="true"])'))
     .click();
+  await expect(input).toHaveValue("");
 }
 
-const idle = (page: Page) =>
-  expect(
+/** The synthetic Pi's saved reply to a prompt (test/browser-host/fakepi.go). */
+const reply = (text: string) =>
+  text === "pitkä ajo" ? "Pitkä ajo valmis." : `Kysyit: "${text}"`;
+
+// The send button is back in send mode before a turn has started as well as
+// after it ended, so the turn's own reply is what says it has run.
+async function idle(page: Page, text: string) {
+  await expect(page.locator(".ah-feed")).toContainText(reply(text), {
+    timeout: 30000,
+  });
+  await expect(
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeVisible({ timeout: 30000 });
+}
+
+/** The saved reply replaces the live one after the turn; wait until the
+ * thread has stopped changing. A hold keeps the height while it lasts. */
+async function settled(page: Page) {
+  const stream = page.locator(".ah-conversation-stream");
+  let previous = -1;
+  await expect
+    .poll(
+      async () => {
+        const [height, held] = await stream.evaluate((n) => [
+          n.scrollHeight,
+          getComputedStyle(n, "::after").height !== "0px",
+        ]);
+        const done = height === previous && !held;
+        previous = height;
+        return done;
+      },
+      { intervals: [700], timeout: 30000 },
+    )
+    .toBe(true);
+}
 
 const gap = (page: Page) =>
   page
@@ -156,29 +193,9 @@ const gap = (page: Page) =>
 async function tallAtEnd(page: Page) {
   await openConversation(page);
   await send(page, "ensimmäinen viesti");
-  await idle(page);
-  await expect(page.locator(".ah-feed")).toContainText(
-    'Kysyit: "ensimmäinen viesti"',
-    { timeout: 20000 },
-  );
-  // The saved reply replaces the live one after the turn; wait until the
-  // thread has stopped changing. A hold keeps the height while it lasts.
+  await idle(page, "ensimmäinen viesti");
+  await settled(page);
   const stream = page.locator(".ah-conversation-stream");
-  let previous = -1;
-  await expect
-    .poll(
-      async () => {
-        const [height, held] = await stream.evaluate((n) => [
-          n.scrollHeight,
-          getComputedStyle(n, "::after").height !== "0px",
-        ]);
-        const settled = height === previous && !held;
-        previous = height;
-        return settled;
-      },
-      { intervals: [700] },
-    )
-    .toBe(true);
   await page.addStyleTag({
     content: ".ah-feed > li:first-child { min-height: 3000px; }",
   });
@@ -215,7 +232,7 @@ test("@lab the first turn is followed before its history is read", async ({
       { timeout: 45000 },
     )
     .toBe(true);
-  await idle(page);
+  await idle(page, "pitkä ajo");
   const frames = await stopFrames(page);
   expect(frames.filter((f) => f.intro && f.work)).toEqual([]);
   const turn = frames.filter((f) => f.work);
@@ -241,14 +258,14 @@ test("@lab a followed conversation does not bounce while turns run", async ({
   await slowHistory(page);
   for (const text of ["ensimmäinen viesti", "toinen viesti"]) {
     await send(page, text);
-    await idle(page);
+    await idle(page, text);
   }
-  await page.waitForTimeout(2500);
+  await settled(page);
   await recordFrames(page);
   for (const text of ["pitkä ajo", "kolmas viesti"]) {
     await send(page, text);
-    await idle(page);
-    await page.waitForTimeout(2500);
+    await idle(page, text);
+    await settled(page);
   }
   const frames = await stopFrames(page);
   expect(frames.length).toBeGreaterThan(30);
@@ -269,18 +286,25 @@ test("@lab the live row stays at its spacing above the composer", async ({
   await slowHistory(page);
   for (const text of ["ensimmäinen viesti", "toinen viesti"]) {
     await send(page, text);
-    await idle(page);
+    await idle(page, text);
   }
-  await page.waitForTimeout(1000);
-  const design = await page
-    .locator(".ah-conversation-stream")
-    .evaluate((n) => Number.parseFloat(getComputedStyle(n).paddingBottom));
+  await settled(page);
+  const stream = page.locator(".ah-conversation-stream");
+  // A conversation started here grows down from its first message, so a
+  // thread shorter than the view leaves space under its last row by design.
+  // The spacing measured below is that of a thread that fills the view.
+  expect(await stream.evaluate((n) => n.scrollHeight > n.clientHeight)).toBe(
+    true,
+  );
+  const design = await stream.evaluate((n) =>
+    Number.parseFloat(getComputedStyle(n).paddingBottom),
+  );
   await recordFrames(page);
   for (const text of ["pitkä ajo", "kolmas viesti"]) {
     await send(page, text);
-    await idle(page);
+    await idle(page, text);
     // The slow history read settles the turn after it ends.
-    await page.waitForTimeout(2500);
+    await settled(page);
   }
   const frames = await stopFrames(page);
   expect(frames.filter((f) => f.work).length).toBeGreaterThan(30);

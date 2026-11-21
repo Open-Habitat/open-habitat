@@ -2,7 +2,7 @@
 created: 2026-11-17
 updated: 2026-11-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while verifying a run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: test-stability
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Lab spec 'live row stays at its spacing' fails depending on machine conditions
@@ -27,3 +28,9 @@ The case measures frames against fixed `waitForTimeout` waits (1000 ms, 2500 ms)
 ### 2026-11-21T10:28:33Z · @agent
 
 Reproduced by taskfleet run 01m7ys3tjr9mtc4d294wvv7fv6 (spinoff) on unchanged main b4813239b9b32196e6a7e1ed8f64d6492f1f89d7: focused lab-conversation-scroll.spec.ts with tag "live row stays", OH_BROWSER_WORKERS=2 and default 60 ms focused reply jitter failed at line 301 with "9203ms +328px". The hygiene branch failed the same assertion with "8399ms +142px" after two full passing repetitions. Neither the spec nor scrolling code was changed. Logs: /var/tmp/agent-keep/five-hygiene/history-main.log and browser-final.log. The main revision was unchanged before and after the baseline run. This existing report remains unlaned; no duplicate was filed.
+
+## Resolution
+
+### 2026-11-21T14:57:36Z · @issuectl
+
+Spec waited on the wrong signal and lost its second turn; fixed in the spec helpers. See result.md.
