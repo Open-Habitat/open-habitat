@@ -264,6 +264,7 @@ export function useSentMessages({
   queue,
   sendObservation,
   draft,
+  draftNow = () => draft,
   changeDraft,
 }: {
   /** The person and conversation; another scope starts empty. */
@@ -272,6 +273,9 @@ export function useSentMessages({
   queue: Queue | undefined;
   sendObservation: SendObservationValue | undefined;
   draft: string;
+  /** The field as it is now, including typing not yet rendered: an outcome
+   * effect must not clear or replace text the person typed meanwhile. */
+  draftNow?: () => string;
   changeDraft: (value: string) => void;
 }) {
   const [state, setState] = useState<{
@@ -335,6 +339,10 @@ export function useSentMessages({
     const command = sendObservation?.command;
     if (!sendObservation || !command) return;
     const { state, text } = sendObservation;
+    // The draft this effect was committed with can be older than the field:
+    // a text given back on opening, then replaced by the person just before
+    // its send proved accepted, cleared what they had typed instead.
+    const field = draftNow();
     if (state === "accepted") {
       update((old) =>
         old.map((m) =>
@@ -342,13 +350,13 @@ export function useSentMessages({
         ),
       );
       // A text given back as unknown, then shown accepted after all.
-      if (restored.current.has(command) && draft === text) changeDraft("");
+      if (restored.current.has(command) && field === text) changeDraft("");
       return;
     }
     // Sent again after it proved undelivered: the text moves back into the
     // conversation, unless the person has edited it meanwhile.
     if (state === "pending") {
-      if (restored.current.has(command) && draft === text) {
+      if (restored.current.has(command) && field === text) {
         changeDraft("");
         // Should this send be lost too, its text comes back again.
         restored.current.delete(command);
@@ -362,7 +370,7 @@ export function useSentMessages({
     );
     if (restored.current.has(command)) return;
     restored.current.add(command);
-    if (!draft.includes(text)) changeDraft(restoreToDraft([text], draft));
+    if (!field.includes(text)) changeDraft(restoreToDraft([text], field));
   }, [sendObservation, update]);
   // Once Pi's message has replaced the bubble, the send is done: a later
   // history without it (Palaa tähän went back before it) must not draw it

@@ -36,13 +36,21 @@ const ball = (page: Page, agent: string) =>
     .getByTestId(`agent-item-${agent}`)
     .getByTestId("rail-mark");
 
+// The host has taken the message once it answers the send; leaving before
+// that aborts the request and makes it a lost send, which this case is not
+// about.
 async function reply(page: Page, message: string) {
   await page.getByTestId("message-input").fill(message);
+  const taken = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      /\/api\/v1\/conversations\/[^/]+\/send$/.test(new URL(r.url()).pathname),
+  );
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(page.getByTestId("message-input")).toBeEnabled();
+  expect((await taken).ok()).toBe(true);
 }
 
 // Jari 2.11.: a conversation once quiet stayed in Hiljaiset when its agent

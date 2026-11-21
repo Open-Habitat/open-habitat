@@ -9,6 +9,7 @@ import {
   lostSendVerdict,
   type QueuedSend,
   reconcileQueued,
+  type SendObservationValue,
   sendArrived,
   shownQueue,
   userKeys,
@@ -264,5 +265,52 @@ describe("this tab's sent message", () => {
     // Palaa tähän: the active branch no longer has the message.
     rerender([...before, entry("m1", "rewind", "")]);
     expect(result.current.own).toBeUndefined();
+  });
+});
+
+describe("a text given back as unknown", () => {
+  // Reopened, the field gets the lost send's text back; the person replaces
+  // it, and the send then proves accepted before that typing has rendered.
+  // The outcome clears only the given-back text, never what replaced it.
+  const run = (fieldNow: string) => {
+    const changes: string[] = [];
+    let field = "";
+    const { rerender } = renderHook(
+      (props: { sendObservation: SendObservationValue; draft: string }) =>
+        useSentMessages({
+          scope: "person:pi:1",
+          entries: [],
+          queue: undefined,
+          ...props,
+          draftNow: () => field,
+          changeDraft: (value) => {
+            field = value;
+            changes.push(value);
+          },
+        }),
+      {
+        initialProps: {
+          sendObservation: {
+            command: "c1",
+            state: "uncertain",
+            text: "toinen",
+          },
+          draft: "",
+        },
+      },
+    );
+    expect(changes).toEqual(["toinen"]);
+    field = fieldNow;
+    rerender({
+      sendObservation: { command: "c1", state: "accepted", text: "toinen" },
+      draft: "toinen",
+    });
+    return changes.slice(1);
+  };
+  it("leaves the field once the person typed over it", () => {
+    expect(run("kolmas")).toEqual([]);
+  });
+  it("is cleared when it is still the field", () => {
+    expect(run("toinen")).toEqual([""]);
   });
 });

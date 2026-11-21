@@ -630,6 +630,11 @@ function BrowserConversationContent({
     setModelExpanded(false);
     setChipOpen(false);
   }, [workspace.workspace_id, id]);
+  // The field as it is now. An effect sees the draft of the render it was
+  // committed with; typing that has not rendered yet is only here (the
+  // draft is stored as it changes).
+  const draftNow = () =>
+    (id && sessionStorage.getItem(`nah:${identity}:draft:${id}`)) ?? draft;
   const {
     own: ownMessage,
     onSent,
@@ -641,6 +646,7 @@ function BrowserConversationContent({
     queue: current?.queue,
     sendObservation,
     draft,
+    draftNow,
     changeDraft,
   });
   useReadingPositionLayout({
@@ -1324,8 +1330,6 @@ function BrowserConversationContent({
       ? chatProvider
       : undefined);
   const waiting = useWaiting(identity, id);
-  const draftNow = () =>
-    (id && sessionStorage.getItem(`nah:${identity}:draft:${id}`)) ?? draft;
   // The refused message comes back into the field once per failed reply.
   const viewId = useRef(id);
   viewId.current = id;
