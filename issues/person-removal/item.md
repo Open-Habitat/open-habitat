@@ -1,13 +1,15 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-21
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/revoked-access-keeps-quota
-preparation: pending
+preparation: ready
+lane: person-removal
+lane_seq: 1
 ---
 
 # Removing a person's access keeps their quota in the disk sum
@@ -27,3 +29,9 @@ Decisions for Jari: should Levytila show on the row that the person no
 longer has access (and offer lowering the limit or cleaning the home); should
 quotas of people without access be left out of the sum; or is a real person
 removal needed that says what happens to the data.
+
+## Decisions
+
+### 2026-11-21T08:23:29Z · @jari
+
+Jari 21.11.2026: build a real person removal (option 3). Next actions: an architecture decision on what removal does to the person's data and services, and a prototype of the administrator's removal flow.
