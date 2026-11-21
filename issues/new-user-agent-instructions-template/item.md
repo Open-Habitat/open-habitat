@@ -41,3 +41,7 @@ Jari 21.11.2026: onboarding — A2 Muistilappu wording is best; A3 Esittely's fi
 ### 2026-11-21T10:16:00Z · @claude-opus-5-5
 
 Round 3 (run 01m7ys440yp9cdt0dga8tsyyq9): direction A reworded in three variants (A1 Lyhyesti, A2 Muistilappu, A3 Esittely), file revealed before Save; recommendation A2; the step's conversation is never shown in the rail (home-directory sessions belong to no workspace). Result: result-3.md.
+
+### 2026-11-21T13:09:35Z · @claude-opus-5-5
+
+Round 4 and Settings round 2 (run 01m7z2abc80610mqsxnsa07t3w): one shared instructions editor (Esikatselu/Muokkaa, Tallenna/Peru, compare-and-swap merge via the workspace editor's threeWay and conflict card) used by both pages. Onboarding A4.1 Keskustelu / A4.2 Ensin itse / A4.3 Vieressä differ in where the own-words step and the answer-language choice sit; recommendation A4.1. Settings B1 keeps Muokkaa agentin kanssa as a secondary action, B2 drops it; recommendation B1. The note is now written by the page through a daemon read + compare-and-swap write, not by the agent's tools. Results: result-4.md, result-settings-2.md.

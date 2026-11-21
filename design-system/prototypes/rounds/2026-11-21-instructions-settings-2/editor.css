@@ -1,0 +1,43 @@
+/* The shared instructions editor (editor.tsx). Tokens only. */
+.ie { display: grid; gap: var(--ah-s3); min-width: 0; color: var(--ah-ink); font: var(--ah-size-body, 1rem)/1.5 var(--ah-font); }
+.ie-body { position: relative; display: grid; gap: var(--ah-s2); min-width: 0; }
+/* The unsaved/saved word sits on the tab row's right end. */
+.ie-tabs > .ie-state { position: absolute; top: 6px; right: 0; }
+.ie-state { padding: 0 8px; border-radius: 999px; font: 500 11px/20px var(--ah-font); color: var(--ah-ink-2); border: 1px solid var(--ah-line); }
+.ie-state[data-state="saved"] { color: var(--ah-ok); border-color: var(--ah-ok-line); background: var(--ah-ok-soft); }
+.ie .ah-tabs { margin-bottom: var(--ah-s2); }
+.ie-doc, .ie-empty {
+  min-width: 0; max-height: 28rem; overflow: auto; box-sizing: border-box;
+  padding: var(--ah-s3) var(--ah-s4); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: var(--ah-bg);
+}
+.ie-doc .ah-markdown > :first-child { margin-top: 0; }
+.ie-doc .ah-markdown > :last-child { margin-bottom: 0; }
+.ie-empty { color: var(--ah-ink-2); }
+.ie-kept { color: var(--ah-muted); }
+.ie-kept .ah-markdown, .ie-kept .ah-markdown * { color: var(--ah-muted); }
+.ie-added { margin-top: var(--ah-s3); padding-left: var(--ah-s3); border-left: 3px solid var(--ah-ok-line); }
+.ie-mark { margin: 0 0 4px; font: 600 11px/1.4 var(--ah-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ah-muted); }
+.ie-added > .ie-mark { color: var(--ah-ok); }
+.ie-raw-wrap { display: grid; gap: var(--ah-s1); }
+.ie-raw {
+  width: 100%; box-sizing: border-box; resize: vertical; min-height: 10rem;
+  padding: var(--ah-s3); font: var(--ah-size-meta)/1.6 var(--ah-mono, monospace); color: var(--ah-ink);
+  background: var(--ah-bg); border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md);
+}
+.ie-raw:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.ie-hint { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.ie-locked { display: flex; gap: 6px; align-items: center; }
+.ie-locked svg, .ie-merged svg { width: 14px; height: 14px; flex: none; }
+.ie-merged { display: flex; gap: var(--ah-s2); align-items: start; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); font-size: var(--ah-size-meta); }
+.ie-merged svg { margin-top: 3px; }
+.ie-merged p { margin: 2px 0 0; color: var(--ah-ink-2); }
+.ie-source { font: var(--ah-size-meta)/1.45 var(--ah-font); color: var(--ah-ink-2); }
+.ie-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s2); }
+.ie-secondary, .ie-primary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2); }
+.ie-primary { margin-left: auto; }
+@media (max-width: 600px) {
+  .ie-doc, .ie-empty { padding: var(--ah-s3); }
+  .ie-primary { margin-left: 0; }
+}
+.ie .ah-merge-conflict { min-width: 0; }
+.ie .ah-merge-theirs { white-space: pre-wrap; overflow-wrap: anywhere; }
