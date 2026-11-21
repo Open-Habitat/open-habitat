@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: flaky test observed during a focused check in a taskfleet run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-red
 lane_seq: 3
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Workspace delete test races git's exec: person's git is seen as daemon.test under load

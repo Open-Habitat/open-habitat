@@ -1303,13 +1303,41 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 	}
 	// A real Git started as the person is still a blocker, even though it is
 	// also a child of this process and runs the same status command.
+	// Give this Git its own FIFO. Hold it open without data so Git blocks in
+	// config reading; IN_OPEN proves Git reached that read after exec, unlike
+	// Start returning or the child merely appearing in /proc.
+	personConfig := filepath.Join(f.cfg.Home, "person.gitconfig")
+	if err := unix.Mkfifo(personConfig, 0600); err != nil {
+		t.Fatal(err)
+	}
+	configHold, err := os.OpenFile(personConfig, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = configHold.Close() })
+	fd, err := unix.InotifyInit1(unix.IN_CLOEXEC | unix.IN_NONBLOCK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened := os.NewFile(uintptr(fd), "person-git-config-open")
+	t.Cleanup(func() { _ = opened.Close() })
+	if _, err := unix.InotifyAddWatch(fd, personConfig, unix.IN_OPEN); err != nil {
+		t.Fatal(err)
+	}
 	personGit := exec.Command("/usr/bin/git", "status", "--porcelain=v2", "--branch")
 	personGit.Dir = f.src("idle")
-	personGit.Env = []string{"HOME=" + f.cfg.Home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1"}
+	personGit.Env = []string{"HOME=" + f.cfg.Home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=" + personConfig}
 	if err := personGit.Start(); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = personGit.Process.Kill(); _ = personGit.Wait() })
+	if err := opened.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var event [unix.SizeofInotifyEvent]byte
+	if _, err := opened.Read(event[:]); err != nil {
+		t.Fatalf("person's git did not open its config: %v", err)
+	}
 	exposeTestProcess(t, f.proc, personGit.Process.Pid)
 	inside, _, complete = settledProcessScan(f.proc, f.src("idle"), f.cfg.UID, nil)
 	if !complete || len(inside) != 1 || inside[0].PID != personGit.Process.Pid || inside[0].Comm != "git" {
