@@ -782,6 +782,7 @@ export function useConversation({
     historyCut,
     current,
     statusStale: id ? metadata.staleStatuses.has(id) : false,
+    statusLost: id ? metadata.lostStatuses.has(id) : false,
     opened: id
       ? !!current && !!windowView && windowView.state !== "loading"
       : opened,

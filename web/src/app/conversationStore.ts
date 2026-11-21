@@ -125,6 +125,9 @@ type Metadata = Readonly<{
   agents: ReadonlyMap<string, Agent>;
   statuses: ReadonlyMap<string, Status>;
   staleStatuses: ReadonlySet<string>;
+  /** Stale statuses whose re-read failed: no fresh observation is on its
+   * way until something reads again. */
+  lostStatuses: ReadonlySet<string>;
   historyReadFailures: ReadonlySet<string>;
   attention: ReadonlyMap<string, "new" | "seen">;
   /** The journal position of the snapshot behind agents. */
@@ -187,6 +190,7 @@ export class ConversationStore {
     agents: new Map(),
     statuses: new Map(),
     staleStatuses: new Set(),
+    lostStatuses: new Set(),
     historyReadFailures: new Set(),
     attention: new Map(),
   };
@@ -644,6 +648,9 @@ export class ConversationStore {
       statuses: new Map(this.metadata.statuses).set(id, status),
       staleStatuses: new Set(
         [...this.metadata.staleStatuses].filter((key) => key !== id),
+      ),
+      lostStatuses: new Set(
+        [...this.metadata.lostStatuses].filter((key) => key !== id),
       ),
     };
     this.metaListeners.forEach((listener) => {
@@ -1106,6 +1113,7 @@ export class ConversationStore {
       });
     }
     if (this.statusRequests.has(id)) return;
+    this.markStatusLost(id, false);
     const epoch = this.epoch;
     const fetchStatus = async () => {
       try {
@@ -1120,6 +1128,8 @@ export class ConversationStore {
         this.applyStatus(id, value);
       } catch {
         // Keep the cached status explicitly stale; an explicit check can retry.
+        if (!this.disposed && this.epoch === epoch)
+          this.markStatusLost(id, true);
       } finally {
         if (this.statusRequests.get(id) === request)
           this.statusRequests.delete(id);
@@ -1127,6 +1137,18 @@ export class ConversationStore {
     };
     const request = fetchStatus();
     this.statusRequests.set(id, request);
+  }
+  /** A stale status is either being read again, and a write can wait for it,
+   * or its read failed, and a write is refused until a check reads again. */
+  private markStatusLost(id: string, lost: boolean) {
+    if (this.metadata.lostStatuses.has(id) === lost) return;
+    const lostStatuses = new Set(this.metadata.lostStatuses);
+    if (lost) lostStatuses.add(id);
+    else lostStatuses.delete(id);
+    this.metadata = { ...this.metadata, lostStatuses };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
   }
   routeEvent(event: ConversationEvent, activeId?: string) {
     if (this.disposed) return;
@@ -1520,6 +1542,7 @@ export class ConversationStore {
       agents: new Map(),
       statuses: new Map(),
       staleStatuses: new Set(),
+      lostStatuses: new Set(),
       historyReadFailures: new Set(),
       attention: new Map(),
     };
@@ -1548,6 +1571,7 @@ const emptyMetadata: Metadata = {
   agents: new Map(),
   statuses: new Map(),
   staleStatuses: new Set(),
+  lostStatuses: new Set(),
   historyReadFailures: new Set(),
   attention: new Map(),
 };

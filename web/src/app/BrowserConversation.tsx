@@ -385,6 +385,7 @@ function BrowserConversationContent({
   const {
     current,
     statusStale,
+    statusLost,
     opened,
     setOpenAttempt,
     entries,
@@ -1190,17 +1191,19 @@ function BrowserConversationContent({
             : statusStale
               ? txt.statusStale
               : txt.waitIdleUncertain;
-  // While the conversation opens, or an earlier send or Stop is on its way,
-  // the view cannot act on a message yet; one sent meanwhile is kept (below)
-  // and goes when it can. Any other block, a lost status read included, is
-  // a refusal the composer words: nothing refused is sent later.
+  // While the conversation opens, an earlier send or Stop is on its way, or
+  // a status is being read again (every turn event starts one), the view
+  // cannot act on a message yet; one sent meanwhile is kept (below) and goes
+  // when it can. Refusing it instead refused a steer pressed as a turn ended
+  // (Jari 31.10.). Any other block, a status read that failed included, is a
+  // refusal the composer words: nothing refused is sent later.
   // The person's last command was answered and its outcome is on its way.
   const awaitingOutcome = sendObservation?.state === "pending";
   const sendRefused =
     archive?.archive === "archived" ||
     archive?.archive === "unknown" ||
     (!!ambiguous && !notStarted && !busy && !awaitingOutcome) ||
-    statusStale ||
+    statusLost ||
     serverUnavailable ||
     modelBlocked ||
     current?.auth_error === "pi_model_unsupported" ||
@@ -1209,6 +1212,7 @@ function BrowserConversationContent({
     !sendRefused &&
     (!controlled ||
       busy ||
+      statusStale ||
       (!!ambiguous && awaitingOutcome) ||
       held.busy ||
       current.state === "pending" ||

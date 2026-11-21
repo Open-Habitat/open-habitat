@@ -58,6 +58,7 @@ function run(
     agents: new Map(),
     statuses: new Map(),
     staleStatuses: new Set(),
+    lostStatuses: new Set(),
     historyReadFailures: new Set(),
     attention: new Map(attention),
   };

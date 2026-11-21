@@ -79,6 +79,27 @@ async function refreshConversation(
   await beforeCheck?.();
   await check.click();
 }
+/** Whether the explicit check has been pressed. Its read is issued after
+ * the press, so a route can tell it from background status reads, which
+ * would otherwise answer or hold in the check's place. */
+async function watchRecheck(page: import("@playwright/test").Page) {
+  await page.evaluate(() => {
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (
+          (event.target as Element | null)?.closest(
+            '[data-testid="conversation-recheck"]',
+          )
+        )
+          Object.assign(window, { recheckPressed: true });
+      },
+      { capture: true },
+    );
+  });
+  return () =>
+    page.evaluate(() => "recheckPressed" in window).catch(() => false);
+}
 async function open(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
@@ -1143,16 +1164,20 @@ test("@browser-conversation malformed host status fails closed without rendering
   await expect(
     page.locator(".ah-agent-header").getByTestId("conversation-retitle"),
   ).toBeVisible();
-  await page.route("**/api/v1/conversations/*/status", (route) =>
-    route.fulfill({
+  // Only the explicit check reads the malformed status: a background read
+  // answered with it earlier would replace the opened view the check is in.
+  const pressed = await watchRecheck(page);
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    if (!(await pressed())) return route.continue().catch(() => {});
+    await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         schema_version: 1,
         agent_id: "<script>alert(1)</script>",
       }),
-    }),
-  );
+    });
+  });
   await refreshConversation(page);
   await expect(page.getByTestId("conversation-problem")).toBeVisible();
   await expect(page.getByTestId("message-input")).toBeVisible();
@@ -1845,7 +1870,12 @@ test("@browser-conversation logout fences a pending status read and turn even wh
   const entered = new Promise<void>((resolve) => {
     started = resolve;
   });
+  // Hold only reads from the explicit check on. A background read held
+  // earlier (the turn settling) marks the status stale, which hides the
+  // check until that read returns: the case would wait on itself.
+  const pressed = await watchRecheck(page);
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    if (!(await pressed())) return route.continue().catch(() => {});
     started();
     await held;
     await route.continue().catch(() => {});

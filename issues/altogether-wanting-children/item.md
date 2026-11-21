@@ -2,7 +2,7 @@
 created: 2026-11-17
 updated: 2026-11-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while verifying a run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: test-stability
 lane_seq: 2
 preparation: ready
+closed: 2026-11-21
 ---
 
 # browser-conversation spec cases fail intermittently on main under reply jitter
@@ -27,3 +28,9 @@ Observed on an unchanged `main` checkout (synthetic browser host, `OH_BROWSER_WO
 - `a stale working view cannot strand an unsent queued draft`
 
 Each fails the same way on main and on a branch that only changes conversation scroll restore, so these are pre-existing ordering or timing assumptions under reply jitter, not a regression. Reproduce: `npx playwright test tests/browser-conversation.spec.ts --grep "<case>" --repeat-each 4` with focused-run jitter.
+
+## Resolution
+
+### 2026-11-21T15:40:07Z · @issuectl
+
+Steer/queue refusal during a routine status re-read fixed in the product; logout and malformed fixtures now act only on the explicit check's read. See result.md.

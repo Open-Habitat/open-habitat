@@ -1299,6 +1299,45 @@ describe("recent conversation windows", () => {
     expect(store.status(agent)?.state).toBe("idle");
     expect(store.statusStale(agent)).toBe(false);
   });
+  it("tells a status being read again from one whose read failed", async () => {
+    // A write waits for a re-read in flight and is refused only once it failed.
+    const agent = id(1);
+    const fresh = { agent_id: agent, state: "idle" };
+    const statusReader = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(fresh);
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, { agent_id: agent, state: "accepted" } as never);
+    const settle = (sequence: number) =>
+      store.routeEvent({
+        resource: { agent_id: agent },
+        kind: "turn.settled",
+        payload: {},
+        cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+        server_instance_id: "11111111-1111-4111-8111-111111111111",
+        sequence,
+        event_id: `settle-${sequence}`,
+      } as never);
+    settle(1);
+    expect(store.statusStale(agent)).toBe(true);
+    expect(store.readMetadata().lostStatuses.has(agent)).toBe(false);
+    await flush();
+    expect(store.statusStale(agent)).toBe(true);
+    expect(store.readMetadata().lostStatuses.has(agent)).toBe(true);
+    // The next notification reads again: on its way, no longer lost.
+    settle(2);
+    expect(store.readMetadata().lostStatuses.has(agent)).toBe(false);
+    await flush();
+    expect(store.statusStale(agent)).toBe(false);
+    expect(store.readMetadata().lostStatuses.has(agent)).toBe(false);
+  });
   it("keeps a nested recovery read owning the loading flag after the original tail settles", async () => {
     const agent = id(1);
     let finishTail!: (p: HistoryPage) => void;
