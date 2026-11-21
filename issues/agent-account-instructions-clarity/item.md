@@ -1,6 +1,6 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-21
 type: improvement
 status: open
 priority: normal
@@ -45,3 +45,9 @@ Deliver a proposal for Jari, nothing shipped before he has read it:
    administration nobody asks an agent for, and how the level setting
    (`integration-account-level-microsoft-dropbox`) maps to that, with the
    trade-offs.
+
+## Decisions
+
+### 2026-11-21T08:19:05Z · @jari
+
+Jari 21.11.2026: do not remove the mailbox-administration tools; they are useful. Instead split the Microsoft tools into topic areas the agent drills into (Pi MCP servers / namespaces with descriptions: Posti, Kalenteri, Yhteystiedot, Tiedostot, Postilaatikon ylläpito), so that searching for files never surfaces mail-folder deletion; destructive tools may require the person's confirmation; sign-in/logout tools hidden. Next action: research run with real Pi and the Microsoft server, then rewrite the proposal.
