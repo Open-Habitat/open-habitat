@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-21/offer-card-title-copy
 lane: offer-card
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Offer card title cannot be selected or copied

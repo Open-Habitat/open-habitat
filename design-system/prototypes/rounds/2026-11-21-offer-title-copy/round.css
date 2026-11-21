@@ -1,0 +1,101 @@
+/* Review chrome above the production conversation, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ot-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ot-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ot-bar strong { font-weight: 600; }
+.ot-bar select { font: inherit; }
+.ot-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ot-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ot-recommend { margin: 0; color: var(--ah-accent-ink); }
+.ot-clip { margin: 0; color: var(--ah-muted); overflow-wrap: anywhere; }
+.ot-clip q { color: var(--ah-ink); font-family: var(--ah-mono); }
+@media (max-width: 600px) {
+  .ot-bar { padding: 6px 10px; }
+  .ot-controls > strong { display: none; }
+  .ot-lines, .ot-recommend { line-height: 1.3; }
+  .ot-lines li:not([aria-current]), .ot-recommend { display: none; }
+}
+/* The conversation fills the window between the review bar and the picker. */
+.ot-stage {
+  position: fixed; left: 0; right: 0;
+  top: var(--review-h, 0px); bottom: 60px;
+}
+
+/* An aligned right edge, as the parallel product fix for offer-card-right-edge
+   gives it. In production the agent's reply in a turn spans the whole column
+   (.ah-turn-reply > .ah-message: max-width none) while the offer stopped at
+   its own 70ch measure (OfferCard.css), about 110 px short. The round draws
+   bare AssistantMessages, so it gives them the turn's width and the offers
+   the same column: replies, offers and the person's messages share one
+   right edge. */
+.ah-feed > li[data-kind="assistant"] > .ah-message { max-width: none; }
+.ah-feed > li > .ot-offer > .ah-offer { max-width: none; }
+
+/* ---------- The directions ---------- */
+
+/* Round-own pieces live inside the card, whose parts ignore the pointer so
+   that the press beneath them opens the card; the pieces take it back. */
+.ot-own, .ot-own * { pointer-events: auto; }
+
+/* 1 Valinta: the title is ordinary text. It takes the pointer, selects like
+   any text (drag, double- and triple-click, long press on a phone), and a
+   click on it does not open the card; the rest of the card does. Under the
+   pointer the card does not light up as a press while over the title. */
+.ot-review[data-direction="1"] .ah-offer-title {
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+.ot-review[data-direction="1"] .ah-offer:has(.ah-offer-title:hover) {
+  border-color: var(--ah-line);
+  background: var(--ah-surface-2);
+}
+.ot-review[data-direction="1"] .ah-offer[data-open]:has(.ah-offer-title:hover) {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent-soft);
+}
+.ot-review[data-direction="1"] .ah-offer-title::selection {
+  background: var(--ah-accent-line);
+}
+
+/* 2 Kopioi: production's CopyButton right after the title's last word.
+   Faint at rest so four cards in a row stay calm, clear under the pointer and
+   on focus; on a touch screen always clear. */
+.ot-own-title {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 2px;
+  margin-block: -6px;
+}
+.ot-own-title .ah-button {
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  font-weight: 400;
+  opacity: 0.45;
+}
+.ot-own-title svg { width: 14px; height: 14px; }
+.ah-offer:hover .ot-own-title .ah-button,
+.ot-own-title .ah-button:focus-visible,
+.ot-own-title .ah-button[data-copied] { opacity: 1; }
+@media (hover: none) {
+  .ot-own-title .ah-button { opacity: 1; width: 32px; min-height: 32px; }
+}
+
+/* 3 Viittaa: a quiet text button at the end of the facts line, always there. */
+.ot-own-facts { display: inline-flex; vertical-align: middle; margin-left: var(--ah-s2); margin-block: -6px; }
+.ot-own-facts .ot-refer.ah-button {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 28px; padding-inline: 6px;
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.ot-own-facts .ot-refer svg { width: 14px; height: 14px; }
+@media (hover: none) {
+  .ot-own-facts .ot-refer.ah-button { min-height: 32px; }
+}
