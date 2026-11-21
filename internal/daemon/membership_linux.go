@@ -142,13 +142,16 @@ func loadMembership(home string) (membershipRecord, error) {
 	if status != "valid" || st.Uid != uint32(os.Geteuid()) || st.Mode&0077 != 0 {
 		return record, errMembershipUnreadable
 	}
+	// Decode into a zero record: an existing file must state its version
+	// and map, so `{}` or `null` is damage, not an empty record.
+	var decoded membershipRecord
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	var extra any
-	if dec.Decode(&record) != nil || dec.Decode(&extra) != io.EOF || !record.valid() {
-		return emptyMembership(), errMembershipUnreadable
+	if dec.Decode(&decoded) != nil || dec.Decode(&extra) != io.EOF || !decoded.valid() {
+		return record, errMembershipUnreadable
 	}
-	return record, nil
+	return decoded, nil
 }
 
 func (m membershipRecord) valid() bool {
@@ -196,8 +199,11 @@ func saveMembership(home string, m membershipRecord) error {
 	if err != nil {
 		return err
 	}
-	return writeStateFile(home, membershipFile, b)
+	return writeMembership(home, membershipFile, b)
 }
+
+// writeMembership is the record's writer; a unit test fails it alone.
+var writeMembership = writeStateFile
 
 func (s *membershipSettings) member(subject string) int {
 	for i := range s.Members {
@@ -588,36 +594,47 @@ func (c *ConversationController) endGuestStreamsLocked(conversation, subject str
 
 // endMemberships ends every membership of a conversation that is archived
 // or whose workspace is deleted. Its pending lines go with it: nobody is
-// left to read them, and the owner sees the conversation put away. A record
-// that cannot be read or written leaves the refusal to the archive check
-// every guest request makes.
-func (c *ConversationController) endMemberships(match func(key string, conv *membershipSettings) bool) {
+// left to read them. A record that cannot be read admits nobody, so there is
+// nothing to end; since the affected streams cannot then be told apart,
+// every guest stream ends. A record that was read but cannot be written is
+// an error: the caller must not let the change it ends memberships for
+// commit without it, or a restore would bring them back.
+func (c *ConversationController) endMemberships(match func(key string, conv *membershipSettings) bool) error {
 	c.memberMu.Lock()
 	defer c.memberMu.Unlock()
 	record, err := loadMembership(c.home)
-	ended := []string{}
-	if err == nil {
-		for key, conv := range record.Conversations {
-			if match(key, conv) {
-				ended = append(ended, key)
-				delete(record.Conversations, key)
+	if err != nil {
+		for key, streams := range c.memberStreams {
+			for s := range streams {
+				s.cancel()
 			}
+			delete(c.memberStreams, key)
 		}
-		if len(ended) > 0 {
-			_ = saveMembership(c.home, record)
+		return nil
+	}
+	ended := []string{}
+	for key, conv := range record.Conversations {
+		if match(key, conv) {
+			ended = append(ended, key)
+			delete(record.Conversations, key)
 		}
 	}
 	for _, key := range ended {
 		c.endGuestStreamsLocked(key, "")
 	}
+	if len(ended) > 0 {
+		return saveMembership(c.home, record)
+	}
+	return nil
 }
 
-func (c *ConversationController) endConversationMemberships(key string) {
-	c.endMemberships(func(k string, _ *membershipSettings) bool { return k == key })
+func (c *ConversationController) endConversationMemberships(key string) error {
+	err := c.endMemberships(func(k string, _ *membershipSettings) bool { return k == key })
 	// Streams of a conversation the record no longer names end too.
 	c.memberMu.Lock()
 	c.endGuestStreamsLocked(key, "")
 	c.memberMu.Unlock()
+	return err
 }
 
 // tellGrant tells a running Pi's companion that a person's grant changed.

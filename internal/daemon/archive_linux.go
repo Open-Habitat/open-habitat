@@ -226,6 +226,14 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	// The scheduled wakes change with the archive, before it is committed:
 	// a wake change that cannot be written refuses the archive, and an
 	// archive that cannot be written puts the wakes back.
+	// Its participants' memberships end before the archive commits, so a
+	// restore cannot bring them back (ADR 0038 section 7). A record that
+	// cannot be written refuses the archive; memberships it already ended
+	// stay ended.
+	if in.Archived && c.endConversationMemberships(key) != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
 	undoWakes := func() {}
 	if in.Archived {
 		if err := c.archiveCancelsWakes(key, archivedAt); err != nil && !errors.Is(err, errWakesUnreadable) {
@@ -248,9 +256,7 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	}
 	if in.Archived {
 		// An archived conversation is put away: it neither waits raised nor
-		// comes back raised when restored. Its participants' memberships end
-		// with it and do not come back on restore (ADR 0038 section 7).
-		c.endConversationMemberships(key)
+		// comes back raised when restored.
 		c.clearTurnMark(id)
 		if c.home != "" {
 			clearAgentSection(c.home, "pi:"+id, time.Now().Add(time.Second))

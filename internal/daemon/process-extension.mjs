@@ -839,8 +839,11 @@ export default function (pi) {
       // Only into an idle Pi: during a run Pi would hold it in memory until
       // the turn ends, and a stop before then would lose it.
       if (context.isIdle?.() === false) return { written: false, reason: 'busy' };
+      // Pi reports no failed append to the caller; it rolls the entry back
+      // out of its branch synchronously. So the branch, read right after,
+      // is the evidence the line was written.
       pi.sendMessage(memberLineMessage(q.line), { triggerTurn: false });
-      return { written: true };
+      return lineInBranch(context, q.line.line_id) ? { written: true } : { written: false, reason: 'native_write_failed' };
     }
     if (q.op === 'scheduled_wake' || q.op === 'wake_tell') {
       if (!context || shuttingDown) throw new Error('invalid_request');

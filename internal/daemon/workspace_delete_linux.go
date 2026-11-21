@@ -323,9 +323,12 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	defer unix.Close(moved)
 	// Deleting a workspace deletes its conversations for everyone in them:
 	// their memberships end, and restoring it from the Trash does not bring
-	// them back (ADR 0038 section 7).
+	// them back (ADR 0038 section 7). The move has happened and must stand
+	// even at a full disk; a record that cannot be written then still
+	// admits nobody while the directory is away, and a restore from the
+	// Trash before the owner removes the people is the accepted gap.
 	deleted := filepath.Join(c.home, "src", target.Name)
-	c.endMemberships(func(_ string, conv *membershipSettings) bool {
+	_ = c.endMemberships(func(_ string, conv *membershipSettings) bool {
 		return conv.Cwd == deleted || strings.HasPrefix(conv.Cwd, deleted+"/")
 	})
 	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)

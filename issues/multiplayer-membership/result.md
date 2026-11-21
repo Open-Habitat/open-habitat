@@ -9,8 +9,8 @@ Implemented ADR 0038 section 7 for the owner's daemon and the gateway's owner si
 - **Join**: `ConversationController.GuestJoinHandler` serves `POST /guest/v1/conversations/<id>/join` for the guest listener, which `multiplayer-guest-routing` mounts with the header parser. Every refusal is `resource_not_found`.
 - **Authorization for later routes**: `authorizeGuest(id, participant, invitedToo)` checks the feature, the record, that the history is readable, that its cwd still exists and equals the recorded one, and that it is not archived. `admitGuestStream` registers a stream under `memberMu`, the lock that removal and archiving take, and returns a context that removal cancels.
 - **Take-back** is immediate: the role changes and the generation increases in the record, then the running Pi's companion gets bridge op `grant` (`{subject, role|removed, generation}`) before the owner's reply, which reports `revocation: delivered|not_running|failed`. The companion keeps the newest grant per subject in `grants` for the turn mode to consult.
-- **Habitat lines** (`joined`, `full_rights_given`, `full_rights_taken`, `removed`) wait in the record and are written by bridge op `conversation_line` as `oh-conversation-line` custom messages (`display: true`, `details.kind: "membership"`), only into an idle Pi, each once (`lineInBranch`). They go out after the change if Pi is idle, at the settle that ends a run, and after a launch with no held prompt.
-- **Archive and delete end memberships**: archiving deletes the conversation's record entry and ends its streams inside the archive's commit; a restore brings nothing back. Deleting a workspace ends memberships whose recorded cwd is in it.
+- **Habitat lines** (`joined`, `full_rights_given`, `full_rights_taken`, `removed`) wait in the record and are written by bridge op `conversation_line` as `oh-conversation-line` custom messages (`display: true`, `details.kind: "membership"`), only into an idle Pi, each once (`lineInBranch`). The companion acknowledges a line only once it is in Pi's branch: Pi reports no failed append and rolls the entry back synchronously, so a line lost to a full quota stays pending. They go out after the change if Pi is idle, at the settle that ends a run, and after a launch with no held prompt.
+- **Archive and delete end memberships**: archiving deletes the conversation's record entry and ends its streams before the archive annotation commits. A record that cannot be written refuses the archive (503), so a restore never brings members back. Deleting a workspace ends memberships whose recorded cwd is in it. An unreadable record ends every guest stream, because the affected ones cannot be told apart.
 - **Gateway** (`internal/gateway/members_linux.go`): `GET .../members` proxies; `POST .../members` accepts only `{action, subject}` from the browser and rebuilds the daemon body itself. For `invite` it adds the display name and admits only an admitted, bound person who is not denied and is not the owner. `GET .../people` is the picker: it first reads the owner's record (feature and conversation check), then lists every other admitted (`joined` in the broker's access list), non-denied person with name and avatar.
 - **Contract** `contracts/v1/conversation-members.schema.json` (record reply, control body, people, join), with an example.
 
@@ -25,13 +25,18 @@ Implemented ADR 0038 section 7 for the owner's daemon and the gateway's owner si
 7. **Moved histories.** Sharing is bound to the cwd at the first invitation. A history whose cwd changed or disappeared admits nobody, and giving rights is refused (`conversation_moved`). Conversations in a workspace's worktrees end when that directory disappears (the cwd check), not through the deletion hook.
 8. **Limits**: 16 members per conversation, 256 shared conversations, 64 pending lines per conversation (the oldest go first). They are large enough for a conversation and keep the record well under its 1 MiB read bound.
 9. **Open-admission installations** list only people who are in the broker's access list. An installation that admits anyone has no list of bound people the gateway may read today, so its picker may be empty. Left for `multiplayer-guest-routing` or an administrator decision.
-10. **Lock order**: `c.mu` may be held while `memberMu` is taken (archive), never the reverse. Recorded in the file's comment.
+10. **Workspace deletion at a full disk.** The move to the Trash stands even when the record cannot be written, because a person must be able to free space. Until the owner removes the people, the record then still names them, and restoring that workspace from the Trash would admit them again. Alternative: refuse the deletion, which would break freeing space at a full quota.
+11. **Lock order**: `c.mu` may be held while `memberMu` is taken (archive), never the reverse. Recorded in the file's comment.
 
 ## For the later issues
 
 - `multiplayer-guest-routing`: mount `GuestJoinHandler` on the guest route table; build `guestParticipant` from `Open-Habitat-Participant`; the gateway writes the index entry after a successful invite reply and deletes it after `remove`. A share schema is still to add to `contracts/v1/` with the index.
 - `multiplayer-guest-stream`: use `admitGuestStream` for the guest event stream and `authorizeGuest` on every guest request.
 - `multiplayer-turn-modes`: read `grants` in the companion; send the role from the record in `participant_message`.
+
+## Review
+
+Critical-rigor `/llm-review`: gpt-6-astra as finder, claude-fable-5-2 as verifier, two model calls. `/assess-findings` triaged the three findings as FIX, and all three were fixed with regression tests. Membership teardown failures were ignored, so a restore could re-admit members: memberships now end before the archive commits. The `conversation_line` op acknowledged appends that Pi rolled back: it now checks the branch. A record file of `{}` or `null` was read as an empty record: it is now refused.
 
 ## Checks
 

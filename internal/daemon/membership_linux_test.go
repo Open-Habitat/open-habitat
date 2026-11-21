@@ -211,6 +211,18 @@ func TestDamagedRecordAdmitsNobody(t *testing.T) {
 	if _, ok := c.authorizeGuest(memberConv, ville, false); ok {
 		t.Fatal("a damaged record admitted a guest")
 	}
+	// Nor is a file that states nothing: it is damage, not an empty record.
+	for _, empty := range []string{"{}", "null", `{"schema_version":1}`} {
+		if err := os.WriteFile(path, []byte(empty), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if code, _, _ := memberCall(t, c, "POST", control("invite", "github:1002", "Other")); code != 503 {
+			t.Fatalf("%s read as an empty record: %d", empty, code)
+		}
+	}
+	if err := os.WriteFile(path, bytes.Replace(good, []byte(`"role":"participant"`), []byte(`"role":"owner"`), 1), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if code, _, _ := memberCall(t, c, "POST", control("invite", "github:1002", "Other")); code != 503 {
 		t.Fatalf("a damaged record was overwritten: %d", code)
 	}
@@ -275,7 +287,9 @@ func TestMovedOrDeletedWorkspaceAdmitsNobody(t *testing.T) {
 		t.Fatal(err)
 	}
 	memberCall(t, c, "POST", control("invite", ville.Subject, "Example Participant"))
-	c.endMemberships(func(_ string, conv *membershipSettings) bool { return conv.Cwd == cwd })
+	if err := c.endMemberships(func(_ string, conv *membershipSettings) bool { return conv.Cwd == cwd }); err != nil {
+		t.Fatal(err)
+	}
 	if _, body, _ := memberCall(t, c, "GET", nil); len(body.Members) != 0 {
 		t.Fatalf("deleting the workspace kept memberships: %v", body.Members)
 	}
@@ -354,5 +368,25 @@ func TestMembershipTellsRunningPi(t *testing.T) {
 	record, _ = loadMembership(c.home)
 	if record.Conversations["pi:"+memberConv] != nil {
 		t.Fatalf("delivered lines stayed: %+v", record.Conversations["pi:"+memberConv])
+	}
+}
+
+// An archive whose memberships cannot be ended does not commit, so a later
+// restore cannot bring them back.
+func TestArchiveRefusedWhenMembershipsCannotEnd(t *testing.T) {
+	c, archive := membershipFixture(t)
+	memberCall(t, c, "POST", control("invite", ville.Subject, "Example Participant"))
+	if _, ok := c.joinMember(memberConv, ville); !ok {
+		t.Fatal("join failed")
+	}
+	writeMembership = func(string, string, []byte) error { return os.ErrPermission }
+	defer func() { writeMembership = writeStateFile }()
+	if code, _ := archive(memberConv, true); code == 200 {
+		t.Fatal("archive committed although its memberships could not end")
+	}
+	writeMembership = writeStateFile
+	visibility, err := loadVisibility(c.home)
+	if err != nil || archiveFact(visibility, nil, "pi:"+memberConv) != "active" {
+		t.Fatalf("archive state after refusal: %v %v", archiveFact(visibility, nil, "pi:"+memberConv), err)
 	}
 }
