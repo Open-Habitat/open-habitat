@@ -10,6 +10,7 @@ source_ref: chat:2026-11-14/revoked-access-keeps-quota
 preparation: ready
 lane: person-removal
 lane_seq: 1
+related: ['@person-removal-broker', '@person-removal-daemon', '@person-removal-gateway', '@person-removal-browser']
 ---
 
 # Removing a person's access keeps their quota in the disk sum
