@@ -108,7 +108,6 @@ describe("conversation v2 presentation", () => {
         <ConversationTimeline
           state="ready"
           items={[]}
-          historyMode="pagedAccessible"
           showJumpToLatest
           onJumpToLatest={jump}
         />
@@ -125,7 +124,6 @@ describe("conversation v2 presentation", () => {
           <ConversationTimeline
             state="ready"
             items={[]}
-            historyMode="pagedAccessible"
             showJumpToLatest
             latestWorking={working}
             latestDuration="0:42"

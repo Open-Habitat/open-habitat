@@ -26,7 +26,6 @@ describe("untrusted conversation Markdown", () => {
             content: <p>Tuntematon tapahtuma</p>,
           },
         ]}
-        historyMode="pagedAccessible"
         onJumpToLatest={() => {}}
       />,
     );
@@ -135,7 +134,6 @@ describe("untrusted conversation Markdown", () => {
             ),
           },
         ]}
-        historyMode="pagedAccessible"
         onJumpToLatest={() => {}}
       />,
     );

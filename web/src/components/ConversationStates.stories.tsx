@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { AgentTurn, ThinkingRow } from "./AgentTurn";
@@ -56,16 +55,11 @@ function History({
   state: "empty" | "loading" | "error" | "stale" | "ready";
   narrow?: boolean;
 }) {
-  const [mode, setMode] = useState<"virtualized" | "pagedAccessible">(
-    "virtualized",
-  );
   return (
     <main style={narrow ? { maxWidth: 390 } : undefined}>
       <ConversationTimeline
         state={state}
         items={state === "stale" || state === "ready" ? items : []}
-        historyMode={mode}
-        onHistoryModeChange={setMode}
         onJumpToLatest={noop}
         problem={{
           title: "Historiaa ei saatu",
@@ -406,7 +400,6 @@ const v2Conversation = () => (
               ),
             },
           ]}
-          historyMode="virtualized"
           onJumpToLatest={noop}
         />
       </div>
@@ -472,7 +465,6 @@ const jumpToLatest = () => (
             newContentCount={form.count}
             latestWorking={form.working}
             latestDuration={form.duration}
-            historyMode="virtualized"
             onJumpToLatest={noop}
           />
         </ConversationFrame>
@@ -539,7 +531,6 @@ export const AwayFromLatest: Story = {
       <ConversationTimeline
         state="ready"
         items={items}
-        historyMode="pagedAccessible"
         showJumpToLatest
         onJumpToLatest={noop}
       />

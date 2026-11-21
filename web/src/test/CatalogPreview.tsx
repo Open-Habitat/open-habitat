@@ -301,10 +301,8 @@ function CatalogContents({
             <ConversationTimeline
               state="ready"
               items={items}
-              historyMode="virtualized"
               newContentCount={2}
               onJumpToLatest={noop}
-              onHistoryModeChange={noop}
             />
           )}
           <Composer

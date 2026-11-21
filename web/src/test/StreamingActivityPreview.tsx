@@ -61,7 +61,6 @@ export function StreamingActivityPreview() {
           <ConversationStream>
             <ConversationTimeline
               state="ready"
-              historyMode="pagedAccessible"
               onJumpToLatest={noop}
               items={[
                 {

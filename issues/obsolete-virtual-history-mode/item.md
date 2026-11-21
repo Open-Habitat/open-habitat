@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: testing
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:history-mode-remnants

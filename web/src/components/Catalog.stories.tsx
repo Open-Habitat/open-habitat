@@ -344,9 +344,6 @@ export const AccountPartial: Story = {
 };
 
 function ConversationFixture() {
-  const [mode, setMode] = useState<"virtualized" | "pagedAccessible">(
-    "virtualized",
-  );
   const [composer, setComposer] = useState(
     "Lisää vielä yksi tarkistus jonoon.",
   );
@@ -436,10 +433,8 @@ function ConversationFixture() {
       <ConversationTimeline
         state="ready"
         items={items}
-        historyMode={mode}
         newContentCount={3}
         onJumpToLatest={noop}
-        onHistoryModeChange={setMode}
       />
       <Composer
         value={composer}

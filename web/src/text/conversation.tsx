@@ -6,8 +6,6 @@ import { catalog } from "../i18n";
 const fi = {
   start: "Aloita keskustelu.",
   history: "Keskusteluhistoria",
-  pagedHistory: "Näytä saavutettava sivutettu historia",
-  virtualHistory: "Käytä virtuaalista historiaa",
   loading: "Ladataan keskustelua…",
   historyUnavailable: "Historiaa ei saada",
   stale: "Historia on vanhentunut",
@@ -124,8 +122,6 @@ export const conversationText = catalog(
   {
     start: "Start the conversation.",
     history: "Conversation history",
-    pagedHistory: "Show the accessible paged history",
-    virtualHistory: "Use the virtual history",
     loading: "Loading the conversation…",
     historyUnavailable: "The history is not available",
     stale: "The history is out of date",

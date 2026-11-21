@@ -2058,7 +2058,6 @@ function HistoryViewContent({
               undefined,
               agent.rest?.cause === "restart" && !!agent.interrupted_turn,
             )}
-            historyMode="pagedAccessible"
             emptyLabel={txt.empty}
             onJumpToLatest={() => {}}
             problem={{

@@ -124,7 +124,6 @@ const render = () => (
     <ConversationTimeline
       state="ready"
       items={timelineItems(entries)}
-      historyMode="pagedAccessible"
       onJumpToLatest={() => {}}
     />
   </main>

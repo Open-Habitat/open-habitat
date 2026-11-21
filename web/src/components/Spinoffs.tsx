@@ -557,7 +557,6 @@ export function WorkerView({
                       : "empty"
               }
               items={feed}
-              historyMode="pagedAccessible"
               emptyLabel={txt.empty}
               onJumpToLatest={() => {}}
               problem={{

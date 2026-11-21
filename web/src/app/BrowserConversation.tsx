@@ -3247,7 +3247,6 @@ function BrowserConversationContent({
                         ]
                       : []),
                   ]}
-                  historyMode="pagedAccessible"
                   newContentCount={unseen}
                   latestWorking={
                     current?.run_active ??

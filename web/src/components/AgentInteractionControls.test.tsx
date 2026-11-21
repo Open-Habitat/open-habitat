@@ -124,7 +124,6 @@ describe("agent interaction preparation", () => {
           <ConversationTimeline
             state="ready"
             items={[{ id: "stable", content: <p>{`Päivitys ${update}`}</p> }]}
-            historyMode="pagedAccessible"
             onJumpToLatest={() => {}}
           />
           <AgentInteractionControls

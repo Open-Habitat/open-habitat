@@ -29,12 +29,10 @@ export function ConversationTimeline({
   showJumpToLatest = false,
   latestWorking,
   latestDuration,
-  historyMode,
   emptyLabel = txt.start,
   suppressProblem = false,
   problem,
   onJumpToLatest,
-  onHistoryModeChange,
 }: {
   state: "loading" | "ready" | "empty" | "error" | "stale" | "unavailable";
   items: (TimelineItem & { kind?: string })[];
@@ -42,12 +40,10 @@ export function ConversationTimeline({
   showJumpToLatest?: boolean;
   latestWorking?: boolean;
   latestDuration?: string;
-  historyMode: "virtualized" | "pagedAccessible";
   emptyLabel?: ReactNode;
   suppressProblem?: boolean;
   problem?: ProblemView;
   onJumpToLatest: () => void;
-  onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
 }) {
   return (
     <section
@@ -55,26 +51,6 @@ export function ConversationTimeline({
       aria-label={txt.history}
       className="ah-timeline"
     >
-      {onHistoryModeChange ? (
-        <div className="ah-timeline-tools">
-          <Button
-            label={
-              historyMode === "virtualized"
-                ? txt.pagedHistory
-                : txt.virtualHistory
-            }
-            variant="quiet"
-            size="row"
-            onPress={() =>
-              onHistoryModeChange(
-                historyMode === "virtualized"
-                  ? "pagedAccessible"
-                  : "virtualized",
-              )
-            }
-          />
-        </div>
-      ) : null}
       {state === "loading" ? <p>{txt.loading}</p> : null}
       {state === "empty" ? (
         <div data-testid="conversation-empty">{emptyLabel}</div>
