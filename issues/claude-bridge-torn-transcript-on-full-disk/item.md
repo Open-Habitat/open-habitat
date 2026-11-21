@@ -1,6 +1,6 @@
 ---
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-21
 type: bug
 reporter: jari
 status: testing
@@ -21,3 +21,9 @@ preparation: ready
 Related: session-partial-last-line-locks-conversation (fixed 29.10. for Pi's own session file) covered Pi's history, not the bridge's transcript.
 
 Expected: (1) writers start every new entry on its own line (a torn tail is never glued to the next entry); (2) the bridge (or Habitat around it) tolerates or repairs a torn final line, as Pi's damaged-history handling does, and says so; (3) a failed turn shows the actual error class to the person instead of an empty 'Epäonnistui'.
+
+## Comments
+
+### 2026-11-21T07:57:35Z · @conductor
+
+21.11.2026: reported upstream with Jari's approval: https://github.com/elidickinson/pi-claude-bridge/issues/281 (proposal from result.md, offer of a PR with tests). When upstream ships a fix, remove the companion guard.
