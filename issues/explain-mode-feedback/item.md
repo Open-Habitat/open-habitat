@@ -23,3 +23,9 @@ Explain mode graduates to an ordinary feature (21.11.2026), and Jari wants feedb
 ### 2026-11-21T15:33:47Z · @jari
 
 Jari 21.11.2026: the card footer is probably right, but test it for real: the card is a mouse-over hover, so riff a round where the view works with the mouse as the real explain mode does. The administrator must never see feedback the person has not sent. A public GitHub issue is fine but sending should be faster and clearer.
+
+## Agent Runs
+
+### 2026-11-21T15:54:03Z · @agent
+
+Round 2 (hover that behaves like production with the mouse) is in design-system/prototypes/rounds/2026-11-21-explain-feedback-2/; directions A Path / B Pin / C Settle, recommendation A; result, built page and evidence paths in result-2.md.
