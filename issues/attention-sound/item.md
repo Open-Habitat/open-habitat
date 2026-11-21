@@ -59,3 +59,7 @@ Jari 21.11.2026 on workspace strip round 3: B Leveät painikkeet is good; try va
 ### 2026-11-21T15:33:47Z · @jari
 
 Jari 21.11.2026 on emblems round 7: Tunnus puu current; Lasit: Lasin reuna; Kuplat current; Kulho: Huojunta; Jääpuikot: Helähdys; all others as recommended. Workspace strip round 4: A Yksi rivi; next round Kuvake and Nimi open their real editors.
+
+### 2026-11-21T18:43:07Z · @jari
+
+Jari 21.11.2026 on workspace strip round 5: B Paikallaan (name edited in place). No times/timestamps on the sound choice cards.

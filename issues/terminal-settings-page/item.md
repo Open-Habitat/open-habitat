@@ -24,6 +24,10 @@ A configuration page for the terminal. Jari 21.11.2026: copying on select (today
 
 Jari 21.11.2026: C is right, but the terminal's gear should only open the Settings page. Text size needs a preview. Riff again.
 
+### 2026-11-21T18:43:07Z · @jari
+
+Jari 21.11.2026: drop the whole terminal settings view; no terminal settings for now, and remove copy on select entirely — it is only confusing for our users.
+
 ## Agent Runs
 
 ### 2026-11-21T14:59:59Z · @claude

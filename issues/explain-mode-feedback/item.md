@@ -24,6 +24,10 @@ Explain mode graduates to an ordinary feature (21.11.2026), and Jari wants feedb
 
 Jari 21.11.2026: the card footer is probably right, but test it for real: the card is a mouse-over hover, so riff a round where the view works with the mouse as the real explain mode does. The administrator must never see feedback the person has not sent. A public GitHub issue is fine but sending should be faster and clearer.
 
+### 2026-11-21T18:43:07Z · @jari
+
+Jari 21.11.2026 on round 2: A Kulkureitti. Rethink the feedback content: no positive feedback (we do not want such messages in GitHub); merge 'Väärin' with the note — the person must write something, and it must reach us very easily, directly. Riff again.
+
 ## Agent Runs
 
 ### 2026-11-21T15:54:03Z · @agent
