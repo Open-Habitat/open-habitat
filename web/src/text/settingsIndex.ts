@@ -239,6 +239,48 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       },
     },
   },
+  aanet: {
+    label: "Sounds",
+    rows: {
+      "attention-sound-on": {
+        label: "Sounds",
+        desc: "A short sound when the agent finishes or wants your attention. Applies to all your devices.",
+      },
+      "attention-sound-default": {
+        label: "Sound",
+        desc: "Ten sounds; the one you press plays and is chosen.",
+      },
+      "attention-sound-length": {
+        label: "Sound length",
+        desc: "Short or long, one choice for all sounds.",
+      },
+      "attention-sound-in-view": {
+        label: "Conversation you are looking at",
+        group: "When it plays",
+        desc: "Quiet when the conversation is already in front of you, or play anyway.",
+      },
+      "attention-sound-night": {
+        label: "Quiet at night",
+        group: "When it plays",
+        desc: "No sound while the device is in night mode.",
+      },
+      "attention-sound-workspaces": {
+        label: "Workspace sounds",
+        group: "Workspace sounds",
+        desc: "A different sound for each workspace, so you hear which one finished.",
+      },
+      "attention-sound-device": {
+        label: "Sounds on this device",
+        group: "On this device",
+        desc: "Mutes this browser only.",
+      },
+      "attention-sound-volume": {
+        label: "Volume",
+        group: "On this device",
+        desc: "This browser's volume and a test sound.",
+      },
+    },
+  },
   editori: {
     label: "Editor",
     rows: {
@@ -282,6 +324,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "agent-instructions": {
         label: "Agent instructions",
         desc: "The note the agent reads at the start of every conversation.",
+      },
+      "attention-sound": {
+        label: "Attention sound",
+        desc: "A short sound when the agent finishes or wants your attention, and workspaces' own sounds.",
       },
     },
   },

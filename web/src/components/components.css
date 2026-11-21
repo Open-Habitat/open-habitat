@@ -1951,6 +1951,52 @@ details[open] > summary:not([class])::before {
 .ah-account-menu-theme {
   margin-left: auto;
 }
+/* The account menu's Äänet row (attention-sound, experimental) and the
+   mark on the account picture while this device is muted. */
+.ah-account-trigger {
+  position: relative;
+}
+.ah-sound-badge {
+  position: absolute;
+  left: 17px;
+  top: -3px;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  color: var(--ah-ink);
+}
+.ah-sound-badge .ah-speaker {
+  width: 11px;
+  height: 11px;
+}
+.ah-sound-menu {
+  border-top: 1px solid var(--ah-line-soft);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+.ah-sound-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 6px 4px 10px;
+  max-width: 17rem;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta, 12px);
+  line-height: 1.4;
+}
+.ah-sound-state > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.ah-sound-state[data-status="muted"] {
+  color: var(--ah-ink);
+}
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather
      than allocating a second line to every agent in the narrow drawer. */

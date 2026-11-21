@@ -12,6 +12,7 @@ export function WorkspaceActions({
   newReason,
   rail = false,
   onRename,
+  renameHidden,
   onHide,
   hidePending = false,
   settingsAvailable = false,
@@ -29,6 +30,8 @@ export function WorkspaceActions({
   newReason?: string;
   rail?: boolean;
   onRename?: () => void;
+  /** The workspace strip renames in its place (attention-sound, experimental). */
+  renameHidden?: boolean;
   onHide?: () => void;
   hidePending?: boolean;
   settingsAvailable?: boolean;
@@ -101,19 +104,21 @@ export function WorkspaceActions({
           >
             <Icon name="github" />
           </ControlButton>
-          <ControlButton
-            data-testid="rename-workspace"
-            size="row"
-            ref={renameRef}
-            variant="quiet"
-            presentation="icon"
-            aria-label={t.rename}
-            title={t.rename}
-            isDisabled={!settingsAvailable || !onRename}
-            onPress={onRename}
-          >
-            <Icon name="pencil" />
-          </ControlButton>
+          {renameHidden ? null : (
+            <ControlButton
+              data-testid="rename-workspace"
+              size="row"
+              ref={renameRef}
+              variant="quiet"
+              presentation="icon"
+              aria-label={t.rename}
+              title={t.rename}
+              isDisabled={!settingsAvailable || !onRename}
+              onPress={onRename}
+            >
+              <Icon name="pencil" />
+            </ControlButton>
+          )}
           <ControlButton
             size="row"
             variant="quiet"

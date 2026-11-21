@@ -115,6 +115,10 @@ describe("rail Nyt groups", () => {
       expect(after.yours[0].turnMark).toBe("read");
       expect(before.yours[0].attentionLabel).toBeTruthy();
       expect(after.yours[0].attentionLabel).toBeUndefined();
+      // Only the agent's new reply is news the attention sound plays for;
+      // the same reply read waits without it.
+      expect(before.yours[0].readyKey).toBe("reply:r1");
+      expect(after.yours[0].readyKey).toBeUndefined();
       expect(before.yours[0].turnAction).toBe("not_now");
       expect(after.yours[0].turnAction).toBe("not_now");
 

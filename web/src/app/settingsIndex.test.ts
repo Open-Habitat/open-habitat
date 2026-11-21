@@ -33,7 +33,18 @@ describe("settings search", () => {
     expect(searchSettings("malli", { admin: false }).map((h) => h.row)).toEqual(
       expect.arrayContaining(["default-model", "recap-model"]),
     );
-    expect(first("aani")).toMatchObject({ kind: "section", section: "sanelu" });
+    // "ääni" is the attention sound's first; with that experimental
+    // section hidden (Settings leaves its hits out) the switch that turns it
+    // on comes next, and dictation is found too.
+    const aani = searchSettings("aani", { admin: false });
+    expect(aani[0]).toMatchObject({ section: "aanet" });
+    expect(aani.find((h) => h.section !== "aanet")).toMatchObject({
+      section: "kokeelliset",
+      row: "attention-sound",
+    });
+    expect(aani).toContainEqual(
+      expect.objectContaining({ kind: "section", section: "sanelu" }),
+    );
     expect(first("recap")).toMatchObject({
       kind: "section",
       section: "tilannekatsaus",

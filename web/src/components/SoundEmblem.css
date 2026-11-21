@@ -1,0 +1,120 @@
+/* The attention sounds' emblems (B Väreilyn muoto): ring strokes in the
+   accent ink, the chosen one stronger, each strike rippling while it plays. */
+.se-emblem {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  overflow: visible;
+  color: var(--ah-accent-ink);
+}
+.se-emblem[data-size="strip"] {
+  width: 52px;
+  height: 52px;
+}
+.se-emblem[data-size="small"] {
+  width: 32px;
+  height: 32px;
+}
+.se-ring,
+.se-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.se-ring {
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+.se-soft {
+  opacity: 0.38;
+}
+.se-dash {
+  stroke-dasharray: 2 3;
+}
+.se-line {
+  stroke-width: 1.7;
+}
+.se-strong {
+  stroke-width: 2.1;
+  opacity: 0.8;
+}
+.se-fill {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.55;
+}
+.se-dot {
+  fill: var(--ah-accent);
+  stroke: none;
+}
+[data-chosen] .se-ring,
+[aria-checked="true"] .se-ring {
+  opacity: 0.95;
+}
+[data-chosen] .se-soft,
+[aria-checked="true"] .se-soft {
+  opacity: 0.6;
+}
+[data-chosen] .se-fill,
+[aria-checked="true"] .se-fill {
+  opacity: 0.85;
+}
+.se-emblem[data-active] .se-ring {
+  stroke: var(--ah-accent);
+  opacity: 1;
+}
+.se-emblem[data-size="small"] .se-ring,
+.se-emblem[data-size="small"] .se-line {
+  stroke-width: 2.4;
+}
+.se-emblem[data-size="small"] .se-soft {
+  stroke-width: 1.6;
+}
+.se-emblem[data-size="small"] .se-strong {
+  stroke-width: 3.2;
+}
+.se-emblem[data-size="small"] .se-dash {
+  stroke-dasharray: 3 3.5;
+}
+.se-ripple {
+  fill: none;
+  stroke: var(--ah-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.15);
+  animation-name: se-ripple;
+  animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1);
+  animation-fill-mode: both;
+}
+@keyframes se-ripple {
+  from {
+    transform: scale(0.15);
+    opacity: var(--amp);
+  }
+  to {
+    transform: scale(1.05);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .se-ripple {
+    display: none;
+  }
+}
+:disabled .se-emblem {
+  color: var(--ah-disabled-fg);
+}
+:disabled .se-dot {
+  fill: var(--ah-disabled-fg);
+}
+/* High contrast: every stroke at full strength. */
+[data-theme="contrast"] .se-emblem .se-ring,
+[data-theme="contrast"] .se-emblem .se-soft,
+[data-theme="contrast"] .se-emblem .se-line,
+[data-theme="contrast"] .se-emblem .se-fill {
+  opacity: 1;
+}

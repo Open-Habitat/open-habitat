@@ -3,7 +3,8 @@
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
-    { "id": "agent-instructions", "landed": true }
+    { "id": "agent-instructions", "landed": true },
+    { "id": "attention-sound", "landed": true }
   ],
   "fi": {
     "features": {
@@ -38,6 +39,14 @@
         "shows": "Muistilapun esikatseluna ja Markdown-tekstinä, tiedoston polun ja sen, lukeeko Claude sen. Jos tiedosto muuttui muokatessasi, tallennus ei kirjoita sen päälle vaan yhdistää muutokset ja pyytää tallentamaan uudelleen.",
         "needs": "Ei muuta. Habitat kirjoittaa tiedoston ~/.pi/agent/AGENTS.md ja luo tiedoston ~/.claude/CLAUDE.md viittausrivillä vain, jos sitä ei vielä ole.",
         "caption": "Muistilappu"
+      },
+      "attention-sound": {
+        "name": "Huomioääni",
+        "desc": "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Valitse kymmenestä äänestä oma, ja anna työtiloille omat äänensä, niin kuulet, mikä valmistui.",
+        "where": "Asetukset › Äänet, tilivalikon Äänet-rivi ja työtilan yläosan nauha, jossa ovat myös työtilan kuvake ja nimi.",
+        "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa laitteen tummaa tilaa.",
+        "needs": "Avoimen Habitat-välilehden. Selain soittaa äänen vasta, kun olet painanut jotain sivulla. Mykistys ja voimakkuus koskevat vain tätä laitetta.",
+        "caption": "Työtilan ääni"
       }
     },
     "picture": {
@@ -96,6 +105,14 @@
         "shows": "The note as a preview and as Markdown text, the file's path and whether Claude reads it. If the file changed while you edited it, saving doesn't write over it but merges the changes and asks you to save again.",
         "needs": "Nothing else. Habitat writes ~/.pi/agent/AGENTS.md and creates ~/.claude/CLAUDE.md with a reference line only if it doesn't exist yet.",
         "caption": "Note"
+      },
+      "attention-sound": {
+        "name": "Attention sound",
+        "desc": "A short sound when the agent finishes or wants your attention. Choose your own from ten sounds, and give workspaces their own sounds so you hear which one finished.",
+        "where": "Settings › Sounds, the Sounds row of the account menu, and the strip at the top of a workspace, which also holds the workspace's icon and name.",
+        "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows the device's dark mode.",
+        "needs": "An open Habitat tab. The browser plays sound only after you have pressed something on the page. Mute and volume apply to this device only.",
+        "caption": "Workspace sound"
       }
     },
     "picture": {

@@ -8,13 +8,23 @@ import {
 import { AccountKeys } from "../app/AccountKeys";
 import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
-import { useExperimentalFeature } from "../app/accountPreferences";
+import {
+  useExperimentalFeature,
+  useSessionPreferences,
+} from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
 import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
+import {
+  type Silence,
+  setDeviceMuted,
+  silence,
+  useDeviceNight,
+  useDeviceSound,
+} from "../app/attentionSound";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import {
@@ -42,6 +52,7 @@ import { ServerConversations } from "../app/ServerConversations";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
+import { SoundSettings } from "../app/SoundSettings";
 import { SpeechKeyAdministration, SpeechSettings } from "../app/SpeechSettings";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import {
@@ -55,6 +66,7 @@ import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
 import { textNow, useLanguage, useText } from "../i18n";
 import { accountText } from "../text/account";
+import { attentionSoundText } from "../text/attentionSound";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ChoiceMenu } from "./ChoiceMenu";
@@ -157,7 +169,20 @@ export function AccountShelf({
     return () => window.removeEventListener("nah:work-change", sync);
   }, []);
   const t = useText(accountText);
+  const soundText = useText(attentionSoundText);
   const explain = useExplainEntry();
+  const soundsOn = useExperimentalFeature("attention-sound");
+  const soundPreferences = useSessionPreferences();
+  const deviceSound = useDeviceSound();
+  const night = useDeviceNight();
+  const soundStatus = silence({
+    sound: soundPreferences.sound,
+    muted: deviceSound.muted,
+    night,
+  });
+  // A forgotten mute shows without opening anything; off and night are
+  // standing choices and get no mark.
+  const mutedMark = soundsOn && soundStatus === "muted";
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
     accountLabel(person.name) === t.ownAccount
@@ -177,11 +202,23 @@ export function AccountShelf({
     <div className="ah-account-shelf" data-account-controls>
       <Menu
         label={t.accountMenu}
-        triggerLabel={t.accountMenuOf(compactName)}
+        triggerLabel={
+          mutedMark
+            ? soundText.menuOf(
+                t.accountMenuOf(compactName),
+                soundText.stateMuted,
+              )
+            : t.accountMenuOf(compactName)
+        }
         triggerPresentation="account"
         trigger={
           <span className="ah-account-trigger">
             <AccountIdentity profile={person} compact />
+            {mutedMark ? (
+              <span className="ah-sound-badge" data-testid="sound-muted-badge">
+                <Speaker muted />
+              </span>
+            ) : null}
           </span>
         }
         heading={<AccountIdentity profile={person} />}
@@ -216,6 +253,7 @@ export function AccountShelf({
                 onChange={setWorkPreference}
               />
             </div>
+            {soundsOn ? <SoundMenuRow status={soundStatus} /> : null}
           </>
         }
         popoverClassName="ah-account-menu"
@@ -236,6 +274,84 @@ export function AccountShelf({
           if (id === "logout") onLogout();
         }}
       />
+    </div>
+  );
+}
+
+/** A speaker in the icons' stroke; slashed when quiet. */
+function Speaker({ muted }: { muted?: boolean }) {
+  return (
+    <svg
+      className="ah-speaker"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 6h2.2L8 3.2v9.6L4.7 10H2.5z" />
+      {muted ? (
+        <path d="M10.5 6l3.5 4M14 6l-3.5 4" />
+      ) : (
+        <path d="M10.6 5.6a3.2 3.2 0 0 1 0 4.8M12.4 4a5.6 5.6 0 0 1 0 8" />
+      )}
+    </svg>
+  );
+}
+
+/** Äänet in the account menu (attention-sound, experimental): this
+ * device's Soi | Hiljaa, and under it what reaches this device now. The
+ * row says before a press that Hiljaa is this device's alone. */
+function SoundMenuRow({ status }: { status: Silence | undefined }) {
+  const t = useText(attentionSoundText);
+  const deviceSound = useDeviceSound();
+  const off = status === "off";
+  const text =
+    status === "off"
+      ? t.stateOff
+      : status === "muted"
+        ? t.stateMuted
+        : status === "night"
+          ? t.stateNight
+          : t.menuScope;
+  return (
+    <div className="ah-sound-menu" data-testid="sound-menu-row">
+      <div className="ah-account-menu-theme-row">
+        <span>{t.menuRow}</span>
+        <Segmented
+          data-testid="sound-menu-mute"
+          label={`${t.menuRow}, ${t.menuScope}`}
+          className="ah-account-menu-theme"
+          isDisabled={off}
+          options={[
+            { id: "plays", label: t.plays },
+            { id: "quiet", label: t.quiet },
+          ]}
+          value={deviceSound.muted ? "quiet" : "plays"}
+          onChange={(v) => setDeviceMuted(v === "quiet")}
+        />
+      </div>
+      <p
+        className="ah-sound-state"
+        data-testid="sound-menu-state"
+        data-status={status ?? "plays"}
+      >
+        {status === "night" ? (
+          <Icon name="moon" />
+        ) : (
+          <Speaker muted={!!status} />
+        )}
+        <span>
+          {text}
+          {off ? (
+            <span className="ah-sound-why"> · {t.stateOffWhy}</span>
+          ) : null}
+        </span>
+      </p>
     </div>
   );
 }
@@ -324,8 +440,12 @@ export function AccountSettings({
   const language = useLanguage();
   const t = accountText[language];
   const instructionsOn = useExperimentalFeature("agent-instructions");
+  const soundsOn = useExperimentalFeature("attention-sound");
   const serverText = useText(serverSettingsText);
-  const settingsSections = shownSettingsSections(language);
+  // A section of an experimental feature shows only while it is on.
+  const settingsSections = shownSettingsSections(language).filter(
+    (entry) => entry.id !== "aanet" || soundsOn,
+  );
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const { data: piModels, refresh: refreshModels } = usePiModels();
   const [localSection, setLocalSection] = useState(
@@ -400,7 +520,8 @@ export function AccountSettings({
   const searching = query.trim() !== "";
   // Keskustelut lives only in the server area, which is still experimental;
   // its route opens anyway, as the limit card's administrator link does.
-  const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
+  const listed = (hit: SettingsHit) =>
+    hit.section !== "keskustelut" && (hit.section !== "aanet" || soundsOn);
   const hits = searching
     ? searchSettings(query, { admin: false }).filter(listed)
     : [];
@@ -970,6 +1091,13 @@ export function AccountSettings({
         )}
         {section === "kokeelliset" && (
           <ExperimentalFeatures identity={editorIdentity} csrf={csrf} />
+        )}
+        {section === "aanet" && soundsOn && (
+          <SoundSettings
+            identity={editorIdentity}
+            csrf={csrf}
+            workspaces={workspaces}
+          />
         )}
         {section === "ulkoasu" && (
           <div className="s-card">

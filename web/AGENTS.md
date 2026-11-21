@@ -288,6 +288,13 @@ Editor saves confirm from their validated document reply in the mounted
 document, not Redux's snapshot `hostChanged` path: neither file contents nor
 versions belong in snapshots or the host journal.
 
+The attention sounds (experimental) are rendered in the browser from their
+recipes in `src/app/soundSynth.ts`; no audio file ships, and
+`soundSynth.test.ts` fingerprints every render against the accepted
+prototype round, so a sound changes only when a recipe is changed on
+purpose. The person's sound choices follow them in the account preferences;
+mute and volume are each device's own and stay in its browser.
+
 Editor engines are bundled trusted app code, loaded only on an effective choice
 and document open; settings and unselected engines must not fetch their chunks
 or workers. CodeMirror is the sole browser engine, with no CDN, extension host,

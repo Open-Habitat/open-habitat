@@ -51,11 +51,14 @@ import {
   chooseQuietSort,
   chooseQuietWorkspace,
   chooseSectionWorkspace,
+  chooseWorkspaceSound,
   type QuietSort,
   type RailSection,
   useConfirmedPreferences,
+  useExperimentalFeature,
 } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
+import { useAttentionSound } from "./attentionSound";
 import { BrowserConversation } from "./BrowserConversation";
 import type { LeaveSave } from "./BrowserDocument";
 import {
@@ -1502,6 +1505,21 @@ export function App() {
     search: location.search,
     icons,
   });
+  // One sound when a conversation becomes the person's turn
+  // (attention-sound, experimental).
+  const soundsOn = useExperimentalFeature("attention-sound", {
+    identity,
+    csrf,
+  });
+  useAttentionSound({
+    enabled: soundsOn,
+    identity,
+    yours: now.yours,
+    sound: confirmedPreferences.sound,
+    loaded:
+      confirmedPreferences.loaded && confirmedPreferences.error !== "read",
+    stale: phase === "stale",
+  });
   const quietChoice = {
     sort: confirmedPreferences.quiet_sort,
     workspace: confirmedPreferences.quiet_workspace,
@@ -1702,7 +1720,18 @@ export function App() {
         const change = workspaceChange(reply);
         if (change) dispatch(hostChanged(change));
         else refresh();
-        // The first rename gives the workspace its durable ID.
+        // The first rename gives the workspace its durable ID; its own
+        // sound moves with it.
+        const ownSound = confirmedPreferences.sound.workspaces[id];
+        if (reply.workspace_id !== id && ownSound && identity)
+          void chooseWorkspaceSound(
+            identity,
+            reply.workspace_id,
+            ownSound,
+            writeCSRF,
+          ).then((moved) => {
+            if (moved) void chooseWorkspaceSound(identity, id, null, writeCSRF);
+          });
         if (
           reply.workspace_id !== id &&
           currentRoute.current.pathname === `/workspaces/${id}`

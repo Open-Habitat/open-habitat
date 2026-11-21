@@ -1700,6 +1700,41 @@ const fi = {
       name: "Omat asetukset",
       lead: "Palaa ylläpidosta omiin asetuksiisi.",
     },
+    M29: {
+      name: "Äänet",
+      lead: "Huomioääni: soiko se, millä äänellä ja pituudella, milloin se on hiljaa, työtilojen omat äänet ja tämän laitteen mykistys ja voimakkuus.",
+      know: "Kokeellinen. Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Laatan painallus soittaa äänen ja valitsee sen; kuuntelu soi myös, kun äänet ovat pois.",
+    },
+    AS01: {
+      name: "Äänet tällä laitteella",
+      lead: "Hiljentää huomioäänen vain tässä selaimessa tai palauttaa sen.",
+      know: "Muut laitteesi soivat edelleen. Rivin alla lukee, mitä tälle laitteelle nyt kuuluu: soi, hiljaa, yö tai pois kaikilta laitteilta.",
+    },
+    AS02: {
+      name: "Laite hiljaa",
+      lead: "Merkki tilin kuvassa: tämä laite on mykistetty.",
+      know: "Ääni palautuu tilivalikon Äänet-rivillä tai Asetuksissa.",
+    },
+    AS03: {
+      name: "Työtilan asetukset",
+      lead: "Työtilan kuvake, nimi ja ääni samassa nauhassa.",
+      know: "Kokeellinen. Nauha on näiden ainoa muutospaikka, kun se näkyy.",
+    },
+    AS04: {
+      name: "Kuvake",
+      lead: "Avaa työtilan kuvakkeen valinnan: automaattinen, kirjaintunnus tai emoji.",
+      know: "Alla lukee, mistä kuvake tulee. Valinta tallentuu työtilan asetustiedostoon heti.",
+    },
+    AS05: {
+      name: "Nimi",
+      lead: "Muuttaa työtilan näyttönimeä suoraan ruudussa.",
+      know: "Enter tai muualle klikkaus tallentaa, Esc peruu. Kansio ei muutu, ja tyhjä nimi palauttaa kansion nimen.",
+    },
+    AS06: {
+      name: "Työtilan ääni",
+      lead: "Valitsee äänen, joka soi, kun tämän työtilan keskustelu valmistuu.",
+      know: "Painallus valitsee ja soittaa, ▶ soittaa valitsematta. Sama kuin oletus seuraa Asetusten ääntä.",
+    },
     M70: {
       name: "Atlassian",
       lead: "Yhdistä Jira ja Confluence omalla tililläsi.",
@@ -3600,6 +3635,41 @@ export const explainModeText = catalog(fi, {
     M28: {
       name: "Your settings",
       lead: "Returns from administration to your own settings.",
+    },
+    M29: {
+      name: "Sounds",
+      lead: "The attention sound: whether it plays, which sound and length, when it stays quiet, workspaces' own sounds and this device's mute and volume.",
+      know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
+    },
+    AS01: {
+      name: "Sounds on this device",
+      lead: "Mutes the attention sound in this browser only, or brings it back.",
+      know: "Your other devices still play. The line below says what reaches this device now: plays, quiet, night, or off on every device.",
+    },
+    AS02: {
+      name: "Device quiet",
+      lead: "A mark on the account picture: this device is muted.",
+      know: "Bring the sound back on the Sounds row of the account menu or in Settings.",
+    },
+    AS03: {
+      name: "Workspace settings",
+      lead: "The workspace's icon, name and sound in one strip.",
+      know: "Experimental. While it shows, the strip is the one place to change them.",
+    },
+    AS04: {
+      name: "Icon",
+      lead: "Opens the workspace icon choice: automatic, letters or an emoji.",
+      know: "Below it says where the icon comes from. A choice is saved to the workspace's settings file at once.",
+    },
+    AS05: {
+      name: "Name",
+      lead: "Changes the workspace's display name right in its box.",
+      know: "Enter or a click elsewhere saves, Esc cancels. The folder stays the same, and an empty name brings back the folder's name.",
+    },
+    AS06: {
+      name: "Workspace sound",
+      lead: "Chooses the sound that plays when a conversation in this workspace finishes.",
+      know: "A press chooses and plays, ▶ plays without choosing. Same as the default follows the sound in Settings.",
     },
     M70: {
       name: "Atlassian",

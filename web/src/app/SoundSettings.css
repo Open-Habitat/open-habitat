@@ -1,0 +1,167 @@
+/* Asetukset › Äänet: B Renkaat tiles in one flat radio group of ten. */
+.ss-lead {
+  margin: calc(-1 * var(--ah-s2)) 0 0;
+}
+.ss-pad {
+  margin: 0;
+  padding: var(--ah-s3) var(--ah-s5) 0;
+}
+.ss-pad:last-child {
+  padding-bottom: var(--ah-s3);
+}
+.ss-alert {
+  align-items: center;
+}
+.ss-alert p {
+  margin: 0;
+  flex: 1;
+}
+.ss-tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--ah-s3);
+}
+.ss-tiles:focus {
+  outline: none;
+}
+.ss-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 150px;
+  padding: var(--ah-s3) var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.ss-tile:hover:not(:disabled) {
+  border-color: var(--ah-accent-line, var(--ah-accent));
+  background: var(--ah-hover);
+}
+.ss-tile[aria-checked="true"] {
+  border-color: var(--ah-accent);
+  box-shadow: inset 0 0 0 1px var(--ah-accent);
+}
+.ss-tile[data-playing] {
+  background: var(--ah-accent-soft);
+}
+.ss-tile:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 3px;
+}
+.ss-tile:disabled {
+  color: var(--ah-disabled-fg);
+  background: var(--ah-disabled-bg);
+  border-color: var(--ah-disabled-line, var(--ah-line-soft));
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.ss-tile-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ss-tile-state {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 18px;
+  font: 600 var(--ah-size-meta) / 1.3 var(--ah-font);
+  color: var(--ah-accent-ink);
+}
+.ss-tile-state svg {
+  width: 14px;
+  height: 14px;
+}
+.ss-tile:disabled .ss-tile-state {
+  color: inherit;
+}
+[data-theme="contrast"] .ss-tile[aria-checked="true"] {
+  box-shadow: inset 0 0 0 2px var(--ah-accent);
+}
+.ss-now,
+.ss-note {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+  margin: 0 var(--ah-s5) var(--ah-s3);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+  color: var(--ah-ink-2);
+}
+.ss-note {
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+}
+.ss-now svg,
+.ss-note svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+.ss-now[data-night] {
+  color: var(--ah-ink);
+}
+.s-row > .s-lbl.ss-workspace-lbl {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.ss-workspace-name {
+  font: 500 var(--ah-size-body, 14px) / 1.3 var(--ah-mono);
+  overflow-wrap: anywhere;
+}
+.ss-workspace .s-val {
+  gap: var(--ah-s2);
+}
+/* A fixed width, so a longer sound name never moves the field (Jari
+   21.11.2026 on the workspace sound picker). */
+.ss-choice {
+  display: inline-flex;
+  width: 15rem;
+  max-width: 100%;
+}
+.ss-choice > * {
+  width: 100%;
+}
+.ss-volume .s-val {
+  flex-wrap: wrap;
+  gap: var(--ah-s3);
+}
+.ss-volume .ah-scale {
+  min-width: 180px;
+}
+@media (max-width: 1100px) {
+  .ss-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .ss-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .ss-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ss-tile {
+    min-height: 132px;
+  }
+  .ss-tile .se-emblem {
+    width: 64px;
+    height: 64px;
+  }
+  .ss-choice {
+    width: 12rem;
+  }
+}

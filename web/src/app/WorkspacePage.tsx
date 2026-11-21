@@ -19,12 +19,22 @@ import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
-import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
+import {
+  WorkspaceIcon,
+  type WorkspaceIconModel,
+} from "../components/WorkspaceIcon";
 import { WorkspaceIconPicker } from "../components/WorkspaceIconPicker";
 import { WorkspaceIconSuggestions } from "../components/WorkspaceIconSuggestions";
+import { type IconFrom, WorkspaceStrip } from "../components/WorkspaceStrip";
 import type { OwnerConversation } from "../components/WorktreeAttention";
 import { liveText } from "../i18n";
 import { workspacePageText } from "../text/workspacePage";
+import {
+  chooseWorkspaceSound,
+  useExperimentalFeature,
+  useSessionPreferences,
+} from "./accountPreferences";
+import { playSound } from "./attentionSound";
 import { useGitStatus } from "./ConversationGitStatus";
 import {
   type ConversationStore,
@@ -226,6 +236,12 @@ export function WorkspacePage({
     onLogin,
   });
   const source = iconSourceLine(workspace);
+  // The settings strip (attention-sound, experimental) is the one place to
+  // change the icon and the name while it shows.
+  const strip = useExperimentalFeature("attention-sound");
+  const soundPreferences = useSessionPreferences();
+  const sound = soundPreferences.sound;
+  const ownSound = sound.workspaces[workspace.workspace_id];
   // The suggestion row (Sirut): while the config names no icon, until the
   // person says Ei nyt for this visit; `icon: auto` hides it for good. The
   // picker can bring it back for this visit.
@@ -320,31 +336,44 @@ export function WorkspacePage({
       {workspace.kind === "directory" ? txt.directory : txt.gitUnknown}
     </p>
   );
+  const iconPickerElement = icon ? (
+    <WorkspaceIconPicker
+      model={iconPicker(icon, workspace, iconWrite.pending)}
+      onChoose={acceptIcon}
+      isDisabled={!iconWrite.available}
+      disabledReason={txt.iconUnavailable}
+      footer={(close) => (
+        <ControlButton
+          data-testid="workspace-icon-ask-model"
+          size="row"
+          variant="quiet"
+          onPress={() => {
+            close();
+            setSuggestDismissed(false);
+            setSuggestAgain(true);
+          }}
+        >
+          <Icon name="spark" /> {txt.askModel}
+        </ControlButton>
+      )}
+    />
+  ) : null;
   return (
     <div className="ah-workspace-page">
       <header className="ah-workspace-page-head">
-        {icon ? (
-          <WorkspaceIconPicker
-            model={iconPicker(icon, workspace, iconWrite.pending)}
-            onChoose={acceptIcon}
-            isDisabled={!iconWrite.available}
-            disabledReason={txt.iconUnavailable}
-            footer={(close) => (
-              <ControlButton
-                data-testid="workspace-icon-ask-model"
-                size="row"
-                variant="quiet"
-                onPress={() => {
-                  close();
-                  setSuggestDismissed(false);
-                  setSuggestAgain(true);
-                }}
-              >
-                <Icon name="spark" /> {txt.askModel}
-              </ControlButton>
-            )}
-          />
-        ) : null}
+        {icon && strip ? (
+          <span
+            className="ah-workspace-head-icon"
+            data-testid="workspace-head-icon"
+          >
+            <WorkspaceIcon
+              icon={iconPicker(icon, workspace, iconWrite.pending).icon}
+              size="l"
+            />
+          </span>
+        ) : (
+          iconPickerElement
+        )}
         <div className="ah-workspace-page-title">
           <h1 data-testid="workspace-title" tabIndex={-1}>
             {workspace.display_name ?? workspace.name}
@@ -352,7 +381,7 @@ export function WorkspacePage({
           <p data-testid="workspace-path">
             <code title={workspace.path}>{displayPath}</code>
           </p>
-          {icon ? (
+          {icon && !strip ? (
             <p
               className="ah-workspace-icon-source"
               data-testid="workspace-icon-source"
@@ -391,6 +420,7 @@ export function WorkspacePage({
           onNew={onNew}
           onNewWorktree={onNewWorktree}
           newReason={startReason}
+          renameHidden={strip}
           onRename={() => {
             setDisplay(workspace.display_name ?? workspace.name);
             setRenameOpen(true);
@@ -405,6 +435,48 @@ export function WorkspacePage({
           }
         />
       </header>
+      {strip ? (
+        <WorkspaceStrip
+          workspaceId={workspace.workspace_id}
+          icon={iconPickerElement}
+          iconFrom={
+            icon
+              ? iconFrom(
+                  workspace,
+                  iconPicker(icon, workspace, iconWrite.pending).icon,
+                )
+              : undefined
+          }
+          name={workspace.display_name ?? workspace.name}
+          folder={displayPath}
+          onRename={
+            onRename && csrf && workspace.mutation_state === "allowed"
+              ? (value) => onRename(value)
+              : undefined
+          }
+          sound={ownSound ?? sound.default}
+          ownSound={ownSound}
+          defaultSound={sound.default}
+          length={sound.length}
+          enabled={sound.enabled}
+          onChooseSound={
+            soundPreferences.identity &&
+            soundPreferences.csrf &&
+            soundPreferences.loaded
+              ? (id) => {
+                  if (soundPreferences.identity && soundPreferences.csrf)
+                    void chooseWorkspaceSound(
+                      soundPreferences.identity,
+                      workspace.workspace_id,
+                      id,
+                      soundPreferences.csrf,
+                    );
+                }
+              : undefined
+          }
+          onPreview={(id, where) => playSound(id, sound.length, where)}
+        />
+      ) : null}
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
           workspace={workspace}
@@ -645,6 +717,17 @@ export function WorkspacePage({
       </details>
     </div>
   );
+}
+
+/** Where the strip's Kuvake says the icon comes from. */
+function iconFrom(workspace: Workspace, shown: WorkspaceIconModel): IconFrom {
+  if (shown.show.kind === "emoji") return "emoji";
+  if (shown.show.kind === "image") return "logo";
+  return workspace.icon?.source === "config" &&
+    workspace.icon.kind === "letters" &&
+    !workspace.icon_auto
+    ? "letters"
+    : "derived";
 }
 
 /** What the model was shown, in the words the row's footer uses. */

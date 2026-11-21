@@ -22,6 +22,7 @@ describe("settings URL contract", () => {
       "recap",
       "server",
       "server-integrations",
+      "sounds",
       "speech",
       "speech-key",
       "storage",

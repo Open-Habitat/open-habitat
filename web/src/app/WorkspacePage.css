@@ -16,6 +16,15 @@
   flex: 1;
   min-width: 0;
 }
+/* With the settings strip (attention-sound, experimental) the head's icon
+   is a picture only: the strip is where it changes. */
+.ah-workspace-head-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  margin-top: -2px;
+}
 .ah-workspace-page-title h1 {
   margin: 0 0 4px;
   font: 600 21px / 1.25 var(--ah-mono);

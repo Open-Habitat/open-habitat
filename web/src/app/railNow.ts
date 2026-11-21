@@ -351,6 +351,12 @@ export function railNow({
             status?.native_history === "unavailable"
           ? txt.rail.historyUnknown
           : undefined,
+      readyKey:
+        attention && !dismissed && turn
+          ? `reply:${reply?.id ?? ""}`
+          : facts.pendingQuestion && observed.running && turn
+            ? "question"
+            : undefined,
       // Ei nyt said on another device answers a reply this one has not shown.
       attentionLabel:
         attention && !dismissed ? presentation.attentionLabel : undefined,

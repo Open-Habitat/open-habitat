@@ -22,6 +22,10 @@ const allowed: Record<string, { texts: readonly string[] | "*"; why: string }> =
       texts: ["Omat", "Organisaatio", "Ryhmä", "Aliryhmä", "Yhteistyö"],
       why: "section kinds are identifiers; the clone page names them from its catalog",
     },
+    "app/soundSynth.ts": {
+      texts: ["vibrafoni", "pisara", "lasit", "tuulikello", "kuplat", "kulho"],
+      why: "attention sound ids, identifiers the daemon validates and stores; the interface names them from text/attentionSound.ts",
+    },
     "app/GitIdentity.tsx": {
       texts: ["Gitin globaali asetus"],
       why: "a source value the daemon sends; the page words it from its catalog",

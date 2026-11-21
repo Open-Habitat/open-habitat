@@ -633,6 +633,17 @@ export const parts: Record<CardId, Part> = {
   M26: { kind: "page", sel: page("keskustelut") },
   M27: { kind: "nav", sel: '[data-testid="settings-list-back"]' },
   M28: { kind: "nav", sel: '[data-testid="settings-own-back"]' },
+  M29: { kind: "page", sel: page("aanet") },
+  AS01: { kind: "menu", sel: '[data-testid="sound-menu-row"]' },
+  AS02: { kind: "info", sel: '[data-testid="sound-muted-badge"]' },
+  AS03: { kind: "panel", sel: '[data-testid="workspace-strip"]' },
+  AS04: { kind: "panel", sel: '[data-testid="strip-icon"]', opens: true },
+  AS05: { kind: "input", sel: '[data-testid="strip-name"]' },
+  AS06: {
+    kind: "panel",
+    sel: '[data-testid="strip-sound"], [data-testid="strip-sound-picker"]',
+    opens: true,
+  },
   M70: {
     kind: "panel",
     sel: '[data-testid="integration-tile-atlassian"], [data-testid="integration-account-atlassian"]',

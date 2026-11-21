@@ -42,6 +42,9 @@ test("@settings-search every index row is on its section's page and every page r
   await signIn(page);
   await page.goto("/settings");
   for (const section of settingsSections) {
+    // An experimental feature's section is listed only while it is on;
+    // attention-sound.spec.ts checks Äänet's rows against this index.
+    if ("experimental" in section) continue;
     if (section.id === "keskustelut") {
       // Listed only in the server area; its route still opens.
       await page.goto("/settings/conversations");

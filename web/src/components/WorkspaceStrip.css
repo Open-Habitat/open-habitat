@@ -1,0 +1,567 @@
+/* The workspace settings strip (attention-sound, experimental), A Yksi
+   rivi: Kuvake and Ääni squares and a wider Nimi in one row of one height.
+   The kind of a button sets its size, never its value. */
+.ws-strip {
+  container-type: inline-size;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 var(--ah-s5);
+}
+.ws-item {
+  position: relative;
+  flex: none;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ws-item[data-hovered] {
+  background: var(--ah-hover);
+  border-color: var(--ah-accent);
+}
+.ws-item[data-focus-visible] {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 2px;
+  z-index: 1;
+}
+.ws-item[aria-expanded="true"] {
+  border-color: var(--ah-accent);
+  box-shadow: inset 0 0 0 1px var(--ah-accent);
+}
+.ws-item[data-disabled] {
+  cursor: default;
+  color: var(--ah-ink-2);
+}
+.ws-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ws-label svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ws-box {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+.ws-box .se-emblem {
+  color: var(--ah-ink-2);
+}
+[data-own] .ws-box .se-emblem {
+  color: var(--ah-accent-ink);
+}
+.ws-value {
+  display: block;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.ws-value-name,
+.ws-value-suffix {
+  white-space: nowrap;
+}
+.ws-value-suffix {
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ws-square {
+  width: 128px;
+  height: 128px;
+  display: grid;
+  grid-template-rows: 16px 1fr 36px;
+  gap: 4px;
+  padding: 10px 8px;
+}
+.ws-square .ws-label {
+  padding-left: 2px;
+}
+.ws-square .ws-value {
+  align-self: center;
+  text-align: center;
+}
+.ws-flat {
+  width: 300px;
+  height: 128px;
+  display: grid;
+  grid-template-rows: 16px 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 10px 14px 12px;
+}
+.ws-flat .ws-box {
+  align-self: center;
+  height: 56px;
+  place-items: center start;
+}
+/* The name wraps (never cut mid-identifier) inside its fixed box; a longer
+   one ends in an ellipsis, the whole name in the title and the editor. */
+.ws-name {
+  display: block;
+  width: 100%;
+  font: 600 22px / 28px var(--ah-mono);
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+.ws-name:not(input) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+.ws-name-editing {
+  cursor: text;
+  border-color: var(--ah-accent);
+  box-shadow: inset 0 0 0 1px var(--ah-accent);
+}
+.ws-name-editing .ws-label {
+  width: 100%;
+}
+.ws-name-editing .ws-label label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-inline-actions {
+  display: flex;
+  gap: 4px;
+  margin: -4px -6px -4px 0;
+}
+.ws-inline-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: 50%;
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  cursor: pointer;
+}
+.ws-inline-button:hover {
+  color: var(--ah-ink);
+  border-color: var(--ah-accent);
+}
+.ws-inline-button[type="submit"] {
+  background: var(--ah-accent);
+  border-color: var(--ah-accent);
+  color: var(--ah-accent-on, #fff);
+}
+.ws-inline-button:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 2px;
+}
+.ws-inline-button svg {
+  width: 12px;
+  height: 12px;
+}
+.ws-flat .ws-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid var(--ah-line-strong, var(--ah-line));
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-size: 20px;
+  outline: 0;
+}
+.ws-flat .ws-name-input:focus-visible {
+  border-color: var(--ah-focus, var(--ah-accent));
+  box-shadow: 0 0 0 1px var(--ah-focus, var(--ah-accent));
+}
+
+/* Kuvake: the real icon editor's trigger covers the whole square; the label
+   and value sit on top without taking presses, and its pop-up anchors to
+   the square. */
+.ws-icon-square > .ws-label,
+.ws-icon-square > .ws-value {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.ws-icon-square > .ws-box {
+  position: static;
+}
+.ws-strip .ws-icon-square .ah-wsip-head.ah-button {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 6px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+.ws-strip .ws-icon-square .ah-wsip-pen {
+  display: none;
+}
+.ws-strip .ws-icon-square .ah-wsi[data-size="l"] {
+  width: 52px;
+  height: 52px;
+  font-size: 40px;
+}
+.ws-strip .ws-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] {
+  border-radius: 12px;
+  font-size: 20px;
+}
+.ws-icon-square:has(.ah-wsip-head[data-hovered]) {
+  background: var(--ah-hover);
+  border-color: var(--ah-accent);
+}
+.ws-icon-square:has(.ah-wsip-head[data-focus-visible]) {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 2px;
+  z-index: 1;
+}
+.ws-icon-square:has(.ah-wsip-head[aria-expanded="true"]) {
+  border-color: var(--ah-accent);
+  box-shadow: inset 0 0 0 1px var(--ah-accent);
+}
+[data-theme="contrast"] .ws-item[aria-expanded="true"],
+[data-theme="contrast"] .ws-name-editing,
+[data-theme="contrast"]
+  .ws-icon-square:has(.ah-wsip-head[aria-expanded="true"]) {
+  box-shadow: inset 0 0 0 2px var(--ah-accent);
+}
+
+/* The sound picker pop-up. */
+.ah-popover.ws-popover {
+  width: 500px;
+  max-width: calc(100vw - 24px);
+  max-height: min(640px, 82vh);
+  overflow: auto;
+  padding: 14px;
+  border-radius: var(--ah-r-lg);
+}
+.ws-dialog,
+.ws-dialog:focus,
+.ws-dialog:focus-visible {
+  outline: 0;
+}
+.ws-picker {
+  display: grid;
+  gap: 10px;
+}
+.ws-picker-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-picker-top h2 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ws-picker-top h2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ah-ink-2);
+}
+.ws-picker-help,
+.ws-picker-note {
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  line-height: 1.45;
+}
+.ws-picker-note {
+  display: flex;
+  gap: 6px;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+}
+.ws-picker .ws-picker-note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.ws-options {
+  display: grid;
+  gap: 8px;
+}
+.ws-default-row,
+.ws-card {
+  position: relative;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ws-default-row:hover,
+.ws-card:hover {
+  background: var(--ah-hover);
+}
+.ws-default-row[data-checked],
+.ws-card[data-checked] {
+  border-color: var(--ah-accent);
+  box-shadow: inset 0 0 0 1px var(--ah-accent);
+  background: var(--ah-accent-soft);
+}
+.ws-default,
+.ws-tile {
+  width: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.ws-default {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 48px 8px 10px;
+  text-align: left;
+}
+.ws-default-text {
+  display: grid;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.ws-default-text small {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+/* A fixed width, so Valittu, Soi or nothing never rewraps the text beside it. */
+.ws-default-state {
+  flex: 0 0 7em;
+  display: flex;
+  justify-content: flex-end;
+}
+.ws-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.ws-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 2px 6px;
+  text-align: center;
+}
+.ws-tile-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.ws-tile-foot {
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+}
+.ws-pick-state {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font: 600 11.5px / 1.3 var(--ah-font);
+  color: var(--ah-accent-ink);
+}
+.ws-picker .ws-pick-state svg {
+  width: 12px;
+  height: 12px;
+}
+.ws-default:focus-visible,
+.ws-tile:focus-visible,
+.ws-preview:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 2px;
+}
+.ws-preview {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: 50%;
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  cursor: pointer;
+}
+.ws-default-row .ws-preview {
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+}
+.ws-picker .ws-preview svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  stroke: none;
+  margin-left: 2px;
+}
+.ws-preview:hover,
+.ws-preview[data-playing] {
+  color: var(--ah-accent-ink);
+  border-color: var(--ah-accent);
+}
+.ws-picker-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ws-picker-foot p {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  line-height: 1.4;
+}
+.ws-picker .ws-picker-foot p svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+[data-theme="contrast"] .ws-default-row[data-checked],
+[data-theme="contrast"] .ws-card[data-checked] {
+  box-shadow: inset 0 0 0 2px var(--ah-accent);
+  background: var(--ah-surface);
+}
+
+/* Narrow heads: one row, the squares a little smaller and Nimi taking the rest. */
+@container (max-width: 600px) {
+  .ws-item.ws-square {
+    width: 104px;
+    height: 104px;
+    grid-template-rows: 16px 1fr 32px;
+    gap: 2px;
+    padding: 6px 4px;
+  }
+  .ws-item.ws-flat {
+    flex: 1 1 0;
+    width: auto;
+    height: 104px;
+    padding: 6px 10px 8px;
+  }
+  .ws-flat .ws-box {
+    height: 66px;
+  }
+  .ws-name {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .ws-name:not(input) {
+    -webkit-line-clamp: 3;
+  }
+  .ws-box .se-emblem[data-size="strip"] {
+    width: 40px;
+    height: 40px;
+  }
+  .ws-strip .ws-icon-square .ah-wsi[data-size="l"] {
+    width: 40px;
+    height: 40px;
+    font-size: 30px;
+  }
+  .ws-strip .ws-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] {
+    font-size: 16px;
+    border-radius: 10px;
+  }
+  .ws-value {
+    font-size: 12.5px;
+    line-height: 16px;
+  }
+  .ws-flat .ws-name-input {
+    height: 40px;
+    font-size: 15px;
+    padding: 0 6px;
+  }
+}
+
+/* On a phone the sound picker is a sheet from the bottom edge, like the
+   icon picker; the cards become a two-column list. */
+@media (max-width: 800px) {
+  .ah-popover.ws-popover {
+    /* biome-ignore lint/complexity/noImportantStyles: React Aria places the popover with inline styles; the sheet must outrank them. */
+    position: fixed !important;
+    /* biome-ignore lint/complexity/noImportantStyles: React Aria places the popover with inline styles; the sheet must outrank them. */
+    inset: auto 0 0 0 !important;
+    width: auto;
+    max-width: none;
+    /* biome-ignore lint/complexity/noImportantStyles: React Aria places the popover with inline styles; the sheet must outrank them. */
+    max-height: 86vh !important;
+    border-radius: 16px 16px 0 0;
+  }
+  .ws-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ws-tile {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    row-gap: 0;
+    align-items: center;
+    padding: 6px 40px 6px 8px;
+    text-align: left;
+  }
+  .ws-tile .se-emblem {
+    grid-row: 1 / 3;
+    width: 36px;
+    height: 36px;
+  }
+  .ws-tile-foot {
+    min-height: 0;
+  }
+  .ws-card .ws-preview {
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+  }
+  .ws-picker-foot {
+    flex-wrap: wrap;
+  }
+  .ws-picker-foot .ah-button {
+    width: 100%;
+  }
+}
