@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@multiplayer-conversations']
 lane: multiplayer
 lane_seq: 6
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Multiplayer: owner card and participant strip in the browser
@@ -25,3 +27,9 @@ Implements the browser side of ADR 0038 (`docs/decisions/adr-0038-multiplayer-co
 - Participant: the strip above the composer with the mode and waiting actions, the invite under Jaettu kanssasi (nothing shown before joining; Liity / Ei nyt), attribution, a stop control on any turn, unavailable/removed states.
 - One per-person colour family chosen from the two the rounds used.
 - The browser never infers the mode; everything comes from the daemon's facts.
+
+## Resolution
+
+### 2026-11-21T17:27:06Z · @agent
+
+Owner card, people row and panel, Kutsu, take-back at once, approval card, participant strip and Jaettu kanssasi landed behind the multiplayer switch; result.md lists the decisions for review and the two intakes.
