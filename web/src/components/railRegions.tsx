@@ -114,7 +114,10 @@ function crowdedNow(
   if (!quiet || !head || !quietRows) return false;
   const row =
     region.querySelector<HTMLElement>(ROW)?.getBoundingClientRect().height ??
-    30;
+    (Number.parseFloat(
+      getComputedStyle(region).getPropertyValue("--ah-conversation-row-height"),
+    ) ||
+      30);
   const need =
     region.scrollHeight -
     (quiet.offsetHeight - head.offsetHeight) +
