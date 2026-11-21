@@ -10,8 +10,10 @@ in a `display: contents` holder so it could be hidden while staying mounted.
 That broke every `.ah-composer-stack > .ah-composer` child rule: in the product
 `composerStack.css` stopped zeroing the composer's padding and the strips'
 insets (a real layout regression), and the spec's phone-composer locator found
-nothing. Fix (product): the composer section carries `hidden` itself and the
-wrapper is gone, so the stack's rules and every spec locator reach it again.
+nothing. Main fixed this in `5be5c3a0` by pointing the stack rules and the
+specs' locators through the holder. This branch had removed the holder
+instead; that commit was dropped when the work was adopted onto main, so the
+landed fix stands and this issue adds only the archive fix below.
 
 ## Archive cases (10): unreadable synthetic Taskfleet
 
@@ -35,16 +37,33 @@ host default, since a worker's host outlives the spec.
   conversation" flashing a live notice under load, which this fix newly lets
   past its archive step; 8/8 in isolation. Filed as
   `achingly-determined-flowers`.
-- `permission-question.spec.ts` (the hidden composer) green; web static, unit
-  and component checks green.
+- Adopted onto main (after the repeat-flake landing), whole
+  `browser-conversation.spec.ts`, `OH_BROWSER_WORKERS=2`: see "Final runs".
 
 ## Decisions for later review
 
+- Kept main's holder-aware selectors (`5be5c3a0`) over this run's removal of
+  the holder. Alternative: remove the `display: contents` holder and let the
+  composer carry `hidden` (fewer selectors coupled to a wrapper, one element
+  less). Rejected for the release: main's fix was already landed and green,
+  and swapping it would touch five specs and the stack CSS again for no
+  behavioural gain. The composer review the brief asked for therefore had no
+  product change left to review.
 - Archive cases use an answering Taskfleet rather than the host default
   changing. Alternative: make the synthetic host's default Taskfleet answer
   (closer to real installations) — rejected for now because other specs may
   rely on the unreadable default and the whole browser suite could not be run
   here.
 - The generated UI reference (`internal/daemon/ui-skill/references`) was
-  already stale on main for many unrelated files; it was not regenerated here
-  to keep this change separate from others' work.
+  not regenerated: the adopted change touches no file under `web/src`.
+
+## Final runs
+
+On main `0dd8394e` plus this branch's spec change, whole
+`browser-conversation.spec.ts`, `OH_BROWSER_WORKERS=2`, two consecutive runs:
+88/88 (3.0 min) and 88/88 (3.2 min). Logs:
+`/var/tmp/agent-keep/browser-conversation-archive-receipt-regression/run{1,2}.log`.
+Review: the final diff is a ten-line spec fixture change plus issue text;
+checked locally against the synthetic host's `/fixture/taskfleet` handler
+(`empty` answers with no runs, `none` restores the default). No model review
+was run, because no product code is left in the diff.
