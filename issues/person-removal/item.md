@@ -36,3 +36,7 @@ removal needed that says what happens to the data.
 ### 2026-11-21T08:23:29Z · @jari
 
 Jari 21.11.2026: build a real person removal (option 3). Next actions: an architecture decision on what removal does to the person's data and services, and a prototype of the administrator's removal flow.
+
+### 2026-11-21T10:04:59Z · @jari
+
+Jari 21.11.2026: ADR 0037 questions — grace period 14 days with an immediate option: yes; nothing handed to the administrator; revoke at the providers already at stage 1: yes, definitely; the removal record stays as long as the person can still be restored (i.e. through the grace period; after final deletion the row goes). UI: direction Armonaika; the row shows the date; confirmation stays as built. ADR 0037 accepted; the four implementation issues are laned in order broker → daemon → gateway → browser.

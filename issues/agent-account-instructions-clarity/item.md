@@ -51,3 +51,7 @@ Deliver a proposal for Jari, nothing shipped before he has read it:
 ### 2026-11-21T08:19:05Z · @jari
 
 Jari 21.11.2026: do not remove the mailbox-administration tools; they are useful. Instead split the Microsoft tools into topic areas the agent drills into (Pi MCP servers / namespaces with descriptions: Posti, Kalenteri, Yhteystiedot, Tiedostot, Postilaatikon ylläpito), so that searching for files never surfaces mail-folder deletion; destructive tools may require the person's confirmation; sign-in/logout tools hidden. Next action: research run with real Pi and the Microsoft server, then rewrite the proposal.
+
+### 2026-11-21T10:04:59Z · @jari
+
+Jari 21.11.2026 on research-topics: confirmation for deletes and calendar sharing is ok; prototype the confirmation question and the iconography of its icon. Asked again why five areas cost about 750 MB (conductor explains; proposes one shared server per person).

@@ -31,3 +31,7 @@ Jari 21.11.2026 on rounds 1-2: try to generate considerably more pleasant and mo
 ### 2026-11-21T07:42:12Z · @jari
 
 Jari 21.11.2026 on rounds 2-5: Sounds — Soittimet: Celesta, Kantele, Sähköpiano do not work, others ok. Luonto: Puupala does not work, others ok; Kulho good but its end stops abruptly ('into a wall'), same for Lasit. Tunnelma: none work. Tunnus: only Tunnus puu works. Default for now: Kalimba. One more polishing round: fix the abrupt endings, add depth to the working sounds; in the end all accepted sounds are offered. Volume is right. Per-repository sounds are chosen from these sounds. Settings: direction B Renkaat. Night = the device's dark mode; night hours not editable (come from the system). No navigation sounds on arrow keys now; key/navigation sounds get their own prototype issue later — these sounds are for things becoming ready. Account menu: A Äänet row; the mark on the account picture may stay while muted; Quiet at night wins and Hiljennä yöllä is also in the menu; no timed cross-device quiet (system-level quiet is system-specific).
+
+### 2026-11-21T10:04:59Z · @jari
+
+Jari 21.11.2026 on round 4: Kulho and Lasit end naturally now; character kept and moving the right way, but all sounds can still become more natural and richer. The five new candidates sound 'digital', lacking colour — redo them in the next round; no more new sounds beyond that (max 15 total). The longer sounds a bit shorter, or ideally each sound in a short and a long variant. The final set is chosen after the next round.

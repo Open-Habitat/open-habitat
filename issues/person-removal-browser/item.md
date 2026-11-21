@@ -2,15 +2,17 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
 source_ref: taskfleet:01m7yk9bnzwbee7v6r48ecfy6e/adr-0037-implementation:browser
 originating_run: 01m7yk9bnzwbee7v6r48ecfy6e
 originating_run_kind: technical-decision
-preparation: pending
+preparation: ready
 related: ['@person-removal-gateway', '@person-removal']
+lane: person-removal
+lane_seq: 5
 ---
 
 # Browser: administrator's person removal flow (prototype first)

@@ -2,16 +2,18 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
 source_ref: taskfleet:01m7yk9bnzwbee7v6r48ecfy6e/adr-0037-implementation:gateway
 originating_run: 01m7yk9bnzwbee7v6r48ecfy6e
 originating_run_kind: technical-decision
-preparation: pending
+preparation: ready
 blocked_by: ['@person-removal-broker', '@person-removal-daemon']
 related: ['@person-removal']
+lane: person-removal
+lane_seq: 4
 ---
 
 # Gateway and CLI: administrator removal of a person, removal record and storage sum

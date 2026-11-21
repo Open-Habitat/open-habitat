@@ -27,3 +27,7 @@ Jari 21.11.2026: prototype it. The person lands in a first conversation that is 
 ### 2026-11-21T08:21:05Z · @jari
 
 Jari 21.11.2026 on round 1: wrong direction. It must be part of the onboarding chain itself, in that user interface where the person clicks through GitHub sign-in, model sign-in and so on — as the last step of that chain, not a separate conversation after onboarding (round 1 deliberately avoided a route step; reverse that). Next action: prototype round 2.
+
+### 2026-11-21T10:04:59Z · @jari
+
+Jari 21.11.2026 on round 2: direction A Keskustelu, but riff on what the person is told: today's text is long and technical. After the conversation the file itself is shown. The conversation is archived or similar — note that it has no meaningful repository, so it may not even need archiving (decide). Existing accounts: can continue this in any conversation, and a Settings view (Tili › Ohjeet agentille) is needed — prototype it. Structured choices from the agent (quick replies) accepted (recommendation).

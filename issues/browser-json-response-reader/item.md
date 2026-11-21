@@ -1,8 +1,8 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-21
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:browser-json-reader
@@ -15,6 +15,9 @@ review_confidence: high
 review_severity: medium
 review_target: 53fee283 (product source)
 size: M
+lane: unlaned
+lane_seq: 1
+preparation: ready
 ---
 
 # Extract the browser's repeated JSON response reader

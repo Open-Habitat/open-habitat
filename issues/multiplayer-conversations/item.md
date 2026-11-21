@@ -25,3 +25,7 @@ Per AGENTS-WORKFLOW, the benchmark is material for discussion, not a plan; each 
 ### 2026-11-21T07:42:12Z · @jari
 
 Jari 21.11.2026: the plan is good but tool use worries him. Idea to prototype as a user interface: another person may write to the agent and the agent may answer, but on a turn answering a non-owner no tools are available by default — the agent answers with text only. The owner then confirms ('voit jatkaa'), or gets a per-operation dialog; when the owner speaks, the agent again may use all tools. So whoever sent the latest message defines the tool mode. On top, the owner can mark someone trusted, who then uses the chat normally. Next action: prototype rounds from two directions, first the owner's view, then the other participant's view.
+
+### 2026-11-21T10:04:59Z · @jari
+
+Jari 21.11.2026 on the two rounds: card for the owner, the strip (kaista) for the participant. 1-5 as recommended (per-operation with Salli kaikki; 'Voit jatkaa' as a Habitat line; an older waiting request stays open; per-person spend later; the word 'Täydet oikeudet' instead of 'Luotettu'). 6: tool names and results are visible to participants. 7: anyone may stop any turn. Next action: architecture decision (ADR) for enforcing text-only turns, participant identity through the gateway, and live stream to several browsers; then implementation issues.

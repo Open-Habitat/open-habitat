@@ -1,13 +1,16 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-21
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7dcawvbxwfkc1dnza89rwrv/file-cache-proposal
 originating_run: 01m7dcawvbxwfkc1dnza89rwrv
 originating_run_kind: spinoff
+lane: unlaned
+lane_seq: 1
+preparation: ready
 ---
 
 # Consider disabling workspace file caching in the browser editor
