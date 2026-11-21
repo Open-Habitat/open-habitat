@@ -277,6 +277,14 @@ function SharedConversationView({
   const t = useText(multiplayerText);
   const [state, setState] = useState<GuestState>();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [revision, setRevision] = useState("");
+  // Pages before the latest one, read on request and kept across rereads of
+  // the latest page; before is where the next older page ends.
+  const [older, setOlder] = useState<{
+    entries: HistoryEntry[];
+    before?: string;
+    pending: boolean;
+  }>({ entries: [], pending: false });
   const [problem, setProblem] = useState<"gone" | "host">();
   const [live, setLive] = useState<Live>({ text: "" });
   const [draft, setDraft] = useState("");
@@ -300,8 +308,19 @@ function SharedConversationView({
       setProblem(undefined);
       setState(next);
       setEntries(page.entries);
+      setRevision(page.native_revision);
+      setOlder((o) =>
+        o.entries.length
+          ? o
+          : {
+              ...o,
+              before: page.older_complete ? undefined : page.next_before,
+            },
+      );
       if (next.run.state !== "running") setLive({ text: "" });
-      if (next.run.state !== "running") setStopSent(false);
+      // Stop is pressable again once a read is back; while a stop is on its
+      // way the daemon says so (aborting).
+      setStopSent(false);
       return next;
     } catch (error) {
       if (!alive.current) return;
@@ -338,7 +357,16 @@ function SharedConversationView({
     // is the only follow-up when the daemon has no journal.
     const poll = globalThis.setInterval(reread, 15000);
     void read().then((first) => {
-      if (!alive.current || !first?.journal_cursor) return;
+      if (!alive.current || !first) return;
+      // The running answer so far, taken with the cursor the stream starts
+      // after, so it continues where this text ends.
+      const tail = first.live_tail
+        .map((f) => f as { kind?: string; payload?: { text?: unknown } })
+        .filter((f) => f.kind === "assistant.delta")
+        .map((f) => String(f.payload?.text ?? ""))
+        .join("");
+      if (tail && first.run.state === "running") setLive({ text: tail });
+      if (!first.journal_cursor) return;
       source = new EventSource(guestEventsURL(share, first.journal_cursor));
       source.onmessage = (message) => {
         let frame: ReturnType<typeof parseConversationEvent>;
@@ -432,7 +460,35 @@ function SharedConversationView({
   // The owner's views and file offers are theirs (ADR 0038 section 6): the
   // agent's notice text shows, never an open or download action, which here
   // would act on the participant's own account.
-  const shownEntries = entries.map((e) =>
+  const latest = new Set(entries.map((e) => e.entry_key));
+  const all = [
+    ...older.entries.filter((e) => !latest.has(e.entry_key)),
+    ...entries,
+  ];
+  const loadOlder = () => {
+    const before = older.before;
+    if (!before || older.pending) return;
+    setOlder((o) => ({ ...o, pending: true }));
+    void readGuestHistory(share, undefined, before)
+      .then((page) => {
+        if (!alive.current) return;
+        setOlder((o) => {
+          const known = new Set(o.entries.map((e) => e.entry_key));
+          return {
+            entries: [
+              ...page.entries.filter((e) => !known.has(e.entry_key)),
+              ...o.entries,
+            ],
+            before: page.older_complete ? undefined : page.next_before,
+            pending: false,
+          };
+        });
+      })
+      .catch(() => {
+        if (alive.current) setOlder((o) => ({ ...o, pending: false }));
+      });
+  };
+  const shownEntries = all.map((e) =>
     e.notice && (e.notice.view || e.notice.file_offer)
       ? {
           ...e,
@@ -481,7 +537,8 @@ function SharedConversationView({
     setSendState("pending");
     void sendGuest(share, body, csrf).then((outcome) => {
       if (outcome.kind === "ok") {
-        setDraft("");
+        // Text typed while it was on its way stays.
+        setDraft((d) => (d.trim() === body ? "" : d));
         setSendState("idle");
         reread();
       } else {
@@ -528,7 +585,11 @@ function SharedConversationView({
             onPress={() => {
               if (!csrf) return;
               setStopSent(true);
-              void abortGuest(share, csrf).then(() => reread());
+              void abortGuest(share, csrf).then((outcome) => {
+                // A refused or lost stop leaves Stop pressable again.
+                if (outcome.kind !== "ok") setStopSent(false);
+                reread();
+              });
             }}
           />
         </div>
@@ -558,7 +619,8 @@ function SharedConversationView({
               onPress={() => {
                 if (!csrf) return;
                 void cancelGuest(share, h.message_id, csrf).then((outcome) => {
-                  if (outcome.kind === "ok" && !draft.trim()) setDraft(h.text);
+                  if (outcome.kind === "ok")
+                    setDraft((d) => (d.trim() ? d : h.text));
                   reread();
                 });
               }}
@@ -570,7 +632,15 @@ function SharedConversationView({
     </div>
   );
   return (
-    <SharedViewer.Provider value={state.you.subject}>
+    <SharedViewer.Provider
+      value={{
+        subject: state.you.subject,
+        owner,
+        share,
+        agentId: state.agent_id,
+        revision,
+      }}
+    >
       <section
         className="ah-conversation-frame"
         data-testid="shared-conversation"
@@ -615,6 +685,17 @@ function SharedConversationView({
                 el.scrollHeight - el.scrollTop - el.clientHeight < 80;
           }}
         >
+          {older.before ? (
+            <div className="ah-history-pager">
+              <Button
+                data-testid="older-history"
+                size="row"
+                label={t.loadOlder}
+                pending={older.pending}
+                onPress={loadOlder}
+              />
+            </div>
+          ) : null}
           <ol className="ah-feed" data-testid="shared-feed">
             {items.map((item) => (
               <li key={item.id}>{item.content}</li>
@@ -632,7 +713,8 @@ function SharedConversationView({
               void presenceGuest(share, "typing", csrf);
             }
           }}
-          csrf={csrf}
+          // No csrf: a participant sends text only, so the field offers no
+          // attachments, pasted pictures or dictation into their own account.
           activity={running ? "working" : "idle"}
           selectedWorkingMode="follow_up"
           sendState={sendState}

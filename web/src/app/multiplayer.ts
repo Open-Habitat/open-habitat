@@ -269,9 +269,13 @@ export const readInvite = (share: string, signal?: AbortSignal) =>
   read<Invite>(`${shared(share)}/invite`, validInvite, 64 << 10, signal);
 export const readGuestState = (share: string, signal?: AbortSignal) =>
   read<GuestState>(`${shared(share)}/state`, validState, 4 << 20, signal);
-export const readGuestHistory = (share: string, signal?: AbortSignal) =>
+export const readGuestHistory = (
+  share: string,
+  signal?: AbortSignal,
+  before?: string,
+) =>
   read<import("./history").HistoryPage>(
-    `${shared(share)}/history?messages=100`,
+    `${shared(share)}/history?${new URLSearchParams({ messages: "100", ...(before ? { before } : {}) })}`,
     validHistory,
     4 << 20,
     signal,

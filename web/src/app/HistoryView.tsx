@@ -33,6 +33,7 @@ import { Icon } from "../components/Icon";
 import {
   ConversationLine,
   ParticipantMessage,
+  SharedViewer,
 } from "../components/Multiplayer";
 import { activityMark } from "../components/markState";
 import { OutputBox } from "../components/OutputBox";
@@ -121,8 +122,8 @@ function ReadableBlock({
   block,
   index,
   entryKey,
-  agentId,
-  revision,
+  agentId: ownAgentId,
+  revision: ownRevision,
   onLogin,
   toolName,
   plainText = false,
@@ -142,6 +143,11 @@ function ReadableBlock({
   revision?: string;
   onLogin?: () => void;
 }) {
+  // A participant reads blocks through the share, with the conversation and
+  // revision its history page named; the owner's route is never used.
+  const shared = useContext(SharedViewer);
+  const agentId = shared ? shared.agentId : ownAgentId;
+  const revision = shared ? shared.revision : ownRevision;
   const [loaded, setLoaded] = useState<{
     text: string;
     offset: number;
@@ -178,6 +184,9 @@ function ReadableBlock({
   }, [edge, toolName, displayedText]);
   const more = async () => {
     if (!agentId || !revision || pending) return;
+    const base = shared
+      ? `/api/v1/shared/${encodeURIComponent(shared.share)}/blocks/${entryKey}/${index}`
+      : `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}`;
     setPending(true);
     setFailed(false);
     const controller = new AbortController();
@@ -190,7 +199,7 @@ function ReadableBlock({
       const batch = block.type === "image" ? 8 : 1;
       for (let page = 0; page < batch; page++) {
         const offset = next?.offset ?? 0;
-        const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
+        const url = `${base}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
         const response = await fetch(part ? `${url}&part=${part}` : url, {
           credentials: "same-origin",
           cache: "no-store",

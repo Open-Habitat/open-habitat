@@ -9,9 +9,18 @@ import { multiplayerText } from "../text/multiplayer";
 // message and Habitat's lines. What they say comes from the daemon's typed
 // history facts; nothing here decides who wrote what.
 
-/** The subject of the person viewing, when it is not the conversation's
- * owner: their own messages then say "Sinä". */
-export const SharedViewer = createContext<string | undefined>(undefined);
+/** A participant's view of another person's conversation: who is viewing
+ * (their own messages say "Sinä"), whose conversation it is (the owner's
+ * messages carry the owner's name), and where its long blocks are read: the
+ * share's own route, never the owner's. Absent in the owner's views. */
+export type SharedView = {
+  subject: string;
+  owner: string;
+  share: string;
+  agentId: string;
+  revision: string;
+};
+export const SharedViewer = createContext<SharedView | undefined>(undefined);
 
 export type ParticipantMessageFact = {
   message_id: string;
@@ -78,7 +87,7 @@ export function ParticipantMessage({
 }) {
   const t = useText(multiplayerText);
   const viewer = useContext(SharedViewer);
-  const own = viewer === fact.subject;
+  const own = viewer?.subject === fact.subject;
   return (
     <article
       className="ah-mp-message"

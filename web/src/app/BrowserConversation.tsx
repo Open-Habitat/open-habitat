@@ -3139,6 +3139,7 @@ function BrowserConversationContent({
                               <TakeBackCard
                                 takeBack={sharedOwner.takeBack}
                                 running={!!current?.run_active}
+                                turn={sharedOwner.facts?.turn}
                                 onStopRun={composer.onInterrupt}
                                 onClose={sharedOwner.dismissTakeBack}
                               />

@@ -97,6 +97,9 @@ async function inviteAndJoin(alice: Page, bob: Page) {
   await bob.getByTestId("shared-join").click();
   await expect(bob.getByTestId("shared-conversation")).toBeVisible();
   await expect(bob.getByTestId("shared-feed")).toContainText("Mitä täällä on?");
+  // Alice's message carries her name, not "Sinä", in Bob's view.
+  await expect(bob.getByTestId("shared-feed")).toContainText("Alice Example");
+  await expect(bob.locator(".ah-crow-attach")).toHaveCount(0);
   await expect(bob.getByTestId("shared-strip")).toHaveAttribute(
     "data-mode",
     "text_only",

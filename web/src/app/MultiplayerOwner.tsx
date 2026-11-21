@@ -44,6 +44,7 @@ const pollMs = 4000;
 
 export type TakeBack = {
   kind: "took" | "removed";
+  subject: string;
   name: string;
   revocation?: Members["revocation"];
 };
@@ -94,7 +95,9 @@ export function useSharedOwner(
 
   useEffect(() => {
     current.current = { id, epoch: current.current.epoch + 1 };
-    factsWanted.current = false;
+    // Read once at opening whatever the record holds now: a removed
+    // person's request may still wait.
+    factsWanted.current = true;
     setMembers(undefined);
     setFacts(undefined);
     setTakeBack(undefined);
@@ -130,6 +133,7 @@ export function useSharedOwner(
           if (action === "take_back" || action === "remove")
             setTakeBack({
               kind: action === "remove" ? "removed" : "took",
+              subject: person.subject,
               name: person.display_name,
               revocation: next.revocation,
             });
@@ -496,11 +500,14 @@ function InviteDialog({
 export function TakeBackCard({
   takeBack,
   running,
+  turn,
   onStopRun,
   onClose,
 }: {
   takeBack: TakeBack;
   running: boolean;
+  /** The daemon's latest run decision: whose run is going. */
+  turn?: OwnerShared["turn"];
   onStopRun?: () => void;
   onClose: () => void;
 }) {
@@ -529,7 +536,13 @@ export function TakeBackCard({
         />
       }
     >
-      {running ? (
+      {/* Only a run this person started loses its tools (the companion's
+          rule); the owner's own run goes on as it was. When the running Pi
+          could not be told, nobody knows, so stopping is offered. */}
+      {running &&
+      (takeBack.revocation === "failed" ||
+        ((turn?.by === "participant" || turn?.by === "revoked") &&
+          turn.subject === takeBack.subject)) ? (
         <>
           <p>
             {takeBack.revocation === "failed"

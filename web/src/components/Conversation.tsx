@@ -13,6 +13,7 @@ import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { SharedViewer } from "./Multiplayer";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -245,9 +246,12 @@ export function UserMessage({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  // In a participant's view this is the owner's message: their name, and
+  // no attachment actions, which would read the participant's own account.
+  const shared = useContext(SharedViewer);
   return (
     <Message
-      speaker={txt.you}
+      speaker={shared ? shared.owner : txt.you}
       person
       time={time}
       state={
@@ -279,7 +283,9 @@ export function UserMessage({
       </div>
       {/* Outside the collapsed text: a long message must not hide its
           attachments below the cut. */}
-      <AttachmentChips attachments={attachmentsIn(sourceText ?? "")} />
+      {shared ? null : (
+        <AttachmentChips attachments={attachmentsIn(sourceText ?? "")} />
+      )}
       {!skill && (long || expanded) ? (
         <Button
           data-testid="expand-message"

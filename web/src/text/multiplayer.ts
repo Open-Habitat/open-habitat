@@ -149,6 +149,7 @@ const fi = {
   delivering: "Annetaan agentille",
   cancelHeld: "Peru",
   placeholder: "Kirjoita viesti agentille",
+  loadOlder: "Näytä aiemmat viestit",
   sendFailed: "Viestiä ei voitu lähettää. Teksti on yhä kentässä.",
   liveLost: "Yhteys katkesi. Keskustelu luetaan uudelleen.",
 };
@@ -293,6 +294,7 @@ export const multiplayerText = catalog(
     delivering: "Being given to the agent",
     cancelHeld: "Cancel",
     placeholder: "Write a message to the agent",
+    loadOlder: "Show earlier messages",
     sendFailed:
       "The message could not be sent. The text is still in the field.",
     liveLost: "The connection dropped. The conversation is read again.",
