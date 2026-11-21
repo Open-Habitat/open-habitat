@@ -523,6 +523,38 @@ export function redirectMatches(prefix: string, raw: string): boolean {
   }
 }
 
+/** The error a provider put on its own return address for this sign-in:
+ * the pasted address carries the authorization's own state and an `error`,
+ * as Google's does when the person stops on its consent screen. Another
+ * sign-in's state or an address without an error is not this case, and the
+ * daemon judges it as usual. */
+export function providerStop(
+  authorizationUrl: string | undefined,
+  raw: string,
+): string | null {
+  try {
+    const asked = new URL(authorizationUrl ?? "").searchParams.getAll("state");
+    const back = new URL(raw.trim()).searchParams;
+    const state = back.getAll("state");
+    const error = back.getAll("error");
+    if (asked.length !== 1 || !asked[0] || state.length !== 1) return null;
+    if (state[0] !== asked[0] || error.length !== 1 || !error[0]) return null;
+    return error[0];
+  } catch {
+    return null;
+  }
+}
+
+/** The OAuth client the sign-in asks for, read from its authorization
+ * address; a Workspace administrator trusts the app by exactly this id. */
+export function authorizationClient(authorizationUrl?: string): string {
+  try {
+    return new URL(authorizationUrl ?? "").searchParams.get("client_id") ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /** Gigabytes as the person reads them: "4,3 Gt", "4.3 GB". */
 export function gigabytes(bytes: number): string {
   const gb = formatNumber(bytes / 1024 ** 3, {

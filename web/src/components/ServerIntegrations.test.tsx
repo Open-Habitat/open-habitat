@@ -148,7 +148,7 @@ function walk(): string[] {
   const steps: string[] = [];
   for (;;) {
     steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
-    const links = within(dialog()).getAllByTestId("si-console-link");
+    const links = within(dialog()).queryAllByTestId("si-console-link");
     for (const a of links)
       expect(a.getAttribute("href")).toMatch(
         /^https:\/\/(console\.cloud\.google\.com|entra\.microsoft\.com|www\.dropbox\.com)\//,
@@ -163,7 +163,7 @@ function walk(): string[] {
   return steps;
 }
 
-it("walks Google's steps, or skips to the fields, and sends nothing invalid", async () => {
+it("asks whose Google accounts connect first, follows the path, and sends nothing invalid", async () => {
   const calls = setup({
     apps: { ...apps, apps: [] },
     providers: providers.map((p) =>
@@ -175,8 +175,29 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
     ),
   });
   fireEvent.click(screen.getByTestId("si-setup-google"));
-  expect(walk()).toEqual(["apis", "audience", "scopes", "client"]);
-  // The client is created and its values typed on the same step.
+  // Nothing is preselected, and neither path nor skip opens before a choice.
+  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
+    "audience",
+  );
+  const next = () => within(dialog()).getByTestId("si-next");
+  expect((next() as HTMLButtonElement).disabled).toBe(true);
+  expect(within(dialog()).queryByTestId("si-skip")).toBeNull();
+  expect(
+    within(dialog())
+      .getAllByRole("radio")
+      .some((r) => (r as HTMLInputElement).checked),
+  ).toBe(false);
+
+  // Personal accounts too: External, publishing and the cap come in.
+  fireEvent.click(within(dialog()).getByTestId("gg-choose-personal"));
+  expect(walk()).toEqual([
+    "audience",
+    "apis",
+    "brand",
+    "scopes",
+    "publish",
+    "client",
+  ]);
   expect(within(dialog()).getByTestId("si-field-client_secret")).toBeTruthy();
   fireEvent.click(within(dialog()).getByTestId("si-save"));
   await waitFor(() =>
@@ -184,7 +205,12 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
       screen.getByTestId("si-field-client_id").getAttribute("aria-invalid"),
     ).toBe("true"),
   );
-  // Internal only: there is no audience choice to make.
+  fireEvent.click(within(dialog()).getByTestId("si-back"));
+  // Habitat cannot read Google's publishing status: the administrator says.
+  expect(within(dialog()).getByTestId("gg-testing")).toBeTruthy();
+  fireEvent.click(within(dialog()).getByTestId("segment-production"));
+  expect(within(dialog()).queryByTestId("gg-testing")).toBeNull();
+  expect(within(dialog()).getByTestId("gg-cap")).toBeTruthy();
   fireEvent.click(within(dialog()).getByTestId("si-back"));
   // Each scope as Data Access › Add or Remove Scopes lists it.
   expect(
@@ -204,16 +230,29 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
     ].join("\n"),
   );
   fireEvent.click(within(dialog()).getByTestId("si-back"));
-  expect(within(dialog()).queryByRole("radio")).toBeNull();
-  expect(within(dialog()).queryByTestId("segment-external")).toBeNull();
   fireEvent.click(within(dialog()).getByTestId("si-back"));
+  fireEvent.click(within(dialog()).getByTestId("si-back"));
+
+  // Organisation only: Internal, no publishing step.
+  fireEvent.click(within(dialog()).getByTestId("gg-choose-org"));
+  expect(walk()).toEqual(["audience", "apis", "brand", "scopes", "client"]);
+  for (let n = 0; n < 4; n++)
+    fireEvent.click(within(dialog()).getByTestId("si-back"));
+  fireEvent.click(within(dialog()).getByTestId("gg-choose-personal"));
+
   // Minulla on jo asiakas opens only the fields; Takaisin returns to the
-  // guide's start.
+  // guide's start with the choice kept.
   fireEvent.click(within(dialog()).getByTestId("si-skip"));
   expect(within(dialog()).queryByTestId("si-stepname")).toBeNull();
   expect(within(dialog()).getByTestId("si-step-enter")).toBeTruthy();
   fireEvent.click(within(dialog()).getByTestId("si-back"));
-  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe("apis");
+  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
+    "audience",
+  );
+  expect(
+    (within(dialog()).getByTestId("gg-choose-personal") as HTMLInputElement)
+      .checked,
+  ).toBe(true);
   fireEvent.click(within(dialog()).getByTestId("si-skip"));
   type("si-field-client_id", "abc");
   type("si-field-client_secret", "GOCSPX-x");
@@ -227,12 +266,61 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
   type("si-field-client_id", ` ${googleID} `);
   fireEvent.click(within(dialog()).getByTestId("si-save"));
   await waitFor(() =>
-    expect(screen.queryByTestId("si-setup-dialog")).toBeNull(),
+    expect(calls.onSave).toHaveBeenCalledWith("google", {
+      client_id: googleID,
+      client_secret: "GOCSPX-x",
+    }),
   );
-  expect(calls.onSave).toHaveBeenCalledWith("google", {
-    client_id: googleID,
-    client_secret: "GOCSPX-x",
-  });
+  // Saved is not tested: the guide goes on with the saved client's id in
+  // the message to another organisation's administrator, then what to try.
+  await waitFor(() =>
+    expect(within(dialog()).getByTestId("si-step-workspace")).toBeTruthy(),
+  );
+  expect(within(dialog()).getByTestId("gg-handoff-msg").textContent).toContain(
+    googleID,
+  );
+  fireEvent.click(within(dialog()).getByTestId("si-next"));
+  expect(within(dialog()).getByTestId("gg-try")).toBeTruthy();
+  fireEvent.click(within(dialog()).getByTestId("gg-done"));
+  expect(screen.queryByTestId("si-setup-dialog")).toBeNull();
+  expect(calls.onSave).toHaveBeenCalledOnce();
+});
+
+it("changes an existing client's audience from the row menu without a secret or a save", async () => {
+  const calls = setup({ apps: { ...apps, browser_setup: false } });
+  fireEvent.click(
+    within(screen.getByTestId("si-menu-google")).getByRole("button"),
+  );
+  // It writes nothing, so a locked setup leaves it available.
+  const item = await screen.findByTestId("menu-audience");
+  expect(item.getAttribute("aria-disabled")).not.toBe("true");
+  fireEvent.click(item);
+  const guide = () => screen.getByTestId("gg-audience-dialog");
+  expect(within(guide()).queryByRole("textbox")).toBeNull();
+  expect(guide().querySelector("input[type=password]")).toBeNull();
+  expect(
+    (within(guide()).getByTestId("si-next") as HTMLButtonElement).disabled,
+  ).toBe(true);
+  // Organisation only: nothing to change, done at once.
+  fireEvent.click(within(guide()).getByTestId("gg-choose-org"));
+  expect(within(guide()).getByTestId("gg-done")).toBeTruthy();
+  fireEvent.click(within(guide()).getByTestId("gg-choose-personal"));
+  const steps: string[] = [];
+  for (;;) {
+    steps.push(within(guide()).getByTestId("si-stepname").dataset.step ?? "");
+    const next = within(guide()).queryByTestId("si-next");
+    if (!next) break;
+    fireEvent.click(next);
+  }
+  expect(steps).toEqual(["audience", "brand", "publish", "workspace", "ready"]);
+  fireEvent.click(within(guide()).getByTestId("si-back"));
+  expect(within(guide()).getByTestId("gg-handoff-msg").textContent).toContain(
+    googleID,
+  );
+  fireEvent.click(within(guide()).getByTestId("si-next"));
+  fireEvent.click(within(guide()).getByTestId("gg-done"));
+  expect(screen.queryByTestId("gg-audience-dialog")).toBeNull();
+  expect(calls.onSave).not.toHaveBeenCalled();
 });
 
 const clientID = "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3";

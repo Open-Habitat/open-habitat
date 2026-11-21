@@ -1090,15 +1090,70 @@ tells agents to report it as this administrator action. The requested permission
 `https://www.googleapis.com/auth/gmail.modify`,
 `https://www.googleapis.com/auth/calendar`, and
 `https://www.googleapis.com/auth/contacts`. No Gmail settings/sharing or
-Workspace domain-wide delegation is requested. The browser setup configures the
-consent screen as **Internal**, which requires Google Workspace: only the
-organisation's accounts can connect, and Google's verification is not needed.
-An External app in Testing needs every tester added and its refresh tokens for
-these scopes expire after seven days; in production it needs Google's
-verification, not a host-side workaround. A person may leave services out on
-Google's consent page: the account connects with what was granted, and the
-page shows the rest as not granted. No incoming port, shared localhost
-listener, public callback or gateway credential handling is involved.
+Workspace domain-wide delegation is requested. A person may leave services
+out on Google's consent page: the account connects with what was granted, and
+the connect dialog and the account card show the rest as not granted. A person
+who stops on Google's consent page comes back with an address carrying
+`error=access_denied`; the browser keeps the sign-in open, and the daemon ends
+such an attempt as `cancelled` rather than as a rejected address. No incoming
+port, shared localhost listener, public callback or gateway credential
+handling is involved.
+
+#### Whose accounts can connect: Internal or External
+
+The browser guide's first step asks whose Google accounts may connect, and the
+rest of the guide follows the answer. Habitat stores neither the answer nor
+any of Google's state: the installation's Google app is only a client ID and
+secret. For an existing client, Palvelinintegraatiot → Google → Tunnukset →
+Kenen tilit… walks through the same choice without asking for a new secret.
+
+- **Internal** (organisation accounts only) requires Google Workspace and a
+  Cloud organisation. Only the organisation's accounts can connect; others
+  get Google's `org_internal`. There is no warning and no user cap, and
+  Google's verification is not needed.
+- **External, In production** (personal accounts too) lets any Google
+  account connect, including personal `@gmail.com` accounts, and the project
+  needs no organisation. Publishing (Google Auth platform → Audience →
+  Publishing status → Publish app) is not Google's verification: Gmail
+  (`gmail.modify`, `gmail.readonly`) and Drive are restricted scopes and
+  Calendar and Contacts sensitive ones, so an unverified app is limited to
+  **100 new users over the project's whole lifetime** (Audience → OAuth user
+  cap shows the count; removing connections or replacing the client does not
+  reset it), and Google warns each person that it has not verified the app
+  before the permissions. Its documented English path onward is
+  Advanced → Go to … (unsafe); the identifier shown and the wording in other
+  languages are not confirmed. Narrower scopes do not remove the warning or
+  the cap. This suits a small, known group such as a family or a small
+  company, not a public service. Use a separate project for a test server,
+  because the cap is per project. In **Testing**, only listed test users (at
+  most 100) can connect and their refresh tokens for these scopes expire
+  after seven days, so publish before people rely on it.
+
+An External app still needs what Google's branding page asks for: a monitored
+support email, developer contact, home page, privacy-policy and
+terms-of-service links, and an authorized domain you own (verified in Search
+Console; `localhost` is not one). The privacy policy is required even without
+verification and must say what agents read, where data is stored and to whom
+it passes, such as a language-model provider. Habitat does not check any of
+this before saving the credentials; it is the operator's responsibility.
+
+Another organisation's administrator may block an unverified app for its work
+accounts; passing the warning does not help then. That administrator can
+trust the app in the Admin console (Security → Access and data control → API
+controls → Manage App Access → Configure new app, search by the exact client
+ID, Trusted); the browser guide prepares that message with the client ID after
+saving. Trusted applies to that organisation only and is not verification;
+whether it also removes the warning for its people is likely but not stated
+by Google.
+
+Changing an existing project from Internal to External (Make external, then
+publish) keeps the same client and secret; do not create a new client or
+remove people's connections for it. Google does not promise that grants made
+while Internal survive the change, so afterwards ask an agent to read Gmail on
+an account connected before the change and connect a new personal account;
+reconnect only accounts that fail. Grants made in Testing still expire and
+need a new sign-in after publishing. Returning to Internal excludes personal
+accounts from new sign-ins.
 
 Each person connects their own accounts in Settings → Integrations. Ordinary
 **My Drive files** sync to `~/cloud/google-drive/<lowercase-email>/`; the first

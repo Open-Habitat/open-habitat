@@ -1,5 +1,4 @@
 import { Fragment, type ReactNode, useState } from "react";
-import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import type { Provider, ProviderId } from "../app/integrations";
 import { providerOrder } from "../app/onboardingConfig";
 import {
@@ -20,6 +19,30 @@ import {
   shortClientID,
 } from "../app/serverIntegrations";
 import { ControlButton, ExternalLink } from "./ControlElements";
+import {
+  type Audience,
+  AudienceChoice,
+  afterSaveSteps,
+  apisPersonal,
+  audienceMenuLabel,
+  audienceStepTitle,
+  brandStep,
+  GoogleAudienceDialog,
+  googleAuth,
+  ownProjectNote,
+  publishStep,
+  ReadSteps,
+  restrictedNote,
+} from "./GoogleGuide";
+import {
+  Copy,
+  Modalish,
+  Path,
+  Progress,
+  Role,
+  type Step,
+  Val,
+} from "./GuideParts";
 import { Icon } from "./Icon";
 import { levelName, ProviderMark, providerCopy } from "./Integrations";
 import {
@@ -93,9 +116,8 @@ const googleScopes = [
   "https://www.googleapis.com/auth/contacts.readonly",
 ];
 const googleRedirect = "http://localhost";
-// Google Auth platform's pages. Each opens in the project last selected in
+// Google Auth platform's pages (googleAuth, GoogleGuide.tsx). Each opens in the project last selected in
 // the console, as the enable flow above does; the page names the project.
-const googleAuth = "https://console.cloud.google.com/auth";
 // What the daemon's Dropbox entry needs (internal/daemon/integrations/
 // dropbox_linux.go): dropboxScopes, all requested by name at sign-in, and
 // dropboxRedirect, matched exactly. The full and read levels sync the root
@@ -262,217 +284,94 @@ function AppLine({
   );
 }
 
-function Copy({ value, label }: { value: string; label: string }) {
-  const [done, setDone] = useState(false);
-  return (
-    <ControlButton
-      data-testid="si-copy"
-      size="row"
-      variant="quiet"
-      aria-label={txt.copy(label)}
-      onPress={() => {
-        void navigator.clipboard?.writeText(value).catch(() => {});
-        setDone(true);
-        setTimeout(() => setDone(false), 1400);
-      }}
-    >
-      <Icon name={done ? "check" : "copy"} />
-    </ControlButton>
-  );
-}
-
-/** A value the administrator types into the provider's console. */
-const Val = ({
-  k,
-  v,
-  copy = true,
-}: {
-  k: string;
-  v: string;
-  copy?: boolean;
-}) => (
-  <div className="si-val">
-    <span className="si-k">{k}</span>
-    <code>{v}</code>
-    {copy && <Copy value={v} label={k} />}
-  </div>
-);
-/** Where in the console, in the console's own (English) words, and a
- * direct link to that page. `pick` says what to choose when the link can
- * only open the list the page is under. */
-const Path = ({
-  p,
-  href,
-  pick,
-}: {
-  p: string;
-  href?: string;
-  pick?: ReactNode;
-}) => (
-  <div className="si-where">
-    <p className="si-path">
-      <Icon name="forward" />
-      <span>{p}</span>
-    </p>
-    {href && (
-      <p className="si-open">
-        <ExternalLink
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          data-testid="si-console-link"
-        >
-          {txt.openPage} <Icon name="external" />
-        </ExternalLink>
-        {pick && <span className="si-quiet">{pick}</span>}
-      </p>
-    )}
-  </div>
-);
-
-function Modalish({
-  testId,
-  title,
-  size,
-  dismissable = true,
-  onClose,
-  children,
-}: {
-  testId: string;
-  title: string;
-  /** wide: a guide; split: a guide step beside its values. */
-  size?: "wide" | "split";
-  dismissable?: boolean;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <ModalOverlay
-      className="ah-overlay"
-      isOpen
-      isDismissable={dismissable}
-      onOpenChange={(open) => !open && onClose()}
-    >
-      <Modal className={`ah-modal si-modal${size ? ` si-${size}` : ""}`}>
-        <Dialog
-          className="ah-dialog si-dialog"
-          data-testid={testId}
-          aria-label={title}
-        >
-          <Heading slot="title">{title}</Heading>
-          {children}
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
-  );
-}
-
-/** Who can do a step: the Entra role it needs, or whose account owns it. */
-const Role = ({ children }: { children: ReactNode }) => (
-  <p className="si-quiet si-role" data-testid="si-role">
-    <Icon name="user" />
-    <span>{children}</span>
-  </p>
-);
-
-/** A guide step. The last one is also where the console's values are
- * typed: `console` names the side done there, `values` says where the
- * console shows them. */
-type Step = {
-  id: string;
-  title: string;
-  body: ReactNode;
-  console?: string;
-  values?: ReactNode;
+/** Google's console steps for the audience chosen on the first step
+ * (GoogleGuide.tsx). Until a choice is made, the longer path's progress is
+ * shown, so it does not shrink under the reader. */
+const googleSteps = (
+  audience: Audience | null,
+  onAudience: (a: Audience) => void,
+): Step[] => {
+  const personal = audience !== "org";
+  return [
+    {
+      id: "audience",
+      title: audienceStepTitle(),
+      body: <AudienceChoice value={audience} onChange={onAudience} />,
+    },
+    {
+      id: "apis",
+      title: txt.apis,
+      body: (
+        <>
+          <p>{personal ? apisPersonal() : txt.chooseProject}</p>
+          <ul className="si-list">
+            {googleAPIs.map(([n]) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+          <ExternalLink
+            href={googleEnable()}
+            target="_blank"
+            rel="noreferrer"
+            data-testid="si-console-link"
+          >
+            {txt.enableInGoogle} <Icon name="external" />
+          </ExternalLink>
+          {personal && ownProjectNote()}
+        </>
+      ),
+    },
+    brandStep(audience),
+    {
+      id: "scopes",
+      title: txt.scopes,
+      body: (
+        <>
+          <Path
+            p="Google Auth platform › Data Access › Add or Remove Scopes"
+            href={`${googleAuth}/scopes`}
+          />
+          <div className="si-block" data-testid="si-scopes">
+            <pre className="si-cmd">{googleScopes.join("\n")}</pre>
+            <Copy value={googleScopes.join(",")} label={txt.scopesLabel} />
+          </div>
+          {personal && restrictedNote()}
+        </>
+      ),
+    },
+    ...(personal ? [publishStep()] : []),
+    {
+      id: "client",
+      title: txt.client,
+      console: txt.inGoogle,
+      body: (
+        <>
+          <Path
+            p="Google Auth platform › Clients › Create Client"
+            href={`${googleAuth}/clients/create`}
+          />
+          <Val k="Application type" v="Desktop app" copy={false} />
+          <Val k="Name" v="Open Habitat" />
+          <Val
+            k="Use this client for an AI-powered agent"
+            v={txt.selected}
+            copy={false}
+          />
+          <p className="si-effect" data-testid="si-agent-client">
+            {txt.agentClient}
+          </p>
+          <p className="si-quiet">
+            {txt.noRedirect(<code>{googleRedirect}</code>)}
+          </p>
+          <p className="si-quiet">{txt.chooseFinally("Create")}</p>
+        </>
+      ),
+      values: (
+        <p className="si-quiet">{txt.googleShows("OAuth client created")}</p>
+      ),
+    },
+  ];
 };
-
-const googleSteps = (): Step[] => [
-  {
-    id: "apis",
-    title: txt.apis,
-    body: (
-      <>
-        <p>{txt.chooseProject}</p>
-        <ul className="si-list">
-          {googleAPIs.map(([n]) => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
-        <ExternalLink
-          href={googleEnable()}
-          target="_blank"
-          rel="noreferrer"
-          data-testid="si-console-link"
-        >
-          {txt.enableInGoogle} <Icon name="external" />
-        </ExternalLink>
-      </>
-    ),
-  },
-  {
-    id: "audience",
-    title: txt.audience,
-    body: (
-      <>
-        <Path
-          p="Google Auth platform › Branding › Get started"
-          href={`${googleAuth}/branding`}
-        />
-        <Val k="App name" v="Open Habitat" />
-        <Val k="Audience" v="Internal" copy={false} />
-        <p className="si-effect" data-testid="si-audience">
-          {txt.internal}
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "scopes",
-    title: txt.scopes,
-    body: (
-      <>
-        <Path
-          p="Google Auth platform › Data Access › Add or Remove Scopes"
-          href={`${googleAuth}/scopes`}
-        />
-        <div className="si-block" data-testid="si-scopes">
-          <pre className="si-cmd">{googleScopes.join("\n")}</pre>
-          <Copy value={googleScopes.join(",")} label={txt.scopesLabel} />
-        </div>
-      </>
-    ),
-  },
-  {
-    id: "client",
-    title: txt.client,
-    console: txt.inGoogle,
-    body: (
-      <>
-        <Path
-          p="Google Auth platform › Clients › Create Client"
-          href={`${googleAuth}/clients/create`}
-        />
-        <Val k="Application type" v="Desktop app" copy={false} />
-        <Val k="Name" v="Open Habitat" />
-        <Val
-          k="Use this client for an AI-powered agent"
-          v={txt.selected}
-          copy={false}
-        />
-        <p className="si-effect" data-testid="si-agent-client">
-          {txt.agentClient}
-        </p>
-        <p className="si-quiet">
-          {txt.noRedirect(<code>{googleRedirect}</code>)}
-        </p>
-        <p className="si-quiet">{txt.chooseFinally("Create")}</p>
-      </>
-    ),
-    values: (
-      <p className="si-quiet">{txt.googleShows("OAuth client created")}</p>
-    ),
-  },
-];
 
 /** A page of the app created on the first step. */
 const dropboxPath = (p: string, tab: string) => (
@@ -584,9 +483,13 @@ function existing(section: AppSection): ReactNode {
 
 /** Each section's console steps, the last one beside its values.
  * Microsoft's four levels have their own guide (MicrosoftLevels.tsx). */
-function guide(section: AppSection): Step[] {
+function guide(
+  section: AppSection,
+  audience: Audience | null,
+  onAudience: (a: Audience) => void,
+): Step[] {
   return section === "google"
-    ? googleSteps()
+    ? googleSteps(audience, onAudience)
     : dropboxSteps(section === "dropbox_app_folder");
 }
 /** The section's name as the administrator reads it. */
@@ -675,12 +578,15 @@ function Fields({
 /** Aseta tunnukset… and Vaihda tunnukset…: one console step at a time, the
  * last beside its values (proto-google-wizard-secrets-step, direction
  * "Rinnakkain"). Minulla on jo … opens only the values. The dialog stays
- * open until the broker answers, so a refusal keeps what was typed. */
+ * open until the broker answers, so a refusal keeps what was typed. A new
+ * Google setup first asks whose accounts may connect and, once saved,
+ * goes on to what is still to do and try (GoogleGuide.tsx). */
 export function AppSetupDialog({
   provider: section,
   replace,
   step: initial = 0,
   skip: initialSkip = false,
+  audience: initialAudience = null,
   onSave,
   onClose,
 }: {
@@ -690,9 +596,14 @@ export function AppSetupDialog({
   step?: number;
   /** Opens at Minulla on jo …; stories show it. */
   skip?: boolean;
+  /** Google's audience already chosen; stories show each path. */
+  audience?: Audience | null;
   onSave: (fields: AppFields) => Promise<AppChange>;
   onClose: () => void;
 }) {
+  const [audience, setAudience] = useState<Audience | null>(initialAudience);
+  const [saved, setSaved] = useState<string>();
+  const [after, setAfter] = useState(0);
   const [values, setValues] = useState<AppFields>({});
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -719,7 +630,10 @@ export function AppSetupDialog({
       existing(section)
     ),
   };
-  const steps = replace || skip ? [enter] : guide(section);
+  // Only a new Google setup asks the audience; a new secret keeps it.
+  const google = provider === "google" && !replace;
+  const steps =
+    replace || skip ? [enter] : guide(section, audience, setAudience);
   const i = Math.min(at, steps.length - 1);
   const last = i === steps.length - 1;
   const step = steps[i];
@@ -738,6 +652,10 @@ export function AppSetupDialog({
     const result = await onSave(fields);
     setSaving(false);
     if (result.kind === "refused") setRefusal(appRefusal(result.code));
+    // Only a definite save goes on to what is left to do; an uncertain
+    // one closes, and the row says it is uncertain.
+    else if (result.kind === "changed" && google && audience)
+      setSaved(fields.client_id);
     else onClose();
   };
   const entry = (
@@ -768,6 +686,22 @@ export function AppSetupDialog({
     </>
   );
   const title = txt.setupTitle(sectionName(section), !!replace);
+  if (saved !== undefined && audience)
+    return (
+      <Modalish
+        testId="si-setup-dialog"
+        title={title}
+        size="wide"
+        onClose={onClose}
+      >
+        <ReadSteps
+          steps={afterSaveSteps(audience, saved)}
+          at={after}
+          onAt={setAfter}
+          onDone={onClose}
+        />
+      </Modalish>
+    );
   return (
     <Modalish
       testId="si-setup-dialog"
@@ -777,32 +711,7 @@ export function AppSetupDialog({
       onClose={onClose}
     >
       {steps.length > 1 && (
-        <>
-          <div
-            className="si-progress"
-            data-testid="si-progress"
-            role="img"
-            aria-label={txt.stepOf(i + 1, steps.length)}
-          >
-            {steps.map((s, j) => (
-              <span
-                key={s.id}
-                data-done={j < i || undefined}
-                data-current={j === i || undefined}
-              />
-            ))}
-          </div>
-          <p
-            className="si-stepname"
-            data-testid="si-stepname"
-            data-step={step.id}
-          >
-            <span className="si-muted">
-              {i + 1}/{steps.length}
-            </span>{" "}
-            {step.title}
-          </p>
-        </>
+        <Progress ids={steps.map((s) => s.id)} at={i} title={step.title} />
       )}
       <div className="si-stepbody" data-testid={`si-step-${step.id}`}>
         {split ? (
@@ -823,7 +732,7 @@ export function AppSetupDialog({
         )}
       </div>
       <div className="si-foot">
-        {i === 0 && !last && (
+        {i === 0 && !last && (!google || audience) && (
           <ControlButton
             data-testid="si-skip"
             size="row"
@@ -879,6 +788,7 @@ export function AppSetupDialog({
             data-testid="si-next"
             size="page"
             variant="primary"
+            isDisabled={google && step.id === "audience" && !audience}
             onPress={() => setAt(i + 1)}
           >
             {txt.next}
@@ -1009,6 +919,7 @@ function FixDialog({
 type Open =
   | { kind: "levels" }
   | { kind: "setup"; provider: AppSection; replace?: IntegrationApp }
+  | { kind: "audience"; clientID: string }
   | { kind: "remove"; provider: AppSection }
   | { kind: "fix"; provider: ProviderId; tools: string[] };
 
@@ -1298,6 +1209,12 @@ export function ServerIntegrations({
                               : []),
                             ...(p === "google" && app.client_id
                               ? [
+                                  // Changes nothing in Habitat, so a
+                                  // locked setup leaves it available.
+                                  {
+                                    id: "audience",
+                                    label: audienceMenuLabel(),
+                                  },
                                   {
                                     id: "replace",
                                     label: txt.replaceCredentials,
@@ -1330,13 +1247,18 @@ export function ServerIntegrations({
                                   "noopener,noreferrer",
                                 )
                               : setOpen(
-                                  k === "replace"
+                                  k === "audience"
                                     ? {
-                                        kind: "setup",
-                                        provider: p,
-                                        replace: app,
+                                        kind: "audience",
+                                        clientID: app.client_id ?? "",
                                       }
-                                    : { kind: "remove", provider: p },
+                                    : k === "replace"
+                                      ? {
+                                          kind: "setup",
+                                          provider: p,
+                                          replace: app,
+                                        }
+                                      : { kind: "remove", provider: p },
                                 )
                           }
                         />
@@ -1493,6 +1415,12 @@ export function ServerIntegrations({
           provider={open.provider}
           replace={open.replace}
           onSave={(fields) => onSave(open.provider, fields)}
+          onClose={() => setOpen(undefined)}
+        />
+      )}
+      {open?.kind === "audience" && (
+        <GoogleAudienceDialog
+          clientID={open.clientID}
           onClose={() => setOpen(undefined)}
         />
       )}

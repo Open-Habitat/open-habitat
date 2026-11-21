@@ -1,0 +1,160 @@
+/* The person's help for Google's own screens (GoogleConnectHelp.tsx),
+   inside the connect dialog's .ig-* flow. */
+.gc-linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ah-accent-ink);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.gc-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--ah-size-meta);
+}
+.gc-wait > .gc-linkbtn {
+  align-self: flex-start;
+}
+.gc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gc-group {
+  margin: 4px 0 0;
+}
+.gc-cases {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.gc-case + .gc-case {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.gc-case-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  background: none;
+  color: var(--ah-ink);
+  font: inherit;
+  font-size: var(--ah-size-meta);
+  text-align: left;
+  cursor: pointer;
+}
+.gc-case-head svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--ah-ink-2);
+}
+.gc-case-head:hover {
+  background: var(--ah-surface-2);
+}
+.gc-case[data-open] > .gc-case-head {
+  font-weight: 600;
+}
+.gc-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 0 12px 12px 34px;
+  color: var(--ah-ink);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .gc-answer {
+    padding-left: 12px;
+  }
+}
+.gc-answer p {
+  margin: 0;
+}
+.gc-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+}
+.gc-who svg {
+  width: 13px;
+  height: 13px;
+}
+.gc-who[data-who="self"] {
+  border-color: var(--ah-accent-line);
+  color: var(--ah-accent-ink);
+}
+.gc-client {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.gc-client > .ig-meta {
+  flex-basis: 100%;
+}
+.gc-client code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gc-granted {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gc-granted p {
+  margin: 0;
+}
+.gc-granted ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.gc-granted li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: var(--ah-size-meta);
+}
+.gc-granted li + li {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.gc-granted li svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ah-accent-ink);
+}
+.gc-granted li[data-access="none"],
+.gc-granted li[data-access="none"] svg {
+  color: var(--ah-ink-2);
+}
+.gc-granted li .ig-meta {
+  margin-left: auto;
+}

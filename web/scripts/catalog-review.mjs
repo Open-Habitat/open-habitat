@@ -250,6 +250,7 @@ export const foreignWords = {
 const allowedWords = {
   "models.tsx#modelsText.savedToPi:fi": ["settings"], // Native settings.json filename.
   "serverIntegrations.tsx#serverIntegrationsText.sameSettings:fi": ["settings"], // Dropbox's external Settings page.
+  "googleGuide.tsx#googleGuideText.workspaceRole:fi": ["settings"], // Google Admin console's Service Settings privilege.
 };
 
 export function languageFindings(rows) {

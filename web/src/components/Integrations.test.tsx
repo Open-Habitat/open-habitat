@@ -589,6 +589,85 @@ describe("sign-in dialog", () => {
     );
   });
 
+  it("keeps Google's sign-in open when the person stopped at Google, and sends another sign-in's address on", async () => {
+    const onPaste = vi.fn();
+    const view = dialog(
+      {
+        ...paste,
+        authorization_url:
+          "https://accounts.example.test/o/oauth2/auth?client_id=app.example&state=s",
+      },
+      { onPaste },
+    );
+    // Before Google: one note, and the help behind it names the client a
+    // work account's administrator trusts, read from the sign-in address.
+    expect(view.getByTestId("gc-note")).toBeTruthy();
+    expect(view.queryByTestId("gc-panel")).toBeNull();
+    await userEvent.click(view.getByTestId("gc-more"));
+    await userEvent.click(view.getByTestId("gc-help-org"));
+    expect(
+      view.getByTestId("gc-client-id").querySelector("code")?.textContent,
+    ).toBe("app.example");
+    await userEvent.click(view.getByTestId("integration-provider-link"));
+    // While waiting, the same help is one link away.
+    expect(view.getByTestId("gc-wait")).toBeTruthy();
+    const field = view.getByRole("textbox");
+    await userEvent.type(
+      field,
+      "http://127.0.0.1/?state=s&error=access_denied",
+    );
+    await userEvent.click(view.getByTestId("integration-connect"));
+    expect(onPaste).not.toHaveBeenCalled();
+    expect(view.getByTestId("integration-stopped-at-provider")).toBeTruthy();
+    expect(view.queryByRole("alert")).toBeNull();
+    // Another sign-in's address is not this stop; the daemon judges it.
+    await userEvent.type(
+      field,
+      "http://127.0.0.1/?state=old&error=access_denied",
+    );
+    await userEvent.click(view.getByTestId("integration-connect"));
+    expect(onPaste).toHaveBeenCalledWith(
+      "http://127.0.0.1/?state=old&error=access_denied",
+    );
+  });
+
+  it("lists what a new Google grant reaches, with what was left out", () => {
+    const view = render(
+      <ConnectDialog
+        provider={google}
+        stage={{ stage: "connected", address: "person@example.test" }}
+        accounts={[
+          {
+            provider: "google",
+            address: "person@example.test",
+            checked_at: "2026-11-21T08:00:00Z",
+            services: [
+              { id: "mail", state: "ok", access: "full" },
+              { id: "drive", state: "ok", access: "none" },
+            ],
+          },
+          {
+            provider: "google",
+            address: "other@example.test",
+            checked_at: "2026-11-21T08:00:00Z",
+            services: [{ id: "calendar", state: "ok", access: "full" }],
+          },
+        ]}
+        onContinue={noop}
+        onPassword={noop}
+        onPaste={noop}
+        onFolders={noop}
+        onRestart={noop}
+        onClose={noop}
+      />,
+    );
+    const summary = view.getByTestId("gc-grant-summary");
+    expect(summary.dataset.partial).toBe("true");
+    expect(
+      [...summary.querySelectorAll("li")].map((li) => li.dataset.access),
+    ).toEqual(["full", "none"]);
+  });
+
   it("will not start a sync that does not fit the home", async () => {
     const onFolders = vi.fn();
     const view = dialog(

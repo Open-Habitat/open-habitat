@@ -3,7 +3,6 @@ import {
   Fragment,
   type ReactNode,
   type SetStateAction,
-  useEffect,
   useState,
 } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
@@ -28,6 +27,7 @@ import { ControlButton, ExternalLink } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { levelName } from "./Integrations";
 import { Checkbox, TextField } from "./Primitives";
+import { ShotBand, useNarrow } from "./ShotBand";
 import "./MicrosoftLevels.css";
 
 const txt = liveText(microsoftLevelsText);
@@ -364,7 +364,6 @@ const consentURL = (tenant: string, client: string) =>
 
 /* ---------- the band: the masked Entra screenshots ---------- */
 
-type Box = readonly [number, number, number, number];
 type CropName = keyof typeof entraCrops;
 const src: Record<CropName, string> = {
   register: registerImg,
@@ -373,35 +372,6 @@ const src: Record<CropName, string> = {
   auth: authImg,
   perms: permsImg,
 };
-const target = (crop: CropName, t: string): Box =>
-  (entraCrops[crop].targets as Record<string, Box>)[t];
-
-/** The slice of a crop the band shows: the full width on a desktop, the
- * target's neighbourhood on a phone, and the target's middle at mid
- * height, so every sub-item of a step has the same band height. */
-function bandOf(
-  crop: CropName,
-  t: string,
-  aspect: number,
-  narrow: boolean,
-): Box {
-  const c = entraCrops[crop].box;
-  const tg = target(crop, t);
-  const cw = c[2] - c[0];
-  const ch = c[3] - c[1];
-  let wide = narrow
-    ? Math.max(720, tg[2] - tg[0] + 120)
-    : Math.max(1500, tg[2] + 120);
-  wide = Math.max(wide, (tg[3] - tg[1] + 80) * aspect);
-  wide = Math.min(cw, wide, ch * aspect);
-  const tall = Math.round(wide / aspect);
-  const left = narrow
-    ? Math.max(c[0], Math.min(c[2] - wide, tg[0] - 60))
-    : c[0];
-  const mid = (tg[1] + tg[3]) / 2;
-  const top = Math.max(c[1], Math.min(c[3] - tall, Math.round(mid - tall / 2)));
-  return [left, top, left + wide, top + tall];
-}
 
 function Band({
   crop,
@@ -416,31 +386,17 @@ function Band({
    * band shows the page it opens from, and the gap is said. */
   missing?: string;
 }) {
-  const aspect = missing ? (narrow ? 3 : 4.4) : narrow ? 2.3 : 3.7;
-  const v = bandOf(crop, t, aspect, narrow);
-  const w = v[2] - v[0];
-  const h = v[3] - v[1];
-  const pct = (b: Box) => ({
-    left: `${((b[0] - v[0]) / w) * 100}%`,
-    top: `${((b[1] - v[1]) / h) * 100}%`,
-    width: `${((b[2] - b[0]) / w) * 100}%`,
-    height: `${((b[3] - b[1]) / h) * 100}%`,
-  });
   return (
-    <figure className="ml-shot" data-testid="ml-band" data-crop={crop}>
-      <div className="ml-shot-frame" style={{ aspectRatio: `${aspect}` }}>
-        <img
-          src={src[crop]}
-          alt={txt.alt[crop]}
-          draggable={false}
-          style={pct(entraCrops[crop].box)}
-        />
-        <span
-          className="ml-mark"
-          data-target={`${crop}.${t}`}
-          style={pct(target(crop, t))}
-        />
-      </div>
+    <ShotBand
+      testId="ml-band"
+      name={crop}
+      src={src[crop]}
+      alt={txt.alt[crop]}
+      crop={entraCrops[crop]}
+      t={t}
+      aspect={missing ? (narrow ? 3 : 4.4) : narrow ? 2.3 : 3.7}
+      narrow={narrow}
+    >
       {missing && (
         <figcaption className="ml-nocap" data-testid="ml-nocap">
           <Icon name="image" />
@@ -450,23 +406,8 @@ function Band({
           </span>
         </figcaption>
       )}
-    </figure>
+    </ShotBand>
   );
-}
-
-function useNarrow() {
-  const q = "(max-width: 640px)";
-  const [narrow, setNarrow] = useState(
-    () => window.matchMedia?.(q).matches ?? false,
-  );
-  useEffect(() => {
-    const m = window.matchMedia?.(q);
-    if (!m) return;
-    const on = () => setNarrow(m.matches);
-    m.addEventListener("change", on);
-    return () => m.removeEventListener("change", on);
-  }, []);
-  return narrow;
 }
 
 /* ---------- the small pieces of a sub-item ---------- */

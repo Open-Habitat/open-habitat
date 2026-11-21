@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -433,5 +434,58 @@ func TestGoogleSkillSendsDisabledAPIToAdministrator(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("skill lacks %q:\n%s", want, body)
 		}
+	}
+}
+
+// A person who stops on Google's consent screen comes back with
+// error=access_denied and this sign-in's state. The attempt ends as
+// cancelled without a token exchange (syntheticGoogle fails the test on a
+// codeless exchange), while the same error under another sign-in's state,
+// or beside a code, is still a rejected address.
+func TestGoogleStoppedAtGoogleIsCancelled(t *testing.T) {
+	env := googleEnv(t)
+	email := "person@example.test"
+	d := syntheticGoogle(t, &email, googleScopes)
+	login, err := d.StartLogin(context.Background(), env, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := login.(*googleLogin)
+	denied := func(state string, extra url.Values) string {
+		q := url.Values{"state": {state}, "error": {"access_denied"}}
+		for k, v := range extra {
+			q[k] = v
+		}
+		return googleRedirect + "/?" + q.Encode()
+	}
+	for _, bad := range []string{
+		denied("other-sign-in", nil),
+		denied(l.state, url.Values{"code": {"synthetic-code"}}),
+		denied(l.state, url.Values{"error": {"access_denied", "access_denied"}}),
+		googleRedirect + "/?" + url.Values{"state": {l.state}, "error": {"server_error"}}.Encode(),
+	} {
+		if !errors.Is(l.Redirect(context.Background(), bad), RedirectRejected) {
+			t.Fatalf("accepted %s", bad)
+		}
+	}
+
+	c := New(env, []Entry{d}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c.Start(ctx)
+	defer c.sync.stopAll()
+	h := c.Handler(allow)
+	if code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"}); code != 200 {
+		t.Fatal(code)
+	}
+	view := waitState(t, h, ownerA, "open_url")
+	u, _ := url.Parse(view["authorization_url"].(string))
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": view["attempt_id"], "redirect_url": denied(u.Query().Get("state"), nil)})
+	view = waitState(t, h, ownerA, "failed")
+	if view["failure"] != string(Cancelled) {
+		t.Fatalf("failure %v", view["failure"])
+	}
+	if accounts, _ := d.Accounts(env); len(accounts) != 0 {
+		t.Fatal(accounts)
 	}
 }

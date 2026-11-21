@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { Provider, ProviderId } from "../app/integrations";
 import type { IntegrationApps } from "../app/serverIntegrations";
+import { GoogleAudienceDialog } from "./GoogleGuide";
 import { MicrosoftLevelsDialog } from "./MicrosoftLevels";
 import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
@@ -198,22 +199,52 @@ function Setup(props: Partial<Parameters<typeof AppSetupDialog>[0]>) {
     />
   );
 }
-export const GoogleStepAPIs: StoryObj<typeof Setup> = {
+/** The first step asks whose accounts may connect; nothing is chosen. */
+export const GoogleStepWhose: StoryObj<typeof Setup> = {
   render: () => <Setup step={0} />,
 };
-export const GoogleStepAudience: StoryObj<typeof Setup> = {
-  render: () => <Setup step={1} />,
+export const GoogleStepWhosePhone: StoryObj<typeof Setup> = {
+  render: () => <Setup step={0} audience="personal" />,
+  globals: { viewport: { value: "mobile1" } },
+};
+export const GoogleStepAPIs: StoryObj<typeof Setup> = {
+  render: () => <Setup step={1} audience="personal" />,
+};
+/** Personal accounts too: External, contacts, links and the warning. */
+export const GoogleStepBrandExternal: StoryObj<typeof Setup> = {
+  render: () => <Setup step={2} audience="personal" />,
+};
+/** Organisation only: the app name and Internal. */
+export const GoogleStepBrandInternal: StoryObj<typeof Setup> = {
+  render: () => <Setup step={2} audience="org" />,
 };
 export const GoogleStepScopes: StoryObj<typeof Setup> = {
-  render: () => <Setup step={2} />,
+  render: () => <Setup step={3} audience="personal" />,
+};
+/** What Google's Publishing status says, and the lifetime user cap. */
+export const GoogleStepPublish: StoryObj<typeof Setup> = {
+  render: () => <Setup step={4} audience="personal" />,
+};
+export const GoogleStepPublishPhone: StoryObj<typeof Setup> = {
+  render: () => <Setup step={4} audience="personal" />,
+  globals: { viewport: { value: "mobile1" } },
 };
 /** The last step: the client is created beside where its values go. */
 export const GoogleStepClient: StoryObj<typeof Setup> = {
-  render: () => <Setup step={3} />,
+  render: () => <Setup step={5} audience="personal" />,
 };
 export const GoogleStepClientPhone: StoryObj<typeof Setup> = {
-  render: () => <Setup step={3} />,
+  render: () => <Setup step={5} audience="personal" />,
   globals: { viewport: { value: "mobile1" } },
+};
+/** Kenen tilit…: an existing client's audience, from the row's menu. */
+export const GoogleWhoseExisting: StoryObj<typeof GoogleAudienceDialog> = {
+  render: () => (
+    <GoogleAudienceDialog
+      clientID={google.apps[0].client_id ?? ""}
+      onClose={() => {}}
+    />
+  ),
 };
 /** Minulla on jo asiakas: only the values and where they are. */
 export const GoogleExisting: StoryObj<typeof Setup> = {

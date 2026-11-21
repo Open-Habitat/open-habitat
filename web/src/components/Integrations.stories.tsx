@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { IntegrationList, LoginView, Provider } from "../app/integrations";
+import type {
+  Account,
+  IntegrationList,
+  LoginView,
+  Provider,
+} from "../app/integrations";
 import {
   ConnectDialog,
   type ConnectStage,
@@ -303,18 +308,20 @@ const folders: LoginView = {
   ],
 };
 
-const dialog = (provider: Provider, stage: ConnectStage) => () => (
-  <ConnectDialog
-    provider={provider}
-    stage={stage}
-    onContinue={intent}
-    onPassword={intent}
-    onPaste={intent}
-    onFolders={intent}
-    onRestart={intent}
-    onClose={intent}
-  />
-);
+const dialog =
+  (provider: Provider, stage: ConnectStage, accounts?: Account[]) => () => (
+    <ConnectDialog
+      provider={provider}
+      stage={stage}
+      accounts={accounts}
+      onContinue={intent}
+      onPassword={intent}
+      onPaste={intent}
+      onFolders={intent}
+      onRestart={intent}
+      onClose={intent}
+    />
+  );
 export const DialogIntro: Story = {
   render: dialog(google, { stage: "intro" }),
 };
@@ -412,6 +419,26 @@ export const DialogExpired: Story = {
     stage: "login",
     view: { ...base, state: "failed", provider: "google", failure: "expired" },
   }),
+};
+/** A new Google grant without Drive: the dialog says what agents got. */
+export const DialogConnectedPartial: Story = {
+  render: dialog(
+    google,
+    { stage: "connected", address: "person.home@example.test" },
+    [
+      {
+        provider: "google",
+        address: "person.home@example.test",
+        checked_at: "2026-11-21T08:00:00Z",
+        services: [
+          { id: "drive", state: "unknown", access: "none" },
+          { id: "mail", state: "ok", access: "full" },
+          { id: "calendar", state: "ok", access: "full" },
+          { id: "contacts", state: "ok", access: "full" },
+        ],
+      },
+    ],
+  ),
 };
 export const DialogCompleted: Story = {
   render: dialog(google, {

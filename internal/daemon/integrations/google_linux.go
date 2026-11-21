@@ -476,11 +476,22 @@ func (l *googleLogin) Redirect(_ context.Context, raw string) error {
 		return RedirectRejected
 	}
 	q, err := url.ParseQuery(u.RawQuery)
-	if err != nil || len(q["state"]) != 1 || q.Get("state") != l.state || len(q["code"]) != 1 || q.Get("code") == "" || q.Get("error") != "" {
+	if err != nil || len(q["state"]) != 1 || q.Get("state") != l.state {
+		return RedirectRejected
+	}
+	// Google returns error=access_denied to this sign-in's own state when
+	// the person stops on its consent screen. That is the person's choice,
+	// not a stale address: the attempt ends as cancelled, not as
+	// redirect_rejected, whose text speaks of an old sign-in. The empty
+	// code is the signal; no real code is ever empty.
+	code := q.Get("code")
+	if len(q["error"]) == 1 && q.Get("error") == "access_denied" && len(q["code"]) == 0 {
+		code = ""
+	} else if len(q["code"]) != 1 || code == "" || len(q["error"]) != 0 {
 		return RedirectRejected
 	}
 	select {
-	case l.redirect <- q.Get("code"):
+	case l.redirect <- code:
 		return nil
 	default:
 		return RedirectRejected
@@ -527,6 +538,9 @@ func (l *googleLogin) Wait(ctx context.Context) (string, error) {
 	case code = <-l.redirect:
 	case <-ctx.Done():
 		return "", ctx.Err()
+	}
+	if code == "" {
+		return "", Cancelled
 	}
 	var token struct {
 		AccessToken  string `json:"access_token"`

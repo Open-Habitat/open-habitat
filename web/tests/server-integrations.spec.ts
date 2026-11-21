@@ -41,8 +41,10 @@ const googleAvailable = (page: Page) => available(page, "google");
 
 async function enterGoogle(page: Page, walk: boolean) {
   const dialog = page.getByTestId("si-setup-dialog");
+  // The guide first asks whose accounts may connect.
+  await dialog.getByTestId("gg-choose-personal").check();
   if (walk) {
-    for (const step of ["apis", "audience", "scopes"]) {
+    for (const step of ["audience", "apis", "brand", "scopes", "publish"]) {
       await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
         "data-step",
         step,
@@ -64,6 +66,18 @@ async function enterGoogle(page: Page, walk: boolean) {
   await dialog.getByTestId("si-field-client_id").fill(googleID);
   await dialog.getByTestId("si-field-client_secret").fill("GOCSPX-synthetic");
   await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+}
+
+/** After a definite save the guide goes on: the message to another
+ * organisation's administrator carries the saved client, then what to try. */
+async function finishGoogle(page: Page) {
+  const dialog = page.getByTestId("si-setup-dialog");
+  await expect(dialog.getByTestId("si-step-workspace")).toBeVisible();
+  await expect(dialog.getByTestId("gg-handoff-msg")).toContainText(googleID);
+  await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  await expect(dialog.getByTestId("gg-try")).toBeVisible();
+  await dialog.getByRole("button").and(dialog.getByTestId("gg-done")).click();
+  await expect(dialog).toHaveCount(0);
 }
 
 test("@server-integrations an administrator sets Google's app credentials and removes them; people's catalog follows", async ({
@@ -98,7 +112,7 @@ test("@server-integrations an administrator sets Google's app credentials and re
   await enterGoogle(page, true);
   // The dialog waits for the broker; the row says so too.
   await expect(row("google")).toHaveAttribute("data-status", "set");
-  await expect(page.getByTestId("si-setup-dialog")).toHaveCount(0);
+  await finishGoogle(page);
   await expect(row("google")).toHaveAttribute("data-status", "ready");
   expect(await googleAvailable(page)).toBe(true);
   await page.reload();
@@ -198,11 +212,13 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
     .and(page.getByTestId("si-setup-google"))
     .click();
   const dialog = page.getByTestId("si-setup-dialog");
-  await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
-  await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  await dialog.getByTestId("gg-choose-personal").check();
+  for (let i = 0; i < 3; i++)
+    await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
   await expect(dialog.getByTestId("si-scopes")).toBeVisible();
   expect(await overflow()).toBeLessThanOrEqual(0);
-  await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  for (let i = 0; i < 2; i++)
+    await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
   // The last step's console side and its values: stacked on a phone, side
   // by side on a desktop.
   const split = dialog.getByTestId("si-split");
@@ -228,7 +244,7 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
   ).toEqual([]);
   await page.setViewportSize({ width: 1280, height: 900 });
   expect(await placement()).toEqual({ below: false, beside: true });
-  for (let i = 0; i < 3; i++)
+  for (let i = 0; i < 5; i++)
     await dialog.getByRole("button").and(dialog.getByTestId("si-back")).click();
 
   await fixture(page, "lose=1");

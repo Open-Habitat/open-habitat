@@ -1,0 +1,65 @@
+/* The band: a piece of a console screenshot (ShotBand.tsx). The
+   lit target is a hole in a scrim with a full 2 px line. Dark theme: dimmed,
+   so the white page does not outshine the dialog. */
+.shot {
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+}
+.shot-frame {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: var(--ah-r-md);
+  border: 1px solid var(--ah-line);
+}
+.shot-frame img {
+  position: absolute;
+  display: block;
+  max-width: none;
+  user-select: none;
+}
+.shot-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 2px solid var(--ah-accent);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32);
+  transition:
+    left 160ms ease,
+    top 160ms ease,
+    width 160ms ease,
+    height 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shot-mark {
+    transition: none;
+  }
+}
+:is([data-theme="dark"], [data-theme="contrast"]) .shot-frame img {
+  filter: brightness(0.82) contrast(1.05);
+}
+:is([data-theme="dark"], [data-theme="contrast"]) .shot-mark {
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+}
+/* What the band is not yet: an illustration until a real capture arrives,
+   or a screen nobody captured. Said under the band, on a quiet surface. */
+.shot-caption {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ah-ink-2);
+}
+.shot-caption svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-top: 1px;
+}

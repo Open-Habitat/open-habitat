@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  authorizationClient,
   connectPasswordAccount,
+  providerStop,
   Refused,
   readIntegrations,
   redirectMatches,
@@ -26,6 +28,40 @@ describe("pasted redirect", () => {
     ["http://127.0.0.1:46399/oauth2/callback", false],
   ])("%s → %s", (raw, ok) => {
     expect(redirectMatches("http://127.0.0.1", raw)).toBe(ok);
+  });
+});
+
+describe("a provider's stop on its own return address", () => {
+  const auth =
+    "https://accounts.google.com/o/oauth2/v2/auth?client_id=app.example&state=s1&scope=openid";
+  it.each([
+    // The person stopped on Google's consent screen in this sign-in.
+    ["http://localhost/?state=s1&error=access_denied", "access_denied"],
+    ["  http://localhost/?error=org_internal&state=s1 ", "org_internal"],
+    // Another sign-in's address: the daemon calls it an old address.
+    ["http://localhost/?state=s0&error=access_denied", null],
+    // A finished sign-in is not a stop.
+    ["http://localhost/?state=s1&code=c", null],
+    ["http://localhost/?state=s1&state=s1&error=access_denied", null],
+    ["http://localhost/?state=s1&error=a&error=b", null],
+    ["not a url", null],
+  ])("%s → %s", (raw, want) => {
+    expect(providerStop(auth, raw)).toBe(want);
+  });
+  it("needs the authorization's own state", () => {
+    expect(
+      providerStop(
+        "https://accounts.google.com/auth?client_id=x",
+        "http://localhost/?state=&error=access_denied",
+      ),
+    ).toBeNull();
+    expect(
+      providerStop(undefined, "http://localhost/?state=s1&error=x"),
+    ).toBeNull();
+  });
+  it("reads the client the sign-in asks for", () => {
+    expect(authorizationClient(auth)).toBe("app.example");
+    expect(authorizationClient("garbage")).toBe("");
   });
 });
 

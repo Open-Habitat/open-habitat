@@ -938,6 +938,7 @@ export function IntegrationsSettings({
         <ConnectDialog
           provider={flow.provider}
           stage={flow.stage}
+          accounts={list?.accounts}
           onContinue={(level) => {
             if (flow.provider.login === "app_password")
               setStage({ stage: "password" });

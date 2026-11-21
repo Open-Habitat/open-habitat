@@ -30,6 +30,7 @@ import {
   type PasswordAccount,
   type Provider,
   type ProviderId,
+  providerStop,
   redirectMatches,
   type Service,
   type ServiceId,
@@ -47,6 +48,12 @@ import { trelloText } from "../text/trello";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
 import { GitLabCard, type GitLabTokenView } from "./GitLabConnection";
+import {
+  GoogleNote,
+  GoogleWaitHelp,
+  GrantSummary,
+  googleStopText,
+} from "./GoogleConnectHelp";
 import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
 
@@ -1437,6 +1444,7 @@ function PasteStep({
   const [opened, setOpened] = useState(false);
   const [value, setValue] = useState("");
   const [local, setLocal] = useState("");
+  const [stopped, setStopped] = useState("");
   const left = useSecondsLeft(view.expires_at);
   const copy = providerCopy[view.provider ?? "google"];
   const href = safeHttps(view.authorization_url);
@@ -1447,6 +1455,9 @@ function PasteStep({
       <>
         <p className="ig-h">{txt.signInAt(copy.site)}</p>
         <p className="ig-p">{txt.siteAsks(copy.site)}</p>
+        {view.provider === "google" && (
+          <GoogleNote authorizationUrl={href} host={window.location.host} />
+        )}
         {isMCP(view.provider) && <ApprovalRequest provider={view.provider} />}
         <RedirectExpected site={copy.site} prefix={prefix} />
         <div className="ig-row start">
@@ -1471,7 +1482,17 @@ function PasteStep({
     if (!v) return setLocal(txt.pasteFirst);
     if (!redirectMatches(prefix, v))
       return setLocal(txt.notThatAddress(prefix));
+    // Google's own error on this sign-in's address: the person stopped at
+    // Google. The sign-in stays open, so Google can be opened again; the
+    // daemon would end it as cancelled.
+    const stop = view.provider === "google" ? providerStop(href, v) : null;
+    if (stop) {
+      setValue("");
+      setLocal("");
+      return setStopped(googleStopText(stop));
+    }
     setLocal("");
+    setStopped("");
     setValue("");
     onPaste(v);
   };
@@ -1491,6 +1512,7 @@ function PasteStep({
         <li>{txt.approveTab}</li>
         <li>{txt.copyAddress}</li>
       </ol>
+      {view.provider === "google" && <GoogleWaitHelp authorizationUrl={href} />}
       <TextField
         data-testid="integration-redirect-input"
         label={txt.returnAddress}
@@ -1501,6 +1523,16 @@ function PasteStep({
         }}
         mono
       />
+      {stopped && !shown ? (
+        <p
+          className="ig-notice"
+          role="status"
+          data-testid="integration-stopped-at-provider"
+        >
+          <Icon name="info" />
+          <span>{stopped}</span>
+        </p>
+      ) : null}
       {shown ? (
         <p className="ig-err" role="alert">
           <Icon name="warning" />
@@ -2575,9 +2607,12 @@ export function ConnectDialog({
   onSkipFolders,
   onRestart,
   onClose,
+  accounts = [],
 }: {
   provider?: Provider;
   stage: ConnectStage;
+  /** The integration list's accounts, for the services a new grant reaches. */
+  accounts?: Account[];
   /** Starts the sign-in, at the chosen level for a provider with levels. */
   onContinue: (level?: Level) => void;
   onPassword: (account: PasswordAccount) => void;
@@ -2596,6 +2631,16 @@ export function ConnectDialog({
   }, [stage.stage]);
   if (!provider) return null;
   const copy = providerCopy[provider.id];
+  // Google lets a person leave services out at its consent screen; the
+  // connected view says at once what the agents got (Jari 21.11.2026).
+  const granted = (address?: string) => {
+    const a =
+      provider.id === "google" &&
+      accounts.find((x) => x.provider === "google" && x.address === address);
+    return a ? (
+      <GrantSummary account={a} name={(id) => serviceName("google", id)} />
+    ) : null;
+  };
   const activeLogin =
     stage.stage === "login" &&
     !["none", "completed", "failed"].includes(stage.view.state) &&
@@ -2669,6 +2714,7 @@ export function ConnectDialog({
                 : txt.connectedTo(stage.address)}
             </span>
           </p>
+          {granted(stage.address)}
           <div className="ig-row">
             <ControlButton
               data-testid="integration-done"
@@ -2806,6 +2852,7 @@ export function ConnectDialog({
                   : txt.connectedTo(v.address ?? "")}
               </span>
             </p>
+            {granted(v.address)}
             {dir ? <p className="ig-p">{txt.foldersContinue}</p> : null}
             <div className="ig-row">
               <ControlButton
