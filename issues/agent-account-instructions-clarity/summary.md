@@ -2,33 +2,35 @@
 
 **Mitä tapahtui.** Pilotin agentilta pyydettiin tiedostoa SharePoint-kansiosta.
 Se löysi tiedoston, mutta kutsui matkalla postikansion poistoa. Mitään ei
-poistunut, koska kutsusta puuttui yksi tieto. Agentti etsii työkalunsa
-hakusanoilla, ja "folder" osuu sekä tiedosto- että postikansiotyökaluihin.
+poistunut. Agentti etsii työkalunsa hakusanoilla, ja "folder" nostaa
+postikansion poiston hakutulosten kärkeen. Toistin tämän sekä suoraan Pi:n
+haulla että oikealla Pi:llä.
 
-**Mitä agentille kerrotaan** (`agent-text.md`). Microsoft-tili on postilaatikko
-ja tiedostovarasto saman kirjautumisen takana, ja "kansio" tarkoittaa niissä
-eri asiaa. Tiedostot eivät ole koneella: ne etsitään pilvestä haulla ja haetaan
-yksi kerrallaan. Viesti jätetään luonnokseksi ja lähetetään vain pyynnöstä.
-Kieltoja ei tullut lisää.
+**Uusi suunta (Jari 21.11.).** Työkaluja ei poisteta. Ne jaetaan
+aihealueisiin, joista agentti valitsee ensin yhden (`research-topics.md`):
 
-**Mitä työkaluille tehdään** (`tool-surface.md`). Agentti saa nyt 100
-Microsoft-työkalua, ehdotus on 55. Agentilta ei voisi enää pyytää:
+- **Posti** 29 työkalua, **Kalenteri** 27, **Yhteystiedot** 9,
+  **Tiedostot** 10, **Postilaatikon ylläpito** 25 (kansiot, kalenterit,
+  jakaminen, Focused Inbox).
+- Kirjautumistyökalut piilotetaan. Kirjautuminen pysyy yhtenä.
+- 19 kutsua kysyy ensin lupaa selaimessa: poistot, lähetykset ja
+  kalenterin jakaminen. Kokeilu toimi Habitatin nykyisellä kysymysikkunalla.
 
-- postikansion, kalenterin tai yhteystietokansion luontia, nimeämistä tai
-  poistoa ("tee näille kansio": siirto onnistuu, kansion tekee ihminen itse)
-- kalenterin jakamista, Focused Inbox -sääntöjä, kokouskutsun välitystä
+**Mitä kokeilu näytti.** Pelkät alueet eivät riitä: jos agentti hakee kaikista
+alueista kerralla, postikansion poisto nousee edelleen kärkeen. Kun ohje
+käskee valita ensin alueen, agentti hakee Tiedostot-alueelta ja löytää
+oikean työkalun eikä näe ylläpitotyökaluja lainkaan. Lisäksi palvelimen
+nykyinen pitkä nimi katkaisee 92 työkalun nimeä 100:sta, mikä heikentää hakua
+(kirjattu omaksi asiakseen).
 
-Tasot toimivat kuten nyt, uutta asetusta ei tule, kukaan ei kirjaudu uudelleen.
+**Kaksi kysymystä**
 
-**Kolme kysymystä**
+1. Hyväksytkö muistin hinnan? Jokainen alue on oma prosessinsa, noin 150 Mt
+   jokaista avointa keskustelua kohden (nyt 185 Mt, alueilla noin 750 Mt).
+   Suositus: kyllä nyt, ja Pi:lle ehdotus, jolla yksi prosessi riittää.
+2. Kysytäänkö lupa myös lähetyksille ja jakamiselle, eikä vain poistoille?
+   Suositus: kyllä, sillä nekin lähtevät heti toiselle ihmiselle.
 
-1. Lakkaako agentti järjestelemästä postilaatikkoa? Kyllä: tähän pilotin
-   agentti tarttui, ja sitä tarvitaan muutaman kerran vuodessa.
-2. Lähteekö posti vain luonnoksen kautta? Kyllä: mitään ei menetetä.
-3. Piilotetaanko työkalut, joilla agentti voi kirjata tilin ulos? Kyllä:
-   kukaan ei valinnut niitä, palvelin lisää ne itse.
-
-Mitään ei ole viety tuotteeseen. Seurasin ohjeita `rethink-instructions`
-(agentin teksti) ja `rethink-document` (ehdotus). Lyhyeksi ei taipunut
-Microsoft-kohdan tiedostokappale: hakupolku ja tallennuspaikka ovat tietoa,
-jota agentti ei voi päätellä.
+Mitään ei ole viety tuotteeseen. Aiempi 55 työkalun ehdotus
+(`tool-surface.md`) jää tämän alle; agentin teksti (`agent-text.md`)
+päivitetään alueiden mukaan, kun suunta on hyväksytty.
