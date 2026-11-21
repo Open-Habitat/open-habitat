@@ -47,3 +47,7 @@ Jari 21.11.2026 on round 6: emblem direction B Väreilyn muoto is best. Next: ri
 ### 2026-11-21T13:50:25Z · @jari
 
 Jari 21.11.2026 on the workspace sound picker: Settings rows look very good, but the field width changes with the choice and the field jumps — fix. In the workspace the sound should be clearly visible and changeable, perhaps up top in the workspace head with large controls; the emblem works large, not as a tiny mark beside a word; the button icon is a note glyph. Sidebar: only a note glyph on hover to change it. Press chooses; a separate preview play button on each card. The choice shows also when it is the default. Riff again.
+
+### 2026-11-21T14:25:32Z · @jari
+
+Jari 21.11.2026 on workspace sound round 2: try C Asetusnauha, riffed so all the strip's buttons are the same size; drop the note from the right side of the sidebar row (no hover note). Use round 7's recommended emblems.
