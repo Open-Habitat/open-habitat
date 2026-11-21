@@ -3,13 +3,17 @@ created: 2026-11-16
 updated: 2026-11-21
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-16/rail-scroll-region
 lane: rail-scroll
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+commits:
+- hash: 10e46799
+  summary: 'web: only Työtilat scrolls, the conversation sections stay in sight'
 ---
 
 # Rail scrolls as a whole, so the conversation sections scroll out of sight; the workspace section should scroll instead
@@ -23,3 +27,9 @@ Jari 16.11.2026 (staging installation, after a reboot): the rail looked as if ev
 ### 2026-11-21T05:09:51Z · @jari
 
 Jari 21.11.2026: direction 1 Työtilat; the edge chips telling that something is above / below (section name and count) are especially good. Go to implementation. Not answered explicitly, conductor takes the round's recommendations: Työtilat floor three rows in a crowd; Hiljaiset folds itself when the rail is crowded (record as Decisions for later review).
+
+## Resolution
+
+### 2026-11-21T05:31:43Z · @issuectl
+
+Direction 1 Työtilat is in production (no flag), with edge chips, keyboard reveal and Hiljaiset's automatic fold in a crowd. The conductor's defaults are recorded in result.md under Decisions for later review.
