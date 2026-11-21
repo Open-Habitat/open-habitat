@@ -2,13 +2,16 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while verifying the multiplayer browser surface
 source_ref: taskfleet:01m7zetb9c2dwe7feak907cm0n/observed:browser-conversation-deterministic-14
 originating_run: 01m7zetb9c2dwe7feak907cm0n
 originating_run_kind: spinoff
+lane: gate-red
+lane_seq: 4
+preparation: ready
 ---
 
 # browser-conversation spec fails 14 archive and receipt cases deterministically on main
