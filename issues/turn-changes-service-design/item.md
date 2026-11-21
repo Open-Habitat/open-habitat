@@ -27,3 +27,7 @@ Jari 15.11.2026: recommended direction (recorder inside better-pi-rewind) noted;
 ### 2026-11-21T07:47:51Z · @jari
 
 Jari 21.11.2026: Raine is responsive when the work is done properly — build the recorder as the upstream pull request, done well and tested. Inside better-pi-rewind (a second entry), not a package of its own. Retention: removed with the conversation, older than 90 days dropped. (Switch question: not understood — conductor explains; agent tool: not in the first step, recommendation.)
+
+### 2026-11-21T07:51:25Z · @jari
+
+Jari 21.11.2026: no new switch — snapshot recording belongs to the same experimental feature as the turn changes / rewind work being built here.
