@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by a worker running the focused web check
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-red
 lane_seq: 2
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Fast web check lint fails on main: useLiteralKeys in conversationStore.test.tsx

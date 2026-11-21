@@ -62,7 +62,7 @@ function setup() {
     cancelAll: vi.fn(),
   } as unknown as ConversationPager;
   const store = new ConversationStore("person", pager);
-  return { store, tail, finish: (p: HistoryPage) => resolve(p) };
+  return { store, pager, tail, finish: (p: HistoryPage) => resolve(p) };
 }
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 afterEach(() => {
@@ -1588,7 +1588,7 @@ describe("finished turns the person has not seen", () => {
         },
       ],
     }) as never;
-  const tab = () => new ConversationStore("replies", setup().store["pager"]);
+  const tab = () => new ConversationStore("replies", setup().pager);
   const attention = (store: ConversationStore) =>
     store.readMetadata().attention.get(agent);
 
@@ -1883,7 +1883,7 @@ describe("status reads that come back in either order", () => {
           finish = resolve;
         }),
     );
-    const pager = setup().store["pager"];
+    const pager = setup().pager;
     const store = new ConversationStore("person", pager, 50, statusReader);
     store.applyStatus(agent, read("accepted", 4));
     store.routeEvent({
