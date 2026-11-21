@@ -44,14 +44,73 @@
       "description": "Whether the person allowed agents to change GitHub Actions workflows: the opt-in behind the GitHub sign-in's workflow scope. It records what the person wants, not what gh's token holds (native_github.scopes in the snapshot). The person's explicit GitHub reconnect sets it when the installed token has the workflow scope and never clears it; a write sets it directly, as Remove permission and Don't allow do with false. When it is true and the token lacks the scope, the page says the permission is missing.",
       "type": "boolean"
     },
+    "sound_id": {
+      "description": "One of the attention sounds the browser renders (attention-sound, experimental).",
+      "enum": ["kalimba", "marimba", "vibrafoni", "tunnus-puu", "pisara", "lasit", "tuulikello", "kuplat", "kulho", "jaapuikot"]
+    },
+    "sound": {
+      "description": "The attention sound's personal choices, every one spelled out: whether it plays at all, the default sound, short or long sounds, whether the conversation in view stays quiet or plays, whether the device's night mode quiets it, and each workspace's own sound (a workspace without an entry plays the default). Mute and volume are each device's own and are not here.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "default", "length", "in_view", "night", "workspaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "default": {"$ref": "#/$defs/sound_id"},
+        "length": {"enum": ["short", "long"]},
+        "in_view": {"enum": ["quiet", "play"]},
+        "night": {"type": "boolean"},
+        "workspaces": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {"$ref": "common.schema.json#/$defs/workspaceId"},
+          "additionalProperties": {"$ref": "#/$defs/sound_id"}
+        }
+      }
+    },
     "feature_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the Sinun vuorosi or Käynnissä workspace, the GitHub workflow opt-in, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the Sinun vuorosi or Käynnissä workspace, the GitHub workflow opt-in, one attention-sound choice, one workspace's sound (null for the default), or one experimental feature's switch. The daemon merges it into the stored document.",
       "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sound"],
+          "properties": {
+            "sound": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "default": {"$ref": "#/$defs/sound_id"},
+                "length": {"enum": ["short", "long"]},
+                "in_view": {"enum": ["quiet", "play"]},
+                "night": {"type": "boolean"}
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["workspace_sound"],
+          "properties": {
+            "workspace_sound": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "propertyNames": {"$ref": "common.schema.json#/$defs/workspaceId"},
+              "additionalProperties": {
+                "oneOf": [{"$ref": "#/$defs/sound_id"}, {"type": "null"}]
+              }
+            }
+          }
+        },
         {
           "type": "object",
           "additionalProperties": false,
@@ -141,10 +200,12 @@
         "yours_workspace",
         "running_workspace",
         "github_workflow",
+        "sound",
         "experimental"
       ],
       "properties": {
         "github_workflow": {"$ref": "#/$defs/github_workflow"},
+        "sound": {"$ref": "#/$defs/sound"},
         "quiet_sort": {"$ref": "#/$defs/quiet_sort"},
         "quiet_workspace": {"$ref": "#/$defs/quiet_workspace"},
         "yours_workspace": {"$ref": "#/$defs/section_workspace"},

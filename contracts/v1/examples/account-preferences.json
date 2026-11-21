@@ -8,6 +8,16 @@
   "yours_workspace": null,
   "running_workspace": "ws_example123",
   "github_workflow": false,
+  "sound": {
+    "enabled": true,
+    "default": "kalimba",
+    "length": "short",
+    "in_view": "quiet",
+    "night": true,
+    "workspaces": {
+      "ws_example123": "pisara"
+    }
+  },
   "experimental": {
     "worker-row-sentence": true
   }

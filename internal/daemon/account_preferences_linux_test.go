@@ -135,6 +135,21 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		{"PUT", "", `{"github_workflow":true}`, 200}, {"PUT", "", `{"github_workflow":false}`, 200},
 		{"PUT", "", `{"github_workflow":null}`, 400}, {"PUT", "", `{"github_workflow":"true"}`, 400},
 		{"PUT", "", `{"GitHub_Workflow":true}`, 400}, {"PUT", "", `{"github_workflow":true,"engine":"vscode"}`, 400},
+		{"PUT", "", `{"sound":{"enabled":false}}`, 200}, {"PUT", "", `{"sound":{"night":true}}`, 200},
+		{"PUT", "", `{"sound":{"default":"jaapuikot"}}`, 200}, {"PUT", "", `{"sound":{"length":"long"}}`, 200},
+		{"PUT", "", `{"sound":{"in_view":"play"}}`, 200},
+		{"PUT", "", `{"sound":{"enabled":null}}`, 400}, {"PUT", "", `{"sound":{"enabled":"false"}}`, 400},
+		{"PUT", "", `{"sound":{"default":"harppu"}}`, 400}, {"PUT", "", `{"sound":{"default":"../x"}}`, 400},
+		{"PUT", "", `{"sound":{"length":"medium"}}`, 400}, {"PUT", "", `{"sound":{"in_view":"loud"}}`, 400},
+		{"PUT", "", `{"sound":{"volume":50}}`, 400}, {"PUT", "", `{"sound":{"muted":true}}`, 400},
+		{"PUT", "", `{"sound":{}}`, 400}, {"PUT", "", `{"sound":null}`, 400},
+		{"PUT", "", `{"sound":{"enabled":true,"night":true}}`, 400}, {"PUT", "", `{"Sound":{"enabled":true}}`, 400},
+		{"PUT", "", `{"sound":{"enabled":true},"engine":"vscode"}`, 400},
+		{"PUT", "", `{"workspace_sound":{"ws_example123":"pisara"}}`, 200}, {"PUT", "", `{"workspace_sound":{"ws_example123":null}}`, 200},
+		{"PUT", "", `{"workspace_sound":{"ws_short":"pisara"}}`, 400}, {"PUT", "", `{"workspace_sound":{"ws_example123":"harppu"}}`, 400},
+		{"PUT", "", `{"workspace_sound":{"ws_example123":"pisara","ws_example456":"lasit"}}`, 400},
+		{"PUT", "", `{"workspace_sound":{}}`, 400}, {"PUT", "", `{"workspace_sound":null}`, 400},
+		{"PUT", "", `{"workspace_sound":{"ws_example123":5}}`, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "http://unix"+AccountPreferencesPath+tc.suffix, strings.NewReader(tc.body))
 		if tc.body != "" {
@@ -246,6 +261,99 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	}
 	// Turning off a feature never fails on a full document.
 	put(`{"experimental":{"f1":false}}`)
+}
+
+func TestAccountPreferencesSound(t *testing.T) {
+	home := t.TempDir()
+	cfg := transport.Config{Home: home, Provider: "github", Subject: "42"}
+	handler := AccountPreferencesHandler(cfg, func(*http.Request) bool { return true })
+	put := func(body string, status int) map[string]any {
+		t.Helper()
+		r := httptest.NewRequest("PUT", "http://unix"+AccountPreferencesPath, strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatalf("%s: %d %s", body, w.Code, w.Body.String())
+		}
+		var reply map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &reply)
+		return reply
+	}
+	file := filepath.Join(home, ".config/open-habitat/preferences.json")
+	defaults := map[string]any{"enabled": true, "default": "kalimba", "length": "short", "in_view": "quiet", "night": true, "workspaces": map[string]any{}}
+	if reply := put(`{"engine":"vscode"}`, 200); !reflect.DeepEqual(reply["sound"], defaults) {
+		t.Fatalf("defaults: %v", reply["sound"])
+	}
+	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), `"sound"`) {
+		t.Fatalf("defaults stored a key: %s", raw)
+	}
+	put(`{"sound":{"enabled":false}}`, 200)
+	put(`{"sound":{"default":"kulho"}}`, 200)
+	put(`{"sound":{"length":"long"}}`, 200)
+	put(`{"sound":{"in_view":"play"}}`, 200)
+	put(`{"sound":{"night":false}}`, 200)
+	put(`{"workspace_sound":{"ws_example123":"pisara"}}`, 200)
+	reply := put(`{"experimental":{"attention-sound":true}}`, 200)
+	want := map[string]any{"enabled": false, "default": "kulho", "length": "long", "in_view": "play", "night": false, "workspaces": map[string]any{"ws_example123": "pisara"}}
+	if !reflect.DeepEqual(reply["sound"], want) || reply["engine"] != "vscode" {
+		t.Fatalf("merge lost a sound choice: %v", reply)
+	}
+	// A new reader sees the same, independent of the browser.
+	if value, err := readPreferences(home); err != nil || value.Sound == nil || value.Sound.Default != "kulho" || value.Sound.Workspaces["ws_example123"] != "pisara" {
+		t.Fatalf("stored: %+v %v", value.Sound, err)
+	}
+	// Back to every default: the file keeps no sound key.
+	put(`{"sound":{"enabled":true}}`, 200)
+	put(`{"sound":{"default":"kalimba"}}`, 200)
+	put(`{"sound":{"length":"short"}}`, 200)
+	put(`{"sound":{"in_view":"quiet"}}`, 200)
+	put(`{"sound":{"night":true}}`, 200)
+	if reply = put(`{"workspace_sound":{"ws_example123":null}}`, 200); !reflect.DeepEqual(reply["sound"], defaults) {
+		t.Fatalf("back to defaults: %v", reply["sound"])
+	}
+	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), `"sound"`) {
+		t.Fatalf("defaults stored a key: %s", raw)
+	}
+	// The map has a bound; one past it is refused and changes nothing, and
+	// clearing one still works on a full map.
+	for i := 0; i < maxWorkspaceSounds; i++ {
+		put(fmt.Sprintf(`{"workspace_sound":{"ws_example%03d":"lasit"}}`, i), 200)
+	}
+	put(`{"workspace_sound":{"ws_onetoomany":"lasit"}}`, 503)
+	if value, err := readPreferences(home); err != nil || len(value.Sound.Workspaces) != maxWorkspaceSounds {
+		t.Fatalf("after refusal: %+v %v", value.Sound, err)
+	}
+	put(`{"workspace_sound":{"ws_example000":null}}`, 200)
+	// With every other field at its bound too, the document stays under the
+	// size the reader accepts.
+	// attention-sound is already on: fill the rest.
+	for i := 1; i < maxExperimentalFeatures; i++ {
+		put(fmt.Sprintf(`{"experimental":{"%s":true}}`, strings.Repeat("f", 40)+fmt.Sprint(1000000+i)), 200)
+	}
+	put(fmt.Sprintf(`{"workspace_sound":{"ws_%s":"tunnus-puu"}}`, strings.Repeat("x", 64)), 200)
+	if raw, _ := os.ReadFile(file); len(raw) > maxPreferencesSize/2+1024 {
+		t.Fatalf("full document is %d bytes", len(raw))
+	}
+	if _, err := readPreferences(home); err != nil {
+		t.Fatal(err)
+	}
+	// A stored file is read as strictly as a write.
+	for _, invalid := range []string{
+		`{"engine":"vscode","sound":{"default":"harppu"}}`,
+		`{"engine":"vscode","sound":{"length":"short"}}`,
+		`{"engine":"vscode","sound":{"in_view":"quiet"}}`,
+		`{"engine":"vscode","sound":{"volume":3}}`,
+		`{"engine":"vscode","sound":{"workspaces":{"ws_short":"lasit"}}}`,
+		`{"engine":"vscode","sound":{"workspaces":{"ws_example123":"harppu"}}}`,
+	} {
+		if err := os.WriteFile(file, []byte(invalid), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := readPreferences(home); err == nil {
+			t.Fatalf("accepted %q", invalid)
+		}
+	}
 }
 
 // A file written while the rail had Viimeisimmät still reads, and the next

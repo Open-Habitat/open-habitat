@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"slices"
@@ -25,7 +26,8 @@ const AccountPreferencesPath = "/api/v1/account/preferences"
 // document, ~/.config/open-habitat/preferences.json: the desktop editor, the
 // interface language, the order and workspace of the rail's Hiljaiset section,
 // the workspaces its Sinun vuorosi and Käynnissä sections are narrowed to,
-// and experimental features they turned on. Only enabled features are kept, so
+// the attention sound (attention-sound, experimental), and experimental
+// features they turned on. Only enabled features are kept, so
 // a feature that graduates or is removed leaves at most one stale key. A value
 // never chosen is absent: a language reads as "system", which leaves the
 // choice to the server default and the browser, the order as "newest", and
@@ -47,6 +49,54 @@ type accountPreferences struct {
 	// RecentCount is the retired Viimeisimmät count. A file that has it still
 	// reads, so the person's other choices survive; the next save drops it.
 	RecentCount json.RawMessage `json:"recent_count,omitempty"`
+	// Sound is the attention sound's personal choices; absent while none is
+	// made. Mute and volume are each device's own and stay in its browser.
+	Sound *soundPreferences `json:"sound,omitempty"`
+}
+
+// soundPreferences keeps only what differs from the defaults: the sound is
+// on, Kalimba, short, quiet for the conversation in view and quiet at night.
+// Workspaces maps a workspace to its own sound; a workspace without an entry
+// plays the default.
+type soundPreferences struct {
+	Off        bool              `json:"off,omitempty"`
+	Default    string            `json:"default,omitempty"`
+	Length     string            `json:"length,omitempty"`
+	InView     string            `json:"in_view,omitempty"`
+	NightOff   bool              `json:"night_off,omitempty"`
+	Workspaces map[string]string `json:"workspaces,omitempty"`
+}
+
+// soundIDs are the ten sounds the browser renders; the contract lists the same.
+var soundIDs = []string{"kalimba", "marimba", "vibrafoni", "tunnus-puu", "pisara", "lasit", "tuulikello", "kuplat", "kulho", "jaapuikot"}
+
+// maxWorkspaceSounds bounds the map, so the whole document stays well under
+// maxPreferencesSize with every other field at its own bound.
+const maxWorkspaceSounds = 32
+
+// maxPreferencesSize bounds the stored file and so the reply.
+const maxPreferencesSize = 8192
+
+func validSoundID(id string) bool { return slices.Contains(soundIDs, id) }
+
+func (s *soundPreferences) valid() bool {
+	if s == nil {
+		return true
+	}
+	if s.Default != "" && !validSoundID(s.Default) || s.Length != "" && s.Length != "long" || s.InView != "" && s.InView != "play" || len(s.Workspaces) > maxWorkspaceSounds {
+		return false
+	}
+	for id, sound := range s.Workspaces {
+		if !validWorkspaceID(id) || !validSoundID(sound) {
+			return false
+		}
+	}
+	return true
+}
+
+// empty: every choice at its default, stored as no "sound" key at all.
+func (s *soundPreferences) empty() bool {
+	return s == nil || !s.Off && s.Default == "" && s.Length == "" && s.InView == "" && !s.NightOff && len(s.Workspaces) == 0
 }
 
 // preferencesWrite names one change. The gateway caps a write at 128 bytes,
@@ -60,7 +110,21 @@ type preferencesWrite struct {
 	Language       *string
 	GitHubWorkflow *bool
 	Experimental   map[string]bool
+	// Sound names one attention-sound choice; WorkspaceSound one workspace's
+	// sound, "" for the default.
+	Sound          *soundChange
+	WorkspaceSound *workspaceSound
 }
+
+// soundChange is one of the sound's choices: key is "enabled", "default",
+// "length", "in_view" or "night", with a value already validated.
+type soundChange struct {
+	key   string
+	on    bool
+	value string
+}
+
+type workspaceSound struct{ id, sound string }
 
 type sectionWorkspace struct{ key, id string }
 
@@ -141,15 +205,15 @@ func (p accountPreferences) valid() bool {
 			return false
 		}
 	}
-	return true
+	return p.Sound.valid()
 }
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
 // one object with exactly one key: "engine", "language", "quiet_sort",
 // "quiet_workspace", "yours_workspace" or "running_workspace" (a workspace
-// or null), "github_workflow" (a boolean),
-// or "experimental" naming one
-// feature with a boolean. encoding/json alone would match keys without
+// or null), "github_workflow" (a boolean), "sound" naming one sound choice,
+// "workspace_sound" naming one workspace with a sound or null, or
+// "experimental" naming one feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	var change preferencesWrite
@@ -217,6 +281,28 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 		change.GitHubWorkflow = on
 		return change, true
 	}
+	if raw, ok := outer["sound"]; ok {
+		sound, ok := decodeSoundChange(raw)
+		change.Sound = sound
+		return change, ok
+	}
+	if raw, ok := outer["workspace_sound"]; ok {
+		// One workspace and its sound, or null for the default.
+		var one map[string]*string
+		if json.Unmarshal(raw, &one) != nil || len(one) != 1 {
+			return change, false
+		}
+		for id, sound := range one {
+			if !validWorkspaceID(id) || sound != nil && !validSoundID(*sound) {
+				return change, false
+			}
+			change.WorkspaceSound = &workspaceSound{id: id}
+			if sound != nil {
+				change.WorkspaceSound.sound = *sound
+			}
+		}
+		return change, true
+	}
 	var switches map[string]*bool
 	if json.Unmarshal(outer["experimental"], &switches) != nil || len(switches) != 1 {
 		return change, false
@@ -228,6 +314,40 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 		change.Experimental = map[string]bool{id: *on}
 	}
 	return change, true
+}
+
+// decodeSoundChange reads {"<key>": value} with exactly one key: "enabled"
+// and "night" take a boolean, "default" a sound, "length" short or long and
+// "in_view" quiet or play.
+func decodeSoundChange(raw json.RawMessage) (*soundChange, bool) {
+	var one map[string]json.RawMessage
+	if json.Unmarshal(raw, &one) != nil || len(one) != 1 {
+		return nil, false
+	}
+	for key, value := range one {
+		change := &soundChange{key: key}
+		switch key {
+		case "enabled", "night":
+			var on *bool
+			if json.Unmarshal(value, &on) != nil || on == nil {
+				return nil, false
+			}
+			change.on = *on
+		case "default", "length", "in_view":
+			var text string
+			if json.Unmarshal(value, &text) != nil {
+				return nil, false
+			}
+			if key == "default" && !validSoundID(text) || key == "length" && text != "short" && text != "long" || key == "in_view" && text != "quiet" && text != "play" {
+				return nil, false
+			}
+			change.value = text
+		default:
+			return nil, false
+		}
+		return change, true
+	}
+	return nil, false
 }
 
 func preferencesDir(home string, create bool) (*os.File, error) {
@@ -287,11 +407,11 @@ func readPreferences(home string) (accountPreferences, error) {
 	if err != nil {
 		return result, err
 	}
-	if !st.Mode().IsRegular() || st.Size() > 4096 || st.Mode().Perm()&0022 != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
+	if !st.Mode().IsRegular() || st.Size() > maxPreferencesSize || st.Mode().Perm()&0022 != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
 		return result, errors.New("unsafe configuration file")
 	}
 	result = accountPreferences{}
-	dec := json.NewDecoder(io.LimitReader(f, 4097))
+	dec := json.NewDecoder(io.LimitReader(f, maxPreferencesSize+1))
 	dec.DisallowUnknownFields()
 	if err = dec.Decode(&result); err != nil {
 		return result, err
@@ -303,6 +423,9 @@ func readPreferences(home string) (accountPreferences, error) {
 		result.Language = ""
 	}
 	result.RecentCount = nil
+	if result.Sound.empty() {
+		result.Sound = nil
+	}
 	if !result.valid() || dec.Decode(new(any)) != io.EOF {
 		return result, errors.New("invalid preferences")
 	}
@@ -315,6 +438,9 @@ func savePreferences(home string, value accountPreferences) error {
 	}
 	if value.Experimental == nil {
 		value.Experimental = map[string]bool{}
+	}
+	if value.Sound.empty() {
+		value.Sound = nil
 	}
 	dir, err := preferencesDir(home, true)
 	if err != nil {
@@ -385,6 +511,47 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 			delete(value.Experimental, id)
 		}
 	}
+	if change.Sound != nil || change.WorkspaceSound != nil {
+		sound := soundPreferences{}
+		if value.Sound != nil {
+			sound = *value.Sound
+		}
+		sound.Workspaces = maps.Clone(sound.Workspaces)
+		if c := change.Sound; c != nil {
+			switch c.key {
+			case "enabled":
+				sound.Off = !c.on
+			case "night":
+				sound.NightOff = !c.on
+			case "default":
+				sound.Default = c.value
+				if c.value == "kalimba" {
+					sound.Default = ""
+				}
+			case "length":
+				sound.Length = c.value
+				if c.value == "short" {
+					sound.Length = ""
+				}
+			case "in_view":
+				sound.InView = c.value
+				if c.value == "quiet" {
+					sound.InView = ""
+				}
+			}
+		}
+		if c := change.WorkspaceSound; c != nil {
+			if c.sound == "" {
+				delete(sound.Workspaces, c.id)
+			} else {
+				if sound.Workspaces == nil {
+					sound.Workspaces = map[string]string{}
+				}
+				sound.Workspaces[c.id] = c.sound
+			}
+		}
+		value.Sound = &sound
+	}
 	return value, savePreferences(home, value)
 }
 
@@ -401,6 +568,28 @@ func rememberGitHubWorkflow(home string, scopes []string) error {
 	on := true
 	_, err := applyPreferences(home, preferencesWrite{GitHubWorkflow: &on})
 	return err
+}
+
+// soundReply is every sound choice spelled out, defaults included.
+func soundReply(s *soundPreferences) map[string]any {
+	if s == nil {
+		s = &soundPreferences{}
+	}
+	sound, length, inView := s.Default, s.Length, s.InView
+	if sound == "" {
+		sound = "kalimba"
+	}
+	if length == "" {
+		length = "short"
+	}
+	if inView == "" {
+		inView = "quiet"
+	}
+	workspaces := s.Workspaces
+	if workspaces == nil {
+		workspaces = map[string]string{}
+	}
+	return map[string]any{"enabled": !s.Off, "default": sound, "length": length, "in_view": inView, "night": !s.NightOff, "workspaces": workspaces}
 }
 
 func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
@@ -453,6 +642,7 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 				reply[key] = id
 			}
 		}
+		reply["sound"] = soundReply(value.Sound)
 		historyJSON(w, reply)
 	})
 }

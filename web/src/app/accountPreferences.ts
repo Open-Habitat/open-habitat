@@ -13,10 +13,39 @@ import experimentalCatalog from "../../../internal/experimental/catalog.json";
 import { type LanguageChoice, setPersonalLanguage } from "../i18n";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
+import type { SoundId, SoundLength } from "./soundSynth";
 
 export type EditorEngine = "codemirror6" | "vscode";
 /** The order of the rail's Hiljaiset section. */
 export type QuietSort = "newest" | "workspace" | "name";
+
+/** The attention sound's personal choices (attention-sound, experimental),
+ * the same on every device. Mute and volume are each device's own
+ * (app/attentionSound.ts). */
+export type SoundPreferences = {
+  enabled: boolean;
+  default: SoundId;
+  length: SoundLength;
+  in_view: "quiet" | "play";
+  night: boolean;
+  /** A workspace's own sound; a workspace without one plays the default. */
+  workspaces: Readonly<Record<string, SoundId>>;
+};
+/** One of the sound's choices, written alone. */
+export type SoundChoice =
+  | { enabled: boolean }
+  | { default: SoundId }
+  | { length: SoundLength }
+  | { in_view: "quiet" | "play" }
+  | { night: boolean };
+export const defaultSoundPreferences: SoundPreferences = {
+  enabled: true,
+  default: "kalimba",
+  length: "short",
+  in_view: "quiet",
+  night: true,
+  workspaces: {},
+};
 
 /** The experimental features the settings offer, in the section's order.
  * A feature reads its switch with `useExperimentalFeature(id)`. An id the
@@ -37,6 +66,7 @@ type Reply = {
   yours_workspace: string | null;
   running_workspace: string | null;
   github_workflow: boolean;
+  sound: SoundPreferences;
   experimental: Record<string, true>;
 };
 const ajv = new LazyAjv({ strict: false });
@@ -50,7 +80,8 @@ const url = "/api/v1/account/preferences";
 /** What the daemon last confirmed, and the one write in flight. `loaded`
  * says the first read has finished, either way. `busy` and `error` name what
  * they concern: "engine", "language", "quiet_sort", "quiet_workspace",
- * "yours_workspace", "running_workspace", "github_workflow", a feature id, or "read". */
+ * "yours_workspace", "running_workspace", "github_workflow", "sound.<choice>",
+ * "workspace_sound:<workspace>", a feature id, or "read". */
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
@@ -64,6 +95,7 @@ export type Preferences = {
   /** The person allowed agents to change GitHub Actions workflows: the
    * opt-in behind the sign-in's workflow scope, not what the token holds. */
   github_workflow: boolean;
+  sound: SoundPreferences;
   experimental: Readonly<Record<string, true>>;
   loaded: boolean;
   busy?: string;
@@ -77,6 +109,7 @@ const initial: Preferences = {
   yours_workspace: null,
   running_workspace: null,
   github_workflow: false,
+  sound: defaultSoundPreferences,
   experimental: {},
   loaded: false,
 };
@@ -111,7 +144,8 @@ async function readReply(response: Response, identity: string) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 4096) {
+      // The daemon's own bound on the stored document (8 KiB).
+      if (size > 8192) {
         await reader.cancel();
         throw new Error("preferences unavailable");
       }
@@ -139,6 +173,7 @@ async function readReply(response: Response, identity: string) {
     yours_workspace: result.yours_workspace,
     running_workspace: result.running_workspace,
     github_workflow: result.github_workflow,
+    sound: result.sound,
     experimental: result.experimental,
   };
 }
@@ -256,6 +291,34 @@ export function setGitHubWorkflow(identity: string, on: boolean, csrf: string) {
   }).then(() => states.get(key(identity, csrf))?.github_workflow === on);
 }
 
+/** Writes one of the attention sound's choices. */
+export function chooseSound(
+  identity: string,
+  choice: SoundChoice,
+  csrf: string,
+) {
+  return write(identity, csrf, `sound.${Object.keys(choice)[0]}`, {
+    sound: choice,
+  });
+}
+
+/** Gives a workspace its own sound, or with null the default again.
+ * Resolves to whether the daemon confirmed it. */
+export function chooseWorkspaceSound(
+  identity: string,
+  workspaceId: string,
+  sound: SoundId | null,
+  csrf: string,
+) {
+  return write(identity, csrf, `workspace_sound:${workspaceId}`, {
+    workspace_sound: { [workspaceId]: sound },
+  }).then(
+    () =>
+      (states.get(key(identity, csrf))?.sound.workspaces[workspaceId] ??
+        null) === sound,
+  );
+}
+
 export function setExperimentalFeature(
   identity: string,
   id: ExperimentalFeatureId,
@@ -352,6 +415,18 @@ export function AccountPreferencesProvider({
   }, [identity, language]);
   const value = useMemo(() => ({ identity, csrf }), [identity, csrf]);
   return createElement(Session.Provider, { value }, children);
+}
+
+/** The confirmed preferences of the session `AccountPreferencesProvider`
+ * names, or of the one given. */
+export function useSessionPreferences(session?: {
+  identity?: string;
+  csrf?: string;
+}): Preferences & { identity?: string; csrf?: string } {
+  const named = useContext(Session);
+  const { identity, csrf } = session ?? named;
+  const state = useConfirmedPreferences(identity, csrf);
+  return useMemo(() => ({ ...state, identity, csrf }), [state, identity, csrf]);
 }
 
 /** Whether the person turned the experimental feature on. Off until the
