@@ -2,13 +2,25 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet spinoff for the v0.1.4 release gate
 source_ref: taskfleet:01m7zvhjemz5vfkqwnq3bz38wq/gate-fix-experimental-graduation
 originating_run: 01m7zvhjemz5vfkqwnq3bz38wq
 originating_run_kind: spinoff
+closed: 2026-11-21
+commits:
+- hash: f401bbb6
+  summary: 'test(web): count attention sound among the experiments; sweep Äänet with it on'
+- hash: 7b614d3e
+  summary: 'test(web): read the graduated context view; look through the composer hold'
+- hash: 72d3eb3b
+  summary: 'test(web): helpers have their chip without a switch'
+- hash: 42cac641
+  summary: 'feat(web): explain cards for Agentin käytössä and Hiljaiset''s workspace tiles'
+- hash: e2e6f4ce
+  summary: 'fix(web): a folded Hiljaiset counts its rows at their drawn height'
 ---
 
 # Gate fix: experimental-graduation fallout in browser specs
@@ -33,3 +45,9 @@ specs failed again when rerun alone at low load, so they are deterministic:
 
 For each case decide whether the product regressed or the spec is outdated
 against an agreed change, and fix accordingly.
+
+## Resolution
+
+### 2026-11-21T20:44:33Z · @issuectl
+
+Fixed; see result.md.
