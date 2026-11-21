@@ -1,14 +1,17 @@
 ---
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed during gate-red-v013 verification
 source_ref: taskfleet:01m7hgja0zwn7w1d9te2yww0xp/observed:rail-archive-outline-flake
 originating_run: 01m7hgja0zwn7w1d9te2yww0xp
 originating_run_kind: spinoff
+lane: test-stability
+lane_seq: 4
+preparation: ready
 ---
 
 # rail-archive outline spec fails intermittently on a CSS assertion

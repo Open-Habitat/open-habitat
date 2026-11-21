@@ -1,13 +1,16 @@
 ---
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7hkw6a8hfyrr0s5mjrt6hgv/browser-conversation-repeat-flakes
 originating_run: 01m7hkw6a8hfyrr0s5mjrt6hgv
 originating_run_kind: spinoff
+lane: test-stability
+lane_seq: 3
+preparation: ready
 ---
 
 # browser-conversation spec fails under repeat-each 3 on main

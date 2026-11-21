@@ -1,14 +1,17 @@
 ---
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: agent code reading during taskfleet run
 source_ref: taskfleet:01m7m12vygxrp6v70tppg57xqv/pi-session-append-newline-guard
 originating_run: 01m7m12vygxrp6v70tppg57xqv
 originating_run_kind: spinoff
+lane: pi-session-repair
+lane_seq: 1
+preparation: ready
 ---
 
 # Pi's live session appender glues the next entry onto a torn line after a failed write

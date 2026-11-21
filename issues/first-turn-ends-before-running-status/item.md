@@ -1,14 +1,17 @@
 ---
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: low
 provenance: other
 provenance_detail: worker observation in lab stress
 source_ref: taskfleet:01m7m7v8w7g8jr9j7pqrdsnnze/observation:first-turn-ends-before-running-status
 originating_run: 01m7m7v8w7g8jr9j7pqrdsnnze
 originating_run_kind: spinoff
+lane: test-stability
+lane_seq: 5
+preparation: ready
 ---
 
 # Activity line never shown when a first turn ends before its first running status (heavy-load lab)

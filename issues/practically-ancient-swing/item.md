@@ -2,13 +2,16 @@
 created: 2026-11-17
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while verifying a run
 source_ref: taskfleet:01m7mwjysd6phg3fjg5eyqz122/observed:live-row-spacing-flake
 originating_run: 01m7mwjysd6phg3fjg5eyqz122
 originating_run_kind: spinoff
+lane: test-stability
+lane_seq: 1
+preparation: ready
 ---
 
 # Lab spec 'live row stays at its spacing' fails depending on machine conditions
