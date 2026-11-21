@@ -1344,9 +1344,9 @@ describe("recent conversation windows", () => {
     const agent = id(1);
     let finish!: (status: unknown) => void;
     const statusReader = vi.fn(
-      () =>
+      (): Promise<never> =>
         new Promise((resolve) => {
-          finish = resolve;
+          finish = resolve as (status: unknown) => void;
         }),
     );
     const pager = {
@@ -1386,9 +1386,9 @@ describe("recent conversation windows", () => {
       `ev1:11111111-1111-4111-8111-111111111111:${n}`;
     let finish!: (status: unknown) => void;
     const statusReader = vi.fn(
-      () =>
+      (): Promise<never> =>
         new Promise((resolve) => {
-          finish = resolve;
+          finish = resolve as (status: unknown) => void;
         }),
     );
     const pager = {
@@ -1425,6 +1425,43 @@ describe("recent conversation windows", () => {
     await flush();
     expect(store.statusStale(agent)).toBe(false);
     expect(store.status(agent)?.journal_cursor).toBe(cursor(4));
+  });
+  it("reads a stale status again when its re-read outlived an epoch", async () => {
+    const agent = id(1);
+    let finish!: (status: unknown) => void;
+    const statusReader = vi.fn(
+      (): Promise<never> =>
+        new Promise((resolve) => {
+          finish = resolve as (status: unknown) => void;
+        }),
+    );
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, { agent_id: agent, state: "idle" } as never);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: {},
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "settle",
+    } as never);
+    store.reconcileStale();
+    store.applyStatus(agent, { agent_id: agent, state: "idle" } as never);
+    finish({ agent_id: agent, state: "idle" });
+    await flush();
+    expect(statusReader).toHaveBeenCalledTimes(2);
+    expect(store.statusStale(agent)).toBe(true);
+    finish({ agent_id: agent, state: "accepted" });
+    await flush();
+    expect(store.statusStale(agent)).toBe(false);
+    expect(store.status(agent)?.state).toBe("accepted");
   });
   it("keeps a nested recovery read owning the loading flag after the original tail settles", async () => {
     const agent = id(1);

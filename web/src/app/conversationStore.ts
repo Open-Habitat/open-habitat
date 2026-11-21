@@ -1127,10 +1127,20 @@ export class ConversationStore {
     if (this.statusRequests.has(id)) return;
     this.markStatusLost(id, false);
     const epoch = this.epoch;
+    // A read from before an epoch change says nothing now, but the status it
+    // was to settle is still stale: read again rather than leave it so.
+    const readAgain = () => {
+      if (this.disposed || this.epoch === epoch) return false;
+      if (this.statusRequests.get(id) === request) {
+        this.statusRequests.delete(id);
+        this.notifyStatus(id);
+      }
+      return true;
+    };
     const fetchStatus = async () => {
       try {
         const value = await this.statusReader(id);
-        if (this.disposed || this.epoch !== epoch) return;
+        if (this.disposed || readAgain()) return;
         if (this.statusVersions.get(id) !== version) {
           // A notification crossed the read. Take one fresh observation.
           this.statusRequests.delete(id);
@@ -1143,7 +1153,7 @@ export class ConversationStore {
         // A failure a successful status has since replaced loses nothing.
         if (
           !this.disposed &&
-          this.epoch === epoch &&
+          !readAgain() &&
           this.metadata.staleStatuses.has(id)
         )
           this.markStatusLost(id, true);

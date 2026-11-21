@@ -92,3 +92,16 @@ the lost send was never re-sent. A store re-read is taken after the
 invalidating event, so any status already held that is newer than it is fresh.
 Now an older re-read settles the mark. The new store test fails without this
 fix.
+
+A follow-up review of the final store state (same thread) found one more
+stranding path. A store re-read that outlived an epoch change, from snapshot
+reconciliation or a stream from a new daemon life, returned without applying or
+reading again. Under the in-flight rule nothing else cleared the mark. Such a
+read now triggers a fresh read, and a store test covers it.
+
+It also raised a gap that predates this change and is not widened by it: a
+status another reader *sampled* before the invalidating event, but delivered
+after the store's re-read failed, clears the mark. Closing it would need every
+status reader to carry an invalidation generation. Writes stay under the
+daemon's authority, so a client that is wrong here sends a command the daemon
+judges against its real state. Recorded here, not filed.
