@@ -3,13 +3,21 @@ created: 2026-11-17
 updated: 2026-11-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/attention-sound
 lane: attention-sound
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+commits:
+- hash: 3950606e
+  summary: 'feat(preferences): the attention sound''s personal choices'
+- hash: '23266045'
+  summary: 'feat(web): attention sound behind the experimental switch'
+- hash: d3a38b63
+  summary: 'fix(web): attention sound review findings'
 ---
 
 # Attention sound: a chime when the agent finishes or wants the person's attention, personal and per repository and conversation
@@ -63,3 +71,9 @@ Jari 21.11.2026 on emblems round 7: Tunnus puu current; Lasit: Lasin reuna; Kupl
 ### 2026-11-21T18:43:07Z · @jari
 
 Jari 21.11.2026 on workspace strip round 5: B Paikallaan (name edited in place). No times/timestamps on the sound choice cards.
+
+## Resolution
+
+### 2026-11-21T19:35:27Z · @issuectl
+
+Implemented as the experimental feature attention-sound; result.md lists what landed, the decisions for later review and the live check.
