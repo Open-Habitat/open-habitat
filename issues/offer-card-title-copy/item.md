@@ -3,13 +3,15 @@ created: 2026-11-21
 updated: 2026-11-21
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-21/offer-card-title-copy
 lane: offer-card
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Offer card title cannot be selected or copied

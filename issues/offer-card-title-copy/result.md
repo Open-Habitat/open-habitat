@@ -1,4 +1,77 @@
-# Result: prototype round 1
+# Result: implemented (direction 1 Valinta)
+
+The title of every offer card in the conversation (views, files, folders)
+is selectable text, built directly without a flag (`OfferCard.tsx`,
+`OfferCard.css`).
+
+- **Selection without aiming.** Only the title's glyphs take the pointer;
+  the mark, chevron, icon row and the card's press are `user-select: none`.
+  A drag that begins in a title stays in it, wherever the pointer goes:
+  past the end of a line or the card's edge it runs to that line's end,
+  below the title (facts line, next card) to the title's end, back past
+  the icon to its start. Chrome resolves such points to the card's press,
+  which comes first in the card, and also rewrites the selection's anchor,
+  which is why the prototype jumped to the icon; the card now records where
+  the drag began at pointer-down and rebuilds the selection from there.
+  Double-click selects a word, triple-click the whole title (clamped to the
+  title rather than running into the next block).
+- **Copy** gives the plain title: whitespace collapsed and trimmed, so a
+  triple-click copy has no trailing line break. No kind prefix.
+- **Click.** A click on the title that selects nothing opens (or closes)
+  the card, after 300 ms; the rest of the card opens at once, as before.
+  Keyboard and screen reader route is unchanged (the card's press).
+- **Icon corner.** On a pointer screen the title keeps the floating icon
+  row's corner free with a float whose size the card measures from the row
+  (its width depends on the item's icons and public state). The reserve is
+  permanent, so the title does not reflow when the pointer arrives. On a
+  touch screen the icons are a row of their own as before, so no reserve.
+- No Viittaa action.
+
+## Decisions for later review
+
+- **A click on the title without a selection opens the card, after the
+  double-click interval (300 ms).** Alternatives: never open from the title
+  (the prototype's choice); open immediately. Why: the brief asked for a
+  click to behave sensibly, and on a one-line card the title is a large
+  part of the press target. Opening immediately would open and close the
+  panel when a person double-clicks a word. The cost is a 300 ms delay
+  only when the click lands on the title's letters; a click beside them is
+  the card's press and opens at once.
+- **Only the title's letters take the pointer, not the free space after
+  them.** Alternative: stretch the title's hit area across the card's free
+  space (suggested in the brief). Why: that turned most of the card's
+  upper band into the delayed title click; the forgiving selection is
+  done by keeping the drag inside the title instead, so the free space is
+  not needed for it.
+- **The icon corner is reserved permanently on pointer screens.**
+  Alternative: reserve it only while the icons show. Why: reflowing a
+  long title every time the pointer enters the card is worse than a first
+  line that ends a little earlier.
+- **Selection colour is the browser's own**, not the prototype's accent
+  line, matching all other text in the app.
+
+## Verification
+
+- `web/tests/lab-offer-title-select.spec.ts` (lab): drags that overshoot
+  the title to the right past the card edge, down into the next card and
+  back past the icon each select exactly the title and leave the card
+  closed; triple-click selects the title and Ctrl/⌘+C gives the plain
+  title; double-click selects and leaves the card closed; a click without
+  selection opens and a second click closes; a wrapped title's lines do
+  not intersect the hovered icon row. 3 × `--repeat-each 3` runs together
+  with `lab-offer-layout` and `lab-offer-tooltips`: 72/72 passed. With the
+  selection logic and the corner reserve disabled, the overshoot,
+  triple-click and covered-title cases fail.
+- `agent-file-offers`, `agent-views`, `view-links`: 18/18 passed.
+- `./scripts/test-web-fast.sh` passed.
+- Not done: a real phone long-press (Playwright cannot drive native touch
+  selection; touch has no new CSS beyond `user-select`), a screen reader
+  pass, screenshots. No colours changed, so light and dark differ only by
+  tokens already in use.
+
+---
+
+# Prototype round 1
 
 ## Saatesanat
 

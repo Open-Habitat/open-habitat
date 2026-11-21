@@ -29,6 +29,16 @@
   align-items: center;
   gap: 0;
 }
+/* The title is text to select and copy (offer-card-title-copy); the mark,
+   chevron and icons are not, so a drag or a long press never picks them up. */
+.ah-offer-hit,
+.ah-view-offer-mark,
+.ah-file-offer-mark,
+.ah-offer-chev,
+.ah-offer-acts {
+  -webkit-user-select: none;
+  user-select: none;
+}
 /* The card's press is a layer beneath its own buttons; only those catch the
    pointer, every other part of the card opens it. */
 .ah-offer > :not(.ah-offer-hit) {
@@ -63,11 +73,32 @@
   gap: 2px;
   justify-items: start;
 }
+/* The title spans the body's width for the icons' corner below; only its
+   text takes the pointer, so a click beside it is the card's press. */
 .ah-offer-title {
+  display: block;
+  justify-self: stretch;
   min-width: 0;
   font-weight: 600;
   color: var(--ah-ink);
   overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.ah-offer-title-text {
+  pointer-events: auto;
+  cursor: text;
+}
+/* The floating icon row's corner stays free of the title's text; OfferCard
+   measures the row. A permanent reserve, so the title does not reflow when
+   the pointer comes. */
+@media (hover: hover) {
+  .ah-offer-title::before {
+    content: "";
+    float: right;
+    width: var(--ah-offer-acts-w, 0px);
+    height: var(--ah-offer-acts-h, 0px);
+  }
 }
 .ah-offer[data-inert] .ah-offer-title {
   color: var(--ah-muted);
