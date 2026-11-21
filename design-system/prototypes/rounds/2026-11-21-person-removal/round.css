@@ -1,0 +1,88 @@
+/* Review chrome above the production server area, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.ra-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-hint { color: var(--ah-ink-2); }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+
+/* The stage: the server area as the app shell's state area holds it; the
+   picker sits at the bottom, so the page keeps clear of it. */
+.pr-stage { padding: 0 var(--ah-s6) 96px; }
+@media (max-width: 800px) { .pr-stage { padding: 0 var(--ah-s4) 96px; } }
+.pr-tools {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  margin: var(--ah-s3) auto 0; max-width: 1100px;
+  padding: 6px 10px; border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md);
+  font: var(--ah-size-meta)/1.4 var(--ah-font); color: var(--ah-ink-2);
+}
+.pr-now { color: var(--ah-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pr-fail { display: inline-flex; align-items: center; gap: 4px; }
+.s-nav-i[aria-disabled] { opacity: 0.55; cursor: default; }
+
+/* ---------- Stages on the rows ---------- */
+.pr-grace {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--ah-warn-ink, var(--ah-ink-2)); font-size: var(--ah-size-meta);
+}
+.pr-grace svg, .pr-steps svg, .pr-warn svg { width: 14px; height: 14px; flex: none; }
+.pr-stage-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.pr-steps {
+  list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px;
+  font-size: var(--ah-size-meta); color: var(--ah-muted);
+}
+.pr-steps li { display: flex; align-items: center; gap: 6px; }
+.pr-steps li[data-state="done"] { color: var(--ah-ink-2); }
+.pr-steps li[data-state="done"] svg { color: var(--ah-ok, var(--ah-accent-ink)); }
+.pr-steps li[data-state="running"] { color: var(--ah-ink); font-weight: 600; }
+.pr-steps li[data-state="failed"] { color: var(--ah-err); font-weight: 600; }
+[data-stage="removed"] .sa-login { color: var(--ah-muted); text-decoration: line-through; }
+[data-stage="removed"] .sa-facts { display: grid; gap: 0; }
+
+/* ---------- Dialogs ---------- */
+.pr-dialog { max-width: 560px; }
+.pr-dialog code { font-family: var(--ah-mono); overflow-wrap: anywhere; }
+.pr-inv-h { margin: var(--ah-s3) 0 0; font: 600 var(--ah-size-meta) var(--ah-font); color: var(--ah-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.pr-short { margin: var(--ah-s2) 0 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.pr-warn { display: flex; align-items: center; gap: 6px; color: var(--ah-err); font-weight: 600; margin: var(--ah-s2) 0; }
+.pr-armed { min-height: 1.4em; margin: 0; font-size: var(--ah-size-meta); color: var(--ah-err); }
+.pr-actions-3 { flex-wrap: wrap; }
+.pr-actions-3 [data-testid="access-only"] { margin-right: auto; }
+.pr-archive {
+  display: grid; gap: 4px; margin: var(--ah-s3) 0; padding: var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2, var(--ah-surface));
+}
+.pr-archive:not([data-on]) .pr-archive-path, .pr-archive:not([data-on]) .sa-muted { opacity: 0.5; text-decoration: line-through; }
+.pr-check { display: inline-flex; align-items: center; gap: 8px; }
+.pr-archive-path { font-size: var(--ah-size-meta); }
+
+/* The dialog's overlay leaves the review bar and the picker reachable. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s4)); overflow: auto; }
+@media (max-width: 600px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s2)); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s4); }
+}
+
+/* The picker keeps one line at 390 px, as in the other production-built rounds. */
+.proto-picker-item { white-space: nowrap; }
