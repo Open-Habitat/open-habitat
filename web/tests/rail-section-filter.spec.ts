@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { openQuietOnDevice } from "./quiet-open";
 import { expect, type Page, test } from "./worker-host";
 
 test.use({
@@ -110,6 +111,10 @@ test("@rail-section-filter Sinun vuorosi and Käynnissä narrow each on their ow
   page,
 }) => {
   test.setTimeout(180000);
+  // Hiljaiset is open on this device: a narrowing elsewhere must leave its
+  // rows alone, which a list folded by itself in the crowd cannot show (it
+  // opens by itself once a narrowing makes room).
+  await openQuietOnDevice(page.context());
   const ids = await sectionWorld(page);
   await login(page);
   const nav = page.getByTestId("workspace-navigation");
@@ -123,6 +128,7 @@ test("@rail-section-filter Sinun vuorosi and Käynnissä narrow each on their ow
     ).toBeVisible();
   }
   const quietBefore = await quiet.getByTestId(/^agent-item-/).count();
+  expect(quietBefore).toBeGreaterThan(0);
   const yoursTotal = await yours.getByTestId(/^agent-item-/).count();
 
   // Sinun vuorosi narrows to the second workspace; nothing else moves.

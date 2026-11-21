@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
+import { openQuietOnDevice } from "./quiet-open";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -55,6 +56,8 @@ test("every finished turn returns a quiet conversation to Sinun vuorosi until se
   browser,
 }) => {
   test.setTimeout(120000);
+  // The case follows the row in and out of Hiljaiset, so the list is open.
+  await openQuietOnDevice(context);
   await page.request.get("/fixture/scenario?value=ready");
   await signIn(page);
   await page
