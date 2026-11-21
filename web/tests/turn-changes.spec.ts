@@ -288,6 +288,8 @@ for (const [width, height, device] of [
     const wrap = block.getByTestId("output-wrap");
     await expect(wrap).toHaveAttribute("aria-pressed", "false");
     await wrap.click();
+    // The toggle stays on the rail so wrap can be undone.
+    await expect(wrap).toBeVisible();
     await expect(wrap).toHaveAttribute("aria-pressed", "true");
     await expect.poll(fits).toBe(true);
     const added = viewport.locator(".ah-diff-add");

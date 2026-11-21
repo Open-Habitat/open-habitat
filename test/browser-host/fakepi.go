@@ -898,6 +898,26 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if strings.Contains(prompt, "kansiolinkki") {
 		answer += "\n\n[Directory](./cmd/) and `cmd/`."
 	}
+	if strings.Contains(prompt, "koodilohkot") {
+		// Every shape the shared code block takes in a reply, each with a line
+		// wider than any conversation column (code-block-wrap spec).
+		words := strings.TrimSpace(strings.Repeat("synteettinen sana ", 30))
+		var many []string
+		for n := 1; n <= 14; n++ {
+			many = append(many, fmt.Sprintf("const rivi%d = %q;", n, words))
+		}
+		// A line only somewhat wider than a desktop column: a toggle that
+		// re-measured it in the wrong font vanished on the click.
+		medium := strings.TrimSpace(strings.Repeat("rivi joka on vähän palstaa leveämpi ", 3))
+		answer += "\n\n```\n" + words + "\n```" +
+			"\n\n```\n" + medium + "\n```" +
+			"\n\n```python\nprint(\"" + words + "\")\n```" +
+			"\n\n```\n" + strings.Repeat("katkeamatonmerkkijono", 30) + "\n```" +
+			"\n\n```js\n" + strings.Join(many, "\n") + "\n```" +
+			"\n\n1. Listan kohta:\n\n   ```sh\n   echo " + words + "\n   ```" +
+			"\n\n> Lainaus:\n>\n> ```\n> " + words + "\n> ```" +
+			"\n\n```\nlyhyt\n```"
+	}
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
 	}

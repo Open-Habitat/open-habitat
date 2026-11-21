@@ -88,31 +88,29 @@ export function OutputBox({
       follow.current = bottom;
     }
   };
+  // Wrapped, nothing overflows, so the lines are measured unwrapped: the class
+  // comes off for one synchronous layout read and goes back before paint. The
+  // toggle stays while a line would overflow, so wrap can always be undone.
+  // (A canvas re-measure failed in Chromium: the viewport's
+  // font-variant-ligatures: none leaves the computed `font` shorthand empty,
+  // the canvas fell back to 10px sans-serif, and the toggle vanished on the
+  // click that turned wrap on.)
   const checkOverflow = () => {
-    const mounted = [
-      head.current,
-      tail.current,
-      viewport.current,
-      all.current,
-    ].filter((pre): pre is HTMLPreElement => !!pre);
     setOverflows(
-      mounted.some((pre) => {
-        if (!wrap || typeof CanvasRenderingContext2D === "undefined")
-          return pre.scrollWidth > pre.clientWidth + 1;
-        // Wrapped scrollWidth conceals the unwrapped line. Measure in the
-        // viewport's own font so the control remains available to undo wrap.
-        const context = document.createElement("canvas").getContext("2d");
-        if (!context) return false;
-        const style = getComputedStyle(pre);
-        context.font = style.font;
-        const available =
-          pre.clientWidth -
-          parseFloat(style.paddingLeft) -
-          parseFloat(style.paddingRight);
-        return lines.some(
-          (line) => context.measureText(line).width > available + 1,
-        );
-      }),
+      [head.current, tail.current, viewport.current, all.current].some(
+        (pre) => {
+          if (!pre) return false;
+          if (!pre.classList.contains("ah-output-wrap"))
+            return pre.scrollWidth > pre.clientWidth + 1;
+          // Unwrapped lines are fewer, which could clamp the scroll position.
+          const top = pre.scrollTop;
+          pre.classList.remove("ah-output-wrap");
+          const over = pre.scrollWidth > pre.clientWidth + 1;
+          pre.classList.add("ah-output-wrap");
+          pre.scrollTop = top;
+          return over;
+        },
+      ),
     );
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reconcile after content changes, not after scroll state updates.

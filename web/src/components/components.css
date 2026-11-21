@@ -1057,10 +1057,6 @@ select:focus-visible,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.ah-message .ah-prose .ah-markdown-code pre {
-  white-space: pre;
-  overflow-wrap: normal;
-}
 .ah-prose a,
 .ah-markdown a {
   text-decoration: underline;
@@ -2100,7 +2096,6 @@ details[open] > summary:not([class])::before {
   margin: 0;
   border: 0;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-tool-row .ah-tool-output pre {
   margin: 0;
   padding: var(--ah-s2) var(--ah-s3);
@@ -3285,9 +3280,11 @@ details[open] > summary:not([class])::before {
   overflow: auto;
   gap: 12px;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Dialog code layout overrides the prose code styles. */
-.ah-bash-dialog-code pre {
+/* The dialog keeps lines unbroken beside its line numbers, in prose too. */
+.ah-bash-dialog .ah-bash-dialog-code pre {
   margin: 0;
+  white-space: pre;
+  overflow-wrap: normal;
 }
 .ah-bash-dialog-numbers {
   color: var(--ah-muted);
@@ -4005,13 +4002,19 @@ details[open] > summary:not([class])::before {
 .ah-bash-window .ah-output-viewport {
   margin: 0;
   min-width: 0;
-  white-space: pre;
-  overflow-wrap: normal;
   overflow-x: auto;
   font-variant-ligatures: none;
 }
-.ah-bash-window .ah-output-wrap {
+/* The wrap control alone decides how a code block's lines break. The selectors
+   outrank every surrounding `pre` rule (reply prose, Markdown previews, step
+   and tool rows), which otherwise silently undid wrap or forced it on. */
+.ah-bash-window pre.ah-output-viewport:not(.ah-output-wrap) {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.ah-bash-window pre.ah-output-viewport.ah-output-wrap {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   overflow-x: hidden;
 }
 .ah-bash-window .ah-output-scroll {
@@ -4131,11 +4134,6 @@ details[open] > summary:not([class])::before {
   border-bottom: 0;
   min-width: 0;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Explicitly override reply prose defaults for output. */
-.ah-markdown-code .ah-bash-window pre {
-  white-space: pre;
-  overflow-wrap: normal;
-}
 .ah-file-stat {
   flex: none;
   font: 400 12px var(--ah-mono);
@@ -4239,11 +4237,6 @@ details[open] > summary:not([class])::before {
 
 .ah-output-wrap > .ah-syntax {
   min-width: 0;
-  overflow-wrap: anywhere;
-}
-/* Reply prose must not undo the explicit wrap control inside fenced code. */
-.ah-message .ah-prose .ah-markdown-code .ah-bash-window pre.ah-output-wrap {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 

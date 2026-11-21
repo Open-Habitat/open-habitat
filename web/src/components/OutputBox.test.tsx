@@ -75,3 +75,25 @@ it("copies the entire text even in edges view", () => {
   fireEvent.click(screen.getByTestId("output-copy"));
   expect(writeText).toHaveBeenCalledWith(text);
 });
+
+it("keeps the wrap toggle while wrapped lines no longer overflow", () => {
+  const { container, rerender } = render(<OutputBox text="short" />);
+  const pre = container.querySelector(".ah-output-all") as HTMLPreElement;
+  // Wrapped, the viewport fits its lines, as it does in a browser.
+  Object.defineProperties(pre, {
+    scrollWidth: {
+      get: () => (pre.classList.contains("ah-output-wrap") ? 100 : 300),
+    },
+    clientWidth: { value: 100 },
+  });
+  rerender(<OutputBox text="short line" />);
+  fireEvent.click(screen.getByTestId("output-wrap"));
+  rerender(<OutputBox text="short line." />);
+  const toggle = screen.getByTestId("output-wrap");
+  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(toggle);
+  expect(pre.classList.contains("ah-output-wrap")).toBe(false);
+  expect(screen.getByTestId("output-wrap").getAttribute("aria-pressed")).toBe(
+    "false",
+  );
+});
