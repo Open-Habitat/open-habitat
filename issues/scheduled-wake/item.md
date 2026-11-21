@@ -3,13 +3,15 @@ created: 2026-11-17
 updated: 2026-11-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/scheduled-wake
 lane: scheduled-wake
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+closed_by: agent
 ---
 
 # Scheduled wake: the agent waits in Hiljaiset and is woken into Sinun vuorosi at a set time
@@ -31,3 +33,9 @@ Jari 21.11.2026 on limits: a limit is fine as a guard against a runaway agent, b
 ### 2026-11-21T07:42:12Z · @jari
 
 Jari 21.11.2026 on round 2: direction 2 Ikkuna; focus on the archive button (Enter archives; align production's helper window); the notice's Palauta also restores the wake. Nothing is sent to an archived agent; when the conversation is restored from the archive later, the cancellation of the wake is told to the agent with the first message after the restore. Next action: implement scheduled wake (round 1 direction 1 + round 2 direction 2, cap 100 per person).
+
+## Resolution
+
+### 2026-11-21T08:46:54Z · @agent
+
+Implemented behind the experimental feature scheduled-wake (Settings card off by default); result.md lists what landed, checks and decisions for later review.
