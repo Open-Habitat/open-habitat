@@ -94,8 +94,14 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   await notice.getByRole("button").and(page.getByTestId("notice-link")).click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(trashRow(page, "muistiinpanot")).toBeVisible();
+  // The storage breakdown (graduated) shows the use, with the Trash's share
+  // as its own row that leads down to the Trash.
+  const breakdown = page.getByTestId("storage-breakdown");
   await expect(
-    page.getByRole("img").and(page.getByTestId("storage-usage")),
+    breakdown.getByRole("img").and(page.getByTestId("usage-bar")),
+  ).toBeVisible();
+  await expect(
+    breakdown.getByRole("button").and(page.getByTestId("trash-below")),
   ).toBeVisible();
   await trashRow(page, "muistiinpanot")
     .getByRole("button")
