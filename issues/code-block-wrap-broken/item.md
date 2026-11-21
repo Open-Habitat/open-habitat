@@ -3,13 +3,18 @@ created: 2026-11-21
 updated: 2026-11-21
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-11-21/code-block-wrap-broken
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
+closed_by: claude
+commits:
+- hash: c650fd14
+  summary: code block wrap fix
 ---
 
 # Code block line-wrap toggle misbehaves: the button disappears on click, and wrap does not apply as expected (replies and nested blocks in Markdown preview)
