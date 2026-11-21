@@ -2,7 +2,7 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
@@ -13,6 +13,7 @@ preparation: ready
 related: ['@multiplayer-conversations']
 lane: multiplayer
 lane_seq: 3
+closed: 2026-11-21
 ---
 
 # Multiplayer: guest socket and gateway participation routing
@@ -28,3 +29,9 @@ Implements sections 2 and 7 of ADR 0038 (`docs/decisions/adr-0038-multiplayer-co
 - Withdrawing a person deletes their index entries as owner and as participant.
 
 Acceptance: a person with no membership, an invited but not joined person, a removed person and a withdrawn-then-readmitted person all get the same refusal; no guest route reaches a workspace, file, terminal, editor, view, setting or another conversation.
+
+## Resolution
+
+### 2026-11-21T14:08:17Z · @issuectl
+
+Guest socket, its default-deny table, the participation index and share routing landed behind multiplayer; result.md lists the decisions and the unit change our test installation needs.
