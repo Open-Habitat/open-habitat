@@ -23,6 +23,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/open-habitat/open-habitat/internal/integrationapps"
+	"github.com/open-habitat/open-habitat/internal/msmcp"
 )
 
 // MicrosoftApp is a public, single-tenant Entra client. TenantID is the
@@ -216,8 +217,23 @@ type microsoft struct {
 	native sync.Mutex
 	client *http.Client
 
+	// mux is the person's one Microsoft process (ADR 0039), set when the
+	// catalog starts serving it.
+	muxMu sync.Mutex
+	mux   *msmcp.Server
+
 	alignMu sync.Mutex
 	refused map[string]microsoftRefusal // by address; see Align
+}
+
+// release makes the shared Microsoft process let go of a removed account.
+func (m *microsoft) release(address string) {
+	m.muxMu.Lock()
+	mux := m.mux
+	m.muxMu.Unlock()
+	if mux != nil {
+		mux.Release(address)
+	}
 }
 
 func (*microsoft) Provider() Provider { return Microsoft }
@@ -903,22 +919,9 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			// partial account remains visible for explicit repair/removal.
 			keepPartial := false
 			if !hadServer {
-				server, _, err := microsoftServerOf(l.env, address)
-				if err != nil {
-					keepPartial = true
-				} else if server.registered {
-					pi, ok := l.env.Tool("pi")
-					if !ok {
-						keepPartial = true
-					} else {
-						cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-						piMCPNative.Lock()
-						_, err := l.env.run(cleanup, Command{Path: pi, Args: []string{"mcp", "remove", server.name}}, nil)
-						piMCPNative.Unlock()
-						cancel()
-						keepPartial = err != nil
-					}
-				}
+				cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				keepPartial = microsoftUnregister(cleanup, l.env, address) != nil
+				cancel()
 			}
 			if published && (previous || !keepPartial) {
 				if err := unix.Renameat(parent, address, pending, stageName); err == nil {
@@ -991,30 +994,13 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	if !ValidAddress(address) {
 		return ToolFailed
 	}
-	server, _, err := microsoftServerOf(env, address)
-	if err != nil {
-		return err
+	// The entries go first, so the daemon's endpoint refuses the account
+	// from now on; then the shared Microsoft process lets go of it before
+	// its native cache is deleted.
+	if err := microsoftUnregister(ctx, env, address); err != nil {
+		return ToolFailed
 	}
-	var names []string
-	if server.registered {
-		names = append(names, server.name)
-	}
-	if server.legacy != "" {
-		names = append(names, server.legacy)
-	}
-	for _, name := range names {
-		pi, ok := env.Tool("pi")
-		if !ok {
-			return ToolFailed
-		}
-		// Serialized with Atlassian's and Trello's whole-file rewrites.
-		piMCPNative.Lock()
-		_, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", name}}, nil)
-		piMCPNative.Unlock()
-		if err != nil {
-			return ToolFailed
-		}
-	}
+	m.release(address)
 	for _, store := range []string{microsoftMCPDir, microsoftMCPDir + "/.pending", microsoftMCPDir + "/.previous"} {
 		if err := microsoftRemoveFiles(env, store+"/"+address); err != nil {
 			return err
@@ -1252,21 +1238,27 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			search = "\n\n" + microsoftSearchSkill(address, syncs)
 		}
 	}
-	name, _ := microsoftServerNames(address)
-	if server, _, err := microsoftServerOf(env, address); err == nil && server.current() != "" {
-		name = server.current()
+	index := 1
+	if server, _, err := microsoftServerOf(env, address); err == nil && server.index > 0 {
+		index = server.index
 	}
-	body := fmt.Sprintf(microsoftOutlookSkill, uses, name) + files + search + list +
+	body := microsoftAreasSkill(uses, index) + files + search + list +
 		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
 	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
 }
 
-// microsoftOutlookSkill names the account's server and the one trap its tool
-// names hide: the reply and forward tools are Graph's send actions, and only
-// the draft tools leave the sending to the person.
-const microsoftOutlookSkill = "%s are reached through the Pi MCP server `%s`, which is signed in as this account only; its tool descriptions carry the syntax. " +
-	"For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. " +
-	"Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app."
+// microsoftAreasSkill names the account's five areas and says to pick one
+// before searching (research recommendation 2): a search across all areas
+// still ranks mail-folder deletion high for a file-folder query, a search
+// inside the files area never shows it. It also names the one trap the
+// mail tools' names hide: the reply and forward tools send at once.
+func microsoftAreasSkill(uses string, index int) string {
+	name := func(area string) string { return "`" + microsoftAreaEntryName(index, area) + "`" }
+	return fmt.Sprintf("%s are reached through five Pi MCP areas, each signed in as this account only: %s for mail, %s for the calendar, %s for contacts, %s for OneDrive and SharePoint files, and %s for arranging the mailbox (mail folders, calendars and contact folders, calendar sharing, Focused Inbox) when the person asks for that. ", uses, name("mail"), name("calendar"), name("contacts"), name("files"), name("admin")) +
+		fmt.Sprintf("Pick the area first: `describeNamespace(%q)` lists its tools and `searchTools(query, {namespace: %q})` searches only that area; a mail folder is not a file folder. Their tool descriptions carry the syntax. ", microsoftAreaEntryName(index, "files"), microsoftAreaEntryName(index, "files")) +
+		"For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. Deleting, sending and sharing a calendar first ask the person in the browser; when they do not allow it, the call is not made and you are told so. " +
+		"Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app."
+}
 
 // microsoftSearchSkill tells an agent to find files by search and fetch only
 // what it needs (Jari 12.11.2026): a full local copy of every library does not

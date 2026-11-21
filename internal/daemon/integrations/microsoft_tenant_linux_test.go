@@ -3,6 +3,8 @@
 package integrations
 
 import (
+	"github.com/open-habitat/open-habitat/internal/msmcp"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -126,9 +128,8 @@ func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 2 {
 		t.Fatal("rewrite broke the remotes", remotes, err)
 	}
-	pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-	if !strings.Contains(string(pi), "add\n"+microsoftPlainServer(address)+"\n") || !strings.Contains(string(pi), "MS365_MCP_TENANT_ID="+testTenant) {
-		t.Fatal("Pi registration not replaced with the tenant", string(pi))
+	if raw, registered := registeredEntry(t, env, address); registered["MS365_MCP_TENANT_ID"] != testTenant {
+		t.Fatal("Pi registration not replaced with the tenant", raw)
 	}
 	if calls.Load() != 1 {
 		t.Fatal("refreshes", calls.Load())
@@ -168,8 +169,8 @@ func TestMicrosoftTenantRefusalSaysWhyAndKeepsTheConfigs(t *testing.T) {
 			if after, _ := os.ReadFile(conf); string(after) != string(before) {
 				t.Fatal("a refused grant changed the remotes")
 			}
-			if pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands")); len(pi) != 0 {
-				t.Fatal("a refused grant changed the Pi registration", string(pi))
+			if _, servers, _ := microsoftPiServers(env); servers[microsoftPlainServer(address)] == nil || len(servers) != 1 {
+				t.Fatal("a refused grant changed the Pi registration", servers)
 			}
 			// The refusal stands for this application without asking again.
 			c.check(context.Background(), m, address)
@@ -279,9 +280,9 @@ func TestMicrosoftMailOnlyAccountFollowsTheTenantByItsOutlookGrant(t *testing.T)
 					t.Fatal("wrong reason", account.Services)
 				}
 			}
-			pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-			if registered := strings.Contains(string(pi), "add\n"+microsoftPlainServer(address)+"\n"); registered != tc.follows {
-				t.Fatal("registration followed", registered, string(pi))
+			s, _, _ := microsoftServerOf(env, address)
+			if registered := len(s.areas) == len(msmcp.Areas); registered != tc.follows {
+				t.Fatal("registration followed", registered, s)
 			}
 			// Only an outage leaves it to be asked again.
 			if m.Misaligned(env, address) != (tc.want == "" && !tc.follows) || calls.Load() != 0 {

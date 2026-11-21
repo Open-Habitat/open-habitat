@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/open-habitat/open-habitat/internal/msmcp"
 )
 
 // An account's native configs name the application and tenant they were
@@ -64,8 +66,13 @@ type microsoftNative struct {
 	token            string   // the remotes' most recently refreshed token
 	mcpClient        string   // the Pi registration's, empty when unknown
 	mcpTenant        string
-	mcpAllowed       string // the registration's --allowed-scopes, from its grant
-	mcpArgs          []string
+	mcpAllowed       string   // the registration's --allowed-scopes, from its grant
+	mcpArgs          []string // a single entry's server arguments
+	// mcpReshape: the registration is current in what it allows but not
+	// in form (a single entry of an earlier release, or area entries this
+	// release would write differently), so it is rewritten as area
+	// entries with its own native environment, without a new sign-in.
+	mcpReshape bool
 }
 
 func (n microsoftNative) remotesStale(app MicrosoftApp) bool {
@@ -81,10 +88,11 @@ func (n microsoftNative) mcpStale(app MicrosoftApp) bool {
 	return n.mcpTenant != "" && !strings.EqualFold(n.mcpTenant, app.TenantID)
 }
 
-// mcpOutdated is a registration an earlier release wrote, without the
-// current tool list (the Outlook presets before agents searched files).
+// mcpOutdated is a single entry an earlier release wrote without the
+// current tool list (the Outlook presets before agents searched files):
+// what it allows has to be asked of the tenant again.
 func (n microsoftNative) mcpOutdated() bool {
-	return n.mcpClient != "" && !slices.Equal(n.mcpArgs, microsoftMCPArgs(n.mcpAllowed))
+	return n.mcpClient != "" && n.mcpArgs != nil && !slices.Equal(n.mcpArgs, microsoftMCPArgs(n.mcpAllowed))
 }
 
 func (n microsoftNative) otherApp(app MicrosoftApp) bool {
@@ -143,14 +151,37 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 		Env  map[string]string `json:"env"`
 		Args []string          `json:"args"`
 	}
-	if raw := servers[registration.current()]; raw != nil && json.Unmarshal(raw, &server) != nil {
+	// The area entries are read first; a single entry left beside them
+	// by an interrupted migration goes at the next registration.
+	name, single := registration.areas["files"], false
+	for _, area := range msmcp.AreaNames() {
+		if name == "" {
+			name = registration.areas[area]
+		}
+	}
+	if name == "" && len(registration.old) > 0 {
+		name, single = registration.old[0], true
+	}
+	if raw := servers[name]; raw != nil && json.Unmarshal(raw, &server) != nil {
 		return n, ToolFailed
 	}
-	n.mcpClient, n.mcpTenant, n.mcpArgs = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"], server.Args
-	for i, a := range server.Args {
-		if a == "--allowed-scopes" && i+1 < len(server.Args) {
-			n.mcpAllowed = server.Args[i+1]
+	n.mcpClient, n.mcpTenant = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"]
+	if single {
+		n.mcpArgs = server.Args
+		if n.mcpArgs == nil {
+			n.mcpArgs = []string{}
 		}
+		for i, a := range server.Args {
+			if a == "--allowed-scopes" && i+1 < len(server.Args) {
+				n.mcpAllowed = server.Args[i+1]
+			}
+		}
+	} else {
+		n.mcpAllowed = server.Env[microsoftAllowedEnv]
+	}
+	if n.mcpClient != "" && !n.mcpOutdated() {
+		app := MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}
+		n.mcpReshape = !microsoftAreasCurrent(env, servers, registration, app, address, n.mcpAllowed)
 	}
 	return n, nil
 }
@@ -186,15 +217,18 @@ func (m *microsoft) refuse(address string, app MicrosoftApp, reason string) {
 }
 
 func (m *microsoft) Misaligned(env Env, address string) bool {
-	if microsoftRenameNeeded(env, address) {
+	n, err := microsoftReadNative(env, address)
+	if err != nil {
+		return false
+	}
+	if n.mcpReshape && env.Relay != "" {
 		return true
 	}
-	app, _, ok := microsoftAppOf(env, address)
+	app, _, ok := microsoftAccountApp(env, n)
 	if !ok {
 		return false
 	}
-	n, err := microsoftReadNative(env, address)
-	if err != nil || !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app) || n.mcpOutdated()) {
+	if !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app) || n.mcpOutdated()) {
 		return false
 	}
 	return m.refusal(address, app) == ""
@@ -207,22 +241,26 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		return ToolFailed
 	}
 	defer m.native.Unlock()
-	// A registration under the hex-encoded name of earlier releases moves
-	// to the readable one first; it needs no sign-in and changes nothing
-	// else. It is a step of its own: the catalog rewrites the skill after a
-	// successful Align, so a later failure here must not leave the skill
-	// naming a server that no longer exists. Anything else misaligned
-	// follows at the next check.
-	if microsoftRenameNeeded(env, address) {
-		return microsoftRenameServer(ctx, env, address)
-	}
-	app, _, ok := microsoftAppOf(env, address)
-	if !ok {
-		return nil
-	}
+	// A registration of an earlier form (one entry, under whichever name)
+	// becomes the five area entries first, keeping its own native
+	// environment: no sign-in, nothing else changes. It is a step of its
+	// own: the catalog rewrites the skill after a successful Align, so a
+	// later failure here must not leave the skill naming entries that do
+	// not exist. Anything else misaligned follows at the next check.
 	n, err := microsoftReadNative(env, address)
 	if err != nil {
 		return err
+	}
+	if n.mcpReshape && env.Relay != "" {
+		allowed := n.mcpAllowed
+		if allowed == "" {
+			allowed = microsoftMCPScopes
+		}
+		return microsoftRegister(ctx, env, MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}, address, allowed)
+	}
+	app, _, ok := microsoftAccountApp(env, n)
+	if !ok {
+		return nil
 	}
 	if n.otherApp(app) {
 		m.refuse(address, app, AppChanged)
@@ -375,46 +413,6 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 		return "", err
 	}
 	return "", nil
-}
-
-// microsoftRegister registers, or replaces, the account's Outlook server in
-// Pi's MCP configuration with the current application's environment.
-func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string) error {
-	pi, ok := env.Tool("pi")
-	if !ok {
-		return ToolFailed
-	}
-	mcp, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, allowed)
-	if !ok {
-		return ToolFailed
-	}
-	// Pi's mcp.json is one file: Atlassian and Trello rewrite it whole from
-	// what they read, so no Pi change may run beside theirs, and the name is
-	// chosen from the file as it is now.
-	piMCPNative.Lock()
-	defer piMCPNative.Unlock()
-	server, _, err := microsoftServerOf(env, address)
-	if err != nil {
-		return err
-	}
-	if server.name == "" {
-		return ToolFailed
-	}
-	args := []string{"mcp", "add", server.name}
-	for _, e := range mcp.Env {
-		args = append(args, "--env", e)
-	}
-	args = append(args, "--", mcp.Path)
-	args = append(args, mcp.Args...)
-	if _, err := env.run(ctx, Command{Path: pi, Args: args}, nil); err != nil {
-		return ToolFailed
-	}
-	// The registration now lives under the readable name. A legacy entry
-	// left by a failed removal is dropped by the next Align.
-	if server.legacy != "" {
-		_, _ = env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", server.legacy}}, nil)
-	}
-	return nil
 }
 
 // alignedView shows a refused account as needing a new sign-in, with the

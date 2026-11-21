@@ -10,6 +10,8 @@
 package integrations
 
 import (
+	"github.com/open-habitat/open-habitat/internal/msmcp"
+
 	"context"
 	"encoding/json"
 	"errors"
@@ -130,6 +132,10 @@ type Account struct {
 type Env struct {
 	Home   string
 	Config Config
+	// Relay is the absolute path Pi runs the product binary by for a
+	// Microsoft area entry (`open-habitat mcp-relay`): the installation's
+	// launch selector, so an upgrade does not strand the entries.
+	Relay string
 	// LoadConfig observes the installation on demand. Nil uses Config for fixtures.
 	LoadConfig func() (Config, error)
 	// FixtureTools admits tools that root does not own. Only same-UID tests
@@ -678,6 +684,21 @@ func (c *Catalog) Start(ctx context.Context) {
 	c.write.Unlock()
 	ctx, cancel := context.WithCancel(ctx)
 	c.cancelStart = cancel
+	// The person's one Microsoft process and its private endpoint (ADR
+	// 0039) live as long as the catalog: every conversation's area relays
+	// reach it, and Stop waits until the process is reaped.
+	if m, ok := c.entry(Microsoft).(*microsoft); ok && c.env.Relay != "" {
+		env := c.env
+		srv := msmcp.NewServer(func(account string) (msmcp.Binding, error) { return microsoftBinding(env, account) }, msmcp.Options{Log: c.log})
+		m.muxMu.Lock()
+		m.mux = srv
+		m.muxMu.Unlock()
+		c.background.Add(1)
+		go func() {
+			defer c.background.Done()
+			_ = srv.Serve(ctx, env.Home)
+		}()
+	}
 	c.background.Add(2)
 	go func() {
 		defer c.background.Done()

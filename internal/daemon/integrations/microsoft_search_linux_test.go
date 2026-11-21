@@ -3,6 +3,8 @@
 package integrations
 
 import (
+	"github.com/open-habitat/open-habitat/internal/msmcp"
+
 	"bufio"
 	"context"
 	"encoding/json"
@@ -168,27 +170,37 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 			if !m.Misaligned(env, address) {
 				t.Fatal("earlier registration not seen")
 			}
+			before, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json"))
 			if err := m.Align(context.Background(), env, address, func() { t.Error("sync stopped") }); !errors.Is(err, tc.err) {
 				t.Fatal(err)
 			}
-			commands, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
 			if tc.err != nil {
-				if len(commands) != 0 || !m.Misaligned(env, address) {
-					t.Fatalf("registered during an outage:\n%s", commands)
+				if after, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json")); string(after) != string(before) || !m.Misaligned(env, address) {
+					t.Fatalf("registered during an outage:\n%s", after)
 				}
 				return
 			}
-			if !strings.Contains(string(commands), "--org-mode\n--enabled-tools\n"+microsoftMCPTools+"\n--allowed-scopes\n"+tc.allowed+"\n") {
-				t.Fatalf("registration:\n%s", commands)
+			if _, registered := registeredEntry(t, env, address); registered[microsoftAllowedEnv] != tc.allowed {
+				t.Fatalf("registration: %v", registered)
+			}
+			if b, err := microsoftBinding(env, address); err != nil || !slices.Equal(b.Args, microsoftMCPArgs(tc.allowed)) {
+				t.Fatalf("binding: %+v %v", b, err)
 			}
 			if m.Misaligned(env, address) {
 				t.Fatal("still misaligned")
 			}
 		})
 	}
-	// A current registration is left alone.
+	// A current single entry only changes form (TestMicrosoftSingleEntryMigrates);
+	// current area entries are left alone.
 	env := microsoftEnv(t)
 	writeMicrosoftRegistration(t, env, address, microsoftMCPArgs(outlook+" Files.Read.All"))
+	if n, err := microsoftReadNative(env, address); err != nil || n.mcpOutdated() || !n.mcpReshape {
+		t.Fatalf("current single entry: %+v %v", n, err)
+	}
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, outlook+" Files.Read.All"); err != nil {
+		t.Fatal(err)
+	}
 	if (&microsoft{}).Misaligned(env, address) {
 		t.Fatal("current registration misaligned")
 	}
@@ -278,6 +290,17 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 		for _, name := range microsoftWriteFileTools {
 			if slices.Contains(offered, name) {
 				t.Errorf("%s: write tool %s offered", level, name)
+			}
+		}
+		// Every tool the account's level offers sits in an area (ADR 0039);
+		// only the sign-in tools are in none.
+		for _, name := range offered {
+			placed := slices.Contains(msmcp.SignIn, name)
+			for _, area := range msmcp.Areas {
+				placed = placed || slices.Contains(area.Tools, name)
+			}
+			if !placed {
+				t.Errorf("%s: %s is in no Microsoft area", level, name)
 			}
 		}
 

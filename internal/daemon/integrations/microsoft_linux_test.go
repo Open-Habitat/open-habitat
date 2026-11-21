@@ -84,7 +84,46 @@ esac
 `), 0700); err != nil {
 		t.Fatal(err)
 	}
-	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "microsoft-native": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}}}
+	piMCPWriteHook = piMCPMarkers
+	return Env{Home: newHome(t), FixtureTools: true, Relay: "/opt/open-habitat/current/open-habitat", Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "microsoft-native": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}}}
+}
+
+// piMCPMarkers fail mcp.json writes the way the fake pi's markers did: a
+// registration written but reported failed (pi-add-fail, optionally leaving
+// a barrier that blocks the cache's rollback), a removal refused before it
+// writes (pi-remove-fail).
+func piMCPMarkers(env Env, kind string, written bool) error {
+	marker := func(name string) bool { _, err := os.Stat(filepath.Join(env.Home, name)); return err == nil }
+	switch {
+	case kind == "register" && written && marker("pi-add-fail"):
+		if marker("block-rollback") {
+			barrier := filepath.Join(env.Home, microsoftMCPDir, ".pending", "person@example.test")
+			os.MkdirAll(barrier, 0700)
+			os.WriteFile(filepath.Join(barrier, "barrier"), []byte("barrier"), 0600)
+		}
+		return ToolFailed
+	case kind == "unregister" && !written && marker("pi-remove-fail"):
+		return ToolFailed
+	}
+	return nil
+}
+
+// registeredEntry is one area entry of the account as written.
+func registeredEntry(t *testing.T, env Env, address string) (string, map[string]string) {
+	t.Helper()
+	_, servers, err := microsoftPiServers(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := microsoftServerIn(env, servers, address)
+	name := s.areas["files"]
+	var e struct {
+		Env map[string]string `json:"env"`
+	}
+	if name == "" || json.Unmarshal(servers[name], &e) != nil {
+		t.Fatalf("no area entries for %s: %v", address, servers)
+	}
+	return string(servers[name]), e.Env
 }
 
 // testTenant is the organisation's Directory (tenant) ID, the only audience.
@@ -241,9 +280,9 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 	if services[0].ID != "sharepoint" || services[0].State != StateOK || services[1].State != StateOK {
 		t.Fatal(services)
 	}
-	data, err := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-	if err != nil || !strings.Contains(string(data), "MS365_MCP_EXPECTED_USERNAME="+address) || strings.Contains(string(data), "secret") {
-		t.Fatal("native MCP setup", err)
+	raw, registered := registeredEntry(t, env, address)
+	if registered["MS365_MCP_EXPECTED_USERNAME"] != address || strings.Contains(raw, "secret") {
+		t.Fatal("native MCP setup", raw)
 	}
 	skill := m.Skill(env, address)
 	if !skill.Synced || skill.Mirrored || !strings.Contains(skill.Body, "`create-draft-email`") {

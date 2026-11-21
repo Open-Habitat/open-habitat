@@ -75,6 +75,18 @@ The packages divide the work as follows.
   tool's own files under catalog-owned names, logins are relayed through the
   browser, sync clients are supervised as the daemon's children, and the one
   personal-data skill is generated from what the tools hold.
+- `msmcp/`: the person's one Microsoft MCP process (ADR 0039). The daemon
+  owns a single native stdio child and serves it on a socket in the person's
+  home (directory 0700, socket 0600, every peer's kernel UID equal to the
+  daemon's, one serving daemon per person by lock); each Pi area entry runs
+  `open-habitat mcp-relay`, which only copies bytes. The daemon resolves an
+  account's binding from its own entries, never from what a relay sends, and
+  filters every listing and call by area. Several accounts take turns in the
+  one slot: drain, stop and reap before the next starts, never a second
+  child. A call whose child died is failed as of unknown outcome, never sent
+  again. It must never gain a TCP or gateway-reachable listener, another
+  UID's access, a credential or token copy, or a persistent cache; any of
+  those is a new security decision for Jari.
 - `entryfence/`: the read-only deny-marker observation shared by HTTP and
   native mutation entry. It holds no identity or write authority; each caller
   retains its own peer and parent trust checks. Stage-first observation is part

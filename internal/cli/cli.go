@@ -95,6 +95,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return giteaCommand(rest[1:], os.Stdin, stdout, stderr)
 		case "gitlab":
 			return gitlabCommand(rest[1:], os.Stdin, stdout, stderr)
+		case "mcp-relay":
+			return mcpRelayCommand(rest[1:], os.Stdin, stdout, stderr)
 		case "version":
 			out, err = versionOutput(rest[1:])
 		case "config":

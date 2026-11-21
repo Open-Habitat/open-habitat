@@ -789,6 +789,23 @@ commands through the real control handler and the gateway adapter's
 classification, including stdin secrets, dry runs that send nothing, every
 refusal, both uncertain paths and strict flags.
 
+## Microsoft area relay — MCP stdio exception
+
+`mcp-relay microsoft --account ADDRESS --area AREA` is the command of one
+Microsoft area entry in Pi's `mcp.json` (ADR 0039). Pi runs it as an MCP
+stdio server, so MCP's stdio transport, not the canon's resource surface, is
+its contract, and only for this leaf:
+
+| § | Status | Evidence and limits |
+|---|---|---|
+| 1 | pass | Exactly `microsoft --account ADDRESS --area mail|calendar|contacts|files|admin`; anything else exits 1 before connecting (`mcpRelayCommand`). |
+| 2, 4 | exception | Exit 0 when Pi closes the entry; 1 for malformed arguments; 2 when the person's daemon cannot be reached, with one fixed stderr line, never a path or native error. |
+| 3 | pass | Never prompts or reads a terminal. When nothing listens it starts the person's daemon once through the socket-activated own-user agent socket, then waits at most 20 seconds. |
+| 5, 9 | exception | Stdout is MCP (newline-delimited JSON-RPC from the daemon), not a JSON result envelope; global `--json` does not change it. |
+| 6, 7, 11 | exception | No verbs or state of its own: it copies bytes to the person's endpoint, whose daemon resolves the account from its own records, serves only that area's tools and owns the one Microsoft process (`TestRelay`, `TestSpoofedClaims`). |
+| 8 | pass | No configuration: the endpoint is fixed under `$HOME`, the same home Pi runs in. |
+| 14 | pass | `mcp-relay microsoft --help` drills down with `--account` and `--area`. |
+
 ## Gitea credential helper — Git protocol exception
 
 `gitea git-credential [--login NAME] get|store|erase` is Git's credential-helper

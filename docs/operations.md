@@ -1289,6 +1289,18 @@ https://login.microsoftonline.com/<TENANT_ID>/v2.0/adminconsent?client_id=<APP_C
 A Conditional Access policy blocking device code is a different failure; an
 administrator must decide whether that flow is allowed. Do not bypass policy.
 
+Each person's daemon runs at most one Microsoft MCP server process, whatever
+the number of conversations and accounts. Pi reaches it through five area
+entries per account in `~/.pi/agent/mcp.json` (`ms-mail`, `ms-calendar`,
+`ms-contacts`, `ms-files`, `ms-admin`; `ms2-…` for a second account), each
+running `open-habitat mcp-relay` from the installation's launch selector, and
+the relays connect to a socket under the person's
+`~/.local/state/open-habitat/mcp/` that only their own Unix user can reach.
+An upgrade rewrites an earlier release's single entry into the five areas at
+the next check, without a new sign-in. Before an agent deletes, sends or
+shares a calendar through these tools, the person's browser asks them.
+There is nothing to configure.
+
 Connecting offers no choice of folders and copies no files: agents reach
 Microsoft 365 files by search and fetch only what they need, as above. A new
 account therefore has no `~/cloud/onedrive` or `~/cloud/sharepoint`

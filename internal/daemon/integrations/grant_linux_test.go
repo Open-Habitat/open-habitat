@@ -173,9 +173,8 @@ func TestMicrosoftNarrowerGrantConnectsAndLimitsOutlook(t *testing.T) {
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
-	commands, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-	if !strings.Contains(string(commands), "--allowed-scopes\n"+allowed+"\n") {
-		t.Fatalf("registration not limited to the grant:\n%s", commands)
+	if _, registered := registeredEntry(t, env, address); registered[microsoftAllowedEnv] != allowed {
+		t.Fatalf("registration not limited to the grant: %v", registered)
 	}
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
 		t.Fatal("file roots without a files grant", remotes, err)
@@ -219,9 +218,8 @@ func TestMicrosoftNarrowerGrantConnectsAndLimitsOutlook(t *testing.T) {
 	if err := m.Align(context.Background(), env, address, func() {}); err != nil {
 		t.Fatal(err)
 	}
-	commands, _ = os.ReadFile(filepath.Join(env.Home, "pi-commands"))
-	if !strings.Contains(string(commands), "--allowed-scopes\n"+allowed+"\n") {
-		t.Fatalf("alignment widened the registration:\n%s", commands)
+	if _, registered := registeredEntry(t, env, address); registered[microsoftAllowedEnv] != allowed {
+		t.Fatalf("alignment widened the registration: %v", registered)
 	}
 }
 

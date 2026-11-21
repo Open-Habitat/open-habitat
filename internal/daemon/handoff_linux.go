@@ -248,7 +248,13 @@ func newIntegrationEnv(cfg transport.Config) integrations.Env {
 		}
 		return cfg, err
 	}
-	return integrations.Env{Home: cfg.Home, LoadConfig: load}
+	// Pi runs the Microsoft area relays through the path systemd launched
+	// this daemon by, which follows upgrades (launchedExecutable).
+	relay := ""
+	if executable, err := os.Executable(); err == nil {
+		relay = launchedExecutable(executable, os.Args[0])
+	}
+	return integrations.Env{Home: cfg.Home, LoadConfig: load, Relay: relay}
 }
 
 // newGitea is the one Gitea adapter the integrations routes and the clone

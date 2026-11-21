@@ -118,6 +118,7 @@ var helpSpecs = []helpSpec{
 	{"revoke subject", "Revoke a bound subject as root", "revoke subject 123 --json", nil},
 	{"gitea git-credential", "Git credential-helper protocol for tea's native Gitea PAT logins: Git appends get, store or erase; get prints username/password only to Git for one unique HTTPS host:port, base path and username match; store and erase keep nothing", "gitea git-credential get", []string{"--login"}},
 	{"gitlab git-credential", "Git credential-helper protocol for glab's native GitLab token logins: Git appends get, store or erase; get prints username/password only to Git for the one HTTPS host:port glab holds a token for, a project path below its base and its own username; store and erase keep nothing", "gitlab git-credential get", nil},
+	{"mcp-relay microsoft", "MCP stdio transport for one area of one connected Microsoft account, run by Pi from the account's area entry in mcp.json: copies Pi's stdio to the person's own daemon endpoint, which owns the one Microsoft process and serves only that area's tools; stdout is MCP, not JSON output", "mcp-relay microsoft --account person@example.test --area files", []string{"--account", "--area"}},
 	{"skill list", "List version-matched companion skills", "skill list --json", nil},
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
@@ -393,6 +394,11 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Read UTF-8 from FILE or - for stdin; notice maximum 4096 bytes, message maximum 65536 raw bytes and 66000 encoded request bytes"
 	case "--login":
 		v["description"] = "Optional tea login name that narrows the match; never selects a login whose HTTPS host:port, base path or username differs from Git's request"
+	case "--account":
+		v["description"] = "The connected Microsoft account's address, as Habitat wrote it in the area entry; a claim the daemon checks against its own records, never a credential"
+	case "--area":
+		v["description"] = "The account's topic area"
+		v["possible_values"] = []string{"mail", "calendar", "contacts", "files", "admin"}
 	case "--idempotency-key":
 		v["description"] = "Explicit UUID for notice/view-offer/file-offer/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
 	case "--output":

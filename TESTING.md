@@ -843,8 +843,23 @@ With the same `OH_TEST_MICROSOFT_RUNTIME`,
 starts the pinned server with each level's registration arguments and checks
 that it offers the file search and read tools and none that write, requests
 only permissions the level's application holds (the build's scope patch), and
-keeps the Outlook tool set of the earlier presets. It needs no network and
+keeps the Outlook tool set of the earlier presets, and that every tool a
+level offers sits in one of the five Microsoft areas. It needs no network and
 proves nothing about Microsoft's answers.
+
+The one Microsoft process per person (`internal/msmcp`) is tested through the
+production socket with the test binary standing in for the native server:
+one start under twenty concurrent connections, area filtering, per-client ids,
+progress and cancellation, account switches that drain and reap with no
+overlap, no replay after a crash, spoofed hellos and the endpoint's privacy.
+An unprivileged test cannot connect as another kernel UID, so the foreign-UID
+case replaces the accepted peer's UID; the 0700 directory is what keeps other
+accounts out on a host. `TestMicrosoftFootprintLab` measures the whole
+MCP-side memory with four real Pi conversations when given `OH_LAB_EVIDENCE`,
+`OH_LAB_RELAY` (a built binary), `OH_LAB_MICROSOFT` and the core runtime's
+`OH_LAB_PI_NODE`/`OH_LAB_PI_CLI`; it reports, it does not judge.
+`internal/daemon/pi-device-test/microsoft-permission.test.mjs` covers the
+permission hook's questions, lookups and blocks.
 
 
 `./scripts/test-gateway-bind.sh` exercises a nonroot gateway-like process with

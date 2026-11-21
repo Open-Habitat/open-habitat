@@ -71,7 +71,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			args = append(args, "--extension", c.recapPath, "--extension", companion, "--extension", rewind, "--skill", skill, "--skill", ui)
+			permission, err := installMicrosoftPermission(filepath.Dir(c.recapPath))
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, "--extension", c.recapPath, "--extension", companion, "--extension", rewind, "--extension", permission, "--skill", skill, "--skill", ui)
 			if browser, ok := c.browser.installSkill(filepath.Dir(c.recapPath)); ok {
 				args = append(args, "--skill", browser)
 			}
@@ -108,7 +112,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	args = append(args, "--extension", path, "--extension", companion, "--extension", rewind, "--skill", skill, "--skill", ui)
+	permission, err := installMicrosoftPermission(dir)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "--extension", path, "--extension", companion, "--extension", rewind, "--extension", permission, "--skill", skill, "--skill", ui)
 	if browser, ok := c.browser.installSkill(dir); ok {
 		args = append(args, "--skill", browser)
 	}

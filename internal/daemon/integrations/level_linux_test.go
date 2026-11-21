@@ -356,6 +356,10 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 	config := filepath.Join(env.Home, microsoftDir, address+".conf")
 	data, _ := os.ReadFile(config)
 	os.WriteFile(config, bytes.ReplaceAll(data, []byte("client_id = 00000000-0000-0000-0000-000000000002"), []byte("client_id = 00000000-0000-0000-0000-000000000001")), 0600)
+	// The Pi registration names the same application as the remotes.
+	registration := filepath.Join(env.Home, ".pi/agent/mcp.json")
+	data, _ = os.ReadFile(registration)
+	os.WriteFile(registration, bytes.ReplaceAll(data, []byte(`"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000002"`), []byte(`"MS365_MCP_CLIENT_ID": "00000000-0000-0000-0000-000000000001"`)), 0600)
 	services, grant = verify(microsoftReadGrant)
 	if m.Level(env, address, services) != LevelRead || grant == nil || !slices.Contains(grant.NotGranted, "Mail.Send") {
 		t.Fatal(services, grant)

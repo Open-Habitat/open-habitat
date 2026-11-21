@@ -144,7 +144,7 @@ func TestFullPersonalDataSkill(t *testing.T) {
 		"`~/cloud/dropbox/person@example.test/`, synced both ways",
 		"GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat gog --home ~/.config/gog/open-habitat --account person@example.test --no-input --json",
 		"sync both ways under `~/cloud/google-drive/person@example.test/`",
-		"the Pi MCP server `habitat-microsoft-person-example-test`",
+		"five Pi MCP areas", "`ms-files` for OneDrive and SharePoint files",
 		"Synced directories:\n- `~/cloud/onedrive/person@example.test/`\n- `~/cloud/sharepoint/",
 		"`~/cloud/microsoft-fetched/person@example.test/`",
 		"the Pi MCP server `" + atlassianServer + "`",
