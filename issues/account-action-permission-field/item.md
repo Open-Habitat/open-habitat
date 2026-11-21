@@ -3,12 +3,13 @@ created: 2026-11-21
 updated: 2026-11-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@agent-account-instructions-clarity']
 lane: account-permission
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Permission question as a typed field in place of the composer
