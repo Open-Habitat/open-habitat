@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-17/new-user-agent-instructions-template
-preparation: ready
+preparation: pending
 lane: agent-instructions
 lane_seq: 1
 ---
