@@ -1,0 +1,146 @@
+/* Explain mode feedback, round 2. Tokens only; the mode's own look is
+   production's ExplainMode.css, and these rules add only the feedback, the
+   the single report path, sending, and the synthetic view. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+.rq-review { display: flex; flex-direction: column; height: 100dvh; }
+
+/* The review bar: not a contestant. */
+.rq-bar { flex: none; padding: 8px 14px 6px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; }
+.rq-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.rq-controls strong { font-size: 13.5px; }
+.rq-controls select, .rq-controls button { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 1px 4px; }
+.rq-round, .rq-recommend { margin: 4px 0 0; color: var(--ah-ink-2); }
+.rq-recommend { font-weight: 600; color: var(--ah-ink); }
+.rq-lines { margin: 4px 0 0; padding: 0; list-style: none; color: var(--ah-muted); }
+.rq-lines li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-main { position: relative; flex: 1; min-height: 0; overflow: auto; }
+
+/* The synthetic conversation. Parts are buttons, so Tab reaches them. */
+.ef-mode { display: flex; flex-direction: column; height: 100%; }
+.ef-stage { flex: 1; min-height: 0; }
+.ef-conv { display: flex; flex-direction: column; height: 100%; max-width: 860px; margin: 0 auto; }
+.ef-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--ah-line); }
+.ef-plain { padding: 2px 4px; border: 0; border-radius: var(--ah-r-sm); background: none; color: var(--ah-ink); font: 600 var(--ah-size-ui) var(--ah-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.ef-ws { font-weight: 400; }
+.ef-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 4px; overflow: hidden; }
+.ef-title code, .ef-chip code { font: var(--ah-size-code) var(--ah-mono); color: var(--ah-ink-2); }
+.ef-dot { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.ef-dot i { width: 9px; height: 9px; border-radius: 50%; background: var(--ah-accent); }
+.ef-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: none; color: var(--ah-ink-2); font: inherit; white-space: nowrap; cursor: pointer; }
+.ef-chip svg { width: 14px; height: 14px; }
+.ef-ring { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 6px; border: 0; background: none; color: var(--ah-ink-2); font: inherit; white-space: nowrap; cursor: pointer; }
+.ef-ring svg { width: 18px; height: 18px; transform: rotate(-90deg); }
+.ef-ring circle { fill: none; stroke: var(--ah-line-strong); stroke-width: 2.5; }
+.ef-ring .ef-ring-fill { stroke: var(--ah-accent); }
+.ef-q { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); cursor: pointer; }
+.ef-feed { flex: 1; margin: 0; padding: 20px 16px; list-style: none; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.ef-user { align-self: flex-end; max-width: 70%; padding: 8px 12px; border-radius: var(--ah-r-lg); background: var(--ah-accent-soft); }
+.ef-agent { max-width: var(--ah-measure, 68ch); font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.ef-bottom { margin: 0 16px 84px; }
+.ef-bg { margin: 0 0 6px; }
+.ef-bg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-accent); }
+.ef-composer { padding: 8px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.ef-field { min-height: 44px; padding: 4px 6px; color: var(--ah-muted); }
+.ef-tools { display: flex; justify-content: space-between; align-items: center; }
+.ef-tools-end { display: inline-flex; align-items: center; gap: 6px; }
+.ef-tool, .ef-send { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); cursor: pointer; }
+.ef-send { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); }
+.ef-tool svg, .ef-send svg { width: 18px; height: 18px; }
+.ef-stage :is(button, [tabindex]):focus-visible { outline: var(--ah-focus-width, 2px) solid var(--ah-focus); outline-offset: 1px; }
+
+/* How the desktop card takes the pointer (production lets it through):
+   while the pointer travels from its part (A Path), and while a report is
+   open or just done. */
+.ef-card[data-armed], .ef-card[data-pinned], .ef-card[data-held] { pointer-events: auto; }
+.ef-card[data-pinned] { box-shadow: var(--ah-shadow-dialog); border-color: var(--ah-accent-line); }
+.ef-card[data-nudge] { animation: ef-nudge 0.3s ease-in-out 2; }
+@keyframes ef-nudge { 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .ef-card[data-nudge] { animation: none; } }
+
+/* The footer: one report path, then the route's own line. */
+.ef-fb { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--ah-line); }
+.ef-report { box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 5px 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font: inherit; text-align: left; cursor: pointer; }
+.ef-report:hover { background: var(--ah-surface-hover); border-color: var(--ah-accent-line); }
+.ef-report > svg { flex: none; width: 16px; height: 16px; color: var(--ah-ink-2); }
+.ef-report span { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.ef-report b { font-size: var(--ah-size-ui); }
+.ef-report small { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ef-key { flex: none; font: var(--ah-size-meta) var(--ah-mono); padding: 0 4px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); color: var(--ah-muted); }
+.ef-dest { display: flex; align-items: center; gap: 5px; margin: 6px 0 0 !important; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.ef-dest svg { flex: none; width: 13px; height: 13px; }
+.ef-dest[data-route="github"] { color: var(--ah-ink-2); }
+.ef-dest[data-route="batch"] svg { color: var(--ah-muted); }
+.ef-dest[data-route="inbox"] { color: var(--ah-accent-ink); font-weight: 600; }
+.ef-note-label { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink); }
+.ef-note-label svg { width: 14px; height: 14px; color: var(--ah-ink-2); }
+.ef-note textarea[aria-invalid] { border-color: var(--ah-err); }
+.ef-primary[aria-disabled] { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); }
+.ef-done p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.ef-done > p:first-child { color: var(--ah-ink); font-weight: 600; }
+.ef-done > p:first-child svg { width: 14px; height: 14px; color: var(--ah-ok); }
+.ef-done .ef-link { margin-top: 4px; font-size: var(--ah-size-meta); }
+.ef-done:focus { outline: none; }
+.ef-what-toggle { margin-top: 6px; font-size: var(--ah-size-meta); }
+.ef-issue-small { margin-top: 6px; padding: 6px 8px; }
+.ef-issue-small small { display: block; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ef-note { margin-top: 8px; }
+.ef-note textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: 6px 8px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.4 var(--ah-font); }
+.ef-note-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.ef-nudge { margin: 6px 0 0 !important; color: var(--ah-ink); font-size: var(--ah-size-meta); font-weight: 600; }
+.ef-kept { display: flex; gap: 5px; align-items: flex-start; margin: 6px 0 0 !important; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ef-kept svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.ef-link { white-space: nowrap; padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ef-muted { color: var(--ah-muted); margin: 0; }
+.ef-mine-button { margin-left: auto; }
+.ef-mine-button svg { width: 15px; height: 15px; }
+
+/* Sending. */
+.ef-primary { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border: 0; border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent, var(--ah-bg)); font: 600 var(--ah-size-ui) var(--ah-font); cursor: pointer; }
+.ef-primary:disabled { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: default; }
+.ef-primary svg { width: 15px; height: 15px; }
+.ef-sheet-back { position: fixed; inset: 0; z-index: 2147483003; display: grid; place-items: center; padding: 16px; background: var(--ah-scrim); }
+.ef-sheet { box-sizing: border-box; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 14px 16px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-dialog); }
+.ef-sheet header { display: flex; align-items: center; justify-content: space-between; }
+.ef-sheet h2 { margin: 0; font-size: var(--ah-size-body); }
+.ef-sheet > p { margin: 4px 0 0; }
+.ef-issue { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken); }
+.ef-issue b { display: block; margin-bottom: 4px; }
+.ef-issue pre { margin: 0; font: var(--ah-size-code) / 1.5 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ef-url { display: flex; gap: 6px; margin: 8px 0 0 !important; color: var(--ah-muted); font-size: var(--ah-size-meta); min-width: 0; }
+.ef-url code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--ah-size-meta) var(--ah-mono); }
+.ef-noacc { margin-top: 10px; padding: 8px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface-2); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.ef-noacc b { color: var(--ah-ink); }
+
+/* Your feedback. */
+.ef-where { max-width: 760px; margin: 0 auto; padding: 22px 18px 96px; }
+.ef-where h1 { margin: 0 0 4px; font-size: var(--ah-size-h2); }
+.ef-lead { margin: 0 0 10px; color: var(--ah-ink-2); max-width: 64ch; }
+.ef-send-row { margin: 0 0 4px; }
+.ef-box { margin-top: 12px; padding: 6px 16px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.ef-mine { margin: 0; padding: 0; list-style: none; }
+.ef-mine li { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-top: 1px solid var(--ah-line); }
+.ef-mine li:first-child { border-top: 0; }
+.ef-mine-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ef-mine-main code { font: var(--ah-size-meta) var(--ah-mono); color: var(--ah-muted); font-weight: 400; }
+.ef-mine-main q { color: var(--ah-ink-2); }
+.ef-mine-main small { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ef-never-line { display: flex; gap: 6px; align-items: flex-start; margin: 12px 0 0; color: var(--ah-ink-2); }
+.ef-never-line svg { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.ef-toast { bottom: 84px; }
+
+@media (max-width: 800px) {
+  .rq-bar { padding: 6px 10px; font-size: 11.5px; }
+  .rq-controls { gap: 4px 8px; }
+  .rq-controls strong { width: 100%; }
+  .rq-round { display: none; }
+  .rq-lines li { white-space: normal; }
+  .ef-head { gap: 4px; padding: 8px 10px; }
+  .ef-model, .ef-ws { display: none; }
+  .ef-chip { padding: 0 5px; }
+  .ef-user { max-width: 85%; }
+  .ef-bottom { margin: 0 10px 84px; }
+  .ef-sheet-back { align-items: end; padding: 8px; }
+    .ef-mine-button .ah-explain-hint, .ef-xbar .ah-explain-hint { display: none; }
+}

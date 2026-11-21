@@ -33,3 +33,7 @@ Jari 21.11.2026 on round 2: A Kulkureitti. Rethink the feedback content: no posi
 ### 2026-11-21T15:54:03Z · @agent
 
 Round 2 (hover that behaves like production with the mouse) is in design-system/prototypes/rounds/2026-11-21-explain-feedback-2/; directions A Path / B Pin / C Settle, recommendation A; result, built page and evidence paths in result-2.md.
+
+### 2026-11-21T18:54:43Z · @agent
+
+Round 3 (one required 'Report a mistake' path on A Path's card; axis: how the written report reaches us) is in design-system/prototypes/rounds/2026-11-21-explain-feedback-3/; directions A GitHub / B Own account / C Feedback inbox, recommendation A; result, built page and evidence paths in result-3.md.
