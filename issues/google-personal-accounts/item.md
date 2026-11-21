@@ -1,6 +1,6 @@
 ---
 created: 2026-11-16
-updated: 2026-11-18
+updated: 2026-11-21
 type: feature
 reporter: jari
 status: in-progress
@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-16/google-personal-accounts
 lane: google-personal
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Google integration for personal Gmail accounts: External consent screen, admin and person flows
@@ -31,3 +31,9 @@ Alternative considered: Gmail via IMAP app password (mail only); a centrally ver
 ### 2026-11-18T14:12:39Z · @jari
 
 Jari 18.11.2026: the External switch was tried on the pilot installation (not the staging one) and it worked.
+
+## Decisions
+
+### 2026-11-21T07:14:11Z · @jari
+
+Jari 21.11.2026: Admin guide: A Kysymys ensin; Habitat does not remember the audience choice; keep the warning illustration; audience change as its own row menu item; (privacy-policy URL not required, recommendation). Person's flow: A Muistutus, short and even more concise; 'you stopped at Google' on cancel: yes; the connected dialog lists granted services: yes; admin app-name field: not now. Screenshots: yes — the way the Microsoft dialog shows screenshots in complex integrations is good, and simple ones may have them too, especially where the person must click an option that is not the default (Google's Advanced → Go to …). Next action: implement both views with screenshots.
