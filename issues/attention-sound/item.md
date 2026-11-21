@@ -51,3 +51,7 @@ Jari 21.11.2026 on the workspace sound picker: Settings rows look very good, but
 ### 2026-11-21T14:25:32Z · @jari
 
 Jari 21.11.2026 on workspace sound round 2: try C Asetusnauha, riffed so all the strip's buttons are the same size; drop the note from the right side of the sidebar row (no hover note). Use round 7's recommended emblems.
+
+### 2026-11-21T14:45:59Z · @jari
+
+Jari 21.11.2026 on workspace strip round 3: B Leveät painikkeet is good; try variable-width buttons sized by what they need — square buttons for Kuvake and Ääni (icon and sound emblem), a flatter wider button for Nimi.
