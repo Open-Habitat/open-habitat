@@ -53,3 +53,9 @@ around Pi, for example in the companion after a failed write.
 
 Found while fixing claude-bridge-torn-transcript-on-full-disk (code reading
 of the pinned Pi, not yet observed live).
+
+## Comments
+
+### 2026-11-21T15:58:53Z · @conductor
+
+Reported upstream 21.11.2026 with Jari's approval: https://github.com/earendil-works/pi/issues/12386. When upstream ships a fix, the companion guard can be removed.
