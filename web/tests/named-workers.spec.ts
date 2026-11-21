@@ -1,10 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
 import type { Spinoff, Spinoffs } from "../src/app/spinoffs";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
-// Avustajat (named-workers-in-habitat, experimental): Taskfleet's named
+// Avustajat (named-workers-in-habitat): Taskfleet's named
 // workers get one chip beside the Workers pill with the Botit icon, a mark
 // each, and a list whose rows open the worker's own read-only view. The
 // daemon's reading of Taskfleet's round state is proved in Go
@@ -18,14 +17,6 @@ test.use({
 
 const evidence = "../issues/named-workers-in-habitat/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
-
-async function session(page: Page) {
-  const s = await (await page.request.get("/auth/session")).json();
-  return {
-    Origin: new URL(page.url()).origin,
-    "X-Agent-Host-CSRF": s.csrf as string,
-  };
-}
 
 const base = {
   preserved: false,
@@ -70,7 +61,7 @@ const runs = (): Spinoff[] => [
   },
 ];
 
-test("@named-workers @a11y named workers have their own chip only while Avustajat is on, and opening one clears its new report", async ({
+test("@named-workers @a11y named workers have their own chip beside the Workers pill, and opening one clears its new report", async ({
   page,
 }) => {
   await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
@@ -142,31 +133,16 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
     .getByRole("button")
     .and(page.getByTestId("background-helpers"));
 
-  // Off by default: every worker is in the Workers pill, and a named worker
-  // between rounds waits for the main agent rather than at its terminal.
+  // The one-shot worker stays in the Workers pill; the two named workers
+  // are in the chip with a mark each: a new report and a round under way.
   await expect(workers).toBeVisible();
-  await expect(chip).toHaveCount(0);
   await workers.click();
+  const pill = strip.getByRole("tabpanel");
   await expect(
-    strip
-      .getByRole("tabpanel")
-      .getByTestId("spinoff-M365-asetusvirta")
-      .getByTestId("spinoff-facts"),
-  ).toContainText("odottaa pääagenttia");
+    pill.getByTestId("spinoff-sharepoint-skipped-sites-recover"),
+  ).toBeVisible();
+  await expect(pill.getByTestId("spinoff-M365-asetusvirta")).toHaveCount(0);
   await workers.click();
-
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "named-workers": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
-  await page.reload();
-
-  // On: the one-shot worker stays in its pill, the two named workers move
-  // to the chip with a mark each: a new report and a round under way.
   await expect(chip).toBeVisible();
   // The chip is icon/marks-only, but remains named for assistive technology.
   await expect(chip).toHaveText("");
@@ -217,14 +193,6 @@ test("@named-workers @a11y named workers have their own chip only while Avustaja
     await page.emulateMedia({ colorScheme: "light" });
   }
 
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "explain-mode": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
   await page.reload();
   await chip.click();
   await page.getByTestId("explain-toggle").click();
