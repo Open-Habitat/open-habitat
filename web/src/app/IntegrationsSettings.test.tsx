@@ -496,3 +496,90 @@ it("polls only its own provider's sign-in while another first sync runs", async 
     true,
   );
 });
+
+// The connected dialog lists what the grant reached only from a list read
+// after this sign-in completed: a renewal's account is already in the old
+// list, with the old grant's services.
+it("lists a Google grant's services only from a read after the sign-in completed", async () => {
+  const attempt = "20261121T080000.000000001";
+  const account = (drive: "none" | "full") => ({
+    provider: "google",
+    address: "person@example.test",
+    checked_at: "2026-11-21T08:00:00Z",
+    services: [
+      { id: "mail", state: "ok", access: "full" },
+      { id: "drive", state: "ok", access: drive },
+    ],
+  });
+  const list = (drive: "none" | "full") => ({
+    schema_version: 1,
+    providers: [
+      {
+        id: "google",
+        available: true,
+        login: "pasted_redirect",
+        services: ["drive", "mail"],
+      },
+    ],
+    skill: "current",
+    accounts: [account(drive)],
+  });
+  const login = (state: string) => ({
+    schema_version: 1,
+    state,
+    provider: "google",
+    attempt_id: attempt,
+    relogin: true,
+    ...(state === "open_url"
+      ? {
+          authorization_url:
+            "https://accounts.example.test/auth?client_id=c&state=s",
+          redirect_prefix: "http://127.0.0.1",
+          expires_at: "2099-01-01T00:00:00Z",
+        }
+      : { address: "person@example.test" }),
+  });
+  let completed = false;
+  let release: (r: Response) => void = () => {};
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations")
+        return completed
+          ? new Promise<Response>((r) => {
+              release = r;
+            })
+          : json(list("none"));
+      if (url.split("?")[0] !== "/api/v1/integrations/login")
+        return new Response("", { status: 404 });
+      if (init?.method === "POST") return json(login("open_url"));
+      if (init?.method === "PUT") {
+        completed = true;
+        return json(login("completed"));
+      }
+      return json(login(completed ? "completed" : "open_url"));
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  await userEvent.click(await screen.findByTestId("integration-add-google"));
+  const dialog = await screen.findByTestId("integration-dialog");
+  const go = within(dialog).queryByTestId("integration-continue");
+  if (go) await userEvent.click(go);
+  await userEvent.click(
+    await within(dialog).findByTestId("integration-provider-link"),
+  );
+  await userEvent.type(
+    within(dialog).getByTestId("integration-redirect-input"),
+    "http://127.0.0.1/?code=x&state=s",
+  );
+  await userEvent.keyboard("{Enter}");
+  await within(dialog).findByTestId("integration-connected");
+  // The old list still says Drive was not granted; it is not shown.
+  expect(within(dialog).queryByTestId("gc-grant-summary")).toBeNull();
+  release(json(list("full")));
+  const summary = await within(dialog).findByTestId("gc-grant-summary");
+  expect(
+    [...summary.querySelectorAll("li")].map((li) => li.dataset.access),
+  ).toEqual(["full", "full"]);
+});

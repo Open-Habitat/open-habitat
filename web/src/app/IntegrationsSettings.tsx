@@ -211,19 +211,30 @@ export function IntegrationsSettings({
     shownFor.current = csrf;
   }, [csrf]);
 
-  const load = useCallback(async (one?: Account) => {
+  const load = useCallback(async (one?: Account): Promise<boolean> => {
     setChecking(one ? new Set([`${one.provider}:${one.address}`]) : "all");
     try {
       const next = await readIntegrations();
-      if (!alive.current) return;
+      if (!alive.current) return false;
       setList(next);
       setFailed(false);
+      return true;
     } catch {
       if (alive.current) setFailed(true);
+      return false;
     } finally {
       if (alive.current) setChecking(new Set());
     }
   }, []);
+  // The sign-in whose completion a later list read has caught up with: the
+  // connected dialog lists the account's services only from such a read,
+  // never from the list as it was before this grant (a renewal's old one).
+  const [freshAttempt, setFreshAttempt] = useState<string>();
+  const loadAfter = useCallback(
+    (attempt?: string) =>
+      void load().then((ok) => ok && setFreshAttempt(attempt)),
+    [load],
+  );
 
   // A connection the page shows is checked once without being asked, so a
   // read-only token is named before a push meets Gitea's 403. One at a
@@ -285,7 +296,9 @@ export function IntegrationsSettings({
     list,
     current,
     alive,
-    load,
+    load: async () => {
+      await load();
+    },
     setNotice,
     onNewWorkspace,
   });
@@ -349,7 +362,7 @@ export function IntegrationsSettings({
                 }
               : f,
           );
-          if (next.state === "completed") void load();
+          if (next.state === "completed") loadAfter(next.attempt_id);
         })
         .catch(() => {
           if (!controller.signal.aborted) setRetry((n) => n + 1);
@@ -626,11 +639,8 @@ export function IntegrationsSettings({
     try {
       const next = await controlLogin(csrf, control);
       setStage({ stage: "login", view: next });
-      if (
-        next.state === "completed" ||
-        (next.state === "completing" && next.address)
-      )
-        void load();
+      if (next.state === "completed") loadAfter(next.attempt_id);
+      else if (next.state === "completing" && next.address) void load();
     } catch (e) {
       const text = refusalText(e);
       if (text) setStage({ stage: "login", view: current, error: text });
@@ -938,7 +948,12 @@ export function IntegrationsSettings({
         <ConnectDialog
           provider={flow.provider}
           stage={flow.stage}
-          accounts={list?.accounts}
+          accounts={
+            flow.stage.stage === "login" &&
+            flow.stage.view.attempt_id === freshAttempt
+              ? list?.accounts
+              : undefined
+          }
           onContinue={(level) => {
             if (flow.provider.login === "app_password")
               setStage({ stage: "password" });
