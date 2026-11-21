@@ -52,6 +52,8 @@ checks = {
     "search.json": "search.schema.json",
     "search-building.json": "search.schema.json",
     "first-route.json": "first-route.schema.json",
+    "agent-instructions.json": "agent-instructions.schema.json",
+    "agent-instructions-missing.json": "agent-instructions.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
     "editor-file-list.json": "workspace-editor-files.schema.json",
@@ -538,6 +540,14 @@ except ValidationError:
 
 # The first-route mark is only ever finished, and names no path or other person.
 must_reject("first-route.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "finished": True, "path": "/home/x"})
+# The instructions write never names a path, and an absent file has no version or text.
+instructions_write = {**schemas["agent-instructions.schema.json"], "$ref": "#/$defs/write"}
+schemas["agent-instructions-write"] = instructions_write
+must_reject("agent-instructions-write", {"create": True, "content": "x", "path": "/home/x/.bashrc"})
+must_reject("agent-instructions-write", {"create": True, "base_version": "sha256:v1:" + "0" * 64, "content": "x"})
+must_reject("agent-instructions-write", {"create": False, "content": "x"})
+must_reject("agent-instructions.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "exists": False, "version": "sha256:v1:" + "0" * 64, "content": "", "modified": None, "claude": "none"})
+must_reject("agent-instructions.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "exists": False, "version": None, "content": "left over", "modified": None, "claude": "none"})
 must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})

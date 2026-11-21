@@ -175,6 +175,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	if r.URL.Path == editorFilesPrefix+"file" && r.Method == http.MethodPut {
 		requestLimit = 8 << 20
 	}
+	if r.URL.Path == agentInstructionsPath && r.Method == http.MethodPut {
+		requestLimit = 2 << 20
+	}
 	if r.URL.Path == workspaceIconSuggestionsPath && r.Method == http.MethodPost {
 		requestLimit = workspaceIconSuggestionsLimit
 	}

@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "7bfacbbf5163c1bfa62f1489e7ebb2f89d5018009d698aabf7fbbc7fcc096112"
+const V1SchemaFingerprint = "173cadaf2ec468a1b43934a8ff8d89aff98deded753ef8000e7bde0a18e15601"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -16,6 +16,7 @@ var V1SchemaFiles = []string{
 	"agent-conversation.schema.json",
 	"agent-environment.schema.json",
 	"agent-history-list.schema.json",
+	"agent-instructions.schema.json",
 	"agent-section.schema.json",
 	"agent-wake.schema.json",
 	"agent-workspaces.schema.json",
@@ -125,6 +126,7 @@ type AgentConversationList = json.RawMessage
 type AgentConversation = json.RawMessage
 type AgentEnvironment = json.RawMessage
 type AgentHistoryList = json.RawMessage
+type AgentInstructions = json.RawMessage
 type AgentSection = json.RawMessage
 type AgentWake = json.RawMessage
 type AgentWorkspaces = json.RawMessage

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-instructions.schema.json",
+  "title": "The person's own agent instructions",
+  "description": "GET and PUT /api/v1/account/agent-instructions. The person's daemon reads and writes one fixed file in their home, ~/.pi/agent/AGENTS.md, as the person; no request names a path. A write is a compare-and-swap: it names the version it was based on, or asks to create the file only if it is absent. A version that no longer matches is refused with 409 file_changed and nothing is written; the browser merges and asks again. Creating the file also creates ~/.claude/CLAUDE.md with one import line when that file is absent; an existing Claude file is only read, never changed. Only plain UTF-8 text without CR or NUL characters is read or written. The reply after a write is the file as now read. Errors: 400 invalid_request, 403 cross_user_denied, 409 file_changed, 413 file_too_large, 415 file_unsupported (a link, a hard-linked or special file, or not such text), 503 instructions_unavailable. A 5xx or lost reply to a write is uncertain and is never retried automatically. No-store.",
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^sha256:v1:[0-9a-f]{64}$"
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "write": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base_version",
+            "content"
+          ],
+          "properties": {
+            "base_version": {
+              "$ref": "#/$defs/version"
+            },
+            "content": {
+              "$ref": "#/$defs/content"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "create",
+            "content"
+          ],
+          "properties": {
+            "create": {
+              "const": true
+            },
+            "content": {
+              "$ref": "#/$defs/content"
+            }
+          }
+        }
+      ]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "web_identity_id",
+        "exists",
+        "version",
+        "content",
+        "modified",
+        "claude"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "web_identity_id": {
+          "type": "string",
+          "pattern": "^wid_[A-Za-z0-9_-]+$",
+          "maxLength": 128
+        },
+        "exists": {
+          "type": "boolean",
+          "description": "Whether the instructions file exists. When false, version and modified are null and content is empty."
+        },
+        "version": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/content"
+        },
+        "modified": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claude": {
+          "description": "What ~/.claude/CLAUDE.md says about the instructions, read only: imports names the file on an import line, own has instructions without that line, none means the file is absent, unknown that it could not be read safely.",
+          "enum": [
+            "imports",
+            "own",
+            "none",
+            "unknown"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "exists": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "version": {
+                "type": "null"
+              },
+              "modified": {
+                "type": "null"
+              },
+              "content": {
+                "const": ""
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "modified": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/result"
+}

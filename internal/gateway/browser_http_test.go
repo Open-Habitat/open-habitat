@@ -24,6 +24,7 @@ func TestBrowserRoutesHTTP2(t *testing.T) {
 		{"GET", "/api/v1/workspaces/github/publish?workspace_id=x&full_name=org%2Frepo&visibility=private", "", a.githubPublish},
 		{"GET", accountPreferencesPath, "", a.personalSetting(accountPreferencesPath)},
 		{"GET", firstRoutePath, "", a.personalSetting(firstRoutePath)},
+		{"GET", agentInstructionsPath, "", a.agentInstructions},
 		{"POST", accountKeysPath, `{"kind":"ssh"}`, a.accountKeys},
 		{"POST", storageBreakdownPath, `{"measure":true}`, a.storageBreakdown},
 		{"POST", ownMachinesPath, `{"action":"connect"}`, a.ownMachines},

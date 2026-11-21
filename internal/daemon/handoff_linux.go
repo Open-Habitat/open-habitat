@@ -116,6 +116,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(StorageBreakdownPath, StorageBreakdownHandler(cfg, server.TrustedPeer))
 	mux.Handle(OwnMachinesPath, OwnMachinesHandler(cfg, server.TrustedPeer))
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
+	mux.Handle(AgentInstructionsPath, AgentInstructionsHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFileTreePath, WorkspaceFileTreeHandler(cfg, server.TrustedPeer))
