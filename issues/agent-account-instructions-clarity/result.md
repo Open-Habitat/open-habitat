@@ -1,135 +1,83 @@
 # Result: proposal for Jari, nothing shipped
 
-## Yhteenveto (Jarille)
+Read `summary.md` first (Finnish, one screen). It points to the two texts:
 
-**Ohjeteksti** (`agent-text.md`). Jokaisen tilin kohta alkaa siitä, miten
-tavalliset asiat tehdään (etsi ja lue tiedosto, lue posti, valmistele vastaus,
-katso kalenteri, siivoa postia), ja nimeää täsmälleen käytettävän työkalun.
-Yleinen osa kertoo neljällä lyhyellä kohdalla, mikä on pelissä. Kieltoja ei
-tullut lisää. Hostin ohje ei enää väitä, että pilvitiedostot ovat
-`~/cloud/`-hakemistossa: tänään yhdistetyllä Microsoft-tilillä ne eivät ole.
-
-**Työkalut** (`tool-surface.md`). Agentti saa Microsoft-tilistä täydellä
-tasolla 100 työkalua. Ehdotan 55:tä: kaikki, millä käsitellään viestejä,
-luonnoksia, tapahtumia, yhteystietoja ja tiedostoja. Pois jää se, millä
-postilaatikkoa järjestellään (kansioiden luonti ja poisto, kalenterien jako,
-lajittelusäännöt), eli se, mihin pilotin agentti tarttui. Taso toimii kuten
-nyt, uutta asetusta ei tule, eikä kenenkään tarvitse kirjautua uudelleen.
-
-Kaksi löytöä: agentilla on tänään kuusi työkalua, joilla se voi kirjata
-käyttäjän tilin ulos (palvelin lisää ne itse; ehdotan piiloon), ja viestin voi
-lähettää viidellä työkalulla, joista kolme on nimetty kuin tavallinen vastaus
-(ehdotan yhtä: luonnos ensin, lähetys pyynnöstä).
-
-Menetys: agentti ei enää luo tai poista postikansiota tai kalenteria
-("tee näille kansio ja siirrä ne sinne": siirto onnistuu, kansion tekee
-käyttäjä itse). Sinulta tarvitaan tekstin oikoluku ja kyllä tai ei listalle.
-
-## What was done
-
-- `agent-text.md`: before and after for the host context paragraph, the
-  skill's description, opening and "What is at stake", the Microsoft and
-  Google account sections, and a new one-line server description for Pi. Says
-  which accounts' text stays and why.
-- `tool-surface.md`: what each integration hands the agent today, with
-  counts, the classification into everyday work and administration, five
-  options for how the level maps to it, and one recommendation.
-- `tool-surface-check.py`: recounts every Microsoft number from the pinned
-  server and fails if the proposed lists do not cover exactly what the full
-  level offers.
+- `agent-text.md`: the text the agent would read about connected accounts,
+  and nothing else.
+- `tool-surface.md`: the proposal for which Microsoft tools the agent is
+  given, with three yes-or-no questions.
+- `tool-surface-check.py`: recounts every number from the pinned server.
 
 No product code or shipped text changed.
 
+## Rethink of 21.11.2026
+
+Jari found both texts too long to read. `agent-text.md` was rewritten with
+the `rethink-instructions` skill and went from 479 lines to about 130: the
+before/after comparisons, the rationale and the Erottelu went, and the
+Microsoft section itself is shorter than the shipped one while adding a
+starting point for mail and calendar. `tool-surface.md` was rewritten with
+the `rethink-document` skill and went from 268 lines to about 120. Jari was
+not available to agree the separation of decided from proposed, so it was
+made by the agent and is stated at the top of that document. The proposal
+and the `KEEP` and `DROP` lists did not change.
+
 ## How it was checked
 
-Focused self-review against the code. Tool names and counts were produced by
-running the pinned server (0.170.1) from an installed integrations runtime
-with each level's registration arguments; the script asserts that the "stays"
-and "goes" lists are disjoint and together equal the 100 tools of the full
-level. gog commands and flags were read from the pinned gog's `--help`
-(v0.39.1), Pi's behaviour from the pinned Pi's `docs/mcp.md` and
-`docs/codemode.md` (1.5.2). `git diff --check` and
-`python3 scripts/validate-project-view.py` pass.
+`tool-surface-check.py` was run on 21.11.2026 against an installed
+integrations runtime carrying the pinned server (0.170.1): 109 registered
+names, 100 offered at Full, 55 proposed, and per level 100/95/66/48 today
+against 55/54/41/32. Every number in the texts was compared with its output.
+`python3 scripts/validate-project-view.py` and `git diff --check` pass.
+Review level: self-review only, since the change is three issue documents and
+no code, contract or authority.
 
-Not checked: the pilot's conversation itself was not read, so the explanation
-of how the agent arrived at `delete-mail-folder` (keyword search over similar
-names) is the likely mechanism, not an observed one. How Pi shortens a long
-tool name was read from its documentation, not seen in a session. Atlassian's
-and Trello's tool lists could not be counted without a signed-in connection.
-
-## Rethink of `tool-surface.md` (14.11.2026)
-
-`tool-surface.md` was rewritten so that it can be read as a proposal: a
-Finnish cover note with the three yes-or-no questions, the incident, what the
-agent is given today, the proposal, the alternatives, and at the end an
-"Erottelu" section that says what was decided, what is proposed, what was
-dropped and what contradicts something else. The proposal itself and its
-lists did not change; `tool-surface-check.py` was rerun against the installed
-0.170.1 server and its numbers match. Both diagrams parse with the product's
-Mermaid.
-
-Decisions made in the rewrite, for later review:
-
-1. **Tool names live only in `tool-surface-check.py`.** The document gives
-   groups, counts and what a person loses. Alternative: keep the name tables
-   in the document as well. Left out because the script checks its lists and
-   a second copy would drift.
-2. **The everyday/administration line is presented as a proposal**, although
-   `item.md` has its wording under "Direction (Jari)". Alternative: treat it
-   as decided. Asked of Jari in Erottelu, because the first record does not
-   show whose wording it is.
-3. **The 0.184.2 research was added**: the sign-in tools obey Habitat's list
-   there, so hiding them through Pi is a measure for the pinned version only.
-   Decision 5 under "Decisions for later review" and the Yhteenveto above do not say this.
-4. **`item.md` was not corrected** ("about 110 Outlook tools", mail rules),
-   since this run was limited to `tool-surface.md` and this file. The
-   contradiction is listed in Erottelu.
-
-## Live check
-
-Nothing to try yet: this is a proposal. To see the surface as it is today, on
-the test server with a Microsoft account connected, ask the agent "what tools
-do you have for my Outlook mail folders?" and look for `delete-mail-folder`
-and `logout` in its answer.
+Not checked: the pilot's conversation was not read, so the keyword-search
+explanation is the likely mechanism, not an observed one. That Pi shows a
+tool only after a search was read from the pinned Pi's `docs/mcp.md`
+(1.5.2), not seen in a session.
 
 ## Decisions for later review
 
-1. **Where the line between everyday work and administration runs.** Chosen:
-   the agent works with messages, drafts, events, contacts and files, and not
-   with folders, calendars, sharing or sorting rules. Alternative: keep
-   creating mail folders (drop only rename and delete), since "make a folder
-   and move these there" is a believable request. Chosen the plain rule
-   because it can be said in one sentence to a person and to an agent; the
-   alternative is one name back on the list.
-2. **One tool that sends.** Chosen: only `send-draft-message`; `send-mail`
-   and the reply and forward tools that send at once are not offered.
-   Alternative: keep `send-mail` for a new message. Chosen so that every sent
-   message existed as a draft first and no tool that sends is named like a
-   reply.
-3. **No per-account switch for the full tool set** (option C). Alternative:
-   build it now so that a person can get the administration tools back
-   without a release. Left out because it adds a control, a contract field
-   and a second surface to test for a need nobody has shown.
-4. **The level does not change the list** (option D rejected). Alternative:
-   Full shows everything. Rejected because Full is the broadest level and the
-   common one, and the level would start to mean two things.
-5. **Sign-in tools hidden through Pi, everything else through the server's
-   own list.** Alternative: hide everything through Pi. The server's list is
-   an allow list, so an upstream addition stays out until someone adds it;
-   Pi's hiding is a deny list. The sign-in tools can only be reached by Pi's
-   setting.
-6. **Small tools kept or dropped on judgement**: `get-mail-attachment-content`
-   and `list-supported-time-zones` stay (the second because the description
-   of `create-calendar-event` sends the agent to it); `download-bytes`,
-   `get-mail-tips`, `get-mail-message-mime`, `copy-mail-message`,
-   `forward-calendar-event`, `add-calendar-event-attachment` and the reminder
-   tools go. Each is one name either way.
-7. **The Microsoft section became longer** (373 words to 502) while the
-   general part became shorter. Chosen because mail, calendar and tidying had
-   no path at all before. Alternative: name only the file and reply paths and
-   leave the rest to tool search.
-8. **Atlassian, Trello, IMAP, CalDAV, CardDAV and Dropbox texts were left
-   alone**, for the reasons in `agent-text.md` section 7.
-9. **Attaching a file to a draft** was left as a named follow-up
-   (`MS365_MCP_UPLOAD_DIRS`), not folded into the recommendation, because it
-   gives the server read access to a directory and deserves its own look.
+1. **The Google account text is left unchanged.** Alternative: the earlier
+   proposal's paragraph naming the `gog` subcommand for each task. Dropped
+   because `gog --help` already says it, the observed failure was not there,
+   and it was one more text for Jari to proofread.
+2. **"What is at stake" is left as shipped**, including "Reading costs
+   nothing." Alternative: the earlier one-sentence rewording. Dropped as too
+   small to ask for a proofread.
+3. **`agent-text.md` no longer shows the present text beside the proposal.**
+   Alternative: keep before and after. The present text is in the code, and
+   the comparison was most of the length.
+4. **The everyday/arranging line is presented as a proposal**, although
+   `item.md` records it under Jari's direction; the wording there is the
+   conductor's. Question 1 settles it.
+5. **Implementation is its own issue**, since this one promises a proposal.
+6. **`item.md` was not corrected** ("about 110 Outlook tools", mail rules);
+   the measured numbers are in `tool-surface.md`, which names the difference.
+7. **Where the line runs.** The agent works with messages, drafts, events,
+   contacts and files, not with folders, calendars, sharing or sorting.
+   Alternative: keep creating mail folders. One name back on the list.
+8. **One tool that sends**, `send-draft-message`. Alternative: keep
+   `send-mail` for a new message.
+9. **No per-account switch for the full tool set, and the level does not
+   change the list.** Alternatives: build the switch now; let Full show
+   everything. The first is a control for a need nobody has shown, the second
+   makes a level mean two things.
+10. **Sign-in tools hidden through Pi, the rest through Habitat's list.**
+    Habitat's list names what to offer, so an upstream addition stays out;
+    the pinned server lets only Pi's setting reach the sign-in tools.
+11. **Small tools kept or dropped on judgement**:
+    `get-mail-attachment-content` and `list-supported-time-zones` stay;
+    `download-bytes`, `get-mail-tips`, `get-mail-message-mime`,
+    `copy-mail-message`, `forward-calendar-event`,
+    `add-calendar-event-attachment` and the reminder tools go.
+12. **Attaching a file to a draft** (the 3 MB limit, `MS365_MCP_UPLOAD_DIRS`)
+    is left out as separate work: it gives the server read access to a
+    directory.
+
+## Live check
+
+Nothing to try yet. To see today's surface on the test server with a
+Microsoft account connected, ask the agent "what tools do you have for my
+Outlook mail folders?" and look for `delete-mail-folder` and `logout`.
