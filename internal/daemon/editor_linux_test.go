@@ -122,7 +122,7 @@ func TestEditorStartsOnceAsChildAndStopsWithDaemon(t *testing.T) {
 	}
 	rec := readRecord(t, filepath.Join(h.privateDir, "record.json"))
 	joined := strings.Join(rec.Args, " ")
-	for _, want := range []string{"--auth none", "--socket " + filepath.Join(h.privateDir, "code-server.sock"), "--socket-mode 600", "--idle-timeout-seconds 600", "--reconnection-grace-time 600", "--config /dev/null", "builtin-extensions-dir=" + filepath.Join(h.privateDir, "builtin")} {
+	for _, want := range []string{"--auth none", "--socket " + filepath.Join(h.privateDir, "code-server.sock"), "--socket-mode 600", "--idle-timeout-seconds 600", "--reconnection-grace-time 600", "--disable-file-cache", "--config /dev/null", "builtin-extensions-dir=" + filepath.Join(h.privateDir, "builtin")} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("argument %q missing from %q", want, joined)
 		}

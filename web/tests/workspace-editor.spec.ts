@@ -19,6 +19,9 @@ test.use({
   // to this worker's isolated listener without changing the browser's Host.
   launchOptions: {
     args: [
+      // Chromium's service-worker fetch ignores ignoreHTTPSErrors. This
+      // synthetic host uses an ephemeral certificate, including its webviews.
+      "--ignore-certificate-errors",
       `--host-resolver-rules=MAP *.oh.localhost:443 127.0.0.1:${workerHostPort(Number(process.env.TEST_PARALLEL_INDEX ?? 0))}`,
     ],
   },
@@ -110,6 +113,98 @@ test("@native-editor-tree code-server Explorer observes external file changes th
   await expect(entry("agent-created.txt")).toHaveCount(0);
   await unlink(join(root, "agent-renamed.txt"));
   await expect(entry("agent-renamed.txt")).toHaveCount(0);
+});
+
+test("@native-editor-cache workspace resources stay fresh and outside webview storage", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  test.skip(
+    !process.env.BROWSER_HOST_CODE_SERVER,
+    "Requires native code-server",
+  );
+  await conversationWithFileLink(page);
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const root = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === "git-project",
+  ).path;
+  const image = join(root, "cache-probe.svg");
+  await writeFile(
+    image,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>',
+  );
+  await writeFile(join(root, "cache-probe.md"), "![probe](cache-probe.svg)\n");
+  await page.getByTestId("toggle-editor").click();
+  const frame = editorFrame(page);
+  const trust = frame.getByRole("button", { name: /Yes, I trust/ });
+  const file = frame.getByRole("treeitem", {
+    name: "cache-probe.md",
+    exact: true,
+  });
+  await expect(file.or(trust).first()).toBeVisible({ timeout: 30000 });
+  if (await trust.isVisible()) await trust.click();
+  await file.dblclick();
+  const input = frame.locator(".monaco-editor textarea").first();
+  await expect(input).toBeVisible();
+  await input.focus();
+  await input.press("Control+Shift+v");
+  const preview = frame
+    .frameLocator("iframe.webview")
+    .frameLocator("#active-frame")
+    .locator("img");
+  await expect(preview).toBeVisible({ timeout: 30000 });
+  await expect
+    .poll(() =>
+      preview.evaluate((image: HTMLImageElement) => image.naturalWidth),
+    )
+    .toBe(10);
+  const resource = async () =>
+    frame.locator("body").evaluate(async (_, path) => {
+      const response = await fetch(
+        `/vscode-remote-resource?path=${encodeURIComponent(path)}`,
+      );
+      return {
+        status: response.status,
+        cache: response.headers.get("cache-control"),
+        text: await response.text(),
+      };
+    }, image);
+  const before = await resource();
+  expect(before.status).toBe(200);
+  expect(before.cache).toBe("no-store");
+  expect(before.text).toContain('fill="red"');
+  await writeFile(
+    image,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="blue"/></svg>',
+  );
+  expect((await resource()).text).toContain('fill="blue"');
+  // Cache Storage is shared by frames on this person's editor origin.
+  const cached = await frame.locator("body").evaluate(async () => {
+    const keys: string[] = [];
+    for (const name of await caches.keys()) {
+      for (const request of await (await caches.open(name)).keys())
+        keys.push(request.url);
+    }
+    return keys;
+  });
+  expect(cached.some((key) => key.includes("cache-probe.svg"))).toBe(false);
+  const editorURL = await frame.locator("body").evaluate(() => location.href);
+  await page.reload();
+  await page.getByTestId("toggle-editor").click();
+  await expect(editorFrame(page).locator(".monaco-workbench")).toBeVisible({
+    timeout: 30000,
+  });
+  expect((await resource()).text).toContain('fill="blue"');
+  const session = await (await page.request.get("/auth/session")).json();
+  const logout = await page.request.post("/auth/logout", {
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-Agent-Host-CSRF": session.csrf,
+    },
+  });
+  expect(logout.ok()).toBe(true);
+  const denied = await page.request.get(editorURL);
+  expect(denied.status()).not.toBe(200);
 });
 
 const columnWidth = (page: Page) =>

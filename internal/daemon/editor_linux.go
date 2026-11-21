@@ -325,6 +325,9 @@ func (h *editorHost) args(dir string) []string {
 		// the editor origin's browser storage, which a new editor session
 		// clears on the person's own origin.
 		"--enable-remote-storage",
+		// Workspace resources belong on the host, not in the webview or HTTP
+		// cache. Extension assets retain code-server's normal caching.
+		"--disable-file-cache",
 		"--vscode-option", "builtin-extensions-dir=" + filepath.Join(dir, "builtin")}
 }
 

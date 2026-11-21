@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m7dcawvbxwfkc1dnza89rwrv/file-cache-proposal
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Consider disabling workspace file caching in the browser editor
@@ -24,3 +25,9 @@ Browser persistence of workspace contents matters on shared or reused browser pr
 Before implementation, verify the tagged upstream behavior and exercise the real workbench's resource headers, webviews, reload and logout. Record the policy decision and add targeted coverage if enabled. No observed cross-user access or security-boundary bypass is claimed.
 
 Background: issues/runtime-pin-code-server-4-145-2/research.md (retained in git history after completion).
+
+## Resolution
+
+### 2026-11-21T10:29:49Z · @issuectl
+
+Implementation and focused verification completed; see result.md. Preserved in the worker branch: the combined run is blocked from merging by the independently reproduced existing scroll-spacing failure. The schema reserves fixed for bugs, so this improvement is closed as done.
