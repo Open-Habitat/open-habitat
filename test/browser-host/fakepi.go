@@ -187,6 +187,32 @@ func runFakePi(args []string) {
 			os.Exit(0)
 		})
 	}
+	// The companion's bridge, for the multiplayer journeys (fakepi_bridge.go).
+	bridge := &fakeBridge{s: s, emit: emit, written: map[string]bool{},
+		idle: func() bool { mu.Lock(); defer mu.Unlock(); return !busy },
+		start: func(work func(run chan struct{})) bool {
+			mu.Lock()
+			if busy {
+				mu.Unlock()
+				return false
+			}
+			busy = true
+			s.beginRun()
+			run, idle := s.run, s.idle
+			mu.Unlock()
+			go func() {
+				work(run)
+				mu.Lock()
+				aborted := s.aborted()
+				busy = false
+				s.endRun()
+				mu.Unlock()
+				emit(map[string]any{"type": "agent_settled", "aborted": aborted})
+				close(idle)
+			}()
+			return true
+		}}
+	go bridge.serve(os.Getenv("OH_PROCESS_SOCKET"))
 	terminated := make(chan os.Signal, 1)
 	signal.Notify(terminated, syscall.SIGTERM)
 	go func() { <-terminated; stop() }()
@@ -1212,6 +1238,7 @@ type fakeUIAnswer struct {
 	ID        string `json:"id"`
 	Confirmed bool   `json:"confirmed"`
 	Cancelled bool   `json:"cancelled"`
+	Value     string `json:"value"`
 }
 
 var fakeUIAnswers = make(chan fakeUIAnswer, 8)

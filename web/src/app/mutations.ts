@@ -51,6 +51,16 @@ export const mutationClasses = {
   "conversation.wake": "confirmed",
   "conversation.recap": "confirmed",
   "conversation.presence": "confirmed",
+  // Other people in a conversation (ADR 0038): the owner's record changes
+  // and releases, and a participant's writes through their share. Each view
+  // rereads the daemon's facts after the reply rather than guessing them.
+  "conversation.members": "confirmed",
+  "conversation.release": "confirmed",
+  "shared.join": "confirmed",
+  "shared.send": "pending",
+  "shared.cancel": "pending",
+  "shared.abort": "confirmed",
+  "shared.presence": "confirmed",
   "conversation.title": "confirmed",
   "workspace.delete": "confirmed",
   "workspace.worktree": "confirmed",

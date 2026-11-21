@@ -55,6 +55,11 @@ export interface HistoryEntry {
   scheduled_wake?: WakeLine;
   entry_key: string;
   timestamp?: string;
+  /** A participant's message in a shared conversation, attributed by the
+   * owner's daemon (ADR 0038). */
+  participant_message?: import("../components/Multiplayer").ParticipantMessageFact;
+  /** Habitat's line in a shared conversation. */
+  conversation_line?: import("../components/Multiplayer").ConversationLineFact;
   kind:
     | "user"
     | "assistant"

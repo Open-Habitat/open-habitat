@@ -154,6 +154,14 @@ import {
   timelineItems,
 } from "./HistoryView";
 import { piNotRunning, restoreToDraft, useHeldMessages } from "./heldMessages";
+import {
+  ApprovalCard,
+  OwnerPeopleBand,
+  TakeBackCard,
+  useSharedOwner,
+  WaitingCard,
+  withWaitingCards,
+} from "./MultiplayerOwner";
 import { useMessageIdentity } from "./messageIdentity";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
@@ -2098,6 +2106,15 @@ function BrowserConversationContent({
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
+  // Other people in this conversation (ADR 0038, experimental): the owner's
+  // record and the daemon's facts, read again whenever history moves.
+  const multiplayerOn = useExperimentalFeature("multiplayer");
+  const sharedOwner = useSharedOwner(
+    id,
+    csrf,
+    multiplayerOn && !!id,
+    `${entries.at(-1)?.entry_key ?? ""}:${current?.run_active ?? ""}:${current?.pending_question?.request_id ?? ""}`,
+  );
   const rewind = useRewind({
     id,
     csrf,
@@ -2926,6 +2943,9 @@ function BrowserConversationContent({
               }}
             />
           )}
+          {view === "opened" && id && multiplayerOn ? (
+            <OwnerPeopleBand owner={sharedOwner} agentId={id} />
+          ) : null}
           {view === "opened" && contextOpen ? (
             <ContextPage
               detail={contextDetail}
@@ -3095,7 +3115,37 @@ function BrowserConversationContent({
                         : "empty"
                   }
                   items={[
-                    ...timeline,
+                    ...(sharedOwner.facts && id
+                      ? withWaitingCards(
+                          timeline,
+                          sharedOwner.facts.waiting_requests,
+                          (request) => (
+                            <WaitingCard
+                              key={request.request}
+                              agentId={id}
+                              csrf={csrf}
+                              request={request}
+                              onDone={() => void sharedOwner.refresh()}
+                            />
+                          ),
+                        )
+                      : timeline),
+                    ...(sharedOwner.takeBack
+                      ? [
+                          {
+                            id: "take-back",
+                            kind: "question",
+                            content: (
+                              <TakeBackCard
+                                takeBack={sharedOwner.takeBack}
+                                running={!!current?.run_active}
+                                onStopRun={composer.onInterrupt}
+                                onClose={sharedOwner.dismissTakeBack}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
                     ...(restCard
                       ? [
                           {
@@ -3213,17 +3263,29 @@ function BrowserConversationContent({
                           {
                             id: `question:${current.pending_question.request_id}`,
                             kind: "question",
-                            content: (
-                              <PiQuestion
-                                question={current.pending_question}
-                                agentId={current.agent_id}
-                                identity={identity}
-                                csrf={csrf}
-                                refresh={refresh}
-                                onLogin={onLogin}
-                                onOutcome={setQuestionOutcome}
-                              />
-                            ),
+                            content:
+                              current.pending_question.question_kind ===
+                              "approval" ? (
+                                <ApprovalCard
+                                  question={current.pending_question}
+                                  facts={sharedOwner.facts}
+                                  agentId={current.agent_id}
+                                  identity={identity}
+                                  csrf={csrf}
+                                  refresh={refresh}
+                                  onLogin={onLogin}
+                                />
+                              ) : (
+                                <PiQuestion
+                                  question={current.pending_question}
+                                  agentId={current.agent_id}
+                                  identity={identity}
+                                  csrf={csrf}
+                                  refresh={refresh}
+                                  onLogin={onLogin}
+                                  onOutcome={setQuestionOutcome}
+                                />
+                              ),
                           },
                         ]
                       : []),

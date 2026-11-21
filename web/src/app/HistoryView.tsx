@@ -30,6 +30,10 @@ import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
+import {
+  ConversationLine,
+  ParticipantMessage,
+} from "../components/Multiplayer";
 import { activityMark } from "../components/markState";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
@@ -1416,6 +1420,28 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    // A shared conversation's participant message starts a turn as the
+    // owner's message does; Habitat's line stands between turns.
+    if (entry.participant_message) {
+      flush();
+      turnId = `turn:${entry.entry_key}`;
+      turnStart = savedAt(entry);
+      items.push({
+        id: entry.entry_key,
+        kind: "participant",
+        content: <ParticipantMessage fact={entry.participant_message} />,
+      });
+      continue;
+    }
+    if (entry.conversation_line) {
+      flush();
+      items.push({
+        id: entry.entry_key,
+        kind: "habitat-line",
+        content: <ConversationLine fact={entry.conversation_line} />,
+      });
+      continue;
+    }
     if (entry.kind === "rewind") {
       flush();
       items.push({
@@ -1473,7 +1499,11 @@ export function timelineItems(
     }
   }
   if (turn.length) flush(true);
-  else if (live && items.at(-1)?.kind === "user" && turnId)
+  else if (
+    live &&
+    (items.at(-1)?.kind === "user" || items.at(-1)?.kind === "participant") &&
+    turnId
+  )
     // Pi has saved the person's message but nothing of its answer yet.
     items.push({
       id: turnId,

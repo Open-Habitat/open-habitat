@@ -727,6 +727,21 @@ esac
 		}}
 		servers = append(servers, srv)
 		go srv.Serve(ln)
+		// The person's guest socket (ADR 0038): the daemon's real guest route
+		// table, reached only by the gateway when another person participates
+		// in one of this person's conversations. Only the gateway dials it.
+		guestPath := filepath.Join(tmp, m.Username+"-guest.sock")
+		gln, e := net.Listen("unix", guestPath)
+		if e != nil {
+			log.Fatal(e)
+		}
+		defer gln.Close()
+		paths[filepath.Join(filepath.Dir(m.Socket), "guest.sock")] = guestPath
+		peers[guestPath] = m.UID
+		guestSrv := &http.Server{WriteTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).FixtureGuestHandler(func(*http.Request) bool { return true }).ServeHTTP(w, r)
+		})}
+		go guestSrv.Serve(gln)
 	}
 	// TLS is real at the gateway. Browser trusts only this ephemeral local certificate.
 	ts := httptest.NewUnstartedServer(nil)

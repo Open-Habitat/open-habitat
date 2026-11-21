@@ -39,6 +39,7 @@ import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
 import { appText } from "../text/app";
+import { multiplayerText } from "../text/multiplayer";
 import { navigationText } from "../text/navigation";
 import { sharesText } from "../text/shares";
 import { signInText } from "../text/signIn";
@@ -154,6 +155,11 @@ import {
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
 import { ServerBrowserRail, ServerBrowserSheetHost } from "./ServerBrowser";
+import {
+  SharedPage,
+  SharedWithYouRail,
+  sharedRoute,
+} from "./SharedConversation";
 import { SharesPage, SharesRail } from "./SharesPage";
 import { SwitcherHost } from "./SwitcherHost";
 import { ownWrites } from "./sentMessages";
@@ -215,6 +221,7 @@ function safeRoute(path: string) {
     path === "/administration" ||
     path === "/resources" ||
     path === "/shares" ||
+    sharedRoute.test(path) ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
@@ -2798,6 +2805,14 @@ export function App() {
           {t.app.allWorkspaces}
         </LinkRow>
       </>
+    ) : sharedRoute.test(location.pathname) &&
+      (phase === "authenticated" || phase === "stale") ? (
+      <SharedPage
+        key={`${identity}:${location.pathname}`}
+        share={sharedRoute.exec(location.pathname)?.[1] ?? ""}
+        csrf={csrf}
+        onLogin={requireLogin}
+      />
     ) : location.pathname === "/shares" &&
       snapshot &&
       (phase === "authenticated" || phase === "stale") ? (
@@ -3356,13 +3371,15 @@ export function App() {
                   : undefined) ??
                 (isSettingsRoute(location.pathname)
                   ? t.app.settings
-                  : location.pathname === "/shares"
-                    ? sharesText[language].title
-                    : location.pathname === "/resources"
-                      ? resourcesTitle.title
-                      : location.pathname === "/workspaces/new"
-                        ? t.app.newWorkspace
-                        : t.app.home)
+                  : sharedRoute.test(location.pathname)
+                    ? multiplayerText[language].sharedWithYou
+                    : location.pathname === "/shares"
+                      ? sharesText[language].title
+                      : location.pathname === "/resources"
+                        ? resourcesTitle.title
+                        : location.pathname === "/workspaces/new"
+                          ? t.app.newWorkspace
+                          : t.app.home)
               }
               fallbackAccount={
                 profile &&
@@ -3430,10 +3447,18 @@ export function App() {
                 !landing.show ? (
                   <WorkspaceRailView
                     shares={
-                      <SharesRail
-                        current={location.pathname === "/shares"}
-                        collapsed={railCompact && !mobileLayout}
-                      />
+                      <>
+                        <SharesRail
+                          current={location.pathname === "/shares"}
+                          collapsed={railCompact && !mobileLayout}
+                        />
+                        {railCompact && !mobileLayout ? null : (
+                          <SharedWithYouRail
+                            pathname={location.pathname}
+                            identity={identity}
+                          />
+                        )}
+                      </>
                     }
                     browser={
                       railCompact && !mobileLayout ? undefined : (

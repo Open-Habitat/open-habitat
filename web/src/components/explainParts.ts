@@ -691,6 +691,26 @@ export const parts: Record<CardId, Part> = {
     kind: "once",
     sel: '[data-testid="clone-job"] [data-testid="retry"], [data-testid="restart-clone"]',
   },
+  MP01: { kind: "panel", sel: '[data-testid="people-band-open"]', opens: true },
+  MP02: {
+    kind: "panel",
+    sel: '[data-testid="people-invite"], [data-testid="people-panel-invite"]',
+    opens: true,
+  },
+  MP03: {
+    kind: "once",
+    sel: '[data-testid="people-full-rights"]',
+    opens: true,
+  },
+  MP04: { kind: "once", sel: '[data-testid="people-take-back"]' },
+  MP05: { kind: "once", sel: '[data-testid="people-remove"]' },
+  MP06: { kind: "info", sel: '[data-testid="waiting-card"]' },
+  MP07: { kind: "info", sel: '[data-testid="approval-card"]' },
+  MP08: { kind: "info", sel: '[data-testid="take-back-card"]' },
+  MP09: { kind: "nav", sel: '[data-testid="shared-with-you"]' },
+  MP10: { kind: "info", sel: '[data-testid="shared-strip"]' },
+  MP11: { kind: "once", sel: '[data-testid="shared-join"]' },
+  MP12: { kind: "once", sel: '[data-testid="shared-stop"]' },
   M25: {
     kind: "info",
     sel: '[data-testid="version-value"], [data-testid="bundle-state"]',
@@ -758,6 +778,12 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "N11",
   "N13",
   "N15",
+  "MP04",
+  "MP05",
+  "MP06",
+  "MP07",
+  "MP11",
+  "MP12",
 ]);
 
 /** Controls that production shows only under the pointer. */

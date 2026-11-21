@@ -354,6 +354,16 @@ func (c *ConversationController) FixtureEvents() http.Handler {
 	})
 }
 
+// FixtureGuestHandler is the guest socket's real route table for the
+// browser-host, which serves it on its own synthetic guest socket. peer is
+// that listener's check, as production passes transport.GuestPeer.
+func (c *ConversationController) FixtureGuestHandler(peer func(*http.Request) bool) http.Handler {
+	if !c.fixture {
+		return http.NotFoundHandler()
+	}
+	return guestHandlerFor(c, peer)
+}
+
 // nativeCfg names the native root for history reads without changing the
 // identity that authorizes requests.
 func (c *ConversationController) nativeCfg() transport.Config {

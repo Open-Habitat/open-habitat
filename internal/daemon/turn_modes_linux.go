@@ -207,7 +207,7 @@ type releaseControl struct {
 // companion writes the release as a Habitat line and checks against the
 // branch that the request is still waiting.
 func (c *ConversationController) releaseRequest(w http.ResponseWriter, r *http.Request, id string) {
-	if !multiplayerEnabled(c.cfg.Home) {
+	if !multiplayerEnabled(c.home) {
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}

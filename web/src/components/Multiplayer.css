@@ -1,0 +1,311 @@
+/* Other people in a conversation (ADR 0038). A person's colour is a ring
+   and an edge from the --ah-glyph-1…7 family, never a fill, so text keeps
+   its contrast in every theme. */
+
+.ah-mp-avatar {
+  --ah-mp-hue: var(--ah-glyph-1);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--ah-mp-hue);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+  position: relative;
+}
+.ah-mp-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ah-mp-avatar[data-presence="invited"] {
+  border-style: dashed;
+  opacity: 0.8;
+}
+.ah-mp-avatar[data-presence="here"]::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-ok);
+  border: 1.5px solid var(--ah-bg);
+}
+
+.ah-mp-message {
+  --ah-mp-hue: var(--ah-glyph-1);
+  border-left: 3px solid var(--ah-mp-hue);
+  padding: 6px 0 6px 12px;
+  margin: 8px 0;
+}
+.ah-mp-message header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.ah-mp-message time {
+  color: var(--ah-muted);
+  font-size: 12px;
+}
+.ah-mp-text {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-mp-role {
+  font-size: 12px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ah-line-strong);
+  color: var(--ah-muted);
+}
+.ah-mp-role[data-role="full_rights"] {
+  border-color: var(--ah-turn-line);
+  color: var(--ah-ink);
+}
+
+.ah-mp-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+  color: var(--ah-muted);
+  font-size: 13px;
+}
+.ah-mp-line-mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ah-accent);
+  transform: translateY(-1px);
+}
+
+.ah-mp-card {
+  border: 1px solid var(--ah-line-strong);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  background: var(--ah-surface);
+}
+.ah-mp-card[data-tone="attention"] {
+  border-color: var(--ah-accent);
+}
+.ah-mp-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.ah-mp-card p {
+  margin: 6px 0;
+}
+.ah-mp-card-sub {
+  color: var(--ah-muted);
+  font-size: 13px;
+}
+.ah-mp-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ah-mp-args {
+  margin: 8px 0;
+  padding: 8px 10px;
+  max-height: 320px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--ah-bg);
+  border: 1px solid var(--ah-line-strong);
+  font-family: var(--ah-mono);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-mp-rows {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  display: grid;
+  gap: 4px;
+}
+.ah-mp-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.ah-mp-rows code {
+  font-family: var(--ah-mono);
+  overflow-wrap: anywhere;
+}
+.ah-mp-rows li[data-answer="denied"] code,
+.ah-mp-rows li[data-answer="cancelled"] code {
+  text-decoration: line-through;
+}
+
+/* The owner's people row under the header. */
+.ah-mp-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  margin: 0 auto;
+  font-size: 13px;
+  color: var(--ah-muted);
+}
+.ah-mp-band-people {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ah-mp-band-people:hover,
+.ah-mp-band-people:focus-visible {
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+}
+.ah-mp-stack {
+  display: inline-flex;
+}
+.ah-mp-stack .ah-mp-avatar + .ah-mp-avatar {
+  margin-left: -6px;
+}
+
+.ah-mp-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: grid;
+  gap: 10px;
+}
+.ah-mp-list > li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+}
+.ah-mp-list .ah-mp-person {
+  display: grid;
+  gap: 2px;
+}
+.ah-mp-list .ah-mp-person span {
+  color: var(--ah-muted);
+  font-size: 13px;
+}
+.ah-mp-list .ah-mp-row-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ah-mp-lent {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+/* The participant's strip above the composer. */
+.ah-mp-strip {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--ah-line-strong);
+  background: var(--ah-surface);
+  font-size: 13px;
+}
+.ah-mp-strip[data-mode="tools"] {
+  border-color: var(--ah-turn-line);
+}
+.ah-mp-strip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.ah-mp-held {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.ah-mp-held p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ah-mp-shared-head {
+  padding: 12px 16px 4px;
+}
+.ah-mp-shared-head h1 {
+  margin: 0;
+  font-size: 18px;
+}
+.ah-mp-shared-head p {
+  margin: 2px 0 0;
+  color: var(--ah-muted);
+  font-size: 13px;
+}
+
+.ah-mp-invite {
+  max-width: 560px;
+  margin: 32px auto;
+  padding: 0 16px;
+}
+
+.ah-mp-rail {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0;
+}
+.ah-mp-rail h2 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 6px 12px 2px;
+  color: var(--ah-muted);
+}
+.ah-mp-rail a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  color: var(--ah-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+.ah-mp-rail a[aria-current="page"],
+.ah-mp-rail a:hover {
+  background: var(--ah-surface);
+}
+.ah-mp-rail a > span:not(.ah-mp-avatar, .ah-mp-badge) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-mp-badge {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ah-accent);
+}

@@ -3,7 +3,7 @@
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
     { "id": "terminal-copy-on-select", "landed": true },
-    { "id": "multiplayer", "landed": false },
+    { "id": "multiplayer", "landed": true },
     { "id": "agent-instructions", "landed": true }
   ],
   "fi": {

@@ -287,7 +287,7 @@ func membersReply(id string, generation uint64, conv *membershipSettings) map[st
 // which checks that an invitee is an admitted, bound person and supplies the
 // display name; the daemon still decides alone what the record says.
 func (c *ConversationController) members(w http.ResponseWriter, r *http.Request, id string) {
-	if !multiplayerEnabled(c.cfg.Home) {
+	if !multiplayerEnabled(c.home) {
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
@@ -346,7 +346,7 @@ func (c *ConversationController) members(w http.ResponseWriter, r *http.Request,
 // participant's view reads (shared_facts_linux.go). A conversation never
 // shared is not read for them.
 func (c *ConversationController) sharedState(w http.ResponseWriter, r *http.Request, id string) {
-	if !multiplayerEnabled(c.cfg.Home) {
+	if !multiplayerEnabled(c.home) {
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
@@ -513,7 +513,7 @@ func (c *ConversationController) changeMember(id string, in memberControl) (map[
 // person may perform; every refusal looks the same as an unknown
 // conversation, so a guest learns nothing about what else exists.
 func (c *ConversationController) joinMember(id string, p guestParticipant) (map[string]any, bool) {
-	if !multiplayerEnabled(c.cfg.Home) || !memberSubjectPattern.MatchString(p.Subject) || !validMemberName(p.DisplayName) || p.Subject == c.ownerSubject() {
+	if !multiplayerEnabled(c.home) || !memberSubjectPattern.MatchString(p.Subject) || !validMemberName(p.DisplayName) || p.Subject == c.ownerSubject() {
 		return nil, false
 	}
 	reply, joined, ok := c.joinMemberLocked(id, p)
@@ -562,7 +562,7 @@ func (c *ConversationController) joinMemberLocked(id string, p guestParticipant)
 // request is the join itself, and the conversation readable, in place and
 // not archived. The caller holds memberMu.
 func (c *ConversationController) authorizeGuestLocked(id string, p guestParticipant, invitedToo bool) (memberRecord, bool) {
-	if !multiplayerEnabled(c.cfg.Home) || !memberSubjectPattern.MatchString(p.Subject) || p.Subject == c.ownerSubject() {
+	if !multiplayerEnabled(c.home) || !memberSubjectPattern.MatchString(p.Subject) || p.Subject == c.ownerSubject() {
 		return memberRecord{}, false
 	}
 	cwd, archived, err := c.shareableConversation(id)
