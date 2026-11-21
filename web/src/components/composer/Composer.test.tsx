@@ -1241,6 +1241,59 @@ describe("attachment refusal lifetime", () => {
   });
 });
 
+describe("an upload's saved moment", () => {
+  const reference =
+    "[notes.txt](/api/v1/attachments/55555555-5555-4555-8555-555555555555)";
+  const file = new File(["synthetic"], "notes.txt", { type: "text/plain" });
+  function Draft() {
+    const [value, setValue] = useState("Katso");
+    return <Composer {...base} csrf="csrf" value={value} onChange={setValue} />;
+  }
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows the waiting file as waiting, then Tallessa for a moment before the file", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let answer = () => {};
+    vi.mocked(uploadAttachment).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = () =>
+            resolve({ reference } as Awaited<
+              ReturnType<typeof uploadAttachment>
+            >);
+        }),
+    );
+    vi.mocked(uploadAttachment).mockImplementationOnce(
+      () => new Promise(() => {}),
+    );
+    const view = render(<Draft />);
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [file, file] } },
+    );
+    const bars = view.getAllByTestId("attachment-progress");
+    expect(bars[0].textContent).toBe("0 %");
+    expect(bars[1].textContent).toBe("Odottaa tallennusta");
+    await act(async () => answer());
+    expect(view.getByTestId("attachment-saved").textContent).toBe("Tallessa");
+    expect(
+      view
+        .getAllByTestId("attachment-progress-ring")[0]
+        .getAttribute("data-state"),
+    ).toBe("done");
+    // The saved file does not hold the next one back.
+    expect(view.getAllByTestId("attachment-progress")).toHaveLength(1);
+    await act(async () => vi.advanceTimersByTime(1100));
+    expect(view.getByTestId("attachment-saved")).toBeTruthy();
+    await act(async () => vi.advanceTimersByTime(200));
+    expect(view.queryByTestId("attachment-saved")).toBeNull();
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(2);
+    expect(view.getAllByTestId("attachment-remove")).toHaveLength(1);
+  });
+});
+
 describe("focus after an attachment", () => {
   const reference =
     "[notes.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)";

@@ -3,6 +3,7 @@ import { textNow, useText } from "../i18n";
 import { attachmentChipsText } from "../text/attachmentChips";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton } from "./ControlElements";
+import { HabitatMark, type MarkState } from "./HabitatMark";
 import { Icon } from "./Icon";
 import { ImageThumbnail } from "./ImageThumbnail";
 
@@ -17,10 +18,25 @@ export type Attachment = {
   /** The reference text exactly as it stands in the message. */
   source: string;
   pending?: boolean;
+  /** Sent share of a pending file's bytes, 0–1; 1 while the host saves. */
   progress?: number;
   failed?: boolean;
   blocked?: boolean;
+  /** A pending file whose turn to upload has not come yet. */
+  waiting?: boolean;
+  /** Saved a moment ago: the chip shows the shut door before the file. */
+  saved?: boolean;
 };
+
+const percent = (item: Attachment) => Math.floor((item.progress ?? 0) * 100);
+
+/** The upload mark's state for a pending or just-saved chip. */
+function uploadState(item: Attachment): MarkState {
+  if (item.saved) return "done";
+  if (item.failed) return "error";
+  if (item.waiting) return "queued";
+  return item.progress === 1 ? "saving" : "uploading";
+}
 
 const attachment = (match: RegExpMatchArray): Attachment => ({
   image: match[1] === "!",
@@ -132,30 +148,14 @@ export function AttachmentChips({
               isDisabled={item.pending}
               onPress={() => setOpen(item)}
             >
-              {item.pending && !item.blocked ? (
-                <svg
-                  className="ah-upload-ring"
+              {(item.pending && !item.blocked) || item.saved ? (
+                <HabitatMark
+                  state={uploadState(item)}
+                  progress={item.saved ? 1 : (item.progress ?? 0)}
+                  // The button's icon size, as in the approved round.
+                  size={14}
                   data-testid="attachment-progress-ring"
-                  data-saving={
-                    (item.progress === 1 && !item.failed) || undefined
-                  }
-                  viewBox="0 0 20 20"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    className="ah-upload-ring-track"
-                  />
-                  <circle
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    pathLength="100"
-                    strokeDasharray={`${item.progress === 1 && !item.failed ? 75 : Math.floor((item.progress ?? 0) * 100)} 100`}
-                  />
-                </svg>
+                />
               ) : item.image ? (
                 <ImageThumbnail src={`${item.url}/thumbnail`} />
               ) : (
@@ -168,26 +168,40 @@ export function AttachmentChips({
             {item.pending ? (
               <span
                 data-testid="attachment-progress"
+                className="ah-attachment-progress"
+                data-state={item.blocked ? "blocked" : uploadState(item)}
                 role="progressbar"
                 aria-label={item.name}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.floor((item.progress ?? 0) * 100)}
+                aria-valuenow={percent(item)}
                 aria-valuetext={
                   item.failed
                     ? t.failed
-                    : item.progress === 1
-                      ? t.saving
-                      : undefined
+                    : item.waiting
+                      ? t.waiting
+                      : item.progress === 1
+                        ? t.saving
+                        : undefined
                 }
               >
                 {item.blocked
                   ? t.overLimit
                   : item.failed
-                    ? t.failed
-                    : item.progress === 1
-                      ? t.saving
-                      : `${Math.floor((item.progress ?? 0) * 100)} %`}
+                    ? `${t.failed} ${percent(item)} %`
+                    : item.waiting
+                      ? t.waiting
+                      : item.progress === 1
+                        ? t.saving
+                        : `${percent(item)} %`}
+              </span>
+            ) : item.saved ? (
+              <span
+                data-testid="attachment-saved"
+                className="ah-attachment-progress"
+                data-state="done"
+              >
+                {t.saved}
               </span>
             ) : null}
             {onRemove ? (

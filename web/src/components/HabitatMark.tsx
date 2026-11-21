@@ -18,7 +18,10 @@ export type MarkState =
   | "awaited"
   | "stopping"
   | "loading"
-  | "intro";
+  | "intro"
+  | "queued"
+  | "uploading"
+  | "saving";
 
 /** A sub-agent's dot orbiting the resident. */
 export type SubMarkState =
@@ -36,6 +39,8 @@ const ORBIT = 5.6;
 
 const RING =
   "M9 -2v6a5 5 0 0 1-5 5h-8a5 5 0 0 1-5-5v-8a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z";
+/** The open ring's share of the path; the rest is the door. */
+const OPEN = 81.3;
 
 export function HabitatMark({
   state = "idle",
@@ -46,8 +51,14 @@ export function HabitatMark({
   title,
   variant = "mark",
   drifting = false,
+  progress,
   "data-testid": testId,
 }: {
+  /** The mark as a progress figure (an attachment's upload, 0–1): a faint
+   * whole mark with the ring drawn over it clockwise from the door, and
+   * nobody home until the host has the file. Used with the upload states
+   * (queued, uploading, saving, done, error), never an agent's. */
+  progress?: number;
   state?: MarkState;
   /** A process of the conversation runs: the door drifts slowly whatever
    * the state, keeping its colour and resident (markState.markDrifts says
@@ -72,12 +83,17 @@ export function HabitatMark({
     variant === "mark" &&
     size >= SUB_DOT_MIN_SIZE &&
     subs.length <= SUB_DOT_MAX;
+  const drawn =
+    progress === undefined || variant !== "mark"
+      ? undefined
+      : Math.min(1, Math.max(0, progress));
   const svg = (
     <svg
       className={`oh-mark${className && !(subs.length && !dots) ? ` ${className}` : ""}`}
       data-state={state}
       data-variant={variant === "ring" ? "ring" : undefined}
       data-drift={drifting && variant === "mark" ? "" : undefined}
+      data-progress={drawn === undefined ? undefined : drawn.toFixed(2)}
       data-testid={subs.length && !dots ? undefined : testId}
       viewBox="-12 -12 24 24"
       width={size}
@@ -88,7 +104,19 @@ export function HabitatMark({
       focusable="false"
     >
       {title ? <title>{title}</title> : null}
-      <path className="oh-ring" pathLength={100} d={RING} />
+      {drawn === undefined ? null : (
+        <path className="oh-track" pathLength={100} d={RING} />
+      )}
+      <path
+        className="oh-ring"
+        pathLength={100}
+        d={RING}
+        style={
+          drawn === undefined || !(state === "uploading" || state === "error")
+            ? undefined
+            : { strokeDasharray: `${(drawn * OPEN).toFixed(2)} 100` }
+        }
+      />
       {variant === "ring" ? (
         <circle className="oh-dot oh-door" r={1.8} cx={7.4} cy={-7.4} />
       ) : (

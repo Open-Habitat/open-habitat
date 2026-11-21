@@ -6,6 +6,7 @@ import {
   pptxFixture,
   xlsxFixture,
 } from "../app/documentFixtures";
+import { AttachmentChips } from "./AttachmentChips";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { UserMessage } from "./Conversation";
 
@@ -34,6 +35,63 @@ export const SentMessage: Story = {
           "Attachment path: /home/alice/attachments/6f82a1c4-2222-4222-8222-222222222222",
         ].join("\n")}
         onCopy={noop}
+      />
+    </main>
+  ),
+};
+
+/** A draft's uploads, one chip per state: the mark's ring drawn from the
+ * door as the bytes go, the resident stepping in while the host saves, the
+ * shut door of a file saved a moment ago, a broken upload and a file waiting
+ * its turn. */
+export const Uploading: Story = {
+  render: () => (
+    <main style={{ maxWidth: 780, padding: 24 }}>
+      <AttachmentChips
+        onRemove={noop}
+        attachments={[
+          {
+            image: false,
+            name: "muistio.md",
+            url: "/api/v1/attachments/00000000-0000-4000-8000-000000000001",
+            source: "s",
+            saved: true,
+          },
+          {
+            image: false,
+            name: "retkikartta.tif",
+            url: "u1",
+            source: "",
+            pending: true,
+            progress: 0.37,
+          },
+          {
+            image: false,
+            name: "aineisto.zip",
+            url: "u2",
+            source: "",
+            pending: true,
+            progress: 1,
+          },
+          {
+            image: false,
+            name: "luonnos.pdf",
+            url: "u3",
+            source: "",
+            pending: true,
+            progress: 0.62,
+            failed: true,
+          },
+          {
+            image: false,
+            name: "raportti.pdf",
+            url: "u4",
+            source: "",
+            pending: true,
+            progress: 0,
+            waiting: true,
+          },
+        ]}
       />
     </main>
   ),

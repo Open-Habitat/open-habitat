@@ -115,6 +115,17 @@ taustatyötä, tuntematon), eivät muutu. Liike vähennettynä ovi on paikallaan
 neljänneskierroksen päässä, oikeassa alakulmassa. Rivin lopun piste nimeää
 prosessin edelleen, eikä rivi siirry osiosta toiseen.
 
+Liitteen tallennuksessa merkki on edistymisen kuva (Merkki täyttyy, Jari
+21.11.2026): haalean koko merkin päälle piirtyy rengas ovelta myötäpäivään
+sitä mukaa kuin tavuja lähtee, ja se seisoo, jos siirto seisoo. Kotona ei ole
+ketään ennen kuin palvelin on tallentanut tiedoston, joten tallennus ei
+näytä agentin työltä; tallennuksen aikana asukas astuu ovesta sisään. Valmis
+tiedosto näyttää suljetun oven ja sanan Tallessa noin 1,2 sekuntia ennen kuin
+siru muuttuu tiedoston kuvakkeeksi tai pikkukuvaksi. Vuoroaan odottava
+tiedosto on himmeä katkoviivamerkki ja sana Odottaa tallennusta, katkennut
+on virheväriä ja kertoo, kuinka pitkälle ehti. Prosentti on aina näkyvissä
+numerona ja seisoo nimestä kokonaisen välin (`--ah-s3`) päässä.
+
 Nykyinen navigaatiokohde erottuu neutraalilla pinnalla. Hover ja painallus
 syventävät toiminnon sävyä, jotta niitä ei sekoiteta valintaan. Estetty
 kontrolli säilyy luettavana. Epäselvän eston, kuten yhteyskatkon tai

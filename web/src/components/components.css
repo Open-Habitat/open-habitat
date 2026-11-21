@@ -1,21 +1,3 @@
-.ah-upload-ring {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  transform: rotate(-90deg);
-}
-.ah-upload-ring circle {
-  fill: none;
-  stroke: var(--ah-accent);
-  stroke-width: 2.4;
-  stroke-linecap: round;
-}
-.ah-upload-ring .ah-upload-ring-track {
-  stroke: var(--ah-line-strong);
-}
-.ah-upload-ring[data-saving] {
-  animation: var(--ah-title-spin);
-}
 .ah-button-stack {
   display: inline-flex;
   flex-direction: column;
@@ -4476,6 +4458,24 @@ details[open] > summary:not([class])::before {
   text-overflow: ellipsis;
   white-space: nowrap;
   font: 400 var(--ah-size-meta) var(--ah-mono);
+}
+/* An upload's figure (percentage, Odottaa tallennusta, Tallennetaan,
+   Tallessa) stands apart from the file name by a whole spacing step, and
+   its numbers do not jump while they change (Jari 21.11.2026). */
+.ah-attachment-progress {
+  flex: none;
+  margin-inline-start: var(--ah-s3);
+  padding-inline-end: var(--ah-s1);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ah-attachment-progress[data-state="error"] {
+  color: var(--ah-err);
+}
+.ah-attachment-progress[data-state="done"] {
+  color: var(--ah-ok);
 }
 .ah-attachment-chip.ah-attachment-thumb {
   padding: 0;

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
@@ -11,6 +11,22 @@ type UploadWindow = typeof window & {
   };
 };
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
+
+// The figure beside a name (percentage, waiting, saving) stands a spacing
+// step apart from it and never overlaps it (Jari 21.11.2026).
+async function expectApart(chip: import("@playwright/test").Locator) {
+  const name = await chip.locator(".ah-attachment-name").boundingBox();
+  const figure = await chip
+    .locator(
+      '[data-testid="attachment-progress"], [data-testid="attachment-saved"]',
+    )
+    .boundingBox();
+  if (!name || !figure) throw new Error("chip without a name or figure");
+  expect(figure.x - (name.x + name.width)).toBeGreaterThanOrEqual(8);
+  expect(
+    Math.abs(figure.y + figure.height / 2 - (name.y + name.height / 2)),
+  ).toBeLessThan(4);
+}
 for (const width of [1440, 390]) {
   for (const language of ["fi", "en-US"]) {
     test(`upload progress, cancellation and explicit send at ${width} ${language}`, async ({
@@ -101,21 +117,51 @@ for (const width of [1440, 390]) {
       await expect(
         composer.getByTestId("attachment-progress").first(),
       ).toHaveText("42 %");
+      await expect(
+        composer.getByTestId("attachment-progress").last(),
+      ).toHaveText(
+        language === "fi" ? "Odottaa tallennusta" : "Waiting to save",
+      );
+      const marks = composer.getByTestId("attachment-progress-ring");
+      await expect(marks.first()).toHaveAttribute("data-state", "uploading");
+      await expect(marks.last()).toHaveAttribute("data-state", "queued");
+      // Nobody is home while the bytes go.
+      await expect(marks.first().locator(".oh-dot")).toBeHidden();
+      for (const chip of await composer.getByTestId("attachment-chip").all())
+        await expectApart(chip);
       await expect(sendButton).toBeDisabled();
+      // Evidence outside the repository: OH_VISUAL_DIR names the directory.
       const capture = async (name: string) => {
-        if (process.env.OH_VISUAL_CAPTURE !== "1") return;
-        const base = `../issues/attachment-upload-progress/evidence/${name}-${width}-${language}`;
+        const dir = process.env.OH_VISUAL_DIR;
+        if (process.env.OH_VISUAL_CAPTURE !== "1" || !dir) return;
+        await mkdir(dir, { recursive: true });
+        const base = `${dir}/${name}-${width}-${language}`;
         await snapshot(page, base, { labOrigin: new URL(page.url()).origin });
         await writeFile(
           `${base}.html`,
           (await readFile(`${base}.html`, "utf8")).replace(/[ \\t]+$/gm, ""),
         );
+        for (const theme of ["light", "dark", "contrast"]) {
+          await page.evaluate((t) => {
+            document.documentElement.dataset.theme = t;
+          }, theme);
+          await composer.screenshot({
+            path: `${base}-chips-${theme}.png`,
+            scale: "device",
+          });
+        }
+        await page.evaluate(() => {
+          delete document.documentElement.dataset.theme;
+        });
       };
       await capture("upload");
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.getByTestId("account-menu-trigger").click();
       await page.getByTestId("menu-explain").click();
-      await page.setViewportSize({ width, height: 900 });
+      // The cards are the same at any width. On a phone the mode's state
+      // card may stand over the composer (whose chips can take two rows) and
+      // a pointer cannot reach a chip under it, so the parts are pointed at
+      // on the desktop.
       await composer.getByTestId("attachment-progress").first().hover();
       await expect(page.getByTestId("explain-card")).toHaveAttribute(
         "data-card",
@@ -136,6 +182,7 @@ for (const width of [1440, 390]) {
       await composer.getByTestId("attachment-cancel").first().click();
       await expect(composer.getByTestId("attachment-chip")).toHaveCount(2);
       await page.getByTestId("explain-stop").click();
+      await page.setViewportSize({ width, height: 900 });
       await page.getByTestId("message-input").press("Enter");
       await expect(page.getByTestId("message-input")).toHaveValue(
         "Read this attachment",
@@ -168,15 +215,38 @@ for (const width of [1440, 390]) {
         language === "fi" ? "Tallennetaan" : "Saving",
       );
       await expect(sendButton).toBeDisabled();
-      await page.emulateMedia({ reducedMotion: "reduce" });
-      expect(
-        await composer
-          .getByTestId("attachment-progress-ring")
-          .evaluate((element) => getComputedStyle(element).animationName),
-      ).toBe("none");
+      // Saving: the resident steps in; still, it stands in the door.
+      const resident = composer
+        .getByTestId("attachment-progress-ring")
+        .locator(".oh-dot");
+      await expect(resident).toBeVisible();
+      const motion = () =>
+        resident.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return `${style.animationName} ${style.transform}`;
+        });
       await page.emulateMedia({ reducedMotion: "no-preference" });
+      expect(await motion()).toMatch(/^oh-step-in /);
+      // The suite's default is reduced motion.
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      expect(await motion()).toBe("none matrix(1, 0, 0, 1, 5, -5)");
+      await capture("saving");
       await page.evaluate(() => (window as UploadWindow).uploadTest.release());
       await expect(composer.getByTestId("attachment-progress")).toHaveCount(0);
+      // Tallessa: the shut door for a moment before the file's icon.
+      const saved = composer.getByTestId("attachment-saved");
+      await expect(saved).toHaveText(language === "fi" ? "Tallessa" : "Saved");
+      const seen = Date.now();
+      await expect(
+        composer.getByTestId("attachment-progress-ring"),
+      ).toHaveAttribute("data-state", "done");
+      await expectApart(composer.getByTestId("attachment-chip"));
+      await capture("saved");
+      await expect(saved).toHaveCount(0, { timeout: 3000 });
+      expect(Date.now() - seen).toBeGreaterThan(700);
+      await expect(
+        composer.getByTestId("attachment-progress-ring"),
+      ).toHaveCount(0);
       await expect(sendButton).toBeEnabled();
       await expect(page.getByTestId("message-input")).toHaveValue(
         "Read this attachment",
@@ -210,6 +280,14 @@ for (const width of [1440, 390]) {
         1,
       );
       await expect(composer.getByTestId("attachment-chip")).toHaveCount(3);
+      await expect(
+        composer.getByTestId("attachment-progress-ring").first(),
+      ).toHaveAttribute("data-state", "error");
+      await expect(
+        composer.getByTestId("attachment-progress").last(),
+      ).toHaveText(
+        language === "fi" ? "Odottaa tallennusta" : "Waiting to save",
+      );
       expect(
         await page.evaluate(() => (window as UploadWindow).uploadTest.count()),
       ).toBe(3);

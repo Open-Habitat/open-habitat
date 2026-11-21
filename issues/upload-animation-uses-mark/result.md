@@ -68,3 +68,52 @@ Sivu ja kuvat (scale 2 sekä lähikuvat scale 4):
 `worker-results/01m7dndj5tkgpnew9syvxrkc00/offline.html`, switch
 directions, press Toista on Iso tiedosto hitaasti and Yritä uudelleen on
 Katkesi ja uudelleen.
+
+## Implementation (21.11.2026)
+
+Direction 1 Merkki täyttyy is in production, without an experimental flag.
+`HabitatMark` takes a `progress` (0–1) and three upload states beside the
+existing `done` and `error`: `queued` (dim dashed mark), `uploading` (faint
+whole mark, ring drawn from the door, nobody home) and `saving` (the
+resident steps in; still, it stands in the door). `AttachmentChips` draws
+it for every pending chip and, for 1.2 s after the host has saved a file,
+the shut door with Tallessa before the icon or thumbnail; the composer
+keeps those references in a short local list. The percentage stands
+`--ah-s3` from the name, a waiting file says Odottaa tallennusta, and a
+broken upload says Tallennus katkesi with how far it got. The explain card
+V36 describes the mark. The round's sources are removed (history keeps
+them), and `design-system/design.md` records the direction.
+
+Checks: `./scripts/test-web-fast.sh` green; component tests for every chip
+state and the Tallessa moment (fake timers); the lab spec
+`lab-attachment-upload-progress.spec.ts` checks spacing (≥ 8 px, no
+overlap, same line), the queued and error marks, the resident's motion and
+its still door position under reduced motion, and that Tallessa shows and
+then gives way to the file. 12/12 with `--repeat-each 3`. The other specs
+that attach files (11 files, 128 cases) passed; one case in
+`browser-conversation.spec.ts` failed once under load and passed 4/4 on a
+rerun, as it does on main.
+
+Evidence (not committed): `/var/tmp/agent-keep/upload-animation-uses-mark/`
+on the staging host, composer captures at 1440 and 390 in fi and en for uploading,
+saving, saved, failure and the explain cards, each in Päivä, Yö and
+Kontrasti.
+
+**Decisions for later review**
+
+- *Mark size*: 14 px, the button's icon size. The round meant 24 px, but
+  the button primitive's icon rule overrode it there too, so the round
+  Jari approved showed 14 px. Alternative: 24 px as the notes say (the chip
+  grows a little). Why: build what was seen and approved.
+- *Explain-mode test at desktop width*: the lab spec points at the chips
+  with explain mode on at 1440 for both widths. At 390 the state card can
+  stand over the composer once the waiting chip's longer text takes a
+  second row, and a pointer cannot reach a chip under it. Alternative:
+  change the state card's placement to keep the composer clear. Why: the
+  cards do not depend on width, and the placement is a separate explain-
+  mode matter.
+- *Saved chip is openable*: during Tallessa the chip already opens the
+  preview and can be removed. Alternative: disabled for the moment. Why:
+  the file is saved; blocking it for 1.2 s would only get in the way.
+- *Reduced motion keeps the moment*: Tallessa still lasts 1.2 s, since it
+  is a state shown in shape and word, not motion.

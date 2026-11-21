@@ -321,6 +321,61 @@
   stroke-width: 1.2;
 }
 
+/* Progress (an attachment's upload, Jari 21.11.2026; direction 1 of the
+   round design-system/prototypes/rounds/2026-11-14-upload-mark): the whole
+   mark stays faintly underneath and the ring is drawn over it from the door clockwise as the
+   bytes go, standing still when they stop. Nobody is home until the host
+   has the file, so it never reads as an agent, whose resident is always in;
+   the resident steps in while the host saves, and done shuts the door. */
+.oh-track {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 81.3 18.7;
+  opacity: 0.25;
+}
+:root[data-theme="contrast"] .oh-track {
+  opacity: 0.5;
+}
+.oh-mark[data-progress]:not([data-variant]) .oh-ring {
+  transition: stroke-dasharray 180ms linear;
+}
+.oh-mark[data-progress]:not([data-state="saving"], [data-state="done"])
+  .oh-dot {
+  display: none;
+}
+/* queued: waits its turn; a dim dashed mark, nothing drawn. */
+.oh-mark[data-state="queued"] {
+  color: var(--ah-muted);
+}
+.oh-mark[data-progress][data-state="queued"] .oh-ring {
+  display: none;
+}
+.oh-mark[data-state="queued"] .oh-track {
+  stroke-dasharray: 4.5 6;
+}
+/* saving: every byte is sent; the resident steps in through the door. */
+.oh-mark[data-progress][data-state="saving"] .oh-dot {
+  animation: oh-step-in 1.4s ease-in-out infinite;
+}
+@keyframes oh-step-in {
+  0% {
+    transform: translate(calc(var(--tx) * 1.4), calc(var(--ty) * 1.4))
+      scale(0.5);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 /* Reduced motion: the state still shows from shape and colour (at the door,
    shut, hollow, dashed). */
 @media (prefers-reduced-motion: reduce) {
@@ -336,10 +391,15 @@
   }
   .oh-mark:not([data-variant="ring"]):is(
       [data-state="waiting"],
-      [data-state="read"]
+      [data-state="read"],
+      [data-state="saving"]
     )
     .oh-dot {
     transform: translate(var(--tx), var(--ty));
+  }
+  /* Progress jumps to its value. */
+  .oh-mark[data-progress]:not([data-variant]) .oh-ring {
+    transition: none;
   }
 }
 
@@ -360,5 +420,9 @@
   .oh-sub[data-state="waiting"],
   .oh-sub[data-state="error"] {
     fill: Highlight;
+  }
+  .oh-track {
+    stroke: GrayText;
+    opacity: 1;
   }
 }

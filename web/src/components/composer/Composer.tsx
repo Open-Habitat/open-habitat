@@ -108,6 +108,9 @@ const touchScreen = () =>
 // a touch screen focusing would open the keyboard, so there the field takes
 // the focus only if it had it.
 const focusAfterAttach = (hadFocus: boolean) => !touchScreen() || hadFocus;
+/** How long a saved upload's chip shows the shut door and Tallessa before it
+ * turns into the file's icon or thumbnail: long enough to be seen. */
+const SAVED_MOMENT_MS = 1200;
 
 type Mode = "steer" | "follow_up";
 const modeIcon: Record<Mode, "steer" | "queue"> = {
@@ -707,6 +710,25 @@ export function Composer({
     loaded: number;
   }>();
   const [uploadFailure, setUploadFailure] = useState<RefusedAttachment>();
+  // References saved a moment ago: their chips show the shut door and
+  // Tallessa before turning into the file (Jari 21.11.2026).
+  const [justSaved, setJustSaved] = useState<readonly string[]>([]);
+  const savedTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = savedTimers.current;
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+  const showSaved = useCallback((reference: string) => {
+    setJustSaved((old) => [...old, reference]);
+    const timer = setTimeout(() => {
+      savedTimers.current.delete(timer);
+      setJustSaved((old) => old.filter((other) => other !== reference));
+    }, SAVED_MOMENT_MS);
+    savedTimers.current.add(timer);
+  }, []);
   const [refusedFiles, setRefusedFiles] = useState<RefusedAttachment[]>([]);
   const uploadController = useRef<AbortController | null>(null);
   useEffect(
@@ -810,6 +832,7 @@ export function Composer({
           const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
           draft.current = { ...current, value: next };
           if (item.focus) attachFocus.current = uploaded.reference;
+          showSaved(uploaded.reference);
           current.onChange(next);
         }
         updatePending(pending.current.filter((entry) => entry.id !== item.id));
@@ -854,6 +877,7 @@ export function Composer({
     uploading,
     uploadFailure,
     updatePending,
+    showSaved,
   ]);
   // Invalidate before the new binding's layout callbacks can observe a reply.
   useLayoutEffect(() => {
@@ -1976,7 +2000,9 @@ export function Composer({
       ) : null}
       <AttachmentChips
         attachments={[
-          ...attachments,
+          ...attachments.map((item) =>
+            justSaved.includes(item.source) ? { ...item, saved: true } : item,
+          ),
           ...pendingFiles.map((item, index) => ({
             image: false,
             name: item.file.name,
@@ -1988,6 +2014,8 @@ export function Composer({
                 ? uploadProgress.loaded / item.file.size
                 : 0,
             failed: uploadFailure?.id === item.id,
+            waiting:
+              uploadProgress?.id !== item.id && uploadFailure?.id !== item.id,
             blocked: selection.blocked[index],
           })),
         ]}

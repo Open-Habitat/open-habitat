@@ -1,6 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  type Attachment,
   AttachmentChips,
   joinAttachments,
   messageText,
@@ -86,4 +87,85 @@ it("hides the host's attachment path lines only for the message's own attachment
   expect(messageText(sent)).toBe(
     "Katso liitteet\nAttachment path: /home/alice/attachments/33333333-3333-4333-8333-333333333333",
   );
+});
+
+describe("an upload's chip uses the mark as its progress", () => {
+  const upload = (extra: Partial<Attachment>): Attachment => ({
+    image: false,
+    name: "kartta.tif",
+    url: "local-1",
+    source: "",
+    pending: true,
+    progress: 0,
+    ...extra,
+  });
+  const chip = (item: Attachment) => {
+    const view = render(
+      <AttachmentChips attachments={[item]} onRemove={() => {}} />,
+    );
+    const mark = view.getByTestId("attachment-progress-ring");
+    return { view, mark, ring: mark.querySelector(".oh-ring") as SVGElement };
+  };
+
+  it("draws the ring from the door by the sent share, with nobody home", () => {
+    const { view, mark, ring } = chip(upload({ progress: 0.37 }));
+    expect(mark.getAttribute("data-state")).toBe("uploading");
+    expect(mark.querySelector(".oh-track")).not.toBeNull();
+    expect(ring.style.strokeDasharray).toBe("30.08 100");
+    const bar = view.getByRole("progressbar");
+    expect(bar.getAttribute("aria-valuenow")).toBe("37");
+    expect(bar.textContent).toBe("37 %");
+  });
+
+  it("lets the resident step in while the host saves", () => {
+    const { view, mark, ring } = chip(upload({ progress: 1 }));
+    expect(mark.getAttribute("data-state")).toBe("saving");
+    // The whole open ring, from the stylesheet, not a partial one.
+    expect(ring.style.strokeDasharray).toBe("");
+    expect(view.getByRole("progressbar").textContent).toBe("Tallennetaan");
+  });
+
+  it("says a waiting file waits instead of showing 0 %", () => {
+    const { view, mark } = chip(upload({ waiting: true }));
+    expect(mark.getAttribute("data-state")).toBe("queued");
+    const bar = view.getByRole("progressbar");
+    expect(bar.textContent).toBe("Odottaa tallennusta");
+    expect(bar.getAttribute("aria-valuetext")).toBe("Odottaa tallennusta");
+  });
+
+  it("keeps how far a broken upload got, in the error state", () => {
+    const { view, mark, ring } = chip(upload({ progress: 0.62, failed: true }));
+    expect(mark.getAttribute("data-state")).toBe("error");
+    expect(ring.style.strokeDasharray).toBe("50.41 100");
+    const bar = view.getByRole("progressbar");
+    expect(bar.textContent).toBe("Tallennus katkesi 62 %");
+    expect(bar.getAttribute("aria-valuetext")).toBe("Tallennus katkesi");
+  });
+
+  it("shows a just-saved file as the shut door and Tallessa, openable", () => {
+    const { view, mark } = chip({
+      image: true,
+      name: "kuva.png",
+      url: "/api/v1/attachments/11111111-1111-4111-8111-111111111111",
+      source: shot,
+      saved: true,
+    });
+    expect(mark.getAttribute("data-state")).toBe("done");
+    expect(view.container.querySelector("img")).toBeNull();
+    expect(view.queryByRole("progressbar")).toBeNull();
+    expect(view.getByTestId("attachment-saved").textContent).toBe("Tallessa");
+    expect(view.getByTestId("attachment-open").hasAttribute("disabled")).toBe(
+      false,
+    );
+  });
+
+  it("turns into the file once the moment is over", () => {
+    const { attachments } = splitAttachments(shot);
+    const view = render(
+      <AttachmentChips attachments={attachments} onRemove={() => {}} />,
+    );
+    expect(view.queryByTestId("attachment-progress-ring")).toBeNull();
+    expect(view.queryByTestId("attachment-saved")).toBeNull();
+    expect(view.container.querySelector("img")).not.toBeNull();
+  });
 });
