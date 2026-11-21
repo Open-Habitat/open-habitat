@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
@@ -108,7 +109,7 @@ func (a *Auth) githubObserve(w http.ResponseWriter, r *http.Request) {
 	d := json.NewDecoder(bytes.NewReader(b))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.FullName != name || !observeStates[reply.State] || (reply.State == "interrupted") != (reply.SizeBytes != nil) || (reply.SizeBytes != nil && (*reply.SizeBytes < 0 || *reply.SizeBytes > 9007199254740991)) {
+	if !jsoncheck.NoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.FullName != name || !observeStates[reply.State] || (reply.State == "interrupted") != (reply.SizeBytes != nil) || (reply.SizeBytes != nil && (*reply.SizeBytes < 0 || *reply.SizeBytes > 9007199254740991)) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

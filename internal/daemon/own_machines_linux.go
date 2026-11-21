@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -1200,7 +1201,7 @@ func decodeOwnMachinesRequest(b []byte) (ownMachinesRequest, bool) {
 	var in map[string]json.RawMessage
 	var req ownMachinesRequest
 	dec := json.NewDecoder(bytes.NewReader(b))
-	if !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF {
+	if !jsoncheck.NoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF {
 		return req, false
 	}
 	str := func(k string, out *string) bool { return json.Unmarshal(in[k], out) == nil }

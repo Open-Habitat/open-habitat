@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -56,7 +57,7 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 			WorkspaceID string `json:"workspace_id"`
 		}
 		b, e := io.ReadAll(io.LimitReader(r.Body, 257))
-		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || strictCloneJSON(b, &in) != nil || !idPattern.MatchString(in.WorkspaceID) {
+		if e != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || strictCloneJSON(b, &in) != nil || !idPattern.MatchString(in.WorkspaceID) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

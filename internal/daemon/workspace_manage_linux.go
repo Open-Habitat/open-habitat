@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -205,7 +206,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		var extra any
 		dec := json.NewDecoder(bytes.NewReader(b))
 		dec.DisallowUnknownFields()
-		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(&extra) != io.EOF {
+		if e != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(&extra) != io.EOF {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

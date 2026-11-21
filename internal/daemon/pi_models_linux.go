@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -204,7 +205,7 @@ func servePiModels(w http.ResponseWriter, r *http.Request, pi *PiDevice) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 513))
 		decoder := json.NewDecoder(bytes.NewReader(body))
 		decoder.DisallowUnknownFields()
-		if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || !utf8.Valid(body) || decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || len(input.Model) == 0 || len(input.Model) > 160 || strings.TrimSpace(input.Model) != input.Model || strings.ContainsAny(input.Model, "\x00\r\n") {
+		if err != nil || int64(len(body)) != r.ContentLength || !jsoncheck.NoDuplicates(body) || !utf8.Valid(body) || decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || len(input.Model) == 0 || len(input.Model) > 160 || strings.TrimSpace(input.Model) != input.Model || strings.ContainsAny(input.Model, "\x00\r\n") {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

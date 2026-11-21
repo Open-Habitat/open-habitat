@@ -24,6 +24,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"golang.org/x/sys/unix"
 )
 
@@ -514,7 +515,7 @@ func (c *ConversationController) EditorFiles() http.Handler {
 			d := json.NewDecoder(bytes.NewReader(b))
 			d.DisallowUnknownFields()
 			var fields map[string]json.RawMessage
-			if int64(len(b)) != r.ContentLength || !editorJSONUnicode(b) || !catalogNoDuplicates(b) || json.Unmarshal(b, &fields) != nil || len(fields) != 6 || d.Decode(&in) != nil || d.Decode(new(any)) != io.EOF || len(in.Base) != 74 || !strings.HasPrefix(in.Base, "sha256:v1:") {
+			if int64(len(b)) != r.ContentLength || !editorJSONUnicode(b) || !jsoncheck.NoDuplicates(b) || json.Unmarshal(b, &fields) != nil || len(fields) != 6 || d.Decode(&in) != nil || d.Decode(new(any)) != io.EOF || len(in.Base) != 74 || !strings.HasPrefix(in.Base, "sha256:v1:") {
 				fail(fileError(400, "invalid_request"))
 				return
 			}

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -220,7 +221,7 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 		}
 		decoder := json.NewDecoder(bytes.NewReader(b))
 		decoder.DisallowUnknownFields()
-		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || decoder.Decode(&in) != nil || decoder.Decode(new(any)) != io.EOF || !validGitValue(in.Name, 200) || !validGitValue(in.Email, 254) || !strings.Contains(in.Email, "@") || (in.Mode != "onboarding" && in.Mode != "settings") {
+		if e != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || decoder.Decode(&in) != nil || decoder.Decode(new(any)) != io.EOF || !validGitValue(in.Name, 200) || !validGitValue(in.Email, 254) || !strings.Contains(in.Email, "@") || (in.Mode != "onboarding" && in.Mode != "settings") {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/open-habitat/open-habitat/internal/experimental"
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -41,7 +42,7 @@ func AgentExperimentalHandler(cfg transport.Config) http.Handler {
 			var input map[string]json.RawMessage
 			var id string
 			var enabled *bool
-			if e != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !catalogNoDuplicates(body) || json.Unmarshal(body, &input) != nil || len(input) != 2 || json.Unmarshal(input["id"], &id) != nil || json.Unmarshal(input["enabled"], &enabled) != nil || enabled == nil || !validFeatureID(id) {
+			if e != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !jsoncheck.NoDuplicates(body) || json.Unmarshal(body, &input) != nil || len(input) != 2 || json.Unmarshal(input["id"], &id) != nil || json.Unmarshal(input["enabled"], &enabled) != nil || enabled == nil || !validFeatureID(id) {
 				snapshotError(w, 400, "invalid_arguments")
 				return
 			}

@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"unicode/utf8"
+
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 )
 
 const WorkspaceStartPageCheckPath = "/api/v1/workspaces/start_page/check"
@@ -40,7 +42,7 @@ func (c *ConversationController) WorkspaceStartPageCheck() http.Handler {
 		}
 		dec := json.NewDecoder(bytes.NewReader(body))
 		dec.DisallowUnknownFields()
-		if err != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !catalogNoDuplicates(body) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || in.SchemaVersion != 1 || !idPattern.MatchString(in.WorkspaceID) || in.Content == nil {
+		if err != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !jsoncheck.NoDuplicates(body) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || in.SchemaVersion != 1 || !idPattern.MatchString(in.WorkspaceID) || in.Content == nil {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

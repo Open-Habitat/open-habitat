@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:duplicate-json-validator
@@ -18,6 +18,7 @@ size: S
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Share the identical duplicate-JSON-key validator
@@ -39,3 +40,9 @@ Size: S (two copies replaced by one tested helper, mechanical call-site changes)
 ## Assessment
 
 CONFIRMED; recommendation SPIN_OFF; severity low; confidence high. Self-review checked both implementations and live callers; generated files and deliberate provider-specific rules are excluded.
+
+## Resolution
+
+### 2026-11-21T10:29:49Z · @issuectl
+
+Implementation and focused verification completed; see result.md. Preserved in the worker branch: the combined run is blocked from merging by the independently reproduced existing scroll-spacing failure. The schema reserves fixed for bugs, so this improvement is closed as done.

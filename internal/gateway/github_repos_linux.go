@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
@@ -135,7 +136,7 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000+maxOnboardingDefaults {
+	if !jsoncheck.NoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000+maxOnboardingDefaults {
 		fail(503, "daemon_unavailable", "catalog_invalid")
 		return
 	}

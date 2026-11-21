@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"golang.org/x/sys/unix"
 )
 
@@ -111,7 +112,7 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		var in iconSuggestionRequest
 		dec := json.NewDecoder(bytes.NewReader(body))
 		dec.DisallowUnknownFields()
-		if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || in.SchemaVersion != 1 || !idPattern.MatchString(in.WorkspaceID) || !validIconRequest(in) {
+		if err != nil || int64(len(body)) != r.ContentLength || !jsoncheck.NoDuplicates(body) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || in.SchemaVersion != 1 || !idPattern.MatchString(in.WorkspaceID) || !validIconRequest(in) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

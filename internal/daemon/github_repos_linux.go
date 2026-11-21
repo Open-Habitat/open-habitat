@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -391,7 +392,7 @@ func lookupRepo(ctx context.Context, run func(context.Context, ...string) ([]byt
 	return repoItem{}, "unavailable"
 }
 func strictRepoJSON(b []byte, v any) error {
-	if len(b) > repoOutputLimit || !catalogNoDuplicates(b) {
+	if len(b) > repoOutputLimit || !jsoncheck.NoDuplicates(b) {
 		return fmt.Errorf("oversized")
 	}
 	d := json.NewDecoder(bytes.NewReader(b))

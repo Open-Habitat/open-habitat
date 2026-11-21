@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"golang.org/x/sys/unix"
 
 	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
@@ -158,7 +159,7 @@ func (b *storageBreakdown) handler(trusted func(*http.Request) bool) http.Handle
 			raw, err := io.ReadAll(io.LimitReader(r.Body, 65))
 			dec := json.NewDecoder(bytes.NewReader(raw))
 			dec.DisallowUnknownFields()
-			if err != nil || !catalogNoDuplicates(raw) || dec.Decode(&in) != nil || !in.Measure || dec.Decode(new(any)) != io.EOF {
+			if err != nil || !jsoncheck.NoDuplicates(raw) || dec.Decode(&in) != nil || !in.Measure || dec.Decode(new(any)) != io.EOF {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

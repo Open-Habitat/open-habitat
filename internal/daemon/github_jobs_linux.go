@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/daemon/integrations"
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/storagequota"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -265,7 +266,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				ConnectionID string `json:"connection_id"`
 				RepositoryID int64  `json:"repository_id"`
 			}
-			if err == nil && int64(len(body)) == r.ContentLength && catalogNoDuplicates(body) && strictCloneJSON(body, &in) == nil && in.Source != "" {
+			if err == nil && int64(len(body)) == r.ContentLength && jsoncheck.NoDuplicates(body) && strictCloneJSON(body, &in) == nil && in.Source != "" {
 				g := forgeCloneRequest{Provider: in.Source, Action: in.Action, ConnectionID: in.ConnectionID, FullName: in.FullName, Mode: in.Mode, RepositoryID: in.RepositoryID}
 				if in.JobID != "" || !validForgeRequest(body, g) {
 					snapshotError(w, 400, "invalid_request")
@@ -285,7 +286,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				}
 				return
 			}
-			if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || strictCloneJSON(body, &in) != nil || in.ConnectionID != "" || in.RepositoryID != 0 || !validCloneAction(body, in.Action, in.FullName, in.Mode, in.JobID) {
+			if err != nil || int64(len(body)) != r.ContentLength || !jsoncheck.NoDuplicates(body) || strictCloneJSON(body, &in) != nil || in.ConnectionID != "" || in.RepositoryID != 0 || !validCloneAction(body, in.Action, in.FullName, in.Mode, in.JobID) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

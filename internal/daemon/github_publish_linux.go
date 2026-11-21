@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -89,7 +90,7 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 				return
 			}
 			b, e := io.ReadAll(io.LimitReader(r.Body, 1025))
-			if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || strictCloneJSON(b, &in) != nil || in.Action != "create" && in.Action != "origin" && in.Action != "push" || in.Confirmation != in.FullName || len(in.ObservationToken) < 8 {
+			if e != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || strictCloneJSON(b, &in) != nil || in.Action != "create" && in.Action != "origin" && in.Action != "push" || in.Confirmation != in.FullName || len(in.ObservationToken) < 8 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

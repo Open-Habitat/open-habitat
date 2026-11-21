@@ -28,6 +28,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -600,7 +601,7 @@ func accountKeysHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			var in map[string]json.RawMessage
 			var kind string
 			dec := json.NewDecoder(bytes.NewReader(b))
-			if err != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || len(in) != 1 || json.Unmarshal(in["kind"], &kind) != nil || (kind != keyKindSSH && kind != keyKindAge) {
+			if err != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(new(any)) != io.EOF || len(in) != 1 || json.Unmarshal(in["kind"], &kind) != nil || (kind != keyKindSSH && kind != keyKindAge) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

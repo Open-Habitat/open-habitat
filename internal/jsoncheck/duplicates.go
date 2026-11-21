@@ -1,6 +1,5 @@
-//go:build linux
-
-package daemon
+// Package jsoncheck provides JSON grammar checks without endpoint policy.
+package jsoncheck
 
 import (
 	"bytes"
@@ -9,16 +8,17 @@ import (
 	"io"
 )
 
-// Reject ambiguous duplicate JSON keys before decoding a daemon response.
-func catalogNoDuplicates(b []byte) bool {
+// NoDuplicates accepts exactly one JSON value with no repeated object keys.
+func NoDuplicates(b []byte) bool {
 	d := json.NewDecoder(bytes.NewReader(b))
-	if catalogValue(d) != nil {
+	if value(d) != nil {
 		return false
 	}
 	var tail any
 	return d.Decode(&tail) == io.EOF
 }
-func catalogValue(d *json.Decoder) error {
+
+func value(d *json.Decoder) error {
 	token, e := d.Token()
 	if e != nil {
 		return e
@@ -40,7 +40,7 @@ func catalogValue(d *json.Decoder) error {
 				return errors.New("ambiguous JSON")
 			}
 			seen[s] = true
-			if e = catalogValue(d); e != nil {
+			if e = value(d); e != nil {
 				return e
 			}
 		}
@@ -50,7 +50,7 @@ func catalogValue(d *json.Decoder) error {
 		}
 	case '[':
 		for d.More() {
-			if e = catalogValue(d); e != nil {
+			if e = value(d); e != nil {
 				return e
 			}
 		}

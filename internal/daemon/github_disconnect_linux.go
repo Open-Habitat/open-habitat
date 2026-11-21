@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/nativegh"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
@@ -64,7 +65,7 @@ func RepoDisconnectHandler(cfg transport.Config, trusted func(*http.Request) boo
 			Scope            string `json:"scope"`
 			ObservationToken string `json:"observation_token"`
 		}
-		if err != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || strictCloneJSON(b, &in) != nil || in.Confirmation != "disconnect" || in.Scope != "user" {
+		if err != nil || int64(len(b)) != r.ContentLength || !jsoncheck.NoDuplicates(b) || strictCloneJSON(b, &in) != nil || in.Confirmation != "disconnect" || in.Scope != "user" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

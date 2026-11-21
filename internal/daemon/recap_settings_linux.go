@@ -18,6 +18,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/jsoncheck"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -242,7 +243,7 @@ func recapSettingsHandlerAt(cfg transport.Config, trusted func(*http.Request) bo
 			var value recapSettings
 			decoder := json.NewDecoder(bytes.NewReader(body))
 			decoder.DisallowUnknownFields()
-			if err != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !catalogNoDuplicates(body) || !recapSettingsComplete(body) || decoder.Decode(&value) != nil || decoder.Decode(new(any)) != io.EOF || !value.valid() {
+			if err != nil || int64(len(body)) != r.ContentLength || !utf8.Valid(body) || !jsoncheck.NoDuplicates(body) || !recapSettingsComplete(body) || decoder.Decode(&value) != nil || decoder.Decode(new(any)) != io.EOF || !value.valid() {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
