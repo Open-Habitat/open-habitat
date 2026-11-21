@@ -71,7 +71,7 @@ test("@settings-experimental only remaining experiments have switches; saved ret
   for (const id of graduated) await expect(card(page, id)).toHaveCount(0);
   await expect(
     page.getByTestId("experimental-features").getByRole("region"),
-  ).toHaveCount(4);
+  ).toHaveCount(features.length);
   const a11y = await new AxeBuilder({ page })
     .include('[data-testid="experimental-features"]')
     .exclude(".ex-pic")
