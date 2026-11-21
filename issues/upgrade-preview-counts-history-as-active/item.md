@@ -2,13 +2,16 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed during a published-release pilot installation
 source_ref: taskfleet:01m8011p0b8m9jf6cayg20mx93/observation:upgrade-catalog-missing-state
 originating_run: 01m8011p0b8m9jf6cayg20mx93
 originating_run_kind: spinoff
+lane: release-runtime
+lane_seq: 3
+preparation: ready
 ---
 
 # Upgrade preview counts native history rows without state as active turns
