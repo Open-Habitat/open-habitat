@@ -2,7 +2,7 @@
 created: 2026-11-14
 updated: 2026-11-21
 type: improvement
-status: testing
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m7crr8pp31xgtejmknvckwes/review-finding:history-mode-remnants
@@ -18,6 +18,7 @@ size: S
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Remove the obsolete virtual-history mode surface
@@ -39,3 +40,9 @@ Size: S (a component interface cleanup, callers/catalog copy, manifest and lockf
 ## Assessment
 
 CONFIRMED; recommendation SPIN_OFF; severity low; confidence high. Knip's unused dependency lead was confirmed with source search and by reading the component and its production callers. This is not the separately filed pending-command dead branch.
+
+## Resolution
+
+### 2026-11-21T14:29:38Z · @issuectl
+
+Fixed by 827a8910 (refactor(web): remove the unused virtual history mode); no historyMode or @tanstack/react-virtual left in web/.
