@@ -2,13 +2,23 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: release gate run
 source_ref: taskfleet:01m7zvhhzmbh3rcm00vqkf2k8y/gate-archive-cluster
 originating_run: 01m7zvhhzmbh3rcm00vqkf2k8y
 originating_run_kind: spinoff
+closed: 2026-11-21
+commits:
+- hash: c263b654
+  summary: archive specs run with an answering Taskfleet
+- hash: edbfa428
+  summary: quick-succession opens Hiljaiset on its device
+- hash: 87cbd610
+  summary: trash case reads the storage breakdown
+- hash: 5767d136
+  summary: a rail too short for its regions scrolls as a whole
 ---
 
 # v0.1.4 gate: archive cluster of browser specs fails
