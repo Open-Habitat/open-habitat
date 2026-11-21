@@ -702,27 +702,60 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 			// Inventory is observational, not an in-flight mutation barrier. A live
 			// daemon always needs interruption consent even if this list says idle.
 			data, e := userCommand(ctx, u, binary, "agent", "conversation", "list", "--json")
-			var reply struct {
-				Data struct {
-					Result struct {
-						Sessions []struct {
-							State string `json:"state"`
-						} `json:"sessions"`
-					} `json:"result"`
-				} `json:"data"`
-			}
-			if e == nil && json.Unmarshal(data, &reply) == nil && reply.Data.Result.Sessions != nil {
-				u.TurnsObservable = true
-				for _, v := range reply.Data.Result.Sessions {
-					if upgradeSessionActive(v.State) {
-						u.ActiveTurns++
-					}
-				}
+			if e == nil {
+				u.ActiveTurns, u.TurnsObservable = activeTurns(data)
 			}
 		}
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+// activeTurns counts the daemon work an upgrade would cut in the
+// predecessor's `agent conversation list --json` reply. The list is the rail's
+// whole native-history catalog, not just the daemon's handles, so most rows
+// are history that no process holds.
+//
+// Stopping the daemon cuts only its own Pi children (KillMode=mixed); native
+// SSH, tmux and Taskfleet Pi keep running on their generation. A daemon child
+// always has a controller handle, and the list reports a handle's state, so a
+// row's state decides; an empty or unfamiliar state counts as active. A row
+// without state has no handle: lifecycle resting or archived is history, and
+// live means a Pi outside the daemon was observed writing it, which the
+// upgrade does not cut. Archive visibility overrides lifecycle and can hide
+// such a writer, which is why no stateless row is read as a writer census
+// either way. A lifecycle this release does not know, a missing one, or a
+// reply that does not have the list's shape counts as active or unobservable.
+func activeTurns(data []byte) (int, bool) {
+	var reply struct {
+		Data struct {
+			Result struct {
+				SchemaVersion int `json:"schema_version"`
+				Sessions      []struct {
+					Lifecycle string  `json:"lifecycle"`
+					State     *string `json:"state"`
+				} `json:"sessions"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(data, &reply) != nil || reply.Data.Result.SchemaVersion != 1 || reply.Data.Result.Sessions == nil {
+		return 0, false
+	}
+	n := 0
+	for _, v := range reply.Data.Result.Sessions {
+		if v.State != nil {
+			if upgradeSessionActive(*v.State) {
+				n++
+			}
+			continue
+		}
+		switch v.Lifecycle {
+		case "resting", "archived", "live":
+		default:
+			n++
+		}
+	}
+	return n, true
 }
 
 func upgradeSessionActive(state string) bool {
