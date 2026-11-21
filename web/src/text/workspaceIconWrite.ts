@@ -14,7 +14,7 @@ const fi = {
   } as Record<string, string>,
   commitNotes: {
     uncommitted:
-      "Kuvake tallentui .open-habitat.yaml-tiedostoon, mutta sitä ei commitoitu, koska tiedostossa oli jo omia muutoksia.",
+      "Kuvake tallentui, mutta muutokset jäivät commitoimatta. Voit pyytää agenttia commitoimaan ne.",
     commit_failed:
       "Kuvake tallentui .open-habitat.yaml-tiedostoon, mutta Git ei ottanut committia vastaan. Tiedosto odottaa commitia.",
   } as Record<string, string>,
@@ -35,7 +35,7 @@ export const workspaceIconWriteText = catalog(fi, {
   },
   commitNotes: {
     uncommitted:
-      "The icon was saved to .open-habitat.yaml but not committed, because the file already had changes of your own.",
+      "The icon was saved, but the changes were not committed. You can ask the agent to commit them.",
     commit_failed:
       "The icon was saved to .open-habitat.yaml, but Git did not accept the commit. The file is waiting to be committed.",
   },

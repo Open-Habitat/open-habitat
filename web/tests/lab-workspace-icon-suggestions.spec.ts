@@ -118,6 +118,14 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   expect(payload.wish).toContain("/api/v1/attachments/");
   await expect(row).toHaveAttribute("data-state", "done");
   await expect(field).toHaveValue("");
+  const attached = row
+    .getByTestId("workspace-icon-suggestion")
+    .first()
+    .locator("img");
+  await expect(attached).toBeVisible();
+  await expect
+    .poll(() => attached.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
   // Full-length non-ASCII wishes and prior rounds reach the daemon through
   // the gateway; byte limits must not accidentally preserve the old 4 KB cap.
   await field.fill("ä".repeat(4096));

@@ -9,6 +9,7 @@ export type WorkspaceResult = {
   state: "created" | "updated";
   client_command_id?: string;
   workspace?: WorkspaceChange;
+  icon_value?: string;
   icon_commit?:
     | "committed"
     | "unchanged"

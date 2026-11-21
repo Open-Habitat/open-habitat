@@ -74,8 +74,14 @@
         "workspace": {
           "$ref": "#/$defs/workspaceChange"
         },
+        "icon_value": {
+          "description": "The saved flat icon value; an imported image selector becomes a repository-relative image path.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
         "icon_commit": {
-          "description": "An icon write's outcome in Git: committed (a commit of .open-habitat.yaml alone, not pushed), unchanged (the config already said it), not_git (a plain directory: only the file), uncommitted (the config had other changes, so the written file is left for the person), commit_failed (Git refused; the file is written). Snapshots read after event_cursor carry the new icon.",
+          "description": "An icon write's outcome in Git: committed (a commit of .open-habitat.yaml and any selected imported image, not pushed), unchanged (the config already said it), not_git (a plain directory: only the file), uncommitted (the config had other changes or the image uses a Git filter, so the written files are left for the person), commit_failed (Git refused; the file is written). Snapshots read after event_cursor carry the new icon.",
           "enum": [
             "committed",
             "unchanged",

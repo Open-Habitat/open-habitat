@@ -251,12 +251,13 @@ func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool
 		q, err := url.ParseQuery(r.URL.RawQuery)
 		id := q.Get("workspace_id")
 		logo := len(q["logo"]) == 1 && q.Get("logo") == "1"
+		candidate := len(q) == 2 && len(q["candidate"]) == 1 && isIconCandidate(q.Get("candidate")) && len(q.Get("candidate")) <= maxIconCandidate
 		extra := len(q) - 1
 		if logo {
 			extra--
 		}
 		version := extra == 1 && len(q["v"]) == 1 && len(q.Get("v")) <= 64
-		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceIconPath || r.URL.EscapedPath() != WorkspaceIconPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || extra != 0 && !version {
+		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceIconPath || r.URL.EscapedPath() != WorkspaceIconPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || extra != 0 && !version && !candidate {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -265,9 +266,17 @@ func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool
 			snapshotError(w, status, code)
 			return
 		}
-		data, typ, err := readIconImage(r.Context(), *target, logo)
+		var data []byte
+		var typ string
+		if candidate {
+			var image iconImage
+			image, typ, err = readIconCandidate(r.Context(), cfg, q.Get("candidate"))
+			data = image.data
+		} else {
+			data, typ, err = readIconImage(r.Context(), *target, logo)
+		}
 		if err != nil {
-			if errors.Is(err, errPreviewMissing) {
+			if errors.Is(err, errPreviewMissing) || errors.Is(err, errIconInvalid) {
 				snapshotError(w, 404, "resource_not_found")
 			} else {
 				snapshotError(w, 503, "native_source_unavailable")

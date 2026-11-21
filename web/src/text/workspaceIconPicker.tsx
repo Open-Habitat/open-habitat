@@ -42,6 +42,10 @@ const fi = {
       "Mallin vastauksesta ei saatu kuvaketta.",
       "Voit yrittää uudelleen.",
     ],
+    image_not_usable: [
+      "Kuva ei sovi kuvakkeeksi.",
+      "Liitä PNG-, JPEG-, WebP- tai SVG-kuva, jonka koko on enintään 256 kt.",
+    ],
     request_failed: ["Ehdotuksia ei saatu.", "Voit yrittää uudelleen."],
   } as Record<string, [string, string]>,
   rowLabel: "Kuvake-ehdotus",
@@ -94,6 +98,10 @@ export const workspaceIconPickerText = catalog(fi, {
     model_invalid_response: [
       "No icon could be read from the model's answer.",
       "You can try again.",
+    ],
+    image_not_usable: [
+      "This image cannot be used as an icon.",
+      "Attach a PNG, JPEG, WebP or SVG image no larger than 256 KiB.",
     ],
     request_failed: ["No suggestions came.", "You can try again."],
   },

@@ -13,6 +13,7 @@ export type IconSuggestionFailure =
   | "model_unavailable"
   | "model_timeout"
   | "model_invalid_response"
+  | "image_not_usable"
   /** No answer from the host at all. */
   | "request_failed";
 export type IconSeen = {
@@ -78,7 +79,7 @@ function validRound(v: unknown): v is IconRound {
     r.suggestions.length > 0 &&
     r.suggestions.length <= 8 &&
     r.suggestions.every(
-      (s) => !!s && text(s.icon, 300) && !!s.icon && text(s.why, 120),
+      (s) => !!s && text(s.icon, 512) && !!s.icon && text(s.why, 120),
     )
   );
 }
@@ -196,11 +197,11 @@ export function useIconSuggestions(
       }
       if (controller.signal.aborted) return false;
       current.current = null;
-      if (reply?.state === "done" && reply.suggestions && reply.model) {
+      if (reply?.state === "done" && reply.suggestions) {
         const round: IconRound = {
           wish: trimmed,
           reply: reply.reply,
-          model: reply.model,
+          model: reply.model ?? "",
           suggestions: reply.suggestions,
         };
         rounds.current = [...rounds.current, round].slice(-maxStoredRounds);

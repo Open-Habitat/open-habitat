@@ -17,7 +17,11 @@ func runFakeIconModel() int {
 			Readme string `json:"readme"`
 			Logo   string `json:"logo"`
 		} `json:"facts"`
-		Wish string `json:"wish"`
+		Wish       string `json:"wish"`
+		Workspaces []struct {
+			Name string `json:"name"`
+			Logo string `json:"logo"`
+		} `json:"workspaces"`
 	}
 	if json.NewDecoder(os.Stdin).Decode(&in) != nil {
 		_, _ = os.Stdout.WriteString(`{"failure":"model_unavailable"}`)
@@ -46,6 +50,12 @@ func runFakeIconModel() int {
 	if strings.Contains(strings.ToLower(in.Wish), "kirjai") {
 		out = []s{{"AK", "aurinkokello"}, {"A", "lyhyt"}, {"AKL", "pidempi"}}
 		reply = "Kirjaintunnuksia:"
+	}
+	for _, workspace := range in.Workspaces {
+		if workspace.Logo != "" && strings.Contains(in.Wish, workspace.Name) {
+			out = append([]s{{workspace.Logo, "named workspace logo"}}, out...)
+			break
+		}
 	}
 	b, _ := json.Marshal(map[string]any{"model": "synthetic/icon-fixture", "reply": reply, "suggestions": out})
 	_, _ = os.Stdout.Write(b)

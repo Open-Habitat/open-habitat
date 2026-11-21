@@ -74,6 +74,18 @@ export function previewIcon(
       show: logo ?? { kind: "glyph" },
     };
   if (logo && value === w.icon_logo?.path) return { ...icon, show: logo };
+  if (isImageCandidate(value) || /\.(svg|png|webp|jpe?g)$/i.test(value)) {
+    const candidate = isImageCandidate(value)
+      ? value
+      : `workspace:${w.workspace_id}:${value}`;
+    return {
+      ...icon,
+      show: {
+        kind: "image",
+        src: `/api/v1/workspaces/icon?${new URLSearchParams({ workspace_id: w.workspace_id, candidate })}`,
+      },
+    };
+  }
   if (/^[A-Z0-9ÅÄÖ]{1,3}$/.test(value))
     return {
       ...icon,
@@ -82,6 +94,11 @@ export function previewIcon(
     };
   return { ...icon, show: { kind: "emoji", value } };
 }
+
+export const isImageCandidate = (value: string) =>
+  value.startsWith("workspace:") || value.startsWith("attachment:");
+export const imageSuggestionReason = (value: string) =>
+  value.startsWith("attachment:") ? txt.attachedImage : txt.workspaceImage;
 
 // Emoji the browser offers by itself when no model answers, as in the
 // prototype: a deterministic pick from the name, so a visit repeats it.

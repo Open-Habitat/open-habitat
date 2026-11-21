@@ -49,6 +49,24 @@ func TestIconWishAttachments(t *testing.T) {
 	if code, out := postIconSuggestions(t, c, body); code != 200 || out.State != "done" || calls != 1 {
 		t.Fatalf("%d %+v calls=%d", code, out, calls)
 	}
+	// A real upload remains selectable when the model cannot answer.
+	c.iconSuggester = func(context.Context, []byte) (string, string, []iconSuggestion, error) {
+		return "", "", nil, titleModelTimeout
+	}
+	if code, out := postIconSuggestions(t, c, body); code != 200 || out.State != "done" || out.Model != "" || len(out.Suggestions) != 1 || out.Suggestions[0].Icon != "attachment:"+imageID {
+		t.Fatalf("direct fallback: %d %+v", code, out)
+	}
+	for _, data := range [][]byte{append(png, make([]byte, maxWorkspaceIcon)...), []byte("GIF89a")} {
+		if err := os.WriteFile(filepath.Join(root, imageID), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if code, out := postIconSuggestions(t, c, body); code != 200 || out.Reason != "image_not_usable" {
+			t.Fatalf("image rejection: %d %+v", code, out)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, imageID), png, 0600); err != nil {
+		t.Fatal(err)
+	}
 	// Missing, symlinked, binary and oversized text fail before any model call.
 	if err := os.Remove(filepath.Join(root, textID)); err != nil {
 		t.Fatal(err)

@@ -262,7 +262,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-		} else if in.Name != "" || in.UserObservationToken != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) || (in.Action == "icon" && (in.Icon == nil || in.Hidden != nil || in.Git != nil || in.DisplayName != nil || len(*in.Icon) > maxIconPath)) {
+		} else if in.Name != "" || in.UserObservationToken != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) || (in.Action == "icon" && (in.Icon == nil || in.Hidden != nil || in.Git != nil || in.DisplayName != nil || len(*in.Icon) > maxIconCandidate)) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -377,9 +377,22 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		hidden := false
 		changeKnown := true
 		commit := ""
+		iconValue := ""
 		switch in.Action {
 		case "icon":
-			commit, e = setWorkspaceIcon(r.Context(), cfg.Home, child, target.Kind, *in.Icon)
+			value := *in.Icon
+			var images []iconImage
+			if isIconCandidate(value) {
+				image, _, err := readIconCandidate(r.Context(), cfg, value)
+				if err != nil {
+					snapshotError(w, 409, "icon_invalid")
+					return
+				}
+				images = append(images, image)
+				value = image.path
+			}
+			commit, e = setWorkspaceIcon(r.Context(), cfg.Home, child, target.Kind, value, images...)
+			iconValue = value
 			if errors.Is(e, errIconInvalid) || errors.Is(e, errIconConfig) {
 				snapshotError(w, 409, e.Error())
 				return
@@ -452,6 +465,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		}
 		if commit != "" {
 			reply["icon_commit"] = commit
+			reply["icon_value"] = iconValue
 			// Other tabs read the new icon from the next snapshot. This one
 			// shows it at once and keeps it until a snapshot has passed the
 			// invalidation's cursor, so an older read still on its way does

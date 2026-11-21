@@ -29,6 +29,7 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 	}
 	for _, ok := range []string{
 		"/api/v1/workspaces/icon?workspace_id=ws_example123",
+		"/api/v1/workspaces/icon?workspace_id=ws_example123&candidate=workspace:ws_other123:logo.svg",
 		"/api/v1/workspaces/icon?workspace_id=ws_example123&v=0123456789abcdef",
 		"/api/v1/workspaces/icon?workspace_id=ws_example123&v=0123456789abcdef&logo=1",
 	} {
@@ -44,6 +45,9 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 	for _, bad := range []struct{ method, target string }{
 		{"GET", "/api/v1/workspaces/icon"},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=..%2Fx"},
+		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&candidate=x&candidate=y"},
+		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&candidate=" + strings.Repeat("x", 513)},
+		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&candidate=x&logo=1"},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&path=logo.svg"},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&v=" + strings.Repeat("a", 65)},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&logo=0"},
@@ -54,7 +58,7 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 			t.Fatalf("%s %s: %d, want 400", bad.method, bad.target, w.Code)
 		}
 	}
-	if len(forwarded) != 3 {
+	if len(forwarded) != 4 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }

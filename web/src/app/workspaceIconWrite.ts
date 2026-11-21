@@ -93,14 +93,16 @@ export function useWorkspaceIconWrite({
     if (outcome.kind === "ok") {
       try {
         const result = await readWorkspaceResult(outcome.response, commandId);
+        const saved = result.icon_value ?? value;
+        setChoice({ value: saved, id });
         onChanged?.({
           kind: "icon",
           workspace_id: workspace.workspace_id,
-          icon: value,
+          icon: saved,
           cursor: result.event_cursor,
         });
         setWritten({
-          value,
+          value: saved,
           commit: result.icon_commit ?? "",
           previous: previous === value ? undefined : previous,
           undo,

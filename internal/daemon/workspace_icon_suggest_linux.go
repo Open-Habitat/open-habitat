@@ -35,8 +35,9 @@ var iconHelper string
 // helper on the selected Pi installation, run as the person, with a fixed
 // budget and fixed failure codes. The model sees only a bounded set of facts
 // the daemon reads from the workspace; repository text can try to steer it,
-// so every answer is validated here against the icon's flat format, and the
-// worst a hostile README achieves is a poor emoji. Nothing is stored here:
+// so every answer is validated here against the icon's flat format, and
+// any image reference is resolved within the person's own workspaces or uploads.
+// Nothing is stored here:
 // the page keeps the rounds in the browser.
 //
 // The budget leaves room for a slow provider: gpt-6-luna answers in about
@@ -55,6 +56,8 @@ const (
 	maxIconWhy                   = 60
 	maxIconReply                 = 200
 )
+
+var errIconAttachment = errors.New("image_not_usable")
 
 var iconModelPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,40}/[A-Za-z0-9][A-Za-z0-9._:-]{0,100}$`)
 
@@ -97,7 +100,8 @@ type iconSuggestion struct {
 type iconSuggester func(ctx context.Context, input []byte) (model, reply string, suggestions []iconSuggestion, err error)
 
 // WorkspaceIconSuggestions answers POST {workspace_id, wish, history} with
-// up to five validated suggestions, or a fixed failure.
+// up to five validated suggestions, including directly attached images,
+// or a fixed failure.
 func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(c.cfg, c.trusted, r) {
@@ -126,10 +130,25 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		avoid := c.otherWorkspaceIcons(in.WorkspaceID)
 		attachments, err := iconWishAttachments(c.home, in.Wish)
 		if err != nil {
-			snapshotError(w, 400, "invalid_attachments")
+			if errors.Is(err, errIconAttachment) {
+				historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": "image_not_usable", "seen": seenFacts(facts)})
+			} else {
+				snapshotError(w, 400, "invalid_attachments")
+			}
 			return
 		}
-		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish, "attachments": attachments})
+		cfg := c.cfg
+		cfg.Home = c.home
+		imageOK := func(value string) bool {
+			_, _, e := readIconCandidate(r.Context(), cfg, value)
+			return e == nil
+		}
+		var direct []iconSuggestion
+		for _, match := range attachmentRef.FindAllStringSubmatch(in.Wish, -1) {
+			direct = append(direct, iconSuggestion{"attachment:" + match[1], ""})
+		}
+		direct = validIconSuggestionsWithImages(direct, "", nil, imageOK)
+		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish, "attachments": attachments, "workspaces": c.iconWorkspaces()})
 		reply := map[string]any{"schema_version": 1, "seen": seenFacts(facts)}
 		suggest := c.iconSuggester
 		if suggest == nil {
@@ -151,7 +170,7 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		}
 		var suggestions []iconSuggestion
 		if err == nil {
-			suggestions = validIconSuggestions(raw, facts.Logo, append(avoid, current))
+			suggestions = validIconSuggestionsWithImages(append(direct, raw...), facts.Logo, append(avoid, current), imageOK)
 			if len(suggestions) == 0 || !iconModelPattern.MatchString(model) {
 				err = titleModelInvalid
 			}
@@ -159,7 +178,13 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		if err != nil {
 			reason := titleReason(err)
 			diagnostic.New(os.Stderr, "daemon").Warn("workspace_icon_suggestions", "outcome", "failed", "reason", string(reason), "duration_ms", elapsed)
-			reply["state"], reply["reason"] = "failed", string(reason)
+			if len(direct) > 0 {
+				// Uploads do not depend on model availability. Do not claim a model
+				// produced them when its call failed.
+				reply["state"], reply["suggestions"] = "done", direct
+			} else {
+				reply["state"], reply["reason"] = "failed", string(reason)
+			}
 			historyJSON(w, reply)
 			return
 		}
@@ -181,7 +206,7 @@ func validIconRequest(in iconSuggestionRequest) bool {
 			return false
 		}
 		for _, icon := range round.Icons {
-			if len(icon) > maxIconPath || !utf8.ValidString(icon) || strings.IndexFunc(icon, unicode.IsControl) >= 0 {
+			if len(icon) > maxIconCandidate || !utf8.ValidString(icon) || strings.IndexFunc(icon, unicode.IsControl) >= 0 {
 				return false
 			}
 		}
@@ -195,7 +220,7 @@ func validIconWish(s string) bool {
 	return utf8.RuneCountInString(s) <= maxIconWish && cleanIconText(line, maxIconWish) == strings.TrimSpace(line)
 }
 
-// Reuse the upload store's own-UID, no-symlink reads. The one-shot model has
+// Reuse the upload store's no-symlink reads. The one-shot model has
 // no tools, so send image bytes and bounded UTF-8 text, never local paths.
 func iconWishAttachments(home, wish string) ([]map[string]string, error) {
 	matches := attachmentRef.FindAllStringSubmatch(wish, -1)
@@ -232,7 +257,15 @@ func iconWishAttachments(home, wish string) ([]map[string]string, error) {
 		}
 		typ := attachmentType(data)
 		if attachmentImage(typ) {
+			if typ == "image/gif" || len(data) > maxWorkspaceIcon {
+				return nil, errIconAttachment
+			}
 			out = append(out, map[string]string{"type": "image", "data": base64.StdEncoding.EncodeToString(data), "mimeType": typ})
+		} else if isSVGDocument(data) {
+			if len(data) > maxWorkspaceIcon {
+				return nil, errIconAttachment
+			}
+			out = append(out, map[string]string{"type": "text", "text": "Attached SVG image (available as an icon)."})
 		} else {
 			textBytes += len(data)
 			if textBytes > 65536 || !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
@@ -255,9 +288,13 @@ func cleanIconText(s string, max int) string {
 }
 
 // validIconSuggestions keeps what the flat format admits and the chain could
-// show: an emoji, letters, or exactly the logo the daemon found; never
-// `auto`, another path, a repeat, the current icon or another workspace's.
+// show: an emoji, letters, the found logo, or a freshly validated image
+// selector. Never `auto`, an unvalidated path, a repeat or an avoided icon.
 func validIconSuggestions(raw []iconSuggestion, logo string, avoid []string) []iconSuggestion {
+	return validIconSuggestionsWithImages(raw, logo, avoid, nil)
+}
+
+func validIconSuggestionsWithImages(raw []iconSuggestion, logo string, avoid []string, imageOK func(string) bool) []iconSuggestion {
 	seen := map[string]bool{}
 	for _, a := range avoid {
 		seen[a] = true
@@ -266,7 +303,14 @@ func validIconSuggestions(raw []iconSuggestion, logo string, avoid []string) []i
 	for _, s := range raw {
 		set := parseIconValue(s.Icon)
 		why := cleanIconText(s.Why, maxIconWhy)
+		if isIconCandidate(s.Icon) {
+			if seen[s.Icon] || imageOK == nil || !imageOK(s.Icon) {
+				continue
+			}
+			set = iconSetting{Kind: "candidate", Value: s.Icon}
+		}
 		switch {
+		case set.Kind == "candidate": // The browser supplies a localized label when why is empty.
 		case why == "" || seen[set.Value]:
 			continue
 		case set.Kind == "image" && set.Value == logo && logo != "",

@@ -3,11 +3,12 @@ created: 2026-11-21
 updated: 2026-11-21
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: workspace-icons
 lane_seq: 1
 preparation: ready
+closed: 2026-11-21
 ---
 
 # Icon suggestions refuse another workspace's logo

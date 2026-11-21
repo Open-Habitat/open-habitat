@@ -54,6 +54,8 @@ import {
   iconPicker,
   iconSetting,
   iconSourceLine,
+  imageSuggestionReason,
+  isImageCandidate,
   localSuggestions,
   previewIcon,
 } from "./workspaceIcons";
@@ -83,7 +85,9 @@ function IconWrittenNotice({
       ? txt.iconAuto
       : written.value === logo
         ? txt.iconLogo
-        : written.value;
+        : /\.(svg|png|webp|jpe?g)$/i.test(written.value)
+          ? txt.iconImage
+          : written.value;
   const problem = commitNote(written.commit);
   const detail =
     written.commit === "unchanged"
@@ -540,7 +544,9 @@ export function WorkspacePage({
                     label:
                       s.icon === workspace.icon_logo?.path
                         ? txt.repoLogo
-                        : undefined,
+                        : isImageCandidate(s.icon)
+                          ? imageSuggestionReason(s.icon)
+                          : undefined,
                   }))
                 : state.status === "failed"
                   ? localSuggestions(icon, workspace)

@@ -5,6 +5,7 @@ import { catalog, plural } from "../i18n";
 const fi = {
   iconAuto: "automaattinen",
   iconLogo: "repon logo",
+  iconImage: "kuva",
   unchanged: ".open-habitat.yaml sanoi jo tämän, joten mitään ei muutettu.",
   written: "Kirjoitettu .open-habitat.yaml-tiedostoon.",
   committed:
@@ -58,6 +59,7 @@ const fi = {
 export const workspacePageText = catalog(fi, {
   iconAuto: "automatic",
   iconLogo: "repository logo",
+  iconImage: "image",
   unchanged: ".open-habitat.yaml already said this, so nothing was changed.",
   written: "Written to .open-habitat.yaml.",
   committed: "Written to .open-habitat.yaml and committed, not pushed.",

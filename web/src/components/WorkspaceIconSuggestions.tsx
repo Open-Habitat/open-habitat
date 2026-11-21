@@ -27,6 +27,7 @@ export type WorkspaceIconSuggestionsModel = {
     | "model_unavailable"
     | "model_timeout"
     | "model_invalid_response"
+    | "image_not_usable"
     | "request_failed";
   /** Absent while the first answer is on its way: placeholders show. */
   items?: IconSuggestionItem[];
@@ -158,14 +159,16 @@ export function WorkspaceIconSuggestions({
                 className="ah-wsis-item"
                 data-testid="workspace-icon-suggestion"
                 data-local={item.local || undefined}
-                aria-label={`${item.label ?? item.value}: ${item.why}`}
+                aria-label={[item.label ?? item.value, item.why]
+                  .filter(Boolean)
+                  .join(": ")}
                 isDisabled={busy}
                 onPress={() => onAccept(item.value)}
               >
                 <WorkspaceIcon icon={item.icon} size="m" />
                 <span className="ah-wsis-why">
                   {item.label ? <b>{item.label}</b> : null}
-                  <small>{item.why}</small>
+                  {item.why ? <small>{item.why}</small> : null}
                 </span>
               </AriaButton>
             </li>

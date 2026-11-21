@@ -23,7 +23,7 @@ import (
 
 // Setting the icon from the workspace page (Otsikko, Jari 2026-10-30) writes
 // the `icon` line of the repository's own .open-habitat.yaml and commits that
-// file alone, silently: the icon belongs to the repository so that every clone
+// file and any imported image, silently: the icon belongs to the repository so that every clone
 // shows it, and an uncommitted config would linger or ride along in an
 // agent's next commit about something else. Nothing is pushed. Without Git
 // the file is only written.
@@ -41,7 +41,7 @@ var (
 
 // How the commit of a written icon went, as the reply's `icon_commit` says.
 const (
-	iconCommitted     = "committed"     // a commit holding only the config
+	iconCommitted     = "committed"     // a commit holding the config and any imported image
 	iconUnchanged     = "unchanged"     // the config already said this
 	iconNotGit        = "not_git"       // a plain directory: only the file
 	iconUncommitted   = "uncommitted"   // the config had other changes; left for the person
@@ -283,13 +283,13 @@ func iconConfigClean(ctx context.Context, home string, root int, st iconGitState
 	return err == nil && blob == st.committed && blob == st.indexed
 }
 
-// commitIconConfig commits exactly the bytes written, the config alone, on
+// commitIconConfig commits exactly the bytes written, the config and any imported images, on
 // top of the HEAD read before the write: through a private index, so the
 // working tree's content at commit time and the work an agent has staged do
 // not enter it, and with a compare-and-swap of HEAD, so a commit made
 // meanwhile is not overwritten. The real index then gets the same entry for
 // the config, which is what `git commit --only` would leave there.
-func commitIconConfig(ctx context.Context, home string, root int, st iconGitState, next []byte, value string) string {
+func commitIconConfig(ctx context.Context, home string, root int, st iconGitState, next []byte, value string, images ...iconImage) string {
 	if value == "auto" {
 		value = "automaattinen"
 	}
@@ -318,6 +318,15 @@ func commitIconConfig(ctx context.Context, home string, root int, st iconGitStat
 	if _, err := iconGitEnv(ctx, home, root, "", index, "update-index", "--add", "--cacheinfo", mode+","+blob+","+workspaceConfigName); err != nil {
 		return iconCommitFailed
 	}
+	for _, image := range images {
+		blob, err := iconBlob(ctx, home, root, image.data, true)
+		if err != nil {
+			return iconCommitFailed
+		}
+		if _, err := iconGitEnv(ctx, home, root, "", index, "update-index", "--add", "--cacheinfo", "100644,"+blob+","+image.path); err != nil {
+			return iconCommitFailed
+		}
+	}
 	tree, err := iconGitEnv(ctx, home, root, "", index, "write-tree")
 	if err != nil {
 		return iconCommitFailed
@@ -336,6 +345,15 @@ func commitIconConfig(ctx context.Context, home string, root int, st iconGitStat
 	if _, err := iconGit(ctx, home, root, "update-index", "--add", "--cacheinfo", mode+","+blob+","+workspaceConfigName); err != nil {
 		return iconCommitFailed
 	}
+	for _, image := range images {
+		blob, err := iconBlob(ctx, home, root, image.data, false)
+		if err != nil {
+			return iconCommitFailed
+		}
+		if _, err := iconGit(ctx, home, root, "update-index", "--add", "--cacheinfo", "100644,"+blob+","+image.path); err != nil {
+			return iconCommitFailed
+		}
+	}
 	return iconCommitted
 }
 
@@ -343,12 +361,28 @@ func commitIconConfig(ctx context.Context, home string, root int, st iconGitStat
 // when the workspace is a Git checkout and the config had no other change.
 // The reply's commit outcome is the only word the page gets; a commit that
 // did not happen leaves the written file for the person.
-func setWorkspaceIcon(ctx context.Context, home string, root int, kind, value string) (string, error) {
+func setWorkspaceIcon(ctx context.Context, home string, root int, kind, value string, images ...iconImage) (string, error) {
 	git := kind == "git_main_worktree" || kind == "git_linked_worktree"
 	var st iconGitState
 	var stateErr error
 	if git {
 		st, stateErr = readIconGitState(ctx, home, root)
+	}
+	if len(images) > 0 {
+		// Refuse predictable config errors before publishing an image. Keep the
+		// writer's later identity/concurrency checks; this is not a reservation.
+		old, state := readSmall(unix.Openat2, root, workspaceConfigName, maxWorkspaceConfig)
+		if state != "valid" && state != "missing" {
+			return "", errIconUnavailable
+		}
+		if _, err := editIconConfig(old, value); err != nil {
+			return "", err
+		}
+	}
+	for _, image := range images {
+		if err := storeIconImage(root, image); err != nil {
+			return "", err
+		}
 	}
 	w, err := writeIconConfig(root, value)
 	switch {
@@ -365,5 +399,17 @@ func setWorkspaceIcon(ctx context.Context, home string, root int, kind, value st
 	case !w.changed:
 		return iconUnchanged, nil
 	}
-	return commitIconConfig(ctx, home, root, st, w.next, value), nil
+	for _, image := range images {
+		// Never execute repository-supplied filters during a browser icon write.
+		// A filtered image must be committed by the person's normal Git workflow.
+		out, err := iconGit(ctx, home, root, "check-attr", "-z", "filter", "--", image.path)
+		fields := strings.Split(string(out), "\x00")
+		if err != nil || len(fields) != 4 {
+			return iconCommitFailed, nil
+		}
+		if fields[2] != "unspecified" && fields[2] != "unset" {
+			return iconUncommitted, nil
+		}
+	}
+	return commitIconConfig(ctx, home, root, st, w.next, value, images...), nil
 }
