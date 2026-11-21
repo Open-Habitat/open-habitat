@@ -1,0 +1,161 @@
+/* Review chrome above the production shell, as in round 1. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-hint { color: var(--ah-ink-2); }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong, .ra-hint { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.mg-main { height: 100%; min-width: 0; }
+.mg-main .ah-conversation-frame, .mg-main > .ah-conversation-frame { height: 100%; }
+.ra-events { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.ra-event:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 600px) { .ra-events { font-size: 0.85em; } }
+
+/* ---------- People ----------
+   Production's account avatar, coloured per person from the glyph tokens;
+   the name and role carry the meaning, the colour only helps the glance. */
+.mg-avatar { width: 22px; height: 22px; font-size: 0.75rem; font-weight: 600; color: var(--ah-on-accent); border-color: transparent; }
+.mg-avatar[data-person="aino"] { background: var(--ah-glyph-1); }
+.mg-avatar[data-person="sanna"] { background: var(--ah-glyph-5); }
+.mg-avatar[data-person="ville"] { background: var(--ah-glyph-7); }
+@media (forced-colors: active) { .mg-avatar { forced-color-adjust: none; background: Canvas; color: CanvasText; border: 1px solid CanvasText; } }
+.mg-role {
+  display: inline-flex; align-items: center; padding: 0 6px; border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta); line-height: 1.5; color: var(--ah-ink-2);
+  border: 1px solid var(--ah-line);
+}
+.mg-role[data-role="owner"] { color: var(--ah-accent-ink); border-color: var(--ah-accent-line); }
+.mg-role[data-role="trusted"] { color: var(--ah-ok); border-color: currentColor; }
+
+/* A person's message: the production header's Sinä gives way to the
+   author's avatar, name and role. */
+.mg-person article > header > strong { display: none; }
+.mg-host { display: inline-flex; align-items: center; gap: var(--ah-s2); min-width: 0; }
+.mg-host-end { margin-left: auto; }
+.mg-name { font-weight: 600; }
+.mg-person[data-person="ville"] .ah-message { box-shadow: inset 3px 0 0 var(--ah-glyph-7); }
+.mg-person[data-person="aino"] .ah-message { box-shadow: inset 3px 0 0 var(--ah-glyph-1); }
+.mg-person[data-person="sanna"] .ah-message { box-shadow: inset 3px 0 0 var(--ah-glyph-5); }
+
+.mg-people {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  margin: var(--ah-s3) 0 var(--ah-s4); padding: 0 0 var(--ah-s3); list-style: none;
+  border-bottom: 1px solid var(--ah-line-soft); font-size: var(--ah-size-meta); color: var(--ah-ink);
+}
+.mg-people > li { display: inline-flex; align-items: center; gap: 6px; }
+.mg-people > .mg-people-note { flex-basis: 100%; color: var(--ah-muted); }
+
+/* ---------- Habitat's lines ---------- */
+.mg-line {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--ah-s2);
+  margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  color: var(--ah-ink-2); font: var(--ah-size-meta)/1.5 var(--ah-font);
+  border-left: 2px solid var(--ah-line-strong);
+}
+.mg-line .oh-mark { align-self: flex-start; margin-top: 2px; }
+.mg-line-who { font-weight: 600; color: var(--ah-ink); }
+.mg-line-text { flex: 1 1 16rem; min-width: 0; }
+
+.mg-hidden-output {
+  display: flex; align-items: center; gap: 6px; margin: var(--ah-s2) 0; color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.mg-hidden-output svg, .mg-op svg, .mg-badge svg, .mg-strip svg, .mg-card svg, .mg-pending-line svg { width: 14px; height: 14px; flex: none; }
+
+/* ---------- The actions (shared by the strip and the card) ---------- */
+.mg-op {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px var(--ah-s3);
+  padding: var(--ah-s1) 0; font-size: var(--ah-size-meta);
+}
+.mg-op + .mg-op { border-top: 1px solid var(--ah-line-soft); }
+.mg-op code { font-family: var(--ah-mono); overflow-wrap: anywhere; }
+.mg-op-state { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-ink-2); }
+.mg-op[data-state="waiting"] .mg-op-state { color: var(--ah-turn); font-weight: 600; }
+.mg-op[data-state="done"] .mg-op-state { color: var(--ah-ok); }
+.mg-op[data-state="declined"] .mg-op-state { color: var(--ah-err); }
+
+/* ---------- 1 Kaista ---------- */
+.mg-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s3);
+  margin: 0 0 var(--ah-s2); padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-turn-line, var(--ah-line)); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); font-size: var(--ah-size-meta); color: var(--ah-ink-2);
+}
+.mg-strip[data-tools="on"] { border-color: var(--ah-line); }
+.mg-strip-mode { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--ah-turn); }
+.mg-strip[data-tools="on"] .mg-strip-mode { color: var(--ah-ok); }
+.mg-strip-text { flex: 1 1 18rem; min-width: 0; }
+.mg-strip-ops { flex-basis: 100%; margin: 0; padding: var(--ah-s1) 0 0; list-style: none; border-top: 1px solid var(--ah-line-soft); }
+
+/* ---------- 2 Merkki ---------- */
+.mg-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta); line-height: 1.6; white-space: nowrap;
+  border: 1px solid currentColor; color: var(--ah-ok);
+}
+.mg-badge[data-tools="off"] { color: var(--ah-turn); font-weight: 600; }
+.mg-reply .ah-message header { flex-wrap: wrap; }
+.mg-pending-line {
+  display: flex; align-items: center; gap: 6px; margin: var(--ah-s1) 0 var(--ah-s2) var(--ah-s3);
+  font-size: var(--ah-size-meta); color: var(--ah-turn); font-weight: 600;
+}
+
+/* ---------- 3 Kortti ---------- */
+.mg-card {
+  max-width: min(var(--ah-measure), 100%); margin: var(--ah-s2) 0 var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4); border: 1px solid var(--ah-line); border-left: 3px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md); background: var(--ah-surface); font-size: var(--ah-size-meta); color: var(--ah-ink);
+}
+.mg-card[data-open] { border-left-color: var(--ah-turn); }
+.mg-card > header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--ah-s2); }
+.mg-card[data-open] > header > svg { color: var(--ah-turn); }
+.mg-card-mode { margin-left: auto; padding: 0 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); color: var(--ah-ink-2); }
+.mg-card ul { margin: var(--ah-s2) 0; padding: 0; list-style: none; }
+.mg-card p { margin: 0; color: var(--ah-ink-2); }
+
+/* ---------- The invite ---------- */
+.mg-invite {
+  max-width: 34rem; margin: var(--ah-s6) auto; padding: var(--ah-s5);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); color: var(--ah-ink);
+}
+.mg-invite > header { display: flex; gap: var(--ah-s3); align-items: flex-start; }
+.mg-invite > header .mg-avatar { width: 36px; height: 36px; font-size: 1rem; }
+.mg-invite h2 { margin: 0; font-size: var(--ah-size-ui); }
+.mg-invite-title { margin: 2px 0 0; color: var(--ah-ink-2); }
+.mg-invite ul { margin: var(--ah-s4) 0; padding-left: 1.2em; line-height: var(--ah-lh-body); }
+.mg-invite li + li { margin-top: var(--ah-s1); }
+.mg-invite-model { color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.mg-invite code, .mg-invite-model code { font-family: var(--ah-mono); }
+.mg-invite-declined { color: var(--ah-ink-2); }
+@media (max-width: 600px) { .mg-invite { margin: var(--ah-s3) 0; padding: var(--ah-s4); } }
+
+/* The picker centres itself with left: 50%, so its shrink-to-fit width is
+   half the phone; these labels are a little longer than most rounds'. */
+.proto-picker-item { white-space: nowrap; }
