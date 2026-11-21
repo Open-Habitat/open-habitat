@@ -168,6 +168,7 @@ A label alone does not establish that a control is available to this person.
 - [text/overlays.ts](text--overlays.ts.md)
 - [text/ownMachines.tsx](text--ownMachines.tsx.md)
 - [text/pendingConversation.tsx](text--pendingConversation.tsx.md)
+- [text/permissionQuestion.ts](text--permissionQuestion.ts.md)
 - [text/phoneHeader.ts](text--phoneHeader.ts.md)
 - [text/piBlocks.ts](text--piBlocks.ts.md)
 - [text/piCredentials.ts](text--piCredentials.ts.md)

@@ -466,6 +466,14 @@ export const parts: Record<CardId, Part> = {
   },
   V37: { kind: "once", sel: '[data-testid="attachment-cancel"]' },
   V38: { kind: "info", sel: ".ah-dictation-time.countdown" },
+  V39: {
+    kind: "info",
+    sel: '[data-testid="permission-question"], [data-testid="permission-line"]',
+  },
+  V40: { kind: "once", sel: '[data-testid="permission-allow"]' },
+  V41: { kind: "once", sel: '[data-testid="permission-deny"]' },
+  V42: { kind: "info", sel: '[data-testid="permission-technical"]' },
+  V43: { kind: "once", sel: '[data-testid="permission-stop"]' },
   B01: { kind: "panel", sel: '[data-testid="browser-chip"]', opens: true },
   B02: { kind: "panel", sel: '[data-testid="browser-strip"]' },
   B03: {

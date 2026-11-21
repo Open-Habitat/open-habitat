@@ -10,6 +10,7 @@ import recapSchema from "../../../contracts/v1/recap.schema.json";
 import turnMarkSchema from "../../../contracts/v1/turn-mark.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { PiProvider } from "../components/ModelPicker";
+import type { Permission } from "../components/PermissionQuestion";
 import { validBashReply, validBashStatus } from "./composerContract";
 import { conversationName } from "./conversationName";
 import { LazyAjv } from "./lazyAjv";
@@ -110,9 +111,11 @@ export type Status = Session & {
   } | null;
   pending_question?: {
     request_id: string;
-    question_kind: "input" | "confirm" | "select" | "unknown";
+    question_kind: "input" | "confirm" | "select" | "permission" | "unknown";
     prompt: string;
     choices: string[];
+    /** Present exactly when question_kind is "permission". */
+    permission?: Permission;
   } | null;
 };
 export type HeldMessage = { command_id: string; text: string };
@@ -763,9 +766,13 @@ export function parseStatus(v: unknown, id: string): Status {
         typeof v.pending_question.request_id !== "string" ||
         !v.pending_question.request_id ||
         v.pending_question.request_id.length > 200 ||
-        !["input", "confirm", "select", "unknown"].includes(
+        !["input", "confirm", "select", "permission", "unknown"].includes(
           String(v.pending_question.question_kind),
         ) ||
+        (v.pending_question.question_kind === "permission") !==
+          (v.pending_question.permission !== undefined) ||
+        (v.pending_question.permission !== undefined &&
+          !validPermission(v.pending_question.permission)) ||
         typeof v.pending_question.prompt !== "string" ||
         !v.pending_question.prompt ||
         v.pending_question.prompt.length > 1000 ||
@@ -777,6 +784,26 @@ export function parseStatus(v: unknown, id: string): Status {
   )
     throw new Error("invalid status");
   return v as Status;
+}
+// event.schema.json $defs/question permission: every part bounded plain text.
+function validPermission(p: unknown): p is Permission {
+  const text = (s: unknown, max: number, min = 1) =>
+    typeof s === "string" && [...s].length >= min && [...s].length <= max;
+  if (!object(p) || !text(p.action, 300) || !text(p.consequence, 600))
+    return false;
+  if (
+    !object(p.call) ||
+    !text(p.call.area, 80) ||
+    !text(p.call.tool, 120) ||
+    !text(p.call.arguments, 2000, 0)
+  )
+    return false;
+  return (
+    p.account === undefined ||
+    (object(p.account) &&
+      text(p.account.provider, 60) &&
+      text(p.account.address, 320))
+  );
 }
 const receipts = [
   "pending",

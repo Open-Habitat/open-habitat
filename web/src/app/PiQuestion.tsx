@@ -60,7 +60,13 @@ export function PiQuestion({
   };
   return (
     <NativeQuestion
-      kind={question.question_kind}
+      // A permission question has its own view (PermissionQuestion); here
+      // it could only be cancelled, never answered without its parts.
+      kind={
+        question.question_kind === "permission"
+          ? "unknown"
+          : question.question_kind
+      }
       prompt={question.prompt}
       choices={question.choices}
       value={value}

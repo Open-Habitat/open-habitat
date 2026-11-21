@@ -5332,3 +5332,162 @@ h2.ah-rail-section-head {
     outline: 2px solid Highlight;
   }
 }
+
+/* The permission question (PermissionQuestion.tsx, round
+   2026-11-21-account-action-permission direction 2 Kenttä): in the composer's
+   place while it is open, a bottom sheet on a phone; the stream keeps one line. */
+.ah-permission-dock {
+  padding: var(--ah-s2) var(--ah-column-pad-inline, var(--ah-s4)) var(--ah-s3);
+  max-width: var(--ah-conversation-width);
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+.ah-permission {
+  display: grid;
+  gap: var(--ah-s1);
+  padding: var(--ah-s3);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  border: 1px solid var(--ah-accent);
+  box-shadow: var(--ah-shadow-float);
+  font: var(--ah-size-ui) / var(--ah-lh-ui) var(--ah-font);
+}
+.ah-permission-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--ah-s2);
+}
+.ah-permission-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-permission-who {
+  font-weight: 600;
+}
+.ah-permission-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  overflow-wrap: anywhere;
+}
+.ah-permission-account-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ah-permission-title {
+  margin: var(--ah-s1) 0 0;
+  font-size: var(--ah-size-title, var(--ah-size-body));
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ah-permission-stake {
+  margin: 0;
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+}
+.ah-permission-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s1);
+}
+.ah-permission-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin-left: auto;
+}
+.ah-permission-tech {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-permission-tech summary {
+  cursor: pointer;
+}
+.ah-permission-call {
+  display: block;
+  margin-top: 2px;
+  font: var(--ah-size-code) var(--ah-mono);
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.ah-permission-tech .ah-permission-args {
+  color: var(--ah-ink-2);
+  max-height: 12em;
+  overflow: auto;
+}
+.ah-permission-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s2);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-ui) / var(--ah-lh-ui) var(--ah-font);
+}
+.ah-permission-line-icon {
+  flex: none;
+  margin-top: 2px;
+}
+.ah-permission-line[data-open] {
+  color: var(--ah-accent-ink);
+}
+.ah-permission-line[data-open] strong {
+  font-weight: 600;
+}
+.ah-permission-line-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-permission-decided {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.ah-permission-decided-icon {
+  width: 14px;
+  height: 14px;
+}
+.ah-permission-line[data-decision="allow"] .ah-permission-decided {
+  color: var(--ah-ok);
+}
+@media (max-width: 600px) {
+  .ah-permission-dock {
+    padding: 0;
+  }
+  .ah-permission {
+    border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0;
+    border-width: 1px 0 0;
+  }
+  .ah-permission-answer {
+    width: 100%;
+  }
+  .ah-permission-answer > :not([data-testid="permission-stop"]) {
+    flex: 1;
+  }
+}
+/* The composer under an open permission question (BrowserConversation). */
+.ah-composer-hold {
+  display: contents;
+}
+.ah-composer-hold[hidden] {
+  display: none;
+}

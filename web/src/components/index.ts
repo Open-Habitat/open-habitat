@@ -8,6 +8,7 @@ export * from "./Markdown";
 export * from "./Navigation";
 export * from "./Operations";
 export * from "./Overlays";
+export * from "./PermissionQuestion";
 export * from "./PiDeviceSignIn";
 export * from "./Primitives";
 export * from "./Status";

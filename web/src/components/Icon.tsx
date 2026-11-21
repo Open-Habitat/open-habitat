@@ -73,6 +73,7 @@ export type IconName =
   | "calendar"
   | "contacts"
   | "shield"
+  | "shieldAsk"
   | "slash"
   | "at"
   | "file"
@@ -552,6 +553,15 @@ export function Icon({
       <>
         <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" />
         <path d="M12 8v4M12 15h.01" />
+      </>
+    ),
+    // The account shield with a question for its exclamation: the agent asks
+    // the person's permission (design round 2026-11-21-account-action-permission).
+    shieldAsk: (
+      <>
+        <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" />
+        <path d="M9.9 9.4a2.2 2.2 0 1 1 3.3 1.9c-.8.5-1.2 1-1.2 1.9" />
+        <path d="M12 16h.01" />
       </>
     ),
     gear: (

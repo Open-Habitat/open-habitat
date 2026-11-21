@@ -1082,6 +1082,31 @@ const fi = {
       lead: "Näyttää viimeisellä minuutilla, kauanko mikrofoni vielä kuuntelee.",
       know: "Äänimerkki kuuluu minuutti ja kymmenen sekuntia ennen tunnin rajaa sekä rajalla. Teksti jää kenttään; voit jatkaa sen perään.",
     },
+    V39: {
+      name: "Agentti pyytää lupaa",
+      lead: "Agentti on pysähtynyt kysymään, saako se tehdä toimen yhdistetyllä tililläsi, esimerkiksi poistaa jotain tai jakaa kalenterin.",
+      know: "Kysymys on kirjoituskentän paikalla, kunnes vastaat. Keskusteluun jää rivi, joka kertoo päätöksesi. Toimi tehdään vain, jos sallit sen.",
+    },
+    V40: {
+      name: "Salli",
+      lead: "Antaa agentin tehdä kysytyn toimen.",
+      know: "Lupa koskee vain tätä yhtä toimea. Seuraava toimi kysytään erikseen.",
+    },
+    V41: {
+      name: "Älä salli",
+      lead: "Estää kysytyn toimen. Agentti saa tiedon, ettet sallinut sitä, ja jatkaa ilman sitä.",
+      know: "Tilillä ei muutu mitään.",
+    },
+    V42: {
+      name: "Tekninen kutsu",
+      lead: "Näyttää, minkä työkalun agentti ajaisi ja millä tiedoilla.",
+      know: "Tunnisteet ovat palvelun omia. Toimen kuvaus yllä kertoo saman ihmisen sanoin.",
+    },
+    V43: {
+      name: "Pysäytä agentti",
+      lead: "Pysäyttää agentin työn heti, myös odottavan kysymyksen.",
+      know: "Pysäytys ei salli kysyttyä toimea.",
+    },
     V05: {
       name: "Sanele",
       lead: "Kirjoittaa puheesi viestikenttään; napauta aloittaaksesi tai pidä pohjassa puhuessasi.",
@@ -2911,6 +2936,31 @@ export const explainModeText = catalog(fi, {
       name: "Dictation time left",
       lead: "Shows how much longer the microphone listens during the final minute.",
       know: "A tone sounds one minute and ten seconds before the hour limit, and at the limit. Your text stays; you can continue after it.",
+    },
+    V39: {
+      name: "The agent asks for permission",
+      lead: "The agent has stopped to ask whether it may act on your connected account, for example delete something or share a calendar.",
+      know: "The question takes the message field's place until you answer. A line in the conversation keeps your decision. The action runs only if you allow it.",
+    },
+    V40: {
+      name: "Allow",
+      lead: "Lets the agent take the action it asked about.",
+      know: "The permission covers this one action. The next one is asked separately.",
+    },
+    V41: {
+      name: "Don't allow",
+      lead: "Blocks the action. The agent is told you did not allow it and goes on without it.",
+      know: "Nothing changes on the account.",
+    },
+    V42: {
+      name: "Technical call",
+      lead: "Shows which tool the agent would run, and with what.",
+      know: "The identifiers are the service's own. The description above says the same in plain words.",
+    },
+    V43: {
+      name: "Stop the agent",
+      lead: "Stops the agent's work at once, including the open question.",
+      know: "Stopping does not allow the action.",
     },
     V05: {
       name: "Dictate",

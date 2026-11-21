@@ -274,6 +274,15 @@ func runFakePi(args []string) {
 				}
 				emit(map[string]any{"type": "response", "id": id, "command": "compact", "success": true, "data": result})
 			}(req.ID, req.CustomInstructions)
+		case "extension_ui_response":
+			// The answer to a dialog this Pi asked (permissionTurn).
+			var answer fakeUIAnswer
+			if json.Unmarshal(line, &answer) == nil {
+				select {
+				case fakeUIAnswers <- answer:
+				default:
+				}
+			}
 		case "abort_bash":
 			bashes.abort()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "abort_bash", "success": true})
@@ -671,6 +680,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	}
 	if strings.Contains(prompt, "pitkä ajo") {
 		s.longRun(run, emit)
+		return
+	}
+	if strings.Contains(prompt, "pyydä lupaa") {
+		s.permissionTurn(prompt, run, emit)
 		return
 	}
 	// Recorded with Pi 1.3.0 / bridge 0.9.3 and disposable invalid credentials:
@@ -1193,4 +1206,73 @@ func fakeFileChange(prompt string) *fakeChange {
 		return edit("package main\n", "// Agentin kommentti\npackage main\n")
 	}
 	return nil
+}
+
+type fakeUIAnswer struct {
+	ID        string `json:"id"`
+	Confirmed bool   `json:"confirmed"`
+	Cancelled bool   `json:"cancelled"`
+}
+
+var fakeUIAnswers = make(chan fakeUIAnswer, 8)
+
+// permissionTurn is the agent stopping for the person's permission, as the
+// companion's askPermission does in a real Pi (process-extension.mjs): one
+// prefixed confirm per guarded call, one at a time, and the call runs only on
+// a yes. "kahdesti" asks for two calls in a row. The account is synthetic.
+func (s *fakeSession) permissionTurn(prompt string, run chan struct{}, emit func(any)) {
+	type call struct{ id, action, consequence, command string }
+	calls := []call{{"perm-folder", "Poista postikansio ’Laskut 2024’", "Kansio ja sen 37 viestiä poistetaan postilaatikosta.", "ms-mail delete-mail-folder AAMkExample"}}
+	if strings.Contains(prompt, "kahdesti") {
+		calls = append(calls, call{"perm-share", "Jaa kalenteri ’Perhe’ henkilölle Ville Virtanen", "ville@example.test näkee kalenterin tapahtumat ja voi muokata niitä.", "ms-calendar create-calendar-permission AAMkFamily"})
+	}
+	var done, refused []string
+	for i, c := range calls {
+		args, _ := json.Marshal(map[string]string{"command": c.command})
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "id": c.id, "name": "bash", "arguments": map[string]any{"command": c.command}}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "toolUse"}})
+		question, _ := json.Marshal(map[string]any{"action": c.action, "consequence": c.consequence, "account": map[string]string{"provider": "Microsoft", "address": "aino@example.test"}, "call": map[string]string{"area": "ms-admin", "tool": strings.Fields(c.command)[1], "arguments": string(args)}})
+		request := fmt.Sprintf("ui-%s-%d-%d", c.id, time.Now().UnixNano(), i)
+		emit(map[string]any{"type": "extension_ui_request", "id": request, "method": "confirm", "title": "oh-permission:" + string(question), "message": c.action})
+		allowed, aborted := false, false
+	wait:
+		for {
+			select {
+			case answer := <-fakeUIAnswers:
+				if answer.ID == request {
+					allowed = answer.Confirmed && !answer.Cancelled
+					break wait
+				}
+			case <-run:
+				aborted = true
+				break wait
+			}
+		}
+		result, isError := "poistettu", false
+		if !allowed {
+			result, isError = "The person did not allow this call, so it was not made.", true
+			refused = append(refused, c.action)
+		} else {
+			done = append(done, c.action)
+		}
+		emit(map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": c.id, "args": map[string]any{"command": c.command}})
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": result}}, map[string]any{"toolCallId": c.id, "toolName": "bash", "isError": isError}))
+		emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": c.id, "isError": isError, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": result}}}})
+		if aborted {
+			s.append(message("assistant", []map[string]any{}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "error", "errorMessage": "This operation was aborted"}))
+			emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error"}})
+			emit(map[string]any{"type": "agent_end"})
+			return
+		}
+	}
+	text := "Tein: " + strings.Join(done, ", ") + "."
+	if len(done) == 0 {
+		text = "En tehnyt mitään."
+	}
+	if len(refused) > 0 {
+		text += " Jätin tekemättä, koska et sallinut: " + strings.Join(refused, ", ") + "."
+	}
+	s.append(message("assistant", []map[string]any{{"type": "text", "text": text}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "stop"}))
+	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "stop"}})
+	emit(map[string]any{"type": "agent_end"})
 }

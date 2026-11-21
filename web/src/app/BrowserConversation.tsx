@@ -20,6 +20,8 @@ import {
   ConversationTimeline,
   HeldStartFailure,
   InlineNotice,
+  PermissionLine,
+  PermissionQuestion,
   SendObservation,
   WaitingMessage,
   WorkingProgress,
@@ -68,6 +70,7 @@ import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { formatDate, liveText } from "../i18n";
 import { browserConversationText } from "../text/browserConversation";
+import { permissionQuestionText } from "../text/permissionQuestion";
 import {
   AISignedInNotice,
   AISignInWarning,
@@ -184,6 +187,7 @@ import {
 } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
+import { usePermissionQuestion } from "./permissionQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
@@ -217,6 +221,7 @@ import {
 import { requestPhases, requestText } from "./workerRequests";
 
 const txt = liveText(browserConversationText);
+const permissionTxt = liveText(permissionQuestionText);
 
 function bashCommand(value: string) {
   try {
@@ -736,6 +741,17 @@ function BrowserConversationContent({
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
+  // The permission question replaces the composer while it is open (2 Kenttä).
+  const permission = usePermissionQuestion({
+    question: statusStale ? undefined : current?.pending_question,
+    agentId: current?.agent_id,
+    identity,
+    csrf,
+    runActive: statusStale ? undefined : current?.run_active,
+    refresh,
+    onLogin,
+    onOutcome: setQuestionOutcome,
+  });
   const [titleActionState, setTitleActionState] = useState<{
     key: string;
     version: number;
@@ -2724,10 +2740,12 @@ function BrowserConversationContent({
                 // bubble says it (Jari 16.10.2026).
                 notStarted && held.waiting.length
                   ? ""
-                  : restCard && rest.wake !== "awake"
-                    ? txt.rests
-                    : (presentation.operationLabel ??
-                      presentation.activityLabel)
+                  : permission.open
+                    ? permissionTxt.headerWaiting
+                    : restCard && rest.wake !== "awake"
+                      ? txt.rests
+                      : (presentation.operationLabel ??
+                        presentation.activityLabel)
               }
               activityControl={
                 presentation.activity === "waiting_background" ? (
@@ -2735,14 +2753,16 @@ function BrowserConversationContent({
                 ) : undefined
               }
               activityDetail={
-                presentation.activity === "working" && liveTurn?.working
-                  ? [
-                      liveTurn.activity,
-                      elapsed === undefined ? "" : elapsedLabel(elapsed),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : undefined
+                permission.open
+                  ? permission.open.action
+                  : presentation.activity === "working" && liveTurn?.working
+                    ? [
+                        liveTurn.activity,
+                        elapsed === undefined ? "" : elapsedLabel(elapsed),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : undefined
               }
               activityKind={
                 presentation.activity === "working"
@@ -3184,7 +3204,19 @@ function BrowserConversationContent({
                           },
                         ]
                       : []),
-                    ...(!statusStale && current?.pending_question
+                    ...permission.lines.map((line) => ({
+                      id: `permission:${line.requestId}`,
+                      kind: "question",
+                      content: (
+                        <PermissionLine
+                          action={line.action}
+                          decision={line.decision}
+                        />
+                      ),
+                    })),
+                    ...(!statusStale &&
+                    current?.pending_question &&
+                    current.pending_question.question_kind !== "permission"
                       ? [
                           {
                             id: `question:${current.pending_question.request_id}`,
@@ -3666,31 +3698,50 @@ function BrowserConversationContent({
               <>
                 <ServerBrowserDock identity={identity} csrf={csrf} />
                 <WakeDock agent={archive} csrf={csrf} />
-                <Composer
-                  {...composer}
-                  beforeField={
-                    view === "opened" && controlled ? (
-                      <>
-                        <BackgroundStrip
-                          agentIdle={
-                            presentation.activity === "waiting_background" ||
-                            presentation.activity === "waiting"
-                          }
-                          piNotRunning={bridgeExpected}
-                          ask={workerAsk}
-                          assets={assets}
-                        />
-                        {id ? (
-                          <NextWaitingDock
-                            next={nextWaiting}
-                            agentId={id}
-                            open={waitingWindow.open && draft.length === 0}
+                {view === "opened" && permission.open ? (
+                  <PermissionQuestion
+                    permission={permission.open}
+                    available={!!csrf}
+                    onAnswer={(decision) => void permission.answer(decision)}
+                    onStop={composer.onInterrupt}
+                    stopDisabled={
+                      composer.stopState === "pending" ||
+                      composer.stopState === "uncertain"
+                    }
+                  />
+                ) : null}
+                {/* Kept mounted under the question, so a draft or an upload
+                    under way carries on once it is answered. */}
+                <div
+                  className="ah-composer-hold"
+                  hidden={view === "opened" && !!permission.open}
+                >
+                  <Composer
+                    {...composer}
+                    beforeField={
+                      view === "opened" && controlled ? (
+                        <>
+                          <BackgroundStrip
+                            agentIdle={
+                              presentation.activity === "waiting_background" ||
+                              presentation.activity === "waiting"
+                            }
+                            piNotRunning={bridgeExpected}
+                            ask={workerAsk}
+                            assets={assets}
                           />
-                        ) : null}
-                      </>
-                    ) : null
-                  }
-                />
+                          {id ? (
+                            <NextWaitingDock
+                              next={nextWaiting}
+                              agentId={id}
+                              open={waitingWindow.open && draft.length === 0}
+                            />
+                          ) : null}
+                        </>
+                      ) : null
+                    }
+                  />
+                </div>
               </>
             ) : null}
           </div>
