@@ -2,15 +2,17 @@
 created: 2026-11-21
 updated: 2026-11-21
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: ADR 0038 implementation (technical decision run)
 source_ref: taskfleet:01m7ys433k48ngv5prdxv58f4e/adr-0038-implementation:membership
 originating_run: 01m7ys433k48ngv5prdxv58f4e
 originating_run_kind: technical-decision
-preparation: pending
+preparation: ready
 related: ['@multiplayer-conversations']
+lane: multiplayer
+lane_seq: 2
 ---
 
 # Multiplayer: membership record, invitations, full rights and removal

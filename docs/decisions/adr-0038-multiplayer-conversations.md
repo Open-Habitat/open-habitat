@@ -1,6 +1,6 @@
 # ADR 0038: Other people in a person's conversation
 
-**Status:** Proposed. **Date:** 2026-11-21. **Decider:** Jari. He decided
+**Status:** Accepted 2026-11-21 (Jari accepted all eight recommendations; answers in issue `multiplayer-conversations`). **Date:** 2026-11-21. **Decider:** Jari. He decided
 the product behaviour on 2026-11-21 (issue `multiplayer-conversations`,
 "Decisions"). This record proposes the architecture that carries it. The
 security boundaries it moves are his to accept, and are listed as questions
