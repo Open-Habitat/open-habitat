@@ -27,17 +27,35 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		os.Remove(needrestartOverride.Path)
 	})
 	s := Site{Profiles: []string{"core", "integrations", "native-build", "python", "containers"}, Release: Release{"1", strings.Repeat("a", 64)}}
-	prepare := func(site Site, unit string) {
+	// A generation from before the content store holds its payloads; a later
+	// one links each profile to its store entry. The upgrade below crosses
+	// from the first layout to the second.
+	prepare := func(site Site, unit string, store bool) {
+		payloads := generationPath(site) + "/payloads"
+		if store {
+			entry := root + "/payloads/" + strings.Repeat(site.Release.ManifestSHA256[:1], 64)
+			if err := os.MkdirAll(generationPath(site), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(entry, payloads); err != nil {
+				t.Fatal(err)
+			}
+			payloads = entry
+		}
 		for _, p := range []string{"core/runtime", "integrations/runtime/bin", "python/runtime/bin", "containers/runtime/systemd/user"} {
-			if err := os.MkdirAll(generationPath(site)+"/payloads/"+p, 0755); err != nil {
+			if err := os.MkdirAll(payloads+"/"+p, 0755); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if err := os.WriteFile(generationPath(site)+"/payloads/containers/runtime/systemd/user/open-habitat-containers.service", []byte(unit), 0644); err != nil {
+		runtime, err := generationRuntime(generationPath(site), "containers")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(runtime+"/systemd/user/open-habitat-containers.service", []byte(unit), 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	prepare(s, "[Service]\nType=oneshot\nExecStart=/bin/true\n")
+	prepare(s, "[Service]\nType=oneshot\nExecStart=/bin/true\n", false)
 	// The customer's app registration predates apply and is not apply's to own.
 	app := "{\"dropbox\": {\"client_id\": \"k\", \"client_secret\": \"v\"},\n\"tools\": {\"rclone\": \"/opt/old\"}}\n"
 	if err := os.WriteFile(integrationsConfig, []byte(app), 0600); err != nil {
@@ -57,17 +75,37 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		if !integrationsConfigMatches() {
 			t.Fatal("published config does not verify")
 		}
-		for _, p := range []string{"integrations", "python", "containers"} {
-			have, err := os.Readlink(root + "/profiles/" + p)
-			if err != nil || have != generationPath(site)+"/payloads/"+p+"/runtime" {
-				t.Fatal(p, have, err)
+		for _, p := range []string{"core", "integrations", "python", "containers"} {
+			link := root + "/profiles/" + p
+			if p == "core" {
+				link = root + "/core"
 			}
+			want, err := generationRuntime(generationPath(site), p)
+			have, e := os.Readlink(link)
+			if err != nil || e != nil || have != want || (site.Release != s.Release) != strings.HasPrefix(have, root+"/payloads/") {
+				t.Fatal(p, have, want, err, e)
+			}
+		}
+		// The integrations Pi wrapper resolves its profile link physically
+		// and walks up to core/runtime; both layouts keep them siblings.
+		physical, err := filepath.EvalSymlinks(root + "/profiles/integrations/bin")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if found, err := filepath.EvalSymlinks(physical + "/../../../core/runtime"); err != nil || found != filepath.Clean(mustRuntime(t, generationPath(site), "core")) {
+			t.Fatal("wrapper cannot reach core", found, err)
+		}
+		pi, err := os.ReadFile(root + "/pi-runtime.json")
+		core, _ := generationRuntime(generationPath(site), "core")
+		if err != nil || !strings.Contains(string(pi), `"node":"`+core+`/bin/node"`) {
+			t.Fatal("pi selector", string(pi), err)
 		}
 		if _, err := os.Lstat(root + "/profiles/native-build"); !os.IsNotExist(err) {
 			t.Fatal("invented runtime for deb-only profile", err)
 		}
 		have, err := os.ReadFile("/usr/lib/systemd/user/open-habitat-containers.service")
-		want, e := os.ReadFile(filepath.Join(generationPath(site), "payloads/containers/runtime/systemd/user/open-habitat-containers.service"))
+		containers, _ := generationRuntime(generationPath(site), "containers")
+		want, e := os.ReadFile(filepath.Join(containers, "systemd/user/open-habitat-containers.service"))
 		if err != nil || e != nil || string(have) != string(want) {
 			t.Fatal("user unit was not published", err, e)
 		}
@@ -106,7 +144,7 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 	check(s)
 	successor := s
 	successor.Release.ManifestSHA256 = strings.Repeat("b", 64)
-	prepare(successor, "[Service]\nType=oneshot\nExecStart=/bin/false\n")
+	prepare(successor, "[Service]\nType=oneshot\nExecStart=/bin/false\n", true)
 	if err := switchUpgradeSelectors(successor, s.Release.ManifestSHA256); err != nil {
 		t.Fatal(err)
 	}
@@ -124,4 +162,13 @@ func TestSiteFactsFileNamesViews(t *testing.T) {
 	if got := siteFactsFile(s); got != `{"origin":"https://habitat.example.org","views":true}` {
 		t.Fatalf("with views: %s", got)
 	}
+}
+
+func mustRuntime(t *testing.T, gen, profile string) string {
+	t.Helper()
+	runtime, err := generationRuntime(gen, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return runtime
 }

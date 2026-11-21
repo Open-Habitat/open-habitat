@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 
 	policy "github.com/open-habitat/open-habitat"
 )
@@ -45,6 +47,12 @@ func generationPayloadMatches(ctx context.Context, s Site, r AuthenticatedReleas
 	if e = runtimePayloadMatches(ctx, gen, r, s.Profiles, 0); e != nil {
 		return e
 	}
+	return generationProductMatches(s, r)
+}
+
+// generationProductMatches rereads the product files a generation holds.
+func generationProductMatches(s Site, r AuthenticatedRelease) error {
+	gen := generationPath(s)
 	b, e := trustedBytes(gen+"/product.json", MaxReleaseManifestBytes)
 	if e != nil {
 		return e
@@ -94,18 +102,23 @@ func generationMatches(ctx context.Context, s Site, r AuthenticatedRelease) erro
 	if target, e := os.Readlink("/opt/open-habitat/current"); e != nil || target != gen {
 		return ErrReleaseTarget
 	}
-	if target, e := os.Readlink("/opt/open-habitat/core"); e != nil || target != gen+"/payloads/core/runtime" {
+	core, e := generationRuntime(gen, "core")
+	if e != nil {
+		return e
+	}
+	if target, e := os.Readlink("/opt/open-habitat/core"); e != nil || target != core {
 		return ErrReleaseTarget
 	}
 	for _, profile := range s.Profiles {
 		if profile == "core" {
 			continue
 		}
-		runtime := gen + "/payloads/" + profile + "/runtime"
-		if st, e := os.Stat(runtime); e == nil && st.IsDir() {
+		if runtime, e := generationRuntime(gen, profile); e == nil {
 			if target, e := os.Readlink("/opt/open-habitat/profiles/" + profile); e != nil || target != runtime {
 				return ErrReleaseTarget
 			}
+		} else if !errors.Is(e, os.ErrNotExist) {
+			return e
 		}
 	}
 	units, e := runtimeUserPolicies(s)
@@ -127,7 +140,12 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 		return e
 	}
 	if _, e = os.Lstat(generationPath(s)); e == nil {
-		if e = generationPayloadMatches(ctx, s, r); e != nil {
+		timings, e := runtimePayloadTimings(ctx, generationPath(s), r, s.Profiles, 0, func() int64 { return time.Now().UnixMilli() })
+		if e != nil {
+			return e
+		}
+		n.payloads = timings
+		if e = generationProductMatches(s, r); e != nil {
 			return e
 		}
 		if activate {
@@ -150,13 +168,29 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 		return e
 	}
 	defer source.Close()
-	name, e := r.StageRelease(ctx, s.Profiles, parent, func(name string) (io.ReadCloser, error) { return source.Open(name) })
+	artifacts, e := r.Select(s.Profiles)
+	if e != nil {
+		return e
+	}
+	keep := map[string]bool{payloadsName(artifacts): true}
+	// Reclaiming space is not part of the upgrade's promise; a refusal to
+	// collect (anything unreadable) removes nothing and must not block it.
+	_ = collectPayloads(installPrefix, keep, 0)
+	payloads, timings, e := r.ensurePayloads(ctx, artifacts, installPrefix, parent, func(name string) (io.ReadCloser, error) { return source.Open(name) }, 0, func() int64 { return time.Now().UnixMilli() })
 	if e != nil {
 		return errors.Join(ErrRuntimeStage, e)
+	}
+	n.payloads = timings
+	name := "generation-" + rand.Text()
+	if e = parent.Mkdir(name, 0700); e != nil {
+		return errors.Join(ErrRuntimeStage, ErrReleaseStage)
 	}
 	stage := generationStageParent + "/" + name
 	// A new private stage is disposable; no account/broker bytes are held here.
 	defer os.RemoveAll(stage)
+	if e = linkPayloads(stage, payloads); e != nil {
+		return e
+	}
 	if activate {
 		if e = installRuntimePackages(ctx, s, r, stage); e != nil {
 			return errors.Join(ErrRuntimePackages, e)
@@ -268,23 +302,31 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e = os.Chmod(stage, 0755); e != nil {
 		return e
 	}
-	if e = os.Chmod(stage+"/payloads", 0755); e != nil {
-		return e
-	}
 	if e = syncTree(stage); e != nil {
 		return e
 	}
 	if e = publishGeneration(stage, generationPath(s)); e != nil {
 		return e
 	}
+	// ensurePayloads verified every reused tree and extraction checked every
+	// byte it wrote, both against r; only the links and product files are new.
+	if e = generationProductMatches(s, r); e != nil {
+		return e
+	}
+	if dir, e := generationPayloads(generationPath(s), artifacts); e != nil || dir != payloads {
+		return ErrReleaseArchive
+	}
 	if !activate {
-		return generationPayloadMatches(ctx, s, r)
+		return nil
 	}
 	if e = finishGeneration(s); e != nil {
 		return e
 	}
 	return generationMatches(ctx, s, r)
 }
+
+// installPrefix holds host-owned generations, the payload store and staging.
+const installPrefix = "/opt/open-habitat"
 
 // A generation is staged beside its publish target, never under /var: /var,
 // /opt and / are often separate filesystems, and the one atomic publication
@@ -343,7 +385,11 @@ func finishGeneration(s Site) error {
 	if e = publishLink("/opt/open-habitat/current", generationPath(s)); e != nil {
 		return e
 	}
-	if e = publishLink("/opt/open-habitat/core", generationPath(s)+"/payloads/core/runtime"); e != nil {
+	core, e := generationRuntime(generationPath(s), "core")
+	if e != nil {
+		return e
+	}
+	if e = publishLink("/opt/open-habitat/core", core); e != nil {
 		return e
 	}
 	if e = ensurePolicyDir("/opt/open-habitat/profiles", 0); e != nil {
@@ -353,11 +399,12 @@ func finishGeneration(s Site) error {
 		if profile == "core" {
 			continue
 		}
-		runtime := generationPath(s) + "/payloads/" + profile + "/runtime"
-		if st, e := os.Stat(runtime); e == nil && st.IsDir() {
+		if runtime, e := generationRuntime(generationPath(s), profile); e == nil {
 			if e = publishLink("/opt/open-habitat/profiles/"+profile, runtime); e != nil {
 				return e
 			}
+		} else if !errors.Is(e, os.ErrNotExist) {
+			return e
 		}
 	}
 	if e = publishPiRuntime("/opt/open-habitat", generationPath(s), 0); e != nil {
@@ -367,7 +414,11 @@ func finishGeneration(s Site) error {
 		return e
 	}
 	if slices.Contains(s.Profiles, "editor") {
-		b, _ := json.Marshal(map[string]string{"code_server": generationPath(s) + "/payloads/editor/runtime/bin/code-server"})
+		editor, e := generationRuntime(generationPath(s), "editor")
+		if e != nil {
+			return e
+		}
+		b, _ := json.Marshal(map[string]string{"code_server": editor + "/bin/code-server"})
 		if e = installPolicy("/", policyFile{"/opt/open-habitat/editor.json", string(b)}, 0); e != nil {
 			return e
 		}
@@ -392,7 +443,10 @@ func finishGeneration(s Site) error {
 }
 
 func publishPiRuntime(prefix, generation string, owner uint32) error {
-	runtime := generation + "/payloads/core/runtime"
+	runtime, e := generationRuntime(generation, "core")
+	if e != nil {
+		return e
+	}
 	selector := map[string]string{"node": runtime + "/bin/node", "entry": runtime + "/node_modules/@earendil-works/pi-coding-agent/dist/index.js", "manifest": runtime + "/node_modules/@earendil-works/pi-coding-agent/package.json"}
 	b, _ := json.Marshal(selector)
 	return installPolicy("/", policyFile{prefix + "/pi-runtime.json", string(b)}, owner)
@@ -439,7 +493,11 @@ func runtimeUserPolicies(s Site) ([]policyFile, error) {
 	if !slices.Contains(s.Profiles, "containers") {
 		return nil, nil
 	}
-	b, e := trustedBytes(generationPath(s)+"/payloads/containers/runtime/systemd/user/open-habitat-containers.service", MaxSiteBytes)
+	runtime, e := generationRuntime(generationPath(s), "containers")
+	if e != nil {
+		return nil, e
+	}
+	b, e := trustedBytes(runtime+"/systemd/user/open-habitat-containers.service", MaxSiteBytes)
 	if e != nil {
 		return nil, e
 	}
@@ -482,6 +540,10 @@ func syncTree(root string) error {
 				return e
 			}
 			return syncDirectory(path)
+		}
+		// A generation's payload links are persisted by its directory's fsync.
+		if d.Type()&fs.ModeSymlink != 0 {
+			return nil
 		}
 		if !d.Type().IsRegular() {
 			return ErrTrust

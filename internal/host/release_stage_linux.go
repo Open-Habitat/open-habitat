@@ -44,6 +44,28 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 	if err != nil {
 		return "", err
 	}
+	return r.stageArtifacts(ctx, artifacts, parent, open, owner, nil, nil)
+}
+
+// stagePhases is how long, in milliseconds, staging spent authenticating
+// (copying and hashing) archives, preflighting their inventories and
+// extracting them.
+type stagePhases struct{ authenticate, preflight, extract int64 }
+
+// stageArtifacts is stageRelease for artifacts already selected from r, such
+// as only those whose payload is not yet in the content store.
+func (r AuthenticatedRelease) stageArtifacts(ctx context.Context, artifacts []ReleaseArtifact, parent *os.Root, open func(string) (io.ReadCloser, error), owner uint32, clock func() int64, phases *stagePhases) (name string, err error) {
+	if r.digest == "" || len(artifacts) == 0 {
+		return "", ErrRelease
+	}
+	if clock == nil || phases == nil {
+		clock, phases = func() int64 { return 0 }, &stagePhases{}
+	}
+	mark := clock()
+	lap := func(into *int64) {
+		now := clock()
+		*into, mark = now-mark, now
+	}
 	if parent == nil || open == nil {
 		return "", ErrReleaseStage
 	}
@@ -108,11 +130,13 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 			return name, ErrReleaseStage
 		}
 	}
+	lap(&phases.authenticate)
 	for _, a := range artifacts {
 		if e := walkReleaseTar(ctx, files[a.Profile], a, r.manifest.Platform, nil); e != nil {
 			return name, e
 		}
 	}
+	lap(&phases.preflight)
 	for _, a := range artifacts {
 		dest := "payloads/" + a.Profile
 		if stage.Mkdir(dest, 0755) != nil {
@@ -141,6 +165,7 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 	if stage.RemoveAll("archives") != nil {
 		return name, ErrReleaseStage
 	}
+	lap(&phases.extract)
 	return name, nil
 }
 

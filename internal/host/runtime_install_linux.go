@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"golang.org/x/sys/unix"
 	"io"
@@ -76,7 +77,7 @@ func installRuntime(ctx context.Context, r AuthenticatedRelease, prefix string, 
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return ErrTrust
 	}
-	if err == nil && (!strings.HasPrefix(old, prefix+"/generations/") || !strings.HasSuffix(old, "/payloads/core/runtime")) {
+	if err == nil && !runtimeSelectorLayout(prefix, old) {
 		return ErrReleaseTarget
 	}
 	if _, err := policyBytes("/", policyFile{Path: prefix + "/pi-runtime.json"}, owner); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -87,34 +88,46 @@ func installRuntime(ctx context.Context, r AuthenticatedRelease, prefix string, 
 		return err
 	}
 	defer parent.Close()
-	// Even a retry authenticates the supplied archives. No selection is changed
-	// until the complete closure has been staged and checked.
-	name, err := r.stageRelease(ctx, []string{"core"}, parent, open, owner)
-	if err != nil {
-		return err
-	}
-	stage := prefix + "/staging/" + name
-	defer os.RemoveAll(stage)
-	if err = syncTree(stage); err != nil {
-		return err
-	}
-	if _, err = os.Lstat(dest); errors.Is(err, os.ErrNotExist) {
-		if err = publishGeneration(stage, dest); err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	} else {
+	if _, err = os.Lstat(dest); err == nil {
 		// Reobserve immutable contents, not merely a prior publication receipt.
 		if err = runtimePayloadMatches(ctx, dest, r, []string{"core"}, owner); err != nil {
+			return err
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	} else {
+		_ = collectPayloads(prefix, map[string]bool{payloadsName(artifacts): true}, owner)
+		// An unchanged payload is reverified, not extracted again. Otherwise
+		// the archives are authenticated and preflighted before extraction,
+		// and no selection changes until the payload is published and checked.
+		payloads, _, err := r.ensurePayloads(ctx, artifacts, prefix, parent, open, owner, func() int64 { return 0 })
+		if err != nil {
+			return err
+		}
+		name := "generation-" + rand.Text()
+		if err = parent.Mkdir(name, 0700); err != nil {
+			return ErrReleaseStage
+		}
+		stage := prefix + "/staging/" + name
+		defer os.RemoveAll(stage)
+		if err = linkPayloads(stage, payloads); err != nil {
+			return err
+		}
+		if err = syncTree(stage); err != nil {
+			return err
+		}
+		if err = publishGeneration(stage, dest); err != nil {
 			return err
 		}
 	}
 	if err = ctx.Err(); err != nil {
 		return err
 	}
-	return selectRuntime(prefix, dest, old, owner, func() error {
-		want := dest + "/payloads/core/runtime"
+	want, err := generationRuntime(dest, "core")
+	if err != nil {
+		return err
+	}
+	return selectRuntime(prefix, want, old, owner, func() error {
 		if old == "" {
 			return publishLink(link, want)
 		}
@@ -122,10 +135,22 @@ func installRuntime(ctx context.Context, r AuthenticatedRelease, prefix string, 
 	}, func() error { return publishPiRuntime(prefix, dest, owner) })
 }
 
+// runtimeSelectorLayout says whether a core alias names a runtime this
+// prefix published: a store entry, or a generation's own payload from before
+// the store. Foreign layouts are refused rather than adopted.
+func runtimeSelectorLayout(prefix, target string) bool {
+	if rest, ok := strings.CutPrefix(target, prefix+"/payloads/"); ok {
+		name, tail, _ := strings.Cut(rest, "/")
+		return payloadsNameRE.MatchString(name) && tail == "core/runtime"
+	}
+	return strings.HasPrefix(target, prefix+"/generations/") && strings.HasSuffix(target, "/payloads/core/runtime")
+}
+
 // Publication helpers can fail after rename (directory fsync). Reobserve both
 // outputs on any failure, and restore both, not just the alias. Filesystem
 // failure during restoration is reported too; never claim an unchanged state.
-func selectRuntime(prefix, dest, old string, owner uint32, writeLink, writeSelector func() error) error {
+// want is the runtime the alias is moved to.
+func selectRuntime(prefix, want, old string, owner uint32, writeLink, writeSelector func() error) error {
 	selector := prefix + "/pi-runtime.json"
 	before, err := policyBytes("/", policyFile{Path: selector}, owner)
 	absent := errors.Is(err, os.ErrNotExist)
@@ -162,7 +187,7 @@ func selectRuntime(prefix, dest, old string, owner uint32, writeLink, writeSelec
 	}
 	link := prefix + "/core"
 	if have, e := os.Readlink(link); e == nil && have != old {
-		if have != dest+"/payloads/core/runtime" {
+		if have != want {
 			recovery = errors.Join(recovery, ErrRecovery)
 		} else if old == "" {
 			recovery = errors.Join(recovery, os.Remove(link))
@@ -189,35 +214,34 @@ func runtimeInstallJournalClear(lock *Lock) error {
 	return nil
 }
 
+// runtimePayloadMatches rereads every payload a generation uses, in the store
+// or (published before it) in the generation itself, against r.
 func runtimePayloadMatches(ctx context.Context, gen string, r AuthenticatedRelease, profiles []string, owner uint32) error {
+	_, err := runtimePayloadTimings(ctx, gen, r, profiles, owner, func() int64 { return 0 })
+	return err
+}
+
+func runtimePayloadTimings(ctx context.Context, gen string, r AuthenticatedRelease, profiles []string, owner uint32, clock func() int64) ([]PayloadTiming, error) {
 	artifacts, err := r.Select(profiles)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	timings := []PayloadTiming{}
+	dir, err := generationPayloads(gen, artifacts)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrReleaseArchive
+	} else if err != nil {
+		return nil, err
 	}
 	for _, a := range artifacts {
 		if a.Closure == nil {
-			return ErrReleaseArchive
+			return nil, ErrReleaseArchive
 		}
-		for _, f := range a.Closure.Files {
-			if err = ctx.Err(); err != nil {
-				return err
-			}
-			path := gen + "/payloads/" + a.Profile + "/" + f.Path
-			fd, err := openDir(filepath.Dir(path), owner, false)
-			if err != nil {
-				return err
-			}
-			var st unix.Stat_t
-			err = unix.Fstatat(fd, filepath.Base(path), &st, unix.AT_SYMLINK_NOFOLLOW)
-			unix.Close(fd)
-			if err != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Nlink != 1 || st.Mode&0777 != uint32(f.Mode) {
-				return ErrReleaseArchive
-			}
-			sum, err := fileDigest(path)
-			if err != nil || sum != f.SHA256 {
-				return ErrReleaseArchive
-			}
+		start := clock()
+		if err = verifyPayloadTree(ctx, dir+"/"+a.Profile, a, r.manifest.Platform, owner, false); err != nil {
+			return nil, err
 		}
+		timings = append(timings, PayloadTiming{Profile: a.Profile, Outcome: "verified", VerifyMS: clock() - start})
 	}
-	return nil
+	return timings, nil
 }

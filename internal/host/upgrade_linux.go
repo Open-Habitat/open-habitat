@@ -48,6 +48,9 @@ type UpgradeResult struct {
 	Would        []Action    `json:"would"`
 	Operation    *Operation  `json:"operation,omitempty"`
 	EntryClosure string      `json:"entry_closure,omitempty"`
+	// RuntimePayloads says, per profile, whether staging reused, verified
+	// or published its runtime payload and how long each part took.
+	RuntimePayloads []PayloadTiming `json:"runtime_payloads,omitempty"`
 }
 
 func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error) {
@@ -174,6 +177,7 @@ type upgradeDriver struct {
 	plan           func(context.Context, string) (UpgradePlan, error)
 	binding        func(context.Context, string) (string, error)
 	stage          func(context.Context) error
+	payloads       func() []PayloadTiming
 	isOwner        func() bool
 	prepare        func(context.Context, *Lock, Operation) error
 	steps          []upgradeStep
@@ -291,6 +295,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		}
 		if e = d.stage(ctx); e != nil {
 			return r, e
+		}
+		if d.payloads != nil {
+			r.RuntimePayloads = d.payloads()
 		}
 		if !d.isOwner() {
 			r.Outcome = "staged"

@@ -152,6 +152,21 @@ The packages divide the work as follows.
   runtime/profile acceptance. Those need qualified build locks and mapped-UID
   production startup checks before activation. Do not wire these narrower
   adapters into successful installation readiness in their place.
+  Runtime payloads are content-addressed by the set of authenticated archive
+  digests a generation uses, under `<prefix>/payloads/<digest>/<profile>`,
+  and shared read-only by the generations whose manifests name the same
+  set; a generation stays per manifest and links its `payloads` there. The
+  set, not each archive, is the key because payloads reach each other by
+  relative path (the integrations Pi wrapper walks to `../core/runtime`). An
+  entry, like a generation, authorizes nothing by existing: before a
+  generation refers to it, every file is rehashed against the manifest that
+  names it now, with the extraction's content rules, exact inventory, modes,
+  owner, link count and no file capabilities, and each later check of that
+  generation rehashes it again. Never replace that with a receipt, a
+  timestamp or a metadata comparison, never hard-link payload files between
+  trees, and never modify a published entry in place. Entries leave only when
+  no generation or selector names them, by rename out of the store before
+  deletion.
   Upgrade preservation snapshots are evidence for the closed maintenance window,
   not a second authority over later native state. Once structural acceptance is
   durable, sessions and gateway administration may change normally; recovery

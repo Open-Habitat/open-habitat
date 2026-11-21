@@ -8,8 +8,10 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -71,28 +73,45 @@ func TestRuntimeInstallPublicationAndRetry(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	want := prefix + "/generations/runtime-" + r.digest + "/payloads/core/runtime"
+	// The alias names the content-addressed payload, which the release's
+	// generation links to; neither repeat installation re-extracted it.
+	entry := prefix + "/payloads/" + payloadsName([]ReleaseArtifact{a})
+	want := entry + "/core/runtime"
 	if got, err := os.Readlink(prefix + "/core"); err != nil || got != want {
 		t.Fatalf("link %q: %v", got, err)
+	}
+	if got, err := os.Readlink(prefix + "/generations/runtime-" + r.digest + "/payloads"); err != nil || got != entry {
+		t.Fatalf("generation link %q: %v", got, err)
 	}
 	before, err := os.ReadFile(prefix + "/pi-runtime.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installRuntime(ctx, r, prefix, archiveOpener([]byte("corrupt")), owner); err == nil {
+	// A release whose payload is not published yet still authenticates its
+	// archive before extracting anything.
+	other := releaseManifest(a)
+	other.Version = "1.2.5"
+	other.Artifacts[0].SHA256 = strings.Repeat("c", 64)
+	if err := installRuntime(ctx, authenticatedFixture(t, other), prefix, archiveOpener([]byte("corrupt")), owner); err == nil {
 		t.Fatal("accepted corrupt archive")
 	}
 	after, _ := os.ReadFile(prefix + "/pi-runtime.json")
 	if string(after) != string(before) {
 		t.Fatal("failed archive changed selection")
 	}
+	if _, err := os.Lstat(prefix + "/payloads/" + payloadsName(other.Artifacts)); !os.IsNotExist(err) {
+		t.Fatal("published a payload from a corrupt archive", err)
+	}
 	m := releaseManifest(a)
 	m.Version = "1.2.4"
 	next := authenticatedFixture(t, m)
+	// A new release naming the same archive reuses the verified payload: the
+	// archive is not read again, so a corrupt copy here cannot matter.
+	noArchive := func(string) (io.ReadCloser, error) { t.Fatal("reread an unchanged runtime archive"); return nil, nil }
 	if err := os.WriteFile(prefix+"/pi-runtime.json.next", []byte("unrelated"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := installRuntime(ctx, next, prefix, archiveOpener(archive), owner); err == nil {
+	if err := installRuntime(ctx, next, prefix, noArchive, owner); err == nil {
 		t.Fatal("accepted foreign selector stage")
 	}
 	if got, _ := os.Readlink(prefix + "/core"); got != want {
@@ -105,8 +124,11 @@ func TestRuntimeInstallPublicationAndRetry(t *testing.T) {
 	if err := os.Remove(prefix + "/pi-runtime.json.next"); err != nil {
 		t.Fatal(err)
 	}
-	if err := installRuntime(ctx, next, prefix, archiveOpener(archive), owner); err != nil {
+	if err := installRuntime(ctx, next, prefix, noArchive, owner); err != nil {
 		t.Fatal(err)
+	}
+	if got, err := os.Readlink(prefix + "/core"); err != nil || got != want {
+		t.Fatalf("reused payload not selected %q: %v", got, err)
 	}
 	if err := os.WriteFile(prefix+"/generations/runtime-"+r.digest+"/payloads/core/LICENSE", []byte("bad"), 0644); err != nil {
 		t.Fatal(err)
@@ -127,6 +149,11 @@ func TestRuntimeSelectionPostRenameFailureRestoresBoth(t *testing.T) {
 			old := ""
 			oldGen := prefix + "/generations/old"
 			dest := prefix + "/generations/new"
+			for _, gen := range []string{oldGen, dest} {
+				if err := os.MkdirAll(gen+"/payloads/core/runtime", 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if !initial {
 				old = oldGen + "/payloads/core/runtime"
 				if err := publishLink(prefix+"/core", old); err != nil {
@@ -138,7 +165,7 @@ func TestRuntimeSelectionPostRenameFailureRestoresBoth(t *testing.T) {
 			}
 			before, _ := os.ReadFile(prefix + "/pi-runtime.json")
 			injected := errors.New("injected directory fsync failure after rename")
-			err := selectRuntime(prefix, dest, old, owner, func() error {
+			err := selectRuntime(prefix, dest+"/payloads/core/runtime", old, owner, func() error {
 				var e error
 				if initial {
 					e = publishLink(prefix+"/core", dest+"/payloads/core/runtime")

@@ -459,6 +459,19 @@ upgrade or recovery owner. Predecessor operation inspection reports the owning
 generation and binary; an older journal parser must not rewrite unfamiliar
 records. Upgrade journals use schema 2 and name their owner.
 
+Runtime payloads are kept once per set of runtime archives, in
+`/opt/open-habitat/payloads/<digest>/<profile>`, and each generation links its
+`payloads` to the set its manifest names. When a release ships the same runtime
+archives as one already installed, staging rereads those payloads and checks
+every file against the new manifest instead of extracting them again; the
+result's `runtime_payloads` says per profile whether it was `reused`,
+`verified` or `published` and how long each part took. A release that changes
+any runtime archive extracts the whole set once. The first upgrade from a
+release whose generation still holds its own payloads extracts them once into
+this store. A payload set is deleted only after no generation or selector
+names it, so removing an unused old generation, as before, is what frees its
+runtime space at the next upgrade.
+
 Schedule the maintenance window explicitly. Add `--approve-interruption` only
 when interruption of daemon work is approved; the preview's `work` lists each
 live daemon and its active turns. A live daemon is conservatively unobservable
@@ -677,16 +690,21 @@ use host upgrade there. A manually maintained product `current` is left alone.
 Only `--select core` is supported; optional-profile activation remains host
 apply's responsibility.
 
-Payloads are staged and authenticated before publication into
-`/opt/open-habitat/generations/runtime-<manifest-digest>`. The command uses the
-host's publication and Pi-selector writer, updates `core` and `pi-runtime.json`,
-and leaves site settings, product binaries, units and running processes alone.
-An existing core alias must point into this prefix's generation payload layout;
-foreign layouts are refused rather than adopted. Invalid archives leave selection
-unchanged; an ordinary selector write failure rolls back the core alias. After
-an interruption, repeat the same command. A retry rechecks archives and published
-file bytes, rather than trusting the directory's existence. Old generations are
-retained for running processes; operators must remove them only when unused.
+A core payload not yet installed is authenticated, preflighted and extracted
+into the content store `<prefix>/payloads/<digest>/core`, keyed by the archive
+digest; one already there, from any release naming the same archive, is reread
+and checked file by file against this manifest instead. The release's generation
+`<prefix>/generations/runtime-<manifest-digest>` links to it. The command uses
+the host's publication and Pi-selector writer, points `core` and
+`pi-runtime.json` at the payload, and leaves site settings, product binaries,
+units and running processes alone. An existing core alias must point into this
+prefix's payload store or generation payload layout; foreign layouts are
+refused rather than adopted. Invalid archives leave selection unchanged; an
+ordinary selector write failure rolls back the core alias. After an
+interruption, repeat the same command. A retry rechecks the published file
+bytes, rather than trusting the directory's existence. Old generations are
+retained for running processes; operators must remove them only when unused,
+and a payload no remaining generation names is deleted by the next install.
 This operation does not establish full host readiness or install browser sandbox
 policy. `--prefix <absolute-path>` selects a different trusted runtime prefix for
 disposable qualification; the installed daemon still reads the standard path.

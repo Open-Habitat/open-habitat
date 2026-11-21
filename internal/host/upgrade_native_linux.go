@@ -72,7 +72,7 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 			return errors.Join(ErrRuntimePackages, e)
 		}
 		return nil
-	}, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
+	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	return executeUpgrade(ctx, req, d)
 }
@@ -561,23 +561,28 @@ func parseUserUnits(b []byte) ([]string, bool) {
 }
 func switchUpgradeSelectors(s Site, predecessor string) error {
 	old := generationParent + "/" + predecessor
-	for path, target := range map[string]string{"/opt/open-habitat/current": generationPath(s), "/opt/open-habitat/core": generationPath(s) + "/payloads/core/runtime"} {
-		suffix := ""
-		if filepath.Base(path) == "core" {
-			suffix = "/payloads/core/runtime"
-		}
-		if e := replaceUpgradeLink(path, old+suffix, target); e != nil {
+	if e := replaceUpgradeLink("/opt/open-habitat/current", old, generationPath(s)); e != nil {
+		return e
+	}
+	// Either generation may hold its payloads itself (published before the
+	// content store) or link to the store; the selector names the runtime.
+	for _, p := range s.Profiles {
+		want, e := generationRuntime(generationPath(s), p)
+		if errors.Is(e, os.ErrNotExist) && p != "core" {
+			continue
+		} else if e != nil {
 			return e
 		}
-	}
-	for _, p := range s.Profiles {
-		if p == "core" {
-			continue
+		have, e := generationRuntime(old, p)
+		if e != nil {
+			return e
 		}
-		if st, e := os.Stat(generationPath(s) + "/payloads/" + p + "/runtime"); e == nil && st.IsDir() {
-			if e = replaceUpgradeLink("/opt/open-habitat/profiles/"+p, old+"/payloads/"+p+"/runtime", generationPath(s)+"/payloads/"+p+"/runtime"); e != nil {
-				return e
-			}
+		path := "/opt/open-habitat/profiles/" + p
+		if p == "core" {
+			path = "/opt/open-habitat/core"
+		}
+		if e = replaceUpgradeLink(path, have, want); e != nil {
+			return e
 		}
 	}
 	return finishGeneration(s)

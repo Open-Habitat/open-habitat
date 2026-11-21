@@ -453,6 +453,8 @@ func applyNative(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 type nativeApply struct {
 	site  Site
 	roles []AdministratorOutcome
+	// payloads reports how this process made the runtime payloads available.
+	payloads []PayloadTiming
 }
 
 func (n *nativeApply) closeEntries(ctx context.Context) error {
