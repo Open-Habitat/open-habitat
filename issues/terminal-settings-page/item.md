@@ -19,3 +19,9 @@ A configuration page for the terminal. Jari 21.11.2026: copying on select (today
 ## Decisions
 
 - Jari 21.11.2026: prototype the terminal configuration page; copy on select is a setting, off by default.
+
+## Agent Runs
+
+### 2026-11-21T14:59:59Z · @claude
+
+Prototype round 1 (run 01m7z93caj8vp9epxz4fa3k0hw): round 2026-11-21-terminal-settings, directions A Osio / B Ratas / C Esikatselu, recommends C; see result.md. Waiting for Jari's choice.
