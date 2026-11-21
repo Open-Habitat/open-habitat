@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "wakes": [
+    {
+      "id": "wk_0123456789abcdef",
+      "agent_id": "pi:2f1a7c3e-0d4b-4e5f-9a6b-7c8d9e0f1a2b",
+      "at": "2026-11-19T08:00:00Z",
+      "note": "Remind the person to remove backup-2024.",
+      "set_by": "agent",
+      "set_at": "2026-11-17T13:12:00Z",
+      "status": "fired",
+      "moved_from": "2026-11-19T07:00:00Z",
+      "fired_at": "2026-11-19T10:36:00Z",
+      "late_seconds": 9360
+    },
+    {
+      "id": "wk_fedcba9876543210",
+      "agent_id": "pi:2f1a7c3e-0d4b-4e5f-9a6b-7c8d9e0f1a2b",
+      "at": "2026-12-01T08:00:00Z",
+      "note": "Check whether the lease notice was confirmed.",
+      "set_by": "agent",
+      "set_at": "2026-11-17T13:20:00Z",
+      "status": "cancelled",
+      "cancel_reason": "archived",
+      "cancelled_at": "2026-11-17T13:40:00Z"
+    }
+  ],
+  "pending_limit": 100
+}

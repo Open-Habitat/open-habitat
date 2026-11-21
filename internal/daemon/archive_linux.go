@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -18,6 +19,9 @@ type archiveRequest struct {
 	ObservationToken string `json:"observation_token"`
 	PreviousArchive  string `json:"previous_archive"`
 	ClientCommandID  string `json:"client_command_id,omitempty"`
+	// RestoreWakes is the archive notice's undo: a restore that also brings
+	// back the scheduled wakes the archive cancelled.
+	RestoreWakes bool `json:"restore_wakes,omitempty"`
 }
 
 // Archive changes presentation, not history content. A completed turn or stop
@@ -37,6 +41,10 @@ func (c *ConversationController) archive(w http.ResponseWriter, r *http.Request,
 	c.archiveInput(r.Context(), w, id, in)
 }
 func (c *ConversationController) archiveInput(ctx context.Context, w http.ResponseWriter, id string, in archiveRequest) {
+	if in.RestoreWakes && in.Archived {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
 	if !sessionIDPattern.MatchString(id) || (in.ClientCommandID != "" && !sessionIDPattern.MatchString(in.ClientCommandID)) || !idPattern.MatchString(in.WorkspaceID) || len(in.ObservationToken) < 8 || len(in.ObservationToken) > 200 || (in.PreviousArchive != "active" && in.PreviousArchive != "archived") {
 		snapshotError(w, 400, "invalid_request")
 		return
@@ -199,10 +207,14 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	} else {
 		annotation = make(map[string]json.RawMessage)
 	}
+	archivedAt := ""
 	if in.Archived {
-		stamp, _ := json.Marshal(time.Now().UTC().Format(time.RFC3339Nano))
+		archivedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		stamp, _ := json.Marshal(archivedAt)
 		annotation["archived_at"] = stamp
 	} else {
+		// The wakes this very archive cancelled carry its stamp.
+		_ = json.Unmarshal(annotation["archived_at"], &archivedAt)
 		delete(annotation, "archived_at")
 	}
 	if len(annotation) == 0 {
@@ -211,7 +223,26 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		raw, _ := json.Marshal(annotation)
 		state.Conversations[key] = raw
 	}
+	// The scheduled wakes change with the archive, before it is committed:
+	// a wake change that cannot be written refuses the archive, and an
+	// archive that cannot be written puts the wakes back.
+	undoWakes := func() {}
+	if in.Archived {
+		if err := c.archiveCancelsWakes(key, archivedAt); err != nil && !errors.Is(err, errWakesUnreadable) {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
+		undoWakes = func() { _, _ = c.restoreWakes(key, archivedAt, true) }
+	} else {
+		undo, err := c.restoreWakes(key, archivedAt, in.RestoreWakes)
+		if err != nil && !errors.Is(err, errWakesUnreadable) {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
+		undoWakes = undo
+	}
 	if saveVisibility(c.home, state) != nil {
+		undoWakes()
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}

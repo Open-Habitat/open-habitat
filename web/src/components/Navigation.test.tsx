@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { agentPresentation } from "./agentPresentation";
@@ -377,6 +377,7 @@ describe("Ryhmät rows", () => {
   });
   it("offers each row's archive, says why one waits, and keeps focus in the rail", () => {
     const archived: string[] = [];
+    let leaving: (() => void) | undefined;
     const view = render(
       <MemoryRouter>
         <NowSections
@@ -388,7 +389,10 @@ describe("Ryhmät rows", () => {
           archive={{
             reason: (id) =>
               id === "w1" ? "Odota agentin vuoron päättymistä." : "",
-            run: (id) => archived.push(id),
+            run: (id, leave) => {
+              archived.push(id);
+              leaving = leave;
+            },
           }}
         />
       </MemoryRouter>,
@@ -415,7 +419,11 @@ describe("Ryhmät rows", () => {
     button("w2")?.focus();
     fireEvent.click(button("w2") as HTMLButtonElement);
     expect(archived).toEqual(["w2"]);
-    // The last row hands focus to the one before it.
+    // Focus stays while the archive may still ask (a window for helpers or
+    // wakes); once the row leaves, the last row hands focus to the one
+    // before it.
+    expect(document.activeElement).toBe(button("w2"));
+    act(() => leaving?.());
     expect(document.activeElement).toBe(
       view.getByTestId("agent-item-w1").querySelector("a"),
     );

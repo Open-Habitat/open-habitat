@@ -3,6 +3,7 @@ import { Input, Label, TextField } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
 import { textNow, useText } from "../i18n";
 import { navigationText } from "../text/navigation";
+import { scheduledWakeText } from "../text/scheduledWake";
 import { sectionFilterText } from "../text/sectionFilter";
 import { statusText } from "../text/status";
 import {
@@ -50,6 +51,7 @@ import {
   WorkspaceIconButton,
   type WorkspaceIconModel,
 } from "./WorkspaceIcon";
+import { wakeFull, wakeShort } from "./wakeTime";
 
 type AppShellProps = Parameters<typeof Shell>[0];
 
@@ -503,6 +505,12 @@ export interface AgentNavModel {
   historyLabel?: string;
   /** When the conversation last changed (the host's changed_at), Unix ms. */
   changedAt?: number;
+  /** The next pending scheduled wake, Unix ms: the row's end shows a clock
+   * and the time instead of the age (scheduled-wake, experimental). */
+  wakeAt?: number;
+  /** An unread reply a scheduled wake started: when it was woken, in the
+   * same place, so the reply explains itself before it is opened. */
+  wokeAt?: number;
   /** The work ended in a failure the person has to look at: Pi crashed, the
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
@@ -581,7 +589,8 @@ export interface RailArchive {
   /** An unwritten conversation closes rather than entering the archive. */
   closes?: (agentId: string) => boolean;
   reason: (agentId: string) => string;
-  run: (agentId: string) => void;
+  /** leave moves the keyboard on, called when the row leaves the list. */
+  run: (agentId: string, leave?: () => void) => void;
 }
 /** The rail's state ball (research-workmux-sidebar round 3, Ryhmät tiiviinä):
  * working includes waiting on background work, your turn is a question or an
@@ -688,6 +697,8 @@ export function AgentNavItem({
   operationLabel,
   historyLabel,
   changedAt,
+  wakeAt,
+  wokeAt,
   failed,
   selected = false,
   kept = false,
@@ -749,6 +760,23 @@ export function AgentNavItem({
     spinoffIdle,
   });
   const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
+  const wakeWords = textNow(scheduledWakeText);
+  const wake =
+    wakeAt !== undefined
+      ? {
+          at: wakeAt,
+          short: wakeShort(wakeAt, now),
+          said: wakeWords.waitsWake(wakeFull(wakeAt, now)),
+          woke: false,
+        }
+      : wokeAt !== undefined
+        ? {
+            at: wokeAt,
+            short: wakeShort(wokeAt, now),
+            said: wakeWords.wokeAt(wakeFull(wokeAt, now)),
+            woke: true,
+          }
+        : undefined;
   const said = [
     pendingLabel,
     detail ?? activityLabel,
@@ -762,6 +790,7 @@ export function AgentNavItem({
     stale ? t.stale : null,
     presence === "absent" ? t.gone : null,
     changedAt !== undefined ? relativeRecapAge(changedAt, now) : null,
+    wake?.said,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -889,9 +918,12 @@ export function AgentNavItem({
                             ) ?? []),
                         ];
                         const here = rows.findIndex((r) => row?.contains(r));
-                        if (row?.contains(document.activeElement))
-                          (rows[here + 1] ?? rows[here - 1])?.focus();
-                        archive.run(agentId);
+                        const next = row?.contains(document.activeElement)
+                          ? (rows[here + 1] ?? rows[here - 1])
+                          : undefined;
+                        // Only once the row really leaves: an archive that
+                        // asks first keeps focus here until it is answered.
+                        archive.run(agentId, () => next?.focus());
                       }}
                     >
                       <Icon name={closes ? "cross" : "archive"} />
@@ -948,6 +980,7 @@ export function AgentNavItem({
             end={
               (workspaceTag && workspaceName) ||
               backgroundService ||
+              wake ||
               (age !== undefined && changedAt !== undefined) ? (
                 <>
                   {backgroundService ? (
@@ -969,7 +1002,22 @@ export function AgentNavItem({
                       {workspaceName}
                     </span>
                   ) : null}
-                  {age !== undefined && changedAt !== undefined ? (
+                  {wake ? (
+                    <time
+                      className="ah-nav-time ah-nav-wake"
+                      data-testid="rail-wake-time"
+                      data-woke={wake.woke || undefined}
+                      dateTime={new Date(wake.at).toISOString()}
+                      title={wake.said}
+                    >
+                      <Icon
+                        name="clock"
+                        className="ah-nav-wake-icon"
+                        aria-hidden="true"
+                      />
+                      {wake.short}
+                    </time>
+                  ) : age !== undefined && changedAt !== undefined ? (
                     <time
                       className="ah-nav-time"
                       dateTime={new Date(changedAt).toISOString()}

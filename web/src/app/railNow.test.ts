@@ -47,8 +47,10 @@ function run(
     catalog = agents,
     selectedAgentId,
     backgroundDoor,
+    wakes,
   }: {
     backgroundDoor?: boolean;
+    wakes?: boolean;
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
@@ -72,6 +74,7 @@ function run(
     selectedAgentId,
     phase,
     backgroundDoor,
+    wakes,
   });
 }
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
@@ -1095,5 +1098,68 @@ describe("the agent's own section choice", () => {
     expect(section(run([working], { attention: [["c", "new"]] }), "c")).toBe(
       "running",
     );
+  });
+});
+
+describe("scheduled wake on the row", () => {
+  const at = (hour: number) =>
+    new Date(Date.UTC(2026, 10, 19, hour)).toISOString();
+  const pending = {
+    id: "wk_0123456789abcdef",
+    at: at(7),
+    note: "muistuta",
+    set_by: "agent" as const,
+    set_at: at(0),
+  };
+  const later = { ...pending, id: "wk_fedcba9876543210", at: at(20) };
+  const done = { process: "confirmed_exited" as const, run_active: false };
+  const row = (now: ReturnType<typeof run>, id: string) =>
+    [...now.yours, ...now.running, ...now.quiet].find((r) => r.agentId === id);
+
+  it("a waiting conversation shows its next wake, not its age, only with the feature on", () => {
+    const waiting = agent("w", {
+      ...done,
+      changed_at: at(1),
+      last_reply: { id: "r1", at: at(1) },
+      agent_section: { section: "quiet", at: at(1) },
+      wakes: [pending, later],
+    });
+    const on = run([waiting], { attention: [["w", "new"]], wakes: true });
+    expect(ids(on.quiet)).toEqual(["w"]);
+    expect(row(on, "w")?.wakeAt).toBe(Date.parse(pending.at));
+    expect(row(on, "w")?.wokeAt).toBeUndefined();
+    const off = run([waiting], { attention: [["w", "new"]] });
+    expect(row(off, "w")?.wakeAt).toBeUndefined();
+  });
+
+  it.each([
+    ["unread reply of the wake", "new", at(8), at(8), true],
+    ["read reply", "seen", at(8), at(8), false],
+    ["reply long after the wake", "new", at(8), at(16), false],
+    ["reply before the wake", "new", at(8), at(7), false],
+  ] as const)(
+    "a woken reply says when it was woken: %s",
+    (_name, attention, fired, replyAt, shows) => {
+      const woken = agent("v", {
+        ...done,
+        last_reply: { id: "r2", at: replyAt },
+        last_wake: { at: at(7), fired_at: fired },
+      });
+      const now = run([woken], { attention: [["v", attention]], wakes: true });
+      expect(row(now, "v")?.wokeAt).toBe(shows ? Date.parse(fired) : undefined);
+      if (shows) expect(ids(now.yours)).toEqual(["v"]);
+    },
+  );
+
+  it("a pending wake wins the end slot over a past one", () => {
+    const both = agent("b", {
+      ...done,
+      last_reply: { id: "r3", at: at(8) },
+      last_wake: { at: at(7), fired_at: at(8) },
+      wakes: [later],
+    });
+    const now = run([both], { attention: [["b", "new"]], wakes: true });
+    expect(row(now, "b")?.wakeAt).toBe(Date.parse(later.at));
+    expect(row(now, "b")?.wokeAt).toBeUndefined();
   });
 });

@@ -760,6 +760,17 @@
           "description": "The section the agent chose for its own conversation after its latest turn (open-habitat agent section update), kept by the person's daemon beside the turn marks. The person's turn mark, a native question, a failure and a running turn win over it; running holds only while Habitat sees the conversation's work going on. Absent when there is none or the daemon cannot read it.",
           "$ref": "agent-section.schema.json#/$defs/choice"
         },
+        "wakes": {
+          "description": "The conversation's pending scheduled wakes in time order (experimental scheduled-wake; agent-wake.schema.json). The conversation waits in Hiljaiset meanwhile and its rail row shows the next time. Absent when none is pending, when the conversation is archived, or when the daemon cannot read its wakes.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "agent-wake.schema.json#/$defs/pending" }
+        },
+        "last_wake": {
+          "description": "The conversation's latest scheduled wake that fired, by which an unread reply it started explains itself on the rail row. Absent when none has fired or the daemon cannot read its wakes.",
+          "$ref": "agent-wake.schema.json#/$defs/fired"
+        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [

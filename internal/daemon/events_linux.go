@@ -678,6 +678,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.WaitReminder != nil {
 		payload["wait_reminder"] = entry.WaitReminder
 	}
+	if entry.ScheduledWake != nil {
+		payload["scheduled_wake"] = entry.ScheduledWake
+	}
 	if len(entry.Blocks) > 0 {
 		payload["blocks"] = entry.Blocks
 	}

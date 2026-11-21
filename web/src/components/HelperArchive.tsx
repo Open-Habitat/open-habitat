@@ -4,8 +4,10 @@ import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { type Spinoff, spinoffStateLabel } from "../app/spinoffs";
 import { useText } from "../i18n";
 import { helperArchiveText } from "../text/helperArchive";
+import { scheduledWakeText } from "../text/scheduledWake";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+import { type PendingWakeModel, WakeArchiveRows } from "./ScheduledWake";
 import { WorkerMark } from "./WorkerMark";
 import "./HelperArchive.css";
 
@@ -160,28 +162,37 @@ export function HelperArchiveConfirm({
   title,
   runs,
   incomplete,
+  wakes = [],
   onAnswer,
   branchView,
 }: {
   runs: Spinoff[];
   incomplete: boolean;
+  /** Scheduled wakes the archive cancels (scheduled-wake, experimental). */
+  wakes?: PendingWakeModel[];
   title: string;
   branchView: (run: Spinoff, close: () => void) => ReactNode;
   onAnswer: (yes: boolean) => void;
 }) {
   const t = useText(helperArchiveText);
+  const w = useText(scheduledWakeText);
+  const helpers = incomplete || runs.length > 0;
   return (
     <HelperDialog title={t.title} onClose={() => onAnswer(false)}>
       <div data-testid="helper-archive-confirm">
         <p>
           <strong>{title}</strong>
         </p>
-        <p>{incomplete ? t.unavailable : t.lead}</p>
-        <HelperArchiveRows runs={runs} branchView={branchView} />
-        <p>{t.rule}</p>
+        {helpers ? (
+          <>
+            <p>{incomplete ? t.unavailable : t.lead}</p>
+            <HelperArchiveRows runs={runs} branchView={branchView} />
+            <p>{t.rule}</p>
+          </>
+        ) : null}
+        {wakes.length ? <WakeArchiveRows wakes={wakes} /> : null}
         <div className="ah-dialog-actions">
           <ControlButton
-            autoFocus
             size="row"
             variant="quiet"
             data-testid="helper-archive-cancel"
@@ -189,13 +200,16 @@ export function HelperArchiveConfirm({
           >
             {t.cancel}
           </ControlButton>
+          {/* The person already pressed Archive; the window tells what goes
+              with it, so Enter archives and Esc keeps (Jari 21.11.2026). */}
           <ControlButton
+            autoFocus
             size="row"
             variant="primary"
             data-testid="helper-archive-accept"
             onPress={() => onAnswer(true)}
           >
-            {t.archive}
+            {wakes.length ? w.archiveAccept(wakes.length) : t.archive}
           </ControlButton>
         </div>
       </div>

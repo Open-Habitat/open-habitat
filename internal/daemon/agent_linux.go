@@ -98,6 +98,10 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 				return
 			}
 		}
+		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() && (r.URL.Path == AgentWakesPath || strings.HasPrefix(r.URL.Path, AgentWakesPath+"/")) {
+			controller.agentWakes(w, r)
+			return
+		}
 		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() && (r.URL.Path == AgentConversationsPath || strings.HasPrefix(r.URL.Path, AgentConversationsPath+"/")) {
 			controller.agentConversations(w, r)
 			return

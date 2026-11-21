@@ -62,6 +62,11 @@ const fi = {
   nothingWaits: "Mikään ei odota sinua.",
   nothingRuns: "Mikään ei ole käynnissä.",
   railLabel: "Työtilat ja keskustelut",
+  // The crowded rail's edge chips (rail-scroll-region): the conversation
+  // sections with rows out of sight past one edge of their region.
+  beyond: { above: "Ylempänä", below: "Alempana" },
+  beyondJump: (section: string, n: number, edge: "above" | "below") =>
+    `Vieritä osioon ${section}: ${n} ${plural("fi", n, { one: "keskustelu", other: "keskustelua" })} ${edge === "below" ? "alempana" : "ylempänä"}`,
   keyboardHint: (step: string, waiting: string) =>
     `${step}: edellinen/seuraava näkyvä keskustelu. ${waiting}: sinua odottavat.`,
   allWorkspaces: "Kaikki työtilat",
@@ -164,6 +169,9 @@ export const navigationText = catalog(fi, {
   nothingWaits: "Nothing is waiting for you.",
   nothingRuns: "Nothing is running.",
   railLabel: "Workspaces and conversations",
+  beyond: { above: "Further up", below: "Further down" },
+  beyondJump: (section, n, edge) =>
+    `Scroll to ${section}: ${n} ${plural("en", n, { one: "conversation", other: "conversations" })} further ${edge === "below" ? "down" : "up"}`,
   keyboardHint: (step: string, waiting: string) =>
     `${step}: previous/next visible conversation. ${waiting}: conversations waiting for you.`,
   allWorkspaces: "All workspaces",

@@ -83,6 +83,8 @@ checks = {
     "turn-mark.json": "turn-mark.schema.json",
     "turn-mark-not-now.json": "turn-mark.schema.json",
     "agent-section.json": "agent-section.schema.json",
+    "agent-wake.json": "agent-wake.schema.json",
+    "agent-wake-list.json": "agent-wake.schema.json",
     "process-inventory.json": "process.schema.json",
     "process-output.json": "process.schema.json",
     "process-stop.json": "process-control.schema.json",
@@ -352,6 +354,16 @@ section = json.loads((BASE / "examples" / "agent-section.json").read_text())
 for choice in ({"section": "hidden", "at": "2026-11-17T09:20:00Z"}, {"section": "quiet"}, {"section": "quiet", "at": "2026-11-17T09:20:00Z", "reply_id": "a1"}):
     must_reject("agent-section.schema.json", {**section, "agent_section": choice})
 must_reject("agent-section.schema.json", {k: v for k, v in section.items() if k != "changed"})
+# A scheduled wake names its own id shape, an agent-set note within bounds, and
+# a cancel reason only together with when it was cancelled.
+wake = json.loads((BASE / "examples" / "agent-wake.json").read_text())
+for bad in ({"id": "wk_XYZ"}, {"set_by": "person"}, {"note": ""}, {"note": "x" * 1001}, {"status": "snoozed"}, {"cancel_reason": "archived"}, {"late_seconds": 5}):
+    must_reject("agent-wake.schema.json", {**wake, "wake": {**wake["wake"], **bad}})
+wake_person = Draft202012Validator({"$ref": schemas["agent-wake.schema.json"]["$id"] + "#/$defs/personRequest"}, registry=registry)
+for good in ({"action": "cancel", "wake_id": "wk_0123456789abcdef"}, {"action": "move", "wake_id": "wk_0123456789abcdef", "at": "2026-11-19T07:00:00Z"}):
+    wake_person.validate(good)
+for bad in ({"action": "move", "wake_id": "wk_0123456789abcdef"}, {"action": "cancel", "wake_id": "wk_0123456789abcdef", "at": "2026-11-19T07:00:00Z"}, {"action": "snooze", "wake_id": "wk_0123456789abcdef"}):
+    assert not wake_person.is_valid(bad), f"wake person request accepted {bad!r}"
 turn_request = Draft202012Validator({"$ref": schemas["turn-mark.schema.json"]["$id"] + "#/$defs/request"}, registry=registry)
 for good in ({"mark": "raised"}, {"mark": "not_now"}, {"mark": "not_now", "reply_id": "a1b2c3d4"}):
     turn_request.validate(good)

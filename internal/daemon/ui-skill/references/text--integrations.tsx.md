@@ -492,6 +492,8 @@ const fi = {
     "Organisaatiosi ylläpitäjä voi sallia laitekoodikirjautumisen tälle sovellukselle.",
   expired:
     "Kirjautuminen vanheni ennen kuin se valmistui. Mitään ei yhdistetty.",
+  authorizationUnavailable: (gen: string) =>
+    `${gen} kirjautumissivua ei saatu näkyviin, joten kirjautuminen keskeytettiin. Mitään ei yhdistetty. Yritä hetken päästä uudelleen. Jos sama toistuu, palvelimen ylläpitäjä näkee syyn palvelimen lokista.`,
   redirectRejected: (site: string) =>
     `${site} ei hyväksynyt liitettyä osoitetta. Se voi olla vanhan kirjautumisen osoite. Mitään ei yhdistetty.`,
   accountMismatch: (address: string): ReactNode => (
@@ -580,8 +582,7 @@ const fi = {
   pickOther: "Lukeminen ja muokkaus.",
   titleLevel: (name: string) => `Vaihda taso: ${name}`,
   titleRelogin: (name: string) => `Kirjaudu uudelleen: ${name}`,
-  titleConnect: (provider: string, name: string) =>
-    `Yhdistä ${provider === "imap" ? "sähköpostitili" : `${name}-tili`}`,
+  titleConnect: (name: string) => `Yhdistä tili: ${name}`,
   uncertain:
     "Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos. Tarkista tilanne Integraatiot-sivulta ennen kuin yrität uudelleen.",
   reloggedIn: (address: string) =>
@@ -1092,6 +1093,8 @@ export const integrationsText = catalog(
     allowDevice:
       "Your organization's administrator can allow device code sign-in for this app.",
     expired: "The sign-in expired before it finished. Nothing was connected.",
+    authorizationUnavailable: (gen) =>
+      `The ${gen} sign-in page could not be prepared, so the sign-in stopped. Nothing was connected. Try again in a moment. If it happens again, the server's administrator can see the reason in the server log.`,
     redirectRejected: (site) =>
       `${site} did not accept the pasted address. It may be an old sign-in's address. Nothing was connected.`,
     accountMismatch: (address) => (
@@ -1180,8 +1183,7 @@ export const integrationsText = catalog(
     pickOther: "Reading and editing.",
     titleLevel: (name) => `Change level: ${name}`,
     titleRelogin: (name) => `Sign in again: ${name}`,
-    titleConnect: (provider, name) =>
-      `Connect ${provider === "imap" ? "an email account" : `a ${name} account`}`,
+    titleConnect: (name) => `Connect an account: ${name}`,
     uncertain:
       "The connection to the server broke, and it is not known whether the change was saved. Check the situation on the Integrations page before you try again.",
     reloggedIn: (address) => `Signed in again. ${address} works again.`,

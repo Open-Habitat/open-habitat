@@ -1,0 +1,120 @@
+/* Scheduled wake (experimental): Habitat's line in the conversation, the
+   pending wake's bar at the conversation's foot and the archive window's
+   wake rows (round 1 direction 1 with the bar; round 2 direction 2). */
+.ah-wake-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--ah-accent-ink);
+}
+.ah-wake-note {
+  display: block;
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+}
+.ah-wake-by {
+  color: var(--ah-ink-2);
+}
+.ah-wake-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--ah-s2);
+  max-width: min(var(--ah-measure), 100%);
+  margin: var(--ah-s2) 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-meta) / 1.5 var(--ah-font);
+  border-left: 2px solid var(--ah-line);
+}
+.ah-wake-line > .ah-wake-icon {
+  align-self: center;
+}
+.ah-wake-line[data-late] {
+  border-left-color: var(--ah-turn-line);
+}
+.ah-wake-line-who {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-wake-line > span:last-child {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.ah-wake-line ul {
+  margin: 2px 0 0;
+  padding-left: 1.2em;
+}
+.ah-wake-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s3);
+  margin: 0 0 var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  color: var(--ah-ink);
+  font: var(--ah-size-meta) / 1.5 var(--ah-font);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-accent);
+  border-radius: var(--ah-r-md);
+}
+.ah-wake-what {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ah-wake-what strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ah-wake-bar > .ah-wake-note {
+  flex-basis: 100%;
+  order: 3;
+}
+.ah-wake-actions {
+  display: inline-flex;
+  gap: var(--ah-s2);
+  margin-left: auto;
+}
+.ah-wake-editor {
+  flex-basis: 100%;
+  order: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.ah-wake-editor input {
+  font: inherit;
+  color: var(--ah-ink);
+  background: var(--ah-bg);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  padding: 3px 6px;
+  color-scheme: light dark;
+}
+.ah-wake-problem {
+  flex-basis: 100%;
+  order: 5;
+  margin: 0;
+  color: var(--ah-err, var(--ah-ink));
+}
+.ah-wake-archive-rows {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-wake-archive-rows > li {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+}
+.ah-wake-archive-rows > li > .ah-wake-icon {
+  margin-top: 3px;
+}
+.ah-wake-archive-rows p {
+  margin: 0;
+}

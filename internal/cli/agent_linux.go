@@ -75,6 +75,9 @@ func agentCommand(args []string) (any, error) {
 	if len(args) > 0 && args[0] == "section" {
 		return agentSectionCommand(args[1:])
 	}
+	if len(args) > 0 && args[0] == "wake" {
+		return agentWakeCommand(args[1:])
+	}
 	if len(args) > 0 && args[0] == "view" {
 		return agentViewCommand(args[1:])
 	}
@@ -252,6 +255,11 @@ func agentRequestTimeout(path string) time.Duration {
 
 func agentResponseError(method, path string, status int, code string) error {
 	path, _, _ = strings.Cut(path, "?")
+	if path == daemon.AgentWakesPath || strings.HasPrefix(path, daemon.AgentWakesPath+"/") {
+		if e := wakeError(code); e != nil {
+			return e
+		}
+	}
 	if path == daemon.AgentViewsPath && code == "views_unavailable" {
 		return &cliError{code: code, message: "this Open Habitat has no view origin, so the person's browser would show no view card; nothing was published; tell the person the page cannot be shown here and offer the files instead with agent file offer (they preview and download them)", exit: 1}
 	}

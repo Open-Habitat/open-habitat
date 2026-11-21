@@ -1,4 +1,5 @@
 import agentSection from "../../../contracts/v1/agent-section.schema.json";
+import agentWake from "../../../contracts/v1/agent-wake.schema.json";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -38,6 +39,7 @@ for (const schema of [
   snapshotSchema,
   turnMark,
   agentSection,
+  agentWake,
   workspaceChangeSchema,
 ])
   ajv.addSchema(schema);
@@ -171,6 +173,7 @@ export function applyTurnEvent(
       notice: payload.notice as HistoryEntry["notice"],
       restart: payload.restart as HistoryEntry["restart"],
       wait_reminder: payload.wait_reminder as HistoryEntry["wait_reminder"],
+      scheduled_wake: payload.scheduled_wake as HistoryEntry["scheduled_wake"],
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],
       blocks: payload.blocks as HistoryEntry["blocks"],

@@ -323,6 +323,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Background work in the mark",
         desc: "The door of a row's mark travels while a process runs behind the conversation.",
       },
+      "scheduled-wake": {
+        label: "Scheduled wake",
+        desc: "The agent wakes at an agreed time and the conversation rises to Your turn.",
+      },
     },
   },
   palvelin: {

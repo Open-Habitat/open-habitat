@@ -10,6 +10,7 @@ import {
   HelperBranchDialog,
 } from "../components/HelperArchive";
 import { Icon } from "../components/Icon";
+import type { PendingWakeModel } from "../components/ScheduledWake";
 import { useText } from "../i18n";
 import { helperArchiveText } from "../text/helperArchive";
 import { liveHelper, readSpinoffs, type Spinoff } from "./spinoffs";
@@ -190,6 +191,7 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
     binding?: string;
     runs: Spinoff[];
     incomplete: boolean;
+    wakes: PendingWakeModel[];
   }>();
   const answer = (yes: boolean) => {
     const trigger = active.current?.trigger;
@@ -219,6 +221,12 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       agent: string,
       title = "",
       onAccepted?: (runs: Spinoff[]) => void,
+      // What the archive takes with it: the named workers when Avustajat
+      // is on, and the scheduled wakes it cancels.
+      {
+        helpers = true,
+        wakes = [],
+      }: { helpers?: boolean; wakes?: PendingWakeModel[] } = {},
     ): Promise<boolean> => {
       if (active.current) return false;
       const focused = document.activeElement;
@@ -233,20 +241,25 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
       active.current = operation;
       setReading(binding);
       try {
-        const reply = await readSpinoffs(
-          agent,
-          null,
-          AbortSignal.any([
-            operation.controller.signal,
-            AbortSignal.timeout(10000),
-          ]),
-        ).catch(() => undefined);
+        const reply = helpers
+          ? await readSpinoffs(
+              agent,
+              null,
+              AbortSignal.any([
+                operation.controller.signal,
+                AbortSignal.timeout(10000),
+              ]),
+            ).catch(() => undefined)
+          : undefined;
         if (operation.controller.signal.aborted) return false;
         setReading(undefined);
         const runs = reply?.runs.filter(liveHelper) ?? [];
-        const incomplete = reply?.availability !== "available";
-        if (!incomplete && !runs.length) return true;
-        setQuestion({ agent, title, binding, runs, incomplete });
+        const incomplete = helpers && reply?.availability !== "available";
+        if (!incomplete && !runs.length && !wakes.length) {
+          onAccepted?.(runs);
+          return true;
+        }
+        setQuestion({ agent, title, binding, runs, incomplete, wakes });
         const accepted = await new Promise<boolean>((resolve) => {
           operation.answer = resolve;
         });
@@ -271,6 +284,7 @@ export function useHelperArchiveConfirmation(binding: string | undefined) {
             title={question.title}
             runs={question.runs}
             incomplete={question.incomplete}
+            wakes={question.wakes}
             onAnswer={answer}
             branchView={(run, close) => (
               <HelperBranchRead

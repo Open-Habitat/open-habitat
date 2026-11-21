@@ -191,6 +191,7 @@ import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspacePage } from "./WorkspacePage";
 import { useRailNow, WorkspaceRailView } from "./WorkspaceRailView";
+import { pendingWakeModels, wakesArchiveDetail } from "./wakesArchive";
 import { workspaceIcons } from "./workspaceIcons";
 import {
   readWorkspaceResult,
@@ -1471,6 +1472,7 @@ export function App() {
     identity,
     csrf,
   });
+  const wakesOn = useExperimentalFeature("scheduled-wake", { identity, csrf });
   const confirmedPreferences = useConfirmedPreferences(identity, csrf);
   keepWorkflow.current =
     confirmedPreferences.github_workflow ||
@@ -1481,6 +1483,7 @@ export function App() {
   );
   const now = useRailNow({
     backgroundDoor,
+    wakes: wakesOn,
     creations: Object.entries(creationViews).flatMap(([workspaceId, view]) => {
       if (view.rechecked) return [];
       if (
@@ -1733,6 +1736,10 @@ export function App() {
     origin: "conversation" | "home" | "rail" | "foot" = "conversation",
     // Called once the host confirms the change, not on a lost reply.
     onConfirmed?: () => void,
+    // The archive notice's undo: the scheduled wakes come back too.
+    restoreWakes = false,
+    // The row leaves the list now: once any question is answered yes.
+    onLeave?: () => void,
   ) => {
     // Repeated presses share one preflight/write; the inverse (Undo) must
     // still enter MutationLayer's queue while the first write is pending.
@@ -1740,7 +1747,14 @@ export function App() {
     if (archiveInFlight.current.has(key)) return false;
     archiveInFlight.current.add(key);
     try {
-      return await performArchive(agent, archived, origin, onConfirmed);
+      return await performArchive(
+        agent,
+        archived,
+        origin,
+        onConfirmed,
+        restoreWakes,
+        onLeave,
+      );
     } finally {
       archiveInFlight.current.delete(key);
     }
@@ -1751,6 +1765,8 @@ export function App() {
     // The rail archives in place unless the conversation is the open one.
     origin: "conversation" | "home" | "rail" | "foot" = "conversation",
     onConfirmed?: () => void,
+    restoreWakes = false,
+    onLeave?: () => void,
   ) => {
     const token = agent.observation_token;
     if (
@@ -1765,13 +1781,23 @@ export function App() {
     const writeCSRF = csrf;
     const generation = identityGeneration.current;
     let helperDetail: string | undefined;
-    if (archived && helpersOn) {
+    // Archiving cancels the conversation's pending wakes: the same window
+    // asks first and names each of them (scheduled-wake round 2, Ikkuna).
+    const wakes = archived && wakesOn ? pendingWakeModels(agent, snapshot) : [];
+    if (archived && (helpersOn || wakes.length)) {
       const accepted = await helperConfirmation.confirm(
         agent.agent_id,
         agentTitle(agent.title),
         (runs) => {
-          helperDetail = helpersArchiveDetail(runs);
+          helperDetail =
+            [
+              helpersOn ? helpersArchiveDetail(runs) : undefined,
+              wakesArchiveDetail(wakes),
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined;
         },
+        { helpers: helpersOn, wakes },
       );
       // The card's boolean is error feedback, not the archive state. A
       // cancelled question is not a failed write; native state stays put.
@@ -1782,6 +1808,7 @@ export function App() {
       )
         return false;
     }
+    if (archived) onLeave?.();
     const fromRoute = `${currentRoute.current.pathname}${currentRoute.current.search}`;
     const scopeRoute =
       archived && origin === "conversation"
@@ -1815,6 +1842,7 @@ export function App() {
           writeCSRF,
           commandId,
           signal,
+          restoreWakes,
         ),
       read: (response, commandId) =>
         readArchiveResult(response, agent.agent_id, archived, commandId),
@@ -2193,13 +2221,22 @@ export function App() {
   // A conversation whose Pi has written no history yet has nothing to keep
   // in the archive: putting it away closes it. The status read proves the
   // first entry before the catalog does, right after the first reply.
-  const putAway = (id: string, origin: "home" | "conversation" | "rail") => {
+  const putAway = (
+    id: string,
+    origin: "home" | "conversation" | "rail",
+    leave?: () => void,
+  ) => {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
     if (!agent) return Promise.resolve(false);
     const status = conversationStore?.readMetadata().statuses.get(id);
-    return agent.history === "missing" && status?.native_history !== "present"
-      ? closeConversation(agent, origin === "conversation" ? origin : "home")
-      : changeArchive(agent, true, origin);
+    if (agent.history === "missing" && status?.native_history !== "present") {
+      leave?.();
+      return closeConversation(
+        agent,
+        origin === "conversation" ? origin : "home",
+      );
+    }
+    return changeArchive(agent, true, origin, undefined, false, leave);
   };
   const archiveFromCard = (id: string) => putAway(id, "home");
   // A rail row is archived like a home card, but the refusal shows in the
@@ -2244,10 +2281,13 @@ export function App() {
         ? cardArchiveReason(conversation)
         : t.app.archiveUnavailable;
     },
-    run: (id: string) => {
-      if (id.startsWith("new:")) return closeCreation(id.slice(4));
+    run: (id: string, leave?: () => void) => {
+      if (id.startsWith("new:")) {
+        leave?.();
+        return closeCreation(id.slice(4));
+      }
       const open = selectedAgentId === id || openConversation === id;
-      void putAway(id, open ? "conversation" : "rail");
+      void putAway(id, open ? "conversation" : "rail", leave);
     },
   };
   // Nosta and Ei nyt (raise-to-your-turn): the person's daemon
@@ -2593,7 +2633,14 @@ export function App() {
                   (a) => a.agent_id === archiveNotice.id,
                 );
                 if (!agent) return;
-                void changeArchive(agent, false).then((restored) => {
+                // The notice's undo brings the scheduled wakes back too.
+                void changeArchive(
+                  agent,
+                  false,
+                  "conversation",
+                  undefined,
+                  true,
+                ).then((restored) => {
                   if (!restored) return;
                   navigate(archiveNotice.route);
                   setArchiveNotice(undefined);

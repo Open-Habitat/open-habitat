@@ -1,4 +1,5 @@
 import agentSection from "../../../contracts/v1/agent-section.schema.json";
+import agentWake from "../../../contracts/v1/agent-wake.schema.json";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -34,6 +35,7 @@ for (const definition of [
   schema,
   turnMark,
   agentSection,
+  agentWake,
   workspaceChange,
   workspaceIconSuggestions,
 ])
@@ -183,6 +185,10 @@ export interface Agent {
   /** The agent's own choice of section for its latest turn, kept by the
    * person's daemon until the next turn or the person's message. */
   agent_section?: { section: "yours" | "running" | "quiet"; at: string };
+  /** Pending scheduled wakes in time order (scheduled-wake, experimental). */
+  wakes?: PendingWake[];
+  /** The latest scheduled wake that fired. */
+  last_wake?: { at: string; fired_at: string; late_seconds?: number };
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */
@@ -192,6 +198,15 @@ export interface Agent {
    * so never in waiting_on. */
   non_waking_processes?: { process_id: string; name: string }[];
   capabilities?: Record<string, { state: string; reason_code: string }>;
+}
+/** A pending scheduled wake: the agent set it at set_at for at. */
+export interface PendingWake {
+  id: string;
+  at: string;
+  note: string;
+  set_by: "agent";
+  set_at: string;
+  moved_from?: string;
 }
 /** The browser started this conversation: it opens with a composer and its Pi
  * starts when the person sends. Terminal history stays read-only. */

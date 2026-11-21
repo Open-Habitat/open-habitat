@@ -87,6 +87,21 @@ if os.path.exists(os.path.join(home,"background")):
                 append(dict(type="custom_message",customType="oh-resume-catch-up",display=True,content="woken",details=dict(schema_version=1,woke=q["reason"],processes=[],spinoffs=[])))
                 out(dict(type="agent_end")); out(dict(type="agent_settled"))
                 continue
+            if q.get("op")=="scheduled_wake":
+                # A scheduled wake: logged, and its message becomes a turn as
+                # the companion's sendMessage does.
+                open(os.path.join(home,"scheduled.log"),"a").write(json.dumps(q)+"\n")
+                conn.sendall((json.dumps(dict(ok=True,data=dict(woken=True)))+"\n").encode()); conn.close()
+                out(dict(type="agent_start"))
+                append(dict(type="custom_message",customType="oh-scheduled-wake",display=True,content="wake",details=dict(schema_version=1,**q["wake"])))
+                ms=int(time.time()*1000)
+                append(dict(type="message",message=dict(role="assistant",content=[dict(type="text",text="herätty")],timestamp=ms,stopReason="stop")))
+                out(dict(type="agent_end")); out(dict(type="agent_settled"))
+                continue
+            if q.get("op")=="wake_tell":
+                open(os.path.join(home,"tell.log"),"a").write(json.dumps(q)+"\n")
+                conn.sendall((json.dumps(dict(ok=True,data=dict(told=True)))+"\n").encode()); conn.close()
+                continue
             if q.get("op")=="shutdown" and q.get("person") is True:
                 append(dict(type="custom",customType="oh-person-stop",data=dict(schema_version=1)))
             statepath=os.path.join(home,"background-state")

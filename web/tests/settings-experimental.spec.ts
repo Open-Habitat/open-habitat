@@ -30,6 +30,7 @@ const features = [
   "terminal-open-urls",
   "storage-breakdown",
   "rail-background-door",
+  "scheduled-wake",
 ];
 
 async function signIn(page: Page) {

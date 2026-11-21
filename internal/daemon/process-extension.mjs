@@ -342,6 +342,53 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
     },
   };
 }
+// Scheduled wake (scheduled_wake_linux.go): the daemon fires a wake the agent
+// set with `open-habitat agent wake create`, and tells it of a cancellation
+// with the person's next message. The text is built here from the daemon's
+// structured fields; Habitat, not the agent, writes these lines, and the
+// person sees them in the conversation as Habitat's.
+export const scheduledWakeType = 'oh-scheduled-wake';
+export const wakeCancelType = 'oh-scheduled-wake-cancel';
+const wakeIdPattern = /^wk_[0-9a-f]{16}$/;
+const isStamp = v => typeof v === 'string' && v.length <= 64 && Number.isFinite(Date.parse(v));
+const validNote = v => typeof v === 'string' && v.trim() !== '' && Buffer.byteLength(v) <= 1000;
+export function validScheduledWake(w) {
+  return !!w && wakeIdPattern.test(w.id ?? '') && isStamp(w.at) && isStamp(w.set_at) && isStamp(w.fired_at) && validNote(w.note)
+    && (w.late_seconds === undefined || Number.isInteger(w.late_seconds) && w.late_seconds > 0)
+    && (w.moved_from === undefined || isStamp(w.moved_from));
+}
+export function scheduledWakeMessage(w) {
+  const lines = [`[Open Habitat] Scheduled wake: you asked at ${w.set_at} to be woken at ${w.at}. Your note for this wake: ${w.note.replace(/\s*\n\s*/g, ' ')}`];
+  if (w.moved_from) lines.push(`The person moved this wake from ${w.moved_from} to ${w.at}.`);
+  if (w.late_seconds) lines.push(`This wake is late: Habitat could wake you only at ${w.fired_at}, ${Math.round(w.late_seconds / 60)} minutes after the set time, because the server or Habitat was not running then. Take the delay into account.`);
+  lines.push('The person did not write this turn. Do what the note says, or tell the person what you found; your reply comes to them as a new reply. Set a new wake with `open-habitat agent wake create --current` if a later follow-up is needed.');
+  return {
+    customType: scheduledWakeType, display: true, content: lines.join('\n'),
+    details: { schema_version: 1, id: w.id, at: w.at, set_at: w.set_at, fired_at: w.fired_at, note: w.note, ...(w.late_seconds ? { late_seconds: w.late_seconds } : {}), ...(w.moved_from ? { moved_from: w.moved_from } : {}) },
+  };
+}
+const cancelReasons = { person: 'the person cancelled it', archived: 'the person archived the conversation; it has since been restored' };
+export function validWakeCancel(c) {
+  return !!c && wakeIdPattern.test(c.id ?? '') && isStamp(c.at) && isStamp(c.cancelled_at) && validNote(c.note) && Object.hasOwn(cancelReasons, c.reason ?? '');
+}
+export function wakeCancelMessage(cancelled) {
+  const lines = ['[Open Habitat] ' + (cancelled.length === 1 ? 'A scheduled wake you set was cancelled, so it will not wake you:' : 'Scheduled wakes you set were cancelled, so they will not wake you:')];
+  for (const c of cancelled) lines.push(`- ${c.at} (your note: ${c.note.replace(/\s*\n\s*/g, ' ')}): cancelled at ${c.cancelled_at} because ${cancelReasons[c.reason]}.`);
+  lines.push('If the follow-up is still needed, offer to set a new wake.');
+  return {
+    customType: wakeCancelType, display: true, content: lines.join('\n'),
+    details: { schema_version: 1, cancelled: cancelled.map(c => ({ id: c.id, at: c.at, note: c.note, reason: c.reason, cancelled_at: c.cancelled_at })) },
+  };
+}
+// Whether the branch already carries the scheduled wake with this id.
+export function wakeInBranch(context, id) {
+  let branch = [];
+  try { branch = context.sessionManager.getBranch?.() ?? []; } catch { return false; }
+  return branch.some(entry => {
+    const m = entry?.type === 'custom_message' ? entry : entry?.message?.role === 'custom' ? entry.message : null;
+    return m?.customType === scheduledWakeType && m.details?.id === id;
+  });
+}
 const reminderType = 'oh-wait-reminder';
 // A wait the agent is woken by whichever way it ends: `run wait` exits 0 when
 // the runs settle and non-zero on a check-in or timeout, and pi-processes
@@ -599,6 +646,7 @@ export default function (pi) {
   const watchers = new Set();
   const outputLeases = new Map();
   let catchUp = null; // this Pi's first run learns what happened while it was stopped
+  const sentWakes = new Set(); // scheduled wakes this Pi has sent
   const ask = (channel, args = {}, allOwners = false) => new Promise((resolve, reject) => {
     let done = false;
     const replies = [];
@@ -662,6 +710,25 @@ export default function (pi) {
       if (!message) return { woken: false, reason: 'nothing_to_tell' };
       catchUp = null;
       pi.sendMessage(message, { triggerTurn: true });
+      return { woken: true };
+    }
+    if (q.op === 'scheduled_wake' || q.op === 'wake_tell') {
+      if (!context || shuttingDown) throw new Error('invalid_request');
+      if (q.op === 'scheduled_wake' ? !validScheduledWake(q.wake) : !Array.isArray(q.cancelled) || !q.cancelled.length || q.cancelled.length > 100 || !q.cancelled.every(validWakeCancel)) throw new Error('invalid_request');
+      if (context.sessionManager.getSessionId?.() !== q.session_id || process.env.OPEN_HABITAT_CONVERSATION_ID !== `pi:${q.session_id}` || process.env.OPEN_HABITAT_LAUNCH_GENERATION !== q.generation) return { woken: false, told: false, reason: 'conversation_mismatch' };
+      if (q.op === 'wake_tell') {
+        // Queued for the person's next prompt, which the daemon sends next.
+        pi.sendMessage(wakeCancelMessage(q.cancelled), { deliverAs: 'nextTurn' });
+        return { told: true };
+      }
+      // A wake is sent once: a retry after a lost reply, or after the
+      // daemon failed to record it, finds it already sent or in the branch.
+      if (sentWakes.has(q.wake.id) || wakeInBranch(context, q.wake.id)) return { woken: true, reason: 'already_sent' };
+      // Only into an idle Pi: a follow-up would wait in memory only, and a
+      // stop before it ran would lose a wake the daemon recorded as fired.
+      if (context.isIdle?.() === false) return { woken: false, reason: 'busy' };
+      sentWakes.add(q.wake.id);
+      pi.sendMessage(scheduledWakeMessage(q.wake), { triggerTurn: true });
       return { woken: true };
     }
     // The person stopped Pi: its processes end by their choice, which the

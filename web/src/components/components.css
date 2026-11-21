@@ -4813,6 +4813,22 @@ h2.ah-rail-section-head {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+/* The rail row's end: a clock and the wake time where the age is. A woken
+   reply not yet read says when it was woken, in the turn colour. */
+.ah-nav-time.ah-nav-wake {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ah-accent-ink);
+}
+.ah-nav-time.ah-nav-wake[data-woke] {
+  color: var(--ah-turn);
+}
+.ah-nav-wake-icon {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
 /* The row's state mark (wide rail B, Jari 14.11.2026): a 20 px column at
    the row's start, before the workspace icon, so the 32 px row keeps its
    height and the marks line up whatever the row carries. The mark is

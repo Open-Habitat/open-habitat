@@ -46,6 +46,7 @@ import {
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestartNoticeMarker } from "../components/RestartNotice";
+import { WakeLineMarker } from "../components/ScheduledWake";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
 import { WaitReminderMarker } from "../components/WaitReminder";
@@ -98,12 +99,22 @@ import { TurnChangesRoot, TurnChangesSource } from "./TurnChangesSource";
 import {
   rowIndexOf,
   scrollToEnd,
+  useReturnToPlace,
   visibleEntryKeys,
 } from "./useReadingPosition";
 import { NoticeEntry, useAssetsControl } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 const txt = liveText(historyViewText);
+
+/** A failed reply's short row, when the host named why: a refused sign-in
+ * (the warning above the field says the rest) or a failure it classified
+ * (history entry turn_failure). The provider's own words stay in native
+ * history; otherwise the failed state alone is shown. */
+export function failedTurnLine(entry: HistoryEntry): string | undefined {
+  if (entry.refused_by) return refusedTurnLine(entry.refused_by);
+  return entry.turn_failure ? txt.turnFailures[entry.turn_failure] : undefined;
+}
 const sizes = liveText(largeContentText);
 
 // A tab-local preference changes presentation only, never the native block.
@@ -862,6 +873,8 @@ export function Entry({
     );
   if (entry.wait_reminder)
     return <WaitReminderMarker reminder={entry.wait_reminder} />;
+  if (entry.scheduled_wake)
+    return <WakeLineMarker line={entry.scheduled_wake} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (
@@ -963,9 +976,10 @@ export function Entry({
           onCopy={copy}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.stop_reason === "error" && entry.refused_by ? (
+          {entry.stop_reason === "error" &&
+          (entry.refused_by || entry.turn_failure) ? (
             <p className="ah-turn-short" data-testid="turn-short">
-              {refusedTurnLine(entry.refused_by)}
+              {failedTurnLine(entry)}
             </p>
           ) : entry.blocks ? (
             <OrderedBlocks
@@ -1243,6 +1257,8 @@ export function timelineItems(
   /** The host says the conversation rests after a server restart cut its
    * latest turn (snapshot rest cause restart with interrupted_turn). */
   restartCut?: boolean,
+  /** Whether the last commit drew this turn as the running turn. */
+  wasRunning?: (id: string) => boolean,
 ) {
   const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
@@ -1346,18 +1362,26 @@ export function timelineItems(
     const id = turnId ?? group[0].entry_key;
     const startedAt = turnStart;
     turnId = turnStart = undefined;
+    const ended = endsTurn(group.at(-1));
+    // Pi saves the final reply before its run settles, and the browser may
+    // read it before the status that says so. The turn drawn as running
+    // stays running until the run's status ends it, so the reply, the turn's
+    // working row and the composer's Stop change in one commit instead of
+    // a status read apart (turn end jolt). Its streamed text is the saved
+    // reply now, so only the saved steps are drawn.
+    const holding = ended && !!live?.working && !!wasRunning?.(id);
     // The saved part of the running turn and its live tail are one turn.
     const merged =
       last &&
       !!live &&
       group.at(-1)?.stop_reason !== "error" &&
-      !endsTurn(group.at(-1));
+      (!ended || holding);
     // A refused sign-in is one short row: the warning above the field says
-    // the rest, and the provider's own words stay in native history.
-    const refusedBy =
-      group.at(-1)?.stop_reason === "error"
-        ? group.at(-1)?.refused_by
-        : undefined;
+    // the rest, and the provider's own words stay in native history. A
+    // failure the host could name otherwise says what it was and what to do.
+    const lastEntry = group[group.length - 1];
+    const failure =
+      lastEntry.stop_reason === "error" ? failedTurnLine(lastEntry) : undefined;
     items.push({
       id,
       kind: "assistant",
@@ -1366,7 +1390,7 @@ export function timelineItems(
         <AgentTurn
           startedAt={startedAt}
           failed={group.at(-1)?.stop_reason === "error"}
-          failure={refusedBy ? refusedTurnLine(refusedBy) : undefined}
+          failure={failure}
           stopped={
             group.at(-1)?.stop_reason === "aborted"
               ? {
@@ -1378,8 +1402,8 @@ export function timelineItems(
               : undefined
           }
           steps={[
-            ...(refusedBy ? group.slice(0, -1) : group).flatMap(steps),
-            ...(merged && live ? live.steps : []),
+            ...(failure ? group.slice(0, -1) : group).flatMap(steps),
+            ...(merged && live && !ended ? live.steps : []),
           ]}
           working={merged && live?.working}
           activity={merged ? live?.activity : undefined}
@@ -1704,6 +1728,7 @@ function HistoryViewContent({
     ) {
       following.current = true;
       anchor.current = undefined;
+      store.savePosition(agent.agent_id);
       return;
     }
     if (!paging && following.current) return;
@@ -1715,7 +1740,10 @@ function HistoryViewContent({
       const rect = rows[i].getBoundingClientRect();
       if (rect.bottom > top && keys[i]) {
         anchor.current = { key: keys[i], offset: rect.top - top };
-        store.savePosition(agent.agent_id, anchor.current);
+        store.savePosition(agent.agent_id, {
+          ...anchor.current,
+          tail: entries.at(-1)?.entry_key,
+        });
         break;
       }
     }
@@ -1785,24 +1813,33 @@ function HistoryViewContent({
     () => store.older(agent.agent_id),
     [store, agent.agent_id],
   );
-  const holdForJump = useCallback(
+  const hold = useCallback(
     (held: { key: string; offset: number }) => {
       const viewport = stream.current;
-      following.current = false;
-      anchor.current = held;
-      store.savePosition(agent.agent_id, held);
-      if (!viewport) return;
       const row =
-        viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[
+        viewport?.querySelectorAll<HTMLElement>(".ah-feed > li")[
           rowIndexOf(entries, held.key)
         ];
-      if (!row) return;
+      if (!viewport || !row) return false;
+      following.current = false;
+      anchor.current = { key: held.key, offset: held.offset };
       viewport.scrollTop +=
         row.getBoundingClientRect().top -
         viewport.getBoundingClientRect().top -
         held.offset;
+      return true;
     },
-    [store, agent.agent_id, entries],
+    [entries],
+  );
+  const holdForJump = useCallback(
+    (held: { key: string; offset: number }) => {
+      // The hit holds the view even before its row is laid out.
+      following.current = false;
+      anchor.current = { key: held.key, offset: held.offset };
+      store.savePosition(agent.agent_id, held);
+      hold(held);
+    },
+    [store, agent.agent_id, hold],
   );
   const jumpState = useJumpToHit({
     jump: searchJump,
@@ -1811,6 +1848,15 @@ function HistoryViewContent({
     older: olderForJump,
     feed: stream,
     hold: holdForJump,
+  });
+  useReturnToPlace({
+    id: agent.agent_id,
+    store,
+    entries,
+    next: window?.next,
+    feed: stream,
+    skip: !!searchJump,
+    adopt: hold,
   });
   const state =
     agent.history !== "readable" ? "error" : (window?.state ?? "loading");

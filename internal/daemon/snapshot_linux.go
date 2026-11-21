@@ -423,6 +423,21 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		// Unreadable marks are left out: the rows then stand as their
 		// replies place them, and the person can mark again.
 		marks, _ := readTurnMarks(nativeHome)
+		// Unreadable wakes are left out the same way; the agent's own
+		// `wake list` says what the daemon can read.
+		wakes, wakesErr := readWakes(nativeHome)
+		addWakes := func(agent map[string]any, id string) {
+			if wakesErr != nil {
+				return
+			}
+			pending, last := snapshotWakes(wakes, id)
+			if len(pending) > 0 && agent["archive"] == "active" {
+				agent["wakes"] = pending
+			}
+			if last != nil {
+				agent["last_wake"] = last
+			}
+		}
 		for _, raw := range agents {
 			agent := raw.(map[string]any)
 			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
@@ -437,6 +452,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if choice, ok := marks.Sections[agent["agent_id"].(string)]; ok {
 				agent["agent_section"] = choice
 			}
+			addWakes(agent, agent["agent_id"].(string))
 		}
 		<-waitingDone
 		if controller != nil {
@@ -485,6 +501,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					if choice, ok := marks.Sections[id]; ok {
 						agent["agent_section"] = choice
 					}
+					addWakes(agent, id)
 					agents = append(agents, agent)
 				}
 			}

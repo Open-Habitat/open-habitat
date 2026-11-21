@@ -571,6 +571,11 @@ const fi = {
       name: "Näytä kaikki",
       lead: "Poistaa listan rajauksen, kun valitussa työtilassa ei ole juuri nyt mitään.",
     },
+    S38: {
+      name: "Piilossa olevat keskustelut",
+      lead: "Kertoo, missä osioissa on keskusteluja ylempänä tai alempana ja kuinka monta. Napautus vierittää osioon.",
+      know: "Keskustelut vierivät omassa alueessaan vain, kun ne eivät mahdu näkyviin. Työtilat vierivät aina omassaan, joten niitä selatessa keskustelut pysyvät paikallaan. Kun sivupalkki on täynnä, Hiljaiset taittuu itsestään, kunnes avaat tai taitat sen itse.",
+    },
     E01: {
       name: "Työtilat",
       lead: "Etusivu kokoaa kaikki työtilasi ja niiden avoimen työn yhdelle sivulle.",
@@ -2401,6 +2406,11 @@ export const explainModeText = catalog(fi, {
     S37: {
       name: "Show all",
       lead: "Removes the list's filter when the chosen workspace has nothing in it right now.",
+    },
+    S38: {
+      name: "Conversations out of sight",
+      lead: "Says which sections have conversations further up or down, and how many. A press scrolls to the section.",
+      know: "The conversations scroll in their own area only when they do not fit. Workspaces always scroll in theirs, so browsing them never moves a conversation. When the rail is full, Quiet folds itself until you open or fold it yourself.",
     },
     E01: {
       name: "Workspaces",

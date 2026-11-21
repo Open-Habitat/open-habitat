@@ -48,6 +48,7 @@ export const mutationClasses = {
   "workspace.icon": "pending",
   // Confirmed: only that the command is on its way.
   "conversation.stop": "confirmed",
+  "conversation.wake": "confirmed",
   "conversation.recap": "confirmed",
   "conversation.presence": "confirmed",
   "conversation.title": "confirmed",

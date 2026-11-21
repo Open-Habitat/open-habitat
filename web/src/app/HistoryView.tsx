@@ -41,6 +41,7 @@ import {
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestartNoticeMarker } from "../components/RestartNotice";
+import { WakeLineMarker } from "../components/ScheduledWake";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
 import { WaitReminderMarker } from "../components/WaitReminder";
@@ -867,6 +868,8 @@ export function Entry({
     );
   if (entry.wait_reminder)
     return <WaitReminderMarker reminder={entry.wait_reminder} />;
+  if (entry.scheduled_wake)
+    return <WakeLineMarker line={entry.scheduled_wake} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (

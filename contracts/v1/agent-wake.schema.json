@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-wake.schema.json",
+  "title": "Scheduled wakes of a person's conversations",
+  "description": "Root: the reply of the agent socket's /agent/v1/wakes routes (open-habitat agent wake create|list|update|delete|due) and of POST /api/v1/conversations/<id>/wake, the person's move or cancel. Experimental (scheduled-wake). The agent asks to be woken at a time; the person's daemon keeps the wake in the person's own state directory and, at that time, starts the conversation's Pi if it has stopped and gives the agent a turn with the wake's note, whose reply rises to Sinun vuorosi like any reply. A wake that fires more than two minutes late carries late_seconds. Creating places the conversation in Hiljaiset (agent_section) while the turn runs. At most 100 wakes are pending per person; creating more is refused with wake_limit_reached. A create that repeats an idempotency_key returns the stored wake with replayed true, or is refused with idempotency_conflict when its time or note differs. Archiving the conversation cancels its pending wakes (cancel_reason archived); the archive notice's undo restores them, and a later restore does not, in which case the agent is told of the cancellation with the person's next message.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+    "wake": { "$ref": "#/$defs/wake" },
+    "wakes": {
+      "description": "wake list: the current conversation's wakes, any status, or with --all every pending wake of the person.",
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/wake" }
+    },
+    "pending_limit": { "const": 100 },
+    "replayed": { "type": "boolean" },
+    "agent_section": { "$ref": "agent-section.schema.json#/$defs/choice" },
+    "due": {
+      "description": "wake due: how many pending wakes were due; the daemon fires them after replying.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "next_at": {
+      "description": "wake due: when the next pending wake that is not yet due is set; absent when none.",
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "event_cursor": { "$ref": "common.schema.json#/$defs/cursor" }
+  },
+  "$defs": {
+    "wakeId": { "type": "string", "pattern": "^wk_[0-9a-f]{16}$" },
+    "note": {
+      "description": "The agent's own note for the wake: what to do when woken. Shown to the person in the conversation, never on the rail row.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "wake": {
+      "description": "One wake. at is when it fires, set_at when the agent set it, moved_from the time the agent set once the person moved it. status pending until it fires (fired, fired_at), is cancelled (cancel_reason agent, person or archived, cancelled_at) or fails after an hour of retries (failed).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "agent_id", "at", "note", "set_by", "set_at", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/wakeId" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "note": { "$ref": "#/$defs/note" },
+        "set_by": { "const": "agent" },
+        "set_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "status": { "enum": ["pending", "fired", "cancelled", "failed"] },
+        "moved_from": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "cancel_reason": { "enum": ["agent", "person", "archived"] },
+        "cancelled_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "fired_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "late_seconds": { "type": "integer", "minimum": 1 }
+      },
+      "dependentRequired": { "cancel_reason": ["cancelled_at"], "cancelled_at": ["cancel_reason"], "late_seconds": ["fired_at"] }
+    },
+    "pending": {
+      "description": "A pending wake as the snapshot shows it on the conversation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "at", "note", "set_by", "set_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/wakeId" },
+        "at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "note": { "$ref": "#/$defs/note" },
+        "set_by": { "const": "agent" },
+        "set_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "moved_from": { "$ref": "common.schema.json#/$defs/timestamp" }
+      }
+    },
+    "fired": {
+      "description": "The conversation's latest wake that fired: its time, when it fired, and how late when more than two minutes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "fired_at"],
+      "properties": {
+        "at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "fired_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "late_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "request": {
+      "description": "The body of POST /agent/v1/wakes (agent wake create --current). at is RFC 3339 with an explicit offset or Z and must be in the future.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "note"],
+      "properties": {
+        "at": { "type": "string", "minLength": 20, "maxLength": 64 },
+        "note": { "$ref": "#/$defs/note" },
+        "idempotency_key": { "$ref": "common.schema.json#/$defs/uuid" }
+      }
+    },
+    "update": {
+      "description": "The body of PATCH /agent/v1/wakes/<id> (agent wake update): a new time, a new note, or both.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "at": { "type": "string", "minLength": 20, "maxLength": 64 },
+        "note": { "$ref": "#/$defs/note" }
+      }
+    },
+    "personRequest": {
+      "description": "The body of POST /api/v1/conversations/<id>/wake: the person moves a pending wake to at (Muuta aikaa…) or cancels it (Peru herätys). The agent hears of a move in the wake message and of a cancel with the person's next message.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "wake_id"],
+      "properties": {
+        "action": { "enum": ["move", "cancel"] },
+        "wake_id": { "$ref": "#/$defs/wakeId" },
+        "at": { "$ref": "common.schema.json#/$defs/timestamp" }
+      },
+      "if": { "properties": { "action": { "const": "move" } } },
+      "then": { "required": ["at"] },
+      "else": { "not": { "required": ["at"] } }
+    }
+  }
+}

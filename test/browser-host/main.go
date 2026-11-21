@@ -1180,6 +1180,17 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/wake":
+				// As the conversation's Pi running open-habitat agent wake
+				// create --current: the wake is stored and, during a turn,
+				// the conversation is placed in Hiljaiset.
+				q := r.URL.Query()
+				if status := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureWake(q.Get("id"), q.Get("at"), q.Get("note")); status != 204 {
+					http.Error(w, "fixture failed", status)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {
 					http.Error(w, "fixture failed", 400)

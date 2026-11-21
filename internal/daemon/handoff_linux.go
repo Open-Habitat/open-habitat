@@ -112,6 +112,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
 	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
 	go controller.recapRestingConversations(ctx)
+	controller.wakeTimer = newWakeTimerEnv(cfg)
+	go controller.watchScheduledWakes(ctx)
 	signedIn = func() {
 		controller.ClearPiAuthFailures()
 		journal.appendInvalidation("")

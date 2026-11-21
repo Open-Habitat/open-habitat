@@ -126,6 +126,16 @@ tiedosto on himmeä katkoviivamerkki ja sana Odottaa tallennusta, katkennut
 on virheväriä ja kertoo, kuinka pitkälle ehti. Prosentti on aina näkyvissä
 numerona ja seisoo nimestä kokonaisen välin (`--ah-s3`) päässä.
 
+Kokeiluna (Ajastettu herätys, Jari 21.11.2026) herätystä odottava keskustelu
+pysyy Hiljaisissa, ja rivin lopussa on kello ja herätysaika iän paikalla:
+kellonaika tänään, viikonpäivä ja aika viikon sisällä, päivämäärä ja aika
+sen jälkeen. Herätyksen lukematon vastaus näyttää samalla paikalla vuoron
+värillä, milloin se herätettiin. Keskustelussa odottava herätys on palkki
+kirjoituskentän yläpuolella (aika, agentin muistiinpano, Muuta aikaa… ja
+Peru herätys), ja herätyksestä ja sen perumisesta kertoo Open Habitatin rivi,
+ei agentin teksti. Arkistointi, joka perisi herätyksiä, kysyy ensin samassa
+ikkunassa kuin avustajat; ikkunan kohdistus on Arkistoi-painikkeessa.
+
 Nykyinen navigaatiokohde erottuu neutraalilla pinnalla. Hover ja painallus
 syventävät toiminnon sävyä, jotta niitä ei sekoiteta valintaan. Estetty
 kontrolli säilyy luettavana. Epäselvän eston, kuten yhteyskatkon tai

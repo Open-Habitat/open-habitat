@@ -280,6 +280,7 @@ const writeCommands: [RegExp, MutationCommand][] = [
   [/\/bash$/, "conversation.bash"],
   [/\/abort_bash$/, "conversation.abort_bash"],
   [/\/stop$/, "conversation.stop"],
+  [/\/wake$/, "conversation.wake"],
   [/^\/api\/v1\/conversations$/, "conversation.create"],
 ];
 async function request(
@@ -989,6 +990,37 @@ export async function readCloseResult(
   return { event_cursor: v.event_cursor as string | undefined };
 }
 
+const wakeIdPattern = /^wk_[0-9a-f]{16}$/;
+/** The person's Muuta aikaa… (move to `at`) or Peru herätys (cancel) on a
+ * pending scheduled wake (agent-wake.schema.json#/$defs/personRequest). The
+ * agent hears of a move at the wake and of a cancel with the person's next
+ * message. Never retried: a lost reply is read back from the snapshot. */
+export async function changeWake(
+  id: string,
+  wakeId: string,
+  action: "move" | "cancel",
+  csrf: string,
+  at?: Date,
+): Promise<void> {
+  if (!wakeIdPattern.test(wakeId) || (action === "move") !== !!at)
+    throw new Error("invalid wake change");
+  const v = await request(
+    `${path(id)}/wake`,
+    undefined,
+    at
+      ? { action, wake_id: wakeId, at: at.toISOString() }
+      : { action, wake_id: wakeId },
+    csrf,
+  );
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.agent_id !== id ||
+    !object(v.wake) ||
+    v.wake.id !== wakeId
+  )
+    throw new Error("invalid wake change");
+}
 export async function stop(id: string, csrf: string) {
   const v = await request(`${path(id)}/stop`, undefined, undefined, csrf);
   if (!object(v) || v.schema_version !== 1 || v.state !== "termination_unknown")
@@ -1129,6 +1161,7 @@ export function sendArchive(
   csrf: string,
   commandId: string,
   signal?: AbortSignal,
+  restoreWakes = false,
 ): Promise<Response> {
   if (!agent.test(id) || !ws.test(workspace) || !observation)
     throw new Error("invalid archive target");
@@ -1145,6 +1178,9 @@ export function sendArchive(
       // a queued restore after an archive is checked against that archive.
       previous_archive: archived ? "active" : "archived",
       client_command_id: commandId,
+      // The archive notice's undo brings back the scheduled wakes the
+      // archive cancelled; a later restore does not.
+      ...(restoreWakes ? { restore_wakes: true } : {}),
     },
     csrf,
     { signal },

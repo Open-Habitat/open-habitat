@@ -208,6 +208,7 @@ import {
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
 import { GuideHeaderControl, NoticeEntry, useAssetsControl } from "./ViewHost";
+import { WakeDock } from "./WakeDock";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -3665,6 +3666,7 @@ function BrowserConversationContent({
             ) : view !== "opened" || controlled ? (
               <>
                 <ServerBrowserDock identity={identity} csrf={csrf} />
+                <WakeDock agent={archive} csrf={csrf} />
                 <Composer
                   {...composer}
                   beforeField={

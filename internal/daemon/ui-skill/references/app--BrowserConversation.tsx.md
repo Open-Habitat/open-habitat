@@ -209,9 +209,11 @@ import {
   isReadingIntro,
   useFollowLatest,
   useReadingPositionLayout,
+  useReturnToPlace,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
 import { GuideHeaderControl, NoticeEntry, useAssetsControl } from "./ViewHost";
+import { WakeDock } from "./WakeDock";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -364,6 +366,8 @@ function BrowserConversationContent({
 }) {
   const transientNotices = useAgentNotices(store, id ?? "");
   const creating = !id && !!creation;
+  // This mount began as a creation; a conversation reopened later is not.
+  const createdInView = useRef(!id);
   const {
     current,
     statusStale,
@@ -398,6 +402,7 @@ function BrowserConversationContent({
     setAwayFromLatest,
     captureAnchor,
     restoreAnchor,
+    adoptPlace,
     ambiguous,
     alive,
     generation,
@@ -452,6 +457,15 @@ function BrowserConversationContent({
   );
   const visibleHistoryError = useSettledWarning(
     historyError,
+    `${identity}/${id ?? ""}`,
+  );
+  // Missed events start a native re-read at once (conversationStore). A new
+  // conversation's first snapshot is often behind the stream on a loaded
+  // host, so the gap is marked and that read closes it moments later; the
+  // notice waits for the read, as the stale-status warning does.
+  const missedEvents = showMissedEvents(!!live?.missed, current);
+  const visibleMissedEvents = useSettledWarning(
+    missedEvents,
     `${identity}/${id ?? ""}`,
   );
   // The card waits for the quiet re-read (useConversation): a refusal it
@@ -666,6 +680,15 @@ function BrowserConversationContent({
     older: olderForJump,
     feed,
     hold: holdForJump,
+  });
+  useReturnToPlace({
+    id,
+    store,
+    entries,
+    next,
+    feed,
+    skip: !!searchJump,
+    adopt: adoptPlace,
   });
   const { scrolled } = useFollowLatest({
     feed,
@@ -2092,6 +2115,10 @@ function BrowserConversationContent({
   // the latest page of one read without error.
   const historyReadable =
     !id || (opened && !historyError && (entries.length > 0 || !next));
+  // A conversation created in this view has no earlier turn, so before its
+  // first read any turn it has not shown is this one too.
+  const turnsKnown =
+    historyReadable || (createdInView.current && !opened && !historyError);
   // The running turn as the last commit drew it: a turn of saved history
   // carrying the live tail, or a live row beside a readable history window,
   // when any turn that window did not show is this one. (Before the first
@@ -2140,7 +2167,7 @@ function BrowserConversationContent({
     runningTurn.current = liveWorking
       ? {
           id: savedTimeline.find((item) => item.live)?.id,
-          liveRow: liveRow && historyReadable,
+          liveRow: liveRow && turnsKnown,
           known: new Set(savedTimeline.map((item) => item.id)),
         }
       : undefined;
@@ -2315,7 +2342,7 @@ function BrowserConversationContent({
             (serverUnavailable ||
               statusStale ||
               journalOffline ||
-              showMissedEvents(!!live?.missed, current) ||
+              missedEvents ||
               Boolean(ambiguous && sendObservation?.state === "uncertain")),
           // Status refreshes (including turn completion) guard host writes,
           // not the local draft. Disabling the textarea here drops focus
@@ -3301,9 +3328,7 @@ function BrowserConversationContent({
                 {txt.journalLostDetail}
               </WarningBanner>
             ) : null}
-            {!statusStale &&
-            !serverUnavailable &&
-            showMissedEvents(!!live?.missed, current) ? (
+            {!statusStale && !serverUnavailable && visibleMissedEvents ? (
               <WarningBanner
                 data-testid="event-gap"
                 title={txt.missed}
@@ -3639,6 +3664,7 @@ function BrowserConversationContent({
             ) : view !== "opened" || controlled ? (
               <>
                 <ServerBrowserDock identity={identity} csrf={csrf} />
+                <WakeDock agent={archive} csrf={csrf} />
                 <Composer
                   {...composer}
                   beforeField={

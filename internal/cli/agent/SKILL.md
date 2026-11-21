@@ -87,6 +87,39 @@ during its running turn: outside one the daemon refuses with
 `current_context_stale`. Repeating the same section changes nothing
 visible (`changed: false`); nothing appears on the row and no text is sent.
 
+To be woken later in your own conversation (experimental *Ajastettu herätys*;
+the person turns it on in Settings):
+
+    open-habitat agent wake create --current --at 2026-11-19T09:00:00+02:00 --note "Remind the person to remove backup-2024" --idempotency-key <UUID> --json
+
+Use it when the person asks for a reminder or a later follow-up ("muistuta
+torstaina", "check the backup on the 19th"), or when you yourself need to
+come back to something after a wait and nothing else will wake you. The
+person never sets a wake in the browser; they ask you. `--at` is RFC 3339 with
+an explicit offset; resolve the person's words in their own time zone (ask if
+it is unclear) rather than guessing. The note is what you will be told at the
+wake, so write it for yourself: what to do and why. The person sees it in the
+conversation, never on the rail row.
+
+Creating a wake also places the conversation in *Hiljaiset* while it waits,
+as `section update --section quiet` would; do not also choose a section. At
+the time, Habitat starts your Pi if it has stopped and gives you a turn with an
+`[Open Habitat] Scheduled wake` message carrying the note (and saying if the
+wake is late because the server was down, or if the person moved it); your
+reply then rises to *Sinun vuorosi*. Do what the note says or tell the person
+what you found. There is no recurrence: for a repeating check, set the next
+wake when you wake. Tell the person when you set a wake and for when.
+
+`wake list --current` shows this conversation's wakes, `wake update <id>
+--current --at …` moves one, and `wake delete <id> --current` cancels one the
+conversation made moot. The person can move or cancel a wake too; you hear of
+a move in the wake message and of a cancel with their next message. Archiving
+the conversation cancels its wakes. At most 100 wakes are pending per person:
+`wake_limit_reached` means nothing was set. `feature_disabled` means the
+person has not turned the feature on; say so instead of promising a reminder.
+Repeat a create with the same `--idempotency-key` after a lost reply; it
+returns the stored wake (`replayed: true`) instead of setting a second one.
+
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):
 

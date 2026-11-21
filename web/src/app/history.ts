@@ -7,6 +7,7 @@ import processEventSchema from "../../../contracts/v1/process-event.schema.json"
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
 import type { RestartNotice } from "../components/RestartNotice";
+import type { WakeLine } from "../components/ScheduledWake";
 import type { WaitReminder } from "../components/WaitReminder";
 import type { AIProvider } from "./aiSignIn";
 import type { BashFailure } from "./bashFailure";
@@ -50,6 +51,8 @@ export interface HistoryEntry {
   notice?: AgentNotice;
   restart?: RestartNotice;
   wait_reminder?: WaitReminder;
+  /** Habitat's line on a scheduled wake (scheduled-wake, experimental). */
+  scheduled_wake?: WakeLine;
   entry_key: string;
   timestamp?: string;
   kind:

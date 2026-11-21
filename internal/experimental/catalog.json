@@ -55,6 +55,10 @@
     {
       "id": "rail-background-door",
       "landed": true
+    },
+    {
+      "id": "scheduled-wake",
+      "landed": true
     }
   ],
   "fi": {
@@ -202,6 +206,14 @@
         "shows": "Hitaasti kiertävän oven kaikissa tiloissa, joiden merkki ei jo liiku. Valmiin keskustelun ovi on raollaan eikä kiinni. Myös prosessi, joka ei herätä agenttia, näkyy merkissä ja rivin kuvauksessa. Liike vähennettynä ovi on paikallaan oikeassa alakulmassa.",
         "needs": "Ei muuta. Rivin lopun piste kertoo yhä prosessin nimen.",
         "caption": "Taustatyö"
+      },
+      "scheduled-wake": {
+        "name": "Ajastettu herätys",
+        "desc": "Pyydä agenttia muistuttamaan tai palaamaan asiaan myöhemmin. Keskustelu odottaa Hiljaisissa, ja sovittuna aikana agentti herää, tekee pyydetyn ja keskustelu nousee Sinun vuorosi -osioon.",
+        "where": "Sivupalkin Hiljaisissa rivin lopussa kello ja herätysaika. Keskustelun alareunassa herätyksen palkki, josta voit muuttaa aikaa tai perua herätyksen.",
+        "shows": "Herätyksen ajan, agentin muistiinpanon ja Open Habitatin rivin keskustelussa, kun agentti herätettiin, myös jos herätys myöhästyi palvelimen ollessa poissa. Arkistointi kysyy ensin ja perii odottavat herätykset; ilmoituksen Palauta tuo ne takaisin.",
+        "needs": "Ei muuta. Herätyksen asettaa aina agentti, kun pyydät. Enintään 100 odottavaa herätystä, ei toistuvia.",
+        "caption": "Herätys"
       }
     },
     "picture": {
@@ -372,6 +384,14 @@
         "shows": "A slowly travelling door in every state whose mark does not already move. A done conversation's door stands ajar rather than shut. A process that does not wake the agent also shows in the mark and in the row's description. With reduced motion the door rests still at the lower right.",
         "needs": "Nothing else. The dot at the row's end still names the process.",
         "caption": "Background work"
+      },
+      "scheduled-wake": {
+        "name": "Scheduled wake",
+        "desc": "Ask the agent to remind you or come back to something later. The conversation waits in Quiet, and at the agreed time the agent wakes, does what was asked and the conversation rises to Your turn.",
+        "where": "In the sidebar's Quiet, a clock and the wake time at the row's end. At the conversation's foot, the wake's bar, where you can change the time or cancel the wake.",
+        "shows": "The wake's time, the agent's note and Open Habitat's line in the conversation when the agent was woken, also when the wake was late because the server was down. Archiving asks first and cancels pending wakes; the notice's Undo brings them back.",
+        "needs": "Nothing else. The agent always sets the wake when you ask. At most 100 pending wakes, none recurring.",
+        "caption": "Wake"
       }
     },
     "picture": {

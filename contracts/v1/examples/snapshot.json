@@ -122,7 +122,11 @@
       "activity": "idle",
       "pending_question": null,
       "live_tail": [],
-      "agent_section": { "section": "quiet", "at": "2026-09-22T14:00:00Z" }
+      "agent_section": { "section": "quiet", "at": "2026-09-22T14:00:00Z" },
+      "wakes": [
+        { "id": "wk_0123456789abcdef", "at": "2026-09-24T06:00:00Z", "note": "Remind the person to remove backup-2024.", "set_by": "agent", "set_at": "2026-09-22T14:00:00Z" }
+      ],
+      "last_wake": { "at": "2026-09-21T05:00:00Z", "fired_at": "2026-09-21T07:36:00Z", "late_seconds": 9360 }
     },
     {
       "agent_id": "pi:44444444-4444-4444-8444-444444444444",

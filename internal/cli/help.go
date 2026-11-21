@@ -122,6 +122,11 @@ var helpSpecs = []helpSpec{
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
 	{"agent notice create", "Send an agent notice through the native conversation writer; persistence is explicit", "agent notice create --current --text Blocked --idempotency-key 00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--current", "--text", "--text-file", "--idempotency-key", "--dry-run"}},
+	{"agent wake create", "Schedule a wake for your own conversation (experimental scheduled-wake): at --at Habitat starts your Pi if it stopped and gives you a turn with --note, and your reply rises to the person's turn; also places the conversation in Hiljaiset meanwhile; at most 100 pending per person; use when the person asks to be reminded or you need to follow up later", "agent wake create --current --at 2026-11-19T09:00:00+02:00 --note Remind-to-remove-backup-2024 --idempotency-key 00000000-0000-4000-8000-000000000003 --json", []string{"--current", "--at", "--note", "--idempotency-key", "--dry-run"}},
+	{"agent wake list", "List your conversation's wakes in every status (--current) or every pending wake of the person (--all)", "agent wake list --current --json", []string{"--current", "--all", "--output"}},
+	{"agent wake update", "Move a pending wake of your own conversation or change its note", "agent wake update wk_0123456789abcdef --current --at 2026-11-20T09:00:00+02:00 --json", []string{"--current", "--at", "--note"}},
+	{"agent wake delete", "Cancel a pending wake of your own conversation, for example when the conversation made it moot", "agent wake delete wk_0123456789abcdef --current --json", []string{"--current"}},
+	{"agent wake due", "Fire the person's wakes that are due; the person's own systemd timer runs this, and it fires nothing that is not due", "agent wake due --json", nil},
 	{"agent section update", "Place your own conversation in the person's rail after your reply: yours (Sinun vuorosi, the default), running (Käynnissä while your workers or waits run) or quiet (Hiljaiset, only when the person asked); holds until the next turn or the person's message, and the person's own Nosta or Ei nyt wins; idempotent", "agent section update --current --section running --json", []string{"--current", "--section"}},
 	{"agent notice list", "Read the latest 200 native conversation notices", "agent notice list --current --json", []string{"--conversation", "--current", "--output"}},
 	{"agent view offer", "Offer a readable HTML file, or a directory with --entry-file, as a frozen view the person opens in a side panel or own tab; publishes a card in the --current or --conversation conversation, never opens anything; refused with views_unavailable where the site has no view origin", "agent view offer --current --source /var/tmp/report.html --title Quarterly-results --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--workspace", "--source", "--entry-file", "--title", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
@@ -198,6 +203,18 @@ func commandHelp(args []string) (any, error) {
 			if f == "--provider" && strings.HasPrefix(key, "agent credential ") {
 				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
+			}
+			if strings.HasPrefix(key, "agent wake ") {
+				switch f {
+				case "--all":
+					flag["description"] = "List every pending wake of the person instead of --current's wakes"
+				case "--at":
+					flag["description"] = "Wake time: RFC 3339 with an explicit offset or Z, in the future (for example 2026-11-19T09:00:00+02:00); a bare local time is refused"
+				case "--note":
+					flag["description"] = "What to do when woken, 1–1000 bytes; you receive it at the wake and the person sees it in the conversation, not on the rail row"
+				case "--idempotency-key":
+					flag["description"] = "UUID naming this wake; repeating create with it after a lost reply returns the stored wake, a different time or note is refused"
+				}
 			}
 			if f == "--provider" && key == "agent code-host create" {
 				flag["description"] = "Required code host; later commands take it from the connection ID"

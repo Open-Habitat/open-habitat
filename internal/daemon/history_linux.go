@@ -86,6 +86,7 @@ type historyEntry struct {
 	Rewind             *rewindMarker  `json:"rewind,omitempty"`
 	Restart            *restartNotice `json:"restart,omitempty"`
 	WaitReminder       *waitReminder  `json:"wait_reminder,omitempty"`
+	ScheduledWake      *wakeLine      `json:"scheduled_wake,omitempty"`
 	Key                string         `json:"entry_key"`
 	Kind               string         `json:"kind"`
 	Content            historyContent `json:"content"`

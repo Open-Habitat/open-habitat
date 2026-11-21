@@ -20,6 +20,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if reminder, ok := nativeWaitReminder(e); ok {
 		return reminder
 	}
+	if line, ok := nativeWakeLine(e); ok {
+		return line
+	}
 	if n, ok := nativeNotice(e); ok {
 		out.Key, out.Timestamp, out.Kind = e.ID, nativeTimestamp(e.Timestamp), "unknown"
 		out.Content = historyContent{MediaType: "text/plain", Text: n.Text, Complete: true}

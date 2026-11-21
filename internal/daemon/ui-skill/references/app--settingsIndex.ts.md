@@ -748,6 +748,21 @@ export const settingsSections = [
         ],
         desc: "Rivin merkin ovi kiertää, kun keskustelun taustalla pyörii prosessi.",
       },
+      {
+        id: "scheduled-wake",
+        label: "Ajastettu herätys",
+        kw: [
+          "herätys",
+          "wake",
+          "muistutus",
+          "reminder",
+          "ajastus",
+          "schedule",
+          "myöhemmin",
+          "later",
+        ],
+        desc: "Agentti herää sovittuna aikana, ja keskustelu nousee Sinun vuorosi -osioon.",
+      },
     ],
   },
   {

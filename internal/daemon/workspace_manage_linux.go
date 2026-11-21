@@ -27,6 +27,7 @@ type workspaceRequest struct {
 	AgentID              string  `json:"agent_id,omitempty"`
 	Archived             *bool   `json:"archived,omitempty"`
 	PreviousArchive      string  `json:"previous_archive,omitempty"`
+	RestoreWakes         bool    `json:"restore_wakes,omitempty"`
 	Name                 string  `json:"name,omitempty"`
 	WorkspaceID          string  `json:"workspace_id,omitempty"`
 	ObservationToken     string  `json:"observation_token,omitempty"`
@@ -237,10 +238,10 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 			// The writer wait and the proof permit can each take up to 2 s
 			// before the work itself; keep the reply past the socket's 5 s.
 			extendReply(w, 15*time.Second)
-			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive, ClientCommandID: in.ClientCommandID})
+			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive, ClientCommandID: in.ClientCommandID, RestoreWakes: in.RestoreWakes})
 			return
 		}
-		if in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" {
+		if in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" || in.RestoreWakes {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

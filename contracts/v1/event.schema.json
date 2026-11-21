@@ -290,6 +290,9 @@
               },
               "wait_reminder": {
                 "$ref": "history.schema.json#/$defs/waitReminder"
+              },
+              "scheduled_wake": {
+                "$ref": "history.schema.json#/$defs/scheduledWake"
               }
             }
           }

@@ -8,6 +8,7 @@ import { Input, Label, TextField } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
 import { textNow, useText } from "../i18n";
 import { navigationText } from "../text/navigation";
+import { scheduledWakeText } from "../text/scheduledWake";
 import { sectionFilterText } from "../text/sectionFilter";
 import { statusText } from "../text/status";
 import {
@@ -34,6 +35,7 @@ import {
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { TooltipSide } from "./QuickTooltip";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
+import { RailBeyondChips, useRailRegions } from "./railRegions";
 import {
   keptDetail,
   NarrowedEmpty,
@@ -54,6 +56,7 @@ import {
   WorkspaceIconButton,
   type WorkspaceIconModel,
 } from "./WorkspaceIcon";
+import { wakeFull, wakeShort } from "./wakeTime";
 
 type AppShellProps = Parameters<typeof Shell>[0];
 
@@ -507,6 +510,12 @@ export interface AgentNavModel {
   historyLabel?: string;
   /** When the conversation last changed (the host's changed_at), Unix ms. */
   changedAt?: number;
+  /** The next pending scheduled wake, Unix ms: the row's end shows a clock
+   * and the time instead of the age (scheduled-wake, experimental). */
+  wakeAt?: number;
+  /** An unread reply a scheduled wake started: when it was woken, in the
+   * same place, so the reply explains itself before it is opened. */
+  wokeAt?: number;
   /** The work ended in a failure the person has to look at: Pi crashed, the
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
@@ -692,6 +701,8 @@ export function AgentNavItem({
   operationLabel,
   historyLabel,
   changedAt,
+  wakeAt,
+  wokeAt,
   failed,
   selected = false,
   kept = false,
@@ -753,6 +764,23 @@ export function AgentNavItem({
     spinoffIdle,
   });
   const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
+  const wakeWords = textNow(scheduledWakeText);
+  const wake =
+    wakeAt !== undefined
+      ? {
+          at: wakeAt,
+          short: wakeShort(wakeAt, now),
+          said: wakeWords.waitsWake(wakeFull(wakeAt, now)),
+          woke: false,
+        }
+      : wokeAt !== undefined
+        ? {
+            at: wokeAt,
+            short: wakeShort(wokeAt, now),
+            said: wakeWords.wokeAt(wakeFull(wokeAt, now)),
+            woke: true,
+          }
+        : undefined;
   const said = [
     pendingLabel,
     detail ?? activityLabel,
@@ -766,6 +794,7 @@ export function AgentNavItem({
     stale ? t.stale : null,
     presence === "absent" ? t.gone : null,
     changedAt !== undefined ? relativeRecapAge(changedAt, now) : null,
+    wake?.said,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -952,6 +981,7 @@ export function AgentNavItem({
             end={
               (workspaceTag && workspaceName) ||
               backgroundService ||
+              wake ||
               (age !== undefined && changedAt !== undefined) ? (
                 <>
                   {backgroundService ? (
@@ -973,7 +1003,22 @@ export function AgentNavItem({
                       {workspaceName}
                     </span>
                   ) : null}
-                  {age !== undefined && changedAt !== undefined ? (
+                  {wake ? (
+                    <time
+                      className="ah-nav-time ah-nav-wake"
+                      data-testid="rail-wake-time"
+                      data-woke={wake.woke || undefined}
+                      dateTime={new Date(wake.at).toISOString()}
+                      title={wake.said}
+                    >
+                      <Icon
+                        name="clock"
+                        className="ah-nav-wake-icon"
+                        aria-hidden="true"
+                      />
+                      {wake.short}
+                    </time>
+                  ) : age !== undefined && changedAt !== undefined ? (
                     <time
                       className="ah-nav-time"
                       dateTime={new Date(changedAt).toISOString()}
@@ -1386,7 +1431,9 @@ export function WorkspaceRail({
   connectionLabel,
   connectionTone,
   homeCurrent = false,
+  search,
   now,
+  crowding,
   pages,
   filterValue,
   resultSummary,
@@ -1406,8 +1453,15 @@ export function WorkspaceRail({
   connectionLabel: string;
   connectionTone?: Tone;
   homeCurrent?: boolean;
-  /** Sinun vuorosi and Käynnissä, above the workspaces (NowSections). */
+  /** The search door, above the conversations; it never scrolls. */
+  search?: ReactNode;
+  /** Sinun vuorosi and Käynnissä, above the workspaces (NowSections). In
+   * the wide rail they share one region, which scrolls only when they do
+   * not fit above Työtilat's floor. */
   now?: ReactNode;
+  /** Hiljaiset's rows when open, and who hears whether the conversations
+   * with Hiljaiset open would crowd the rail (it then folds itself). */
+  crowding?: { quietRows: number; onChange: (crowded: boolean) => void };
   /** Rows under Etusivu that lead to pages of their own (Agentin käytössä). */
   pages?: ReactNode;
   filterValue: string;
@@ -1435,6 +1489,17 @@ export function WorkspaceRail({
   bell?: ReactNode;
 }) {
   const t = useText(navigationText);
+  const content = useRef<HTMLDivElement>(null);
+  const region = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const regions = useRailRegions({
+    content,
+    region,
+    list,
+    enabled: !collapsed,
+    quietRows: crowding?.quietRows ?? 0,
+    onCrowded: crowding?.onChange,
+  });
   return (
     <nav
       data-testid="workspace-navigation"
@@ -1496,8 +1561,34 @@ export function WorkspaceRail({
           </div>
           {pages}
         </header>
-        <div className="ah-rail-content">
-          {now}
+        <div
+          className={
+            collapsed ? "ah-rail-content" : "ah-rail-content ah-rail-regions"
+          }
+          ref={content}
+        >
+          {search}
+          {collapsed ? (
+            now
+          ) : (
+            <div
+              className="ah-rail-convs"
+              data-testid="rail-conversations"
+              ref={region}
+            >
+              <RailBeyondChips
+                edge="above"
+                rows={regions.beyond.above}
+                onJump={regions.jump}
+              />
+              {now}
+              <RailBeyondChips
+                edge="below"
+                rows={regions.beyond.below}
+                onJump={regions.jump}
+              />
+            </div>
+          )}
           {only && !collapsed ? (
             <section
               data-testid="rail-only-workspace"
@@ -1594,21 +1685,31 @@ export function WorkspaceRail({
                   <RefreshIconButton onPress={onRefresh} />
                 </span>
               </div>
-              {clones}
-              {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
-              {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
-              {listState === "filtered-empty" ? (
-                <p data-testid="filter-empty">{t.filterEmpty}</p>
-              ) : null}
-              {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
-              {listState === "error" || listState === "unknown" ? (
-                <p>{t.workspacesUnavailable}</p>
-              ) : (
-                <ul className="ah-workspace-list">{children}</ul>
-              )}
-              {listState === "error" || listState === "loading"
-                ? null
-                : archived}
+              {/* Työtilat's own scrolling region: the heading, the new
+                  workspace button and the filter above it stay put. */}
+              <div
+                className="ah-rail-ws-scroll"
+                data-testid="rail-workspace-scroll"
+                ref={list}
+              >
+                {clones}
+                {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
+                {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
+                {listState === "filtered-empty" ? (
+                  <p data-testid="filter-empty">{t.filterEmpty}</p>
+                ) : null}
+                {listState === "source-absent" ? (
+                  <p>{t.folderMissing}</p>
+                ) : null}
+                {listState === "error" || listState === "unknown" ? (
+                  <p>{t.workspacesUnavailable}</p>
+                ) : (
+                  <ul className="ah-workspace-list">{children}</ul>
+                )}
+                {listState === "error" || listState === "loading"
+                  ? null
+                  : archived}
+              </div>
             </section>
           )}
         </div>

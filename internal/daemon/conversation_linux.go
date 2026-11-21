@@ -75,7 +75,20 @@ type ConversationController struct {
 	// Automatic wakes (wake_linux.go), protected by mu: when each
 	// conversation was last woken, and the conversations a cut-off wait from
 	// before this daemon started may wake, found once by its first check.
-	autoWoke       map[string]time.Time
+	autoWoke map[string]time.Time
+	// Scheduled wakes (scheduled_wake_linux.go): wakeFire serializes firing,
+	// wakeSync serializes timer reconciles, wakeMu guards the in-process
+	// timer's next time and kick, wakeTimer is the person's user timer (nil
+	// writes none), and wakeClock and wakeDeliver stand in for the clock
+	// and the delivery in unit tests.
+	wakeFire       sync.Mutex
+	wakeSync       sync.Mutex
+	wakeMu         sync.Mutex
+	wakeNext       time.Time
+	wakeKick       chan struct{}
+	wakeTimer      *wakeTimerEnv
+	wakeClock      func() time.Time
+	wakeDeliver    func(scheduledWake, int64) (string, bool)
 	restartWaits   map[string]bool
 	restartScanned bool
 	// maxLive overrides the live-child limit; zero uses the default
@@ -508,6 +521,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.notePresence(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "turn":
 		c.markTurn(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "wake":
+		c.personWake(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
@@ -1070,6 +1085,7 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	}
 	var accepted bool
 	var err error
+	var told []string
 	// The agent's section choice made before this message was sent belongs
 	// to the reply the person answers; one made after it, while Pi already
 	// works on the message, stands even if Pi's receipt arrives later.
@@ -1088,6 +1104,11 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 				timeout = c.promptTimeout
 			}
 			c.mu.Unlock()
+			// A cancelled scheduled wake the agent has not heard of goes
+			// with the person's message, never as a turn of its own.
+			if rpcKind == "prompt" {
+				told = c.tellCancelledWakes(s)
+			}
 			accepted, err = s.rpc.request(rpcKind, expanded, timeout, images...)
 		}
 	}
@@ -1108,6 +1129,9 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		// The person replied: a raise or Ei nyt has served its purpose, and
 		// so has the agent's choice for the reply they answered.
 		c.supersedeAgentSection(s.id, sentAt)
+		if len(told) > 0 {
+			go c.wakesTold(told)
+		}
 		go func() {
 			if c.clearTurnMark(s.id) && c.journal != nil {
 				c.journal.appendInvalidation("pi:" + s.id)
