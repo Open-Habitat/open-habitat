@@ -797,7 +797,7 @@ test.describe(() => {
     );
     const stream = page.getByTestId("conversation-stream");
     const composer = page.locator(
-      ".ah-conversation-frame .ah-composer-stack > .ah-composer",
+      ".ah-conversation-frame .ah-composer-stack > .ah-composer-hold > .ah-composer",
     );
     // The draft stays reachable inside the field, and the conversation
     // keeps at least as much height as the composer takes.
