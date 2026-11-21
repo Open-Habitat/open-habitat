@@ -5210,7 +5210,8 @@ h2.ah-rail-section-head {
     flex: none;
     min-height: auto;
   }
-  .ah-rail-regions :is(.ah-rail-convs, .ah-rail-workspaces, .ah-rail-ws-scroll) {
+  .ah-rail-regions
+    :is(.ah-rail-convs, .ah-rail-workspaces, .ah-rail-ws-scroll) {
     overflow: visible;
   }
 }
