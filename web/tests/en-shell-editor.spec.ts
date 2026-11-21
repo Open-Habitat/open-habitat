@@ -118,14 +118,15 @@ test("@en-shell-editor the context page speaks English", async ({ page }) => {
     "Context",
   );
   await expect(
-    contextPage.getByRole("heading", { name: "What it is made of" }),
+    contextPage.getByRole("heading", { name: "Where the room goes" }),
   ).toBeVisible();
   await expect(
-    page.getByTestId("context-turns").getByRole("columnheader", {
-      name: "Request",
-    }),
-  ).toBeVisible();
-  // The requests in the turn table are the person's own words.
+    page
+      .getByTestId("context-seen")
+      .getByTestId("context-item")
+      .filter({ hasText: "The agent's instructions and tools" }),
+  ).toHaveCount(1);
+  // The person's own words may appear in the rows (a request, a summary).
   const shown = await contextPage.evaluate((el) => {
     const copy = el.cloneNode(true) as HTMLElement;
     for (const node of copy.querySelectorAll(".ask, .ah-cd-summary"))

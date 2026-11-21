@@ -69,7 +69,7 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   await expect(contextPage).toHaveAttribute("data-state", "ready");
   await expect(page).toHaveURL(/[?&]context=1/);
   // The page's measurement is the ring's: Pi's last recorded usage.
-  await expect(page.getByTestId("context-total")).toHaveAttribute(
+  await expect(page.getByTestId("context-view-total")).toHaveAttribute(
     "data-measured",
     "205300",
   );
@@ -80,13 +80,14 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
     (await new AxeBuilder({ page }).include(".ah-cd-page").analyze())
       .violations,
   ).toEqual([]);
-  // One turn so far, measured; Pi recorded its prompt and tools.
+  // Pi recorded its prompt and tools; nothing has been compacted yet.
   await expect(
-    page.getByTestId("context-turns").locator("tbody tr"),
+    page
+      .getByTestId("context-seen")
+      .getByTestId("context-item")
+      .filter({ hasText: "Agentin ohjeet ja työkalut" }),
   ).toHaveCount(1);
-  await expect(
-    page.getByTestId("context-parts").locator('tr.cat[data-k="sys"]'),
-  ).toHaveCount(1);
+  await expect(page.getByTestId("context-summary-only")).toHaveCount(0);
   // A reload keeps the page; Escape returns to the conversation and the ring.
   await page.reload();
   await expect(contextPage).toHaveAttribute("data-state", "ready");
@@ -147,12 +148,10 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   // Right after it the page has Pi's compaction entry and no measurement.
   await ring.click();
   await expect(contextPage).toHaveAttribute("data-state", "ready");
-  await expect(
-    page.getByTestId("context-compactions").locator(":scope > li"),
-  ).toHaveCount(1);
-  await expect(
-    page.getByTestId("context-parts").locator('tr.cat[data-k="rest"]'),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("context-summary-only")).toBeVisible();
+  await expect(page.getByTestId("context-view-total")).not.toHaveAttribute(
+    "data-measured",
+  );
   // The back control returns to the conversation as well.
   await page.getByTestId("context-back").click();
   await expect(contextPage).toHaveCount(0);
@@ -311,11 +310,17 @@ for (const held of [false, true]) {
             const previous = [...stream.querySelectorAll(".ah-feed > li")]
               .filter((node) => node.getBoundingClientRect().height > 0)
               .at(-1);
+            // The composer sits in a display: contents hold (the permission
+            // question takes its place): its rows are the stack's rows.
+            const rows = (node: Element): Element[] =>
+              getComputedStyle(node).display === "contents"
+                ? [...node.children].flatMap(rows)
+                : [node];
             const next =
               el.nextElementSibling ??
-              [...stack.children].find(
-                (node) => node.getBoundingClientRect().height > 0,
-              );
+              [...stack.children]
+                .flatMap(rows)
+                .find((node) => node.getBoundingClientRect().height > 0);
             if (!previous || !next)
               throw new Error("Missing notice neighbours");
             return {
