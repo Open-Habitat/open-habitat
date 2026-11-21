@@ -44,7 +44,7 @@ that link was not proven for each case.
 | whole file `--repeat-each 3`, with the later-reverted store rule | 264/264 |
 | whole file `--repeat-each 3`, `OH_CPU_THROTTLE=4`, with the later-reverted store rule | 264/264 |
 | whole file `--repeat-each 3`, after the revert | 263/264 (snapshot-identity case, fixed below) |
-| whole file `--repeat-each 3`, final code | FINAL2 |
+| whole file `--repeat-each 3`, final code (host load about 6–7) | 264/264 |
 
 Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i3-*.log`.
 
