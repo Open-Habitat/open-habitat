@@ -1,6 +1,6 @@
 # ADR 0037: Removing a person
 
-**Status:** Proposed. **Date:** 2026-11-21. **Decider:** Jari decided on
+**Status:** Accepted (Jari 21.11.2026). **Date:** 2026-11-21. **Decider:** Jari decided on
 2026-11-21 that the product needs a real person removal instead of a quota
 workaround; this record proposes what removal does and waits for his review
 of the open questions at the end. It replaces ADR 0007, which deferred the
