@@ -3,12 +3,16 @@ created: 2026-11-21
 updated: 2026-11-21
 type: improvement
 reporter: conductor
-status: open
+status: done
 priority: normal
 related: ['@microsoft-single-process-per-person']
 lane: microsoft
 lane_seq: 2
 preparation: ready
+closed: 2026-11-21
+commits:
+- hash: 1ed6f8b6
+  summary: keep Microsoft relays out of the product heap
 ---
 
 # Minimal Microsoft relay binary instead of the whole product binary
