@@ -56,6 +56,10 @@ Jari 21.11.2026: do not remove the mailbox-administration tools; they are useful
 
 Jari 21.11.2026 on research-topics: confirmation for deletes and calendar sharing is ok; prototype the confirmation question and the iconography of its icon. Asked again why five areas cost about 750 MB (conductor explains; proposes one shared server per person).
 
+### 2026-11-21T12:45:50Z · @jari
+
+Jari 21.11.2026: permission question direction 2 Kenttä (the question takes the composer's place, so the person must answer). Microsoft areas: one shared Microsoft MCP server per person is required, and he asks whether one server entry can serve all areas instead of five; a technical decision verifies the single-process design before implementation.
+
 ## Agent Runs
 
 ### 2026-11-21T10:15:13Z · @agent

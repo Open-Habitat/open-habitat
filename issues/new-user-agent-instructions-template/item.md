@@ -32,6 +32,10 @@ Jari 21.11.2026 on round 1: wrong direction. It must be part of the onboarding c
 
 Jari 21.11.2026 on round 2: direction A Keskustelu, but riff on what the person is told: today's text is long and technical. After the conversation the file itself is shown. The conversation is archived or similar — note that it has no meaningful repository, so it may not even need archiving (decide). Existing accounts: can continue this in any conversation, and a Settings view (Tili › Ohjeet agentille) is needed — prototype it. Structured choices from the agent (quick replies) accepted (recommendation).
 
+### 2026-11-21T12:45:50Z · @jari
+
+Jari 21.11.2026: onboarding — A2 Muistilappu wording is best; A3 Esittely's field behaviour is best (the person can edit a free-form text themselves). Next round combines them, with a free-form step and a language choice. Settings › Tili › Ohjeet agentille — an ordinary Markdown block that opens in an Esikatselu (preview) tab, i.e. direction B Teksti modified; implies a daemon read plus a compare-and-swap write of the instructions file.
+
 ## Agent Runs
 
 ### 2026-11-21T10:16:00Z · @claude-opus-5-5

@@ -35,3 +35,7 @@ Jari 21.11.2026 on rounds 2-5: Sounds — Soittimet: Celesta, Kantele, Sähköpi
 ### 2026-11-21T10:04:59Z · @jari
 
 Jari 21.11.2026 on round 4: Kulho and Lasit end naturally now; character kept and moving the right way, but all sounds can still become more natural and richer. The five new candidates sound 'digital', lacking colour — redo them in the next round; no more new sounds beyond that (max 15 total). The longer sounds a bit shorter, or ideally each sound in a short and a long variant. The final set is chosen after the next round.
+
+### 2026-11-21T12:45:50Z · @jari
+
+Jari 21.11.2026 on round 5: final set is ten sounds — the nine kept ones (Kalimba default, Marimba, Vibrafoni, Tunnus puu, Pisara, Lasit, Tuulikello, Kuplat, Kulho) plus Jääpuikot. Sävelrumpu, Harppu, Kitara and Kivi lampeen are dropped. The person chooses short or long sounds (one setting for all sounds). Next: a prototype round riffing the B Renkaat tile iconography so every one of the ten sounds has its own visual, on a page that also shows the other sound choices.
