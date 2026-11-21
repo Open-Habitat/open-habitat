@@ -3150,14 +3150,16 @@ for (const mode of ["live", "reload", "settled"] as const)
           ),
         { timeout: 20000 },
       );
-    const lookedUp =
-      mode === "settled"
-        ? undefined
-        : page.waitForResponse(
-            (response) =>
-              response.url().includes("/receipt?command_id=") &&
-              response.status() === 404,
-          );
+    // Only a reload, with history held back, has to ask the restarted
+    // daemon for the command first. Live, the page may read history that
+    // already shows the message and settle without asking.
+    const lookedUp = !reload
+      ? undefined
+      : page.waitForResponse(
+          (response) =>
+            response.url().includes("/receipt?command_id=") &&
+            response.status() === 404,
+        );
     await page.route("**/api/v1/conversations/*/send", async (route) => {
       sends++;
       const reply = await route.fetch();

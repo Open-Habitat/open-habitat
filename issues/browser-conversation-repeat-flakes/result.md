@@ -5,8 +5,8 @@ The issue's own reproduction (whole `browser-conversation.spec.ts`,
 was run after the `altogether-wanting-children` fixes. That issue fixed the
 logout case (`:1815`) and the steer case (`:1469`) directly, and the Alt+Enter
 cases that the product used to refuse when they were pressed during a status
-re-read. The other cases listed here (`:2953`, `:3338`, `:3075`, `:3522`,
-`:428`) did not fail in any of the whole-file runs below. Their reported
+re-read. The other cases listed here (`:2953`, `:3338`, `:3522`, `:428`) did
+not fail in any of the whole-file runs below. Their reported
 failures share the same signature of a press refused during a re-read, but
 that link was not proven for each case.
 
@@ -41,8 +41,10 @@ that link was not proven for each case.
 | hold fix only | 1 of 264 failed (attachment case) |
 | the four hold cases `--repeat-each 3` after the fix | 12/12 |
 | attachment case `--repeat-each 20` after the fix | 20/20 |
-| whole file `--repeat-each 3`, final HEAD | 264/264 |
-| whole file `--repeat-each 3`, `OH_CPU_THROTTLE=4`, final HEAD | 264/264 |
+| whole file `--repeat-each 3`, with the later-reverted store rule | 264/264 |
+| whole file `--repeat-each 3`, `OH_CPU_THROTTLE=4`, with the later-reverted store rule | 264/264 |
+| whole file `--repeat-each 3`, after the revert | 263/264 (snapshot-identity case, fixed below) |
+| whole file `--repeat-each 3`, final code | FINAL2 |
 
 Logs are in `/var/tmp/agent-keep/test-stability-v4b6/i3-*.log`.
 
@@ -63,3 +65,13 @@ held first hid the button. It now uses `watchRecheck` too, and passes 20/20
 plain and 20/20 at `OH_CPU_THROTTLE=4`. The other cases that hold status reads
 (the cold-open and the reset/404 cases) hold them on purpose and do not press
 the recheck.
+
+`:3075` (`a send whose acknowledgement a daemon restart lost resolves from
+history (live)`) did fail, 2 of 3 in one whole-file run on a busy host (load
+around 7 on 8 cores), and 2 of 20 alone. The base commit failed the same way
+(2/20). After the restart the page read Pi's history, which already held the
+message, and settled the send from it without asking for a receipt. That is
+the very behaviour the case asserts. The spec, though, first waited for a
+receipt lookup that returned 404, which only the reload mode needs, because
+there history is held back until afterwards. Live, the case now goes straight
+to its assertions. All three modes: 60/60 plain, 30/30 at `OH_CPU_THROTTLE=4`.
