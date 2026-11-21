@@ -470,7 +470,12 @@ any runtime archive extracts the whole set once. The first upgrade from a
 release whose generation still holds its own payloads extracts them once into
 this store. A payload set is deleted only after no generation or selector
 names it, so removing an unused old generation, as before, is what frees its
-runtime space at the next upgrade.
+runtime space at the next upgrade. A store entry whose files no longer match
+stops staging with `release_archive_invalid` and is never repaired in place.
+If neither `/opt/open-habitat/core` nor a profile link points into it, remove
+that entry directory and repeat the same command, which extracts it again; if
+the running installation uses it, the installed runtime itself is damaged and
+needs diagnosis before any upgrade.
 
 Schedule the maintenance window explicitly. Add `--approve-interruption` only
 when interruption of daemon work is approved; the preview's `work` lists each

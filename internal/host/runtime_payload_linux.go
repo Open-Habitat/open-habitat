@@ -269,8 +269,17 @@ func verifyPayloadTree(ctx context.Context, dir string, a ReleaseArtifact, platf
 		want     RuntimeFile
 	}
 	jobs := []job{}
+	// Extraction creates exactly the inventory's ancestor directories (a
+	// closure tar holds only regular files); an extra empty one is harmless,
+	// so allow those plus as many again before calling the walk unbounded.
+	ancestors := map[string]bool{}
+	for _, f := range a.Closure.Files {
+		for d := filepath.Dir(f.Path); d != "."; d = filepath.Dir(d) {
+			ancestors[d] = true
+		}
+	}
 	directories := 0
-	limit := a.Entries + len(a.Closure.Files)
+	limit := 2*len(ancestors) + 1
 	var walk func(fd int, prefix string) error
 	walk = func(fd int, prefix string) error {
 		if e := ctx.Err(); e != nil {
@@ -428,6 +437,17 @@ func collectPayloads(prefix string, keep map[string]bool, owner uint32) error {
 		return nil
 	} else if e != nil {
 		return e
+	}
+	// A collection interrupted before its deletion finished left the tree
+	// here, already out of the store and named by nothing.
+	if leftovers, e := os.ReadDir(prefix + "/staging"); e == nil {
+		for _, l := range leftovers {
+			if strings.HasPrefix(l.Name(), "collect-") {
+				if e := os.RemoveAll(prefix + "/staging/" + l.Name()); e != nil {
+					return e
+				}
+			}
+		}
 	}
 	refs := map[string]bool{}
 	for name := range keep {

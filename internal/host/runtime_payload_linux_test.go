@@ -215,3 +215,42 @@ func TestPayloadEntryKeepsProfilesSiblings(t *testing.T) {
 		t.Fatal("entry shared across a changed archive")
 	}
 }
+
+// A deep, sparse inventory is as valid as a bushy one: the directory bound
+// follows the inventory's ancestors, not its file count.
+func TestPayloadTreeDirectoryBound(t *testing.T) {
+	dir, owner := operationFixture(t)
+	root := filepath.Dir(dir) + "/entry"
+	if err := os.MkdirAll(root+"/a/b/c", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root+"/a/b/c/d", []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// The focused runner's umask is 077; extraction sets modes explicitly.
+	for _, p := range []string{root, root + "/a", root + "/a/b", root + "/a/b/c"} {
+		if err := os.Chmod(p, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(root+"/a/b/c/d", 0644); err != nil {
+		t.Fatal(err)
+	}
+	sum := closureSum("x")
+	c := &RuntimeClosure{Files: []RuntimeFile{{Path: "a/b/c/d", SHA256: sum, Component: "license", Mode: 0644}}, Components: []RuntimeComponent{{Name: "license", Kind: "license", LicenseFiles: []string{"a/b/c/d"}}}}
+	a := ReleaseArtifact{Profile: "integrations", Entries: 1, Closure: c}
+	if err := verifyPayloadTree(context.Background(), root, a, "ubuntu-24.04-amd64", owner, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"/x", "/x/y", "/x/y/z", "/x/y/z/w", "/x/y/z/w/v"} {
+		if err := os.Mkdir(root+p, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(root+p, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := verifyPayloadTree(context.Background(), root, a, "ubuntu-24.04-amd64", owner, true); !errors.Is(err, ErrReleaseArchive) {
+		t.Fatal("unbounded extra directories accepted", err)
+	}
+}
