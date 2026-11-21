@@ -109,19 +109,24 @@ export function GitHubOnboarding({
   // agent-instructions feature is on. A sign-in from Settings is no route.
   // The app's preferences know no identity before its first snapshot, which
   // onboarding precedes, so the route reads this session's own.
+  // null: the session could not be read, which leaves the note off.
   const [prefsSession, setPrefsSession] = useState<{
     identity: string;
     csrf: string;
-  }>();
+  } | null>();
   useEffect(() => {
     if (skipChooser) return;
     let alive = true;
     void accountSession()
       .then((s) => {
-        if (alive && s !== "login")
-          setPrefsSession({ identity: s.webIdentityId, csrf: s.csrf });
+        if (alive)
+          setPrefsSession(
+            s === "login" ? null : { identity: s.webIdentityId, csrf: s.csrf },
+          );
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (alive) setPrefsSession(null);
+      });
     return () => {
       alive = false;
     };
@@ -132,6 +137,11 @@ export function GitHubOnboarding({
   );
   const instructionsStep =
     !skipChooser && prefs.experimental["agent-instructions"] === true;
+  // Whether the note is on the route is known: the route waits for it
+  // before it ends, so a fast "Pi is usable" does not skip a note that is on.
+  const instructionsKnown =
+    skipChooser || prefsSession === null || (!!prefsSession && prefs.loaded);
+  const pendingFinish = useRef<{ signedIn?: "claude" }>(undefined);
   const [instructionsOutcome, setInstructionsOutcome] =
     useState<InstructionsOutcome>();
   const signedInWith = useRef<"claude">(undefined);
@@ -202,6 +212,7 @@ export function GitHubOnboarding({
     key.current = "";
     locked.current = false;
     identityDone.current = false;
+    pendingFinish.current = undefined;
     setSelected([]);
     setBusy(false);
     setView({ phase: "loading" });
@@ -471,6 +482,10 @@ export function GitHubOnboarding({
   const seeded = !skipChooser && site?.ai_key_seeded === true;
   // Usable Pi ends the AI step; the note follows it when it is on the route.
   const finish = (signedIn?: "claude") => {
+    if (!instructionsKnown) {
+      pendingFinish.current = { signedIn };
+      return;
+    }
     if (instructionsStep && step !== "instructions") {
       signedInWith.current = signedIn;
       setStep("instructions");
@@ -492,6 +507,12 @@ export function GitHubOnboarding({
   };
   const finishRef = useRef(finish);
   finishRef.current = finish;
+  useEffect(() => {
+    const pending = pendingFinish.current;
+    if (!instructionsKnown || !pending) return;
+    pendingFinish.current = undefined;
+    finishRef.current(pending.signedIn);
+  }, [instructionsKnown]);
   useEffect(() => {
     if (step !== "pi" || !seeded || aiNeeded) return;
     const n = generation.current;

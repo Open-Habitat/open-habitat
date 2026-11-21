@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { InstructionsEditor } from "./InstructionsEditor";
 
@@ -74,5 +75,73 @@ describe("InstructionsEditor", () => {
     });
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByTestId("editor-unsaved")).toBeTruthy();
+  });
+
+  it("merges a change made meanwhile with a note that is not on disk yet, keeping the answers", async () => {
+    const saved: string[] = [];
+    let reply: { ok: true } | { conflict: string } = {
+      conflict: "# Mine changed\n\nkeep\n",
+    };
+    render(
+      <InstructionsEditor
+        value={"# Mine\n\nkeep\n\n## Note\n\nanswers\n"}
+        origin={"# Mine\n\nkeep\n"}
+        alwaysSavable
+        label="x"
+        onSave={async (t) => {
+          saved.push(t);
+          return reply;
+        }}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("editor-save"));
+    });
+    fireEvent.click(screen.getAllByRole("tab")[1]);
+    expect(text()).toBe("# Mine changed\n\nkeep\n\n## Note\n\nanswers\n");
+    reply = { ok: true };
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("editor-save"));
+    });
+    expect(saved[1]).toBe("# Mine changed\n\nkeep\n\n## Note\n\nanswers\n");
+  });
+
+  it("keeps the text unchangeable while a conflict waits for a choice", async () => {
+    render(
+      <InstructionsEditor
+        value={"a\nb\n"}
+        label="x"
+        onSave={async () => ({ conflict: "a theirs\nb\n" })}
+      />,
+    );
+    await edit("a mine\nb\n");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("editor-save"));
+    });
+    fireEvent.click(screen.getAllByRole("tab")[1]);
+    expect(
+      (screen.getByTestId("editor-text") as HTMLTextAreaElement).readOnly,
+    ).toBe(true);
+    fireEvent.click(screen.getByTestId("pick-mine"));
+    expect(
+      (screen.getByTestId("editor-text") as HTMLTextAreaElement).readOnly,
+    ).toBe(false);
+  });
+
+  it("finishes a save under StrictMode", async () => {
+    render(
+      <StrictMode>
+        <InstructionsEditor
+          value=""
+          label="x"
+          onSave={async () => ({ error: "not saved" })}
+        />
+      </StrictMode>,
+    );
+    await edit("new\n");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("editor-save"));
+    });
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

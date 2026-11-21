@@ -28,6 +28,7 @@ type Tab = "preview" | "edit";
  * page owns the file, gives `value` and decides what Tallenna does. */
 export function InstructionsEditor({
   value,
+  origin,
   label,
   onSave,
   alwaysSavable = false,
@@ -42,6 +43,11 @@ export function InstructionsEditor({
    * onboarding the note made from the answers. A new value while the person
    * has edits is merged into them, never replaces them. */
   value: string;
+  /** The text on disk `value` was made from, which a refused save merges
+   * against; defaults to `value`. Onboarding's note is not on disk yet: its
+   * origin is the existing file or nothing, so a change made meanwhile is
+   * merged with the answers rather than replacing them. */
+  origin?: string;
   /** Accessible name of the block. */
   label: string;
   onSave: (text: string) => Promise<InstructionsSaveResult>;
@@ -61,6 +67,8 @@ export function InstructionsEditor({
 }) {
   const t = useText(instructionsEditorText);
   const [base, setBase] = useState(value);
+  // What a refused save merges against: the disk text the draft started from.
+  const [mergeBase, setMergeBase] = useState(origin ?? value);
   const [draft, setDraft] = useState(value);
   const [tab, setTab] = useState<Tab>("preview");
   const [merged, setMerged] = useState(0);
@@ -70,12 +78,12 @@ export function InstructionsEditor({
   const [error, setError] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   const alive = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true;
+    return () => {
       alive.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
   const dirty = draft !== base;
 
   // The page's text moved: an untouched draft follows it, an edited one
@@ -85,6 +93,7 @@ export function InstructionsEditor({
     if (value === base) return;
     setDraft((d) => (d === base ? value : threeWay(d, base, value).text));
     setBase(value);
+    setMergeBase(origin ?? value);
   }, [value]);
   useEffect(() => {
     if (tab === "edit") area.current?.focus({ preventScroll: true });
@@ -100,6 +109,7 @@ export function InstructionsEditor({
     setBusy(false);
     if ("ok" in result) {
       setBase(text);
+      setMergeBase(text);
       setMerged(0);
       setConflicts([]);
       setTab("preview");
@@ -112,8 +122,12 @@ export function InstructionsEditor({
     }
     // The file changed since it was read: fold the other change in and keep
     // the person's text where both touched the same lines.
-    const m = threeWay(text, base, result.conflict);
-    setBase(result.conflict);
+    const m = threeWay(text, mergeBase, result.conflict);
+    setMergeBase(result.conflict);
+    // The save that follows is based on the file as it is now, so Peru must
+    // never return to text from before the merge: that would write over the
+    // other change. Without a separate origin Peru returns to the file.
+    setBase(origin === undefined ? result.conflict : m.text);
     setDraft(m.text);
     setMerged(m.incoming.length + m.conflicts.length);
     setConflicts(m.conflicts);
@@ -180,6 +194,9 @@ export function InstructionsEditor({
         aria-label={t.rawLabel}
         aria-describedby={`${testId}-hint`}
         spellCheck
+        // While a save is out, or a conflict waits for a choice, the text
+        // stays as it is: the reply and the conflict's lines refer to it.
+        readOnly={busy || conflicts.length > 0}
         value={draft}
         rows={Math.min(22, Math.max(8, draft.split("\n").length + 1))}
         onChange={(e) => {

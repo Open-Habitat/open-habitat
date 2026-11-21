@@ -65,7 +65,12 @@ export function AgentInstructionsSettings({
         name={name}
         defaultLanguage={browserAnswerLanguage(ui, languageChosen)}
         existing={state.file.exists ? state.file.content : undefined}
-        onLater={() => setWithAgent(false)}
+        onLater={() => {
+          // The editor starts again from the file as it is now, never from
+          // a read older than the version the next save names.
+          setWithAgent(false);
+          retry();
+        }}
         onSave={async (text) => {
           const result = await save(text);
           if ("ok" in result) setWithAgent(false);
@@ -95,7 +100,10 @@ export function AgentInstructionsSettings({
             variant={
               file.exists && file.content.trim() ? "secondary" : "primary"
             }
-            onPress={() => setWithAgent(true)}
+            onPress={() => {
+              setWithAgent(true);
+              retry();
+            }}
           >
             {file.exists && file.content.trim()
               ? t.editWithAgent

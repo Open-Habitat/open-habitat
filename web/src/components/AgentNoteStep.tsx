@@ -312,6 +312,7 @@ export function AgentNoteStep({
           </p>
           <InstructionsEditor
             value={note}
+            origin={existing ?? ""}
             label={t.editorLabel}
             keptPrefix={existing}
             alwaysSavable
