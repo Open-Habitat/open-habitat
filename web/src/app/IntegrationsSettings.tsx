@@ -372,7 +372,7 @@ export function IntegrationsSettings({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [view, counting, load, retry]);
+  }, [view, counting, loadAfter, retry]);
 
   // Catalog observations outlive the dialog and are visible to any session
   // of this Unix user. Single flight; a failed read retains the last state.
