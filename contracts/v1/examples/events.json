@@ -119,5 +119,33 @@
         }
       }
     }
+  },
+  {
+    "schema_version": 1,
+    "event_id": "evt_example0048",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:48",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 48,
+    "emitted_at": "2026-11-21T14:00:07Z",
+    "kind": "question.requested",
+    "resource": {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333"
+    },
+    "payload": {
+      "request_id": "ui_example0048",
+      "question_kind": "approval",
+      "prompt": "bash",
+      "choices": [
+        "allow",
+        "deny",
+        "allow_all"
+      ],
+      "approval": {
+        "call_id": "call_example0048",
+        "tool": "bash",
+        "arguments": "{\n  \"command\": \"rm -rf build\\nmake\"\n}",
+        "request": "44444444-4444-4444-8444-444444444444"
+      }
+    }
   }
 ]

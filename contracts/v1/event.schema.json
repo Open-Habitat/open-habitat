@@ -1097,6 +1097,7 @@
             "confirm",
             "select",
             "permission",
+            "approval",
             "unknown"
           ]
         },
@@ -1190,9 +1191,69 @@
               }
             }
           }
+        },
+        "approval": {
+          "description": "One tool call the owner approves before it runs, in a run they released one call at a time (ADR 0038 section 5). The arguments are complete, not the shortened prompt, so the owner approves the call that runs; the answer is one of the choices allow, deny or allow_all and counts only for this request. Owner-only: a participant's view never carries it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "call_id",
+            "tool",
+            "arguments"
+          ],
+          "properties": {
+            "call_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "The tool call's ID; a nested call's is its parent's followed by /n."
+            },
+            "tool": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "arguments": {
+              "type": "string",
+              "maxLength": 32768,
+              "description": "The call's complete arguments as JSON text, shown verbatim and never interpreted."
+            },
+            "parent_call_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Set when another tool (for example a codemode script) made this call."
+            },
+            "request": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F-]{36}$",
+              "description": "The participant message whose release this run continues."
+            }
+          }
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "question_kind": {
+                "const": "approval"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "approval"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "approval"
+              ]
+            }
+          }
+        },
         {
           "if": {
             "properties": {

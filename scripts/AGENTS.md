@@ -131,8 +131,11 @@ that runs it.
 
 ## Carried patches
 
-`core-runtime-build.py` patches pi-claude-bridge at build time (`BRIDGE_PATCH`)
-so Claude Code may run its WebSearch and WebFetch on the provider path. Every
+`core-runtime-build.py` patches pi-claude-bridge at build time
+(`runtime/core/bridge-patch.json`) so Claude Code may run its WebSearch and
+WebFetch on the provider path, except in a query that starts in a turn whose
+Habitat turn mode is not all tools: those tools run outside Pi's `tool_call`,
+where the turn mode cannot block them. Every
 bridge version bump re-applies it, and the build fails unless it applies
 exactly once, so a moved line stops the build instead of shipping without web
 search. Once upstream releases its `provider.builtinTools` setting, the patch

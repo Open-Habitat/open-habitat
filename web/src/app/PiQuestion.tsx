@@ -65,9 +65,17 @@ export function PiQuestion({
       kind={
         question.question_kind === "permission"
           ? "unknown"
-          : question.question_kind
+          : question.question_kind === "approval"
+            ? "select"
+            : question.question_kind
       }
-      prompt={question.prompt}
+      // Until the owner's card (multiplayer browser work) shows an approval,
+      // it is a choice whose prompt carries the call's complete arguments.
+      prompt={
+        question.approval
+          ? `${question.approval.tool}\n${question.approval.arguments}`
+          : question.prompt
+      }
       choices={question.choices}
       value={value}
       state={csrf ? state : "unavailable"}

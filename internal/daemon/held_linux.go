@@ -105,7 +105,7 @@ func (c *ConversationController) holdLocked(w http.ResponseWriter, s *conversati
 	}
 	s.commands[commandID] = true
 	s.recapOnly, s.autoWake = false, false
-	s.held = append(s.held, heldMessage{id: commandID, text: message})
+	s.held = append(s.held, heldMessage{id: commandID, text: message, seq: s.nextHeldSeq()})
 	if choice != nil {
 		s.heldChoice = choice
 	}
@@ -221,12 +221,12 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err != nil {
 		return "source_unavailable"
 	}
-	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, bash: old.bash, givenName: old.givenName, pendingName: old.pendingName}
+	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, guestHeld: old.guestHeld, heldSeq: old.heldSeq, bash: old.bash, givenName: old.givenName, pendingName: old.pendingName}
 	// Pi kept a name given to the empty conversation only in its memory.
 	if s.pendingName == "" {
 		s.pendingName = old.givenName
 	}
-	old.held, old.heldChoice, old.bash = nil, nil, nil
+	old.held, old.heldChoice, old.bash, old.guestHeld = nil, nil, nil, nil
 	c.sessions[old.id] = s
 	releaseOwner = false
 	if c.journal != nil {
@@ -288,7 +288,7 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		s.state = "accepted"
 	}
 	heldCommand := s.bash != nil && s.bash.state == "held"
-	unneeded := s.lazy && len(s.held) == 0 && !heldCommand && s.state == "idle"
+	unneeded := s.lazy && len(s.held) == 0 && len(s.guestHeld) == 0 && !heldCommand && s.state == "idle"
 	if unneeded {
 		s.state = "stopping"
 		stopFor(s, "person") // what it was started for was taken back
@@ -301,6 +301,7 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	// Take the held batch in the same critical section that makes the child
 	// ready, so no direct send can be admitted ahead of it.
 	batch, ok := c.takeHeldLocked(s)
+	guest := !ok && participantFirst(s)
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
@@ -314,6 +315,8 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	c.writePendingName(s)
 	if ok {
 		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled, batch.previousSettlement)
+	} else if guest {
+		go c.deliverGuest(s)
 	} else {
 		// Membership lines that waited for Pi; a held prompt's run takes
 		// them at its settle instead.
@@ -345,28 +348,43 @@ func (c *ConversationController) closeUnneeded(s *conversation) {
 // Their command IDs share that prompt's correlated receipt. Caller holds c.mu
 // and calls finishPrompt after unlocking when ok.
 func (c *ConversationController) takeHeldLocked(s *conversation) (heldBatch, bool) {
-	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.compacting || s.dead || s.rpc.overflow.Load() {
+	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.compacting || s.dead || s.rpc.overflow.Load() || participantFirst(s) {
 		return heldBatch{}, false
 	}
 	b := heldBatch{choice: s.heldChoice, oldState: s.state, wasSettled: s.settled, previousSettlement: s.settlement}
 	texts := make([]string, 0, len(s.held))
+	// Only the owner's messages older than the first held participant
+	// message or release: those are joined, the rest wait their turn.
+	taken := 0
 	for _, h := range s.held {
+		if len(s.guestHeld) > 0 && h.seq > s.guestHeld[0].seq {
+			break
+		}
 		b.ids = append(b.ids, h.id)
 		texts = append(texts, h.text)
+		taken++
 	}
 	b.text = strings.Join(texts, "\n\n")
-	s.held, s.heldChoice, s.lazy = nil, nil, false
+	s.held = append([]heldMessage(nil), s.held[taken:]...)
+	if len(s.held) == 0 {
+		s.held = nil
+	}
+	s.heldChoice, s.lazy = nil, false
 	c.beginPrompt(s, "send", b.ids)
 	return b, true
 }
 
-// deliverHeld sends what is still held once Pi is idle again.
+// deliverHeld sends what is still held once Pi is idle again: the owner's
+// held text, or a participant's message or release when one is older.
 func (c *ConversationController) deliverHeld(s *conversation) {
 	c.mu.Lock()
 	b, ok := c.takeHeldLocked(s)
+	guest := !ok && participantFirst(s)
 	c.mu.Unlock()
 	if ok {
 		c.finishPrompt(s, "send", b.ids, b.text, b.choice, b.oldState, b.wasSettled, b.previousSettlement)
+	} else if guest {
+		go c.deliverGuest(s)
 	}
 }
 
@@ -404,6 +422,8 @@ func (c *ConversationController) cancelHeld(w http.ResponseWriter, r *http.Reque
 	switch {
 	// A start the person woke (lazy cleared) is theirs and goes on without
 	// the messages, also before its child exists.
+	case len(s.guestHeld) > 0:
+		// Participants' messages still need the start.
 	case s.state == "start_failed" || s.state == "starting" && s.dead && s.lazy:
 		s.startupCancelled = true
 		s.state = "stopped"

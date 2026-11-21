@@ -1,0 +1,5 @@
+{
+  "path": "pi-claude-bridge/src/index.ts",
+  "old": "\t\t\ttools: [],\n\t\t\tpermissionMode: \"bypassPermissions\",\n",
+  "new": "\t\t\ttools: globalThis[Symbol.for(\"open-habitat.turn-mode\")]?.webTools?.() === false ? [] : [\"WebSearch\", \"WebFetch\"],\n\t\t\tpermissionMode: \"bypassPermissions\",\n"
+}

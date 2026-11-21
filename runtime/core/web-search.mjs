@@ -100,13 +100,23 @@ export function withSources(message, cited) {
 	return { ...message, content: [...message.content, { type: 'text', text: `Sources:\n${lines.join('\n')}` }] };
 }
 
+// The provider runs this search, outside Pi's tool dispatch, so Habitat's
+// turn mode cannot block it there (process-extension.mjs, ADR 0038): a turn
+// that answers another participant, or whose calls the owner approves one at
+// a time, gets no search. Without Habitat's companion (a terminal Pi) every
+// turn is the person's own.
+const turnModeApiKey = Symbol.for('open-habitat.turn-mode');
+export function webToolsAllowed(api = globalThis[turnModeApiKey]) {
+	return typeof api?.webTools !== 'function' || api.webTools() === true;
+}
+
 export default function (pi) {
 	// A provider that refuses the tool (an organisation that has turned web
 	// search off, a model without it) fails the whole request. Pi shows that
 	// error; this process then stops offering search so the next one works.
 	let refused = false;
 	pi.on('before_provider_request', (event, ctx) => {
-		if (refused) return undefined;
+		if (refused || !webToolsAllowed()) return undefined;
 		const tools = nativeSearchTools(ctx.model, event.payload);
 		if (tools.length === 0) return undefined;
 		// A top-level tool sits beside `additional_tools` items, which cannot

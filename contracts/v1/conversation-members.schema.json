@@ -100,6 +100,29 @@
         "state": { "const": "joined" },
         "generation": { "type": "integer", "minimum": 1 }
       }
+    },
+    "release": {
+      "description": "The body of POST /api/v1/conversations/<id>/requests on the owner's daemon (ADR 0038 section 5): the owner's answer on a waiting request's card. allow_all (Salli kaikki) continues it with every tool, approve_each (Hyväksy yksitellen) asks the owner before each call, decline (Älä salli) writes a declining Habitat line and starts no run. request is the participant message's ID and subject its author; the companion checks against the branch that the request is still waiting.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "subject", "action"],
+      "properties": {
+        "request": { "type": "string", "pattern": "^[0-9a-fA-F-]{36}$" },
+        "subject": { "$ref": "#/$defs/subject" },
+        "action": { "enum": ["allow_all", "approve_each", "decline"] }
+      }
+    },
+    "releaseReply": {
+      "description": "The reply to a release: held until Pi is idle, then written as a Habitat line by the companion. A request no longer waiting by then is dropped.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "line_id", "request", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "line_id": { "type": "string", "pattern": "^[0-9a-fA-F-]{36}$" },
+        "request": { "type": "string", "pattern": "^[0-9a-fA-F-]{36}$" },
+        "state": { "const": "held" }
+      }
     }
   }
 }

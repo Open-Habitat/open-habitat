@@ -6,7 +6,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nativeSearchTools, withSources } from '../../../runtime/core/web-search.mjs';
+import { nativeSearchTools, webToolsAllowed, withSources } from '../../../runtime/core/web-search.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const cli = resolve(here, 'node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js');
@@ -44,7 +44,7 @@ const anthropicAnswer = sse([
 
 // The real pinned Pi, the shipped extension and a synthetic provider endpoint:
 // what Pi actually sends, and whether it survives what comes back.
-async function converse(provider, model, prompts, reply) {
+async function converse(provider, model, prompts, reply, extra = []) {
   const bodies = [];
   const server = http.createServer((req, res) => {
     let data = '';
@@ -61,7 +61,7 @@ async function converse(provider, model, prompts, reply) {
   try {
     const base = `http://127.0.0.1:${server.address().port}${provider === 'openai' ? '/v1' : ''}`;
     await writeFile(join(home, 'models.json'), JSON.stringify({ providers: { [provider]: { baseUrl: base } } }), { mode: 0o600 });
-    const child = spawn(process.execPath, [cli, '--extension', extension, '--provider', provider, '--model', model,
+    const child = spawn(process.execPath, [cli, ...extra.flatMap(e => ['--extension', e]), '--extension', extension, '--provider', provider, '--model', model,
       '--no-session', '--tools', 'read', '--thinking', 'low', '-p', ...prompts], {
       cwd: home, stdio: ['ignore', 'pipe', 'pipe'],
       env: { HOME: home, PATH: process.env.PATH, PI_CODING_AGENT_DIR: home, PI_OFFLINE: '1', OPENAI_API_KEY: 'synthetic', ANTHROPIC_API_KEY: 'synthetic' },
@@ -128,6 +128,18 @@ test('a provider that refuses web search fails once, then the conversation goes 
   assert.deepEqual(added(bodies[0]), [{ type: 'web_search' }]);
   assert.deepEqual(added(bodies[1]), []);
   assert.match(out, /SEARCHED-ANSWER/);
+});
+
+// The provider runs this search outside Pi's tool dispatch, so a turn that
+// answers a participant or asks the owner per call gets none (ADR 0038).
+test('a turn without all its tools gets no provider search', async () => {
+  const off = resolve(here, 'fixtures/turn-modes/no-web-tools.mjs');
+  const { bodies, out } = await converse('openai', 'gpt-5.5', ['first'], () => [200, responsesAnswer], [off]);
+  assert.equal(bodies.length, 1, out);
+  assert.deepEqual(added(bodies[0]), []);
+  assert.equal(webToolsAllowed(undefined), true, 'a terminal Pi without the companion is the person\'s own');
+  assert.equal(webToolsAllowed({ webTools: () => true }), true);
+  assert.equal(webToolsAllowed({ webTools: () => false }), false);
 });
 
 test('search is added only to the conversation model of a covered provider, once', () => {

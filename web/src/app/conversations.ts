@@ -111,11 +111,20 @@ export type Status = Session & {
   } | null;
   pending_question?: {
     request_id: string;
-    question_kind: "input" | "confirm" | "select" | "permission" | "unknown";
+    question_kind:
+      | "input"
+      | "confirm"
+      | "select"
+      | "permission"
+      | "approval"
+      | "unknown";
     prompt: string;
     choices: string[];
     /** Present exactly when question_kind is "permission". */
     permission?: Permission;
+    /** Present exactly when question_kind is "approval" (ADR 0038): one
+     * tool call the owner approves, with its complete arguments. */
+    approval?: Approval;
   } | null;
 };
 export type HeldMessage = { command_id: string; text: string };
@@ -766,9 +775,18 @@ export function parseStatus(v: unknown, id: string): Status {
         typeof v.pending_question.request_id !== "string" ||
         !v.pending_question.request_id ||
         v.pending_question.request_id.length > 200 ||
-        !["input", "confirm", "select", "permission", "unknown"].includes(
-          String(v.pending_question.question_kind),
-        ) ||
+        ![
+          "input",
+          "confirm",
+          "select",
+          "permission",
+          "approval",
+          "unknown",
+        ].includes(String(v.pending_question.question_kind)) ||
+        (v.pending_question.question_kind === "approval") !==
+          (v.pending_question.approval !== undefined) ||
+        (v.pending_question.approval !== undefined &&
+          !validApproval(v.pending_question.approval)) ||
         (v.pending_question.question_kind === "permission") !==
           (v.pending_question.permission !== undefined) ||
         (v.pending_question.permission !== undefined &&
@@ -784,6 +802,27 @@ export function parseStatus(v: unknown, id: string): Status {
   )
     throw new Error("invalid status");
   return v as Status;
+}
+export type Approval = {
+  call_id: string;
+  tool: string;
+  arguments: string;
+  parent_call_id?: string;
+  request?: string;
+};
+// event.schema.json $defs/question approval: bounded plain text.
+function validApproval(p: unknown): p is Approval {
+  const text = (s: unknown, max: number, min = 1) =>
+    typeof s === "string" && [...s].length >= min && [...s].length <= max;
+  return (
+    object(p) &&
+    text(p.call_id, 200) &&
+    text(p.tool, 120) &&
+    text(p.arguments, 32768, 0) &&
+    (p.parent_call_id === undefined || text(p.parent_call_id, 200)) &&
+    (p.request === undefined ||
+      (typeof p.request === "string" && /^[0-9a-fA-F-]{36}$/.test(p.request)))
+  );
 }
 // event.schema.json $defs/question permission: every part bounded plain text.
 function validPermission(p: unknown): p is Permission {

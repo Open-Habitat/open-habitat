@@ -34,6 +34,12 @@ var hostContext string
 //go:embed helpers-context.md
 var helpersContext string
 
+// multiplayerContext tells the agent how other people's messages reach it
+// (ADR 0038), given only while the person has the experimental switch on.
+//
+//go:embed multiplayer-context.md
+var multiplayerContext string
+
 // launchContext is the Open Habitat prompt section for a launch. Only a
 // conversation launch (create, resume, held) gets the helper recipe; the
 // switch is read when Pi starts, so turning it on reaches the next launch.
@@ -41,10 +47,16 @@ func launchContext(home, launchWorkspace string) string {
 	if launchWorkspace == "" {
 		return hostContext
 	}
-	if p, err := readPreferences(home); err == nil && p.Experimental[HelpersFeature] {
-		return hostContext + helpersContext
+	text := hostContext
+	if p, err := readPreferences(home); err == nil {
+		if p.Experimental[HelpersFeature] {
+			text += helpersContext
+		}
+		if p.Experimental[MultiplayerFeature] {
+			text += multiplayerContext
+		}
 	}
-	return hostContext
+	return text
 }
 
 // piRPC is a private, bounded native-protocol transport. The daemon's fresh
@@ -231,7 +243,12 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 			return nil, errors.New("launch context unavailable")
 		}
 		cmd.Env = append(cmd.Env, "OPEN_HABITAT_CONVERSATION_ID=pi:"+owner.id,
-			"OPEN_HABITAT_WORKSPACE_ID="+launchWorkspace, "OPEN_HABITAT_LAUNCH_GENERATION="+generation)
+			"OPEN_HABITAT_WORKSPACE_ID="+launchWorkspace, "OPEN_HABITAT_LAUNCH_GENERATION="+generation,
+			// The companion rereads the membership record at every call of a
+			// full-rights participant's run (ADR 0038 section 4), so a revoked
+			// grant blocks the next call even if the revoke message was lost.
+			// It removes the variable from its environment at load.
+			"OPEN_HABITAT_MEMBERS_RECORD="+filepath.Join(home, ".local", "state", "open-habitat", membershipFile))
 	}
 
 	cmd.Env = append(cmd.Env, "OH_PROCESS_SOCKET="+processSocket)

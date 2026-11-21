@@ -33,21 +33,17 @@ def digest(p):
 # WebFetch run inside the bridge's query on the person's subscription; the
 # bridge already leaves tool calls it does not serve to Claude Code. Upstream
 # (0.12.0) has no option for it; elidickinson/pi-claude-bridge#261 proposes
-# `provider.builtinTools`. The patch must apply exactly once, so a pin
+# `provider.builtinTools`. They run outside Pi's tool dispatch, so Habitat's
+# turn mode (process-extension.mjs, ADR 0038) turns them off for a query that
+# starts in a turn without all its tools. The patch (bridge-patch.json, which
+# the companion's device test applies too) must apply exactly once, so a pin
 # bump that moves the code fails the build instead of shipping unpatched.
-BRIDGE_PATCH = (
-    'pi-claude-bridge/src/index.ts',
-    '\t\t\ttools: [],\n\t\t\tpermissionMode: "bypassPermissions",\n',
-    '\t\t\ttools: ["WebSearch", "WebFetch"],\n\t\t\tpermissionMode: "bypassPermissions",\n',
-)
-
-
-def patch_bridge(modules):
-    rel, old, new = BRIDGE_PATCH
-    path = modules / rel
+def patch_bridge(modules, inputs):
+    patch = json.loads((inputs / 'bridge-patch.json').read_text())
+    path = modules / patch['path']
     text = path.read_text()
-    assert text.count(old) == 1, 'pi-claude-bridge web tools patch does not apply'
-    path.write_text(text.replace(old, new))
+    assert text.count(patch['old']) == 1, 'pi-claude-bridge web tools patch does not apply'
+    path.write_text(text.replace(patch['old'], patch['new']))
 
 
 def build(work, out, release_target, inputs=Path('/inputs')):
@@ -77,7 +73,7 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     put(node / 'LICENSE', 'licenses/node.txt', 'node')
     components.append(dict(name='node', version='22.21.1', kind='node', license_files=['licenses/node.txt']))
     lock = json.loads((work / 'npm/package-lock.json').read_text())
-    patch_bridge(work / 'npm/node_modules')
+    patch_bridge(work / 'npm/node_modules', inputs)
     installed = {}
     for p in sorted((work / 'npm/node_modules').rglob('package.json')):
         # Only package roots named in npm's lock, not vendored example manifests.

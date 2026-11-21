@@ -323,6 +323,8 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		s.receipts = old.receipts
 		s.command = old.command
 		s.held, s.heldChoice, s.lazy, s.interrupted = old.held, old.heldChoice, old.lazy, old.interrupted
+		s.guestHeld, s.heldSeq = old.guestHeld, old.heldSeq
+		old.guestHeld = nil
 		s.bash = old.bash
 		old.held, old.heldChoice, old.bash = nil, nil, nil
 	}

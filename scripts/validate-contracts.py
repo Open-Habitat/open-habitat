@@ -292,6 +292,21 @@ must_reject("event.schema.json", {**permission_event, "payload": {k: v for k, v 
 for missing in ("action", "consequence", "call"):
     must_reject("event.schema.json", {**permission_event, "payload": {**permission_payload, "permission": {k: v for k, v in permission_payload["permission"].items() if k != missing}}})
 
+# An approval question carries the call's complete arguments, and only an
+# approval question does.
+approval_event = next(e for e in events if e["kind"] == "question.requested" and e["payload"]["question_kind"] == "approval")
+approval_payload = approval_event["payload"]
+for change in (
+    {"approval": None},
+    {"question_kind": "select"},
+    {"approval": {**approval_payload["approval"], "arguments": "x" * 32769}},
+    {"approval": {**approval_payload["approval"], "call_id": ""}},
+    {"approval": {**approval_payload["approval"], "request": "not-a-message"}},
+    {"approval": {**approval_payload["approval"], "html": "<b>x</b>"}},
+    {"permission": permission_payload["permission"]},
+):
+    must_reject("event.schema.json", {**approval_event, "payload": {k: v for k, v in {**approval_payload, **change}.items() if v is not None}})
+
 conversation_list = json.loads((BASE / "examples/agent-conversation-list.json").read_text())
 conversation_row = conversation_list["sessions"][0]
 for change in ({"lifecycle": "idle"}, {"lifecycle": None}, {"title": None}, {"uid": 123}):

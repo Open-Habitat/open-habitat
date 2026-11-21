@@ -37,6 +37,7 @@ type ConversationController struct {
 	// ending; memberLineMu keeps one writer of pending Habitat lines.
 	memberMu      sync.Mutex
 	memberLineMu  sync.Mutex
+	guestMu       sync.Mutex // one delivery of a participant message or release at a time
 	memberStreams map[string]map[*guestStream]struct{}
 
 	mu       sync.Mutex
@@ -188,6 +189,10 @@ type conversation struct {
 	// the browser's command ID, and gives Pi their joined text as one prompt.
 	// They live only in this daemon incarnation, like receipts.
 	held         []heldMessage
+	// Participants' messages and the owner's releases held for an idle Pi
+	// (turn_modes_linux.go), in one order with held.
+	guestHeld []guestHeld
+	heldSeq   uint64
 	heldChoice   *piStartupChoice // first-message intent travelling with the held prompt
 	bash         *bashRun         // the one `!` command: held, running, or its last outcome (bash_linux.go)
 	startProblem string           // fixed code of the last failed start; held messages are kept
@@ -226,6 +231,7 @@ type conversation struct {
 
 type heldMessage struct {
 	id, text string
+	seq      uint64 // shared order with guestHeld (turn_modes_linux.go)
 }
 
 type pendingQuestion struct {
@@ -543,6 +549,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.closeEmpty(w, r, parts[0])
 	case (r.Method == http.MethodGet || r.Method == http.MethodPost) && parts[1] == "members":
 		c.members(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "requests":
+		c.releaseRequest(w, r, parts[0])
 	default:
 		snapshotError(w, 404, "resource_not_found")
 	}
@@ -1480,14 +1488,14 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 			}
 			_ = json.Unmarshal(body.Value, &b)
 			value = b
-		case "input", "select":
+		case "input", "select", "approval":
 			var text string
 			if json.Unmarshal(body.Value, &text) != nil || len(text) > 65536 || !utf8.ValidString(text) {
 				c.mu.Unlock()
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			if kind == "select" {
+			if kind == "select" || kind == "approval" {
 				found := false
 				for _, choice := range s.questionChoices {
 					if choice == text {

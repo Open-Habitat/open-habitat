@@ -328,6 +328,15 @@ func (c *ConversationController) drain(s *conversation) {
 			}
 			if json.Unmarshal(raw, &q) == nil && len(q.ID) > 0 && len(q.ID) <= 200 && utf8.ValidString(q.ID) {
 				isPermission, permission := permissionRequest(q.Method, q.Title)
+				isApproval, approval := approvalRequest(q.Method, q.Title, q.Options)
+				if isApproval {
+					// The tool's name is the one-line prompt; the call's
+					// complete arguments travel in their own field.
+					q.Title, q.Message = "", ""
+					if approval != nil {
+						q.Title = approval.Tool
+					}
+				}
 				if isPermission {
 					// The typed parts replace the encoded title; the prompt is
 					// the action, for a view that shows only one line.
@@ -355,6 +364,9 @@ func (c *ConversationController) drain(s *conversation) {
 					}
 					if isPermission {
 						kind = "permission"
+					}
+					if isApproval {
+						kind = "approval"
 					}
 					switch q.Method {
 					case "notify", "setStatus", "setWidget", "setTitle", "set_editor_text":
@@ -394,12 +406,12 @@ func (c *ConversationController) drain(s *conversation) {
 						if s.spentQuestions == nil {
 							s.spentQuestions = make(map[string]bool)
 						}
-						if isPermission && permission == nil {
+						if isPermission && permission == nil || isApproval && approval == nil {
 							// Never shown: cancelling it makes the asking hook
 							// block its call with a reason.
 							if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
 								s.spentQuestions[q.ID] = true
-								go func(rpc *piRPC, id string) { _ = rpc.respondUI(id, "permission", nil, true) }(s.rpc, q.ID)
+								go func(rpc *piRPC, id string) { _ = rpc.respondUI(id, "select", nil, true) }(s.rpc, q.ID)
 							}
 						} else if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
 							duplicate := s.questionID == q.ID
@@ -412,6 +424,9 @@ func (c *ConversationController) drain(s *conversation) {
 								view := map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
 								if permission != nil {
 									view["permission"] = permission.wire()
+								}
+								if approval != nil {
+									view["approval"] = approval.wire()
 								}
 								next := pendingQuestion{q.ID, kind, choices, view}
 								if s.questionID == "" {
@@ -487,7 +502,7 @@ func (c *ConversationController) drain(s *conversation) {
 			}
 		}
 		// Messages held while a native run was active go out once it settles.
-		drain := settled && len(s.held) > 0 && s.state == "idle"
+		drain := settled && len(s.held)+len(s.guestHeld) > 0 && s.state == "idle"
 		lines := settled && !drain && s.state == "idle"
 		c.mu.Unlock()
 		if drain {

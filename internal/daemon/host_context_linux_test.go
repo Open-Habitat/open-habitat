@@ -149,3 +149,18 @@ func TestLaunchContextHelperRecipe(t *testing.T) {
 		}
 	}
 }
+
+// How other people's messages reach the agent is told only while the
+// person has the multiplayer switch on, and never to an auxiliary launch.
+func TestLaunchContextMultiplayer(t *testing.T) {
+	home := t.TempDir()
+	if err := savePreferences(home, accountPreferences{Engine: "codemirror6", Experimental: map[string]bool{MultiplayerFeature: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := launchContext(home, ""); got != hostContext {
+		t.Fatal("multiplayer context given to an auxiliary launch")
+	}
+	if got := launchContext(home, "ws_0123456789"); got != hostContext+multiplayerContext || !strings.Contains(got, "oh-participant-message") {
+		t.Fatal("multiplayer context missing with the switch on")
+	}
+}
