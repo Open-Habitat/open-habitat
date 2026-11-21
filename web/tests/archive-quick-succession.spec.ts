@@ -1,5 +1,6 @@
 import type { Route } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
+import { answeringTaskfleet } from "./answering-taskfleet";
 import { expect, test } from "./worker-host";
 
 test.use({
@@ -7,6 +8,7 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 720 },
 });
+answeringTaskfleet(test);
 
 const ids = [1, 2, 3].map(
   (n) => `pi:33333333-3333-4333-8333-${String(n).padStart(12, "0")}`,
@@ -21,6 +23,18 @@ test("three conversations archived in quick succession all archive without an er
   expect(
     (await page.request.get("/fixture/history?mode=several")).status(),
   ).toBe(204);
+  // At 720 px the two empty sections' notes and four quiet rows crowd the
+  // rail, and a crowded rail folds Hiljaiset by itself until the person
+  // chooses on this device (lab-rail-scroll-region.spec.ts covers that).
+  // This case archives from the open list, so this device has opened it.
+  await page.context().addInitScript(() => {
+    try {
+      if (localStorage.getItem("nah:rail-quiet-folded") === null)
+        localStorage.setItem("nah:rail-quiet-folded", "0");
+    } catch {
+      // An opaque origin (about:blank) has no storage and no rail.
+    }
+  });
   await page.goto("/");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
