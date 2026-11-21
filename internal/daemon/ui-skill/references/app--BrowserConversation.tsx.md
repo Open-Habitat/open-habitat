@@ -164,6 +164,7 @@ import {
   OwnerPeopleBand,
   TakeBackCard,
   useSharedOwner,
+  useTakeBackOffers,
   WaitingCard,
   withWaitingCards,
 } from "./MultiplayerOwner";
@@ -390,6 +391,7 @@ function BrowserConversationContent({
   const {
     current,
     statusStale,
+    statusLost,
     opened,
     setOpenAttempt,
     entries,
@@ -1195,17 +1197,19 @@ function BrowserConversationContent({
             : statusStale
               ? txt.statusStale
               : txt.waitIdleUncertain;
-  // While the conversation opens, or an earlier send or Stop is on its way,
-  // the view cannot act on a message yet; one sent meanwhile is kept (below)
-  // and goes when it can. Any other block, a lost status read included, is
-  // a refusal the composer words: nothing refused is sent later.
+  // While the conversation opens, an earlier send or Stop is on its way, or
+  // a status is being read again (every turn event starts one), the view
+  // cannot act on a message yet; one sent meanwhile is kept (below) and goes
+  // when it can. Refusing it instead refused a steer pressed as a turn ended
+  // (Jari 31.10.). Any other block, a status read that failed included, is a
+  // refusal the composer words: nothing refused is sent later.
   // The person's last command was answered and its outcome is on its way.
   const awaitingOutcome = sendObservation?.state === "pending";
   const sendRefused =
     archive?.archive === "archived" ||
     archive?.archive === "unknown" ||
     (!!ambiguous && !notStarted && !busy && !awaitingOutcome) ||
-    statusStale ||
+    statusLost ||
     serverUnavailable ||
     modelBlocked ||
     current?.auth_error === "pi_model_unsupported" ||
@@ -1214,6 +1218,7 @@ function BrowserConversationContent({
     !sendRefused &&
     (!controlled ||
       busy ||
+      statusStale ||
       (!!ambiguous && awaitingOutcome) ||
       held.busy ||
       current.state === "pending" ||
@@ -2120,6 +2125,7 @@ function BrowserConversationContent({
     multiplayerOn && !!id,
     `${entries.at(-1)?.entry_key ?? ""}:${current?.run_active ?? ""}:${current?.pending_question?.request_id ?? ""}`,
   );
+  const takeBackOffers = useTakeBackOffers(sharedOwner, id, entries);
   const rewind = useRewind({
     id,
     csrf,
@@ -2949,7 +2955,11 @@ function BrowserConversationContent({
             />
           )}
           {view === "opened" && id && multiplayerOn ? (
-            <OwnerPeopleBand owner={sharedOwner} agentId={id} />
+            <OwnerPeopleBand
+              owner={sharedOwner}
+              agentId={id}
+              offers={takeBackOffers}
+            />
           ) : null}
           {view === "opened" && contextOpen ? (
             <ContextPage
@@ -3135,23 +3145,29 @@ function BrowserConversationContent({
                           ),
                         )
                       : timeline),
-                    ...(sharedOwner.takeBack
-                      ? [
-                          {
-                            id: "take-back",
-                            kind: "question",
-                            content: (
-                              <TakeBackCard
-                                takeBack={sharedOwner.takeBack}
-                                running={!!current?.run_active}
-                                turn={sharedOwner.facts?.turn}
-                                onStopRun={composer.onInterrupt}
-                                onClose={sharedOwner.dismissTakeBack}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
+                    ...takeBackOffers.offers.map((offer) => ({
+                      id: `take-back:${offer.take.subject}`,
+                      kind: "question" as const,
+                      content: (
+                        <TakeBackCard
+                          offer={offer}
+                          known={takeBackOffers.known}
+                          left={takeBackOffers.isLeft(offer)}
+                          onLeave={() =>
+                            takeBackOffers.setLeft(offer.take.subject, true)
+                          }
+                          onReopen={() =>
+                            takeBackOffers.setLeft(offer.take.subject, false)
+                          }
+                          running={!!current?.run_active}
+                          turn={sharedOwner.facts?.turn}
+                          onStopRun={composer.onInterrupt}
+                          onClose={() =>
+                            sharedOwner.dismissTakeBack(offer.take.subject)
+                          }
+                        />
+                      ),
+                    })),
                     ...(restCard
                       ? [
                           {

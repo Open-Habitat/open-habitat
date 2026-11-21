@@ -32,6 +32,8 @@ type SectionEntry = {
   readonly icon: IconName;
   /** Palvelimen ylläpito: listed and searched only for an administrator. */
   readonly admin?: boolean;
+  /** Listed and searched only while this experimental feature is on. */
+  readonly experimental?: string;
   readonly kw: readonly string[];
   readonly intro?: string;
   readonly rows: readonly RowEntry[];
@@ -517,6 +519,78 @@ export const settingsSections = [
     ],
   },
   {
+    id: "aanet",
+    label: "Äänet",
+    icon: "music",
+    experimental: "attention-sound",
+    kw: [
+      "sounds",
+      "ääni",
+      "äänimerkki",
+      "huomioääni",
+      "pling",
+      "kilahdus",
+      "ilmoitus",
+      "notification",
+      "chime",
+    ],
+    rows: [
+      {
+        id: "attention-sound-on",
+        label: "Äänet",
+        kw: ["päällä", "pois", "on", "off"],
+        desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Koskee kaikkia laitteitasi.",
+      },
+      {
+        id: "attention-sound-default",
+        label: "Ääni",
+        kw: ["kalimba", "marimba", "oletusääni", "default sound"],
+        desc: "Kymmenen ääntä; painettu ääni soi ja valitaan.",
+      },
+      {
+        id: "attention-sound-length",
+        label: "Äänten pituus",
+        kw: ["lyhyt", "pitkä", "short", "long", "length"],
+        desc: "Lyhyet tai pitkät, yksi valinta kaikille äänille.",
+      },
+      {
+        id: "attention-sound-in-view",
+        group: "Milloin soi",
+        label: "Keskustelu, jota katsot",
+        kw: ["avoin keskustelu", "open conversation", "hiljaa", "quiet"],
+        desc: "Hiljaa, kun keskustelu on jo edessäsi, tai soi silti.",
+      },
+      {
+        id: "attention-sound-night",
+        group: "Milloin soi",
+        label: "Hiljennä yöllä",
+        kw: ["yö", "night", "tumma tila", "dark mode", "hiljaisuus"],
+        desc: "Ei ääntä, kun laite on yötilassa.",
+      },
+      {
+        id: "attention-sound-workspaces",
+        group: "Työtilojen äänet",
+        label: "Työtilojen äänet",
+        kw: ["työtila", "workspace", "repository", "repo"],
+        desc: "Eri ääni eri työtilalle, jotta kuulet, mikä valmistui.",
+      },
+      {
+        id: "attention-sound-device",
+        group: "Tällä laitteella",
+        label: "Tämän laitteen äänet",
+        kw: ["mykistä", "mute", "hiljennä", "puhelin", "phone"],
+        desc: "Mykistää vain tämän selaimen.",
+      },
+      {
+        id: "attention-sound-volume",
+        group: "Tällä laitteella",
+        label: "Voimakkuus",
+        kw: ["volume", "äänenvoimakkuus", "kovuus", "testaa ääni", "test"],
+        desc: "Tämän selaimen äänenvoimakkuus ja ääniteesti.",
+      },
+    ],
+  },
+  {
     id: "editori",
     label: "Editori",
     icon: "editor",
@@ -624,6 +698,12 @@ export const settingsSections = [
           "memory",
         ],
         desc: "Muistilappu, jonka agentti lukee jokaisen keskustelun alussa.",
+      },
+      {
+        id: "attention-sound",
+        label: "Huomioääni",
+        kw: ["ääni", "sound", "pling", "kilahdus", "chime", "notification"],
+        desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi, ja työtilojen omat äänet.",
       },
     ],
   },

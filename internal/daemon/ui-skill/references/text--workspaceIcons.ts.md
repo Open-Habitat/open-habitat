@@ -9,6 +9,8 @@ import { catalog } from "../i18n";
 // (app/workspaceIcons.ts).
 const fi = {
   repoLogo: "Repon logo",
+  attachedImage: "Liitetty kuva",
+  workspaceImage: "Työtilan kuva",
   whyLogo: "repon logo",
   whyName: "nimestä",
   whyDrawn: "nimestä arvottu",
@@ -22,6 +24,8 @@ const fi = {
 
 export const workspaceIconsText = catalog(fi, {
   repoLogo: "Repository logo",
+  attachedImage: "Attached image",
+  workspaceImage: "Workspace image",
   whyLogo: "repository logo",
   whyName: "from the name",
   whyDrawn: "picked from the name",

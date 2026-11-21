@@ -506,6 +506,10 @@ export interface AgentNavModel {
   activityShortLabel?: string;
   controlLabel: string;
   attentionLabel?: string;
+  /** What made the row the person's turn, when the agent did: a new reply
+   * ("reply:<id>") or a question. A new key is what the attention sound
+   * plays for (attention-sound, experimental). */
+  readyKey?: string;
   operationLabel?: string;
   historyLabel?: string;
   /** When the conversation last changed (the host's changed_at), Unix ms. */
