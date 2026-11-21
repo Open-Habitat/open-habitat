@@ -5214,6 +5214,23 @@ h2.ah-rail-section-head {
 .ah-rail-beyond-chip b {
   font-weight: 600;
 }
+/* Too short for the regions: under about 600 px the rail's head and foot
+   leave less than Työtilat's floor plus a few rows, so the conversations'
+   region shrank to nothing and the clip cut off the rest; a phone held
+   sideways could reach no conversation. Here the rail scrolls as a whole
+   again, as the narrow rail does. */
+@media (max-height: 600px) {
+  .ah-rail-regions {
+    overflow: auto;
+  }
+  .ah-rail-regions :is(.ah-rail-convs, .ah-rail-workspaces) {
+    flex: none;
+    min-height: auto;
+  }
+  .ah-rail-regions :is(.ah-rail-convs, .ah-rail-ws-scroll) {
+    overflow: visible;
+  }
+}
 /* The narrow rail: the Nyt rows as workspace initials with their marks, then
    one button that widens the rail to the workspaces. */
 .ah-rail-collapsed .ah-rail-content {
