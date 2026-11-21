@@ -282,7 +282,7 @@ func (a *Auth) changeMember(w http.ResponseWriter, r *http.Request, s session, i
 	// already holds; if the index cannot follow, an invitation does not
 	// route yet (the owner invites again) and a removal is already refused
 	// by the owner's daemon.
-	if err := a.reconcileShare(s, id, in.Subject, reply); err != nil {
+	if err := a.reconcileShare(s, id, in.Subject, in.Action == "invite", reply); err != nil {
 		safe(w, 503, "shares_unavailable")
 		return
 	}

@@ -26,11 +26,12 @@ import (
 // a record of subject -> state, as the real one does, and is the only thing
 // that decides whether a join succeeds.
 type fakeOwnerDaemon struct {
-	mu      sync.Mutex
-	record  map[string]string
-	dials   []string
-	guests  []*http.Request
-	headers []string
+	mu         sync.Mutex
+	record     map[string]string
+	generation int
+	dials      []string
+	guests     []*http.Request
+	headers    []string
 }
 
 func (d *fakeOwnerDaemon) membersReply(w io.Writer) {
@@ -47,7 +48,7 @@ func (d *fakeOwnerDaemon) membersReply(w io.Writer) {
 	for s, state := range d.record {
 		members = append(members, m{s, "Someone", "participant", state, 1, "2026-11-21T09:00:00Z", "2026-11-21T09:00:00Z"})
 	}
-	json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + membersConv, "generation": 1, "members": members})
+	json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + membersConv, "generation": d.generation, "members": members})
 }
 
 func (d *fakeOwnerDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +67,7 @@ func (d *fakeOwnerDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		var in struct{ Action, Subject string }
 		json.NewDecoder(r.Body).Decode(&in)
+		d.generation++
 		switch in.Action {
 		case "invite":
 			if d.record[in.Subject] == "" {
@@ -360,6 +362,12 @@ func TestWithdrawalDeletesSharesForGood(t *testing.T) {
 	if len(f.shares(t, "b2")) != 0 {
 		t.Fatal("a readmitted person kept a share")
 	}
+	// Changing the rights the owner's record still names is no invitation.
+	f.invite(t, "full_rights", "github:43")
+	f.invite(t, "take_back", "github:43")
+	if len(f.shares(t, "b2")) != 0 {
+		t.Fatal("a rights change recreated a withdrawn person's share")
+	}
 	if w := f.send("b2", "POST", sharedPrefix+old+"/join", ""); w.Code != 404 || !strings.Contains(w.Body.String(), refusal) {
 		t.Fatal("old share admitted a readmitted person", w.Code)
 	}
@@ -385,7 +393,7 @@ func TestShareIndexIsPrivateDurableAndNeverReset(t *testing.T) {
 	if err := os.WriteFile(sessions, []byte("{}"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	reply := []byte(`{"schema_version":1,"members":[{"subject":"github:43","state":"invited"}]}`)
+	reply := []byte(`{"schema_version":1,"generation":1,"members":[{"subject":"github:43","state":"invited"}]}`)
 	list := func(f *shareFixture) (int, []sharedItem) {
 		w := httptest.NewRecorder()
 		f.a.listShared(w, f.a.sessions["b"])
@@ -396,7 +404,7 @@ func TestShareIndexIsPrivateDurableAndNeverReset(t *testing.T) {
 		return w.Code, out.Shares
 	}
 	f := newShareFixture(t, sessions)
-	if err := f.a.reconcileShare(f.a.sessions["a"], membersConv, "github:43", reply); err != nil {
+	if err := f.a.reconcileShare(f.a.sessions["a"], membersConv, "github:43", true, reply); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, shareStoreName)
@@ -420,7 +428,7 @@ func TestShareIndexIsPrivateDurableAndNeverReset(t *testing.T) {
 	if code, _ := list(broken); code != 503 {
 		t.Fatal("damaged index served", code)
 	}
-	if broken.a.reconcileShare(broken.a.sessions["a"], membersConv, "github:43", reply) == nil {
+	if broken.a.reconcileShare(broken.a.sessions["a"], membersConv, "github:43", true, reply) == nil {
 		t.Fatal("invitation recorded without an index")
 	}
 	if b, _ := os.ReadFile(path); string(b) != `{"version":1,"shares":null}` {

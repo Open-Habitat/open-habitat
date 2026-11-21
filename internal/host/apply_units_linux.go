@@ -38,6 +38,11 @@ func legacyApplyUnitPolicies() []policyFile {
 	}
 }
 
+// predecessorOptionalPolicies are unit policies this release added. An
+// authenticated predecessor generation that predates them is still upgraded
+// from: its saved policy list may lack exactly these, and nothing else.
+var predecessorOptionalPolicies = map[string]bool{"/etc/systemd/system/open-habitat-guest@.socket": true}
+
 var productUnitFragments = []string{"open-habitat-proc.service", "open-habitat-storage.service", "open-habitat-binding@.service", "open-habitat-broker.service", "open-habitat-broker.socket", "open-habitat-revoke.socket", "open-habitat-gateway.service", "open-habitat-daemon@.service", "open-habitat-daemon@.socket", "open-habitat-agent@.socket", "open-habitat-guest@.socket"}
 
 func unitSearchPaths(ctx context.Context) ([]string, error) {
@@ -155,7 +160,16 @@ func verifyUnitPolicies(ctx context.Context, policies []policyFile) error {
 	if e = unitOverridesSafe(paths, 0); e != nil {
 		return e
 	}
+	listed := map[string]bool{}
+	for _, p := range policies {
+		listed[p.Path] = true
+	}
 	for _, base := range productUnitFragments {
+		// A predecessor generation that predates a unit has no fragment for
+		// it; only such a unit may be absent from the verified list.
+		if path := "/etc/systemd/system/" + base; predecessorOptionalPolicies[path] && !listed[path] {
+			continue
+		}
 		name := strings.ReplaceAll(base, "@.", "@host-qualification.")
 		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--property=FragmentPath,DropInPaths", name)
 		if e != nil {

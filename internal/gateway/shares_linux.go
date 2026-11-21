@@ -282,10 +282,13 @@ func (a *Auth) newShareID() (string, error) {
 }
 
 // reconcileShare makes the index follow the owner's daemon after a member
-// change it answered: the participant's entry exists, in the record's state,
-// while the record names them, and is deleted once it does not. The daemon's
-// record is the authority; the index only routes.
-func (a *Auth) reconcileShare(owner session, conversation, participant string, reply []byte) error {
+// change it answered: the participant's entry takes the record's state while
+// the record names them, and is deleted once it does not. Only an invitation
+// creates an entry: a withdrawn person's shares are deleted for good while
+// the owner's record may still name them, and changing their rights is no
+// new invitation. The daemon's record is the authority; the index
+// only routes.
+func (a *Auth) reconcileShare(owner session, conversation, participant string, invite bool, reply []byte) error {
 	var record daemonMembers
 	if json.Unmarshal(reply, &record) != nil {
 		return errShareStore
@@ -334,7 +337,7 @@ func (a *Auth) reconcileShare(owner session, conversation, participant string, r
 			next[sid] = v
 			return true
 		}
-		if state == "" || owned >= sharesPerOwner || len(next) >= sharesMax {
+		if state == "" || !invite || owned >= sharesPerOwner || len(next) >= sharesMax {
 			return false
 		}
 		next[id] = shareEntry{ID: id, Owner: owner.identity, OwnerName: name, Conversation: conversation, Participant: participant, State: state, Created: a.now().UTC()}

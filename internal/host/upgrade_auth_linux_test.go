@@ -177,3 +177,32 @@ func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
 		}
 	}
 }
+
+// A predecessor generation saved before the guest socket existed is still a
+// valid predecessor; nothing else may be missing, unknown or doubled.
+func TestPredecessorPoliciesMayLackOnlyNewUnits(t *testing.T) {
+	expected := append(preparePolicies(Site{}), applyUnitPolicies(Site{})...)
+	guest := "/etc/systemd/system/open-habitat-guest@.socket"
+	var before []policyFile
+	for _, p := range expected {
+		if p.Path != guest {
+			before = append(before, p)
+		}
+	}
+	if len(before) != len(expected)-1 {
+		t.Fatal("guest socket policy not shipped")
+	}
+	if !predecessorPolicyPaths(expected, expected) || !predecessorPolicyPaths(before, expected) {
+		t.Fatal("valid predecessor refused")
+	}
+	for name, saved := range map[string][]policyFile{
+		"another unit missing": before[1:],
+		"doubled":              append(slices.Clone(before), before[0]),
+		"unknown":              append(slices.Clone(expected), policyFile{"/etc/systemd/system/other.service", "x"}),
+		"empty content":        append([]policyFile{{before[0].Path, ""}}, before[1:]...),
+	} {
+		if predecessorPolicyPaths(saved, expected) {
+			t.Fatal("accepted:", name)
+		}
+	}
+}

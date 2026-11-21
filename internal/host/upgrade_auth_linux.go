@@ -161,18 +161,10 @@ func predecessorUnitPolicies(s Site) ([]policyFile, error) {
 	if strictJSON(b) != nil || json.Unmarshal(b, &ps) != nil || len(ps) == 0 {
 		return nil, ErrUpgradeTarget
 	}
-	expected := append(preparePolicies(s), applyUnitPolicies(s)...)
-	if len(ps) != len(expected) {
+	if !predecessorPolicyPaths(ps, append(preparePolicies(s), applyUnitPolicies(s)...)) {
 		return nil, ErrUpgradeTarget
 	}
-	names := map[string]bool{}
-	for _, p := range expected {
-		names[p.Path] = true
-	}
 	for i, p := range ps {
-		if !names[p.Path] || p.Content == "" {
-			return nil, ErrUpgradeTarget
-		}
 		// An activated pilot may retain its original immutable generation after
 		// the bounded low-port unit repair. Verify the repaired live policy, not
 		// stale snapshot bytes, without mutating that generation's evidence.
@@ -183,7 +175,28 @@ func predecessorUnitPolicies(s Site) ([]policyFile, error) {
 				ps[i] = repaired
 			}
 		}
-		delete(names, p.Path)
 	}
 	return ps, nil
+}
+
+// predecessorPolicyPaths: each saved policy is one of this release's paths,
+// once and with content, and every path of this release is saved but a unit
+// this release added (predecessorOptionalPolicies).
+func predecessorPolicyPaths(saved, expected []policyFile) bool {
+	names := map[string]bool{}
+	for _, p := range expected {
+		names[p.Path] = true
+	}
+	for _, p := range saved {
+		if !names[p.Path] || p.Content == "" {
+			return false
+		}
+		delete(names, p.Path)
+	}
+	for path := range names {
+		if !predecessorOptionalPolicies[path] {
+			return false
+		}
+	}
+	return true
 }
