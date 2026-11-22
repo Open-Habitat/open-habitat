@@ -36,9 +36,14 @@
 .ah-composer-stack > .ah-composer-hold > .ah-composer > .ah-bg-strip > * {
   width: 100%;
 }
+/* The stack already has the conversation's maximum width; notices share
+   the same inner column as the transcript and composer field. */
+.ah-composer-stack > .ah-wake-bar,
 .ah-composer-stack > .ah-notice-stack {
-  margin-inline: var(--ah-column-pad-inline);
+  width: calc(100% - 2 * var(--ah-column-pad-inline));
+  margin-inline: auto;
 }
+.ah-composer-stack > .ah-wake-bar,
 .ah-composer-stack > .ah-status-check,
 .ah-composer-stack > .ah-recap,
 .ah-composer-stack > .ah-creation-notices,

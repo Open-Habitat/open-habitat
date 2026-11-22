@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
@@ -97,6 +98,33 @@ test("@scheduled-wake the waiting row shows its wake time and the bar moves and 
         .analyze()
     ).violations,
   ).toEqual([]);
+
+  // Notices, turns and the composer share one column even when the frame
+  // is wider than its maximum measure, or narrowed to a phone.
+  for (const width of [1280, 1440, 1920, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect
+      .poll(async () => {
+        const notice = await bar.boundingBox();
+        const composer = await page.locator(".ah-cbox").boundingBox();
+        const turn = await page.getByTestId("agent-turn").last().boundingBox();
+        if (!notice || !composer || !turn) return Number.POSITIVE_INFINITY;
+        return Math.max(
+          ...[composer, turn].flatMap((column) => [
+            Math.abs(notice.x - column.x),
+            Math.abs(notice.x + notice.width - column.x - column.width),
+          ]),
+        );
+      })
+      .toBeLessThanOrEqual(1);
+    if (process.env.OH_WAKE_CAPTURE) {
+      const directory = process.env.OH_WAKE_CAPTURE;
+      await mkdir(directory, { recursive: true });
+      await page.screenshot({ path: `${directory}/wake-${width}.png` });
+      await writeFile(`${directory}/wake-${width}.html`, await page.content());
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // Muuta aikaa…: the person moves it a day on.
   const moved = inDays(3, 10);
