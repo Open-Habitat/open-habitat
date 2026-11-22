@@ -19,7 +19,7 @@ func realBisyncPair(t *testing.T, files map[string]string) (env Env, address, lo
 	t.Helper()
 	tool := os.Getenv("OH_TEST_RCLONE")
 	if tool == "" {
-		t.Skip("set OH_TEST_RCLONE to the disposable rclone v1.71.2 executable")
+		t.Skip("set OH_TEST_RCLONE to the pinned integrations runtime's rclone executable")
 	}
 	env = dropboxEnv(t)
 	env.Config.Tools["rclone"] = tool
@@ -33,6 +33,9 @@ func realBisyncPair(t *testing.T, files map[string]string) (env Env, address, lo
 	}
 	writeFile(t, filepath.Join(env.Home, dropboxDir, address+".conf"), "[dropbox]\ntype = alias\nremote = "+remote+"\n")
 	for name, content := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(remote, name)), 0700); err != nil {
+			t.Fatal(err)
+		}
 		writeFile(t, filepath.Join(remote, name), content)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -125,6 +128,93 @@ func TestBisyncConflictKeepsTheCloudName(t *testing.T) {
 		if got := tree(t, dir); !mapsEqual(got, want) {
 			t.Fatalf("%s side after the conflict: %v", side, got)
 		}
+	}
+}
+
+// A conflict pass must retain the winner in its deletion baseline, not just
+// put the correct bytes on both sides. rclone 1.71.2 removed that name from
+// both listings while accounting for the loser's rename, resurrecting it on
+// the next pass. Exercise the native binary so a pin regression cannot hide
+// behind a command mock.
+func TestBisyncConflictWinnerDeletion(t *testing.T) {
+	for _, tc := range []struct {
+		name, deletedSide    string
+		folder, editSurvivor bool
+	}{
+		{name: "local-file", deletedSide: "local"},
+		{name: "local-folder", deletedSide: "local", folder: true},
+		{name: "cloud-file", deletedSide: "cloud"},
+		{name: "local-delete-cloud-edit", deletedSide: "local", editSurvivor: true},
+		{name: "cloud-delete-local-edit", deletedSide: "cloud", editSurvivor: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Unchanged files keep the intentional folder deletion below the
+			// native mass-delete threshold. No --force or --resync is used.
+			want := map[string]string{
+				"keep-a": "a", "keep-b": "b", "keep-c": "c", "keep-d": "d",
+				"keep-e": "e", "keep-f": "f", "folder/winner.txt": "original",
+				"folder/other.txt": "unchanged",
+			}
+			env, address, local, remote := realBisyncPair(t, want)
+			writeFile(t, filepath.Join(local, "folder/winner.txt"), "local edit")
+			writeFile(t, filepath.Join(remote, "folder/winner.txt"), "cloud winning edit")
+			cmd, ok := dropboxBisync(env, address)
+			if !ok {
+				t.Fatal("no native command")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			run := func() {
+				t.Helper()
+				if out, err := env.run(ctx, cmd, nil); err != nil {
+					t.Fatalf("bisync: %v: %s", err, out)
+				}
+			}
+			day := time.Now()
+			run()
+			if time.Now().Format("2006-01-02") != day.Format("2006-01-02") {
+				t.Skip("the conflict pass crossed midnight")
+			}
+			loser := conflictName("folder/winner", ".txt", day)
+			want["folder/winner.txt"] = "cloud winning edit"
+			want[loser] = "local edit"
+			assertTrees := func() {
+				t.Helper()
+				for side, dir := range map[string]string{"local": local, "cloud": remote} {
+					if got := tree(t, dir); !mapsEqual(got, want) {
+						t.Fatalf("%s: got %v, want %v", side, got, want)
+					}
+				}
+			}
+			assertTrees()
+			deleted, survivor := local, remote
+			if tc.deletedSide == "cloud" {
+				deleted, survivor = remote, local
+			}
+			if tc.folder {
+				if err := os.RemoveAll(filepath.Join(deleted, "folder")); err != nil {
+					t.Fatal(err)
+				}
+				delete(want, loser)
+				delete(want, "folder/other.txt")
+			} else if err := os.Remove(filepath.Join(deleted, "folder/winner.txt")); err != nil {
+				t.Fatal(err)
+			}
+			delete(want, "folder/winner.txt")
+			if tc.editSurvivor {
+				writeFile(t, filepath.Join(survivor, "folder/winner.txt"), "new edit after conflict")
+				want["folder/winner.txt"] = "new edit after conflict"
+			}
+			// These have no shared baseline and must be copied, not deleted.
+			writeFile(t, filepath.Join(local, "local-only.txt"), "new local file")
+			writeFile(t, filepath.Join(remote, "cloud-only.txt"), "new cloud file")
+			want["local-only.txt"] = "new local file"
+			want["cloud-only.txt"] = "new cloud file"
+			run()
+			assertTrees()
+			run()
+			assertTrees()
+		})
 	}
 }
 

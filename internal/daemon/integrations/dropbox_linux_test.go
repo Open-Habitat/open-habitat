@@ -317,7 +317,7 @@ func TestDropboxAvailabilityAndUnsafeHomes(t *testing.T) {
 func TestDropboxNativeBisync(t *testing.T) {
 	tool := os.Getenv("OH_TEST_RCLONE")
 	if tool == "" {
-		t.Skip("set OH_TEST_RCLONE to the disposable rclone v1.71.2 executable")
+		t.Skip("set OH_TEST_RCLONE to the pinned integrations runtime's rclone executable")
 	}
 	env := dropboxEnv(t)
 	env.Config.Tools["rclone"] = tool
@@ -494,7 +494,7 @@ func TestDropboxInterruptedFirstChoiceCanBeRetried(t *testing.T) {
 func TestDropboxNativeOAuthSecret(t *testing.T) {
 	tool := os.Getenv("OH_TEST_RCLONE")
 	if tool == "" {
-		t.Skip("set OH_TEST_RCLONE to the disposable rclone v1.71.2 executable")
+		t.Skip("set OH_TEST_RCLONE to the pinned integrations runtime's rclone executable")
 	}
 	env := dropboxEnv(t)
 	env.Config.Tools["rclone"] = tool

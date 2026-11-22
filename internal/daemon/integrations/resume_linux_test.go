@@ -294,7 +294,7 @@ func TestRemovalStopsTheResumedPass(t *testing.T) {
 func TestResumeWithNativeRclone(t *testing.T) {
 	rclone := os.Getenv("OH_TEST_RCLONE")
 	if rclone == "" {
-		t.Skip("set OH_TEST_RCLONE to the pinned rclone 1.71.2")
+		t.Skip("set OH_TEST_RCLONE to the pinned integrations runtime's rclone executable")
 	}
 	// A restart right after the kill finds an unexpired lock, which the
 	// daemon removes; a later one finds it expired, and rclone takes it over.

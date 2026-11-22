@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/dropbox-conflict-winner-returns-after-delete
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Dropbox: after a conflict, a locally deleted winning file comes back

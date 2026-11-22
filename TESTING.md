@@ -875,7 +875,7 @@ and an outage, a 503 or a failing Graph read `unreachable`. No fixture endpoint
 override exists in the production helper.
 
 Set `OH_TEST_MICROSOFT_RUNTIME` to that disposable `payload/runtime` directory and
-`OH_TEST_RCLONE` to the pinned **1.71.2** executable, then run
+`OH_TEST_RCLONE` to the pinned **1.76.0** executable, then run
 `go test -v -count=1 ./internal/daemon/integrations -run TestMicrosoftSingleGrantNativeRuntime`.
 This connects the catalog's one union-scope request to real MSAL/MCP native stores
 and rclone config reload/refresh/rotation against loopback-only OAuth/Graph

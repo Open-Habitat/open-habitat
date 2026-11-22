@@ -1,0 +1,2 @@
+# Preserve upstream licence text as generated, including trailing spaces.
+runtime/profiles/integrations/*-THIRD-PARTY-NOTICES whitespace=-blank-at-eol
