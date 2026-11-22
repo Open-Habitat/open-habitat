@@ -395,10 +395,7 @@ html[data-explain-mode] {
   }
 }
 
-/* The card's report (explain-mode-feedback, round 3 direction A). A part's
-   card takes the pointer only while the pointer travels from its part onto
-   it, while a report is open, and just after one was sent. */
-.ah-explain-card[data-armed],
+/* A card takes the pointer only while reporting or just after a handoff. */
 .ah-explain-card[data-pinned],
 .ah-explain-card[data-held] {
   pointer-events: auto;
@@ -582,7 +579,7 @@ html[data-explain-mode] {
   color: var(--ah-ok);
 }
 
-/* The following card (explain-follow, experimental; round
+/* The following card (round
    2026-11-22-explain-follow direction A): it trails the pointer with a short
    ease, holds still once F pins it, and never eases where the person asked
    for less motion (the layer does not trail there at all). A touch screen's
@@ -602,14 +599,38 @@ html[data-explain-mode] {
     transition: none;
   }
 }
-/* The report while the card follows is a reminder of the key, not a
-   button: the card never takes the pointer until F pins it. */
-.ah-explain-report.ah-explain-report-key {
-  cursor: default;
+/* Direction B: the reminder and Stop form one row of keys. */
+.ah-explain-bar-f {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0 9px 0 4px;
+  border: 1px solid color-mix(in srgb, var(--ah-bg) 38%, transparent);
+  border-radius: var(--ah-r-pill);
+  background: none;
+  color: var(--ah-bg);
+  font: 600 var(--ah-size-ui) var(--ah-font);
+  white-space: nowrap;
+  cursor: pointer;
 }
-.ah-explain-report.ah-explain-report-key:hover {
-  background: var(--ah-surface);
-  border-color: var(--ah-line-strong);
+.ah-explain-bar-f:hover,
+.ah-explain-bar-f[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--ah-bg) 16%, transparent);
+}
+.ah-explain-bar:has(.ah-explain-bar-f) .ah-explain-stop {
+  margin-left: 0;
+}
+.ah-explain-bar .ah-explain-bar-f kbd {
+  display: inline-block;
+  font-weight: 600;
+}
+@media (hover: none) {
+  .ah-explain-bar-f {
+    display: none;
+  }
 }
 .ah-explain-pinned {
   margin-left: auto;

@@ -44,6 +44,9 @@ const fi = {
     now: "Tilanne",
     showState: "Näytä tilanne",
     stop: "Lopeta",
+    report: "Ilmoita virheestä",
+    reportDescription:
+      "Osoita kohtaa ja paina F, niin ilmoitat sen selityksen virheestä. Napsautus avaa yleisen palautteen Habitatista.",
   },
   card: {
     clickHint: (action: string) => `Napsautus: ${action}.`,
@@ -64,7 +67,7 @@ const fi = {
   feedback: {
     report: "Ilmoita virheestä",
     reportSub: "Selitys on väärin tai puutteellinen",
-    reportKey: "Paina F, niin kortti pysähtyy ja ilmoituskenttä aukeaa",
+    reportKey: "F: ilmoita virheestä tässä selityksessä.",
     dest: "Julkinen GitHub-issue · tarvitset GitHub-tilin",
     label: "Mitä selityksessä pitäisi korjata",
     placeholder: "Mikä on väärin tai mitä puuttuu?",
@@ -2060,6 +2063,9 @@ export const explainModeText = catalog(fi, {
     now: "Now",
     showState: "Show the state",
     stop: "Stop",
+    report: "Report a mistake",
+    reportDescription:
+      "Point at a part and press F to report a mistake in its explanation. A click opens general feedback about Habitat.",
   },
   card: {
     clickHint: (action: string) => `A click: ${action}.`,
@@ -2080,7 +2086,7 @@ export const explainModeText = catalog(fi, {
   feedback: {
     report: "Report a mistake",
     reportSub: "The explanation is wrong or incomplete",
-    reportKey: "Press F to stop the card and open the report field",
+    reportKey: "F: report a mistake in this explanation.",
     dest: "Public GitHub issue · needs a GitHub account",
     label: "What should be fixed in the explanation",
     placeholder: "What is wrong, or what is missing?",

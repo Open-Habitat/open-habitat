@@ -13,7 +13,6 @@ const features = [
   "multiplayer",
   "agent-instructions",
   "attention-sound",
-  "explain-follow",
   "adaptive-rail",
 ];
 const retired = [
@@ -23,6 +22,7 @@ const retired = [
   "rail-background-door",
   "scheduled-wake",
   "explain-mode",
+  "explain-follow",
   "turn-changes",
   "conversation-context-view",
   "shares-page",

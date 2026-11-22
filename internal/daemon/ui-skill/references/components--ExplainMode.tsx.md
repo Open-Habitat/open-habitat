@@ -13,7 +13,6 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useExperimentalFeature } from "../app/accountPreferences";
 import { formatNumber, useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { ControlButton } from "./ControlElements";
@@ -26,6 +25,7 @@ import {
   reportedNow,
 } from "./explainFeedback";
 import { type CardId, hoverOnly, parts, waiting } from "./explainParts";
+import { GeneralFeedback } from "./GeneralFeedback";
 import { Icon } from "./Icon";
 import "./ExplainMode.css";
 import {
@@ -49,16 +49,8 @@ import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
  * lets the pointer through, so production's own hover rules and presses
  * need nothing from it.
  *
- * A part's card ends in "Ilmoita virheestä" (explain-mode-feedback, round 3
- * direction A, on round 2's A Kulkureitti): the card takes the pointer only
- * while the pointer travels from its own part onto it, so its footer can be
- * reached even across other parts, and arriving from anywhere else passes
- * through as before. An open report holds the card until it is sent or
- * cancelled. A focused part explains itself, and F opens the report
- * for typing.
- *
- * With the experimental switch explain-follow (round 2026-11-22-explain-follow
- * direction A, Jari 22.11.2026) the card instead travels beside the pointer
+ * The card (round 2026-11-22-explain-follow direction A, graduated by
+ * Jari 22.11.2026) travels beside the pointer
  * and never takes it: the pointer over the card explains what is under it.
  * Only F pins the card, opening the report field; a click acts on the page
  * as always and never opens the report. The first Esc lets the card go and
@@ -201,7 +193,6 @@ export function useExplainMode(): Mode {
  * card back. */
 export function ExplainMode() {
   const mode = useExplainMode();
-  const follow = useExperimentalFeature("explain-follow");
   const on = !!mode?.on;
   const [situation, setSituation] = useState<Situation | null>(null);
   useEffect(() => {
@@ -244,12 +235,7 @@ export function ExplainMode() {
   if (!mode?.on) return null;
   const state = situation;
   const stateShown = mode.stateShown && !!state;
-  return (
-    <>
-      <ExplainBar situation={state} stateShown={stateShown} />
-      <ExplainLayer situation={state} stateShown={stateShown} follow={follow} />
-    </>
-  );
+  return <ExplainLayer situation={state} stateShown={stateShown} />;
 }
 
 /** The menus' row (Tilivalikko, and ⋯ on a phone): Selitä tämä näkymä. */
@@ -346,9 +332,15 @@ export function ExplainStrip() {
 function ExplainBar({
   situation,
   stateShown,
+  hint,
+  general,
+  onGeneral,
 }: {
   situation: Situation | null;
   stateShown: boolean;
+  hint: ReactNode;
+  general: boolean;
+  onGeneral: () => void;
 }) {
   const t = useText(explainModeText);
   return (
@@ -363,7 +355,10 @@ function ExplainBar({
           data-situation={situation}
           aria-pressed={stateShown}
           title={t.bar.showState}
-          onClick={showState}
+          onClick={() => {
+            if (general) onGeneral();
+            showState();
+          }}
         >
           <i data-dot={dots[situation]} aria-hidden="true" />
           <span>
@@ -374,6 +369,7 @@ function ExplainBar({
         </button>
       ) : null}
       <span className="ah-explain-hint">{t.bar.hint}</span>
+      {hint}
       <button
         type="button"
         className="ah-explain-stop"
@@ -576,28 +572,6 @@ const barBottom = () =>
 
 const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
-/** The path from a part to its card: the hull of the part's edge facing the
- * card and the card's edge facing the part, plus a few pixels. While the
- * pointer is in it, the card holds even over other parts. */
-export function inPath(
-  px: number,
-  py: number,
-  part: Rect,
-  card: { left: number; right: number; top: number; bottom: number },
-): boolean {
-  const below = card.top >= part.y + part.h - 1;
-  // A card that overlaps its part (a large part, a narrow screen) has no
-  // path: there the pointer passes through as before.
-  if (!below && card.bottom > part.y + 1) return false;
-  const y0 = below ? part.y + part.h : card.bottom;
-  const y1 = below ? card.top : part.y;
-  if (py < Math.min(y0, y1) - 4 || py > Math.max(y0, y1) + 4) return false;
-  const k = y1 === y0 ? 0 : Math.min(1, Math.max(0, (py - y0) / (y1 - y0)));
-  const [a0, a1] = below ? [part.x, part.x + part.w] : [card.left, card.right];
-  const [b0, b1] = below ? [card.left, card.right] : [part.x, part.x + part.w];
-  return px >= a0 + (b0 - a0) * k - 4 && px <= a1 + (b1 - a1) * k + 4;
-}
-
 type Point = { x: number; y: number };
 const within = (p: Point, r: DOMRect, pad: number) =>
   p.x >= r.left - pad &&
@@ -671,37 +645,17 @@ export function placeBeside(
   }
 }
 
-/** The report row of a following card: a reminder of F rather than a
- * button, because the card never takes the pointer until F pins it. Kept in
- * this one place for its own round (explain-f-reminder). */
-function ReportKey() {
-  const f = useText(explainModeText).feedback;
-  return (
-    <div
-      className="ah-explain-report ah-explain-report-key"
-      data-testid="explain-report-key"
-    >
-      <Icon name="warning" aria-hidden="true" />
-      <span className="ah-explain-report-label">
-        <b>{f.report}</b>
-        <small>{f.reportKey}</small>
-      </span>
-      <kbd>F</kbd>
-    </div>
-  );
-}
-
 function ExplainLayer({
   situation,
   stateShown,
-  follow,
 }: {
   situation: Situation | null;
   stateShown: boolean;
-  follow: boolean;
 }) {
   const t = useText(explainModeText);
   const [target, setTarget] = useState<Target | null>(null);
+  const [general, setGeneral] = useState(false);
+  const hintButton = useRef<HTMLButtonElement>(null);
   // Over empty space the last card stays, quieter, so it does not flicker
   // while the pointer crosses the gaps between parts.
   const [linger, setLinger] = useState(false);
@@ -711,7 +665,6 @@ function ExplainLayer({
   const [touch, setTouch] = useState(
     () => window.matchMedia?.("(hover: none)").matches ?? false,
   );
-  const [pointer, setPointer] = useState<number>();
   const [, setTick] = useState(0);
   // The report on the showing card: open with its text, or just sent.
   const [open, setOpen] = useState(false);
@@ -734,9 +687,7 @@ function ExplainLayer({
     id: CardId;
     issue: FeedbackIssue;
   } | null>(null);
-  // F, or focus inside the card, holds it as an open report does.
-  const [keyHold, setKeyHold] = useState(false);
-  const pinned = open || keyHold;
+  const pinned = open;
   const card = useRef<HTMLDivElement>(null);
   // Where focus goes once the card has rendered: in the same commit, so
   // keys typed right after F or Enter land in the field rather than before it.
@@ -759,29 +710,29 @@ function ExplainLayer({
       ?.focus({ preventScroll: true });
   });
   const live = useRef({
+    general,
     target,
     stateShown,
     touch,
     pinned,
     note,
-    follow,
     shown: null as Target | null,
   });
   live.current = {
     ...live.current,
+    general,
     target,
     stateShown,
     touch,
     pinned,
     note,
-    follow,
   };
   /** Places a following card beside the pointer now, outside React's
    * renders, so trailing the pointer re-renders nothing. */
   const trail = useCallback(() => {
     const el = card.current;
     const s = live.current;
-    if (!el || !s.shown || !s.follow || s.pinned) return;
+    if (!el || !s.shown || s.pinned) return;
     if (sentBox.current && el.dataset.placed === s.shown.id) return;
     const moved = placedFor.current !== s.shown.el;
     placedFor.current = s.shown.el;
@@ -789,7 +740,7 @@ function ExplainLayer({
     el.dataset.placed = s.shown.id;
   }, []);
 
-  const showState = stateShown && !!situation && !target;
+  const showState = stateShown && !!situation && !target && !general;
   // The state card comes back when the bar asks for it…
   useEffect(() => {
     if (stateShown) {
@@ -806,7 +757,6 @@ function ExplainLayer({
     setNeed(false);
     setWhat(false);
     setDone(null);
-    setKeyHold(false);
     sentBox.current = null;
     if (live.current.stateShown) hideState();
   }, []);
@@ -816,7 +766,6 @@ function ExplainLayer({
     setNeed(false);
     setWhat(false);
     setNudge(false);
-    setKeyHold(false);
     // A following card that lets go goes back beside the pointer at once.
     placedFor.current = null;
     const focused = document.activeElement;
@@ -847,11 +796,9 @@ function ExplainLayer({
   useEffect(() => {
     let frame = 0;
     let at: { x: number; y: number } | null = null;
-    const armed = (on: boolean) =>
-      card.current?.toggleAttribute("data-armed", on);
     const move = () => {
       frame = 0;
-      if (!at) return;
+      if (!at || live.current.general) return;
       const found = hit(at.x, at.y);
       if (found === "own") {
         if (live.current.target) setLinger(false);
@@ -868,40 +815,18 @@ function ExplainLayer({
         )
           return;
         sentBox.current = null;
-        if (live.current.follow) card.current?.removeAttribute("data-held");
+        card.current?.removeAttribute("data-held");
       }
       // An open report holds its card: parts passed on the way do not take
       // it.
       if (live.current.pinned) return;
       // A following card never takes the pointer: a part under it is
       // pointed at like any other.
-      if (live.current.follow) {
-        if (found) {
-          if (live.current.target?.el !== found.el) pointAt(found);
-          else setLinger(false);
-        } else if (live.current.target) setLinger(true);
-        trail();
-        return;
-      }
-      const now = live.current.shown;
-      const box = card.current?.getBoundingClientRect();
-      // Travelling from the part onto its card keeps the card.
-      if (
-        now &&
-        box &&
-        found?.el !== now.el &&
-        inPath(at.x, at.y, now.rect, box)
-      ) {
-        armed(true);
-        setLinger(false);
-        return;
-      }
-      armed(!!found && found.el === now?.el);
       if (found) {
         if (live.current.target?.el !== found.el) pointAt(found);
         else setLinger(false);
-        setPointer(at.x);
       } else if (live.current.target) setLinger(true);
+      trail();
     };
     const onMove = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
@@ -921,6 +846,7 @@ function ExplainLayer({
     };
     const onDown = (event: PointerEvent) => {
       gesture = null;
+      if (live.current.general) return;
       const touchPress = event.pointerType === "touch";
       setTouch(touchPress);
       if (!(event.target instanceof Element) || event.target.closest(OWN))
@@ -969,6 +895,12 @@ function ExplainLayer({
       gesture = null;
     };
     const onKey = (event: KeyboardEvent) => {
+      // The panel owns Escape and F; lasting actions elsewhere must still wait.
+      if (
+        live.current.general &&
+        (event.key === "Escape" || event.code === "KeyF")
+      )
+        return;
       const focused = document.activeElement;
       if (event.key === "Escape") {
         // An open menu or dialog takes its own Esc first.
@@ -1000,23 +932,11 @@ function ExplainLayer({
         !(focused instanceof HTMLElement && focused.isContentEditable)
       ) {
         block(event);
-        const report = card.current?.querySelector<HTMLButtonElement>(
-          '[data-testid="explain-report"]',
-        );
-        if (live.current.follow) {
-          // F pins a following card and opens its report field; pressed on
-          // an open report, it takes focus back to the field.
-          setDone(null);
-          sentBox.current = null;
-          setOpen(true);
-          focusNext.current = "textarea";
-          setTick((n) => n + 1);
-        } else if (report) report.click();
-        else {
-          setKeyHold(true);
-          focusNext.current = 'textarea, [data-testid="explain-feedback-done"]';
-          setTick((n) => n + 1);
-        }
+        setDone(null);
+        sentBox.current = null;
+        setOpen(true);
+        focusNext.current = "textarea";
+        setTick((n) => n + 1);
         return;
       }
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -1034,18 +954,13 @@ function ExplainLayer({
     // Keyboard: a part focused from the keyboard explains itself, as a
     // pointed one does. Focus leaving the card lets go of F's hold.
     const onFocus = (event: FocusEvent) => {
+      if (live.current.general) return;
       const el = event.target;
       if (!(el instanceof Element)) return;
       if (card.current?.contains(el)) return;
-      setKeyHold(false);
       // Focus leaving a following card's empty report lets the card go; a
       // written one holds it.
-      if (
-        live.current.follow &&
-        live.current.pinned &&
-        !live.current.note.trim() &&
-        !el.closest(OWN)
-      )
+      if (live.current.pinned && !live.current.note.trim() && !el.closest(OWN))
         cancel();
       else if (live.current.pinned) return;
       if (el.closest(OWN)) return;
@@ -1059,7 +974,6 @@ function ExplainLayer({
       if (!id || live.current.target?.el === el) return;
       const rect = visibleRect(el, new Map());
       if (!rect) return;
-      setPointer(undefined);
       followAt.current = null;
       pointAt({ id, el, rect });
     };
@@ -1119,7 +1033,7 @@ function ExplainLayer({
   }, []);
 
   // Re-measure on every render the tick or a change asked for.
-  const shown = target ? find(target.id, target.el) : null;
+  const shown = target && !general ? find(target.id, target.el) : null;
   live.current.shown = shown;
   useLayoutEffect(() => {
     if (target && !shown) setTarget(null);
@@ -1162,26 +1076,7 @@ function ExplainLayer({
         }
         return;
       }
-      if (follow) {
-        trail();
-        return;
-      }
-      const gap = 10;
-      const r = shown.rect;
-      const cx =
-        !live.current.touch && pointer !== undefined ? pointer : r.x + r.w / 2;
-      x = Math.min(Math.max(8, cx - w / 2), vw - w - 8);
-      y = r.y + r.h + gap;
-      if (y + h > vh - 8) y = r.y - h - gap;
-      if (y < top) y = Math.min(vh - h - 8, Math.max(top, r.y + r.h + gap));
-      y = Math.max(top, y);
-      // A card above its part hangs from its bottom edge, so an opening
-      // report grows away from the part and stays on screen.
-      const above = y < r.y + r.h;
-      el.style.left = `${Math.round(x)}px`;
-      el.style.top = above ? "auto" : `${Math.round(y)}px`;
-      el.style.bottom = above ? `${Math.round(vh - y - h)}px` : "auto";
-      el.dataset.placed = shown.id;
+      trail();
       return;
     } else {
       const keep = [anchor, ...rows.map((row) => row.part.rect)].filter(
@@ -1315,10 +1210,12 @@ function ExplainLayer({
           </button>
         </div>
       );
-    } else if (!open && follow && !touch) {
+    } else if (!open && !touch) {
       report = (
         <>
-          <ReportKey />
+          <span className="ah-visually-hidden" data-testid="explain-report-sr">
+            {f.reportKey}
+          </span>
           {reportedNow.has(id) ? (
             <p className="ah-explain-meta">{f.reported}</p>
           ) : null}
@@ -1333,7 +1230,6 @@ function ExplainLayer({
             data-testid="explain-report"
             aria-keyshortcuts={touch ? undefined : "F"}
             onClick={() => {
-              setKeyHold(false);
               setOpen(true);
               focusNext.current = "textarea";
             }}
@@ -1417,7 +1313,6 @@ function ExplainLayer({
                 setNote("");
                 setNeed(false);
                 setWhat(false);
-                setKeyHold(false);
                 setDone({ id, issue });
                 focusNext.current = '[data-testid="explain-feedback-done"]';
               }}
@@ -1477,17 +1372,15 @@ function ExplainLayer({
         data-card={shown.id}
         data-touch={touch || undefined}
         data-pinned={pinned || undefined}
-        data-held={
-          (done?.id === id && (!follow || !!sentBox.current)) || undefined
-        }
-        data-follow={follow || undefined}
+        data-held={(done?.id === id && !!sentBox.current) || undefined}
+        data-follow="true"
         data-nudge={nudge || undefined}
         aria-live="polite"
       >
         <div className="ah-explain-top">
           <span className="ah-explain-kind">{t.kinds[part.kind]}</span>
           {part.key ? <kbd>{part.key}</kbd> : null}
-          {follow && pinned && !touch ? (
+          {pinned && !touch ? (
             <span className="ah-explain-pinned" data-testid="explain-pinned">
               {t.card.pinned} · <kbd>Esc</kbd>
             </span>
@@ -1526,7 +1419,11 @@ function ExplainLayer({
           <p className="ah-explain-note">{t.card.onlyHover}</p>
         ) : null}
         {foot}
-        <div className="ah-explain-feedback">{report}</div>
+        {!touch && !open && !done ? (
+          report
+        ) : (
+          <div className="ah-explain-feedback">{report}</div>
+        )}
       </div>
     );
   } else if (showState && situation) {
@@ -1607,24 +1504,74 @@ function ExplainLayer({
   // Above everything the view puts on top of itself (menus, lists), so a
   // menu row's card is not hidden under its menu; below the bar, which
   // stays undimmed.
-  return createPortal(
+  return (
     <>
-      <div
-        className="ah-explain-ui ah-explain-layer"
-        style={{ top: offset }}
-        aria-hidden="true"
-      >
-        {dim}
-        {flash ? hole(flash, "ah-explain-flash") : null}
-      </div>
-      {body}
-      {toast ? (
-        <div className="ah-explain-ui ah-explain-toast" role="status">
-          {toast}
-        </div>
-      ) : null}
-    </>,
-    document.body,
+      <ExplainBar
+        situation={situation}
+        stateShown={stateShown && !general}
+        general={general}
+        onGeneral={() => setGeneral(false)}
+        hint={
+          !touch && !pinned ? (
+            <>
+              <button
+                ref={hintButton}
+                type="button"
+                className="ah-explain-bar-f"
+                data-testid="explain-bar-f"
+                data-explain-own=""
+                aria-haspopup="dialog"
+                aria-expanded={general}
+                aria-describedby="ah-explain-f-description"
+                onClick={() => {
+                  if (general) {
+                    setGeneral(false);
+                    return;
+                  }
+                  cancel();
+                  setDone(null);
+                  setTarget(null);
+                  hideState();
+                  setGeneral(true);
+                }}
+              >
+                <kbd>F</kbd>
+                {t.bar.report}
+              </button>
+              <span id="ah-explain-f-description" hidden>
+                {t.bar.reportDescription}
+              </span>
+            </>
+          ) : null
+        }
+      />
+      {createPortal(
+        <>
+          {general ? (
+            <GeneralFeedback
+              anchor={hintButton}
+              onClose={() => setGeneral(false)}
+              explain
+            />
+          ) : null}
+          <div
+            className="ah-explain-ui ah-explain-layer"
+            style={{ top: offset }}
+            aria-hidden="true"
+          >
+            {dim}
+            {flash ? hole(flash, "ah-explain-flash") : null}
+          </div>
+          {body}
+          {toast ? (
+            <div className="ah-explain-ui ah-explain-toast" role="status">
+              {toast}
+            </div>
+          ) : null}
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
 

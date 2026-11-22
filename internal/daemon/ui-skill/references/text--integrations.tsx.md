@@ -98,7 +98,9 @@ const fi = {
   cloudFolder:
     "Dropboxin synkronoitu kansio välittää tiedostoja oman koneesi ja agentin välillä. Jaa siellä esimerkiksi kuvakaappauksia, tai pyydä agenttia tallentamaan sinne sähköpostiliitteet, jotka haluat omalle koneellesi. Synkronoi sama kansio myös omalla koneellasi.",
   onDemandFiles:
-    "Agentit etsivät tiedostoja Microsoftin haulla ja noutavat tarvitsemansa kotihakemistoosi. Mitään ei synkronoida, eivätkä muutokset palaa palveluun.",
+    "Agentit etsivät tiedostoja Microsoftin haulla ja noutavat tarvitsemansa kotihakemistoosi. Vain luku: paikalliset muutokset eivät palaa palveluun. Kirjoittaminen vaatii tason Täysi tai Kaikki paitsi postin lähetys.",
+  onDemandFilesWrite:
+    "Agentit etsivät tiedostoja Microsoftin haulla ja noutavat tarvitsemansa. Ne voivat tallentaa tiedostoja OneDriveen ja SharePointiin, luoda kansioita sekä siirtää, nimetä ja kopioida tiedostoja. Poistaminen ja jakaminen kysyvät ensin luvan. Noudetun kopion muokkaus ei yksin tallenna sitä takaisin, eikä kokonaisia kirjastoja synkronoida. Jos ylläpitäjä lisäsi oikeuksia, kirjaudu yhteyteen uudelleen, jotta agentti saa ne käyttöönsä.",
   notGranted: "Ei myönnetty. Agentit eivät pääse tähän.",
   drafts: "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.",
   readFiles:
@@ -711,7 +713,9 @@ export const integrationsText = catalog(
     cloudFolder:
       "A synchronized Dropbox folder passes files between your own computer and the agent. Share screenshots there, for example, or ask the agent to save email attachments you want on your own computer there. Synchronize the same folder on your own computer too.",
     onDemandFiles:
-      "Agents find files with Microsoft's search and fetch the ones they need into your home directory. Nothing is synchronized, and changes do not go back to the service.",
+      "Agents find files with Microsoft's search and fetch the ones they need into your home directory. Read only: local edits do not go back to the service. Writing requires Full or Everything but sending mail.",
+    onDemandFilesWrite:
+      "Agents find files with Microsoft's search and fetch what they need. They can save files to OneDrive and SharePoint, create folders, and move, rename and copy files. Deleting and sharing ask permission first. Editing a fetched copy does not itself save it back, and whole libraries are not synchronized. If an administrator added permissions, sign in to the connection again so the agent can use them.",
     notGranted: "Not granted. Agents cannot reach this.",
     drafts: "Reads, organizes and writes drafts. Cannot send.",
     readFiles:

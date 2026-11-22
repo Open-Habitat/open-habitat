@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { inPath } from "./ExplainMode";
-import { feedbackIssue, feedbackText, NOTE_MAX } from "./explainFeedback";
+import {
+  feedbackIssue,
+  feedbackText,
+  generalFeedbackIssue,
+  NOTE_MAX,
+} from "./explainFeedback";
 
 describe("feedbackIssue", () => {
   it("opens the issue form with the text, card, version and language only", () => {
@@ -38,24 +42,21 @@ describe("feedbackIssue", () => {
   });
 });
 
-describe("inPath", () => {
-  const part = { x: 100, y: 100, w: 40, h: 20 };
-  it("holds between the part and a card below it, and nowhere else", () => {
-    const card = { left: 60, right: 380, top: 130, bottom: 300 };
-    expect(inPath(120, 125, part, card)).toBe(true);
-    expect(inPath(300, 129, part, card)).toBe(true);
-    expect(inPath(300, 121, part, card)).toBe(false);
-    expect(inPath(120, 90, part, card)).toBe(false);
-  });
-  it("has no path when the card overlaps its part", () => {
-    const card = { left: 60, right: 380, top: 110, bottom: 300 };
-    expect(inPath(120, 115, part, card)).toBe(false);
-    expect(inPath(120, 105, part, card)).toBe(false);
-  });
-  it("holds between the part and a card above it", () => {
-    const card = { left: 60, right: 380, top: 0, bottom: 90 };
-    expect(inPath(120, 95, part, card)).toBe(true);
-    expect(inPath(350, 91, part, card)).toBe(true);
-    expect(inPath(370, 99, part, card)).toBe(false);
-  });
+it("general feedback carries only the person's note, version and language, never a card", () => {
+  const issue = generalFeedbackIssue("  A & B?  ", "0.4.2", "en-GB");
+  const url = new URL(issue.url);
+  expect([...url.searchParams.keys()].sort()).toEqual([
+    "fix",
+    "language",
+    "template",
+    "title",
+    "version",
+  ]);
+  expect(url.searchParams.get("template")).toBe("general-feedback.yml");
+  expect(url.searchParams.get("fix")).toBe("A & B?");
+  expect(url.searchParams.get("language")).toBe("en-GB");
+  expect(feedbackText(issue)).not.toContain("Card:");
+  expect(
+    generalFeedbackIssue("x".repeat(1300), undefined).fields.fix,
+  ).toHaveLength(1200);
 });

@@ -22,7 +22,7 @@ export const NOTE_MAX = 600;
 
 export type FeedbackIssue = {
   title: string;
-  fields: { fix: string; card: string; version: string; language: string };
+  fields: { fix: string; card?: string; version: string; language: string };
   url: string;
 };
 
@@ -55,6 +55,32 @@ export function feedbackIssue(
   };
 }
 
+export const GENERAL_NOTE_MAX = 1200;
+
+/** General feedback deliberately has no selected part or page context. */
+export function generalFeedbackIssue(
+  note: string,
+  version: string | undefined,
+  language: string = currentLanguage(),
+): FeedbackIssue {
+  const title = "Feedback about Habitat";
+  const fields = {
+    fix: note.trim().slice(0, GENERAL_NOTE_MAX),
+    version: version || "unknown",
+    language,
+  };
+  const query = new URLSearchParams({
+    template: "general-feedback.yml",
+    title,
+    ...fields,
+  });
+  return {
+    title,
+    fields,
+    url: `https://github.com/${FEEDBACK_REPO}/issues/new?${query}`,
+  };
+}
+
 /** The issue as plain text, for Copy text and the preview. */
 export function feedbackText(issue: FeedbackIssue): string {
   const f = issue.fields;
@@ -63,7 +89,7 @@ export function feedbackText(issue: FeedbackIssue): string {
     "",
     f.fix,
     "",
-    `Card: ${f.card}`,
+    ...(f.card ? [`Card: ${f.card}`] : []),
     `Open Habitat ${f.version} · ${f.language}`,
   ].join("\n");
 }

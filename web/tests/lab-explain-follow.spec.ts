@@ -1,8 +1,10 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { snapshot as capture } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-// Selitystila with the experimental explain-follow switch on: the card
+// Selitystila's default following card: the card
 // travels beside the pointer and never takes it, only F pins it into its
 // report, a click acts as always, and Esc lets go before it ends the mode.
 // Through the real gateway and daemon with the synthetic Pi; cards are found
@@ -20,19 +22,6 @@ async function signIn(page: Page) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const session = await (await page.request.get("/auth/session")).json();
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: {
-          Origin: new URL(page.url()).origin,
-          "X-Agent-Host-CSRF": session.csrf,
-        },
-        data: { experimental: { "explain-follow": true } },
-      })
-    ).ok(),
-  ).toBe(true);
-  await page.reload();
 }
 
 async function answered(page: Page) {
@@ -73,6 +62,95 @@ const under = (
   b: { x: number; y: number; width: number; height: number },
 ) => p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
 
+for (const locale of ["fi-FI", "en-US"]) {
+  test.describe(`general feedback ${locale}`, () => {
+    test.use({ locale });
+    test("@lab @explain-follow general feedback releases the card and opens a part-free issue", async ({
+      page,
+    }) => {
+      await signIn(page);
+      await answered(page);
+      await page
+        .context()
+        .route("https://github.com/**", (route) =>
+          route.fulfill({ body: "synthetic GitHub" }),
+        );
+      await page.getByTestId("explain-toggle").click();
+      const ring = await centre(page, "context-ring");
+      await page.mouse.move(ring.x, ring.y);
+      await expect(card(page)).toHaveAttribute("data-card", "Y05");
+      const hint = page.getByTestId("explain-bar-f");
+      await hint.focus();
+      await page.keyboard.press("Enter");
+      await expect(card(page)).toHaveCount(0);
+      const field = page.getByTestId("general-text");
+      await expect(field).toBeFocused();
+      await field.fill("Synthetic general feedback");
+      const outside = await centre(page, "message-input");
+      await page.mouse.click(outside.x, outside.y);
+      await expect(page.getByTestId("general-nudge")).toBeVisible();
+      await expect(field).toHaveValue("Synthetic general feedback");
+      await expect(card(page)).toHaveCount(0);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="general-feedback"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      if (process.env.OH_F_HINT_CAPTURE) {
+        for (const theme of ["light", "dark", "contrast"]) {
+          await page.evaluate((value) => {
+            document.documentElement.dataset.theme = value;
+          }, theme);
+          await capture(
+            page,
+            `${process.env.OH_F_HINT_CAPTURE}/general-${locale}-${theme}`,
+          );
+        }
+        await page.evaluate(() => {
+          document.documentElement.dataset.theme = "light";
+        });
+      }
+      await page.setViewportSize({ width: 700, height: 700 });
+      const h = await hint.boundingBox();
+      const stop = await page.getByTestId("explain-stop").boundingBox();
+      if (!h || !stop) throw new Error("bar controls have no box");
+      expect(h.x + h.width).toBeLessThanOrEqual(stop.x);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      if (process.env.OH_F_HINT_CAPTURE)
+        await capture(
+          page,
+          `${process.env.OH_F_HINT_CAPTURE}/general-${locale}-narrow`,
+        );
+      const [popup] = await Promise.all([
+        page.context().waitForEvent("page"),
+        page.getByTestId("general-send").click(),
+      ]);
+      const url = new URL(popup.url());
+      expect(url.searchParams.get("fix")).toBe("Synthetic general feedback");
+      expect(url.searchParams.get("template")).toBe("general-feedback.yml");
+      expect(url.searchParams.has("card")).toBe(false);
+      await popup.close();
+      await page.keyboard.press("Escape");
+      await expect(hint).toBeFocused();
+      await expect(bar(page)).toBeVisible();
+      await page.keyboard.press("Enter");
+      await expect(field).toBeFocused();
+      const away = await centre(page, "message-input");
+      await page.mouse.click(away.x, away.y);
+      await expect(page.getByTestId("general-feedback")).toHaveCount(0);
+      await expect(bar(page)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(bar(page)).toHaveCount(0);
+    });
+  });
+}
+
 test.describe("motion allowed", () => {
   test.use({ reducedMotion: "no-preference" });
 
@@ -90,7 +168,8 @@ test.describe("motion allowed", () => {
     await page.mouse.move(ring.x, ring.y);
     await expect(card(page)).toHaveAttribute("data-card", "Y05");
     await expect(card(page)).toHaveAttribute("data-follow", "true");
-    await expect(page.getByTestId("explain-report-key")).toBeVisible();
+    await expect(page.getByTestId("explain-report-key")).toHaveCount(0);
+    await expect(page.getByTestId("explain-bar-f")).toBeVisible();
     await expect(page.getByTestId("explain-report")).toHaveCount(0);
     const input = await centre(page, "message-input");
     const p = { x: input.x + 200, y: input.y };

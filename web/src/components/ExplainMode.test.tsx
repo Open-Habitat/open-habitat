@@ -4,14 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExplainMode, placeBeside, readSituation } from "./ExplainMode";
 import { start, stop } from "./explainModeState";
 
-// The explain-follow switch, per test.
-const flags = vi.hoisted(() => ({ follow: false }));
-vi.mock("../app/accountPreferences", async (original) => ({
-  ...(await original<typeof import("../app/accountPreferences")>()),
-  useExperimentalFeature: (id: string) =>
-    id === "explain-follow" && flags.follow,
-}));
-
 vi.mock("./explainFeedback", async (original) => ({
   ...(await original<typeof import("./explainFeedback")>()),
   readVersion: () => Promise.resolve("test"),
@@ -30,7 +22,6 @@ const view = (activity: string, body = "", header = "") => {
 afterEach(() => {
   cleanup();
   stop();
-  flags.follow = false;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -73,6 +64,55 @@ it("F opens the report for immediate typing without inserting the shortcut", asy
   expect(screen.queryByTestId("explain-card")).not.toBeNull();
   await user.keyboard("{Escape}");
   expect(screen.queryByTestId("explain-card")).toBeNull();
+});
+
+it("the bar opens general feedback without the selected part, keeps drafts on outside presses, and restores focus", async () => {
+  const user = userEvent.setup();
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
+  Object.defineProperty(document, "elementsFromPoint", {
+    configurable: true,
+    value: () => [],
+  });
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(100, 100, 120, 40),
+  );
+  render(
+    <>
+      <button type="button" data-testid="context-ring">
+        Context
+      </button>
+      <ExplainMode />
+    </>,
+  );
+  act(() => start());
+  await user.tab();
+  expect(screen.queryByTestId("explain-card")).not.toBeNull();
+  await user.click(screen.getByTestId("explain-bar-f"));
+  expect(screen.queryByTestId("explain-card")).toBeNull();
+  const field = screen.getByTestId<HTMLTextAreaElement>("general-text");
+  expect(document.activeElement).toBe(field);
+  await user.keyboard("Feedback F");
+  await user.click(screen.getByTestId("context-ring"));
+  expect(field.value).toBe("Feedback F");
+  expect(screen.queryByTestId("general-nudge")).not.toBeNull();
+  expect(screen.queryByTestId("explain-card")).toBeNull();
+  await user.click(screen.getByTestId("general-send"));
+  const url = new URL(open.mock.calls[0][0] as string);
+  expect(url.searchParams.get("fix")).toBe("Feedback F");
+  expect(url.searchParams.has("card")).toBe(false);
+  expect(open.mock.calls[0].slice(1)).toEqual([
+    "_blank",
+    "noopener,noreferrer",
+  ]);
+  await user.keyboard("{Escape}");
+  expect(screen.queryByTestId("general-feedback")).toBeNull();
+  expect(document.activeElement).toBe(screen.getByTestId("explain-bar-f"));
+  await user.keyboard("{Enter}");
+  expect(screen.getByTestId<HTMLTextAreaElement>("general-text").value).toBe(
+    "",
+  );
+  await user.keyboard("{Escape}{Escape}");
+  expect(screen.queryByTestId("explain-bar")).toBeNull();
 });
 
 describe("readSituation", () => {
@@ -146,18 +186,7 @@ describe("explain-follow", () => {
     act(() => start());
   };
 
-  it("off: the card keeps its report button and does not follow", async () => {
-    const user = userEvent.setup();
-    setup();
-    await user.tab();
-    const card = screen.getByTestId("explain-card");
-    expect(card.hasAttribute("data-follow")).toBe(false);
-    expect(screen.queryByTestId("explain-report")).not.toBeNull();
-    expect(screen.queryByTestId("explain-report-key")).toBeNull();
-  });
-
-  it("on: F alone pins the card into its report; Esc lets go, a second Esc ends", async () => {
-    flags.follow = true;
+  it("F alone pins the card into its report; Esc lets go, a second Esc ends", async () => {
     const user = userEvent.setup();
     setup();
     await user.tab();
@@ -165,7 +194,8 @@ describe("explain-follow", () => {
     expect(card.hasAttribute("data-follow")).toBe(true);
     // No report button to press: the card never takes the pointer.
     expect(screen.queryByTestId("explain-report")).toBeNull();
-    expect(screen.queryByTestId("explain-report-key")).not.toBeNull();
+    expect(screen.queryByTestId("explain-report-key")).toBeNull();
+    expect(screen.queryByTestId("explain-report-sr")).not.toBeNull();
     // Keyboard focus puts the card below the part.
     expect(Number.parseInt(card.style.top, 10)).toBeGreaterThanOrEqual(140);
     await user.keyboard("fWrong");
@@ -184,8 +214,7 @@ describe("explain-follow", () => {
     expect(screen.queryByTestId("explain-card")).toBeNull();
   });
 
-  it("on: focus leaving an empty report lets the card go; a written one holds", async () => {
-    flags.follow = true;
+  it("focus leaving an empty report lets the card go; a written one holds", async () => {
     const user = userEvent.setup();
     setup();
     await user.tab();

@@ -357,36 +357,6 @@ test("@lab explain mode starts from the account menu anywhere and from the start
   await expect(page.getByTestId("explain-strip")).toHaveCount(0);
 });
 
-/** Moves the mouse in a straight line, sampling the card at every step:
- * it must stay the given card the whole way. */
-async function travel(
-  page: Page,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  cardId: string,
-) {
-  const steps = 24;
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(
-      from.x + ((to.x - from.x) * i) / steps,
-      from.y + ((to.y - from.y) * i) / steps,
-    );
-    await page.evaluate(
-      () => new Promise((done) => requestAnimationFrame(() => done(null))),
-    );
-    expect(
-      await card(page).getAttribute("data-card"),
-      `step ${i} of ${steps}`,
-    ).toBe(cardId);
-  }
-}
-
-const centre = async (page: Page, testId: string) => {
-  const box = await page.getByTestId(testId).last().boundingBox();
-  if (!box) throw new Error(`${testId} has no box`);
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-};
-
 /** GitHub stands in for itself: the new tab is answered locally. */
 async function fakeGitHub(page: Page) {
   await page
@@ -396,7 +366,7 @@ async function fakeGitHub(page: Page) {
     );
 }
 
-test("@lab @explain-feedback the card holds on the way to its footer and a written report opens a prefilled GitHub issue", async ({
+test("@lab @explain-feedback a written report opens a prefilled GitHub issue", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -407,60 +377,10 @@ test("@lab @explain-feedback the card holds on the way to its footer and a writt
   await page.getByTestId("explain-toggle").click();
   await expect(bar(page)).toBeVisible();
 
-  // The attach button's card sits above it, over the message field: the
-  // straight path from the button to the card's footer crosses the field,
-  // and the card holds all the way.
-  const attach = await centre(page, "attach-file");
-  await page.mouse.move(attach.x, attach.y);
-  await expect(card(page)).toHaveAttribute("data-card", "V02");
-  const report = page.getByTestId("explain-report");
-  const reportBox = await report.boundingBox();
-  const attachBox = await page.getByTestId("attach-file").last().boundingBox();
-  if (!reportBox || !attachBox) throw new Error("no report or attach box");
-  expect(reportBox.y + reportBox.height).toBeLessThan(attachBox.y);
-  const target = {
-    x: reportBox.x + reportBox.width / 2,
-    y: reportBox.y + reportBox.height / 2,
-  };
-  await travel(page, attach, target, "V02");
-  await expect(report).toBeVisible();
-
-  // The context ring's card is below it; the same holds downwards.
-  await page.mouse.move(8, 450);
-  const ring = await centre(page, "context-ring");
-  await page.mouse.move(ring.x, ring.y);
+  // F opens the report; pointer-following and pass-through are exercised
+  // in lab-explain-follow. Keep the real handoff and privacy checks here.
+  await pointAt(page, "context-ring");
   await expect(card(page)).toHaveAttribute("data-card", "Y05");
-  const ringReport = await report.boundingBox();
-  if (!ringReport) throw new Error("no report box");
-  await travel(
-    page,
-    ring,
-    {
-      x: ringReport.x + ringReport.width / 2,
-      y: ringReport.y + ringReport.height / 2,
-    },
-    "Y05",
-  );
-
-  // Arriving from elsewhere the card lets the pointer through, as before:
-  // a part beside the ring takes the card at once.
-  await pointAt(page, "message-input");
-  await expect(card(page)).toHaveAttribute("data-card", "V01");
-
-  // Writing is required: an empty send asks for text and opens nothing.
-  await page.mouse.move(ring.x, ring.y);
-  await expect(card(page)).toHaveAttribute("data-card", "Y05");
-  const ringReport2 = await report.boundingBox();
-  if (!ringReport2) throw new Error("no report box");
-  await travel(
-    page,
-    ring,
-    {
-      x: ringReport2.x + ringReport2.width / 2,
-      y: ringReport2.y + ringReport2.height / 2,
-    },
-    "Y05",
-  );
   let releaseVersion!: () => void;
   const versionReady = new Promise<void>((resolve) => {
     releaseVersion = resolve;
@@ -484,7 +404,7 @@ test("@lab @explain-feedback the card holds on the way to its footer and a writt
     )
       writes.push(request.url());
   });
-  await report.click();
+  await page.keyboard.press("KeyF");
   const text = page.getByTestId("explain-feedback-text");
   await expect(text).toBeFocused();
   let opened = 0;

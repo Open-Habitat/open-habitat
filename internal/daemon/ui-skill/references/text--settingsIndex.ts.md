@@ -334,10 +334,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Attention sound",
         desc: "A short sound when the agent finishes or wants your attention, and workspaces' own sounds.",
       },
-      "explain-follow": {
-        label: "Explain card follows the pointer",
-        desc: "Explain mode's card travels beside the pointer; F stops it and opens a report.",
-      },
       "adaptive-rail": {
         label: "Adaptive sidebar",
         desc: "The sidebar shares its height between conversations, workspaces and places where it helps most.",

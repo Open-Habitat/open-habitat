@@ -1,0 +1,69 @@
+.ah-general-feedback {
+  position: fixed;
+  z-index: 2147483003;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  box-shadow: var(--ah-shadow-float);
+  font: var(--ah-size-ui) / 1.45 var(--ah-font);
+}
+.ah-general-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin-bottom: 4px;
+}
+.ah-general-head .ah-explain-x {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--ah-r-sm);
+  background: none;
+  color: var(--ah-ink);
+  cursor: pointer;
+}
+.ah-general-head .ah-explain-x:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-general-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.ah-general-lead {
+  margin: 0 0 8px;
+  color: var(--ah-ink-2);
+}
+.ah-general-feedback .ah-explain-meta {
+  margin: 8px 0 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-general-feedback .ah-explain-done p {
+  margin: 0 0 6px;
+}
+.ah-general-feedback .ah-explain-done svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ah-ok);
+}
+.ah-general-cancel {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: none;
+  color: var(--ah-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.ah-general-cancel kbd {
+  font: 11px var(--ah-mono);
+}

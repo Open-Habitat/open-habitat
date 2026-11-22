@@ -5,7 +5,6 @@
     { "id": "multiplayer", "landed": true },
     { "id": "agent-instructions", "landed": true },
     { "id": "attention-sound", "landed": true },
-    { "id": "explain-follow", "landed": true },
     { "id": "adaptive-rail", "landed": true }
   ],
   "fi": {
@@ -49,14 +48,6 @@
         "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa laitteen tummaa tilaa.",
         "needs": "Avoimen Habitat-välilehden. Selain soittaa äänen vasta, kun olet painanut jotain sivulla. Mykistys ja voimakkuus koskevat vain tätä laitetta.",
         "caption": "Työtilan ääni"
-      },
-      "explain-follow": {
-        "name": "Selityskortti seuraa osoitinta",
-        "desc": "Selitystilan kortti kulkee osoittimen vieressä eikä jää tielle. Osoitin kortin päällä selittää sen, mikä on kortin alla.",
-        "where": "Selitystilassa (Selitä tämä näkymä tilivalikossa tai ? keskustelun yläpalkissa).",
-        "shows": "Kortti on osoittimen alaoikealla ja kääntyy näytön reunoilla. F pysäyttää kortin ja avaa ilmoituskentän; napsautus toimii kuten aina. Esc irrottaa kortin, toinen Esc lopettaa tilan.",
-        "needs": "Hiiren tai kosketuslevyn. Kosketusnäytöllä kortti on arkki näytön alareunassa. Kun laite pyytää vähemmän liikettä, kortti ei liu'u perässä vaan siirtyy vasta uuden kohdan kohdalla.",
-        "caption": "Kortti osoittimen vieressä"
       },
       "adaptive-rail": {
         "name": "Mukautuva sivupalkki",
@@ -132,14 +123,6 @@
         "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows the device's dark mode.",
         "needs": "An open Habitat tab. The browser plays sound only after you have pressed something on the page. Mute and volume apply to this device only.",
         "caption": "Workspace sound"
-      },
-      "explain-follow": {
-        "name": "Explain card follows the pointer",
-        "desc": "Explain mode's card travels beside the pointer and stays out of the way. The pointer over the card explains what is under it.",
-        "where": "In Explain mode (Explain this view in the account menu, or ? in a conversation's top bar).",
-        "shows": "The card sits below right of the pointer and flips at the screen's edges. F stops the card and opens the report field; a click works as always. Esc lets the card go, a second Esc ends the mode.",
-        "needs": "A mouse or a touchpad. On a touch screen the card is a sheet at the bottom of the screen. When the device asks for less motion, the card does not trail the pointer and moves only for a new part.",
-        "caption": "Card beside the pointer"
       },
       "adaptive-rail": {
         "name": "Adaptive sidebar",
