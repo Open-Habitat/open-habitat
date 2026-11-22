@@ -59,6 +59,7 @@ test("@rail-title-restart the rail converges to the daemon's title and ball when
   const { nav, trace } = await open(page);
   await page.request.get("/fixture/title-model?value=Lokien%20tutkinta");
   // The host goes down under the proxy; the browser's stream stays open.
+  trace.length = 0;
   await page.request.get("/fixture/edge-silence-streams");
   expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
     204,
@@ -80,14 +81,27 @@ test("@rail-title-restart the rail converges to the daemon's title and ball when
       { timeout: 30000 },
     )
     .toBe("Lokien tutkinta");
-  // Three missed heartbeats later the page reopens its stream, learns of the
-  // new daemon and reads its facts, without a reload.
-  await page.clock.fastForward("01:10");
+  // Creation's snapshot may already have replaced the old stream. Otherwise
+  // give the silence watchdog its three missed heartbeats. Either path must
+  // learn the new daemon's facts and reopen the stream without a reload.
+  // conversationJournal.test.tsx tests the watchdog itself with held events.
+  if (!trace.some((d) => d.event === "cursor" && d.outcome === "new-instance"))
+    await page.clock.fastForward("01:10");
   await expect(row).toContainText("Lokien tutkinta", { timeout: 20000 });
   await expect(row).toHaveAttribute("data-ball", "you");
-  expect(
-    trace.some((d) => d.event === "stream" && d.outcome === "silent"),
-  ).toBe(true);
+  await expect
+    .poll(() => {
+      const restarted = trace.findIndex(
+        (d) => d.event === "cursor" && d.outcome === "new-instance",
+      );
+      return (
+        restarted >= 0 &&
+        trace
+          .slice(restarted + 1)
+          .some((d) => d.event === "stream" && d.outcome === "open")
+      );
+    })
+    .toBe(true);
 });
 
 test("@rail-title-restart a conversation left without a title by a restart is named when it continues", async ({

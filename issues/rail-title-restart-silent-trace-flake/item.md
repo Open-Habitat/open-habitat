@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: clean gate
 source_ref: gate:eb144fe72/rail-title-restart
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Gate flake: rail-title-restart misses the silent-stream trace under suite load
