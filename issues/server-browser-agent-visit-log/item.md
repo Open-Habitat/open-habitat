@@ -15,3 +15,9 @@ preparation: ready
 ## Observed (testing agent, 22.11.2026)
 
 After an agent used the person's server browser, nothing in the conversation said which pages it visited; the window list showed only the person's window (`agent: false`) at the end, and it is unclear whether the agent's tab was marked as the agent's while it worked. The tester suggests a line in the conversation, e.g. "Agentti käytti selaintasi 4.42–4.48: airbnb.fi/trips, 10 varaussivua, 13 kuittia", as a record and an acknowledgement — for trust.
+
+## Decisions
+
+### 2026-11-22T06:18:38Z · @jari
+
+Jari 22.11.2026: the OpenAI-built round is unusable and is discarded; redo with a Claude worker.
