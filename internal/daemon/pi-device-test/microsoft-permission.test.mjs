@@ -34,7 +34,7 @@ process.stdin.on('data', (c) => {
 });
 `, { mode: 0o700 });
   const entry = (area) => ({ command: relay, args: ['mcp-relay', 'microsoft', '--account', address, '--area', area], env: {}, description: 'x' });
-  writeFileSync(join(dir, '.pi', 'agent', 'mcp.json'), JSON.stringify({ mcpServers: { 'ms-admin': entry('admin'), 'ms-mail': entry('mail'), 'other': { command: '/bin/true' } } }));
+  writeFileSync(join(dir, '.pi', 'agent', 'mcp.json'), JSON.stringify({ mcpServers: { 'ms-admin': entry('admin'), 'ms-mail': entry('mail'), 'ms-files': entry('files'), 'other': { command: '/bin/true' } } }));
   return dir;
 }
 
@@ -58,15 +58,14 @@ test('Pi tool names map to the area entry and the Microsoft tool', () => {
   for (const other of ['bash', 'mcp__mine__delete_mail_folder', 'mcp__ms_other__x', 'mcp__habitat_microsoft_x__send_mail', undefined]) {
     assert.equal(parseTool(other), null);
   }
-  assert.equal(guardedTools.size, 19);
-  for (const t of guardedTools) assert.match(t, /^(delete-|send-|reply-|forward-|cancel-calendar-event$|create-my-calendar-permission$|update-my-calendar-permission$)/);
+  for (const t of guardedTools) assert.match(t, /^(delete-|send-|reply-|forward-|cancel-calendar-event$|create-my-calendar-permission$|update-my-calendar-permission$|share-drive-item$|create-drive-item-share-link$)/);
 });
 
 test('the entry is read only when it is a Habitat relay entry', (t) => {
   const dir = home(t);
   assert.deepEqual(readEntry('ms-admin', dir), { command: join(dir, 'relay'), account: address });
   assert.equal(readEntry('other', dir), null);
-  assert.equal(readEntry('ms-files', dir), null);
+  assert.equal(readEntry('ms2-files', dir), null);
 });
 
 test('a deletion asks with the looked-up name and count, and no is a block', async (t) => {
@@ -115,10 +114,33 @@ test('without a browser the call is blocked and nothing is looked up', async (t)
   assert.equal(existsSync(join(dir, 'relay-runs')), false);
 });
 
+test('file deletion and sharing require approval for the same account and exact call', async (t) => {
+  const dir = home(t, { name: 'Budget', folder: { childCount: 3 } });
+  const saved = process.env.HOME;
+  process.env.HOME = dir;
+  t.after(() => { process.env.HOME = saved; });
+  const { hook } = loaded();
+  for (const tool of ['delete-onedrive-file', 'share-drive-item', 'create-drive-item-share-link']) {
+    const input = { driveId: 'drive-A', driveItemId: 'item-B', body: { scope: 'anonymous', type: 'edit', recipients: [{ email: 'person@example.test' }], roles: ['write'], sendInvitation: true } };
+    const event = { toolName: `mcp__ms_files__${tool.replaceAll('-', '_')}`, input };
+    const denied = ui(false);
+    assert.deepEqual(await hook(event, denied.ctx), { block: true, reason: permissionReasons.denied });
+    assert.equal(denied.asked.length, 1);
+    assert.equal(denied.asked[0].account.address, address);
+    assert.deepEqual(denied.asked[0].call, { area: 'ms-files', tool, arguments: JSON.stringify(input) });
+    assert.ok(denied.asked[0].action.includes('Budget'));
+    assert.equal(await hook(event, ui(true).ctx), undefined);
+    assert.deepEqual(await hook(event, { hasUI: false }), { block: true, reason: permissionReasons.noBrowser });
+  }
+  const calls = readFileSync(join(dir, 'relay-calls'), 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(calls.length, 6); // no lookup when no browser can answer
+  for (const call of calls) assert.deepEqual(call, { name: 'get-drive-item', arguments: { driveId: 'drive-A', driveItemId: 'item-B', select: 'name,folder' } });
+});
+
 test('other calls pass untouched', async () => {
   const { hook } = loaded();
   const asking = ui(false);
-  for (const name of ['mcp__ms_files__search_query', 'mcp__ms_mail__create_draft_email', 'mcp__ms_admin__list_mail_folders', 'bash']) {
+  for (const name of ['mcp__ms_files__search_query', 'mcp__ms_files__upload_file_content', 'mcp__ms_files__create_upload_session', 'mcp__ms_files__create_onedrive_folder', 'mcp__ms_files__move_rename_onedrive_item', 'mcp__ms_files__copy_drive_item', 'mcp__ms_mail__create_draft_email', 'mcp__ms_admin__list_mail_folders', 'bash']) {
     assert.equal(await hook({ toolName: name, input: {} }, asking.ctx), undefined);
   }
   assert.equal(asking.asked.length, 0);
@@ -126,6 +148,7 @@ test('other calls pass untouched', async () => {
 
 test('every guarded call reads as plain words, with lookups or without', async () => {
   const reads = {
+    'get-drive-item': { name: 'Budget', folder: { childCount: 3 } },
     'get-mail-message': { subject: 'Tarjous', from: { emailAddress: { name: 'Ville' } }, toRecipients: [{ emailAddress: { name: 'Ville' } }], ccRecipients: [{ emailAddress: { address: 'liisa@contoso.test' } }] },
     'get-calendar-event': { subject: 'Palaveri', start: { dateTime: '2026-11-24T10:00:00' }, attendees: [{}, {}, {}], isOrganizer: true },
     'get-specific-calendar-event': { subject: 'Palaveri', start: { dateTime: '2026-11-24T10:00:00' }, attendees: [], isOrganizer: false },
@@ -138,6 +161,9 @@ test('every guarded call reads as plain words, with lookups or without', async (
     'list-mail-folders': { value: [{ id: 'm1', displayName: 'Laskut', totalItemCount: 2, childFolderCount: 1 }] },
   };
   const inputs = {
+    'delete-onedrive-file': { driveId: 'd', driveItemId: 'f' },
+    'share-drive-item': { driveId: 'd', driveItemId: 'f', body: { recipients: [{ email: 'person@example.test' }], roles: ['write'], sendInvitation: true } },
+    'create-drive-item-share-link': { driveId: 'd', driveItemId: 'f', body: { type: 'edit', scope: 'anonymous' } },
     'delete-mail-message': { messageId: 'x' }, 'delete-mail-attachment': { messageId: 'x', attachmentId: 'a1' },
     'send-mail': { body: { Message: { subject: 'Hei', toRecipients: [{ emailAddress: { address: 'ville@contoso.test' } }] } } },
     'send-draft-message': { messageId: 'x' }, 'reply-mail-message': { messageId: 'x', body: {} }, 'reply-all-mail-message': { messageId: 'x', body: {} },

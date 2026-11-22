@@ -232,7 +232,7 @@ var microsoftAreaDescriptions = map[string]string{
 	"mail":     "Outlook mail of %s: find, read and file messages and attachments, write drafts and replies, send.",
 	"calendar": "Outlook calendar of %s: events, free/busy, invitations and replies.",
 	"contacts": "Outlook contacts of %s: find, add and update people.",
-	"files":    "OneDrive and SharePoint files of %s: search documents, browse sites, drives and folders, download a file.",
+	"files":    "OneDrive and SharePoint files of %s: search, browse and download; with a write grant, upload files, create folders, move, rename and copy. Deleting and sharing ask permission in Habitat's browser conversations.",
 	"admin":    "Arranging the Outlook mailbox of %s: create, rename or delete mail folders, calendars and contact folders; calendar sharing; Focused Inbox. Only when the person asks to arrange the mailbox.",
 }
 

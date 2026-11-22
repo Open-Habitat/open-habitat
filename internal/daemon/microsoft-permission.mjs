@@ -1,5 +1,5 @@
 // Habitat's Microsoft permission hook. Before a Microsoft call that deletes,
-// sends or shares a calendar, the agent's Pi asks the person through the
+// sends or shares a calendar or file, the agent's Pi asks the person through the
 // typed permission question (process-extension.mjs askPermission, the
 // browser's 2 Kenttä): the action in plain words, the account, what follows,
 // and the technical call. Names and counts come from a read call made first
@@ -12,15 +12,15 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
-// The calls that ask (research "Confirm at Full", 19 tools): every delete,
-// and every call that reaches another person at once — sending, replying,
-// forwarding, cancelling a meeting and granting or changing calendar sharing.
+// Every exposed delete and sharing call asks, as do calls that reach another
+// person at once: sending, replying, forwarding and cancelling a meeting.
 export const guardedTools = new Set([
   'delete-mail-message', 'delete-mail-attachment', 'send-mail', 'send-draft-message', 'reply-mail-message',
   'reply-all-mail-message', 'forward-mail-message', 'delete-calendar-event', 'delete-specific-calendar-event',
   'cancel-calendar-event', 'forward-calendar-event', 'delete-outlook-contact', 'delete-mail-folder',
   'delete-focused-inbox-override', 'delete-calendar', 'create-my-calendar-permission',
   'update-my-calendar-permission', 'delete-my-calendar-permission', 'delete-contact-folder',
+  'delete-onedrive-file', 'share-drive-item', 'create-drive-item-share-link',
 ]);
 
 // Pi names a tool mcp__<server>__<tool> with every other character turned
@@ -120,6 +120,23 @@ export async function describe(tool, input, read) {
   const body = a.body && typeof a.body === 'object' ? a.body : {};
   const message = pick(body, 'Message', 'message') ?? {};
   switch (tool) {
+    case 'delete-onedrive-file':
+    case 'share-drive-item':
+    case 'create-drive-item-share-link': {
+      const f = await read('files', 'get-drive-item', { driveId: a.driveId, driveItemId: a.driveItemId, select: 'name,folder' });
+      const name = str(f?.name) ? q(f.name) : `(asema ${idOf(a.driveId)}, tunniste ${idOf(a.driveItemId)})`;
+      if (tool === 'delete-onedrive-file') {
+        return { action: `Poista ${name}`, consequence: f && !f.folder ? 'Tiedosto poistetaan OneDrivesta tai SharePointista.' : 'Kohde poistetaan OneDrivesta tai SharePointista. Jos se on kansio, myös sen sisältö poistetaan.' };
+      }
+      if (tool === 'share-drive-item') {
+        const who = (Array.isArray(body.recipients) ? body.recipients : []).map((r) => str(r?.email) ?? str(r?.alias) ?? str(r?.objectId)).filter(Boolean);
+        const rights = (Array.isArray(body.roles) ? body.roles : []).join(', ') || 'kutsun mukaiset oikeudet';
+        return { action: `Jaa ${name}`, consequence: `Pääsy annetaan heti ${recipients(who)}. Oikeudet: ${rights}.${body.sendInvitation ? ' Myös kutsu lähetetään.' : ''}` };
+      }
+      const scope = { anonymous: 'kuka tahansa linkin saanut', organization: 'organisaation jäsenet, joilla on linkki', users: 'erikseen nimetyt henkilöt' }[body.scope] ?? 'palvelun oletusasetuksen mukainen joukko';
+      const rights = body.type === 'edit' ? 'muokata' : body.type === 'view' ? 'lukea' : `käyttää linkkiä (${idOf(body.type)})`;
+      return { action: `Luo jakolinkki kohteelle ${name}`, consequence: `Linkin kautta ${scope} voi ${rights} kohdetta. Linkin luominen voi antaa pääsyn heti, vaikka sitä ei lähetetä kenellekään.` };
+    }
     case 'delete-mail-folder': {
       const f = await find(read, 'admin', 'list-mail-folders', { top: 250 }, a.mailFolderId);
       const name = str(f?.displayName);

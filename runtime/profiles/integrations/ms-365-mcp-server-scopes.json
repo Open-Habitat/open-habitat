@@ -3,6 +3,38 @@
   "version": "0.170.1",
   "file": "dist/endpoints.json",
   "tools": {
+    "upload-file-content": {
+      "from": {"scopes": [["Files.ReadWrite"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "create-upload-session": {
+      "from": {"scopes": [["Files.ReadWrite"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "create-onedrive-folder": {
+      "from": {"scopes": [["Files.ReadWrite"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "move-rename-onedrive-item": {
+      "from": {"scopes": [["Files.ReadWrite"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "copy-drive-item": {
+      "from": {"scopes": [["Files.ReadWrite"], ["Sites.Selected"]]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "delete-onedrive-file": {
+      "from": {"scopes": ["Files.ReadWrite"]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "share-drive-item": {
+      "from": {"scopes": ["Files.ReadWrite"]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
+    "create-drive-item-share-link": {
+      "from": {"scopes": ["Files.ReadWrite"]},
+      "to": {"scopes": [["Files.ReadWrite.All"], ["Sites.ReadWrite.All"]]}
+    },
     "search-query": {
       "from": {"workScopes": ["Mail.Read", "Calendars.Read", "Files.Read.All", "People.Read", "Sites.Read.All", "Chat.Read", "ChannelMessage.Read.All"]},
       "to": {"workScopes": [["Files.ReadWrite.All"], ["Files.Read.All"], ["Sites.ReadWrite.All"], ["Sites.Read.All"]]}

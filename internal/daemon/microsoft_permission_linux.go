@@ -9,7 +9,7 @@ import (
 )
 
 // microsoftPermission is the hook that asks the person before a Microsoft
-// call deletes, sends or shares a calendar, through the companion's typed
+// call deletes, sends or shares a calendar or file, through the companion's typed
 // permission question. It is loaded into every browser conversation's Pi
 // beside the companion; Pi sessions the person starts themselves load
 // neither, as they load no other Habitat extension.

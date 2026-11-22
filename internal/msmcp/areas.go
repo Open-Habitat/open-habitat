@@ -53,6 +53,8 @@ var Areas = []Area{
 	{"files", []string{
 		"search-query", "search-onedrive-files", "search-sharepoint-sites", "list-sharepoint-site-drives", "get-drive-root-item",
 		"list-folder-files", "get-drive-item", "get-download-url", "download-bytes-to-file", "download-bytes",
+		"upload-file-content", "create-upload-session", "create-onedrive-folder", "move-rename-onedrive-item",
+		"copy-drive-item", "delete-onedrive-file", "share-drive-item", "create-drive-item-share-link",
 	}},
 	{"admin", []string{
 		"list-mail-folders", "list-mail-child-folders", "create-mail-folder", "create-mail-child-folder", "update-mail-folder",

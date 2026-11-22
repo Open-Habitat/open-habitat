@@ -20,11 +20,9 @@ import (
 	"time"
 )
 
-// microsoftWriteFileTools are the pinned server's file tools that change the
-// cloud. None of them is offered to agents yet, at any level.
-var microsoftWriteFileTools = []string{
-	"upload-file-content", "create-upload-session", "delete-onedrive-file", "move-rename-onedrive-item",
-	"create-onedrive-folder", "share-drive-item", "create-drive-item-share-link", "copy-drive-item",
+// These remain outside the approved surface, particularly batch, which could
+// bypass the individual tools' scope and confirmation checks.
+var microsoftExcludedFileTools = []string{
 	"delete-drive-item-permission", "create-drive-item-preview", "graph-batch",
 }
 
@@ -54,12 +52,12 @@ func TestMicrosoftMCPArgsPerLevel(t *testing.T) {
 			t.Errorf("%s: %q", level, args)
 		}
 	}
-	for _, name := range append(slices.Clone(microsoftOutlookTools), microsoftFileTools...) {
+	for _, name := range slices.Concat(microsoftOutlookTools, microsoftFileTools, microsoftFileWriteTools) {
 		if !enabled.MatchString(name) {
 			t.Errorf("%s not enabled", name)
 		}
 	}
-	for _, name := range microsoftWriteFileTools {
+	for _, name := range microsoftExcludedFileTools {
 		if enabled.MatchString(name) {
 			t.Errorf("write tool %s enabled", name)
 		}
@@ -101,11 +99,14 @@ func TestMicrosoftSearchSkill(t *testing.T) {
 		name   string
 		args   []string
 		search bool
+		write  bool
 	}{
-		{"files", microsoftMCPArgs(outlook + " Files.Read.All Sites.Read.All"), true},
-		{"sites only", microsoftMCPArgs(outlook + " Sites.Read.All"), true},
-		{"outlook only", microsoftMCPArgs(outlook), false},
-		{"earlier release", []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook + " Files.ReadWrite.All"}, false},
+		{"files", microsoftMCPArgs(outlook + " Files.Read.All Sites.Read.All"), true, false},
+		{"sites only", microsoftMCPArgs(outlook + " Sites.Read.All"), true, false},
+		{"write files", microsoftMCPArgs(outlook + " Files.ReadWrite.All"), true, true},
+		{"write sites", microsoftMCPArgs(outlook + " Sites.ReadWrite.All"), true, true},
+		{"outlook only", microsoftMCPArgs(outlook), false, false},
+		{"earlier release", []string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook + " Files.ReadWrite.All"}, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			env := microsoftEnv(t)
@@ -117,10 +118,16 @@ func TestMicrosoftSearchSkill(t *testing.T) {
 				"every SharePoint site and team, followed or not, and files shared with the person",
 				"`download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/person@example.test/`",
 				"A recursive grep or find over `~/cloud/` as a whole is the thing to avoid",
-				"this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365",
 			} {
 				if strings.Contains(body, want) != tc.search {
 					t.Errorf("search %v, but %q in body:\n%s", tc.search, want, body)
+				}
+			}
+			// The instructions must not offer unavailable writes or tell a
+			// writable account that it must upload manually in the browser.
+			for _, tool := range microsoftFileWriteTools {
+				if strings.Contains(body, "`"+tool+"`") != tc.write {
+					t.Errorf("%s: wrong write guidance for %s", tc.name, tool)
 				}
 			}
 			// No library is synced here: nothing is said of synced folders,
@@ -206,8 +213,8 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 	}
 }
 
-// The pinned server, with the build's scope patch, offers the search and read
-// file tools and no file tool that writes, at every level; it requests only
+// The pinned server, with the build's scope patch, offers writes only for
+// writable grants and reads at every file level; it requests only
 // the permissions the level's application holds; and its Outlook tools are
 // the same as the presets an earlier release enabled. Set
 // OH_TEST_MICROSOFT_RUNTIME to a built integrations payload's runtime/.
@@ -221,6 +228,12 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 	home := t.TempDir()
 	env := []string{"HOME=" + home, "PATH=/usr/bin:/bin", "MS365_MCP_CLIENT_ID=00000000-0000-0000-0000-000000000001", "MS365_MCP_TENANT_ID=" + testTenant,
 		"MS365_MCP_USE_KEYTAR=false", "MS365_MCP_TOKEN_CACHE_PATH=" + filepath.Join(home, ".token-cache.json"), "MS365_MCP_SELECTED_ACCOUNT_PATH=" + filepath.Join(home, ".selected-account.json")}
+
+	fixture := exec.Command(node, "testdata/microsoft-file-writes.mjs", runtime, microsoftMCPTools)
+	fixture.Env = env
+	if out, err := fixture.CombinedOutput(); err != nil {
+		t.Fatalf("pinned write adapters: %v\n%s", err, out)
+	}
 
 	presets := exec.Command(node, "--input-type=module", "-e", fmt.Sprintf("import {getCombinedPresetPattern} from %q; console.log(getCombinedPresetPattern(['mail','calendar','contacts']))",
 		filepath.Join(runtime, "node_modules/@softeria/ms-365-mcp-server/dist/tool-categories.js")))
@@ -241,7 +254,7 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 		t.Fatalf("the pinned presets changed; review microsoftOutlookTools:\n%q", names)
 	}
 
-	tools := func(args []string) []string {
+	tools := func(args []string, refused ...string) []string {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, server, args...)
@@ -272,11 +285,47 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 					out = append(out, tool.Name)
 				}
 				slices.Sort(out)
+				for _, name := range refused {
+					call, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": map[string]any{"name": name, "arguments": map[string]any{"driveId": "drive-A", "driveItemId": "item-B", "body": map[string]any{}}}})
+					fmt.Fprintln(stdin, string(call))
+					var denied struct {
+						ID     int `json:"id"`
+						Result struct {
+							IsError bool `json:"isError"`
+							Content []struct {
+								Text string `json:"text"`
+							} `json:"content"`
+						} `json:"result"`
+					}
+					for lines.Scan() {
+						if json.Unmarshal(lines.Bytes(), &denied) == nil && denied.ID == 3 {
+							break
+						}
+					}
+					if denied.ID != 3 || !denied.Result.IsError || len(denied.Result.Content) != 1 || !strings.Contains(denied.Result.Content[0].Text, "Tool "+name+" not found") {
+						t.Fatalf("%s: unavailable tool did not refuse dispatch: %s", name, lines.Text())
+					}
+				}
 				return out
 			}
 		}
 		t.Fatal("no tools/list reply", args)
 		return nil
+	}
+	// Either broad write grant suffices; neither a read-only nor an absent
+	// files grant exposes any mutator, regardless of the application name.
+	for _, scopes := range []string{"Files.ReadWrite.All", "Sites.ReadWrite.All", "Files.Read.All Sites.Read.All", "User.Read"} {
+		want := strings.Contains(scopes, "ReadWrite")
+		var refused []string
+		if !want {
+			refused = microsoftFileWriteTools
+		}
+		offered := tools(microsoftMCPArgs(scopes), refused...)
+		for _, name := range microsoftFileWriteTools {
+			if slices.Contains(offered, name) != want {
+				t.Errorf("%s: unexpected availability of %s", scopes, name)
+			}
+		}
 	}
 	for _, level := range microsoftLevels {
 		consented := strings.Fields(microsoftLevelScopes[level])
@@ -287,9 +336,15 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 				t.Errorf("%s: %s not offered", level, name)
 			}
 		}
-		for _, name := range microsoftWriteFileTools {
+		for _, name := range microsoftFileWriteTools {
+			want := level == LevelFull || level == LevelNoSend
+			if slices.Contains(offered, name) != want {
+				t.Errorf("%s: write tool %s offered = %v, want %v", level, name, !want, want)
+			}
+		}
+		for _, name := range microsoftExcludedFileTools {
 			if slices.Contains(offered, name) {
-				t.Errorf("%s: write tool %s offered", level, name)
+				t.Errorf("%s: excluded tool %s offered", level, name)
 			}
 		}
 		// Every tool the account's level offers sits in an area (ADR 0039);

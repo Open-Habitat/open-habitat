@@ -187,7 +187,7 @@ function levelAbility(
   const access = levelAccess(level, service);
   // Microsoft's files are searched and fetched, never synced at connection.
   if (provider === "microsoft" && fileServices.includes(service))
-    return txt.onDemandFiles;
+    return access === "full" ? txt.onDemandFilesWrite : txt.onDemandFiles;
   if (fileServices.includes(service)) {
     if (level === "app_folder") return txt.appFolder;
     return access === "full" ? txt.syncBoth : txt.mirror;
@@ -283,7 +283,9 @@ function gets(provider: ProviderId, service: Service): ReactNode {
     !service.directory &&
     service.access !== "none"
   )
-    return txt.onDemandFiles;
+    return service.access === "full"
+      ? txt.onDemandFilesWrite
+      : txt.onDemandFiles;
   const limited = narrower(service);
   if (limited) return limited;
   if (service.directory) return txt.folder(<code>{service.directory}</code>);

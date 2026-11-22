@@ -287,11 +287,11 @@ class BuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'another package version'):
             integrations_build.patch_ms365_scopes(spec, spec['package'], '0.171.0', json.dumps(upstream).encode())
         drifted = json.loads(json.dumps(upstream))
-        drifted[0][next(iter(spec['tools']['search-query']['from']))] = ['Files.Read.All']
+        next(e for e in drifted if e['toolName'] == 'search-query')['workScopes'] = ['Files.Read.All']
         with self.assertRaisesRegex(ValueError, 'upstream metadata changed: search-query'):
             integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(drifted).encode())
         with self.assertRaisesRegex(ValueError, 'tool not unique: search-query'):
-            integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(upstream + upstream[:1]).encode())
+            integrations_build.patch_ms365_scopes(spec, spec['package'], spec['version'], json.dumps(upstream + [next(e for e in upstream if e['toolName'] == 'search-query')]).encode())
 
     def test_raw_go_tool_is_digest_and_notice_checked(self):
         deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]

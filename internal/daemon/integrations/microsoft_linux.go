@@ -197,8 +197,8 @@ func microsoftLevelOf(services []Service) Level {
 
 // microsoftAllowed is the Outlook server's --allowed-scopes for a grant:
 // its own scopes the grant holds, a read scope where only that was granted.
-// Files and sites scopes enable the file tools' search and reading; the server
-// is offered no file tool that writes, whatever the level.
+// Files and sites scopes enable reads, and their ReadWrite.All variants
+// enable writes. A level's application name grants no additional capability.
 // The server then offers no tool the grant cannot run, and its silent token
 // requests never ask for a permission the tenant did not consent to.
 func microsoftAllowed(granted map[string]bool) string {
@@ -388,18 +388,20 @@ var microsoftOutlookTools = []string{
 	"create-contact-in-folder",
 }
 
-// microsoftFileTools find and read the person's Microsoft 365 files:
-// search-query searches every site, team and shared item the person can
-// open, the others narrow to one site, drive or folder, and the Outlook
-// list's download-bytes-to-file fetches one file. None of them writes to the
-// cloud; upload, move, share and delete come later and separately. Their
-// scope metadata is patched at build time (ms-365-mcp-server-scopes.json).
+// File tools use the account's consented grant, not its level's name.
+// Their scope metadata is patched at build time (ms-365-mcp-server-scopes.json);
+// --allowed-scopes excludes writes for read-only grants.
 var microsoftFileTools = []string{
 	"search-query", "search-onedrive-files", "search-sharepoint-sites", "list-sharepoint-site-drives",
 	"get-drive-root-item", "list-folder-files", "get-drive-item", "get-download-url",
 }
 
-var microsoftMCPTools = "^(?:" + strings.Join(append(slices.Clone(microsoftOutlookTools), microsoftFileTools...), "|") + ")$"
+var microsoftFileWriteTools = []string{
+	"upload-file-content", "create-upload-session", "create-onedrive-folder", "move-rename-onedrive-item",
+	"copy-drive-item", "delete-onedrive-file", "share-drive-item", "create-drive-item-share-link",
+}
+
+var microsoftMCPTools = "^(?:" + strings.Join(slices.Concat(microsoftOutlookTools, microsoftFileTools, microsoftFileWriteTools), "|") + ")$"
 
 type microsoftHTTPStatus int
 
@@ -1235,7 +1237,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 		if !n.mcpOutdated() && microsoftRules.access("onedrive", allowed) != AccessNone {
 			uses = "Outlook mail, calendars, contacts and Microsoft 365 files"
-			search = "\n\n" + microsoftSearchSkill(address, syncs)
+			search = "\n\n" + microsoftSearchSkill(address, syncs, microsoftWritable("sharepoint", allowed))
 		}
 	}
 	index := 1
@@ -1256,7 +1258,7 @@ func microsoftAreasSkill(uses string, index int) string {
 	name := func(area string) string { return "`" + microsoftAreaEntryName(index, area) + "`" }
 	return fmt.Sprintf("%s are reached through five Pi MCP areas, each signed in as this account only: %s for mail, %s for the calendar, %s for contacts, %s for OneDrive and SharePoint files, and %s for arranging the mailbox (mail folders, calendars and contact folders, calendar sharing, Focused Inbox) when the person asks for that. ", uses, name("mail"), name("calendar"), name("contacts"), name("files"), name("admin")) +
 		fmt.Sprintf("Pick the area first: `describeNamespace(%q)` lists its tools and `searchTools(query, {namespace: %q})` searches only that area; a mail folder is not a file folder. Their tool descriptions carry the syntax. ", microsoftAreaEntryName(index, "files"), microsoftAreaEntryName(index, "files")) +
-		"For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. Deleting, sending and sharing a calendar first ask the person in the browser; when they do not allow it, the call is not made and you are told so. " +
+		"For mail, `create-draft-email`, `create-reply-draft`, `create-reply-all-draft` and `create-forward-draft` prepare a draft; `send-mail`, `send-draft-message` and the `reply-…` and `forward-…` tools send at once. Deleting, sending and sharing a calendar or file first ask the person in the browser; when they do not allow it, the call is not made and you are told so. " +
 		"Files and Outlook share one sign-in, so a sign-in problem stops both and the person renews it once in Settings → Integrations. Connecting an account from another organisation may first need that organisation's administrator to approve the app."
 }
 
@@ -1267,17 +1269,24 @@ func microsoftAreasSkill(uses string, index int) string {
 // a sign-in syncs nothing, so only an account whose libraries an earlier
 // release synced (syncs) hears of synced directories. Jari proofreads every
 // change to this text before it reaches the pilots.
-func microsoftSearchSkill(address string, syncs bool) string {
+func microsoftSearchSkill(address string, syncs, writable bool) string {
 	local := "Most of what this account can open is not on this machine, since a full copy of every library would not fit the person's storage."
 	grep := "Grep and read within what you fetched, and inside the synced directories listed below, which are complete local copies. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud, and the synced copies can be very large."
 	if !syncs {
 		local = "None of this account's files are copied to this machine, since a full copy of every library would not fit the person's storage."
 		grep = "Grep and read within what you fetched. A recursive grep or find over `~/cloud/` as a whole is the thing to avoid: it sees only what happens to be local, so finding nothing there says nothing about the cloud."
 	}
+	write := "This account's files grant is read-only. To enable file writes, first have the administrator consent to the Full application's delegated Graph Files.ReadWrite.All and Sites.ReadWrite.All permissions in Entra if they are missing. Then the person changes the Microsoft account to Full (or Everything but sending mail, whose application also needs those permissions) in Settings → Integrations and signs in again. After an administrator changes consent, sign in again even if Settings already shows Full: the agent's tools use the grant recorded at sign-in. Do not promise that a local edit has been uploaded."
+	if writable {
+		write = "This account's file grant permits writes through the files area, without syncing whole libraries. Resolve the target driveId and parent folder's driveItemId with the search and browsing tools; a downloaded path alone is not a cloud destination. Inspect the tool schema before calling. " +
+			"Prefer `create-upload-session` for files on disk: use driveItemId `<parentId>:/<filename>:` for a new file and body `{\"item\":{\"@microsoft.graph.conflictBehavior\":\"fail\"}}` (or `rename` for a separate copy). It returns a secret pre-authenticated uploadUrl, not a completed upload. PUT the local bytes to that URL without an Authorization header, in sequential chunks with Content-Length and Content-Range; non-final chunks must be multiples of 320 KiB and each request less than 60 MiB. Keep the URL out of messages and logs. Check the final driveItem response before saying it is saved. " +
+			"For content under 2 MiB, `upload-file-content` takes a base64 string as body and a target driveItemId; it silently replaces an existing target. Use it only when the person explicitly requested replacement of that exact file; for a new file use an upload session with conflictBehavior fail or rename instead. Never silently overwrite a file or retry an uncertain write: first read the destination to determine what happened. " +
+			"`create-onedrive-folder` creates a folder under the parent item (body name, folder: {}, and @microsoft.graph.conflictBehavior: fail); `move-rename-onedrive-item` changes name or parentReference.id; `copy-drive-item` copies to parentReference.driveId/id and an optional name. Resolve name conflicts rather than silently replacing, and a copy's accepted response is not proof the asynchronous copy finished. `delete-onedrive-file`, `share-drive-item` and `create-drive-item-share-link` ask the person in the browser first; do not bypass that confirmation with a direct request."
+	}
 	return local + " Microsoft's search is how files are found. `search-query` with the entity type `driveItem` searches the names and contents of everything this account can open: OneDrive, every SharePoint site and team, followed or not, and files shared with the person. KQL narrows it, for example `filetype:pdf`, `path:\"https://…\"` or `LastModifiedTime>=2026-01-01`. `search-sharepoint-sites`, `list-sharepoint-site-drives`, `search-onedrive-files` and `list-folder-files` look inside one site, library or folder.\n\n" +
 		fmt.Sprintf("To read a file, fetch it with `download-bytes-to-file` (path `/drives/{driveId}/items/{itemId}/content`) to `~/cloud/microsoft-fetched/%s/` followed by the host and decoded path of the item's `webUrl`, for example `~/cloud/microsoft-fetched/%s/contoso.sharepoint.com/sites/Sales/Shared Documents/offer.docx`; when the `webUrl` is not a plain path to the file, use the drive ID and the file name instead. The local path then says where the file lives in the cloud. The tool needs the parent directory to exist and does not overwrite: a file already there is an earlier fetch that may be stale and may hold edits made here. Look at its age, and put a fresh fetch beside it under another name instead of deleting it.\n\n", address, address) +
 		grep + "\n\n" +
-		"A fetched file is a local copy that you may edit, but the edit stays here: this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365. When the person wants an edited file back there, tell them where the copy is so they can upload it."
+		"A fetched file is a local copy: editing it does not upload it. " + write
 }
 
 var _ resumableEntry = (*microsoft)(nil)

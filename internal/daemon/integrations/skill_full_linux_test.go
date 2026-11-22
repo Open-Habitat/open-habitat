@@ -162,7 +162,8 @@ func TestFullPersonalDataSkill(t *testing.T) {
 		"`name.habitat-<date>-1.ext`",
 		"Forcing it with `--force` or\n`--resync`, or removing and reconnecting the account, approves nothing",
 		"the `reply-…` and `forward-…` tools send at once",
-		"this server has no tool that uploads, moves, shares or deletes anything in Microsoft 365",
+		"Never silently overwrite a file or retry an uncertain write",
+		"ask the person in the browser first; do not bypass that confirmation with a direct request",
 		"when a tool answers with a request for a new sign-in or wider consent, pass that decision to the person",
 	} {
 		if !strings.Contains(skill, want) {
