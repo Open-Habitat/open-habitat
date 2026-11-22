@@ -1,0 +1,29 @@
+name: Explain mode card is wrong
+description: An explanation in explain mode is wrong or incomplete. Usually opened from the card's "Report a mistake".
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Write only about the explanation; do not paste conversations, workspace names, hostnames or account names.
+  - type: textarea
+    id: fix
+    attributes:
+      label: What should be fixed in the explanation
+    validations:
+      required: true
+  - type: input
+    id: card
+    attributes:
+      label: Card
+      description: The card's id and name, for example Y05 · Context.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Open Habitat version
+  - type: input
+    id: language
+    attributes:
+      label: Interface language

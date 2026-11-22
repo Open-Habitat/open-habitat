@@ -60,6 +60,31 @@ const fi = {
     now: "Tilanne nyt",
     can: "Voit nyt",
   },
+  feedback: {
+    report: "Ilmoita virheestä",
+    reportSub: "Selitys on väärin tai puutteellinen",
+    dest: "Julkinen GitHub-issue · tarvitset GitHub-tilin",
+    label: "Mitä selityksessä pitäisi korjata",
+    placeholder: "Mikä on väärin tai mitä puuttuu?",
+    needText: "Kirjoita ensin, mitä korjataan.",
+    tooLong: (max: string) => `Enintään ${max} merkkiä.`,
+    send: "Avaa GitHubissa",
+    newTab: "(avautuu uuteen välilehteen)",
+    cancel: "Peru",
+    facts:
+      "Avautuu uuteen välilehteen valmiina issuena. Se lähtee, kun painat GitHubissa Submit, ja on julkinen. Tälle palvelimelle ei jää mitään.",
+    what: "Näytä, mitä lähtee",
+    whatLead:
+      "Avautuu GitHubiin. Mukana on vain tekstisi, kortin nimi ja tunnus, Open Habitatin versio ja kieli:",
+    finishFirst: "Lähetä tai peru ilmoitus ensin, niin kirjoittamasi ei katoa.",
+    done: "Avattu GitHubissa. Ilmoitus lähtee, kun painat siellä Submit.",
+    noAccount:
+      "GitHub pyytää tarvittaessa kirjautumaan. Voit kopioida ilmoituksen tekstin tästä.",
+    copy: "Kopioi teksti",
+    copied: "Teksti kopioitu.",
+    copyFailed: "Kopiointi ei onnistunut.",
+    reported: "Avasit tästä kortista ilmoituksen GitHubiin.",
+  },
   strip: {
     title: "Mitä näytöllä on?",
     text: "Vie osoitin minkä tahansa kohdan päälle, niin näet, mitä se tekee.",
@@ -2016,6 +2041,32 @@ export const explainModeText = catalog(fi, {
       "Shows only while the pointer is on the row. A touch screen always shows it.",
     now: "Right now",
     can: "You can now",
+  },
+  feedback: {
+    report: "Report a mistake",
+    reportSub: "The explanation is wrong or incomplete",
+    dest: "Public GitHub issue · needs a GitHub account",
+    label: "What should be fixed in the explanation",
+    placeholder: "What is wrong, or what is missing?",
+    needText: "Write first what should be fixed.",
+    tooLong: (max: string) => `At most ${max} characters.`,
+    send: "Open in GitHub",
+    newTab: "(opens in a new tab)",
+    cancel: "Cancel",
+    facts:
+      "Opens in a new tab as a ready issue. It is sent when you press Submit in GitHub, and it is public. Nothing stays on this server.",
+    what: "Show what is sent",
+    whatLead:
+      "Opens in GitHub. It holds only your text, the card's name and id, the Open Habitat version and the language:",
+    finishFirst:
+      "Send or cancel the report first, so what you wrote is not lost.",
+    done: "Opened in GitHub. The report is sent when you press Submit there.",
+    noAccount:
+      "GitHub asks you to sign in if needed. You can copy the report text here.",
+    copy: "Copy text",
+    copied: "Text copied.",
+    copyFailed: "Copying did not work.",
+    reported: "You opened a report about this card in GitHub.",
   },
   strip: {
     title: "What is on the screen?",

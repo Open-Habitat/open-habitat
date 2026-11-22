@@ -8,9 +8,17 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useText } from "../i18n";
+import { formatNumber, useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { ControlButton } from "./ControlElements";
+import {
+  type FeedbackIssue,
+  feedbackIssue,
+  feedbackText,
+  NOTE_MAX,
+  readVersion,
+  reportedNow,
+} from "./explainFeedback";
 import { type CardId, hoverOnly, parts, waiting } from "./explainParts";
 import { Icon } from "./Icon";
 import "./ExplainMode.css";
@@ -33,7 +41,15 @@ import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
  * on a part explains it and a second tap does it. In a conversation the mode
  * opens at the state card, and the bar's state brings it back. The layer
  * lets the pointer through, so production's own hover rules and presses
- * need nothing from it. */
+ * need nothing from it.
+ *
+ * A part's card ends in "Ilmoita virheestä" (explain-mode-feedback, round 3
+ * direction A, on round 2's A Kulkureitti): the card takes the pointer only
+ * while the pointer travels from its own part onto it, so its footer can be
+ * reached even across other parts, and arriving from anywhere else passes
+ * through as before. An open report holds the card until it is sent or
+ * cancelled. A focused part explains itself, and F moves focus to the
+ * report. */
 
 const workerKinds: WorkerMarkKind[] = [
   "working",
@@ -545,6 +561,28 @@ const barBottom = () =>
 
 const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
+/** The path from a part to its card: the hull of the part's edge facing the
+ * card and the card's edge facing the part, plus a few pixels. While the
+ * pointer is in it, the card holds even over other parts. */
+export function inPath(
+  px: number,
+  py: number,
+  part: Rect,
+  card: { left: number; right: number; top: number; bottom: number },
+): boolean {
+  const below = card.top >= part.y + part.h - 1;
+  // A card that overlaps its part (a large part, a narrow screen) has no
+  // path: there the pointer passes through as before.
+  if (!below && card.bottom > part.y + 1) return false;
+  const y0 = below ? part.y + part.h : card.bottom;
+  const y1 = below ? card.top : part.y;
+  if (py < Math.min(y0, y1) - 4 || py > Math.max(y0, y1) + 4) return false;
+  const k = y1 === y0 ? 0 : Math.min(1, Math.max(0, (py - y0) / (y1 - y0)));
+  const [a0, a1] = below ? [part.x, part.x + part.w] : [card.left, card.right];
+  const [b0, b1] = below ? [card.left, card.right] : [part.x, part.x + part.w];
+  return px >= a0 + (b0 - a0) * k - 4 && px <= a1 + (b1 - a1) * k + 4;
+}
+
 function ExplainLayer({
   situation,
   stateShown,
@@ -565,9 +603,62 @@ function ExplainLayer({
   );
   const [pointer, setPointer] = useState<number>();
   const [, setTick] = useState(0);
+  // The report on the showing card: open with its text, or just sent.
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [version, setVersion] = useState<string>();
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    void readVersion().then((value) => {
+      if (active) setVersion(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open]);
+  const [need, setNeed] = useState(false);
+  const [what, setWhat] = useState(false);
+  const [nudge, setNudge] = useState(false);
+  const [done, setDone] = useState<{
+    id: CardId;
+    issue: FeedbackIssue;
+  } | null>(null);
+  // F, or focus inside the card, holds it as an open report does.
+  const [keyHold, setKeyHold] = useState(false);
+  const pinned = open || keyHold;
   const card = useRef<HTMLDivElement>(null);
-  const live = useRef({ target, stateShown, touch });
-  live.current = { target, stateShown, touch };
+  // Where focus goes once the card has rendered: in the same commit, so
+  // keys typed right after Enter land in the field rather than before it.
+  const focusNext = useRef<string>(undefined);
+  // The card's box when a report was sent: the sent card is smaller, and
+  // the pointer resting where the note was must not fall through to the
+  // part under it. It holds until the pointer leaves that box.
+  const sentBox = useRef<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    const selector = focusNext.current;
+    if (!selector) return;
+    focusNext.current = undefined;
+    card.current
+      ?.querySelector<HTMLElement>(selector)
+      ?.focus({ preventScroll: true });
+  });
+  const live = useRef({
+    target,
+    stateShown,
+    touch,
+    pinned,
+    note,
+    shown: null as Target | null,
+  });
+  live.current = {
+    ...live.current,
+    target,
+    stateShown,
+    touch,
+    pinned,
+    note,
+  };
 
   const showState = stateShown && !!situation && !target;
   // The state card comes back when the bar asks for it…
@@ -581,8 +672,31 @@ function ExplainLayer({
   const pointAt = useCallback((found: Target) => {
     setTarget(found);
     setLinger(false);
+    setOpen(false);
+    setNote("");
+    setNeed(false);
+    setWhat(false);
+    setDone(null);
+    setKeyHold(false);
+    sentBox.current = null;
     if (live.current.stateShown) hideState();
   }, []);
+  const cancel = useCallback(() => {
+    setOpen(false);
+    setNote("");
+    setNeed(false);
+    setWhat(false);
+    setNudge(false);
+    setKeyHold(false);
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && card.current?.contains(focused))
+      focused.blur();
+  }, []);
+  useEffect(() => {
+    if (!nudge) return;
+    const timer = setTimeout(() => setNudge(false), 2400);
+    return () => clearTimeout(timer);
+  }, [nudge]);
 
   const say = useCallback((text: string, at?: Rect) => {
     setToast(text);
@@ -602,11 +716,44 @@ function ExplainLayer({
   useEffect(() => {
     let frame = 0;
     let at: { x: number; y: number } | null = null;
+    const armed = (on: boolean) =>
+      card.current?.toggleAttribute("data-armed", on);
     const move = () => {
       frame = 0;
       if (!at) return;
       const found = hit(at.x, at.y);
-      if (found === "own") return;
+      if (found === "own") {
+        if (live.current.target) setLinger(false);
+        return;
+      }
+      const held = sentBox.current;
+      if (held) {
+        if (
+          at.x >= held.left &&
+          at.x <= held.right &&
+          at.y >= held.top &&
+          at.y <= held.bottom
+        )
+          return;
+        sentBox.current = null;
+      }
+      // An open report holds its card: parts passed on the way do not take
+      // it.
+      if (live.current.pinned) return;
+      const now = live.current.shown;
+      const box = card.current?.getBoundingClientRect();
+      // Travelling from the part onto its card keeps the card.
+      if (
+        now &&
+        box &&
+        found?.el !== now.el &&
+        inPath(at.x, at.y, now.rect, box)
+      ) {
+        armed(true);
+        setLinger(false);
+        return;
+      }
+      armed(!!found && found.el === now?.el);
       if (found) {
         if (live.current.target?.el !== found.el) pointAt(found);
         else setLinger(false);
@@ -634,6 +781,16 @@ function ExplainLayer({
       setTouch(touchPress);
       if (!(event.target instanceof Element) || event.target.closest(OWN))
         return;
+      // A press outside an open report never loses what was typed.
+      if (live.current.pinned) {
+        if (live.current.note.trim()) {
+          gesture = { block: true };
+          block(event);
+          setNudge(true);
+          return;
+        }
+        cancel();
+      }
       const found = hit(event.clientX, event.clientY);
       if (!found || found === "own") return;
       const current = live.current.target;
@@ -679,7 +836,30 @@ function ExplainLayer({
         )
           return;
         block(event);
+        // The first Esc cancels a report, the second ends the mode.
+        if (live.current.pinned || card.current?.contains(focused ?? null)) {
+          cancel();
+          return;
+        }
         stop();
+        return;
+      }
+      // F reports a mistake in the showing card. event.code, so that it is
+      // the same key on every keyboard layout.
+      if (
+        event.code === "KeyF" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        live.current.shown &&
+        !isTyping(focused) &&
+        !(focused instanceof HTMLElement && focused.isContentEditable)
+      ) {
+        block(event);
+        setKeyHold(true);
+        focusNext.current =
+          '[data-testid="explain-report"], [data-testid="explain-feedback-done"]';
+        setTick((n) => n + 1);
         return;
       }
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -694,6 +874,27 @@ function ExplainLayer({
         say(t.card.waited, visibleRect(focused, new Map()) ?? undefined);
       }
     };
+    // Keyboard: a part focused from the keyboard explains itself, as a
+    // pointed one does. Focus leaving the card lets go of F's hold.
+    const onFocus = (event: FocusEvent) => {
+      const el = event.target;
+      if (!(el instanceof Element)) return;
+      if (card.current?.contains(el)) return;
+      setKeyHold(false);
+      if (live.current.pinned || el.closest(OWN)) return;
+      let keyboard = false;
+      try {
+        keyboard = el.matches(":focus-visible");
+      } catch {
+        keyboard = false;
+      }
+      const id = keyboard ? cardOf(el) : undefined;
+      if (!id || live.current.target?.el === el) return;
+      const rect = visibleRect(el, new Map());
+      if (!rect) return;
+      setPointer(undefined);
+      pointAt({ id, el, rect });
+    };
     // What moves under the card (a scroll, a list that opens) moves it.
     const remeasure = () => setTick((n) => n + 1);
     window.addEventListener("pointermove", onMove, { passive: true });
@@ -704,6 +905,7 @@ function ExplainLayer({
     window.addEventListener("mouseup", swallow, true);
     window.addEventListener("click", onClick, true);
     window.addEventListener("keydown", onKey, true);
+    window.addEventListener("focusin", onFocus);
     window.addEventListener("scroll", remeasure, true);
     window.addEventListener("resize", remeasure);
     return () => {
@@ -716,10 +918,11 @@ function ExplainLayer({
       window.removeEventListener("mouseup", swallow, true);
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("focusin", onFocus);
       window.removeEventListener("scroll", remeasure, true);
       window.removeEventListener("resize", remeasure);
     };
-  }, [say, t, pointAt]);
+  }, [say, t, pointAt, cancel]);
 
   // The views change under the mode (a press opened the work, a list): the
   // pointed part follows its element, or goes when the element goes.
@@ -749,6 +952,7 @@ function ExplainLayer({
 
   // Re-measure on every render the tick or a change asked for.
   const shown = target ? find(target.id, target.el) : null;
+  live.current.shown = shown;
   useLayoutEffect(() => {
     if (target && !shown) setTarget(null);
   });
@@ -779,6 +983,17 @@ function ExplainLayer({
     let x: number;
     let y: number;
     if (shown) {
+      // Keep the report anchored unless growth or a smaller viewport would
+      // hide its controls. Long previews scroll inside the bounded card.
+      if (pinned && el.dataset.placed === shown.id) {
+        const box = el.getBoundingClientRect();
+        el.style.left = `${Math.round(Math.max(8, Math.min(box.left, vw - w - 8)))}px`;
+        if (box.top < top || box.bottom > vh - 8) {
+          el.style.top = `${Math.round(Math.max(top, Math.min(box.top, vh - h - 8)))}px`;
+          el.style.bottom = "auto";
+        }
+        return;
+      }
       const gap = 10;
       const r = shown.rect;
       const cx =
@@ -787,6 +1002,15 @@ function ExplainLayer({
       y = r.y + r.h + gap;
       if (y + h > vh - 8) y = r.y - h - gap;
       if (y < top) y = Math.min(vh - h - 8, Math.max(top, r.y + r.h + gap));
+      y = Math.max(top, y);
+      // A card above its part hangs from its bottom edge, so an opening
+      // report grows away from the part and stays on screen.
+      const above = y < r.y + r.h;
+      el.style.left = `${Math.round(x)}px`;
+      el.style.top = above ? "auto" : `${Math.round(y)}px`;
+      el.style.bottom = above ? `${Math.round(vh - y - h)}px` : "auto";
+      el.dataset.placed = shown.id;
+      return;
     } else {
       const keep = [anchor, ...rows.map((row) => row.part.rect)].filter(
         (k): k is Rect => !!k,
@@ -825,6 +1049,8 @@ function ExplainLayer({
     }
     el.style.left = `${Math.round(x)}px`;
     el.style.top = `${Math.round(Math.max(top, y))}px`;
+    el.style.bottom = "auto";
+    delete el.dataset.placed;
   });
 
   // The layer starts below the bar and clips what would dim it.
@@ -885,6 +1111,182 @@ function ExplainLayer({
       shown.rect,
       `ah-explain-hole${linger ? " ah-explain-linger" : ""}`,
     );
+    const f = t.feedback;
+    const id = shown.id;
+    let report: ReactNode;
+    if (done?.id === id) {
+      const issue = done.issue;
+      report = (
+        <div
+          className="ah-explain-done"
+          data-testid="explain-feedback-done"
+          tabIndex={-1}
+        >
+          <p>
+            <Icon name="check" aria-hidden="true" />
+            {f.done}
+          </p>
+          <p className="ah-explain-meta">{f.noAccount}</p>
+          <button
+            type="button"
+            className="ah-explain-link"
+            data-testid="explain-feedback-copy"
+            onClick={() => {
+              const text = feedbackText(issue);
+              void (navigator.clipboard?.writeText(text) ?? Promise.reject())
+                .then(() => say(f.copied))
+                .catch(() => say(f.copyFailed));
+            }}
+          >
+            {f.copy}
+          </button>
+        </div>
+      );
+    } else if (!open) {
+      report = (
+        <>
+          <button
+            type="button"
+            className="ah-explain-report"
+            data-testid="explain-report"
+            aria-keyshortcuts={touch ? undefined : "F"}
+            onClick={() => {
+              setKeyHold(false);
+              setOpen(true);
+              focusNext.current = "textarea";
+            }}
+          >
+            <Icon name="warning" aria-hidden="true" />
+            <span className="ah-explain-report-label">
+              <b>{f.report}</b>
+              <small>{f.reportSub}</small>
+            </span>
+            {!touch ? <kbd>F</kbd> : null}
+          </button>
+          <p className="ah-explain-meta" data-testid="explain-feedback-dest">
+            <Icon name="github" aria-hidden="true" />
+            {f.dest}
+          </p>
+          {reportedNow.has(id) ? (
+            <p className="ah-explain-meta">{f.reported}</p>
+          ) : null}
+        </>
+      );
+    } else {
+      const empty = !note.trim();
+      const preview = feedbackIssue(id, note || "…", version);
+      report = (
+        <div className="ah-explain-report-note" data-testid="explain-feedback">
+          <label htmlFor="ah-explain-note">{f.label}</label>
+          <textarea
+            id="ah-explain-note"
+            data-testid="explain-feedback-text"
+            required
+            aria-required="true"
+            aria-invalid={need && empty ? true : undefined}
+            aria-describedby="ah-explain-facts"
+            placeholder={f.placeholder}
+            value={note}
+            rows={3}
+            maxLength={NOTE_MAX}
+            onChange={(event) => {
+              setNote(event.target.value);
+              if (event.target.value.trim()) setNeed(false);
+            }}
+          />
+          {need && empty ? (
+            <p
+              className="ah-explain-nudge"
+              role="alert"
+              data-testid="explain-feedback-need"
+            >
+              {f.needText}
+            </p>
+          ) : null}
+          {note.length >= NOTE_MAX ? (
+            <p className="ah-explain-nudge" role="status">
+              {f.tooLong(formatNumber(NOTE_MAX))}
+            </p>
+          ) : null}
+          <div className="ah-explain-report-row">
+            {/* Looks disabled while empty but is not marked disabled, so
+                it stays pressable and pressing it says what is missing.
+                window.open stays in the user gesture to permit a new tab;
+                noreferrer, so GitHub is not told
+                this server's address. */}
+            <button
+              type="button"
+              className="ah-explain-send"
+              data-testid="explain-feedback-send"
+              data-empty={empty || undefined}
+              onClick={() => {
+                if (empty) {
+                  setNeed(true);
+                  card.current
+                    ?.querySelector<HTMLElement>("textarea")
+                    ?.focus({ preventScroll: true });
+                  return;
+                }
+                const issue = feedbackIssue(id, note, version);
+                sentBox.current = card.current?.getBoundingClientRect() ?? null;
+                window.open(issue.url, "_blank", "noopener,noreferrer");
+                reportedNow.add(id);
+                setOpen(false);
+                setNote("");
+                setNeed(false);
+                setWhat(false);
+                setKeyHold(false);
+                setDone({ id, issue });
+                focusNext.current = '[data-testid="explain-feedback-done"]';
+              }}
+            >
+              <Icon name="github" aria-hidden="true" />
+              {f.send}
+              <Icon name="external" aria-hidden="true" />
+              <span className="ah-visually-hidden">{f.newTab}</span>
+            </button>
+            <ControlButton
+              size="row"
+              variant="quiet"
+              data-testid="explain-feedback-cancel"
+              onPress={cancel}
+            >
+              {f.cancel}
+            </ControlButton>
+          </div>
+          {nudge ? (
+            <p
+              className="ah-explain-nudge"
+              role="status"
+              data-testid="explain-feedback-nudge"
+            >
+              {f.finishFirst}
+            </p>
+          ) : null}
+          <p className="ah-explain-meta" id="ah-explain-facts">
+            {f.facts}
+          </p>
+          <button
+            type="button"
+            className="ah-explain-link"
+            aria-expanded={what}
+            data-testid="explain-feedback-what"
+            onClick={() => setWhat((v) => !v)}
+          >
+            {f.what}
+          </button>
+          {what ? (
+            <div
+              className="ah-explain-preview"
+              data-testid="explain-feedback-preview"
+            >
+              <small>{f.whatLead}</small>
+              <pre>{feedbackText(preview)}</pre>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
     body = (
       <div
         ref={card}
@@ -892,6 +1294,9 @@ function ExplainLayer({
         data-testid="explain-card"
         data-card={shown.id}
         data-touch={touch || undefined}
+        data-pinned={pinned || undefined}
+        data-held={done?.id === id || undefined}
+        data-nudge={nudge || undefined}
         aria-live="polite"
       >
         <div className="ah-explain-top">
@@ -904,7 +1309,11 @@ function ExplainLayer({
               variant="quiet"
               className="ah-explain-x"
               aria-label={t.card.close}
-              onPress={() => setTarget(null)}
+              onPress={() => {
+                cancel();
+                setDone(null);
+                setTarget(null);
+              }}
             >
               <span aria-hidden="true">×</span>
             </ControlButton>
@@ -927,6 +1336,7 @@ function ExplainLayer({
           <p className="ah-explain-note">{t.card.onlyHover}</p>
         ) : null}
         {foot}
+        <div className="ah-explain-feedback">{report}</div>
       </div>
     );
   } else if (showState && situation) {

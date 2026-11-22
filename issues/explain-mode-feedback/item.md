@@ -3,11 +3,12 @@ created: 2026-11-21
 updated: 2026-11-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: explain-feedback
 lane_seq: 1
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Prototype: feedback from explain mode
