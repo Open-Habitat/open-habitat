@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: testing
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-space
 lane: rail-space
 lane_seq: 1
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Prototype: the rail is cramped on a laptop screen — where should its fixed items go?
@@ -39,3 +40,7 @@ Jari 22.11.2026 on round 1: A Tiivis is the best, but better still if the rail a
 ### 2026-11-22T12:34:18Z · @jari
 
 Jari 22.11.2026 on round 2: try C Suhteessa, refined with utility thresholds. Each list has a lower bound below which it is impractical and an upper bound beyond which more rows add little; the conversation list (Sinun vuorosi / Käynnissä / Hiljaiset, used far more) has different bounds than Työtilat. Example for Työtilat: with more than 6 workspaces a list under 6 rows is awkward, 10 rows is enough, beyond that scroll with visible up/down indicators. The conversation list needs a larger minimum (headers, the 'n above/below' chips). Allocation: first bring both lists to their working minimum; then to their 'enough' level; once both are there, grow the place buttons (icons → tiles → rows); when the buttons are at full size, grow both lists in a ratio. In effect a marginal-utility function per area, space going to the area with the largest marginal benefit at that height. From ui-structure round 2: height is the scarce resource and the rail may be wider.
+
+### 2026-11-22T15:12:44Z · @jari
+
+Jari 22.11.2026 on round 3: C Leveämpi (356 px rail) with B's logic (Keskustelut ensin: when both minimums do not fit, the conversation list keeps its full minimum and Työtilat flexes), i.e. C+B. Other round-3 questions not answered, so the round's defaults stand: the step rule as written in result.md (content-dependent below 'enough'), tiles kept, Työtilat edge chips ('↓ n työtilaa') as the scroll indicators. Implementation: rail-adaptive-impl.
