@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: obsolete
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-general-feedback
 lane: general-feedback
 lane_seq: 1
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Prototype: general feedback about Habitat from the account menu and on the phone
