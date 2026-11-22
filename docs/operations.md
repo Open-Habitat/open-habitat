@@ -287,6 +287,11 @@ the unit. An interruption after numeric policy publication can be continued by
 the same preview/approval procedure. Successful continuation returns `prepared`;
 verify the operation is completed and run `host check` before apply. Missing
 runtime inputs may still block installation independently of preparation.
+A fresh host normally reports `server_browser.chrome: google_chrome_not_installed`
+and `host check` exits nonzero until apply installs Chrome. This named check
+alone does not block a plan: use `host apply --dry-run` to determine whether
+apply is approvable, rather than gating the first apply on `host check` success.
+After apply, all required checks must pass.
 
 Apply reopens inputs and compares approval under the shared root lock, stages
 and authenticates immutable runtime generations, installs unmet Ubuntu minimum-version
@@ -883,8 +888,11 @@ TigerVNC display. TigerVNC (`tigervnc-standalone-server`, from Ubuntu's
 universe component) is a core Ubuntu requirement like the others. Chrome
 comes from Google's own apt repository, because no Chromium build that may
 be redistributed exists for both architectures and a browser people sign in
-to must take security updates as they appear: after a successful apply or
-upgrade (also one with nothing to change), the operator writes
+to must take security updates as they appear. Both are required on every
+installation, independent of whether anyone enables the experimental feature.
+After apply or upgrade reopens entries (also on a no-change run), the operator
+checks Chrome's installed package state, minimum version and executable. If
+missing, broken or too old, it writes
 `/etc/apt/sources.list.d/google-chrome.sources` and Google's signing key
 `/usr/share/keyrings/google-chrome.gpg` exactly as Chrome's own package
 writes them, refreshes only that source's index and installs
@@ -896,16 +904,30 @@ should update unattended. AppArmor needs nothing extra: Ubuntu's own profile
 for `/opt/google/chrome/chrome` grants its sandbox the user namespaces it
 needs.
 
-The step never fails or lengthens the operation, and runs after entries have
-reopened. The result's `server_browser` says `present`, `installed` or
-`unavailable` with a reason (`google_source_unavailable`,
+Chrome installation adds no closed-entry downtime, but it is a required part
+of the command. The result's `server_browser` says `present`, `installed` or
+`failed` with a named reason (`google_source_unavailable`,
 `apt_candidate_cannot_meet_minimum`, `apt_solution_refused`,
-`apt_install_failed`). Without Chrome or TigerVNC the browser is unavailable:
-the experimental switch's card in Settings says the environment is not
-installed and is the administrator's matter, and an agent's
-`open-habitat agent browser start` answers `browser_unavailable` with the
-same explanation. A server that must not reach `dl.google.com` simply has no
-server browser; nothing else depends on it.
+`apt_install_failed`, or `package_observation_unavailable`). Failure returns
+nonzero with `server_browser_required` and outcome `server_browser_failed`;
+the generation transition remains completed and entries remain open, but the
+installation is not accepted. `host check` reports
+`server_browser.chrome` as failed or unavailable, and `doctor` also fails its
+Chrome check. These reads never contact Google or install anything.
+
+Resolve Google access or native apt/dpkg problems, obtain a **fresh host apply
+plan**, then apply again. Even an otherwise no-change apply retries Chrome,
+and upgrading an existing installation without Chrome installs it the same
+way. The qualified minimum is 157.0.8103.38-1; newer versions are accepted and
+never downgraded. There is no site.json opt-out. An air-gapped host must have
+a qualifying Chrome package installed through its administrator's package
+supply before acceptance; otherwise installation fails rather than silently
+omitting the browser.
+
+Without Chrome or TigerVNC the browser remains unavailable: the experimental
+switch's card in Settings says the environment is not installed and is the
+administrator's matter, and an agent's `open-habitat agent browser start`
+answers `browser_unavailable` with the same explanation.
 
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,

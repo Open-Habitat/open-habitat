@@ -19,6 +19,29 @@ type fakeApt struct {
 	candidate string
 	fail      string
 	calls     [][]string
+	version   string
+	status    string
+	queryErr  error
+	noRepair  bool
+}
+
+func (f *fakeApt) query(context.Context) ([]byte, error) {
+	if f.queryErr != nil {
+		return nil, f.queryErr
+	}
+	base := "base-files\tarm64\t13ubuntu10\tinstall ok installed\n"
+	if f.version == "" {
+		return []byte(base), nil
+	}
+	status := f.status
+	if status == "" {
+		status = "install ok installed"
+	}
+	// Both fixture architectures use the same version/status.
+	for _, arch := range []string{"amd64", "arm64"} {
+		base += serverBrowserPackage + "\t" + arch + "\t" + f.version + "\t" + status + "\n"
+	}
+	return []byte(base), nil
 }
 
 func (f *fakeApt) run(_ context.Context, _ time.Duration, path string, args ...string) ([]byte, error) {
@@ -30,6 +53,10 @@ func (f *fakeApt) run(_ context.Context, _ time.Duration, path string, args ...s
 	case call[0] == "apt-cache":
 		return []byte(serverBrowserPackage + ":\n  Installed: (none)\n  Candidate: " + f.candidate + "\n"), nil
 	case call[0] == "apt-get" && call[1] != "--simulate" && slices.Contains(call, "install"):
+		if f.noRepair {
+			return nil, nil
+		}
+		f.version, f.status = f.candidate, "install ok installed"
 		p := filepath.Join(f.root, serverBrowserChrome)
 		_ = os.MkdirAll(filepath.Dir(p), 0o755)
 		return nil, os.WriteFile(p, nil, 0o755)
@@ -46,8 +73,8 @@ func TestServerBrowserLeavesAnInstalledChromeToApt(t *testing.T) {
 	if err := os.WriteFile(p, nil, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	apt := &fakeApt{root: root}
-	installed, err := installServerBrowser(context.Background(), root, 0, "arm64", apt.run)
+	apt := &fakeApt{root: root, version: "158.0.8127.36-1"}
+	installed, err := installServerBrowser(context.Background(), root, 0, "arm64", apt.run, apt.query)
 	if installed || err != nil || len(apt.calls) != 0 {
 		t.Fatalf("installed=%v err=%v calls=%v", installed, err, apt.calls)
 	}
@@ -74,7 +101,7 @@ func TestServerBrowserInstallsFromTheExistingGoogleSource(t *testing.T) {
 			t.Fatal(err)
 		}
 		apt := &fakeApt{root: root, candidate: tc.candidate, fail: tc.fail}
-		installed, err := installServerBrowser(context.Background(), root, 0, "amd64", apt.run)
+		installed, err := installServerBrowser(context.Background(), root, 0, "amd64", apt.run, apt.query)
 		if !errors.Is(err, tc.want) || installed != (tc.want == nil) {
 			t.Fatalf("%+v: installed=%v err=%v", tc, installed, err)
 		}
@@ -100,7 +127,7 @@ func TestServerBrowserWithdrawsAGoogleSourceThatDoesNotWork(t *testing.T) {
 	for _, fail := range []string{"update", "--simulate", ""} {
 		root, owner := operationFixture(t)
 		apt := &fakeApt{root: root, candidate: "158.0.8127.36-1", fail: fail}
-		installed, err := installServerBrowser(context.Background(), root, owner, "arm64", apt.run)
+		installed, err := installServerBrowser(context.Background(), root, owner, "arm64", apt.run, apt.query)
 		if installed != (fail == "") || (err == nil) != (fail == "") {
 			t.Fatalf("fail=%q: installed=%v err=%v", fail, installed, err)
 		}
@@ -116,6 +143,61 @@ func TestServerBrowserWithdrawsAGoogleSourceThatDoesNotWork(t *testing.T) {
 	}
 }
 
+func TestServerBrowserRepairsAndVerifiesRequiredRuntime(t *testing.T) {
+	for _, tc := range []struct {
+		name, version, status string
+		executable, noRepair  bool
+		queryErr              error
+		wantReason            string
+		wantErr               error
+	}{
+		{name: "missing", wantReason: "google_chrome_not_installed"},
+		{name: "stray executable", executable: true, wantReason: "google_chrome_not_installed"},
+		{name: "old", version: "120.0.6099.71-1", executable: true, wantReason: "google_chrome_below_minimum"},
+		{name: "broken", version: "158.0.8127.36-1", status: "install ok unpacked", executable: true, wantReason: "google_chrome_not_installed"},
+		{name: "missing executable", version: "158.0.8127.36-1", wantReason: "google_chrome_executable_missing"},
+		{name: "lying apt", noRepair: true, wantReason: "google_chrome_not_installed", wantErr: errServerBrowserInstall},
+		{name: "unreadable database", queryErr: ErrRuntimePackageObservation, wantReason: "package_observation_unavailable", wantErr: errServerBrowserObservation},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, owner := operationFixture(t)
+			apt := &fakeApt{root: root, candidate: "158.0.8127.36-1", version: tc.version, status: tc.status, noRepair: tc.noRepair, queryErr: tc.queryErr}
+			if tc.executable {
+				p := filepath.Join(root, serverBrowserChrome)
+				if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, nil, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			check := observeServerBrowser(context.Background(), root, "arm64", apt.query)
+			if check.Status == "pass" || check.Reason != tc.wantReason {
+				t.Fatalf("check=%+v", check)
+			}
+			installed, err := installServerBrowser(context.Background(), root, owner, "arm64", apt.run, apt.query)
+			if !errors.Is(err, tc.wantErr) || installed != (tc.wantErr == nil) {
+				t.Fatalf("installed=%v err=%v", installed, err)
+			}
+			if tc.queryErr != nil && len(apt.calls) != 0 {
+				t.Fatalf("mutated with unreadable database: %v", apt.calls)
+			}
+			if tc.wantErr == nil {
+				if check := observeServerBrowser(context.Background(), root, "arm64", apt.query); check.Status != "pass" {
+					t.Fatal(check)
+				}
+				if tc.wantReason == "google_chrome_executable_missing" {
+					for _, call := range apt.calls {
+						if slices.Contains(call, "install") && !slices.Contains(call, "--reinstall") {
+							t.Fatalf("did not repair deleted executable: %v", call)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 // Only the disposable container runner sets this opt-in. Never use on a host:
 // it adds Google's repository and installs Chrome.
 func TestServerBrowserChromeAptContainer(t *testing.T) {
@@ -125,7 +207,7 @@ func TestServerBrowserChromeAptContainer(t *testing.T) {
 	if b, err := os.ReadFile("/etc/os-release"); err != nil || !strings.Contains(string(b), "Ubuntu") || os.Geteuid() != 0 {
 		t.Fatal("requires root in disposable Ubuntu")
 	}
-	installed, err := installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout)
+	installed, err := installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout, queryRuntimePackages)
 	if err != nil || !installed {
 		t.Fatalf("installed=%v err=%v", installed, err)
 	}
@@ -140,7 +222,7 @@ func TestServerBrowserChromeAptContainer(t *testing.T) {
 	if !trustedOperatorExecutableForTest(serverBrowserChrome) {
 		t.Fatal("installed Chrome is not a root-owned executable")
 	}
-	if installed, err = installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout); installed || err != nil {
+	if installed, err = installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout, queryRuntimePackages); installed || err != nil {
 		t.Fatalf("second run: installed=%v err=%v", installed, err)
 	}
 }

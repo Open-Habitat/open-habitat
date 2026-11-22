@@ -306,7 +306,7 @@ func doctorCommand(args []string) (any, error) {
 		return nil, x
 	}
 	checks := []any{map[string]any{"id": "binary.provenance", "status": "ok", "message": "version metadata is inspectable"}, map[string]any{"id": "config.path", "status": "ok", "message": fmt.Sprintf("%s config path resolves to %s", c, configPath(c))}, map[string]any{"id": "authority.boundary", "status": "ok", "message": fmt.Sprintf("%s role selected explicitly", c)}}
-	return envelope(map[string]any{"component": c, "checks": checks, "summary": map[string]int{"ok": 3, "warn": 0, "fail": 0}}), nil
+	return doctorWithServerBrowser(c, checks)
 }
 func parseConfig(args []string) (string, *cliError) {
 	if len(args) != 3 || args[0] != "exec" || args[1] != "--config" || strings.TrimSpace(args[2]) == "" {

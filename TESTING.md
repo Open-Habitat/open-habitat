@@ -682,7 +682,9 @@ dpkg; Ubuntu planning tests check union, newer versions, candidate and solver
 refusals, and non-mutating simulation. `bash scripts/test-ubuntu-requirements.sh`
 runs the actual native host apt adapter as root only inside a disposable rootless
 Ubuntu 24.04 container, installing all declared requirements and checking their
-minimums. It is not systemd, per-user workflow or installation acceptance evidence.
+minimums, then installing required Google Chrome through the production vendor
+apt step and checking its package-owned key/source and a no-change repeat.
+It is not systemd, per-user workflow or installation acceptance evidence.
 `runtime-release manifest --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
 

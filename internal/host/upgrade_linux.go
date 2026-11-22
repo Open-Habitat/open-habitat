@@ -85,6 +85,7 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		return UpgradePlan{}, ErrImmutable
 	}
 	p := UpgradePlan{Protocol: "host.upgrade.v1", Predecessor: old.Release, Target: s.Release, OwnerBinary: generationPath(s) + "/open-habitat", Checks: []Check{}, Approvable: true, Actions: []Action{{"upgrade.stage", "planned", "authenticated_successor"}, {"upgrade.quiesce", "planned", "explicit_maintenance_required"}, {"upgrade.activate", "planned", "restart_native_consumers"}, {"upgrade.verify", "planned", "structural_acceptance_required"}}}
+	p.Actions = append(p.Actions, serverBrowserAction())
 	if legacyViewLinks(s.Gateway.UID) {
 		p.Actions = append(p.Actions, Action{"upgrade.view_addresses", "planned", "old_share_links_stop_working"})
 	}
@@ -96,7 +97,7 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		// The successor is not active yet, so selector/unit checks belong to
 		// predecessor authentication. Keep target Ubuntu requirement/solver checks.
 		switch c.Code {
-		case "installation.generation", "installation.units", "storage.boot_policy":
+		case "installation.generation", "installation.units", "storage.boot_policy", "server_browser.chrome":
 			continue
 		}
 		p.Checks = append(p.Checks, c)

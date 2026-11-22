@@ -31,7 +31,7 @@ type ApplyResult struct {
 	Operation      *Operation             `json:"operation,omitempty"`
 	Administrators []AdministratorOutcome `json:"administrators,omitempty"`
 	// ServerBrowser says whether the server browser's Chrome was found or
-	// installed after entries reopened; its failure never fails the apply.
+	// installed after entries reopened; failure fails apply without refencing.
 	ServerBrowser *ServerBrowserOutcome `json:"server_browser,omitempty"`
 }
 type AdministratorOutcome struct {

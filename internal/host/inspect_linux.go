@@ -111,6 +111,11 @@ func Inspect(ctx context.Context, sitePath string) (Inspection, error) {
 	r, err := inspect(ctx, sitePath, productionSources())
 	if err == nil {
 		inspectGitHubExpiry(&r)
+		check := ServerBrowserCheck(ctx)
+		r.Checks = append(r.Checks, check)
+		if check.Status != "pass" {
+			r.Ready = false
+		}
 	}
 	return r, err
 }
@@ -377,7 +382,7 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 		return Plan{}, ErrUnstable
 	}
 	if src.journal == operationDir && !preparation {
-		actions = []Action{{"installation.apply", "planned", "qualified_fresh_installation_or_convergence"}}
+		actions = []Action{{"installation.apply", "planned", "qualified_fresh_installation_or_convergence"}, serverBrowserAction()}
 		for _, check := range r.Checks {
 			if strings.HasPrefix(check.Code, "ubuntu.package.") {
 				actions = append(actions, Action{check.Code, "planned", check.Reason})

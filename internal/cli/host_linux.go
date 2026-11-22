@@ -149,6 +149,8 @@ func hostErrorBase(e error) *cliError {
 		return &cliError{code: "release_profile_unavailable", message: "the release lacks a selected profile or dependency, or its core or integrations do not carry what this binary pins; obtain a release built from this binary's commit", exit: 1}
 	case errors.Is(e, host.ErrRelease):
 		return &cliError{code: "invalid_release", message: "a release manifest (the target's, or the installed predecessor's during an upgrade) is not one this binary accepts; inspect which manifest before continuing", exit: 1}
+	case errors.Is(e, host.ErrServerBrowser):
+		return &cliError{code: "server_browser_required", message: "required Google Chrome installation or verification failed after entries reopened; inspect result.server_browser.reason, host apt state and Google repository access; obtain a fresh host apply plan and retry; the completed generation transition is not rolled back", exit: 2}
 	case errors.Is(e, context.DeadlineExceeded):
 		code := "host_deadline_exceeded"
 		if errors.Is(e, host.ErrRuntimeStage) {

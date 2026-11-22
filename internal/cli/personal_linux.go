@@ -108,5 +108,5 @@ func personalDoctor(args []string) (any, error) {
 	if udssecure.Agent(socket, os.Geteuid()) != nil {
 		return nil, &cliError{code: "agent_socket_untrusted", message: "own-user agent socket is missing or unsafe; ask the operator to check installation", exit: 1}
 	}
-	return envelope(map[string]any{"component": "personal", "checks": []any{map[string]any{"id": "config.native", "status": "ok", "message": "native Pi settings are readable"}, map[string]any{"id": "agent.socket", "status": "ok", "message": "own-user socket filesystem permissions verified"}}, "summary": map[string]int{"ok": 2, "warn": 0, "fail": 0}}), nil
+	return doctorWithServerBrowser("personal", []any{map[string]any{"id": "config.native", "status": "ok", "message": "native Pi settings are readable"}, map[string]any{"id": "agent.socket", "status": "ok", "message": "own-user socket filesystem permissions verified"}})
 }

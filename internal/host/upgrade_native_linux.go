@@ -98,7 +98,10 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 	r, e := executeUpgrade(ctx, req, d)
 	// As in apply: after the upgrade, never inside its downtime or journal.
 	if e == nil && !req.DryRun && (r.Outcome == "upgraded" || r.Outcome == "no_change") {
-		r.ServerBrowser = offerServerBrowser(ctx, req.Progress)
+		r.ServerBrowser, e = requireServerBrowser(ctx, req.Progress)
+		if e != nil {
+			r.Outcome = "server_browser_failed"
+		}
 	}
 	return r, e
 }

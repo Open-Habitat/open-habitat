@@ -22,12 +22,11 @@ import (
 // internal/AGENTS.md's package rule says, so apply and upgrade add that
 // repository and install the package once.
 //
-// The step is best effort and runs after entries have reopened: an
-// experimental feature never fails or lengthens an installation's downtime,
-// and a host that cannot reach Google simply has no server browser, which the
-// daemon and the browser app then say in plain words. Once Chrome is
-// installed its own package owns the repository file and the key and keeps
-// them identical to what is written here, so nothing here fights it later.
+// Chrome is required, but apt runs after entries reopen so a Google outage
+// cannot extend the maintenance downtime. Failure fails the command, not the
+// already completed generation transition; the next apply retries. Once Chrome
+// is installed its package owns the repository and key and keeps them identical
+// to what is written here.
 const (
 	serverBrowserChrome  = "/opt/google/chrome/google-chrome"
 	serverBrowserPackage = "google-chrome-stable"
@@ -70,35 +69,85 @@ type ServerBrowserOutcome struct {
 	Reason  string `json:"reason,omitempty"`
 }
 
+// ErrServerBrowser means the generation transition completed but the required
+// Chrome postcondition did not. Entries are open; retry with a fresh apply plan.
+var ErrServerBrowser = errors.New("server_browser_required")
+
 var (
-	errServerBrowserSource    = errors.New("google_source_unavailable")
-	errServerBrowserCandidate = errors.New("apt_candidate_cannot_meet_minimum")
-	errServerBrowserSolve     = errors.New("apt_solution_refused")
-	errServerBrowserInstall   = errors.New("apt_install_failed")
+	errServerBrowserObservation = errors.New("package_observation_unavailable")
+	errServerBrowserSource      = errors.New("google_source_unavailable")
+	errServerBrowserCandidate   = errors.New("apt_candidate_cannot_meet_minimum")
+	errServerBrowserSolve       = errors.New("apt_solution_refused")
+	errServerBrowserInstall     = errors.New("apt_install_failed")
 )
 
-// offerServerBrowser installs Chrome when it is missing and reports the
-// outcome; it never returns an error to the operation.
-func offerServerBrowser(ctx context.Context, progress func(string) error) *ServerBrowserOutcome {
-	if _, err := os.Stat(serverBrowserChrome); err == nil {
-		return &ServerBrowserOutcome{Outcome: "present"}
-	}
-	if progress != nil {
-		_ = progress("server_browser")
-	}
-	installed, err := installServerBrowser(ctx, "/", 0, runtime.GOARCH, nativeCommandTimeout)
-	switch {
-	case err != nil:
-		return &ServerBrowserOutcome{Outcome: "unavailable", Reason: err.Error()}
-	case !installed:
-		return &ServerBrowserOutcome{Outcome: "present"}
-	}
-	return &ServerBrowserOutcome{Outcome: "installed"}
+func serverBrowserAction() Action {
+	return Action{"server_browser.chrome", "planned", "ensure_required_minimum_after_entries_reopen"}
 }
 
-// installServerBrowser reports whether it installed Chrome. A Chrome that is
-// already there is the host apt's to update; an administrator's own Google
-// source (the legacy list file) is used as it is.
+func requireServerBrowser(ctx context.Context, progress func(string) error) (*ServerBrowserOutcome, error) {
+	failed := func(reason string, err error) (*ServerBrowserOutcome, error) {
+		return &ServerBrowserOutcome{Outcome: "failed", Reason: reason}, errors.Join(ErrServerBrowser, err)
+	}
+	if progress != nil {
+		if err := progress("server_browser"); err != nil {
+			return failed("progress_unavailable", err)
+		}
+	}
+	// The generation executor has released its lock. Serialize this apt step
+	// too, and do not mutate packages behind another interrupted operation.
+	lock, err := OpenOperationLock(ctx)
+	if err != nil {
+		return failed("operation_lock_unavailable", err)
+	}
+	defer lock.Close()
+	if status, _ := observeJournal(operationDir, 0); status != "pass" {
+		return failed("operation_incomplete", ErrRecovery)
+	}
+	installed, err := installServerBrowser(ctx, "/", 0, runtime.GOARCH, nativeCommandTimeout, queryRuntimePackages)
+	if err != nil {
+		return failed(err.Error(), errors.Join(err, ctx.Err()))
+	}
+	if installed {
+		return &ServerBrowserOutcome{Outcome: "installed"}, nil
+	}
+	return &ServerBrowserOutcome{Outcome: "present"}, nil
+}
+
+// ServerBrowserCheck observes the required host Chrome without writes or network.
+func ServerBrowserCheck(ctx context.Context) Check {
+	return observeServerBrowser(ctx, "/", runtime.GOARCH, queryRuntimePackages)
+}
+
+// observeServerBrowser is read-only and networkless. A stray executable or a
+// partially configured package must not masquerade as an installed browser.
+func observeServerBrowser(ctx context.Context, root, arch string, query packageQuery) Check {
+	check := Check{"server_browser.chrome", "unavailable", "package_observation_unavailable"}
+	output, err := query(ctx)
+	if err != nil {
+		return check
+	}
+	packages, err := parseRuntimePackages(output)
+	if err != nil {
+		return check
+	}
+	check.Status = "fail"
+	version := packages[serverBrowserPackage+":"+arch]
+	if version == "" {
+		check.Reason = "google_chrome_not_installed"
+	} else if !packageVersionRE.MatchString(version) || compareDebVersions(version, serverBrowserChromeMinimum) < 0 {
+		check.Reason = "google_chrome_below_minimum"
+	} else if info, err := os.Stat(filepath.Join(root, serverBrowserChrome)); err != nil || !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		check.Reason = "google_chrome_executable_missing"
+	} else {
+		check.Status, check.Reason = "pass", "google_chrome_minimum_satisfied"
+	}
+	return check
+}
+
+// installServerBrowser reports whether it installed or repaired Chrome. A
+// qualifying installed version is left to host apt updates; an administrator's
+// own Google source (the legacy list file) is used as it is.
 //
 // What it wrote is withdrawn again when anything before the installation
 // fails: a source the host cannot reach would make every later apt update
@@ -106,12 +155,16 @@ func offerServerBrowser(ctx context.Context, progress func(string) error) *Serve
 // same repository would stop apt reading its sources at all. After a failed
 // installation they stay, because dpkg may already have unpacked Chrome,
 // whose package then owns them.
-func installServerBrowser(ctx context.Context, root string, owner uint32, arch string, run ubuntuCommand) (bool, error) {
+func installServerBrowser(ctx context.Context, root string, owner uint32, arch string, run ubuntuCommand, query packageQuery) (bool, error) {
 	if arch != "amd64" && arch != "arm64" {
 		return false, errServerBrowserSource
 	}
-	if _, err := os.Stat(filepath.Join(root, serverBrowserChrome)); err == nil {
+	check := observeServerBrowser(ctx, root, arch, query)
+	if check.Status == "pass" {
 		return false, nil
+	}
+	if check.Status == "unavailable" {
+		return false, errServerBrowserObservation
 	}
 	var wrote []string
 	fail := func(err error) (bool, error) {
@@ -149,13 +202,19 @@ func installServerBrowser(ctx context.Context, root string, owner uint32, arch s
 		return fail(errServerBrowserCandidate)
 	}
 	args := aptInstallArgs([]string{serverBrowserPackage})
+	if check.Reason == "google_chrome_executable_missing" {
+		args = append([]string{"--reinstall"}, args...)
+	}
 	if _, err := run(ctx, 5*time.Minute, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); err != nil {
 		return fail(errServerBrowserSolve)
 	}
 	if _, err := run(ctx, 30*time.Minute, "/usr/bin/apt-get", args...); err != nil {
 		return false, errServerBrowserInstall
 	}
-	if _, err := os.Stat(filepath.Join(root, serverBrowserChrome)); err != nil {
+	if check := observeServerBrowser(ctx, root, arch, query); check.Status != "pass" {
+		if check.Status == "unavailable" {
+			return false, errServerBrowserObservation
+		}
 		return false, errServerBrowserInstall
 	}
 	return true, nil

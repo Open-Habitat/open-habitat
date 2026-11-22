@@ -452,10 +452,13 @@ func applyNative(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 	}
 	r, e := executeApply(ctx, req, d)
 	r.Administrators = n.roles
-	// Only once the operation has completed: the server browser's Chrome
-	// never holds the operation journal or lengthens the downtime.
+	// Required, but after entries reopen: apt never lengthens downtime.
+	// A failed postcondition is retried even on an otherwise no-change apply.
 	if e == nil && !req.DryRun && (r.Outcome == "applied" || r.Outcome == "no_change") {
-		r.ServerBrowser = offerServerBrowser(ctx, req.Progress)
+		r.ServerBrowser, e = requireServerBrowser(ctx, req.Progress)
+		if e != nil {
+			r.Outcome = "server_browser_failed"
+		}
 	}
 	return r, e
 }
@@ -808,7 +811,7 @@ func (n *nativeApply) revalidate(ctx context.Context, path string) error {
 			continue
 		}
 		switch c.Code {
-		case "operation.fence", "broker.state", "installation.generation", "release.runtime", "installation.collisions":
+		case "operation.fence", "broker.state", "installation.generation", "release.runtime", "installation.collisions", "server_browser.chrome":
 			continue
 		}
 		if c.Status != "pass" {

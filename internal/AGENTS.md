@@ -140,8 +140,11 @@ The packages divide the work as follows.
   host keeps updated (Google Chrome) is treated the same way: a qualified
   minimum version, updated as the OS delivers it, because a browser that opens
   the web goes stale within days. Apply and upgrade add Google's repository
-  only as its own package would, install Chrome best effort after the
-  operation has completed, and never let it block or fail an installation. Other non-Ubuntu components, archives with no
+  only as its own package would. Chrome and TigerVNC are required on every
+  installation, even while the server-browser UI is experimental. Chrome's
+  apt step runs after entries reopen so Google availability cannot extend
+  downtime; failure must fail the command and host readiness, never silently
+  waive the requirement. Other non-Ubuntu components, archives with no
   OS update channel, remain exact pinned archives.
   Release trust is the site's exact manifest digest/version, which the operator
   takes from the SHA-256 GitHub states for the release's manifest asset. The

@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-browser-runtime-always
 lane: release-runtime
 lane_seq: 9
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser runtime (TigerVNC, Google Chrome) is always installed, not best effort
