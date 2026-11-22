@@ -142,6 +142,13 @@ snapshot until the next host event or refresh; a new identity must never inherit
 that snapshot or the previous person's draft. A stale response from the old
 identity must not overwrite the new view.
 
+Shared conversations remain the owner's agent, quota and connections, and
+full rights lend the owner's whole Unix user through that agent; the UI must
+say so without suggesting a softer permission boundary. Turn modes, authors,
+roles and waiting requests come from the host, never browser inference. A
+participant's workspace name and view cards must not become routes to the
+owner's files or views; only the owner may answer an approval question.
+
 Replies, events and renders have no guaranteed order. Apply a reply only when
 its cursor, revision or command identity makes it current for the same daemon
 instance. Focus, caret and scroll follow a ready, enabled element that will

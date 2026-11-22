@@ -27,6 +27,11 @@ keyless third-party search is turned on by default: it would send queries to a
 company nobody chose, under one rate limit shared by the whole installation. The bridge change is
 a source patch that must apply exactly once, so a bridge pin bump either
 carries it forward or drops it on purpose once upstream offers the setting.
+Provider-side search and the bridge's built-in tools bypass Pi's `tool_call`
+hook, so they must stay off in text-only and per-call-approval turns. Any new
+extension or provider operation outside Pi's dispatch must honour the
+companion's turn mode before shipping; tests against the pinned runtime must
+prove that bridge-served Pi tools still pass through the hook.
 
 Agents read JavaScript-rendered pages with `page-reader.mjs` and the headless
 Chromium in `browser-lock.json`, which every installation gets (Jari,

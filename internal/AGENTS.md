@@ -86,7 +86,14 @@ The packages divide the work as follows.
   child. A call whose child died is failed as of unknown outcome, never sent
   again. It must never gain a TCP or gateway-reachable listener, another
   UID's access, a credential or token copy, or a persistent cache; any of
-  those is a new security decision for Jari.
+  those is a new security decision for Jari. Account switching must preserve
+  each account's native cache, identity pin and permission level, never merge
+  caches or take a union of permissions. Pi's hidden exposure is presentation,
+  not authorization: discovery and execution both need the daemon's area and
+  level checks, with sign-in tools unavailable. Keep useful administration
+  tools in their own area; category words in a global search do not exclude
+  them from file searches. Human confirmation remains a mistake guard, not
+  protection against the person's own shell commands.
 - `entryfence/`: the read-only deny-marker observation shared by HTTP and
   native mutation entry. It holds no identity or write authority; each caller
   retains its own peer and parent trust checks. Stage-first observation is part
@@ -293,6 +300,34 @@ Identity and authority:
   approval detail, `!!` commands and other conversations never cross. The
   gateway forwards only its own table of guest operations, rebuilding each
   query and body from that operation's grammar.
+- Sharing lends the owner's one native Pi, model, quota and credentials;
+  it never copies a session to a participant or routes through their daemon.
+  Text-only turns guard who starts tool use, not Unix-user isolation: earlier
+  processes keep running and participant text remains in later owner context.
+- Participant authorship and role come from the daemon's membership record,
+  never text: companion-written custom messages avoid Pi's user-input command
+  expansion and keep attribution in native history without a second store.
+  Hold participant messages until idle, separately from the owner's, because
+  steering one into an owner turn would cut off the owner's work.
+- Turn restrictions belong in the companion's `tool_call` hook, including
+  nested calls; hiding declared tools neither blocks every call nor preserves
+  the provider's prompt cache. Extension and daemon wakes must not restore
+  tools, and restart or branch switch must rebuild mode from structured history,
+  not compaction prose or a stale full-rights grant; unreadable history gives
+  no tools.
+- Membership stays outside branch history so rewind cannot restore access;
+  history lines record changes but never authorize them. Removal must end
+  already-open streams under the same lock as stream admission, not merely
+  refuse new requests; full-rights revocation must reach the next tool call
+  even if its bridge notification is lost, without claiming to undo prior work.
+- Only the owner answers questions; per-call approval must show complete
+  arguments for the exact call, not its shortened question prompt. A release
+  is a Habitat line naming the waiting request, never fabricated owner speech;
+  newer messages must not silently settle older waiting requests, and giving
+  full rights does not release a request already waiting.
+- Outsider links, participant attachments, participant-message search indexing
+  and per-person spend limits need a separate decision; sharing must not grow
+  them implicitly.
 - A person's own Tailscale node (Omat koneet) is theirs alone: a systemd
   user unit of their account, never a system `tailscaled`, never a host-wide
   tailnet and never a Habitat-owned tailnet, auth key or admin access to
@@ -373,8 +408,9 @@ Identity and authority:
   revocation (a person removed from site.json, converged by host apply) end
   web access and what Habitat started for the web: once the change is
   committed the broker stops the person's daemon service, which ends the Pi
-  conversations in its cgroup, and both sockets (Jari, 2026-11-10). A
-  listener left running for someone no source admits keeps processes alive
+  conversations in its cgroup, and all three sockets (Jari, 2026-11-10;
+  guest listener added in ADR 0038). A listener left running for someone no
+  source admits keeps processes alive
   that nothing routes to, and an installation's activation gate rightly
   refuses socket starts while one does. The account, home, credentials, the
   person's own user manager and its processes (terminal tmux, Taskfleet
