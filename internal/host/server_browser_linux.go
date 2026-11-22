@@ -86,7 +86,7 @@ func offerServerBrowser(ctx context.Context, progress func(string) error) *Serve
 	if progress != nil {
 		_ = progress("server_browser")
 	}
-	installed, err := installServerBrowser(ctx, "/", runtime.GOARCH, nativeCommandTimeout)
+	installed, err := installServerBrowser(ctx, "/", 0, runtime.GOARCH, nativeCommandTimeout)
 	switch {
 	case err != nil:
 		return &ServerBrowserOutcome{Outcome: "unavailable", Reason: err.Error()}
@@ -99,12 +99,26 @@ func offerServerBrowser(ctx context.Context, progress func(string) error) *Serve
 // installServerBrowser reports whether it installed Chrome. A Chrome that is
 // already there is the host apt's to update; an administrator's own Google
 // source (the legacy list file) is used as it is.
-func installServerBrowser(ctx context.Context, root, arch string, run ubuntuCommand) (bool, error) {
+//
+// What it wrote is withdrawn again when anything before the installation
+// fails: a source the host cannot reach would make every later apt update
+// warn or fail, and one that conflicts with an administrator's entry for the
+// same repository would stop apt reading its sources at all. After a failed
+// installation they stay, because dpkg may already have unpacked Chrome,
+// whose package then owns them.
+func installServerBrowser(ctx context.Context, root string, owner uint32, arch string, run ubuntuCommand) (bool, error) {
 	if arch != "amd64" && arch != "arm64" {
 		return false, errServerBrowserSource
 	}
 	if _, err := os.Stat(filepath.Join(root, serverBrowserChrome)); err == nil {
 		return false, nil
+	}
+	var wrote []string
+	fail := func(err error) (bool, error) {
+		for _, p := range wrote {
+			_ = os.Remove(filepath.Join(root, p))
+		}
+		return false, err
 	}
 	source := googleChromeSourcesPath
 	if _, err := os.Lstat(filepath.Join(root, googleChromeLegacyList)); err == nil {
@@ -114,9 +128,10 @@ func installServerBrowser(ctx context.Context, root, arch string, run ubuntuComm
 			if _, err := os.Lstat(filepath.Join(root, p.Path)); err == nil {
 				continue
 			}
-			if installPolicy(root, p, 0) != nil {
-				return false, errServerBrowserSource
+			if installPolicy(root, p, owner) != nil {
+				return fail(errServerBrowserSource)
 			}
+			wrote = append(wrote, p.Path)
 		}
 	}
 	// Refresh only Google's index: the host's own sources and their lists are
@@ -126,16 +141,16 @@ func installServerBrowser(ctx context.Context, root, arch string, run ubuntuComm
 	if _, err := run(ctx, 5*time.Minute, "/usr/bin/apt-get", "-q", "--error-on=any", "update",
 		"-o", "Dir::Etc::SourceList="+source, "-o", "Dir::Etc::SourceParts=-",
 		"-o", "APT::Get::List-Cleanup=false", "-o", "DPkg::Lock::Timeout=300"); err != nil {
-		return false, errServerBrowserSource
+		return fail(errServerBrowserSource)
 	}
 	output, err := run(ctx, time.Minute, "/usr/bin/apt-cache", "policy", serverBrowserPackage)
 	candidate, exact := ubuntuCandidate(output, RuntimePackage{Name: serverBrowserPackage, Architecture: arch})
 	if err != nil || !exact || compareDebVersions(candidate, serverBrowserChromeMinimum) < 0 {
-		return false, errServerBrowserCandidate
+		return fail(errServerBrowserCandidate)
 	}
 	args := aptInstallArgs([]string{serverBrowserPackage})
 	if _, err := run(ctx, 5*time.Minute, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); err != nil {
-		return false, errServerBrowserSolve
+		return fail(errServerBrowserSolve)
 	}
 	if _, err := run(ctx, 30*time.Minute, "/usr/bin/apt-get", args...); err != nil {
 		return false, errServerBrowserInstall

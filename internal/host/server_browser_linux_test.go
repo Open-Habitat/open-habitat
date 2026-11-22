@@ -47,7 +47,7 @@ func TestServerBrowserLeavesAnInstalledChromeToApt(t *testing.T) {
 		t.Fatal(err)
 	}
 	apt := &fakeApt{root: root}
-	installed, err := installServerBrowser(context.Background(), root, "arm64", apt.run)
+	installed, err := installServerBrowser(context.Background(), root, 0, "arm64", apt.run)
 	if installed || err != nil || len(apt.calls) != 0 {
 		t.Fatalf("installed=%v err=%v calls=%v", installed, err, apt.calls)
 	}
@@ -74,7 +74,7 @@ func TestServerBrowserInstallsFromTheExistingGoogleSource(t *testing.T) {
 			t.Fatal(err)
 		}
 		apt := &fakeApt{root: root, candidate: tc.candidate, fail: tc.fail}
-		installed, err := installServerBrowser(context.Background(), root, "amd64", apt.run)
+		installed, err := installServerBrowser(context.Background(), root, 0, "amd64", apt.run)
 		if !errors.Is(err, tc.want) || installed != (tc.want == nil) {
 			t.Fatalf("%+v: installed=%v err=%v", tc, installed, err)
 		}
@@ -93,6 +93,29 @@ func TestServerBrowserInstallsFromTheExistingGoogleSource(t *testing.T) {
 	}
 }
 
+// A source the host cannot use is withdrawn again: left behind it would make
+// every later apt update fail or stop apt reading its sources. A Google source
+// that works is written exactly as Chrome's package will rewrite it.
+func TestServerBrowserWithdrawsAGoogleSourceThatDoesNotWork(t *testing.T) {
+	for _, fail := range []string{"update", "--simulate", ""} {
+		root, owner := operationFixture(t)
+		apt := &fakeApt{root: root, candidate: "158.0.8127.36-1", fail: fail}
+		installed, err := installServerBrowser(context.Background(), root, owner, "arm64", apt.run)
+		if installed != (fail == "") || (err == nil) != (fail == "") {
+			t.Fatalf("fail=%q: installed=%v err=%v", fail, installed, err)
+		}
+		for _, p := range []policyFile{{googleChromeKeyringPath, googleChromeKeyring}, {googleChromeSourcesPath, googleChromeSources("arm64")}} {
+			b, err := os.ReadFile(filepath.Join(root, p.Path))
+			if fail != "" && !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("fail=%q: %s left behind: %v", fail, p.Path, err)
+			}
+			if fail == "" && (err != nil || string(b) != p.Content) {
+				t.Fatalf("%s not written as Chrome writes it: %v", p.Path, err)
+			}
+		}
+	}
+}
+
 // Only the disposable container runner sets this opt-in. Never use on a host:
 // it adds Google's repository and installs Chrome.
 func TestServerBrowserChromeAptContainer(t *testing.T) {
@@ -102,7 +125,7 @@ func TestServerBrowserChromeAptContainer(t *testing.T) {
 	if b, err := os.ReadFile("/etc/os-release"); err != nil || !strings.Contains(string(b), "Ubuntu") || os.Geteuid() != 0 {
 		t.Fatal("requires root in disposable Ubuntu")
 	}
-	installed, err := installServerBrowser(context.Background(), "/", runtime.GOARCH, nativeCommandTimeout)
+	installed, err := installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout)
 	if err != nil || !installed {
 		t.Fatalf("installed=%v err=%v", installed, err)
 	}
@@ -117,7 +140,7 @@ func TestServerBrowserChromeAptContainer(t *testing.T) {
 	if !trustedOperatorExecutableForTest(serverBrowserChrome) {
 		t.Fatal("installed Chrome is not a root-owned executable")
 	}
-	if installed, err = installServerBrowser(context.Background(), "/", runtime.GOARCH, nativeCommandTimeout); installed || err != nil {
+	if installed, err = installServerBrowser(context.Background(), "/", 0, runtime.GOARCH, nativeCommandTimeout); installed || err != nil {
 		t.Fatalf("second run: installed=%v err=%v", installed, err)
 	}
 }
