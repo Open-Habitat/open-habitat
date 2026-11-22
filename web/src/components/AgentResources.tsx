@@ -17,6 +17,7 @@ import { agentResourcesText } from "../text/agentResources";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
+import { PlaceHeader } from "./PlaceHeader";
 import { InlineNotice } from "./Status";
 
 // Agentin käytössä in the accepted directions of proto-agent-resources-view:
@@ -531,7 +532,9 @@ export function AgentResourcesFrame({
   list,
   detail,
   notice,
+  onClose,
 }: {
+  onClose: () => void;
   summary?: string;
   connectHref: string;
   narrow: boolean;
@@ -542,27 +545,29 @@ export function AgentResourcesFrame({
   const t = useText(agentResourcesText);
   return (
     <div className="ar-page" data-testid="agent-resources">
-      {narrow && detail ? null : (
-        <header className="ar-page-head">
-          <div className="ar-text">
-            <h1>{t.title}</h1>
-            {summary ? (
-              <span className="ar-meta" data-testid="resource-summary">
-                {summary}
-              </span>
-            ) : null}
-          </div>
-          <LinkRow
-            href={connectHref}
-            kind="nav"
-            className="ar-connect-more"
-            data-testid="resource-connect-more"
-          >
-            <Icon name="plus" />
-            {t.connectMore}
-          </LinkRow>
-        </header>
-      )}
+      <PlaceHeader
+        title={t.title}
+        onClose={onClose}
+        actions={
+          narrow && detail ? null : (
+            <LinkRow
+              href={connectHref}
+              kind="nav"
+              className="ar-connect-more"
+              data-testid="resource-connect-more"
+            >
+              <Icon name="plus" />
+              {t.connectMore}
+            </LinkRow>
+          )
+        }
+      >
+        {summary ? (
+          <span className="ar-meta" data-testid="resource-summary">
+            {summary}
+          </span>
+        ) : null}
+      </PlaceHeader>
       {notice}
       {narrow ? (
         (detail ?? list)

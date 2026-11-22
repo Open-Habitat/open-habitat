@@ -96,7 +96,10 @@ test("places toggle and switch over the same conversation, including Back and Fo
   );
   await page.getByTestId("rail-resources").click();
   await expect(page.getByTestId("agent-resources")).toBeVisible();
-  await page.getByTestId("rail-resources").click();
+  await page.getByTestId("place-close").click();
+  await same();
+  await page.getByTestId("rail-shares").click();
+  await page.getByTestId("place-close").click();
   await same();
   await page.getByTestId("rail-resources").click();
   await page.goBack();
@@ -169,6 +172,11 @@ test("workspace scroll survives a place; Home is not a toggle; deep links close 
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(url);
   expect(await main.evaluate((el) => el.scrollTop)).toBe(40);
+  for (const path of ["/shares", "/resources"]) {
+    await page.goto(path);
+    await page.getByTestId("place-close").click();
+    await expect(page).toHaveURL(/\/workspaces$/);
+  }
   await page.goto("/shares");
   await expect(page.getByTestId("shares-page")).toBeVisible();
   await page.getByTestId("rail-shares").click();
@@ -203,6 +211,10 @@ test("phone navigation can close the open place without losing the workspace", a
   await page.getByTestId("rail-resources").click();
   await expect(page).toHaveURL(url);
   await expect(page.getByTestId("agent-resources")).toHaveCount(0);
+  await page.getByTestId("navigation-open").click();
+  await page.getByTestId("rail-resources").click();
+  await page.getByTestId("place-close").click();
+  await expect(page).toHaveURL(url);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await openedConversation(page);
   await page.getByTestId("message-input").fill("Phone draft");
@@ -210,8 +222,7 @@ test("phone navigation can close the open place without losing the workspace", a
   await page.getByTestId("navigation-open").click();
   await page.getByTestId("rail-shares").click();
   await expect(page.getByTestId("shares-page")).toBeVisible();
-  await page.getByTestId("navigation-open").click();
-  await page.getByTestId("rail-shares").click();
+  await page.getByTestId("place-close").click();
   await expect(page).toHaveURL(conversation);
   await expect(page.getByTestId("message-input")).toHaveValue("Phone draft");
 });

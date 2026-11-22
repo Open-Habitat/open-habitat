@@ -90,17 +90,6 @@
   padding: var(--ah-s4) var(--ah-s5);
   box-sizing: border-box;
 }
-.ar-page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--ah-s3);
-}
-.ar-page-head h1 {
-  margin: 0;
-  font-size: var(--ah-size-h1);
-}
 .ar-cols {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -111,9 +100,6 @@
 @media (max-width: 800px) {
   .ar-page {
     padding: var(--ah-s3);
-  }
-  .ar-page-head h1 {
-    font-size: var(--ah-size-h2);
   }
 }
 

@@ -192,6 +192,12 @@ const fi = {
       lead: "Tarkistaa, voiko yhteyden nyt katkaista.",
       know: "Ei katkaise yhteyttä. Katkaisu vaatii erillisen painalluksen.",
     },
+    J10: {
+      name: "Sulje",
+      lead: "× sulkee näkymän ja palaa siihen, missä olit.",
+      know: "Keskustelu ja kirjoittamasi luonnos säilyvät. Suoraan avattu näkymä palaa etusivulle.",
+      try: "Sulje näkymä",
+    },
     J01: {
       name: "Tuotokset",
       lead: "Avaa agentin antamat näkymät ja tiedostot keskusteluittain.",
@@ -2242,6 +2248,12 @@ export const explainModeText = catalog(fi, {
       name: "Check again",
       lead: "Checks whether the connection can now be removed.",
       know: "Does not disconnect. Disconnecting needs a separate press.",
+    },
+    J10: {
+      name: "Close",
+      lead: "× closes this view and returns to where you were.",
+      know: "Your conversation and draft stay intact. A view opened directly returns to Home.",
+      try: "Close view",
     },
     J01: {
       name: "Outputs",

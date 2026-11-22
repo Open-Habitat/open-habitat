@@ -197,6 +197,9 @@ test("@agent-resources on a phone the list comes first and a source opens on its
     .and(detail.getByTestId("resource-back"))
     .click();
   await expect(page.getByTestId("resource-list")).toBeVisible();
+  await source(page, onedrive).click();
+  await page.getByTestId("place-close").click();
+  await expect(page).toHaveURL(/\/workspaces$/);
 });
 
 test("@agent-resources is available without an experimental choice", async ({

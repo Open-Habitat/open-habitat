@@ -187,6 +187,7 @@ A label alone does not establish that a control is available to this person.
 - [text/piCredentials.ts](text--piCredentials.ts.md)
 - [text/piDeviceSignIn.ts](text--piDeviceSignIn.ts.md)
 - [text/piOnboarding.ts](text--piOnboarding.ts.md)
+- [text/placeHeader.ts](text--placeHeader.ts.md)
 - [text/previewPane.ts](text--previewPane.ts.md)
 - [text/processTray.ts](text--processTray.ts.md)
 - [text/processes.ts](text--processes.ts.md)

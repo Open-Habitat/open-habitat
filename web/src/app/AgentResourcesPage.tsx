@@ -23,7 +23,7 @@ import {
   ownMachinesPath,
   readOwnMachines,
 } from "./ownMachines";
-import { usePlaceSearchParams } from "./placeNavigation";
+import { usePlaceNavigation, usePlaceSearchParams } from "./placeNavigation";
 import { settingsHref } from "./settingsRoute";
 
 // Agentin käytössä (experimental): the route is the record of the chosen
@@ -64,6 +64,7 @@ async function readMachines(signal: AbortSignal): Promise<OwnMachines> {
 
 export function AgentResourcesPage({ github }: { github: GitHubState }) {
   const t = useText(agentResourcesText);
+  const navigatePlace = usePlaceNavigation();
   const narrow = useNarrow();
   const [params, setParams] = usePlaceSearchParams();
   const [loaded, setLoaded] = useState<Loaded>({ phase: "loading" });
@@ -203,6 +204,7 @@ export function AgentResourcesPage({ github }: { github: GitHubState }) {
 
   return (
     <AgentResourcesFrame
+      onClose={() => navigatePlace("/resources")}
       summary={summary}
       connectHref={settingsHref("tiedot")}
       narrow={narrow}

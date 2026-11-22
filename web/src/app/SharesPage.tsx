@@ -14,6 +14,7 @@ import { OfferThumb, offerFacts, offerKind } from "../components/FileOffer";
 import { Icon } from "../components/Icon";
 import { OfferActions, OfferMark } from "../components/OfferCard";
 import { OfferedFileView, OfferFolder } from "../components/OfferPanel";
+import { PlaceHeader } from "../components/PlaceHeader";
 import { CopyButton } from "../components/ViewLink";
 import { type ViewSummary, viewFacts } from "../components/ViewOffer";
 import { ViewFrame } from "../components/ViewPanel";
@@ -28,7 +29,7 @@ import {
   useFileOffer,
   useFileOffers,
 } from "./fileOffers";
-import { usePlaceSearchParams } from "./placeNavigation";
+import { usePlaceNavigation, usePlaceSearchParams } from "./placeNavigation";
 import {
   groupShares,
   outputCreated,
@@ -116,6 +117,7 @@ export function SharesPage({
   csrf?: string;
 }) {
   const t = useText(sharesText);
+  const navigatePlace = usePlaceNavigation();
   const links = useViewLinks();
   const [params, setParams] = usePlaceSearchParams();
   const [narrow, setNarrow] = useState(
@@ -224,6 +226,11 @@ export function SharesPage({
     offers.some((o) => o.state === "unavailable");
   return (
     <section className="sh-page" data-testid="shares-page">
+      <PlaceHeader title={t.title} onClose={() => navigatePlace("/shares")}>
+        {!loading && !unavailable ? (
+          <p>{t.summary(counts.public, counts.private, counts.past)}</p>
+        ) : null}
+      </PlaceHeader>
       {loading ? (
         <p role="status">{t.loading}</p>
       ) : unavailable && (!views || links === "unavailable") ? (
@@ -236,10 +243,6 @@ export function SharesPage({
       ) : (
         <div className="sh-layout" data-detail={explicit || undefined}>
           <div className="sh-list">
-            <header>
-              <h1>{t.title}</h1>
-              <p>{t.summary(counts.public, counts.private, counts.past)}</p>
-            </header>
             {unavailable ? (
               <div role="alert">
                 <p>{t.failed}</p>

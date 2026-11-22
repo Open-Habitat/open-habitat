@@ -52,6 +52,7 @@ export const parts: Record<CardId, Part> = {
     opens: true,
   },
   J02: { kind: "panel", sel: '[data-testid="shares-page"]' },
+  J10: { kind: "nav", sel: '[data-testid="place-close"]' },
   J03: {
     kind: "nav",
     sel: '[data-testid="shares-conversation-heading"]',
