@@ -755,7 +755,7 @@ export function AddMachineDialog({
               <QrCode value={ts.auth_url} />
             </div>
           )}
-          <div>
+          <div className="om-login-side">
             <p>{txt.signInTailscale(Boolean(phone))}</p>
             {ts.auth_url ? (
               <>
@@ -816,7 +816,11 @@ export function AddMachineDialog({
   } else if (step === 2) {
     body = (
       <>
-        <p>{txt.installTailscale(ts.node?.login)}</p>
+        <p>
+          {data.peers.some((p) => p.ssh === "possible" && !saved.has(p.name))
+            ? txt.chooseExisting
+            : txt.installTailscale(ts.node?.login)}
+        </p>
         <PeerChoices
           peers={data.peers}
           saved={saved}

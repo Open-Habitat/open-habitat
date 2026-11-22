@@ -111,7 +111,8 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
   await expect(login).toHaveAttribute("target", "_blank");
   await expect(page.getByTestId("device-qr")).toBeVisible();
   await fixture(page, "do=approve");
-  await expect(page.getByTestId("own-machines-wizard-joined")).toBeVisible();
+  await expect(wizard(page)).toHaveAttribute("data-step", "2");
+  await expect(page.getByTestId("device-qr")).toHaveCount(0);
   expect(
     (
       await new AxeBuilder({ page })
@@ -120,7 +121,6 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
         .analyze()
     ).violations,
   ).toEqual([]);
-  await button(page, "own-machines-next").click();
 
   // 2–5 for the Mac: a phone cannot be chosen.
   await expect(
@@ -241,6 +241,51 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
   await expect(page.getByTestId("own-machine")).toHaveCount(0);
 });
 
+test("@own-machines opening setup rechecks a connection made in another tab", async ({
+  page,
+  context,
+}) => {
+  await signIn(page);
+  await page.goto("/settings/machines");
+  await expect(page.getByTestId("own-machines-tailscale")).toHaveAttribute(
+    "data-state",
+    "off",
+  );
+
+  const other = await context.newPage();
+  await other.goto("/settings/machines");
+  await button(other, "own-machines-add").click();
+  await button(other, "own-machines-connect").click();
+  await expect(other.getByTestId("own-machines-login-open")).toBeVisible();
+  await fixture(other, "do=approve");
+  await expect(wizard(other)).toHaveAttribute("data-step", "2");
+  await other.close();
+
+  // The original page still holds its old off observation. Opening the
+  // wizard must read the person's node, not require another connect write.
+  await expect(page.getByTestId("own-machines-tailscale")).toHaveAttribute(
+    "data-state",
+    "off",
+  );
+  let writes = 0;
+  page.on("request", (r) => {
+    if (r.url().includes("own-machines") && r.method() === "POST") writes++;
+  });
+  await button(page, "own-machines-add").click();
+  await expect(wizard(page)).toHaveAttribute("data-step", "2");
+  await expect(page.getByTestId("device-qr")).toHaveCount(0);
+  await expect(
+    page.getByTestId("own-machines-peer-alice-macbook"),
+  ).toBeEnabled();
+  await expect(
+    page.getByTestId("own-machines-peer-alice-macbook"),
+  ).not.toBeChecked();
+  await expect(
+    page.getByTestId("own-machines-peer-alice-phone"),
+  ).toBeDisabled();
+  expect(writes).toBe(0);
+});
+
 test("@own-machines the page and the dialog fit a phone", async ({
   page,
 }, testInfo) => {
@@ -256,7 +301,6 @@ test("@own-machines the page and the dialog fit a phone", async ({
     path: testInfo.outputPath("evidence/omat-koneet-kirjautuminen-puhelin.png"),
   });
   await fixture(page, "do=approve");
-  await button(page, "own-machines-next").click();
   await chooseAndAccept(page, "alice-macbook", "100.88.14.53");
   await button(page, "own-machines-save").click();
   await expect(machine(page, "alice-macbook")).toBeVisible();
@@ -282,8 +326,7 @@ test("@own-machines a Windows machine gets PowerShell, with the administrators' 
     page.getByRole("link").and(page.getByTestId("own-machines-login-open")),
   ).toBeVisible();
   await fixture(page, "do=approve");
-  await expect(page.getByTestId("own-machines-wizard-joined")).toBeVisible();
-  await button(page, "own-machines-next").click();
+  await expect(wizard(page)).toHaveAttribute("data-step", "2");
   await page.getByTestId("own-machines-peer-gaming-pc").check();
   await page.getByTestId("own-machines-user").fill("alice");
   await button(page, "own-machines-next").click();
@@ -328,8 +371,6 @@ test("@own-machines a command run on the person's machine names it, and the head
     page.getByRole("link").and(page.getByTestId("own-machines-login-open")),
   ).toBeVisible();
   await fixture(page, "do=approve");
-  await expect(page.getByTestId("own-machines-wizard-joined")).toBeVisible();
-  await button(page, "own-machines-next").click();
   await chooseAndAccept(page, "alice-macbook", "100.88.14.53");
   await button(page, "own-machines-save").click();
   await expect(machine(page, "alice-macbook")).toBeVisible();

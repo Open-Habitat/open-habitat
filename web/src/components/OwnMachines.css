@@ -161,14 +161,21 @@
   margin-top: 2px;
   color: var(--ah-ink-2);
 }
+.om-modal {
+  width: min(640px, 100%);
+}
 .om-wizard {
-  max-width: 640px;
+  display: grid;
+  gap: var(--ah-s4);
+}
+.om-wizard .ah-dialog-actions {
+  flex-wrap: wrap;
 }
 .om-wz-steps {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ah-s2) var(--ah-s3);
-  margin: var(--ah-s2) 0 var(--ah-s3);
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: var(--ah-size-meta);
@@ -213,12 +220,18 @@
 }
 .om-login {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--ah-s4);
   align-items: flex-start;
 }
 .om-qr {
   flex: none;
-  width: 148px;
+}
+.om-login-side {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: var(--ah-s3);
 }
 .om-link-button {
   display: inline-flex;
@@ -287,6 +300,7 @@
 }
 .om-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--ah-s3);

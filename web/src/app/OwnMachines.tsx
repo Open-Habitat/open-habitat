@@ -39,6 +39,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   const [removed, setRemoved] = useState<{ name: string; os?: string }>();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const pendingRead = useRef<AbortController | undefined>(undefined);
   const phone = useRef(
     typeof window !== "undefined" &&
       window.matchMedia?.("(max-width: 640px)").matches,
@@ -48,6 +49,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     void csrf;
     void refresh;
     const controller = new AbortController();
+    pendingRead.current = controller;
     void fetch(ownMachinesPath, {
       credentials: "same-origin",
       cache: "no-store",
@@ -58,6 +60,12 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
         if (controller.signal.aborted) return;
         setError(false);
         setData(d);
+        // Re-read on opening too: another tab or native login may already
+        // have connected this account's node. Never infer it from this browser.
+        if (d.tailscale.state === "on")
+          setWizard((w) =>
+            w?.mode === "add" && w.step === 1 ? { ...w, step: 2 } : w,
+          );
       })
       .catch(() => {
         if (!controller.signal.aborted) setError(true);
@@ -69,6 +77,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   // done; nothing is sent meanwhile.
   const waiting =
     wizard?.step === 1 &&
+    !wizard.busy &&
     data !== undefined &&
     ["login", "approval", "starting"].includes(data.tailscale.state);
   useEffect(() => {
@@ -82,6 +91,8 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   const send = useCallback(
     async (body: OwnMachinesRequest) => {
       if (!csrf) return { ok: false as const, message: txt.signInAgain };
+      // An opening/poll read made before this write cannot replace its reply.
+      pendingRead.current?.abort();
       let response: Response | undefined;
       try {
         response = await jsonWrite(
@@ -131,7 +142,11 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     connect: async () => {
       patch({ busy: "connect", error: undefined });
       const r = await send({ action: "connect" });
-      patch({ busy: undefined, error: r.ok ? undefined : r.message });
+      patch({
+        busy: undefined,
+        error: r.ok ? undefined : r.message,
+        ...(r.ok && r.reply.tailscale.state === "on" ? { step: 2 } : {}),
+      });
     },
     close: () => {
       setWizard(undefined);
@@ -232,6 +247,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     disconnect: () => void page({ action: "disconnect" }, () => setChecks({})),
     addMachine: () => {
       setRemoved(undefined);
+      setRefresh((n) => n + 1);
       setWizard({
         ...freshWizard(),
         step: data?.tailscale.state === "on" ? 2 : 1,

@@ -234,7 +234,7 @@ const fi = {
     </>
   ),
   signInTailscale: (phone: boolean) =>
-    `Kirjaudu omalla Tailscale-tunnuksellasi ja hyväksy laite.${phone ? "" : " Voit myös skannata koodin puhelimella."}`,
+    `Hyväksy Habitatin laite omaan Tailscale-verkkoosi kirjautumalla. Tämä tarvitaan, vaikka oma koneesi olisi jo verkossa.${phone ? "" : " Voit myös skannata koodin puhelimella."}`,
   openLogin: "Avaa kirjautumissivu",
   waitingApproval: "Odotetaan, että hyväksyt laitteen Tailscalessa…",
   fetchLogin: "Hae kirjautumislinkki",
@@ -252,6 +252,8 @@ const fi = {
   connectTailscale: "Yhdistä Tailscaleen",
   noAccount:
     "Ei vielä Tailscale-tiliä? Henkilökohtainen tili on maksuton: tailscale.com",
+  chooseExisting:
+    "Verkossasi näkyy koneita. Valitse oma koneesi lisättäväksi. Jos se puuttuu, tarkista sen Tailscale-yhteys.",
   installTailscale: (login?: string) =>
     `Asenna koneelle Tailscale ja kirjaudu samalla tunnuksella${login ? ` (${login})` : ""}. Valitse sitten kone:`,
   userField: "Käyttäjätunnuksesi koneella",
@@ -603,7 +605,7 @@ export const ownMachinesText = catalog(fi, {
     </>
   ),
   signInTailscale: (phone) =>
-    `Sign in with your own Tailscale account and approve the device.${phone ? "" : " You can also scan the code with a phone."}`,
+    `Sign in to approve Habitat's device in your own Tailscale network. This is needed even if your own computer is already connected.${phone ? "" : " You can also scan the code with a phone."}`,
   openLogin: "Open the sign-in page",
   waitingApproval: "Waiting for you to approve the device in Tailscale…",
   fetchLogin: "Get a sign-in link",
@@ -621,6 +623,8 @@ export const ownMachinesText = catalog(fi, {
   connectTailscale: "Connect to Tailscale",
   noAccount:
     "No Tailscale account yet? A personal account is free: tailscale.com",
+  chooseExisting:
+    "Machines are visible in your network. Choose your own machine to add it. If it is missing, check its Tailscale connection.",
   installTailscale: (login) =>
     `Install Tailscale on the machine and sign in with the same account${login ? ` (${login})` : ""}. Then choose the machine:`,
   userField: "Your username on the machine",
