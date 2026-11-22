@@ -308,9 +308,13 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   const keysBefore = (await input(page)).keysyms.length;
   await page.keyboard.press("Control+V");
   await expect.poll(async () => (await input(page)).cuts).toContain(secret);
+  // Ctrl is down before the V (the viewer may press it again itself).
   await expect
-    .poll(async () => (await input(page)).keysyms.slice(keysBefore))
-    .toEqual([XK_Control_L, XK_v]);
+    .poll(async () => {
+      const keys = (await input(page)).keysyms.slice(keysBefore);
+      return [keys[0], keys.filter((k) => k !== XK_Control_L)];
+    })
+    .toEqual([XK_Control_L, [XK_v]]);
   const toast = page.getByTestId("browser-toast");
   await expect(toast).not.toBeEmpty();
   await expect(toast).not.toContainText(secret);

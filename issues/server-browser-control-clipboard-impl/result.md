@@ -109,6 +109,25 @@ contract, daemon route, store or authority moved.
   `/var/tmp/agent-keep/server-browser-control-clipboard-impl/` (README.txt,
   logs; spec screenshots under `spec-screens/`).
 
+## Review
+
+Independent `/llm-review` (finder GPT-6 Astra, verifier Claude Fable 5.2;
+chosen because the change touches daemon-side host state, an authorization
+boundary and the agent's error contract) plus `/assess-findings`: four
+confirmed findings, all fixed in this run.
+
+- The clipboard-grant refusal could be bypassed with nested
+  `Target.sendMessageToTarget` (the verifier reproduced the grant on
+  Chromium 153); the mux now refuses nested transport. The
+  `Target.exposeDevToolsProtocol` route was refuted (Browser.* not reachable
+  through it).
+- Fast Ctrl+V on Windows could reach the remote as a bare `v` because noVNC
+  holds Ctrl back up to 100 ms for AltGr; the viewer now presses Ctrl itself.
+- The idle return ran while the view was lost; it now runs only while
+  connected and restarts its three minutes on reconnect.
+- On a Mac every keyup with ⌘ held was swallowed, leaving e.g. Shift stuck;
+  only ⌘'s own release is swallowed now.
+
 ## Not verified
 
 - Real Safari and Firefox: whether ⌘/Ctrl+V on the canvas raises a paste
@@ -118,5 +137,9 @@ contract, daemon route, store or authority moved.
 - A real Mac keyboard (⌘ mapping is unit-tested and not exercised by a real
   macOS browser).
 - Touch devices and soft keyboards.
+- The lost-connection idle rule and the Windows/Mac key fixes have no
+  browser test (they need a dropped RFB socket with HTTP alive, or a
+  Windows/macOS keyboard); they are covered by reading and the verifier's
+  noVNC keyboard harness.
 - A real installation; the lab ran Chromium for Testing, not Google Chrome,
   without a window manager, as the product does.

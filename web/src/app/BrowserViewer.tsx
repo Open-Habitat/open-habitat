@@ -287,8 +287,13 @@ export default function BrowserViewer({
         return false;
       }
       c.clipboardPasteFrom(value);
-      if (ctrlHeld) c.sendKey(XK.v, "KeyV");
-      else chord(XK.v);
+      if (ctrlHeld) {
+        // noVNC may still hold back the person's Ctrl (on Windows it waits
+        // up to 100 ms for AltGr), so press it here; their own release
+        // goes through noVNC as usual.
+        c.sendKey(XK.Control_L, "ControlLeft", true);
+        c.sendKey(XK.v, "KeyV");
+      } else chord(XK.v);
       pasted.current = true;
       say(txt.toast.pasted(charCount(value)));
       return true;
@@ -399,9 +404,10 @@ export default function BrowserViewer({
         if (k !== undefined) chord(k, e.shiftKey);
       }
     };
+    // Only ⌘'s own release: other keys' releases must reach noVNC, which
+    // ignores those it never saw go down.
     const onKeyUp = (e: KeyboardEvent) => {
-      if (mac && (e.key === "Meta" || e.key === "OS" || e.metaKey))
-        e.stopPropagation();
+      if (mac && (e.key === "Meta" || e.key === "OS")) e.stopPropagation();
     };
     const onPaste = (e: ClipboardEvent) => {
       if (live.current.control !== "person") return;
@@ -437,20 +443,24 @@ export default function BrowserViewer({
 
   // The idle return: only while the person drives and the agent has not
   // asked for them. A lost connection never returns control.
+  const giveBackNow = useRef(giveBack);
+  giveBackNow.current = giveBack;
   useEffect(() => {
-    if (control !== "person") return;
+    if (control !== "person" || phase !== "connected") return;
+    // A reconnected view starts its three minutes again.
+    lastInput.current = Date.now();
     const id = setInterval(() => {
       const left = idleLeft(Date.now() - lastInput.current, live.current.asked);
       setIdle(left);
       if (left === 0 && !returning.current) {
         returning.current = true;
-        void giveBack(true).finally(() => {
+        void giveBackNow.current(true).finally(() => {
           returning.current = false;
         });
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [control, giveBack]);
+  }, [control, phase]);
 
   const sendType = () => {
     noteInput();

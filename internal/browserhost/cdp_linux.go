@@ -702,7 +702,8 @@ func errorReply(fields map[string]json.RawMessage, message string) []byte {
 	return b
 }
 
-// grantsClipboard is a command that would give a page clipboard access.
+// grantsClipboard is a command that would give a page clipboard access, or
+// could carry one unseen.
 func grantsClipboard(fields map[string]json.RawMessage) bool {
 	var method string
 	_ = json.Unmarshal(fields["method"], &method)
@@ -710,6 +711,10 @@ func grantsClipboard(fields map[string]json.RawMessage) bool {
 		return strings.HasPrefix(strings.ToLower(strings.TrimSpace(name)), "clipboard")
 	}
 	switch method {
+	case "Target.sendMessageToTarget":
+		// Nested (non-flat) transport would carry a grant past this check
+		// inside a string; agents use flat sessions.
+		return true
 	case "Browser.grantPermissions":
 		var p struct {
 			Permissions []string `json:"permissions"`

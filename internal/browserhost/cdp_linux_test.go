@@ -295,6 +295,7 @@ func TestTheAgentCannotGrantItselfTheClipboard(t *testing.T) {
 		{"id": 3, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "clipboard-read"}, "setting": "granted"}},
 		{"id": 4, "method": "Browser.setPermission", "sessionId": "S9", "params": map[string]any{"permission": map[string]any{"name": " Clipboard-Write"}, "setting": "granted"}},
 		{"id": 5, "method": "Browser.grantPermissions"},
+		{"id": 8, "method": "Target.sendMessageToTarget", "params": map[string]any{"sessionId": "S1", "message": `{"id":1,"method":"Browser.grantPermissions","params":{"permissions":["clipboardReadWrite"]}}`}},
 	}
 	for _, cmd := range refused {
 		ag.send(cmd)
