@@ -96,6 +96,24 @@ for (const width of [1024, 1280, 1440, 1600, 1920]) {
       await git.evaluate((el) => getComputedStyle(el).borderTopColor),
     ).toBe("rgba(0, 0, 0, 0)");
 
+    // The first reply supplies both context usage and an automatic title.
+    // Two equal geometry reads can still see the loading title, before those
+    // arrive and move actions into the menu. Establish the long authored title
+    // this layout case promises instead of racing that asynchronous naming.
+    await expect(header.getByTestId("context-ring")).toBeVisible();
+    await expect(header.getByTestId("conversation-title")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    const title =
+      "Tarkista otsikkorivin tilanjako kapeassa keskustelusarakkeessa";
+    await header.getByTestId("conversation-rename").click();
+    const name = header.getByTestId("conversation-name-field");
+    await name.fill(title);
+    await name.press("Enter");
+    await expect(name).toHaveCount(0);
+    await expect(header.getByTestId("workspace-title")).toHaveText(title);
+
     await expectOneRow(page, header, width);
     await shoot(page, header, `${width}-sidebar`);
     for (const colorScheme of ["light", "dark"] as const) {
@@ -140,7 +158,7 @@ for (const width of [1024, 1280, 1440, 1600, 1920]) {
 }
 
 async function shoot(page: Page, header: Locator, name: string, _extra = 0) {
-  if (!capture || page.viewportSize()?.width !== 1440) return;
+  if (!capture) return;
   const box = await header.boundingBox();
   if (!box) return;
   // A menu just closed returns focus to its trigger; the picture is of rest.
