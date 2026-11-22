@@ -332,7 +332,6 @@ for (const width of [1440, 390]) {
         "context-ring",
         "guide-toggle",
         "assets-chip",
-        "browser-chip",
         "workspace-details",
         "conversation-model",
         "conversation-menu",

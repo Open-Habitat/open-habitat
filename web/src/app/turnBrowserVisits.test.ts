@@ -263,4 +263,101 @@ describe("turnBrowserVisits", () => {
       /password|user:|private|hidden|NaN/,
     );
   });
+
+  const W1 = "0A1B2C3D4E5F60718293A4B5C6D7E8F9";
+  const W2 = "F9E8D7C6B5A4938271605F4E3D2C1B0A";
+  /** The browser's status, as `agent browser request` and `status` answer. */
+  const status = (request?: { window: string; text: string }) =>
+    JSON.stringify(
+      {
+        schema_version: 1,
+        data: {
+          cli_version: "test",
+          result: {
+            schema_version: 1,
+            state: "running",
+            skill_command: "open-habitat skill print browser",
+            windows: [],
+            ...(request ? { request: { ...request, age_ms: 0 } } : {}),
+          },
+        },
+      },
+      null,
+      2,
+    );
+  const bash = (callId: string, command: string, output: string, at = 500) => ({
+    ...step(callId, output, at),
+    args: JSON.stringify({ command }),
+  });
+
+  it("links the owner's turn to the windows its commands acted in and the request it made", () => {
+    const visits = turnBrowserVisits(
+      [
+        step("1", result("goto", { tab: W1 })),
+        bash(
+          "2",
+          `open-habitat agent browser request --window ${W2} --text 'Vahvista' --json`,
+          status({ window: W2, text: "Vahvista kirjautuminen" }),
+          600,
+        ),
+      ],
+      "owner",
+    );
+    expect(visits?.windows).toEqual([W1, W2]);
+    expect(visits?.request).toEqual({
+      callId: "2",
+      at: 600,
+      window: W2,
+      text: "Vahvista kirjautuminen",
+    });
+    expect(visits?.summary.endedAt).toBe(600);
+    // A participant gets neither: the live state is the owner's.
+    const participant = turnBrowserVisits(
+      [
+        step("1", result("goto", { tab: W1 })),
+        bash(
+          "2",
+          "open-habitat agent browser request --text x --json",
+          status({ window: W2, text: "x" }),
+        ),
+      ],
+      "participant",
+    );
+    expect(participant).not.toHaveProperty("windows");
+    expect(participant).not.toHaveProperty("request");
+  });
+
+  it("tells a request from a look at the status only by the command, and a later clear ends it", () => {
+    // A status that shows another conversation's request is not this turn's.
+    expect(
+      turnBrowserVisits(
+        [
+          bash(
+            "1",
+            "open-habitat agent browser status --json",
+            status({ window: W2, text: "x" }),
+          ),
+        ],
+        "owner",
+      ),
+    ).toBeUndefined();
+    const cleared = turnBrowserVisits(
+      [
+        bash(
+          "1",
+          `open-habitat agent browser request --window ${W2} --text x --json`,
+          status({ window: W2, text: "x" }),
+        ),
+        bash(
+          "2",
+          "open-habitat agent browser request --clear --json",
+          status(),
+        ),
+      ],
+      "owner",
+    );
+    expect(cleared).toBeDefined();
+    expect(cleared?.request).toBeUndefined();
+    expect(cleared?.summary.pageCount).toBe(0);
+  });
 });

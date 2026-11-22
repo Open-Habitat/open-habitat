@@ -870,6 +870,29 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": call.name}))
 		}
 	}
+	if strings.Contains(prompt, "selaimen käynti") {
+		// The agent's server-browser commands as Pi saves them: the CLI's
+		// JSON envelopes in bash results, from which the conversation derives
+		// its Selain card and links the windows to itself. The goto names the
+		// fixture browser's second window (the app), the request its first (the
+		// sign-in); a test marks the same request on the fixture host.
+		envelope := func(result map[string]any) string {
+			data, _ := json.MarshalIndent(map[string]any{"schema_version": 1, "data": map[string]any{"cli_version": "test", "result": result}, "warnings": []string{}}, "", "  ")
+			return string(data)
+		}
+		const signIn, app = "0A1B2C3D4E5F60718293A4B5C6D7E8F9", "F9E8D7C6B5A4938271605F4E3D2C1B0A"
+		for _, call := range []struct{ id, command, result string }{
+			{"browser-goto", "open-habitat agent browser goto https://app.example.invalid/kulut --json", envelope(map[string]any{"browser_action": "goto", "tab": app, "url": "https://app.example.invalid/kulut?kausi=11", "title": "Kustannuspaikat", "loaded": true})},
+			{"browser-click", "open-habitat agent browser click --tab " + app + " 'a.kirjaudu' --json", envelope(map[string]any{"browser_action": "click", "tab": app, "selector": "a.kirjaudu", "source_url": "https://app.example.invalid/kulut", "source_title": "Kustannuspaikat", "url": "https://login.example.invalid/vahvista", "title": "Vahvista uudelleen"})},
+			{"browser-request", "open-habitat agent browser request --window " + signIn + " --text 'Vahvista kirjautuminen' --json", envelope(map[string]any{"schema_version": 1, "state": "running", "skill_command": "open-habitat skill print browser", "windows": []any{}, "request": map[string]any{"window": signIn, "text": "Vahvista kirjautuminen", "age_ms": 0}})},
+		} {
+			args := map[string]any{"command": call.command}
+			emit(map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": call.id, "args": args})
+			s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "bash", "id": call.id, "arguments": args}}, nil))
+			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": "bash"}))
+			emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": call.id, "args": args, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": call.result}}}, "isError": false})
+		}
+	}
 	if _, name, ok := strings.Cut(prompt, "kirjoita tiedosto "); ok {
 		// A turn that writes its own new file, for Muutokset under every
 		// live turn that changed files.

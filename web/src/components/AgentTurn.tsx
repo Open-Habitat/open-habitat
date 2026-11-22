@@ -343,6 +343,7 @@ export function AgentTurn({
   activity,
   duration,
   changes,
+  browser,
 }: {
   steps: TurnStep[];
   /** When native history saved the message that started the turn. */
@@ -359,6 +360,9 @@ export function AgentTurn({
   duration?: string;
   /** What the turn changed, under its reply once it has finished. */
   changes?: ReactNode;
+  /** The Selain card: the browser the turn used, under its working row
+   * while it runs and beside Muutokset once it has finished. */
+  browser?: ReactNode;
 }) {
   const voice = useContext(ConversationVoice);
   const stages = turnStages(steps);
@@ -501,6 +505,7 @@ export function AgentTurn({
         </div>
       ) : null}
       {!working ? changes : null}
+      {browser}
       {stopped && !working ? (
         <StoppedRow at={stopped.at} by={stopped.by} />
       ) : null}

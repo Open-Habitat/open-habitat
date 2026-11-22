@@ -1284,17 +1284,17 @@ const fi = {
     },
     B01: {
       name: "Selain",
-      lead: "Avaa palvelimella olevan selaimesi ikkunat; käynnistää selaimen, jos se on pysähtynyt.",
-      know: "Tilamerkki ja teksti kertovat, käyttääkö selainta agentti vai sinä tai odottaako agentti apuasi.",
+      lead: "Kertoo, mitä agentti teki selaimessasi tämän vuoron aikana. Avattuna näet sivut, lataukset ja toiminnot.",
+      know: "Kun agentti tarvitsee apuasi, kortissa on sen pyyntö ja Ota ohjaus ja hoida. Kun ohjaat, siinä on Anna takaisin. Lopuksi siitä jää merkintä käynnistä.",
     },
     B02: {
-      name: "Selaimen ikkunat",
-      lead: "Näyttää ikkunoiden esikatselut ja agentin mahdollisen avunpyynnön.",
-      know: "Esikatselun avaaminen ei ota ohjausta. Ota ohjaus erikseen, kun haluat toimia itse.",
+      name: "Selainmerkki",
+      lead: "Kertoo keskustelun rivillä, että sen agentti käyttää selaintasi tai odottaa sinua selaimessa.",
+      know: "Hiljainen ikkuna tarkoittaa, että agentti työskentelee. Rajattu merkki ja sana selain tarkoittavat, että se odottaa sinua.",
     },
     B03: {
-      name: "Katso isona",
-      lead: "Avaa selaimen ikkunan suurempana katseltavaksi, ilman ohjausta.",
+      name: "Katso",
+      lead: "Avaa selaimen suurena katseltavaksi ottamatta ohjausta.",
     },
     B04: {
       name: "Ota ohjaus",
@@ -1303,18 +1303,18 @@ const fi = {
       grey: "Ohjauksen vaihto on vielä kesken tai selain ei ole käytettävissä.",
     },
     B05: {
-      name: "Anna takaisin agentille",
-      lead: "Luovuttaa selaimen ohjauksen takaisin agentille.",
+      name: "Anna takaisin",
+      lead: "Luovuttaa selaimen ohjauksen takaisin agentille, joka jatkaa työtään.",
     },
     B06: {
       name: "Sulje selain",
       lead: "Sulkee palvelimella olevan selaimen ja sen ikkunat.",
-      know: "Voit käynnistää selaimen uudelleen Selain-painikkeesta.",
+      know: "Voit käynnistää selaimen uudelleen sivupalkin Oma selain -rivistä.",
     },
     B07: {
       name: "Oma selain",
-      lead: "Avaa palvelimella olevan selaimesi näkymän.",
-      know: "Rivi näyttää selaimen tilan ja ikkunoiden määrän.",
+      lead: "Avaa palvelimella olevan selaimesi näkymän ja käynnistää selaimen, jos se ei ole auki.",
+      know: "Rivin lopussa on selaimen tila: ikkunoiden määrä, agentti työssä, odottaa sinua tai sinä ohjaat.",
     },
     B08: {
       name: "Sulje näkymä",
@@ -3272,17 +3272,17 @@ export const explainModeText = catalog(fi, {
     },
     B01: {
       name: "Browser",
-      lead: "Opens your server browser's windows; starts the browser if it is stopped.",
-      know: "The mark and text show whether the agent or you are using it, or whether the agent needs your help.",
+      lead: "Shows what the agent did in your browser during this turn. Opened, it lists the pages, downloads and actions.",
+      know: "When the agent needs your help, the card carries its request and Take control and do it. While you control, it has Give back. Afterwards it stays as the record of the visit.",
     },
     B02: {
-      name: "Browser windows",
-      lead: "Shows window previews and any request for help from the agent.",
-      know: "Opening a preview does not take control. Take control separately when you want to act yourself.",
+      name: "Browser mark",
+      lead: "Shows on a conversation's row that its agent is using your browser or waits for you there.",
+      know: "A quiet window means the agent is working. A bordered mark with the word browser means it is waiting for you.",
     },
     B03: {
-      name: "View large",
-      lead: "Opens a larger view of the browser window, without taking control.",
+      name: "Look",
+      lead: "Opens the browser large to watch, without taking control.",
     },
     B04: {
       name: "Take control",
@@ -3291,18 +3291,18 @@ export const explainModeText = catalog(fi, {
       grey: "Control is still changing or the browser is unavailable.",
     },
     B05: {
-      name: "Give back to the agent",
-      lead: "Hands browser control back to the agent.",
+      name: "Give back",
+      lead: "Hands browser control back to the agent, which carries on.",
     },
     B06: {
       name: "Close browser",
       lead: "Closes the browser on the server and its windows.",
-      know: "You can start it again from the Browser button.",
+      know: "You can start it again from Your browser in the sidebar.",
     },
     B07: {
       name: "Your browser",
-      lead: "Opens the view of your browser on the server.",
-      know: "The row shows the browser's state and window count.",
+      lead: "Opens the view of your browser on the server, and starts the browser if it is off.",
+      know: "The end of the row shows the browser's state: its window count, the agent at work, waiting for you or you in control.",
     },
     B08: {
       name: "Close view",

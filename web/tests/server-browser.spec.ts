@@ -590,16 +590,8 @@ test("@server-browser the frame fits a phone", async ({ page }, testInfo) => {
   ).toEqual([]);
 });
 
-test("@server-browser a window's request opens the strip beside its picture and takes control in one press", async ({
-  page,
-}, testInfo) => {
-  test.setTimeout(120000);
-  await signIn(page, true);
-  // Start the browser from the rail and leave the look.
-  await button(page, "browser-rail-row").click();
-  await expect(page.getByTestId("browser-sheet")).toBeVisible();
-  await button(page, "browser-sheet-close").click();
-
+/** A new conversation in the git project, with the synthetic model. */
+async function converse(page: Page, words: string) {
   await page
     .getByRole("navigation")
     .getByTestId("workspace-git-project")
@@ -609,55 +601,101 @@ test("@server-browser a window's request opens the strip beside its picture and 
   await pill.locator(":scope > summary").click();
   await pill.getByTestId("model-gpt-6-nova").check();
   await pill.getByTestId(/^(model-commit|conversation-model-start)$/).click();
-  await page.getByTestId("message-input").fill("avaa selain");
+  await page.getByTestId("message-input").fill(words);
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "avaa selain".').last(),
-  ).toBeVisible({ timeout: 20000 });
-
-  const chip = button(page, "browser-chip");
-  await expect(chip).toHaveAttribute("data-state", "idle");
-  await fixture(page, "agent=on");
-  await fixture(page, "pointer=0.5,0.6");
-  await expect(chip).toHaveAttribute("data-state", "agent");
-
-  // The agent asks for the second window; the strip opens by itself with
-  // that window large and the agent's own words beside it.
-  const words = "Palvelu pyytää vahvistuskoodia <b>ei merkintää</b>";
-  await fixture(page, `request=${encodeURIComponent(words)}&window=1`);
-  await expect(chip).toHaveAttribute("data-state", "ask");
-  const strip = page.getByTestId("browser-strip");
-  await expect(strip).toBeVisible();
-  await expect(strip.getByTestId("browser-request-text")).toHaveText(words);
-  const lead = strip.locator(".sb-strip-lead [data-testid=browser-window]");
-  await expect(lead).toHaveAttribute(
-    "data-window",
-    "F9E8D7C6B5A4938271605F4E3D2C1B0A",
+  await expect(page.getByText(`Selvä. Kysyit: "${words}".`).last()).toBeVisible(
+    { timeout: 20000 },
   );
-  // Pictures come through the daemon as images.
-  await expect(
-    strip.locator("[data-testid=browser-window] img").first(),
-  ).toHaveAttribute("src", /^blob:/, { timeout: 10000 });
-  // The agent's pointer is on the window it acts in (window 0).
-  await expect(
-    strip
-      .locator('[data-window="0A1B2C3D4E5F60718293A4B5C6D7E8F9"]')
-      .getByTestId("browser-pointer"),
-  ).toBeAttached();
-  await page.screenshot({ path: testInfo.outputPath("strip-ask.png") });
+}
 
-  await button(page, "browser-take-request").click();
+// server-browser-entry-points round 3 (2 Kortti): the agent's request shows
+// in three places at once, the Selain card under the turn that asked, the
+// conversation's own row in the rail and Oma selain, and the card becomes
+// the visit record when the person gives the browser back. The turn's
+// commands are fake Pi's saved CLI results; the host's request is the
+// fixture's.
+test("@server-browser the agent's request: the Selain card, the conversation row's mark and Oma selain", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120000);
+  await signIn(page, true);
+  // Start the browser from the rail and leave the look.
+  const rail = button(page, "browser-rail-row");
+  await rail.click();
+  await expect(page.getByTestId("browser-sheet")).toBeVisible();
+  await button(page, "browser-sheet-close").click();
+  const railState = page.getByTestId("browser-rail-state");
+  await expect(railState).toHaveText("3 ikkunaa");
+  // Oma selain is a plain row with its own window icon, not Tuotokset's.
+  await expect(rail.locator("circle")).toHaveCount(0);
+
+  await converse(page, "selaimen käynti");
+  // The old display above the message field is gone.
+  await expect(page.getByTestId("browser-dock")).toHaveCount(0);
+  const card = page.getByTestId("browser-card");
+  await expect(card).toHaveAttribute("data-state", "done");
+  await expect(card.getByTestId("browser-card-meta")).toContainText(
+    "app.example.invalid",
+  );
+
+  // The host marks the request the turn made: the same card asks in place.
+  const words = "Vahvista kirjautuminen";
+  await fixture(page, `request=${encodeURIComponent(words)}&window=0`);
+  await expect(card).toHaveAttribute("data-state", "ask");
+  await expect(card.getByTestId("browser-card-request")).toHaveText(words);
+  await expect(railState).toHaveText("odottaa sinua");
+  const mark = page.getByRole("navigation").getByTestId("row-browser");
+  await expect(mark).toHaveAttribute("data-state", "ask");
+  await expect(mark).toHaveText("selain");
+  const height = (await card.boundingBox())?.height ?? 0;
+  expect(height).toBeLessThanOrEqual(90);
+  await page.screenshot({ path: testInfo.outputPath("card-ask.png") });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="browser-card"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+
+  await button(page, "browser-card-take").click();
   const sheet = page.getByTestId("browser-sheet");
   await expect(sheet).toHaveAttribute("data-mode", "control");
   await button(page, "browser-sheet-close").click();
   // Closing the look keeps control with the person until they give it back.
-  await expect(chip).toHaveAttribute("data-state", "person");
-  await expect(strip).toBeVisible();
-  await button(page, "browser-give-back").click();
-  // Giving control back clears the request the person answered.
-  await expect(chip).toHaveAttribute("data-state", "agent");
-  await expect(strip.getByTestId("browser-request")).toHaveCount(0);
+  await expect(card).toHaveAttribute("data-state", "control");
+  await expect(railState).toHaveText("sinä ohjaat");
+  await expect(mark).toHaveAttribute("data-state", "control");
+  await button(page, "browser-card-give-back").click();
+
+  // Giving control back clears the request: the card is the visit record,
+  // Habitat says when, and the row's mark is gone.
+  await expect(card).toHaveAttribute("data-state", "done");
+  await expect(page.getByTestId("browser-gave-back")).toContainText(
+    "Annoit selaimen takaisin",
+  );
+  await expect(mark).toHaveCount(0);
+  await expect(railState).toHaveText("3 ikkunaa");
+  await button(page, "browser-card-toggle").click();
+  const detail = card.getByTestId("browser-card-detail");
+  await expect(detail).toContainText("Kustannuspaikat");
+  await expect(detail).toContainText("/kulut");
+  await expect(detail).toContainText("a.kirjaudu");
+  await expect(detail).not.toContainText("kausi=11");
+  await expect(card.getByTestId("browser-card-you")).toContainText(
+    "agentin pyynnöstä",
+  );
+  await page.screenshot({ path: testInfo.outputPath("card-record.png") });
+
+  // Another conversation shows nothing of the browser, even while the first
+  // one's request is open; the rail still says it.
+  await fixture(page, `request=${encodeURIComponent(words)}&window=0`);
+  await expect(mark).toHaveAttribute("data-state", "ask");
+  await converse(page, "toinen asia");
+  await expect(page.getByTestId("browser-card")).toHaveCount(0);
+  await expect(mark).toHaveAttribute("data-state", "ask");
+  await expect(railState).toHaveText("odottaa sinua");
 });

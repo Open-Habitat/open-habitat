@@ -206,7 +206,6 @@ import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
 import { useRest } from "./rest";
 import { RewindContext, useRewind } from "./rewindView";
-import { ServerBrowserDock } from "./ServerBrowser";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -3784,7 +3783,6 @@ function BrowserConversationContent({
               </ArchivedFoot>
             ) : view !== "opened" || controlled ? (
               <>
-                <ServerBrowserDock identity={identity} csrf={csrf} />
                 <WakeDock agent={archive} csrf={csrf} />
                 {view === "opened" && permission.open ? (
                   <PermissionQuestion

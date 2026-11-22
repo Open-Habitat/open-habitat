@@ -7,7 +7,7 @@ import { catalog } from "../i18n";
 
 const fi = {
   title: "Hiljaiset",
-  empty: "Ei hiljaisia keskusteluja.",
+  empty: "ei mitään",
   fold: "Taita Hiljaiset",
   unfold: "Näytä Hiljaiset",
   menu: "Rajaa ja järjestä Hiljaiset",
@@ -19,7 +19,7 @@ const fi = {
 };
 export const quietRailText = catalog(fi, {
   title: "Quiet",
-  empty: "No quiet conversations.",
+  empty: "none",
   fold: "Fold Quiet",
   unfold: "Show Quiet",
   menu: "Narrow and sort Quiet",

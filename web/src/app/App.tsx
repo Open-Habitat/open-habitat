@@ -157,7 +157,12 @@ import {
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
-import { ServerBrowserRail, ServerBrowserSheetHost } from "./ServerBrowser";
+import {
+  observeBrowserTool,
+  ServerBrowserRail,
+  ServerBrowserRowMarks,
+  ServerBrowserSheetHost,
+} from "./ServerBrowser";
 import {
   SharedPage,
   SharedWithYouRail,
@@ -1505,6 +1510,27 @@ export function App() {
     search: location.search,
     icons,
   });
+  // The server browser's marks on the conversation rows (remote-browser,
+  // experimental): a conversation is linked to a window by its own
+  // commands, read here from every conversation's live stream.
+  const browserOn = useExperimentalFeature("remote-browser", {
+    identity,
+    csrf,
+  });
+  useEffect(
+    () => (browserOn ? journal?.subscribeTools(observeBrowserTool) : undefined),
+    [browserOn, journal],
+  );
+  const runningIds = (snapshot?.agents ?? [])
+    .filter((a) => a.activity === "running" || a.activity === "settling")
+    .map((a) => a.agent_id)
+    .join("\n");
+  const browserRunning = useMemo(
+    () => new Set(runningIds ? runningIds.split("\n") : []),
+    [runningIds],
+  );
+  const browserTitle = (id: string) =>
+    snapshot?.agents.find((a) => a.agent_id === id)?.title.display || undefined;
   // One sound when a conversation becomes the person's turn
   // (attention-sound, experimental).
   const soundsOn = useExperimentalFeature("attention-sound", {
@@ -3466,87 +3492,98 @@ export function App() {
                 snapshot &&
                 conversationStore &&
                 !landing.show ? (
-                  <WorkspaceRailView
-                    shares={
-                      <>
-                        <SharesRail
-                          current={location.pathname === "/shares"}
-                          collapsed={railCompact && !mobileLayout}
-                        />
-                        {railCompact && !mobileLayout ? null : (
-                          <SharedWithYouRail
-                            pathname={location.pathname}
-                            identity={identity}
+                  <ServerBrowserRowMarks
+                    on={browserOn}
+                    running={browserRunning}
+                  >
+                    <WorkspaceRailView
+                      shares={
+                        <>
+                          <SharesRail
+                            current={location.pathname === "/shares"}
+                            collapsed={railCompact && !mobileLayout}
                           />
-                        )}
-                      </>
-                    }
-                    browser={
-                      railCompact && !mobileLayout ? undefined : (
-                        <ServerBrowserRail identity={identity} csrf={csrf} />
-                      )
-                    }
-                    only={onlyWorkspace}
-                    bell={conversationBell ? undefined : <StatusBell />}
-                    phase={phase}
-                    snapshot={snapshot}
-                    profile={profile}
-                    source={source}
-                    collapsed={railCompact && !mobileLayout}
-                    now={now}
-                    quietChoice={quietChoice}
-                    sectionChoices={sectionChoices}
-                    matches={matches}
-                    archived={archivedWorkspaces}
-                    onRestoreWorkspace={
-                      csrf &&
-                      phase === "authenticated" &&
-                      snapshot.write_state !== "read_only"
-                        ? (w) => void changeVisibility(w, false)
-                        : undefined
-                    }
-                    visibilityProblem={
-                      visibilityProblem && visibilityProblem.id !== selectedId
-                        ? visibilityProblem.text
-                        : undefined
-                    }
-                    filter={filter}
-                    railState={railState}
-                    selectedId={selectedId}
-                    newReason={createReason}
-                    onNewConversation={
-                      csrf &&
-                      phase === "authenticated" &&
-                      snapshot.write_state !== "read_only"
-                        ? startFromHome
-                        : undefined
-                    }
-                    onCreateWorkspace={
-                      !syntheticDemo &&
-                      phase === "authenticated" &&
-                      csrf &&
-                      source === "confirmed" &&
-                      snapshot.write_state !== "read_only"
-                        ? () => navigate("/workspaces/new")
-                        : undefined
-                    }
-                    onFilter={(v) => dispatch(filterChanged(v))}
-                    onToggle={() =>
-                      editorShown
-                        ? setRailBesideEditor(!railBesideEditor)
-                        : setCollapsed(!collapsed)
-                    }
-                    onRefresh={manualRefresh}
-                    onSettings={openSettings}
-                    onLogout={() => setLogoutPrompt(true)}
-                    onAdministration={() => navigate(settingsHref("palvelin"))}
-                    pathname={location.pathname}
-                    clones={cloneJobs}
-                    archiveConversation={railArchive}
-                    renameConversation={railRename}
-                    turnConversation={railTurn}
-                    icons={icons}
-                  />
+                          {railCompact && !mobileLayout ? null : (
+                            <SharedWithYouRail
+                              pathname={location.pathname}
+                              identity={identity}
+                            />
+                          )}
+                        </>
+                      }
+                      browser={
+                        railCompact && !mobileLayout ? undefined : (
+                          <ServerBrowserRail
+                            identity={identity}
+                            csrf={csrf}
+                            titleOf={browserTitle}
+                          />
+                        )
+                      }
+                      only={onlyWorkspace}
+                      bell={conversationBell ? undefined : <StatusBell />}
+                      phase={phase}
+                      snapshot={snapshot}
+                      profile={profile}
+                      source={source}
+                      collapsed={railCompact && !mobileLayout}
+                      now={now}
+                      quietChoice={quietChoice}
+                      sectionChoices={sectionChoices}
+                      matches={matches}
+                      archived={archivedWorkspaces}
+                      onRestoreWorkspace={
+                        csrf &&
+                        phase === "authenticated" &&
+                        snapshot.write_state !== "read_only"
+                          ? (w) => void changeVisibility(w, false)
+                          : undefined
+                      }
+                      visibilityProblem={
+                        visibilityProblem && visibilityProblem.id !== selectedId
+                          ? visibilityProblem.text
+                          : undefined
+                      }
+                      filter={filter}
+                      railState={railState}
+                      selectedId={selectedId}
+                      newReason={createReason}
+                      onNewConversation={
+                        csrf &&
+                        phase === "authenticated" &&
+                        snapshot.write_state !== "read_only"
+                          ? startFromHome
+                          : undefined
+                      }
+                      onCreateWorkspace={
+                        !syntheticDemo &&
+                        phase === "authenticated" &&
+                        csrf &&
+                        source === "confirmed" &&
+                        snapshot.write_state !== "read_only"
+                          ? () => navigate("/workspaces/new")
+                          : undefined
+                      }
+                      onFilter={(v) => dispatch(filterChanged(v))}
+                      onToggle={() =>
+                        editorShown
+                          ? setRailBesideEditor(!railBesideEditor)
+                          : setCollapsed(!collapsed)
+                      }
+                      onRefresh={manualRefresh}
+                      onSettings={openSettings}
+                      onLogout={() => setLogoutPrompt(true)}
+                      onAdministration={() =>
+                        navigate(settingsHref("palvelin"))
+                      }
+                      pathname={location.pathname}
+                      clones={cloneJobs}
+                      archiveConversation={railArchive}
+                      renameConversation={railRename}
+                      turnConversation={railTurn}
+                      icons={icons}
+                    />
+                  </ServerBrowserRowMarks>
                 ) : undefined
               }
               overlays={

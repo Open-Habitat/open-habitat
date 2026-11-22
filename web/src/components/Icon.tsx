@@ -95,7 +95,8 @@ export type IconName =
   | "gear"
   | "recap"
   | "spark"
-  | "globe";
+  | "globe"
+  | "browser";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -570,11 +571,24 @@ export function Icon({
         <circle cx="12" cy="12" r="3" />
       </>
     ),
-    // The person's own server browser.
+    // Tuotokset: public addresses on the web. It was the server browser's
+    // icon first; the browser now has its own window below.
     globe: (
       <>
         <circle cx="12" cy="12" r="9" />
         <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+      </>
+    ),
+    // The person's own server browser: a window with its tab bar and an
+    // address line (server-browser-entry-points round 3). Oma selain, the
+    // conversation row's browser mark and the Selain card all use it; the
+    // rail icon round (rail-icons-tuotokset-oma-selain) replaces it here.
+    browser: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <path d="M3 9h18" />
+        <path d="M6.5 6.5h.01M9 6.5h.01" />
+        <path d="M7 13.5h6" />
       </>
     ),
     // A model's suggestion (proto-workspace-icon-setting round 2).

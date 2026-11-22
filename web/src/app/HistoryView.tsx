@@ -94,6 +94,7 @@ import {
   sessionMarkers,
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
+import { TurnBrowserSource } from "./TurnBrowserSource";
 import { TurnChangesRoot, TurnChangesSource } from "./TurnChangesSource";
 import {
   rowIndexOf,
@@ -1422,6 +1423,15 @@ export function timelineItems(
               agentId={agentId}
               revision={revision}
               startedAt={startedAt}
+            />
+          }
+          browser={
+            <TurnBrowserSource
+              entries={group}
+              results={results}
+              agentId={agentId}
+              revision={revision}
+              working={merged && !!live?.working}
             />
           }
         />

@@ -135,6 +135,8 @@ describe("one tab-wide journal", () => {
             conversation: id,
             tool: "edit",
             path: "README.md",
+            arguments: JSON.stringify({ path: "README.md" }),
+            output: undefined,
           },
         ],
       ]);
@@ -185,6 +187,8 @@ describe("one tab-wide journal", () => {
             conversation: agent.agent_id,
             tool: "edit",
             path: "README.md",
+            arguments: JSON.stringify({ path: "README.md" }),
+            output: undefined,
           },
         ],
       ]);

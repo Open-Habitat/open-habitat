@@ -13,6 +13,10 @@ export interface ToolReport {
   tool: string;
   /** The `path` argument of a file tool, as the agent wrote it. */
   path?: string;
+  /** The call's arguments JSON and its output as the live stream carries
+   * them, possibly cut: the browser's rail marks read its CLI results. */
+  arguments?: string;
+  output?: string;
 }
 /** Shown at the end of the conversation whose agent's changes a save
  * replaced. */

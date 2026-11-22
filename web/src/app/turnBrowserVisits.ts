@@ -23,11 +23,20 @@ export type BrowserVisitDetail = {
     selector?: string;
   })[];
 };
+/** The person's help the turn asked for: `agent browser request`'s own
+ * result names the window the host marked. */
+export type BrowserVisitRequest = Timed & { window: string; text: string };
 export type BrowserVisits = {
   summary: BrowserVisitSummary;
   /** No detail property at all for participants. This is a presentation API,
    * not authorization to fetch the owner's native history. */
   detail?: BrowserVisitDetail;
+  /** Owner only: the windows this turn's commands acted in (each result's
+   * `tab`) and the request it left open, which link the browser's live
+   * state to this conversation (server-browser-entry-points round 2). The
+   * host's status does not say which conversation a window belongs to. */
+  windows?: string[];
+  request?: BrowserVisitRequest;
   coverage: "command-results-only";
 };
 
@@ -51,7 +60,7 @@ function page(url: unknown, title: unknown): VisitPage | undefined {
 /** A bash call may print several pretty-printed CLI envelopes. Accept only
  * whole JSON documents, never braces extracted from logs, scripts or prose.
  * Truncated/mixed output cannot establish a completed command. */
-function documents(text: string): unknown[] {
+export function documents(text: string): unknown[] {
   const values: unknown[] = [];
   let start = 0;
   while (start < text.length) {
@@ -86,6 +95,67 @@ function documents(text: string): unknown[] {
 const withoutFragment = (url: unknown) =>
   typeof url === "string" ? url.replace(/#.*$/s, "") : url;
 
+const windowId = /^[0-9A-F]{32}$/;
+
+/** The bash command of a call's arguments JSON, when it is one. */
+function commandOf(args: string): string | undefined {
+  try {
+    const value = object(JSON.parse(args));
+    return typeof value?.command === "string" ? value.command : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** `agent browser request` and `status` answer with the same status, so only
+ * the command tells a request from a look at the state; the result, not the
+ * command line, says which window the host marked. */
+const requestCommand = /\bagent\s+browser\s+request\b/;
+const clearCommand = /\bagent\s+browser\s+request\s+--clear\b/;
+
+/** What one finished bash call's output says about the browser: the windows
+ * its targeted commands acted in, and the request it made or cleared. For
+ * the rail, which sees only the live stream's (possibly cut) output. */
+export function browserCallFacts(
+  args: string,
+  output: string,
+): { windows: string[]; request?: { window: string; text: string } | null } {
+  const command = commandOf(args) ?? "";
+  const windows = new Set<string>();
+  let request: { window: string; text: string } | null | undefined;
+  for (const doc of documents(output)) {
+    const envelope = object(doc);
+    const data = object(envelope?.data);
+    const result = object(data?.result);
+    if (
+      envelope?.schema_version !== 1 ||
+      typeof data?.cli_version !== "string" ||
+      !result
+    )
+      continue;
+    if (
+      typeof result.browser_action === "string" &&
+      typeof result.tab === "string" &&
+      windowId.test(result.tab)
+    )
+      windows.add(result.tab);
+    if (requestCommand.test(command) && typeof result.state === "string") {
+      const asked = object(result.request);
+      if (clearCommand.test(command)) request = null;
+      else if (
+        asked &&
+        typeof asked.window === "string" &&
+        windowId.test(asked.window) &&
+        typeof asked.text === "string"
+      ) {
+        request = { window: asked.window, text: asked.text };
+        windows.add(asked.window);
+      }
+    }
+  }
+  return { windows: [...windows], request };
+}
+
 /** One turn, in native tool-call order, with full saved outputs (not history
  * previews). Like turnChanges this is a pure derivation of ToolSteps; it reads
  * no browser state and keeps no history store. Repeated goto calls count as
@@ -100,6 +170,8 @@ export function turnBrowserVisits(
   const sites = new Set<string>();
   const times: number[] = [];
   const seen = new Set<string>();
+  const windows = new Set<string>();
+  let request: BrowserVisitRequest | undefined;
   let observed = false;
   for (const step of steps) {
     if (
@@ -110,6 +182,19 @@ export function turnBrowserVisits(
     )
       continue;
     seen.add(step.callId);
+    const at =
+      typeof step.at === "number" && Number.isFinite(step.at)
+        ? step.at
+        : undefined;
+    const facts = browserCallFacts(step.args, step.output);
+    for (const w of facts.windows) windows.add(w);
+    if (facts.request !== undefined) {
+      observed = true;
+      if (at !== undefined) times.push(at);
+      request = facts.request
+        ? { ...facts.request, callId: step.callId, at }
+        : undefined;
+    }
     for (const doc of documents(step.output)) {
       const envelope = object(doc);
       const data = object(envelope?.data);
@@ -138,10 +223,6 @@ export function turnBrowserVisits(
       )
         continue;
       observed = true;
-      const at =
-        typeof step.at === "number" && Number.isFinite(step.at)
-          ? step.at
-          : undefined;
       if (at !== undefined) times.push(at);
       const timed = { callId: step.callId, at };
       const after = page(result.url, result.title);
@@ -190,7 +271,9 @@ export function turnBrowserVisits(
       startedAt: times.length ? Math.min(...times) : undefined,
       endedAt: times.length ? Math.max(...times) : undefined,
     },
-    ...(audience === "owner" ? { detail } : {}),
+    ...(audience === "owner"
+      ? { detail, windows: [...windows], ...(request ? { request } : {}) }
+      : {}),
     coverage: "command-results-only",
   };
 }

@@ -1,15 +1,22 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useMemo } from "react";
 import {
-  BrowserChip,
   BrowserRailRow,
+  BrowserRowMarks,
   BrowserSheet,
-  BrowserStrip,
 } from "../components/ServerBrowser";
 import { useText } from "../i18n";
 import { serverBrowserText } from "../text/serverBrowser";
 import { useExperimentalFeature } from "./accountPreferences";
 import {
-  browserWindowURL,
+  browserRowStates,
+  noteBrowserUse,
+  noteBrowserWindows,
+  ownerOfWindow,
+  settleBrowserUse,
+  useBrowserConversations,
+} from "./browserConversations";
+import type { ToolReport } from "./editorChanges";
+import {
   closeBrowserSheet,
   openBrowserSheet,
   setBrowserControl,
@@ -17,150 +24,76 @@ import {
   stopBrowser,
   summarize,
   useServerBrowser,
+  useServerBrowserState,
 } from "./serverBrowser";
+import { browserCallFacts } from "./turnBrowserVisits";
 
 // noVNC is loaded only when the person opens the live view.
 const BrowserViewer = lazy(() => import("./BrowserViewer"));
 
-const pictureEvery = 2000;
-
-/** Small live pictures of the windows while `active`: each window's JPEG
- * through the person's daemon, as object URLs that are released again. */
-function useWindowPictures(ids: string[], active: boolean) {
-  const [pictures, setPictures] = useState<Record<string, string>>({});
-  const urls = useRef<Record<string, string>>({});
-  const key = ids.join(",");
-  useEffect(() => {
-    if (!active || !key) return;
-    let stop = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const wanted = key.split(",");
-    const round = async () => {
-      const next: Record<string, string> = {};
-      await Promise.all(
-        wanted.map(async (id) => {
-          try {
-            const response = await fetch(browserWindowURL(id), {
-              credentials: "same-origin",
-              cache: "no-store",
-            });
-            const type = response.headers.get("Content-Type");
-            if (!response.ok || type !== "image/jpeg") return;
-            const blob = await response.blob();
-            if (blob.size > 4 << 20) return;
-            next[id] = URL.createObjectURL(blob);
-          } catch {
-            /* The previous picture stays. */
-          }
-        }),
-      );
-      if (stop) {
-        for (const u of Object.values(next)) URL.revokeObjectURL(u);
-        return;
-      }
-      const merged: Record<string, string> = {};
-      for (const id of wanted) {
-        const fresh = next[id];
-        const old = urls.current[id];
-        if (fresh && old) URL.revokeObjectURL(old);
-        if (fresh ?? old) merged[id] = fresh ?? old;
-      }
-      for (const [id, u] of Object.entries(urls.current))
-        if (!wanted.includes(id)) URL.revokeObjectURL(u);
-      urls.current = merged;
-      setPictures(merged);
-      timer = setTimeout(round, pictureEvery);
-    };
-    void round();
-    return () => {
-      stop = true;
-      clearTimeout(timer);
-    };
-  }, [key, active]);
-  useEffect(
-    () => () => {
-      for (const u of Object.values(urls.current)) URL.revokeObjectURL(u);
-      urls.current = {};
-    },
-    [],
-  );
-  return pictures;
+/** A finished tool call from the live stream of any of the person's
+ * conversations: a browser command links the windows it acted in to its
+ * conversation, for the rail's row marks. */
+export function observeBrowserTool(report: ToolReport) {
+  if (report.tool !== "bash" || !report.output) return;
+  const facts = browserCallFacts(report.arguments ?? "", report.output);
+  if (!facts.windows.length && facts.request === undefined) return;
+  noteBrowserWindows(report.conversation, facts.windows);
+  if (facts.request === undefined) noteBrowserUse(report.conversation);
 }
 
-/** The chip above the message field and the strip it opens. */
-export function ServerBrowserDock({
-  identity,
-  csrf,
+/** The browser marks of the conversation rows, for the rail. `running` is
+ * the conversations whose agent runs now; `on` is the experiment. */
+export function ServerBrowserRowMarks({
+  on,
+  running,
+  children,
 }: {
-  identity?: string;
-  csrf?: string;
+  on: boolean;
+  running: ReadonlySet<string>;
+  children: ReactNode;
 }) {
-  const on = useExperimentalFeature("remote-browser");
-  const browser = useServerBrowser(identity, csrf, on);
-  const [open, setOpen] = useState(false);
-  const summary = summarize(browser.status);
-  const running = browser.status?.state === "running";
-  // A window that needs the person opens the strip by itself once.
-  const asked = browser.status?.request?.window;
-  const seen = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (asked && asked !== seen.current) setOpen(true);
-    seen.current = asked;
-  }, [asked]);
-  const pictures = useWindowPictures(
-    running ? (browser.status?.windows.map((w) => w.id) ?? []) : [],
-    open && running && !browser.sheet,
+  const browser = useServerBrowserState();
+  const version = useBrowserConversations();
+  useEffect(() => settleBrowserUse(running), [running]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version is the registry's change signal.
+  const marks = useMemo(
+    () => (on ? browserRowStates(browser.status, running) : new Map()),
+    [on, browser.status, running, version],
   );
-  if (!on || summary.kind === "off") return null;
   return (
-    <div className="sb-dock" data-testid="browser-dock">
-      {open && running && browser.status ? (
-        <BrowserStrip
-          status={browser.status}
-          summary={summary}
-          pictures={pictures}
-          busy={browser.busy}
-          error={browser.error}
-          onLook={() => openBrowserSheet("view")}
-          onTakeForRequest={async (window) => {
-            if (await setBrowserControl("person", window))
-              openBrowserSheet("control");
-          }}
-          onGiveBack={() => void setBrowserControl("agent")}
-        />
-      ) : null}
-      <BrowserChip
-        status={browser.status}
-        summary={summary}
-        open={open && running}
-        busy={browser.busy}
-        onToggle={() => setOpen((v) => !v)}
-        onStart={async () => {
-          if (await startBrowser()) setOpen(true);
-        }}
-      />
-    </div>
+    <BrowserRowMarks.Provider value={marks}>
+      {children}
+    </BrowserRowMarks.Provider>
   );
 }
 
-/** The browser as the top row of the sidebar; it opens the live view, and
- * starts a stopped browser first. */
+/** The rail's Oma selain row; it opens the live view, and starts a stopped
+ * browser first. `titleOf` names the conversation an open request belongs
+ * to, when one of the conversation's own commands named its window. */
 export function ServerBrowserRail({
   identity,
   csrf,
+  titleOf,
 }: {
   identity?: string;
   csrf?: string;
+  titleOf?: (agentId: string) => string | undefined;
 }) {
   const on = useExperimentalFeature("remote-browser", { identity, csrf });
   const browser = useServerBrowser(identity, csrf, on);
+  useBrowserConversations();
   const summary = summarize(browser.status);
   if (!on) return null;
+  const asked =
+    summary.kind === "ask" ? browser.status?.request?.window : undefined;
+  const owner = asked ? ownerOfWindow(asked) : undefined;
   return (
     <BrowserRailRow
       summary={summary}
       windows={browser.status?.windows.length ?? 0}
       busy={browser.busy}
+      conversation={owner ? titleOf?.(owner) : undefined}
       onOpen={async () => {
         if (summary.kind === "stopped" && !(await startBrowser())) return;
         openBrowserSheet(
@@ -171,7 +104,8 @@ export function ServerBrowserRail({
   );
 }
 
-/** The live view, once for the whole app: the rail and the chip open it. */
+/** The live view, once for the whole app: the rail row and the Selain card
+ * open it. Its read keeps the browser's state current for both. */
 export function ServerBrowserSheetHost({
   identity,
   csrf,

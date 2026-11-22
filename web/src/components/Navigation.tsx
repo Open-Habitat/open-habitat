@@ -1,10 +1,18 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { Input, Label, TextField } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
 import { textNow, useText } from "../i18n";
 import { navigationText } from "../text/navigation";
 import { scheduledWakeText } from "../text/scheduledWake";
 import { sectionFilterText } from "../text/sectionFilter";
+import { serverBrowserText } from "../text/serverBrowser";
 import { statusText } from "../text/status";
 import {
   ArchiveControls,
@@ -41,6 +49,11 @@ import {
   type SectionWorkspace,
   sectionView,
 } from "./SectionFilter";
+import {
+  BrowserRowMark,
+  BrowserRowMarks,
+  browserRowSaid,
+} from "./ServerBrowser";
 import type { StatusKind } from "./Status";
 import { Badge, kindMark, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
@@ -764,6 +777,9 @@ export function AgentNavItem({
     spinoffIdle,
   });
   const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
+  // The browser works for this conversation: its mark takes the time's
+  // place (server-browser-entry-points round 3).
+  const browser = useContext(BrowserRowMarks).get(agentId);
   const wakeWords = textNow(scheduledWakeText);
   const wake =
     wakeAt !== undefined
@@ -783,6 +799,7 @@ export function AgentNavItem({
         : undefined;
   const said = [
     pendingLabel,
+    browser ? browserRowSaid(textNow(serverBrowserText), browser) : null,
     detail ?? activityLabel,
     worktree ? (worktree.merged ? t.worktreeMerged : t.worktree) : null,
     worktree?.work?.text,
@@ -985,6 +1002,7 @@ export function AgentNavItem({
               (workspaceTag && workspaceName) ||
               backgroundService ||
               wake ||
+              browser ||
               (age !== undefined && changedAt !== undefined) ? (
                 <>
                   {backgroundService ? (
@@ -1006,7 +1024,9 @@ export function AgentNavItem({
                       {workspaceName}
                     </span>
                   ) : null}
-                  {wake ? (
+                  {browser ? (
+                    <BrowserRowMark state={browser} />
+                  ) : wake ? (
                     <time
                       className="ah-nav-time ah-nav-wake"
                       data-testid="rail-wake-time"

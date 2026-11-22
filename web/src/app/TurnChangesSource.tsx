@@ -26,7 +26,7 @@ type Call = {
   result?: HistoryEntry;
 };
 
-const savedAt = (entry?: HistoryEntry) => {
+export const savedAt = (entry?: HistoryEntry) => {
   const at = entry?.timestamp ? Date.parse(entry.timestamp) : Number.NaN;
   return Number.isFinite(at) ? at : undefined;
 };
@@ -63,7 +63,7 @@ async function readAt(
   }
   throw failure;
 }
-function blockText(
+export function blockText(
   agentId: string,
   revisions: string[],
   entryKey: string,
@@ -80,7 +80,7 @@ function blockText(
   return text;
 }
 
-const resultText = (result?: HistoryEntry) =>
+export const resultText = (result?: HistoryEntry) =>
   result?.blocks
     ?.filter((b) => b.type === "text")
     .map((b) => b.text ?? "")
@@ -141,7 +141,7 @@ async function readSteps(
   }));
 }
 
-const revisionsOf = (own: string | undefined, rest: string[]) =>
+export const revisionsOf = (own: string | undefined, rest: string[]) =>
   [...new Set([own, ...rest])].filter((r): r is string => !!r);
 
 /** The element the conversation scrolls in, or none for the page. */
@@ -159,7 +159,7 @@ function scroller(place: Element): Element | null {
  * the page, the area clips the place first and a margin never applies, so a
  * turn was read only when its last pixel was scrolled into sight, and a turn
  * a jump or a restored position passed over showed nothing. */
-function useNear() {
+export function useNear() {
   const [place, setPlace] = useState<HTMLSpanElement | null>(null);
   const [near, setNear] = useState(
     () => typeof IntersectionObserver === "undefined",

@@ -3,49 +3,87 @@
 Generated from web/src/text/serverBrowser.ts; do not edit.
 
 ```tsx
-import { catalog } from "../i18n";
+import { catalog, formatNumber, plural } from "../i18n";
 
-// The person's own server browser (components/ServerBrowser.tsx): the chip
-// above the message field, the strip it opens, the sheet with the live view
-// and the row in the sidebar. Window titles and the agent's request come in
-// as arguments and stay as they are.
+// The person's own server browser (components/ServerBrowser.tsx): the rail's
+// Oma selain row, the browser mark on a conversation's row, the Selain card in
+// the conversation and the sheet with the live view. Window titles and the
+// agent's request come in as arguments and stay as they are.
 const fi = {
-  name: "Selain",
   ownBrowser: "Oma selain",
   windows: (n: number) => (n === 1 ? "1 ikkuna" : `${n} ikkunaa`),
-  state: {
-    stopped: "Ei käynnissä",
-    starting: "Käynnistyy…",
-    idle: "Valmiina agentille",
-    agent: "Agentti työssä",
-    person: "Sinä ohjaat",
-    ask: (title: string) => `${title} odottaa sinua`,
-    askUntitled: "Ikkuna odottaa sinua",
-  },
-  open: "Avaa selain",
-  openHint:
-    "Käynnistää oman selaimesi palvelimella. Agentti voi käyttää sitä, ja näet täällä, mitä se tekee.",
   stop: "Sulje selain",
-  stripTitle: "Oma selain",
-  noWindows: "Selaimessa ei ole ikkunoita.",
-  agentHere: "agentti tässä",
-  waitsYou: "odottaa sinua",
-  youDrive: "sinä ohjaat",
-  takeForRequest: "Ota ohjaus ja hoida",
-  lookFirst: "Katso ensin",
-  lookBig: "Katso isona",
   takeControl: "Ota ohjaus",
-  giveBack: "Anna takaisin agentille",
-  now: {
-    stopped:
-      "Selain ei ole käynnissä. Kirjautumiset säilyvät, kun avaat sen uudelleen.",
-    idle: "Selain on auki. Agentti voi käyttää sitä, kun se tarvitsee.",
-    agent: "Agentti käyttää selainta. Voit katsoa, mitä se tekee.",
-    ask: "Agentti on pysähtynyt ja odottaa sinua.",
-    person: "Sinä ohjaat. Agentti odottaa, kunnes annat selaimen takaisin.",
+  // The rail's Oma selain row: its short state at the end, and the whole
+  // state for a screen reader.
+  rail: {
+    stopped: "ei auki",
+    starting: "käynnistyy…",
+    agent: "agentti",
+    ask: "odottaa sinua",
+    control: "sinä ohjaat",
+    said: {
+      stopped: "Oma selain, ei auki. Avaa painamalla.",
+      starting: "Oma selain käynnistyy",
+      idle: (windows: string) => `Oma selain, ${windows}, agentti ei käytä`,
+      agent: (windows: string) => `Oma selain, agentti käyttää, ${windows}`,
+      ask: (conversation: string) =>
+        `Oma selain odottaa sinua, keskustelu ${conversation}`,
+      askUnknown: "Oma selain odottaa sinua",
+      control: "Oma selain, sinä ohjaat",
+    },
   },
-  askLead:
-    "Kun otat ohjauksen, agentti odottaa, kunnes annat selaimen takaisin.",
+  // The browser mark at the end of a conversation's row in the rail.
+  row: {
+    ask: "selain",
+    control: "ohjaat",
+    said: {
+      working: "Agentti työskentelee selaimessasi",
+      ask: "Odottaa sinua selaimessa",
+      control: "Sinä ohjaat selainta, agentti odottaa",
+    },
+  },
+  // The Selain card under the turn that used the browser: live while the
+  // agent works or asks, then the record of the visit. Page titles, paths,
+  // selectors, file names and the agent's request stay as they are.
+  card: {
+    live: "Selain nyt",
+    ask: "Odottaa sinua selaimessa",
+    control: "Sinä ohjaat selainta",
+    controlMeta: "Agentti odottaa, kunnes annat selaimen takaisin.",
+    record: "Selain",
+    take: "Ota ohjaus ja hoida",
+    look: "Katso",
+    lookFirst: "Katso ensin",
+    open: "Avaa",
+    giveBack: "Anna takaisin",
+    show: "Näytä selaimen käynti",
+    pages: (n: number) =>
+      `${formatNumber(n)} ${plural("fi", n, { one: "sivu", other: "sivua" })}`,
+    downloads: (n: number) =>
+      `${formatNumber(n)} ${plural("fi", n, { one: "lataus", other: "latausta" })}`,
+    actions: (n: number) =>
+      `${formatNumber(n)} ${plural("fi", n, { one: "toiminto", other: "toimintoa" })}`,
+    soFar: (counts: string) => `${counts} tähän mennessä`,
+    inWindow: (title: string) => `Agentti ikkunassa ${title}`,
+    tabsClosed: "Agentin välilehdet suljettu",
+    sectionPages: "Sivut",
+    sectionDownloads: "Lataukset",
+    sectionActions: "Toiminnot",
+    sectionYou: "Sinä selaimessa",
+    youSpan: (from: string, to: string) =>
+      `Ohjasit selainta ${from}–${to} agentin pyynnöstä.`,
+    youNow: (from: string) => `Ohjaat selainta ${from} alkaen.`,
+    savedTo: (folder: string) => `Tallennettu kansioon ${folder}`,
+    action: {
+      click: "Painoi",
+      type: "Kirjoitti kenttään",
+      eval: "Suoritti skriptin sivulla",
+    },
+    coverage:
+      "Luettelo on koottu agentin selainkomennoista. Omaa ikkunaasi ei kirjata, eikä sitä, mitä teit ohjatessasi. Osoitteista on poistettu kyselyosat.",
+    gaveBack: (time: string) => `Annoit selaimen takaisin ${time}`,
+  },
   sheet: {
     close: "Sulje",
     viewing: "Katselet. Agentti jatkaa työtään, eikä katselu vaikuta siihen.",
@@ -130,47 +168,79 @@ const fi = {
     control: "Ohjauksen vaihto ei onnistunut. Yritä uudelleen.",
     read: "Selaimen tilaa ei saatu luettua.",
   },
-  pointer: "agentti",
 };
 
 export const serverBrowserText = catalog(fi, {
-  name: "Browser",
   ownBrowser: "Your browser",
   windows: (n: number) => (n === 1 ? "1 window" : `${n} windows`),
-  state: {
-    stopped: "Not running",
-    starting: "Starting…",
-    idle: "Ready for the agent",
-    agent: "Agent at work",
-    person: "You are in control",
-    ask: (title: string) => `${title} is waiting for you`,
-    askUntitled: "A window is waiting for you",
-  },
-  open: "Open browser",
-  openHint:
-    "Starts your own browser on the server. The agent can use it, and you see here what it does.",
   stop: "Close browser",
-  stripTitle: "Your browser",
-  noWindows: "The browser has no windows.",
-  agentHere: "agent here",
-  waitsYou: "waiting for you",
-  youDrive: "you are in control",
-  takeForRequest: "Take control and do it",
-  lookFirst: "Look first",
-  lookBig: "View large",
   takeControl: "Take control",
-  giveBack: "Give back to the agent",
-  now: {
-    stopped:
-      "The browser is not running. Sign-ins are kept when you open it again.",
-    idle: "The browser is open. The agent can use it when it needs to.",
-    agent: "The agent is using the browser. You can watch what it does.",
-    ask: "The agent has stopped and is waiting for you.",
-    person:
-      "You are in control. The agent waits until you give the browser back.",
+  rail: {
+    stopped: "off",
+    starting: "starting…",
+    agent: "agent",
+    ask: "waiting for you",
+    control: "you control",
+    said: {
+      stopped: "Your browser, off. Press to open.",
+      starting: "Your browser is starting",
+      idle: (windows: string) =>
+        `Your browser, ${windows}, the agent is not using it`,
+      agent: (windows: string) =>
+        `Your browser, the agent is using it, ${windows}`,
+      ask: (conversation: string) =>
+        `Your browser is waiting for you, conversation ${conversation}`,
+      askUnknown: "Your browser is waiting for you",
+      control: "Your browser, you are in control",
+    },
   },
-  askLead:
-    "When you take control, the agent waits until you give the browser back.",
+  row: {
+    ask: "browser",
+    control: "you",
+    said: {
+      working: "The agent is working in your browser",
+      ask: "Waiting for you in the browser",
+      control: "You control the browser, the agent waits",
+    },
+  },
+  card: {
+    live: "Browser now",
+    ask: "Waiting for you in the browser",
+    control: "You control the browser",
+    controlMeta: "The agent waits until you give the browser back.",
+    record: "Browser",
+    take: "Take control and do it",
+    look: "Look",
+    lookFirst: "Look first",
+    open: "Open",
+    giveBack: "Give back",
+    show: "Show the browser visit",
+    pages: (n: number) =>
+      `${formatNumber(n)} ${plural("en", n, { one: "page", other: "pages" })}`,
+    downloads: (n: number) =>
+      `${formatNumber(n)} ${plural("en", n, { one: "download", other: "downloads" })}`,
+    actions: (n: number) =>
+      `${formatNumber(n)} ${plural("en", n, { one: "action", other: "actions" })}`,
+    soFar: (counts: string) => `${counts} so far`,
+    inWindow: (title: string) => `The agent is in ${title}`,
+    tabsClosed: "The agent's tabs are closed",
+    sectionPages: "Pages",
+    sectionDownloads: "Downloads",
+    sectionActions: "Actions",
+    sectionYou: "You in the browser",
+    youSpan: (from: string, to: string) =>
+      `You controlled the browser ${from}–${to} at the agent's request.`,
+    youNow: (from: string) => `You have controlled the browser since ${from}.`,
+    savedTo: (folder: string) => `Saved to ${folder}`,
+    action: {
+      click: "Pressed",
+      type: "Typed into a field",
+      eval: "Ran a script on the page",
+    },
+    coverage:
+      "The list is built from the agent's browser commands. Your own window is not recorded, nor what you did while in control. Query strings are removed from addresses.",
+    gaveBack: (time: string) => `You gave the browser back at ${time}`,
+  },
   sheet: {
     close: "Close",
     viewing:
@@ -258,7 +328,6 @@ export const serverBrowserText = catalog(fi, {
     control: "Control could not be changed. Try again.",
     read: "The browser's state could not be read.",
   },
-  pointer: "agent",
 });
 
 ```

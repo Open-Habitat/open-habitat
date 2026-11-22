@@ -120,21 +120,20 @@ const req = await control("POST", "/request", {
 });
 log("request", req.status);
 
-// 3. The person sees the request in a conversation: the strip opens with
-// the real pictures and the agent's pointer.
+// 3. The person sees the request in the rail's Oma selain. No conversation's
+// command made it (the lab's agent is playwright-core), so it stays the
+// rail's: no conversation shows a Selain card or a row mark for it.
 await page.getByTestId("browser-sheet-close").click();
 await page.getByTestId("home-link").click();
-await page.getByTestId("workspace-start-aurinkokello").last().click();
-const strip = page.getByTestId("browser-strip");
-await strip.waitFor({ timeout: 20000 });
 await page.waitForFunction(
   () =>
-    document.querySelectorAll('[data-testid="browser-window"] img').length >= 1,
+    document
+      .querySelector('[data-testid="browser-rail-row"]')
+      ?.getAttribute("data-state") === "ask",
   null,
-  { timeout: 15000 },
+  { timeout: 20000 },
 );
-await page.waitForTimeout(800);
-await snapshot(page, `${out}e2e-2-strip-request`);
+await snapshot(page, `${out}e2e-2-rail-request`);
 
 // 4. Where the code field is on the display, asked before control changes
 // hands (Chrome's page sits below its toolbar in the 1280×800 display).
@@ -145,7 +144,8 @@ const field = await work.evaluate(() => {
     y: screenY + (outerHeight - innerHeight) + r.y + r.height / 2,
   };
 });
-await page.getByTestId("browser-take-request").click();
+await page.getByTestId("browser-rail-row").click();
+await page.getByTestId("browser-take-control").click();
 await page.waitForFunction(
   () =>
     document

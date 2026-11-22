@@ -44,11 +44,6 @@ export function browserViewURL(origin = window.location.origin) {
   return `${origin.replace(/^http/, "ws")}/api/v1/browser/view`;
 }
 
-/** One window's picture: the gateway accepts only this exact query. */
-export function browserWindowURL(id: string) {
-  return `/api/v1/browser/window?id=${encodeURIComponent(id)}`;
-}
-
 /** How the sheet shows the browser: looking never takes control. */
 export type SheetMode = "view" | "control";
 
@@ -63,7 +58,16 @@ type State = {
   sheet?: SheetMode;
 };
 
-let state: State = { failed: false };
+const empty: State = {
+  key: undefined,
+  csrf: undefined,
+  status: undefined,
+  failed: false,
+  busy: undefined,
+  error: undefined,
+  sheet: undefined,
+};
+let state: State = { ...empty };
 const listeners = new Set<() => void>();
 let subscribers = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -74,9 +78,23 @@ function set(next: Partial<State>) {
   for (const l of listeners) l();
 }
 
-function subscribe(l: () => void) {
+/** Called on every change of the browser's state. */
+export function subscribeServerBrowser(l: () => void) {
   listeners.add(l);
-  return () => listeners.delete(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+const subscribe = subscribeServerBrowser;
+
+/** The browser as last read, for whoever only shows it: the sheet host
+ * keeps it read while the experiment is on, so a turn's card or a rail row
+ * adds no reads of its own. `key` names the session it belongs to. */
+export function readServerBrowser(): State {
+  return state;
+}
+export function useServerBrowserState(): State {
+  return useSyncExternalStore(subscribe, readServerBrowser);
 }
 
 /** Running: often enough that the pointer and a request feel live. */
@@ -134,7 +152,13 @@ export function useServerBrowser(
     void read().then(schedule);
     return () => {
       subscribers--;
-      if (subscribers === 0) clearTimeout(timer);
+      if (subscribers > 0) return;
+      clearTimeout(timer);
+      // Nobody keeps it read any more (signed out, or the experiment is
+      // off): what was read stops showing anywhere.
+      queueMicrotask(() => {
+        if (subscribers === 0 && state.key === key) set({ ...empty });
+      });
     };
   }, [key, csrf]);
   const s = useSyncExternalStore(subscribe, () => state);

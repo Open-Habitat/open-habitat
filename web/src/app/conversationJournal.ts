@@ -242,6 +242,11 @@ export class ConversationJournal {
           conversation: agent.agent_id,
           tool: event.payload.tool_name as string,
           path: toolPath(argumentsByCall.get(call)),
+          arguments: argumentsByCall.get(call),
+          output:
+            typeof event.payload.text === "string"
+              ? event.payload.text
+              : undefined,
         };
         for (const listener of this.toolListeners) listener(report);
       }
@@ -299,13 +304,18 @@ export class ConversationJournal {
               item.kind === "tool" &&
               item.callId === event.payload.tool_call_id,
           );
+        const args =
+          (event.payload.arguments as string | undefined) ?? tool?.arguments;
         const report: ToolReport = {
           workspace,
           conversation: id,
           tool: event.payload.tool_name as string,
-          path: toolPath(
-            (event.payload.arguments as string | undefined) ?? tool?.arguments,
-          ),
+          path: toolPath(args),
+          arguments: args,
+          output:
+            typeof event.payload.text === "string"
+              ? event.payload.text
+              : undefined,
         };
         for (const listener of this.toolListeners) listener(report);
       }

@@ -3,386 +3,509 @@
 Generated from web/src/components/ServerBrowser.tsx; do not edit.
 
 ```tsx
-import { type CSSProperties, type ReactNode, useEffect } from "react";
+import {
+  type CSSProperties,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import {
   Dialog as AriaDialog,
   Heading,
   Modal,
   ModalOverlay,
 } from "react-aria-components";
-import type {
-  BrowserPointer,
-  BrowserStatus,
-  BrowserSummary,
-  BrowserWindow,
-} from "../app/serverBrowser";
-import { useText } from "../i18n";
+import { createPortal } from "react-dom";
+import type { BrowserRowState } from "../app/browserConversations";
+import type { BrowserSummary } from "../app/serverBrowser";
+import type { BrowserVisits } from "../app/turnBrowserVisits";
+import { formatDate, useText } from "../i18n";
 import { serverBrowserText } from "../text/serverBrowser";
 import { ControlButton } from "./ControlElements";
+import controls from "./Controls.module.css";
 import { Icon } from "./Icon";
+import "./Multiplayer.css";
 import "./ServerBrowser.css";
+import "./TurnChanges.css";
 
 type Text = typeof serverBrowserText.fi;
 
-function stateLine(txt: Text, summary: BrowserSummary, busy?: string) {
-  if (busy === "start") return txt.state.starting;
-  switch (summary.kind) {
-    case "stopped":
-    case "off":
-      return txt.state.stopped;
-    case "ask":
-      return summary.window?.title
-        ? txt.state.ask(summary.window.title)
-        : txt.state.askUntitled;
-    case "person":
-      return txt.state.person;
-    case "agent":
-      return txt.state.agent;
-    default:
-      return txt.state.idle;
-  }
-}
+// The person's server browser in three places (server-browser-entry-points
+// round 3, direction 2 Kortti, Jari 22.11.2026): the rail's Oma selain row,
+// the browser mark on the row of the conversation the browser works for, and
+// one Selain card under the turn that used it, which changes state in place
+// and becomes the visit record. Another conversation shows nothing of the
+// browser. Every icon here is the `browser` window of Icon.tsx.
 
-/** The agent's pointer and recent presses over a window's picture. */
-function PointerMarks({ pointer }: { pointer: BrowserPointer }) {
-  const txt = useText(serverBrowserText);
-  return (
-    <span className="sb-ptr" aria-hidden="true" data-testid="browser-pointer">
-      {pointer.clicks.map((c, i) => (
-        <i
-          // biome-ignore lint/suspicious/noArrayIndexKey: presses have no identity
-          key={i}
-          className="sb-click"
-          style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%` }}
-        />
-      ))}
-      <span
-        className="sb-ptr-at"
-        style={{ left: `${pointer.x * 100}%`, top: `${pointer.y * 100}%` }}
-      >
-        <svg className="sb-arrow" viewBox="0 0 16 22" aria-hidden="true">
-          <path d="M1 1 L1 17 L5.5 13 L8.5 20.5 L11.5 19.2 L8.6 12 L14.5 12 Z" />
-        </svg>
-        <span className="sb-ptr-label">{txt.pointer}</span>
-      </span>
-    </span>
-  );
-}
+const clock = (at: number) =>
+  formatDate(at, { hour: "numeric", minute: "2-digit" });
 
-/** One window's picture with who acts in it. */
-function WindowPicture({
-  window,
-  picture,
-  pointer,
-  size,
-  status,
-  onLook,
-}: {
-  window: BrowserWindow;
-  picture?: string;
-  pointer?: BrowserPointer;
-  size: "big" | "small";
-  status: BrowserStatus;
-  onLook: () => void;
-}) {
-  const txt = useText(serverBrowserText);
-  const asks = status.request?.window === window.id;
-  const mine = status.control === "person";
-  return (
-    <figure
-      className={`sb-win sb-win-${size}`}
-      data-testid="browser-window"
-      data-window={window.id}
-      data-ask={asks || undefined}
-      data-active={window.agent || undefined}
-    >
-      <button
-        type="button"
-        className="sb-pic"
-        aria-label={`${txt.lookBig}: ${window.title || window.origin}`}
-        onClick={onLook}
-      >
-        {picture ? (
-          <img src={picture} alt="" draggable={false} />
-        ) : (
-          <span className="sb-pic-empty">
-            <Icon name="globe" />
-          </span>
-        )}
-        {pointer && pointer.window === window.id && !mine ? (
-          <PointerMarks pointer={pointer} />
-        ) : null}
-      </button>
-      <figcaption>
-        <span className="sb-win-title">{window.title || window.origin}</span>
-        {mine ? (
-          <span className="sb-who">
-            <Icon name="user" />
-            {txt.youDrive}
-          </span>
-        ) : asks ? (
-          <span className="sb-who">
-            <Icon name="user" />
-            {txt.waitsYou}
-          </span>
-        ) : window.agent && status.agent_connected ? (
-          <span className="sb-who sb-who-agent">
-            <Icon name="agent" />
-            {txt.agentHere}
-          </span>
-        ) : null}
-      </figcaption>
-    </figure>
-  );
-}
-
-/** The chip above the message field: the browser's windows and state; it
- * opens the strip, or starts a stopped browser. */
-export function BrowserChip({
-  status,
-  summary,
-  open,
-  busy,
-  onToggle,
-  onStart,
-}: {
-  status?: BrowserStatus;
-  summary: BrowserSummary;
-  open: boolean;
-  busy?: string;
-  onToggle: () => void;
-  onStart: () => void;
-}) {
-  const txt = useText(serverBrowserText);
-  if (summary.kind === "off") return null;
-  if (summary.kind === "stopped") {
-    return (
-      <button
-        type="button"
-        className="sb-chip"
-        data-testid="browser-chip"
-        data-state="stopped"
-        disabled={busy === "start"}
-        onClick={onStart}
-        title={txt.openHint}
-      >
-        <Icon name="globe" />
-        <b>{busy === "start" ? txt.state.starting : txt.open}</b>
-      </button>
-    );
-  }
-  const windows = status?.windows ?? [];
-  return (
-    <button
-      type="button"
-      className={`sb-chip${summary.kind === "ask" ? " sb-chip-ask" : ""}`}
-      data-testid="browser-chip"
-      data-state={summary.kind}
-      aria-expanded={open}
-      onClick={onToggle}
-    >
-      <Icon
-        name={
-          summary.kind === "person" || summary.kind === "ask" ? "user" : "globe"
-        }
-      />
-      <b>{txt.name}</b>
-      <span className="sb-chip-faces" aria-hidden="true">
-        {windows.slice(0, 5).map((w) => (
-          <i
-            key={w.id}
-            data-ask={status?.request?.window === w.id || undefined}
-            data-active={w.agent || undefined}
-          />
-        ))}
-      </span>
-      <span className="sb-chip-n">{txt.windows(windows.length)}</span>
-      <span className="sb-chip-state">{stateLine(txt, summary, busy)}</span>
-      <Icon name="up" className="sb-chip-fold" />
-    </button>
-  );
-}
-
-/** The strip the chip opens: small live pictures of the windows. A window
- * that needs the person grows large with its request beside it. */
-export function BrowserStrip({
-  status,
-  summary,
-  pictures,
-  busy,
-  error,
-  onLook,
-  onTakeForRequest,
-  onGiveBack,
-}: {
-  status: BrowserStatus;
-  summary: BrowserSummary;
-  pictures: Record<string, string>;
-  busy?: string;
-  error?: string;
-  onLook: (window?: string) => void;
-  onTakeForRequest: (window: string) => void;
-  onGiveBack: () => void;
-}) {
-  const txt = useText(serverBrowserText);
-  const lead =
-    status.request &&
-    status.windows.find((w) => w.id === status.request?.window);
-  const rest = status.windows.filter((w) => w !== lead);
-  let now: ReactNode = txt.now.idle;
-  if (summary.kind === "agent") now = txt.now.agent;
-  if (summary.kind === "ask") now = txt.now.ask;
-  if (summary.kind === "person") now = txt.now.person;
-  return (
-    <section
-      className={`sb-strip${lead ? " sb-strip-ask" : ""}`}
-      data-testid="browser-strip"
-      aria-label={txt.stripTitle}
-    >
-      {lead && status.request ? (
-        <div className="sb-strip-lead">
-          <WindowPicture
-            window={lead}
-            picture={pictures[lead.id]}
-            pointer={status.pointer}
-            size="big"
-            status={status}
-            onLook={() => onLook(lead.id)}
-          />
-          <div className="sb-ask" data-testid="browser-request">
-            <h3>
-              <Icon name="user" className="sb-ask-mark" />
-              {/* The agent's own words, as text. */}
-              <span data-testid="browser-request-text">
-                {status.request.text}
-              </span>
-            </h3>
-            <p>{txt.askLead}</p>
-            {status.control !== "person" ? (
-              <div className="sb-actions">
-                <ControlButton
-                  size="row"
-                  variant="primary"
-                  data-testid="browser-take-request"
-                  isDisabled={!!busy}
-                  onPress={() => onTakeForRequest(lead.id)}
-                >
-                  {txt.takeForRequest}
-                </ControlButton>
-                <ControlButton
-                  size="row"
-                  variant="quiet"
-                  data-testid="browser-look-first"
-                  onPress={() => onLook(lead.id)}
-                >
-                  <Icon name="eye" />
-                  {txt.lookFirst}
-                </ControlButton>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-      {status.windows.length === 0 ? (
-        <p className="sb-strip-empty">{txt.noWindows}</p>
-      ) : (
-        <div className="sb-strip-pics">
-          {rest.map((w) => (
-            <WindowPicture
-              key={w.id}
-              window={w}
-              picture={pictures[w.id]}
-              pointer={status.pointer}
-              size="small"
-              status={status}
-              onLook={() => onLook(w.id)}
-            />
-          ))}
-        </div>
-      )}
-      {error ? (
-        <p role="alert" className="sb-error" data-testid="browser-error">
-          {error === "control" ? txt.errors.control : txt.errors.start}
-        </p>
-      ) : null}
-      <div className="sb-strip-foot">
-        <p className="sb-strip-now" data-testid="browser-now">
-          {now}
-        </p>
-        {status.control === "person" ? (
-          <ControlButton
-            size="row"
-            variant="primary"
-            data-testid="browser-give-back"
-            isDisabled={!!busy}
-            onPress={onGiveBack}
-          >
-            {txt.giveBack}
-          </ControlButton>
-        ) : null}
-        <ControlButton
-          size="row"
-          variant="quiet"
-          data-testid="browser-look"
-          onPress={() => onLook()}
-        >
-          <Icon name="eye" />
-          {txt.lookBig}
-        </ControlButton>
-      </div>
-    </section>
-  );
-}
-
-/** The browser as one row at the top of the sidebar. */
+/** The rail's Oma selain: a plain row like Tuotokset, with the browser's
+ * short state at its end. It opens the live view rather than a page, so it
+ * is a button with the home row's look. */
 export function BrowserRailRow({
   summary,
   windows,
   busy,
+  conversation,
   onOpen,
 }: {
   summary: BrowserSummary;
   windows: number;
   busy?: string;
+  /** The conversation the open request belongs to, when one is known. */
+  conversation?: string;
   onOpen: () => void;
 }) {
   const txt = useText(serverBrowserText);
   if (summary.kind === "off") return null;
-  const line =
-    summary.kind === "stopped"
-      ? busy === "start"
-        ? txt.state.starting
-        : txt.state.stopped
-      : `${stateLine(txt, summary, busy)} · ${txt.windows(windows)}`;
+  const count = txt.windows(windows);
+  let shown: ReactNode;
+  let said: string;
+  switch (summary.kind) {
+    case "stopped":
+      shown = busy === "start" ? txt.rail.starting : txt.rail.stopped;
+      said = busy === "start" ? txt.rail.said.starting : txt.rail.said.stopped;
+      break;
+    case "agent":
+      shown = (
+        <>
+          <Icon name="agent" />
+          {`${txt.rail.agent} · ${count}`}
+        </>
+      );
+      said = txt.rail.said.agent(count);
+      break;
+    case "ask":
+      shown = txt.rail.ask;
+      said = conversation
+        ? txt.rail.said.ask(conversation)
+        : txt.rail.said.askUnknown;
+      break;
+    case "person":
+      shown = (
+        <>
+          <Icon name="user" />
+          {txt.rail.control}
+        </>
+      );
+      said = txt.rail.said.control;
+      break;
+    default:
+      shown = count;
+      said = txt.rail.said.idle(count);
+  }
   return (
-    <div className="sb-railrow-wrap">
+    <div className="ah-rail-home-row">
       <button
         type="button"
-        className="sb-railrow"
+        className={`${controls.link} ${controls.home} ah-rail-home sb-rail-item`}
         data-testid="browser-rail-row"
         data-state={summary.kind}
+        aria-label={said}
         onClick={onOpen}
       >
-        <span className="sb-railrow-mark" aria-hidden="true">
-          <Icon
-            name={
-              summary.kind === "ask" || summary.kind === "person"
-                ? "user"
-                : "globe"
-            }
-          />
-        </span>
-        <span className="sb-railrow-text">
-          <b>{txt.ownBrowser}</b>
-          <small>{line}</small>
+        <Icon name="browser" />
+        <span className="ah-rail-home-label">{txt.ownBrowser}</span>
+        <span
+          className="sb-rail-state"
+          data-testid="browser-rail-state"
+          aria-hidden="true"
+        >
+          {shown}
         </span>
       </button>
     </div>
   );
 }
 
-/** The sheet: the live view of the whole browser. The frame inside it
- * (BrowserFrame) says who drives and takes and gives back control. */
+/** Each conversation's browser state for its row in the rail, by agent id. */
+export const BrowserRowMarks = createContext<
+  ReadonlyMap<string, BrowserRowState>
+>(new Map());
+
+/** The words a conversation row adds to its description. */
+export function browserRowSaid(txt: Text, state: BrowserRowState) {
+  return txt.row.said[state];
+}
+
+/** The mark at the end of a conversation's row, in the place of its time: a
+ * quiet window while its agent works in the browser; bordered with the word
+ * when the conversation waits for the person there. The row's description
+ * says it in words. */
+export function BrowserRowMark({ state }: { state: BrowserRowState }) {
+  const txt = useText(serverBrowserText);
+  return (
+    <span
+      className="sb-rowmark"
+      data-testid="row-browser"
+      data-state={state}
+      aria-hidden="true"
+    >
+      <Icon name={state === "control" ? "user" : "browser"} />
+      {state === "ask"
+        ? txt.row.ask
+        : state === "control"
+          ? txt.row.control
+          : null}
+    </span>
+  );
+}
+
+const host = (origin: string) => {
+  try {
+    return new URL(origin).host;
+  } catch {
+    return origin;
+  }
+};
+
+function Sites({ sites }: { sites: string[] }) {
+  return (
+    <span className="sb-card-sites">
+      {sites.map((o) => (
+        <code key={o}>{host(o)}</code>
+      ))}
+    </span>
+  );
+}
+
+function counts(txt: Text, v: BrowserVisits, live: boolean) {
+  const s = v.summary;
+  const parts = [txt.card.pages(s.pageCount)];
+  if (s.downloadCount) parts.push(txt.card.downloads(s.downloadCount));
+  if (!live && s.actionCount) parts.push(txt.card.actions(s.actionCount));
+  const line = parts.join(" · ");
+  return live ? txt.card.soFar(line) : line;
+}
+
+/** The opened card: the accepted visit-record list (pages by site, downloads,
+ * actions) and the span the person controlled the browser. Owner only. */
+function VisitDetail({
+  visits,
+  live,
+  agentWindow,
+  tabsClosed,
+  you,
+}: {
+  visits: BrowserVisits;
+  live: boolean;
+  agentWindow?: string;
+  tabsClosed?: boolean;
+  you?: { from: number; to?: number };
+}) {
+  const txt = useText(serverBrowserText);
+  const d = visits.detail;
+  if (!d) return null;
+  const bySite = new Map<string, typeof d.pages>();
+  for (const p of d.pages)
+    bySite.set(p.origin, [...(bySite.get(p.origin) ?? []), p]);
+  const folders = [...new Set(d.downloads.map((x) => x.targetFolder))];
+  return (
+    <div className="sb-card-detail" data-testid="browser-card-detail">
+      {live && agentWindow ? (
+        <p className="sb-card-tab">
+          <Icon name="agent" />
+          {txt.card.inWindow(agentWindow)}
+        </p>
+      ) : !live && tabsClosed ? (
+        <p className="sb-card-tab">
+          <Icon name="check" />
+          {txt.card.tabsClosed}
+        </p>
+      ) : null}
+      {d.pages.length ? (
+        <section>
+          <h4 className="sb-card-h">
+            <Icon name="browser" />
+            {txt.card.sectionPages}{" "}
+            <span className="sb-card-n">{d.pages.length}</span>
+          </h4>
+          {[...bySite.entries()].map(([origin, pages]) => (
+            <div key={origin} className="sb-card-site">
+              <p className="sb-card-site-head">
+                <code>{host(origin)}</code>{" "}
+                <span className="sb-card-n">
+                  {txt.card.pages(pages.length)}
+                </span>
+              </p>
+              <ol className="sb-card-rows">
+                {pages.map((p, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a revisit repeats the call's page
+                  <li key={`${p.callId}-${i}`}>
+                    <time>{p.at !== undefined ? clock(p.at) : ""}</time>
+                    <span className="sb-card-title">{p.title || p.path}</span>
+                    <code className="sb-card-path">{p.path}</code>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </section>
+      ) : null}
+      {d.downloads.length ? (
+        <section>
+          <h4 className="sb-card-h">
+            <Icon name="download" />
+            {txt.card.sectionDownloads}{" "}
+            <span className="sb-card-n">{d.downloads.length}</span>
+          </h4>
+          {folders.map((folder) => (
+            <div key={folder} className="sb-card-site">
+              <p className="sb-card-saved">{txt.card.savedTo(folder)}</p>
+              <ul className="sb-card-files">
+                {d.downloads
+                  .filter((x) => x.targetFolder === folder)
+                  .map((x, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: a name may repeat across calls
+                    <li key={`${x.callId}-${i}`}>
+                      <Icon name="file" />
+                      <code>{x.fileName}</code>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      ) : null}
+      {d.actions.length ? (
+        <section>
+          <h4 className="sb-card-h">
+            <Icon name="pencil" />
+            {txt.card.sectionActions}{" "}
+            <span className="sb-card-n">{d.actions.length}</span>
+          </h4>
+          <ol className="sb-card-rows">
+            {d.actions.map((a, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: one call is one action
+              <li key={`${a.callId}-${i}`}>
+                <time>{a.at !== undefined ? clock(a.at) : ""}</time>
+                <span className="sb-card-title">{txt.card.action[a.kind]}</span>
+                <code className="sb-card-path">
+                  {a.selector ??
+                    (a.page ? host(a.page.origin) + a.page.path : "")}
+                </code>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+      {you ? (
+        <section>
+          <h4 className="sb-card-h">
+            <Icon name="user" />
+            {txt.card.sectionYou}
+          </h4>
+          <p className="sb-card-saved" data-testid="browser-card-you">
+            {you.to !== undefined
+              ? txt.card.youSpan(clock(you.from), clock(you.to))
+              : txt.card.youNow(clock(you.from))}
+          </p>
+        </section>
+      ) : null}
+      <p className="sb-card-coverage">{txt.card.coverage}</p>
+    </div>
+  );
+}
+
+export type BrowserCardState = "working" | "ask" | "control" | "done";
+
+/** The Selain card under the turn that used the browser, the size of
+ * Muutokset. Live, it is *Selain nyt* while the agent works, highlighted
+ * with the agent's request and Ota ohjaus ja hoida when it asks, and carries
+ * Anna takaisin while the person controls; finished, it is the visit record.
+ * It opens to the visit so far. A participant sees the summary only: the
+ * browser and its sign-ins are the owner's. */
+export function BrowserTurnCard({
+  state,
+  visits,
+  request,
+  agentWindow,
+  tabsClosed,
+  you,
+  busy,
+  onLook,
+  onTake,
+  onGiveBack,
+}: {
+  state: BrowserCardState;
+  visits: BrowserVisits;
+  /** The agent's request, in its own words. */
+  request?: string;
+  /** The title of the window the agent works in. */
+  agentWindow?: string;
+  tabsClosed?: boolean;
+  you?: { from: number; to?: number };
+  busy?: boolean;
+  onLook?: () => void;
+  onTake?: () => void;
+  onGiveBack?: () => void;
+}) {
+  const txt = useText(serverBrowserText);
+  const [open, setOpen] = useState(false);
+  const body = useId();
+  const s = visits.summary;
+  const live = state !== "done";
+  const owner = !!visits.detail;
+  const title =
+    state === "working"
+      ? txt.card.live
+      : state === "ask"
+        ? txt.card.ask
+        : state === "control"
+          ? txt.card.control
+          : txt.card.record;
+  const meta = (
+    <span className="ah-tc-meta sb-card-meta" data-testid="browser-card-meta">
+      {state === "ask" && request ? (
+        // The agent's own words, as text.
+        <span className="sb-card-says" data-testid="browser-card-request">
+          {request}
+        </span>
+      ) : state === "control" ? (
+        <span className="sb-card-says">{txt.card.controlMeta}</span>
+      ) : (
+        <>
+          {s.sites.length ? <Sites sites={s.sites} /> : null}
+          <span>{counts(txt, visits, live)}</span>
+          {s.startedAt !== undefined ? (
+            <span className="sb-card-when">
+              {clock(s.startedAt)}–
+              {!live && s.endedAt !== undefined ? clock(s.endedAt) : ""}
+            </span>
+          ) : null}
+        </>
+      )}
+    </span>
+  );
+  const head = (
+    <>
+      <Icon name={state === "control" ? "user" : "browser"} />
+      <span className="ah-tc-line">
+        <span className="ah-tc-title">{title}</span>
+        {meta}
+      </span>
+    </>
+  );
+  return (
+    <section
+      className="ah-turn-changes sb-card"
+      data-testid="browser-card"
+      data-state={state}
+      data-open={open || undefined}
+      aria-label={title}
+    >
+      <div className="ah-tc-head sb-card-head">
+        {owner ? (
+          <button
+            type="button"
+            className="ah-tc-toggle"
+            data-testid="browser-card-toggle"
+            aria-expanded={open}
+            aria-controls={open ? body : undefined}
+            aria-label={`${txt.card.show}: ${title}`}
+            onClick={() => setOpen(!open)}
+          >
+            <span aria-hidden="true" className="ah-disclosure-chevron" />
+            {head}
+          </button>
+        ) : (
+          <div className="ah-tc-toggle sb-card-plain">{head}</div>
+        )}
+        {owner && live ? (
+          <span className="sb-card-actions">
+            {state === "working" ? (
+              <ControlButton
+                size="inline"
+                data-testid="browser-card-look"
+                onPress={onLook}
+              >
+                <Icon name="eye" />
+                {txt.card.look}
+              </ControlButton>
+            ) : state === "ask" ? (
+              <>
+                <ControlButton
+                  size="inline"
+                  variant="primary"
+                  data-testid="browser-card-take"
+                  isDisabled={busy}
+                  onPress={onTake}
+                >
+                  <Icon name="user" />
+                  {txt.card.take}
+                </ControlButton>
+                <ControlButton
+                  size="inline"
+                  data-testid="browser-card-look"
+                  onPress={onLook}
+                >
+                  <Icon name="eye" />
+                  {txt.card.lookFirst}
+                </ControlButton>
+              </>
+            ) : (
+              <>
+                <ControlButton
+                  size="inline"
+                  data-testid="browser-card-open"
+                  onPress={onLook}
+                >
+                  {txt.card.open}
+                </ControlButton>
+                <ControlButton
+                  size="inline"
+                  variant="primary"
+                  data-testid="browser-card-give-back"
+                  isDisabled={busy}
+                  onPress={onGiveBack}
+                >
+                  <Icon name="agent" />
+                  {txt.card.giveBack}
+                </ControlButton>
+              </>
+            )}
+          </span>
+        ) : null}
+      </div>
+      {open && owner ? (
+        <div id={body} className="ah-tc-body sb-card-body">
+          <VisitDetail
+            visits={visits}
+            live={live}
+            agentWindow={agentWindow}
+            tabsClosed={tabsClosed}
+            you={you}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Habitat's line in the conversation when the person gives the browser
+ * back after the agent's request. */
+export function BrowserGaveBackLine({ at }: { at: number }) {
+  const txt = useText(serverBrowserText);
+  return (
+    <p
+      className="ah-mp-line sb-gave-back"
+      role="note"
+      data-testid="browser-gave-back"
+    >
+      <span className="ah-mp-line-mark" aria-hidden="true" />
+      {txt.card.gaveBack(clock(at))}
+    </p>
+  );
+}
+
+// The viewer owns its controls; the sheet supplies their place in the one header.
+const BrowserBarTarget = createContext<HTMLElement | null>(null);
+
+/** The sheet: the live view of the whole browser. */
 export function BrowserSheet({
   mode,
   running,
@@ -401,6 +524,7 @@ export function BrowserSheet({
   onStop: () => void;
 }) {
   const txt = useText(serverBrowserText);
+  const [barTarget, setBarTarget] = useState<HTMLDivElement | null>(null);
   return (
     <ModalOverlay
       className="ah-overlay sb-sheet-overlay"
@@ -417,17 +541,21 @@ export function BrowserSheet({
           data-mode={mode}
           aria-label={txt.ownBrowser}
         >
-          <div className="sb-sheet-head">
+          <div className="sb-sheet-head" data-testid="browser-top-bar">
             <Heading slot="title">{txt.ownBrowser}</Heading>
+            <div className="sb-bar-slot" ref={setBarTarget} />
             {running ? (
               <ControlButton
                 size="row"
                 variant="quiet"
                 data-testid="browser-stop"
+                aria-label={txt.stop}
+                title={txt.stop}
                 isDisabled={!!busy}
                 onPress={onStop}
               >
-                {txt.stop}
+                <Icon name="stop" />
+                <span className="sb-bar-label">{txt.stop}</span>
               </ControlButton>
             ) : null}
             <ControlButton
@@ -454,7 +582,9 @@ export function BrowserSheet({
                   : txt.errors.start}
             </p>
           ) : null}
-          <div className="sb-sheet-screen">{children}</div>
+          <BrowserBarTarget.Provider value={barTarget}>
+            <div className="sb-sheet-screen">{children}</div>
+          </BrowserBarTarget.Provider>
           <p className="sb-truth">{txt.truth}</p>
         </AriaDialog>
       </Modal>
@@ -462,12 +592,12 @@ export function BrowserSheet({
   );
 }
 
-/** Who the agent is for the turn tab, as the app layer reads the host. */
+/** Who the agent is for the turn controls, as the app layer reads the host. */
 export type FrameAgent = "idle" | "busy" | "waits";
 
 /** The frame around the live picture (Kehys): its border is the turn
- * (solid accent: the person, dashed: the agent), a tab on the left holds
- * the turn and Done, a tab on the right opens the clipboard. The picture
+ * (solid accent: the person, dashed: the agent). Turn and clipboard controls
+ * appear in the sheet's top bar. The picture
  * itself is `children`; the app layer owns noVNC and every decision. */
 export function BrowserFrame({
   control,
@@ -529,6 +659,7 @@ export function BrowserFrame({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [dismiss]);
+  const barTarget = useContext(BrowserBarTarget);
   const mine = control === "person";
   const turn = mine
     ? txt.frame.you
@@ -537,59 +668,75 @@ export function BrowserFrame({
       : agent === "waits"
         ? txt.frame.agentWaits
         : txt.frame.agent;
-  return (
-    <div
-      className="sb-frame"
-      data-testid="browser-frame"
-      data-control={control}
-      data-agent={agent}
-      data-waiting={waiting || undefined}
-    >
-      <div className="sb-tab sb-tab-turn" data-testid="browser-turn">
+  const controls = (
+    <div className="sb-bar-controls">
+      <div className="sb-bar-turn" data-testid="browser-turn">
         <Icon name={mine ? "user" : "agent"} />
-        <strong>{waiting ? txt.frame.waiting : turn}</strong>
+        <strong title={waiting ? txt.frame.waiting : turn}>
+          {waiting ? txt.frame.waiting : turn}
+        </strong>
         {mine ? (
           <ControlButton
             size="inline"
             variant="primary"
             data-testid="browser-give-back"
+            aria-label={txt.frame.done}
+            title={txt.frame.done}
             isDisabled={busy}
             onPress={onDone}
           >
             <Icon name="check" />
-            {txt.frame.done}
+            <span className="sb-bar-label">{txt.frame.done}</span>
           </ControlButton>
         ) : waiting ? (
           <ControlButton
             size="inline"
             data-testid="browser-cancel-wait"
+            aria-label={txt.frame.cancel}
+            title={txt.frame.cancel}
             onPress={onCancelWait}
           >
-            {txt.frame.cancel}
+            <Icon name="cross" />
+            <span className="sb-bar-label">{txt.frame.cancel}</span>
           </ControlButton>
         ) : (
           <ControlButton
             size="inline"
             data-testid="browser-take-control"
+            aria-label={txt.takeControl}
+            title={txt.takeControl}
             isDisabled={busy}
             onPress={onTake}
           >
-            {txt.takeControl}
+            <Icon name="user" />
+            <span className="sb-bar-label">{txt.takeControl}</span>
           </ControlButton>
         )}
       </div>
-      <div className="sb-tab sb-tab-clip">
+      {says ? (
+        <section
+          className="sb-says"
+          data-testid="browser-says"
+          aria-label={txt.frame.says}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the bounded request region must be keyboard-scrollable
+          tabIndex={0}
+        >
+          <b>{txt.frame.says}:</b> <span>{says}</span>
+        </section>
+      ) : null}
+      <div className="sb-bar-clip">
         <ControlButton
           size="inline"
           variant="quiet"
           data-testid="browser-clip-toggle"
+          aria-label={txt.clip.tab}
+          title={txt.clip.tab}
           aria-expanded={clipOpen}
           aria-controls="sb-clip-pop"
           onPress={onClipToggle}
         >
           <Icon name="copy" />
-          {txt.clip.tab}
-          <Icon name="down" />
+          <span className="sb-bar-label">{txt.clip.tab}</span>
         </ControlButton>
       </div>
       {clipOpen ? (
@@ -602,11 +749,17 @@ export function BrowserFrame({
           {clipboard}
         </section>
       ) : null}
-      {says ? (
-        <p className="sb-says" data-testid="browser-says">
-          <b>{txt.frame.says}:</b> <span>{says}</span>
-        </p>
-      ) : null}
+    </div>
+  );
+  return (
+    <div
+      className="sb-frame"
+      data-testid="browser-frame"
+      data-control={control}
+      data-agent={agent}
+      data-waiting={waiting || undefined}
+    >
+      {barTarget ? createPortal(controls, barTarget) : controls}
       <div className="sb-frame-screen">
         {children}
         {!mine && !waiting && !mid ? (
