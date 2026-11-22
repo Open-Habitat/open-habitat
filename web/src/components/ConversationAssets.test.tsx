@@ -1,12 +1,18 @@
 import { fireEvent, render, within } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { FileOfferSummary, OfferState } from "../app/fileOffers";
+import { resetLanguageForTests } from "../i18n";
 import {
   type AssetControls,
   assetEntries,
   assetId,
   ConversationAssets,
 } from "./ConversationAssets";
+
+afterEach(() => {
+  vi.useRealTimers();
+  resetLanguageForTests();
+});
 
 const convo = "pi:11111111-1111-4111-8111-111111111111";
 const view = (
@@ -191,6 +197,54 @@ it("opens a row beside, closes it with the same row and leaves a modified click 
   // Agent titles are text.
   expect(list.querySelectorAll("b,script")).toHaveLength(0);
 });
+
+it.each([
+  ["fi", "14.05", "21.11. klo 14.05", "21.11.2025 klo 14.05"],
+  ["en-US", "02:05 PM", "11/21, 02:05 PM", "11/21/2025, 02:05 PM"],
+  ["en-GB", "14:05", "21/11, 14:05", "21/11/2025, 14:05"],
+] as const)(
+  "shows local dates and times for files and view versions in %s",
+  (language, today, yesterday, lastYear) => {
+    resetLanguageForTests(language);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 22, 16));
+    const dates = [
+      new Date(2026, 10, 22, 14, 5),
+      new Date(2026, 10, 21, 14, 5),
+      new Date(2025, 10, 21, 14, 5),
+    ].map((d) => d.toISOString());
+    const page = render(
+      <ConversationAssets
+        entries={assetEntries(
+          dates.map((at, i) => view(i + 1, "report.html", at, "Report")),
+          dates.map((created_at, i) => ({
+            offer: { ...offer, offer_id: `file-${i}`, created_at },
+            state: ready,
+          })),
+        )}
+        controls={{
+          toggle: () => {},
+          href: () => "",
+          until: () => undefined,
+          actions: () => null,
+        }}
+      />,
+    );
+    fireEvent.click(page.getByTestId("assets-chip"));
+    fireEvent.click(page.getByTestId("asset-versions"));
+    for (const [i, expected] of [today, yesterday, lastYear].entries()) {
+      const timestamps = page
+        .getByTestId("assets-list")
+        .querySelectorAll(`time[datetime="${dates[i]}"]`);
+      // Both file and view rows, including their touch-layout timestamps.
+      expect(timestamps).toHaveLength(4);
+      for (const timestamp of timestamps) {
+        expect(timestamp.textContent).toBe(expected);
+        expect(timestamp.getAttribute("title")).toBeTruthy();
+      }
+    }
+  },
+);
 
 it("shows nothing while the conversation has neither views nor files", () => {
   const page = render(

@@ -108,6 +108,7 @@
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* The row's icons cover its time under the pointer and on focus, so the
    title keeps its width. */
@@ -141,8 +142,12 @@
   .ah-asset-time {
     display: none;
   }
+  .ah-asset-meta {
+    flex-wrap: wrap;
+  }
   .ah-asset-meta-time {
-    display: inline;
+    display: block;
+    flex-basis: 100%;
   }
   .ah-asset-acts [data-testid="asset-locate"] {
     display: none;
