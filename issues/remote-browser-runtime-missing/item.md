@@ -3,11 +3,12 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: remote-browser-runtime
 lane_seq: 1
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser runtime missing outside the test server
