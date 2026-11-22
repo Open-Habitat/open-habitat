@@ -87,6 +87,30 @@ export function RailPlaces({
 }) {
   const t = useText(navigationText);
   const tid = (id: string) => (measure ? undefined : id);
+  // Each step draws its own controls, so a step change would drop the
+  // keyboard's place: remember the focused place as the step changes and
+  // give focus back to the same place once the new step is drawn.
+  const root = useRef<HTMLDivElement>(null);
+  const drawn = useRef(step);
+  const refocus = useRef<string | undefined>(undefined);
+  if (drawn.current !== step && !measure) {
+    const active =
+      typeof document === "undefined" ? null : document.activeElement;
+    refocus.current =
+      active instanceof HTMLElement && root.current?.contains(active)
+        ? (active.dataset.testid ?? undefined)
+        : undefined;
+  }
+  drawn.current = step;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the step has changed.
+  useLayoutEffect(() => {
+    const id = refocus.current;
+    refocus.current = undefined;
+    if (!id || root.current?.contains(document.activeElement)) return;
+    root.current
+      ?.querySelector<HTMLElement>(`[data-testid="${id}"]`)
+      ?.focus({ preventScroll: true });
+  }, [step]);
   const name = (p: RailPlace) =>
     p.said ?? (p.count ? `${p.label} ${p.count}` : p.label);
   const mark = (p: RailPlace) => (
@@ -172,6 +196,7 @@ export function RailPlaces({
     return (
       // biome-ignore lint/a11y/useSemanticElements: a group of links and buttons, not a form fieldset.
       <div
+        ref={root}
         className="ah-places"
         data-step={0}
         data-testid={tid("rail-places")}
@@ -201,6 +226,7 @@ export function RailPlaces({
   return (
     // biome-ignore lint/a11y/useSemanticElements: a group of links and buttons, not a form fieldset.
     <div
+      ref={root}
       className="ah-places"
       data-step={step}
       data-testid={tid("rail-places")}

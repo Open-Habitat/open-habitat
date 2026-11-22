@@ -34,6 +34,10 @@
 .ah-rail-adaptive .ah-rail-workspaces {
   position: relative;
 }
+/* A workspace brought into sight lands clear of the edge chips below. */
+.ah-rail-adaptive .ah-rail-ws-scroll {
+  scroll-padding-block: 24px;
+}
 .ah-rail-adaptive .ah-rail-head {
   position: relative;
 }
