@@ -1,0 +1,136 @@
+/* Review chrome above the production shell, as in earlier rail rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+html[data-framed] body { background: color-mix(in srgb, var(--ah-ink) 8%, var(--ah-bg)); }
+.rsp-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rsp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rsp-bar strong { font-weight: 600; }
+.rsp-bar select { font: inherit; }
+.rsp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rsp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rsp-count { color: var(--ah-accent-ink); font-weight: 600; }
+.rsp-recommend { margin: 0; color: var(--ah-accent-ink); }
+.rsp-places summary { cursor: pointer; color: var(--ah-ink-2); }
+.rsp-places table { border-collapse: collapse; margin: 2px 0 0; width: 100%; }
+.rsp-places tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); column-gap: 16px; }
+.rsp-places tr { display: flex; }
+.rsp-places th, .rsp-places td { padding: 1px 12px 1px 0; text-align: left; vertical-align: top; }
+.rsp-places th { flex: none; width: 13rem; font-weight: 600; }
+@media (max-width: 1100px) {
+  .rsp-lines li:not([aria-current]) { display: none; }
+}
+
+/* The production shell under the bar, at the chosen window size: a
+   1280 × 720 frame is that many CSS px, whatever the reviewer's screen.
+   bare (check.mjs) drops the bar and the picker and fills the viewport. */
+.rsp-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: var(--frame-h, calc(100dvh - var(--review-h, 0px) - 60px));
+  width: var(--frame-w, auto);
+  right: auto;
+  min-width: 0;
+  outline: 1px solid var(--ah-line);
+}
+html:not([data-framed]) .rsp-stage .ah-app-shell:has(.ah-rail) { right: 0; }
+/* A framed window scrolls with the page, so a frame taller than the screen
+   under the bar can still be seen whole. */
+html[data-framed] .rsp-stage .ah-app-shell:has(.ah-rail) { position: absolute; }
+html[data-framed] body { min-height: calc(var(--review-h, 0px) + var(--frame-h) + 60px); min-width: var(--frame-w); }
+html[data-bare] .proto-picker { display: none; }
+html[data-bare] .rsp-stage .ah-app-shell:has(.ah-rail) { top: 0; height: 100dvh; outline: 0; }
+.rsp-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rsp-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* ---------- Every direction but today ----------
+   Production's Etusivu row under the server name gives way: A carries
+   Etusivu in its icon row, B and C in the server name and the tile group. */
+.rsp-shell:not([data-direction="3"]) .ah-rail-head > .ah-rail-home-row { display: none; }
+.rsp-shell:not([data-direction="3"]) .ah-rail-refresh { display: none; }
+.rsp-shell[data-filter="hidden"] .ah-rail-filter { display: none; }
+.rsp-head-tools { display: inline-flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.ah-rail-workspaces > .ah-rail-section-head:has(.rsp-head-tools) > [data-testid="workspace-create"] { order: 2; }
+.rsp-head-tools { order: 1; }
+.rsp-refresh [data-ah-primitive="button"] { min-height: 26px; min-width: 26px; padding: 0; border-color: transparent; background: transparent; }
+.rsp-icon {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 1px solid transparent; border-radius: var(--ah-r-md);
+  background: transparent; color: var(--ah-muted); cursor: pointer;
+}
+.rsp-icon:hover { background: var(--ah-surface-hover); color: var(--ah-ink); }
+.rsp-icon[aria-expanded="true"] { color: var(--ah-accent-ink); background: var(--ah-surface-hover); }
+.rsp-icon:focus-visible, .rsp-dock-item:focus-visible, .rsp-tile:focus-visible, .rsp-group-head:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: -2px;
+}
+
+/* ---------- A: one row of icons under the server name ---------- */
+.rsp-dock { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.rsp-dock-item {
+  position: relative; display: grid; place-items: center; height: 34px; padding: 0;
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink-2); cursor: pointer;
+}
+.rsp-dock-item:hover { background: var(--ah-surface-hover); color: var(--ah-ink); }
+.rsp-dock-item[aria-current="page"] { border-color: var(--ah-accent); color: var(--ah-accent-ink); }
+.rsp-dock-item:last-child { color: var(--ah-muted); }
+.rsp-badge {
+  position: absolute; top: 3px; right: calc(50% - 20px);
+  min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 999px; background: var(--ah-accent); color: var(--ah-on-accent, var(--ah-bg));
+  font: 600 10px/15px var(--ah-font); text-align: center;
+}
+.rsp-badge-inline { position: static; display: inline-block; margin-inline-start: 6px; vertical-align: 1px; }
+.rsp-dot {
+  position: absolute; bottom: 5px; right: calc(50% - 14px);
+  width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px var(--ah-surface);
+  background: var(--ah-success, var(--ah-accent));
+}
+.rsp-dot[data-state="ask"] { background: var(--ah-warning); }
+
+/* ---------- B: search in the title row ---------- */
+.ah-rail-title:has(.rsp-title-search) > [data-ah-primitive="button"] { order: 3; margin-inline-start: 0; }
+.rsp-title-search { order: 2; margin-inline-start: auto; flex: none; }
+
+/* ---------- C: one scroll ----------
+   The rail's content scrolls as a whole, as production's own short-window
+   rule does (max-height: 600px), and no region inside it scrolls. The search
+   door and the section headings stay at the top as the list passes. */
+[data-direction="2"] .ah-rail-regions { overflow: auto; overscroll-behavior: contain; padding-top: 0; }
+[data-direction="2"] .ah-rail-regions :is(.ah-rail-convs, .ah-rail-workspaces) { flex: none; min-height: auto; }
+[data-direction="2"] .ah-rail-regions :is(.ah-rail-convs, .ah-rail-workspaces, .ah-rail-ws-scroll) { overflow: visible; }
+[data-direction="2"] .ah-rail-beyond { display: none; }
+.rsp-sticky-search {
+  position: sticky; top: 0; z-index: 3; margin-inline: -8px; padding-top: 4px;
+  background: var(--ah-rail);
+}
+[data-direction="2"] .ah-rail-regions .ah-rail-section-head {
+  position: sticky; top: 42px; z-index: 2; background: var(--ah-rail);
+}
+.rsp-group { display: grid; gap: 4px; padding: 6px 0 2px; }
+.rsp-group-head {
+  display: flex; align-items: center; justify-content: space-between; min-height: 24px;
+  padding: 0 8px; border: 0; border-radius: var(--ah-r-sm); background: transparent;
+  color: var(--ah-muted); font: 500 11px/1 var(--ah-font); letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
+}
+.rsp-group-head:hover { color: var(--ah-ink); }
+.rsp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.rsp-tile {
+  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 38px; padding: 4px 8px;
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
+}
+.rsp-tile:hover { background: var(--ah-surface-hover); }
+.rsp-tile[data-state="ask"] { border-color: var(--ah-warning); }
+.rsp-tile-text { display: grid; min-width: 0; }
+.rsp-tile-text b { font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.rsp-tile-text small { color: var(--ah-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Where a press would lead. */
+.rsp-toast {
+  position: fixed; left: 50%; bottom: 72px; z-index: 60; transform: translateX(-50%);
+  padding: 6px 12px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg);
+  font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
