@@ -562,8 +562,11 @@ test("@browser-editor the account menu stays reachable beside an open editor", a
     ).toBe(true);
     if (place === "rail-resources") {
       await page.setViewportSize({ width: 390, height: 844 });
-      await expect(page.getByTestId("navigation-open")).toBeVisible();
-      await page.getByTestId("navigation-open").click();
+      // The phone toolbar's opener. The rail's own collapsed toggle shares
+      // the test id and stays mounted, off-canvas, behind the drawer.
+      const opener = page.locator("#main").getByTestId("navigation-open");
+      await expect(opener).toBeVisible();
+      await opener.click();
     }
     await page.getByTestId(place).click();
     await expect(doc).toBeVisible();

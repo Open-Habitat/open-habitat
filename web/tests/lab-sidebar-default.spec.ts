@@ -90,7 +90,8 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       const actions = page
         .getByRole("group")
         .and(page.getByTestId("workspace-actions"));
-      await expect(actions.getByRole("button")).toHaveCount(7);
+      // Renaming happens in the workspace strip's name, not in this group.
+      await expect(actions.getByRole("button")).toHaveCount(6);
       await expect(
         actions.getByRole("button").and(page.getByTestId("copy-path")),
       ).toBeVisible();
@@ -127,7 +128,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
           .getByRole("group")
           .and(page.getByTestId("workspace-actions"))
           .getByRole("button"),
-      ).toHaveCount(7);
+      ).toHaveCount(6);
       await expect(
         page.getByRole("button").and(page.getByTestId("conversation-start")),
       ).toBeEnabled();

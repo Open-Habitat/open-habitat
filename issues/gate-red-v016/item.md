@@ -2,7 +2,7 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: untriaged
+status: in-progress
 priority: high
 provenance: other
 provenance_detail: release gate run

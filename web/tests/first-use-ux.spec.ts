@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, skipAgentNote } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -204,12 +204,15 @@ test("@first-use a slow status read does not delay the device-code start, and co
     await page.unrouteAll({ behavior: "ignoreErrors" });
     const started = Date.now();
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(
-      page.getByRole("heading").and(page.getByTestId("workspaces-title")),
-    ).toBeVisible({
+    // Completion moves the route on to its last step, the note for the agent.
+    await expect(page.getByTestId("instructions-step")).toBeVisible({
       timeout: 4500,
     });
     expect(Date.now() - started).toBeLessThan(4500);
+    await skipAgentNote(page);
+    await expect(
+      page.getByRole("heading").and(page.getByTestId("workspaces-title")),
+    ).toBeVisible();
   } finally {
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await page.request.get("/fixture/pi-state?value=missing");

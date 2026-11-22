@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, skipAgentNote } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -73,10 +73,12 @@ test("@github-first continue starts clones in the background and reaches the AI 
     expect(await count(page)).toBe(before + 1);
     expect(await checkout(page, "fixture/first")).toBe("cloning");
 
-    // Signing in finishes onboarding; the clones carry on into the workspace
-    // view, where the rail shows them.
+    // Signing in leads to the note for the agent; leaving it for later ends
+    // onboarding, and the clones carry on into the workspace view, where the
+    // rail shows them.
     await page.request.get("/fixture/pi-state?value=usable");
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await skipAgentNote(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("workspaces-title")),
     ).toBeVisible();

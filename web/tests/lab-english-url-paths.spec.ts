@@ -36,6 +36,7 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "agent-data",
     "machines",
     "appearance",
+    "sounds",
     "editor",
     "storage",
     "experimental",

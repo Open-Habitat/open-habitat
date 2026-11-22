@@ -19,3 +19,11 @@ export async function confirmGitIdentity(page: Page) {
   }
   await action.click();
 }
+
+/** Leave the route's last step, the note for the agent, for later and enter
+ * Habitat. The note is the route's end whenever repositories were chosen. */
+export async function skipAgentNote(page: Page) {
+  await expect(page.getByTestId("instructions-step")).toBeVisible();
+  await page.getByRole("button").and(page.getByTestId("step-later")).click();
+  await page.getByRole("button").and(page.getByTestId("enter-habitat")).click();
+}

@@ -45,10 +45,10 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   page,
 }) => {
   test.setTimeout(120000);
-  // Wire seam: a finished conversation is not in Käynnissä
-  // (rail-running-after-done), so each one this test starts has a worker
-  // waiting at its own prompt, which keeps its row in sight without a host
-  // write.
+  // Wire seam: a new conversation with no message settles into Hiljaiset,
+  // so each one this test starts has a worker waiting at its own prompt,
+  // which gives the turn to the person and keeps its row in Sinun vuorosi
+  // without a host write.
   await page.route("**/api/v1/snapshot", async (route) => {
     try {
       const response = await route.fetch();
@@ -68,16 +68,16 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await start(page, "aurinkokello");
   await start(page, "reseptikirja");
-  const running = rail(page).getByTestId("rail-running");
+  const yours = rail(page).getByTestId("rail-yours");
   const aurinkokello = [...started][0];
   const reseptikirja = [...started][1];
-  const row = running.getByTestId(`agent-item-${aurinkokello}`);
+  const row = yours.getByTestId(`agent-item-${aurinkokello}`);
 
   // Iconed rows are flat, without repeated workspace groups/headings.
-  await expect(running.getByTestId("rail-group-aurinkokello")).toHaveCount(0);
+  await expect(yours.getByTestId("rail-group-aurinkokello")).toHaveCount(0);
   await expect(row.getByTestId("workspace-icon-button")).toHaveCount(1);
   await expect(
-    running
+    yours
       .getByTestId(`agent-item-${reseptikirja}`)
       .getByTestId("workspace-icon-button"),
   ).toHaveText("🍳");
@@ -130,10 +130,7 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   // The narrow strip shows the icons in place of the initials.
   await rail(page).getByTestId("close-navigation").click();
   await expect(
-    rail(page)
-      .getByTestId("rail-running")
-      .getByTestId("workspace-icon")
-      .first(),
+    rail(page).getByTestId("rail-yours").getByTestId("workspace-icon").first(),
   ).toHaveAttribute("data-size", "m");
   await expect(rail(page).locator(".ah-now-dot-letters")).toHaveCount(0);
   await shot(page, "kaistale");
@@ -142,7 +139,7 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   // On a phone the card is a sheet along the bottom edge.
   await page.setViewportSize({ width: 390, height: 844 });
   // The new conversations have no message yet: open the drawer in place,
-  // since a reload would drop them from Käynnissä.
+  // since a reload would drop them from Sinun vuorosi.
   await page
     .getByRole("main")
     .getByRole("button")

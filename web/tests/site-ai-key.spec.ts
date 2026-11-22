@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Browser } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, skipAgentNote } from "./git-identity-helper";
 import { expect, type Page, test } from "./worker-host";
 
 // Palvelimen ylläpito › AI-avain against the real gateway handlers of the
@@ -140,7 +140,9 @@ test("@site-ai-key @a11y a person seeded with the site key walks the route witho
     .getByRole("button")
     .and(bob.getByTestId("integration-onboarding-continue"))
     .click();
-  // The route's last step passed, he lands in his workspaces with no AI step.
+  // The note for the agent ends the route; past it he lands in his
+  // workspaces with no AI step.
+  await skipAgentNote(bob);
   await expect(
     bob.getByRole("heading").and(bob.getByTestId("workspaces-title")),
   ).toBeVisible();
