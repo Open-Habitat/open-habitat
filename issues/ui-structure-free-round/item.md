@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-ui-structure
@@ -24,9 +24,10 @@ access, settings and the per-conversation tools (header icons, composer
 chips) live, and how it all works on a laptop screen. Bold, distinct
 directions are wanted; the existing `rail-space-small-screens` round stays.
 
-Next action: a free prototype round of the whole app shell with 3
-substantially different structures and a recommendation. Jari picks or
-combines; nothing is implemented from it before that.
+Next action: Jari reviews round 2
+(`design-system/prototypes/rounds/2026-11-22-ui-structure-2/`, recommendation
+and questions in `result.md`, "Kierros 2") and picks or combines; nothing is
+implemented from it before that.
 
 ## Decisions
 
