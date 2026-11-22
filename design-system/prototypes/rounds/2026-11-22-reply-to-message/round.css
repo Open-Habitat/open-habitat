@@ -1,0 +1,148 @@
+/* Review chrome above the production shell, as in earlier shell rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rp-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rp-bar strong { font-weight: 600; }
+.rp-bar select, .rp-bar button { font: inherit; }
+.rp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rp-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rp-bar { padding: 6px 10px; }
+  .rp-controls > strong { display: none; }
+  .rp-lines, .rp-recommend { line-height: 1.3; }
+  .rp-lines li:not([aria-current]), .rp-recommend { display: none; }
+}
+.rp-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rp-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rp-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rp-main { height: 100%; min-width: 0; }
+.rp-tools { display: grid; gap: var(--ah-s1); }
+
+/* ---------- The corner control (all directions) ----------
+   In production AssistantMessage would pass it to Message's `actions`, the
+   top-right slot Palaa tähän's ⋯ uses on own messages. Here it is laid over
+   the card's header row. Desktop: shows on hover or focus like rewind's ⋯,
+   and stays while the message is being replied to. Phone: always visible. */
+.rp-msg { position: relative; }
+.rp-msg > .ah-message { position: relative; }
+/* A finished reply has no card padding and its time sits at the header's
+   right end, so the header leaves room and the control takes the corner. */
+.rp-msg[data-role="assistant"] .ah-message header { padding-inline-end: 36px; min-height: 28px; }
+.rp-corner {
+  position: absolute; top: 0; right: 0;
+  display: inline-flex;
+  --i-fg: var(--ah-muted);
+}
+.rp-msg[data-role="assistant"] { max-width: min(var(--ah-measure), 100%); }
+.rp-corner[data-active] { --i-fg: var(--ah-accent-ink); }
+.rp-corner[data-active] button { background: var(--ah-accent-soft); }
+@media (hover: hover) and (min-width: 801px) {
+  .rp-corner { opacity: 0; transition: opacity 120ms ease-out; }
+  .rp-msg:is(:hover, :focus-within) .rp-corner, .rp-corner[data-active] { opacity: 1; }
+}
+
+/* The original under a jump: a short accent wash that fades. Reduced
+   motion keeps a still outline for the same time. */
+[data-flash] .ah-message { animation: rp-flash 1.6s ease-out; }
+@keyframes rp-flash {
+  0%, 30% { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); }
+  100% { background: var(--ah-surface); border-color: var(--ah-line); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-flash] .ah-message { animation: none; outline: 2px solid var(--ah-accent-line); outline-offset: 2px; }
+}
+
+/* B: the quoted passage in the original. */
+::highlight(rp-quote) { background-color: var(--ah-accent-soft); color: var(--ah-ink); }
+::highlight(rp-flash) { background-color: var(--ah-accent-line); color: var(--ah-ink); }
+.rp-float {
+  position: fixed; z-index: 40; transform: translate(-50%, calc(-100% - 8px));
+  box-shadow: var(--ah-shadow-float); border-radius: var(--ah-r-md);
+}
+
+/* ---------- Shared quote text ---------- */
+.rp-quote-head {
+  display: flex; align-items: center; gap: var(--ah-s1);
+  color: var(--ah-accent-ink); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.rp-quote-head svg { width: 14px; height: 14px; flex: none; }
+.rp-quote-text {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+
+/* ---------- A, B: the quote card above the field ---------- */
+.rp-card {
+  display: flex; align-items: flex-start; gap: var(--ah-s2);
+  margin-bottom: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s2) var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-left: 3px solid var(--ah-accent);
+  border-radius: var(--ah-r-md); background: var(--ah-surface-2);
+  animation: rp-in 140ms ease-out;
+}
+.rp-card-jump, .rp-tab-jump, .rp-sent-quote, .rp-sent-link {
+  font: inherit; color: inherit; text-align: start; cursor: pointer;
+  background: none; border: 0; padding: 0; margin: 0;
+}
+.rp-card-jump { flex: 1; min-width: 0; display: grid; gap: 2px; border-radius: var(--ah-r-sm); }
+.rp-card-jump:focus-visible, .rp-tab-jump:focus-visible, .rp-sent-quote:focus-visible, .rp-sent-link:focus-visible {
+  outline: 2px solid var(--ah-focus); outline-offset: 2px;
+}
+.rp-card[data-passage] .rp-quote-text { font-style: italic; }
+@keyframes rp-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rp-card, .rp-tab { animation: none; } }
+
+/* A, B: the quote at the top of the sent message. */
+.rp-sent-quote {
+  display: grid; gap: 2px; width: 100%; box-sizing: border-box;
+  margin-bottom: var(--ah-s2); padding: var(--ah-s1) var(--ah-s2) var(--ah-s1) var(--ah-s3);
+  border-left: 3px solid var(--ah-accent-line); border-radius: var(--ah-r-sm);
+  background: var(--ah-surface-2);
+}
+.rp-sent-quote:hover { background: var(--ah-surface-hover); }
+.rp-sent-quote .rp-quote-head { font-weight: 600; color: var(--ah-ink-2); }
+.rp-sent-quote[data-passage] .rp-quote-text { font-style: italic; }
+
+/* ---------- C: one line fused to the field's top edge ---------- */
+.rp-tab {
+  display: flex; align-items: center; gap: var(--ah-s1);
+  /* The composer's column gap is --ah-s3; the tab closes it to sit on the box. */
+  margin: 0 var(--ah-s4) calc(-1 * var(--ah-s3) - 1px); padding: 2px var(--ah-s1) 2px var(--ah-s3);
+  width: calc(100% - 2 * var(--ah-s4)); box-sizing: border-box; min-width: 0; overflow: hidden;
+  border: 1px solid var(--ah-line-strong); border-bottom: 0;
+  border-radius: var(--ah-r-md) var(--ah-r-md) 0 0; background: var(--ah-surface-2);
+  font-size: var(--ah-size-meta); position: relative; z-index: 1;
+  animation: rp-in 140ms ease-out;
+}
+.rp-tab-jump { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--ah-s1); white-space: nowrap; }
+.rp-tab-jump svg { width: 14px; height: 14px; flex: none; color: var(--ah-accent-ink); }
+.rp-tab-who { color: var(--ah-accent-ink); font-weight: 600; flex: none; }
+.rp-tab-text { overflow: hidden; text-overflow: ellipsis; color: var(--ah-ink-2); }
+
+/* C: the link line above the sent message. */
+.rp-sent-link {
+  display: flex; align-items: center; gap: var(--ah-s1);
+  margin: 0 0 var(--ah-s1) auto; width: max-content; max-width: 100%;
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+}
+.rp-sent-link svg { width: 14px; height: 14px; }
+.rp-sent-link:hover span { text-decoration: underline; color: var(--ah-ink-2); }
+
+/* Review only: what the native session gets. */
+.rp-payload {
+  margin: var(--ah-s2) 0 0 auto; max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s2) var(--ah-s3); border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-md);
+}
+.rp-payload figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: var(--ah-s1); }
+.rp-payload pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--ah-size-meta)/1.45 var(--ah-mono, monospace); color: var(--ah-ink); }

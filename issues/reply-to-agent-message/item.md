@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-reply-to-message
 lane: reply-to-message
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: reply to a specific agent message (quote in the composer)
