@@ -3,17 +3,25 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-phone-scroll
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Phone: swiping a non-scrolling area scrolls the whole window, in the wrong direction
 
 ## Description
 
-Jari (22.11.2026, test server on the phone): scrolling behaves oddly. Swiping in an area where nothing should scroll scrolls the whole window (the page moves), and it moves in the wrong direction.
-Next action (defect, fix directly).
+On a phone, swiping a non-scrolling area moves the whole window, sometimes in the opposite direction from the expected content movement. The frame should remain fixed; only designated scroll regions should move.
+
+## Acceptance Criteria
+
+- [x] Touch swipes on header, composer, short transcript and drawer footer leave document offsets and frame positions unchanged in mobile-profile browser tests.
+- [x] Long transcript touch scrolling and simulated keyboard-pan visibility remain functional.
+- [x] Non-keyboard visual viewport offsets do not move the shell.
+
+Evidence and real-device verification limits are recorded in result.md.
