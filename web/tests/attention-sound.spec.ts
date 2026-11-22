@@ -222,41 +222,101 @@ test("@attention-sound Settings › Äänet chooses the person's sound and lengt
   );
 });
 
-test("@attention-sound an agent's reply elsewhere plays its workspace's own sound once", async ({
-  page,
-}) => {
-  await signIn(page);
-  await enable(page);
-  await page.goto("/workspaces");
-  const id = await openWorkspace(page, "ordinary-dir");
-  const put = await page.request.put("/api/v1/account/preferences", {
-    headers: await headers(page),
-    data: { workspace_sound: { [id]: "kulho" } },
+for (const target of [
+  "same-workspace",
+  "other-workspace",
+  "night-quiet",
+] as const) {
+  test(`@attention-sound a non-open reply after preview: ${target}`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const NativeAudioContext = window.AudioContext;
+      const contexts: AudioContext[] = [];
+      Object.assign(window, { soundContexts: contexts });
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(options?: AudioContextOptions) {
+          super(options);
+          contexts.push(this);
+        }
+      };
+    });
+    await signIn(page);
+    await enable(page);
+    await page.goto("/workspaces");
+    const id = await openWorkspace(page, "ordinary-dir");
+    const put = await page.request.put("/api/v1/account/preferences", {
+      headers: await headers(page),
+      data: { workspace_sound: { [id]: "kulho" } },
+    });
+    expect(put.status()).toBe(200);
+    await page.emulateMedia({ colorScheme: "dark" });
+    // A preview bypasses night suppression; ordinary notifications do not.
+    // The positive cases explicitly disable it, even on a dark-mode device.
+    if (target !== "night-quiet") {
+      await page.request.put("/api/v1/account/preferences", {
+        headers: await headers(page),
+        data: { sound: { night: false } },
+      });
+    }
+    await page.goto("/settings/sounds");
+    await page.getByTestId("sound-test").click();
+    await expect.poll(() => plays(page)).toEqual(["kalimba"]);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            window as unknown as { soundContexts: AudioContext[] }
+          ).soundContexts.map((c) => c.state),
+        ),
+      )
+      .toEqual(["running"]);
+    await page.getByTestId("settings-close").click();
+    await openWorkspace(page, "ordinary-dir");
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+    const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
+    await page.request.get("/fixture/scenario?value=pi-visual-hold");
+    await page.getByTestId("message-input").fill("työ");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    const nav = page.getByTestId("workspace-navigation");
+    await expect(
+      nav.getByTestId("rail-running").getByTestId(`agent-item-${agent}`),
+    ).toBeVisible({ timeout: 25000 });
+    // View another conversation without reloading the page or its audio.
+    await nav
+      .getByTestId(
+        target === "other-workspace"
+          ? "workspace-start-git-project"
+          : "workspace-start-ordinary-dir",
+      )
+      .click();
+    await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("conversation"))
+      .not.toBe(agent);
+    await expect(page.getByTestId("message-input")).toBeVisible();
+    await page.clock.install();
+    await page.clock.fastForward(5000);
+    await page.request.get("/fixture/scenario?value=ready");
+    await expect(
+      nav.getByTestId("rail-yours").getByTestId(`agent-item-${agent}`),
+    ).toBeVisible({ timeout: 25000 });
+    await page.clock.fastForward(5000);
+    await expect
+      .poll(() => plays(page), { timeout: 10000 })
+      .toEqual(target === "night-quiet" ? ["kalimba"] : ["kalimba", "kulho"]);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            window as unknown as { soundContexts: AudioContext[] }
+          ).soundContexts.map((c) => c.state),
+        ),
+      )
+      .toEqual(["running"]);
   });
-  expect(put.status()).toBe(200);
-  // Night quiets the sound by default; this device may report dark mode.
-  await page.request.put("/api/v1/account/preferences", {
-    headers: await headers(page),
-    data: { sound: { night: false } },
-  });
-  await page.reload();
-  await expect(page.getByTestId("workspace-strip")).toBeVisible();
-  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
-  const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
-  await page.getByTestId("message-input").fill("hidas työ");
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-  const nav = page.getByTestId("workspace-navigation");
-  await expect(
-    nav.getByTestId("rail-running").getByTestId(`agent-item-${agent}`),
-  ).toBeVisible({ timeout: 25000 });
-  // Look elsewhere while the agent works: its reply is news then.
-  await openWorkspace(page, "git-project");
-  await expect(
-    nav.getByTestId("rail-yours").getByTestId(`agent-item-${agent}`),
-  ).toBeVisible({ timeout: 25000 });
-  await expect.poll(() => plays(page), { timeout: 10000 }).toEqual(["kulho"]);
-});
+}
