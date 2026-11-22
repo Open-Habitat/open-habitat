@@ -879,6 +879,29 @@
   .ah-place-layer {
     padding: var(--ah-s6);
   }
+  .ah-place-layer {
+    top: var(--ah-touch);
+  }
+  /* Unlike Settings, a place closes from the rail, so its mobile navigation
+     must remain above the layer even with a conversation underneath. */
+  .ah-shell-body
+    > main:has(> .ah-place-layer):not(:has(> .ah-settings-layer))
+    > .ah-mobile-toolbar {
+    display: flex;
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 3;
+    height: var(--ah-touch);
+    padding-inline: var(--ah-s3);
+    border-bottom: 1px solid var(--ah-line);
+    background: var(--ah-bg);
+  }
+  .ah-shell-body
+    > main:has(> .ah-place-layer)
+    > .ah-mobile-toolbar
+    .ah-mobile-title {
+    display: block;
+  }
 }
 /* Settings needs its content room before the ordinary phone breakpoint.
    The close control returns to the unchanged workspace navigation. Otherwise

@@ -130,6 +130,7 @@ test("@agent-resources lists the agent's sources by kind and browses the synced 
   // is there like any other.
   await entries.nth(0).click();
   await expect(page).toHaveURL(/folder=Raportit/);
+  await expect(page.locator(".ah-place-layer")).toBeVisible();
   await expect(detail.getByTestId("resource-crumbs")).toContainText(
     "OneDrive›Raportit",
   );
@@ -150,6 +151,7 @@ test("@agent-resources lists the agent's sources by kind and browses the synced 
     .filter({ hasText: "Outlook-posti" })
     .click();
   await expect(detail).toHaveAttribute("data-source", /^mail:microsoft:/);
+  await expect(page.locator(".ah-place-layer")).toBeVisible();
   await expect(detail.getByTestId("resource-files")).toHaveCount(0);
   await expect(detail.getByTestId("resource-in")).toContainText(
     "Koko postilaatikko, kaikki kansiot",
@@ -168,6 +170,10 @@ test("@agent-resources lists the agent's sources by kind and browses the synced 
     .and(detail.getByTestId("resource-settings"))
     .click();
   await expect(page).toHaveURL(/\/settings\/agent-data#microsoft$/);
+  // The wide rail remains reachable over Settings; it still closes the
+  // underlying place to its original workspace view, not to Settings.
+  await rail.click();
+  await expect(page).toHaveURL(/\/workspaces$/);
 });
 
 test("@agent-resources on a phone the list comes first and a source opens on its own", async ({

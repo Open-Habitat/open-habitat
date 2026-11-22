@@ -542,6 +542,37 @@ test("@browser-editor the account menu stays reachable beside an open editor", a
     .click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   await expect(account).toBeFocused();
+  const doc = page.getByTestId("editor-document");
+  await doc.fill("Unsent editor buffer during a place visit");
+  await doc.evaluate((el) => el.setAttribute("data-kept", "yes"));
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().includes("/editor/file"))
+      writes.push(request.url());
+  });
+  for (const place of ["rail-shares", "rail-resources"]) {
+    await page.getByTestId(place).click();
+    await expect(page.locator(".ah-place-layer")).toBeVisible();
+    await expect(doc).toBeHidden();
+    await page.getByTestId("skip-content").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".ah-place-layer")).toBeVisible();
+    expect(
+      await page.evaluate(() => !!history.state?.usr?.placeBackground),
+    ).toBe(true);
+    if (place === "rail-resources") {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(page.getByTestId("navigation-open")).toBeVisible();
+      await page.getByTestId("navigation-open").click();
+    }
+    await page.getByTestId(place).click();
+    await expect(doc).toBeVisible();
+    await expect(doc).toHaveAttribute("data-kept", "yes");
+    await expect(doc).toContainText(
+      "Unsent editor buffer during a place visit",
+    );
+  }
+  expect(writes).toEqual([]);
 });
 
 test("@browser-editor a transient failed refresh preserves the live dirty document", async ({

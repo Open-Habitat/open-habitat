@@ -155,7 +155,12 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
-import { isPlace, placeBackground, usePlaceEscape } from "./placeNavigation";
+import {
+  isPlace,
+  placeBackground,
+  usePlaceEscape,
+  usePlaceNavigation,
+} from "./placeNavigation";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
 import {
@@ -351,8 +356,14 @@ export function App() {
       ? outside.current
       : undefined;
   const visibleRoute = settingsOver ?? route;
-  const placeOver = placeBackground(visibleRoute);
+  const placeOver =
+    (phase === "authenticated" || phase === "stale") &&
+    !landing.show &&
+    !piSignInOpen
+      ? placeBackground(visibleRoute)
+      : undefined;
   const location = placeOver ?? visibleRoute;
+  const navigatePlace = usePlaceNavigation(visibleRoute);
   usePlaceEscape(
     !settingsOver && (phase === "authenticated" || phase === "stale"),
   );
@@ -1852,7 +1863,7 @@ export function App() {
         return false;
     }
     if (archived) onLeave?.();
-    const fromRoute = `${currentRoute.current.pathname}${currentRoute.current.search}`;
+    const fromRoute = currentView();
     const scopeRoute =
       archived && origin === "conversation"
         ? `/workspaces/${agent.workspace_id}`
@@ -2637,6 +2648,7 @@ export function App() {
     !profileSkipped &&
     (!profile.name || !profile.email);
   const settingsLayer = !!settingsOver && !profileRequired;
+  const placeLayer = !!placeOver && !profileRequired;
   useLayoutEffect(() => {
     if (!settingsLayer) return;
     // The layer covers main's visible box from the top; the view under it
@@ -2812,7 +2824,7 @@ export function App() {
       // A browser conversation opens with its composer, never as read-only
       // history; its Pi starts only when the person sends.
       <Redirect
-        held={!!settingsOver}
+        held={!!settingsOver || !!placeOver}
         replace
         to={`/workspaces/${agentWorkspace.workspace_id}?conversation=${selectedAgent.agent_id}`}
       />
@@ -2944,7 +2956,7 @@ export function App() {
               if (creationRoute && creationViews[ws]?.rechecked)
                 return (
                   <Redirect
-                    held={!!settingsOver}
+                    held={!!settingsOver || !!placeOver}
                     replace
                     to={`/workspaces/${ws}`}
                   />
@@ -2960,7 +2972,7 @@ export function App() {
               )
                 return (
                   <Redirect
-                    held={!!settingsOver}
+                    held={!!settingsOver || !!placeOver}
                     replace
                     to={`/workspaces/${ws}`}
                   />
@@ -3065,7 +3077,7 @@ export function App() {
                   {creationRoute ? (
                     id ? (
                       <Redirect
-                        held={!!settingsOver}
+                        held={!!settingsOver || !!placeOver}
                         replace
                         to={`/workspaces/${ws}?conversation=${id}`}
                       />
@@ -3512,9 +3524,11 @@ export function App() {
                     running={browserRunning}
                   >
                     <WorkspaceRailView
+                      onPlaceNavigate={navigatePlace}
                       shares={
                         <>
                           <SharesRail
+                            onNavigate={navigatePlace}
                             current={visibleRoute.pathname === "/shares"}
                             collapsed={railCompact && !mobileLayout}
                           />
@@ -3653,14 +3667,14 @@ export function App() {
                       <div className="ah-state">{settingsView}</div>
                     </div>
                   ) : null}
-                  {placeOver &&
-                  (phase === "authenticated" || phase === "stale") ? (
+                  {placeLayer ? (
                     <Routes location={visibleRoute}>
                       <Route
                         path="*"
                         element={
                           <div
                             className="ah-place-layer"
+                            tabIndex={-1}
                             inert={settingsLayer}
                             data-under-settings={settingsLayer || undefined}
                           >
@@ -3693,9 +3707,9 @@ export function App() {
                               ? "ah-login-view"
                               : "ah-state"
                           }
-                          inert={settingsLayer || !!placeOver}
+                          inert={settingsLayer || placeLayer}
                           data-under-settings={settingsLayer || undefined}
-                          data-under-place={!!placeOver || undefined}
+                          data-under-place={placeLayer || undefined}
                         >
                           {railStartError ? (
                             <PageNotice

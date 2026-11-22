@@ -33,7 +33,6 @@ import {
   useConversationMetadata,
 } from "./conversationStore";
 import type { AccountProfile } from "./pi";
-import { usePlaceNavigation } from "./placeNavigation";
 import {
   quietFolded as foldedBy,
   setQuietFolded,
@@ -166,7 +165,9 @@ export function WorkspaceRailView({
   sectionChoices,
   shares,
   browser,
+  onPlaceNavigate,
 }: {
+  onPlaceNavigate?: (href: string) => void;
   shares?: ReactNode;
   /** The person's server browser's row (remote-browser, experimental). */
   browser?: ReactNode;
@@ -221,7 +222,6 @@ export function WorkspaceRailView({
   clones?: CloneJobs;
 }) {
   const resourcesText = useText(agentResourcesText);
-  const navigatePlace = usePlaceNavigation();
   const searchText = useText(switcherText);
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
@@ -291,7 +291,7 @@ export function WorkspaceRailView({
           <div className="ah-rail-home-row">
             <LinkRow
               href="/resources"
-              onNavigate={navigatePlace}
+              onNavigate={onPlaceNavigate}
               data-testid="rail-resources"
               kind="home"
               current={pathname === "/resources"}

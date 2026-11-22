@@ -1,8 +1,11 @@
+import type { Location } from "react-router";
+import { placeBackground } from "./placeNavigation";
 import { isSettingsRoute, settingsSection } from "./settingsRoute";
 
 interface Place {
   pathname: string;
   search: string;
+  state?: Location["state"];
 }
 
 /** A conversation route: App wraps every one of them in the workspace editor,
@@ -16,11 +19,13 @@ export function conversationLocation({ pathname, search }: Place) {
 }
 
 /** Whether a route change leaves the editor mounted: another conversation,
- * or Settings, which lies over the view it was opened from. Leaving for
+ * or Settings/a rail place, which lies over the view it was opened from. Leaving for
  * anywhere else unmounts the document, so its unsaved text is saved first. */
 export function keepsEditor(place: Place) {
+  const background = placeBackground(place);
   return (
     conversationLocation(place) ||
+    (!!background && conversationLocation(background)) ||
     (isSettingsRoute(place.pathname) &&
       settingsSection(place.pathname) !== undefined)
   );

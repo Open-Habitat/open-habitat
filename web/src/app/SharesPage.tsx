@@ -5,7 +5,6 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
-import { useLocation, useSearchParams } from "react-router";
 import {
   ControlButton,
   LinkRow,
@@ -29,7 +28,7 @@ import {
   useFileOffer,
   useFileOffers,
 } from "./fileOffers";
-import { usePlaceNavigation } from "./placeNavigation";
+import { usePlaceSearchParams } from "./placeNavigation";
 import {
   groupShares,
   outputCreated,
@@ -70,13 +69,14 @@ const conversationHref = (s: Share) =>
 export function SharesRail({
   current,
   collapsed,
+  onNavigate,
 }: {
+  onNavigate?: (href: string) => void;
   current: boolean;
   collapsed: boolean;
 }) {
   const t = useText(sharesText);
   const links = useViewLinks();
-  const navigatePlace = usePlaceNavigation();
   const unknown = useViewLinksUnknown();
   const count =
     links && typeof links === "object" && links.maxDays > 0 && !unknown
@@ -86,7 +86,7 @@ export function SharesRail({
     <div className="ah-rail-home-row">
       <LinkRow
         href="/shares"
-        onNavigate={navigatePlace}
+        onNavigate={onNavigate}
         data-testid="rail-shares"
         kind="home"
         current={current}
@@ -112,10 +112,7 @@ export function SharesPage({
 }) {
   const t = useText(sharesText);
   const links = useViewLinks();
-  const [params, updateParams] = useSearchParams();
-  const location = useLocation();
-  const setParams = (next: Parameters<typeof updateParams>[0]) =>
-    updateParams(next, { replace: true, state: location.state });
+  const [params, setParams] = usePlaceSearchParams();
   const [narrow, setNarrow] = useState(
     () => window.matchMedia("(max-width: 760px)").matches,
   );

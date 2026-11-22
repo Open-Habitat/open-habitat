@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
 import {
   AgentResourcesFailed,
   AgentResourcesFrame,
@@ -24,6 +23,7 @@ import {
   ownMachinesPath,
   readOwnMachines,
 } from "./ownMachines";
+import { usePlaceSearchParams } from "./placeNavigation";
 import { settingsHref } from "./settingsRoute";
 
 // Agentin käytössä (experimental): the route is the record of the chosen
@@ -65,7 +65,7 @@ async function readMachines(signal: AbortSignal): Promise<OwnMachines> {
 export function AgentResourcesPage({ github }: { github: GitHubState }) {
   const t = useText(agentResourcesText);
   const narrow = useNarrow();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = usePlaceSearchParams();
   const [loaded, setLoaded] = useState<Loaded>({ phase: "loading" });
   const [reload, setReload] = useState(0);
   const [folderReload, setFolderReload] = useState(0);

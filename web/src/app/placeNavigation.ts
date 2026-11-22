@@ -1,22 +1,38 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { type Location, useLocation, useNavigate } from "react-router";
+import {
+  type Location,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router";
 
 export const isPlace = (path: string) =>
   path === "/shares" || path === "/resources";
 
 /** The return location is navigation state, not a second selected conversation. */
-export function placeBackground(location: Location): Location | undefined {
+export function placeBackground(
+  location: Pick<Location, "pathname"> & Partial<Pick<Location, "state">>,
+): Location | undefined {
   const background = location.state?.placeBackground as Location | undefined;
   return isPlace(location.pathname) &&
-    background &&
+    typeof background?.pathname === "string" &&
     (background.pathname.startsWith("/workspaces") ||
       background.pathname.startsWith("/agents/"))
     ? background
     : undefined;
 }
 
-export function usePlaceNavigation() {
-  const location = useLocation();
+export function usePlaceSearchParams() {
+  const [params, update] = useSearchParams();
+  const { state } = useLocation();
+  const set = (next: Parameters<typeof update>[0]) =>
+    update(next, { replace: true, state });
+  return [params, set] as const;
+}
+
+export function usePlaceNavigation(origin?: Location) {
+  const route = useLocation();
+  const location = origin ?? route;
   const navigate = useNavigate();
   return (href: string) => {
     if (location.pathname === href) {
@@ -25,7 +41,11 @@ export function usePlaceNavigation() {
       // added history entries since this place opened. Back could reopen them.
       void navigate(background ?? "/workspaces", {
         replace: true,
-        state: background?.state,
+        // The restored entry is a replacement, not the original context
+        // entry whose close control could safely go Back.
+        state: background?.state?.contextFrom
+          ? { ...background.state, contextFrom: false }
+          : background?.state,
       });
     } else if (isPlace(location.pathname)) {
       // The places share one history entry: Back closes the whole visit.
@@ -45,11 +65,11 @@ export function usePlaceEscape(enabled: boolean) {
     previous.current = location;
     if (!enabled || before.pathname === location.pathname) return;
     if (isPlace(location.pathname)) {
-      const heading = document.querySelector<HTMLElement>(".ah-place-layer h1");
-      if (heading) {
-        heading.tabIndex = -1;
-        heading.focus({ preventScroll: true });
-      }
+      // The place may still be loading. Focus its stable container, not a
+      // heading that might only appear after the host replies.
+      document
+        .querySelector<HTMLElement>(".ah-place-layer")
+        ?.focus({ preventScroll: true });
     } else if (isPlace(before.pathname)) {
       const background = placeBackground(before);
       if (location.pathname !== (background?.pathname ?? "/workspaces")) return;

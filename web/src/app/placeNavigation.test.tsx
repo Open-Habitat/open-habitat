@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, expect, it } from "vitest";
+import { keepsEditor } from "./editorRoute";
 import {
   placeBackground,
   usePlaceEscape,
@@ -8,6 +9,33 @@ import {
 } from "./placeNavigation";
 
 afterEach(cleanup);
+
+it("keeps the editor only when the place actually overlays a conversation", () => {
+  const place = { pathname: "/resources", search: "" };
+  expect(keepsEditor(place)).toBe(false);
+  expect(
+    keepsEditor({
+      ...place,
+      state: {
+        placeBackground: {
+          pathname: "/workspaces/ws_example123",
+          search: "?conversation=pi:example",
+        },
+      },
+    }),
+  ).toBe(true);
+  expect(
+    keepsEditor({
+      ...place,
+      state: {
+        placeBackground: {
+          pathname: "/workspaces",
+          search: "",
+        },
+      },
+    }),
+  ).toBe(false);
+});
 
 function Navigation() {
   const location = useLocation();

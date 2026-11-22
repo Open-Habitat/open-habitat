@@ -212,7 +212,12 @@ function Shell({
         data-testid="skip-content"
         className="ah-skip"
         href="#main"
-        onClick={() => document.getElementById("main")?.focus()}
+        onClick={(event) => {
+          // A native fragment entry drops router state (including the view
+          // beneath an open place). This link only moves keyboard focus.
+          event.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
       >
         {t.skip}
       </ExternalLink>
