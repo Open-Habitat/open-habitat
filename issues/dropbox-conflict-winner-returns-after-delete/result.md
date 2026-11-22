@@ -12,7 +12,7 @@ The official v1.76.0 release retains an old name when either resulting conflict 
 
 ## Checks
 
-Tested working tree based on `18c67cfada2cf1f2a2e1f69d62369851766410ae`, including the final host pins and regression tests:
+Initial evidence used the working tree based on `18c67cfada2cf1f2a2e1f69d62369851766410ae`, including the final host pins and regression tests. After a clean rebase onto `652b6d41c`, repeated the native integrations suite, focused host tests, contracts, ARM64 runtime build and sealed-runtime check at `098bb84ca`; all passed. `git range-diff` confirmed both worker commits replayed unchanged.
 
 - `scripts/test-focused.sh --area go --go-package ./internal/daemon/integrations`, with `OH_TEST_RCLONE` set to the built 1.76.0 payload binary: PASS. Includes native conflict/deletion tests, native Dropbox setup/OAuth, interrupted initial-sync resume, all-files-changed recovery and mass-deletion refusal. Old binary: expected failures in the three new deletion cases.
 - `scripts/test-focused.sh --area go --go-package ./internal/host`: PASS. Required-tool publication/installation pin and its fixtures updated. `RuntimeVerificationContract` unchanged because archive-verification semantics did not change.
