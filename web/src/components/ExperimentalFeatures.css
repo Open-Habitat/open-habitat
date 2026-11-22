@@ -135,7 +135,8 @@
   margin: 1px 0 0;
   line-height: 1.45;
 }
-.ex-coming {
+.ex-coming,
+.ex-unavailable {
   margin: 0;
   padding: 0 var(--ah-s5) var(--ah-s4);
   color: var(--ah-muted);

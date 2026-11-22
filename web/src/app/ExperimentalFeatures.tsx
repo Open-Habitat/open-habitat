@@ -6,6 +6,7 @@ import {
   setExperimentalFeature,
   useAccountPreferences,
 } from "./accountPreferences";
+import { useBrowserInstalled } from "./serverBrowser";
 
 const known = (id: string): id is ExperimentalFeatureId =>
   (experimentalFeatureIds as readonly string[]).includes(id);
@@ -18,8 +19,10 @@ export function ExperimentalFeatures({
   csrf?: string;
 }) {
   const state = useAccountPreferences(identity, csrf);
+  const browserInstalled = useBrowserInstalled(identity, csrf);
   return (
     <ExperimentalFeaturesControl
+      unavailable={browserInstalled === false ? ["remote-browser"] : []}
       enabled={(id) => !!state.experimental[id]}
       disabled={!identity || !csrf || !state.loaded || !!state.busy}
       busy={state.busy}

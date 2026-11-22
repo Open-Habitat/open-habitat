@@ -75,7 +75,8 @@ Generated from internal/experimental/catalog.json; do not edit.
     "where": "Missä",
     "shows": "Mitä näkyy",
     "needs": "Edellyttää",
-    "coming": "Tulossa. Tämä versio ei vielä näytä ominaisuutta; valintasi tulee voimaan, kun se on valmis."
+    "coming": "Tulossa. Tämä versio ei vielä näytä ominaisuutta; valintasi tulee voimaan, kun se on valmis.",
+    "unavailable": "Tällä palvelimella ei ole selainympäristöä (TigerVNC ja Google Chrome), joten selain ei käynnisty. Asia kuuluu ylläpitäjälle: Open Habitatin päivitys asentaa ympäristön."
   },
   "en": {
     "features": {
@@ -141,7 +142,8 @@ Generated from internal/experimental/catalog.json; do not edit.
     "where": "Where",
     "shows": "What shows",
     "needs": "Needs",
-    "coming": "Coming. This version does not show the feature yet; your choice takes effect when it is ready."
+    "coming": "Coming. This version does not show the feature yet; your choice takes effect when it is ready.",
+    "unavailable": "This server has no browser environment (TigerVNC and Google Chrome), so the browser cannot start. This is for the administrator: upgrading Open Habitat installs it."
   }
 }
 ```

@@ -92,20 +92,7 @@ func transitionUbuntuPackages(ctx context.Context, profiles []string, r Authenti
 		}
 		names = append(names, name)
 	}
-	// Explicit false options override permissive host apt.conf settings. apt -y
-	// refuses a downgrade or held-package change unless those options are allowed.
-	args := []string{"-y", "--no-remove", "--no-install-recommends",
-		"-o", "DPkg::Lock::Timeout=300",
-		// Disable legacy unanchored regex fallback even if another apt writer
-		// replaces indexes between the exact policy check and installation.
-		"-o", "APT::Cmd::Pattern-Only=true",
-		// Debconf noninteractive does not suppress dpkg conffile prompts.
-		// Keep customer configuration rather than hanging for terminal input.
-		"-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold",
-		"-o", "APT::Get::allow-Downgrades=false", "-o", "APT::Get::allow-Change-Held-Packages=false",
-		"-o", "APT::Get::allow-Remove-Essential=false", "-o", "APT::Get::force-yes=false",
-		"-o", "APT::Get::AllowUnauthenticated=false", "install"}
-	args = append(args, names...)
+	args := aptInstallArgs(names)
 	if _, err = run(ctx, 5*time.Minute, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); err != nil {
 		return errors.Join(ErrRuntimePackageSolve, err)
 	}
@@ -116,4 +103,22 @@ func transitionUbuntuPackages(ctx context.Context, profiles []string, r Authenti
 		return errors.Join(ErrRuntimePackageInstall, err)
 	}
 	return r.requireRuntimePackages(ctx, profiles, queryRuntimePackages)
+}
+
+// aptInstallArgs installs exactly the named packages: never a removal,
+// downgrade, held-package change or unauthenticated package.
+func aptInstallArgs(names []string) []string {
+	// Explicit false options override permissive host apt.conf settings. apt -y
+	// refuses a downgrade or held-package change unless those options are allowed.
+	return append([]string{"-y", "--no-remove", "--no-install-recommends",
+		"-o", "DPkg::Lock::Timeout=300",
+		// Disable legacy unanchored regex fallback even if another apt writer
+		// replaces indexes between the exact policy check and installation.
+		"-o", "APT::Cmd::Pattern-Only=true",
+		// Debconf noninteractive does not suppress dpkg conffile prompts.
+		// Keep customer configuration rather than hanging for terminal input.
+		"-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold",
+		"-o", "APT::Get::allow-Downgrades=false", "-o", "APT::Get::allow-Change-Held-Packages=false",
+		"-o", "APT::Get::allow-Remove-Essential=false", "-o", "APT::Get::force-yes=false",
+		"-o", "APT::Get::AllowUnauthenticated=false", "install"}, names...)
 }

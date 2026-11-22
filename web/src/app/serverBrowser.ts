@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import schema from "../../../contracts/v1/browser.schema.json";
 import { LazyAjv } from "./lazyAjv";
 import { jsonWrite, mutationFetch, writeOutcome } from "./mutations";
@@ -139,6 +139,40 @@ export function useServerBrowser(
   }, [key, csrf]);
   const s = useSyncExternalStore(subscribe, () => state);
   return key && s.key === key ? s : { failed: false };
+}
+
+/** Whether this server can run the browser at all, read once for the
+ * experiment's card whatever the switch says: a server without TigerVNC and
+ * Chrome answers "unavailable". Undefined until known or when the read
+ * fails, so a failed read never hides the switch. */
+export function useBrowserInstalled(
+  identity: string | undefined,
+  csrf: string | undefined,
+): boolean | undefined {
+  const key = identity && csrf ? `${identity}\u0000${csrf}` : undefined;
+  const [known, setKnown] = useState<{ key: string; installed: boolean }>();
+  useEffect(() => {
+    if (!key) return;
+    let current = true;
+    void (async () => {
+      try {
+        const response = await fetch(browserPath, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data: unknown = await response.json();
+        if (current && valid(data))
+          setKnown({ key, installed: data.state !== "unavailable" });
+      } catch {
+        /* Unknown: the card stays as it is. */
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [key]);
+  return known && known.key === key ? known.installed : undefined;
 }
 
 export function openBrowserSheet(mode: SheetMode) {

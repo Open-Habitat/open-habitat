@@ -17,6 +17,11 @@
       "version": "1.1.1-1ubuntu0.24.04.3"
     },
     {
+      "name": "ca-certificates",
+      "architecture": "all",
+      "version": "20240203"
+    },
+    {
       "name": "fonts-liberation",
       "architecture": "all",
       "version": "1:2.1.5-3"
@@ -185,6 +190,11 @@
       "name": "quota",
       "architecture": "native",
       "version": "4.06-1build6"
+    },
+    {
+      "name": "tigervnc-standalone-server",
+      "architecture": "native",
+      "version": "1.13.1+dfsg-2build2"
     },
     {
       "name": "tmux",

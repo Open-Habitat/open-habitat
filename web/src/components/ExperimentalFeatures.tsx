@@ -87,6 +87,7 @@ export function ExperimentalFeaturesControl({
   error,
   onChange,
   onReload,
+  unavailable = [],
   features = experimentalFeatureCards(),
 }: {
   enabled: (id: string) => boolean;
@@ -98,6 +99,9 @@ export function ExperimentalFeaturesControl({
   error?: string;
   onChange: (id: string, on: boolean) => void;
   onReload?: () => void;
+  /** Features this server cannot run. Their switch can only be turned off,
+   * and the card says why and whose matter it is. */
+  unavailable?: readonly string[];
   features?: readonly ExperimentalFeature[];
 }) {
   const alert = (testId: string, text: string) => (
@@ -127,6 +131,7 @@ export function ExperimentalFeaturesControl({
       )}
       {features.map((f) => {
         const on = enabled(f.id);
+        const missing = unavailable.includes(f.id);
         return (
           <section
             key={f.id}
@@ -152,7 +157,7 @@ export function ExperimentalFeaturesControl({
                     { id: "on", label: txt.on },
                   ]}
                   value={on ? "on" : "off"}
-                  isDisabled={disabled}
+                  isDisabled={disabled || (missing && !on)}
                   onChange={(v) => {
                     if ((v === "on") !== on) onChange(f.id, v === "on");
                   }}
@@ -161,6 +166,14 @@ export function ExperimentalFeaturesControl({
             </div>
             {error === f.id &&
               alert(`experimental-${f.id}-error`, txt.writeError)}
+            {missing && (
+              <p
+                className="ex-unavailable"
+                data-testid={`experimental-${f.id}-unavailable`}
+              >
+                {txt.unavailable}
+              </p>
+            )}
             <div className="ex-body">
               <figure className="ex-figure">
                 <figcaption>{f.caption}</figcaption>

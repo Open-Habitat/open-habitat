@@ -866,6 +866,36 @@ build is not stripped. Chromium's Ubuntu libraries (in the core's
 `ubuntu-packages.json`) add up to 64 MB of packages and 262 MB on disk on a
 minimal system; a server that already has some of them needs less.
 
+The experimental server browser (a person's own Chrome on the server, which
+they watch and sign in to and their agents drive) runs Google Chrome on a
+TigerVNC display. TigerVNC (`tigervnc-standalone-server`, from Ubuntu's
+universe component) is a core Ubuntu requirement like the others. Chrome
+comes from Google's own apt repository, because no Chromium build that may
+be redistributed exists for both architectures and a browser people sign in
+to must take security updates as they appear: after a successful apply or
+upgrade (also one with nothing to change), the operator writes
+`/etc/apt/sources.list.d/google-chrome.sources` and Google's signing key
+`/usr/share/keyrings/google-chrome.gpg` exactly as Chrome's own package
+writes them, refreshes only that source's index and installs
+`google-chrome-stable` with the same no-removal, no-downgrade rules as
+Ubuntu requirements. An existing `google-chrome.list` of the administrator's
+is used as it is. From then on Chrome's package owns both files and the host
+apt updates Chrome; allow Google's origin in unattended-upgrades if Chrome
+should update unattended. AppArmor needs nothing extra: Ubuntu's own profile
+for `/opt/google/chrome/chrome` grants its sandbox the user namespaces it
+needs.
+
+The step never fails or lengthens the operation, and runs after entries have
+reopened. The result's `server_browser` says `present`, `installed` or
+`unavailable` with a reason (`google_source_unavailable`,
+`apt_candidate_cannot_meet_minimum`, `apt_solution_refused`,
+`apt_install_failed`). Without Chrome or TigerVNC the browser is unavailable:
+the experimental switch's card in Settings says the environment is not
+installed and is the administrator's matter, and an agent's
+`open-habitat agent browser start` answers `browser_unavailable` with the
+same explanation. A server that must not reach `dl.google.com` simply has no
+server browser; nothing else depends on it.
+
 The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,
 users or a shared administrative group. Check the effective `/proc` mount and

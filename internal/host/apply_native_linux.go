@@ -452,6 +452,11 @@ func applyNative(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 	}
 	r, e := executeApply(ctx, req, d)
 	r.Administrators = n.roles
+	// Only once the operation has completed: the server browser's Chrome
+	// never holds the operation journal or lengthens the downtime.
+	if e == nil && !req.DryRun && (r.Outcome == "applied" || r.Outcome == "no_change") {
+		r.ServerBrowser = offerServerBrowser(ctx, req.Progress)
+	}
 	return r, e
 }
 

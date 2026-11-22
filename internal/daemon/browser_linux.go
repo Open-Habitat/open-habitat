@@ -50,8 +50,11 @@ const (
 	// BrowserFeature is the experimental switch in the person's preferences.
 	BrowserFeature = "remote-browser"
 
-	// The operator installs these as Ubuntu and Google packages; their
-	// presence is what offers the browser on a server.
+	// Install and upgrade provide these: TigerVNC as a core Ubuntu
+	// requirement, Chrome from Google's apt repository (internal/host's
+	// server_browser_linux.go says why). Their presence is what offers the
+	// browser on a server; without them it is "unavailable", which the app and
+	// the agent's CLI explain as the administrator's matter.
 	browserXvnc   = "/usr/bin/Xtigervnc"
 	browserChrome = "/opt/google/chrome/google-chrome"
 
@@ -70,6 +73,10 @@ var browserSkill []byte
 
 var errBrowserUnavailable = errors.New("browser unavailable")
 
+// BrowserUnavailableHint is what the agent tells the person when this server
+// has no browser runtime: nothing they or the agent can do fixes it.
+const BrowserUnavailableHint = "the server browser is not installed on this server (TigerVNC and Google Chrome are missing); installing it is the administrator's matter, and upgrading or re-applying Open Habitat does it; tell the person so and do not retry"
+
 type browserHost struct {
 	cfg        transport.Config
 	ctx        context.Context
@@ -85,6 +92,7 @@ type browserHost struct {
 	feature      func() bool
 	extraArgs    []string
 	start        func(dir string) error
+	installed    func() bool
 
 	mu    sync.Mutex
 	child *exec.Cmd
@@ -113,12 +121,15 @@ func newBrowserHost(ctx context.Context, cfg transport.Config, log *slog.Logger)
 type BrowserFixture struct {
 	Dir   string
 	Start func(dir string) error
+	// Installed, when set, says whether the server has the browser's
+	// programs, so the app's explanation can be exercised.
+	Installed func() bool
 }
 
 // MountBrowserFixture serves the browser routes in the synthetic browser
 // host and returns its agent routes.
 func MountBrowserFixture(ctx context.Context, mux *http.ServeMux, cfg transport.Config, trusted func(*http.Request) bool, f BrowserFixture, log *slog.Logger) map[string]http.Handler {
-	h := &browserHost{cfg: cfg, ctx: ctx, log: log, privateDir: f.Dir, start: f.Start, trusted: func(string) bool { return false }, feature: func() bool { return true }}
+	h := &browserHost{cfg: cfg, ctx: ctx, log: log, privateDir: f.Dir, start: f.Start, installed: f.Installed, trusted: func(string) bool { return false }, feature: func() bool { return true }}
 	h.mount(mux, trusted)
 	return h.agentRoutes()
 }
@@ -132,7 +143,7 @@ func (h *browserHost) mount(mux *http.ServeMux, trusted func(*http.Request) bool
 
 func (h *browserHost) available() bool {
 	if h.start != nil {
-		return true
+		return h.installed == nil || h.installed()
 	}
 	return h.self != "" && h.trusted(h.xvnc) && h.trusted(h.chrome)
 }
@@ -653,6 +664,10 @@ func (h *browserHost) agentRoutes() map[string]http.Handler {
 	status := func(w http.ResponseWriter, r *http.Request) {
 		v := h.view(r.Context())
 		out := map[string]any{"schema_version": 1, "state": v.State, "agent_connected": v.AgentConnected, "windows": v.Windows}
+		if v.State == "unavailable" {
+			out["reason"] = "runtime_not_installed"
+			out["hint"] = BrowserUnavailableHint
+		}
 		if v.State == "running" {
 			out["control"] = v.Control
 			out["cdp_endpoint"] = "ws+unix://" + filepath.Join(h.dir(), browserhost.CDPSocket) + ":/devtools/browser"

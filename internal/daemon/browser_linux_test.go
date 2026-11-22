@@ -115,6 +115,13 @@ func TestBrowserIsUnavailableWithoutItsProgramsAndRefusesOtherPeers(t *testing.T
 	if w := browserGet(t, handler, "POST", BrowserStartPath, ""); w.Code != 404 || !strings.Contains(w.Body.String(), "browser_unavailable") {
 		t.Fatalf("start %d %s", w.Code, w.Body)
 	}
+	// The agent learns why, so it tells the person instead of retrying.
+	agent := httptest.NewRecorder()
+	h.agentRoutes()[AgentBrowserPath].ServeHTTP(agent, httptest.NewRequest("GET", "http://unix"+AgentBrowserPath, nil))
+	var status struct{ State, Reason string }
+	if json.Unmarshal(agent.Body.Bytes(), &status) != nil || status.State != "unavailable" || status.Reason != "runtime_not_installed" {
+		t.Fatalf("agent status %s", agent.Body)
+	}
 	_, other, _ := browserTestHost(t, false)
 	if w := browserGet(t, other, "GET", BrowserPath, ""); w.Code != 403 {
 		t.Fatalf("other peer %d", w.Code)

@@ -95,7 +95,12 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 		return nil
 	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
-	return executeUpgrade(ctx, req, d)
+	r, e := executeUpgrade(ctx, req, d)
+	// As in apply: after the upgrade, never inside its downtime or journal.
+	if e == nil && !req.DryRun && (r.Outcome == "upgraded" || r.Outcome == "no_change") {
+		r.ServerBrowser = offerServerBrowser(ctx, req.Progress)
+	}
+	return r, e
 }
 
 func (n *nativeUpgrade) prepare(ctx context.Context, l *Lock, o Operation) error {

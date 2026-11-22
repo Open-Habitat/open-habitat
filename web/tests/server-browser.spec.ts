@@ -70,6 +70,55 @@ test("@server-browser is absent until the experiment is turned on", async ({
   await expect(page.getByTestId("browser-rail-row")).toHaveCount(0);
 });
 
+// A server without TigerVNC and Chrome: the card explains it, a switch that
+// is off cannot be turned on, and one already on can still be turned off.
+test("@server-browser on a server without the browser the card explains and only lets it off", async ({
+  page,
+}) => {
+  await fixture(page, "installed=off");
+  await signIn(page, false);
+  await page.goto("/settings/experimental");
+  const card = page
+    .getByRole("region")
+    .and(page.getByTestId("experimental-remote-browser"));
+  const segment = (value: "on" | "off") =>
+    card
+      .getByTestId("experimental-remote-browser-choice")
+      .getByTestId(`segment-${value}`);
+  await expect(
+    card.getByTestId("experimental-remote-browser-unavailable"),
+  ).toBeVisible();
+  await expect(segment("on")).toBeDisabled();
+  // Other experiments are not affected.
+  await expect(
+    page
+      .getByTestId("experimental-rewind-conversation-choice")
+      .getByTestId("segment-on"),
+  ).toBeEnabled();
+  await fixture(page, "installed=on");
+  await page.reload();
+  await expect(segment("on")).toBeEnabled();
+  await expect(
+    card.getByTestId("experimental-remote-browser-unavailable"),
+  ).toHaveCount(0);
+  await segment("on").click();
+  await expect(segment("on")).toHaveAttribute("aria-pressed", "true");
+  await fixture(page, "installed=off");
+  await page.reload();
+  await expect(
+    card.getByTestId("experimental-remote-browser-unavailable"),
+  ).toBeVisible();
+  await expect(segment("off")).toBeEnabled();
+  await segment("off").click();
+  await expect(segment("off")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("browser-rail-row")).toHaveCount(0);
+  const a11y = await new AxeBuilder({ page })
+    .include('[data-testid="experimental-remote-browser"]')
+    .exclude(".ex-pic")
+    .analyze();
+  expect(a11y.violations).toEqual([]);
+});
+
 test("@server-browser opens from the rail; looking sends no input, control does", async ({
   page,
 }, testInfo) => {

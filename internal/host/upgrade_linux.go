@@ -52,6 +52,8 @@ type UpgradeResult struct {
 	// RuntimePayloads says, per profile, whether staging reused, verified
 	// or published its runtime payload and how long each part took.
 	RuntimePayloads []PayloadTiming `json:"runtime_payloads,omitempty"`
+	// ServerBrowser: as ApplyResult's.
+	ServerBrowser *ServerBrowserOutcome `json:"server_browser,omitempty"`
 }
 
 func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error) {

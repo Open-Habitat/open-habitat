@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/browserhost"
@@ -44,6 +45,10 @@ type fakeBrowser struct {
 }
 
 var fakeBrowsers = map[string]*fakeBrowser{}
+
+// browserRuntimeMissing is /fixture/browser?installed=off: the server has no
+// TigerVNC or Chrome, so every person's browser is unavailable.
+var browserRuntimeMissing atomic.Bool
 
 var fakeWindows = []browserhost.Window{
 	{ID: "0A1B2C3D4E5F60718293A4B5C6D7E8F9", Title: "Vahvista uudelleen", Origin: "https://login.example.invalid", Agent: true},
@@ -186,10 +191,15 @@ func (b *fakeBrowser) serveControl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// fakeBrowserFixture is /fixture/browser: ?agent=on|off, ?request=TEXT
+// fakeBrowserFixture is /fixture/browser: ?installed=on|off, ?agent=on|off, ?request=TEXT
 // (&window=N), ?clear=1, ?pointer=X,Y (fractions, window 0) and ?input=1,
 // which answers the input counts the RFB server has seen.
 func fakeBrowserFixture(w http.ResponseWriter, r *http.Request, user string) {
+	if q := r.URL.Query(); q.Has("installed") {
+		browserRuntimeMissing.Store(q.Get("installed") == "off")
+		w.WriteHeader(204)
+		return
+	}
 	b := fakeBrowsers[user]
 	if b == nil {
 		http.Error(w, "no fake browser", 404)

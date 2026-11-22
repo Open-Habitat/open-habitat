@@ -132,7 +132,9 @@ The packages divide the work as follows.
   downgrades or holds. A non-Ubuntu package from a vendor apt repository that the
   host keeps updated (Google Chrome) is treated the same way: a qualified
   minimum version, updated as the OS delivers it, because a browser that opens
-  the web goes stale within days. Other non-Ubuntu components, archives with no
+  the web goes stale within days. Apply and upgrade add Google's repository
+  only as its own package would, install Chrome best effort after the
+  operation has completed, and never let it block or fail an installation. Other non-Ubuntu components, archives with no
   OS update channel, remain exact pinned archives.
   Release trust is the site's exact manifest digest/version, which the operator
   takes from the SHA-256 GitHub states for the release's manifest asset. The

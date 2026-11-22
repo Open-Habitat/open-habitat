@@ -34,6 +34,16 @@ func TestAgentBrowserRequestShapes(t *testing.T) {
 	}
 }
 
+// A server without the browser's programs is the administrator's matter, not
+// an uncertain native operation the agent should inspect or retry.
+func TestAgentBrowserStartOnAServerWithoutTheBrowser(t *testing.T) {
+	err := agentResponseError("POST", daemon.AgentBrowserStartPath, 404, "browser_unavailable")
+	ce, ok := err.(*cliError)
+	if !ok || ce.code != "browser_unavailable" || ce.exit != 1 {
+		t.Fatalf("%#v", err)
+	}
+}
+
 func TestBrowserHostRoleRefusesRelativePathsAndUnknownFlags(t *testing.T) {
 	for _, args := range [][]string{
 		{"--dir", "rel", "--xvnc", "/x", "--chrome", "/c", "--profile", "/p", "--cache", "/k"},
