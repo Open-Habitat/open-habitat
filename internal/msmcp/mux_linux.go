@@ -70,7 +70,8 @@ type Server struct {
 
 	mu        sync.Mutex
 	closed    bool
-	serving   bool // only this server's scheduler can quiesce its child
+	serving   bool          // only this server's scheduler can quiesce its child
+	served    chan struct{} // closed when serving first becomes true
 	child     *child
 	prev      *child // the last child, until it is reaped
 	queue     []*call
@@ -110,7 +111,7 @@ func NewServer(resolve Resolver, opt Options) *Server {
 	if opt.Log == nil {
 		opt.Log = slog.New(slog.DiscardHandler)
 	}
-	return &Server{resolve: resolve, opt: opt, log: opt.Log, meta: map[string]*meta{}, wake: make(chan struct{}, 1), clients: map[*client]bool{}, done: make(chan struct{})}
+	return &Server{resolve: resolve, opt: opt, log: opt.Log, meta: map[string]*meta{}, wake: make(chan struct{}, 1), clients: map[*client]bool{}, done: make(chan struct{}), served: make(chan struct{})}
 }
 
 // Serve listens on the person's endpoint until ctx ends, then stops the
@@ -139,6 +140,9 @@ func (s *Server) Serve(ctx context.Context, home string) error {
 
 func (s *Server) serveListener(ctx context.Context, ln *net.UnixListener) error {
 	s.mu.Lock()
+	if !s.serving {
+		close(s.served)
+	}
 	s.serving = true
 	s.mu.Unlock()
 	go s.run()
@@ -217,6 +221,13 @@ func (s *Server) Release(account string) {
 		s.stopChild(ch)
 	}
 }
+
+// Serving is closed once this server holds the endpoint and its scheduler
+// runs, so Pause can quiesce the child. Until then Pause refuses: a server
+// still waiting for the endpoint may be a second daemon whose owner's child it
+// cannot stop. A caller that pauses right after starting Serve waits on this
+// first, or its pause meets a server that has not yet begun.
+func (s *Server) Serving() <-chan struct{} { return s.served }
 
 // Pause drains and reaps the native child before a native credential operation.
 // Calls stay queued until resume; no tool call is replayed. The caller must

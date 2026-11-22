@@ -538,7 +538,9 @@ func TestWaitingAccountDoesNotBlockOthers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	c.Start(ctx)
-	defer c.sync.stopAll()
+	// Stop waits for the resume loop and sync clients, which otherwise may
+	// still write into the home while TempDir removes it.
+	defer c.Stop()
 	waitFor(t, "the free account's resume", func() bool {
 		_, ready := (&dropbox{}).SyncCommand(env, "b@example.test")
 		return ready

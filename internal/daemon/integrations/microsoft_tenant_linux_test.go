@@ -218,6 +218,40 @@ func TestMicrosoftDaemonStartFollowsTheTenant(t *testing.T) {
 	}
 }
 
+// Start's alignment pauses the Microsoft slot, which refuses until the slot
+// holds its endpoint. During a restart the previous daemon may still hold
+// it; start waits for the slot instead of deferring the tenant to a later
+// check. The same wait covers a slot that has simply not begun serving yet.
+func TestMicrosoftDaemonStartFollowsTheTenantAfterTheEndpointFrees(t *testing.T) {
+	env := microsoftEnv(t)
+	address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
+	previous := msmcp.NewServer(func(a string) (msmcp.Binding, error) { return microsoftBinding(env, a) }, msmcp.Options{})
+	prevCtx, stopPrevious := context.WithCancel(context.Background())
+	prevDone := make(chan struct{})
+	go func() { defer close(prevDone); _ = previous.Serve(prevCtx, env.Home) }()
+	defer func() { stopPrevious(); <-prevDone }()
+	select {
+	case <-previous.Serving():
+	case <-time.After(5 * time.Second):
+		t.Fatal("previous slot did not serve")
+	}
+	m, _ := tokenEndpoint(t, 200, `{"access_token":"tenant-access","refresh_token":"tenant-refresh","expires_in":3600}`)
+	c := New(env, []Entry{m}, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() { cancel(); c.Stop() }()
+	c.Start(ctx)
+	time.Sleep(200 * time.Millisecond)
+	stopPrevious()
+	<-prevDone
+	deadline := time.Now().Add(startServeWait + 5*time.Second)
+	for m.Misaligned(env, address) {
+		if time.Now().After(deadline) {
+			t.Fatal("start did not follow the tenant once the endpoint freed")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 // An unreachable or overloaded tenant decides nothing: the configs stay and the next check
 // asks again.
 func TestMicrosoftUnreachableTenantIsAskedAgain(t *testing.T) {

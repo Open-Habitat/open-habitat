@@ -678,6 +678,10 @@ func kernelQuota() Room {
 // starts: sync clients for every syncing account, the boot signal and the
 // skill, and the first passes a stop interrupted resume in the background.
 // It stops the sync clients when ctx ends; Stop also waits for the rest.
+// startServeWait bounds how long Start's alignment waits for the Microsoft
+// slot to hold its endpoint; Serve retries a busy endpoint every 5 seconds.
+const startServeWait = 15 * time.Second
+
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
 	c.reconcile()
@@ -685,6 +689,7 @@ func (c *Catalog) Start(ctx context.Context) {
 	c.write.Unlock()
 	ctx, cancel := context.WithCancel(ctx)
 	c.cancelStart = cancel
+	var serving <-chan struct{}
 	// The person's one Microsoft process and its private endpoint (ADR
 	// 0039) live as long as the catalog: every conversation's area relays
 	// reach it, and Stop waits until the process is reaped.
@@ -694,6 +699,7 @@ func (c *Catalog) Start(ctx context.Context) {
 		m.muxMu.Lock()
 		m.mux = srv
 		m.muxMu.Unlock()
+		serving = srv.Serving()
 		// Login cancellation may still remove a newly committed native cache.
 		// Keep the slot's endpoint ownership until all such cleanup has finished;
 		// a closed/non-owning slot cannot safely authorize a cache write.
@@ -715,6 +721,19 @@ func (c *Catalog) Start(ctx context.Context) {
 	c.background.Add(2)
 	go func() {
 		defer c.background.Done()
+		// Align pauses the slot, which refuses until Serve holds the endpoint;
+		// starting before that would defer the start alignment to a later
+		// check. A previous daemon may still hold the endpoint for a moment
+		// during a restart, and Serve retries every few seconds. A second
+		// daemon that never gets it aligns without delaying the rest for long:
+		// its Align is deferred as before.
+		if serving != nil {
+			select {
+			case <-serving:
+			case <-ctx.Done():
+			case <-time.After(startServeWait):
+			}
+		}
 		c.alignAll(ctx)
 		c.resumeInterrupted(ctx, queue)
 		c.recoverMicrosoft(ctx)
