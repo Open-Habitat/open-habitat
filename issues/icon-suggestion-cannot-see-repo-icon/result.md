@@ -33,6 +33,10 @@ Development failures were corrected, not omitted: an unsupported Go regexp repea
 
 Local logs and review/assessment artifacts are retained under `/var/tmp/agent-keep/icon-suggestion-cannot-see-repo-icon/`. No screenshots or captured HTML were committed. These are synthetic same-UID tests, not live-provider behavior, a deployed installation check or distinct-UID qualification. No live installation was changed, no whole browser suite/clean gate was run, and nothing was pushed.
 
+## Rebase verification
+
+Replayed onto `ae56fcc99` after concurrent main-branch work. Only generated schema fingerprints conflicted; regenerated them from the combined schemas. `git range-diff` confirmed no implementation change. Post-rebase daemon checks passed (277 s), web checks passed (255 files, 2155 tests), contracts passed and the same two browser specs passed (3 cases). The earlier nine repeated browser cases and full internal Go race run describe the unchanged icon implementation before that replay.
+
 ## After deployment
 
 Ask for a new icon round in disposable repositories containing a public SVG favicon, an assets PNG logo, a README-labelled local logo and no image. Check that the own logo previews and can be selected, that no-logo defaults do not borrow another workspace's logo, and that explicitly requesting another own workspace's logo still works. Live model wording remains a deployment check, not a claim made by the synthetic model fixture.
