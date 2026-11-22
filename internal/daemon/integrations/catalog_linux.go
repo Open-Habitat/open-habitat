@@ -593,6 +593,7 @@ type Catalog struct {
 	// waits for; cancelStart ends Start's context.
 	background  sync.WaitGroup
 	cancelStart context.CancelFunc
+	muxDone     <-chan struct{} // endpoint ownership lasts through native cleanup
 	sync        *Supervisor
 	relay       relay
 
@@ -693,10 +694,22 @@ func (c *Catalog) Start(ctx context.Context) {
 		m.muxMu.Lock()
 		m.mux = srv
 		m.muxMu.Unlock()
-		c.background.Add(1)
+		// Login cancellation may still remove a newly committed native cache.
+		// Keep the slot's endpoint ownership until all such cleanup has finished;
+		// a closed/non-owning slot cannot safely authorize a cache write.
+		muxCtx, stopMux := context.WithCancel(context.WithoutCancel(ctx))
+		done := make(chan struct{})
+		c.muxDone = done
 		go func() {
-			defer c.background.Done()
-			_ = srv.Serve(ctx, env.Home)
+			defer close(done)
+			_ = srv.Serve(muxCtx, env.Home)
+		}()
+		defer func() {
+			go func() {
+				<-ctx.Done()
+				c.background.Wait()
+				stopMux()
+			}()
 		}()
 	}
 	c.background.Add(2)
@@ -723,6 +736,9 @@ func (c *Catalog) Stop() {
 	}
 	c.shutdown()
 	c.background.Wait()
+	if c.muxDone != nil {
+		<-c.muxDone
+	}
 }
 
 func (c *Catalog) shutdown() {

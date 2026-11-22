@@ -72,7 +72,7 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 	// The real adapter takes the daemon's verify request: an address without
 	// a store is refused before any network, a request it rejects would not be.
 	env.Config.Tools["microsoft-native"] = filepath.Join(runtime, "bin/microsoft-native")
-	if state, _ := microsoftVerify(context.Background(), env, "nobody@example.test"); state != "refused" {
+	if state, _ := microsoftVerify(context.Background(), env, "nobody@example.test", true); state != "refused" {
 		t.Fatal("native verify protocol", state)
 	}
 	env.Config.Tools["microsoft-native"] = adapter

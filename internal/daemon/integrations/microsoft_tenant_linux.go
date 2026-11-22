@@ -241,6 +241,11 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		return ToolFailed
 	}
 	defer m.native.Unlock()
+	resume, err := m.pause(ctx)
+	if err != nil {
+		return ServerUnreachable
+	}
+	defer resume()
 	// A registration of an earlier form (one entry, under whichever name)
 	// becomes the five area entries first, keeping its own native
 	// environment: no sign-in, nothing else changes. It is a step of its
@@ -289,7 +294,8 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		// tenant's current grant decides which tools it now offers; a refused
 		// grant then keeps the Outlook scopes until the next sign-in.
 		if (stale && len(n.clients) == 0) || outdated {
-			switch state, scopes := microsoftVerify(ctx, env, address); state {
+			// Discover first: these obsolete tool scopes are what we are repairing.
+			switch state, scopes := microsoftVerify(ctx, env, address, false); state {
 			case "ok":
 				if outdated && len(scopes) > 0 {
 					allowed = microsoftAllowed(microsoftGranted(scopes))

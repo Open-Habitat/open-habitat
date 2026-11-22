@@ -1,7 +1,7 @@
 // Same-UID private protocol adapter, not a credential broker. The caller owns
 // staging/publication; only the pinned tool's native encrypted stores are written.
 import { AuthError, PublicClientApplication } from '@azure/msal-node';
-import AuthManager from '@softeria/ms-365-mcp-server/dist/auth.js';
+import AuthManager, { resolveAuthScopes } from '@softeria/ms-365-mcp-server/dist/auth.js';
 import { DefaultTokenCacheStorage, wrapCache, unwrapCache } from '@softeria/ms-365-mcp-server/dist/token-cache-storage.js';
 
 export const scopes = ['User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite'];
@@ -74,7 +74,7 @@ function classify(error) {
 // AuthManager and store, so a rotated refresh token is persisted exactly as
 // the tool would, and answers with a fixed code: ok, refused, outside_tenant
 // or unreachable. With ok it also names the scopes of the tenant's answer.
-export async function verifyGrant({client_id, tenant_id, address}, system = {}, graph = fetch) {
+export async function verifyGrant({client_id, tenant_id, address, tool_options}, system = {}, graph = fetch) {
   validate({client_id, tenant_id, address});
   const manager = new AuthManager({
     auth: { clientId: client_id, authority: `https://login.microsoftonline.com/${tenant_id}` },
@@ -90,17 +90,25 @@ export async function verifyGrant({client_id, tenant_id, address}, system = {}, 
     return {state: 'refused'};
   }
   if (!account) return {state: 'refused'};
-  let result;
+  let result, toolResult;
   try {
     // Always asked of the tenant: a cached access token proves nothing about
     // the grant, and after a tenant change it is the previous tenant's.
     result = await manager.msalApp.acquireTokenSilent({account, scopes: granted, forceRefresh: true});
+    // .default discovers the grant, but the running tool requests named scopes.
+    // Prove that acquisition too: the two requests can receive different answers.
+    // Keep the discovery scopes for access reporting, not the narrower tool set.
+    // An alignment probe omits tool_options: it discovers the grant before
+    // repairing an obsolete tool registration, not health for that old surface.
+    toolResult = tool_options
+      ? await manager.msalApp.acquireTokenSilent({account, scopes: resolveAuthScopes(tool_options), forceRefresh: true})
+      : result;
   } catch (error) {
     return {state: classify(error)};
   }
   // As the tool's own check: a token is not a reachable mailbox.
   try {
-    const response = await graph('https://graph.microsoft.com/v1.0/me', {headers: {Authorization: `Bearer ${result.accessToken}`}, signal: AbortSignal.timeout(15000)});
+    const response = await graph('https://graph.microsoft.com/v1.0/me', {headers: {Authorization: `Bearer ${toolResult.accessToken}`}, signal: AbortSignal.timeout(15000)});
     if (!response.ok) return {state: 'unreachable'};
   } catch {
     return {state: 'unreachable'};

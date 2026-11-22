@@ -455,6 +455,82 @@ func TestAccountSwitchDrainsAndReaps(t *testing.T) {
 	}
 }
 
+func TestPauseDrainsAndReapsBeforeNativeCacheWrite(t *testing.T) {
+	h := newHarness(t, Options{})
+	c := h.dial("a@example.test", "mail")
+	c.request(1, "tools/call", map[string]any{"name": "send-mail", "arguments": map[string]any{"tag": "inflight", "delay": 400}})
+	deadline := time.Now().Add(5 * time.Second)
+	for len(h.lines("calls")) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("call never dispatched")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resume, err := h.srv.Pause(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resume()
+	if got := text(t, c.next(time.Second)); got != "a@example.test:send-mail:inflight" {
+		t.Fatal(got)
+	}
+	if h.srv.Running() != 0 {
+		t.Fatal("pause returned before reaping")
+	}
+	c.request(2, "tools/call", map[string]any{"name": "send-mail", "arguments": map[string]any{"tag": "queued"}})
+	c.none(100 * time.Millisecond)
+	if len(h.lines("starts")) != 1 || len(h.lines("calls")) != 1 {
+		t.Fatal("native work admitted during pause")
+	}
+	resume()
+	if got := text(t, c.next(5*time.Second)); got != "a@example.test:send-mail:queued" {
+		t.Fatal(got)
+	}
+	if len(h.lines("starts")) != 2 || len(h.lines("calls")) != 2 || len(h.lines("overlap")) != 0 {
+		t.Fatal("restart overlapped or replayed a call")
+	}
+}
+
+func TestPauseWithoutEndpointOwnershipRefuses(t *testing.T) {
+	s := NewServer(nil, Options{})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if resume, err := s.Pause(ctx); err == nil {
+		resume()
+		t.Fatal("non-serving daemon permitted a native cache write")
+	}
+	if ctx.Err() != nil {
+		t.Fatal("pause waited for a scheduler that never started")
+	}
+}
+
+func TestCancelledPauseReleasesSlot(t *testing.T) {
+	h := newHarness(t, Options{})
+	c := h.dial("a@example.test", "mail")
+	c.request(1, "tools/call", map[string]any{"name": "send-mail", "arguments": map[string]any{"tag": "inflight", "delay": 400}})
+	deadline := time.Now().Add(5 * time.Second)
+	for len(h.lines("calls")) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("call never dispatched")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if resume, err := h.srv.Pause(ctx); err == nil {
+		resume()
+		t.Fatal("canceled pause succeeded")
+	}
+	if got := text(t, c.next(5*time.Second)); got != "a@example.test:send-mail:inflight" {
+		t.Fatal(got)
+	}
+	if got := text(t, c.call(2, "send-mail", map[string]any{"tag": "next"})); got != "a@example.test:send-mail:next" {
+		t.Fatal(got)
+	}
+}
+
 // A native crash fails the call as of unknown outcome and never sends it
 // again; the next call starts a fresh child.
 func TestCrashIsNotReplayed(t *testing.T) {

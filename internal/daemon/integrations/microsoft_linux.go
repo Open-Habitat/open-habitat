@@ -236,6 +236,20 @@ func (m *microsoft) release(address string) {
 	}
 }
 
+// Native verification rotates the same cache that the MCP child uses; reconnect
+// replaces its encryption key too. Stop the child before either writer runs so
+// it cannot spend an old refresh token or overwrite the newly published cache.
+// Callers hold native across the operation and resume.
+func (m *microsoft) pause(ctx context.Context) (func(), error) {
+	m.muxMu.Lock()
+	mux := m.mux
+	m.muxMu.Unlock()
+	if mux == nil {
+		return func() {}, nil
+	}
+	return mux.Pause(ctx)
+}
+
 func (*microsoft) Provider() Provider { return Microsoft }
 func (*microsoft) Login() LoginKind   { return DeviceCode }
 func (*microsoft) Services() []string {
@@ -902,6 +916,11 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	resume, err := l.entry.pause(ctx)
+	if err != nil {
+		return ToolFailed
+	}
+	defer resume()
 	previous, published := false, false
 	oldDir, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir+"/"+address)...)
 	if err == nil {
@@ -996,6 +1015,11 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	if !ValidAddress(address) {
 		return ToolFailed
 	}
+	resume, err := m.pause(ctx)
+	if err != nil {
+		return ToolFailed
+	}
+	defer resume()
 	// The entries go first, so the daemon's endpoint refuses the account
 	// from now on; then the shared Microsoft process lets go of it before
 	// its native cache is deleted.
@@ -1059,7 +1083,14 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	go func() {
 		defer probes.Done()
 		var state ServiceState
-		state, granted = microsoftMCPState(ctx, env, address)
+		resume, err := m.pause(ctx)
+		if err != nil {
+			// Busy or not serving is not a response from the tenant.
+			state = StateUnknown
+		} else {
+			state, granted = microsoftMCPState(ctx, env, address)
+			resume()
+		}
 		for i := 2; i < len(out); i++ {
 			out[i].State = state
 		}
@@ -1140,7 +1171,7 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	return kept, grant
 }
 func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceState, map[string]bool) {
-	state, scopes := microsoftVerify(ctx, env, address)
+	state, scopes := microsoftVerify(ctx, env, address, true)
 	switch state {
 	case "ok":
 		// The tenant's answer names the grant only while it accepts it.
@@ -1163,7 +1194,7 @@ func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceSta
 // the adapter decides from MSAL's error codes and answers ok, refused,
 // outside_tenant or unreachable, and with ok the scopes the tenant's token
 // response named. It returns "" when the app or tools are not configured.
-func microsoftVerify(ctx context.Context, env Env, address string) (string, []string) {
+func microsoftVerify(ctx context.Context, env Env, address string, checkTools bool) (string, []string) {
 	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return "", nil
@@ -1174,13 +1205,28 @@ func microsoftVerify(ctx context.Context, env Env, address string) (string, []st
 		return "", nil
 	}
 	cmd.Path, cmd.Args = adapter, []string{"verify"}
-	payload, _ := json.Marshal(map[string]string{"client_id": app.ClientID, "tenant_id": app.TenantID, "address": address})
+	n, err := microsoftReadNative(env, address)
+	if err != nil {
+		return "unreachable", nil
+	}
+	allowed := n.mcpAllowed
+	if allowed == "" {
+		allowed = microsoftMCPScopes
+	}
+	request := map[string]any{"client_id": app.ClientID, "tenant_id": app.TenantID, "address": address}
+	if checkTools {
+		request["tool_options"] = map[string]any{"orgMode": true, "enabledTools": microsoftMCPTools, "allowedScopes": allowed}
+	}
+	payload, _ := json.Marshal(request)
 	data, err := env.run(ctx, cmd, bytes.NewReader(payload))
 	var result struct {
 		State  string   `json:"state"`
 		Scopes []string `json:"scopes"`
 	}
 	if err != nil || json.Unmarshal(data, &result) != nil {
+		if ctx.Err() != nil {
+			return "", nil // caller's budget expired; no provider conclusion
+		}
 		return "unreachable", nil
 	}
 	switch result.State {

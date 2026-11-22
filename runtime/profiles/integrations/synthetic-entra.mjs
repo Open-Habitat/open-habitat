@@ -32,6 +32,8 @@ export function network(tenant, state = {polls: 0}) {
       if (named.some(scope => !consented.includes(scope.replace('https://graph.microsoft.com/', '')))) return {headers: {}, status: 400, body: {error: 'invalid_grant', error_description: 'synthetic consent', error_codes: [65001]}};
       if (state.unavailable) return {headers: {}, status: 503, body: {error: 'temporarily_unavailable', error_description: state.description ?? 'synthetic outage'}};
       if (state.refuse) return {headers: {}, status: 400, body: {error: state.refuse === true ? 'invalid_grant' : state.refuse, error_description: 'synthetic refusal', error_codes: state.codes ?? [70008]}};
+      if (state.expectedRefresh && form.get('refresh_token') !== state.expectedRefresh) return {headers: {}, status: 400, body: {error: 'invalid_grant', error_description: 'synthetic stale refresh'}};
+      if (state.expectedRefresh) state.expectedRefresh = 'synthetic-refresh-' + state.polls;
       const now = Math.floor(Date.now()/1000);
       return {headers: {}, status: 200, body: {
         token_type: 'Bearer', scope: ['openid', 'profile', 'offline_access', ...scopes.filter(scope => scope !== state.omitScope).map(scope => 'https://graph.microsoft.com/' + scope)].join(' '), expires_in: state.expiresIn ?? 1,

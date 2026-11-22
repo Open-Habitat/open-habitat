@@ -70,10 +70,12 @@ type Server struct {
 
 	mu        sync.Mutex
 	closed    bool
+	serving   bool // only this server's scheduler can quiesce its child
 	child     *child
 	prev      *child // the last child, until it is reaped
 	queue     []*call
 	switching bool
+	paused    chan struct{}    // closed by the scheduler only after the child is reaped
 	meta      map[string]*meta // by binding key; what the server offers under it
 	nextID    int64
 	nextTok   int64
@@ -136,6 +138,9 @@ func (s *Server) Serve(ctx context.Context, home string) error {
 }
 
 func (s *Server) serveListener(ctx context.Context, ln *net.UnixListener) error {
+	s.mu.Lock()
+	s.serving = true
+	s.mu.Unlock()
 	go s.run()
 	stop := context.AfterFunc(ctx, func() { ln.Close() })
 	defer stop()
@@ -210,6 +215,42 @@ func (s *Server) Release(account string) {
 	}
 	if ch != nil && ch.account == account {
 		s.stopChild(ch)
+	}
+}
+
+// Pause drains and reaps the native child before a native credential operation.
+// Calls stay queued until resume; no tool call is replayed. The caller must
+// serialize pauses and always resume, including when its operation fails.
+func (s *Server) Pause(ctx context.Context) (func(), error) {
+	s.mu.Lock()
+	// A second daemon waiting for the endpoint cannot stop its owner's child.
+	// Refuse rather than hang forever or let a native writer bypass that owner.
+	if !s.serving || s.closed || s.paused != nil {
+		s.mu.Unlock()
+		return nil, errors.New("microsoft slot unavailable")
+	}
+	ready := make(chan struct{})
+	s.paused = ready
+	s.mu.Unlock()
+	s.signal()
+	var once sync.Once
+	resume := func() {
+		once.Do(func() {
+			s.mu.Lock()
+			s.paused = nil
+			s.mu.Unlock()
+			s.signal()
+		})
+	}
+	select {
+	case <-ctx.Done():
+		resume()
+		return nil, ctx.Err()
+	case <-s.done:
+		resume()
+		return nil, errors.New("microsoft slot stopped")
+	case <-ready:
+		return resume, nil
 	}
 }
 
@@ -337,6 +378,37 @@ func (s *Server) run() {
 			}
 			return
 		}
+		if ready := s.paused; ready != nil {
+			s.switching = true
+			if ch := s.child; ch != nil {
+				if ch.drainBy.IsZero() {
+					ch.drainBy = time.Now().Add(s.opt.Drain)
+				}
+				if left := time.Until(ch.drainBy); len(ch.inflight) > 0 && !ch.stopping && left > 0 {
+					s.mu.Unlock()
+					select {
+					case <-s.wake:
+					case <-time.After(left):
+					}
+					continue
+				}
+				s.mu.Unlock()
+				s.stopChild(ch)
+				continue
+			}
+			prev := s.prev
+			s.mu.Unlock()
+			if prev != nil {
+				<-prev.reaped
+			}
+			select {
+			case <-ready:
+			default:
+				close(ready)
+			}
+			<-s.wake
+			continue
+		}
 		s.pruneQueue()
 		if len(s.queue) == 0 {
 			var idle <-chan time.Time
@@ -367,7 +439,7 @@ func (s *Server) run() {
 		s.mu.Unlock()
 		fresh, err := s.resolve(head.binding.Account)
 		s.mu.Lock()
-		if s.closed || len(s.queue) == 0 || s.queue[0] != head {
+		if s.closed || s.paused != nil || len(s.queue) == 0 || s.queue[0] != head {
 			s.mu.Unlock()
 			continue
 		}
@@ -819,7 +891,7 @@ func (s *Server) submit(c *call) {
 		c.c.finish(c.id)
 		return
 	}
-	if ch := s.child; ch != nil && ch.ready && !ch.stopping && !s.switching && len(s.queue) == 0 && ch.binding.Key == c.binding.Key {
+	if ch := s.child; ch != nil && ch.ready && !ch.stopping && s.paused == nil && !s.switching && len(s.queue) == 0 && ch.binding.Key == c.binding.Key {
 		s.dispatchLocked(ch, c)
 		s.mu.Unlock()
 		return

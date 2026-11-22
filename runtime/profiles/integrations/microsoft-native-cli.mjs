@@ -11,7 +11,13 @@ try {
   }
   if (process.argv.length > 2 && !verify) throw Error('invalid_input');
   const request = JSON.parse(input);
-  if (Object.keys(request).sort().join(',') !== (verify ? 'address,client_id,tenant_id' : 'address,client_id,refresh_token,tenant_id')) throw Error('invalid_input');
+  const keys = Object.keys(request).filter(key => !(verify && key === 'tool_options')).sort().join(',');
+  if (keys !== (verify ? 'address,client_id,tenant_id' : 'address,client_id,refresh_token,tenant_id')) throw Error('invalid_input');
+  if (verify && request.tool_options !== undefined) {
+    const options = request.tool_options;
+    if (!options || typeof options !== 'object' || Object.keys(options).sort().join(',') !== 'allowedScopes,enabledTools,orgMode' ||
+        typeof options.orgMode !== 'boolean' || typeof options.enabledTools !== 'string' || typeof options.allowedScopes !== 'string') throw Error('invalid_input');
+  }
   if (verify) {
     const answer = await verifyGrant(request);
     // The tool's logger may hold the event loop open; exit once written.
