@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "./history";
-import { TurnChangesSource } from "./TurnChangesSource";
+import { TurnChangesRoot, TurnChangesSource } from "./TurnChangesSource";
 
 type Read = (
   agentId: string,
@@ -136,6 +136,62 @@ it("a turn of commands only shows nothing when its calls cannot be read", async 
   await waitFor(() => expect(reads.calls.length).toBeGreaterThan(0));
   await new Promise((r) => setTimeout(r, 20));
   expect(container.textContent).toBe("");
+});
+
+it("shows a native batch edit beside shell scripts, but does not invent changes from a script-only turn", async () => {
+  const t = editingTurn("edit");
+  const script = editingTurn("bash");
+  const command =
+    "cd /workspace/demo && python3 - <<'PY'\n" +
+    "p='notes.md'; s=open(p).read(); open(p,'w').write(s.replace('old','new'))\nPY";
+  // Native Claude-bridge/Pi shape: thinking precedes an edits[] call,
+  // with a shell command in the same assistant entry and a text-only result.
+  t.entries[0].blocks = [
+    { type: "thinking", text: "Inspect the file." },
+    ...(t.entries[0].blocks ?? []),
+    ...(script.entries[0].blocks ?? []),
+  ];
+  const results = new Map([...t.results, ...script.results]);
+  reads.read = async (_a, _r, entry, index) =>
+    entry === t.entries[0].entry_key && index === 1
+      ? JSON.stringify({
+          path: "/workspace/demo/notes.md",
+          edits: [{ oldText: "old", newText: "new" }],
+        })
+      : JSON.stringify({ command });
+  const { rerender } = render(
+    <TurnChangesRoot.Provider value="/workspace/demo">
+      <TurnChangesSource
+        entries={t.entries}
+        results={results}
+        agentId={agent}
+        revision="now"
+      />
+    </TurnChangesRoot.Provider>,
+  );
+  expect(await screen.findByTestId("turn-changes")).toBeTruthy();
+  fireEvent.click(screen.getByTestId("turn-changes-toggle"));
+  expect(screen.getAllByTestId("turn-changes-file")).toHaveLength(1);
+  expect(screen.getByTestId("turn-changes-file").textContent).toContain(
+    "notes.md",
+  );
+  rerender(
+    <TurnChangesRoot.Provider value="/workspace/demo">
+      <TurnChangesSource
+        key="script-only"
+        entries={script.entries}
+        results={script.results}
+        agentId={agent}
+        revision="now"
+      />
+    </TurnChangesRoot.Provider>,
+  );
+  await act(async () => {});
+  expect(reads.calls.some((c) => c[2] === script.entries[0].entry_key)).toBe(
+    true,
+  );
+  expect(screen.queryByTestId("turn-changes")).toBeNull();
+  expect(screen.queryByTestId("turn-changes-unread")).toBeNull();
 });
 
 it("measures nearness from the conversation's scroll area, not the page", async () => {
