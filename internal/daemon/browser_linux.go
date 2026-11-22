@@ -668,6 +668,7 @@ func (h *browserHost) agentRoutes() map[string]http.Handler {
 		v := h.view(r.Context())
 		out := map[string]any{"schema_version": 1, "state": v.State, "agent_connected": v.AgentConnected, "windows": v.Windows,
 			"skill_command":              "open-habitat skill print browser",
+			"feature_enabled":            h.feature(),
 			"default_download_directory": browserhost.DefaultDownloadDirectory(filepath.Join(h.cfg.Home, ".local", "share", "open-habitat", "browser", "profile"))}
 		if v.State == "unavailable" {
 			out["reason"] = "runtime_not_installed"

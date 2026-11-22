@@ -104,6 +104,7 @@ func readBrowserInput(p string) ([]byte, error) {
 }
 
 type browserConnectionInfo struct {
+	Enabled   bool   `json:"feature_enabled"`
 	State     string `json:"state"`
 	Control   string `json:"control"`
 	Socket    string `json:"socket_path"`
@@ -112,6 +113,9 @@ type browserConnectionInfo struct {
 }
 
 func executeBrowserAction(a browserAction, st browserConnectionInfo) (any, error) {
+	if !st.Enabled {
+		return nil, &cliError{code: "browser_feature_off", message: "remote-browser is off; ask the person to enable it before using their browser", exit: 1}
+	}
 	if st.State != "running" {
 		return nil, &cliError{code: "browser_not_running", message: "read browser status; enable remote-browser and start the browser before using it", exit: 1}
 	}

@@ -256,6 +256,7 @@ func TestAgentBrowserRoutesGiveTheAddressAndRespectTheSwitch(t *testing.T) {
 	var st struct {
 		State        string `json:"state"`
 		CDPEndpoint  string `json:"cdp_endpoint"`
+		Enabled      bool   `json:"feature_enabled"`
 		SocketPath   string `json:"socket_path"`
 		WSPath       string `json:"ws_path"`
 		SkillCommand string `json:"skill_command"`
@@ -264,10 +265,14 @@ func TestAgentBrowserRoutesGiveTheAddressAndRespectTheSwitch(t *testing.T) {
 	if json.Unmarshal(w.Body.Bytes(), &st) != nil || st.State != "running" || st.CDPEndpoint != "ws+unix://"+filepath.Join(dir, "cdp.sock")+":/devtools/browser" {
 		t.Fatalf("agent status %s", w.Body)
 	}
-	if st.SocketPath != filepath.Join(dir, "cdp.sock") || st.WSPath != "/devtools/browser" || st.SkillCommand != "open-habitat skill print browser" || st.Downloads != filepath.Join(h.cfg.Home, ".local/share/open-habitat/browser/profile/Downloads") {
+	if !st.Enabled || st.SocketPath != filepath.Join(dir, "cdp.sock") || st.WSPath != "/devtools/browser" || st.SkillCommand != "open-habitat skill print browser" || st.Downloads != filepath.Join(h.cfg.Home, ".local/share/open-habitat/browser/profile/Downloads") {
 		t.Fatalf("agent tool discovery %s", w.Body)
 	}
 	h.feature = func() bool { return false }
+	w = call(AgentBrowserPath, "GET", "")
+	if json.Unmarshal(w.Body.Bytes(), &st) != nil || st.Enabled {
+		t.Fatalf("disabled browser feature still offered: %s", w.Body)
+	}
 	if w := call(AgentBrowserStartPath, "POST", ""); w.Code != 409 || !strings.Contains(w.Body.String(), "browser_feature_off") {
 		t.Fatalf("start with the switch off: %d %s", w.Code, w.Body)
 	}

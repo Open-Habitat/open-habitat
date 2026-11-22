@@ -335,6 +335,20 @@ Regression checks: `python3 scripts/test-browser-hosts.py`,
 The browser cases kill a launcher/host after the real controller starts a
 synthetic Pi and require both processes to disappear within five seconds.
 
+### Native server-browser agent commands
+
+`OH_BROWSER_ACTION_CHROME=/opt/google/chrome/google-chrome
+./scripts/test-focused.sh --area go --go-package ./internal/cli` opts into the
+native CDP command fixture. It runs sandboxed headless Chrome in a disposable
+profile against a synthetic localhost site, through the production browser
+host and CLI action implementation. It covers load/redirect waits, sign-in
+cookies, original multichunk download bytes, forms, screenshots and last-tab
+protection. Without the variable the test skips. Use an outer `timeout` and
+private scratch as above. A synthetic display stands in for VNC: this is not
+viewer, installed systemd socket, real-account or distinct-UID evidence. If the
+host cannot run Chrome's sandbox, run the compiled test on a qualified Linux
+host; do not disable the sandbox to claim native acceptance.
+
 ### Inspect Playwright traces
 
 Record a trace for a focused run with Playwright's `--trace on` (including lab

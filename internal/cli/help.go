@@ -257,11 +257,32 @@ func commandHelp(args []string) (any, error) {
 			if f == "--login" && key == "admin access lookup" {
 				flag["description"] = "Required GitHub login to resolve to its numeric id; read-only"
 			}
+			if strings.HasPrefix(key, "agent browser ") {
+				switch f {
+				case "--tab":
+					flag["description"] = "Explicit page target id from goto/status; required except for goto, which opens an own tab by default"
+				case "--name":
+					flag["description"] = "Unused filename (not a path), up to 200 bytes, in status.default_download_directory; never overwrites"
+				case "--selector":
+					flag["description"] = "CSS selector matching exactly one element; at most 4096 bytes"
+				case "--text-file":
+					flag["description"] = "UTF-8 text file or - for stdin, at most 64 KiB; used verbatim including trailing newlines; never submits"
+				case "--timeout-seconds":
+					flag["description"] = "Whole CDP operation deadline, 1–120 seconds; an expired action may have acted, never replay automatically"
+					flag["default"] = 30
+				case "--dry-run":
+					flag["description"] = "Refused as dry_run_unsupported: browser actions cannot truthfully be previewed"
+				}
+			}
 			flags = append(flags, flag)
 		}
 	}
 	arguments := []any{}
 	switch key {
+	case "agent browser goto", "agent browser download":
+		arguments = append(arguments, map[string]any{"name": "url", "required": true, "description": "Absolute HTTP(S) URL without embedded credentials; before flags"})
+	case "agent browser eval":
+		arguments = append(arguments, map[string]any{"name": "javascript", "required": true, "description": "JavaScript expression (up to 64 KiB) before flags; awaited if a Promise; same ask-first rule as clicks"})
 	case "agent experimental update":
 		arguments = append(arguments, map[string]any{"name": "id", "required": true, "description": "Exact experimental feature id from agent experimental list"})
 	case "host operation show":
@@ -271,7 +292,7 @@ func commandHelp(args []string) (any, error) {
 	case "gitea git-credential", "gitlab git-credential":
 		arguments = append(arguments, map[string]any{"name": "operation", "required": true, "possible_values": []string{"get", "store", "erase"}, "description": "Appended by Git; request attributes arrive on stdin"})
 	case "skill print", "skill install":
-		arguments = append(arguments, map[string]any{"name": "name", "required": true, "possible_values": []string{"operator", "agent"}})
+		arguments = append(arguments, map[string]any{"name": "name", "required": true, "possible_values": []string{"operator", "agent", "browser"}})
 	case "admin role update", "admin storage update", "revoke subject":
 		arguments = append(arguments, map[string]any{"name": "subject", "required": true, "description": "Canonical positive decimal GitHub subject"})
 	}

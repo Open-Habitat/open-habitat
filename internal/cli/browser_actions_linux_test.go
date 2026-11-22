@@ -39,6 +39,22 @@ func TestBrowserActionValidationBeforeConnection(t *testing.T) {
 	}
 }
 
+func TestBrowserActionsRespectFeatureAndPersonControl(t *testing.T) {
+	for _, tc := range []struct {
+		st   browserConnectionInfo
+		code string
+	}{
+		{browserConnectionInfo{State: "running", Control: "agent"}, "browser_feature_off"},
+		{browserConnectionInfo{Enabled: true, State: "running", Control: "person"}, "browser_person_control"},
+	} {
+		_, err := executeBrowserAction(browserAction{verb: "tabs"}, tc.st)
+		var cli *cliError
+		if !errors.As(err, &cli) || cli.code != tc.code {
+			t.Fatalf("got %v, want %s before any connection", err, tc.code)
+		}
+	}
+}
+
 func TestBrowserFilesNeverOverwrite(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := saveBrowserFile(dir, "original.pdf", []byte("original")); err != nil {
@@ -109,7 +125,7 @@ func TestBrowserActionsNative(t *testing.T) {
 			t.Error("browser did not stop")
 		}
 	}()
-	st := browserConnectionInfo{State: "running", Control: "agent", Socket: filepath.Join(dir, browserhost.CDPSocket), Path: "/devtools/browser", Downloads: filepath.Join(root, "profile", "Downloads")}
+	st := browserConnectionInfo{Enabled: true, State: "running", Control: "agent", Socket: filepath.Join(dir, browserhost.CDPSocket), Path: "/devtools/browser", Downloads: filepath.Join(root, "profile", "Downloads")}
 	// Readiness polling observes a socket, never substitutes for navigation load.
 	for {
 		if _, err := os.Stat(st.Socket); err == nil {

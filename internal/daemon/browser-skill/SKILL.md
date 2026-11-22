@@ -24,7 +24,9 @@ open-habitat agent browser start --json   # only if stopped
 
 Commands return the normal CLI envelope; browser fields are in `data.result`.
 `skill_command` points back to this guidance. The experimental `remote-browser`
-switch must be on. If unavailable, tell the person rather than installing tools.
+switch must be on (`feature_enabled: true`); commands refuse when it is off,
+even if a browser was left running. If unavailable, tell the person rather
+than installing tools.
 
 `windows` (`id`, `title`, `origin`, `agent`) hints at what the person was just
 looking at: a good starting point for a vague request. `agent: true` marks the
