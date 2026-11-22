@@ -136,7 +136,7 @@ func TestLaunchContextHelperRecipe(t *testing.T) {
 	if !strings.HasPrefix(got, hostContext) || !strings.Contains(got, "\n## Helpers\n") {
 		t.Fatal("helper recipe missing for a new account")
 	}
-	for _, want := range []string{"--resident --name", "resident_name_in_use", "48 bytes", "round_reported: true", "taskfleet run interrupt <name>", "round_interrupted: true", "taskfleet run land <run-id>", "taskfleet run message <run-id>", "taskfleet run merge <run-id>", "$ENV.TASKFLEET_CREATOR_SESSION", "archives this conversation"} {
+	for _, want := range []string{"--resident --name", "resident_name_in_use", "48 bytes", "round_reported: true", "taskfleet run interrupt <name>", "round_interrupted: true", "taskfleet run land <run-id>", "taskfleet run message <run-id>", "taskfleet run merge <run-id>", "taskfleet run list --creator-session current --json", "archives this conversation"} {
 		if !strings.Contains(helpersContext, want) {
 			t.Errorf("helper recipe lacks %q", want)
 		}

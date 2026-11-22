@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/agent-instructions-use-missing-jq
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Agent system instructions tell the agent to use jq, which the installation lacks

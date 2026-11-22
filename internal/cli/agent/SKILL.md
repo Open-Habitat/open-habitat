@@ -276,7 +276,7 @@ of terminal-created history. Unavailable history or archive data, or failed/part
 workspace discovery, fails explicitly, not as a shortened list. Reading starts no Pi.
 Find a named target without reading session files, for example:
 
-    open-habitat agent conversation list --json | jq '.data.result.sessions[] | select(.title == "Planning")'
+    open-habitat agent conversation list --json | python3 -c 'import json, sys; sys.stdout.writelines(json.dumps(s) + "\n" for s in json.load(sys.stdin)["data"]["result"]["sessions"] if s.get("title") == "Planning")'
 
 Titles are not unique identifiers: inspect matches and use their `agent_id`. Use
 `conversation show --conversation pi:UUID` for a held handle's full status, queues
@@ -561,7 +561,7 @@ Prefer `history list --conversation pi:UUID --output history.jsonl` for a large
 history. The CLI walks native `before` boundaries for you. Each JSONL record is
 one bounded native response, retaining revision, entries and completeness. Pages
 are newest first; entries within a page retain native chronological order.
-For example, `jq -c '.entries[] | select(.kind == "user")' history.jsonl`
+For example, `python3 -c 'import json, sys; sys.stdout.writelines(json.dumps(e) + "\n" for line in open("history.jsonl") for e in json.loads(line)["entries"] if e.get("kind") == "user")'`
 selects user entries. A changing revision, missing boundary or incomplete native
 tail aborts the export and removes the incomplete file. Exported history is the
 current native branch, not all abandoned branches or raw provider metadata.
@@ -574,7 +574,7 @@ zero-based block index and its native revision explicitly:
 
 The export walks bounded chunks automatically, preserving byte/base64 offsets,
 media type and completeness in each record. For text use
-`jq -j '.chunk.text // empty' block.jsonl`; image chunks contain base64 `data`
+`python3 -c 'import json, sys; sys.stdout.writelines(json.loads(line).get("chunk", {}).get("text") or "" for line in open("block.jsonl"))'`; image chunks contain base64 `data`
 instead. Without `--output` it returns only one bounded chunk; `--offset` starts
 at an explicit native offset. A changed revision refuses content rather than
 selecting a different entry. System/hidden messages, unknown metadata and unsafe

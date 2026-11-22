@@ -46,10 +46,11 @@ Check the interrupt reply for the worker's exit before sending new work. Send
 the revised task with `taskfleet run message <run-id> --body-file message.md`
 to resume the same helper. An interruption is not a round report to land.
 
-This conversation's own helpers are those it created, in any repository:
+List this conversation's own runs in any repository; entries with a non-null
+`resident` are its named helpers:
 
 ```sh
-taskfleet run list --json | jq '.data.runs[] | select(.resident != null and "pi:\(.created_by_session.session_id)" == $ENV.TASKFLEET_CREATOR_SESSION) | {run_id, status, resident}'
+taskfleet run list --creator-session current --json
 ```
 
 Helpers created by another conversation are not yours to manage or report.
