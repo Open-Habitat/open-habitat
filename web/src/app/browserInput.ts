@@ -1,3 +1,4 @@
+import keysyms from "./browserKeysyms";
 import type { BrowserStatus } from "./serverBrowser";
 
 // The pure part of the server browser viewer's input handling
@@ -39,8 +40,8 @@ const named: Record<string, number> = {
   ArrowDown: XK.Down,
 };
 
-/** The keysym of one character: Latin-1 is its own keysym, the rest of
- * Unicode is 0x01000000 + code point, which Xvnc maps to a key on demand.
+/** Use the same canonical X11 symbols as noVNC's keyboard and the host's
+ * startup keymap (older characters have legacy, not Unicode, keysyms).
  * Control characters have none. */
 export function keysymOfChar(ch: string): number | undefined {
   const cp = ch.codePointAt(0);
@@ -48,8 +49,7 @@ export function keysymOfChar(ch: string): number | undefined {
   if (ch === "\n") return XK.Return;
   if (ch === "\t") return XK.Tab;
   if (cp < 0x20 || (cp >= 0x7f && cp < 0xa0)) return undefined;
-  if (cp <= 0xff) return cp;
-  return 0x01000000 + cp;
+  return keysyms.lookup(cp);
 }
 
 /** The keysym of a KeyboardEvent's `key`, for the few keys the viewer
@@ -67,10 +67,8 @@ export const pasteLimit = 64 * 1024;
 /** The keysyms that type `text`, or why it cannot be typed. Carriage
  * returns are dropped so a pasted Windows line ending is one Enter.
  *
- * Only what the remote US keyboard has can be typed: printable ASCII, Enter
- * and Tab. Xvnc maps any other keysym to a spare key on demand, but Chrome
- * keeps the keyboard map it started with, so on a real host the character
- * never arrives. Such text goes by paste instead. */
+ * The host preloads Latin-1, Latin Extended A/B and the euro sign before
+ * Chrome starts. Other scripts and combining marks still need paste. */
 export function keystrokes(
   text: string,
 ):
@@ -83,7 +81,8 @@ export function keystrokes(
   let enters = 0;
   for (const ch of chars) {
     const k = keysymOfChar(ch);
-    if (k === undefined || (k > 0x7e && k !== XK.Return && k !== XK.Tab))
+    const cp = ch.codePointAt(0);
+    if (k === undefined || cp === undefined || (cp > 0x24f && cp !== 0x20ac))
       return { ok: false, why: "unsupported" };
     if (k === XK.Return) enters++;
     keysyms.push(k);

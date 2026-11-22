@@ -6,6 +6,18 @@ export default defineConfig(({ command }) => {
     throw new Error("Synthetic demo cannot be built as a production package");
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        // noVNC exports only RFB; share its pinned Unicode-to-X11 table so
+        // typed text and its keyboard use identical legacy keysyms.
+        "@novnc-keysyms": fileURLToPath(
+          new URL(
+            "./node_modules/@novnc/novnc/core/input/keysymdef.js",
+            import.meta.url,
+          ),
+        ),
+      },
+    },
     // Do not embed dev-only rehearsal source in production source maps.
     build: { sourcemap: false },
     server: {

@@ -21,11 +21,13 @@ const key = (
 ) => ({ key: k, code, ctrlKey: false, metaKey: false, altKey: false, ...mods });
 
 describe("keysyms", () => {
-  it("are Latin-1 code points and Unicode keysyms beyond", () => {
+  it("use canonical legacy keysyms before falling back to Unicode", () => {
     // X11 keysym values (keysymdef.h): an external contract.
     expect(keysymOfChar("a")).toBe(0x61);
     expect(keysymOfChar("ä")).toBe(0xe4);
-    expect(keysymOfChar("€")).toBe(0x10020ac);
+    expect(keysymOfChar("€")).toBe(0x20ac);
+    expect(keysymOfChar("ą")).toBe(0x1b1);
+    expect(keysymOfChar("ǒ")).toBe(0x10001d2);
     expect(keysymOfChar("😀")).toBe(0x101f600);
     expect(keysymOfChar("\n")).toBe(0xff0d);
     expect(keysymOfChar("\u0007")).toBeUndefined();
@@ -41,9 +43,14 @@ describe("keysyms", () => {
       keysyms: [0x70, 0x41, XK.Return, 0x73, 0x7e, XK.Tab],
       enters: 1,
     });
-    // Only the remote US keyboard's characters arrive as keystrokes.
-    expect(keystrokes("pä")).toEqual({ ok: false, why: "unsupported" });
-    expect(keystrokes("€")).toEqual({ ok: false, why: "unsupported" });
+    expect(keystrokes("äöå€@Łœǿ")).toEqual({
+      ok: true,
+      keysyms: [0xe4, 0xf6, 0xe5, 0x20ac, 0x40, 0x1a3, 0x13bd, 0x10001ff],
+      enters: 0,
+    });
+    for (const text of ["😀", "e\u0301", "Ж", "\u0250"]) {
+      expect(keystrokes(text)).toEqual({ ok: false, why: "unsupported" });
+    }
     expect(keystrokes("")).toEqual({ ok: false, why: "empty" });
     expect(keystrokes("x".repeat(typeLimit + 1))).toEqual({
       ok: false,

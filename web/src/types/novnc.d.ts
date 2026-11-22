@@ -1,5 +1,10 @@
 // The part of noVNC's RFB class the browser viewer uses (noVNC ships no
 // TypeScript types).
+declare module "@novnc-keysyms" {
+  const keysyms: { lookup(codepoint: number): number };
+  export default keysyms;
+}
+
 declare module "@novnc/novnc" {
   export default class RFB extends EventTarget {
     constructor(

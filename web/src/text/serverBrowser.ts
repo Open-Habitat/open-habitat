@@ -107,7 +107,7 @@ const fi = {
       "Selain ei antanut liittää suoraan kuvaan. Liitä tekstikenttään ja lähetä.",
     tooLong: "Teksti on liian pitkä lähetettäväksi.",
     unsupported:
-      "Näppäilyinä voi kirjoittaa vain kirjaimet a–z, numerot ja tavalliset välimerkit. Käytä Liitä sivulle.",
+      "Tekstissä on merkkejä, joita ei voi kirjoittaa näppäilyinä, kuten emoji tai yhdistyvä tarke. Mitään ei lähetetty. Tavalliselle tekstille voit käyttää Liitä sivulle.",
     empty: "Kirjoita tai liitä ensin teksti.",
     copiedLocal: "Kopioitu etäsivulta koneellesi.",
     copyBlocked:
@@ -232,7 +232,7 @@ export const serverBrowserText = catalog(fi, {
       "Your browser did not allow pasting straight into the picture. Paste into the text field and send.",
     tooLong: "The text is too long to send.",
     unsupported:
-      "Only letters a–z, digits and common punctuation can be typed as keystrokes. Use Paste into page.",
+      "The text contains characters that cannot be typed as keystrokes, such as an emoji or a combining accent. Nothing was sent. For ordinary text, you can use Paste into page.",
     empty: "Type or paste some text first.",
     copiedLocal: "Copied from the remote page to your computer.",
     copyBlocked:

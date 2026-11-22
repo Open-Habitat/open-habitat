@@ -349,6 +349,23 @@ viewer, installed systemd socket, real-account or distinct-UID evidence. If the
 host cannot run Chrome's sandbox, run the compiled test on a qualified Linux
 host; do not disable the sandbox to claim native acceptance.
 
+### Native server-browser keyboard
+
+`BROWSER_HOST_REAL_BROWSER=/usr/bin/Xtigervnc:/path/to/chrome
+OH_BROWSER_WORKERS=1 ./scripts/test-focused.sh --area browser
+--spec server-browser-keyboard-native.spec.ts` runs the production viewer and
+browser host against real Xvnc and Chromium, in disposable synthetic profiles.
+The host needs `xkbcomp` and XKB data (already dependencies of TigerVNC).
+Without the variable this spec skips; the ordinary server-browser spec uses a
+synthetic RFB peer and cannot prove Chrome's keyboard mapping.
+
+The native case checks Finnish canvas input (including AltGr), password input
+through the clipboard-free keystroke field, the shared keysym lookup, and the
+complete supported Latin repertoire with Caps Lock off and on. It does not
+prove physical keyboards, IMEs, other client browsers, installed-host isolation
+or Chrome's sandbox. A sandbox-disabled Chromium wrapper may be used only in
+this disposable lab, never as sandbox qualification.
+
 ### Inspect Playwright traces
 
 Record a trace for a focused run with Playwright's `--trace on` (including lab

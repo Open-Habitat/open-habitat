@@ -118,7 +118,7 @@ func TestBrowserActionsNative(t *testing.T) {
 	dir := filepath.Join(root, "host")
 	done := make(chan error, 1)
 	go func() {
-		done <- browserhost.Run(ctx, browserhost.Config{Dir: dir, Xvnc: display, Chrome: chrome, Profile: filepath.Join(root, "profile"), Cache: filepath.Join(root, "cache"), Idle: time.Hour, Width: 1280, Height: 800, Env: os.Environ(), ChromeArgs: []string{"--headless=new"}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
+		done <- browserhost.Run(ctx, browserhost.Config{Dir: dir, Xvnc: display, Xkbcomp: "/usr/bin/true", Chrome: chrome, Profile: filepath.Join(root, "profile"), Cache: filepath.Join(root, "cache"), Idle: time.Hour, Width: 1280, Height: 800, Env: os.Environ(), ChromeArgs: []string{"--headless=new"}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	}()
 	defer func() {
 		cancel()

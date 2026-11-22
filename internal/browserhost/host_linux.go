@@ -61,6 +61,9 @@ type Config struct {
 	Dir string
 	// Xvnc is TigerVNC's X server; Chrome is Google Chrome's launcher.
 	Xvnc, Chrome string
+	// Xkbcomp defaults to the system loader. Tests with a headless Chrome
+	// and a synthetic display supply a stand-in, as they do for Xvnc.
+	Xkbcomp string
 	// Profile and Cache are Chrome's data in the person's home.
 	Profile, Cache string
 	// Idle stops a browser nobody has used.
@@ -118,6 +121,10 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	defer func() { stopProcess(xvnc) }()
+	if err := prepareKeyboard(ctx, cfg.Xkbcomp, display, cookie, cfg.Env); err != nil {
+		log.Warn("browser_start", "outcome", "failed", "reason", "keyboard_failed")
+		return errors.New("browser keyboard unavailable")
+	}
 
 	toChrome, chromeIn, err := os.Pipe()
 	if err != nil {
@@ -280,6 +287,8 @@ func startXvnc(ctx context.Context, cfg Config, cookie string) (string, *exec.Cm
 	defer r.Close()
 	args := []string{
 		"-displayfd", "3",
+		// Keep the prepared keyboard when xkbcomp disconnects before Chrome.
+		"-noreset",
 		"-rfbport", "-1",
 		"-rfbunixpath", filepath.Join(cfg.Dir, VNCSocket),
 		"-rfbunixmode", "0600",
