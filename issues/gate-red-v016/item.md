@@ -2,13 +2,14 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: in-progress
+status: fixed
 priority: high
 provenance: other
 provenance_detail: release gate run
 source_ref: taskfleet:01m82e01grgq9bmh8e66k87ytf/gate1
 originating_run: 01m82e01grgq9bmh8e66k87ytf
 originating_run_kind: spinoff
+closed: 2026-11-22
 ---
 
 # Release gate red on main: seven browser tests after rail default and graduations
@@ -29,3 +30,9 @@ Lab suite:
 - `lab-workspace-icons.spec.ts:44` the rail shows each workspace's icon by default — the running row has no `workspace-icon-button`.
 
 Also seen once in the gate under load and not reproduced in three isolated runs: Go `internal/daemon/integrations` `TestMicrosoftDaemonStartFollowsTheTenant` ("start did not follow the tenant") and, in one isolated run, `TestWaitingAccountDoesNotBlockOthers` TempDir cleanup "directory not empty".
+
+## Resolution
+
+### 2026-11-22T21:17:00Z · @issuectl
+
+Browser failures were stale tests (round 1). The Go failure was a start race between the Microsoft slot beginning to serve and the start alignment's pause, fixed in 6ee1cd785; see result.md Round 2.

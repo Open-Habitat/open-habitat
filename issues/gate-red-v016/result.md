@@ -26,7 +26,7 @@ tree).
 
 - **`navigation-open` names two controls**: the rail's collapsed toggle and the phone toolbar's opener. That is unchanged product behaviour. Alternatives were to rename one id or to unmount the collapsed toggle at once on resize. Neither is visible to people, and renaming would ripple through about fifty specs on release night. Scoping the one test was the proportionate fix. A rename could be a later cleanup.
 - **Other specs that use `navigation-open` unscoped were not rerun.** About fifty specs touch the id. The clean gate ran all of them on main, and only this one failed. This change touches tests only, so those results still hold.
-- **The issue stays open** for the Go `internal/daemon/integrations` flake it also records. The release driver owns that flake. The browser part is done.
+- **The issue stayed open** after round 1 for the Go flake. Round 2 below resolves it.
 
 # Round 2: `TestMicrosoftDaemonStartFollowsTheTenant`
 
@@ -71,7 +71,7 @@ Evidence (`/var/tmp/agent-keep/gate-red-v016/round2-fix/`, outside the tree):
 - New regression test
   `TestMicrosoftDaemonStartFollowsTheTenantAfterTheEndpointFrees` covers the
   restart case deterministically.
-- `TestWaitingAccountDoesNotBlockOthers` now defers `c.Stop()`, which waits for
+- `TestWaitingAccountDoesNotBlockOthers` and `TestMicrosoftDaemonStartFollowsTheTenant` now defer `c.Stop()`, which waits for
   the catalog's resume loop and sync clients. Before, it cancelled without
   waiting, so background work could still write into the home while `TempDir`
   removed it ("directory not empty"). Test-only.
@@ -79,7 +79,11 @@ Evidence (`/var/tmp/agent-keep/gate-red-v016/round2-fix/`, outside the tree):
 ## Verification
 
 - `after-run1..10.log`, `after-summary.txt`: the package ran 10 times in a row
-  under the same 8-hog load. RESULT_PLACEHOLDER
+  under the same 8-hog load: 10/10 passed. An earlier attempt failed once with a
+  TempDir "directory not empty" in the start test itself. Now that start aligns
+  in milliseconds, that test returned while the catalog was still writing into
+  its home. It now defers `c.Stop()` as well, and the 10 runs ran on that
+  final code.
 - `./scripts/test-focused.sh --area go` passed for `./internal/msmcp` and
   `./internal/daemon/integrations`. The integrations package includes
   `microsoft_reconnect_linux_test.go`.
@@ -98,6 +102,10 @@ Evidence (`/var/tmp/agent-keep/gate-red-v016/round2-fix/`, outside the tree):
   resume behind a daemon that never serves, or retrying `Align` on a timer.
   The timer would add a second schedule beside the existing checks. 15 s
   covers a restart overlap (three Serve retries).
+- **About 28 other catalog tests call `Start` without `Stop`.** None has been
+  seen to fail. They were left alone, because changing them on release night
+  is speculative. If the same TempDir error appears in one of them, the fix is
+  the same one-line `defer c.Stop()`.
 - **A previous daemon killed with SIGKILL** frees the endpoint lock without
   reaping an orphaned grandchild. The shipped unit's `KillMode=mixed` covers
   it. This is pre-existing and unchanged here.
