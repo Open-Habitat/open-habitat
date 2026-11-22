@@ -2,13 +2,15 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: task
-status: untriaged
+status: done
 priority: normal
 provenance: other
 provenance_detail: follow-up from turn-changes-service-design build run
 source_ref: taskfleet:01m8231bnf8pqh3n9z7skcdp20/follow-up:turn-snapshot-reader-migration
 originating_run: 01m8231bnf8pqh3n9z7skcdp20
 originating_run_kind: spinoff
+closed: 2026-11-22
+closed_by: agent
 ---
 
 # Habitat reads the turn-snapshot record for Vuoron muutokset and Palaa tähän
@@ -34,7 +36,13 @@ No authority moves: the recorder and restore run inside the person's Pi as the p
 
 ## Acceptance Criteria
 
-- [ ] The recorder is loaded into the daemon's Pi child under the existing experimental feature and never twice.
-- [ ] *Vuoron muutokset* lists script-made changes for turns with snapshots and falls back unchanged for turns without.
-- [ ] *Palaa tähän* previews and restores script-made changes from snapshots, with an undo point, and falls back unchanged for older turns.
+- [x] The recorder is loaded into the daemon's Pi child under the existing experimental feature and never twice.
+- [x] *Vuoron muutokset* lists script-made changes for turns with snapshots and falls back unchanged for turns without.
+- [x] *Palaa tähän* previews and restores script-made changes from snapshots, with an undo point, and falls back unchanged for older turns.
 - [ ] Deleting a conversation removes its snapshot store.
+
+## Resolution
+
+### 2026-11-22T19:41:01Z · @agent
+
+Recorder ported into internal/daemon/turn-snapshots and read by Muutokset and Palaa tähän; see result.md. Conversation deletion does not exist yet, so store removal rests on the recorder's sweep.

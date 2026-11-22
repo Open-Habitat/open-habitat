@@ -1,3 +1,13 @@
+# Result: the recorder runs in Habitat (22.11.2026)
+
+Following Jari's decision of 22.11.2026, the recorder from the branch below is
+now carried in Habitat's own code, unchanged (`internal/daemon/turn-snapshots/`),
+loaded while Palaa tähän is on, and read by Muutokset and Palaa tähän; the
+details are in `issues/turn-snapshot-reader-migration/result.md`. What remains
+here is the upstream pull request after a couple of weeks of real use: the
+Habitat review found no defect in the ported recorder itself, so the branch
+`turn-snapshots` (commit `17dfa79`) is still the code to offer.
+
 # Result: the recorder, built as the upstream pull request
 
 **Built (22.11.2026):** the turn-snapshot recorder as a better-pi-rewind
