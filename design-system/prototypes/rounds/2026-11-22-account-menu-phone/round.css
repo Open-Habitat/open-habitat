@@ -1,0 +1,114 @@
+/* The account menu on the phone. Tokens only; the shell, rail, popover, menu
+   items and logout dialog are production's (components.css,
+   Controls.module.css). These rules add the review bar with two phone
+   frames, round 1's direction A body, A's sheet, B's popover limits, C's
+   account page, the feedback panel and the toast. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+
+/* ---------- Review bar: not a contestant ---------- */
+.am-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: 8px 14px 6px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; }
+.am-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.am-controls strong { font-size: 13.5px; }
+.am-controls select, .am-event { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 1px 6px; cursor: pointer; }
+.am-lines { margin: 4px 0 0; padding: 0; list-style: none; color: var(--ah-muted); }
+.am-lines li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.am-recommend { margin: 4px 0 0; font-weight: 600; color: var(--ah-accent-ink); }
+
+/* ---------- Two phones at one scale ---------- */
+.am-stage { position: fixed; top: calc(var(--review-h, 0px) + 12px); bottom: 64px; left: 0; right: 0; display: flex; justify-content: center; align-items: flex-start; gap: 40px; }
+.am-phone { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.am-phone-box { position: relative; overflow: hidden; border: 1px solid var(--ah-line-strong); border-radius: 22px; background: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
+.am-phone iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; }
+.am-phone figcaption { display: flex; gap: 10px; align-items: center; color: var(--ah-muted); font-size: 12px; }
+html.am-bare .proto-picker { display: none; }
+.am-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.am-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* ---------- Round 1's direction A body ---------- */
+.am-menu { display: flex; flex-direction: column; gap: 0; outline: 0; }
+.am-section { display: flex; flex-direction: column; }
+.am-sep { height: 1px; margin: 4px 6px; border: 0; background: var(--ah-line-soft); }
+.am-item[data-ah-primitive="menu-item"] { display: flex; align-items: center; gap: 12px; border-bottom: 0; border-top: 0; padding: 0 10px; min-height: var(--ah-touch); }
+.am-label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.am-lead { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; color: var(--ah-ink-2); }
+.am-lead svg { width: 17px; height: 17px; }
+.am-lead .ah-explain-q { width: 17px; height: 17px; font-size: 11px; box-shadow: inset 0 0 0 1.4px currentColor; }
+.ah-menu-danger .am-lead { color: inherit; }
+.am-end { border-top: 1px solid var(--ah-line-soft); margin-top: 4px; padding-top: 4px; }
+.am-quick { display: flex; flex-direction: column; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--ah-line-soft); }
+.am-row { display: flex; align-items: center; gap: 12px; min-height: var(--ah-touch); padding: 0 2px 0 10px; color: var(--ah-ink); }
+.am-row .ah-account-menu-theme { margin-left: auto; }
+/* Finger-size segments in the sheet and on the page; B keeps today's. */
+:is(.am-sheet, .am-page) .am-row .ah-account-menu-theme > button { min-height: 36px; min-width: 40px; }
+.am-note { display: flex; align-items: flex-start; gap: 6px; margin: 0 6px 4px 42px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+.am-note svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.am-chevron-right { width: 8px; height: 8px; margin-right: 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); opacity: .7; }
+
+/* ---------- A: the sheet (and the feedback sheet in A and B) ---------- */
+.am-overlay { position: fixed; inset: 0; z-index: 70; background: var(--ah-scrim); }
+.am-sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: calc(100dvh - 40px); display: flex; flex-direction: column; border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); transition: transform 160ms ease-out; }
+.am-sheet[data-entering] { animation: am-up 200ms ease-out; }
+@keyframes am-up { from { transform: translateY(100%); } }
+.am-sheet-dialog { display: flex; flex-direction: column; min-height: 0; outline: 0; }
+.am-sheet-head { flex: none; padding: 0 16px 2px; touch-action: none; cursor: grab; }
+.am-sheet-head .ah-menu-heading { padding: 2px 4px 8px; border-bottom: 1px solid var(--ah-line-soft); }
+.am-grip { display: block; width: 40px; height: 4px; margin: 8px auto 8px; border-radius: 2px; background: var(--ah-line-strong); }
+.am-sheet-body { overflow: auto; overscroll-behavior: contain; padding: 4px 10px calc(10px + env(safe-area-inset-bottom)); }
+
+/* ---------- B: today's popover in the drawer ---------- */
+/* As wide as the person row it grows from, the drawer's width. */
+.am-pop.ah-account-menu { width: max(var(--trigger-width, 17rem), 17rem); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; }
+
+/* ---------- C: the account page ---------- */
+.am-page-overlay { position: fixed; inset: 0; z-index: 70; }
+.am-page { position: fixed; inset: 0; background: var(--ah-bg); transition: transform 160ms ease-out; }
+.am-page[data-entering] { animation: am-in 200ms ease-out; }
+@keyframes am-in { from { transform: translateX(100%); } }
+/* Production's sign-out dialog (z 50) must rise above the page it opens from. */
+body:has(.am-page-overlay) .ah-overlay { z-index: 75; }
+.am-page-dialog { display: flex; flex-direction: column; height: 100%; outline: 0; }
+.am-page-bar { flex: none; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 0 8px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.am-page-bar h2 { margin: 0; font-size: var(--ah-size-h3, 16px); }
+.am-back { display: inline-grid; place-items: center; width: var(--ah-touch); height: var(--ah-touch); border: 0; border-radius: var(--ah-r-md); background: none; color: var(--ah-ink); cursor: pointer; }
+.am-back svg { width: 18px; height: 18px; }
+.am-page-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px calc(16px + env(safe-area-inset-bottom)); }
+.am-page-person { padding: 6px 10px 12px; border-bottom: 1px solid var(--ah-line-soft); margin-bottom: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .am-sheet[data-entering], .am-page[data-entering] { animation: none; }
+  .am-sheet, .am-page { transition: none; }
+}
+
+/* ---------- General feedback panel ---------- */
+.am-panel-title { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; }
+.am-panel-title h2, .am-panel-head h2 { flex: 1; margin: 0; font-size: var(--ah-size-h3, 16px); }
+.am-x { display: inline-grid; place-items: center; width: var(--ah-touch); height: var(--ah-touch); border: 0; border-radius: var(--ah-r-md); background: none; color: var(--ah-ink-2); cursor: pointer; }
+.am-x svg { width: 16px; height: 16px; }
+.am-form { display: flex; flex-direction: column; gap: 8px; }
+/* The body scrolls; its parts keep their height on a short phone. */
+.am-form > * { flex: none; }
+.am-sheet-body.am-form { padding-left: 16px; padding-right: 16px; }
+.am-form label { font-weight: 600; }
+.am-form textarea { font: inherit; font-size: max(16px, 1em); color: var(--ah-ink); background: var(--ah-bg); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); padding: 8px 10px; resize: vertical; }
+.am-form textarea[aria-invalid] { border-color: var(--ah-err); }
+.am-lead-text { margin: 0; color: var(--ah-ink-2); }
+.am-facts { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.am-facts p { margin: 0; }
+.am-public { display: flex; align-items: center; gap: 6px; color: var(--ah-ink); }
+.am-public svg { width: 14px; height: 14px; }
+.am-link { align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: inherit; text-decoration: underline; cursor: pointer; }
+.am-preview { margin: 2px 0 0; padding: 6px 8px; border-radius: var(--ah-r-sm); background: var(--ah-bg); font: var(--ah-size-code) / 1.45 var(--ah-mono); white-space: pre-wrap; color: var(--ah-ink); }
+.am-nudge { margin: 0; color: var(--ah-err); font-size: var(--ah-size-meta); }
+.am-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.am-send, .am-secondary { display: inline-flex; align-items: center; gap: 6px; min-height: var(--ah-touch); padding: 0 14px; border-radius: var(--ah-r-md); font: inherit; cursor: pointer; }
+.am-send { border: 1px solid var(--ah-ink); background: var(--ah-ink); color: var(--ah-bg); font-weight: 600; }
+.am-send svg, .am-done svg { width: 14px; height: 14px; }
+.am-secondary { border: 1px solid var(--ah-line-strong); background: var(--ah-surface); color: var(--ah-ink); }
+.am-meta { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.am-done { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; outline: 0; }
+.am-done p { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+
+/* ---------- Prototype stand-in for actions not drawn ---------- */
+.am-toast { position: fixed; z-index: 80; left: 50%; bottom: 16px; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
