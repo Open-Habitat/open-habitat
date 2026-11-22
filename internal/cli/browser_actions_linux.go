@@ -247,7 +247,10 @@ func runBrowserAction(c *browserCDP, a browserAction, downloads string) (any, er
 		return nil, fmt.Errorf("tab %s: %w", tab, err)
 	}
 	c.session = attached.Session
-	result := map[string]any{"tab": tab}
+	result := map[string]any{"tab": tab, "browser_action": a.verb}
+	if a.verb == "click" || a.verb == "type" {
+		result["selector"] = a.selector
+	}
 	switch a.verb {
 	case "goto":
 		if err := c.navigate(a.value); err != nil {
@@ -255,15 +258,24 @@ func runBrowserAction(c *browserCDP, a browserAction, downloads string) (any, er
 		}
 		result["loaded"] = true
 	case "close":
+		// Keep close usable even when a modal dialog or stuck renderer prevents
+		// page evaluation. A closed target has no after-state: use its last
+		// browser-level metadata, not JavaScript in the page.
 		c.session = ""
 		var targets struct {
-			Targets []struct{ Type string } `json:"targetInfos"`
+			Targets []struct {
+				ID               string `json:"targetId"`
+				Type, Title, URL string
+			} `json:"targetInfos"`
 		}
 		if err := c.call("Target.getTargets", map[string]any{}, &targets); err != nil {
 			return nil, err
 		}
 		pages := 0
 		for _, target := range targets.Targets {
+			if target.ID == tab {
+				result["url"], result["title"] = target.URL, target.Title
+			}
 			if target.Type == "page" {
 				pages++
 			}
@@ -279,8 +291,15 @@ func runBrowserAction(c *browserCDP, a browserAction, downloads string) (any, er
 			return nil, fmt.Errorf("tab could not be closed")
 		}
 		result["closed"] = true
+		return result, nil
 	case "download":
-		return c.download(tab, a.value, downloads, a.name)
+		download, err := c.download(tab, a.value, downloads, a.name)
+		if err != nil {
+			return nil, err
+		}
+		for key, value := range download {
+			result[key] = value
+		}
 	default:
 		if err := c.loaded(); err != nil {
 			return nil, err
@@ -329,6 +348,17 @@ if(e.value!==value)throw Error('live input rejected value');
 e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return {typed:true};})()`
 				}
 			}
+			if a.verb == "click" || a.verb == "type" || a.verb == "eval" {
+				if err := c.pageMetadata(result); err != nil {
+					return nil, err
+				}
+				result["source_url"], result["source_title"] = result["url"], result["title"]
+			}
+			if a.verb == "click" {
+				if err := c.prepareClick(); err != nil {
+					return nil, err
+				}
+			}
 			v, err := c.evaluateGesture(expr, a.verb == "click")
 			if err != nil {
 				return nil, err
@@ -344,6 +374,14 @@ e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('ch
 			}
 			result["value"] = v
 		}
+	}
+	if a.verb == "click" {
+		if err := c.settleClick(); err != nil {
+			return nil, err
+		}
+	}
+	if err := c.pageMetadata(result); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

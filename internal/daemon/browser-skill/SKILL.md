@@ -56,9 +56,16 @@ open-habitat agent browser close --tab <id> --json
 `goto` waits for that navigation's load event, not a fixed sleep. `text`,
 `links`, `click`, `type`, `eval` and `screenshot` wait for document load first.
 A loaded document can still have application-specific work in progress.
-`click` dispatches one click; it does not promise a subsequent navigation or
-application update has finished. Inspect the resulting page; use `eval` with
+`click` dispatches one click and waits for an immediately observed main-frame
+navigation to finish loading. It does not promise that a later timer-driven
+navigation or application update has finished. Inspect the resulting page; use `eval` with
 an explicit Promise/event/MutationObserver for an application-specific wait.
+Targeted actions return `browser_action`, `tab`, and the resulting page's `url`
+and `title`; `close` returns the page just before closing. `click`, `type` and
+`eval` also return `source_url`/`source_title` from before acting, and `click`
+and `type` return the selector, never the typed text. Keep the JSON output in
+native tool history: Habitat derives the turn's browser visit record from it,
+not from a separate browser log.
 Every command has a 30-second deadline, adjustable with `--timeout-seconds`
 (1–120). A timeout or lost reply is **uncertain**: inspect before retrying a
 write, never replay it automatically. A failed new navigation names its tab
@@ -93,8 +100,9 @@ Use the original HTTP(S) file URL from the site, not a Chrome extension/PDF
 viewer URL. Choose a tab showing the service's signed-in site; normal browser
 cookie restrictions still apply, so an unrelated site's tab can get 401/403 or
 sign-in HTML. The command uses Chrome's network stack with that tab's
-credentials, saves the response bytes, and reports `path`, `bytes` and
-`http_status`. **Never use `Page.printToPDF` for a receipt/download:** that can
+credentials, saves the response bytes, and reports `path`, `bytes`,
+`http_status`, `file_name` and `target_folder`. The result's `url`/`title`
+identify the page, not the downloaded resource. **Never use `Page.printToPDF` for a receipt/download:** that can
 print the viewer as images, not retrieve the original PDF. Check the saved
 file's type/content; a sign-in redirect can return HTML with HTTP 200.
 Downloads are limited to 64 MiB. Sites requiring POST or one-time generated

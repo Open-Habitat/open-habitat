@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-server-browser-visit-data
 lane: server-browser-log
 lane_seq: 2
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser: CLI results carry page url/title and downloads for the visit record

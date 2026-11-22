@@ -52,7 +52,7 @@ func saveBrowserFile(dir, name string, b []byte) (string, error) {
 // Use Chrome's network stack and the attached page's frame: the original
 // response, with the person's cookies, never a printed PDF viewer. No cookie
 // extraction, new browser context, or Go-side authenticated HTTP client.
-func (c *browserCDP) download(tab, url, dir, name string) (any, error) {
+func (c *browserCDP) download(tab, url, dir, name string) (map[string]any, error) {
 	var tree struct {
 		Tree struct{ Frame struct{ ID string } } `json:"frameTree"`
 	}
@@ -105,5 +105,5 @@ func (c *browserCDP) download(tab, url, dir, name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"tab": tab, "path": path, "bytes": len(data), "http_status": r.HTTPStatusCode}, nil
+	return map[string]any{"tab": tab, "path": path, "file_name": filepath.Base(path), "target_folder": filepath.Dir(path), "bytes": len(data), "http_status": r.HTTPStatusCode}, nil
 }

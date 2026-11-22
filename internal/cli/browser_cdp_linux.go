@@ -26,6 +26,9 @@ type browserCDP struct {
 	session string
 	loads   map[string]bool
 	loaders map[string]string
+	// Only the attached main frame matters when a click starts navigation.
+	clickFrame   string
+	clickLoading bool
 }
 
 var errBrowserCDPBusy = errors.New("another browser client is connected or disconnecting")
@@ -117,6 +120,18 @@ func (c *browserCDP) next() (map[string]json.RawMessage, error) {
 			}
 			if p.Name == "init" && c.loaders != nil && (len(c.loaders) < 256 || c.loaders[p.FrameID] != "") {
 				c.loaders[p.FrameID] = p.LoaderID
+			}
+		}
+		if session == c.session && c.clickFrame != "" {
+			var p struct{ FrameID string }
+			json.Unmarshal(m["params"], &p)
+			if p.FrameID == c.clickFrame {
+				switch method {
+				case "Page.frameStartedLoading", "Page.frameRequestedNavigation":
+					c.clickLoading = true
+				case "Page.frameStoppedLoading", "Page.navigatedWithinDocument":
+					c.clickLoading = false
+				}
 			}
 		}
 		return m, nil
@@ -223,6 +238,50 @@ func (c *browserCDP) navigate(url string) error {
 			return err
 		}
 	}
+}
+
+// Subscribe before the gesture; subscribing afterwards can miss the entire
+// navigation. A protocol round-trip drains events caused by the gesture before
+// deciding whether there is a main-frame load to wait for. Later timer-driven
+// navigations are not attributed to this command.
+func (c *browserCDP) prepareClick() error {
+	if err := c.call("Page.enable", map[string]any{}, nil); err != nil {
+		return err
+	}
+	var tree struct {
+		Tree struct{ Frame struct{ ID string } } `json:"frameTree"`
+	}
+	if err := c.call("Page.getFrameTree", map[string]any{}, &tree); err != nil {
+		return err
+	}
+	c.clickFrame = tree.Tree.Frame.ID
+	c.clickLoading = false
+	return nil
+}
+
+func (c *browserCDP) settleClick() error {
+	if err := c.call("Page.getFrameTree", map[string]any{}, nil); err != nil {
+		return err
+	}
+	for c.clickLoading {
+		if _, err := c.next(); err != nil {
+			return err
+		}
+	}
+	return c.loaded()
+}
+
+func (c *browserCDP) pageMetadata(result map[string]any) error {
+	v, err := c.evaluate(`({url:location.href,title:document.title})`)
+	if err != nil {
+		return err
+	}
+	var page struct{ URL, Title string }
+	if err := json.Unmarshal(v, &page); err != nil {
+		return err
+	}
+	result["url"], result["title"] = page.URL, page.Title
+	return nil
 }
 
 const browserCommandTimeout = 30 * time.Second
