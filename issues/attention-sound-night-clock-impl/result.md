@@ -64,6 +64,21 @@ Early browser runs exposed test-navigation mistakes (the account trigger is
 hidden in compact settings), a hover into blank title space, and a genuine focus
 loss after disabling night. Corrected these rather than accepting partial runs.
 
+## Integration verification
+
+The merge onto `e2a9ef3ab` encountered one conflict: another worker had replaced
+an older reply test with three stronger preview/reply cases. Kept those cases
+and both new clock/explanation cases, and changed their night setup to an
+explicit 23:00 local clock instead of relying on dark mode. No production-code
+conflict. Regenerated the incoming Navigation agent reference, which had drifted
+from its separately landed phone-scroll fix.
+
+On the integrated implementation `43deb13d4`, focused web checks passed again
+(**255 files / 2155 tests**), the combined attention-sound spec passed (**7 tests**),
+and account-preference Go tests, contracts and generated references passed again.
+The combined spec then passed **21/21** with `--repeat-each 3`, two workers and
+0–60 ms reply jitter (1.7 min).
+
 ## Review and evidence
 
 Focused self-review plus independent `/llm-review` and `/assess-findings`, because
