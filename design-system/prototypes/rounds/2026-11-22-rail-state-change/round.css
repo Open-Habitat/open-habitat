@@ -1,0 +1,99 @@
+/* The rail-state-change round. Tokens only; the shell, rail, rows, marks
+   and edge chips are production's (components.css). These rules add the
+   review bar and the effects the round sets as data attributes on
+   production's elements:
+     li[data-rsc-flash]          A, E  the glow that fades (still: reduced)
+     li[data-rsc-mark]           B, E  edge bar, bold title, "uusi" tag
+     [data-rsc-plus|pulse]       C     the section count's "+n" and pulse
+     .ah-rail-beyond-chip[data-rsc-new]  C, E  "+1" on the edge chip
+     .ah-rail[data-rsc-edge|glow], li[data-rsc-ws]  D  edge line, Työtilat
+   Motion is only where the row changed, and never with reduced motion:
+   production's tokens/motion.css stops every animation under the media
+   query, and the review bar's switch sets [data-reduced] the same way. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+
+/* ---------- Review panel: not a contestant ---------- */
+/* A column on the right, so the rail keeps the window's full height (the
+   regions scroll the open row into view; a short rail would hide Sinun
+   vuorosi on the default view). */
+:root { --rsc-panel: 380px; }
+.rsc-bar { position: fixed; top: 0; right: 0; bottom: 0; width: var(--rsc-panel); box-sizing: border-box; z-index: 60; overflow: auto; padding: 12px 14px 80px; border-left: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; }
+.rsc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.rsc-controls strong { flex: 1 0 100%; font-size: 14px; }
+.rsc-controls select, .rsc-controls button { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 2px 6px; }
+.rsc-controls .rsc-next { background: var(--ah-accent); color: var(--ah-on-accent); border-color: var(--ah-accent); font-weight: 600; padding: 4px 10px; }
+.rsc-controls .rsc-next:disabled { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); border-color: var(--ah-disabled-line); }
+.rsc-caption { margin: 10px 0 0; padding: 8px 10px; border-radius: var(--ah-r-sm); background: var(--ah-surface); border: 1px solid var(--ah-line); min-height: 3em; }
+.rsc-lines { margin: 10px 0 0; padding: 0; list-style: none; color: var(--ah-muted); display: grid; gap: 6px; line-height: 1.4; }
+.rsc-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rsc-recommend { margin: 10px 0 0; font-weight: 600; color: var(--ah-accent-ink); line-height: 1.4; }
+
+/* ---------- Stage: the production shell beside the panel ---------- */
+.rsc-stage .ah-app-shell:has(.ah-rail) { top: 0; bottom: 64px; height: auto; right: var(--rsc-panel); outline: 1px solid var(--ah-line); }
+.rsc-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rsc-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.proto-picker { margin-inline-start: calc(var(--rsc-panel) / -2); }
+
+/* ---------- A, E: the glow that fades ---------- */
+.rsc-shell .ah-agent-item[data-rsc-flash] > .ah-now-row { border-radius: var(--ah-r-sm); }
+.rsc-shell .ah-agent-item[data-rsc-flash="fade"] > .ah-now-row { animation: rsc-flash 3.5s ease-out forwards; }
+@keyframes rsc-flash {
+  0% { background: color-mix(in srgb, var(--ah-accent) 32%, transparent); box-shadow: inset 0 0 0 1.5px var(--ah-accent-line); }
+  25% { background: color-mix(in srgb, var(--ah-accent) 22%, transparent); box-shadow: inset 0 0 0 1.5px var(--ah-accent-line); }
+  100% { background: transparent; box-shadow: inset 0 0 0 1.5px transparent; }
+}
+/* Reduced motion: the same tint, held still, then gone at once. */
+.rsc-shell .ah-agent-item[data-rsc-flash="still"] > .ah-now-row {
+  background: color-mix(in srgb, var(--ah-accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--ah-accent-line);
+}
+
+/* ---------- B, E: the mark until opened ---------- */
+.rsc-shell .ah-agent-item[data-rsc-mark] > .ah-now-row { position: relative; }
+.rsc-shell .ah-agent-item[data-rsc-mark] > .ah-now-row::before {
+  content: ""; position: absolute; inset-block: 3px; inset-inline-start: -4px; width: 3px; border-radius: 2px;
+  background: var(--ah-turn-line);
+}
+.rsc-shell .ah-agent-item[data-rsc-mark="fail"] > .ah-now-row::before { background: var(--ah-err-line); }
+/* Not colour alone: the title turns bold (unread) and the time says "uusi". */
+.rsc-shell .ah-agent-item[data-rsc-mark] .ah-nav-label { font-weight: 650; color: var(--ah-ink); }
+.rsc-shell .ah-nav-time[data-rsc-tag] { font-size: 0; }
+.rsc-shell .ah-nav-time[data-rsc-tag]::after {
+  content: attr(data-rsc-tag); font-size: var(--ah-size-meta); font-weight: 650; line-height: 1;
+  color: var(--ah-ink); padding: 2px 6px; border: 1px solid var(--ah-turn-line); border-radius: 999px;
+  background: color-mix(in srgb, var(--ah-turn) 14%, transparent);
+}
+.rsc-shell .ah-agent-item[data-rsc-mark="fail"] .ah-nav-time[data-rsc-tag]::after { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+/* The browser row keeps its own word ("selain"); the mark fills it. */
+.rsc-shell .ah-agent-item[data-rsc-mark="browser"] .sb-rowmark { font-weight: 650; color: var(--ah-ink); background: color-mix(in srgb, var(--ah-turn) 14%, transparent); border-color: var(--ah-turn-line); }
+
+/* ---------- C: the count's "+n" and its single pulse ---------- */
+.rsc-shell [data-rsc-plus] { display: inline-flex; align-items: center; gap: 4px; }
+.rsc-shell [data-rsc-plus]::after {
+  content: attr(data-rsc-plus); font-size: var(--ah-size-meta); font-weight: 700; line-height: 1;
+  color: var(--ah-on-accent); background: var(--ah-accent); padding: 2px 5px; border-radius: 999px;
+}
+.rsc-shell:not([data-reduced]) [data-rsc-pulse] { animation: rsc-pulse 700ms ease-out 1; transform-origin: center; }
+@keyframes rsc-pulse { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
+
+/* ---------- C, E: the edge chip says what is new past it ---------- */
+.rsc-shell .ah-rail-beyond-chip[data-rsc-new] { border-color: var(--ah-accent-line); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+.rsc-shell .ah-rail-beyond-chip[data-rsc-new]::after {
+  content: attr(data-rsc-new); margin-inline-start: 4px; font-size: var(--ah-size-meta); font-weight: 700; line-height: 1;
+  color: var(--ah-on-accent); background: var(--ah-accent); padding: 1px 5px; border-radius: 999px;
+}
+
+/* ---------- D: the rail's edge and the Työtilat row ---------- */
+.rsc-shell .ah-rail[data-rsc-edge] { box-shadow: inset -3px 0 0 var(--ah-turn-line); }
+.rsc-shell:not([data-reduced]) .ah-rail[data-rsc-glow] { animation: rsc-glow 1.1s ease-in-out 2; }
+@keyframes rsc-glow {
+  0%, 100% { box-shadow: inset -3px 0 0 var(--ah-turn-line); }
+  50% { box-shadow: inset -8px 0 0 var(--ah-turn), inset -24px 0 18px -14px var(--ah-turn); }
+}
+.rsc-shell li.ah-workspace-row[data-rsc-ws] { position: relative; }
+.rsc-shell li.ah-workspace-row[data-rsc-ws]::after {
+  content: attr(data-rsc-ws); position: absolute; inset-inline-end: 8px; top: 50%; translate: 0 -50%; pointer-events: none;
+  font-size: var(--ah-size-meta); font-weight: 650; line-height: 1; color: var(--ah-ink);
+  padding: 2px 6px; border: 1px solid var(--ah-turn-line); border-radius: 999px; background: var(--ah-rail);
+}
