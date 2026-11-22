@@ -1,14 +1,15 @@
 ---
 created: 2026-11-22
 updated: 2026-11-22
-type: bug
+type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-attention-sound
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Attention sound does not play when a turn ends in another conversation
@@ -20,6 +21,11 @@ on (experimental attention sound enabled, a sound chosen), an agent's turn
 ended in one conversation while he was in another conversation, and nothing
 was heard.
 Next action (defect in agreed behaviour, fix directly).
+
+## Acceptance Criteria
+
+- [x] Confirm the cause of the silence and preserve regression coverage for
+  non-open replies and intentional night suppression (see result.md).
 
 ## Decisions
 

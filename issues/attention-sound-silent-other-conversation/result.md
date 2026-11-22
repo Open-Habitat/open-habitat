@@ -1,9 +1,15 @@
 # Investigation: non-open conversation attention sound
 
+Jari confirmed on **22 November 2026** that device-dark-mode night quiet caused
+the silence; sound works. Closed as **done, fixed-by-diagnosis**. No production
+code changed: suppression remains by design until the separate
+@attention-sound-night-visible work makes it visible.
+
 ## Outcome
 
-No trigger defect reproduced, and no production code changed. The issue remains
-open: the reported installation's suppression state has not been verified.
+No trigger defect reproduced. The confirmed cause is night quiet, not a missing
+notification trigger. The regression tests and original analysis were adopted
+from commit `7d3570b72`.
 
 A host-backed Chromium reproduction now covers a Settings preview followed by
 conversation A completing while conversation B is open, without a page reload
@@ -14,7 +20,8 @@ and after completion; the test observes it rather than substituting a fake playe
 There is a confirmed way to obtain the reported symptom with the accepted design:
 **device dark mode plus the default `sound.night: true`**. The Settings preview
 plays, but the subsequent non-open reply stays silent. The third browser case
-reproduces that combination. This is not proof that it caused the live report.
+reproduces that combination. Jari's subsequent confirmation, rather than the
+synthetic test alone, resolves the reported cause.
 
 ## Code findings
 
@@ -31,7 +38,34 @@ reproduces that combination. This is not proof that it caused the live report.
   failure was observed after the preview. No blocked-audio settings indicator
   was added because autoplay was not established as the cause.
 
-## Tests and review
+## Harvest verification (22 November 2026)
+
+Tested revision: `bab440594`, based on `cda5637c1`; subsequent changes are only
+issue metadata and this report. All commands ran under umask 077, the shared
+scratch lease and a 600-second timeout.
+
+- `OH_BROWSER_WORKERS=2 OH_PORT_BASE=18600 ./scripts/test-focused.sh --area browser
+  --spec attention-sound.spec.ts`: **5 passed**.
+- From `web`, `OH_BROWSER_WORKERS=2 OH_PORT_BASE=18600 OH_REPLY_DELAY_MS=60
+  npx playwright test tests/attention-sound.spec.ts --repeat-each 3`:
+  **15 passed**, with a private TMPDIR under the scratch root.
+- `./scripts/test-focused.sh --area web`: **255 files, 2143 tests passed**,
+  including `attentionSound.test.tsx` and `soundSynth.test.ts`, plus the fast
+  static/component checks.
+- `issuectl doctor --json`, `python3 scripts/validate-project-view.py` and
+  `git diff --check`: passed.
+- Focused self-review: test/documentation-only, low risk; no session, contract,
+  daemon state or authorization changes. The three scenarios distinguish
+  non-open replies within/across workspaces from intentional night suppression,
+  while checking real AudioContext state after preview. No production change,
+  independent model review, live-server check or physical audio check was needed.
+
+Current logs: `/var/tmp/agent-keep/harvest-attention-sound-tests/`.
+The old run's branch is now an orphan; it was not deleted by this worker.
+No user-visible deployment change, screenshots, captured HTML, whole browser suite
+or clean gate was produced.
+
+## Original investigation evidence (before confirmation)
 
 Base: `248a44d84`; changed executable artifact: `web/tests/attention-sound.spec.ts`.
 
@@ -63,11 +97,14 @@ physical sound-output check, or live reproduction was performed.
 - Keep the agreed night behavior unchanged. Alternative: disable night quiet by
   default or interpret it by time of day. Neither follows from a proven trigger
   defect; both would change the accepted product choice.
-- Preserve tests and findings without claiming a fix or closing the issue.
-  Alternative: patch a suspected trigger or autoplay path despite passing
-  evidence. That would conceal the unresolved live cause.
+- Close as fixed-by-diagnosis after Jari's confirmation, preserving the tests.
+  Retyped the report as a diagnosis task so it can close as the requested `done`:
+  issuectl rejects `done` for bugs, reserving `fixed` for a bug fix. No product
+  fix is claimed.
+  Alternative: change a trigger or autoplay path despite passing evidence.
+  There is no demonstrated defect in either path; visibility is separate work.
 
-## Live check
+## Original suggested live check (superseded by confirmation)
 
 1. In Settings > Sounds, note whether night quiet is enabled and whether the
    device reports dark mode. Habitat's own theme does not determine this.
@@ -78,5 +115,6 @@ physical sound-output check, or live reproduction was performed.
 4. If it remains silent, report those two observations and whether another
    Habitat tab is open. A separate tab can claim the two-second sound burst.
 
-The live suppression state and outcome of this check are the missing evidence;
-synthetic success is not a claim that the original report is resolved.
+At the time of the original investigation this evidence was missing. Jari's
+22 November confirmation now resolves the cause; this worker did not repeat a
+live check or infer live success solely from synthetic tests.
