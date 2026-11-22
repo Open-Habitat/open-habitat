@@ -235,6 +235,69 @@ test("anyone with the link opens the view without a session while it is public",
   await recipient.close();
 });
 
+test("a copied public address survives daemon and gateway restarts without signing in", async ({
+  page,
+  context,
+  browser,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const conversationId = await conversation(page);
+  const viewId = await offer(page, conversationId);
+  const card = page.locator(
+    `[data-testid="view-offer"][data-view-id="${viewId}"]`,
+  );
+  await card.hover();
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "true");
+  const entry = await copied(page, card);
+
+  for (const restart of ["daemon-restart", "upgrade"]) {
+    expect((await page.request.get(`/fixture/${restart}`)).status()).toBe(204);
+    if (restart === "upgrade") {
+      // The acknowledgement precedes the listener replacement. Observe
+      // the new gateway before claiming the durable address survived it.
+      await expect
+        .poll(async () => {
+          try {
+            return (await (await page.request.get("/api/v1/server")).json())
+              .version;
+          } catch {
+            return undefined;
+          }
+        })
+        .toBe("0.0.0-lab.1");
+    }
+    // A new recipient for each restart: no owner cookies or earlier content
+    // document can conceal a lost reservation or export.
+    const recipient = await browser.newContext({ ignoreHTTPSErrors: true });
+    try {
+      await expect
+        .poll(async () => {
+          try {
+            return (
+              await recipient.request.get(entry, { maxRedirects: 0 })
+            ).status();
+          } catch {
+            return 0;
+          }
+        })
+        .toBe(302);
+      const reader = await recipient.newPage();
+      await reader.goto(entry);
+      const body = reader.locator("body");
+      await expect(body).toHaveAttribute("data-script", "yes");
+      await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+      await expect(body).toHaveAttribute("data-image", "loaded");
+      await expect(body).toHaveAttribute("data-fetch", "denied");
+      expect(await recipient.cookies()).toEqual([]);
+      await reader.goto(`${app}/workspaces`);
+      await expect(reader.getByTestId("github-sign-in")).toBeVisible();
+    } finally {
+      await recipient.close();
+    }
+  }
+});
+
 test("the stable address frames the view for its owner and redirects while public", async ({
   page,
   context,
