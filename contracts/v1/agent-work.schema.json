@@ -33,7 +33,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["kind"],
       "properties": {
-        "kind": {"enum": ["history_title", "clone"], "description": "history_title: a history being named without a handle (a title-model call and a temporary Pi); clone: a repository clone under way."},
+        "kind": {"enum": ["history_title", "clone", "workspace_operation"], "description": "history_title: a history being named without a handle (a title-model call and a temporary Pi); clone: a repository clone under way; workspace_operation: an operation holds the workspace writer (a publish's push, a deletion, an archive)."},
         "agent_id": {"$ref": "common.schema.json#/$defs/agentId"}
       }
     }}

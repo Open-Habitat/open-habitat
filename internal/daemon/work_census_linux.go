@@ -16,7 +16,8 @@ const AgentWorkPath = "/agent/v1/work"
 // The work census is what stopping this daemon would cut, for the host
 // upgrade's quiet window and its interruption approval. Stopping the daemon
 // ends its own children (KillMode=mixed): every Pi it runs, the processes
-// those Pi started, a temporary Pi naming a history, a clone. Native SSH,
+// those Pi started, a temporary Pi naming a history, a clone, a publish's
+// push. Native SSH,
 // tmux and Taskfleet Pi are not its children and are not listed.
 //
 // A conversation is listed when its handle holds work (heldWork), when a
@@ -100,6 +101,11 @@ func (c *ConversationController) census(ctx context.Context, clones *CloneJobs) 
 		if _, running := clones.runningName(); running {
 			jobs = append(jobs, censusJob{Kind: "clone"})
 		}
+	}
+	// A publish pushes for up to 45 minutes under the writer; most other
+	// holders leave within milliseconds and only shift the window a little.
+	if cloneWriter.held() {
+		jobs = append(jobs, censusJob{Kind: "workspace_operation"})
 	}
 
 	// Ask every live Pi's bridge, not only the idle ones: a preview server

@@ -92,4 +92,12 @@ func (m *workspaceWriter) wait(ctx context.Context, reason string) string {
 	}
 }
 
+// held says whether a workspace operation holds the writer now, for the work
+// census: a publish's push, a deletion or an archive run as daemon children.
+func (m *workspaceWriter) held() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.released != nil
+}
+
 var cloneWriter workspaceWriter

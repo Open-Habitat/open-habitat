@@ -205,9 +205,9 @@ func TestUpgradeWorkCensusContractExample(t *testing.T) {
 	if !ok {
 		t.Fatal("contract example unreadable")
 	}
-	// A turn, a command with Habitat's work, a clone and a title hold the
+	// A turn, a command with Habitat's work, a clone, a title and a workspace operation hold the
 	// window; the preview server is named.
-	if active, background, _ := census.counts(); active != 4 || background != 1 {
+	if active, background, _ := census.counts(); active != 5 || background != 1 {
 		t.Fatalf("contract example: active %d background %d", active, background)
 	}
 }

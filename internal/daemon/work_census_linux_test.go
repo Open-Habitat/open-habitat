@@ -208,6 +208,26 @@ func TestWorkCensusSeesHandlelessTitleWork(t *testing.T) {
 	}
 }
 
+// A workspace operation, such as a publish pushing for up to 45 minutes,
+// holds the daemon-wide workspace writer without a conversation or a clone
+// job; the census lists it while it holds the writer.
+func TestWorkCensusSeesWorkspaceOperation(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	if !cloneWriter.TryLock("workspace_publish_running") {
+		t.Fatal("workspace writer already held")
+	}
+	v := h.census(c)
+	cloneWriter.Unlock()
+	if len(v.Jobs) != 1 || v.Jobs[0].Kind != "workspace_operation" {
+		t.Fatalf("held workspace writer: %+v", v)
+	}
+	if v := h.census(c); len(v.Jobs) != 0 {
+		t.Fatalf("released writer still listed: %+v", v)
+	}
+}
+
 // The census answers no input, and never with invalid_arguments: the host
 // upgrade reads that code as a CLI without the census.
 func TestWorkCensusRefusesInput(t *testing.T) {

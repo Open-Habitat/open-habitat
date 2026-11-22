@@ -482,7 +482,7 @@ when interruption of daemon work is approved; the preview's `work` lists each
 live daemon with what stopping it would cut. `active_turns` counts the work a
 quiet window waits for: conversations with a turn, a question, a command the
 person ran, Habitat's own work (titles, recaps, publishing a finished turn) or
-an unreadable state, and handle-less jobs such as naming a history or a clone.
+an unreadable state, and handle-less jobs such as naming a history, a clone or a publish's push.
 `background_processes` counts processes Pi started that keep running, such as
 a preview server; they would hold every window, so they are not waited for,
 and the plan's `upgrade.background_processes` action says that they stop.
