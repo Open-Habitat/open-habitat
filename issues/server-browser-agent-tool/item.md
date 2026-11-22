@@ -24,3 +24,9 @@ An agent fetched 10 trips and 13 receipts from a site the person had signed in t
 ## Expected
 
 A ready tool available whenever the switch is on (e.g. `open-habitat agent browser goto|text|links|click|type|screenshot|download` or a built-in MCP server), a download folder named in `status`, guidance reachable from a running conversation (`open-habitat skill print browser`, a pointer in `browser status`), and an explicit "ask first" rule for purchases, cancellations, sending messages and other irreversible actions.
+
+## Comments
+
+### 2026-11-22T04:55:34Z · @jari
+
+Second testing agent (22.11.) confirmed the Node gap and added: separate socket_path/ws_path in status; proper load waiting in the CLI; the skill's Playwright example mixes require with top-level await and leaves CDP unexplained; open windows are a useful hint; explain the agent field.
