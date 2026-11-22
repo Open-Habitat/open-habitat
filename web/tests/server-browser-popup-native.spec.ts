@@ -24,7 +24,7 @@ test("feature popups can be switched, closed and close themselves", async ({
       </script>`);
     } else {
       res.end(`<!doctype html><title>Main fixture</title><h1>Main</h1><script>
-        document.onkeydown = e => { if(e.key==='p') window.open('/popup','flow','popup,width=400,height=300,left=100,top=100'); if(e.key==='m') fetch('/event/main'); };
+        document.onkeydown = e => { if(e.key==='p') window.open('/popup','flow','popup,width=400,height=300,left=100,top=100'); if(e.key==='b') window.open('about:blank#popup','blank-flow','popup,width=400,height=300,left=100,top=100'); if(e.key==='m') fetch('/event/main'); };
         window.onmessage = e => { if(e.origin===location.origin && e.data==='complete') fetch('/event/complete'); };
         window.onload = () => fetch('/event/ready');
       </script>`);
@@ -111,6 +111,28 @@ test("feature popups can be switched, closed and close themselves", async ({
     await expect(popup).toHaveCount(0);
     await page.keyboard.press("m");
     await expect.poll(() => events.filter((e) => e === "main").length).toBe(3);
+    // A blank feature popup must not replace or hide its opener in status.
+    const mainID = await main.getAttribute("data-window");
+    await page.keyboard.press("b");
+    const blank = list.locator(".sb-window-chip").filter({
+      has: page
+        .getByTestId("browser-window-select")
+        .filter({ hasText: "about:blank#popup" }),
+    });
+    await expect(blank).toBeVisible();
+    const blankID = await blank.getAttribute("data-window");
+    if (!mainID || !blankID) throw new Error("missing window identity");
+    await expect
+      .poll(async () => {
+        const status = await (await page.request.get("/api/v1/browser")).json();
+        return status.windows.map((w: { id: string }) => w.id).sort();
+      })
+      .toEqual([mainID, blankID].sort());
+    await blank.getByTestId("browser-window-close").click();
+    await expect(blank).toHaveCount(0);
+    await expect(main).toHaveAttribute("data-window", mainID);
+    await page.keyboard.press("m");
+    await expect.poll(() => events.filter((e) => e === "main").length).toBe(4);
     await expect(main.getByTestId("browser-window-close")).toBeDisabled();
     await page.getByTestId("browser-stop").click();
   } finally {

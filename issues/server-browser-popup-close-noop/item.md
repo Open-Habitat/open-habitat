@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/server-browser-popup-close-noop
