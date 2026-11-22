@@ -3,13 +3,17 @@ created: 2026-11-22
 updated: 2026-11-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-explain-follow-impl
 lane: explain-follow
 lane_seq: 2
 preparation: ready
+closed: 2026-11-22
+commits:
+- hash: 82793a825
+  summary: 'feat(web): Explain card follows beside the pointer (experimental)'
 ---
 
 # Explain mode: the card follows beside the pointer; only F pins it and opens the report
