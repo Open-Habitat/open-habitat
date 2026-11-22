@@ -565,17 +565,17 @@ test("@lab @explain-feedback the keyboard reaches the report with F and Esc canc
   await page.keyboard.press("Tab");
   await expect(card(page)).toHaveAttribute("data-card", "Y05");
   await page.keyboard.press("f");
-  await expect(page.getByTestId("explain-report")).toBeFocused();
-  await page.keyboard.press("Enter");
+  await page.keyboard.type("First correction");
   const text = page.getByTestId("explain-feedback-text");
   await expect(text).toBeFocused();
+  await expect(text).toHaveValue("First correction");
+  await expect(card(page)).toHaveAttribute("data-pinned", "true");
+  await expect(card(page)).toHaveAttribute("aria-live", "polite");
   // The first Esc cancels the report and keeps the mode.
   await page.keyboard.press("Escape");
   await expect(text).toHaveCount(0);
   await expect(bar(page)).toBeVisible();
   await page.keyboard.press("KeyF");
-  await expect(page.getByTestId("explain-report")).toBeFocused();
-  await page.keyboard.press("Enter");
   await page.keyboard.type("Puuttuu, miten konteksti tiivistetään.");
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("explain-feedback-send")).toBeFocused();
@@ -606,7 +606,6 @@ for (const width of [1440, 390]) {
         await page.getByTestId("explain-toggle").click();
         await pointAt(page, "attach-file");
         await page.keyboard.press("KeyF");
-        await page.keyboard.press("Enter");
         const text = page.getByTestId("explain-feedback-text");
         await expect(text).toBeFocused();
         await text.fill("A correction & details? ".repeat(26).slice(0, 600));
