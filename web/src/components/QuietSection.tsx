@@ -138,24 +138,31 @@ export function QuietSection({
       data-rows={view.shown.length}
       aria-labelledby={headId}
     >
-      <h2 className="ah-rail-section-head ah-quiet-head" ref={head}>
-        <button
-          type="button"
-          className="ah-quiet-fold"
-          data-testid="rail-quiet-fold"
-          aria-expanded={!folded}
-          title={folded ? t.unfold : t.fold}
-          onClick={() => onFold?.(!folded)}
-          disabled={!onFold}
-        >
-          <Icon name="down" className="ah-quiet-chevron" aria-hidden="true" />
+      <h2
+        className={`ah-rail-section-head ${rows.length ? "ah-quiet-head" : "ah-section-filter-head"}`}
+        ref={head}
+      >
+        {!rows.length ? (
           <span id={headId}>{t.title}</span>
-          <SectionCount
-            testId="rail-quiet-count"
-            view={view}
-            total={rows.length}
-          />
-        </button>
+        ) : (
+          <button
+            type="button"
+            className="ah-quiet-fold"
+            data-testid="rail-quiet-fold"
+            aria-expanded={!folded}
+            title={folded ? t.unfold : t.fold}
+            onClick={() => onFold?.(!folded)}
+            disabled={!onFold}
+          >
+            <Icon name="down" className="ah-quiet-chevron" aria-hidden="true" />
+            <span id={headId}>{t.title}</span>
+            <SectionCount
+              testId="rail-quiet-count"
+              view={view}
+              total={rows.length}
+            />
+          </button>
+        )}
         {!rows.length ? (
           <span
             className="ah-rail-empty"

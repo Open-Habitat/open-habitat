@@ -48,9 +48,12 @@ describe("empty quiet section", () => {
       const status = view.getByRole("status");
       expect(view.getByRole("heading").contains(status)).toBe(true);
       expect(status.closest("button")).toBeNull();
+      expect(view.queryByRole("button")).toBeNull();
+      expect(view.queryByTestId("rail-quiet-fold")).toBeNull();
+      const section = view.getByTestId("rail-quiet");
       expect(
-        view.getByTestId("rail-quiet-fold").getAttribute("aria-expanded"),
-      ).toBe(String(!folded));
+        document.getElementById(section.getAttribute("aria-labelledby") ?? ""),
+      ).toBeTruthy();
       expect(view.queryByRole("list")).toBeNull();
     }
     view.rerender(
@@ -59,6 +62,32 @@ describe("empty quiet section", () => {
       </MemoryRouter>,
     );
     expect(view.queryByRole("status")).toBeNull();
+    expect(
+      view.getByTestId("rail-quiet-fold").getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
+  it("keeps folding and the explanation when only the filter is empty", () => {
+    const view = render(
+      <MemoryRouter>
+        <QuietSection
+          rows={rows.filter((r) => !r.selected)}
+          workspaces={[{ id: "ws_empty", name: "Empty" }]}
+          choice={choice({ workspace: "ws_empty", onWorkspace: () => {} })}
+          onFold={() => {}}
+        />
+      </MemoryRouter>,
+    );
+    expect(
+      view.getByTestId("rail-quiet-fold").getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(view.getByTestId("rail-quiet-menu")).toBeTruthy();
+    expect(view.queryByTestId("rail-quiet-empty")).toBeNull();
+    expect(view.getByTestId("rail-quiet-show-all")).toBeTruthy();
+    expect(view.queryByRole("list")).toBeTruthy();
+    expect(
+      view.container.querySelectorAll('[data-testid^="agent-item-"]'),
+    ).toHaveLength(0);
   });
 });
 
