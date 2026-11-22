@@ -18,6 +18,7 @@ podman run --rm --network none \
   -v "$repo/.cache/cli-installation.test:/opt/cli-installation.test:ro" \
   -v "$repo/.cache/bootguard.test:/opt/bootguard.test:ro" \
   -v "$repo/site/example.json:/opt/example-site.json:ro" \
+  -v "$repo/contracts:/contracts:ro" \
   docker.io/library/ubuntu:24.04 \
   /bin/sh -ec '
     mkdir -p /site
