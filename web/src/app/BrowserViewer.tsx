@@ -12,6 +12,7 @@ import {
   idleLeft,
   keystrokes,
   keysymOfKey,
+  shortcutKeystrokes,
   shortcutLetter,
   shortcutOf,
   usesCommand,
@@ -25,6 +26,12 @@ const toastFor = 6000;
 const pasteFallbackMs = 400;
 // Keys typed while a takeover is on its way are replayed, up to this many.
 const keyBuffer = 16;
+const textModifiers: Record<string, number> = {
+  ControlLeft: 0xffe3,
+  ControlRight: 0xffe4,
+  ShiftLeft: 0xffe1,
+  ShiftRight: 0xffe2,
+};
 const modifierKeys = new Set([
   "Shift",
   "Control",
@@ -90,7 +97,7 @@ export default function BrowserViewer({
   const [clipOpen, setClipOpen] = useState(false);
   const [text, setText] = useState("");
   const [password, setPassword] = useState("");
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(true);
   const [enterWarn, setEnterWarn] = useState<number>();
   const [remote, setRemote] = useState<string>();
   const [remoteShown, setRemoteShown] = useState(false);
@@ -102,6 +109,9 @@ export default function BrowserViewer({
   const live = useRef({ control, mid, waiting, asked });
   live.current = { control, mid, waiting, asked };
   const taking = useRef(false);
+  const connection = useRef(0);
+  const connected = useRef(false);
+  const heldModifiers = useRef(new Set<string>());
   const keys = useRef<number[]>([]);
   const pasted = useRef(false);
   const lastInput = useRef(Date.now());
@@ -130,11 +140,20 @@ export default function BrowserViewer({
     const element = target.current;
     if (!element) return;
     setPhase("connecting");
+    connection.current++;
+    connected.current = false;
     let gone = false;
     const socket = new WebSocket(browserViewURL());
     socket.binaryType = "arraybuffer";
     const lost = () => {
-      if (!gone) setPhase("lost");
+      if (!gone) {
+        connection.current++;
+        connected.current = false;
+        keys.current = [];
+        heldModifiers.current.clear();
+        clearTimeout(pasteWait.current);
+        setPhase("lost");
+      }
     };
     socket.onclose = lost;
     socket.onopen = () => {
@@ -147,7 +166,10 @@ export default function BrowserViewer({
       client.focusOnClick = true;
       client.background = "transparent";
       client.addEventListener("connect", () => {
-        if (!gone) setPhase("connected");
+        if (!gone) {
+          connected.current = true;
+          setPhase("connected");
+        }
       });
       client.addEventListener("disconnect", lost);
       // noVNC raises this only while it is not view-only, i.e. while the
@@ -176,6 +198,10 @@ export default function BrowserViewer({
     };
     return () => {
       gone = true;
+      connection.current++;
+      connected.current = false;
+      keys.current = [];
+      heldModifiers.current.clear();
       const client = rfb.current;
       rfb.current = undefined;
       if (client) {
@@ -225,7 +251,9 @@ export default function BrowserViewer({
 
   const take = useCallback(
     async (replay?: (c: RFB) => void, message = txt.toast.took) => {
-      if (taking.current) return false;
+      if (taking.current || !connected.current) return false;
+      const epoch = connection.current;
+      const client = rfb.current;
       taking.current = true;
       setMidAt(undefined);
       let ok = false;
@@ -234,6 +262,12 @@ export default function BrowserViewer({
       } finally {
         taking.current = false;
       }
+      if (
+        epoch !== connection.current ||
+        !connected.current ||
+        client !== rfb.current
+      )
+        return false;
       const c = rfb.current;
       const buffered = keys.current;
       keys.current = [];
@@ -273,11 +307,9 @@ export default function BrowserViewer({
     [onGiveBack, say, txt.toast],
   );
 
-  /** Puts text on the remote clipboard and pastes it with Ctrl+V. On a
-   * keyboard shortcut outside a Mac the person already holds Ctrl, which
-   * noVNC has sent; everywhere else the viewer presses it. */
+  /** The popover's deliberate remote-clipboard route, never a fallback. */
   const paste = useCallback(
-    (value: string, ctrlHeld: boolean) => {
+    (value: string) => {
       const c = rfb.current;
       if (!c || c.viewOnly) return false;
       if (!value) {
@@ -289,13 +321,7 @@ export default function BrowserViewer({
         return false;
       }
       c.clipboardPasteFrom(value);
-      if (ctrlHeld) {
-        // noVNC may still hold back the person's Ctrl (on Windows it waits
-        // up to 100 ms for AltGr), so press it here; their own release
-        // goes through noVNC as usual.
-        c.sendKey(XK.Control_L, "ControlLeft", true);
-        c.sendKey(XK.v, "KeyV");
-      } else chord(XK.v);
+      chord(XK.v);
       pasted.current = true;
       say(txt.toast.pasted(charCount(value)));
       return true;
@@ -304,6 +330,7 @@ export default function BrowserViewer({
   );
 
   const openPasteField = useCallback(() => {
+    setHidden(true);
     setClipOpen(true);
     requestAnimationFrame(() =>
       document.getElementById("sb-paste-text")?.focus(),
@@ -362,8 +389,25 @@ export default function BrowserViewer({
       void take(replay);
     };
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code in textModifiers) heldModifiers.current.add(e.code);
       if (e.isComposing) return;
       noteInput();
+      const kind = shortcutOf(e, mac);
+      if (kind === "paste") {
+        // Preserve the browser default so only its trusted paste event reads
+        // the clipboard. Never forward V to noVNC, even during takeover.
+        e.stopPropagation();
+        clearTimeout(pasteWait.current);
+        pasteWait.current = setTimeout(() => {
+          say(
+            live.current.control === "person"
+              ? txt.toast.pasteBlocked
+              : txt.toast.pasteBlockedAgent,
+          );
+          openPasteField();
+        }, pasteFallbackMs);
+        return;
+      }
       if (live.current.control !== "person") {
         if (modifierKeys.has(e.key) || e.ctrlKey || e.metaKey || e.altKey)
           return;
@@ -380,21 +424,9 @@ export default function BrowserViewer({
         if (!taking.current) void take();
         return;
       }
-      const kind = shortcutOf(e, mac);
       if (kind === "meta") {
         // noVNC would send ⌘ as Alt; the remote never gets it.
         e.stopPropagation();
-        return;
-      }
-      if (kind === "paste") {
-        // noVNC must not send the V, and the default must stay so the
-        // browser raises a paste event with the person's clipboard.
-        e.stopPropagation();
-        clearTimeout(pasteWait.current);
-        pasteWait.current = setTimeout(() => {
-          say(txt.toast.pasteBlocked);
-          openPasteField();
-        }, pasteFallbackMs);
         return;
       }
       if (kind === "copy") copyAt.current = Date.now();
@@ -409,21 +441,68 @@ export default function BrowserViewer({
     // Only ⌘'s own release: other keys' releases must reach noVNC, which
     // ignores those it never saw go down.
     const onKeyUp = (e: KeyboardEvent) => {
+      heldModifiers.current.delete(e.code);
       if (mac && (e.key === "Meta" || e.key === "OS")) e.stopPropagation();
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (live.current.control !== "person") return;
-      clearTimeout(pasteWait.current);
       e.preventDefault();
       e.stopPropagation();
+      if (!e.isTrusted) return;
+      clearTimeout(pasteWait.current);
       noteInput();
       const value = e.clipboardData?.getData("text/plain") ?? "";
-      paste(value, !mac);
+      const result = shortcutKeystrokes(value);
+      if (!result.ok) {
+        say(txt.toast.shortcutRefused[result.why]);
+        return;
+      }
+      if (live.current.waiting || taking.current) {
+        say(txt.toast.shortcutRefused.not_in_control);
+        return;
+      }
+      if (live.current.control !== "person" && live.current.mid) {
+        setMidAt({ x: 0.2, y: 0.2 });
+        return;
+      }
+      const epoch = connection.current;
+      const client = rfb.current;
+      if (!connected.current || !client) {
+        say(txt.toast.shortcutRefused.unavailable);
+        return;
+      }
+      const send = async () => {
+        if (live.current.control !== "person" && !(await take())) {
+          if (epoch === connection.current)
+            say(txt.toast.shortcutRefused.not_in_control);
+          return;
+        }
+        if (
+          epoch !== connection.current ||
+          !connected.current ||
+          client !== rfb.current
+        )
+          return;
+        if (client.viewOnly) {
+          say(txt.toast.shortcutRefused.not_in_control);
+          return;
+        }
+        // Type literally even while the shortcut's Ctrl/Shift is down.
+        // Restore only keys still held now (takeover may have awaited a grant),
+        // so Ctrl+C after pasting with Ctrl still down remains a shortcut.
+        for (const [code, sym] of Object.entries(textModifiers))
+          client.sendKey(sym, code, false);
+        for (const k of result.keysyms) client.sendKey(k, null);
+        for (const code of heldModifiers.current)
+          client.sendKey(textModifiers[code], code, true);
+      };
+      void send();
     };
+    const onBlur = () => heldModifiers.current.clear();
     const onWheel = () => noteInput();
     el.addEventListener("pointerdown", onPointerDown, true);
     el.addEventListener("keydown", onKeyDown, true);
     el.addEventListener("keyup", onKeyUp, true);
+    el.addEventListener("blur", onBlur, true);
     el.addEventListener("paste", onPaste, true);
     el.addEventListener("wheel", onWheel, { capture: true, passive: true });
     return () => {
@@ -431,10 +510,11 @@ export default function BrowserViewer({
       el.removeEventListener("pointerdown", onPointerDown, true);
       el.removeEventListener("keydown", onKeyDown, true);
       el.removeEventListener("keyup", onKeyUp, true);
+      el.removeEventListener("blur", onBlur, true);
       el.removeEventListener("paste", onPaste, true);
       el.removeEventListener("wheel", onWheel, true);
     };
-  }, [mac, take, chord, paste, noteInput, openPasteField, say, txt.toast]);
+  }, [mac, take, chord, noteInput, openPasteField, say, txt.toast]);
 
   // "Take when it's done": once the agent's operation ends.
   useEffect(() => {
@@ -493,6 +573,7 @@ export default function BrowserViewer({
       setText("");
       setEnterWarn(undefined);
     }
+    rfb.current?.focus({ preventScroll: true });
     say(txt.toast.typed(r.keysyms.length));
   };
 
@@ -528,6 +609,7 @@ export default function BrowserViewer({
       onCancelWait={() => setWaiting(false)}
       onClipToggle={() => {
         noteInput();
+        setHidden(true);
         setClipOpen((v) => !v);
       }}
       onTakeNow={() => void take()}
@@ -561,7 +643,7 @@ export default function BrowserViewer({
           onHidden={setHidden}
           onPaste={() => {
             noteInput();
-            if (paste(text, false)) {
+            if (paste(text)) {
               setText("");
               setEnterWarn(undefined);
             }

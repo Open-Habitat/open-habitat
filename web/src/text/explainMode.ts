@@ -1318,7 +1318,7 @@ const fi = {
     },
     B09: {
       name: "Salasana näppäilyinä",
-      lead: "Liitä tähän yksi salasana omalta laitteeltasi. Merkit pysyvät peitettyinä.",
+      lead: "Liitä tähän yksi salasana omalta laitteeltasi. Merkit ovat aluksi peitettyinä.",
       know: "Pidä salasananhallinta omalla laitteellasi. Sivulle syötetty salasana ja kirjautunut istunto eivät ole agentilta piilossa.",
     },
     B10: {
@@ -1326,6 +1326,11 @@ const fi = {
       lead: "Kirjoittaa salasanan sivun valittuun kenttään ja tyhjentää tämän kentän.",
       know: "Ei käytä etäkoneen leikepöytää. Valitse sivun salasanakenttä ennen lähettämistä.",
       grey: "Ota selaimen ohjaus, odota yhteyttä ja syötä salasana ensin.",
+    },
+    B11: {
+      name: "Näytä tai piilota teksti",
+      lead: "Silmä näyttää kentän tekstin. Yliviivattu silmä peittää sen uudelleen.",
+      know: "Näyttäminen ei lähetä tekstiä sivulle. Peittäminen ei piilota sivulle jo syötettyä tekstiä agentilta.",
     },
     H01: {
       name: "Keskustelun avustaja",
@@ -3306,7 +3311,7 @@ export const explainModeText = catalog(fi, {
     },
     B09: {
       name: "Password as keystrokes",
-      lead: "Paste one password from your own device here. Characters stay masked.",
+      lead: "Paste one password from your own device here. Characters start masked.",
       know: "Keep your password manager on your device. The entered password and signed-in session are not hidden from the agent.",
     },
     B10: {
@@ -3314,6 +3319,11 @@ export const explainModeText = catalog(fi, {
       lead: "Types the password into the selected page field and clears this field.",
       know: "Does not use the remote clipboard. Select the page's password field before sending.",
       grey: "Take control, wait for the connection and enter a password first.",
+    },
+    B11: {
+      name: "Show or hide text",
+      lead: "The eye reveals the field's text. The crossed-out eye masks it again.",
+      know: "Revealing does not send text to the page. Masking does not hide text already entered on the page from the agent.",
     },
     H01: {
       name: "Conversation's helper",

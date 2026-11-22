@@ -7,6 +7,7 @@ import {
   keystrokes,
   keysymOfChar,
   keysymOfKey,
+  shortcutKeystrokes,
   shortcutOf,
   typeLimit,
   usesCommand,
@@ -63,6 +64,38 @@ describe("keysyms", () => {
     expect(charCount("😀ä")).toBe(2);
     expect(fitsClipboard("ä".repeat(32 * 1024))).toBe(true);
     expect(fitsClipboard("ä".repeat(32 * 1024 + 1))).toBe(false);
+  });
+});
+
+describe("shortcut paste validation", () => {
+  it("rejects the entire value before typing any prefix or control key", () => {
+    for (const value of ["a\nb", "a\rb", "a\r\nb"]) {
+      expect(shortcutKeystrokes(value)).toEqual({
+        ok: false,
+        why: "multiline",
+      });
+    }
+    for (const value of ["a\tb", "a\fb", "a\u0000b", "a\u007fb"]) {
+      expect(shortcutKeystrokes(value)).toEqual({
+        ok: false,
+        why: "invalid_text",
+      });
+    }
+    for (const value of ["prefix😀", "prefix中文", "e\u0301"]) {
+      expect(shortcutKeystrokes(value)).toEqual({
+        ok: false,
+        why: "unsupported",
+      });
+    }
+    expect(shortcutKeystrokes("x".repeat(1001))).toEqual({
+      ok: false,
+      why: "long",
+    });
+    expect(shortcutKeystrokes("")).toEqual({ ok: false, why: "empty" });
+    expect(shortcutKeystrokes("äö€")).toMatchObject({
+      ok: true,
+      keysyms: [0xe4, 0xf6, 0x20ac],
+    });
   });
 });
 

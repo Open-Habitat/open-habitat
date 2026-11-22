@@ -496,6 +496,10 @@ export const parts: Record<CardId, Part> = {
   B08: { kind: "once", sel: '[data-testid="browser-sheet-close"]' },
   B09: { kind: "input", sel: '[data-testid="browser-password"]' },
   B10: { kind: "once", sel: '[data-testid="browser-password-send"]' },
+  B11: {
+    kind: "once",
+    sel: '[data-testid="browser-password-eye"], [data-testid="browser-paste-hide"]',
+  },
   H01: {
     kind: "info",
     sel: '[data-testid="helper-archive-row"]',

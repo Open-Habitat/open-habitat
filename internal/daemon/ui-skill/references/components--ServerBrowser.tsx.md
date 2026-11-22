@@ -888,20 +888,33 @@ export function BrowserClipboard({
   onCopyLocal: () => void;
 }) {
   const txt = useText(serverBrowserText);
+  const [passwordShown, setPasswordShown] = useState(false);
   return (
     <>
       <div className="sb-paste">
         <label htmlFor="sb-password">{txt.clip.password}</label>
-        <input
-          id="sb-password"
-          type="password"
-          data-testid="browser-password"
-          autoComplete="off"
-          spellCheck={false}
-          value={password}
-          onChange={(e) => onPassword(e.target.value)}
-          aria-describedby="sb-password-note"
-        />
+        <div className="sb-secret-field">
+          <input
+            id="sb-password"
+            type={passwordShown ? "text" : "password"}
+            data-testid="browser-password"
+            autoComplete="off"
+            spellCheck={false}
+            value={password}
+            onChange={(e) => onPassword(e.target.value)}
+            aria-describedby="sb-password-note"
+          />
+          <ControlButton
+            size="row"
+            variant="quiet"
+            data-testid="browser-password-eye"
+            aria-label={passwordShown ? txt.clip.hide : txt.clip.show}
+            aria-pressed={passwordShown}
+            onPress={() => setPasswordShown((v) => !v)}
+          >
+            <Icon name={passwordShown ? "eyeOff" : "eye"} />
+          </ControlButton>
+        </div>
         <div className="sb-paste-actions">
           <ControlButton
             size="row"
@@ -918,17 +931,29 @@ export function BrowserClipboard({
       </div>
       <div className="sb-paste">
         <label htmlFor="sb-paste-text">{txt.clip.label}</label>
-        <textarea
-          id="sb-paste-text"
-          data-testid="browser-paste-text"
-          rows={2}
-          className={hidden ? "sb-masked" : undefined}
-          placeholder={txt.clip.placeholder}
-          autoComplete="off"
-          spellCheck={false}
-          value={text}
-          onChange={(e) => onText(e.target.value)}
-        />
+        <div className="sb-secret-field">
+          <textarea
+            id="sb-paste-text"
+            data-testid="browser-paste-text"
+            rows={2}
+            className={hidden ? "sb-masked" : undefined}
+            placeholder={txt.clip.placeholder}
+            autoComplete="off"
+            spellCheck={false}
+            value={text}
+            onChange={(e) => onText(e.target.value)}
+          />
+          <ControlButton
+            size="row"
+            variant="quiet"
+            data-testid="browser-paste-hide"
+            aria-label={hidden ? txt.clip.show : txt.clip.hide}
+            aria-pressed={!hidden}
+            onPress={() => onHidden(!hidden)}
+          >
+            <Icon name={hidden ? "eye" : "eyeOff"} />
+          </ControlButton>
+        </div>
         <small>{touch ? txt.clip.hintTouch : txt.clip.hintKeys}</small>
         <div className="sb-paste-actions">
           <ControlButton
@@ -948,15 +973,6 @@ export function BrowserClipboard({
             <Icon name="key" />
             {txt.clip.type}
           </ControlButton>
-          <label className="sb-check">
-            <input
-              type="checkbox"
-              data-testid="browser-paste-hide"
-              checked={hidden}
-              onChange={(e) => onHidden(e.target.checked)}
-            />{" "}
-            {txt.clip.hide}
-          </label>
         </div>
         {enterWarn ? (
           <p className="sb-enter-warn" role="alert">

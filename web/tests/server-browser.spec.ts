@@ -281,6 +281,7 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   context,
 }, testInfo) => {
   test.setTimeout(90000);
+  await page.clock.install();
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await signIn(page, true);
   const viewer = await openView(page);
@@ -302,25 +303,66 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
     .poll(async () => (await input(page)).keysyms.slice(typedBefore))
     .toEqual([0x61, 0x62]);
 
-  // ⌘/Ctrl+V pastes the person's own clipboard: the text goes to the
-  // remote clipboard, then the remote gets Ctrl+V. The confirmation never
-  // shows the text.
+  // Shortcut paste types literal characters, never a clipboard write or V.
+  // It also takes control from an idle agent.
   const secret = "sälasana-42";
   await page.evaluate((t) => navigator.clipboard.writeText(t), secret);
   await canvas.focus();
+  await button(page, "browser-give-back").click();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
   const keysBefore = (await input(page)).keysyms.length;
+  const shortcutCuts = (await input(page)).cuts;
   await page.keyboard.press("Control+V");
-  await expect.poll(async () => (await input(page)).cuts).toContain(secret);
-  // Ctrl is down before the V (the viewer may press it again itself).
+  await expect(sheet).toHaveAttribute("data-mode", "control");
   await expect
-    .poll(async () => {
-      const keys = (await input(page)).keysyms.slice(keysBefore);
-      return [keys[0], keys.filter((k) => k !== XK_Control_L)];
-    })
-    .toEqual([XK_Control_L, [XK_v]]);
+    .poll(async () =>
+      (await input(page)).keysyms
+        .slice(keysBefore)
+        .filter((k) => k !== XK_Control_L),
+    )
+    .toEqual([
+      0x73, 0xe4, 0x6c, 0x61, 0x73, 0x61, 0x6e, 0x61, 0x2d, 0x34, 0x32,
+    ]);
+  expect((await input(page)).cuts).toEqual(shortcutCuts);
+  await expect(page.getByTestId("browser-clipboard")).toHaveCount(0);
   const toast = page.getByTestId("browser-toast");
-  await expect(toast).not.toBeEmpty();
   await expect(toast).not.toContainText(secret);
+
+  // Every refusal must produce a new warning, not leave an earlier toast.
+  // Invalid values are atomic refusals: no prefix and no clipboard fallback.
+  for (const value of [
+    "x".repeat(1001),
+    "first\nsecond",
+    "a\rb",
+    "ä😀",
+    "a中文",
+    "a\fb",
+    "a\tb",
+  ]) {
+    await page.clock.fastForward(6100);
+    await expect(toast).toBeEmpty();
+    await page.evaluate((t) => navigator.clipboard.writeText(t), value);
+    const mark = (await input(page)).keysyms.length;
+    await page.keyboard.press("Control+V");
+    await expect(toast).not.toBeEmpty();
+    await expect
+      .poll(async () => (await input(page)).keysyms.slice(mark))
+      .toEqual([XK_Control_L]);
+    expect((await input(page)).cuts).toEqual(shortcutCuts);
+    await expect(page.getByTestId("browser-clipboard")).toHaveCount(0);
+  }
+  // Plain-text paste is the same clipboard-free insertion while controlling.
+  await page.evaluate(() => navigator.clipboard.writeText("abc"));
+  const controllingMark = (await input(page)).keysyms.length;
+  await page.keyboard.press("Control+Shift+V");
+  await expect
+    .poll(async () =>
+      (await input(page)).keysyms
+        .slice(controllingMark)
+        .filter((k) => k !== XK_Control_L && k !== 0xffe1),
+    )
+    .toEqual([0x61, 0x62, 0x63]);
+  expect((await input(page)).cuts).toEqual(shortcutCuts);
 
   // The clipboard popover: the paste field sends with its own Ctrl+V and
   // clears itself.
@@ -337,6 +379,13 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   ).toEqual([]);
   const password = pop.getByTestId("browser-password");
   await expect(password).toHaveAttribute("type", "password");
+  const eye = button(page, "browser-password-eye");
+  await expect(eye).toHaveAttribute("aria-pressed", "false");
+  await eye.click();
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(eye).toHaveAttribute("aria-pressed", "true");
+  await eye.click();
+  await expect(password).toHaveAttribute("type", "password");
   await password.fill("äöå€@Ł");
   const passwordKeys = (await input(page)).keysyms.length;
   const passwordCuts = (await input(page)).cuts.length;
@@ -345,6 +394,7 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
     .poll(async () => (await input(page)).keysyms.slice(passwordKeys))
     .toEqual([0xe4, 0xf6, 0xe5, 0x20ac, 0x40, 0x1a3]);
   await expect(password).toHaveValue("");
+  await expect(canvas).toBeFocused();
   expect((await input(page)).cuts.length).toBe(passwordCuts);
   await expect(toast).not.toContainText("äöå€@Ł");
   // Refusal preserves the masked value without partially typing it.
@@ -376,6 +426,14 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
     .poll(async () => (await input(page)).keysyms.slice(mark))
     .toEqual([0xe4, 0xf6, 0xe5, 0x20ac, 0x40, 0x1a3]);
   await expect(field).toHaveValue("");
+  await expect(canvas).toBeFocused();
+  const followMark = (await input(page)).keysyms.length;
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(followMark))
+    .toEqual([0xff08, XK_Return, 0xff09]);
   await field.fill("ä😀");
   mark = (await input(page)).keysyms.length;
   await button(page, "browser-type-send").click();
@@ -508,6 +566,20 @@ for (const width of [1440, 390]) {
           await snapshot(
             page,
             `${process.env.OH_PASSWORD_CAPTURE}/send-${width}-${language}`,
+            { labOrigin: new URL(page.url()).origin },
+          );
+        }
+        const eye = button(page, "browser-password-eye");
+        await eye.hover();
+        await expect(card).toHaveAttribute("data-card", "B11");
+        await eye.click();
+        await expect(password).toHaveAttribute("type", "text");
+        await eye.click();
+        await expect(password).toHaveAttribute("type", "password");
+        if (process.env.OH_PASSWORD_CAPTURE) {
+          await snapshot(
+            page,
+            `${process.env.OH_PASSWORD_CAPTURE}/eye-${width}-${language}`,
             { labOrigin: new URL(page.url()).origin },
           );
         }

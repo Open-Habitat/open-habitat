@@ -381,7 +381,7 @@ button.sb-rail-item:focus-visible {
   font-size: var(--ah-size-meta);
 }
 .sb-paste textarea,
-.sb-paste > input {
+.sb-secret-field > input {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
@@ -392,6 +392,11 @@ button.sb-rail-item:focus-visible {
   color: var(--ah-ink);
   font-family: var(--ah-mono);
   font-size: var(--ah-size-meta);
+}
+.sb-secret-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ah-s1);
 }
 .sb-paste textarea.sb-masked {
   -webkit-text-security: disc;

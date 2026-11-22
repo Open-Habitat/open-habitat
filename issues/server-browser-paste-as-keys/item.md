@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-server-browser-paste-as-keys
 lane: server-browser-control
 lane_seq: 6
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser: Ctrl/Cmd+V types the clipboard as keystrokes
@@ -29,3 +30,9 @@ Jari 22.11.2026: for the edge cases (characters that cannot be typed, very long 
 ### 2026-11-22T13:30:47Z · @conductor
 
 Conductor 22.11.2026 after the security blocker in run 01m81n2pff1yzagtqnrvcx78rm: the CDP Input.insertText route does not ship (focus inference can deliver the person's text to a background page). Ship Jari's own rule instead: Ctrl/Cmd+V types the text as X keystrokes (delivered to the X-focused window, like real typing) for what the preloaded keymap covers, and shows the warning for what it cannot type (emoji, CJK), long text and multi-line text. Revisit a destination-bound Unicode route after server-browser-popup-takes-over gives the viewer an authoritative current window.
+
+## Acceptance Criteria
+
+- [x] Ctrl/Cmd+V uses X keystrokes without a remote clipboard fallback; unsupported, long, multiline and control-character values are refused before dispatch.
+- [x] Delayed takeover cannot replay into a disconnected or replaced viewer; fallback guidance, focus return and eye controls work.
+- [x] Web checks and repeated focused synthetic/native browser specs pass; verification and limits are recorded in result.md.

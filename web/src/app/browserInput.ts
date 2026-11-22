@@ -90,6 +90,21 @@ export function keystrokes(
   return { ok: true, keysyms, enters };
 }
 
+/** Shortcut paste is atomic validation: never turn pasted layout/control
+ * characters into Enter, Tab or commands, and never fall back to clipboard. */
+export function shortcutKeystrokes(text: string):
+  | { ok: true; keysyms: number[] }
+  | {
+      ok: false;
+      why: "empty" | "long" | "unsupported" | "multiline" | "invalid_text";
+    } {
+  if (/[\r\n]/.test(text)) return { ok: false, why: "multiline" };
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: pasted control bytes must be refused
+  if (/[\x00-\x1f\x7f-\x9f]/.test(text))
+    return { ok: false, why: "invalid_text" };
+  return keystrokes(text);
+}
+
 /** Characters as a person counts them, for "pasted · N characters". */
 export function charCount(text: string) {
   return [...text].length;

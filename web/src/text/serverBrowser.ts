@@ -121,11 +121,13 @@ const fi = {
       "Salasana menee sivulle eikä ole agentilta piilossa. Pidä salasananhallinta omalla laitteellasi.",
     label: "Tavallinen teksti sivulle",
     placeholder: "Liitä tai kirjoita tähän",
-    hintKeys: "⌘/Ctrl+V liittää suoraan sivulle. Jos se ei toimi, liitä tähän.",
+    hintKeys:
+      "⌘/Ctrl+V kirjoittaa tekstin ilman etäkoneen leikepöytää. Liitä sivulle käyttää leikepöytää. Kummallakin tavalla teksti menee sivulle eikä ole agentilta piilossa.",
     hintTouch: "Liitä tai kirjoita tähän ja lähetä sivulle.",
     paste: "Liitä sivulle",
     type: "Kirjoita näppäilyinä",
     hide: "Piilota teksti",
+    show: "Näytä teksti",
     keysNote:
       "Näppäilyt toimivat myös sivuilla, jotka estävät liittämisen. Kenttä tyhjenee lähetyksen jälkeen.",
     enterWarn: (n: number) =>
@@ -146,6 +148,23 @@ const fi = {
     typed: (n: number) => `Kirjoitettiin sivulle näppäilyinä · ${n} merkkiä`,
     pasteBlocked:
       "Selain ei antanut liittää suoraan kuvaan. Liitä tekstikenttään ja lähetä.",
+    pasteBlockedAgent:
+      "Selain ei antanut liittää suoraan kuvaan. Ota ensin selaimen ohjaus, liitä sitten tekstikenttään ja lähetä.",
+    shortcutRefused: {
+      empty:
+        "Liittäminen ei onnistu: leikepöydällä ei ole tekstiä. Voit käyttää Leikepöytä-valikon Liitä sivulle -toimintoa.",
+      long: "Liittäminen ei onnistu: tekstissä on yli 1 000 merkkiä. Käytä halutessasi Leikepöytä-valikon Liitä sivulle -toimintoa.",
+      invalid_text:
+        "Liittäminen ei onnistu: tekstissä on ohjausmerkkejä. Käytä halutessasi Leikepöytä-valikon Liitä sivulle -toimintoa.",
+      unsupported:
+        "Liittäminen ei onnistu: kaikkia merkkejä ei voi kirjoittaa näppäilyinä. Mitään ei lähetetty. Käytä halutessasi Leikepöytä-valikon Liitä sivulle -toimintoa.",
+      not_in_control:
+        "Liittäminen ei onnistu: ota ensin selaimen ohjaus. Voit myös käyttää Leikepöytä-valikon Liitä sivulle -toimintoa.",
+      unavailable:
+        "Mitään ei lähetetty: selaimeen ei ole yhteyttä. Odota yhteyttä ja yritä uudelleen.",
+      multiline:
+        "Liittäminen ei onnistu: rivinvaihto voisi lähettää lomakkeen. Käytä halutessasi Leikepöytä-valikon Liitä sivulle -toimintoa.",
+    },
     tooLong: "Teksti on liian pitkä lähetettäväksi.",
     unsupported:
       "Tekstissä on merkkejä, joita ei voi kirjoittaa näppäilyinä, kuten emoji tai yhdistyvä tarke. Mitään ei lähetetty. Tavalliselle tekstille voit käyttää Liitä sivulle.",
@@ -281,11 +300,12 @@ export const serverBrowserText = catalog(fi, {
     label: "Ordinary text for the page",
     placeholder: "Paste or type here",
     hintKeys:
-      "⌘/Ctrl+V pastes straight into the page. If that doesn’t work, paste here.",
+      "⌘/Ctrl+V inserts text without the remote clipboard. Paste into page uses the clipboard. Either way, the text goes to the page and is not hidden from the agent.",
     hintTouch: "Paste or type here and send it to the page.",
     paste: "Paste into page",
     type: "Type as keystrokes",
     hide: "Hide text",
+    show: "Show text",
     keysNote:
       "Keystrokes also work on sites that block pasting. The field clears after sending.",
     enterWarn: (n: number) =>
@@ -306,6 +326,23 @@ export const serverBrowserText = catalog(fi, {
     typed: (n: number) => `Typed into the page as keystrokes · ${n} characters`,
     pasteBlocked:
       "Your browser did not allow pasting straight into the picture. Paste into the text field and send.",
+    pasteBlockedAgent:
+      "Your browser did not allow pasting straight into the picture. Take browser control first, then paste into the text field and send.",
+    shortcutRefused: {
+      empty:
+        "Cannot paste: the clipboard has no text. You can use Paste into page in the Clipboard menu.",
+      long: "Cannot paste: the text exceeds 1,000 characters. You can choose Paste into page in the Clipboard menu.",
+      invalid_text:
+        "Cannot paste: the text contains control characters. You can choose Paste into page in the Clipboard menu.",
+      unsupported:
+        "Cannot paste: some characters cannot be typed as keystrokes. Nothing was sent. You can choose Paste into page in the Clipboard menu.",
+      not_in_control:
+        "Cannot paste: take browser control first. You can also use Paste into page in the Clipboard menu.",
+      unavailable:
+        "Nothing was sent: the browser is disconnected. Wait for the connection and try again.",
+      multiline:
+        "Cannot paste: a line break could submit the form. You can choose Paste into page in the Clipboard menu.",
+    },
     tooLong: "The text is too long to send.",
     unsupported:
       "The text contains characters that cannot be typed as keystrokes, such as an emoji or a combining accent. Nothing was sent. For ordinary text, you can use Paste into page.",
