@@ -289,6 +289,13 @@ esac
 	var scenario atomic.Value
 	scenario.Store("ready")
 	fakePiScenario := filepath.Join(tmp, "fakepi-scenario")
+	// The pi-snapshots scenario runs the recorder's module with this node,
+	// from this checkout (snapshots.go).
+	if node, err := exec.LookPath("node"); err == nil {
+		repo, _ := filepath.Abs(filepath.Join(os.Args[1], "../.."))
+		_ = os.WriteFile(filepath.Join(tmp, "fakepi-node"), []byte(node), 0600)
+		_ = os.WriteFile(filepath.Join(tmp, "fakepi-repo"), []byte(repo), 0600)
+	}
 	if story {
 		if e := os.WriteFile(filepath.Join(tmp, storyFile), []byte("readme"), 0600); e != nil {
 			log.Fatal(e)
@@ -659,7 +666,7 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" && scenario.Load() != "pi-recap-failing" && scenario.Load() != "pi-rewind" && scenario.Load() != "pi-slow-start" && scenario.Load() != "pi-start-fail" && scenario.Load() != "pi-slow-intake" {
+			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" && scenario.Load() != "pi-recap-failing" && scenario.Load() != "pi-rewind" && scenario.Load() != "pi-snapshots" && scenario.Load() != "pi-slow-start" && scenario.Load() != "pi-start-fail" && scenario.Load() != "pi-slow-intake" {
 				http.NotFound(w, r) // Fault scenarios exercise the HTTP fallback.
 				return
 			}
@@ -704,7 +711,7 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-recap-failing", "pi-rewind", "pi-slow-start", "pi-start-fail", "pi-slow-intake":
+			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-recap-failing", "pi-rewind", "pi-snapshots", "pi-slow-start", "pi-start-fail", "pi-slow-intake":
 				current.Load().(*daemon.ConversationController).FixtureSnapshotWithForges(forges).ServeHTTP(w, r)
 				return
 
@@ -983,6 +990,22 @@ esac
 					previous()
 				}
 				w.WriteHeader(204)
+				return
+			case "/fixture/workspace-file":
+				// A lab workspace file's content, for specs that check what a
+				// restore wrote to disk.
+				name, rel := r.URL.Query().Get("workspace"), r.URL.Query().Get("path")
+				if !lab || name == "" || strings.Contains(name, "/") || rel == "" || filepath.IsAbs(rel) || strings.HasPrefix(filepath.Clean(rel), "..") {
+					http.NotFound(w, r)
+					return
+				}
+				data, err := os.ReadFile(filepath.Join(tmp, "alice", "src", name, filepath.Clean(rel)))
+				if err != nil {
+					http.NotFound(w, r)
+					return
+				}
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				_, _ = w.Write(data)
 				return
 			case "/fixture/lab-conversations-clean":
 				if !lab {
@@ -1403,7 +1426,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-recap-failing", "pi-rewind", "pi-slow-start", "pi-start-fail", "pi-slow-intake":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-recap-failing", "pi-rewind", "pi-snapshots", "pi-slow-start", "pi-start-fail", "pi-slow-intake":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-start-fail")); err != nil && !os.IsNotExist(err) {

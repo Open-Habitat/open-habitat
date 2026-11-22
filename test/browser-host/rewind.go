@@ -18,7 +18,7 @@ import (
 
 func rewindScenario(home string) bool {
 	mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
-	return strings.TrimSpace(string(mode)) == "pi-rewind"
+	return strings.TrimSpace(string(mode)) == "pi-rewind" || strings.TrimSpace(string(mode)) == "pi-snapshots"
 }
 
 const rewindDemoFile = "palautettava.txt"
@@ -26,6 +26,9 @@ const rewindDemoFile = "palautettava.txt"
 // rewindCheckpoint is what the extension records as the agent starts
 // answering the person's message just appended.
 func (s *fakeSession) rewindCheckpoint(prompt string) {
+	if snapshotScenario(os.Getenv("HOME")) {
+		return
+	}
 	user := s.lastMessage
 	s.append(map[string]any{"type": "custom", "customType": "oh-rewind-checkpoint", "data": map[string]any{"version": 1, "kind": "snapshot", "userEntryId": user, "cwd": s.cwd, "timestamp": "2026-11-06T09:20:00Z", "files": map[string]any{}}})
 	if !strings.Contains(prompt, "tiedosto") {
@@ -128,7 +131,9 @@ func (s *fakeSession) rewind(raw string) string {
 		return `{"outcome":"not_found"}`
 	}
 	restored := 0
-	if args.Files {
+	if args.Files && snapshotScenario(os.Getenv("HOME")) && args.Action == "rewind" {
+		restored = s.snapshotRewind(args.Entry)
+	} else if args.Files {
 		if err := os.Remove(filepath.Join(s.cwd, rewindDemoFile)); err == nil {
 			restored = 1
 		}

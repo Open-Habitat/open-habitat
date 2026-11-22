@@ -700,6 +700,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if rewindScenario(os.Getenv("HOME")) {
 		s.rewindCheckpoint(prompt)
 	}
+	var snapshotEnd func()
+	if snapshotScenario(os.Getenv("HOME")) && strings.Contains(prompt, "skripti") {
+		snapshotEnd = s.snapshotTurn(emit)
+	}
 	// The README story's scripted English turns (readme_story.go).
 	if storyActive(os.Getenv("HOME")) && s.storyTurn(prompt, run, emit) {
 		return
@@ -1006,6 +1010,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	}
 	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop", "usage": s.replyUsage(prompt)}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
+	if snapshotEnd != nil {
+		// The recorder's end entry, at settle.
+		snapshotEnd()
+	}
 	emit(map[string]any{"type": "agent_end"})
 	if strings.Contains(prompt, "tiivistä") {
 		// Pi's threshold compaction runs after the turn: the old history
