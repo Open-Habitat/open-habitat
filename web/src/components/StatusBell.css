@@ -175,6 +175,24 @@
   flex: 1;
   min-width: 0;
 }
+/* Place counts and browser state occupy the same quiet trailing slot. */
+.ah-rail-place-count,
+.sb-rail-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+}
+.ah-rail-collapsed .ah-rail-place-count {
+  display: none;
+}
 .ah-rail-collapsed .ah-rail-home-row {
   flex-direction: column;
 }

@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./lab-host";
@@ -304,6 +304,94 @@ test.describe("off", () => {
     ).toBeVisible();
   });
 });
+
+for (const adaptive of [false, true]) {
+  test(`place count stays at the row end (adaptive=${adaptive})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 1080 });
+    await page.route("**/api/v1/view-addresses", (route) =>
+      route.fulfill({
+        json: {
+          schema_version: 1,
+          max_days: 30,
+          addresses: [
+            {
+              address_id: `a${"a".repeat(26)}`,
+              view_id: `v${"a".repeat(26)}`,
+              title: "Synthetic output",
+              url: `${new URL(route.request().url()).origin}/n/${"a".repeat(43)}`,
+              content_url: `https://example.test/${"a".repeat(43)}/`,
+              state: "public",
+              created_at: "2026-01-01T00:00:00Z",
+              public_until: "2099-01-01T00:00:00Z",
+            },
+          ],
+        },
+      }),
+    );
+    await open(page, LITTLE, adaptive);
+    const shares = rail(page).getByTestId("rail-shares");
+    await shares.click();
+    await expect(page.getByTestId("shares-page")).toBeVisible();
+    const rowCount = shares.locator(".ah-rail-place-count");
+    const checkRow = async (name: string) => {
+      await expect(rowCount).toBeVisible();
+      await expect
+        .poll(async () =>
+          shares.evaluate((el) => {
+            const count = el.querySelector(".ah-rail-place-count");
+            const label = el.querySelector(".ah-rail-home-label");
+            if (!count || !label) return false;
+            const edge = el.getBoundingClientRect().right;
+            const box = count.getBoundingClientRect();
+            return (
+              box.left > label.getBoundingClientRect().right &&
+              Math.abs(
+                edge -
+                  box.right -
+                  Number.parseFloat(getComputedStyle(el).paddingRight),
+              ) < 2
+            );
+          }),
+        )
+        .toBe(true);
+      if (capture) {
+        const dir = "/var/tmp/agent-keep/rail-outputs-count-at-row-end";
+        await mkdir(dir, { recursive: true });
+        await page.screenshot({ path: `${dir}/${name}.png` });
+        await writeFile(`${dir}/${name}.html`, await page.content());
+      }
+    };
+    await checkRow(`desktop-${adaptive}`);
+    if (adaptive) {
+      const steps = new Set<string>();
+      for (let height = 1080; height >= 600; height -= 20) {
+        await page.setViewportSize({ width: 1280, height });
+        await settled(page);
+        const step = await rail(page).getAttribute("data-step");
+        if (!step) throw new Error("missing rail step");
+        steps.add(step);
+        if (step === "2") continue;
+        const badge = shares.locator(".ah-place-count");
+        await expect(badge).toBeVisible();
+        const badgeBox = await badge.boundingBox();
+        const placeBox = await shares.boundingBox();
+        if (!badgeBox || !placeBox) throw new Error("missing place badge");
+        expect(badgeBox.x).toBeGreaterThanOrEqual(placeBox.x);
+        expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(
+          placeBox.x + placeBox.width,
+        );
+        await expect(shares).toHaveAttribute("aria-label", /\S/);
+        if (steps.size === 3) break;
+      }
+      expect([...steps].sort()).toEqual(["0", "1", "2"]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId("navigation-open").click();
+    await checkRow(`phone-${adaptive}`);
+  });
+}
 
 test.describe("phone drawer", () => {
   test.use({

@@ -99,10 +99,10 @@ export function SharesRail({
         aria-label={collapsed ? t.title : undefined}
       >
         <Icon name="globe" />
-        <span className="ah-rail-home-label">
-          {t.title}
-          {count ? ` ${formatNumber(count)}` : ""}
-        </span>
+        <span className="ah-rail-home-label">{t.title}</span>
+        {count ? (
+          <span className="ah-rail-place-count">{formatNumber(count)}</span>
+        ) : null}
       </LinkRow>
     </div>
   );

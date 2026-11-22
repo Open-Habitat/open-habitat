@@ -23,19 +23,6 @@ button.sb-rail-item:focus-visible {
   outline: var(--ah-focus-width) solid var(--ah-focus);
   outline-offset: 2px;
 }
-.sb-rail-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-inline-start: auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-  font-weight: 400;
-}
 .sb-rail-state svg {
   width: 13px;
   height: 13px;

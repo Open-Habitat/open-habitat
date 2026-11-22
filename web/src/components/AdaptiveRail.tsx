@@ -135,10 +135,10 @@ export function RailPlaces({
     ) : (
       <>
         <Icon name={PLACE_ICONS[p.id]} />
-        <span className="ah-rail-home-label">
-          {p.label}
-          {p.count ? ` ${p.count}` : ""}
-        </span>
+        <span className="ah-rail-home-label">{p.label}</span>
+        {p.count ? (
+          <span className="ah-rail-place-count">{p.count}</span>
+        ) : null}
         {p.stateText !== undefined ? (
           <span
             className="sb-rail-state"
