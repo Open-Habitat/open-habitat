@@ -714,6 +714,22 @@ export const settingsSections = [
         ],
         desc: "Selitystilan kortti kulkee osoittimen vieressä; F pysäyttää sen ja avaa ilmoituksen.",
       },
+      {
+        id: "adaptive-rail",
+        label: "Mukautuva sivupalkki",
+        kw: [
+          "sivupalkki",
+          "sidebar",
+          "rail",
+          "pieni näyttö",
+          "small screen",
+          "läppäri",
+          "laptop",
+          "korkeus",
+          "height",
+        ],
+        desc: "Sivupalkki jakaa korkeutensa keskusteluille, työtiloille ja paikoille sen mukaan, mistä on eniten hyötyä.",
+      },
     ],
   },
   {

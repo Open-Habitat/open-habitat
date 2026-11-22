@@ -4,6 +4,7 @@ Generated from web/src/components/Navigation.tsx; do not edit.
 
 ```tsx
 import {
+  type CSSProperties,
   type ReactNode,
   useContext,
   useEffect,
@@ -19,6 +20,14 @@ import { scheduledWakeText } from "../text/scheduledWake";
 import { sectionFilterText } from "../text/sectionFilter";
 import { serverBrowserText } from "../text/serverBrowser";
 import { statusText } from "../text/status";
+import {
+  type RailPlace,
+  RailPlaces,
+  RailPlacesMeasure,
+  type RailSearch,
+  useAdaptiveRail,
+  WorkspaceEdgeChips,
+} from "./AdaptiveRail";
 import {
   ArchiveControls,
   type ArchiveControlsProps,
@@ -1203,6 +1212,7 @@ function NowDot(agent: AgentNavModel) {
 function RunningGroups({
   running,
   iconed,
+  named,
   now,
   archive,
   rename,
@@ -1210,6 +1220,7 @@ function RunningGroups({
 }: {
   running: AgentNavModel[];
   iconed: boolean;
+  named: boolean;
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
@@ -1232,6 +1243,7 @@ function RunningGroups({
     <AgentNavItem
       key={agent.agentId}
       {...agent}
+      workspaceTag={named}
       now={now}
       archive={archive}
       rename={rename}
@@ -1288,6 +1300,7 @@ export function NowSections({
   rename,
   turn,
   card,
+  workspaceNames = false,
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
@@ -1311,6 +1324,9 @@ export function NowSections({
   turn?: RailTurn;
   /** The workspace icon card's actions, where rows carry icons. */
   card?: WorkspaceCardActions;
+  /** Every row names its workspace (the adaptive rail, where the wider
+   * rail has room for it). */
+  workspaceNames?: boolean;
 }) {
   const t = useText(navigationText);
   const shared = useText(sectionFilterText);
@@ -1403,6 +1419,7 @@ export function NowSections({
               <AgentNavItem
                 key={agent.agentId}
                 {...agent}
+                workspaceTag={workspaceNames}
                 now={now}
                 archive={archive}
                 rename={rename}
@@ -1460,6 +1477,7 @@ export function NowSections({
           <RunningGroups
             running={withKept(runningView.shown)}
             iconed={iconed}
+            named={workspaceNames}
             now={now}
             archive={archive}
             rename={rename}
@@ -1482,6 +1500,7 @@ export function WorkspaceRail({
   now,
   crowding,
   pages,
+  adaptive,
   filterValue,
   resultSummary,
   onCreateWorkspace,
@@ -1509,8 +1528,17 @@ export function WorkspaceRail({
   /** Hiljaiset's rows when open, and who hears whether the conversations
    * with Hiljaiset open would crowd the rail (it then folds itself). */
   crowding?: { quietRows: number; onChange: (crowded: boolean) => void };
-  /** Rows under Etusivu that lead to pages of their own (Agentin käytössä). */
+  /** Rows under Etusivu that lead to pages of their own (Agentin käytössä).
+   * In the adaptive rail, what stays under its places (Jaettu kanssasi). */
   pages?: ReactNode;
+  /** The adaptive rail (adaptive-rail, experimental): its places and search
+   * at the top, in the step the height allows, and whether Työtilat shows
+   * its filter. Absent: the fixed rail. The narrow rail is never adaptive. */
+  adaptive?: {
+    places: readonly RailPlace[];
+    search: RailSearch;
+    filter: boolean;
+  };
   filterValue: string;
   /** The number of listed workspaces, said beside the heading. */
   resultSummary: string;
@@ -1539,6 +1567,41 @@ export function WorkspaceRail({
   const content = useRef<HTMLDivElement>(null);
   const region = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const fit = adaptive && !collapsed ? adaptive : undefined;
+  const alloc = useAdaptiveRail(nav, !!fit);
+  const filterInput = (
+    <>
+      <TextField
+        className="ah-rail-search"
+        value={filterValue}
+        onChange={onFilter}
+      >
+        <Label className="ah-visually-hidden">{t.filterWorkspaces}</Label>
+        <Input
+          data-testid="workspace-filter"
+          placeholder={t.filterWorkspaces}
+          autoComplete="off"
+        />
+      </TextField>
+      {filterValue ? (
+        <Button
+          data-testid="clear-filter"
+          label="×"
+          ariaLabel={t.clearSearch}
+          variant="quiet"
+          size="row"
+          onPress={() => onFilter("")}
+        />
+      ) : null}
+    </>
+  );
+  const filterField = <div className="ah-rail-filter">{filterInput}</div>;
+  const refresh = (
+    <span className="ah-rail-refresh">
+      <RefreshIconButton onPress={onRefresh} />
+    </span>
+  );
   const regions = useRailRegions({
     content,
     region,
@@ -1554,7 +1617,24 @@ export function WorkspaceRail({
       title={t.keyboardHint(altKey("↑/↓"), altKey("↑/↓", true))}
       aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
       tabIndex={-1}
-      className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
+      ref={nav}
+      className={
+        collapsed
+          ? "ah-rail ah-rail-collapsed"
+          : fit
+            ? "ah-rail ah-rail-adaptive"
+            : "ah-rail"
+      }
+      data-step={fit ? (alloc?.step ?? 0) : undefined}
+      data-ready={alloc ? "" : undefined}
+      style={
+        alloc
+          ? ({
+              "--ah-rail-conv-h": `${alloc.convPx}px`,
+              "--ah-rail-ws-h": `${alloc.wsPx}px`,
+            } as CSSProperties)
+          : undefined
+      }
     >
       <TooltipSide.Provider value="end">
         <header className="ah-rail-head">
@@ -1582,6 +1662,7 @@ export function WorkspaceRail({
                 }
               />
             </span>
+            {fit ? bell : null}
             <Button
               data-testid={collapsed ? "navigation-open" : "close-navigation"}
               ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
@@ -1592,20 +1673,31 @@ export function WorkspaceRail({
               onPress={onToggle}
             />
           </div>
-          <div className="ah-rail-home-row">
-            <LinkRow
-              href="/workspaces"
-              data-testid="home-link"
-              kind="home"
-              current={homeCurrent}
-              className="ah-rail-home"
-              aria-label={collapsed ? t.home : undefined}
-            >
-              <Icon name="home" />
-              <span className="ah-rail-home-label">{t.home}</span>
-            </LinkRow>
-            {bell}
-          </div>
+          {fit ? (
+            <>
+              <RailPlaces
+                step={alloc?.step ?? 0}
+                places={fit.places}
+                search={fit.search}
+              />
+              <RailPlacesMeasure places={fit.places} search={fit.search} />
+            </>
+          ) : (
+            <div className="ah-rail-home-row">
+              <LinkRow
+                href="/workspaces"
+                data-testid="home-link"
+                kind="home"
+                current={homeCurrent}
+                className="ah-rail-home"
+                aria-label={collapsed ? t.home : undefined}
+              >
+                <Icon name="home" />
+                <span className="ah-rail-home-label">{t.home}</span>
+              </LinkRow>
+              {bell}
+            </div>
+          )}
           {pages}
         </header>
         <div
@@ -1690,6 +1782,12 @@ export function WorkspaceRail({
                     {resultSummary}
                   </span>
                 </h2>
+                {fit ? (
+                  <>
+                    {fit.filter ? filterField : null}
+                    {refresh}
+                  </>
+                ) : null}
                 {onCreateWorkspace ? (
                   <ControlButton
                     data-testid="workspace-create"
@@ -1703,35 +1801,12 @@ export function WorkspaceRail({
                   </ControlButton>
                 ) : null}
               </div>
-              <div className="ah-rail-filter">
-                <TextField
-                  className="ah-rail-search"
-                  value={filterValue}
-                  onChange={onFilter}
-                >
-                  <Label className="ah-visually-hidden">
-                    {t.filterWorkspaces}
-                  </Label>
-                  <Input
-                    data-testid="workspace-filter"
-                    placeholder={t.filterWorkspaces}
-                    autoComplete="off"
-                  />
-                </TextField>
-                {filterValue ? (
-                  <Button
-                    data-testid="clear-filter"
-                    label="×"
-                    ariaLabel={t.clearSearch}
-                    variant="quiet"
-                    size="row"
-                    onPress={() => onFilter("")}
-                  />
-                ) : null}
-                <span className="ah-rail-refresh">
-                  <RefreshIconButton onPress={onRefresh} />
-                </span>
-              </div>
+              {fit ? null : (
+                <div className="ah-rail-filter">
+                  {filterInput}
+                  {refresh}
+                </div>
+              )}
               {/* Työtilat's own scrolling region: the heading, the new
                   workspace button and the filter above it stay put. */}
               <div
@@ -1757,6 +1832,9 @@ export function WorkspaceRail({
                   ? null
                   : archived}
               </div>
+              {fit ? (
+                <WorkspaceEdgeChips list={list} watch={alloc?.wsPx} />
+              ) : null}
             </section>
           )}
         </div>

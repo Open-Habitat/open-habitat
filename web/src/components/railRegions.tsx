@@ -30,8 +30,10 @@ const SECTIONS: Record<RailSectionKey, string> = {
 };
 /** The edge chips' height (components.css .ah-rail-beyond). They are
  * counted against it whether they show or not, so their coming and going
- * never changes what they count. */
-const CUE = 26;
+ * never changes what they count. The adaptive rail pays it while the
+ * conversations scroll. */
+export const RAIL_BEYOND_CUE = 26;
+const CUE = RAIL_BEYOND_CUE;
 /** How far the conversations must fit under the room before a Hiljaiset
  * that folded itself opens again: a few pixels of change must not fold and
  * open it in turn. */

@@ -610,6 +610,11 @@ const fi = {
       know: "Luku kertoo, montako hiljaista keskustelua työtilassa on. Rajaus säilyy kaikilla laitteillasi.",
       try: "Avaa työtilan Hiljaiset",
     },
+    S41: {
+      name: "Piilossa olevat työtilat",
+      lead: "Kertoo, montako työtilaa on listassa ylempänä tai alempana. Napautus vierittää listaa sivun verran.",
+      know: "Mukautuvassa sivupalkissa Työtilat saa niin monta riviä kuin sille riittää korkeutta, ja loput vierivät listan omassa alueessa.",
+    },
     E01: {
       name: "Työtilat",
       lead: "Etusivu kokoaa kaikki työtilasi ja niiden avoimen työn yhdelle sivulle.",
@@ -2621,6 +2626,11 @@ export const explainModeText = catalog(fi, {
       lead: "Opens the folded Quiet list showing only this workspace's conversations.",
       know: "The number is how many quiet conversations the workspace has. The choice stays on all your devices.",
       try: "Open this workspace's Quiet",
+    },
+    S41: {
+      name: "Workspaces out of sight",
+      lead: "Says how many workspaces lie further up or down the list. A press scrolls the list by a page.",
+      know: "In the adaptive sidebar Workspaces gets as many rows as the height allows, and the rest scroll in the list's own area.",
     },
     E01: {
       name: "Workspaces",

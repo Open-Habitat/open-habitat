@@ -44,6 +44,7 @@ import { navigationText } from "../text/navigation";
 import { sharesText } from "../text/shares";
 import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
+import { AdaptiveRailPlaces } from "./AdaptiveRailPlaces";
 import { AgentResourcesPage } from "./AgentResourcesPage";
 import { AISignInProvider } from "./AISignIn";
 import {
@@ -1551,6 +1552,11 @@ export function App() {
   );
   const browserTitle = (id: string) =>
     snapshot?.agents.find((a) => a.agent_id === id)?.title.display || undefined;
+  // The adaptive rail (adaptive-rail, experimental); the phone keeps its
+  // drawer as it is.
+  const adaptiveRail =
+    useExperimentalFeature("adaptive-rail", { identity, csrf }) &&
+    !mobileLayout;
   // One sound when a conversation becomes the person's turn
   // (attention-sound, experimental).
   const soundsOn = useExperimentalFeature("attention-sound", {
@@ -3523,95 +3529,111 @@ export function App() {
                     on={browserOn}
                     running={browserRunning}
                   >
-                    <WorkspaceRailView
-                      onPlaceNavigate={navigatePlace}
-                      shares={
-                        <>
-                          <SharesRail
-                            onNavigate={navigatePlace}
-                            current={visibleRoute.pathname === "/shares"}
-                            collapsed={railCompact && !mobileLayout}
-                          />
-                          {railCompact && !mobileLayout ? null : (
-                            <SharedWithYouRail
-                              pathname={location.pathname}
-                              identity={identity}
-                            />
-                          )}
-                        </>
-                      }
-                      browser={
-                        railCompact && !mobileLayout ? undefined : (
-                          <ServerBrowserRail
-                            identity={identity}
-                            csrf={csrf}
-                            titleOf={browserTitle}
-                          />
-                        )
-                      }
-                      only={onlyWorkspace}
-                      bell={conversationBell ? undefined : <StatusBell />}
-                      phase={phase}
-                      snapshot={snapshot}
-                      profile={profile}
-                      source={source}
-                      collapsed={railCompact && !mobileLayout}
-                      now={now}
-                      quietChoice={quietChoice}
-                      sectionChoices={sectionChoices}
-                      matches={matches}
-                      archived={archivedWorkspaces}
-                      onRestoreWorkspace={
-                        csrf &&
-                        phase === "authenticated" &&
-                        snapshot.write_state !== "read_only"
-                          ? (w) => void changeVisibility(w, false)
-                          : undefined
-                      }
-                      visibilityProblem={
-                        visibilityProblem && visibilityProblem.id !== selectedId
-                          ? visibilityProblem.text
-                          : undefined
-                      }
-                      filter={filter}
-                      railState={railState}
-                      selectedId={selectedId}
-                      newReason={createReason}
-                      onNewConversation={
-                        csrf &&
-                        phase === "authenticated" &&
-                        snapshot.write_state !== "read_only"
-                          ? startFromHome
-                          : undefined
-                      }
-                      onCreateWorkspace={
-                        !syntheticDemo &&
-                        phase === "authenticated" &&
-                        csrf &&
-                        source === "confirmed" &&
-                        snapshot.write_state !== "read_only"
-                          ? () => navigate("/workspaces/new")
-                          : undefined
-                      }
-                      onFilter={(v) => dispatch(filterChanged(v))}
-                      onToggle={() =>
-                        editorShown
-                          ? setRailBesideEditor(!railBesideEditor)
-                          : setCollapsed(!collapsed)
-                      }
-                      onRefresh={manualRefresh}
-                      onSettings={openSettings}
-                      onLogout={() => setLogoutPrompt(true)}
-                      onAdministration={() =>
-                        navigate(settingsHref("palvelin"))
-                      }
-                      pathname={visibleRoute.pathname}
-                      clones={cloneJobs}
-                      archiveConversation={railArchive}
-                      renameConversation={railRename}
-                      turnConversation={railTurn}
-                      icons={icons}
-                    />
+                    <AdaptiveRailPlaces
+                      on={adaptiveRail && !railCompact}
+                      identity={identity}
+                      csrf={csrf}
+                      titleOf={browserTitle}
+                      sharesCurrent={visibleRoute.pathname === "/shares"}
+                      onNavigate={navigatePlace}
+                    >
+                      {(places) => (
+                        <WorkspaceRailView
+                          onPlaceNavigate={navigatePlace}
+                          places={places}
+                          shares={
+                            <>
+                              {places ? null : (
+                                <SharesRail
+                                  onNavigate={navigatePlace}
+                                  current={visibleRoute.pathname === "/shares"}
+                                  collapsed={railCompact && !mobileLayout}
+                                />
+                              )}
+                              {railCompact && !mobileLayout ? null : (
+                                <SharedWithYouRail
+                                  pathname={location.pathname}
+                                  identity={identity}
+                                />
+                              )}
+                            </>
+                          }
+                          browser={
+                            places ||
+                            (railCompact && !mobileLayout) ? undefined : (
+                              <ServerBrowserRail
+                                identity={identity}
+                                csrf={csrf}
+                                titleOf={browserTitle}
+                              />
+                            )
+                          }
+                          only={onlyWorkspace}
+                          bell={conversationBell ? undefined : <StatusBell />}
+                          phase={phase}
+                          snapshot={snapshot}
+                          profile={profile}
+                          source={source}
+                          collapsed={railCompact && !mobileLayout}
+                          now={now}
+                          quietChoice={quietChoice}
+                          sectionChoices={sectionChoices}
+                          matches={matches}
+                          archived={archivedWorkspaces}
+                          onRestoreWorkspace={
+                            csrf &&
+                            phase === "authenticated" &&
+                            snapshot.write_state !== "read_only"
+                              ? (w) => void changeVisibility(w, false)
+                              : undefined
+                          }
+                          visibilityProblem={
+                            visibilityProblem &&
+                            visibilityProblem.id !== selectedId
+                              ? visibilityProblem.text
+                              : undefined
+                          }
+                          filter={filter}
+                          railState={railState}
+                          selectedId={selectedId}
+                          newReason={createReason}
+                          onNewConversation={
+                            csrf &&
+                            phase === "authenticated" &&
+                            snapshot.write_state !== "read_only"
+                              ? startFromHome
+                              : undefined
+                          }
+                          onCreateWorkspace={
+                            !syntheticDemo &&
+                            phase === "authenticated" &&
+                            csrf &&
+                            source === "confirmed" &&
+                            snapshot.write_state !== "read_only"
+                              ? () => navigate("/workspaces/new")
+                              : undefined
+                          }
+                          onFilter={(v) => dispatch(filterChanged(v))}
+                          onToggle={() =>
+                            editorShown
+                              ? setRailBesideEditor(!railBesideEditor)
+                              : setCollapsed(!collapsed)
+                          }
+                          onRefresh={manualRefresh}
+                          onSettings={openSettings}
+                          onLogout={() => setLogoutPrompt(true)}
+                          onAdministration={() =>
+                            navigate(settingsHref("palvelin"))
+                          }
+                          pathname={visibleRoute.pathname}
+                          clones={cloneJobs}
+                          archiveConversation={railArchive}
+                          renameConversation={railRename}
+                          turnConversation={railTurn}
+                          icons={icons}
+                        />
+                      )}
+                    </AdaptiveRailPlaces>
                   </ServerBrowserRowMarks>
                 ) : undefined
               }

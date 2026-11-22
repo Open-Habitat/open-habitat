@@ -334,6 +334,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Attention sound",
         desc: "A short sound when the agent finishes or wants your attention, and workspaces' own sounds.",
       },
+      "adaptive-rail": {
+        label: "Adaptive sidebar",
+        desc: "The sidebar shares its height between conversations, workspaces and places where it helps most.",
+      },
     },
   },
   palvelin: {

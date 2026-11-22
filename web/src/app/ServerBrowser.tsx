@@ -77,10 +77,11 @@ export function ServerBrowserRowMarks({
   );
 }
 
-/** The rail's Oma selain row; it opens the live view, and starts a stopped
- * browser first. `titleOf` names the conversation an open request belongs
- * to, when one of the conversation's own commands named its window. */
-export function ServerBrowserRail({
+/** What the rail's Oma selain shows and does, or nothing while the
+ * experiment is off. `titleOf` names the conversation an open request
+ * belongs to, when one of the conversation's own commands named its
+ * window. A press opens the live view, and starts a stopped browser first. */
+export function useServerBrowserRail({
   identity,
   csrf,
   titleOf,
@@ -88,29 +89,37 @@ export function ServerBrowserRail({
   identity?: string;
   csrf?: string;
   titleOf?: (agentId: string) => string | undefined;
-}) {
+}): Parameters<typeof BrowserRailRow>[0] | undefined {
   const on = useExperimentalFeature("remote-browser", { identity, csrf });
   const browser = useServerBrowser(identity, csrf, on);
   useBrowserConversations();
   const summary = summarize(browser.status);
-  if (!on) return null;
+  if (!on) return undefined;
   const asked =
     summary.kind === "ask" ? browser.status?.request?.window : undefined;
   const owner = asked ? ownerOfWindow(asked) : undefined;
-  return (
-    <BrowserRailRow
-      summary={summary}
-      windows={browser.status?.windows.length ?? 0}
-      busy={browser.busy}
-      conversation={owner ? titleOf?.(owner) : undefined}
-      onOpen={async () => {
-        if (summary.kind === "stopped" && !(await startBrowser())) return;
-        openBrowserSheet(
-          browser.status?.control === "person" ? "control" : "view",
-        );
-      }}
-    />
-  );
+  return {
+    summary,
+    windows: browser.status?.windows.length ?? 0,
+    busy: browser.busy,
+    conversation: owner ? titleOf?.(owner) : undefined,
+    onOpen: async () => {
+      if (summary.kind === "stopped" && !(await startBrowser())) return;
+      openBrowserSheet(
+        browser.status?.control === "person" ? "control" : "view",
+      );
+    },
+  };
+}
+
+/** The rail's Oma selain row. */
+export function ServerBrowserRail(props: {
+  identity?: string;
+  csrf?: string;
+  titleOf?: (agentId: string) => string | undefined;
+}) {
+  const row = useServerBrowserRail(props);
+  return row ? <BrowserRailRow {...row} /> : null;
 }
 
 /** The live view, once for the whole app: the rail row and the Selain card

@@ -43,6 +43,54 @@ type Text = typeof serverBrowserText.fi;
 const clock = (at: number) =>
   formatDate(at, { hour: "numeric", minute: "2-digit" });
 
+/** What the rail says about the browser: the short state at the end of
+ * Oma selain (`shown`) and the whole sentence for its accessible name
+ * (`said`). The adaptive rail's places say the same in each step. */
+export function browserRailWords(
+  txt: Text,
+  summary: BrowserSummary,
+  windows: number,
+  busy?: string,
+  conversation?: string,
+): { shown: ReactNode; said: string } {
+  const count = txt.windows(windows);
+  switch (summary.kind) {
+    case "stopped":
+      return busy === "start"
+        ? { shown: txt.rail.starting, said: txt.rail.said.starting }
+        : { shown: txt.rail.stopped, said: txt.rail.said.stopped };
+    case "agent":
+      return {
+        shown: (
+          <>
+            <Icon name="agent" />
+            {`${txt.rail.agent} · ${count}`}
+          </>
+        ),
+        said: txt.rail.said.agent(count),
+      };
+    case "ask":
+      return {
+        shown: txt.rail.ask,
+        said: conversation
+          ? txt.rail.said.ask(conversation)
+          : txt.rail.said.askUnknown,
+      };
+    case "person":
+      return {
+        shown: (
+          <>
+            <Icon name="user" />
+            {txt.rail.control}
+          </>
+        ),
+        said: txt.rail.said.control,
+      };
+    default:
+      return { shown: count, said: txt.rail.said.idle(count) };
+  }
+}
+
 /** The rail's Oma selain: a plain row like Tuotokset, with the browser's
  * short state at its end. It opens the live view rather than a page, so it
  * is a button with the home row's look. */
@@ -62,42 +110,13 @@ export function BrowserRailRow({
 }) {
   const txt = useText(serverBrowserText);
   if (summary.kind === "off") return null;
-  const count = txt.windows(windows);
-  let shown: ReactNode;
-  let said: string;
-  switch (summary.kind) {
-    case "stopped":
-      shown = busy === "start" ? txt.rail.starting : txt.rail.stopped;
-      said = busy === "start" ? txt.rail.said.starting : txt.rail.said.stopped;
-      break;
-    case "agent":
-      shown = (
-        <>
-          <Icon name="agent" />
-          {`${txt.rail.agent} · ${count}`}
-        </>
-      );
-      said = txt.rail.said.agent(count);
-      break;
-    case "ask":
-      shown = txt.rail.ask;
-      said = conversation
-        ? txt.rail.said.ask(conversation)
-        : txt.rail.said.askUnknown;
-      break;
-    case "person":
-      shown = (
-        <>
-          <Icon name="user" />
-          {txt.rail.control}
-        </>
-      );
-      said = txt.rail.said.control;
-      break;
-    default:
-      shown = count;
-      said = txt.rail.said.idle(count);
-  }
+  const { shown, said } = browserRailWords(
+    txt,
+    summary,
+    windows,
+    busy,
+    conversation,
+  );
   return (
     <div className="ah-rail-home-row">
       <button

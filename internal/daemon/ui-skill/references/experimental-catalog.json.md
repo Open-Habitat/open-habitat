@@ -9,7 +9,8 @@ Generated from internal/experimental/catalog.json; do not edit.
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
     { "id": "agent-instructions", "landed": true },
-    { "id": "attention-sound", "landed": true }
+    { "id": "attention-sound", "landed": true },
+    { "id": "adaptive-rail", "landed": true }
   ],
   "fi": {
     "features": {
@@ -52,6 +53,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa laitteen tummaa tilaa.",
         "needs": "Avoimen Habitat-välilehden. Selain soittaa äänen vasta, kun olet painanut jotain sivulla. Mykistys ja voimakkuus koskevat vain tätä laitetta.",
         "caption": "Työtilan ääni"
+      },
+      "adaptive-rail": {
+        "name": "Mukautuva sivupalkki",
+        "desc": "Sivupalkki jakaa korkeutensa sen mukaan, mistä on eniten hyötyä. Pienellä näytöllä keskusteluja ja työtiloja näkyy enemmän, ja isolla näytöllä paikat saavat nimensä ja omat rivinsä.",
+        "where": "Sivupalkissa. Etusivu, Tuotokset, Oma selain, Agentin käytössä ja haku ovat ylhäällä kuvakkeina, ruutuina tai riveinä sen mukaan, kuinka korkea ikkuna on. Sivupalkki on vähän leveämpi, kun ikkuna on tarpeeksi leveä.",
+        "shows": "Keskustelut saavat ensin noin seitsemän riviä ja Työtilat kuusi, sitten kumpikin riittävästi, sitten paikat isomman koon ja lopuksi listat lisää rivejä. Työtilojen reunassa lukee, montako työtilaa on ylempänä tai alempana, ja keskustelurivillä näkyy työtilan nimi.",
+        "needs": "Tietokoneen tai tabletin leveän näkymän. Puhelimessa sivupalkki pysyy ennallaan.",
+        "caption": "Sivupalkin paikat"
       }
     },
     "picture": {
@@ -119,6 +128,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows the device's dark mode.",
         "needs": "An open Habitat tab. The browser plays sound only after you have pressed something on the page. Mute and volume apply to this device only.",
         "caption": "Workspace sound"
+      },
+      "adaptive-rail": {
+        "name": "Adaptive sidebar",
+        "desc": "The sidebar shares its height out where it helps most. On a small screen more conversations and workspaces show, and on a large one the places get their names and rows of their own.",
+        "where": "In the sidebar. Home, Outputs, Your browser, Agent resources and search sit at the top as icons, tiles or rows depending on how tall the window is. The sidebar is a little wider when the window is wide enough.",
+        "shows": "The conversations first get about seven rows and Workspaces six, then both enough, then the places a bigger size, and finally the lists more rows. Workspaces' edge says how many workspaces lie further up or down, and a conversation row names its workspace.",
+        "needs": "The wide view of a computer or tablet. On a phone the sidebar stays as it is.",
+        "caption": "The sidebar's places"
       }
     },
     "picture": {

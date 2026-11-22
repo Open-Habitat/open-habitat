@@ -22,7 +22,14 @@
   --ah-shadow-dialog: 0 12px 40px rgba(16, 24, 40, .18);
 
   --ah-app-max: 960px;
-  --ah-rail-width: 296px;
+  --ah-rail-fixed-width: 296px;
+  --ah-rail-width: var(--ah-rail-fixed-width);
+  /* The adaptive rail (adaptive-rail, experimental) is 20 % wider while the
+     window still leaves the conversation the room the fixed rail leaves it
+     at about 1170 px; in a narrower window it narrows back to the fixed
+     width before the conversation gives anything up. */
+  --ah-rail-adaptive-width: 356px;
+  --ah-rail-adaptive-leaves: 814px;
   --ah-rail-compact-width: 52px;
   --ah-conversation-width: 780px;
   --ah-column-pad-block: 22px;

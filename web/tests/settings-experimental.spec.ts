@@ -14,6 +14,7 @@ const features = [
   "agent-instructions",
   "attention-sound",
   "explain-follow",
+  "adaptive-rail",
 ];
 const retired = [
   "terminal-copy-on-select",

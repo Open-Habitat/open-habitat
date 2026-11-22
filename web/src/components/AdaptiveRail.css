@@ -1,0 +1,229 @@
+/* The adaptive rail (adaptive-rail, experimental; rail-space round 3, Jari
+   22.11.2026: C Leveämpi with B's logic). AdaptiveRail.tsx sets the two
+   lists' regions to the heights railAllocation.ts gives them; what the rule
+   leaves over stays empty below Työtilat. */
+
+/* Wider, but never at the conversation's expense: between the fixed width
+   and the adaptive one, as the window allows. The phone's drawer keeps its
+   own width (the app turns the feature off there). */
+@media (min-width: 801px) {
+  .ah-shell-body:has(.ah-rail-adaptive) {
+    --ah-rail-width: clamp(
+      var(--ah-rail-fixed-width),
+      100vw -
+      var(--ah-rail-adaptive-leaves),
+      var(--ah-rail-adaptive-width)
+    );
+  }
+}
+
+/* Under 601 px the rail scrolls as a whole (components.css), and the rule
+   does not apply. Before the first measurement the fixed rail's shares
+   hold. */
+@media (min-height: 601px) {
+  .ah-rail-adaptive[data-ready] .ah-rail-regions > .ah-rail-convs {
+    flex: none;
+    height: var(--ah-rail-conv-h);
+  }
+  .ah-rail-adaptive[data-ready] .ah-rail-regions > .ah-rail-workspaces {
+    flex: none;
+    height: var(--ah-rail-ws-h);
+    min-height: 0;
+  }
+}
+.ah-rail-adaptive .ah-rail-workspaces {
+  position: relative;
+}
+.ah-rail-adaptive .ah-rail-head {
+  position: relative;
+}
+
+/* Työtilat's heading row carries the filter (it would cost a row of its
+   own) and the refresh. */
+.ah-rail-adaptive .ah-rail-workspaces > .ah-rail-section-head {
+  gap: var(--ah-s2);
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-filter {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-filter .ah-rail-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-filter input {
+  width: 100%;
+  min-height: 26px;
+  height: 26px;
+  padding-block: 0;
+  padding-inline: 8px;
+  font-size: 12px;
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-refresh {
+  display: inline-flex;
+  margin-inline-start: auto;
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-filter + .ah-rail-refresh {
+  margin-inline-start: 0;
+}
+.ah-rail-adaptive .ah-rail-section-head > .ah-rail-refresh button {
+  min-height: 26px;
+  min-width: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+/* The places: one treatment for every place in each step. Oma selain
+   carries its state in its own slot (a dot in icons and tiles, its words
+   in rows), never by colour alone: its name says it too. */
+.ah-places {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-places > .ah-search-door {
+  width: 100%;
+  margin: 0;
+}
+.ah-places-icons,
+.ah-places-tiles {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+}
+.ah-place-slot {
+  display: grid;
+  min-width: 0;
+}
+.ah-places .ah-place.ah-place-icon,
+.ah-places .ah-place.ah-place-tile {
+  --i-bg: var(--ah-surface);
+  position: relative;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  color: var(--ah-ink-2);
+}
+.ah-places .ah-place.ah-place-icon {
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+.ah-places .ah-place.ah-place-tile {
+  flex-direction: column;
+  gap: 2px;
+  min-height: 50px;
+  padding: 4px 2px;
+  font-size: 11px;
+  text-align: center;
+}
+.ah-place-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+.ah-place-label {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--ah-ink);
+  font-weight: 600;
+  line-height: 1.1;
+}
+.ah-place-count {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  box-sizing: border-box;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font: 600 10px / 15px var(--ah-font);
+  text-align: center;
+}
+.ah-place-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-ok);
+  box-shadow: 0 0 0 2px var(--ah-surface);
+}
+.ah-place-dot[data-state="ask"] {
+  background: var(--ah-turn);
+}
+.ah-place-dot[data-state="person"] {
+  background: var(--ah-ink);
+}
+.ah-place[data-state="ask"] .ah-place-mark {
+  color: var(--ah-turn);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ah-place-dot[data-state="agent"] {
+    animation: ah-place-pulse 1.6s ease-in-out infinite;
+  }
+}
+@keyframes ah-place-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Every step, out of sight, for the rule to measure. */
+.ah-places-measure {
+  position: absolute;
+  top: 0;
+  inset-inline: 10px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.ah-places-measure > .ah-places {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+}
+
+/* Työtilat's edge chips: they cover the edge row, as the conversations'
+   do, and page the list. */
+.ah-rail-ws-edge {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 4px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  background: var(--ah-rail);
+  color: var(--ah-ink-2);
+  font: 600 11.5px / 1 var(--ah-font);
+  cursor: pointer;
+}
+.ah-rail-ws-edge[data-edge="above"] {
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-rail-ws-edge[data-edge="below"] {
+  bottom: 0;
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-rail-ws-edge:hover {
+  background: var(--ah-surface-hover);
+  color: var(--ah-ink);
+}
+.ah-rail-ws-edge:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
+}

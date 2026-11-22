@@ -333,6 +333,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Explain card follows the pointer",
         desc: "Explain mode's card travels beside the pointer; F stops it and opens a report.",
       },
+      "adaptive-rail": {
+        label: "Adaptive sidebar",
+        desc: "The sidebar shares its height between conversations, workspaces and places where it helps most.",
+      },
     },
   },
   palvelin: {

@@ -10,6 +10,7 @@ import {
   WorkspaceNavRow,
   WorkspaceRail,
 } from "../components";
+import type { RailPlace } from "../components/AdaptiveRail";
 import { RailClones } from "../components/ClonePage";
 import { LinkRow } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
@@ -25,6 +26,7 @@ import { WorkspaceActions } from "../components/WorkspaceActions";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { liveText, useText } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
+import { navigationText } from "../text/navigation";
 import { statusText } from "../text/status";
 import { switcherText } from "../text/switcher";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
@@ -47,6 +49,8 @@ import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
 const txt = liveText(statusText);
+/** Past this many workspaces the adaptive rail shows Työtilat's filter. */
+const FILTER_FROM = 12;
 
 export function sourceLabel(state: string) {
   return txt.sources[state] ?? txt.sources.unknown;
@@ -165,9 +169,13 @@ export function WorkspaceRailView({
   sectionChoices,
   shares,
   browser,
+  places,
   onPlaceNavigate,
 }: {
   onPlaceNavigate?: (href: string) => void;
+  /** The adaptive rail's Tuotokset and Oma selain (adaptive-rail,
+   * experimental); absent, the rail is the fixed one. */
+  places?: readonly RailPlace[];
   shares?: ReactNode;
   /** The person's server browser's row (remote-browser, experimental). */
   browser?: ReactNode;
@@ -223,13 +231,17 @@ export function WorkspaceRailView({
 }) {
   const resourcesText = useText(agentResourcesText);
   const searchText = useText(switcherText);
+  const navText = useText(navigationText);
+  const adaptive = places && !collapsed;
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
   // Hiljaiset folds itself while the rail is crowded, until the person
   // folds or opens it on this device (rail-scroll-region).
   const [crowded, setCrowded] = useState(false);
-  const quietFolded = foldedBy(useQuietFoldChoice(), crowded);
+  // The adaptive rail gives the conversations their room by its rule, and
+  // Hiljaiset folds only by the person's hand there.
+  const quietFolded = foldedBy(useQuietFoldChoice(), !adaptive && crowded);
   const { search } = useLocation();
   const listed = snapshot.workspaces
     .filter((w) => w.presence === "present" && w.visibility === "visible")
@@ -284,30 +296,66 @@ export function WorkspaceRailView({
         />
       }
       homeCurrent={pathname === "/workspaces"}
+      adaptive={
+        adaptive
+          ? {
+              places: [
+                {
+                  id: "home",
+                  testId: "home-link",
+                  label: navText.home,
+                  href: "/workspaces",
+                  current: pathname === "/workspaces",
+                },
+                ...places,
+                {
+                  id: "resources",
+                  testId: "rail-resources",
+                  label: resourcesText.railLabel,
+                  href: "/resources",
+                  onNavigate: onPlaceNavigate,
+                  current: pathname === "/resources",
+                },
+              ],
+              search: {
+                label: searchText.door,
+                keyHint: switcherKey,
+                onOpen: openSwitcher,
+              },
+              // Round 1's A: the filter shows past a dozen workspaces, and
+              // while it holds a word.
+              filter: listed.length > FILTER_FROM || !!filter,
+            }
+          : undefined
+      }
       pages={
-        <>
-          {shares}
-          {browser}
-          <div className="ah-rail-home-row">
-            <LinkRow
-              href="/resources"
-              onNavigate={onPlaceNavigate}
-              data-testid="rail-resources"
-              kind="home"
-              current={pathname === "/resources"}
-              className="ah-rail-home ar-rail-link"
-              aria-label={collapsed ? resourcesText.railLabel : undefined}
-            >
-              <Icon name="shield" />
-              <span className="ah-rail-home-label">
-                {resourcesText.railLabel}
-              </span>
-            </LinkRow>
-          </div>
-        </>
+        adaptive ? (
+          shares
+        ) : (
+          <>
+            {shares}
+            {browser}
+            <div className="ah-rail-home-row">
+              <LinkRow
+                href="/resources"
+                onNavigate={onPlaceNavigate}
+                data-testid="rail-resources"
+                kind="home"
+                current={pathname === "/resources"}
+                className="ah-rail-home ar-rail-link"
+                aria-label={collapsed ? resourcesText.railLabel : undefined}
+              >
+                <Icon name="shield" />
+                <span className="ah-rail-home-label">
+                  {resourcesText.railLabel}
+                </span>
+              </LinkRow>
+            </div>
+          </>
+        )
       }
       search={
-        collapsed ? null : (
+        collapsed || adaptive ? null : (
           <SearchDoor
             label={searchText.door}
             keyHint={switcherKey}
@@ -315,10 +363,14 @@ export function WorkspaceRailView({
           />
         )
       }
-      crowding={{
-        quietRows: quietView(now.quiet, quietChoice, listed).shown.length,
-        onChange: setCrowded,
-      }}
+      crowding={
+        adaptive
+          ? undefined
+          : {
+              quietRows: quietView(now.quiet, quietChoice, listed).shown.length,
+              onChange: setCrowded,
+            }
+      }
       now={
         <NowSections
           yours={now.yours}
@@ -334,6 +386,7 @@ export function WorkspaceRailView({
               rename={renameConversation}
               turn={turnConversation}
               card={card}
+              workspaceNames={adaptive}
             />
           }
           collapsed={collapsed}
@@ -344,6 +397,7 @@ export function WorkspaceRailView({
           rename={renameConversation}
           turn={turnConversation}
           card={card}
+          workspaceNames={adaptive}
         />
       }
       filterValue={filter}

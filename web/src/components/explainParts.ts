@@ -210,6 +210,7 @@ export const parts: Record<CardId, Part> = {
   S38: { kind: "nav", sel: ".ah-rail-beyond" },
   S39: { kind: "nav", sel: '[data-testid="rail-resources"]', opens: true },
   S40: { kind: "menu", sel: '[data-testid^="rail-quiet-pill-"]' },
+  S41: { kind: "nav", sel: ".ah-rail-ws-edge" },
   E01: { kind: "info", sel: '[data-testid="workspaces-title"]' },
   E02: { kind: "list", sel: ".ah-home-workspace-head" },
   E03: { kind: "info", sel: '[data-testid^="conversation-card-"]' },

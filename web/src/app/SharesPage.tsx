@@ -66,6 +66,16 @@ const fullDate = (value: string) =>
 const conversationHref = (s: Share) =>
   `/workspaces/${s.conversation?.worktree_id ?? s.conversation?.workspace_id}?conversation=${encodeURIComponent(s.conversation?.agent_id ?? "")}`;
 
+/** How many public view addresses Tuotokset counts beside its name; none
+ * while that is not known. */
+export function useSharesCount() {
+  const links = useViewLinks();
+  const unknown = useViewLinksUnknown();
+  return links && typeof links === "object" && links.maxDays > 0 && !unknown
+    ? links.addresses.filter(isPublic).length
+    : 0;
+}
+
 export function SharesRail({
   current,
   collapsed,
@@ -76,12 +86,7 @@ export function SharesRail({
   collapsed: boolean;
 }) {
   const t = useText(sharesText);
-  const links = useViewLinks();
-  const unknown = useViewLinksUnknown();
-  const count =
-    links && typeof links === "object" && links.maxDays > 0 && !unknown
-      ? links.addresses.filter(isPublic).length
-      : 0;
+  const count = useSharesCount();
   return (
     <div className="ah-rail-home-row">
       <LinkRow

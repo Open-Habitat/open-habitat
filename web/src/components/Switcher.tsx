@@ -368,16 +368,19 @@ export function SearchDoor({
   label,
   keyHint,
   onOpen,
+  testId = "search-door",
 }: {
   label: string;
   keyHint: string;
   onOpen: () => void;
+  /** None for a copy drawn only to be measured (the adaptive rail). */
+  testId?: string | null;
 }) {
   return (
     <button
       type="button"
       className="ah-search-door"
-      data-testid="search-door"
+      data-testid={testId ?? undefined}
       aria-keyshortcuts="Meta+K Control+K /"
       onClick={onOpen}
     >

@@ -705,6 +705,22 @@ export const settingsSections = [
         kw: ["ääni", "sound", "pling", "kilahdus", "chime", "notification"],
         desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi, ja työtilojen omat äänet.",
       },
+      {
+        id: "adaptive-rail",
+        label: "Mukautuva sivupalkki",
+        kw: [
+          "sivupalkki",
+          "sidebar",
+          "rail",
+          "pieni näyttö",
+          "small screen",
+          "läppäri",
+          "laptop",
+          "korkeus",
+          "height",
+        ],
+        desc: "Sivupalkki jakaa korkeutensa keskusteluille, työtiloille ja paikoille sen mukaan, mistä on eniten hyötyä.",
+      },
     ],
   },
   {

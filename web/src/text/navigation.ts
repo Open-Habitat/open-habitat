@@ -64,6 +64,14 @@ const fi = {
     `Vieritä osioon ${section}: ${n} ${plural("fi", n, { one: "keskustelu", other: "keskustelua" })} ${edge === "below" ? "alempana" : "ylempänä"}`,
   keyboardHint: (step: string, waiting: string) =>
     `${step}: edellinen/seuraava näkyvä keskustelu. ${waiting}: sinua odottavat.`,
+  // The adaptive rail (adaptive-rail, experimental): its places at the top
+  // and Työtilat's edge chips, which say how many workspaces lie past an
+  // edge of the list and page it.
+  places: "Paikat",
+  wsBeyond: (n: number) =>
+    `${n} ${plural("fi", n, { one: "työtila", other: "työtilaa" })}`,
+  wsBeyondPage: (n: number, edge: "above" | "below") =>
+    `${n} ${plural("fi", n, { one: "työtila", other: "työtilaa" })} ${edge === "below" ? "alempana, vieritä alas" : "ylempänä, vieritä ylös"}`,
   allWorkspaces: "Kaikki työtilat",
   workspaces: "Työtilat",
   newWorkspace: "Uusi työtila",
@@ -169,6 +177,11 @@ export const navigationText = catalog(fi, {
     `Scroll to ${section}: ${n} ${plural("en", n, { one: "conversation", other: "conversations" })} further ${edge === "below" ? "down" : "up"}`,
   keyboardHint: (step: string, waiting: string) =>
     `${step}: previous/next visible conversation. ${waiting}: conversations waiting for you.`,
+  places: "Places",
+  wsBeyond: (n) =>
+    `${n} ${plural("en", n, { one: "workspace", other: "workspaces" })}`,
+  wsBeyondPage: (n, edge) =>
+    `${n} ${plural("en", n, { one: "workspace", other: "workspaces" })} further ${edge === "below" ? "down, scroll down" : "up, scroll up"}`,
   allWorkspaces: "All workspaces",
   workspaces: "Workspaces",
   newWorkspace: "New workspace",
