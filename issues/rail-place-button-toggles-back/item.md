@@ -27,3 +27,8 @@ it away and the previous state comes back.
 
 Next action (approved for implementation, Jari 22.11.2026): pressing an open
 place's rail button again closes it and restores the previous view.
+
+## Acceptance Criteria
+
+- [x] Both place links return to the same mounted conversation or workspace, preserving draft, reading position and unsaved editor text; focused browser tests cover desktop and phone navigation.
+- [x] Escape, browser history, direct links, Home, accessibility state and the existing server-browser modal have explicit decisions and verification recorded in result.md.
