@@ -1,0 +1,19 @@
+---
+created: 2026-11-22
+updated: 2026-11-22
+type: improvement
+reporter: jari
+status: open
+priority: normal
+provenance: chat
+source_ref: habitat:pi-current/2026-11-22-general-feedback
+lane: general-feedback
+lane_seq: 1
+preparation: ready
+---
+
+# Prototype: general feedback about Habitat from the account menu and on the phone
+
+## Description
+
+Jari 22.11.2026: general feedback about Habitat (the 'Palaute Habitatista' panel from explain-f-reminder round 2) should be reachable outside Explain mode, e.g. from the account menu, and on the phone. Prototype where it lives and how it opens.
