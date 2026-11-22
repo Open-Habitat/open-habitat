@@ -29,9 +29,24 @@ import (
 // what a CDP client leaves behind in Chrome (its sessions and auto-attach),
 // so the next client sees the same open pages instead of an empty list.
 // When the person takes control, the agent's commands wait in the host until
-// they give it back: the agent waits, as the person was promised.
+// they give it back: the agent waits, as the person was promised. They are
+// then answered with an error instead of being sent: a click or a keystroke
+// aimed at the page before the person changed it would land on something
+// else. The agent inspects the page again before it continues.
+//
+// The agent may not grant itself clipboard permissions: with one, a page
+// script could read what the person pasted into the browser while they had
+// control. The agent runs as the same Unix user, so this is hygiene against
+// the obvious route, not isolation.
 
 var errAgentBusy = errors.New("another agent is using the browser")
+
+// PersonTookControl is the error message of an agent command that waited
+// while the person had control. The CLI recognises it.
+const PersonTookControl = "the person took control of the browser; inspect the page before continuing"
+
+// clipboardRefused is the error message of a refused clipboard permission.
+const clipboardRefused = "clipboard permissions are not available to the agent"
 
 // heldLimit bounds what an agent may send while the person has control.
 const (
@@ -507,6 +522,16 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	if _, ok := fields["id"]; !ok {
 		return errors.New("invalid message")
 	}
+	if grantsClipboard(fields) {
+		m.mu.Lock()
+		own := m.agent == a
+		m.mu.Unlock()
+		if !own {
+			return io.EOF
+		}
+		a.deliver(errorReply(fields, clipboardRefused))
+		return nil
+	}
 	m.dispatchMu.Lock()
 	defer m.dispatchMu.Unlock()
 	m.mu.Lock()
@@ -634,8 +659,8 @@ func (m *cdpMux) leave(a *agentConn) {
 }
 
 // setControl gives the browser to the person or back to the agent. Giving
-// it back sends what the agent asked meanwhile and clears the request the
-// person answered.
+// it back answers what the agent asked meanwhile with PersonTookControl,
+// in order, and clears the request the person answered.
 func (m *cdpMux) setControl(person bool) {
 	m.dispatchMu.Lock()
 	defer m.dispatchMu.Unlock()
@@ -647,13 +672,14 @@ func (m *cdpMux) setControl(person bool) {
 	m.person = person
 	m.activity = m.now()
 	var out [][]byte
+	a := m.agent
 	if !person {
 		m.request = nil
-		if a := m.agent; a != nil {
+		if a != nil {
 			for _, msg := range m.held {
 				var fields map[string]json.RawMessage
 				if json.Unmarshal(msg, &fields) == nil {
-					out = append(out, m.forwardLocked(a, fields))
+					out = append(out, errorReply(fields, PersonTookControl))
 				}
 			}
 		}
@@ -661,10 +687,53 @@ func (m *cdpMux) setControl(person bool) {
 	}
 	m.mu.Unlock()
 	for _, msg := range out {
-		if m.writeChrome(msg) != nil {
-			return
-		}
+		a.deliver(msg)
 	}
+}
+
+// errorReply answers one agent command with a CDP error, in the agent's own
+// id and session.
+func errorReply(fields map[string]json.RawMessage, message string) []byte {
+	reply := map[string]any{"id": fields["id"], "error": map[string]any{"code": -32000, "message": message}}
+	if s, ok := fields["sessionId"]; ok {
+		reply["sessionId"] = s
+	}
+	b, _ := json.Marshal(reply)
+	return b
+}
+
+// grantsClipboard is a command that would give a page clipboard access.
+func grantsClipboard(fields map[string]json.RawMessage) bool {
+	var method string
+	_ = json.Unmarshal(fields["method"], &method)
+	clip := func(name string) bool {
+		return strings.HasPrefix(strings.ToLower(strings.TrimSpace(name)), "clipboard")
+	}
+	switch method {
+	case "Browser.grantPermissions":
+		var p struct {
+			Permissions []string `json:"permissions"`
+		}
+		if json.Unmarshal(fields["params"], &p) != nil {
+			return true
+		}
+		for _, name := range p.Permissions {
+			if clip(name) {
+				return true
+			}
+		}
+	case "Browser.setPermission":
+		var p struct {
+			Permission struct {
+				Name string `json:"name"`
+			} `json:"permission"`
+		}
+		if json.Unmarshal(fields["params"], &p) != nil {
+			return true
+		}
+		return clip(p.Permission.Name)
+	}
+	return false
 }
 
 func (m *cdpMux) touch() {

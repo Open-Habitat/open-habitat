@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/browserhost"
 	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
@@ -158,6 +159,15 @@ func (c *browserCDP) call(method string, params any, out any) error {
 			continue
 		}
 		if len(m["error"]) != 0 {
+			var e struct {
+				Message string `json:"message"`
+			}
+			_ = json.Unmarshal(m["error"], &e)
+			if e.Message == browserhost.PersonTookControl {
+				// The command waited while the person drove and was never
+				// sent: the page may now be different.
+				return &cliError{code: "browser_person_took_control", message: "the person took control during this command and it was not carried out; inspect the page before continuing", exit: 1}
+			}
 			return &browserCDPRejected{method: method}
 		}
 		if out == nil {

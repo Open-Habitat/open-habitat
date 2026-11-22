@@ -260,16 +260,58 @@ func TestPersonsControlHoldsTheAgentUntilGivenBack(t *testing.T) {
 		t.Fatalf("agent got %v", m)
 	}
 	c.mux.setControl(false)
-	if m := c.next(); m["method"] != "Runtime.evaluate" {
-		t.Fatalf("first after control: %v", m)
+	// What waited is answered, in order, and never reaches the page the
+	// person may have changed.
+	for _, id := range []float64{1, 2} {
+		m := ag.recv()
+		e, _ := m["error"].(map[string]any)
+		if m["id"] != id || e["message"] != PersonTookControl {
+			t.Fatalf("held command %v answered %v", id, m)
+		}
 	}
-	if m := c.next(); m["method"] != "Input.insertText" {
-		t.Fatalf("second after control: %v", m)
+	select {
+	case m := <-c.got:
+		t.Fatalf("Chrome got held command %v", m)
+	case <-time.After(200 * time.Millisecond):
+	}
+	// The agent carries on afterwards.
+	ag.send(map[string]any{"id": 3, "method": "Runtime.evaluate", "params": map[string]any{"expression": "2"}})
+	if m := c.next(); m["method"] != "Runtime.evaluate" {
+		t.Fatalf("after control: %v", m)
 	}
 	c.mux.mu.Lock()
 	defer c.mux.mu.Unlock()
 	if c.mux.request != nil {
 		t.Fatal("giving control back left the request")
+	}
+}
+
+func TestTheAgentCannotGrantItselfTheClipboard(t *testing.T) {
+	c := newFakeChrome(t)
+	ag := connectAgent(t, c)
+	refused := []map[string]any{
+		{"id": 1, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"geolocation", "clipboardReadWrite"}}},
+		{"id": 2, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"clipboardSanitizedWrite"}, "origin": "https://a.example"}},
+		{"id": 3, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "clipboard-read"}, "setting": "granted"}},
+		{"id": 4, "method": "Browser.setPermission", "sessionId": "S9", "params": map[string]any{"permission": map[string]any{"name": " Clipboard-Write"}, "setting": "granted"}},
+		{"id": 5, "method": "Browser.grantPermissions"},
+	}
+	for _, cmd := range refused {
+		ag.send(cmd)
+		m := ag.recv()
+		if m["id"] != float64(cmd["id"].(int)) || m["error"] == nil || m["sessionId"] != cmd["sessionId"] {
+			t.Fatalf("%v answered %v", cmd, m)
+		}
+	}
+	// Other permissions pass, so the agent can still answer a site's
+	// ordinary prompt the person asked it to.
+	ag.send(map[string]any{"id": 6, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"geolocation"}}})
+	if m := c.next(); m["method"] != "Browser.grantPermissions" {
+		t.Fatalf("Chrome got %v", m)
+	}
+	ag.send(map[string]any{"id": 7, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "notifications"}, "setting": "denied"}})
+	if m := c.next(); m["method"] != "Browser.setPermission" {
+		t.Fatalf("Chrome got %v", m)
 	}
 }
 

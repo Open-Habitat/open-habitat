@@ -139,9 +139,15 @@ open-habitat agent browser request --clear --json
 ```
 
 They take control and return it when ready. Returning control clears the
-request. While they drive, CLI actions refuse; if control changes during an
-operation, the host may hold its commands until control returns or the CLI
-deadline expires. Inspect the page before continuing after any timeout.
+request. While they drive, CLI actions refuse with `browser_person_control`.
+The person can also take control in the middle of an operation by clicking
+the picture: its remaining commands then wait and, when control returns,
+fail with `browser_person_took_control` without being carried out. Inspect
+the page before continuing after that error or any timeout.
+
+Do not read or use the clipboard. The person pastes passwords and codes into
+the browser; clipboard permissions are refused to you, and the browser's
+clipboard is cleared when control returns.
 
 ## Optional external clients
 

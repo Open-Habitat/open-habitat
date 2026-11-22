@@ -3,12 +3,14 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +20,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/browserhost"
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 func TestBrowserActionValidationBeforeConnection(t *testing.T) {
@@ -375,4 +378,32 @@ func TestBrowserActionsNative(t *testing.T) {
 		t.Fatal("last tab disappeared")
 	}
 	t.Log("native browser actions: held load and redirect, cookie-authenticated multichunk PDF bytes, SVG links, form activation, definite guard refusals, screenshot, tabs, marker, close and last-tab protection passed")
+}
+
+// A command the host held while the person drove comes back as its own
+// error, not as a generic refusal, so the agent knows the page may have
+// changed under it.
+func TestHeldCommandFailsAsPersonTookControl(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+	go func() {
+		r := bufio.NewReader(server)
+		f, err := wsframe.ReadFrame(r, 1<<20, true)
+		if err != nil {
+			return
+		}
+		var m struct {
+			ID int `json:"id"`
+		}
+		_ = json.Unmarshal(f.Payload, &m)
+		b, _ := json.Marshal(map[string]any{"id": m.ID, "error": map[string]any{"code": -32000, "message": browserhost.PersonTookControl}})
+		_, _ = server.Write(wsframe.AppendFrame(nil, wsframe.OpText, b, false))
+	}()
+	c := &browserCDP{conn: client, reader: bufio.NewReader(client), loads: map[string]bool{}}
+	err := c.call("Input.dispatchMouseEvent", map[string]any{}, nil)
+	var ce *cliError
+	if !errors.As(err, &ce) || ce.code != "browser_person_took_control" {
+		t.Fatalf("held command error %v", err)
+	}
 }

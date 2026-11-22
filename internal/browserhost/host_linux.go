@@ -292,6 +292,11 @@ func startXvnc(ctx context.Context, cfg Config, cookie string) (string, *exec.Cm
 		"-geometry", fmt.Sprintf("%dx%d", cfg.Width, cfg.Height),
 		"-depth", "24",
 		"-AlwaysShared",
+		// Only an explicit copy leaves the browser for the person's viewer,
+		// not every selection, and text the person pastes goes only to the
+		// clipboard the viewer clears when they give control back.
+		"-SendPrimary=0",
+		"-SetPrimary=0",
 		"-desktop", "Open Habitat",
 	}
 	cmd := exec.Command(cfg.Xvnc, args...)
