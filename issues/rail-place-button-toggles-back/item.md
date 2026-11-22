@@ -3,12 +3,16 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-place-toggle
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
+commits:
+- hash: 31170296634fa3cac00e1b137978c98afc9dfed7
+  summary: Preserve place visits and return state
 ---
 
 # Rail: pressing an open place (Tuotokset, Agentin käytössä) again returns to where you were
