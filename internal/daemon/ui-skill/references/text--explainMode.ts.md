@@ -1675,7 +1675,7 @@ const fi = {
     },
     M03: {
       name: "Tili",
-      lead: "Nimesi ja kuvasi, Git-identiteetti, näkymiesi osoitteet ja uloskirjautuminen.",
+      lead: "Nimesi ja kuvasi, Git-identiteetti ja uloskirjautuminen.",
     },
     M04: {
       name: "Laitteet",
@@ -3726,7 +3726,7 @@ export const explainModeText = catalog(fi, {
     },
     M03: {
       name: "Account",
-      lead: "Your name and picture, Git identity, your views' addresses, and signing out.",
+      lead: "Your name and picture, Git identity, and signing out.",
     },
     M04: {
       name: "Devices",

@@ -3,7 +3,7 @@
 // until the person publishes it. Only this
 // app, on the person's own press, reserves, publishes, changes and deletes;
 // the agent has no part in it. The person's addresses are one small store
-// here, so the offer cards, the panel and Settings show the same state, and
+// here, so the offer cards, the panel and Outputs show the same state, and
 // a write updates it from the gateway's reply. An item is a view or an
 // offer by its ID (`v…` or `f…`); the two never collide.
 
@@ -487,7 +487,7 @@ export function setViewDuration(
   });
 }
 
-/** Settings' Lopeta: the address stays for the next publication. */
+/** Make an item private in Outputs: its address stays for the next publication. */
 export function stopViewSharing(
   csrf: string,
   address: ViewAddress,
@@ -497,7 +497,7 @@ export function stopViewSharing(
   );
 }
 
-/** Settings' permanent deletion of the address, never of the view. */
+/** Outputs' permanent deletion of the address, never of the view. */
 export function deleteViewAddressForGood(
   csrf: string,
   address: ViewAddress,

@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: task
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/view-addresses-doc-stale

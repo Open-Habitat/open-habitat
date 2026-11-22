@@ -1,7 +1,9 @@
 # Result: public switch, Kopioi linkki and the durations menu
 
 ADR 0035 unit 4, built on units 1–3. Browser-only: no gateway, contract or
-daemon change.
+daemon change. The test results and captures below are historical evidence of
+that implementation, not the current navigation. Personal address management
+has since moved to **Tuotokset / Outputs** in the rail (`/shares`).
 
 ## What landed
 
@@ -37,11 +39,12 @@ daemon change.
   re-read on focus/visibility and just after the earliest publication ends,
   and that redraw happens even if the read fails, so an expired view never
   shows as public.
-- **Settings › Tili › Näkymien osoitteet** (`ViewLinkSettings.tsx`) lists every
-  reservation (public first, then newest): private, public, expired, paused,
-  and those whose export no longer exists. Each row opens the address, copies
-  it while public, makes it private, and deletes it for good behind a
-  confirmation dialog. The list and deletion work with sharing off.
+- **Tuotokset / Outputs** (`SharesPage.tsx`, `/shares`) is now the person's
+  inventory of views and file offers, including private items without an
+  address. Open it from the rail, select an item, then open it, publish it,
+  copy its public link, change its duration or remove its address. Account
+  settings no longer contains this list. `ViewLinkSettings.tsx` retains only
+  the administrator's publication list in Settings › Users.
 
 ## Screenshots
 
@@ -101,8 +104,9 @@ the light variants; dark variants share their DOM.
   Queuing would reorder or merge the person's intent invisibly.
 - **Permanent deletion uses a confirmation dialog.** The ADR rules out new
   confirmations on the card; deletion in Settings is irreversible, so it asks.
-- **Settings row renamed *Näkymien osoitteet*** (was *Jaetut linkit*), since it
-  now lists private addresses too; the administrator's list keeps its name.
+- **Personal address management moved to Tuotokset** after this implementation;
+  the earlier account-settings row is no longer a user route. The
+  administrator's publication list remains in Settings.
 - **Phone layout by container width** (< 460 px card) rather than viewport,
   so a narrow conversation beside an open panel gets the same layout.
 - **Screenshot HTML only for light variants** to keep the issue folder near

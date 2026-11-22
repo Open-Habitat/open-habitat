@@ -6,8 +6,8 @@ Generated from web/src/text/viewLinks.ts; do not edit.
 import { catalog, plural } from "../i18n";
 
 // Stable view and file offer addresses: the copy button (components/ViewLink.tsx), the
-// person's and the administrator's lists in Settings
-// (app/ViewLinkSettings.tsx) and address errors (app/viewLinks.ts).
+// person's Outputs list (app/SharesPage.tsx), the administrator's list in
+// Settings (app/ViewLinkSettings.tsx), and address errors (app/viewLinks.ts).
 const fi = {
   viewGone: "Kohdetta ei enää ole. Agentti on ehkä poistanut sen.",
   linkGone: "Osoitetta ei enää ole: se on poistettu.",
