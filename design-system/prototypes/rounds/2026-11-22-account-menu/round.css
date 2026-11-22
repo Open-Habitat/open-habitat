@@ -1,0 +1,134 @@
+/* The account menu round. Tokens only; the shell, rail, popover and menu
+   items are production's (components.css, Controls.module.css). These rules
+   add the review bar, the desktop and phone stages, the menu bodies (leading
+   icons, groups, quick rows, icon row), the phone sheet, the feedback panel
+   and the toast. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+
+/* ---------- Review bar: not a contestant ---------- */
+.am-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: 8px 14px 6px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; }
+.am-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.am-controls strong { font-size: 13.5px; }
+.am-controls select, .am-controls button { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 1px 4px; }
+.am-lines { margin: 4px 0 0; padding: 0; list-style: none; color: var(--ah-muted); }
+.am-lines li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.am-recommend { margin: 4px 0 0; font-weight: 600; color: var(--ah-accent-ink); }
+
+/* ---------- Stages ---------- */
+/* Desktop: the production shell under the bar, leaving room for the phone
+   frame on the right and the picker at the bottom. */
+.am-desktop .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  bottom: 64px;
+  height: auto;
+  right: 0;
+  outline: 1px solid var(--ah-line);
+}
+.am-review[data-device="both"] .am-desktop .ah-app-shell:has(.ah-rail) { right: 434px; }
+.am-phone { position: fixed; z-index: 1; top: calc(var(--review-h, 0px) + 10px); bottom: 64px; right: 22px; width: 392px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.am-review[data-device="phone"] .am-phone { left: 0; right: 0; margin: 0 auto; }
+.am-phone iframe { width: 390px; flex: 1; max-height: 844px; border: 1px solid var(--ah-line-strong); border-radius: 22px; background: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
+.am-phone figcaption { color: var(--ah-muted); font-size: 12px; }
+/* A window too narrow for both shows the desktop stage only; the phone frame
+   is one Laite choice away, and a narrow window is itself the phone. */
+@media (max-width: 1180px) {
+  .am-review[data-device="both"] .am-phone { display: none; }
+  .am-review[data-device="both"] .am-desktop .ah-app-shell:has(.ah-rail) { right: 0; }
+}
+html.am-bare .proto-picker { display: none; }
+.am-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.am-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* ---------- The menu ---------- */
+.am-popover.ah-account-menu { min-width: 18.5rem; max-width: min(22rem, calc(100vw - 16px)); max-height: calc(100dvh - 24px); overflow: auto; }
+.am-menu { display: flex; flex-direction: column; gap: 0; outline: 0; }
+.am-section { display: flex; flex-direction: column; }
+.am-sep { height: 1px; margin: 4px 6px; border: 0; background: var(--ah-line-soft); }
+/* Production draws a line under every account-menu item; the groups here
+   carry that structure instead, so the lines inside a group go. */
+.ah-account-menu .am-item[data-ah-primitive="menu-item"] { display: flex; align-items: center; gap: 10px; border-bottom: 0; border-top: 0; padding: 7px 10px; }
+.am-label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.am-sub { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.am-lead { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; color: var(--ah-ink-2); }
+.am-lead svg { width: 16px; height: 16px; }
+.am-lead .ah-explain-q { width: 16px; height: 16px; font-size: 11px; box-shadow: inset 0 0 0 1.4px currentColor; }
+.ah-menu-danger .am-lead { color: inherit; }
+.am-check { flex: none; width: 16px; color: var(--ah-accent-ink); }
+.am-check svg { width: 16px; height: 16px; }
+.am-end { border-top: 1px solid var(--ah-line-soft); margin-top: 4px; padding-top: 4px; }
+
+/* A: named quick rows with the same icon column as the items. */
+.am-quick { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--ah-line-soft); }
+.am-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 4px 0 10px; color: var(--ah-ink); }
+.am-row .ah-account-menu-theme { margin-left: auto; }
+.am-note { display: flex; align-items: flex-start; gap: 6px; margin: 0 6px 4px 40px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+.am-note svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.am-popover[data-direction="2"] .am-note { margin: 2px 10px 4px; }
+
+/* C: the icon row under the person. */
+.am-icons { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 6px 8px; border-bottom: 1px solid var(--ah-line-soft); margin-bottom: 4px; }
+.am-icons-gap { flex: 1; }
+.am-toggle { display: inline-grid; place-items: center; width: 34px; height: 30px; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink-2); cursor: pointer; }
+.am-toggle svg { width: 16px; height: 16px; }
+.am-toggle[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); border-color: var(--ah-accent-ink); }
+.am-toggle:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent-ink)); outline-offset: 1px; }
+.am-icons-state { flex-basis: 100%; color: var(--ah-muted); font-size: var(--ah-size-meta); padding-left: 2px; }
+
+/* ---------- Phone: the menu as a sheet from the bottom ---------- */
+/* React Aria positions the popover inline; the sheet takes the bottom edge
+   instead, with a scrim drawn by its own shadow so a tap outside still lands
+   on React Aria's underlay and closes it. Rows are touch height. */
+.am-popover.am-sheet {
+  position: fixed !important;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  padding: 4px 10px calc(10px + env(safe-area-inset-bottom));
+  border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0;
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--ah-ink) 28%, transparent), var(--ah-shadow-dialog);
+}
+.am-grip { display: block; width: 40px; height: 4px; margin: 4px auto 6px; border-radius: 2px; background: var(--ah-line-strong); }
+.am-sheet .ah-account-menu .am-item[data-ah-primitive="menu-item"],
+.am-sheet .am-item[data-ah-primitive="menu-item"] { min-height: var(--ah-touch, 44px); }
+.am-sheet .am-row { min-height: var(--ah-touch, 44px); }
+.am-sheet .am-toggle { width: var(--ah-touch, 44px); height: 40px; }
+
+/* ---------- General feedback panel ---------- */
+.am-scrim { position: fixed; inset: 0; z-index: 70; background: color-mix(in srgb, var(--ah-ink) 22%, transparent); }
+.am-panel { position: fixed; z-index: 71; left: calc(var(--ah-rail-width, 296px) + 24px); bottom: 88px; width: min(30rem, calc(100vw - 32px)); max-height: calc(100dvh - var(--review-h, 0px) - 120px); overflow: auto; padding: 14px 16px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); outline: 0; }
+.am-panel-sheet { left: 0; right: 0; bottom: 0; width: auto; max-height: calc(100dvh - 32px); border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; padding: 4px 16px calc(14px + env(safe-area-inset-bottom)); }
+.am-panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.am-panel-head h2 { flex: 1; margin: 0; font-size: var(--ah-size-h3, 16px); }
+.am-x { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--ah-r-md); background: none; color: var(--ah-ink-2); cursor: pointer; }
+.am-x svg { width: 16px; height: 16px; }
+.am-form { display: flex; flex-direction: column; gap: 8px; }
+.am-form label { font-weight: 600; }
+.am-form textarea { font: inherit; color: var(--ah-ink); background: var(--ah-bg); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); padding: 8px 10px; resize: vertical; }
+.am-form textarea[aria-invalid] { border-color: var(--ah-err); }
+.am-lead-text { margin: 0; color: var(--ah-ink-2); }
+.am-facts { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.am-facts p { margin: 0; }
+.am-public { display: flex; align-items: center; gap: 6px; color: var(--ah-ink); }
+.am-public svg { width: 14px; height: 14px; }
+.am-link { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: inherit; text-decoration: underline; cursor: pointer; }
+.am-preview { margin: 2px 0 0; padding: 6px 8px; border-radius: var(--ah-r-sm); background: var(--ah-bg); font: var(--ah-size-code) / 1.45 var(--ah-mono); white-space: pre-wrap; color: var(--ah-ink); }
+.am-nudge { margin: 0; color: var(--ah-err); font-size: var(--ah-size-meta); }
+.am-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.am-send, .am-secondary { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: var(--ah-r-md); font: inherit; cursor: pointer; }
+.am-send { border: 1px solid var(--ah-ink); background: var(--ah-ink); color: var(--ah-bg); font-weight: 600; }
+.am-send svg, .am-done svg { width: 14px; height: 14px; }
+.am-secondary { border: 1px solid var(--ah-line-strong); background: var(--ah-surface); color: var(--ah-ink); }
+.am-meta { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.am-done { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; outline: 0; }
+.am-done p { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+.am-panel-sheet .am-send, .am-panel-sheet .am-secondary { min-height: var(--ah-touch, 44px); }
+
+/* ---------- Prototype stand-in for actions not drawn ---------- */
+.am-toast { position: fixed; z-index: 80; left: 50%; bottom: 76px; transform: translateX(-50%); max-width: min(34rem, calc(100vw - 24px)); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
+html.am-bare .am-toast { bottom: 16px; }
