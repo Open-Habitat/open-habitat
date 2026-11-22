@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-workspace-page-header-round
 lane: workspace-header
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the workspace page header (title, actions, Kuvake/Nimi/Ääni tiles)
