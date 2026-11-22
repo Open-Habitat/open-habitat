@@ -24,9 +24,9 @@ export type TerminalHandle = {
 
 export type TerminalSelection = {
   text: string;
-  /** Where the selection starts, relative to the surface; absent for a copy
-   * that tmux reported (OSC 52) after its own mouse selection. */
-  at?: { top: number; left: number };
+  /** Selected rows relative to the panel host; absent for tmux's OSC 52 copy,
+   * which supplies text but no coordinates. */
+  at?: { top: number; bottom: number; left: number };
 };
 
 // The terminal follows the theme: its colours are the design tokens, read
@@ -338,17 +338,29 @@ export function TerminalSurface({
       const screen = el.querySelector(".xterm-screen");
       const cellH = screen ? screen.clientHeight / xterm.rows : 16;
       const cellW = screen ? screen.clientWidth / xterm.cols : 8;
+      const rect = screen?.getBoundingClientRect();
+      const host = el.closest(".ah-terminal-host")?.getBoundingClientRect();
+      const viewportY = xterm.buffer.active.viewportY;
       handlers.current.onSelection({
         text,
-        at: pos
-          ? {
-              top: (pos.start.y - xterm.buffer.active.viewportY) * cellH,
-              left: pos.start.x * cellW,
-            }
-          : undefined,
+        at:
+          pos && rect && host
+            ? {
+                top: rect.top - host.top + (pos.start.y - viewportY) * cellH,
+                // The end cell is exclusive; column zero belongs to the next row.
+                bottom:
+                  rect.top -
+                  host.top +
+                  (pos.end.y - viewportY + (pos.end.x > 0 ? 1 : 0)) * cellH,
+                left: rect.left - host.left + pos.start.x * cellW,
+              }
+            : undefined,
       });
     };
     const selected = xterm.onSelectionChange(reportSelection);
+    const selectionScrolled = xterm.onScroll(reportSelection);
+    const selectionResized = xterm.onResize(reportSelection);
+    el.addEventListener("scroll", reportSelection);
     // xterm 6 deduplicates the range on mouseup even after clearSelection().
     // Reselecting the identical text after Copy must offer its actions again.
     let selectionFrame = 0;
@@ -434,6 +446,9 @@ export function TerminalSurface({
     });
     return () => {
       cancelAnimationFrame(selectionFrame);
+      selectionScrolled.dispose();
+      selectionResized.dispose();
+      el.removeEventListener("scroll", reportSelection);
       window.removeEventListener("mouseup", finishSelection, true);
       el.removeEventListener("mousedown", startPress, true);
       el.removeEventListener("copy", copyEvent, true);

@@ -117,7 +117,7 @@ export const Selection: Story = {
   args: {
     selection: {
       text: "ok  example.invalid/aurinkokello",
-      at: { top: 110, left: 14 },
+      at: { top: 110, bottom: 130, left: 14 },
     },
   },
 };

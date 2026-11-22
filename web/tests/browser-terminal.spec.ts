@@ -172,6 +172,94 @@ test("@browser-shell selection is visible in every theme, with and without mouse
   }
 });
 
+test("@browser-shell selection actions stay outside every selected row at panel edges", async ({
+  page,
+}) => {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await signIn(page, {});
+  await openShell(page);
+  for (const shift of [true, false]) {
+    await page.locator(".ah-terminal-surface textarea").focus();
+    await page.keyboard.type(
+      `tmux set mouse ${shift ? "on" : "off"}; seq 1 80\n`,
+    );
+    await expect(rows(page).filter({ hasText: /^80\s*$/ })).toHaveCount(1);
+    const count = await rows(page).count();
+    for (const [start, end] of [
+      [0, 0],
+      [0, 2],
+      [count - 3, count - 3],
+      [count - 5, count - 3],
+      [0, count - 3],
+      [0, count - 1],
+    ]) {
+      const first = await rows(page).nth(start).boundingBox();
+      const last = await rows(page).nth(end).boundingBox();
+      if (!first || !last) throw new Error("missing terminal rows");
+      if (shift) await page.keyboard.down("Shift");
+      await page.mouse.move(first.x + 1, first.y + first.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(last.x + 50, last.y + last.height / 2, {
+        steps: 6,
+      });
+      await page.mouse.up();
+      if (shift) await page.keyboard.up("Shift");
+      await expect(page.getByTestId("copy-selection")).toBeVisible();
+      await expect
+        .poll(async () => {
+          const bounds = await page
+            .locator(".xterm-selection div")
+            .evaluateAll((elements) =>
+              elements
+                .map((el) => el.getBoundingClientRect())
+                .filter((rect) => rect.height > 0)
+                .map((rect) => ({ top: rect.top, bottom: rect.bottom })),
+            );
+          return (
+            bounds.length > 0 &&
+            Math.min(...bounds.map((r) => r.top)) <= first.y + 1 &&
+            Math.max(...bounds.map((r) => r.bottom)) >= last.y + last.height - 1
+          );
+        })
+        .toBe(true);
+      await expect
+        .poll(() =>
+          page.locator(".ah-terminal-chip").evaluate((chip) => {
+            const actions = chip.getBoundingClientRect();
+            const parent = chip.parentElement;
+            if (!parent) return false;
+            const host = parent.getBoundingClientRect();
+            const selected = [
+              ...parent.querySelectorAll(".xterm-selection div"),
+            ]
+              .map((el) => el.getBoundingClientRect())
+              .filter((rect) => rect.height > 0);
+            return (
+              selected.length > 0 &&
+              actions.left >= host.left &&
+              actions.right <= host.right &&
+              selected.every(
+                (rect) =>
+                  actions.bottom <= rect.top || actions.top >= rect.bottom,
+              )
+            );
+          }),
+        )
+        .toBe(true);
+      if (shots)
+        await captureSnapshot(
+          page,
+          join(shots, `placement-${shift ? "shift" : "plain"}-${start}-${end}`),
+          { labOrigin: new URL(page.url()).origin },
+        );
+      // Clear through the real action so its old toolbar cannot intercept the
+      // start of the next range on otherwise unselected rows.
+      await page.getByTestId("copy-selection").click();
+      await expect(page.getByTestId("copy-selection")).toBeHidden();
+    }
+  }
+});
+
 test("@browser-shell a selection survives tmux's redraws; the wheel reads history a line at a time", async ({
   page,
 }) => {
