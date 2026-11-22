@@ -47,3 +47,9 @@ Read from the code at the fix commit; confirmed independently by a second model'
 ## Proposed direction
 
 Expose the daemon's own work census (the same `classify` used by workspace fences: held activity, Pi background processes asked from the bridge, unknown when unreadable, plus handle-less temporary work such as history naming and controllers outside the rail) on the agent socket, and have the upgrade read it when the predecessor provides it, falling back to the list for older predecessors. This is a new agent route and contract, so it helps only from the release that ships it as a predecessor.
+
+## Comments
+
+### 2026-11-22T04:54:11Z · @agent
+
+Implemented by upgrade-preview-background-work (agent work show; upgrade reads it, list only for a predecessor CLI without it). Can be closed at triage.

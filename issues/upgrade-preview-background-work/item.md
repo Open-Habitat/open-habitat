@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 related: ['@upgrade-preview-counts-history-as-active']
 lane: release-runtime
 lane_seq: 4
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Upgrade preview does not see background work behind an idle conversation
@@ -24,3 +25,9 @@ The preview sees this work and waits for a quiet window (or names it in the plan
 ## Decisions
 
 - Jari 22.11.2026: take it up now.
+
+## Resolution
+
+### 2026-11-22T04:54:01Z · @issuectl
+
+Daemon work census (agent work show) read by the upgrade; see result.md.
