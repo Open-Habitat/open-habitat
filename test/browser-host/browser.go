@@ -41,7 +41,26 @@ type fakeBrowser struct {
 	pointer  *browserhost.Pointer
 	pointers int
 	keys     int
-	stop     func()
+	// keysyms are the key presses (downs) in order; cuts the text the
+	// viewer put on the remote clipboard.
+	keysyms []uint32
+	cuts    []string
+	viewers map[*rfbViewer]bool
+	stop    func()
+}
+
+// rfbViewer is one connected viewer; writes to it are serialized so a
+// fixture can push a remote copy between framebuffer updates.
+type rfbViewer struct {
+	mu sync.Mutex
+	c  net.Conn
+}
+
+func (v *rfbViewer) write(b []byte) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	_, err := v.c.Write(b)
+	return err
 }
 
 var fakeBrowsers = map[string]*fakeBrowser{}
@@ -192,8 +211,9 @@ func (b *fakeBrowser) serveControl(w http.ResponseWriter, r *http.Request) {
 }
 
 // fakeBrowserFixture is /fixture/browser: ?installed=on|off, ?agent=on|off, ?request=TEXT
-// (&window=N), ?clear=1, ?pointer=X,Y (fractions, window 0) and ?input=1,
-// which answers the input counts the RFB server has seen.
+// (&window=N), ?clear=1, ?pointer=X,Y (fractions, window 0), ?pointer=off,
+// ?cut=TEXT (the remote page copies Latin-1 TEXT: a ServerCutText to every
+// viewer) and ?input=1, which answers the input the RFB server has seen.
 func fakeBrowserFixture(w http.ResponseWriter, r *http.Request, user string) {
 	if q := r.URL.Query(); q.Has("installed") {
 		browserRuntimeMissing.Store(q.Get("installed") == "off")
@@ -210,8 +230,29 @@ func fakeBrowserFixture(w http.ResponseWriter, r *http.Request, user string) {
 	defer b.mu.Unlock()
 	switch {
 	case q.Get("input") == "1":
-		_ = json.NewEncoder(w).Encode(map[string]int{"pointer_events": b.pointers, "key_events": b.keys})
+		keysyms, cuts := b.keysyms, b.cuts
+		if keysyms == nil {
+			keysyms = []uint32{}
+		}
+		if cuts == nil {
+			cuts = []string{}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"pointer_events": b.pointers, "key_events": b.keys, "keysyms": keysyms, "cuts": cuts})
 		return
+	case q.Has("cut"):
+		var latin []byte
+		for _, r := range q.Get("cut") {
+			if r > 0xff {
+				r = '?'
+			}
+			latin = append(latin, byte(r))
+		}
+		msg := []byte{3, 0, 0, 0}
+		msg = binary.BigEndian.AppendUint32(msg, uint32(len(latin)))
+		msg = append(msg, latin...)
+		for v := range b.viewers {
+			go func() { _ = v.write(msg) }()
+		}
 	case q.Has("agent"):
 		b.agent = q.Get("agent") == "on"
 	case q.Has("request"):
@@ -222,6 +263,8 @@ func fakeBrowserFixture(w http.ResponseWriter, r *http.Request, user string) {
 		b.request = &browserhost.Request{Window: fakeWindows[i].ID, Text: q.Get("request")}
 	case q.Has("clear"):
 		b.request = nil
+	case q.Get("pointer") == "off":
+		b.pointer = nil
 	case q.Has("pointer"):
 		var x, y float64
 		for i, c := range q.Get("pointer") {
@@ -256,9 +299,22 @@ func fakePicture(i int) []byte {
 
 // serveRFB speaks just enough RFB 3.8 for noVNC: no security, one raw
 // framebuffer update per full request, and a count of input events.
-func (b *fakeBrowser) serveRFB(c net.Conn) {
-	defer c.Close()
-	r := bufio.NewReader(c)
+func (b *fakeBrowser) serveRFB(conn net.Conn) {
+	defer conn.Close()
+	v := &rfbViewer{c: conn}
+	c := writerFunc(v.write)
+	b.mu.Lock()
+	if b.viewers == nil {
+		b.viewers = map[*rfbViewer]bool{}
+	}
+	b.viewers[v] = true
+	b.mu.Unlock()
+	defer func() {
+		b.mu.Lock()
+		delete(b.viewers, v)
+		b.mu.Unlock()
+	}()
+	r := bufio.NewReader(conn)
 	if _, err := io.WriteString(c, "RFB 003.008\n"); err != nil {
 		return
 	}
@@ -345,11 +401,15 @@ func (b *fakeBrowser) serveRFB(c net.Conn) {
 				return
 			}
 		case 4: // KeyEvent
-			if _, err := io.ReadFull(r, make([]byte, 7)); err != nil {
+			ev := make([]byte, 7)
+			if _, err := io.ReadFull(r, ev); err != nil {
 				return
 			}
 			b.mu.Lock()
 			b.keys++
+			if ev[0] != 0 {
+				b.keysyms = append(b.keysyms, binary.BigEndian.Uint32(ev[3:]))
+			}
 			b.mu.Unlock()
 		case 5: // PointerEvent
 			if _, err := io.ReadFull(r, make([]byte, 5)); err != nil {
@@ -367,11 +427,29 @@ func (b *fakeBrowser) serveRFB(c net.Conn) {
 			if n > 1<<20 {
 				return
 			}
-			if _, err := io.ReadFull(r, make([]byte, n)); err != nil {
+			text := make([]byte, n)
+			if _, err := io.ReadFull(r, text); err != nil {
 				return
 			}
+			// Standard ClientCutText is Latin-1.
+			runes := make([]rune, len(text))
+			for i, ch := range text {
+				runes[i] = rune(ch)
+			}
+			b.mu.Lock()
+			b.cuts = append(b.cuts, string(runes))
+			b.mu.Unlock()
 		default:
 			return
 		}
 	}
+}
+
+type writerFunc func([]byte) error
+
+func (f writerFunc) Write(b []byte) (int, error) {
+	if err := f(b); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }

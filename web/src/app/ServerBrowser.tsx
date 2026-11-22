@@ -193,17 +193,21 @@ export function ServerBrowserSheetHost({
       busy={browser.busy}
       error={browser.error}
       onClose={closeBrowserSheet}
-      onTakeControl={() => void setBrowserControl("person")}
-      onGiveBack={() => void setBrowserControl("agent")}
       onStop={async () => {
         if (await stopBrowser()) closeBrowserSheet();
       }}
     >
-      {running && csrf ? (
+      {running && csrf && browser.status ? (
         <Suspense
           fallback={<p className="sb-viewer-note">{txt.sheet.connecting}</p>}
         >
-          <BrowserViewer csrf={csrf} viewOnly={mode === "view"} />
+          <BrowserViewer
+            csrf={csrf}
+            status={browser.status}
+            busy={!!browser.busy}
+            onTake={() => setBrowserControl("person")}
+            onGiveBack={() => setBrowserControl("agent")}
+          />
         </Suspense>
       ) : (
         <p className="sb-viewer-note">{txt.sheet.notRunning}</p>

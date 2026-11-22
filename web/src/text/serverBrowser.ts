@@ -50,6 +50,69 @@ const fi = {
     retry: "Yritä uudelleen",
     notRunning: "Selain ei ole käynnissä.",
   },
+  frame: {
+    you: "Sinä ohjaat",
+    agent: "Agentti ohjaa",
+    agentBusy: "Agentti toimii",
+    agentWaits: "Agentti odottaa sinua",
+    waiting: "Otat ohjauksen, kun agentin toiminto päättyy…",
+    done: "Valmis",
+    cancel: "Peru",
+    says: "Agentti",
+    screen: "Palvelinselaimen näkymä",
+    helpAgent: "Klikkaa sivua tai ala kirjoittaa, niin ohjaus siirtyy sinulle.",
+    helpBusy:
+      "Agentti on kesken. Klikkaus sivulla kysyy ennen kuin keskeyttää sen.",
+    helpYou:
+      "Agentti odottaa, kunnes annat selaimen takaisin. Klikkaa ja kirjoita sivulla kuten omassa selaimessasi.",
+    hintAgent: "Klikkaa tai kirjoita ottaaksesi ohjauksen",
+    hintBusy: "Agentti toimii · klikkaa ottaaksesi ohjauksen",
+    midTitle: "Agentti on kesken",
+    midText:
+      "Jos otat ohjauksen nyt, sen seuraavat askeleet perutaan ja sivulle voi jäädä puolikas syöte. Agentti katsoo sivun uudelleen ennen kuin jatkaa.",
+    takeNow: "Ota ohjaus nyt",
+    takeAfter: "Ota, kun se on valmis",
+    idle: (s: number) =>
+      `Et ole käyttänyt selainta hetkeen. Se palautuu agentille 0:${String(s).padStart(2, "0")} kuluttua.`,
+    keep: "Pidä ohjaus",
+  },
+  clip: {
+    tab: "Leikepöytä",
+    label: "Teksti sivulle",
+    placeholder: "Liitä tai kirjoita tähän",
+    hintKeys: "⌘/Ctrl+V liittää suoraan sivulle. Jos se ei toimi, liitä tähän.",
+    hintTouch: "Liitä tai kirjoita tähän ja lähetä sivulle.",
+    paste: "Liitä sivulle",
+    type: "Kirjoita näppäilyinä",
+    hide: "Piilota teksti",
+    keysNote:
+      "Näppäilyinä toimii sivuilla, jotka estävät liittämisen, eikä käy leikepöydän kautta. Teksti lähtee vain sivulle, ja kenttä tyhjenee lähetyksen jälkeen.",
+    enterWarn: (n: number) =>
+      `Tekstissä on ${n === 1 ? "rivinvaihto" : `${n} rivinvaihtoa`}. Ne lähtevät Enter-painalluksina, mikä voi lähettää lomakkeen. Paina uudelleen, jos haluat sen.`,
+    copySelection: "Kopioi valinta",
+    copied: "Kopioitu etäsivulta",
+    copiedText: "Kopioitu teksti",
+    copyLocal: "Kopioi koneellesi",
+    note: "Liitetty teksti menee vain sivulle. Etäkoneen leikepöytä tyhjennetään, kun annat ohjauksen takaisin.",
+  },
+  toast: {
+    took: "Sinä ohjaat. Agentti odottaa.",
+    tookAfter: "Agentin toiminto päättyi. Sinä ohjaat.",
+    back: "Agentti jatkaa.",
+    backCleared: "Agentti jatkaa. Etäkoneen leikepöytä tyhjennettiin.",
+    idleBack: "Selain palautui agentille tauon jälkeen.",
+    pasted: (n: number) => `Liitetty sivulle · ${n} merkkiä`,
+    typed: (n: number) => `Kirjoitettiin sivulle näppäilyinä · ${n} merkkiä`,
+    pasteBlocked:
+      "Selain ei antanut liittää suoraan kuvaan. Liitä tekstikenttään ja lähetä.",
+    tooLong: "Teksti on liian pitkä lähetettäväksi.",
+    unsupported: "Tekstissä on merkkejä, joita ei voi kirjoittaa näppäilyinä.",
+    empty: "Kirjoita tai liitä ensin teksti.",
+    copiedLocal: "Kopioitu etäsivulta koneellesi.",
+    copyBlocked:
+      "Selain ei antanut kopioida suoraan koneellesi. Kopioi Leikepöytä-valikosta.",
+    copyRefused: "Kopiointi estettiin. Valitse teksti ja kopioi se itse.",
+  },
   truth:
     "Agentti saa käyttää kaikkea, mihin tämä selain on kirjautunut, sinun nimissäsi.",
   errors: {
@@ -109,6 +172,70 @@ export const serverBrowserText = catalog(fi, {
     lost: "The connection to the browser was lost.",
     retry: "Try again",
     notRunning: "The browser is not running.",
+  },
+  frame: {
+    you: "You are in control",
+    agent: "Agent in control",
+    agentBusy: "Agent at work",
+    agentWaits: "Agent is waiting for you",
+    waiting: "You take control when the agent’s step ends…",
+    done: "Done",
+    cancel: "Cancel",
+    says: "Agent",
+    screen: "Server browser view",
+    helpAgent: "Click the page or start typing to take control.",
+    helpBusy:
+      "The agent is mid-step. A click on the page asks before interrupting it.",
+    helpYou:
+      "The agent waits until you give the browser back. Click and type on the page as in your own browser.",
+    hintAgent: "Click or type to take control",
+    hintBusy: "Agent at work · click to take control",
+    midTitle: "The agent is mid-step",
+    midText:
+      "If you take control now, it stops its next steps and the page may keep a partial input. The agent looks at the page again before continuing.",
+    takeNow: "Take control now",
+    takeAfter: "Take when it’s done",
+    idle: (s: number) =>
+      `You haven’t used the browser for a while. It goes back to the agent in 0:${String(s).padStart(2, "0")}.`,
+    keep: "Keep control",
+  },
+  clip: {
+    tab: "Clipboard",
+    label: "Text for the page",
+    placeholder: "Paste or type here",
+    hintKeys:
+      "⌘/Ctrl+V pastes straight into the page. If that doesn’t work, paste here.",
+    hintTouch: "Paste or type here and send it to the page.",
+    paste: "Paste into page",
+    type: "Type as keystrokes",
+    hide: "Hide text",
+    keysNote:
+      "Keystrokes work on sites that block pasting and do not use the clipboard. The text goes only to the page, and this field clears after sending.",
+    enterWarn: (n: number) =>
+      `The text has ${n === 1 ? "a line break" : `${n} line breaks`}. They are sent as Enter, which may submit a form. Press again if you want that.`,
+    copySelection: "Copy selection",
+    copied: "Copied on the remote page",
+    copiedText: "Copied text",
+    copyLocal: "Copy to your computer",
+    note: "Pasted text goes only to the page. The remote clipboard is cleared when you give control back.",
+  },
+  toast: {
+    took: "You are in control. The agent waits.",
+    tookAfter: "The agent’s step finished. You are in control.",
+    back: "The agent continues.",
+    backCleared: "The agent continues. The remote clipboard was cleared.",
+    idleBack: "The browser went back to the agent after a pause.",
+    pasted: (n: number) => `Pasted into the page · ${n} characters`,
+    typed: (n: number) => `Typed into the page as keystrokes · ${n} characters`,
+    pasteBlocked:
+      "Your browser did not allow pasting straight into the picture. Paste into the text field and send.",
+    tooLong: "The text is too long to send.",
+    unsupported: "The text has characters that cannot be typed as keystrokes.",
+    empty: "Type or paste some text first.",
+    copiedLocal: "Copied from the remote page to your computer.",
+    copyBlocked:
+      "Your browser did not allow copying straight to your computer. Copy it from the Clipboard menu.",
+    copyRefused: "Copying was blocked. Select the text and copy it yourself.",
   },
   truth:
     "The agent may use everything this browser is signed in to, in your name.",

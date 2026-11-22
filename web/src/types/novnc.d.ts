@@ -14,6 +14,9 @@ declare module "@novnc/novnc" {
     focusOnClick: boolean;
     background: string;
     disconnect(): void;
-    focus(): void;
+    focus(options?: FocusOptions): void;
+    /** Ignored while view-only, as is the server's "clipboard" event. */
+    clipboardPasteFrom(text: string): void;
+    sendKey(keysym: number, code: string | null, down?: boolean): void;
   }
 }

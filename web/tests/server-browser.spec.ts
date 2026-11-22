@@ -56,7 +56,31 @@ async function input(page: Page) {
   return (await (await fixture(page, "input=1")).json()) as {
     pointer_events: number;
     key_events: number;
+    /** Key presses in order, as X keysyms. */
+    keysyms: number[];
+    /** Text the viewer put on the remote clipboard, in order. */
+    cuts: string[];
   };
+}
+
+// X keysyms (keysymdef.h), an external contract.
+const XK_v = 0x76;
+const XK_Control_L = 0xffe3;
+const XK_Return = 0xff0d;
+
+/** Opens the running browser's live view from the rail, connected. */
+async function openView(page: Page) {
+  await button(page, "browser-rail-row").click();
+  const viewer = page.getByTestId("browser-viewer");
+  await expect(viewer).toHaveAttribute("data-phase", "connected", {
+    timeout: 20000,
+  });
+  await expect
+    .poll(
+      async () => (await viewer.locator("canvas").boundingBox())?.width ?? 0,
+    )
+    .toBeGreaterThan(0);
+  return viewer;
 }
 
 const button = (page: Page, id: string) =>
@@ -163,8 +187,9 @@ test("@server-browser opens from the rail; looking sends no input, control does"
     ).violations,
   ).toEqual([]);
 
-  // Explain mode lets the look open, but holds control changes.
-  await button(page, "browser-take-control").click();
+  // Explain mode lets the look open, but holds control changes: a click
+  // on the picture is explained instead of taking control.
+  await viewer.locator("canvas").click({ position: { x: 60, y: 60 } });
   await expect(page.getByTestId("explain-card")).toHaveAttribute(
     "data-card",
     "B04",
@@ -177,32 +202,244 @@ test("@server-browser opens from the rail; looking sends no input, control does"
   await row.click();
   await expect(viewer).toHaveAttribute("data-phase", "connected");
 
-  // A look is view-only: moving and pressing over the screen reaches
-  // nothing in the browser.
   const canvas = viewer.locator("canvas");
+  // A look is view-only: moving over the picture reaches nothing.
   const box = await canvas.boundingBox();
   if (!box) throw new Error("no canvas");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.up();
-  await page.keyboard.type("x");
+  await page.mouse.move(box.x + 20, box.y + 20);
   // The RFB server counts what arrives; give the relay time to deliver.
   await page.waitForTimeout(500);
-  expect(await input(page)).toEqual({ pointer_events: 0, key_events: 0 });
+  expect(await input(page)).toMatchObject({ pointer_events: 0, key_events: 0 });
+  const frame = page.getByTestId("browser-frame");
+  await expect(frame).toHaveAttribute("data-control", "agent");
 
-  // Taking control lets the person's input through; the sheet says so.
-  await button(page, "browser-take-control").click();
-  await expect(sheet).toHaveAttribute("data-mode", "control");
+  // The agent is idle: one click takes control and reaches the page.
   await canvas.click({ position: { x: 40, y: 40 } });
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  await expect(frame).toHaveAttribute("data-control", "person");
   await expect
     .poll(async () => (await input(page)).pointer_events)
     .toBeGreaterThan(0);
+  await page.screenshot({ path: testInfo.outputPath("sheet-control.png") });
 
-  // Giving it back returns to a look.
+  // Done gives it back and empties the remote clipboard on the way.
+  await button(page, "browser-give-back").click();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  expect((await input(page)).cuts.at(-1)).toBe("");
+
+  // The agent is mid-step: a click only asks, and reaches nothing.
+  await fixture(page, "agent=on");
+  await expect(frame.getByTestId("browser-take-control")).toBeVisible();
+  const before = await input(page);
+  await expect(frame).toHaveAttribute("data-agent", "busy");
+  await canvas.click({ position: { x: 80, y: 80 } });
+  await expect(page.getByTestId("browser-mid-step")).toBeVisible();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  expect((await input(page)).pointer_events).toBe(before.pointer_events);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="browser-sheet"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  // Escape answers the question, not the sheet.
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("browser-mid-step")).toHaveCount(0);
+  await expect(sheet).toBeVisible();
+  // "Take when it's done" waits for the operation to end.
+  await canvas.click({ position: { x: 80, y: 80 } });
+  await button(page, "browser-take-after").click();
+  await expect(frame).toHaveAttribute("data-waiting", "true");
+  await page.waitForTimeout(300);
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  await fixture(page, "agent=off");
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  expect((await input(page)).pointer_events).toBe(before.pointer_events);
+  await expect(frame).toHaveAttribute("data-agent", "idle");
+  await button(page, "browser-give-back").click();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+
+  // Mid-step again, "Take control now" takes it at once.
+  await fixture(page, "agent=on");
+  await expect(frame).toHaveAttribute("data-agent", "busy");
+  await canvas.click({ position: { x: 80, y: 80 } });
+  await button(page, "browser-take-now").click();
+  await expect(sheet).toHaveAttribute("data-mode", "control");
   await button(page, "browser-give-back").click();
   await expect(sheet).toHaveAttribute("data-mode", "view");
   await button(page, "browser-sheet-close").click();
   await expect(sheet).toHaveCount(0);
+});
+
+test("@server-browser the clipboard: paste in by shortcut, field and keystrokes, copy out only when asked", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(90000);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await signIn(page, true);
+  const viewer = await openView(page);
+  const sheet = page.getByTestId("browser-sheet");
+  const canvas = viewer.locator("canvas");
+
+  // The agent is idle, so typing on the focused picture takes control and
+  // the keys reach the page.
+  await canvas.click({ position: { x: 30, y: 30 } });
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  await button(page, "browser-give-back").click();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  // Focus stays on the picture after Done.
+  await expect(canvas).toBeFocused();
+  const typedBefore = (await input(page)).keysyms.length;
+  await page.keyboard.type("ab");
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(typedBefore))
+    .toEqual([0x61, 0x62]);
+
+  // ⌘/Ctrl+V pastes the person's own clipboard: the text goes to the
+  // remote clipboard, then the remote gets Ctrl+V. The confirmation never
+  // shows the text.
+  const secret = "sälasana-42";
+  await page.evaluate((t) => navigator.clipboard.writeText(t), secret);
+  await canvas.focus();
+  const keysBefore = (await input(page)).keysyms.length;
+  await page.keyboard.press("Control+V");
+  await expect.poll(async () => (await input(page)).cuts).toContain(secret);
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(keysBefore))
+    .toEqual([XK_Control_L, XK_v]);
+  const toast = page.getByTestId("browser-toast");
+  await expect(toast).not.toBeEmpty();
+  await expect(toast).not.toContainText(secret);
+
+  // The clipboard tab: the paste field sends with its own Ctrl+V and
+  // clears itself.
+  await button(page, "browser-clip-toggle").click();
+  const pop = page.getByTestId("browser-clipboard");
+  await expect(pop).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("clipboard.png") });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="browser-sheet"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  const field = pop.getByTestId("browser-paste-text");
+  await field.fill("koodi 123456");
+  let mark = (await input(page)).keysyms.length;
+  await button(page, "browser-paste-send").click();
+  await expect
+    .poll(async () => (await input(page)).cuts)
+    .toContain("koodi 123456");
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(mark))
+    .toEqual([XK_Control_L, XK_v]);
+  await expect(field).toHaveValue("");
+
+  // Typing as keystrokes never uses the remote clipboard; a line break is
+  // sent as Enter only after a second press.
+  const cutsBefore = (await input(page)).cuts.length;
+  await field.fill("ä€\nx");
+  mark = (await input(page)).keysyms.length;
+  await button(page, "browser-type-send").click();
+  await expect(pop.getByRole("alert")).toBeVisible();
+  await page.waitForTimeout(300);
+  expect((await input(page)).keysyms.length).toBe(mark);
+  await button(page, "browser-type-send").click();
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(mark))
+    .toEqual([0xe4, 0x10020ac, XK_Return, 0x78]);
+  expect((await input(page)).cuts.length).toBe(cutsBefore);
+  await expect(field).toHaveValue("");
+  await page.keyboard.press("Escape");
+  await expect(pop).toHaveCount(0);
+  await expect(sheet).toBeVisible();
+
+  // A remote copy the person did not ask for is not offered.
+  await page.evaluate(() => navigator.clipboard.writeText("oma"));
+  await fixture(page, `cut=${encodeURIComponent("sivun oma kopio")}`);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("oma");
+  await expect(page.getByTestId("browser-remote-clip")).toHaveCount(0);
+  // After the person's own Ctrl+C, the remote copy reaches their clipboard.
+  await canvas.focus();
+  await page.keyboard.press("Control+C");
+  await fixture(page, `cut=${encodeURIComponent("FI-4471-2290")}`);
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("FI-4471-2290");
+
+  // Done empties the remote clipboard.
+  await button(page, "browser-give-back").click();
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  expect((await input(page)).cuts.at(-1)).toBe("");
+});
+
+test("@server-browser control goes back after three idle minutes, never while the agent asks", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await page.clock.install();
+  await signIn(page, true);
+  await openView(page);
+  const sheet = page.getByTestId("browser-sheet");
+  await button(page, "browser-take-control").click();
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+
+  // Two and a half minutes: the countdown shows, and keeping control
+  // starts the three minutes again.
+  await page.clock.runFor("02:31");
+  await expect(page.getByTestId("browser-idle")).toBeVisible();
+  await button(page, "browser-keep").click();
+  await expect(page.getByTestId("browser-idle")).toHaveCount(0);
+  await page.clock.runFor("02:00");
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  await page.clock.runFor("01:05");
+  await expect(sheet).toHaveAttribute("data-mode", "view");
+  expect((await input(page)).cuts.at(-1)).toBe("");
+
+  // With the agent's request open, control stays with the person.
+  await fixture(page, `request=${encodeURIComponent("Kirjaudu")}&window=0`);
+  await expect(page.getByTestId("browser-says")).toBeVisible();
+  await button(page, "browser-take-control").click();
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+  await page.clock.runFor("05:00");
+  await expect(page.getByTestId("browser-idle")).toHaveCount(0);
+  await expect(sheet).toHaveAttribute("data-mode", "control");
+});
+
+test("@server-browser the frame fits a phone", async ({ page }, testInfo) => {
+  test.setTimeout(60000);
+  await signIn(page, true);
+  await openView(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await button(page, "browser-take-control").click();
+  await expect(page.getByTestId("browser-sheet")).toHaveAttribute(
+    "data-mode",
+    "control",
+  );
+  await button(page, "browser-clip-toggle").click();
+  await expect(page.getByTestId("browser-clipboard")).toBeVisible();
+  const width = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(390);
+  // The picture keeps a usable size under the tabs and the popover.
+  const canvasBox = await page
+    .getByTestId("browser-viewer")
+    .locator("canvas")
+    .boundingBox();
+  expect(canvasBox?.width ?? 0).toBeGreaterThan(200);
+  await page.screenshot({ path: testInfo.outputPath("phone.png") });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="browser-sheet"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
 });
 
 test("@server-browser a window's request opens the strip beside its picture and takes control in one press", async ({

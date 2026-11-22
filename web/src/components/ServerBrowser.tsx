@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -376,8 +376,8 @@ export function BrowserRailRow({
   );
 }
 
-/** The sheet: the live view of the whole browser. Looking (view) sends
- * nothing to the browser; only the named button takes control. */
+/** The sheet: the live view of the whole browser. The frame inside it
+ * (BrowserFrame) says who drives and takes and gives back control. */
 export function BrowserSheet({
   mode,
   running,
@@ -385,8 +385,6 @@ export function BrowserSheet({
   error,
   children,
   onClose,
-  onTakeControl,
-  onGiveBack,
   onStop,
 }: {
   mode: "view" | "control";
@@ -395,8 +393,6 @@ export function BrowserSheet({
   error?: string;
   children: ReactNode;
   onClose: () => void;
-  onTakeControl: () => void;
-  onGiveBack: () => void;
   onStop: () => void;
 }) {
   const txt = useText(serverBrowserText);
@@ -440,34 +436,6 @@ export function BrowserSheet({
               <Icon name="cross" />
             </ControlButton>
           </div>
-          {running ? (
-            <div className="sb-band" data-mode={mode}>
-              <Icon name={mode === "control" ? "user" : "eye"} />
-              <p data-testid="browser-band">
-                {mode === "control" ? txt.sheet.control : txt.sheet.viewing}
-              </p>
-              {mode === "control" ? (
-                <ControlButton
-                  size="row"
-                  variant="primary"
-                  data-testid="browser-give-back"
-                  isDisabled={!!busy}
-                  onPress={onGiveBack}
-                >
-                  {txt.giveBack}
-                </ControlButton>
-              ) : (
-                <ControlButton
-                  size="row"
-                  data-testid="browser-take-control"
-                  isDisabled={!!busy}
-                  onPress={onTakeControl}
-                >
-                  {txt.takeControl}
-                </ControlButton>
-              )}
-            </div>
-          ) : null}
           {error ? (
             <p
               role="alert"
@@ -486,5 +454,363 @@ export function BrowserSheet({
         </AriaDialog>
       </Modal>
     </ModalOverlay>
+  );
+}
+
+/** Who the agent is for the turn tab, as the app layer reads the host. */
+export type FrameAgent = "idle" | "busy" | "waits";
+
+/** The frame around the live picture (Kehys): its border is the turn
+ * (solid accent: the person, dashed: the agent), a tab on the left holds
+ * the turn and Done, a tab on the right opens the clipboard. The picture
+ * itself is `children`; the app layer owns noVNC and every decision. */
+export function BrowserFrame({
+  control,
+  agent,
+  waiting,
+  says,
+  busy,
+  clipOpen,
+  clipboard,
+  mid,
+  idle,
+  toast,
+  children,
+  onTake,
+  onDone,
+  onCancelWait,
+  onClipToggle,
+  onTakeNow,
+  onTakeAfter,
+  onMidCancel,
+  onKeep,
+  onClipClose,
+}: {
+  control: "person" | "agent";
+  agent: FrameAgent;
+  waiting: boolean;
+  /** The agent's request, in its own words. */
+  says?: string;
+  busy?: boolean;
+  clipOpen: boolean;
+  clipboard: ReactNode;
+  /** The mid-step question, where the click landed (fractions). */
+  mid?: { x: number; y: number };
+  /** Seconds before the browser goes back to the agent by itself. */
+  idle?: number;
+  toast?: string;
+  children: ReactNode;
+  onTake: () => void;
+  onDone: () => void;
+  onCancelWait: () => void;
+  onClipToggle: () => void;
+  onTakeNow: () => void;
+  onTakeAfter: () => void;
+  onMidCancel: () => void;
+  onKeep: () => void;
+  onClipClose: () => void;
+}) {
+  const txt = useText(serverBrowserText);
+  // Escape closes the question or the popover before it closes the sheet.
+  const dismiss = mid ? onMidCancel : clipOpen ? onClipClose : undefined;
+  useEffect(() => {
+    if (!dismiss) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      e.preventDefault();
+      dismiss();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [dismiss]);
+  const mine = control === "person";
+  const turn = mine
+    ? txt.frame.you
+    : agent === "busy"
+      ? txt.frame.agentBusy
+      : agent === "waits"
+        ? txt.frame.agentWaits
+        : txt.frame.agent;
+  return (
+    <div
+      className="sb-frame"
+      data-testid="browser-frame"
+      data-control={control}
+      data-agent={agent}
+      data-waiting={waiting || undefined}
+    >
+      <div className="sb-tab sb-tab-turn" data-testid="browser-turn">
+        <Icon name={mine ? "user" : "agent"} />
+        <strong>{waiting ? txt.frame.waiting : turn}</strong>
+        {mine ? (
+          <ControlButton
+            size="inline"
+            variant="primary"
+            data-testid="browser-give-back"
+            isDisabled={busy}
+            onPress={onDone}
+          >
+            <Icon name="check" />
+            {txt.frame.done}
+          </ControlButton>
+        ) : waiting ? (
+          <ControlButton
+            size="inline"
+            data-testid="browser-cancel-wait"
+            onPress={onCancelWait}
+          >
+            {txt.frame.cancel}
+          </ControlButton>
+        ) : (
+          <ControlButton
+            size="inline"
+            data-testid="browser-take-control"
+            isDisabled={busy}
+            onPress={onTake}
+          >
+            {txt.takeControl}
+          </ControlButton>
+        )}
+      </div>
+      <div className="sb-tab sb-tab-clip">
+        <ControlButton
+          size="inline"
+          variant="quiet"
+          data-testid="browser-clip-toggle"
+          aria-expanded={clipOpen}
+          aria-controls="sb-clip-pop"
+          onPress={onClipToggle}
+        >
+          <Icon name="copy" />
+          {txt.clip.tab}
+          <Icon name="down" />
+        </ControlButton>
+      </div>
+      {clipOpen ? (
+        <section
+          className="sb-clip-pop"
+          id="sb-clip-pop"
+          data-testid="browser-clipboard"
+          aria-label={txt.clip.tab}
+        >
+          {clipboard}
+        </section>
+      ) : null}
+      {says ? (
+        <p className="sb-says" data-testid="browser-says">
+          <b>{txt.frame.says}:</b> <span>{says}</span>
+        </p>
+      ) : null}
+      <div className="sb-frame-screen">
+        {children}
+        {!mine && !waiting && !mid ? (
+          <div className="sb-canvas-hint" aria-hidden="true">
+            <Icon name={agent === "busy" ? "agent" : "user"} />
+            <span>
+              {agent === "busy" ? txt.frame.hintBusy : txt.frame.hintAgent}
+            </span>
+          </div>
+        ) : null}
+        {mid ? (
+          <div
+            className="sb-mid"
+            role="alertdialog"
+            aria-labelledby="sb-mid-title"
+            aria-describedby="sb-mid-text"
+            data-testid="browser-mid-step"
+            // Near the click, kept inside the picture.
+            style={
+              {
+                "--sb-mid-x": `${Math.min(Math.max(mid.x, 0), 0.6) * 100}%`,
+                "--sb-mid-y": `${Math.min(Math.max(mid.y, 0), 0.55) * 100}%`,
+              } as CSSProperties
+            }
+          >
+            <strong id="sb-mid-title">
+              <Icon name="warning" />
+              {txt.frame.midTitle}
+            </strong>
+            <p id="sb-mid-text">{txt.frame.midText}</p>
+            <div className="sb-actions">
+              <ControlButton
+                size="row"
+                variant="primary"
+                data-testid="browser-take-now"
+                autoFocus
+                onPress={onTakeNow}
+              >
+                {txt.frame.takeNow}
+              </ControlButton>
+              <ControlButton
+                size="row"
+                data-testid="browser-take-after"
+                onPress={onTakeAfter}
+              >
+                {txt.frame.takeAfter}
+              </ControlButton>
+              <ControlButton
+                size="row"
+                variant="quiet"
+                data-testid="browser-mid-cancel"
+                onPress={onMidCancel}
+              >
+                {txt.frame.cancel}
+              </ControlButton>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="sb-frame-foot">
+        {idle !== undefined && mine ? (
+          <div className="sb-idle" data-testid="browser-idle">
+            <span>{txt.frame.idle(idle)}</span>
+            <ControlButton
+              size="row"
+              data-testid="browser-keep"
+              onPress={onKeep}
+            >
+              {txt.frame.keep}
+            </ControlButton>
+          </div>
+        ) : null}
+        <p
+          className="sb-toast"
+          role="status"
+          aria-live="polite"
+          data-testid="browser-toast"
+        >
+          {toast ?? ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** The clipboard popover's content: a paste field for when the shortcut
+ * does not reach the page (and for phones, whose keyboard the picture
+ * cannot raise), typing as keystrokes, and a remote copy waiting for the
+ * person's own press. */
+export function BrowserClipboard({
+  text,
+  hidden,
+  touch,
+  enterWarn,
+  remote,
+  remoteShown,
+  canCopy,
+  onText,
+  onHidden,
+  onPaste,
+  onType,
+  onCopySelection,
+  onCopyLocal,
+}: {
+  text: string;
+  hidden: boolean;
+  touch: boolean;
+  /** Line breaks waiting for a second press before they go as Enter. */
+  enterWarn?: number;
+  /** Text copied on the remote page that did not reach the person's
+   * clipboard by itself. */
+  remote?: string;
+  remoteShown: boolean;
+  canCopy: boolean;
+  onText: (text: string) => void;
+  onHidden: (hidden: boolean) => void;
+  onPaste: () => void;
+  onType: () => void;
+  onCopySelection: () => void;
+  onCopyLocal: () => void;
+}) {
+  const txt = useText(serverBrowserText);
+  return (
+    <>
+      <div className="sb-paste">
+        <label htmlFor="sb-paste-text">{txt.clip.label}</label>
+        <textarea
+          id="sb-paste-text"
+          data-testid="browser-paste-text"
+          rows={2}
+          className={hidden ? "sb-masked" : undefined}
+          placeholder={txt.clip.placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          value={text}
+          onChange={(e) => onText(e.target.value)}
+        />
+        <small>{touch ? txt.clip.hintTouch : txt.clip.hintKeys}</small>
+        <div className="sb-paste-actions">
+          <ControlButton
+            size="row"
+            variant="primary"
+            data-testid="browser-paste-send"
+            isDisabled={!canCopy}
+            onPress={onPaste}
+          >
+            {txt.clip.paste}
+          </ControlButton>
+          <ControlButton
+            size="row"
+            data-testid="browser-type-send"
+            isDisabled={!canCopy}
+            onPress={onType}
+          >
+            <Icon name="key" />
+            {txt.clip.type}
+          </ControlButton>
+          <label className="sb-check">
+            <input
+              type="checkbox"
+              data-testid="browser-paste-hide"
+              checked={hidden}
+              onChange={(e) => onHidden(e.target.checked)}
+            />{" "}
+            {txt.clip.hide}
+          </label>
+        </div>
+        {enterWarn ? (
+          <p className="sb-enter-warn" role="alert">
+            <Icon name="warning" />
+            {txt.clip.enterWarn(enterWarn)}
+          </p>
+        ) : null}
+        <small>{txt.clip.keysNote}</small>
+      </div>
+      {remote !== undefined ? (
+        <div className="sb-remote-clip" data-testid="browser-remote-clip">
+          <span>{txt.clip.copied}</span>
+          {remoteShown ? (
+            <input
+              readOnly
+              value={remote}
+              aria-label={txt.clip.copiedText}
+              data-testid="browser-remote-text"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          ) : null}
+          <ControlButton
+            size="row"
+            data-testid="browser-copy-local"
+            onPress={onCopyLocal}
+          >
+            <Icon name="copy" />
+            {txt.clip.copyLocal}
+          </ControlButton>
+        </div>
+      ) : null}
+      <div className="sb-paste-actions">
+        <ControlButton
+          size="row"
+          data-testid="browser-copy-selection"
+          isDisabled={!canCopy}
+          onPress={onCopySelection}
+        >
+          <Icon name="copy" />
+          {txt.clip.copySelection}
+        </ControlButton>
+      </div>
+      <small className="sb-clip-note">{txt.clip.note}</small>
+    </>
   );
 }
