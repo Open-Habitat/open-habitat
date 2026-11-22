@@ -34,10 +34,10 @@ import (
 const (
 	turnSnapshotType = "turn-snapshot"
 	// How much one read may return and spend.
-	maxTurnFiles       = 300
-	maxTurnSkipped     = 50
-	maxTurnDiffBytes   = 256 << 10
-	turnSnapshotLimit  = 5 * time.Second
+	maxTurnFiles      = 300
+	maxTurnSkipped    = 50
+	maxTurnDiffBytes  = 256 << 10
+	turnSnapshotLimit = 5 * time.Second
 )
 
 var gitObjectID = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
