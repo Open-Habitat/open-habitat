@@ -95,7 +95,13 @@ test("@attention-sound off, nothing shows; on, the strip replaces the head's ico
   await expect(name).toBeFocused();
   await name.press("Enter");
   await input.fill("Kotisivun nimi");
+  const provisionalPath = new URL(page.url()).pathname;
   await input.press("Enter");
+  // The name is optimistic. Only the confirmed durable route tells us the
+  // strip's identity remount is over; opening its picker sooner loses it.
+  await expect
+    .poll(() => new URL(page.url()).pathname)
+    .not.toBe(provisionalPath);
   await expect(page.getByTestId("workspace-title")).toHaveText(
     "Kotisivun nimi",
   );
@@ -306,7 +312,9 @@ for (const target of [
     await expect(
       nav.getByTestId("rail-yours").getByTestId(`agent-item-${agent}`),
     ).toBeVisible({ timeout: 25000 });
-    await page.clock.fastForward(5000);
+    // Playback is immediate. Do not jump the clock while completion history
+    // is arriving: that artificially expires burst coalescing between the
+    // rail's turn observation and its hydrated reply identity.
     await expect
       .poll(() => plays(page), { timeout: 10000 })
       .toEqual(target === "night-quiet" ? ["kalimba"] : ["kalimba", "kulho"]);
