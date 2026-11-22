@@ -55,10 +55,17 @@ const fi = {
   nightStart: "Alkaa",
   nightEnd: "Päättyy",
   clockHour: (time: string) => `klo ${time}`,
-  quietUntil: (time: string) =>
-    `Äänet ovat nyt hiljaa: on yö, klo ${time} asti`,
-  nightOff: "Poista yöhiljaisuus",
-  nightSettings: "Yön asetukset",
+  quietHere: "Äänet ovat hiljaa tällä laitteella",
+  quietReasons: (n: number) =>
+    n === 1 ? "Yksi syy:" : `${n} syytä; ääni soi, kun kaikki on korjattu:`,
+  offReason: "Pois kaikilta laitteilta",
+  mutedReason: "Tämä laite on mykistetty",
+  nightReason: (start: string, end: string) => `Yö, hiljaa klo ${start}–${end}`,
+  offRedundant: "ei vaikuta, ennen kuin äänet ovat päällä",
+  enableSounds: "Laita äänet päälle",
+  unmute: "Poista mykistys",
+  nightOff: "Ota yöhiljaisuus pois",
+  nightSettings: "Muuta aikaa",
   previewNight:
     "Kuuntelu ohittaa yöhiljaisuuden. Agenttien äänet pysyvät hiljaa.",
   testNight: "Testi soi myös yöllä.",
@@ -168,10 +175,19 @@ export const attentionSoundText = catalog(fi, {
   nightStart: "Starts",
   nightEnd: "Ends",
   clockHour: (time: string) => `at ${time}`,
-  quietUntil: (time: string) =>
-    `Sounds are quiet now: nighttime, until ${time}`,
+  quietHere: "Sounds are quiet on this device",
+  quietReasons: (n: number) =>
+    n === 1
+      ? "One reason:"
+      : `${n} reasons; the sound plays once all are fixed:`,
+  offReason: "Off on all devices",
+  mutedReason: "This device is muted",
+  nightReason: (start: string, end: string) => `Night, quiet ${start}–${end}`,
+  offRedundant: "no effect until sounds are on",
+  enableSounds: "Turn sounds on",
+  unmute: "Unmute",
   nightOff: "Turn off night quiet",
-  nightSettings: "Night settings",
+  nightSettings: "Change hours",
   previewNight: "Listening skips night quiet. Agents' sounds stay quiet.",
   testNight: "The test plays at night too.",
   workspaces: "Workspace sounds",

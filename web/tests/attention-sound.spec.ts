@@ -335,10 +335,7 @@ test("@attention-sound night follows the local clock, edits persist and turning 
   await expect(page.getByTestId("sound-test-night")).toHaveCount(0);
   await expect(page.getByTestId("sound-preview-night")).toHaveCount(0);
   await page.clock.fastForward(60_000);
-  await expect(page.getByTestId("sound-status")).toHaveAttribute(
-    "data-state",
-    "night",
-  );
+  await expect(page.getByTestId("sound-reason-night")).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.getByTestId("sound-status")).toBeVisible();
   await page.getByTestId("sound-tile-lasit").click();
@@ -416,6 +413,76 @@ test("@attention-sound night follows the local clock, edits persist and turning 
   );
 });
 
+test("@attention-sound all reasons have independent permanent fixes", async ({
+  page,
+}) => {
+  await signIn(page);
+  await enable(page);
+  await page.clock.setFixedTime(new Date("2026-11-22T23:00:00+02:00"));
+  await page.goto("/settings/sounds");
+  await page
+    .getByTestId("sound-device-mute")
+    .getByTestId("segment-quiet")
+    .click();
+  await page.getByTestId("sound-enabled").getByTestId("segment-off").click();
+  const status = page.getByTestId("sound-status");
+  await expect(status.getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByTestId("sound-note-off")).toHaveCount(0);
+  await expect(page.getByTestId("sound-note-muted")).toHaveCount(0);
+  await expect(page.getByTestId("sound-preview-night")).toHaveCount(0);
+  await expect(page.getByTestId("sound-test-night")).toHaveCount(0);
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="sound-settings"]')
+    .analyze();
+  expect(axe.violations).toEqual([]);
+  if (process.env.OH_NIGHT_CAPTURE) {
+    await mkdir(process.env.OH_NIGHT_CAPTURE, { recursive: true });
+    for (const theme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await status.scrollIntoViewIfNeeded();
+        const file = `${process.env.OH_NIGHT_CAPTURE}/all-${theme}-${width}`;
+        await page.screenshot({ path: `${file}.png` });
+        await writeFile(`${file}.html`, await page.content());
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+      }
+    }
+  }
+  // Fix a subordinate reason first: it is not disabled by the global off choice.
+  await page.getByTestId("sound-fix-muted").click();
+  await expect(
+    page.locator('[data-settings-row="attention-sound-device"]'),
+  ).toBeFocused();
+  await expect(page.getByTestId("sound-reason-muted")).toHaveCount(0);
+  await expect(status.getByRole("listitem")).toHaveCount(2);
+  expect((await sound(page)).enabled).toBe(false);
+  await page.getByTestId("sound-night-off").click();
+  await expect.poll(async () => (await sound(page)).night).toBe(false);
+  await expect(status.getByRole("listitem")).toHaveCount(1);
+  await page.getByTestId("sound-fix-off").click();
+  await expect.poll(async () => (await sound(page)).enabled).toBe(true);
+  await expect(status).toHaveCount(0);
+  await expect(
+    page.locator('[data-settings-row="attention-sound-on"]'),
+  ).toBeFocused();
+  await page.reload();
+  await expect(
+    page.getByTestId("sound-enabled").getByTestId("segment-on"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByTestId("sound-device-mute").getByTestId("segment-plays"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByTestId("sound-night").getByTestId("segment-off"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(status).toHaveCount(0);
+});
+
 test("@attention-sound night explanation maps its actions and prevents permanent changes", async ({
   page,
 }) => {
@@ -435,6 +502,12 @@ test("@attention-sound night explanation maps its actions and prevents permanent
     });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/settings/sounds");
+    await page
+      .getByTestId("sound-device-mute")
+      .getByTestId("segment-quiet")
+      .click();
+    await page.getByTestId("sound-enabled").getByTestId("segment-off").click();
+    await expect(page.getByTestId("sound-reason-off")).toBeVisible();
     await page.getByTestId("account-menu-trigger").click();
     await page.getByTestId("menu-explain").click();
     for (const width of [1440, 390]) {
@@ -443,6 +516,8 @@ test("@attention-sound night explanation maps its actions and prevents permanent
         ["sound-status", "AS07"],
         ["sound-night-off", "AS08"],
         ["sound-night-settings", "AS09"],
+        ["sound-fix-off", "AS10"],
+        ["sound-fix-muted", "AS11"],
       ]) {
         // For the container, point at its title rather than a child action.
         const target =
@@ -464,6 +539,10 @@ test("@attention-sound night explanation maps its actions and prevents permanent
       }
       await page.getByTestId("sound-night-off").click();
       expect((await sound(page)).night).toBe(true);
+      await page.getByTestId("sound-fix-off").click();
+      expect((await sound(page)).enabled).toBe(false);
+      await page.getByTestId("sound-fix-muted").click();
+      await expect(page.getByTestId("sound-reason-muted")).toBeVisible();
       await page.getByTestId("sound-night-settings").click();
       await expect(
         page.locator('[data-settings-row="attention-sound-night"]'),

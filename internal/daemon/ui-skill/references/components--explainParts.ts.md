@@ -659,6 +659,8 @@ export const parts: Record<CardId, Part> = {
   AS07: { kind: "info", sel: '[data-testid="sound-status"]' },
   AS08: { kind: "once", sel: '[data-testid="sound-night-off"]' },
   AS09: { kind: "nav", sel: '[data-testid="sound-night-settings"]' },
+  AS10: { kind: "once", sel: '[data-testid="sound-fix-off"]' },
+  AS11: { kind: "once", sel: '[data-testid="sound-fix-muted"]' },
   AS03: { kind: "panel", sel: '[data-testid="workspace-strip"]' },
   AS04: { kind: "panel", sel: '[data-testid="strip-icon"]', opens: true },
   AS05: { kind: "input", sel: '[data-testid="strip-name"]' },
@@ -758,6 +760,8 @@ export const parts: Record<CardId, Part> = {
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "AS08",
+  "AS10",
+  "AS11",
   "B12",
   "B13",
   "GH03",

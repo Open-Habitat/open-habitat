@@ -170,6 +170,8 @@ export function SoundSettings({
   const deviceSound = useDeviceSound();
   const night = useDeviceNight(sound);
   const nightRow = useRef<HTMLDivElement>(null);
+  const masterRow = useRef<HTMLDivElement>(null);
+  const deviceRow = useRef<HTMLDivElement>(null);
   const tiles = useRef<HTMLDivElement>(null);
   const session = !!identity && !!csrf && state.loaded;
   const writable = session && !state.busy;
@@ -226,21 +228,34 @@ export function SoundSettings({
   const listed = workspaces.filter((w) => !w.place);
   return (
     <div className="s-stack ss-body" data-testid="sound-settings">
-      <SoundStatus
-        reason={nightNow ? "night" : undefined}
-        nightEnd={sound.night_end}
-        writable={writable}
-        onDisableNight={() => {
-          // The status disappears on confirmation; keep keyboard focus on
-          // the persistent row before the pending state disables its button.
-          nightRow.current?.focus();
-          choose({ night: false });
-        }}
-        onEditNight={() => {
-          nightRow.current?.scrollIntoView({ block: "center" });
-          nightRow.current?.focus({ preventScroll: true });
-        }}
-      />
+      {state.loaded && state.error !== "read" ? (
+        <SoundStatus
+          off={off}
+          muted={deviceSound.muted}
+          night={sound.night && night}
+          nightStart={sound.night_start}
+          nightEnd={sound.night_end}
+          writable={writable}
+          onEnable={() => {
+            masterRow.current?.focus();
+            choose({ enabled: true });
+          }}
+          onUnmute={() => {
+            deviceRow.current?.focus();
+            setDeviceMuted(false);
+          }}
+          onDisableNight={() => {
+            // The status disappears on confirmation; keep keyboard focus on
+            // the persistent row before the pending state disables its button.
+            nightRow.current?.focus();
+            choose({ night: false });
+          }}
+          onEditNight={() => {
+            nightRow.current?.scrollIntoView({ block: "center" });
+            nightRow.current?.focus({ preventScroll: true });
+          }}
+        />
+      ) : null}
       <p className="s-intro">{t.intro}</p>
       {soundError ? (
         <div className="s-card">
@@ -264,6 +279,7 @@ export function SoundSettings({
         <div
           className="s-row"
           data-settings-row="attention-sound-on"
+          ref={masterRow}
           tabIndex={-1}
         >
           <div className="s-lbl">
@@ -480,6 +496,7 @@ export function SoundSettings({
         <div
           className="s-row"
           data-settings-row="attention-sound-device"
+          ref={deviceRow}
           tabIndex={-1}
         >
           <div className="s-lbl">
@@ -532,12 +549,6 @@ export function SoundSettings({
         {nightNow ? (
           <p className="ss-note" data-testid="sound-test-night">
             {t.testNight}
-          </p>
-        ) : null}
-        {why === "muted" || why === "off" ? (
-          <p className="ss-note" data-testid={`sound-note-${why}`}>
-            <Icon name="slash" />
-            {why === "muted" ? t.mutedNote : t.offNote}
           </p>
         ) : null}
       </div>

@@ -2,53 +2,127 @@ import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { useText } from "../i18n";
 import { attentionSoundText } from "../text/attentionSound";
-import { nightHourLabel, type Silence } from "./attentionSound";
+import { nightHourLabel } from "./attentionSound";
 
-/** One place for the page's current silence. Further reasons can join here
- * without moving the settings themselves. */
+function ReasonIcon({ night }: { night: boolean }) {
+  return night ? (
+    <Icon name="moon" />
+  ) : (
+    <svg
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 6h2.2L8 3.2v9.6L4.7 10H2.5z" />
+      <path d="M10.5 6l3.5 4M14 6l-3.5 4" />
+    </svg>
+  );
+}
+
+/** Independent reasons: fixing one must not hide the others. */
 export function SoundStatus({
-  reason,
+  off,
+  muted,
+  night,
+  nightStart,
   nightEnd,
   writable,
+  onEnable,
+  onUnmute,
   onDisableNight,
   onEditNight,
 }: {
-  reason: Silence | undefined;
+  off: boolean;
+  muted: boolean;
+  night: boolean;
+  nightStart: number;
   nightEnd: number;
   writable: boolean;
+  onEnable: () => void;
+  onUnmute: () => void;
   onDisableNight: () => void;
   onEditNight: () => void;
 }) {
   const t = useText(attentionSoundText);
-  if (reason !== "night") return null;
+  const reasons = [
+    ...(off
+      ? [
+          {
+            id: "off",
+            text: t.offReason,
+            fix: t.enableSounds,
+            action: onEnable,
+          },
+        ]
+      : []),
+    ...(muted
+      ? [{ id: "muted", text: t.mutedReason, fix: t.unmute, action: onUnmute }]
+      : []),
+    ...(night
+      ? [
+          {
+            id: "night",
+            text: t.nightReason(
+              nightHourLabel(nightStart),
+              nightHourLabel(nightEnd),
+            ),
+            fix: t.nightOff,
+            action: onDisableNight,
+          },
+        ]
+      : []),
+  ];
+  if (!reasons.length) return null;
   return (
-    <div
-      className="ss-status"
-      role="status"
-      data-testid="sound-status"
-      data-state={reason}
-    >
-      <Icon name="moon" />
-      <strong>{t.quietUntil(nightHourLabel(nightEnd))}</strong>
-      <div className="ss-status-actions">
-        <ControlButton
-          size="row"
-          variant="secondary"
-          data-testid="sound-night-off"
-          isDisabled={!writable}
-          onPress={onDisableNight}
-        >
-          {t.nightOff}
-        </ControlButton>
-        <ControlButton
-          size="row"
-          variant="quiet"
-          data-testid="sound-night-settings"
-          onPress={onEditNight}
-        >
-          {t.nightSettings}
-        </ControlButton>
+    <div className="ss-status" role="status" data-testid="sound-status">
+      <ReasonIcon night={!off && !muted} />
+      <div className="ss-status-heading">
+        <strong>{t.quietHere}</strong>
+        <span>{t.quietReasons(reasons.length)}</span>
       </div>
+      <ul className="ss-reasons">
+        {reasons.map((reason) => (
+          <li key={reason.id} data-testid={`sound-reason-${reason.id}`}>
+            <ReasonIcon night={reason.id === "night"} />
+            <span className="ss-reason-text">
+              {reason.text}
+              {off && reason.id !== "off" ? <em>{t.offRedundant}</em> : null}
+            </span>
+            <span className="ss-status-actions">
+              <ControlButton
+                size="row"
+                variant="secondary"
+                data-testid={
+                  reason.id === "night"
+                    ? "sound-night-off"
+                    : `sound-fix-${reason.id}`
+                }
+                isDisabled={reason.id !== "muted" && !writable}
+                onPress={reason.action}
+              >
+                {reason.fix}
+              </ControlButton>
+              {reason.id === "night" ? (
+                <ControlButton
+                  size="row"
+                  variant="quiet"
+                  data-testid="sound-night-settings"
+                  onPress={onEditNight}
+                >
+                  {t.nightSettings}
+                  <Icon name="down" />
+                </ControlButton>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

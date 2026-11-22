@@ -99,6 +99,44 @@
   width: 20px;
   height: 20px;
 }
+.ss-status-heading,
+.ss-reason-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  min-width: 0;
+}
+.ss-status-heading > span,
+.ss-reason-text em {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  font-style: normal;
+}
+.ss-reasons {
+  grid-column: 1 / -1;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ss-reasons li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ah-s2) var(--ah-s3);
+  padding: var(--ah-s3) 0;
+  border-top: 1px solid var(--ah-line);
+}
+.ss-reasons :where(li) > svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+.ss-reason-text {
+  font-weight: 600;
+}
+.ss-reason-text em {
+  font-weight: 400;
+}
 .ss-status-actions {
   grid-column: 2;
   display: flex;

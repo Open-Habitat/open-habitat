@@ -1791,19 +1791,29 @@ const fi = {
       know: "Kokeellinen. Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Laatan painallus soittaa äänen ja valitsee sen; kuuntelu soi myös, kun äänet ovat pois.",
     },
     AS07: {
-      name: "Yöhiljaisuus",
-      lead: "Näyttää, mihin asti äänet ovat hiljaa yön takia.",
-      know: "Yö seuraa laitteen paikallista kelloa, ei tummaa teemaa. Kuuntelu ja testi soivat silti.",
+      name: "Äänten hiljaisuus",
+      lead: "Näyttää kaikki syyt, joiden takia tämä laite on hiljaa.",
+      know: "Jokaisella syyllä on oma korjauksensa. Yö seuraa laitteen paikallista kelloa, ei tummaa teemaa.",
     },
     AS08: {
-      name: "Poista yöhiljaisuus",
+      name: "Ota yöhiljaisuus pois",
       lead: "Poistaa yöhiljaisuuden kaikilta laitteiltasi, myös tulevilta öiltä.",
       know: "Voit palauttaa sen Hiljennä yöllä -valinnasta. Laitteen mykistys ei muutu.",
     },
     AS09: {
-      name: "Yön asetukset",
+      name: "Muuta aikaa",
       lead: "Vie yön alkamis- ja päättymisajan valintaan.",
       try: "Näytä yön asetukset",
+    },
+    AS10: {
+      name: "Laita äänet päälle",
+      lead: "Palauttaa huomioäänet kaikille laitteillesi.",
+      know: "Laitteen mykistys ja yöhiljaisuus pysyvät ennallaan. Voit sammuttaa äänet Äänet-valinnasta.",
+    },
+    AS11: {
+      name: "Poista mykistys",
+      lead: "Poistaa mykistyksen vain tältä laitteelta.",
+      know: "Yöhiljaisuus ja kaikkien laitteiden Äänet-valinta eivät muutu. Voit mykistää laitteen uudelleen alempana.",
     },
     AS01: {
       name: "Äänet tällä laitteella",
@@ -3823,9 +3833,9 @@ export const explainModeText = catalog(fi, {
       know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
     },
     AS07: {
-      name: "Night quiet",
-      lead: "Shows when sounds will return after the night.",
-      know: "Night follows the device's local clock, not its dark theme. Listening and Test sound still play.",
+      name: "Silent sounds",
+      lead: "Shows every reason this device is quiet.",
+      know: "Each reason has its own fix. Night follows the device's local clock, not its dark theme.",
     },
     AS08: {
       name: "Turn off night quiet",
@@ -3833,9 +3843,19 @@ export const explainModeText = catalog(fi, {
       know: "Turn it back on with Quiet at night. Device mute stays unchanged.",
     },
     AS09: {
-      name: "Night settings",
+      name: "Change hours",
       lead: "Takes you to the night start and end times.",
       try: "Show night settings",
+    },
+    AS10: {
+      name: "Turn sounds on",
+      lead: "Restores attention sounds on all your devices.",
+      know: "Device mute and night quiet stay unchanged. You can turn sounds off again with Sounds.",
+    },
+    AS11: {
+      name: "Unmute",
+      lead: "Unmutes this device only.",
+      know: "Night quiet and the all-device Sounds choice stay unchanged. You can mute this device again below.",
     },
     AS01: {
       name: "Sounds on this device",
