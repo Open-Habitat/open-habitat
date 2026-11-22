@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-night-visible

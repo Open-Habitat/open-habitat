@@ -1,0 +1,76 @@
+/* The night-quiet round. Tokens only; the shell, Settings frame, controls,
+   tiles and menu rows are production's (Settings.css, SoundSettings.css,
+   components.css, Controls.module.css). These rules add the review bar, the
+   desktop and phone stages, the status line (A, C), the master card's night
+   state (B), the clock row (C), the preview note, the opened menu card and
+   the toast. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+
+/* ---------- Review bar: not a contestant ---------- */
+.nq-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: 8px 14px 6px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; }
+.nq-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.nq-controls strong { font-size: 13.5px; }
+.nq-controls select, .nq-controls button { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 1px 4px; }
+.nq-lines { margin: 4px 0 0; padding: 0; list-style: none; color: var(--ah-muted); }
+.nq-lines li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.nq-recommend { margin: 4px 0 0; font-weight: 600; color: var(--ah-accent-ink); }
+
+/* ---------- Stages ---------- */
+.nq-desktop .ah-app-shell:has(.ah-rail) { top: var(--review-h, 0px); bottom: 64px; height: auto; right: 0; outline: 1px solid var(--ah-line); }
+.nq-review[data-device="both"] .nq-desktop .ah-app-shell:has(.ah-rail) { right: 434px; }
+.nq-phone { position: fixed; z-index: 1; top: calc(var(--review-h, 0px) + 10px); bottom: 64px; right: 22px; width: 392px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nq-review[data-device="phone"] .nq-phone { left: 0; right: 0; margin: 0 auto; }
+.nq-phone iframe { width: 390px; flex: 1; max-height: 844px; border: 1px solid var(--ah-line-strong); border-radius: 22px; background: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
+.nq-phone figcaption { color: var(--ah-muted); font-size: 12px; }
+@media (max-width: 1180px) {
+  .nq-review[data-device="both"] .nq-phone { display: none; }
+  .nq-review[data-device="both"] .nq-desktop .ah-app-shell:has(.ah-rail) { right: 0; }
+}
+html.nq-bare .proto-picker { display: none; }
+
+/* ---------- A, C: the status line at the top of the page ---------- */
+.nq-status { display: grid; grid-template-columns: auto 1fr; gap: var(--ah-s2) var(--ah-s3); align-items: start; padding: var(--ah-s3) var(--ah-s4); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); color: var(--ah-ink); }
+.nq-status > svg { width: 20px; height: 20px; margin-top: 1px; }
+.nq-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nq-status-text strong { font-size: var(--ah-size-body, 14px); }
+.nq-status-text span { color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; }
+.nq-status-actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+.nq-status-actions svg { width: 14px; height: 14px; }
+.nq-status[data-state="override"] { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); }
+
+/* ---------- B: the master card carries the night ---------- */
+.s-card[data-state="night"] { border-color: var(--ah-line-strong); box-shadow: inset 3px 0 0 var(--ah-ink-2); }
+.nq-tag { display: inline-flex; align-items: center; gap: 3px; margin-left: var(--ah-s2); padding: 0 6px; border: 1px solid var(--ah-line-strong); border-radius: 999px; font: 600 var(--ah-size-meta) / 1.5 var(--ah-font); color: var(--ah-ink); vertical-align: 1px; }
+.nq-tag svg { width: 12px; height: 12px; }
+.nq-master-desc.nq-strong { color: var(--ah-ink); font-weight: 600; }
+.nq-b-why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3); padding: 0 var(--ah-s5) var(--ah-s3); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.nq-b-why span { flex: 1 1 16rem; }
+.s-card > .nq-b-why { border-top: 0; }
+
+/* ---------- C: the clock window ---------- */
+.s-row.nq-clock { display: block; padding-top: var(--ah-s3); }
+.nq-clock-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ah-s3); }
+.nq-clock .ss-choice { width: 7.5rem; }
+.nq-clock-field { display: flex; flex-direction: column; gap: 4px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.nq-clock-dash { padding-bottom: 6px; color: var(--ah-ink-2); }
+
+/* ---------- The preview's honest note ---------- */
+.nq-bypass { display: flex; gap: var(--ah-s2); align-items: flex-start; margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; }
+.nq-bypass svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+
+/* ---------- The account menu, opened over the rail ---------- */
+.nq-menu { position: fixed; z-index: 30; left: 12px; bottom: 76px; width: 21rem; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-menu); }
+.nq-menu-cap { margin: 0 6px 4px 10px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.nq-menu .ah-sound-state { max-width: none; }
+.nq-menu .nq-menu-night { color: var(--ah-ink); }
+.nq-menu-act { padding: 0 6px 4px 30px; }
+
+/* ---------- Toast ---------- */
+.nq-toast { position: fixed; z-index: 70; left: 50%; bottom: 76px; transform: translateX(-50%); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); font-size: var(--ah-size-meta); box-shadow: var(--ah-shadow-float); }
+
+/* Production steps the tiles by window width; beside the phone frame the
+   desktop stage is narrower than the window, so step it here as production
+   would at that width. */
+.nq-review[data-device="both"] .nq-desktop .ss-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
