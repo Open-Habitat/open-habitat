@@ -65,7 +65,7 @@ export function GuidePanel({
         <section>
           <h4>{t.steps}</h4>
           <ol data-testid="guide-panel-steps">
-            {goal.steps.map((step, i) => (
+            {goal.steps?.map((step, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: authored ordered steps have no state.
               <li key={i}>{step}</li>
             ))}

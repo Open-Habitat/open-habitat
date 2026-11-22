@@ -105,6 +105,36 @@ func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 	}
 }
 
+const fixtureStartPageNoGuide = "---\ntitle: Example\ngoals:\n  - title: Continue\n    guide: none\n    prompt: Continue the work.\n    start: immediate\n---\n"
+
+func TestStartPageExplicitNoGuide(t *testing.T) {
+	for _, content := range []string{
+		fixtureStartPageNoGuide,
+		strings.Replace(fixtureStartPageNoGuide, "    guide: none", "    guide: none\n    what: Ignored\n    when: Ignored\n    steps: [Ignored]", 1),
+	} {
+		page, problem := parseStartPageDocument([]byte(content))
+		if problem != nil || page == nil {
+			t.Fatalf("no-guide page rejected: %+v", problem)
+		}
+		data, err := json.Marshal(page.Goals[0])
+		if err != nil || string(data) != `{"title":"Continue","guide":"none","prompt":"Continue the work.","start":"immediate"}` {
+			t.Fatalf("no-guide wire shape: %s, %v", data, err)
+		}
+	}
+	for _, tc := range []struct{ old, replacement, path string }{
+		{"    guide: none\n", "", "goals[0].when"},
+		{"guide: none", "guide: hidden", "goals[0].guide"},
+		{"prompt: Continue the work.", "prompt: ''", "goals[0].prompt"},
+		{"title: Continue", "title: ''", "goals[0].title"},
+		{"start: immediate", "start: automatic", "goals[0].start"},
+	} {
+		_, problem := parseStartPageDocument([]byte(strings.Replace(fixtureStartPageNoGuide, tc.old, tc.replacement, 1)))
+		if problem == nil || problem.Path != tc.path {
+			t.Fatalf("expected %s, got %+v", tc.path, problem)
+		}
+	}
+}
+
 func TestStartPageClosingFrontmatterNeedsNoFinalNewline(t *testing.T) {
 	page := parseStartPage([]byte("---\ntitle: Title only\n---"))
 	if page == nil || page.Title != "Title only" || page.Body != "" || len(page.Goals) != 0 {

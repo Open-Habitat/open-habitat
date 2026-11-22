@@ -58,7 +58,7 @@ export function goalDraft(goal: StartGoal, draft: string, carried = false) {
 }
 
 /** A start page's goal cards: choosing one is its Aloita. The draft is
- * prepared at once and the guide opens beside the conversation; there is no
+ * prepared at once and any guide opens beside the conversation; there is no
  * reading stop before it (Jari 29.10.2026). */
 export function StartGoals({
   goals,
@@ -90,7 +90,7 @@ export function StartGoals({
           }}
         >
           <strong>{goal.title}</strong>
-          <span>{goal.when}</span>
+          {goal.guide !== "none" && <span>{goal.when}</span>}
           <b aria-hidden="true">→</b>
         </button>
       ))}

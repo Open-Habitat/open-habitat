@@ -19,9 +19,10 @@ export type PiCommand = {
 };
 export type StartGoal = {
   title: string;
-  when: string;
-  what: string;
-  steps: string[];
+  guide?: "none";
+  when?: string;
+  what?: string;
+  steps?: string[];
   prompt: string;
   skill?: string;
   /** The name of a conversation the goal starts; its title when absent. */

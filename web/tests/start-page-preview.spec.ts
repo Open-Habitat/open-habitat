@@ -13,7 +13,7 @@ test.use({
   reducedMotion: "reduce",
 });
 const source =
-  "---\ntitle: Example workspace\ngoals:\n  - title: Plan work\n    when: Before starting\n    what: Make a plan\n    steps: [Read, Discuss]\n    prompt: Please plan the work\n    start: immediate\n---\n# Introduction\nAn example workspace.\n";
+  "---\ntitle: Example workspace\ngoals:\n  - title: Plan work\n    when: Before starting\n    what: Make a plan\n    steps: [Read, Discuss]\n    prompt: Please plan the work\n    start: immediate\n  - title: Continue work\n    guide: none\n    prompt: Continue the work\n---\n# Introduction\nAn example workspace.\n";
 for (const width of [1440, 390])
   for (const language of ["fi", "en-US"]) {
     test(`@start-page-preview inert checked page in editor ${width} ${language}`, async ({
@@ -76,6 +76,16 @@ for (const width of [1440, 390])
           .locator(":scope > li")
           .first(),
       ).toBeFocused();
+      await preview.getByTestId("starting-goal").nth(1).click();
+      const noGuideDetails = preview
+        .getByTestId("preview-goal-guides")
+        .locator(":scope > li")
+        .nth(1);
+      await expect(noGuideDetails).toBeFocused();
+      await expect(noGuideDetails.locator("dl")).toHaveCount(0);
+      await expect(noGuideDetails.locator(".ah-markdown")).toContainText(
+        "Continue the work",
+      );
       expect(writes.filter((path) => /conversations/.test(path))).toEqual([]);
       await expect(
         preview.getByTestId("preview-renderer-toggle"),
@@ -155,9 +165,11 @@ for (const width of [1440, 390])
         "JSON example",
       );
       await page.getByTestId("editor-preview-toggle").click();
-      await expect(preview.locator(".ah-yaml-card header")).toContainText(
-        "JSON example",
-      );
+      await expect(
+        preview
+          .locator(".ah-yaml-card header")
+          .filter({ hasText: "JSON example" }),
+      ).toHaveCount(1);
       await expect(preview.getByTestId("preview-check")).toHaveCount(0);
     });
   }

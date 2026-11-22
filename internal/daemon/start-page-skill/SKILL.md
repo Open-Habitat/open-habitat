@@ -12,8 +12,8 @@ not part of this authored page.
 
 Read the repository's own instructions, purpose and effective available skills.
 Choose a handful of concrete goals that fit real work here, not one card per
-skill. Write a short guide for each: what the person gets, when it is useful,
-and concrete numbered steps. Keep this human-facing guidance separate from the
+skill. Write a short guide when useful: what the person gets, when it is useful,
+and concrete numbered steps. Use `guide: none` for a goal that needs no guide. Keep this human-facing guidance separate from the
 full editable agent request.
 
 Propose the title, free text and goals to the person first. On their approval,
@@ -67,8 +67,13 @@ file is at most 32 KiB. A text-only page is valid. Each goal has `title`
 (1–2048 bytes), optional `skill` (native name) and optional `name` (one line,
 at most 160 bytes): the name of the conversation the goal starts, when the
 goal's title is not a good one (for example `Viikkoraportti` for the goal
-*Kirjoita viikon raportti*). The person can rename it later. All guide fields are required;
-old goals without them are invalid. Guide fields are plain text, not Markdown.
+*Kirjoita viikon raportti*). The person can rename it later. Guide fields are plain text,
+not Markdown. An optional `guide: none` omits the guide panel and its toggle;
+the goal card shows only its title. For that goal `what`, `when` and `steps`
+may be omitted; any supplied guide copy is ignored (YAML types must still be
+valid). Omit `guide` for an ordinary guided goal: all three guide fields stay
+required, and old goals without them remain invalid. No other `guide` value
+is supported.
 An optional `start: immediate` sends a complete request as soon as the person
 chooses the goal. Omit `start` to prepare and wait for Send (the default); no
 other value is supported. Propose immediate start only for a self-contained
@@ -140,7 +145,7 @@ behind a disclosure) and the same goals, so put what a newcomer must know
 first, such as a safety note, in that first paragraph. Choosing a goal, on the
 workspace page or at the start of a conversation, prepares the request in the
 editable draft of that new or empty conversation and opens the goal's guide
-beside it. With `start: immediate`, no placeholder and no existing nonblank
+beside it, unless the goal has `guide: none`. With `start: immediate`, no placeholder and no existing nonblank
 draft, it sends once without a separate Send. Otherwise it waits for Send.
 With the goal's own skill the draft holds
 only its invocation, shown as a chip, and the person's text. The existing

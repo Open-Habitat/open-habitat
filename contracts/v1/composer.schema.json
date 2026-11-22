@@ -89,12 +89,13 @@
       "additionalProperties": false,
       "required": [
         "title",
-        "when",
-        "what",
-        "steps",
         "prompt"
       ],
+      "if": {"required": ["guide"]},
+      "then": {"not": {"anyOf": [{"required": ["when"]}, {"required": ["what"]}, {"required": ["steps"]}]}},
+      "else": {"required": ["when", "what", "steps"]},
       "properties": {
+        "guide": {"const": "none", "description": "No guide panel. Guide copy is omitted from the reply."},
         "title": {
           "type": "string",
           "minLength": 1,

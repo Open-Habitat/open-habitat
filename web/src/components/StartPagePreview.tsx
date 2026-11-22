@@ -43,39 +43,45 @@ export default function StartPagePreview({ page }: { page: CheckedStartPage }) {
                 data-active={active === i || undefined}
               >
                 <h4>{goal.title}</h4>
-                <dl>
-                  <dt>{t.when}</dt>
-                  <dd>{goal.when}</dd>
-                  <dt>{t.what}</dt>
-                  <dd>{goal.what}</dd>
-                  <dt>{t.steps}</dt>
-                  <dd>
-                    <ol>
-                      {goal.steps.map((step, n) => (
-                        <li
-                          // biome-ignore lint/suspicious/noArrayIndexKey: authored source order.
-                          key={n}
-                        >
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                  </dd>
-                  {goal.skill ? (
-                    <>
-                      <dt>{t.skill}</dt>
-                      <dd>
-                        <code>{goal.skill}</code>
-                      </dd>
-                    </>
-                  ) : null}
-                  {goal.name ? (
-                    <>
-                      <dt>{t.name}</dt>
-                      <dd>{goal.name}</dd>
-                    </>
-                  ) : null}
-                </dl>
+                {(goal.guide !== "none" || goal.skill || goal.name) && (
+                  <dl>
+                    {goal.guide !== "none" && (
+                      <>
+                        <dt>{t.when}</dt>
+                        <dd>{goal.when}</dd>
+                        <dt>{t.what}</dt>
+                        <dd>{goal.what}</dd>
+                        <dt>{t.steps}</dt>
+                        <dd>
+                          <ol>
+                            {goal.steps?.map((step, n) => (
+                              <li
+                                // biome-ignore lint/suspicious/noArrayIndexKey: authored source order.
+                                key={n}
+                              >
+                                {step}
+                              </li>
+                            ))}
+                          </ol>
+                        </dd>
+                      </>
+                    )}
+                    {goal.skill ? (
+                      <>
+                        <dt>{t.skill}</dt>
+                        <dd>
+                          <code>{goal.skill}</code>
+                        </dd>
+                      </>
+                    ) : null}
+                    {goal.name ? (
+                      <>
+                        <dt>{t.name}</dt>
+                        <dd>{goal.name}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                )}
                 <h5>{t.prompt}</h5>
                 <Markdown text={goal.prompt} />
                 {goal.start === "immediate" ? <p>{t.immediate}</p> : null}

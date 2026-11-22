@@ -132,6 +132,39 @@ describe("a goal chosen on the workspace page", () => {
       }
     },
   );
+  it.each([undefined, "immediate"] as const)(
+    "keeps a guide-free goal's request and selection without opening a panel (%s)",
+    async (start) => {
+      const noGuide: StartGoal = {
+        title: "Continue",
+        prompt: "Continue the work.",
+        guide: "none",
+        start,
+      };
+      await prepareGoalConversation({
+        identity: "person",
+        workspaceId: "ws",
+        page: "Page",
+        goal: noGuide,
+        signal: new AbortController().signal,
+        onStart: () => true,
+      });
+      const owner = creationGuideOwner("person", "ws");
+      expect(readGuide(owner)).toMatchObject({ goal: noGuide, open: false });
+      if (start)
+        expect(readHeld(creationKeys("person", "ws").held)[0].text).toBe(
+          "Continue the work.\n\n",
+        );
+      else
+        expect(sessionStorage.getItem(draftKey)).toBe("Continue the work.\n\n");
+      adoptGuide("person", "ws", "pi:new");
+      expect(readGuide(guideOwner("person", "pi:new"))).toMatchObject({
+        goal: noGuide,
+        open: false,
+      });
+    },
+  );
+
   it("leaves only a draft when creation is blocked or opens a model chooser", async () => {
     vi.mocked(readCommands).mockResolvedValue(listed(goal.title));
     const started = await prepareGoalConversation({

@@ -891,7 +891,7 @@ export function GuideHeaderControl({
     return () => deactivate(owner);
   }, [owner, activate, deactivate]);
   const shown = guide?.goal ?? goal;
-  if (!host || !owner || !shown) return null;
+  if (!host || !owner || !shown || shown.guide === "none") return null;
   const open = !!guide?.open && host.active === owner;
   return (
     <ControlButton

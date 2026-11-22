@@ -26,7 +26,7 @@ func TestStartPageCheckBuffer(t *testing.T) {
 		data, _ := json.Marshal(map[string]any{"schema_version": 1, "workspace_id": workspace, "content": content})
 		return string(data)
 	}
-	for _, content := range []string{fixtureStartPage, "---\ntitle: Draft\ngoals: []\n---\nUnsaved body"} {
+	for _, content := range []string{fixtureStartPage, fixtureStartPageNoGuide, "---\ntitle: Draft\ngoals: []\n---\nUnsaved body"} {
 		w := call(request(h.workspace, content), WorkspaceStartPageCheckPath, "POST")
 		var got struct {
 			Valid bool       `json:"valid"`

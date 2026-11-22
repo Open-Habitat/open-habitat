@@ -886,7 +886,7 @@ const fi = {
     },
     A02: {
       name: "Tavoite",
-      lead: "Kirjoittaa pyynnön valmiiksi viestikenttään ja avaa oppaan viereen.",
+      lead: "Kirjoittaa pyynnön valmiiksi viestikenttään ja avaa mahdollisen oppaan viereen.",
       know: "Valmis tavoite voi käynnistää työn heti. Jos pyyntöä pitää täydentää tai kentässä on omaa tekstiäsi, se odottaa Lähetä-painallusta. Selitystilassa pyyntö vain valmistellaan.",
       try: "Valitse tavoite",
     },
@@ -2866,7 +2866,7 @@ export const explainModeText = catalog(fi, {
     },
     A02: {
       name: "Goal",
-      lead: "Writes the request into the message field and opens its guide alongside.",
+      lead: "Writes the request into the message field and opens any accompanying guide.",
       know: "A ready goal can start work immediately. If the request needs input or the field has your own text, it waits for Send. In Explain mode the request is only prepared.",
       try: "Choose the goal",
     },

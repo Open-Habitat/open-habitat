@@ -24,7 +24,7 @@
       "type":"object","additionalProperties":false,"required":["code","path"],
       "properties": {
         "code":{"enum":["too_large","invalid_utf8","missing_frontmatter","missing_frontmatter_end","invalid_frontmatter","invalid_page_fields","invalid_goal_fields","invalid_step","invalid_skill"]},
-        "path":{"type":"string","maxLength":80,"pattern":"^(|title|body|goals|goals\\[[0-7]\\]\\.(title|when|what|prompt|steps|steps\\[[0-7]\\]|start|name|skill))$"}
+        "path":{"type":"string","maxLength":80,"pattern":"^(|title|body|goals|goals\\[[0-7]\\]\\.(title|when|what|prompt|steps|steps\\[[0-7]\\]|start|name|skill|guide))$"}
       }
     }
   }

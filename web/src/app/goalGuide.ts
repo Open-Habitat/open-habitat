@@ -57,7 +57,12 @@ export const creationGuideOwner = (identity: string, workspaceId: string) =>
   guideOwner(identity, `new:${workspaceId}`);
 
 export function setGuide(owner: string, guide: Guide | undefined) {
-  if (guide) guides.set(owner, guide);
+  // Keep the selected goal for draft/placeholder recovery even without a panel.
+  if (guide)
+    guides.set(owner, {
+      ...guide,
+      open: guide.goal.guide === "none" ? false : guide.open,
+    });
   else guides.delete(owner);
   notify();
 }

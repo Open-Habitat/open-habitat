@@ -38,9 +38,10 @@ type startPage struct {
 }
 type startGoal struct {
 	Title  string   `json:"title" yaml:"title"`
-	When   string   `json:"when" yaml:"when"`
-	What   string   `json:"what" yaml:"what"`
-	Steps  []string `json:"steps" yaml:"steps"`
+	When   string   `json:"when,omitempty" yaml:"when"`
+	What   string   `json:"what,omitempty" yaml:"what"`
+	Steps  []string `json:"steps,omitempty" yaml:"steps"`
+	Guide  string   `json:"guide,omitempty" yaml:"guide,omitempty"`
 	Prompt string   `json:"prompt" yaml:"prompt"`
 	Skill  string   `json:"skill,omitempty" yaml:"skill,omitempty"`
 	// The name of a conversation the goal starts; the title when absent.
@@ -206,19 +207,29 @@ func parseStartPageDocument(data []byte) (*startPage, *startPageProblem) {
 	if len(page.Goals) > 8 {
 		return fail("invalid_page_fields", "goals")
 	}
-	for i, goal := range page.Goals {
+	for i := range page.Goals {
+		goal := &page.Goals[i]
 		path := "goals[" + strconv.Itoa(i) + "]."
+		if goal.Guide != "" && goal.Guide != "none" {
+			return fail("invalid_goal_fields", path+"guide")
+		}
+		if goal.Guide == "none" {
+			// An explicit opt-out ignores stale guide copy, never infers intent
+			// from missing fields on an ordinary goal.
+			goal.When, goal.What, goal.Steps = "", "", nil
+		}
 		for _, field := range []struct {
 			name, value string
 			max         int
 		}{
 			{"title", goal.Title, 256}, {"when", goal.When, 1024}, {"what", goal.What, 2048}, {"prompt", goal.Prompt, 2048},
 		} {
-			if !valid(field.value, field.max, true) {
+			required := goal.Guide != "none" || field.name == "title" || field.name == "prompt"
+			if !valid(field.value, field.max, required) {
 				return fail("invalid_goal_fields", path+field.name)
 			}
 		}
-		if len(goal.Steps) < 1 || len(goal.Steps) > 8 {
+		if (goal.Guide != "none" && len(goal.Steps) < 1) || len(goal.Steps) > 8 {
 			return fail("invalid_goal_fields", path+"steps")
 		}
 		for j, step := range goal.Steps {

@@ -833,6 +833,21 @@ must_reject("github-clone.schema.json", {"action": "start", "full_name": "exampl
 def must_accept(schema: str, instance: object) -> None:
     Draft202012Validator(schemas[schema], registry=registry, format_checker=format_checker).validate(instance)
 
+# Only an explicit no-guide goal may omit guide fields; the daemon strips
+# ignored authored copy before returning it.
+no_guide_goal = {"title": "Continue", "prompt": "Continue the work.", "guide": "none", "start": "immediate"}
+def goal_reply(goal):
+    return {"schema_version": 1, "valid": True, "page": {"title": "Example", "body": "", "goals": [goal]}}
+must_accept("start-page-check.schema.json", goal_reply(no_guide_goal))
+must_accept("composer.schema.json", {"schema_version": 1, "start_page": goal_reply(no_guide_goal)["page"]})
+for invalid_goal in [
+    {k: v for k, v in no_guide_goal.items() if k != "guide"},
+    {**no_guide_goal, "guide": "hidden"},
+    {**no_guide_goal, "when": "Ignored copy must not travel"},
+    {**no_guide_goal, "prompt": ""},
+]:
+    must_reject("start-page-check.schema.json", goal_reply(invalid_goal))
+
 # A worker's pull request travels exactly when GitHub named one, and its
 # link can only be a github.com pull request page.
 work_run = {"run_id": "01m521vczarx5bkx086n64t1t2", "git": "available", "pull_request_state": "found", "pull_request": {"number": 4, "state": "open", "url": "https://github.com/o/r/pull/4", "checks": {"passed": 0, "failed": 0, "pending": 0}}}
