@@ -28,6 +28,8 @@ export type SoundPreferences = {
   length: SoundLength;
   in_view: "quiet" | "play";
   night: boolean;
+  night_start: number;
+  night_end: number;
   /** A workspace's own sound; a workspace without one plays the default. */
   workspaces: Readonly<Record<string, SoundId>>;
 };
@@ -37,13 +39,17 @@ export type SoundChoice =
   | { default: SoundId }
   | { length: SoundLength }
   | { in_view: "quiet" | "play" }
-  | { night: boolean };
+  | { night: boolean }
+  | { night_start: number }
+  | { night_end: number };
 export const defaultSoundPreferences: SoundPreferences = {
   enabled: true,
   default: "kalimba",
   length: "short",
   in_view: "quiet",
   night: true,
+  night_start: 22,
+  night_end: 7,
   workspaces: {},
 };
 
@@ -173,7 +179,7 @@ async function readReply(response: Response, identity: string) {
     yours_workspace: result.yours_workspace,
     running_workspace: result.running_workspace,
     github_workflow: result.github_workflow,
-    sound: result.sound,
+    sound: { ...defaultSoundPreferences, ...result.sound },
     experimental: result.experimental,
   };
 }

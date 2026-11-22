@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { settingsSections } from "../src/app/settingsIndex";
 import { hostOrigin } from "../test-ports.mjs";
@@ -252,7 +253,8 @@ for (const target of [
     expect(put.status()).toBe(200);
     await page.emulateMedia({ colorScheme: "dark" });
     // A preview bypasses night suppression; ordinary notifications do not.
-    // The positive cases explicitly disable it, even on a dark-mode device.
+    // Clock-based night is independent of the device's theme.
+    await page.clock.install({ time: new Date("2026-11-22T23:00:00+02:00") });
     if (target !== "night-quiet") {
       await page.request.put("/api/v1/account/preferences", {
         headers: await headers(page),
@@ -299,7 +301,6 @@ for (const target of [
       .poll(() => new URL(page.url()).searchParams.get("conversation"))
       .not.toBe(agent);
     await expect(page.getByTestId("message-input")).toBeVisible();
-    await page.clock.install();
     await page.clock.fastForward(5000);
     await page.request.get("/fixture/scenario?value=ready");
     await expect(
@@ -320,3 +321,155 @@ for (const target of [
       .toEqual(["running"]);
   });
 }
+
+test("@attention-sound night follows the local clock, edits persist and turning it off is permanent", async ({
+  page,
+}) => {
+  await signIn(page);
+  await enable(page);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.clock.install({ time: new Date("2026-11-22T21:59:00+02:00") });
+  await page.goto("/settings/sounds");
+  await expect(page.getByTestId("sound-night-clock")).toBeVisible();
+  await expect(page.getByTestId("sound-status")).toHaveCount(0);
+  await expect(page.getByTestId("sound-test-night")).toHaveCount(0);
+  await expect(page.getByTestId("sound-preview-night")).toHaveCount(0);
+  await page.clock.fastForward(60_000);
+  await expect(page.getByTestId("sound-status")).toHaveAttribute(
+    "data-state",
+    "night",
+  );
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.getByTestId("sound-status")).toBeVisible();
+  await page.getByTestId("sound-tile-lasit").click();
+  await expect.poll(() => plays(page)).toContain("lasit");
+  await expect.poll(async () => (await sound(page)).default).toBe("lasit");
+  expect((await sound(page)).night).toBe(true);
+  await page.goto("/workspaces");
+  await page.getByTestId("account-menu-trigger").click();
+  await expect(page.getByTestId("sound-menu-state")).toHaveAttribute(
+    "data-status",
+    "night",
+  );
+  await page.keyboard.press("Escape");
+  await page.goto("/settings/sounds");
+  await page.getByTestId("sound-night-settings").click();
+  await expect(
+    page.locator('[data-settings-row="attention-sound-night"]'),
+  ).toBeFocused();
+  await page.getByTestId("sound-night_start").click();
+  await page.getByTestId("choice-0").click();
+  await expect.poll(async () => (await sound(page)).night_start).toBe(0);
+  await expect(page.getByTestId("sound-status")).toHaveCount(0);
+  await page.clock.setSystemTime(new Date("2026-11-23T06:59:00+02:00"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByTestId("sound-status")).toBeVisible();
+  await page.clock.fastForward(60_000);
+  await expect(page.getByTestId("sound-status")).toHaveCount(0);
+  await page.getByTestId("sound-night_end").click();
+  await page.getByTestId("choice-9").click();
+  await expect.poll(async () => (await sound(page)).night_end).toBe(9);
+  await expect(page.getByTestId("sound-status")).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("sound-status")).toBeVisible();
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="sound-settings"]')
+    .analyze();
+  expect(axe.violations).toEqual([]);
+  if (process.env.OH_NIGHT_CAPTURE) {
+    await mkdir(process.env.OH_NIGHT_CAPTURE, { recursive: true });
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.getByTestId("sound-status").scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${process.env.OH_NIGHT_CAPTURE}/${width}.png`,
+      });
+      await writeFile(
+        `${process.env.OH_NIGHT_CAPTURE}/${width}.html`,
+        await page.content(),
+      );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByTestId("sound-night-off").click();
+  await expect.poll(async () => (await sound(page)).night).toBe(false);
+  await expect(page.getByTestId("sound-status")).toHaveCount(0);
+  await expect(
+    page.locator('[data-settings-row="attention-sound-night"]'),
+  ).toBeFocused();
+  await page.clock.setSystemTime(new Date("2026-11-24T01:00:00+02:00"));
+  await page.reload();
+  await expect(
+    page.getByTestId("sound-night").getByTestId("segment-off"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("sound-status")).toHaveCount(0);
+  await page.goto("/workspaces");
+  await page.getByTestId("account-menu-trigger").click();
+  await expect(page.getByTestId("sound-menu-state")).toHaveAttribute(
+    "data-status",
+    "plays",
+  );
+});
+
+test("@attention-sound night explanation maps its actions and prevents permanent changes", async ({
+  page,
+}) => {
+  await signIn(page);
+  await enable(page);
+  await page.request.put("/api/v1/account/preferences", {
+    headers: await headers(page),
+    data: { experimental: { "explain-mode": true } },
+  });
+  await page.clock.setFixedTime(new Date("2026-11-22T23:00:00+02:00"));
+  if (process.env.OH_NIGHT_CAPTURE)
+    await mkdir(process.env.OH_NIGHT_CAPTURE, { recursive: true });
+  for (const language of ["fi", "en-US"]) {
+    await page.request.put("/api/v1/account/preferences", {
+      headers: await headers(page),
+      data: { language },
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/settings/sounds");
+    await page.getByTestId("account-menu-trigger").click();
+    await page.getByTestId("menu-explain").click();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const [control, id] of [
+        ["sound-status", "AS07"],
+        ["sound-night-off", "AS08"],
+        ["sound-night-settings", "AS09"],
+      ]) {
+        // For the container, point at its title rather than a child action.
+        const target =
+          control === "sound-status"
+            ? page.getByTestId(control).locator("strong")
+            : page.getByTestId(control);
+        await target.hover(
+          control === "sound-status" ? { position: { x: 10, y: 8 } } : {},
+        );
+        await expect(page.getByTestId("explain-card")).toHaveAttribute(
+          "data-card",
+          id,
+        );
+        if (process.env.OH_NIGHT_CAPTURE) {
+          const file = `${process.env.OH_NIGHT_CAPTURE}/explain-${language}-${width}-${id}`;
+          await page.screenshot({ path: `${file}.png` });
+          await writeFile(`${file}.html`, await page.content());
+        }
+      }
+      await page.getByTestId("sound-night-off").click();
+      expect((await sound(page)).night).toBe(true);
+      await page.getByTestId("sound-night-settings").click();
+      await expect(
+        page.locator('[data-settings-row="attention-sound-night"]'),
+      ).toBeFocused();
+      await page.getByTestId("sound-status").scrollIntoViewIfNeeded();
+    }
+    await page.keyboard.press("Escape");
+  }
+});

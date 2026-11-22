@@ -2,14 +2,15 @@
 // conversation becomes the person's turn. The personal choices come from the
 // account preferences and follow the person; mute and volume are this
 // device's own, kept in its browser like the theme, because muting a phone
-// must not silence the computer beside it. Night is the device's own dark
-// mode, the same signal the System theme follows.
+// must not silence the computer beside it. Night follows the device's local
+// clock, independently of its theme.
 //
 // Nothing here reaches the host: the decision is made from the rail state
 // the browser already has, and the sounds are rendered from their recipes
 // (soundSynth.ts) on first play.
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { AgentNavModel } from "../components/Navigation";
+import { formatDate } from "../i18n";
 import type { SoundPreferences } from "./accountPreferences";
 import {
   type RenderedSound,
@@ -74,18 +75,43 @@ export function useDeviceSound(): DeviceSound {
   return useSyncExternalStore(subscribeDevice, () => device);
 }
 
-// ---- Night: the device's dark mode ----
+// ---- Night: local wall-clock hours, not elapsed time or the theme ----
 
-const darkQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+export const nightStartHours = [18, 19, 20, 21, 22, 23, 0, 1, 2];
+export const nightEndHours = [4, 5, 6, 7, 8, 9, 10, 11];
+type NightWindow = Pick<SoundPreferences, "night_start" | "night_end">;
+export const nightHourLabel = (hour: number) =>
+  formatDate(new Date(2000, 0, 1, hour), {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+/** Reading local hours on every check handles skipped/repeated DST hours
+ * and travel without adding a fixed duration to yesterday's boundary. */
+export function deviceNight(sound: NightWindow, now = new Date()): boolean {
+  const hour = now.getHours();
+  const { night_start: start, night_end: end } = sound;
+  return start > end
+    ? hour >= start || hour < end
+    : hour >= start && hour < end;
+}
 const subscribeNight = (callback: () => void) => {
-  darkQuery?.addEventListener("change", callback);
-  return () => darkQuery?.removeEventListener("change", callback);
+  let timer: ReturnType<typeof setTimeout>;
+  const tick = () => {
+    callback();
+    timer = setTimeout(tick, 60_000 - (Date.now() % 60_000));
+  };
+  timer = setTimeout(tick, 60_000 - (Date.now() % 60_000));
+  window.addEventListener("focus", callback);
+  document.addEventListener("visibilitychange", callback);
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener("focus", callback);
+    document.removeEventListener("visibilitychange", callback);
+  };
 };
-/** Whether the device is in night mode now. Habitat's own Yö theme is a
- * look, not a time of day, so it does not count. */
-export const deviceNight = () => !!darkQuery?.matches;
-export function useDeviceNight(): boolean {
-  return useSyncExternalStore(subscribeNight, deviceNight);
+export function useDeviceNight(sound: NightWindow): boolean {
+  return useSyncExternalStore(subscribeNight, () => deviceNight(sound));
 }
 
 // ---- Why the sound stays quiet ----
@@ -344,7 +370,7 @@ export function useAttentionSound({
         !silence({
           sound,
           muted: device.muted,
-          night: deviceNight(),
+          night: deviceNight(sound),
           inView: viewing && !!row.selected,
         }),
     );

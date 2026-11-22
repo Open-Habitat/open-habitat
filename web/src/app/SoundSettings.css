@@ -84,7 +84,39 @@
 [data-theme="contrast"] .ss-tile[aria-checked="true"] {
   box-shadow: inset 0 0 0 2px var(--ah-accent);
 }
-.ss-now,
+.ss-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ah-s2) var(--ah-s3);
+  align-items: start;
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+}
+.ss-status > svg {
+  width: 20px;
+  height: 20px;
+}
+.ss-status-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+}
+.s-row.ss-clock {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--ah-s4);
+}
+.ss-clock-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
 .ss-note {
   display: flex;
   gap: var(--ah-s2);
@@ -100,15 +132,11 @@
   background: var(--ah-surface-2);
   color: var(--ah-ink);
 }
-.ss-now svg,
 .ss-note svg {
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
   margin-top: 1px;
-}
-.ss-now[data-night] {
-  color: var(--ah-ink);
 }
 .s-row > .s-lbl.ss-workspace-lbl {
   flex-direction: row;

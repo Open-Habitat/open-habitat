@@ -18,6 +18,9 @@ import {
   useAccountPreferences,
 } from "./accountPreferences";
 import {
+  nightEndHours,
+  nightHourLabel,
+  nightStartHours,
   playSound,
   setDeviceMuted,
   setDeviceVolume,
@@ -28,6 +31,7 @@ import {
   usePlayingAt,
   workspaceSound,
 } from "./attentionSound";
+import { SoundStatus } from "./SoundStatus";
 import type { Workspace } from "./snapshot";
 import { type SoundId, soundIds } from "./soundSynth";
 import "./SoundSettings.css";
@@ -164,7 +168,8 @@ export function SoundSettings({
   const state = useAccountPreferences(identity, csrf);
   const sound = state.sound;
   const deviceSound = useDeviceSound();
-  const night = useDeviceNight();
+  const night = useDeviceNight(sound);
+  const nightRow = useRef<HTMLDivElement>(null);
   const tiles = useRef<HTMLDivElement>(null);
   const session = !!identity && !!csrf && state.loaded;
   const writable = session && !state.busy;
@@ -212,6 +217,7 @@ export function SoundSettings({
       ?.focus();
   };
   const why = silence({ sound, muted: deviceSound.muted, night });
+  const nightNow = state.loaded && state.error !== "read" && why === "night";
   const error = state.error;
   const soundError =
     error === "read" ||
@@ -220,6 +226,21 @@ export function SoundSettings({
   const listed = workspaces.filter((w) => !w.place);
   return (
     <div className="s-stack ss-body" data-testid="sound-settings">
+      <SoundStatus
+        reason={nightNow ? "night" : undefined}
+        nightEnd={sound.night_end}
+        writable={writable}
+        onDisableNight={() => {
+          // The status disappears on confirmation; keep keyboard focus on
+          // the persistent row before the pending state disables its button.
+          nightRow.current?.focus();
+          choose({ night: false });
+        }}
+        onEditNight={() => {
+          nightRow.current?.scrollIntoView({ block: "center" });
+          nightRow.current?.focus({ preventScroll: true });
+        }}
+      />
       <p className="s-intro">{t.intro}</p>
       {soundError ? (
         <div className="s-card">
@@ -270,6 +291,11 @@ export function SoundSettings({
       </div>
       <h3 className="s-h3">{t.sound}</h3>
       <p className="s-desc ss-lead">{t.soundDesc}</p>
+      {nightNow ? (
+        <p className="ss-note" data-testid="sound-preview-night">
+          {t.previewNight}
+        </p>
+      ) : null}
       <div
         ref={tiles}
         role="radiogroup"
@@ -350,6 +376,7 @@ export function SoundSettings({
         <div
           className="s-row"
           data-settings-row="attention-sound-night"
+          ref={nightRow}
           tabIndex={-1}
         >
           <div className="s-lbl">
@@ -374,14 +401,35 @@ export function SoundSettings({
           </div>
         </div>
         {sound.night && !off ? (
-          <p
-            className="ss-now"
-            data-testid="sound-night-now"
-            data-night={night || undefined}
-          >
-            <Icon name={night ? "moon" : "sun"} />
-            {night ? t.nowNight : t.nowDay}
-          </p>
+          <div className="s-row ss-clock" data-testid="sound-night-clock">
+            {(
+              [
+                ["night_start", t.nightStart, nightStartHours],
+                ["night_end", t.nightEnd, nightEndHours],
+              ] as const
+            ).map(([key, label, hours]) => (
+              <div className="ss-clock-field" key={key}>
+                <span>{label}</span>
+                <ChoiceMenu
+                  data-testid={`sound-${key}`}
+                  label={label}
+                  value={String(sound[key])}
+                  isDisabled={!writable}
+                  options={hours.map((hour) => ({
+                    id: String(hour),
+                    label: t.clockHour(nightHourLabel(hour)),
+                  }))}
+                  onChange={(value) =>
+                    choose(
+                      key === "night_start"
+                        ? { night_start: Number(value) }
+                        : { night_end: Number(value) },
+                    )
+                  }
+                />
+              </div>
+            ))}
+          </div>
         ) : null}
       </div>
       <h3 className="s-h3">{t.workspaces}</h3>
@@ -481,14 +529,15 @@ export function SoundSettings({
             </ControlButton>
           </div>
         </div>
-        {why === "muted" || why === "off" || why === "night" ? (
+        {nightNow ? (
+          <p className="ss-note" data-testid="sound-test-night">
+            {t.testNight}
+          </p>
+        ) : null}
+        {why === "muted" || why === "off" ? (
           <p className="ss-note" data-testid={`sound-note-${why}`}>
-            <Icon name={why === "night" ? "moon" : "slash"} />
-            {why === "muted"
-              ? t.mutedNote
-              : why === "off"
-                ? t.offNote
-                : t.nightNote}
+            <Icon name="slash" />
+            {why === "muted" ? t.mutedNote : t.offNote}
           </p>
         ) : null}
       </div>

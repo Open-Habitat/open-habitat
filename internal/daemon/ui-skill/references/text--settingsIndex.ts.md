@@ -267,7 +267,7 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "attention-sound-night": {
         label: "Quiet at night",
         group: "When it plays",
-        desc: "No sound while the device is in night mode.",
+        desc: "Quiet during your chosen hours by the device's local clock.",
       },
       "attention-sound-workspaces": {
         label: "Workspace sounds",

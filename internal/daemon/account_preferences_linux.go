@@ -64,6 +64,8 @@ type soundPreferences struct {
 	Length     string            `json:"length,omitempty"`
 	InView     string            `json:"in_view,omitempty"`
 	NightOff   bool              `json:"night_off,omitempty"`
+	NightStart *int              `json:"night_start,omitempty"`
+	NightEnd   *int              `json:"night_end,omitempty"`
 	Workspaces map[string]string `json:"workspaces,omitempty"`
 }
 
@@ -86,6 +88,9 @@ func (s *soundPreferences) valid() bool {
 	if s.Default != "" && !validSoundID(s.Default) || s.Length != "" && s.Length != "long" || s.InView != "" && s.InView != "play" || len(s.Workspaces) > maxWorkspaceSounds {
 		return false
 	}
+	if s.NightStart != nil && !validNightHour("night_start", *s.NightStart) || s.NightEnd != nil && !validNightHour("night_end", *s.NightEnd) {
+		return false
+	}
 	for id, sound := range s.Workspaces {
 		if !validWorkspaceID(id) || !validSoundID(sound) {
 			return false
@@ -96,7 +101,7 @@ func (s *soundPreferences) valid() bool {
 
 // empty: every choice at its default, stored as no "sound" key at all.
 func (s *soundPreferences) empty() bool {
-	return s == nil || !s.Off && s.Default == "" && s.Length == "" && s.InView == "" && !s.NightOff && len(s.Workspaces) == 0
+	return s == nil || !s.Off && s.Default == "" && s.Length == "" && s.InView == "" && !s.NightOff && s.NightStart == nil && s.NightEnd == nil && len(s.Workspaces) == 0
 }
 
 // preferencesWrite names one change. The gateway caps a write at 128 bytes,
@@ -117,11 +122,12 @@ type preferencesWrite struct {
 }
 
 // soundChange is one of the sound's choices: key is "enabled", "default",
-// "length", "in_view" or "night", with a value already validated.
+// "length", "in_view", "night", "night_start" or "night_end", already validated.
 type soundChange struct {
 	key   string
 	on    bool
 	value string
+	hour  int
 }
 
 type workspaceSound struct{ id, sound string }
@@ -316,9 +322,16 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	return change, true
 }
 
+func validNightHour(key string, hour int) bool {
+	if key == "night_start" {
+		return hour >= 18 && hour <= 23 || hour >= 0 && hour <= 2
+	}
+	return hour >= 4 && hour <= 11
+}
+
 // decodeSoundChange reads {"<key>": value} with exactly one key: "enabled"
-// and "night" take a boolean, "default" a sound, "length" short or long and
-// "in_view" quiet or play.
+// and "night" take a boolean, "default" a sound, "length" short or long,
+// "in_view" quiet or play, and "night_start"/"night_end" an hour in range.
 func decodeSoundChange(raw json.RawMessage) (*soundChange, bool) {
 	var one map[string]json.RawMessage
 	if json.Unmarshal(raw, &one) != nil || len(one) != 1 {
@@ -333,6 +346,12 @@ func decodeSoundChange(raw json.RawMessage) (*soundChange, bool) {
 				return nil, false
 			}
 			change.on = *on
+		case "night_start", "night_end":
+			var hour *int
+			if json.Unmarshal(value, &hour) != nil || hour == nil || !validNightHour(key, *hour) {
+				return nil, false
+			}
+			change.hour = *hour
 		case "default", "length", "in_view":
 			var text string
 			if json.Unmarshal(value, &text) != nil {
@@ -523,6 +542,16 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 				sound.Off = !c.on
 			case "night":
 				sound.NightOff = !c.on
+			case "night_start":
+				sound.NightStart = &c.hour
+				if c.hour == 22 {
+					sound.NightStart = nil
+				}
+			case "night_end":
+				sound.NightEnd = &c.hour
+				if c.hour == 7 {
+					sound.NightEnd = nil
+				}
 			case "default":
 				sound.Default = c.value
 				if c.value == "kalimba" {
@@ -589,7 +618,15 @@ func soundReply(s *soundPreferences) map[string]any {
 	if workspaces == nil {
 		workspaces = map[string]string{}
 	}
-	return map[string]any{"enabled": !s.Off, "default": sound, "length": length, "in_view": inView, "night": !s.NightOff, "workspaces": workspaces}
+	// Old files retain NightOff; absent clock choices adopt 22–7 without a rewrite.
+	start, end := 22, 7
+	if s.NightStart != nil {
+		start = *s.NightStart
+	}
+	if s.NightEnd != nil {
+		end = *s.NightEnd
+	}
+	return map[string]any{"enabled": !s.Off, "default": sound, "length": length, "in_view": inView, "night": !s.NightOff, "night_start": start, "night_end": end, "workspaces": workspaces}
 }
 
 func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {

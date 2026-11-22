@@ -49,7 +49,7 @@
       "enum": ["kalimba", "marimba", "vibrafoni", "tunnus-puu", "pisara", "lasit", "tuulikello", "kuplat", "kulho", "jaapuikot"]
     },
     "sound": {
-      "description": "The attention sound's personal choices, every one spelled out: whether it plays at all, the default sound, short or long sounds, whether the conversation in view stays quiet or plays, whether the device's night mode quiets it, and each workspace's own sound (a workspace without an entry plays the default). Mute and volume are each device's own and are not here.",
+      "description": "The attention sound's personal choices, every one spelled out: whether it plays at all, the default sound, short or long sounds, whether the conversation in view stays quiet or plays, whether a local-clock night window quiets it, and each workspace's own sound (a workspace without an entry plays the default). Mute and volume are each device's own and are not here.",
       "type": "object",
       "additionalProperties": false,
       "required": ["enabled", "default", "length", "in_view", "night", "workspaces"],
@@ -59,6 +59,8 @@
         "length": {"enum": ["short", "long"]},
         "in_view": {"enum": ["quiet", "play"]},
         "night": {"type": "boolean"},
+        "night_start": {"$ref": "#/$defs/night_start"},
+        "night_end": {"$ref": "#/$defs/night_end"},
         "workspaces": {
           "type": "object",
           "maxProperties": 32,
@@ -67,6 +69,8 @@
         }
       }
     },
+    "night_start": {"type": "integer", "enum": [18, 19, 20, 21, 22, 23, 0, 1, 2], "description": "Start hour in the device's local time, inclusive. Defaults to 22."},
+    "night_end": {"type": "integer", "enum": [4, 5, 6, 7, 8, 9, 10, 11], "description": "End hour in the device's local time, exclusive. Defaults to 7."},
     "feature_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
@@ -90,7 +94,9 @@
                 "default": {"$ref": "#/$defs/sound_id"},
                 "length": {"enum": ["short", "long"]},
                 "in_view": {"enum": ["quiet", "play"]},
-                "night": {"type": "boolean"}
+                "night": {"type": "boolean"},
+                "night_start": {"$ref": "#/$defs/night_start"},
+                "night_end": {"$ref": "#/$defs/night_end"}
               }
             }
           }

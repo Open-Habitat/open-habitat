@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentNavModel } from "../components/Navigation";
 import {
@@ -6,10 +6,12 @@ import {
   type SoundPreferences,
 } from "./accountPreferences";
 import {
+  deviceNight,
   plays,
   setDeviceMuted,
   silence,
   useAttentionSound,
+  useDeviceNight,
 } from "./attentionSound";
 
 const row = (
@@ -25,6 +27,67 @@ const row = (
   workspaceId: "ws_example00",
   readyKey,
   ...extra,
+});
+
+describe("local-clock night", () => {
+  const window = { night_start: 22, night_end: 7 };
+  it.each([
+    [21, 59, false],
+    [22, 0, true],
+    [23, 59, true],
+    [0, 0, true],
+    [6, 59, true],
+    [7, 0, false],
+    [14, 0, false],
+  ])(
+    "checks %i:%i with inclusive start and exclusive end",
+    (hour, minute, quiet) => {
+      expect(deviceNight(window, new Date(2026, 10, 22, hour, minute))).toBe(
+        quiet,
+      );
+    },
+  );
+  it("supports a start after midnight", () => {
+    const late = { night_start: 1, night_end: 4 };
+    expect(deviceNight(late, new Date(2026, 10, 22, 23))).toBe(false);
+    expect(deviceNight(late, new Date(2026, 10, 23, 1))).toBe(true);
+    expect(deviceNight(late, new Date(2026, 10, 23, 4))).toBe(false);
+  });
+  it("uses wall-clock boundaries on the spring and autumn DST days", () => {
+    for (const [month, day] of [
+      [2, 29],
+      [9, 25],
+    ]) {
+      expect(deviceNight(window, new Date(2026, month, day, 6, 59))).toBe(true);
+      expect(deviceNight(window, new Date(2026, month, day, 7))).toBe(false);
+      // The two occurrences of 03:30 on Helsinki's autumn clock change.
+      if (month === 9) {
+        const first = new Date(2026, month, day, 3, 30);
+        expect(deviceNight(window, first)).toBe(true);
+        expect(deviceNight(window, new Date(first.getTime() + 3_600_000))).toBe(
+          true,
+        );
+      }
+    }
+  });
+  it("updates a mounted view at the boundary and on return from sleep", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 10, 22, 21, 59, 59));
+      const hook = renderHook(() => useDeviceNight(window));
+      expect(hook.result.current).toBe(false);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(hook.result.current).toBe(true);
+      act(() => {
+        vi.setSystemTime(new Date(2026, 10, 23, 7));
+        globalThis.window.dispatchEvent(new Event("focus"));
+      });
+      expect(hook.result.current).toBe(false);
+      hook.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("silence", () => {
@@ -65,7 +128,9 @@ describe("useAttentionSound", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  const mount = (sound: SoundPreferences = defaultSoundPreferences) =>
+  const mount = (
+    sound: SoundPreferences = { ...defaultSoundPreferences, night: false },
+  ) =>
     renderHook(
       ({ yours, stale = false }: { yours: AgentNavModel[]; stale?: boolean }) =>
         useAttentionSound({
@@ -105,6 +170,7 @@ describe("useAttentionSound", () => {
     const hook = mount({
       ...defaultSoundPreferences,
       length: "long",
+      night: false,
       workspaces: { ws_example01: "pisara" },
     });
     now += 5000;
@@ -142,6 +208,20 @@ describe("useAttentionSound", () => {
     now += 5000;
     muted.rerender({ yours: [row("a", "reply:r4"), row("r", undefined)] });
     expect(plays).toHaveLength(0);
+  });
+
+  it("checks the current clock for each reply and never replays a silenced reply at dawn", () => {
+    const hour = vi.spyOn(Date.prototype, "getHours").mockReturnValue(23);
+    const hook = mount(defaultSoundPreferences);
+    now += 5000;
+    hook.rerender({ yours: [row("a", "reply:r2")] });
+    expect(plays).toHaveLength(0);
+    hour.mockReturnValue(7);
+    now += 5000;
+    hook.rerender({ yours: [row("a", "reply:r2")] });
+    expect(plays).toHaveLength(0);
+    hook.rerender({ yours: [row("a", "reply:r3")] });
+    expect(plays).toHaveLength(1);
   });
 
   it("takes a reconnect's rows as a new baseline, not as news", () => {

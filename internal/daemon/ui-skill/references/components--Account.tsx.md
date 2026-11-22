@@ -25,6 +25,7 @@ import { OwnMachines } from "../app/OwnMachines";
 import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
 import {
+  nightHourLabel,
   type Silence,
   setDeviceMuted,
   silence,
@@ -183,7 +184,7 @@ export function AccountShelf({
   const soundsOn = useExperimentalFeature("attention-sound");
   const soundPreferences = useSessionPreferences();
   const deviceSound = useDeviceSound();
-  const night = useDeviceNight();
+  const night = useDeviceNight(soundPreferences.sound);
   const soundStatus = silence({
     sound: soundPreferences.sound,
     muted: deviceSound.muted,
@@ -274,7 +275,12 @@ export function AccountShelf({
                 onChange={setWorkPreference}
               />
             </div>
-            {soundsOn ? <SoundMenuRow status={soundStatus} /> : null}
+            {soundsOn ? (
+              <SoundMenuRow
+                status={soundStatus}
+                nightEnd={soundPreferences.sound.night_end}
+              />
+            ) : null}
           </section>
         }
         popoverClassName="ah-account-menu"
@@ -373,7 +379,13 @@ function Speaker({ muted }: { muted?: boolean }) {
 /** Äänet in the account menu (attention-sound, experimental): this
  * device's Soi | Hiljaa, and under it what reaches this device now. The
  * row says before a press that Hiljaa is this device's alone. */
-function SoundMenuRow({ status }: { status: Silence | undefined }) {
+function SoundMenuRow({
+  status,
+  nightEnd,
+}: {
+  status: Silence | undefined;
+  nightEnd: number;
+}) {
   const t = useText(attentionSoundText);
   const deviceSound = useDeviceSound();
   const off = status === "off";
@@ -383,7 +395,7 @@ function SoundMenuRow({ status }: { status: Silence | undefined }) {
       : status === "muted"
         ? t.stateMuted
         : status === "night"
-          ? t.stateNight
+          ? t.stateNight(nightHourLabel(nightEnd))
           : t.menuScope;
   return (
     <div className="ah-sound-menu" data-testid="sound-menu-row">

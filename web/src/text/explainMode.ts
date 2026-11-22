@@ -1785,6 +1785,21 @@ const fi = {
       lead: "Huomioääni: soiko se, millä äänellä ja pituudella, milloin se on hiljaa, työtilojen omat äänet ja tämän laitteen mykistys ja voimakkuus.",
       know: "Kokeellinen. Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Laatan painallus soittaa äänen ja valitsee sen; kuuntelu soi myös, kun äänet ovat pois.",
     },
+    AS07: {
+      name: "Yöhiljaisuus",
+      lead: "Näyttää, mihin asti äänet ovat hiljaa yön takia.",
+      know: "Yö seuraa laitteen paikallista kelloa, ei tummaa teemaa. Kuuntelu ja testi soivat silti.",
+    },
+    AS08: {
+      name: "Poista yöhiljaisuus",
+      lead: "Poistaa yöhiljaisuuden kaikilta laitteiltasi, myös tulevilta öiltä.",
+      know: "Voit palauttaa sen Hiljennä yöllä -valinnasta. Laitteen mykistys ei muutu.",
+    },
+    AS09: {
+      name: "Yön asetukset",
+      lead: "Vie yön alkamis- ja päättymisajan valintaan.",
+      try: "Näytä yön asetukset",
+    },
     AS01: {
       name: "Äänet tällä laitteella",
       lead: "Hiljentää huomioäänen vain tässä selaimessa tai palauttaa sen.",
@@ -3801,6 +3816,21 @@ export const explainModeText = catalog(fi, {
       name: "Sounds",
       lead: "The attention sound: whether it plays, which sound and length, when it stays quiet, workspaces' own sounds and this device's mute and volume.",
       know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
+    },
+    AS07: {
+      name: "Night quiet",
+      lead: "Shows when sounds will return after the night.",
+      know: "Night follows the device's local clock, not its dark theme. Listening and Test sound still play.",
+    },
+    AS08: {
+      name: "Turn off night quiet",
+      lead: "Turns night quiet off on all your devices, including future nights.",
+      know: "Turn it back on with Quiet at night. Device mute stays unchanged.",
+    },
+    AS09: {
+      name: "Night settings",
+      lead: "Takes you to the night start and end times.",
+      try: "Show night settings",
     },
     AS01: {
       name: "Sounds on this device",

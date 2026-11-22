@@ -50,7 +50,7 @@ Generated from internal/experimental/catalog.json; do not edit.
         "name": "Huomioääni",
         "desc": "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Valitse kymmenestä äänestä oma, ja anna työtiloille omat äänensä, niin kuulet, mikä valmistui.",
         "where": "Asetukset › Äänet, tilivalikon Äänet-rivi ja työtilan yläosan nauha, jossa ovat myös työtilan kuvake ja nimi.",
-        "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa laitteen tummaa tilaa.",
+        "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa valitsemaasi kellonaikaa laitteen paikallisessa ajassa (oletus 22–7).",
         "needs": "Avoimen Habitat-välilehden. Selain soittaa äänen vasta, kun olet painanut jotain sivulla. Mykistys ja voimakkuus koskevat vain tätä laitetta.",
         "caption": "Työtilan ääni"
       },
@@ -125,7 +125,7 @@ Generated from internal/experimental/catalog.json; do not edit.
         "name": "Attention sound",
         "desc": "A short sound when the agent finishes or wants your attention. Choose your own from ten sounds, and give workspaces their own sounds so you hear which one finished.",
         "where": "Settings › Sounds, the Sounds row of the account menu, and the strip at the top of a workspace, which also holds the workspace's icon and name.",
-        "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows the device's dark mode.",
+        "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows your chosen hours on the device's local clock (22–7 by default).",
         "needs": "An open Habitat tab. The browser plays sound only after you have pressed something on the page. Mute and volume apply to this device only.",
         "caption": "Workspace sound"
       },

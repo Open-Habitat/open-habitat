@@ -651,6 +651,9 @@ export const parts: Record<CardId, Part> = {
   M29: { kind: "page", sel: page("aanet") },
   AS01: { kind: "menu", sel: '[data-testid="sound-menu-row"]' },
   AS02: { kind: "info", sel: '[data-testid="sound-muted-badge"]' },
+  AS07: { kind: "info", sel: '[data-testid="sound-status"]' },
+  AS08: { kind: "once", sel: '[data-testid="sound-night-off"]' },
+  AS09: { kind: "nav", sel: '[data-testid="sound-night-settings"]' },
   AS03: { kind: "panel", sel: '[data-testid="workspace-strip"]' },
   AS04: { kind: "panel", sel: '[data-testid="strip-icon"]', opens: true },
   AS05: { kind: "input", sel: '[data-testid="strip-name"]' },
@@ -749,6 +752,7 @@ export const parts: Record<CardId, Part> = {
  * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "AS08",
   "B12",
   "B13",
   "GH03",

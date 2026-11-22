@@ -564,8 +564,8 @@ export const settingsSections = [
         id: "attention-sound-night",
         group: "Milloin soi",
         label: "Hiljennä yöllä",
-        kw: ["yö", "night", "tumma tila", "dark mode", "hiljaisuus"],
-        desc: "Ei ääntä, kun laite on yötilassa.",
+        kw: ["yö", "night", "kello", "clock", "hiljaisuus", "aika", "hours"],
+        desc: "Hiljaa valitsemanasi aikana laitteen paikallisen kellon mukaan.",
       },
       {
         id: "attention-sound-workspaces",

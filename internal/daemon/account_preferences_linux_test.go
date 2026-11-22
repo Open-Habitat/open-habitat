@@ -263,6 +263,28 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	put(`{"experimental":{"f1":false}}`)
 }
 
+func TestAccountPreferencesSoundLegacyNight(t *testing.T) {
+	for _, off := range []bool{false, true} {
+		home := t.TempDir()
+		dir := filepath.Join(home, ".config", "open-habitat")
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		raw := fmt.Sprintf(`{"engine":"codemirror6","sound":{"night_off":%t,"default":"lasit"}}`, off)
+		if err := os.WriteFile(filepath.Join(dir, "preferences.json"), []byte(raw), 0600); err != nil {
+			t.Fatal(err)
+		}
+		value, err := readPreferences(home)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reply := soundReply(value.Sound)
+		if reply["night"] != !off || reply["night_start"] != 22 || reply["night_end"] != 7 || reply["default"] != "lasit" {
+			t.Fatalf("legacy choice changed: %v", reply)
+		}
+	}
+}
+
 func TestAccountPreferencesSound(t *testing.T) {
 	home := t.TempDir()
 	cfg := transport.Config{Home: home, Provider: "github", Subject: "42"}
@@ -281,7 +303,7 @@ func TestAccountPreferencesSound(t *testing.T) {
 		return reply
 	}
 	file := filepath.Join(home, ".config/open-habitat/preferences.json")
-	defaults := map[string]any{"enabled": true, "default": "kalimba", "length": "short", "in_view": "quiet", "night": true, "workspaces": map[string]any{}}
+	defaults := map[string]any{"enabled": true, "default": "kalimba", "length": "short", "in_view": "quiet", "night": true, "night_start": float64(22), "night_end": float64(7), "workspaces": map[string]any{}}
 	if reply := put(`{"engine":"vscode"}`, 200); !reflect.DeepEqual(reply["sound"], defaults) {
 		t.Fatalf("defaults: %v", reply["sound"])
 	}
@@ -293,9 +315,19 @@ func TestAccountPreferencesSound(t *testing.T) {
 	put(`{"sound":{"length":"long"}}`, 200)
 	put(`{"sound":{"in_view":"play"}}`, 200)
 	put(`{"sound":{"night":false}}`, 200)
+	put(`{"sound":{"night_start":0}}`, 200)
+	put(`{"sound":{"night_end":9}}`, 200)
+	for _, invalid := range []string{
+		`{"night_start":-1}`, `{"night_start":24}`, `{"night_start":12}`,
+		`{"night_end":0}`, `{"night_end":12}`, `{"night_start":22.5}`,
+		`{"night_start":null}`, `{"night_end":"7"}`, `{"night_end":true}`,
+		`{"night_start":22,"night_end":7}`,
+	} {
+		put(`{"sound":`+invalid+`}`, 400)
+	}
 	put(`{"workspace_sound":{"ws_example123":"pisara"}}`, 200)
 	reply := put(`{"experimental":{"attention-sound":true}}`, 200)
-	want := map[string]any{"enabled": false, "default": "kulho", "length": "long", "in_view": "play", "night": false, "workspaces": map[string]any{"ws_example123": "pisara"}}
+	want := map[string]any{"enabled": false, "default": "kulho", "length": "long", "in_view": "play", "night": false, "night_start": float64(0), "night_end": float64(9), "workspaces": map[string]any{"ws_example123": "pisara"}}
 	if !reflect.DeepEqual(reply["sound"], want) || reply["engine"] != "vscode" {
 		t.Fatalf("merge lost a sound choice: %v", reply)
 	}
@@ -304,6 +336,8 @@ func TestAccountPreferencesSound(t *testing.T) {
 		t.Fatalf("stored: %+v %v", value.Sound, err)
 	}
 	// Back to every default: the file keeps no sound key.
+	put(`{"sound":{"night_start":22}}`, 200)
+	put(`{"sound":{"night_end":7}}`, 200)
 	put(`{"sound":{"enabled":true}}`, 200)
 	put(`{"sound":{"default":"kalimba"}}`, 200)
 	put(`{"sound":{"length":"short"}}`, 200)
@@ -344,6 +378,8 @@ func TestAccountPreferencesSound(t *testing.T) {
 		`{"engine":"vscode","sound":{"length":"short"}}`,
 		`{"engine":"vscode","sound":{"in_view":"quiet"}}`,
 		`{"engine":"vscode","sound":{"volume":3}}`,
+		`{"engine":"vscode","sound":{"night_start":12}}`,
+		`{"engine":"vscode","sound":{"night_end":24}}`,
 		`{"engine":"vscode","sound":{"workspaces":{"ws_short":"lasit"}}}`,
 		`{"engine":"vscode","sound":{"workspaces":{"ws_example123":"harppu"}}}`,
 	} {

@@ -51,10 +51,17 @@ const fi = {
   inViewPlays: "Soi silti",
   night: "Hiljennä yöllä",
   nightDesc:
-    "Ei ääntä, kun laite on yötilassa, samassa rytmissä kuin Järjestelmä-teema. Yön aika tulee laitteen omista asetuksista.",
-  nowDay: "Nyt päivä: ääni soi.",
-  nowNight:
-    "Nyt yö: laite on yötilassa, joten ääni on hiljaa, kunnes laite vaihtaa päivään.",
+    "Äänet ovat hiljaa valitsemanasi aikana laitteen paikallisen kellon mukaan. Tumma teema ei vaikuta ääniin.",
+  nightStart: "Alkaa",
+  nightEnd: "Päättyy",
+  clockHour: (time: string) => `klo ${time}`,
+  quietUntil: (time: string) =>
+    `Äänet ovat nyt hiljaa: on yö, klo ${time} asti`,
+  nightOff: "Poista yöhiljaisuus",
+  nightSettings: "Yön asetukset",
+  previewNight:
+    "Kuuntelu ohittaa yöhiljaisuuden. Agenttien äänet pysyvät hiljaa.",
+  testNight: "Testi soi myös yöllä.",
   workspaces: "Työtilojen äänet",
   workspacesDesc:
     "Eri ääni eri työtilalle, jotta kuulet, mikä valmistui. Valitaan samoista kymmenestä äänestä.",
@@ -74,7 +81,6 @@ const fi = {
   test: "Testaa ääni",
   mutedNote: "Tämä laite on mykistetty. Muut laitteesi soivat edelleen.",
   offNote: "Äänet ovat pois kaikilta laitteiltasi. Kuuntelu toimii silti.",
-  nightNote: "Nyt on yö, joten ääni on hiljaa. Kuuntelu ja testi soivat silti.",
   readError: "Ääniasetuksia ei voitu lukea. Yritä uudelleen.",
   writeError: "Valintaa ei voitu tallentaa. Yritä uudelleen.",
   retry: "Yritä uudelleen",
@@ -84,7 +90,7 @@ const fi = {
   stateMuted: "Hiljaa tällä laitteella",
   stateOff: "Pois kaikilla laitteilla",
   stateOffWhy: "Huomioääni on pois Asetuksista.",
-  stateNight: "Yö: hiljaa, kunnes laite vaihtaa päivään",
+  stateNight: (time: string) => `Yö: hiljaa klo ${time} asti`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,
   // The workspace strip and its sound picker
   strip: "Työtilan asetukset",
@@ -158,10 +164,16 @@ export const attentionSoundText = catalog(fi, {
   inViewPlays: "Play anyway",
   night: "Quiet at night",
   nightDesc:
-    "No sound while the device is in night mode, the same rhythm as the System theme. The night hours come from the device's own settings.",
-  nowDay: "Daytime now: the sound plays.",
-  nowNight:
-    "Night now: the device is in night mode, so the sound stays quiet until the device switches to day.",
+    "Sounds stay quiet during your chosen hours by the device's local clock. A dark theme does not affect sounds.",
+  nightStart: "Starts",
+  nightEnd: "Ends",
+  clockHour: (time: string) => `at ${time}`,
+  quietUntil: (time: string) =>
+    `Sounds are quiet now: nighttime, until ${time}`,
+  nightOff: "Turn off night quiet",
+  nightSettings: "Night settings",
+  previewNight: "Listening skips night quiet. Agents' sounds stay quiet.",
+  testNight: "The test plays at night too.",
   workspaces: "Workspace sounds",
   workspacesDesc:
     "A different sound for each workspace, so you hear which one finished. Chosen from the same ten sounds.",
@@ -182,8 +194,6 @@ export const attentionSoundText = catalog(fi, {
   test: "Test sound",
   mutedNote: "This device is muted. Your other devices still play.",
   offNote: "Sounds are off on all your devices. Listening still works.",
-  nightNote:
-    "It is night now, so the sound stays quiet. Listening and Test sound still play.",
   readError: "The sound settings could not be read. Try again.",
   writeError: "The choice could not be saved. Try again.",
   retry: "Try again",
@@ -192,7 +202,7 @@ export const attentionSoundText = catalog(fi, {
   stateMuted: "Quiet on this device",
   stateOff: "Off on every device",
   stateOffWhy: "The attention sound is off in Settings.",
-  stateNight: "Night: quiet until the device turns to day",
+  stateNight: (time: string) => `Night: quiet until ${time}`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,
   strip: "Workspace settings",
   stripIcon: "Icon",
