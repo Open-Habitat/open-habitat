@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useExperimentalFeature } from "../app/accountPreferences";
 import { formatNumber, useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { ControlButton } from "./ControlElements";
@@ -54,7 +55,15 @@ import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
  * reached even across other parts, and arriving from anywhere else passes
  * through as before. An open report holds the card until it is sent or
  * cancelled. A focused part explains itself, and F opens the report
- * for typing. */
+ * for typing.
+ *
+ * With the experimental switch explain-follow (round 2026-11-22-explain-follow
+ * direction A, Jari 22.11.2026) the card instead travels beside the pointer
+ * and never takes it: the pointer over the card explains what is under it.
+ * Only F pins the card, opening the report field; a click acts on the page
+ * as always and never opens the report. The first Esc lets the card go and
+ * drops what was typed, the second ends the mode. A touch screen gets the
+ * card as a sheet at the bottom with a real report button. */
 
 const workerKinds: WorkerMarkKind[] = [
   "working",
@@ -192,6 +201,7 @@ export function useExplainMode(): Mode {
  * card back. */
 export function ExplainMode() {
   const mode = useExplainMode();
+  const follow = useExperimentalFeature("explain-follow");
   const on = !!mode?.on;
   const [situation, setSituation] = useState<Situation | null>(null);
   useEffect(() => {
@@ -237,7 +247,7 @@ export function ExplainMode() {
   return (
     <>
       <ExplainBar situation={state} stateShown={stateShown} />
-      <ExplainLayer situation={state} stateShown={stateShown} />
+      <ExplainLayer situation={state} stateShown={stateShown} follow={follow} />
     </>
   );
 }
@@ -588,12 +598,107 @@ export function inPath(
   return px >= a0 + (b0 - a0) * k - 4 && px <= a1 + (b1 - a1) * k + 4;
 }
 
+type Point = { x: number; y: number };
+const within = (p: Point, r: DOMRect, pad: number) =>
+  p.x >= r.left - pad &&
+  p.x <= r.right + pad &&
+  p.y >= r.top - pad &&
+  p.y <= r.bottom + pad;
+
+/** Where a following card goes (explain-follow, direction A). Beside the
+ * pointer, below right, flipping at the viewport's edges and flipping back
+ * only with room to spare, so it does not flicker along an edge; below the
+ * part when focus, not the pointer, explains it. With less motion it does
+ * not trail: within one part it moves only when the pointer would otherwise
+ * go under it. A touch screen has nothing to follow: the card is a sheet at
+ * the bottom, or at the top when the tapped part is down there. */
+export function placeBeside(
+  el: HTMLElement,
+  part: Rect,
+  at: Point | null,
+  touch: boolean,
+  side: { current: string },
+  moved: boolean,
+) {
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const top = barBottom() + 8;
+  const clampX = (v: number) => Math.min(Math.max(8, v), vw - w - 8);
+  const clampY = (v: number) => Math.min(Math.max(top, v), vh - h - 8);
+  let x: number;
+  let y: number;
+  if (touch) {
+    x = 8;
+    y = clampY(vh - h - 8);
+    if (part.y + part.h > y) y = top;
+    side.current = "sheet";
+  } else {
+    const p = at ?? {
+      x: part.x + Math.min(part.w, 24),
+      y: part.y + part.h - 14,
+    };
+    if (
+      !moved &&
+      el.dataset.placed &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches &&
+      !within(p, el.getBoundingClientRect(), 12)
+    )
+      return;
+    const gx = 18;
+    const gy = 22;
+    let [hs, vs] =
+      side.current.length === 2 ? side.current.split("") : ["R", "D"];
+    if (hs === "R" && p.x + gx + w > vw - 8) hs = "L";
+    else if (hs === "L" && p.x + gx + w < vw - 48) hs = "R";
+    if (vs === "D" && p.y + gy + h > vh - 8) vs = "U";
+    else if (vs === "U" && p.y + gy + h < vh - 48) vs = "D";
+    side.current = hs + vs;
+    x = clampX(hs === "R" ? p.x + gx : p.x - gx - w);
+    y = clampY(vs === "D" ? p.y + gy : p.y - 14 - h);
+  }
+  const first = !el.dataset.placed;
+  // The first place is taken at once; only later moves ease.
+  if (first) el.style.transition = "none";
+  el.style.left = `${Math.round(x)}px`;
+  el.style.top = `${Math.round(y)}px`;
+  el.style.bottom = "auto";
+  el.dataset.placement = side.current;
+  if (first) {
+    void el.offsetWidth;
+    el.style.transition = "";
+  }
+}
+
+/** The report row of a following card: a reminder of F rather than a
+ * button, because the card never takes the pointer until F pins it. Kept in
+ * this one place for its own round (explain-f-reminder). */
+function ReportKey() {
+  const f = useText(explainModeText).feedback;
+  return (
+    <div
+      className="ah-explain-report ah-explain-report-key"
+      data-testid="explain-report-key"
+    >
+      <Icon name="warning" aria-hidden="true" />
+      <span className="ah-explain-report-label">
+        <b>{f.report}</b>
+        <small>{f.reportKey}</small>
+      </span>
+      <kbd>F</kbd>
+    </div>
+  );
+}
+
 function ExplainLayer({
   situation,
   stateShown,
+  follow,
 }: {
   situation: Situation | null;
   stateShown: boolean;
+  follow: boolean;
 }) {
   const t = useText(explainModeText);
   const [target, setTarget] = useState<Target | null>(null);
@@ -640,6 +745,11 @@ function ExplainLayer({
   // the pointer resting where the note was must not fall through to the
   // part under it. It holds until the pointer leaves that box.
   const sentBox = useRef<DOMRect | null>(null);
+  // A following card: the pointer it follows (null when focus explains the
+  // part), its current side, and the part it was last placed for.
+  const followAt = useRef<Point | null>(null);
+  const side = useRef("");
+  const placedFor = useRef<Element | null>(null);
   useLayoutEffect(() => {
     const selector = focusNext.current;
     if (!selector) return;
@@ -654,6 +764,7 @@ function ExplainLayer({
     touch,
     pinned,
     note,
+    follow,
     shown: null as Target | null,
   });
   live.current = {
@@ -663,7 +774,20 @@ function ExplainLayer({
     touch,
     pinned,
     note,
+    follow,
   };
+  /** Places a following card beside the pointer now, outside React's
+   * renders, so trailing the pointer re-renders nothing. */
+  const trail = useCallback(() => {
+    const el = card.current;
+    const s = live.current;
+    if (!el || !s.shown || !s.follow || s.pinned) return;
+    if (sentBox.current && el.dataset.placed === s.shown.id) return;
+    const moved = placedFor.current !== s.shown.el;
+    placedFor.current = s.shown.el;
+    placeBeside(el, s.shown.rect, followAt.current, s.touch, side, moved);
+    el.dataset.placed = s.shown.id;
+  }, []);
 
   const showState = stateShown && !!situation && !target;
   // The state card comes back when the bar asks for it…
@@ -693,6 +817,8 @@ function ExplainLayer({
     setWhat(false);
     setNudge(false);
     setKeyHold(false);
+    // A following card that lets go goes back beside the pointer at once.
+    placedFor.current = null;
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && card.current?.contains(focused))
       focused.blur();
@@ -729,6 +855,7 @@ function ExplainLayer({
       const found = hit(at.x, at.y);
       if (found === "own") {
         if (live.current.target) setLinger(false);
+        trail();
         return;
       }
       const held = sentBox.current;
@@ -741,10 +868,21 @@ function ExplainLayer({
         )
           return;
         sentBox.current = null;
+        if (live.current.follow) card.current?.removeAttribute("data-held");
       }
       // An open report holds its card: parts passed on the way do not take
       // it.
       if (live.current.pinned) return;
+      // A following card never takes the pointer: a part under it is
+      // pointed at like any other.
+      if (live.current.follow) {
+        if (found) {
+          if (live.current.target?.el !== found.el) pointAt(found);
+          else setLinger(false);
+        } else if (live.current.target) setLinger(true);
+        trail();
+        return;
+      }
       const now = live.current.shown;
       const box = card.current?.getBoundingClientRect();
       // Travelling from the part onto its card keeps the card.
@@ -769,6 +907,7 @@ function ExplainLayer({
       if (event.pointerType === "touch") return;
       setTouch(false);
       at = { x: event.clientX, y: event.clientY };
+      followAt.current = at;
       if (!frame) frame = requestAnimationFrame(move);
     };
     // A press decides once, at its start, what the whole gesture does:
@@ -864,7 +1003,15 @@ function ExplainLayer({
         const report = card.current?.querySelector<HTMLButtonElement>(
           '[data-testid="explain-report"]',
         );
-        if (report) report.click();
+        if (live.current.follow) {
+          // F pins a following card and opens its report field; pressed on
+          // an open report, it takes focus back to the field.
+          setDone(null);
+          sentBox.current = null;
+          setOpen(true);
+          focusNext.current = "textarea";
+          setTick((n) => n + 1);
+        } else if (report) report.click();
         else {
           setKeyHold(true);
           focusNext.current = 'textarea, [data-testid="explain-feedback-done"]';
@@ -891,7 +1038,17 @@ function ExplainLayer({
       if (!(el instanceof Element)) return;
       if (card.current?.contains(el)) return;
       setKeyHold(false);
-      if (live.current.pinned || el.closest(OWN)) return;
+      // Focus leaving a following card's empty report lets the card go; a
+      // written one holds it.
+      if (
+        live.current.follow &&
+        live.current.pinned &&
+        !live.current.note.trim() &&
+        !el.closest(OWN)
+      )
+        cancel();
+      else if (live.current.pinned) return;
+      if (el.closest(OWN)) return;
       let keyboard = false;
       try {
         keyboard = el.matches(":focus-visible");
@@ -903,6 +1060,7 @@ function ExplainLayer({
       const rect = visibleRect(el, new Map());
       if (!rect) return;
       setPointer(undefined);
+      followAt.current = null;
       pointAt({ id, el, rect });
     };
     // What moves under the card (a scroll, a list that opens) moves it.
@@ -932,7 +1090,7 @@ function ExplainLayer({
       window.removeEventListener("scroll", remeasure, true);
       window.removeEventListener("resize", remeasure);
     };
-  }, [say, t, pointAt, cancel]);
+  }, [say, t, pointAt, cancel, trail]);
 
   // The views change under the mode (a press opened the work, a list): the
   // pointed part follows its element, or goes when the element goes.
@@ -1004,6 +1162,10 @@ function ExplainLayer({
         }
         return;
       }
+      if (follow) {
+        trail();
+        return;
+      }
       const gap = 10;
       const r = shown.rect;
       const cx =
@@ -1061,6 +1223,7 @@ function ExplainLayer({
     el.style.top = `${Math.round(Math.max(top, y))}px`;
     el.style.bottom = "auto";
     delete el.dataset.placed;
+    placedFor.current = null;
   });
 
   // The layer starts below the bar and clips what would dim it.
@@ -1151,6 +1314,15 @@ function ExplainLayer({
             {f.copy}
           </button>
         </div>
+      );
+    } else if (!open && follow && !touch) {
+      report = (
+        <>
+          <ReportKey />
+          {reportedNow.has(id) ? (
+            <p className="ah-explain-meta">{f.reported}</p>
+          ) : null}
+        </>
       );
     } else if (!open) {
       report = (
@@ -1305,13 +1477,21 @@ function ExplainLayer({
         data-card={shown.id}
         data-touch={touch || undefined}
         data-pinned={pinned || undefined}
-        data-held={done?.id === id || undefined}
+        data-held={
+          (done?.id === id && (!follow || !!sentBox.current)) || undefined
+        }
+        data-follow={follow || undefined}
         data-nudge={nudge || undefined}
         aria-live="polite"
       >
         <div className="ah-explain-top">
           <span className="ah-explain-kind">{t.kinds[part.kind]}</span>
           {part.key ? <kbd>{part.key}</kbd> : null}
+          {follow && pinned && !touch ? (
+            <span className="ah-explain-pinned" data-testid="explain-pinned">
+              {t.card.pinned} · <kbd>Esc</kbd>
+            </span>
+          ) : null}
           {touch ? (
             <ControlButton
               data-testid="explain-close"
