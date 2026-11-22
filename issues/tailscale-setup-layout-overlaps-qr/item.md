@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-tailscale-layout
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Tailscale setup: buttons and content overlap the QR code
