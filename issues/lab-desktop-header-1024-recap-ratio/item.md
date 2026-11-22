@@ -2,7 +2,7 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: v0.1.5 release gate
@@ -11,6 +11,7 @@ originating_run: 01m8203anaw519dvyrq9ag3jdv
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Desktop header recap button out of viewport at 1024px (lab-desktop-header flake)
@@ -46,3 +47,9 @@ OH_BROWSER_WORKERS=2 ./scripts/test-focused.sh --area browser --spec lab-desktop
 ### 2026-11-22T19:41:22Z · @agent
 
 Reproduced during taskfleet run 01m829wf5hz4sv5cm6b1h8vbj3: the untouched 1024px case failed on the rail-graduation branch, then failed identically in all three repeats from a disposable source archive of main at 18b58065955793314ad4f419bc119ef6f4d6a0c1. Seed OH_REPLY_SEED=1e2524bc1e09040c, OH_REPLY_DELAY_MS=60, OH_BROWSER_WORKERS=1; npx playwright test --config playwright.lab.config.ts tests/lab-desktop-header.spec.ts --grep "at 1024px" --repeat-each 3. Failure remains conversation-recap viewport ratio 0 at expectOneRow line 206. Synthetic baseline log: /var/tmp/agent-keep/rail-adaptive-graduate/baseline-header.log. No header code or test changed in this run.
+
+## Acceptance Criteria
+
+- [x] Capture identifies the stale pre-content shortening observation; product layout is not changed to fit it.
+- [x] Entire desktop header spec passes five repeats; 1024/1280/390px layout sweep passes.
+- [x] Synthetic diagnostic and visual evidence, review and decisions are recorded in result.md.

@@ -1,125 +1,99 @@
 # Adaptive rail graduation
 
-Implemented, but **not merged**: the required layout sweep still hits the
-pre-existing `lab-desktop-header-1024-flake`. The identical failure reproduced
-three times on main; the worker's failure policy requires preserving the work
-rather than merging with a required check red. This issue remains in progress.
+Graduation harvested from `28355dde9` onto `3e89f9706`, with the concurrent
+sound/instructions graduation preserved. All required focused checks now pass;
+the header blocker was a stale test observation, corrected in
+`lab-desktop-header-1024-recap-ratio`.
 
-## Changes
+## Delivered
 
-- Removed the adaptive-rail catalog entry, experimental card/search entries and
-  useExperimentalFeature gate. A saved false preference no longer selects an
-  old desktop layout. Desktop WorkspaceRail now requires its adaptive inputs;
-  only the phone drawer and collapsed rail use the non-adaptive branches.
-- Kept allocation, workspace edge paging, place navigation, output counts,
-  browser states, aligned empty headings and phone behavior covered. Updated
-  component fixtures, design guidance and generated UI references.
-- Fixed two defects exposed by making this the default: the conditional places
-  wrapper remounted the rail and lost keyboard focus on collapse; status
-  paragraphs' margins were omitted from height measurement and could clip an
-  empty/error workspace message. Browser regressions cover both.
-- Corrected the long-rail account fixture to extend the actual workspace list,
-  rather than append rows as fixed siblings outside its scrolling region.
+- Desktop uses adaptive allocation without a preference switch. The phone drawer
+  and collapsed rail retain their responsive layouts, not an experimental fallback.
+- Removed adaptive-rail catalog, card and search entries. No adaptive-rail,
+  attention-sound or agent-instructions experimental switch remains.
+- Preserved the original focus fix (no rail remount on collapse) and margin-aware
+  allocation for empty/loading/error workspace messages.
+- Resolved the overlapping source changes and regenerated all UI references with
+  `python3 scripts/generate-ui-reference.py`; generated references also incorporate
+  the source branch's already-landed changes. No generated conflict was hand-merged.
+- Aligned the section-filter fixture with current worker classification: an idle
+  worker awaits the person; a working worker belongs in Running. No classification
+  code changed. The old branch and worktree were not modified.
 
 ## Evidence
 
-Tested base: `18c67cfada2cf1f2a2e1f69d62369851766410ae` plus this change.
-SHA-256 of `git diff --binary HEAD -- web design-system internal/experimental
-internal/daemon/ui-skill` before committing:
-`b10ed884a943f6c211495ccaeaa63396620a7adb9a6d516c81d560e80768b131`.
-All logs and review artifacts below are under
-`/var/tmp/agent-keep/rail-adaptive-graduate/`.
+Tested code revision: `e1daf441f36be0e37bc80a9c7beee56a468faeb7`.
+Product/test diff from `3e89f9706` (web, design-system, experimental catalog and
+UI references), SHA-256:
+`dcb28fbe482c014c24e62ee9dd33fe579eea9ef71cee87214e0921984af16eb5`.
+Logs and paired synthetic screenshots/HTML:
+`/var/tmp/agent-keep/rail-header-harvest/`.
 
-- `./scripts/test-focused.sh --area web`: **255 files / 2156 tests passed**,
-  including static checks (`web-final.log`).
+All commands ran with umask 077, timeouts, a shared scratch lease and small
+browser worker counts (one or two). Focused runs used distinct port bases.
+
+- `./scripts/test-focused.sh --area web`: **257 files, 2176 tests passed**, plus
+  formatting, type and catalog checks (`web-final.log`).
 - `./scripts/test-focused.sh --area go --go-package ./internal/experimental`:
-  package compiled; it has **no test files** (`go.log`).
-- Named Playwright runs with `--repeat-each 3`, `OH_BROWSER_WORKERS=2`,
-  `OH_REPLY_DELAY_MS=60`, private leased scratch, umask 077 and timeouts:
-  - `lab-adaptive-rail`, `lab-rail-scroll-region`: **42 passed**
-    (`repeat-lab.log`).
-  - `rail-section-filter`, `settings-experimental`, `rail-place-toggle`,
+  compiled; this package has no test files (`go.log`).
+- Named Playwright specs, `--repeat-each 3`, `OH_REPLY_DELAY_MS=60`:
+  - Lab: `lab-adaptive-rail`, `lab-rail-scroll-region`, `lab-sidebar-account`:
+    **60 passed** (`rail-lab-final.log`).
+  - Ordinary: `rail-section-filter`, `settings-experimental`, `rail-place-toggle`,
     `workspace-count-rail`, `status-bell`, `server-browser`, `rail-now`,
-    `workspace-slice`, `rail-icons-quiet`: **129 passed**
-    (`repeat-browser.log`).
-  - Separate demo config, `synthetic-demo`: **24 passed**, one worker
-    (`repeat-demo.log`).
-  - Corrected `lab-sidebar-account`: **18 passed** (`sidebar-repeat.log`).
-- Additional selector/layout sweep through the focused runner:
-  `rail-groups`, `rail-hover-marks`, `lab-foundation`, `lab-sidebar-account`,
-  `lab-outage-account`, `lab-explain-coverage`, `lab-workspace-icons`,
-  `workspace-slice-security`, `lab-desktop-header`, `lab-shell-header`,
-  `lab-page-scroll-header`, `lab-rail-keyboard-help`, `design-system`.
-  **62 passed, 2 capture-only cases intentionally skipped, 2 failed**
-  (`extra-browser.log`). The account fixture failure was corrected and its
-  entire spec passed three times above. The remaining header failure is below.
-- Synthetic visual capture: four adaptive-layout cases passed (`capture.log`).
-  Inspected `ordinary-720-on.png` and `little-1080-on.png`; matching `.html`
-  snapshots and the 900/1080 ordinary captures are beside them. No captures
-  are committed.
-- `python3 scripts/validate-project-view.py`, `issuectl doctor --json`,
-  `git diff --check`: passed. UI references regenerated.
+    `workspace-slice`, `rail-icons-quiet`: **129 passed** (`rail-browser-final.log`).
+  - Separate demo config: `synthetic-demo`: **24 passed** (`demo.log`).
+- Entire `lab-desktop-header` spec, `--repeat-each 5`, original seed
+  `1e2524bc1e09040c`: **25 passed**, including 1024px five times
+  (`header-final.log`).
+- Focused layout sweep: desktop header at **1024/1280** and phone header at
+  **390**, light/dark captures and accessibility checks: **3 passed** (`layout.log`).
+  Additional `lab-foundation`, `lab-shell-header`, `lab-page-scroll-header`,
+  `lab-rail-keyboard-help`: **13 passed** (`layout-extra.log`).
+- Visually inspected `layout/1024-sidebar-light.png`,
+  `layout/1280-editor-dark.png`, and `layout/running-390-light.png`; paired HTML
+  sits beside every capture. Desktop controls remain reachable through the menu,
+  editor layout fits, and the phone retains its compact header. No captures are
+  committed.
 
-### Remaining required failure
+`python3 scripts/validate-project-view.py`, `issuectl doctor --json` and
+`git diff --check` passed; regenerating UI references again produced no drift.
 
-`lab-desktop-header.spec.ts`, 1024px: `conversation-recap` has viewport ratio
-0 at `expectOneRow`, line 206. The spec is untouched by this change.
-A disposable source archive of main at
-`18b58065955793314ad4f419bc119ef6f4d6a0c1` failed identically **3/3 times**:
+Initial formatting failures were corrected. The first ordinary browser run had
+six section-filter failures from its idle-worker fixture; all were corrected and
+its complete final group passed. Header diagnosis and the resolved original
+failure are recorded in the header issue's result. No unresolved required failure.
 
-```sh
-OH_BROWSER_WORKERS=1 OH_REPLY_DELAY_MS=60 OH_REPLY_SEED=1e2524bc1e09040c \
-  npx playwright test --config playwright.lab.config.ts \
-  tests/lab-desktop-header.spec.ts --grep 'at 1024px' --repeat-each 3
-```
+## Review and limits
 
-`baseline-header.log` preserves this evidence. Added the new reproduction to
-existing `lab-desktop-header-1024-flake`, preserving its untriaged/unlaned
-status and original provenance instead of filing a duplicate. Did not change
-header code or chase that unrelated failure.
+Focused self-review of the harvested diff, conflict resolutions, current worker
+semantics, regenerated references and header diagnosis. The substantive original
+review (`claude-fable-5-2`, verifier `gpt-6-astra`, followed by assessment) is
+recorded in the original commit's result and was not claimed as a new review.
+This continuation changes layout selection and tests, not sessions, contracts,
+daemon state or authorization, so another independent review was not required.
 
-No whole browser suite, clean gate, installation or live-server verification
-was run; none is claimed. This is host-backed synthetic UI evidence, not
-native-provider or separate-UID evidence. No deployment was performed.
+No whole browser suite, clean release gate, deployment or live-server verification
+was run. These are host-backed synthetic UI checks, not native-provider or
+separate-UID evidence.
 
-## Review
+## Coverage retained
 
-Used routine `/llm-review` because a shared layout graduation affects several
-journeys: finder `claude-fable-5-2`, verifier `gpt-6-astra`, followed by
-`/assess-findings`. Four actionable findings were resolved (demo filter test,
-quiet workspace-name expectation, collapse focus, phone automatic-fold
-coverage); one request to test translated state wording was dropped under
-TESTING.md. Verifier confirmed the outstanding candidates' corrections in the
-current code. No unresolved review finding. No authority, session, contract or
-daemon-state change. Review and assessment copies are in the evidence directory.
-
-## Coverage retained when removing old tests
-
-- Deleted the switch-off-only case and comparisons against fixed desktop
-  geometry: those exercised the removed option, not a remaining layout.
-  Allocation unit cases, direct visibility minima and live resize comparisons
-  retain the desktop sizing checks.
-- Removed duplicate false/true variants of empty-heading and count cases;
-  Finnish/English empty headings and counts at all three desktop steps plus
-  the phone drawer remain tested.
-- Moved automatic-fold assertions from desktop to the phone drawer, where the
-  behavior still exists. Desktop now explicitly remains open when crowded.
-- Short-list filter checks use the phone drawer; the many-workspace lab still
-  checks the desktop filter. Removed only the duplicate short-list filter
-  interaction from demo smoke coverage.
-- Browser summary transitions use data-state rather than translated text,
-  so coverage works for icons, tiles and rows. Place-toggle tests still
-  exercise return navigation and drafts/scroll preservation.
+The original graduation removed switch-off-only variants and duplicate fixed vs
+adaptive comparisons, not remaining behavior. Allocation unit tests, visibility
+minima, live resizing, workspace counts, browser/place states, keyboard focus,
+empty headings, phone automatic folding and collapsed navigation remain covered.
+The long-list account fixture extends the workspace list inside its scrolling
+region rather than appending fixed siblings outside it.
 
 ## Decisions for later review
 
-- **Keep phone crowding and collapsed navigation unchanged.** The alternative
-  was extending adaptive allocation to them; graduation explicitly preserves
-  the drawer, so the remaining non-adaptive code is responsive layout, not an
-  experimental fallback.
-- **Repair focus and empty-message measurement within graduation.** Both are
-  reachable defects on the new default path, with reproducing browser checks;
-  leaving them for separate work would make the default knowingly worse.
-- **Do not merge with the known header failure.** The task explicitly requires
-  a blocked report for a required failing check, even though this occurrence
-  is already tracked and reproduced on main. Work is committed for continuation.
+- **Preserve both graduations.** Reintroducing the sound/instructions switches
+  would undo current main; all three retired switches stay removed.
+- **Use a working worker in the filter fixture.** Keeping an idle worker would
+  contradict the already-landed Running semantics. The test is about filtering,
+  not changing those semantics.
+- **Correct the header test, not the layout.** Instrumented failures showed an
+  intentional step-1 to step-3 transition after content arrived, with zero final
+  overflow/overlap. The test now establishes its content before measuring.
+- **Keep phone and collapsed layouts unchanged**, as in the original graduation.
