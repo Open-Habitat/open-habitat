@@ -3,7 +3,7 @@
 Generated from web/src/app/attentionSound.ts; do not edit.
 
 ```tsx
-// The attention sound (attention-sound, experimental): one short sound when a
+// The attention sound (attention-sound): one short sound when a
 // conversation becomes the person's turn. The personal choices come from the
 // account preferences and follow the person; mute and volume are this
 // device's own, kept in its browser like the theme, because muting a phone
@@ -313,15 +313,12 @@ const settleMs = 4000;
  * night; the first rows after loading are the baseline, not news.
  */
 export function useAttentionSound({
-  enabled,
   identity,
   yours,
   sound,
   loaded,
   stale,
 }: {
-  /** The experimental feature is on. */
-  enabled: boolean;
   identity?: string;
   yours: readonly AgentNavModel[];
   sound: SoundPreferences;
@@ -333,12 +330,11 @@ export function useAttentionSound({
   const seen = useRef<Set<string>>(new Set());
   const settleUntil = useRef(0);
   const owner = useRef<string | undefined>(undefined);
-  // The page was loading, signed out, off or disconnected at the last
+  // The page was loading, signed out or disconnected at the last
   // observation: the first one after it is the baseline, and the settle
   // window starts there, however long the gap was.
   const blocked = useRef(true);
   useEffect(() => {
-    if (!enabled) return;
     const unlock = () => unlockAudio();
     window.addEventListener("pointerdown", unlock, true);
     window.addEventListener("keydown", unlock, true);
@@ -346,7 +342,7 @@ export function useAttentionSound({
       window.removeEventListener("pointerdown", unlock, true);
       window.removeEventListener("keydown", unlock, true);
     };
-  }, [enabled]);
+  }, []);
   const now = readyRows(yours);
   useEffect(() => {
     const at = Date.now();
@@ -354,7 +350,7 @@ export function useAttentionSound({
       owner.current = identity;
       blocked.current = true;
     }
-    if (!enabled || !loaded || stale) {
+    if (!loaded || stale) {
       seen.current = new Set(now.keys());
       blocked.current = true;
       return;

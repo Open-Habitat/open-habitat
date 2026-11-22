@@ -105,11 +105,9 @@ export function GitHubOnboarding({
   const [step, setStep] = useState<
     "loading" | "identity" | "github" | "integrations" | "pi" | "instructions"
   >("loading");
-  // The note for the agent, the route's last step while the experimental
-  // agent-instructions feature is on. A sign-in from Settings is no route.
-  // The app's preferences know no identity before its first snapshot, which
-  // onboarding precedes, so the route reads this session's own.
-  // null: the session could not be read, which leaves the note off.
+  // The note for the agent is the route's last step. A sign-in from
+  // Settings is no route. Read this session's language choice before the
+  // app's first snapshot; null means the session could not be read.
   const [prefsSession, setPrefsSession] = useState<{
     identity: string;
     csrf: string;
@@ -135,10 +133,8 @@ export function GitHubOnboarding({
     prefsSession?.identity,
     prefsSession?.csrf,
   );
-  const instructionsStep =
-    !skipChooser && prefs.experimental["agent-instructions"] === true;
-  // Whether the note is on the route is known: the route waits for it
-  // before it ends, so a fast "Pi is usable" does not skip a note that is on.
+  const instructionsStep = !skipChooser;
+  // Wait for the language choice before opening the note.
   const instructionsKnown =
     skipChooser || prefsSession === null || (!!prefsSession && prefs.loaded);
   const pendingFinish = useRef<{ signedIn?: "claude" }>(undefined);

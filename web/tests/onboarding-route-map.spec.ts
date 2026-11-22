@@ -33,7 +33,8 @@ const route = (page: Page) =>
   page.getByRole("navigation", { name: "Käyttöönoton vaiheet" });
 const step = (page: Page, id: string) =>
   route(page).getByTestId(`onboarding-step-${id}`);
-async function expectRoute(page: Page, states: Record<string, string>) {
+async function expectRoute(page: Page, preceding: Record<string, string>) {
+  const states = { ...preceding, instructions: "next" };
   // The steps only; a step's own detail, such as the clones under Repot,
   // is a nested list.
   await expect(

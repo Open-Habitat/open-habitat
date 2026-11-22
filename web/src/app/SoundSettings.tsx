@@ -151,7 +151,7 @@ function WorkspaceRow({
   );
 }
 
-/** Asetukset › Äänet (attention-sound, experimental): the sound on or off,
+/** Asetukset › Äänet (attention-sound): the sound on or off,
  * the default sound as tiles, the length, when it plays, each workspace's
  * own sound and this device's mute and volume. Personal choices show once
  * the daemon has confirmed them; listening plays whatever they are. */

@@ -19,7 +19,7 @@ export type EditorEngine = "codemirror6" | "vscode";
 /** The order of the rail's Hiljaiset section. */
 export type QuietSort = "newest" | "workspace" | "name";
 
-/** The attention sound's personal choices (attention-sound, experimental),
+/** The attention sound's personal choices (attention-sound),
  * the same on every device. Mute and volume are each device's own
  * (app/attentionSound.ts). */
 export type SoundPreferences = {

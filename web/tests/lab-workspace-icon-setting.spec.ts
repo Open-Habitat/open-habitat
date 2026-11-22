@@ -80,7 +80,7 @@ test("@workspace-icons the heading's icon sets the workspace icon and commits on
   ).toBeTruthy();
   await page.reload();
   await expect(picker).toBeVisible();
-  await expect(page.getByTestId("workspace-icon-source")).toBeVisible();
+  await expect(page.getByTestId("strip-icon")).toBeVisible();
   const before = await git(page, id);
   expect(before.files.length).toBeGreaterThan(0);
 

@@ -1557,14 +1557,8 @@ export function App() {
   const adaptiveRail =
     useExperimentalFeature("adaptive-rail", { identity, csrf }) &&
     !mobileLayout;
-  // One sound when a conversation becomes the person's turn
-  // (attention-sound, experimental).
-  const soundsOn = useExperimentalFeature("attention-sound", {
-    identity,
-    csrf,
-  });
+  // One sound when a conversation becomes the person's turn.
   useAttentionSound({
-    enabled: soundsOn,
     identity,
     yours: now.yours,
     sound: confirmedPreferences.sound,

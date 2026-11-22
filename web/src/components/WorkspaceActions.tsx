@@ -11,12 +11,9 @@ export function WorkspaceActions({
   onNew,
   newReason,
   rail = false,
-  onRename,
-  renameHidden,
   onHide,
   hidePending = false,
   settingsAvailable = false,
-  renameRef,
   deleteRef,
   onDelete,
   onNewWorktree,
@@ -29,13 +26,9 @@ export function WorkspaceActions({
   onNewWorktree?: (id: string) => void;
   newReason?: string;
   rail?: boolean;
-  onRename?: () => void;
-  /** The workspace strip renames in its place (attention-sound, experimental). */
-  renameHidden?: boolean;
   onHide?: () => void;
   hidePending?: boolean;
   settingsAvailable?: boolean;
-  renameRef?: RefObject<HTMLButtonElement | null>;
   deleteRef?: RefObject<HTMLButtonElement | null>;
   /** Opens the deletion confirmation; absent while changes are not allowed. */
   onDelete?: () => void;
@@ -104,21 +97,6 @@ export function WorkspaceActions({
           >
             <Icon name="github" />
           </ControlButton>
-          {renameHidden ? null : (
-            <ControlButton
-              data-testid="rename-workspace"
-              size="row"
-              ref={renameRef}
-              variant="quiet"
-              presentation="icon"
-              aria-label={t.rename}
-              title={t.rename}
-              isDisabled={!settingsAvailable || !onRename}
-              onPress={onRename}
-            >
-              <Icon name="pencil" />
-            </ControlButton>
-          )}
           <ControlButton
             size="row"
             variant="quiet"

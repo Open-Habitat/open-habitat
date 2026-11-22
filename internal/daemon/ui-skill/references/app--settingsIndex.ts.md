@@ -32,8 +32,6 @@ type SectionEntry = {
   readonly icon: IconName;
   /** Palvelimen ylläpito: listed and searched only for an administrator. */
   readonly admin?: boolean;
-  /** Listed and searched only while this experimental feature is on. */
-  readonly experimental?: string;
   readonly kw: readonly string[];
   readonly intro?: string;
   readonly rows: readonly RowEntry[];
@@ -91,7 +89,6 @@ export const settingsSections = [
           "omat ohjeet",
         ],
         desc: "Muistilappu, jonka agentti lukee jokaisen keskustelun alussa. Pi ja Claude lukevat saman tiedoston.",
-        when: "the agent-instructions experimental feature is enabled",
       },
     ],
   },
@@ -522,7 +519,6 @@ export const settingsSections = [
     id: "aanet",
     label: "Äänet",
     icon: "music",
-    experimental: "attention-sound",
     kw: [
       "sounds",
       "ääni",
@@ -684,26 +680,6 @@ export const settingsSections = [
           "full rights",
         ],
         desc: "Kutsu toinen tämän palvelimen käyttäjä mukaan keskusteluusi agentin kanssa.",
-      },
-      {
-        id: "agent-instructions",
-        label: "Ohjeet agentille",
-        kw: [
-          "ohjeet",
-          "muistilappu",
-          "instructions",
-          "agents.md",
-          "claude.md",
-          "muisti",
-          "memory",
-        ],
-        desc: "Muistilappu, jonka agentti lukee jokaisen keskustelun alussa.",
-      },
-      {
-        id: "attention-sound",
-        label: "Huomioääni",
-        kw: ["ääni", "sound", "pling", "kilahdus", "chime", "notification"],
-        desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi, ja työtilojen omat äänet.",
       },
       {
         id: "adaptive-rail",

@@ -326,14 +326,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Other people in a conversation",
         desc: "Invite another person on this server into your conversation with the agent.",
       },
-      "agent-instructions": {
-        label: "Agent instructions",
-        desc: "The note the agent reads at the start of every conversation.",
-      },
-      "attention-sound": {
-        label: "Attention sound",
-        desc: "A short sound when the agent finishes or wants your attention, and workspaces' own sounds.",
-      },
       "adaptive-rail": {
         label: "Adaptive sidebar",
         desc: "The sidebar shares its height between conversations, workspaces and places where it helps most.",

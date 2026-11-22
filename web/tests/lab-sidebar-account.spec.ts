@@ -161,19 +161,6 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   const account = page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"));
-  const session = await (await page.request.get("/auth/session")).json();
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: {
-          Origin: new URL(page.url()).origin,
-          "X-Agent-Host-CSRF": session.csrf,
-        },
-        data: { experimental: { "attention-sound": true } },
-      })
-    ).ok(),
-  ).toBe(true);
-  await page.reload();
   const list = page.locator(".ah-rail-content");
   await list.evaluate((element) => {
     const row = element.querySelector(".ah-workspace");

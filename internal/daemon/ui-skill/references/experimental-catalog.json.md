@@ -8,8 +8,6 @@ Generated from internal/experimental/catalog.json; do not edit.
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
-    { "id": "agent-instructions", "landed": true },
-    { "id": "attention-sound", "landed": true },
     { "id": "adaptive-rail", "landed": true }
   ],
   "fi": {
@@ -37,22 +35,6 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Osallistujan viestit tulevat keskusteluun hänen nimellään. Hänen viesteihinsä agentti vastaa ilman työkaluja, kunnes päästät sen jatkamaan tai annat hänelle Täydet oikeudet.",
         "needs": "Kutsuttavan pitää olla kirjautunut tälle palvelimelle.",
         "caption": "Muut mukana"
-      },
-      "agent-instructions": {
-        "name": "Ohjeet agentille",
-        "desc": "Muistilappu, jonka agentti lukee jokaisen keskustelun alussa: kuka olet, millä kielellä ja miten haluat vastauksia ja mitä ei tehdä kysymättä. Kirjoita se itse tai agentin kanssa.",
-        "where": "Asetukset › Tili › Ohjeet agentille. Käyttöönoton viimeisenä vaiheena AI-tilin jälkeen, kun käyt käyttöönoton läpi.",
-        "shows": "Muistilapun esikatseluna ja Markdown-tekstinä, tiedoston polun ja sen, lukeeko Claude sen. Jos tiedosto muuttui muokatessasi, tallennus ei kirjoita sen päälle vaan yhdistää muutokset ja pyytää tallentamaan uudelleen.",
-        "needs": "Ei muuta. Habitat kirjoittaa tiedoston ~/.pi/agent/AGENTS.md ja luo tiedoston ~/.claude/CLAUDE.md viittausrivillä vain, jos sitä ei vielä ole.",
-        "caption": "Muistilappu"
-      },
-      "attention-sound": {
-        "name": "Huomioääni",
-        "desc": "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Valitse kymmenestä äänestä oma, ja anna työtiloille omat äänensä, niin kuulet, mikä valmistui.",
-        "where": "Asetukset › Äänet, tilivalikon Äänet-rivi ja työtilan yläosan nauha, jossa ovat myös työtilan kuvake ja nimi.",
-        "shows": "Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Keskustelu, jota katsot, on oletuksena hiljaa, ja Hiljennä yöllä seuraa valitsemaasi kellonaikaa laitteen paikallisessa ajassa (oletus 22–7).",
-        "needs": "Avoimen Habitat-välilehden. Selain soittaa äänen vasta, kun olet painanut jotain sivulla. Mykistys ja voimakkuus koskevat vain tätä laitetta.",
-        "caption": "Työtilan ääni"
       },
       "adaptive-rail": {
         "name": "Mukautuva sivupalkki",
@@ -112,22 +94,6 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "A participant's messages appear under their name. The agent answers them without tools until you let it continue or give them full rights.",
         "needs": "The invited person must have signed in to this server.",
         "caption": "Others in"
-      },
-      "agent-instructions": {
-        "name": "Agent instructions",
-        "desc": "A note the agent reads at the start of every conversation: who you are, which language and what kind of answers you want, and what it must not do without asking. Write it yourself or with the agent.",
-        "where": "Settings › Account › Agent instructions. As the last step of onboarding after the AI account, when you go through onboarding.",
-        "shows": "The note as a preview and as Markdown text, the file's path and whether Claude reads it. If the file changed while you edited it, saving doesn't write over it but merges the changes and asks you to save again.",
-        "needs": "Nothing else. Habitat writes ~/.pi/agent/AGENTS.md and creates ~/.claude/CLAUDE.md with a reference line only if it doesn't exist yet.",
-        "caption": "Note"
-      },
-      "attention-sound": {
-        "name": "Attention sound",
-        "desc": "A short sound when the agent finishes or wants your attention. Choose your own from ten sounds, and give workspaces their own sounds so you hear which one finished.",
-        "where": "Settings › Sounds, the Sounds row of the account menu, and the strip at the top of a workspace, which also holds the workspace's icon and name.",
-        "shows": "The sound plays once when a conversation moves to Your turn. The conversation you are looking at stays quiet by default, and Quiet at night follows your chosen hours on the device's local clock (22–7 by default).",
-        "needs": "An open Habitat tab. The browser plays sound only after you have pressed something on the page. Mute and volume apply to this device only.",
-        "caption": "Workspace sound"
       },
       "adaptive-rail": {
         "name": "Adaptive sidebar",

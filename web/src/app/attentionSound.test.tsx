@@ -134,7 +134,6 @@ describe("useAttentionSound", () => {
     renderHook(
       ({ yours, stale = false }: { yours: AgentNavModel[]; stale?: boolean }) =>
         useAttentionSound({
-          enabled: true,
           identity: "wid_example",
           yours,
           sound,

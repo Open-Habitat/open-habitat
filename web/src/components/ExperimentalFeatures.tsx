@@ -43,8 +43,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   if (
     id === "rewind-conversation" ||
     id === "multiplayer" ||
-    id === "agent-instructions" ||
-    id === "attention-sound" ||
     id === "adaptive-rail"
   )
     body = (

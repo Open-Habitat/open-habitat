@@ -1,7 +1,7 @@
 import type { SoundId } from "../app/soundSynth";
 import { catalog } from "../i18n";
 
-// The attention sound (attention-sound, experimental): Settings › Äänet
+// The attention sound (attention-sound): Settings › Äänet
 // (components/SoundSettings.tsx), the account menu's Äänet row
 // (components/Account.tsx), the workspace strip and its sound picker
 // (components/WorkspaceStrip.tsx). Workspace names come in as arguments.

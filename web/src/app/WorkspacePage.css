@@ -16,7 +16,7 @@
   flex: 1;
   min-width: 0;
 }
-/* With the settings strip (attention-sound, experimental) the head's icon
+/* With the settings strip (attention-sound) the head's icon
    is a picture only: the strip is where it changes. */
 .ah-workspace-head-icon {
   flex: none;

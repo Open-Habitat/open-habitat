@@ -22,9 +22,15 @@ import { piStatus } from "./pi";
 vi.mock("./pi", () => ({
   sessionCSRF: vi.fn(async () => "c".repeat(43)),
   piStatus: vi.fn(async () => "usable"),
-  // No readable session for the preferences: the agent note stays off the
-  // route, as the experimental feature is for a new account.
+  // No readable preference session: the note uses the default language.
   accountSession: vi.fn(async () => "login"),
+}));
+vi.mock("./AgentInstructionsOnboarding", () => ({
+  AgentInstructionsOnboarding: ({ onDone }: { onDone: () => void }) => (
+    <button type="button" data-testid="instructions-stub" onClick={onDone}>
+      done
+    </button>
+  ),
 }));
 vi.mock("./firstRoute", () => ({ finishFirstRoute: vi.fn(async () => {}) }));
 vi.mock("./github", async (actual) => ({
@@ -172,6 +178,7 @@ it("an optional integration is its own step that can be passed without connectin
     "repositories:skipped",
     "google:current",
     "ai:next",
+    "instructions:next",
   ]);
   fireEvent.click(screen.getByTestId("integration-onboarding-continue"));
   await screen.findByTestId("pi-stub");
@@ -202,6 +209,7 @@ it("a required integration has no skip action; once connected the person goes on
     "google:done",
     "microsoft:current",
     "ai:next",
+    "instructions:next",
   ]);
   fireEvent.click(screen.getByTestId("integration-onboarding-back"));
   await waitFor(() =>
@@ -226,6 +234,7 @@ it("an integration that is not ready, or whose readiness is unknown, is left off
     "github:done",
     "repositories:skipped",
     "ai:current",
+    "instructions:next",
   ]);
 });
 
@@ -241,8 +250,11 @@ it("a person seeded with the site key ends the route after its last step, in the
     "github:done",
     "repositories:skipped",
     "google:current",
+    "instructions:next",
   ]);
   fireEvent.click(screen.getByTestId("integration-onboarding-continue"));
+  expect(onUsable).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByTestId("instructions-stub"));
   await waitFor(() => expect(onUsable).toHaveBeenCalledOnce());
   // The mark was asked for before the route ended.
   expect(finishFirstRoute).toHaveBeenCalledWith("c".repeat(43));
@@ -254,6 +266,7 @@ it("a lost first-route mark still ends the route", async () => {
   const onUsable = vi.fn();
   start([], undefined, { seeded: true, onUsable });
   await passRepositories();
+  fireEvent.click(await screen.findByTestId("instructions-stub"));
   await waitFor(() => expect(onUsable).toHaveBeenCalledOnce());
 });
 
@@ -267,6 +280,7 @@ it("a seeded Pi that is no longer usable brings the AI step back", async () => {
     "github:done",
     "repositories:skipped",
     "ai:current",
+    "instructions:next",
   ]);
   expect(onUsable).not.toHaveBeenCalled();
   expect(finishFirstRoute).not.toHaveBeenCalled();
@@ -280,6 +294,7 @@ it("a mark still being written when the session ends does not end the next perso
   const onUsable = vi.fn();
   start([], undefined, { seeded: true, onUsable });
   await passRepositories();
+  fireEvent.click(await screen.findByTestId("instructions-stub"));
   await waitFor(() => expect(finishFirstRoute).toHaveBeenCalled());
   cleanup();
   settle();

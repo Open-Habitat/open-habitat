@@ -368,7 +368,7 @@ function NameBox({
 
 /**
  * The workspace's settings strip under its head (attention-sound,
- * experimental; A Yksi rivi, Jari 21.11.2026): Kuvake and Ääni as squares,
+ * A Yksi rivi, Jari 21.11.2026): Kuvake and Ääni as squares,
  * Nimi as a wider box, one row of one height. The kind of a button, never
  * its value, sets its size, so a new choice moves nothing. While it shows,
  * it is the one place to change the icon and the name: the head's own icon

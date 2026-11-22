@@ -127,20 +127,16 @@ for (const width of [1440, 900, 390]) {
     await pill.click();
     await page.keyboard.press("Escape");
     await expect(pill).toBeFocused();
-    const renameButton = page
-      .locator("main")
-      .getByRole("button")
-      .and(page.getByTestId("rename-workspace"));
+    const renameButton = page.getByTestId("strip-name");
     const deletion = page
       .locator("main")
       .getByRole("button")
       .and(page.getByTestId("delete-workspace"));
     await expect(deletion).toBeEnabled();
     await renameButton.click();
-    const rename = page
-      .getByRole("dialog")
-      .and(page.getByTestId("rename-dialog"));
-    await expect(rename.getByRole("textbox")).toHaveValue("aurinkokello");
+    await expect(page.getByTestId("strip-name-input")).toHaveValue(
+      "aurinkokello",
+    );
     await page.keyboard.press("Escape");
     await expect(renameButton).toBeFocused();
     {
@@ -214,24 +210,14 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   await expect(
     page.getByRole("button").and(page.getByTestId("workspace-menu")),
   ).toHaveCount(0);
-  await page
-    .locator("main")
-    .getByRole("button")
-    .and(page.getByTestId("rename-workspace"))
-    .click();
-  const rename = page
-    .getByRole("dialog")
-    .and(page.getByTestId("rename-dialog"));
-  await rename.getByRole("textbox").fill("Uusi nimi");
+  await page.getByTestId("strip-name").click();
+  await page.getByTestId("strip-name-input").fill("Uusi nimi");
   const renamed = page.waitForResponse(
     (r) =>
       new URL(r.url()).pathname === "/api/v1/workspaces" &&
       !!r.request().postData()?.includes('"settings"'),
   );
-  await rename
-    .getByRole("button")
-    .and(page.getByTestId("save-workspace-name"))
-    .click();
+  await page.getByTestId("strip-name-input").press("Enter");
   // The new name shows at once (ADR 0023); the observations below are taken
   // after the host confirmed it and the page followed the workspace's ID.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uusi nimi");

@@ -145,7 +145,7 @@ for (const width of [1440, 390]) {
           ["workspace-path", "T46"],
           ["copy-path", "T02"],
           ["open-github", "T03"],
-          ["rename-workspace", "T04"],
+          ["strip-name", "AS05"],
           ["workspace-archive", "T05"],
           ["delete-workspace", "T06"],
           ["new-worktree", "T07"],

@@ -295,7 +295,7 @@ Editor saves confirm from their validated document reply in the mounted
 document, not Redux's snapshot `hostChanged` path: neither file contents nor
 versions belong in snapshots or the host journal.
 
-The attention sounds (experimental) are rendered in the browser from their
+The attention sounds are rendered in the browser from their
 recipes in `src/app/soundSynth.ts`; no audio file ships, and
 `soundSynth.test.ts` fingerprints every render against the accepted
 prototype round, so a sound changes only when a recipe is changed on

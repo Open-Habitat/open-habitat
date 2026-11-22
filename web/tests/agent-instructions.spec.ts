@@ -4,7 +4,7 @@ import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, type Page, test } from "./worker-host";
 
 // The person's own agent instructions (issue
-// new-user-agent-instructions-template; experimental agent-instructions):
+// new-user-agent-instructions-template):
 // onboarding's last step and Settings › Tili › Ohjeet agentille write
 // ~/.pi/agent/AGENTS.md through the person's daemon, compare-and-swap. The
 // real daemon handler runs in the synthetic host's disposable home.
@@ -36,13 +36,6 @@ async function headers(page: Page) {
     "X-Agent-Host-CSRF": (await session(page)).csrf,
   };
 }
-async function enable(page: Page) {
-  const put = await page.request.put("/api/v1/account/preferences", {
-    headers: await headers(page),
-    data: { experimental: { "agent-instructions": true } },
-  });
-  expect(put.status()).toBe(200);
-}
 async function file(page: Page): Promise<File> {
   const r = await page.request.get(api);
   expect(r.status()).toBe(200);
@@ -67,8 +60,6 @@ test("@agent-instructions onboarding's last step writes the note the person saw,
     await button(page, "github-sign-in").click();
     await page.getByRole("link").nth(0).click();
     await expect(page.getByTestId("git-identity")).toBeVisible();
-    await enable(page);
-    await page.reload();
     await confirmGitIdentity(page);
     await expect(button(page, "repository-proceed")).toBeVisible();
     await expect(
@@ -129,7 +120,6 @@ test("@agent-instructions Settings saves compare-and-swap, merges a change made 
   await button(page, "github-sign-in").click();
   await page.getByRole("link").nth(0).click();
   await expect(button(page, "account-menu-trigger")).toBeAttached();
-  await enable(page);
   await page.goto("/settings/tili");
   const block = page.getByTestId("agent-instructions-settings");
   await expect(block.getByTestId("editor-empty")).toBeVisible();

@@ -1982,7 +1982,7 @@ details[open] > summary:not([class])::before {
 .ah-account-menu-theme {
   margin-left: auto;
 }
-/* The account menu's Äänet row (attention-sound, experimental) and the
+/* The account menu's Äänet row (attention-sound) and the
    mark on the account picture while this device is muted. */
 .ah-account-trigger {
   position: relative;

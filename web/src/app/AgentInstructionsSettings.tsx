@@ -18,7 +18,7 @@ const PI_FILE = "~/.pi/agent/AGENTS.md";
  * in the shared editor, opening in Esikatselu, with "Muokkaa agentin
  * kanssa" as the secondary action. That action opens the same note
  * conversation as onboarding's last step; it adds to an existing note and
- * never rewrites it. Experimental (agent-instructions). */
+ * never rewrites it. */
 export function AgentInstructionsSettings({
   csrf,
   name,

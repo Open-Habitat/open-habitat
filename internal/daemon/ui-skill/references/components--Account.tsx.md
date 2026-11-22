@@ -14,10 +14,7 @@ import { createPortal } from "react-dom";
 import { AccountKeys } from "../app/AccountKeys";
 import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
-import {
-  useExperimentalFeature,
-  useSessionPreferences,
-} from "../app/accountPreferences";
+import { useSessionPreferences } from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
@@ -181,7 +178,6 @@ export function AccountShelf({
   const t = useText(accountText);
   const soundText = useText(attentionSoundText);
   const explain = useExplainEntry();
-  const soundsOn = useExperimentalFeature("attention-sound");
   const soundPreferences = useSessionPreferences();
   const deviceSound = useDeviceSound();
   const night = useDeviceNight(soundPreferences.sound);
@@ -192,7 +188,7 @@ export function AccountShelf({
   });
   // A forgotten mute shows without opening anything; off and night are
   // standing choices and get no mark.
-  const mutedMark = soundsOn && soundStatus === "muted";
+  const mutedMark = soundStatus === "muted";
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
     accountLabel(person.name) === t.ownAccount
@@ -275,12 +271,10 @@ export function AccountShelf({
                 onChange={setWorkPreference}
               />
             </div>
-            {soundsOn ? (
-              <SoundMenuRow
-                status={soundStatus}
-                nightEnd={soundPreferences.sound.night_end}
-              />
-            ) : null}
+            <SoundMenuRow
+              status={soundStatus}
+              nightEnd={soundPreferences.sound.night_end}
+            />
           </section>
         }
         popoverClassName="ah-account-menu"
@@ -376,7 +370,7 @@ function Speaker({ muted }: { muted?: boolean }) {
   );
 }
 
-/** Äänet in the account menu (attention-sound, experimental): this
+/** Äänet in the account menu (attention-sound): this
  * device's Soi | Hiljaa, and under it what reaches this device now. The
  * row says before a press that Hiljaa is this device's alone. */
 function SoundMenuRow({
@@ -521,13 +515,8 @@ export function AccountSettings({
   const theme = useThemeChoice();
   const language = useLanguage();
   const t = accountText[language];
-  const instructionsOn = useExperimentalFeature("agent-instructions");
-  const soundsOn = useExperimentalFeature("attention-sound");
   const serverText = useText(serverSettingsText);
-  // A section of an experimental feature shows only while it is on.
-  const settingsSections = shownSettingsSections(language).filter(
-    (entry) => entry.id !== "aanet" || soundsOn,
-  );
+  const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const { data: piModels, refresh: refreshModels } = usePiModels();
   const [localSection, setLocalSection] = useState(
@@ -602,8 +591,7 @@ export function AccountSettings({
   const searching = query.trim() !== "";
   // Keskustelut lives only in the server area, which is still experimental;
   // its route opens anyway, as the limit card's administrator link does.
-  const listed = (hit: SettingsHit) =>
-    hit.section !== "keskustelut" && (hit.section !== "aanet" || soundsOn);
+  const listed = (hit: SettingsHit) => hit.section !== "keskustelut";
   const hits = searching
     ? searchSettings(query, { admin: false }).filter(listed)
     : [];
@@ -1022,7 +1010,7 @@ export function AccountSettings({
             <GitIdentity csrf={csrf} />
           </div>
         )}
-        {section === "tili" && instructionsOn && (
+        {section === "tili" && (
           <>
             <h3 className="s-h3">{t.agentInstructions}</h3>
             <div className="s-card">
@@ -1174,7 +1162,7 @@ export function AccountSettings({
         {section === "kokeelliset" && (
           <ExperimentalFeatures identity={editorIdentity} csrf={csrf} />
         )}
-        {section === "aanet" && soundsOn && (
+        {section === "aanet" && (
           <SoundSettings
             identity={editorIdentity}
             csrf={csrf}

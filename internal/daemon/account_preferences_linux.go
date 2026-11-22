@@ -26,7 +26,7 @@ const AccountPreferencesPath = "/api/v1/account/preferences"
 // document, ~/.config/open-habitat/preferences.json: the desktop editor, the
 // interface language, the order and workspace of the rail's Hiljaiset section,
 // the workspaces its Sinun vuorosi and Käynnissä sections are narrowed to,
-// the attention sound (attention-sound, experimental), and experimental
+// the attention sound, and experimental
 // features they turned on. Only enabled features are kept, so
 // a feature that graduates or is removed leaves at most one stale key. A value
 // never chosen is absent: a language reads as "system", which leaves the

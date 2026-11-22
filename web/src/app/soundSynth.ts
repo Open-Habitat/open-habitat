@@ -1,4 +1,4 @@
-// The attention sounds (attention-sound, experimental), rendered in the
+// The attention sounds (attention-sound), rendered in the
 // browser from their recipes. No audio file ships: each sound is a few dozen
 // numbers, rendered once on first play in ~10–40 ms and kept for the page.
 //

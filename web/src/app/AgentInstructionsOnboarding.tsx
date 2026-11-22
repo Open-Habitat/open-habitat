@@ -12,7 +12,7 @@ import "./AgentInstructions.css";
 export type InstructionsOutcome = "saved" | "merged" | "later" | "kept";
 
 /** Onboarding's last step (issue new-user-agent-instructions-template,
- * A4.1; experimental agent-instructions): the note for the agent, written by
+ * A4.1): the note for the agent, written by
  * the page through the daemon's compare-and-swap write, then one plain
  * sentence with the technical facts folded away. Nothing is written by
  * "Tee myöhemmin" or "Jätä ennalleen". */

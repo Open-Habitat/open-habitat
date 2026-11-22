@@ -80,11 +80,11 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     expect(
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
+    await page.getByTestId("step-later").click({ timeout: 12000 });
+    await page.getByTestId("enter-habitat").click();
     await expect(
       page.getByRole("heading").and(page.getByTestId("workspaces-title")),
-    ).toBeVisible({
-      timeout: 12000,
-    });
+    ).toBeVisible();
     await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("pi-workspaces.png"),

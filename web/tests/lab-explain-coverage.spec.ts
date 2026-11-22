@@ -219,7 +219,7 @@ for (const width of [1440, 390]) {
       await signIn(page);
       await workspace(page);
       await survey(page, "workspace");
-      await page.getByTestId("rename-workspace").click();
+      await page.getByTestId("strip-name").click();
       await survey(page, "workspace-rename");
       await page.keyboard.press("Escape");
       await page.getByTestId("delete-workspace").click();

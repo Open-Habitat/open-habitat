@@ -16,7 +16,6 @@ import {
 import { Icon } from "../components/Icon";
 import { Dialog } from "../components/Overlays";
 import { PendingNote } from "../components/PendingNote";
-import { TextField } from "../components/Primitives";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import {
@@ -31,7 +30,6 @@ import { liveText } from "../i18n";
 import { workspacePageText } from "../text/workspacePage";
 import {
   chooseWorkspaceSound,
-  useExperimentalFeature,
   useSessionPreferences,
 } from "./accountPreferences";
 import { playSound } from "./attentionSound";
@@ -53,7 +51,6 @@ import { type IconSeen, useIconSuggestions } from "./workspaceIconSuggestions";
 import {
   iconPicker,
   iconSetting,
-  iconSourceLine,
   imageSuggestionReason,
   isImageCandidate,
   localSuggestions,
@@ -217,13 +214,8 @@ export function WorkspacePage({
   );
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryChoice, setRecoveryChoice] = useState<Choice>();
-  const actionButton = useRef<HTMLButtonElement>(null);
-  const [renameOpen, setRenameOpen] = useState(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [display, setDisplay] = useState(
-    workspace.display_name ?? workspace.name,
-  );
   const [hideNotice, setHideNotice] = useState(false);
   const hidden = workspace.visibility === "hidden";
   const isGit =
@@ -239,10 +231,6 @@ export function WorkspacePage({
     onChanged: onIconChanged,
     onLogin,
   });
-  const source = iconSourceLine(workspace);
-  // The settings strip (attention-sound, experimental) is the one place to
-  // change the icon and the name while it shows.
-  const strip = useExperimentalFeature("attention-sound");
   const soundPreferences = useSessionPreferences();
   const sound = soundPreferences.sound;
   const ownSound = sound.workspaces[workspace.workspace_id];
@@ -279,11 +267,6 @@ export function WorkspacePage({
     void onVisibility(next).then((ok) => {
       if (!ok && next) setHideNotice(false);
     });
-  };
-  const rename = () => {
-    if (!onRename || !csrf || workspace.mutation_state !== "allowed") return;
-    onRename(display);
-    setRenameOpen(false);
   };
   const displayPath = workspace.path?.endsWith(`/src/${workspace.name}`)
     ? `~/src/${workspace.name}`
@@ -365,7 +348,7 @@ export function WorkspacePage({
   return (
     <div className="ah-workspace-page">
       <header className="ah-workspace-page-head">
-        {icon && strip ? (
+        {icon ? (
           <span
             className="ah-workspace-head-icon"
             data-testid="workspace-head-icon"
@@ -385,20 +368,6 @@ export function WorkspacePage({
           <p data-testid="workspace-path">
             <code title={workspace.path}>{displayPath}</code>
           </p>
-          {icon && !strip ? (
-            <p
-              className="ah-workspace-icon-source"
-              data-testid="workspace-icon-source"
-            >
-              {txt.iconSource} {source.source}
-              {source.where ? (
-                <>
-                  {" · "}
-                  <code>{source.where}</code>
-                </>
-              ) : null}
-            </p>
-          ) : null}
           {hidden ? (
             <span className="ah-workspace-hidden">
               {txt.archived}{" "}
@@ -420,15 +389,9 @@ export function WorkspacePage({
         <WorkspaceActions
           page
           workspace={workspace}
-          renameRef={actionButton}
           onNew={onNew}
           onNewWorktree={onNewWorktree}
           newReason={startReason}
-          renameHidden={strip}
-          onRename={() => {
-            setDisplay(workspace.display_name ?? workspace.name);
-            setRenameOpen(true);
-          }}
           onHide={onVisibility ? () => archive(!hidden) : undefined}
           settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
           deleteRef={deleteButton}
@@ -439,48 +402,46 @@ export function WorkspacePage({
           }
         />
       </header>
-      {strip ? (
-        <WorkspaceStrip
-          workspaceId={workspace.workspace_id}
-          icon={iconPickerElement}
-          iconFrom={
-            icon
-              ? iconFrom(
-                  workspace,
-                  iconPicker(icon, workspace, iconWrite.pending).icon,
-                )
-              : undefined
-          }
-          name={workspace.display_name ?? workspace.name}
-          folder={displayPath}
-          onRename={
-            onRename && csrf && workspace.mutation_state === "allowed"
-              ? (value) => onRename(value)
-              : undefined
-          }
-          sound={ownSound ?? sound.default}
-          ownSound={ownSound}
-          defaultSound={sound.default}
-          length={sound.length}
-          enabled={sound.enabled}
-          onChooseSound={
-            soundPreferences.identity &&
-            soundPreferences.csrf &&
-            soundPreferences.loaded
-              ? (id) => {
-                  if (soundPreferences.identity && soundPreferences.csrf)
-                    void chooseWorkspaceSound(
-                      soundPreferences.identity,
-                      workspace.workspace_id,
-                      id,
-                      soundPreferences.csrf,
-                    );
-                }
-              : undefined
-          }
-          onPreview={(id, where) => playSound(id, sound.length, where)}
-        />
-      ) : null}
+      <WorkspaceStrip
+        workspaceId={workspace.workspace_id}
+        icon={iconPickerElement}
+        iconFrom={
+          icon
+            ? iconFrom(
+                workspace,
+                iconPicker(icon, workspace, iconWrite.pending).icon,
+              )
+            : undefined
+        }
+        name={workspace.display_name ?? workspace.name}
+        folder={displayPath}
+        onRename={
+          onRename && csrf && workspace.mutation_state === "allowed"
+            ? (value) => onRename(value)
+            : undefined
+        }
+        sound={ownSound ?? sound.default}
+        ownSound={ownSound}
+        defaultSound={sound.default}
+        length={sound.length}
+        enabled={sound.enabled}
+        onChooseSound={
+          soundPreferences.identity &&
+          soundPreferences.csrf &&
+          soundPreferences.loaded
+            ? (id) => {
+                if (soundPreferences.identity && soundPreferences.csrf)
+                  void chooseWorkspaceSound(
+                    soundPreferences.identity,
+                    workspace.workspace_id,
+                    id,
+                    soundPreferences.csrf,
+                  );
+              }
+            : undefined
+        }
+        onPreview={(id, where) => playSound(id, sound.length, where)}
+      />
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
           workspace={workspace}
@@ -663,37 +624,6 @@ export function WorkspacePage({
           }}
         />
       ) : null}
-      <div className="ah-workspace-rename">
-        <Dialog
-          triggerLabel={txt.rename}
-          title={txt.renameTitle}
-          returnFocusRef={actionButton}
-          isOpen={renameOpen}
-          onOpenChange={setRenameOpen}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              rename();
-            }}
-          >
-            <TextField
-              data-testid="workspace-name"
-              label={txt.displayName}
-              value={display}
-              onChange={setDisplay}
-            />
-            <ControlButton
-              data-testid="save-workspace-name"
-              size="page"
-              type="submit"
-              isDisabled={!csrf || !onRename}
-            >
-              {txt.save}
-            </ControlButton>
-          </form>
-        </Dialog>
-      </div>
       <section
         data-testid="open-conversations"
         aria-label={txt.openConversations}

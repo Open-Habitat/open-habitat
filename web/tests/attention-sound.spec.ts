@@ -4,7 +4,7 @@ import { settingsSections } from "../src/app/settingsIndex";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// The attention sound (issue attention-sound; experimental attention-sound):
+// The attention sound:
 // Settings › Äänet, the account menu's mute, the workspace strip, and one
 // sound when an agent's reply makes a conversation the person's turn. The
 // real daemon stores the personal choices in the synthetic home; mute and
@@ -31,13 +31,6 @@ async function headers(page: Page) {
   const s = await (await page.request.get("/auth/session")).json();
   return { Origin: new URL(page.url()).origin, "X-Agent-Host-CSRF": s.csrf };
 }
-async function enable(page: Page, on = true) {
-  const put = await page.request.put("/api/v1/account/preferences", {
-    headers: await headers(page),
-    data: { experimental: { "attention-sound": on } },
-  });
-  expect(put.status()).toBe(200);
-}
 async function sound(page: Page) {
   return (await (await page.request.get("/api/v1/account/preferences")).json())
     .sound;
@@ -53,20 +46,21 @@ const openWorkspace = async (page: Page, name: string) => {
   return new URL(page.url()).pathname.split("/").pop() ?? "";
 };
 
-test("@attention-sound off, nothing shows; on, the strip replaces the head's icon button and pencil and renames in place", async ({
+test("@attention-sound the strip is available without opting in and renames in place", async ({
   page,
 }) => {
   await signIn(page);
-  await openWorkspace(page, "ordinary-dir");
-  await expect(page.getByTestId("workspace-strip")).toHaveCount(0);
-  await expect(page.getByTestId("rename-workspace")).toBeVisible();
+  expect(await sound(page)).toMatchObject({
+    enabled: true,
+    night: true,
+    night_start: 22,
+    night_end: 7,
+  });
   await page.getByTestId("account-menu-trigger").click();
-  await expect(page.getByTestId("sound-menu-row")).toHaveCount(0);
+  await expect(page.getByTestId("sound-menu-row")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.goto("/settings");
-  await expect(page.getByTestId("settings-aanet")).toHaveCount(0);
-
-  await enable(page);
+  await expect(page.getByTestId("settings-aanet")).toBeVisible();
   await page.goto("/workspaces");
   await openWorkspace(page, "ordinary-dir");
   const strip = page.getByTestId("workspace-strip");
@@ -148,7 +142,6 @@ test("@attention-sound Settings › Äänet chooses the person's sound and lengt
   page,
 }) => {
   await signIn(page);
-  await enable(page);
   await page.goto("/settings/sounds");
   const settings = page.getByTestId("sound-settings");
   await expect(settings).toBeVisible();
@@ -249,7 +242,6 @@ for (const target of [
       };
     });
     await signIn(page);
-    await enable(page);
     await page.goto("/workspaces");
     const id = await openWorkspace(page, "ordinary-dir");
     const put = await page.request.put("/api/v1/account/preferences", {
@@ -334,7 +326,6 @@ test("@attention-sound night follows the local clock, edits persist and turning 
   page,
 }) => {
   await signIn(page);
-  await enable(page);
   await page.emulateMedia({ colorScheme: "dark" });
   await page.clock.install({ time: new Date("2026-11-22T21:59:00+02:00") });
   await page.goto("/settings/sounds");
@@ -425,7 +416,6 @@ test("@attention-sound all reasons have independent permanent fixes", async ({
   page,
 }) => {
   await signIn(page);
-  await enable(page);
   await page.clock.setFixedTime(new Date("2026-11-22T23:00:00+02:00"));
   await page.goto("/settings/sounds");
   await page
@@ -495,7 +485,6 @@ test("@attention-sound night explanation maps its actions and prevents permanent
   page,
 }) => {
   await signIn(page);
-  await enable(page);
   await page.request.put("/api/v1/account/preferences", {
     headers: await headers(page),
     data: { experimental: { "explain-mode": true } },

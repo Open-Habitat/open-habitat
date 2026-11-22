@@ -89,12 +89,12 @@ test("@mutation-layer archive, undo and rename show before the host answers, at 
   await expect(listed(page)).toBeVisible();
   expect(snapshots).toEqual([]);
 
-  // Rename: the dialog closes and the new name shows before the reply.
+  // Rename: the inline editor closes and the name shows before the reply.
   const renameHeld = await holdWrites(page);
-  await page.getByTestId("rename-workspace").click();
-  await page.getByTestId("workspace-name").fill("Tavallinen");
-  await page.getByTestId("save-workspace-name").click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByTestId("strip-name").click();
+  await page.getByTestId("strip-name-input").fill("Tavallinen");
+  await page.getByTestId("strip-name-input").press("Enter");
+  await expect(page.getByTestId("strip-name-input")).toHaveCount(0);
   await expect(page.locator("main h1")).toHaveText("Tavallinen");
   await expect(listed(page, "Tavallinen")).toBeVisible();
   const renamed = page.waitForResponse(
@@ -132,9 +132,9 @@ test("@mutation-layer a refused rename reverts in place with its reason", async 
         })
       : route.continue(),
   );
-  await page.getByTestId("rename-workspace").click();
-  await page.getByTestId("workspace-name").fill("Ei tule");
-  await page.getByTestId("save-workspace-name").click();
+  await page.getByTestId("strip-name").click();
+  await page.getByTestId("strip-name-input").fill("Ei tule");
+  await page.getByTestId("strip-name-input").press("Enter");
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
   await expect(listed(page)).toBeVisible();

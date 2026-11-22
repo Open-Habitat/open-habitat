@@ -536,7 +536,7 @@ export interface AgentNavModel {
   attentionLabel?: string;
   /** What made the row the person's turn, when the agent did: a new reply
    * ("reply:<id>") or a question. A new key is what the attention sound
-   * plays for (attention-sound, experimental). */
+   * plays for (attention-sound). */
   readyKey?: string;
   operationLabel?: string;
   historyLabel?: string;

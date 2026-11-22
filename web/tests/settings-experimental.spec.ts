@@ -11,11 +11,11 @@ const features = [
   "rewind-conversation",
   "remote-browser",
   "multiplayer",
-  "agent-instructions",
-  "attention-sound",
   "adaptive-rail",
 ];
 const retired = [
+  "agent-instructions",
+  "attention-sound",
   "terminal-copy-on-select",
   "terminal-open-urls",
   "storage-breakdown",
