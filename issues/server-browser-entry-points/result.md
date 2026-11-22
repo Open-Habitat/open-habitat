@@ -1,90 +1,94 @@
-# Palvelinselaimen avauspaikat
+# Palvelinselaimen paikka: sivupalkki, siru vai molemmat
 
 ## Saatesanat
 
-Molemmille on käyttöä, jos ne eivät lupaa samaa asiaa. Sivupalkista pääset
-omaan selaimeesi riippumatta siitä, mitä keskustelua luet. Kentän luona taas
-kiinnostavat tämän agenttityön ikkunat ja juuri nyt sinua tarvitseva ikkuna.
+Molempia ei tarvita. Nykyään siru ja sivupalkin rivi näyttävät saman koko
+selaimen, ja siru on jokaisessa keskustelussa. Siksi agentin pyyntö avaa
+nauhan myös keskusteluun, jolla ei ole selaimen kanssa mitään tekemistä.
+Selaimia on yksi ja se on sinun, joten sen paikka on sivupalkissa.
+Keskustelun kuuluu näyttää vain se, mitä sen oma agentti teki selaimessa.
 
-Suosittelen **suuntaa 3, Molemmat**. Siinä sivupalkin **Oma selain** avaa kaikki
-kolme omaa ikkunaa ja **Tämän keskustelun ikkunat · 2** rajaa näkymän tähän
-työhön. Vaihda sivupalkista toiseen keskusteluun: siru katoaa, mutta selaimeen
-pääsee yhä. Katselu ei vie ohjausta agentilta.
+Suosittelen **suuntaa 2, Rivi**. Sivupalkin **Oma selain** on ainoa ovi:
+sieltä selaimen voi käynnistää, siellä voi kirjautua etukäteen ja nähdä
+kaikki ikkunat. Keskustelussa, jonka agentti käyttää selainta, työ näkyy
+agentin komentojen alla aikajanassa: sen kaksi ikkunaa, pyyntö sekä
+painikkeet **Ota ohjaus ja hoida** ja **Katso ensin**. Kun työ on valmis,
+siitä jää rivi. Toinen keskustelu pysyy puhtaana. Pyyntö näkyy siellä
+sivupalkin rivillä ja Sinun vuorosi -osiossa, puhelimessa valikkopainikkeen
+merkissä.
 
-Tärkeä ero nykytilaan: host ei vielä kerro, mihin keskusteluun ikkuna kuuluu.
-Vedos näyttää halutun eron, ei jo olemassa olevaa rajausta. Tätä ei pidä
-ratkaista nimeämällä nykyinen yhteinen ikkunalista keskustelukohtaiseksi.
+Keskustelun ja ikkunan yhteyttä varten ei tarvita uutta tietoa hostilta.
+Keskustelun omat komennot kertovat sen: `agent browser goto` palauttaa
+välilehden, ja `agent browser request --window` nimeää pyytävän ikkunan.
+Jos yhteys ei löydy keskustelusta, pyyntö näkyy vain sivupalkissa. Omistajaa
+ei arvata.
 
 ## Suunnat
 
-| Suunta | Päätös | Hinta |
-| --- | --- | --- |
-| 1 Siru | Pääovi kentän luona; huomiorivi sivupalkissa vain pyynnön aikana | Selaimen löytäminen ilman siihen liittyvää keskustelua on epäsuorempaa. Sirun kautta voi silti avata kaikki ikkunat. |
-| 2 Rivi | Yksi avauspaikka sivupalkissa; keskustelussa vain selaintyön tekstirivi | Selkeä omistus, mutta pyynnön hoitaminen vaatii siirtymisen sivupalkkiin, puhelimessa sen avaamisen ensin. |
-| 3 Molemmat | Koko oma selain ja tämän keskustelun ikkunat ovat eri rajaukset | Kaksi ovea on perusteltava oikealla keskustelutiedolla, ei vain eri nimillä. |
+Oletusnäkymä on kaikissa sama: agentti keskustelussa *Sähkölaskut 2026*
+odottaa, että vahvistat kirjautumisen. Selaimessa on kaksi agentin
+välilehteä ja yksi oma ikkuna. Sivun yläreunassa on kustakin suunnasta yksi
+rivi ja suositus.
 
-Oletusnäkymässä on sama agentin työ ja kirjautumisvahvistusta odottava ikkuna.
-Yläpalkissa on kustakin suunnasta yksi rivi sekä kieli-, teema- ja tilannevalinta.
-Kaikissa suunnissa voi katsoa ikkunaa, ottaa ohjauksen, simuloida vahvistuksen
-ja palauttaa ohjauksen. Sivupalkin toinen keskustelu ja henkilökohtainen kolmas
-ikkuna tekevät rajauksen näkyväksi.
+| Suunta | Mitä se päättää | Hinta |
+| --- | --- | --- |
+| 1 Siru | Selain asuu kentän yllä jokaisessa keskustelussa, kuten nyt. Sivupalkkiin tulee rivi vain, kun ikkuna odottaa, ja rivi kertoo, mikä keskustelu pyytää. | Pyyntö avaa nauhan myös asiaan liittymättömässä keskustelussa, puhelimessa lähes koko ruudun kokoisena. Selaimen avaaminen ilman keskustelua ei onnistu ilman sirua. |
+| 2 Rivi | Sivupalkki on selaimen koti. Keskustelu näyttää vain oman agenttinsa selaintyön ja pyynnön omassa kulussaan, valmiista työstä jää rivi. | Elävä näkymä vierii ylös, jos keskusteluun kirjoitetaan agentin työskennellessä. Koko selaimen saa auki vain sivupalkista, puhelimessa valikon takaa. |
+| 3 Kaksi | Sivupalkissa on koko selain. Siru on vain keskustelussa, jonka agentti käyttää selainta, ja siinä on vain sen ikkunat ja rajausrivi. | Kaksi ovea, joista sirun rajaus pitää selittää tekstillä. Siru katoaa, kun agentti on valmis, eikä työstä jää jälkeä keskusteluun. |
+
+Kaikissa suunnissa toimivat Ota ohjaus ja hoida, Anna takaisin agentille
+(jonka jälkeen agentti jatkaa), Katso isona, Escape, pysähtyneen selaimen
+avaus suunnan omasta ovesta ja valmis keskustelu. Siru, nauha, sivupalkin
+rivi ja katselunäkymä ovat tuotannon komponentteja.
 
 ## Questions for Jari
 
-1. Valitaanko suunta 3: sivupalkki koko omalle selaimelle, siru vain tämän
-   keskustelun ikkunoille?
-2. Riittääkö toisessa keskustelussa sivupalkin huomiomerkki (puhelimessa
-   sivupalkin avauspainikkeessa), vai pitääkö pyyntö tuoda kentän luo sielläkin?
+1. Valitaanko suunta 2: selain vain sivupalkissa, ja keskustelu näyttää oman
+   agenttinsa selaintyön aikajanassa?
+2. Riittääkö toisessa keskustelussa pyynnön merkiksi sivupalkin rivi ja
+   Sinun vuorosi, vai pitääkö pyynnön näkyä kentän yllä jokaisessa
+   keskustelussa? Jälkimmäinen on suunnan 1 käytös, joka nyt on tuotannossa.
 
 ## Decisions for later review
 
-- **Siru piiloon asiaan liittymättömässä keskustelussa (3).** Vaihtoehto on
-  näyttää yhteinen selain kaikkialla kuten nyt. Piilotus tekee sirun rajauksesta
-  todellisen ja vähentää toisen keskustelun hälyä.
-- **Pyyntö ei kaappaa katselunäkymää tai ohjausta.** Se näkyy kentän yllä ja
-  avautuu painalluksesta. Vaihtoehto on automaattisesti avautuva iso näkymä;
-  lukemisen ja kirjoittamisen jatkuvuus painaa tässä enemmän.
-- **Puhelimessa globaali huomio näkyy sivupalkin avaajassa.** Vaihtoehtona
-  erillinen pysyvä selainpainike; sitä ei lisätty kolmanneksi avauspaikaksi.
-- **Keskustelun ja ikkunan yhteys on synteettinen oletus.** Tuotannon
-  `BrowserWindow.agent` ja `BrowserRequest.window` eivät sisällä keskustelun
-  tunnistetta. Mahdollinen hostin raportointi suunnitellaan erikseen valinnan
-  jälkeen. Tuntemattomasta yhteydestä ei saa arvata omistajaa.
+- **Keskustelun ikkunat luetaan keskustelun omista komennoista.**
+  Vaihtoehtoina olisivat hostin raportoima keskustelutunniste tai yhteinen
+  ikkunalista kaikkialla. Komennot ovat jo natiivissa historiassa, joten
+  uutta varastoa tai sopimuskenttää ei tarvita. Toteutus tarvitsee
+  sovelluskerrokseen komentojen tulkinnan (`goto`-tuloksen `tab`,
+  `request --window`). Ellei yhteys löydy, ikkuna kuuluu vain sivupalkkiin.
+- **Suunnassa 2 pyyntö ei avaa mitään itsestään.** Tuotanto avaa nauhan
+  kerran uuden pyynnön tullessa. Suunnassa 2 pyyntö on keskustelun viimeinen
+  kohta, ja agentin vuoro on päättynyt odottamaan, joten erillistä avausta
+  ei tarvita.
+- **Pyynnön jälkeen agentti jatkaa, kun ohjaus palautetaan.** Prototyyppi
+  olettaa, että palauttaminen tarkoittaa vahvistuksen tehdyksi. Tuotannossa
+  agentti tarkistaa sivun itse.
+- **Suunnan 3 nimi on Kaksi, ei Molemmat.** Yhteinen valitsin ei saa
+  rivittyä puhelimessa, ja pidempi nimi rivittyi.
+- **Puhelimen valikkopainikkeen merkki näyttää pyynnön.** Tämä on tuotannon
+  `navigationBadge`. Erillistä pysyvää selainpainiketta ei lisätty
+  kolmanneksi oveksi.
 
 ## Toimitus ja näyttö
 
-Lähteet: `design-system/prototypes/rounds/2026-11-22-server-browser-entry/`.
-Rakennus ja tarkistuksen käyttö on kierroksen `NOTES.md`:ssä.
+Lähteet: `design-system/prototypes/rounds/2026-11-22-server-browser-entry-points/`.
+Rakennus- ja tarkistuskomennot ovat kierroksen `NOTES.md`:ssä. OpenAI-kierros
+`2026-11-22-server-browser-entry` poistettiin, ja se on luettavissa
+Git-historiasta.
 
-Rakennettu itsenäinen sivu tällä työhostilla:
-`/var/tmp/agent-keep/server-browser-entry-points/offline.html`.
-Sivu ja kuvat eivät kuulu gitiin. Tarkistuksen kuvat ovat saman hakemiston
-`check/`-alihakemistossa. `current-sheet.{png,html}` ja
-`current-rail.{png,html}` näyttävät tuotannon nykytilaa synteettisessä labissa;
-niitä ei ole kuvattu oikeasta asennuksesta. Lab suljettiin tarkastelun jälkeen.
-
-Lähtöcommit: `763d97b73cd478fb993340d0c78d4f00d86212b5`. Tarkistettu puu on
-sitä seuraava tämän kierroksen lähde; muutokset rajoittuvat kierrokseen ja tähän
-issueen. Ei tuotantokoodin, sopimuksen, daemonin tai käyttöoikeuksien muutoksia.
+Rakennettu sivu tällä työhostilla:
+`/var/tmp/agent-keep/server-browser-entry-points/offline.html`. Tarkistuksen
+kuvat ovat saman hakemiston `check/`-alihakemistossa. Hylätyn kierroksen
+aineisto on siirretty alihakemistoon `discarded-openai-round/`. Sivu ja kuvat
+eivät kuulu gitiin.
 
 ## Tarkistus ja rajat
 
-- Offline-build ja kierroksen `check.mjs`: **36 yhdistelmää läpi** (3 suuntaa ×
-  fi/en × 1440/390 px × päivä/yö/kontrasti). Rajaukset, pyynnöt, ohjaus,
-  palautus, käynnistys, näppäimistösulkeminen, valitsin, vaakaylivuoto ja
-  verkkopyyntöjen puuttuminen tarkistettu. Konsoli puhdas.
-- Axe: sovellusalue, kaikki kolme suuntaa suomeksi vaaleana 390 px:ssä, ei
-  havaintoja. Ei väitettä koko tuotteen saavutettavuudesta.
-- Kuvista katsottu suosituksen työpöytänäkymä, rivisuunta tummana englanniksi,
-  sirusuunta puhelimessa ja koko selaimen dialogi puhelimessa tummana.
-- Nykyinen sivupalkki ja read-only-katselin avattu oikeilla tuotantokomponenteilla
-  synteettisessä labissa. Se ei ole oikean palvelimen tai Chrome-palvelun hyväksyntä.
-- `python3 scripts/validate-project-view.py`, `issuectl doctor --json` ja
-  `git diff --check`: läpi; Project View valid (16 pages), doctor ilman havaintoja.
-- Katselmointitaso: oma lähde-, toiminta- ja kuvakatselmointi. Riittävä
-  eristetylle esityskieliprototyypille; riippumatonta LLM-katselmointia ei
-  tarvittu, koska natiivisessioihin, tilanomistukseen tai turvarajoihin ei koskettu.
-- Ei koko selainpakettia, Go-testejä, clean gatea eikä live-asennuksen muutosta:
-  tämä ei ole tuotantototeutus. Vaadittuja prototyyppitarkistuksia ei jäänyt ajamatta.
-
-Issue jää tilaan `testing` odottamaan Jarin suunnanvalintaa.
+- Kierroksen `check.mjs` antoi **531 tarkistusta läpi** 24 yhdistelmässä:
+  3 suuntaa × 1440/390 px × Päivä/Yö/Kontrasti suomeksi sekä Päivä
+  englanniksi. Mukana olivat `picker-check.mjs`, vaakaylivuoto, ulkoisten
+  pyyntöjen puuttuminen ja konsoli. Konsoli pysyi puhtaana.
+- Kierros on synteettinen komponenttilabra. Se ei todista noVNC-yhteyttä,
+  ikkunakuvien hakua eikä komentojen tulkintaa oikeasta historiasta.
+  Tuotantokoodia, sopimusta, daemonia tai käyttöoikeuksia ei muutettu.
