@@ -40,10 +40,7 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
  * decoration: the facts beside it say the same in words. */
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
-  if (
-    id === "rewind-conversation" ||
-    id === "multiplayer"
-  )
+  if (id === "rewind-conversation" || id === "multiplayer")
     body = (
       <>
         <span className="ex-ghost" />

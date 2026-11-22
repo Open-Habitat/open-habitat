@@ -7,11 +7,7 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
 });
-const features = [
-  "rewind-conversation",
-  "remote-browser",
-  "multiplayer",
-];
+const features = ["rewind-conversation", "remote-browser", "multiplayer"];
 const retired = [
   "agent-instructions",
   "attention-sound",

@@ -39,7 +39,7 @@ async function put(page: Page, data: object) {
 }
 
 // Wire seam: four conversations waiting for the person (opened, never
-// written to) and four whose worker waits at its prompt (Käynnissä), half
+// written to) and four whose worker is working (Käynnissä), half
 // in each workspace: even n in the first, odd n in the second.
 async function sectionWorld(page: Page) {
   const ids: { first?: string; second?: string; third?: string } = {};
@@ -98,7 +98,7 @@ async function sectionWorld(page: Page) {
         ...[0, 1, 2, 3].map((n) => ({
           ...agent(runningId(n), n, `Worker ${n}`),
           history: "readable",
-          spinoffs_idle: 1,
+          spinoffs_working: 1,
         })),
       ];
     }
