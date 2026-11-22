@@ -28,3 +28,9 @@ a research report with a recommended design; no product change yet.
 ## Acceptance Criteria
 
 - [x] Sourced report in result.md distinguishes vault, filled credential and session protection, verifies the actual CDP access path, and proposes follow-ups without changing product code.
+
+## Decisions
+
+### 2026-11-22T12:34:08Z · @jari
+
+Jari 22.11.2026: option 1. The vault stays on the person's own device; only the credential needed is moved into the server browser with 'Kirjoita näppäilyinä' (keystrokes, no clipboard, no logs). Accepted honestly: the moved credential and the session are not protected from the agent (same level as the clipboard decision). No server-side Bitwarden. Follow-up: server-browser-password-entry-notice.
