@@ -1,0 +1,143 @@
+/* The rail's place icons. Review chrome, then three rails at the adaptive
+   rail's three steps (rail-space round 2), then the icon row in both themes
+   at 1x and 2x, then pixels and the distinctness measure. Tokens only. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui, 14px)/1.4 var(--ah-font); }
+#stage { padding-bottom: 84px; }
+.rit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+.rit-bar { display: grid; gap: 8px; }
+.rit-bar h1 { margin: 0; font-size: var(--ah-size-h2, 18px); }
+.rit-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-muted); font-size: var(--ah-size-meta, 13px); }
+.rit-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rit-rec { margin: 0; color: var(--ah-accent-ink); font-size: var(--ah-size-meta, 13px); }
+.rit-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: var(--ah-size-meta, 13px); }
+.rit-controls select { font: inherit; max-width: 100%; }
+.rit-seg { display: inline-flex; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); overflow: hidden; }
+.rit-seg button { border: 0; padding: 3px 10px; background: var(--ah-surface); color: var(--ah-ink); font: inherit; cursor: pointer; }
+.rit-seg button[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-weight: 600; }
+.rit-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.rit-panel h2 { margin: 0; font-size: var(--ah-size-ui, 14px); }
+.rit-panel h2 small { margin-inline-start: 6px; color: var(--ah-muted); font-weight: 400; }
+
+/* ---------- Three rails ---------- */
+.rit-rails { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.rit-col { display: grid; gap: 6px; width: var(--ah-rail-width, 296px); max-width: 100%; }
+.rit-cap { margin: 0; color: var(--ah-muted); font-size: 12px; font-weight: 600; }
+.rit-rail {
+  display: grid; gap: 10px; align-content: start; padding: 10px; box-sizing: border-box;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-rail);
+}
+.rit-title { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+.rit-title strong { font-size: 14px; }
+.rit-ok { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); }
+
+.rit-head { display: grid; gap: 6px; }
+.rit-icons { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.rit-tiles { grid-template-columns: 1fr 1fr; gap: 4px; }
+.rit-rows { gap: 2px; }
+.rit-icon-item, .rit-tile, .rit-row, .rit-door, .rit-ib, .rit-person {
+  position: relative; box-sizing: border-box; margin: 0; min-width: 0;
+  border-radius: var(--ah-r-md); color: var(--ah-ink-2, var(--ah-ink)); font: inherit; cursor: pointer;
+}
+.rit-icon-item { display: grid; place-items: center; height: 34px; padding: 0; border: 1px solid var(--ah-line-soft); background: var(--ah-surface); }
+.rit-tile { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 8px; border: 1px solid var(--ah-line-soft); background: var(--ah-surface); font-size: 12.5px; text-align: start; }
+.rit-row { display: flex; align-items: center; gap: var(--ah-s3, 10px); min-height: 32px; padding: 4px var(--ah-s3, 10px); border: 0; background: transparent; color: var(--ah-ink); font-weight: 600; text-align: start; }
+:is(.rit-icon-item, .rit-tile, .rit-row, .rit-door, .rit-ib, .rit-person):hover { background: var(--ah-surface-hover); color: var(--ah-ink); }
+:is(.rit-icon-item, .rit-tile, .rit-row, .rit-door, .rit-ib, .rit-person):focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+/* The current place: production's current-row surface and line. */
+:is(.rit-icon-item, .rit-tile, .rit-row)[aria-current="page"] { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rit-mark { position: relative; display: grid; place-items: center; flex: none; }
+.rit-label { display: grid; flex: 1; min-width: 0; }
+.rit-label b { overflow: hidden; font-weight: 600; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.rit-tile .rit-label b { color: var(--ah-ink); white-space: normal; line-height: 1.15; }
+.rit-label small, .rit-state { overflow: hidden; color: var(--ah-muted); font-size: 11px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.rit-state { flex: none; max-width: 48%; }
+[data-state="agent"] :is(.rit-label small, .rit-state) { color: var(--ah-ok); }
+/* Waiting for you: the your-turn colour, as Sinun vuorosi, with the word. */
+[data-state="ask"] :is(.rit-label small, .rit-state) { color: var(--ah-turn); font-weight: 600; }
+[data-state="ask"] > .rit-mark { color: var(--ah-turn); }
+.rit-door { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border: 1px solid var(--ah-line-soft); background: var(--ah-surface); color: var(--ah-muted); font-size: 13px; text-align: start; }
+.rit-door span { flex: 1; }
+.rit-door kbd { font: 11px var(--ah-mono); color: var(--ah-faint); }
+
+/* Badges: a count (new outputs), a dot (agent working: ok, pulsing;
+   waiting for you: turn). Never colour alone: the tile says it in a second
+   line, the row in a word, the icon row in its tooltip and name. */
+.rit-count {
+  position: absolute; top: -7px; right: -9px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 999px; background: var(--ah-accent); color: var(--ah-on-accent);
+  font: 600 10px/15px var(--ah-font); text-align: center; box-shadow: 0 0 0 2px var(--ah-surface);
+}
+.rit-count-inline { position: static; flex: none; box-shadow: none; }
+.rit-dot { position: absolute; right: -4px; bottom: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); box-shadow: 0 0 0 2px var(--ah-surface); }
+.rit-row .rit-dot { box-shadow: 0 0 0 2px var(--ah-rail); }
+.rit-dot[data-state="ask"] { background: var(--ah-turn); }
+@media (prefers-reduced-motion: no-preference) { .rit-dot[data-state="agent"] { animation: rit-pulse 1.6s ease-in-out infinite; } }
+@keyframes rit-pulse { 50% { opacity: 0.35; } }
+
+/* Tooltips as production's: shown on hover and keyboard focus. */
+.rit-tip {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 220px; padding: 4px 8px; border-radius: var(--ah-r-sm);
+  background: var(--ah-ink); color: var(--ah-bg); font: 400 12px/1.35 var(--ah-font); text-align: start; white-space: normal;
+  pointer-events: none; display: none;
+}
+.rit-row .rit-tip, .rit-tile .rit-tip { left: 12px; transform: none; }
+/* Hidden tips are display: none, so they never widen the page. */
+:is(.rit-icon-item, .rit-tile, .rit-row, .rit-ib):is(:hover, :focus-visible) > .rit-tip { display: block; }
+.rit-shelf .rit-tip { top: auto; bottom: calc(100% + 6px); left: auto; right: 0; transform: none; }
+
+.rit-sec { display: grid; gap: 4px; }
+.rit-sec h4 { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 4px; color: var(--ah-muted); font-size: 12px; font-weight: 600; }
+.rit-sec ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.rit-n { color: var(--ah-faint); font-weight: 400; }
+.rit-sec h4 .rit-ib { margin-inline-start: auto; }
+.rit-conv { display: flex; align-items: center; gap: 8px; padding: 4px 6px; font-size: 13px; }
+.rit-conv span:last-child { display: grid; min-width: 0; }
+.rit-conv b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rit-conv small { color: var(--ah-muted); font-size: 11px; }
+.rit-cdot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-turn); }
+.rit-cdot[data-k="run"] { background: var(--ah-ok); }
+.rit-wsrow { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 2px 0 6px; border-radius: var(--ah-r-md); font-size: 13px; }
+.rit-wsrow.is-hover { background: var(--ah-surface-hover); }
+.rit-wsrow b { flex: 1; font: 500 12.5px var(--ah-mono); }
+.rit-glyph { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; background: hsl(var(--h) 40% 50% / 0.2); color: var(--ah-ink); font: 600 9px var(--ah-font); }
+.rit-ib { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--ah-muted); }
+.rit-ib[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.rit-shelf { position: relative; display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid var(--ah-line); }
+.rit-person { display: flex; flex: 1; align-items: center; gap: 8px; min-height: 32px; padding: 0 6px; border: 0; background: transparent; color: var(--ah-ink); font-size: 13px; text-align: start; }
+.rit-avatar { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 11px var(--ah-font); }
+.rit-menu {
+  position: absolute; z-index: 30; bottom: calc(100% + 4px); left: 0; right: 0; display: grid; gap: 2px; padding: 8px;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu);
+}
+.rit-menu small { margin-bottom: 4px; color: var(--ah-muted); }
+.rit-menu button { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 8px; border: 0; border-radius: var(--ah-r-sm); background: transparent; color: var(--ah-ink); font: inherit; text-align: start; cursor: pointer; }
+.rit-menu button:hover { background: var(--ah-surface-hover); }
+.rit-menu .rit-danger { color: var(--ah-err); }
+
+/* ---------- The icon row in both themes, 1x and 2x ---------- */
+.rit-pair { display: flex; flex-wrap: wrap; gap: 12px; }
+.rit-swatch { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 14px; border-radius: var(--ah-r-md); background: var(--ah-rail); color: var(--ah-ink); }
+.rit-z1 { width: 252px; }
+.rit-z2 { width: 252px; zoom: 2; }
+.rit-swatch .rit-tip { display: none !important; }
+
+/* ---------- Pixels ---------- */
+.rit-px { display: flex; flex-wrap: wrap; gap: 10px; }
+.rit-pxcell { margin: 0; display: grid; gap: 4px; }
+.rit-pxrow { display: flex; gap: 2px; }
+.rit-pxrow canvas { width: 54px; height: 54px; image-rendering: pixelated; border-radius: 3px; background: var(--ah-sunken); }
+.rit-pxcell figcaption { display: flex; align-items: center; gap: 6px; color: var(--ah-muted); font-size: 12px; }
+.rit-real { display: grid; color: var(--ah-ink); }
+.rit-dist { margin: 0; font-size: 13px; }
+.rit-matrix table { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.rit-matrix th, .rit-matrix td { padding: 4px 8px; border: 1px solid var(--ah-line-soft); text-align: center; }
+.rit-matrix th svg { display: block; margin: 0 auto; }
+.rit-matrix .rit-self { color: var(--ah-faint); }
+.rit-matrix .rit-mid { background: var(--ah-accent-soft); }
+.rit-matrix .rit-bad { background: var(--ah-err-soft); color: var(--ah-err); font-weight: 600; }
+
+.rit-toast { position: fixed; left: 50%; bottom: 72px; z-index: 60; transform: translateX(-50%); padding: 6px 12px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); font-size: 13px; }
+/* A narrow window scrolls the wide specimens in place, not the page. */
+.rit-swatch, .rit-matrix { max-width: 100%; box-sizing: border-box; overflow-x: auto; }
+.rit-pair > * { min-width: 0; }
