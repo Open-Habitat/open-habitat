@@ -1,9 +1,10 @@
-import { Fragment, useId, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import {
   type Counts,
   eventCounts,
   type FileChange,
   type FileEvent,
+  snapshotPatch,
   totalCounts,
   unifiedDiff,
 } from "../app/turnChanges";
@@ -31,6 +32,10 @@ export type TurnChangesProps = {
   interims?: number[];
   /** Opens a workspace file in the editor; absent where none is offered. */
   onOpen?: (path: string, line?: number) => void;
+  /** Files the turn's snapshots could not record, by name, and how many
+   * more there were. */
+  unrecorded?: string[];
+  unrecordedMore?: number;
 };
 
 function CountsText({ c }: { c?: Counts }) {
@@ -67,7 +72,17 @@ function Tags({ f }: { f: FileChange }) {
           {txt.deleted}
         </span>
       ) : null}
-      {f.command ? (
+      {f.change === "added" ? (
+        <span className="ah-tc-tag" data-tag="added">
+          {txt.added}
+        </span>
+      ) : null}
+      {f.change === "renamed" ? (
+        <span className="ah-tc-tag" data-tag="renamed">
+          {txt.renamed}
+        </span>
+      ) : null}
+      {f.command || f.byCommand ? (
         <span className="ah-tc-tag" data-tag="command">
           {txt.byCommand}
         </span>
@@ -96,6 +111,43 @@ function Note({
   );
 }
 
+/** The turn's change to one file as Git compares its two snapshots, read
+ * when the file is opened. */
+function SnapshotDiff({ f }: { f: FileChange }) {
+  const [read, setRead] = useState<
+    { patch: string; truncated: boolean } | "failed"
+  >();
+  const load = f.snapshotDiff;
+  useEffect(() => {
+    if (!load) return;
+    let current = true;
+    load()
+      .then((d) => {
+        if (current)
+          setRead({ patch: snapshotPatch(d.diff), truncated: d.truncated });
+      })
+      .catch(() => {
+        if (current) setRead("failed");
+      });
+    return () => {
+      current = false;
+    };
+  }, [load]);
+  if (!read) return null;
+  if (read === "failed") return <Note icon="file">{txt.diffUnread}</Note>;
+  if (!read.patch) return <Note icon="file">{txt.noLines}</Note>;
+  return (
+    <>
+      <FileToolCard
+        name="edit"
+        argumentsText={JSON.stringify({ path: f.path })}
+        output={read.patch}
+      />
+      {read.truncated ? <Note icon="file">{txt.diffCut}</Note> : null}
+    </>
+  );
+}
+
 /** The turn's whole change to one file. */
 function FileDiff({
   f,
@@ -107,7 +159,9 @@ function FileDiff({
   const edits = f.events.flatMap((e) => e.edits ?? []);
   const lastWrite = f.events.findLast((e) => e.content !== undefined);
   let body: React.ReactNode = null;
-  if (f.change === "deleted")
+  if (f.snapshotDiff) body = <SnapshotDiff f={f} />;
+  else if (f.binary) body = <Note icon="file">{txt.binary}</Note>;
+  else if (f.change === "deleted")
     body = (
       <>
         <Note icon="file">
@@ -171,12 +225,19 @@ function FileDiff({
         {f.firstLine ? txt.openEditorAt(f.firstLine) : txt.openEditor}
       </ControlButton>
     ) : null;
+  // With snapshots the diff is known whatever made the change; the note
+  // only says what did, when the tool calls tell.
+  const known = f.snapshotDiff || f.binary || f.byCommand !== undefined;
   return (
     <div className="ah-tc-diff" data-testid="turn-changes-diff">
+      {f.oldPath ? <Note icon="file">{txt.renamedFrom(f.oldPath)}</Note> : null}
       {f.command ? (
         <Note icon="terminal">
-          {txt.commandNote} <code>{f.command}</code>. {txt.commandSource}
+          {txt.commandNote} <code>{f.command}</code>.{" "}
+          {known ? null : txt.commandSource}
         </Note>
+      ) : f.byCommand ? (
+        <Note icon="terminal">{txt.byCommandNote}</Note>
       ) : null}
       {body}
       {editor ? <div className="ah-tc-actions">{editor}</div> : null}
@@ -386,6 +447,8 @@ export function TurnChanges({
   end,
   interims = [],
   onOpen,
+  unrecorded = [],
+  unrecordedMore = 0,
 }: TurnChangesProps) {
   const [open, setOpen] = useState(false);
   const [timeline, setTimeline] = useState(false);
@@ -484,6 +547,20 @@ export function TurnChanges({
               })}
             </ul>
           )}
+          {unrecorded.length || unrecordedMore ? (
+            <div data-testid="turn-changes-unrecorded">
+              <Note icon="file">
+                {txt.unrecorded(unrecorded.length + unrecordedMore)}{" "}
+                {unrecorded.map((p, i) => (
+                  <Fragment key={p}>
+                    {i ? ", " : null}
+                    <code>{p}</code>
+                  </Fragment>
+                ))}
+                {unrecordedMore ? ` ${txt.more(unrecordedMore)}` : null}
+              </Note>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

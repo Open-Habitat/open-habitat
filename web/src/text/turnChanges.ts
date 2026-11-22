@@ -35,6 +35,19 @@ const fi = {
   steps: "Muutokset ja lopputulos",
   unread: "Vuoron muutoksia ei voitu lukea.",
   retry: "Yritä uudelleen",
+  added: "uusi",
+  renamed: "siirretty",
+  renamedFrom: (path: string) => `Siirretty nimestä ${path}.`,
+  byCommandNote: "Muuttui komennolla tai skriptillä.",
+  binary: "Binääritiedosto: rivimuutoksia ei näytetä.",
+  noLines: "Sisältö ei muuttunut, vain tiedoston nimi tai oikeudet.",
+  diffUnread: "Muutosta ei voitu lukea.",
+  diffCut: "Muutos on pitkä, ja vain sen alku näytetään.",
+  unrecorded: (n: number): string =>
+    n === 1
+      ? "Tätä tiedostoa ei tallennettu vuoron tilannekuvaan:"
+      : "Näitä tiedostoja ei tallennettu vuoron tilannekuvaan:",
+  more: (n: number) => `ja ${n} muuta`,
 };
 
 export const turnChangesText = catalog(fi, {
@@ -68,4 +81,17 @@ export const turnChangesText = catalog(fi, {
   steps: "Changes and result",
   unread: "The turn's changes could not be read.",
   retry: "Try again",
+  added: "new",
+  renamed: "moved",
+  renamedFrom: (path) => `Moved from ${path}.`,
+  byCommandNote: "Changed by a command or script.",
+  binary: "Binary file: line changes are not shown.",
+  noLines: "The content did not change, only the file's name or mode.",
+  diffUnread: "The change could not be read.",
+  diffCut: "The change is long; only its beginning is shown.",
+  unrecorded: (n) =>
+    n === 1
+      ? "This file was not recorded in the turn's snapshot:"
+      : "These files were not recorded in the turn's snapshot:",
+  more: (n) => `and ${n} more`,
 });

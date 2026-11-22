@@ -1368,6 +1368,8 @@ export function timelineItems(
     const group = turn;
     turn = [];
     const id = turnId ?? group[0].entry_key;
+    // The person's message this group answers, when it starts the turn.
+    const userKey = turnId?.startsWith("turn:") ? turnId.slice(5) : undefined;
     const startedAt = turnStart;
     turnId = turnStart = undefined;
     const ended = endsTurn(group.at(-1));
@@ -1423,6 +1425,7 @@ export function timelineItems(
               agentId={agentId}
               revision={revision}
               startedAt={startedAt}
+              userKey={userKey}
             />
           }
           browser={

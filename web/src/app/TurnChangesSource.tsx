@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { FileLinkContext } from "../components/fileRefs";
 import { TurnChanges, TurnChangesUnread } from "../components/TurnChanges";
+import { useExperimentalFeature } from "./accountPreferences";
 import { fullTextBlock, type HistoryEntry } from "./history";
+import {
+  readTurnChanges,
+  readTurnDiff,
+  type TurnSnapshotChanges,
+} from "./rewind";
 import {
   type FileChange,
   type ToolStep,
   turnChanges,
+  withSnapshot,
   workspacePath,
 } from "./turnChanges";
 
@@ -178,10 +185,26 @@ export function useNear() {
   return [near, setPlace] as const;
 }
 
+/** The turn's snapshot comparison, or none when it has no snapshots or the
+ * read failed: the tool calls then answer alone, as before snapshots. */
+async function readSnapshot(
+  agentId: string,
+  entry: string,
+): Promise<TurnSnapshotChanges | undefined> {
+  try {
+    const value = await readTurnChanges(agentId, entry);
+    return value.snapshot ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Muutokset for one finished turn. Its source is the turn's own tool calls in native
  * history, read through the history block reads the conversation already
- * uses; nothing is stored.
+ * uses; nothing is stored. With Palaa tähän on, the run's turn snapshots
+ * (read by the daemon from the recorder's store) decide which files changed,
+ * so a script's or a formatter's changes are listed too.
  */
 export function TurnChangesSource({
   entries,
@@ -189,15 +212,19 @@ export function TurnChangesSource({
   agentId,
   revision,
   startedAt,
+  userKey,
 }: {
   entries: HistoryEntry[];
   results: Map<string, HistoryEntry>;
   agentId?: string;
   revision?: string;
   startedAt?: number;
+  /** The person's message the turn answers: the key its snapshots carry. */
+  userKey?: string;
 }) {
   const root = useContext(TurnChangesRoot);
   const links = useContext(FileLinkContext);
+  const snapshots = useExperimentalFeature("rewind-conversation");
   const calls: Call[] = entries.flatMap((entry) =>
     (entry.blocks ?? []).flatMap((block, index) => {
       if (
@@ -230,31 +257,52 @@ export function TurnChangesSource({
     .slice(0, -1)
     .flatMap((e) => (savedAt(e) === undefined ? [] : [savedAt(e) as number]));
   const end = savedAt(entries.at(-1));
-  // The reads depend only on which calls and results there are.
+  // The reads depend only on which calls and results there are, and on
+  // whether snapshots are asked for, until the turn's last entry.
+  const asked =
+    snapshots &&
+    !!userKey &&
+    entries.some((e) => e.blocks?.some((b) => b.type === "toolCall"));
   const key = calls
     .map(
       (c) =>
         `${c.callId}:${c.result?.entry_key ?? ""}:${c.result?.is_error ?? ""}`,
     )
-    .join(",");
+    .join(",")
+    .concat(asked ? `|${userKey}:${entries.at(-1)?.entry_key ?? ""}` : "");
   const [near, ref] = useNear();
   const [read, setRead] = useState<{
     key: string;
     files?: FileChange[];
+    unrecorded?: string[];
+    unrecordedMore?: number;
   }>();
   const [attempt, setAttempt] = useState(0);
-  const latest = useRef({ calls, root });
-  latest.current = { calls, root };
+  const latest = useRef({ calls, root, asked, userKey });
+  latest.current = { calls, root, asked, userKey };
   // A read that failed is tried again with the next revision or on request;
   // one that succeeded is not repeated.
   const retry = read?.key === key && read.files ? "" : `${revision}/${attempt}`;
   useEffect(() => {
     if (!near || !agentId || !key || retry === "") return;
     let current = true;
-    const { calls, root } = latest.current;
-    readSteps(agentId, calls, root)
-      .then((steps) => {
-        if (current) setRead({ key, files: turnChanges(steps, root) });
+    const { calls, root, asked, userKey } = latest.current;
+    Promise.all([
+      readSteps(agentId, calls, root),
+      asked && userKey ? readSnapshot(agentId, userKey) : undefined,
+    ])
+      .then(([steps, snapshot]) => {
+        if (!current) return;
+        const files = turnChanges(steps, root);
+        if (!snapshot || !userKey) return setRead({ key, files });
+        setRead({
+          key,
+          files: withSnapshot(files, snapshot.files, (path) =>
+            readTurnDiff(agentId, userKey, path),
+          ),
+          unrecorded: snapshot.skipped,
+          unrecordedMore: snapshot.skipped_more,
+        });
       })
       // A turn whose calls cannot be read shows no card rather than a wrong
       // one; an earlier result stays.
@@ -284,6 +332,8 @@ export function TurnChangesSource({
       onOpen={
         links ? (path, line) => links.open({ path, line }, path) : undefined
       }
+      unrecorded={read.unrecorded}
+      unrecordedMore={read.unrecordedMore}
     />
   );
 }

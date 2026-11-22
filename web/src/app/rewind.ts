@@ -35,6 +35,48 @@ const validBranch = ajv.compile<RewindBranch>({
 const validResult = ajv.compile<RewindResult>({
   $ref: `${rewindSchema.$id}#/$defs/result`,
 });
+const validTurnChanges = ajv.compile<TurnSnapshotChanges>({
+  $ref: `${rewindSchema.$id}#/$defs/turnChanges`,
+});
+const validTurnDiff = ajv.compile<TurnSnapshotDiff>({
+  $ref: `${rewindSchema.$id}#/$defs/turnDiff`,
+});
+
+/** One file the run changed, from the turn's snapshots. */
+export type TurnSnapshotFile = {
+  path: string;
+  old_path?: string;
+  change:
+    | "added"
+    | "modified"
+    | "deleted"
+    | "renamed"
+    | "copied"
+    | "type_changed";
+  additions?: number;
+  deletions?: number;
+  binary?: true;
+};
+/** The files of one run from its snapshots; snapshot false: none recorded. */
+export type TurnSnapshotChanges = {
+  schema_version: 1;
+  agent_id: string;
+  entry_key: string;
+  snapshot: boolean;
+  settled: boolean;
+  files: TurnSnapshotFile[];
+  files_more: number;
+  skipped: string[];
+  skipped_more: number;
+};
+export type TurnSnapshotDiff = {
+  schema_version: 1;
+  agent_id: string;
+  entry_key: string;
+  path: string;
+  diff: string;
+  truncated: boolean;
+};
 
 export type RewindFile = {
   path: string;
@@ -144,6 +186,52 @@ export async function readRewindBranch(
     value.marker_key !== marker
   )
     throw new Error("invalid branch");
+  return value;
+}
+
+/** What the agent's run for one of the person's messages changed, from the
+ * turn snapshots the recorder takes while Palaa tähän is on. */
+export async function readTurnChanges(
+  id: string,
+  entry: string,
+  signal?: AbortSignal,
+): Promise<TurnSnapshotChanges> {
+  if (!key.test(entry)) throw new Error("invalid entry");
+  const value = await read(
+    url(id, `turn=${encodeURIComponent(entry)}`),
+    signal,
+  );
+  if (
+    !validTurnChanges(value) ||
+    value.agent_id !== id ||
+    value.entry_key !== entry
+  )
+    throw new Error("invalid turn changes");
+  return value;
+}
+
+/** One listed file's diff between the run's two snapshots. */
+export async function readTurnDiff(
+  id: string,
+  entry: string,
+  path: string,
+  signal?: AbortSignal,
+): Promise<TurnSnapshotDiff> {
+  if (!key.test(entry) || !path) throw new Error("invalid entry");
+  const value = await read(
+    url(
+      id,
+      `turn=${encodeURIComponent(entry)}&path=${encodeURIComponent(path)}`,
+    ),
+    signal,
+  );
+  if (
+    !validTurnDiff(value) ||
+    value.agent_id !== id ||
+    value.entry_key !== entry ||
+    value.path !== path
+  )
+    throw new Error("invalid turn diff");
   return value;
 }
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   commandFiles,
+  snapshotPatch,
   type ToolStep,
   totalCounts,
   turnChanges,
   unifiedDiff,
+  withSnapshot,
   workspacePath,
 } from "./turnChanges";
 
@@ -200,5 +202,98 @@ describe("unifiedDiff", () => {
     expect(lines.filter((l) => l === " ⋯")).toHaveLength(1);
     expect(lines.filter((l) => l.startsWith("-"))).toEqual(["-l2", "-l17"]);
     expect(lines.filter((l) => l.startsWith("+"))).toEqual(["+L2", "+L17"]);
+  });
+});
+
+describe("withSnapshot", () => {
+  const diff = async () => ({ diff: "", truncated: false });
+  it("lets the snapshot decide the list: a script's file is listed, a command's guess it does not list is not", () => {
+    const files = turnChanges(
+      [
+        step("bash", { command: "python3 tools/regen.py" }),
+        // The parser reads `touch` as a change; the snapshot shows none.
+        step("bash", { command: "touch stamp.txt" }),
+        step("bash", { command: "sed -i s/a/b/ conf.ini" }),
+      ],
+      root,
+    );
+    expect(files.map((f) => f.path)).toEqual(["stamp.txt", "conf.ini"]);
+    const merged = withSnapshot(
+      files,
+      [
+        { path: "gen/out.json", change: "added", additions: 3, deletions: 0 },
+        { path: "conf.ini", change: "modified", additions: 1, deletions: 1 },
+      ],
+      diff,
+    );
+    expect(merged.map((f) => [f.path, f.change, f.byCommand])).toEqual([
+      ["gen/out.json", "added", true],
+      ["conf.ini", "modified", true],
+    ]);
+    expect(merged[1].command).toBe("sed -i s/a/b/ conf.ini");
+    expect(merged[1].events).toHaveLength(1);
+    expect(merged.every((f) => f.snapshotDiff)).toBe(true);
+    expect(totalCounts(merged)).toEqual({ add: 4, del: 1 });
+  });
+
+  it("keeps a fully known edit's own diff and an edit the snapshot cannot see", () => {
+    const files = turnChanges(
+      [
+        step("read", { path: "src/a.ts" }, { output: "x\ny\n" }),
+        step("edit", {
+          path: "src/a.ts",
+          edits: [{ oldText: "y\n", newText: "z\n" }],
+        }),
+        // An ignored file: the snapshot never lists it.
+        step("write", { path: ".env.local", content: "KEY=1\n" }),
+      ],
+      root,
+    );
+    const merged = withSnapshot(
+      files,
+      [{ path: "src/a.ts", change: "modified", additions: 1, deletions: 1 }],
+      diff,
+    );
+    expect(merged.map((f) => f.path)).toEqual(["src/a.ts", ".env.local"]);
+    expect(merged[0]).toMatchObject({
+      byCommand: false,
+      before: "x\ny\n",
+      after: "x\nz\n",
+    });
+    expect(merged[0].snapshotDiff).toBeUndefined();
+    expect(merged[1].byCommand).toBeUndefined();
+  });
+
+  it("gives a binary file no counts and no diff read, and a rename its earlier path", () => {
+    const merged = withSnapshot(
+      [],
+      [
+        { path: "logo.png", change: "modified", binary: true },
+        {
+          path: "src/new.py",
+          old_path: "src/old.py",
+          change: "renamed",
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      diff,
+    );
+    expect(merged[0]).toMatchObject({ binary: true, counts: undefined });
+    expect(merged[0].snapshotDiff).toBeUndefined();
+    expect(merged[1]).toMatchObject({
+      change: "renamed",
+      oldPath: "src/old.py",
+    });
+  });
+});
+
+describe("snapshotPatch", () => {
+  it("drops Git's header lines and separates later hunks", () => {
+    const patch = snapshotPatch(
+      "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+b\n@@ -9 +9 @@\n-c\n+d\n",
+    );
+    expect(patch).toBe("--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+b\n ⋯\n-c\n+d");
+    expect(snapshotPatch("Binary files a/x and b/x differ\n")).toBe("");
   });
 });
