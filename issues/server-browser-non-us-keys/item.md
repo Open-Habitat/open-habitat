@@ -2,7 +2,7 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: real-runtime lab during server-browser-control-clipboard-impl
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: server-browser-control
 lane_seq: 3
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser: characters outside the US layout typed on the picture never arrive
@@ -59,3 +60,9 @@ and dispatch keydown/keyup with `key: "ä", code: "Quote"` on the canvas
 ### 2026-11-22T08:17:21Z · @conductor
 
 Conductor 22.11.2026: laned as a defect in accepted behaviour (typing on the server browser must work for a Finnish user; ä/ö in passwords and ordinary fields). Fix directly; Jari is told.
+
+## Acceptance Criteria
+
+- [x] Finnish canvas input and clipboard-free password keystrokes arrive in a real Xvnc/Chromium lab.
+- [x] Supported Latin characters work with Caps Lock off and on; unsupported keystroke text is refused without partial sending.
+- [x] Focused Go, web and affected browser checks pass; independent review findings are resolved.
