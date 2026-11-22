@@ -1,0 +1,212 @@
+/* Review chrome above the production shell (as in rounds 1–2), and this
+   round's own pieces: the rail's Oma selain row, the conversation row's
+   browser mark, the three forms inside the conversation, and the sheet's
+   Kehys stand-in. Tokens only, except the drawn third-party pages. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls, .ra-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-stepper { gap: 4px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; max-width: 46vw; }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-event[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink, var(--ah-ink)); border-color: var(--ah-accent); font-weight: 600; }
+.ra-next { margin-left: 4px; }
+.ra-phone-only { display: none; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 800px) { .ra-phone-only { display: inline-block; } }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls { gap: 4px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-step { padding: 2px 6px; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.bp-main { height: 100%; min-width: 0; }
+
+/* ---------- Place 1: Oma selain, a plain row like Tuotokset ---------- */
+button.bp-item {
+  width: 100%; box-sizing: border-box; border: 0; background: none;
+  font: inherit; font-weight: 600; text-align: left;
+}
+button.bp-item:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.bp-item-state {
+  display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto;
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 400;
+}
+.bp-item-state svg { width: 13px; height: 13px; flex: none; }
+.bp-item[data-state="agent"] .bp-item-state { color: var(--ah-ink-2); }
+.bp-item[data-state="control"] .bp-item-state { color: var(--ah-ink); font-weight: 600; }
+/* Waiting for you: the same pill as the rail's attention count, with its word. */
+.bp-item[data-state="ask"] .bp-item-state {
+  padding: 1px 8px; border-radius: var(--ah-r-pill);
+  background: var(--ah-accent); color: var(--ah-on-accent, var(--ah-surface)); font-weight: 600;
+}
+
+/* ---------- Place 2: the conversation's row ---------- */
+.ah-nav-link:has(.bp-rowmark) .ah-nav-time { display: none; }
+.bp-rowmark-slot { display: contents; }
+.bp-rowmark {
+  display: inline-flex; align-items: center; gap: 3px; flex: none; margin-inline-start: auto;
+  color: var(--ah-muted); font-size: 12px; font-weight: 400; white-space: nowrap;
+}
+.bp-rowmark svg { width: 14px; height: 14px; }
+.bp-rowmark[data-state="ask"] {
+  padding: 0 6px 0 4px; border: 1px solid var(--ah-accent); border-radius: var(--ah-r-pill);
+  color: var(--ah-accent-ink, var(--ah-ink)); font-weight: 600;
+}
+.bp-rowmark[data-state="control"] { color: var(--ah-ink); font-weight: 600; }
+
+/* ---------- Place 3: the family inside the conversation ---------- */
+.bp-turn { display: flex; flex-direction: column; gap: var(--ah-s2); min-width: 0; }
+.bp-turn > .bp-card, .bp-turn > .bp-line { margin-left: calc(18px + var(--ah-turn-column-gap, 12px)); }
+.bp-card { margin-top: var(--ah-s2); }
+.bp-turn > .bp-card { margin-top: 0; }
+.bp-meta { display: inline-flex; flex-wrap: wrap; gap: 0 var(--ah-s2); white-space: normal; }
+.bp-sites { display: inline-flex; flex-wrap: wrap; gap: 0 6px; }
+.bp-sites code, .bp-line code, .bp-detail code { font-family: var(--ah-mono); font-size: 0.92em; overflow-wrap: anywhere; }
+.bp-when { color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.bp-card .ah-tc-toggle > svg[data-icon="browser"] { width: 15px; height: 15px; color: var(--ah-ink-2); }
+.bp-card-body { display: grid; gap: var(--ah-s2); padding: var(--ah-s3); }
+
+/* The live card: the head carries its buttons at the end. */
+.bp-live-head { align-items: center; flex-wrap: wrap; }
+.bp-live-head > .ah-tc-toggle { flex: 1 1 16rem; }
+.bp-live-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 4px var(--ah-s3) 4px 0; }
+.bp-live[data-state="working"] { border-color: var(--ah-line-strong); }
+.bp-live[data-state="ask"] { border-color: var(--ah-accent); }
+.bp-live[data-state="ask"] .ah-tc-title { color: var(--ah-accent-ink, var(--ah-ink)); }
+.bp-live[data-state="ask"] .bp-says { color: var(--ah-ink); }
+.bp-live[data-state="control"] { border-color: var(--ah-accent); border-style: solid; box-shadow: inset 3px 0 0 var(--ah-accent); }
+.bp-wintitle { color: var(--ah-ink); }
+
+.bp-act {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 28px;
+  padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink); font: 500 var(--ah-size-meta) var(--ah-font);
+  cursor: pointer; white-space: nowrap;
+}
+.bp-act svg { width: 14px; height: 14px; }
+.bp-act:hover { background: var(--ah-hover); }
+.bp-act:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.bp-act-primary { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent, var(--ah-surface)); }
+.bp-act-primary:hover { background: var(--ah-accent); filter: brightness(1.06); }
+
+/* 1 Rivi: one line, as Habitat's own lines are. */
+.bp-line {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ah-s2);
+  margin: 0; padding: 2px 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta);
+}
+.bp-line-mark { display: inline-grid; place-items: center; flex: none; color: var(--ah-ink-2); }
+.bp-line-mark svg { width: 15px; height: 15px; }
+.bp-line-text { flex: 1 1 14rem; min-width: 0; }
+.bp-line-text strong { color: var(--ah-ink); font-weight: 600; }
+.bp-line-actions { display: inline-flex; gap: 6px; }
+.bp-line-actions .bp-act { min-height: 24px; padding: 0 8px; }
+.bp-line[data-state="ask"] .bp-line-mark, .bp-line[data-state="ask"] strong { color: var(--ah-accent-ink, var(--ah-ink)); }
+.bp-line[data-state="ask"] { color: var(--ah-ink); }
+.bp-line[data-state="control"] .bp-line-mark { color: var(--ah-accent-ink, var(--ah-ink)); }
+
+/* 3 Ikkuna: a small picture at the card's start. */
+.bp-thumb {
+  position: relative; flex: none; align-self: stretch;
+  width: 96px; min-height: 60px; margin: 6px 0 6px var(--ah-s2); padding: 0;
+  border: 2px dashed var(--ah-line-strong); border-radius: var(--ah-r-sm);
+  background: var(--ah-surface-2); overflow: hidden; cursor: pointer;
+}
+.bp-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.bp-thumb[data-control="ask"] { border-style: solid; border-color: var(--ah-accent); }
+.bp-thumb[data-control="person"] { border-style: solid; border-color: var(--ah-accent); }
+.bp-thumb:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.bp-thumb-ptr {
+  position: absolute; left: 58%; top: 70%; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ah-accent); box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+/* The opened record (visit-record 2 Kortti). */
+.bp-detail {
+  display: grid; gap: var(--ah-s3); min-width: 0;
+  font: var(--ah-size-meta)/1.45 var(--ah-font); color: var(--ah-ink-2);
+}
+.bp-detail section { display: grid; gap: 6px; min-width: 0; }
+.bp-detail h4 { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ah-ink); font-size: var(--ah-size-meta); font-weight: 600; }
+.bp-detail h4 svg, .bp-tabstate svg { width: 14px; height: 14px; }
+.bp-tabstate { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--ah-muted); }
+.bp-n { color: var(--ah-muted); font-weight: 400; }
+.bp-origin { display: grid; gap: 2px; min-width: 0; }
+.bp-origin-head { margin: 0; }
+.bp-origin-head code { color: var(--ah-ink); }
+.bp-pages {
+  margin: 0; padding: 0; list-style: none; min-width: 0;
+  display: grid; grid-template-columns: 3.2em minmax(0, max-content) minmax(0, 1fr); gap: 1px var(--ah-s2);
+  align-items: baseline;
+}
+.bp-pages li { display: contents; }
+.bp-pages time { color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.bp-page-title { color: var(--ah-ink); overflow-wrap: anywhere; }
+.bp-path { color: var(--ah-muted); overflow-wrap: anywhere; }
+.bp-saved { margin: 0; }
+.bp-files { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(10em, 1fr)); gap: 2px var(--ah-s3); }
+.bp-files li { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.bp-files svg { width: 12px; height: 12px; flex: none; color: var(--ah-muted); }
+.bp-coverage { margin: 0; color: var(--ah-muted); max-width: 60ch; }
+@media (max-width: 600px) {
+  .bp-pages { grid-template-columns: 3em minmax(0, 1fr); }
+  .bp-pages .bp-path { grid-column: 2; }
+  .bp-turn > .bp-card, .bp-turn > .bp-line { margin-left: 0; }
+  .bp-live-actions { padding: 0 var(--ah-s3) var(--ah-s2); }
+  .bp-thumb { width: 72px; min-height: 48px; }
+}
+
+/* ---------- The sheet: control round 1 Kehys ---------- */
+.bp-frame-wrap { flex: 1; min-height: 0; display: flex; padding: 22px 14px 10px; }
+.bp-frame {
+  position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
+  border: 3px dashed var(--ah-line-strong); border-radius: var(--ah-r-lg); padding-top: 20px;
+}
+.bp-frame[data-control="person"] { border-style: solid; border-color: var(--ah-accent); }
+.bp-frame-tab {
+  position: absolute; top: -17px; left: 12px; right: 12px; z-index: 2; width: max-content; max-width: calc(100% - 24px);
+  display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 10px;
+  background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-pill);
+  font-size: 13px; box-sizing: border-box;
+}
+.bp-frame-tab svg { width: 14px; height: 14px; flex: none; }
+.bp-frame[data-control="person"] .bp-frame-tab { border-color: var(--ah-accent); }
+.bp-frame-says { min-width: 0; color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-screen { flex: 1; min-height: 0; display: grid; grid-template-rows: auto auto 1fr; background: var(--ah-surface-2); border-radius: 0 0 calc(var(--ah-r-lg) - 3px) calc(var(--ah-r-lg) - 3px); overflow: hidden; }
+.bp-tabs { display: flex; gap: 2px; padding: 6px 8px 0; overflow: hidden; }
+.bp-tab {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-width: 0; max-width: 220px; padding: 5px 12px; border-radius: var(--ah-r-sm) var(--ah-r-sm) 0 0;
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bp-tab svg { width: 12px; height: 12px; flex: none; }
+.bp-tab[data-active] { background: var(--ah-surface); color: var(--ah-ink); }
+.bp-address { margin: 0 8px; padding: 4px 10px; background: var(--ah-surface); color: var(--ah-ink-2); font: var(--ah-size-meta) var(--ah-mono); }
+.bp-screen img { width: 100%; height: 100%; min-height: 0; object-fit: contain; object-position: top center; background: var(--ah-surface); }
+@media (max-width: 600px) { .bp-frame-says { display: none; } }
+
+/* The shared picker is centred with left: 50%, which caps its width at half
+   the phone; these three labels need a little more, so size it to them. */
+nav.proto-picker { width: max-content; }
