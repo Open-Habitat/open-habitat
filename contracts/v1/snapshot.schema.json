@@ -332,7 +332,7 @@
           "const": true
         },
         "icon_logo": {
-          "description": "The first logo file on the daemon's fixed list, whatever the config says, so the icon picker can offer it. Fetched from /api/v1/workspaces/icon with logo=1.",
+          "description": "The first usable conventional logo file or local README logo reference, whatever the config says, so the icon picker can offer it. Fetched from /api/v1/workspaces/icon with logo=1.",
           "type": "object",
           "additionalProperties": false,
           "required": [
@@ -917,7 +917,7 @@
       }
     },
     "workspaceIcon": {
-      "description": "The workspace's icon as the daemon found it in the repository: the icon field of the .open-habitat.yaml at its root (an emoji, 1-3 letters or digits, or a repo-relative image), else the first logo file on the daemon's fixed list. Absent when neither gives one; the browser then derives a glyph from the name. An image is fetched from /api/v1/workspaces/icon by workspace_id; the path is for showing where the icon comes from, never a path the browser may ask for.",
+      "description": "The workspace's icon as the daemon found it in the repository: the icon field of the .open-habitat.yaml at its root (an emoji, 1-3 letters or digits, or a repo-relative image), else the first usable conventional logo file or local README logo reference. Absent when neither gives one; the browser then derives a glyph from the name. An image is fetched from /api/v1/workspaces/icon by workspace_id; the path is for showing where the icon comes from, never a path the browser may ask for.",
       "oneOf": [
         {
           "type": "object",

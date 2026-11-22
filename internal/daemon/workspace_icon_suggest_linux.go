@@ -139,7 +139,25 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		}
 		cfg := c.cfg
 		cfg.Home = c.home
+		// A path is not visible to the tool-free helper. Supply the validated
+		// current repository image itself, never bytes from the catalogue.
+		var repositoryIcon []map[string]string
+		if facts.Logo != "" {
+			image, typ, err := readIconCandidate(r.Context(), cfg, "workspace:"+in.WorkspaceID+":"+facts.Logo)
+			if err == nil {
+				budget := 65536
+				for _, part := range attachments {
+					budget -= len(part["text"])
+				}
+				repositoryIcon = []map[string]string{{"type": "text", "text": "Current workspace repository icon: " + facts.Logo}, iconModelContent(image.data, typ, budget)}
+			} else {
+				facts.Logo = ""
+			}
+		}
 		imageOK := func(value string) bool {
+			if strings.TrimSpace(in.Wish) == "" && strings.HasPrefix(value, "workspace:") && !strings.HasPrefix(value, "workspace:"+in.WorkspaceID+":") {
+				return false
+			}
 			_, _, e := readIconCandidate(r.Context(), cfg, value)
 			return e == nil
 		}
@@ -148,7 +166,7 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 			direct = append(direct, iconSuggestion{"attachment:" + match[1], ""})
 		}
 		direct = validIconSuggestionsWithImages(direct, "", nil, imageOK)
-		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish, "attachments": attachments, "workspaces": c.iconWorkspaces()})
+		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish, "attachments": attachments, "repository_icon": repositoryIcon, "workspaces": c.iconWorkspaces()})
 		reply := map[string]any{"schema_version": 1, "seen": seenFacts(facts)}
 		suggest := c.iconSuggester
 		if suggest == nil {
@@ -265,7 +283,9 @@ func iconWishAttachments(home, wish string) ([]map[string]string, error) {
 			if len(data) > maxWorkspaceIcon {
 				return nil, errIconAttachment
 			}
-			out = append(out, map[string]string{"type": "text", "text": "Attached SVG image (available as an icon)."})
+			part := iconModelContent(data, "image/svg+xml", 65536-textBytes)
+			out = append(out, part)
+			textBytes += len(part["text"])
 		} else {
 			textBytes += len(data)
 			if textBytes > 65536 || !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
@@ -377,8 +397,8 @@ func readIconFacts(id string, ws *os.File, uid int, name string) (iconFacts, str
 			current = icon.Path
 		}
 	}
-	for _, readme := range []string{"README.md", "README", "readme.md", "README.txt", "README.rst", "Readme.md"} {
-		if text := readIconPrefix(root, readme, maxIconReadme); text != "" {
+	for _, readme := range iconReadmeNames {
+		if text := readIconPrefix(unix.Openat2, root, readme, maxIconReadme); text != "" {
 			facts.ReadmeTitle, facts.ReadmeSummary, facts.Readme = splitIconReadme(text)
 			break
 		}
@@ -422,8 +442,8 @@ func splitIconReadme(text string) (title, summary, rest string) {
 
 // readIconPrefix reads at most limit bytes of a regular file at the root,
 // never through a symlink, and cuts at a whole character.
-func readIconPrefix(root int, name string, limit int) string {
-	fd, err := open(unix.Openat2, root, name, unix.O_RDONLY|unix.O_NONBLOCK, true)
+func readIconPrefix(op openFunction, root int, name string, limit int) string {
+	fd, err := open(op, root, name, unix.O_RDONLY|unix.O_NONBLOCK, true)
 	if err != nil {
 		return ""
 	}

@@ -13,11 +13,37 @@ test("@workspace-icons another workspace logo and an attached image can be selec
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page.waitForURL(/\/workspaces/);
-  await page
-    .getByRole("navigation")
-    .getByTestId("workspace-aurinkokello")
-    .click();
+  // The repository logo must reach the tool-free model as content and
+  // return through the ordinary logo preview, not another workspace's image.
+  await page.getByRole("navigation").getByTestId("workspace-kotisivu").click();
+  await page.getByTestId("workspace-icon-picker").click();
+  await page.getByTestId("workspace-icon-ask-model").click();
   const row = page.getByTestId("workspace-icon-suggestions");
+  await expect(row).toHaveAttribute("data-state", "done");
+  const ownLogo = row
+    .getByTestId("workspace-icon-suggestion")
+    .first()
+    .locator("img");
+  await expect(ownLogo).toBeVisible();
+  await expect
+    .poll(() => ownLogo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  const ownURL = new URL((await ownLogo.getAttribute("src")) ?? "", page.url());
+  expect(ownURL.searchParams.get("workspace_id")).toBe(
+    new URL(page.url()).pathname.split("/").pop(),
+  );
+  expect(ownURL.searchParams.get("logo")).toBe("1");
+  const target = page
+    .getByRole("navigation")
+    .getByTestId("workspace-aurinkokello");
+  const targetID = (await target.getAttribute("href"))?.split("/").pop();
+  const targetAnswer = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/workspaces/icon/suggestions") &&
+      response.request().postDataJSON()?.workspace_id === targetID,
+  );
+  await target.click();
+  await targetAnswer;
   await expect(row).toHaveAttribute("data-state", "done");
   await row.getByTestId("workspace-icon-wish").fill("kotisivu logo");
   await row.getByTestId("send").click();

@@ -17,8 +17,9 @@ func runFakeIconModel() int {
 			Readme string `json:"readme"`
 			Logo   string `json:"logo"`
 		} `json:"facts"`
-		Wish       string `json:"wish"`
-		Workspaces []struct {
+		Attachments []map[string]string `json:"repository_icon"`
+		Wish        string              `json:"wish"`
+		Workspaces  []struct {
 			Name string `json:"name"`
 			Logo string `json:"logo"`
 		} `json:"workspaces"`
@@ -45,7 +46,14 @@ func runFakeIconModel() int {
 	}
 	reply := "Synteettinen malli ehdottaa:"
 	if in.Facts.Logo != "" {
-		out = append([]s{{in.Facts.Logo, "repon oma logo"}}, out...)
+		// This tool-free fixture only suggests an own logo when the daemon
+		// supplies its content, not merely a path the model cannot open.
+		for _, part := range in.Attachments {
+			if part["type"] == "image" && part["data"] != "" || strings.Contains(part["text"], "<svg") {
+				out = append([]s{{in.Facts.Logo, "repon oma logo"}}, out...)
+				break
+			}
+		}
 	}
 	if strings.Contains(strings.ToLower(in.Wish), "kirjai") {
 		out = []s{{"AK", "aurinkokello"}, {"A", "lyhyt"}, {"AKL", "pidempi"}}

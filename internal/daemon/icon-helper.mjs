@@ -21,7 +21,7 @@ const input = await new Promise((resolve, reject) => {
   process.stdin.on('end', () => resolve(text));
   process.stdin.on('error', reject);
 });
-const { attachments, ...facts } = JSON.parse(input);
+const { attachments, repository_icon, ...facts } = JSON.parse(input);
 const content = [{ type: 'text', text: JSON.stringify(facts) }, ...(attachments ?? [])];
 const hasImages = content.some(part => part.type === 'image');
 const instruction = [
@@ -32,6 +32,8 @@ const instruction = [
   'Letter icons must come from the workspace\'s own name or the subject of its README title, never from a tool, subdirectory or dependency merely mentioned in the README.',
   'Return only one JSON object: {"reply": "...", "suggestions": [{"icon": "...", "why": "..."}]} with exactly five suggestions.',
   'An icon is exactly one of: a single emoji; one to three capital letters or digits (A-Z, 0-9, Å, Ä, Ö); the logo path given in facts; or a workspace image reference. The workspaces array lists this person\'s workspace names, IDs and logo references. When the wish names another workspace\'s logo, use its logo reference exactly. When it names an image file in a listed workspace, return workspace:<id>:<relative image path> (PNG, JPEG, WebP or SVG, at most 256 KiB). Use only the file the person names; do not invent file paths.',
+  'When facts.logo is present, the current repository icon is available for selection. Its image content or bounded SVG source is supplied after the JSON when possible; an explicit omission notice means only its availability is known, not its appearance. You can use that exact logo path. Do not claim no icon was found when facts.logo is present. If facts.logo is absent, say only that no usable icon was found in the supported locations, not that the repository has no icon.',
+  'The workspaces catalogue is for explicit requests only. Never substitute another workspace\'s logo for the current repository\'s icon. Catalogue paths alone do not mean you have seen their image contents.',
   'Never suggest a URL, a file outside the listed workspaces, an image to download or generate, or an icon listed in avoid. Do not repeat earlier rounds unless the wish asks for it.',
   'Each why is a reason of at most 40 characters. The reply is one short sentence of at most 160 characters about the suggestions or the wish.',
   'Write the reply and the reasons in Finnish unless the wish is in another language.',
@@ -51,7 +53,10 @@ async function ask(runtime, model) {
   try {
     const answer = await runtime.completeSimple(model, {
       systemPrompt: instruction,
-      messages: [{ role: 'user', content, timestamp: Date.now() }],
+      messages: [{ role: 'user', content: [...content, ...(repository_icon ?? []).map(part =>
+        part.type === 'image' && !model.input.includes('image')
+          ? { type: 'text', text: 'Repository icon is available for selection; this text-only model cannot inspect its raster appearance.' }
+          : part)], timestamp: Date.now() }],
     }, { maxTokens: 600, toolChoice: 'none', signal, cacheRetention: 'none', sessionId: randomUUID() });
     if (signal.aborted || answer.stopReason === 'aborted') { timedOut = true; return; }
     if (answer.stopReason === 'length') { invalid = true; return; }

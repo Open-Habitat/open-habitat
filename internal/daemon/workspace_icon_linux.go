@@ -23,7 +23,7 @@ import (
 // A workspace's icon comes from the repository itself, so every clone shows
 // the same one and nothing is stored beside it: the `icon` field of the
 // committed `.open-habitat.yaml` at the root (an emoji or a repo-relative
-// image), else the first logo file found on a fixed list, else nothing and
+// image), else a conventional logo or local README logo reference, else nothing and
 // the browser derives a glyph from the name. Every read goes through the
 // workspace's pinned directory with openat2 (beneath it, no symlinks, no
 // mounts) and is size-bounded; the browser never names a path.
@@ -56,17 +56,25 @@ type iconSetting struct {
 }
 
 // Where a repository usually keeps its logo, in the order they are tried.
-var logoDirs = []string{"", "public", "static", "assets", "design-system", "docs", "web/public", "web/static"}
-var logoNames = []string{"logo.svg", "favicon.svg", "logo.png", "favicon.png"}
+var logoDirs = []string{"", "public", "static", "assets", "design-system", "docs", "web/public", "web/static", ".agents", "web/assets", "public/assets", "assets/icons", "public/icons"}
+var logoNames = []string{"logo.svg", "favicon.svg", "logo.png", "favicon.png", "icon.svg", "icon.png", "apple-touch-icon.png", "logo.webp", "icon.webp", "logo.jpg", "logo.jpeg"}
 
 var iconTypes = map[string]string{".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
 func readWorkspaceIcon(op openFunction, root int) workspaceIcon {
 	var icon workspaceIcon
 	for _, path := range logoPaths() {
-		if v, ok := iconFile(op, root, path); ok {
+		if v, ok := logoFile(op, root, path); ok {
 			icon.LogoPath, icon.LogoVersion = path, v
 			break
+		}
+	}
+	if icon.LogoPath == "" {
+		for _, path := range readmeLogoPaths(op, root) {
+			if v, ok := logoFile(op, root, path); ok {
+				icon.LogoPath, icon.LogoVersion = path, v
+				break
+			}
 		}
 	}
 	if b, state := readSmall(op, root, workspaceConfigName, maxWorkspaceConfig); state == "valid" {
@@ -186,6 +194,29 @@ func extension(path string) string {
 		return ""
 	}
 	return path[i:]
+}
+
+// A placeholder (for example an unsmudged LFS pointer) must not hide a later
+// usable logo. Keep configuration's existing file observation separate.
+func logoFile(op openFunction, root int, path string) (string, bool) {
+	version, ok := iconFile(op, root, path)
+	if !ok {
+		return "", false
+	}
+	parent, name := root, path
+	if i := strings.LastIndexByte(path, '/'); i >= 0 {
+		fd, err := dir(op, root, path[:i], true)
+		if err != nil {
+			return "", false
+		}
+		defer unix.Close(fd)
+		parent, name = fd, path[i+1:]
+	}
+	data, state := readSmall(op, parent, name, maxWorkspaceIcon)
+	if state != "valid" || iconContent(path, data) == "" {
+		return "", false
+	}
+	return version, true
 }
 
 // iconFile admits a non-empty regular file within the size bound, and
