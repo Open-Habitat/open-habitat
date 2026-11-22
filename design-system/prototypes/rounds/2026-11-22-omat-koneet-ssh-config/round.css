@@ -1,0 +1,101 @@
+/* Review chrome above the production server area, as in earlier rounds. */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font); }
+.ra-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-hint { color: var(--ah-ink-2); }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+
+/* The stage: the server area as the app shell's state area holds it; the
+   picker sits at the bottom, so the page keeps clear of it. */
+.pr-stage { padding: 0 var(--ah-s6) 96px; }
+@media (max-width: 800px) { .pr-stage { padding: 0 var(--ah-s4) 96px; } }
+.pr-tools {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  margin: var(--ah-s3) auto 0; max-width: 1100px;
+  padding: 6px 10px; border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md);
+  font: var(--ah-size-meta)/1.4 var(--ah-font); color: var(--ah-ink-2);
+}
+.pr-now { color: var(--ah-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pr-fail { display: inline-flex; align-items: center; gap: 4px; }
+.pr-tools label { display: inline-flex; align-items: center; gap: 4px; }
+.pr-tools select { font: inherit; }
+.s-nav-i[aria-disabled] { opacity: 0.55; cursor: default; }
+
+/* ---------- Config hosts (round's own pieces, production om-* classes underneath) ---------- */
+.sc-inserted { display: grid; gap: var(--ah-s3); }
+/* Production says "Ei yhdistettyjä koneita" while its own list is empty;
+   config machines on the page make that untrue. */
+.sc-has [data-settings-row="own-machines"] .om-btns > .om-muted,
+.sc-has [data-settings-row="own-machines"] .om-btns > .s-desc { display: none; }
+.sc-source { flex: none; }
+.sc-machine .om-head { flex-wrap: wrap; }
+.sc-tags { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; }
+.sc-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--ah-size-meta); color: var(--ah-ink-2);
+}
+.sc-tag svg { width: 13px; height: 13px; flex: none; }
+.sc-tag[data-tone="warning"] { color: var(--ah-warn-ink, var(--ah-ink)); }
+.sc-tag[data-tone="info"] { color: var(--ah-accent-ink); }
+.sc-err { color: var(--ah-err); }
+.om-note code, .s-desc code, .sc-banner code, .sc-empty code { font-family: var(--ah-mono); font-size: var(--ah-size-code); overflow-wrap: anywhere; }
+
+.sc-group { margin-top: var(--ah-s4); display: grid; gap: var(--ah-s3); }
+.sc-group .om-sub { margin-top: 0; }
+.sc-rows { list-style: none; margin: 0; padding: 0; }
+.sc-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: var(--ah-s3); padding: 10px var(--ah-s4);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.sc-row-t { display: grid; gap: 2px; min-width: 0; }
+.sc-row-a { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .sc-row { grid-template-columns: auto minmax(0, 1fr); }
+  .sc-row-a { grid-column: 2; justify-content: flex-start; }
+}
+.sc-skipped ul, .sc-hidden ul { margin: var(--ah-s2) 0; padding-left: var(--ah-s4); display: grid; gap: 4px; font-size: var(--ah-size-meta); }
+.sc-hidden li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sc-foot { display: grid; gap: var(--ah-s2); }
+.sc-empty { margin: 0; }
+
+.sc-banner .om-btns { display: flex; align-items: center; gap: var(--ah-s3); flex-wrap: wrap; }
+.sc-banner .om-btns > svg { width: 16px; height: 16px; flex: none; color: var(--ah-ink-2); }
+.sc-banner-t { flex: 1; min-width: 12em; }
+.sc-modal { max-width: 560px; }
+.sc-choices { display: grid; gap: 6px; }
+.sc-choice .om-choice-t { display: grid; gap: 2px; min-width: 0; }
+
+/* The dialog's overlay leaves the review bar and the picker reachable. */
+.ah-overlay { top: var(--review-h, 0px); bottom: 56px; }
+.ah-overlay .ah-modal { max-height: calc(100dvh - var(--review-h, 0px) - 56px - 2 * var(--ah-s4)); overflow: auto; }
+@media (max-width: 600px) {
+  .ah-overlay { padding: var(--ah-s2); }
+  .ah-overlay .ah-dialog { padding: var(--ah-s4); }
+}
+.proto-picker-item { white-space: nowrap; }
+@media (max-width: 640px) {
+  .sc-machine .om-name { flex: 1 1 calc(100% - 48px); }
+  .sc-machine .om-head > [data-testid] { margin-left: 44px; }
+  .sc-machine .om-head > [data-testid] + [data-testid] { margin-left: 0; }
+}

@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-22:own-machines-ssh-config
 lane: own-machines-ssh
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: Omat koneet shows the existing connections from ~/.ssh/config
