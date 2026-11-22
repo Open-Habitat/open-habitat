@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-running-shows-stopped-run
 lane: unlaned
 lane_seq: 1
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Rail: a failed worker run still shows in Käynnissä
